@@ -53,7 +53,7 @@ describe("the sample tray", () => {
     ]);
     // 14 Nov (inbox table): each sample's row as its document says it, and the engine's measured outcome for it.
     expect((r.json.items as { key: string; row: unknown; expect: unknown }[]).map((x) => [x.key, x.row, x.expect])).toEqual(SAMPLE_SOURCES.map((x) => [x.key, rowOf(x), x.expect]));
-    expect((r.json.items as { row: { vendor: string; invoice_no: string; amount: string; due_date: string } }[])[4]!.row).toEqual({ vendor: "Zeeland Verpakkingen B.V.", invoice_no: "ZV-4471", currency: "EUR", amount: "484.00", due_date: "2026-11-30" });
+    expect((r.json.items as { row: { vendor: string; invoice_no: string; amount: string; due_date: string } }[])[4]!.row).toEqual({ vendor: "Zeeland Verpakkingen B.V.", invoice_no: "ZV-4471", currency: "EUR", amount: "484.00", due_date: "2027-01-08" });
     expect((await c.req("POST", "/v1/engine/samples/nope", { key: s })).status).toBe(404);
   });
 

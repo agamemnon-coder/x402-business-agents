@@ -672,7 +672,12 @@ async function stoppedRun(kill?: { point: string; nth: number }): Promise<{ poin
   cfoApproves(w.db);
   await run();
   chaos.at = null;
-  return { points, state: endState(w), killed };
+  const state = endState(w);
+  // Each world's folder goes as soon as it is read: the test makes over 40, and removing them all at the end ran past
+  // the hook's 10 s on a slow disk (17 Nov).
+  roots.splice(roots.indexOf(w.root), 1);
+  rmTemp(w.root);
+  return { points, state, killed };
 }
 
 describe("stopped between any two steps", () => {
