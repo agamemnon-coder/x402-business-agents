@@ -172,6 +172,15 @@ Runs of record: [the Airwallex-only run](runs/2026-11-07-awx-1.md) (two payouts)
 - One invoice has at most one live payout. The Treasury agent's advice sits outside the hash and cannot change what is paid.
 - **For the bank and the ERP.** `npm run iso20022` exports a paid invoice as a pacs.008 message with Airwallex's transfer id as the UETR. The example is from a rehearsal of 30 October: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs008-BTX-2026-11.xml). It is not a message a bank sent.
 
+### A payout that does not stay paid (17 November; tested, not run live)
+
+"`PAID` is not always final" ([Airwallex](https://www.airwallex.com/docs/payouts/transfers/create-a-transfer/transfer-statuses#late-failures-after-paid)):
+a payout can still fail, and the amount less the transfer fee comes back. A `payout.transfer.failed` webhook on a paid
+payout makes Purser read it again (`GET /transfers/{id}`, never the webhook's body). The invoice then goes to a person,
+the books take the payment back (the fee stays), and nothing is sent again under the old approval
+([src/payouts/follow.ts](../src/payouts/follow.ts), [test](../test/payout-returned.test.ts)). Not run in the sandbox:
+a new sandbox payout waits in Airwallex's approval workflow for a person.
+
 ## Transfer approvals
 
 Airwallex has its own lock, which Purser does not control: a transfer approval workflow in the web app that also holds API-created transfers. A payout then needs two approvals that do not depend on each other: the CFO's signature in Purser, and a person in Airwallex's web app. Airwallex docs: [Manage approvals for transfers](https://www.airwallex.com/docs/payouts/transfers/manage-transfers/manage-approvals-for-transfers), [Transfer statuses](https://www.airwallex.com/docs/payouts/transfers/create-a-transfer/transfer-statuses).

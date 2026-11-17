@@ -288,7 +288,8 @@ describe("a calm document", () => {
   // +316 the same day (merge of airwallex-depth-1112): its own new section, "Three more Airwallex capabilities" (batch
   // transfer, payee check, financial transactions), and their rows in the key's permissions; nothing else grew.
   // +2 on 14 Nov (the final pass): "Alta (formerly Metal)" at the chain partner's first mention, after its rename.
+  // +80 on 17 Nov: "A payout that does not stay paid" under Transfers (Airwallex's late failures after PAID).
   it("is no longer than it was before the three sections came in", () => {
-    expect(DOSSIER.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(4886 + 316 + 2);
+    expect(DOSSIER.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(4886 + 316 + 2 + 80);
   });
 });

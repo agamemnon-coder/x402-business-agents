@@ -97,16 +97,35 @@ export function ledgerItems(db: DB): SyncItem[] {
     items.push({ kind: "invoice", object: inv });
   }
   const vendorOf = new Map(invoices.map((r) => [r.invoice_no, r.beneficiary_id]));
-  for (const t of db.prepare("SELECT request_id, transfer_id, invoice_no, amount, currency, updated_at FROM transfers WHERE status = 'PAID' ORDER BY updated_at, request_id").all() as
-    { request_id: string; transfer_id: string | null; invoice_no: string; amount: string; currency: string; updated_at: string }[]) {
+  // A payout that came back after PAID (src/payouts/follow.ts) keeps its payment, dated when it was paid, and gets a
+  // journal entry that takes it back: an ERP that already holds the payment is corrected without anything deleted.
+  for (const t of db.prepare(`SELECT t.request_id, t.transfer_id, t.invoice_no, t.amount, t.currency, t.updated_at, t.status,
+    (SELECT a.ts FROM audit_log a WHERE a.event = 'transfer.returned_after_paid' AND a.subject = t.transfer_id ORDER BY a.seq DESC LIMIT 1) AS returned_at,
+    (SELECT a.ts FROM audit_log a WHERE a.event = 'transfer.status' AND a.subject = t.transfer_id AND json_extract(a.payload_json, '$.status') = 'PAID' ORDER BY a.seq LIMIT 1) AS paid_at
+    FROM transfers t WHERE t.status = 'PAID' OR (t.status IN ('FAILED', 'CANCELLED') AND EXISTS (SELECT 1 FROM audit_log a WHERE a.event = 'transfer.returned_after_paid' AND a.subject = t.transfer_id))
+    ORDER BY t.updated_at, t.request_id`).all() as
+    { request_id: string; transfer_id: string | null; invoice_no: string; amount: string; currency: string; updated_at: string; status: string; returned_at: string | null; paid_at: string | null }[]) {
     const vendorId = vendorOf.get(t.invoice_no);
     if (!vendorId) continue;
+    const returned = t.status !== "PAID" && t.returned_at;
     const p: Payment = {
-      id: t.request_id, invoiceId: t.invoice_no, vendorId, date: t.updated_at.slice(0, 10), amountCents: toCents(t.amount), currency: t.currency,
+      id: t.request_id, invoiceId: t.invoice_no, vendorId, date: (returned ? t.paid_at ?? t.returned_at! : t.updated_at).slice(0, 10), amountCents: toCents(t.amount), currency: t.currency,
       // The Airwallex balance it left from: EUR, USD, GBP each their own account, any other currency 1203 (FX payouts).
       bankAccount: bankAccountFor(t.currency), ...(t.transfer_id ? { airwallexTransferId: t.transfer_id } : {}),
     };
     items.push({ kind: "payment", object: p });
+    if (returned) {
+      const cents = toCents(t.amount);
+      const memo = `Invoice ${t.invoice_no}: the payout came back from the supplier's bank; Airwallex refunds the amount`;
+      const back: JournalEntry = {
+        id: `payment-return:${t.request_id}`, date: t.returned_at!.slice(0, 10), currency: t.currency, memo, sourceRef: t.transfer_id ?? t.request_id,
+        lines: [
+          { glAccount: bankAccountFor(t.currency), debitCents: cents, creditCents: 0, description: memo },
+          { glAccount: "2100", debitCents: 0, creditCents: cents, description: memo },
+        ],
+      };
+      items.push({ kind: "journal", object: back });
+    }
   }
   // The GL journal's other movements, one balanced entry each; the id is the movement's own (source and reference).
   const seen = new Map<string, number>();

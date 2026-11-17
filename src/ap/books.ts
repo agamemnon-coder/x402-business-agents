@@ -27,7 +27,7 @@ export { bankAccountFor };
 export interface ApEntry {
   date: string;
   invoice_id: string;
-  event: "accrual" | "payment" | "reversal";
+  event: "accrual" | "payment" | "reversal" | "return";
   account: string;
   account_name: string;
   debit: string;
@@ -203,15 +203,16 @@ export function accrualEntries(inv: ApInvoiceRow): ApEntry[] {
  * and the fee charged. A supplier payment funded by a conversion also books that conversion, each side in its own
  * currency through money in transit (1590), so every entry balances per currency.
  */
-export function paymentEntries(db: DB, inv: ApInvoiceRow): ApEntry[] {
+export function paymentEntries(db: DB, inv: ApInvoiceRow, returned: ReturnedPayout | null = null): ApEntry[] {
   // The payout the invoice's signed proposal names, by its request id (code review 13 Nov: by invoice number it could
-  // miss the payout, or find another one under the same number).
+  // miss the payout, or find another one under the same number). A payout that came back after PAID is booked as it
+  // was paid (returnedPayout), then taken back (returnEntries).
   const requestId = inv.proposal_id ? (db.prepare("SELECT json_extract(terms_json, '$.transfer_request_id') AS request_id FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { request_id: string | null } | undefined)?.request_id : null;
-  const t = requestId ? db.prepare("SELECT transfer_id, amount, fee_actual, updated_at FROM transfers WHERE request_id = ? AND status = 'PAID'").get(requestId) as
-    { transfer_id: string | null; amount: string; fee_actual: string | null; updated_at: string } | undefined : undefined;
+  const t = returned ?? (requestId ? db.prepare("SELECT transfer_id, amount, fee_actual, updated_at FROM transfers WHERE request_id = ? AND status = 'PAID'").get(requestId) as
+    { transfer_id: string | null; amount: string; fee_actual: string | null; updated_at: string } | undefined : undefined);
   if (!t) return [];
   // Dated as the ledger dates the payment (a month closed before it was posted is never posted into: red team round 3).
-  const date = inv.paid_at ? paymentDay(db, inv) : t.updated_at.slice(0, 10);
+  const date = inv.paid_at ? paymentDay(db, inv) : (returned?.updated_at ?? t.updated_at).slice(0, 10);
   const memo = `${inv.vendor} invoice ${inv.invoice_no}, Airwallex transfer ${t.transfer_id ?? "(no id)"}`;
   const amount = toCents(t.amount);
   const bank = bankAccountFor(inv.currency);
@@ -272,6 +273,9 @@ export function apJournal(db: DB): ApEntry[] {
   return apInvoices(db).flatMap((inv) => {
     if (!bookable(inv) || bookingRefusal(db, inv)) return [];
     const paid = inv.status === "paid" ? paymentEntries(db, inv) : [];
+    // A payout that came back after PAID: the payment as it was made, then taken back; the supplier is owed again.
+    const back = inv.status === "paid" ? null : returnedPayout(db, inv);
+    if (back) return [...accrualEntries(inv), ...paymentEntries(db, inv, back), ...returnEntries(inv, back)];
     return [...accrualEntries(inv), ...(paid.length ? paid : seededSettlementEntries(db, inv))];
   });
 }
@@ -321,6 +325,31 @@ export async function pushToSink(sink: BookkeepingSink | undefined, entries: ApE
 /** The sink this installation books to: the CSV journal in the payables folder (KIT11_AP_DIR, default data/ap). */
 export function payablesSink(env: Record<string, string | undefined> = process.env): BookkeepingSink {
   return new CsvFileSink(join(env.KIT11_AP_DIR ?? "data/ap", "journal.csv"));
+}
+
+/** A payout of this invoice's signed proposal that Airwallex had PAID and that came back (src/payouts/follow.ts). */
+export interface ReturnedPayout { transfer_id: string; amount: string; fee_actual: string | null; updated_at: string; failure_type: string | null; returned_at: string }
+
+/** The payout of the invoice's signed proposal that came back after PAID, or null. */
+export function returnedPayout(db: DB, inv: Pick<ApInvoiceRow, "proposal_id">): ReturnedPayout | null {
+  if (!inv.proposal_id) return null;
+  const r = db.prepare(`SELECT t.transfer_id, t.amount, t.fee_actual, t.updated_at, t.failure_type, a.ts AS returned_at FROM proposals p
+    JOIN transfers t ON t.request_id = json_extract(p.terms_json, '$.transfer_request_id')
+    JOIN audit_log a ON a.event = 'transfer.returned_after_paid' AND a.subject = t.transfer_id
+    WHERE p.proposal_id = ? AND t.status IN ('FAILED', 'CANCELLED') ORDER BY a.seq DESC LIMIT 1`).get(inv.proposal_id) as ReturnedPayout | undefined;
+  return r ?? null;
+}
+
+/**
+ * A payout that came back after PAID, taken back in the books: the amount returns to the bank account it left and the
+ * supplier is owed again. Only the payout itself: Airwallex keeps the transfer fee ("Handle failed transfers": it is
+ * non-refundable), so the fee stays booked, and a conversion is not undone (the refund comes in the transfer currency).
+ */
+export function returnEntries(inv: ApInvoiceRow, r: ReturnedPayout): ApEntry[] {
+  const date = r.returned_at.slice(0, 10);
+  const memo = `${inv.vendor} invoice ${inv.invoice_no}, Airwallex transfer ${r.transfer_id}: returned by the supplier's bank${r.failure_type ? ` (${r.failure_type})` : ""}; the amount is refunded, the transfer fee is not`;
+  const amount = toCents(r.amount);
+  return [line(inv, "return", date, bankAccountFor(inv.currency), amount, 0, memo), line(inv, "return", date, AP_ACCOUNTS.payable, 0, amount, memo)];
 }
 
 /**
