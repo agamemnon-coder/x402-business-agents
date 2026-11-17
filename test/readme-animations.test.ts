@@ -51,12 +51,12 @@ describe("the README's animated SVGs", () => {
     }
   }, 60_000);
 
-  it("count the records' figures: 7,199 tests, 24 Claude decisions, 86 Alta payments, 0 wrong payments", () => {
+  it("count the records' figures: 7,242 tests, 24 Claude decisions, 86 Alta payments, 0 wrong payments", () => {
     const f = statFigures();
     expect(f.tests).toBe((JSON.parse(read("docs/assets/test-summary.json")) as { passed: number }).passed);
-    expect(f).toEqual({ tests: 7199, decisions: 24, alta: 86, wrong: 0 });
+    expect(f).toEqual({ tests: 7242, decisions: 24, alta: 86, wrong: 0 });
     expect(read("docs/evals/worst-case-summary.json")).toContain('"wrong_payments": 0');
-    for (const t of ["dark", "light"]) expect(read(`docs/assets/readme/stats-${t}.svg`)).toContain("7,199 tests passing in the last full run; 24 Claude decisions and 86 Alta payments");
+    for (const t of ["dark", "light"]) expect(read(`docs/assets/readme/stats-${t}.svg`)).toContain("7,242 tests passing in the last full run; 24 Claude decisions and 86 Alta payments");
   });
 
   it("animate the architecture: travelling flow lines, five pulsing steps, the Refused block flashing; text static", () => {

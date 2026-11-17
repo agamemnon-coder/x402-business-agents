@@ -24,8 +24,8 @@ describe("the README's shape (jury panel, 12 Nov)", () => {
     expect(README.endsWith("\n") ? lines.length - 1 : lines.length).toBeLessThanOrEqual(405);
     // 14 Nov (Max, the README and repo upgrade): two rows, the project's badges and one row of the partners.
     // 17 Nov (owner: "one calm, branded set"): one row, the live CI and CodeQL badges; the rest is the proof strip.
-    expect(lines.filter((l) => /\[!\[[^\]]*\]\(https:\/\/(img\.shields\.io|github\.com\/[^)]*badge)/.test(l))).toHaveLength(1);
-    expect(README).not.toContain("img.shields.io");
+    // 17 Nov, later (owner: keep all the badges, grouped): three rows (build, partners, proof), then the strip.
+    expect(lines.filter((l) => /\[!\[[^\]]*\]\(https:\/\/(img\.shields\.io|github\.com\/[^)]*badge)/.test(l))).toHaveLength(3);
     expect(lines.indexOf("## The business hypothesis")).toBeGreaterThan(0);
     // Within the first 60 lines until 13 Nov; the README upgrade put the one-line diagram, the judges' 3 minutes and the
     // table of what is live above it, so within the first 90.

@@ -48,7 +48,7 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Alta testnet
 
 - [/proof#guarantees](https://kit11.max-31b.workers.dev/proof#guarantees): what Purser guarantees, each with its code, its test and where it ran
 - [The live verification report](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md): 15 November, 189 checks passed, 3 could not run here, 0 failed
-- [Test summary](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assets/test-summary.json): 7,199 tests passing in the last full run; CI on every change runs unit tests, the judge replay, Firefox and WebKit browser checks, a secrets scan, a security audit and CodeQL; measured on 15 November: Lighthouse Accessibility and Best Practices 100 on 12 URLs (kit11 and purser-try) (docs/evidence/live-measurement-2026-11-15.json)
+- [Test summary](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assets/test-summary.json): 7,242 tests passing in the last full run; CI on every change runs unit tests, the judge replay, Firefox and WebKit browser checks, a secrets scan, a security audit and CodeQL; measured on 15 November: Lighthouse Accessibility and Best Practices 100 on 12 URLs (kit11 and purser-try) (docs/evidence/live-measurement-2026-11-15.json)
 
 ## Partners: Alta, Visa, T:0
 

@@ -75,13 +75,13 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(judges[7]!.startsWith("**What stood at the submission:** the tag `v1.0-submission` (8 Nov)")).toBe(true);
     expect(judges[0]!.startsWith("| **For judges:** the four things every entry shows ([the 3-minute path](#for-judges-3-minutes))")).toBe(true);
     expect(judges.slice(2, 6).map((l) => /^\| \*\*([^:]+):/.exec(l)?.[1])).toEqual(["User", "Airwallex action", "Financial context", "Controls"]);
-    expect(lines.slice(5, glance - 6)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", ...judges, "", lines[badges]!, "", lines[partners]!, "", "</div>", ""]);
+    expect(lines.slice(5, glance - 6)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", ...judges, "", lines[badges]!, lines[badges + 1]!, lines[badges + 2]!, "", lines[partners]!, "", "</div>", ""]);
     expect(lines.slice(glance - 6, glance)).toEqual(["> [!TIP]", lines[glance - 5]!, "", "> [!IMPORTANT]", lines[glance - 2]!, ""]);
     expect(lines[glance - 5]).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(lines[glance - 2]).toMatch(/^> \*\*Test money only\.\*\* Live: .* Simulated: /);
     expect(lines.slice(glance + 1, kit).filter((l) => l.startsWith("- **"))).toHaveLength(6);
     expect(README_WHAT).toBe(HOME_SUB);
-    expect(kit).toBeLessThan(48); // 48 since 17 Nov (the For judges table and the submission line, 9 lines; 46 as built); 40 since 15 Nov (readme-wow: the two alerts and the stat strip; 36 as built); 35 before
+    expect(kit).toBeLessThan(50); // 50 since 17 Nov later (owner: all the badges back, in three grouped rows: +2 lines; 48 as built); 48 since 17 Nov (the For judges table and the submission line, 9 lines; 46 as built); 40 since 15 Nov (readme-wow: the two alerts and the stat strip; 36 as built); 35 before
     // Under the Kit 11 table: the sentence every juror repeated, then the badges (the old row of buttons went: the three
     // links above say Try and the film; the trailer is in "Watch it", the proof in the live demo's line).
     // 15 Nov (Max): the badges moved to the top; the sentence every juror repeated stays under the Kit 11 table, then
@@ -92,8 +92,9 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(read("docs/submission/long-description.md").split("\n").slice(0, 3)).toEqual(["# Purser: the long description", "", README_BUILT_ON.replace("(docs/airwallex.md)", "(../airwallex.md)")]);
     expect(README_BUILT_ON).not.toMatch(/partner|endors|certif|official|approved/i);
     // The two live GitHub badges (CI, CodeQL), then the proof strip (17 Nov, owner: the static shields went into it).
-    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(2);
-    expect(partners).toBe(badges + 2);
+    // 17 Nov later (owner: all the badges, grouped): build (4), partners (5), proof (3), then the strip.
+    expect([0, 1, 2].map((i) => lines[badges + i]!.match(/\[!\[/g)?.length)).toEqual([4, 5, 3]);
+    expect(partners).toBe(badges + 4);
     expect(lines[live]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     // 14 Nov (jury scan): the 3-command quick start on the first screens, then where things are. 15 Nov: the Kit 11 table
     // first under the header; the badges and the live demo's line after it ("At a glance"), then the quick start.
