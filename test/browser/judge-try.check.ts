@@ -78,7 +78,21 @@ try {
   const next = page.getByRole("button", { name: "Now try to change it" });
   const sign = page.getByRole("button", { name: /Approve & sign/ }).first();
   await Promise.race([next.waitFor({ timeout: 60_000 }), sign.waitFor({ timeout: 60_000 })]).catch(() => undefined);
-  if (!(await next.count())) await click(/Approve & sign/);
+  if (!(await next.count())) {
+    // Jury, 17 Nov: "Don't sign" stayed on screen after the signature, and a tap on it sent the page back to step 1 while
+    // the pay call still went out. Here the pay call is held until "Don't sign" has been looked for: on the sheet before
+    // signing, gone (hidden or disabled) once signed and while paying.
+    const notNow = page.locator(".acts.sign button.quiet");
+    ok(await notNow.isVisible() && await notNow.isEnabled(), "before signing: \"Don't sign\" is on the sheet");
+    let release = () => undefined as void;
+    const held = new Promise<void>((r) => { release = r; });
+    await page.route(/\/v1\/engine\/proposals\/[^/]+\/pay$/, async (route) => { await held; await route.continue(); });
+    await click(/Approve & sign/);
+    await page.getByRole("button", { name: "Paying…" }).waitFor({ timeout: 60_000 });
+    ok(!(await notNow.isVisible()) || !(await notNow.isEnabled()), "signed, paying: \"Don't sign\" is gone (hidden or disabled)");
+    ok((await page.getByRole("button", { name: "Don't sign" }).count()) === 0, "signed, paying: no \"Don't sign\" button a person can reach");
+    release(); // the route stays: every later pay call (the one-cent change too) goes straight through
+  }
   await next.waitFor({ timeout: 60_000 });
   await page.waitForTimeout(800);
   ok(live ? /Paid · test money/i.test(await text(page)) : /simulated bank/i.test(await text(page)), live ? "EUR 1,850.00 paid: the page says test money" : "EUR 1,850.00 paid: the page says the simulated bank paid");

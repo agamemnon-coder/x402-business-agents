@@ -538,6 +538,8 @@ ul.checks li.next .i { color: var(--accent); }
 .receipt.sheet .amount { margin: 8px 0 8px; }
 .acts.sign { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
 .acts.sign .btn.big { margin-top: 0; }
+/* Jury, 17 Nov: .btn's display beat the hidden attribute, so "Don't sign" stayed on screen while signing and paying. */
+.acts.sign .btn[hidden] { display: none !important; }
 .btn.quiet { background: none; border-color: var(--border); color: var(--text); }
 p.ids { margin: 8px 0 0; font-size: 13px; }
 /* The receipt's journal: account names wrap, so the debit and credit columns always show (a long name pushed Credit out). */
@@ -1425,6 +1427,16 @@ function factRows(p,inv,terms){
 }
 // 14 Nov: the Airwallex card: the live sandbox quote the terms carry (id, rate, amounts, a countdown to its valid-to),
 // or the recorded rate and why. Only for terms that convert; the note comes with GET .../terms as fx_quote.
+// 17 Nov (jury): the shortfall in the signed terms' own figures, only when they add up to the amount bought to the cent
+// (free = available − floor − spoken for; need = amount + fee reserve; bought = need − free); else the rule in words.
+function fxWhy(X,t,cv){
+  const ct=(v)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(v??''));return m?Number(m[1])*100+Number(m[2]):NaN};const e=(n)=>cash('EUR',(n/100).toFixed(2));
+  const b=t.balances_before&&typeof t.balances_before==='object'?t.balances_before:{},f=t.floors&&typeof t.floors==='object'?t.floors:{};
+  const av=ct(b.eur_available),fl=ct(f.eur_floor),held=ct(f.eur_obligations),amt=ct(t.amount),fee=ct(t.fee_max),buy=ct(cv.buy_amount);
+  const free=av-fl-held,need=amt+fee;
+  if(t.currency==='EUR'&&[av,fl,held,amt,fee,buy].every(Number.isFinite)&&free>=0&&need-free===buy)return fill(X.shortFig,{free:e(free),available:e(av),floor:e(fl),held:e(held),need:e(need),fee:e(fee),short:e(buy)});
+  return fill(X.short,{fee:cash(String(t.currency||'EUR'),t.fee_max)});
+}
 function fxCard(note,terms,limitBps){
   const X=C.fxCard;const cv=terms&&terms.conversion&&typeof terms.conversion==='object'?terms.conversion:null;
   if(!cv||!note||typeof note!=='object'||note.quote_id!==cv.quote_id)return null;
@@ -1434,6 +1446,8 @@ function fxCard(note,terms,limitBps){
   row(X.rate,rateLine(cv));
   row(X.amounts,fill(X.amountsLine,{buy:cash(cv.buy_currency,cv.buy_amount),sell:cash(cv.sell_currency,cv.sell_amount)}));
   const box=el('section','awx'+(live?' live':''),[el('h3','',live?X.live:X.recorded),d]);
+  // 17 Nov (jury): why it buys this amount, from the plan's rule and the terms' own fee reserve (no figure of its own).
+  if(cv.buy_currency==='EUR'&&terms&&terms.fee_max)box.append(el('p','fxwhy',fxWhy(X,terms,cv)));
   if(live){
     const left=el('dd','');d.append(el('dt','',X.valid),left);
     const end=Date.parse(String(cv.valid_to||''));
@@ -1510,7 +1524,9 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   // was shown): open this page in Safari or Chrome, its address to copy.
   const card=openCard();card.hidden=true;let stuck=false;
   // The sheet's two actions: sign (the main button), or go back without signing (nothing is signed or paid).
-  const notNow=btn(A.notNow);notNow.classList.add('quiet');notNow.hidden=true;notNow.addEventListener('click',()=>show('invoice'));
+  // Jury, 17 Nov: gone (hidden and disabled) from the tap that signs until the sheet is back (stage), so leaving cannot
+  // race the approval or the pay call it starts.
+  const notNow=btn(A.notNow);notNow.classList.add('quiet');notNow.hidden=true;notNow.disabled=true;notNow.addEventListener('click',()=>{if(notNow.hidden||notNow.disabled)return;show('invoice')});
   const acts=el('div','acts sign',[main.node,notNow]);
   box.append(top,said,acts,card,live.node);
   let p=null,eng=null;
@@ -1556,7 +1572,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   }
   // again: after a failure the button says Try again; it is never hidden, so there is always a way on.
   function stage(again){
-    notNow.hidden=false;
+    notNow.hidden=false;notNow.disabled=false;
     card.hidden=!(stuck||!hasPasskeys());
     if(!hasPasskeys()){said.replaceChildren(note(A.noPasskey));main.set(A.again,()=>stage(true));return}
     saves.hidden=!!(eng&&eng.passkey);
@@ -1599,7 +1615,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   }
   // The passkey's prompt opens on the tap itself: nothing is asked of the server before navigator.credentials.get.
   async function approve(){
-    said.replaceChildren();notNow.hidden=true;busy(A.waiting);const t0=performance.now();
+    said.replaceChildren();notNow.hidden=true;notNow.disabled=true;busy(A.waiting);const t0=performance.now();
     let signed;
     try{signed=await withTimeout((signal)=>signTerms(p.challenge,eng.passkey.credential_id,signal))}catch(e){failedPasskey(e,t0);return}
     // The ring stays while the approval is sent; the tick shows as soon as its answer is in.

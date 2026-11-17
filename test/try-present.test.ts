@@ -59,7 +59,8 @@ describe("recording mode", () => {
 
   it("explains Purser in plain words with the partners' own logos and the README's system map, byte for byte", () => {
     const { script } = presentExtra("public");
-    for (const w of ["AI agents prepare the payments. You approve the exceptions with Face ID.", "Changed by one cent after you approved?", "The whole system"]) expect(script).toContain(w);
+    // 17 Nov (jury): /try says "passkey", as its buttons do.
+    for (const w of ["AI agents prepare the payments. You approve the exceptions with your passkey.", "Changed by one cent after you approved?", "The whole system"]) expect(script).toContain(w);
     expect(SYSTEM_MAP_DATA_URL).toBe("data:image/svg+xml;base64," + readFileSync("docs/assets/readme/system-map-dark.svg").toString("base64"));
     expect(script).not.toContain("document.body.classList.add('present');");
   });
@@ -165,7 +166,7 @@ describe("recording mode", () => {
       const tour = await (await c.fetch(`${ORIGIN}/try?tour=1`)).text();
       // 16 Nov (Max): the product frame and its words are /try itself (and ?v=2, ?present=0, ?present=1); the release's
       // page, negotiation included, stays at ?v=1 and with the jury tour.
-      for (const page of [on, off, v2, plain]) { expect(page).toContain("pv-side"); expect(page).toContain("How Purser works"); expect(page).toContain("AI agents prepare the transfer. Your Face ID releases the funds."); }
+      for (const page of [on, off, v2, plain]) { expect(page).toContain("pv-side"); expect(page).toContain("How Purser works"); expect(page).toContain("AI agents prepare the transfer. Your passkey releases the funds."); } // 17 Nov (jury): "passkey", as the buttons say
       for (const page of [off, v2, plain]) expect(page).not.toContain("document.body.classList.add('present');");
       for (const page of [v1, tour]) { expect(page).not.toContain("pv-side"); expect(page).not.toContain("AI agents prepare the transfer."); }
     } finally { c.close(); }
