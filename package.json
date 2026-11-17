@@ -178,6 +178,7 @@
     "record-try-agents": "tsx src/cli/recordTryAgents.ts",
     "cloud": "tsx src/cli/cloud.ts",
     "two-locks": "tsx src/cli/twoLocks.ts",
+    "late-failure": "tsx src/cli/lateFailure.ts",
     "awx-depth": "tsx src/cli/awxDepth.ts",
     "awx-switch-on": "tsx src/cli/awxSwitchOn.ts",
     "tokenize": "tsx src/cli/tokenize.ts",
