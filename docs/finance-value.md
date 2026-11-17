@@ -3,6 +3,8 @@
 > Supplier invoices in; checked, paid inside the CFO's limits, booked and ready for VAT and month-end. No payment leaves
 > without a rule in code or the CFO's signature over its exact terms.
 
+![Purser for the finance team, at a glance: 0 wrong payments against 35 for a payer with no rules (50 test cases); about USD 0.05 of Claude per invoice (a month of 20 test PDFs, USD 1.02 in all); 95 journal entries read back from T:0, 9 accounts, 0 differences; 6.3 s from the CFO's passkey to PAID (Airwallex sandbox, settlement simulated); one cent changed after signing: refused; SWIFT fee EUR 13.42 and EUR 13.50, EUR 20.00 reserved. Test money, sandbox.](assets/finance/at-a-glance.svg)
+
 **Who:** the CFO or finance lead of a small company that banks with Airwallex and pays suppliers abroad. In the test
 runs: Dutch books, a German supplier paid in EUR. The buyer is a hypothesis ([business/model.md](business/model.md)).
 Test money only; every figure links its record.
