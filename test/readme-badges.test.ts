@@ -20,7 +20,13 @@ describe("README badges", () => {
     expect(names(lines[at + 2]!)).toEqual(["worst-case AI, offline eval: 0 wrong payments", "MCP server: read, propose only", "Test money only"]);
     expect(badgeLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
     for (const l of lines.slice(at, at + 3)) for (const u of l.matchAll(/img\.shields\.io\/[^)]+/g)) expect(u[0]).toContain("style=flat-square");
-    const strip = lines[at + 4] ?? "";
+    // 17 Nov, owner: the badges at the very top: the three rows right under the title; the proof strip stays at the
+    // foot of the centred top, after the For judges table.
+    expect(lines[at - 2]).toBe("# Purser · AI agents spend. You sign off.");
+    expect(lines[at - 1]).toBe("");
+    const stripAt = lines.findIndex((l) => l.startsWith('<a href="https://kit11.max-31b.workers.dev/proof"><picture>'));
+    expect(stripAt).toBeGreaterThan(lines.findIndex((l) => l.startsWith("| **For judges:**")));
+    const strip = lines[stripAt] ?? "";
     expect(strip.startsWith('<a href="https://kit11.max-31b.workers.dev/proof"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/proof-strip-dark.svg"><img src="docs/assets/readme/proof-strip-light.svg" alt="')).toBe(true);
     expect(readme).toMatch(/\*\*\d+ tests passing\*\*/);
   });
@@ -28,12 +34,13 @@ describe("README badges", () => {
   // The buttons above the badges, restored 13 Nov, evening (owner). 15 Nov (clarity): one line of three links under the
   // idea replaces them: Try on /try, the film (the walkthrough on YouTube), and the README's own offline check. The
   // trailer stays in "Watch it", /proof in the live demo's line.
-  it("puts three links above the badges: Try on /try, the film, verify it yourself", () => {
+  // 17 Nov, owner: the badges at the very top, so the three links now come under them.
+  it("puts three links under the badges: Try on /try, the film, verify it yourself", () => {
     const links = readme.split("\n").find((l) => l.startsWith("**[Try it in 2 minutes]")) ?? "";
     expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try", "https://youtu.be/PNLuqhRzVfE", "#verify-it-yourself-in-3-commands"]);
     expect([...links.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Try it in 2 minutes", "Watch the film", "Verify a payment yourself"]);
     expect(readme).toContain("\n## Verify it yourself in 3 commands\n");
-    expect(readme.indexOf(links)).toBeLessThan(readme.indexOf(badgeLine));
+    expect(readme.indexOf(links)).toBeGreaterThan(readme.indexOf(badgeLine));
     expect(readme).toContain("(https://youtu.be/n3HLVGROJc4)");
     expect(readme).toContain("(https://kit11.max-31b.workers.dev/proof)");
     expect(readme).not.toContain("kCUsFHrxE-o");

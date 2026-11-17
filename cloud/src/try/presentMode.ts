@@ -40,13 +40,13 @@ export const PRESENT_LANE = "The CFO's phone, mirrored: Face ID signs the exact 
 /** "How Purser works": plain words, for someone who has never seen a payment system (Max, 15 Nov). */
 export const PRESENT_HOW = {
   eyebrow: "How Purser works",
-  heading: "AI agents prepare the payments. You approve the exceptions with Face ID.",
+  heading: "AI agents prepare the payments. You approve the exceptions with your passkey.",
   tabFlow: "One payment", tabMap: "The whole system", tabProof: "Partner proof", close: "Close",
   steps: [
     { h: "An invoice comes in", p: "A supplier sends it, by email or as an upload." },
     { h: "AI agents read and check it", p: "Claude reads it. The agents check the supplier, the bank account and whether it was paid before.", logo: "claude" },
     { h: "Your rules decide", p: "Below your limit, an agent pays it on its own. Above it, the agent asks you." },
-    { h: "You approve with Face ID", p: "You sign the exact amount, supplier and bank account, with Face ID, Touch ID or Windows Hello." },
+    { h: "You approve with your passkey", p: "You sign the exact amount, supplier and bank account with your passkey." },
     { h: "The money is sent", p: "Through Airwallex (sandbox), then booked and filed for you.", logo: "airwallex" },
   ],
   cut: { h: "Changed by one cent after you approved?", p: "Refused. Your approval no longer matches, so nothing is sent." },
@@ -62,12 +62,12 @@ export const PRESENT_HOW = {
 export const V2_COPY = {
   start: {
     eyebrow: "Live demo · about 2 minutes",
-    heading: "AI agents prepare the transfer. Your Face ID releases the funds.",
-    text: "Claude reads and checks every supplier invoice. Inside your limits, the agents pay on their own. Above them, nothing moves until you approve the exact payment with Face ID. Change one cent afterwards and it is blocked.",
+    heading: "AI agents prepare the transfer. Your passkey releases the funds.",
+    text: "Claude reads and checks every supplier invoice. Inside your limits, the agents pay on their own. Above them, nothing moves until you approve the exact payment with your passkey. Change one cent afterwards and it is blocked.",
     flow: [
       { name: "Claude reads the invoice", line: "Supplier, amount, bank account, due date: checked against what is on file." },
       { name: "Your rules decide", line: "Inside your limits the agent pays. Above them, it asks you." },
-      { name: "You sign the exact payment", line: "Face ID on this amount, this supplier, this account. Not a budget." },
+      { name: "You sign the exact payment", line: "Your passkey on this amount, this supplier, this account. Not a budget." },
     ],
     flowEnd: "Changed by one cent: blocked",
     button: "Launch the live transfer demo",
@@ -115,8 +115,8 @@ export const PRESENT_GUIDE = {
   reading: { k: "Step 1 of 4", t: "The AI agent is reading the invoice.", d: "Claude reads the PDF; code checks what it read. Each step below is the engine's own event, as it happens." },
   workInj: { k: "Step 1 of 4", t: "The AI agent caught a hidden instruction in the invoice.", d: "It was ignored: an AI can't be told to pay. The invoice is checked like any other and still needs the CFO." },
   work: { k: "Step 1 of 4", t: "The AI agent read the invoice and checked it.", d: "It is above the agent's limit, so the agent can't pay it alone. It asks the CFO." },
-  approve: { k: "Step 2 of 4", t: "You are the CFO. Approve this exact payment.", d: "Your Face ID locks the amount, the supplier and the bank account. Nothing moves before." },
-  workAlone: { k: "Inside the limit", t: "The agent may pay this one on its own.", d: "It is within the agent's EUR 500.00 limit and every check passed. No Face ID needed: your rules already allow it." },
+  approve: { k: "Step 2 of 4", t: "You are the CFO. Approve this exact payment.", d: "Your passkey (Face ID on iPhone) locks the amount, the supplier and the bank account. Nothing moves before." },
+  workAlone: { k: "Inside the limit", t: "The agent may pay this one on its own.", d: "It is within the agent's EUR 500.00 limit and every check passed. No signature needed: your rules already allow it." },
   workCash: { k: "Inside the limit", t: "Cash says wait: the agent does not pay this one now.", d: "Paying it would take available EUR below the cash floor. Purser's code checked the figures, not the AI." },
   booksAlone: { k: "Paid by the agent", t: "The agent paid it on its own.", d: "Within your limit, booked, and logged as approved by your policy, not by a person. Now try an invoice above the limit." },
   books: { k: "Step 3 of 4", t: "Approved, so the money went out.", d: "Paid with test money, booked in the accounts and filed. Next: try to cheat." },
@@ -133,7 +133,7 @@ export const PRESENT_VERIFY = {
   sub: "What happened in your run, and how anyone can check it without trusting us.",
   rows: [
     { k: "claude", h: "Claude read the invoice", p: "Each call is logged with its model, time, cost and Anthropic's request id.", run: "This run: {n} calls, {cost}." },
-    { k: "sign", h: "Your Face ID signed the exact terms", p: "Your passkey signed a fingerprint (SHA-256) of this amount, supplier and bank account. The server checks that signature before any money moves.", link: "Verify this payment yourself", href: "verify" },
+    { k: "sign", h: "Your passkey signed the exact terms", p: "It signed a fingerprint (SHA-256) of this amount, supplier and bank account. The server checks that signature before any money moves.", link: "Verify this payment yourself", href: "verify" },
     { k: "cent", h: "One cent changed: refused", p: "A changed payment has a different fingerprint, so your signature no longer fits. Nothing moved." },
     { k: "bank", h: "The bank keeps the fingerprint", p: "The Airwallex sandbox transfer carries the fingerprint of what you approved, and Airwallex's own approval is a second lock.", link: "Airwallex sandbox runs", href: "https://kit11.max-31b.workers.dev/airwallex" },
     { k: "chain", h: "Agent limits, enforced on chain", p: "On Alta (formerly Metal) testnet the chain itself refused an agent payment over its limit. Anyone can look it up.", link: "See the transaction", href: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871" },
@@ -166,7 +166,7 @@ export const PRESENT_INJ = {
   h: "Hidden instruction found in this invoice, and ignored",
   p: "Someone wrote an order to the AI into the invoice. It changes nothing: the AI can't pay on its own, and this payment still needs the CFO's approval.",
   h2: "This invoice had a hidden instruction for the AI",
-  p2: "It was ignored. Check the terms below: only your Face ID can approve them.",
+  p2: "It was ignored. Check the terms below: only your passkey can approve them.",
 } as const;
 
 export const PRESENT_STAGES = ["The AI agent prepares", "The CFO approves", "The transfer", "The tamper test"] as const;
@@ -639,6 +639,7 @@ body.pv-shell.pv-staged .pv-rail { display: block; }
 .pv-m-claude li { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; font-size: 12px; }
 .pv-m-claude li .c { font-weight: 650; font-variant-numeric: tabular-nums; }
 .pv-m-claude li .m { grid-column: 1 / -1; color: var(--muted); font: 500 10.5px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.pv-m-claude li .w { grid-column: 1 / -1; color: var(--text); font-size: 11.5px; line-height: 1.35; }
 .pv-m-claude .x { margin: 8px 0 0; color: var(--muted); font-size: 12px; font-weight: 650; }
 .pv-m-claude .x.ok { color: var(--ok); }
 .pv-m-agents .mode { display: inline-block; margin-bottom: 8px; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); font-size: 12px; font-weight: 650; }
@@ -721,10 +722,31 @@ body.pv-shell .screen.company .cmdl { display: block !important; flex-basis: 100
 }
 `;
 
+/**
+ * 17 Nov (jury: "show the agent's judgement"): one line per Claude call in "Each call": what its agent decided and why,
+ * from the engine's own decision event (ap.checker_decided, ap.payer_proposed, ap.coded: the agent's reason, its first
+ * sentence, as the engine's event list already masks it), matched to the call by Anthropic's request id. No new call,
+ * no new route. At most 120 characters; the page sets it as text, never as HTML. Null when there is nothing to say.
+ */
+export const callSaid = (event: string, f: Record<string, unknown>): { req: string; said: string } | null => {
+  const req = typeof f.request_id === "string" ? f.request_id : "";
+  const reason = typeof f.reason === "string" ? f.reason.replace(/\s+/g, " ").trim() : "";
+  if (!req || !reason) return null;
+  const what = event === "ap.checker_decided" ? (typeof f.action === "string" ? f.action : "")
+    : event === "ap.payer_proposed" ? [f.rail, f.pay_on].filter((x) => typeof x === "string" && x !== "").join(" · ")
+    : event === "ap.coded" ? (typeof f.account === "string" && f.account ? "book to " + f.account : "")
+    : null;
+  if (what === null) return null;
+  const line = (what ? what.replace(/_/g, " ") + ": " : "") + reason;
+  return { req, said: line.length > 120 ? line.slice(0, 119).trimEnd() + "\u2026" : line };
+};
+
 const SHARED = String.raw`
 // --- Shared by recording mode and the public page: the app shell, Claude's usage per call, "How Purser works". ---
 const mk=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids==null?[]:kids))e.append(k instanceof Node?k:document.createTextNode(String(k)));return e};
 const CALLS=new Map();
+// The agent's own line per call (callSaid, cloud/src/try/presentMode.ts), by Anthropic's request id.
+const callSaid=__CALL_SAID__;const SAID=new Map();
 const chip=mk('details','pv-usechip',[mk('summary',''),mk('ol','')]);
 const capMeta=mk('div','pv-meta');
 // The Live Engine rail (16 Nov, Max): read-only, beside the step on a wide screen and a drawer under it on a smaller one.
@@ -749,7 +771,8 @@ const usd=(m)=>'$'+(m/1e6).toFixed(4);
 const title=(s)=>String(s||'').replace(/[^a-z0-9 _-]/gi,'').replace(/[_-]+/g,' ').replace(/\b\w/g,(c)=>c.toUpperCase());
 const modelName=(m)=>{const x=/^claude-([a-z]+)-(\d+)-(\d+)/.exec(String(m||''));return x?title(x[1])+' '+x[2]+'.'+x[3]:''};
 // One Claude call from the engine's own events (claude.read: the invoice reader; agent.run: an agent's run).
-function takeCall(e,f){if((e.event==='claude.read'||e.event==='agent.run')&&!CALLS.has(e.seq)){const c=Number(f.cost_usd_micros);if(isFinite(c)&&c>=0)CALLS.set(e.seq,{who:e.event==='claude.read'?PC.shell.reader:title(f.agent),model:modelName(f.model),cost:c,ms:Number(f.latency_ms)||0,req:typeof f.request_id==='string'&&/^req_[A-Za-z0-9]{6,64}$/.test(f.request_id)?f.request_id:'',tin:Number(f.input_tokens)||0,tout:Number(f.output_tokens)||0});keepCalls()}}
+function takeSaid(e,f){const s=callSaid(String(e.event||''),f);if(!s)return;SAID.set(s.req,s.said);for(const c of CALLS.values())if(c.req===s.req&&c.said!==s.said){c.said=s.said;keepCalls()}}
+function takeCall(e,f){takeSaid(e,f);if((e.event==='claude.read'||e.event==='agent.run')&&!CALLS.has(e.seq)){const c=Number(f.cost_usd_micros);if(isFinite(c)&&c>=0)CALLS.set(e.seq,{who:e.event==='claude.read'?PC.shell.reader:title(f.agent),model:modelName(f.model),cost:c,ms:Number(f.latency_ms)||0,req:typeof f.request_id==='string'&&/^req_[A-Za-z0-9]{6,64}$/.test(f.request_id)?f.request_id:'',tin:Number(f.input_tokens)||0,tout:Number(f.output_tokens)||0});keepCalls()}}
 const SHELL=new URLSearchParams(location.search).get('shell')!=='0';
 const SH=PC.shell;let useBox=null;
 // "How Purser works": the flow in five steps, and the whole system's map (the README's), as a card over the page.
@@ -824,7 +847,7 @@ function hoodLines(g,m){const C=[...CALLS.values()];const rd=C.find((c)=>c.who==
     c('reading = '+JSON.stringify({supplier:o.supplier||'…',invoice:o.number||'…',amount:a?a.n:'…',currency:a?a.cur:'…'}),rd?'Claude '+(rd.model?'· '+rd.model+' ':'')+'· '+usdS(rd.cost):'what Claude read');
     c('checks = [notPaidBefore ✓, ibanOnFile ✓, knownSupplier ✓]','code checks it, not the AI','ok');
     if(a)c('amount <= agent_limit  →  '+a.n+' <= '+PC.limit+'  →  true','inside the limit','ok');
-    c('approveWithinLimit(terms) → method: "policy"','your policy approves it; no person, no Face ID','ok');c('payer.pay(terms)','the agent pays it now, on its own')}
+    c('approveWithinLimit(terms) → method: "policy"','your policy approves it; no person, no signature','ok');c('payer.pay(terms)','the agent pays it now, on its own')}
   else if(g==='workCash'){const o=inv();const a=amt(o.amount);const v=[...m.querySelectorAll('.screen.work .why.cashctx .cmp dd')].map((d)=>(d.textContent||'').replace(/^[A-Z]{3}\s*/,'').trim());
     if(a)c('amount <= agent_limit  →  '+a.n+' <= '+PC.limit+'  →  true','inside the limit','ok');
     if(v.length>=6)c('available - payment >= floor  →  '+v[2]+' - '+v[4]+' >= '+v[3]+'  →  false','available after: '+v[5]+', below the floor','bad');
@@ -841,7 +864,7 @@ function hoodLines(g,m){const C=[...CALLS.values()];const rd=C.find((c)=>c.who==
     if(t){const pick={};for(const k of ['amount','currency','beneficiary_name','iban_last4','invoice_no','due_date'])if(k in t)pick[k]=t[k];c('terms = '+JSON.stringify(pick),'the canonical payload (RFC 8785), part of it')}
     else c('terms = { amount: '+q(HOOD.amount)+', payee: '+q(HOOD.payee)+', iban: '+q(HOOD.iban)+' }','exactly what you see');
     c('sha256(canonical(terms)) = '+(sha?sha.slice(0,16)+'…':(HOOD.fp?HOOD.fp+'…':'…')),'one fingerprint for these exact terms');c('signature = faceId.sign(fingerprint)','your passkey, on this device','ok')}
-  else if(g==='books'){c('verify(signature, '+s12(sha)+') ✓','the server checks your Face ID signature','ok');
+  else if(g==='books'){c('verify(signature, '+s12(sha)+') ✓','the server checks your passkey signature','ok');
     const awx=st.awx&&typeof st.awx==='object'&&st.awx.source==='airwallex-sandbox'?st.awx:null;
     c('airwallex.transfer({ … metadata: { approval_sha256: '+s12(sha)+' } })',awx?'transfer '+String(awx.transfer_id).slice(0,8)+'… · '+String(awx.status||''):'Airwallex sandbox · test money');
     const lg=pr&&pr.ledger&&typeof pr.ledger==='object'?pr.ledger:null;c('ledger.append(entry) → head '+(lg&&lg.head?s12(lg.head):'…'),lg?lg.count+' entries, each hash-chained to the one before':'the books balance','ok')}
@@ -874,15 +897,15 @@ function railDraw(){const g=cap.dataset.k||'';const calls=[...CALLS.entries()].s
   let st={};try{st=JSON.parse(sessionStorage.getItem('purser.try')||'{}')||{}}catch(e){}const awx=st.awx&&typeof st.awx==='object'?st.awx:null;
   const key=JSON.stringify([g,calls.length,tot,extra,INJ.flag,aloneRun(),awx&&awx.status||'']);if(rail.dataset.k===key)return;rail.dataset.k=key;
   // 1. Claude: the run's cumulative cost, its calls, each with model, tokens, time and Anthropic's request id.
-  const list=mk('ol','',calls.slice(-10).reverse().map(([,c])=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.tin||c.tout?(c.tin+c.tout)+' tokens':'',c.ms?(c.ms/1000).toFixed(1)+' s':'',c.req?c.req.slice(0,10)+'…'+c.req.slice(-4):''].filter(Boolean).join(' · '))])));
+  const list=mk('ol','',calls.slice(-10).reverse().map(([,c])=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.tin||c.tout?(c.tin+c.tout)+' tokens':'',c.ms?(c.ms/1000).toFixed(1)+' s':'',c.req?c.req.slice(0,10)+'…'+c.req.slice(-4):''].filter(Boolean).join(' · ')),...((c.said||SAID.get(c.req))?[mk('span','w',String(c.said||SAID.get(c.req)))]:[])])));
   const det=mk('details','',[mk('summary','','Each call'),list]);
   rClaude.replaceChildren(mk('h3','',[mk('span','sp','✦'),'Claude · live cost & calls']),mk('div','tot',calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' calls this run':'No Claude call yet'),...(calls.length?[det]:[]),...(extra>=0?[mk('p','x'+(extra===0?' ok':''),extra===0?'0 extra calls · blocked locally by SHA-256':extra+' extra calls since the change')]:[]));
   // 2. Agents and the mandate: who acts now, and whether the agent may pay alone.
   const al=g==='workAlone'||g==='booksAlone';const S3=[['Reader agent','Claude reads the PDF'],['Checker agent','checks, limits, signature'],['Payer agent','pays; the Coder agent books']];
   const state=(i)=>{if(g==='reading')return i===0?'cur':'';if(g==='work'||g==='workInj')return i===0?'done':i===1?'cur':'';if(g==='workAlone')return i<2?'done':'cur';if(g==='workCash')return i<2?'done':'';if(g==='approve')return i===0?'done':i===1?'wait':'';
     if(g==='books'||g==='booksAlone'||g==='done')return 'done';if(g==='pay')return i===1?'cur':'done';if(g==='refused')return i===1?'bad':'done';return ''};
-  const mode=g==='workCash'?mk('span','mode warn','Inside EUR '+PC.limit+' · held by the cash floor'):al?mk('span','mode ok','Auto-pay ≤ EUR '+PC.limit):g&&g!=='invoice'&&g!=='reading'?mk('span','mode warn','Above EUR '+PC.limit+' · CFO Face ID required'):mk('span','mode','Auto-pay ≤ EUR '+PC.limit+' · above it, CFO Face ID');
-  rAgents.replaceChildren(mk('h3','','Agents & mandate'),mode,mk('ol','',S3.map(([n,d],i)=>mk('li',state(i),[mk('b','',n),mk('span','',state(i)==='wait'?'waiting for the CFO’s Face ID':state(i)==='bad'?'blocked: the fingerprint does not match':d)]))));
+  const mode=g==='workCash'?mk('span','mode warn','Inside EUR '+PC.limit+' · held by the cash floor'):al?mk('span','mode ok','Auto-pay ≤ EUR '+PC.limit):g&&g!=='invoice'&&g!=='reading'?mk('span','mode warn','Above EUR '+PC.limit+' · CFO passkey required'):mk('span','mode','Auto-pay ≤ EUR '+PC.limit+' · above it, CFO passkey');
+  rAgents.replaceChildren(mk('h3','','Agents & mandate'),mode,mk('ol','',S3.map(([n,d],i)=>mk('li',state(i),[mk('b','',n),mk('span','',state(i)==='wait'?'waiting for the CFO’s passkey':state(i)==='bad'?'blocked: the fingerprint does not match':d)]))));
   // 3. Partner rails: lit when this run used them; the recorded runs said as such.
   const fx=EVT.some((e)=>e.event==='fx.rate_checked'||e.event==='airwallex.quote');
   const row=(cls,logo,name,txt,on)=>mk('li',(on?'on ':'')+cls,[logo,mk('div','',[mk('b','',name),mk('span','',txt)])]);
@@ -923,17 +946,17 @@ function v2(){
   // locked by the Face ID, not before; no raw transfer ids on the paid card (they stay in the proof).
   for(const pk of m.querySelectorAll('.screen.start ul.rl li .pk'))if(/live runs|decisions by Claude/.test(pk.textContent||'')){const li=pk.closest('li');if(li)li.hidden=true}
   {const big=m.querySelector('.screen.work .result p.big');const alone=cap.dataset.k==='workAlone';if(big&&(INJ.flag||alone)&&!big.dataset.v2&&/^Checks passed/.test((big.textContent||'').trim())){big.dataset.v2='1';big.textContent=alone?'Checks passed. Approved by your policy.':'Checks passed · hidden instruction ignored · waiting for your approval.'}}
-  {const sh=m.querySelector('.screen.approve p.sheet-h');if(sh&&!sh.dataset.v2){sh.dataset.v2='1';sh.textContent='Payment terms · your Face ID locks them'}}
+  {const sh=m.querySelector('.screen.approve p.sheet-h');if(sh&&!sh.dataset.v2){sh.dataset.v2='1';sh.textContent='Payment terms · your passkey locks them'}}
   for(const x of m.querySelectorAll('.screen.books dt, .screen.books span, .screen.books b'))if(!x.closest('details')&&(x.textContent||'').trim()==='Transfer'){const v=x.nextElementSibling;if(v&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test((v.textContent||'').trim())&&!x.hidden){x.hidden=true;v.hidden=true}}
   hood(m);railDraw();
   // A sandbox transfer Airwallex lets move (no approval workflow on it): its own simulation runs at once, labelled.
   for(const ax of m.querySelectorAll('section.awx.live'))if(!ax.dataset.sim){const b=[...ax.querySelectorAll('button')].find((x)=>!x.disabled&&x.offsetParent);const st=[...ax.querySelectorAll('dd')].map((d)=>(d.textContent||'').trim()).find((t)=>/^[A-Z ]+$/.test(t)||/Airwallex$/.test(t))||'';if(b&&!/APPROVAL|Waiting/.test(st)){ax.dataset.sim='1';b.click()}}
   const ap=m.querySelector('.screen.approve .receipt.sheet');if(ap&&!ap.querySelector('.pv-tag'))ap.prepend(mk('span','pv-tag amber','Awaiting CFO approval'));
-  const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Your Face ID seals these exact terms'}
+  const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Your passkey seals these exact terms'}
   const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok',aloneRun()?'Paid by the agent · test money':'Signed & paid · test money'));
-  for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent=aloneRun()?'Approved by your policy · within EUR '+PC.limit:'Sealed by your Face ID · any change breaks the seal'}
+  for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent=aloneRun()?'Approved by your policy · within EUR '+PC.limit:'Sealed by your passkey · any change breaks the seal'}
   {const cc=m.querySelector('.screen.work .why.cashctx');if(cc&&!cc.querySelector('.pv-tag'))cc.prepend(mk('span','pv-tag amber','Inside the agent\'s limit · held by Purser\'s code'))}
-  const pr=m.querySelector('.screen.work .payrow');if(pr){const card=pr.closest('.card')||pr.parentElement;if(card&&!card.querySelector('.pv-tag'))card.prepend(cap.dataset.k==='workAlone'?mk('span','pv-tag ok','Inside the agent\'s limit · no Face ID needed'):mk('span','pv-tag amber','Above the agent\'s limit · CFO approval required'))}
+  const pr=m.querySelector('.screen.work .payrow');if(pr){const card=pr.closest('.card')||pr.parentElement;if(card&&!card.querySelector('.pv-tag'))card.prepend(cap.dataset.k==='workAlone'?mk('span','pv-tag ok','Inside the agent\'s limit · no signature needed'):mk('span','pv-tag amber','Above the agent\'s limit · CFO approval required'))}
   if(!m.querySelector('.card.refusal'))for(const b of m.querySelectorAll('.screen.pay button.btn'))if(b.textContent.trim()===PC.payButton&&!b.classList.contains('primary'))b.classList.add('primary','big');
   if(!document.body.classList.contains('present')){const bk=m.querySelector('.screen.books .blk.booked');if(bk&&!bk.querySelector(':scope > details.v2fold')){const kids=[...bk.children].filter((c)=>!c.classList.contains('bh')&&!c.classList.contains('bal'));if(kids.length){const d=mk('details','v2fold',mk('summary','',PC.ledgerFold));d.append(...kids);bk.append(d)}}}
   if(document.body.classList.contains('pv-noneg'))for(const a of m.querySelectorAll('.screen.company a, .screen.company button, .screen.did a, .screen.did button'))if(/negotiat/i.test(a.textContent||'')&&!a.hidden)a.hidden=true;
@@ -1129,6 +1152,6 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };
-  const body = (kind === "public" ? PUBLIC_SCRIPT : SCRIPT).replace("__SHARED__", () => SHARED);
+  const body = (kind === "public" ? PUBLIC_SCRIPT : SCRIPT).replace("__SHARED__", () => SHARED.replace("__CALL_SAID__", () => callSaid.toString()));
   return { css: CSS, script: body.replace("__PRESENT_CFG__", () => json(cfg)) };
 }

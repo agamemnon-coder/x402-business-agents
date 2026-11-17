@@ -116,7 +116,7 @@ export const GUIDE = {
     start: "Start a test company of your own. Nothing real moves.",
     invoice: "Pick a sample invoice and file it.",
     work: "Agents read it, Purser's code checks it. Next takes the step it offers.",
-    approve: "Sign the exact terms with Face ID or your passkey.",
+    approve: "Sign the exact terms with your passkey.",
     books: "Paid with test money. Now try to cheat: change what you signed.",
     pay: "Next changes the amount by one cent and asks to pay.",
     refused: "Refused: your signature covers only the exact terms. See your score.",
@@ -143,7 +143,7 @@ export const INVOICE = {
     bank: "New bank details: held for your check",
     unknown: "A new supplier: held until checked",
     within: "Inside the agent's limit: paid by the agent alone",
-    cash: "Inside the limit, but cash is tight: held",
+    cash: "Cash says wait: held, not paid",
   } as Record<string, string>,
   startHere: "Start here",
   /** 16 Nov: the heading over the samples Purser holds on purpose (so they do not read as broken). */
@@ -276,7 +276,7 @@ export const TRACE = {
   /** The agent was not asked (claude.capped) or did not decide: code's own fallback decided, labelled so. */
   fallback: "Claude was not asked; Purser's code decided",
   /** What the rails did with the decision (ap.checker_decided outcome) and the rule (overridden_by, else the agent's own). */
-  rails: { pay: "Purser's rails: allowed to pay", ask_cfo: "Purser's rails: sent on to the CFO to sign with Face ID", hold: "Purser's rails: held for a person", reject: "Purser's rails: refused" } as Record<string, string>,
+  rails: { pay: "Purser's rails: allowed to pay", ask_cfo: "Purser's rails: sent on to the CFO to sign with a passkey", hold: "Purser's rails: held for a person", reject: "Purser's rails: refused" } as Record<string, string>,
   rule: "rule: {rule}",
   ownRule: "rule: the agent's own call, within code's checks",
   /** 15 Nov (jury): rules in plain words where the code's own name reads oddly (policy.aloneLimit null in /try). */
@@ -516,6 +516,12 @@ export const FX_CARD = {
   quote: "Quote", rate: "Rate", amounts: "Buys", amountsLine: "{buy} for {sell}", valid: "Valid for", left: "{left}", expired: "expired: file it again for a new quote",
   /** The quote's valid-to as a date and time, and the company's FX limit ({pct}: a percent with two decimals). */
   validTo: "Valid to", limit: "Limit", limitLine: "FX quote at most {pct}% over Airwallex's market rate",
+  /** 17 Nov (jury): why this amount, from the plan's own rule (src/policy/treasury.ts planInvoice: what is bought is the
+   * EUR needed, the payment and its fee reserve, minus the EUR free above the floor). {fee}: the terms' fee_max.
+   * shortFig: the same with the signed terms' own figures (balances_before, floors, amount, fee_max), shown only when
+   * they add up to the amount bought, to the cent. */
+  short: "Why this amount: it is the shortfall. EUR free above the cash floor, after bills and payouts in flight, covers the rest of this payment and its fee reserve (at most {fee}); only what is missing is bought.",
+  shortFig: "Why this amount: EUR free above the cash floor is {free} ({available} available, less the {floor} floor and {held} spoken for). This payment needs {need} with its fee reserve of {fee}, so it is short by {short}, and only that is bought.",
   liveNote: "Your passkey signs this quote id and rate. Test money: the simulated bank converts at these amounts; nothing is converted at Airwallex.",
   recordedNote: "{why}. The terms carry the simulated bank's recorded rate.",
   why: {
@@ -630,8 +636,10 @@ export const BOOKS = {
   /** The payment found for this invoice is not PAID (its status is beside it). */
   payment: "Payment · test money",
   fee: "Fee",
-  /** Beside the fee: where it comes from (src/redteam/airwallex.ts SANDBOX_SWIFT_FEE_CENTS, measured in the sandbox). */
-  feeWhy: "international transfer fee",
+  /** Beside the fee: where it comes from (src/redteam/airwallex.ts SANDBOX_SWIFT_FEE_CENTS, measured in the sandbox).
+   * 17 Nov (jury): why this figure: the books' payment is the simulated bank's, whose SWIFT fee on EUR is one flat
+   * figure taken from the fees the Airwallex sandbox charged (EUR 13.36 to 13.40 in the recorded runs). */
+  feeWhy: "international transfer fee: the simulated bank's flat SWIFT fee, taken from what the Airwallex sandbox charged",
   booked: "Booked in your accounts",
   account: "Account",
   debit: "Debit",
@@ -995,7 +1003,7 @@ export const VISIBLE = {
 // 16 Nov (owner: the agent pays alone up to EUR 500.00 in a test company): "Ready to pay" says who signs in fewer words
 // (-8: "work 2", "work 12", "work 15", "work 16"); "work 17" is an invoice within the limit, which the agent pays on its
 // own; "invoice 6" carries the sample inside the limit (+9). Each pinned at its count.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 190, "start 1": 186, "start 2": 189, "start 3": 183, "pay 7": 103, "pay 8": 153, "invoice 4": 60, "invoice 5": 61, "books 0": 75, "books 1": 68, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 103 /* +8, 17 Nov: the cash sample's line; */ /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it; +9, 16 Nov: the sample inside the agent's limit; +7, 16 Nov (owner): "Held on purpose" over the four Purser stops */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 109, "pay 1": 60, "pay 2": 64, "pay 3": 64, "pay 4": 88, "pay 5": 59, "pay 6": 69, "pay 9": 103, "work 2": 90, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 93, "invoice 7": 67, "pay 10": 166, "company 5": 201 , "work 7": 57, "work 16": 211, "books 7": 73 /* 16 Nov (owner): paid by the agent, two words fewer than books 0 */, "work 17": 87 /* +3, 16 Nov (owner): "Checks passed. Approved by your policy." in place of "Ready to pay." */, "work 18": 155 /* 17 Nov: inside the limit, held by the cash check (CASH): the figures' labels, the rule, what was not sent, what would make it payable */ };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 190, "start 1": 186, "start 2": 189, "start 3": 183, "pay 7": 103, "pay 8": 153, "invoice 4": 60, "invoice 5": 61, "books 0": 88 /* +13, 17 Nov (jury): why the fee is what it is */, "books 1": 81 /* +13, 17 Nov (jury): why the fee */, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 101 /* -2, 17 Nov (jury): the cash sample's line says "Cash says wait", as its result does; +8, 17 Nov: the cash sample's line; */ /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it; +9, 16 Nov: the sample inside the agent's limit; +7, 16 Nov (owner): "Held on purpose" over the four Purser stops */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 109, "pay 1": 60, "pay 2": 64, "pay 3": 64, "pay 4": 88, "pay 5": 59, "pay 6": 69, "pay 9": 103, "work 2": 90, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 93, "invoice 7": 67, "pay 10": 166, "company 5": 201 , "work 7": 57, "work 16": 211, "books 7": 86 /* +13, 17 Nov (jury): why the fee; */ /* 16 Nov (owner): paid by the agent, two words fewer than books 0 */, "work 17": 87 /* +3, 16 Nov (owner): "Checks passed. Approved by your policy." in place of "Ready to pay." */, "work 18": 155 /* 17 Nov: inside the limit, held by the cash check (CASH): the figures' labels, the rule, what was not sent, what would make it payable */ };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

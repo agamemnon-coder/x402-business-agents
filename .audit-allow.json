@@ -1,0 +1,12 @@
+{
+  "readme": "Advisories npm audit may report that CI accepts, each with why and until when (scripts/audit-check.mjs). Only an advisory with no patched release, in development tools only, may be listed; runtime dependencies must audit clean (npm audit --omit=dev), and an entry past its expiry fails CI. Approved by the owner on 17 Nov 2026.",
+  "allow": [
+    {
+      "id": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "reason": "ReDoS through repeated extglobs, published 17 Nov 2026 with every version affected and no patched release. Reached only through test and lint tooling (vitest, vite, typescript-eslint); no runtime dependency uses it (npm audit --omit=dev: 0).",
+      "added": "2026-11-17",
+      "expires": "2026-12-15"
+    }
+  ]
+}

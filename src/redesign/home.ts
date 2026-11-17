@@ -467,7 +467,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const refusedAt = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at ?? "";
   // What Home shows first (the hero and its two Airwallex rows), then the Alta row and the main run it comes from.
   const real = [
-    `The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on the live demo, 13 November, with Claude on: Claude Haiku 5.5 read that invoice, and the Checker, Coder and Payer agents ran on it, each request id in the record (docs/runs/2026-11-13-try-sample.json). Test money, a simulated bank, a test passkey.${VAT_THEN ? ` ${VAT_THEN}` : ""}`,
+    `The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on the live demo, 13 November, with Claude on: Claude Haiku 5.5 read that invoice, and the Checker, Coder and Payer agents ran on it, each request id in the record (docs/runs/2026-11-13-try-sample.json). Test money, a simulated bank, a test passkey. Since 14 November /try also sends each payment it pays to the Airwallex sandbox as one transfer when the deployment's switch is on; this run came before that, so the card says simulated bank.${VAT_THEN ? ` ${VAT_THEN}` : ""}`,
     ...(awx && facts ? [`The Airwallex figure: the Airwallex-only run (${awx.run}) of ${facts.date}. ${CAVEAT_LINE} ${awx.note}`] : []),
     `The Alta figure: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
     ...MAIN_RUN_REAL,

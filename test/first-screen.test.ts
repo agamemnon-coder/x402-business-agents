@@ -70,12 +70,15 @@ describe("the first screen (section D, 6 Nov)", () => {
     // 17 Nov (coordinator, the four things every entry must show, docs/rules.md): a six-line "For judges" table under the
     // links, each row with where to check it, before the badges.
     // 17 Nov (owner): under it, one line on what stood at the submission tag and what came after.
-    const judges = lines.slice(12, badges - 1);
+    // 17 Nov, owner: the badges at the very top: the three badge rows right under the title, then the idea, Built on
+    // Airwallex, the links and the For judges table; the proof strip stays at the foot of the centred top.
+    expect(badges).toBe(6);
+    const judges = lines.slice(16, partners - 1);
     expect(judges).toHaveLength(8);
     expect(judges[7]!.startsWith("**What stood at the submission:** the tag `v1.0-submission` (8 Nov)")).toBe(true);
     expect(judges[0]!.startsWith("| **For judges:** the four things every entry shows ([the 3-minute path](#for-judges-3-minutes))")).toBe(true);
     expect(judges.slice(2, 6).map((l) => /^\| \*\*([^:]+):/.exec(l)?.[1])).toEqual(["User", "Airwallex action", "Financial context", "Controls"]);
-    expect(lines.slice(5, glance - 6)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", ...judges, "", lines[badges]!, lines[badges + 1]!, lines[badges + 2]!, "", lines[partners]!, "", "</div>", ""]);
+    expect(lines.slice(5, glance - 6)).toEqual(["", lines[badges]!, lines[badges + 1]!, lines[badges + 2]!, "", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", ...judges, "", lines[partners]!, "", "</div>", ""]);
     expect(lines.slice(glance - 6, glance)).toEqual(["> [!TIP]", lines[glance - 5]!, "", "> [!IMPORTANT]", lines[glance - 2]!, ""]);
     expect(lines[glance - 5]).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(lines[glance - 2]).toMatch(/^> \*\*Test money only\.\*\* Live: .* Simulated: /);
@@ -94,7 +97,8 @@ describe("the first screen (section D, 6 Nov)", () => {
     // The two live GitHub badges (CI, CodeQL), then the proof strip (17 Nov, owner: the static shields went into it).
     // 17 Nov later (owner: all the badges, grouped): build (4), partners (5), proof (3), then the strip.
     expect([0, 1, 2].map((i) => lines[badges + i]!.match(/\[!\[/g)?.length)).toEqual([4, 5, 3]);
-    expect(partners).toBe(badges + 4);
+    // 17 Nov, owner: the badges at the very top; the strip stays at the foot of the centred top, under the judges' table.
+    expect(partners).toBe(badges + 19);
     expect(lines[live]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     // 14 Nov (jury scan): the 3-command quick start on the first screens, then where things are. 15 Nov: the Kit 11 table
     // first under the header; the badges and the live demo's line after it ("At a glance"), then the quick start.

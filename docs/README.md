@@ -56,7 +56,7 @@ every pull request: [CHANGELOG.md](../CHANGELOG.md).
 - [compliance.md](compliance.md): who does what, and how Purser supports it.
 - [evidence/README.md](evidence/README.md): what the organisers answered, in our own words.
 - [rules.md](rules.md): the prize and judging rules, as checked on 29 October.
-- [after-the-kit.md](after-the-kit.md): what was built after the kit (the payables inbox, connected accounts) and where its code is in this repository; tested against stand-ins, with sandbox runs on 10 November; the hosted preview is private, no customer uses it; not part of the Kit 11 runs.
+- [after-the-kit.md](after-the-kit.md): what was built after the kit (the payables inbox, connected accounts) and where its code is in this repository; tested against stand-ins, with sandbox runs on 10 November; Purser Cloud runs publicly as a test preview (test companies, and *Try as guest* opens the demo company read-only; test money), no customer uses it; not part of the Kit 11 runs.
 
 ## Builder
 

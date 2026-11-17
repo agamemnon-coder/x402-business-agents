@@ -125,7 +125,7 @@ describe("the always-pay script on the visitor's same invoice", () => {
     const c = compareOf(all(db));
     expect(c.verdict).toBe("stopped");
     expect(c.claude).toMatchObject({ outcome: "hold", rails: "Purser's rails: held for a person" });
-    expect(c.script).toMatchObject({ action: "pay", outcome: "ask_cfo", rails: "Purser's rails: sent on to the CFO to sign with Face ID" });
+    expect(c.script).toMatchObject({ action: "pay", outcome: "ask_cfo", rails: "Purser's rails: sent on to the CFO to sign with a passkey" }); // 17 Nov (jury): /try says "passkey"
     expect(c.say).toBe(`${SCRIPT.stopped} ${WORST_CASE_LINE} ${SCRIPT.close}`);
   });
 
