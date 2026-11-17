@@ -19,4 +19,4 @@ export interface InvoiceFields {
 const BERGTEX = SEEDED_SUPPLIERS.find((s) => s.key === "bergtex")!;
 /** The clean sample, on file and payable; the others are variations of it, so each tells one thing. The pages'
  * illustration shows this invoice (cloud/src/scene.ts). */
-export const CLEAN: InvoiceFields = { supplier: BERGTEX, invoiceNo: "BTX-2026-21", amountCents: 185_000, issueDate: "2026-11-09", dueDate: "2026-11-30", iban: BERGTEX.iban };
+export const CLEAN: InvoiceFields = { supplier: BERGTEX, invoiceNo: "BTX-2026-21", amountCents: 185_000, issueDate: "2026-11-09", dueDate: "2027-01-08", iban: BERGTEX.iban };

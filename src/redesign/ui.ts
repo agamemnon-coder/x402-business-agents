@@ -275,7 +275,9 @@ export function header(current: PageKey | null, links?: HeaderLinks): string {
   const to = (key: string, href: string) => (links ? links.here[key] ?? new URL(href, `${links.base}/`).href : href);
   // "Built on Airwallex" (14 Nov, src/ui/builtOn.ts): beside the brand from 760 px; on a phone, on its own line under
   // the header (the header's five items already fill a 360 px line), not sticky.
-  const awx = (cls: string) => builtOnBadge({ href: to("airwallex", "airwallex"), cls, ...(links ? { src: `${links.base}${AIRWALLEX_LOGO_PATH}` } : {}) });
+  // The logo from the page's own origin, wherever the header is served: the site and Purser Cloud's hosts both serve it
+  // (cloud/src/console.ts). From the site's address it made a Cloud page's load wait on another host (17 Nov).
+  const awx = (cls: string) => builtOnBadge({ href: to("airwallex", "airwallex"), cls, src: AIRWALLEX_LOGO_PATH });
   return `<header class="top"><div class="wrap"><a class="brand" href="${to("brand", "home")}" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>${awx("awx-h")}
 <nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${to(k, href)}"${k === item ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current, links && ((l) => to(l.key, l.href)))}</nav></div></header>
 <div class="awx-row">${awx("awx-m")}</div>`;

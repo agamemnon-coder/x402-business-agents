@@ -41,13 +41,13 @@ describe("the demo's invoice PDF", () => {
   it("lays out an enterprise invoice, and reads back to the same fields", async () => {
     const { text } = await pdfText(await invoicePdf({ fields: CLEAN, supplierKey: "bergtex", billTo: "Tulip Tiles (test) · Purser demo" }));
     const { net, vat } = vatSplit(CLEAN.amountCents);
-    for (const want of [CLEAN.supplier.name, `${CLEAN.supplier.street}, ${CLEAN.supplier.city}`, `INVOICE ${CLEAN.invoiceNo}`, "Invoice date: 9 November 2026", "Due date: 30 November 2026",
+    for (const want of [CLEAN.supplier.name, `${CLEAN.supplier.street}, ${CLEAN.supplier.city}`, `INVOICE ${CLEAN.invoiceNo}`, "Invoice date: 9 November 2026", "Due date: 8 January 2027",
       "BILL TO", "Tulip Tiles (test) · Purser demo", "DESCRIPTION QTY UNIT PRICE AMOUNT", "Linen fabric, natural, as ordered 1 EUR 1,554.62 EUR 1,554.62",
       "Subtotal EUR 1,554.62", "VAT 19% EUR 295.38", "Total due EUR 1,850.00", "IBAN: DE89 3704 0044 0532 0130 00", "BIC: COBADEFFXXX", `Payment reference: ${CLEAN.invoiceNo}`, "Demo · test money"]) {
       expect(text, want).toContain(want);
     }
     expect(net + vat).toBe(CLEAN.amountCents);
-    expect(parseInvoiceFallback(text)).toMatchObject({ invoice_no: CLEAN.invoiceNo, vendor: CLEAN.supplier.name, amount: "1850.00", currency: "EUR", due_date: "2026-11-30", iban: CLEAN.iban, bic: CLEAN.supplier.bic });
+    expect(parseInvoiceFallback(text)).toMatchObject({ invoice_no: CLEAN.invoiceNo, vendor: CLEAN.supplier.name, amount: "1850.00", currency: "EUR", due_date: "2027-01-08", iban: CLEAN.iban, bic: CLEAN.supplier.bic });
   });
 
   // 15 Nov: an agreed invoice's number (the original's and the agreement's hash, /try's negotiation) is 20 characters;
@@ -55,7 +55,7 @@ describe("the demo's invoice PDF", () => {
   it("reads a long invoice number whole, with its dates", async () => {
     for (const no of ["BTX-2026-21-c593b1b7", "A".repeat(10) + "-" + "1".repeat(21)]) {
       const { text } = await pdfText(await invoicePdf({ fields: { ...CLEAN, invoiceNo: no }, supplierKey: "bergtex", billTo: "Tulip Tiles (test) · Purser demo" }));
-      expect(parseInvoiceFallback(text), no).toMatchObject({ invoice_no: no, due_date: "2026-11-30" });
+      expect(parseInvoiceFallback(text), no).toMatchObject({ invoice_no: no, due_date: "2027-01-08" });
       expect(text).toContain("Invoice date: 9 November 2026");
     }
   });

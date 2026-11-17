@@ -62,7 +62,7 @@ BTW-nummer: NL123456789B01
 Factuur
 Factuurnummer: ZV-4471
 Factuurdatum: 09-11-2026
-Vervaldatum: 30-11-2026
+Vervaldatum: 08-01-2027
 Subtotaal € 400,00
 BTW 21% € 84,00
 Totaal te betalen € 484,00
@@ -75,7 +75,7 @@ Betalingskenmerk: ZV-4471`;
  * sample keyed PAID_SAMPLE is this file, so sending it is the same file again, and its renumbered copy meets a paid
  * original. Its total differs from the clean sample's, so the clean one is never taken for a copy of it.
  */
-export const PAID_ORIGINAL: InvoiceFields = { ...CLEAN, invoiceNo: "BTX-2026-17", amountCents: 162_000, issueDate: "2026-11-02", dueDate: "2026-12-14" };
+export const PAID_ORIGINAL: InvoiceFields = { ...CLEAN, invoiceNo: "BTX-2026-17", amountCents: 162_000, issueDate: "2026-11-02", dueDate: "2027-01-04" };
 /** The sample whose PDF is the paid original (seeded into each test company before the visitor arrives). */
 export const PAID_SAMPLE = "again";
 /** The clean sample: a second run in the same company files a fresh invoice (src/engine/host.ts uploadSample). */

@@ -7,7 +7,7 @@ import { request } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { seedTreasury } from "../src/agents/euroBill.js";
 import { ingestDocument } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
@@ -32,6 +32,12 @@ import { LocalSink } from "../src/vault/sink.js";
 import { EN } from "./fakes/apInvoices.js";
 import { FakeAirwallex } from "./fakes/airwallex.js";
 import { pdfOf } from "./fakes/pdf.js";
+
+// The sample invoices fall due in November 2026 and parts of this flow read the real date, so the results moved with
+// the calendar (17 Nov: a clock run 21 days ahead failed here). The real date is held at a day inside November.
+beforeAll(() => { vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true }); vi.setSystemTime(new Date("2026-11-10T09:00:00Z")); });
+afterAll(() => { vi.useRealTimers(); });
+
 
 const parserOnly: Asker = { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null, note: "no key" }) } as Asker;
 const MONTH = "2026-11";

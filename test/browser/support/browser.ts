@@ -94,10 +94,29 @@ function retryStalledGoto(page: Page): Page {
  * again once, said in the log; a page that fails twice still fails the check. Used by pages.check.ts and trysign.check.ts.
  */
 export async function gotoLoaded(page: Page, url: string): Promise<void> {
+  // What the page still waits for when a load times out, so a stall names its cause in the log (17 Nov: the judge job's
+  // /try load timed out twice in a week with nothing else to go on).
+  const open = new Map<object, string>();
+  const started = (r: { url(): string; resourceType(): string }) => open.set(r, `${r.resourceType()} ${r.url()}`);
+  const ended = (r: object) => open.delete(r);
+  page.on("request", started);
+  page.on("requestfinished", ended);
+  page.on("requestfailed", ended);
+  const pending = () => [...open.values()].slice(0, 10).join(", ") || "none";
   try {
     await page.goto(url, { waitUntil: "load", timeout: 15_000 });
   } catch {
-    console.log(`info  ${url}: the browser did not finish loading it within 15 s; tried again`);
-    await page.goto(url, { waitUntil: "load" });
+    console.log(`info  ${url}: the browser did not finish loading it within 15 s; still open: ${pending()}; tried again`);
+    open.clear();
+    try {
+      await page.goto(url, { waitUntil: "load" });
+    } catch (e) {
+      console.log(`info  ${url}: the second load did not finish either; still open: ${pending()}`);
+      throw e;
+    }
+  } finally {
+    page.off("request", started);
+    page.off("requestfinished", ended);
+    page.off("requestfailed", ended);
   }
 }

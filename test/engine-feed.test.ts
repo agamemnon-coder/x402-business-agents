@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cloudTarget } from "../cloud/src/engine/target.js";
 import type { Sql } from "../cloud/src/store.js";
 import { syncState } from "../cloud/src/sync.js";
@@ -24,6 +24,12 @@ import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { EN, NL } from "./fakes/apInvoices.js";
 import { pdfOf } from "./fakes/pdf.js";
 import { ORIGIN, RP, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
+
+// The sample invoices fall due in November 2026 and parts of this flow read the real date, so the results moved with
+// the calendar (17 Nov: a clock run 21 days ahead failed here). The real date is held at a day inside November.
+beforeAll(() => { vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true }); vi.setSystemTime(new Date("2026-11-10T09:00:00Z")); });
+afterAll(() => { vi.useRealTimers(); });
+
 
 // The engine runs on the real clock, as in test/engine-host.test.ts (the executor takes no clock from its host); the
 // test cloud has its own (test/support/cloud.ts). A feed is stamped with the time it is given.
