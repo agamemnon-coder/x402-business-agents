@@ -914,7 +914,7 @@ CREATE TABLE IF NOT EXISTS payee_adds (
 -- before the payment, and a rejected invoice's accrual is reversed there (review, 8 November).
 CREATE TABLE IF NOT EXISTS ap_sink_events (
   invoice_id TEXT NOT NULL REFERENCES ap_invoices(id),
-  event TEXT NOT NULL CHECK (event IN ('accrual', 'payment', 'reversal')),
+  event TEXT NOT NULL CHECK (event IN ('accrual', 'payment', 'reversal', 'return')),
   sink TEXT NOT NULL,
   pushed_at TEXT NOT NULL,
   PRIMARY KEY (invoice_id, event, sink)

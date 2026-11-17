@@ -107,6 +107,16 @@ function migrate(db: DB): void {
       INSERT INTO airwallex_events SELECT event_id, name, object, object_id, status, amount_cents, currency, agrees, outcome, received_at FROM airwallex_events_old;
       DROP TABLE airwallex_events_old;`);
   }
+  // A payout that came back after PAID (src/payouts/follow.ts): the sink takes the payment back as a "return" event.
+  const se = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'ap_sink_events'").get() as { sql: string } | undefined;
+  if (se && !se.sql.includes("'return'")) {
+    db.exec(`ALTER TABLE ap_sink_events RENAME TO ap_sink_events_old;
+      CREATE TABLE ap_sink_events (invoice_id TEXT NOT NULL REFERENCES ap_invoices(id),
+        event TEXT NOT NULL CHECK (event IN ('accrual', 'payment', 'reversal', 'return')), sink TEXT NOT NULL, pushed_at TEXT NOT NULL,
+        PRIMARY KEY (invoice_id, event, sink));
+      INSERT INTO ap_sink_events SELECT invoice_id, event, sink, pushed_at FROM ap_sink_events_old;
+      DROP TABLE ap_sink_events_old;`);
+  }
   settlementsTable(db);
 }
 

@@ -12,7 +12,7 @@ import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
 import type { InboxDeps } from "./inbox.js";
-import { accrualEntries, accrualPushed, paymentEntries, pushOnce, reversalEntries, type BookkeepingSink } from "./books.js";
+import { accrualEntries, accrualPushed, paymentEntries, pushOnce, returnedPayout, returnEntries, reversalEntries, SINK_TOOK, type BookkeepingSink } from "./books.js";
 import { audit } from "../audit/log.js";
 import type { Terms } from "../lib/terms.js";
 import { ensureCoded } from "./coderAgent.js";
@@ -245,7 +245,15 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
     } else if (p.status === "EXECUTED") {
       // The payout the signed proposal names, by its request id: never another payout under the same invoice number.
       const paid = p.request_id ? db.prepare("SELECT amount, currency, approval_sha256 FROM transfers WHERE request_id = ? AND status = 'PAID'").get(p.request_id) as PaidPayout | undefined : undefined;
-      if (!paid) continue;
+      if (!paid) {
+        // Sent, then failed at Airwallex before it was paid (a follow-up read it: src/payouts/follow.ts). The invoice
+        // was waiting for good; it goes to a person, and nothing is sent again under this approval.
+        if (payout && (payout.status === "FAILED" || payout.status === "CANCELLED")) {
+          changed.push(setStatus(db, inv.id, "needs_review", "awx-executor", { reason: failedPayoutReason(db, p.request_id!, inv.proposal_id!, "failed at Airwallex after it was sent") }, now));
+          clearStaleNote(db, inv.id);
+        }
+        continue;
+      }
       // Booked only as the CFO signed it: the same hash the executor checked before the payment is checked again here.
       const wrong = bookingProblem(db, inv.proposal_id!, paid);
       if (wrong) {
@@ -264,7 +272,27 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
       changed.push(next);
     }
   }
+  // A paid invoice whose payout came back after PAID (Airwallex: PAID is not always final): it goes to a person, the
+  // books take the payment back, and the payable is open again. Nothing is sent again under the old approval: paying
+  // it again is a new proposal, which the CFO signs again.
+  for (const inv of apInvoices(db, { status: "paid" })) {
+    const back = returnedPayout(db, inv);
+    if (!back) continue;
+    const next = setStatus(db, inv.id, "needs_review", "awx-executor", { reason: failedPayoutReason(db, null, inv.proposal_id!, "came back after Airwallex had it PAID", back.failure_type) }, now);
+    clearStaleNote(db, inv.id);
+    // The sink holds the payment only if it took it; then the return goes too, so its books match.
+    if (opts.sink && db.prepare(`SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = 'payment' AND sink = ? AND ${SINK_TOOK}`).get(inv.id, opts.sink.name)) {
+      await pushOnce(db, opts.sink, "return", returnEntries(next, back), next, now);
+    }
+    changed.push(next);
+  }
   return changed;
+}
+
+/** Why a payout that was sent did not stay paid: Airwallex's own failure type when it gave one. */
+function failedPayoutReason(db: DB, requestId: string | null, proposalId: string, what: string, failureType: string | null = null): string {
+  const type = failureType ?? (requestId ? (db.prepare("SELECT failure_type FROM transfers WHERE request_id = ?").get(requestId) as { failure_type: string | null } | undefined)?.failure_type ?? null : null);
+  return `the payout under ${proposalId} ${what}${type ? ` (${type})` : ""}; nothing is sent again under that approval: a person checks the supplier's bank details, then files it again for a new signature`;
 }
 
 /** The states a person may reject an invoice from on the page: never one filed for the CFO, paid or rejected. */

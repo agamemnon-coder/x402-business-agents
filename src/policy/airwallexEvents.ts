@@ -13,6 +13,7 @@ import { acceptanceOn, bookCardPayment, intentFromEvent } from "../airwallex/acc
 import { fromCents, toCents } from "../lib/money.js";
 import { CARD_EVENTS } from "../airwallex/webhooks.js";
 import { wantCardStatus } from "./cards.js";
+import { RECHECK_EVENT } from "../payouts/follow.js";
 
 export type EventObject = "card_transaction" | "card" | "transfer" | "conversion" | "deposit" | "payment_intent" | "other";
 
@@ -96,6 +97,11 @@ export function checkEvent(db: DB, name: string, o: Record<string, unknown>, now
     const t = id ? (db.prepare("SELECT invoice_no, status FROM transfers WHERE transfer_id = ?").get(id) as { invoice_no: string; status: string } | undefined) : undefined;
     if (!t) return { object, object_id: id, status, amount_cents: amount, currency, agrees: false, outcome: `payout ${id ?? "?"} ${status}: a payout Purser did not make` };
     const conflict = (PAID_LIKE.has(status ?? "") && FAILED_LIKE.has(t.status)) || (FAILED_LIKE.has(status ?? "") && t.status === "PAID");
+    // PAID is not always final at Airwallex: a payout the ledger has as PAID that a webhook calls FAILED or CANCELLED is
+    // read again at Airwallex on the next follow-up (src/payouts/follow.ts). The webhook only asks; it changes nothing.
+    if (id && t.status === "PAID" && (status === "FAILED" || status === "CANCELLED")) {
+      audit(db, "system", RECHECK_EVENT, id, { invoice_no: t.invoice_no, webhook_status: status, why: "a payout the ledger has as PAID was reported failed; Airwallex is asked again" }, now);
+    }
     return conflict
       ? { object, object_id: id, status, amount_cents: amount, currency, agrees: false, outcome: `payout for ${t.invoice_no} is ${status} at Airwallex, which differs from the ledger (${t.status})` }
       : { object, object_id: id, status, amount_cents: amount, currency, agrees: true, outcome: `payout for ${t.invoice_no} is ${status} at Airwallex, which matches the ledger (${t.status})` };

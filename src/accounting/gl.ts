@@ -117,6 +117,19 @@ export function journal(db: DB): JournalLine[] {
       });
     }
   }
+  // A payout that came back after PAID (src/payouts/follow.ts): the amount is refunded, so the payout is no longer in the
+  // books above, but Airwallex keeps the transfer fee (non-refundable, "Handle failed transfers"), so the fee stays.
+  for (const t of db.prepare(`SELECT t.request_id, t.transfer_id, t.invoice_no, t.fee_actual, t.approval_sha256, t.updated_at, i.vendor FROM transfers t
+    JOIN invoices i ON i.invoice_no = t.invoice_no WHERE t.status IN ('FAILED', 'CANCELLED') AND t.fee_actual IS NOT NULL
+    AND EXISTS (SELECT 1 FROM audit_log a WHERE a.event = 'transfer.returned_after_paid' AND a.subject = t.transfer_id) ORDER BY t.updated_at, t.request_id`).all() as
+    { request_id: string; transfer_id: string | null; invoice_no: string; fee_actual: string; approval_sha256: string; updated_at: string; vendor: string }[]) {
+    const fee = /^([A-Z]{3}) (\d+\.\d{2})$/.exec(t.fee_actual);
+    if (!fee) continue;
+    add({
+      date: t.updated_at, source: "transfer", ref: t.request_id, description: `Transfer fee, invoice ${t.invoice_no} (the payout came back; Airwallex keeps the fee)`, counterparty: "Airwallex", agent: "treasury",
+      gl_account: "6800", bank_account: bankAccountFor(fee[1]!), cents: -toCents(fee[2]!), currency: fee[1]!, proof: t.transfer_id ?? "", approval: proposalOf(t.approval_sha256), rule: "transfer fee, kept on a returned payout",
+    });
+  }
   // Purser as an Airwallex platform: Purser's fee per paid payout, from the company's account (docs/airwallex-platform.md).
   if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'platform_fees'").get()) {
     for (const f of db.prepare("SELECT request_id, amount, currency, fee_transfer_id, approval_sha256, updated_at FROM platform_fees WHERE status = 'SETTLED' ORDER BY updated_at").all() as
