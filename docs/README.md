@@ -1,4 +1,19 @@
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+
 # The docs, by reader
+
+Every Purser document, grouped by who reads it; test money only throughout.
+
+| At a glance | Record |
+|---|---|
+| **7,199 tests passing**, 0 failed, in the last full run | [assets/test-summary.json](assets/test-summary.json) |
+| **27 live runs**, the last on 17 Nov 2026 | [runs/README.md](runs/README.md) |
+| **189 checks passed**, 3 could not run here, 0 failed | [evidence/verification-2026-11-15.md](evidence/verification-2026-11-15.md) |
+| **37 of 39** red-team attacks stopped, 2 caught afterwards (a test world) | [redteam/report.json](redteam/report.json) |
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture-wide-dark.svg"><img src="assets/architecture-wide-light.svg" alt="AI agents propose; three layers that do not trust each other can each stop a payment: Purser's checks in code, the CFO's Face ID over the exact terms above a limit, the rail's own controls; then the ledger. Sandbox and testnet runs, test money." width="100%"></picture>
+
+## Start here
 
 Read these five first, in this order:
 
@@ -8,12 +23,10 @@ Read these five first, in this order:
 4. [controls-matrix.md](controls-matrix.md): each risk, its control, its test and its evidence.
 5. [business/README.md](business/README.md): the business case, a hypothesis: not validated with customers yet.
 
-Back to the [README](../README.md). Test money only throughout: the Airwallex sandbox and Alta (formerly Metal) testnet;
-the chain partner renamed itself on 14 November, and records and file names from before keep "Metal".
-
-Moved out of the README on 14 November (the README upgrade): the run-by-run table of what is live and what is
-simulated ([in-depth.md](in-depth.md#whats-live-whats-simulated-run-by-run)) and the diagram of where it runs
-([architecture.md](architecture.md#where-it-runs)). The release notes: [releases/v1.1-submission.md](releases/v1.1-submission.md);
+Back to the [README](../README.md). The rails: the Airwallex sandbox and Alta (formerly Metal) testnet; the chain
+partner renamed itself on 14 November, and records and file names from before keep "Metal". What is live and what is
+simulated, run by run: [in-depth.md](in-depth.md#whats-live-whats-simulated-run-by-run); where it runs:
+[architecture.md](architecture.md#where-it-runs); the release notes: [releases/v1.1-submission.md](releases/v1.1-submission.md);
 every pull request: [CHANGELOG.md](../CHANGELOG.md).
 
 ## Juror

@@ -179,8 +179,13 @@ describe("the README's own words elsewhere: the package, the business pages, the
   it("docs/README.md opens with five files in reading order, and each exists", () => {
     const index = read("docs/README.md");
     const firstList = /^(?:\d+\. [^\n]*\n)+/m.exec(index)![0];
-    // Nothing but the title and one line of introduction comes before the list.
-    expect(index.slice(0, index.indexOf(firstList)).trim().split("\n").filter(Boolean).length).toBeLessThanOrEqual(2);
+    // Nothing but the title and one line of introduction comes before the list; since 17 Nov (owner) also the header
+    // every judge-facing README shares (the mark, one sentence, At a glance, one picture) and the list's own heading
+    // (test/readme-headers.test.ts).
+    const before = index.slice(0, index.indexOf(firstList)).trim().split("\n").filter(Boolean)
+      .filter((l) => !l.startsWith("<a href=\"../README.md\"><picture>") && !l.startsWith("|") && !l.startsWith("<picture>") && l !== "## Start here");
+    expect(before).toHaveLength(3);
+    expect(before[2]).toBe("Read these five first, in this order:");
     const links = [...firstList.matchAll(/^\d+\. \[[^\]]+\]\(([^)]+)\): \S/gm)].map((m) => m[1]!);
     expect(links).toEqual(["runs/README.md", "runs/2026-11-03-main-run.md", "claims.md", "controls-matrix.md", "business/README.md"]);
     for (const l of links) expect({ l, exists: exists(`docs/${l}`) }).toEqual({ l, exists: true });

@@ -890,13 +890,24 @@ export function runsReadme(all: RunRow[] = liveRuns()): string {
   const money = (r: RunRow) => r.money.split(" · ").filter((w) => !KIND_LABEL[kindOf(r)].toLowerCase().includes(w.toLowerCase()));
   // The plain name, the name the docs use where they use one, then the kind, the mark, the rate and the money words.
   const run = (r: RunRow) => `**${cell(nameOf(r))}**${DOC_NAMES.has(r.key) ? ` (in the docs: \`${r.key}\`)` : ""}<br>${[KIND_LABEL[kindOf(r)], ...(r.product ? [PRODUCT_MARK] : []), ...(r.rate ? [rateWords(r.rate)] : []), ...money(r)].map(cell).join(" · ")}`;
-  return `# Live runs
+  // 17 Nov (owner): the header every judge-facing README shares: the mark, the title, one sentence, then At a glance.
+  return `<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
 
-Every live run, newest first, generated from the records by \`src/redesign/runs.ts\` (\`npx tsx src/cli/runs-readme.ts\`).
-The same list is on the site at [/runs](https://kit11.max-31b.workers.dev/runs). Test money only; what is simulated is
-said per run. The other files in this folder are build notes, dry runs and rehearsals.
+# Live runs
 
-**Last live run:** ${lastLive(live).date}.
+Every live run, newest first, with what ran, what was checked, its ids and its files; test money only.
+
+| At a glance | Record |
+|---|---|
+| **${live.length} live runs**; what is simulated is said per run | the table below, generated from the records by \`src/redesign/runs.ts\` (\`npx tsx src/cli/runs-readme.ts\`) |
+| **Last live run:** ${lastLive(live).date}. | [/runs](https://kit11.max-31b.workers.dev/runs) on the site: the same list |
+| **${partial.length} partial runs, ${rehearsals.length} rehearsals and dry runs**, not counted as live | [Partial runs](#partial-runs) · [Rehearsals and dry runs](#rehearsals-and-dry-runs) |
+
+<img src="../assets/charts/live-runs-per-rail.svg" alt="Live runs per rail, counted from the table below (scripts/repo-charts.ts)" width="720">
+
+The other files in this folder are build notes, dry runs and rehearsals.
+
+## Every live run
 
 | Date | Run | Rails | What ran | Checks | Key ids | Files |
 |---|---|---|---|---|---|---|

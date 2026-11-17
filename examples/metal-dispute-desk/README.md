@@ -1,6 +1,18 @@
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../../docs/assets/brand/purser-mark-dark.svg"><img src="../../docs/assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+
 # Metal Dispute desk (example)
 
-A small TypeScript module for any seller that takes x402 payments from AI agents on [Metal](https://docs.metalntwx.com).
+Refund decisions for disputed x402 payments on Alta (formerly Metal), one payment at a time, from evidence the seller holds.
+
+| At a glance | Record |
+|---|---|
+| **The rules in one table**, checked in order; every refund only to the account that paid | [The rules](#the-rules) |
+| **One copy:** Purser imports this folder; a parity test fails if the two could ever decide differently | `test/metal-dispute-desk-parity.test.ts` |
+| Pure code: no npm dependencies, no database, clock, model or network | [`src/`](src/) · [`test/`](test/) |
+
+## What it is
+
+A small TypeScript module for any seller that takes x402 payments from AI agents on [Alta](https://docs.metalntwx.com).
 When a customer disputes payments its agent made, the module decides **for each payment** whether to refund, how much, and
 gives the reason in plain words. It decides only from evidence the seller holds and the chain confirms. It is pure code:
 no database, clock, model, or network. The one chain lookup it needs is injected.
