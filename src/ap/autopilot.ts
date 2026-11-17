@@ -29,7 +29,7 @@ import { withOrigin } from "../provenance/origin.js";
 import { syncVault } from "../vault/build.js";
 import type { VaultSink } from "../vault/sink.js";
 import { suppliersOnFile } from "./bank.js";
-import { accrualEntries, accrualPushed, bookable, paymentEntries, pushOnce, reversalEntries, type BookkeepingSink } from "./books.js";
+import { accrualEntries, accrualPushed, bookable, paymentEntries, pushOnce, reversalEntries, SINK_TOOK, type BookkeepingSink } from "./books.js";
 import { apAgentsOn, ensureCoded } from "./coderAgent.js";
 import { bookAccrual, ingestDocument, MAX_DOCUMENT_BYTES, recheck, type InboxDeps, type IngestResult, type Source } from "./inbox.js";
 import { payApInvoice, syncPayments } from "./pay.js";
@@ -372,7 +372,7 @@ function needsBooking(ctx: Ctx, inv: ApInvoiceRow): boolean {
 
 /** Whether the sink took this event of this invoice. */
 const pushed = (db: DB, inv: ApInvoiceRow, sink: BookkeepingSink, event: "payment" | "reversal") =>
-  !!db.prepare("SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ?").get(inv.id, event, sink.name);
+  !!db.prepare(`SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ? AND ${SINK_TOOK}`).get(inv.id, event, sink.name);
 
 /** When and by whom an invoice was rejected (its last ap.status row), for the reversal a sink never took. */
 function rejection(db: DB, inv: ApInvoiceRow): { date: string; why: string } {

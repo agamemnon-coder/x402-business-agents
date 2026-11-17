@@ -15,7 +15,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { journal as glJournal } from "../accounting/gl.js";
-import { bankAccountFor, bookable } from "../ap/books.js";
+import { bankAccountFor, bookable, dutchSupplier } from "../ap/books.js";
 import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
 import { apInvoices, type ApInvoiceRow } from "../ap/store.js";
 import { VENDOR_GL } from "../config/gl.js";
@@ -25,6 +25,8 @@ import type { JournalEntry, Payment, PurchaseInvoice, Vendor } from "./model.js"
 import type { SyncItem } from "./sync.js";
 
 const ISO = /^[A-Z]{3}$/;
+/** The expense account the GL journal books a transfer's fee to (src/accounting/gl.ts). */
+const TRANSFER_FEE_GL = "6800";
 const MONEY = /^\d+\.\d{2}$/;
 
 /**
@@ -32,8 +34,10 @@ const MONEY = /^\d+\.\d{2}$/;
  * subtotal (within a cent), so it is reclaimed; anything else (no VAT, another country's VAT) is no Dutch VAT, booked
  * with the cost.
  */
-function apVat(a: ApInvoiceRow): { code: "NL21" | "NL9" | "NONE"; netCents: number; vatCents: number } {
+export function apVat(a: ApInvoiceRow): { code: "NL21" | "NL9" | "NONE"; netCents: number; vatCents: number } {
   const total = toCents(a.total);
+  // A supplier abroad charged its own country's VAT, whatever the rate: not Dutch VAT (round 3 review, 17 Nov).
+  if (!dutchSupplier(a.reading?.vat_id)) return { code: "NONE", netCents: total, vatCents: 0 };
   if (!MONEY.test(a.tax) || !MONEY.test(a.subtotal)) return { code: "NONE", netCents: total, vatCents: 0 };
   const net = toCents(a.subtotal);
   const vat = toCents(a.tax);
@@ -107,10 +111,13 @@ export function ledgerItems(db: DB): SyncItem[] {
   // The GL journal's other movements, one balanced entry each; the id is the movement's own (source and reference).
   const seen = new Map<string, number>();
   for (const l of glJournal(db)) {
-    if (l.source === "transfer" || l.source === "opening" || !ISO.test(l.currency)) continue;
+    // A payout itself goes as a payment (above); its fee does not, so it goes here (round 3 review, 17 Nov: every SWIFT
+    // fee was missing in the ERP).
+    const transferFee = l.source === "transfer" && l.gl_account === TRANSFER_FEE_GL;
+    if ((l.source === "transfer" && !transferFee) || l.source === "opening" || !ISO.test(l.currency)) continue;
     const cents = toCents(l.amount.replace(/^-/, ""));
     if (cents === 0) continue;
-    const key = `${l.source}:${l.ref}`;
+    const key = transferFee ? `transfer-fee:${l.ref}` : `${l.source}:${l.ref}`;
     const n = (seen.get(key) ?? 0) + 1;
     seen.set(key, n);
     const out = l.amount.startsWith("-");

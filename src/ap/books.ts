@@ -78,6 +78,19 @@ export function foreignVat(netCents: number, vatCents: number, supplierVatId: st
   return Math.abs(Math.round((netCents * 19) / 100) - vatCents) <= 1 ? "PF_DE19" : null;
 }
 
+/** The country of a VAT id, from its two-letter prefix (Greece's EL as GR), or null when none was read. */
+export function vatIdCountry(vatId: string | null | undefined): string | null {
+  const m = /^([A-Z]{2})([0-9A-Z+*]{2,13})$/.exec((vatId ?? "").replace(/[\s.-]/g, "").toUpperCase());
+  // Every EU VAT number carries digits after its prefix; a word is not one.
+  return m && /\d.*\d/.test(m[2]!) ? (m[1] === "EL" ? "GR" : m[1]!) : null;
+}
+
+/**
+ * Whether VAT this supplier charged can be Dutch input VAT: its VAT id is Dutch, or none was read (round 3 review,
+ * 17 Nov: Belgium, Spain, Czechia, Latvia and Lithuania charge 21% too, so the rate alone does not make VAT Dutch).
+ */
+export const dutchSupplier = (vatId: string | null | undefined): boolean => { const c = vatIdCountry(vatId); return c === null || c === "NL"; };
+
 export function dutchVat(netCents: number, vatCents: number): "P21" | "P9" | null {
   if (Math.abs(Math.round((netCents * 21) / 100) - vatCents) <= 1) return "P21";
   if (Math.abs(Math.round((netCents * 9) / 100) - vatCents) <= 1) return "P9";
@@ -89,7 +102,7 @@ export function dutchVat(netCents: number, vatCents: number): "P21" | "P9" | nul
  * foreign one from the supplier's own VAT id; null when neither fits (the line stays uncoded for a person).
  */
 export function accrualVatCode(netCents: number, vatCents: number, supplierVatId: string | null | undefined): "P21" | "P9" | "PF_DE19" | null {
-  return dutchVat(netCents, vatCents) ?? foreignVat(netCents, vatCents, supplierVatId);
+  return (dutchSupplier(supplierVatId) ? dutchVat(netCents, vatCents) : null) ?? foreignVat(netCents, vatCents, supplierVatId);
 }
 
 const cents = (x: unknown): x is number => Number.isSafeInteger(x) && (x as number) >= 0;
@@ -122,6 +135,9 @@ export const codedAccrual = (inv: ApInvoiceRow): boolean => bookedCoding(inv) !=
  */
 function codedEntries(inv: ApInvoiceRow, c: StoredCoding, date: string, memo: string): ApEntry[] {
   const groups: { account: string; cost_centre: string; vat_code: string | null; net: number; vat: number }[] = [];
+  // A line the Coder (or a person) coded P21/P9 keeps it: a supplier abroad may be registered for Dutch VAT too. A line
+  // left uncoded is Dutch only from a Dutch supplier, or one with no VAT id read (round 3 review, 17 Nov).
+  const dutch = dutchSupplier(inv.reading?.vat_id);
   for (const l of c.lines) {
     // A line the Coder left without a VAT code (its codes are the Dutch return's): the books set the foreign one from the
     // supplier's own VAT id, as the engine's own accrual does, so a German supplier's 19% goes to 1515, never to 1510
@@ -148,7 +164,7 @@ function codedEntries(inv: ApInvoiceRow, c: StoredCoding, date: string, memo: st
   // CFO review, 14 Nov: a German 19% with no VAT id read went to 1510 while the Coder's own line said "no VAT code").
   // Line by line, so two Dutch rates on one uncoded group stay Dutch.
   const abroad = groups.reduce((s, g) => s + (g.vat_code !== null && VAT_CODES[g.vat_code]?.foreign ? g.vat : 0), 0)
-    + c.lines.reduce((s, l) => s + ((l.vat_code ?? foreignVat(l.net_cents, l.vat_cents, inv.reading?.vat_id)) === null && l.vat_cents > 0 && l.net_cents > 0 && !dutchVat(l.net_cents, l.vat_cents) ? l.vat_cents : 0), 0);
+    + c.lines.reduce((s, l) => s + ((l.vat_code ?? foreignVat(l.net_cents, l.vat_cents, inv.reading?.vat_id)) === null && l.vat_cents > 0 && l.net_cents > 0 && (!dutch || !dutchVat(l.net_cents, l.vat_cents)) ? l.vat_cents : 0), 0);
   if (vat - abroad) out.push(line(inv, "accrual", date, AP_ACCOUNTS.inputVat, vat - abroad, 0, `${memo}: input VAT`));
   if (abroad) out.push(line(inv, "accrual", date, AP_ACCOUNTS.foreignVat, abroad, 0, `${memo}: foreign VAT to reclaim`));
   for (const self of owed) {
@@ -172,7 +188,7 @@ export function accrualEntries(inv: ApInvoiceRow): ApEntry[] {
   if (coding) return codedEntries(inv, coding, date, memo);
   // Only VAT at a Dutch rate is Dutch input VAT (1510, box 5b). Any other VAT (a German supplier's 19%, with or without
   // its VAT id read) is not reclaimable in the Dutch return: 1515, never 1510 (the CFO review, 14 Nov).
-  const abroad = tax > 0 && dutchVat(total - tax, tax) === null;
+  const abroad = tax > 0 && (!dutchSupplier(inv.reading?.vat_id) || dutchVat(total - tax, tax) === null);
   return [
     line(inv, "accrual", date, inv.gl_account, total - tax, 0, memo),
     ...(tax ? [abroad
@@ -313,13 +329,29 @@ export function payablesSink(env: Record<string, string | undefined> = process.e
  */
 export async function pushOnce(db: DB, sink: BookkeepingSink | undefined, event: ApEntry["event"], entries: ApEntry[], inv: ApInvoiceRow, now: Date): Promise<boolean> {
   if (!sink || entries.length === 0) return false;
-  if (db.prepare("SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ?").get(inv.id, event, sink.name)) return false;
+  // The event is claimed before the push, in one write (round 3 review, 17 Nov: two syncs at once both pushed). A claim
+  // reads "pushing:<when>"; one a stopped process left over ten minutes ago is taken over.
+  const stale = `${CLAIM}${new Date(now.getTime() - CLAIM_MS).toISOString()}`;
+  const claimed = db.transaction(() => {
+    db.prepare("DELETE FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ? AND pushed_at LIKE 'pushing:%' AND pushed_at < ?").run(inv.id, event, sink.name, stale);
+    return db.prepare("INSERT OR IGNORE INTO ap_sink_events (invoice_id, event, sink, pushed_at) VALUES (?, ?, ?, ?)").run(inv.id, event, sink.name, `${CLAIM}${now.toISOString()}`).changes === 1;
+  }).immediate();
+  if (!claimed) return false;
   const failed = await pushToSink(sink, entries, inv);
-  if (failed) { audit(db, "system", "ap.sink_failed", inv.id, { sink: failed, event }, now); return false; }
-  db.prepare("INSERT OR IGNORE INTO ap_sink_events (invoice_id, event, sink, pushed_at) VALUES (?, ?, ?, ?)").run(inv.id, event, sink.name, now.toISOString());
+  if (failed) {
+    db.prepare("DELETE FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ? AND pushed_at LIKE 'pushing:%'").run(inv.id, event, sink.name);
+    audit(db, "system", "ap.sink_failed", inv.id, { sink: failed, event }, now);
+    return false;
+  }
+  db.prepare("UPDATE ap_sink_events SET pushed_at = ? WHERE invoice_id = ? AND event = ? AND sink = ?").run(now.toISOString(), inv.id, event, sink.name);
   return true;
 }
 
+const CLAIM = "pushing:";
+const CLAIM_MS = 10 * 60_000;
+/** SQL: a row of ap_sink_events the sink took (not a claim of a push under way). */
+export const SINK_TOOK = "pushed_at NOT LIKE 'pushing:%'";
+
 /** Whether this invoice's accrual reached the sink. */
 export const accrualPushed = (db: DB, inv: ApInvoiceRow, sink: BookkeepingSink): boolean =>
-  !!db.prepare("SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = 'accrual' AND sink = ?").get(inv.id, sink.name);
+  !!db.prepare(`SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = 'accrual' AND sink = ? AND ${SINK_TOOK}`).get(inv.id, sink.name);

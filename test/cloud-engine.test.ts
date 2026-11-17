@@ -4,7 +4,7 @@
 // interface (cloud/src/engine/api.ts). The CFO's phone is a software passkey. Nothing reaches the network.
 import { createHash } from "node:crypto";
 import { build } from "esbuild";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ROUTES } from "../cloud/src/app.js";
 import { SlowDown } from "../cloud/src/engine/api.js";
 import { TRY_ENGINE_ROUTES } from "../cloud/src/try/engineRoutes.js";
@@ -17,6 +17,12 @@ import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { EN } from "./fakes/apInvoices.js";
 import { pdfOf } from "./fakes/pdf.js";
 import { ORIGIN, RP, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
+
+// The sample invoice is due 16 Nov 2026 and the engine reads the real date for "overdue": from 17 Nov every run here
+// failed (a date bomb). The real date is held at the day this file was written for; the rest of the clock still runs.
+beforeAll(() => { vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true }); vi.setSystemTime(new Date("2026-11-10T09:00:00Z")); });
+afterAll(() => { vi.useRealTimers(); });
+
 
 const IBAN = "DE89370400440532013000";
 const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");

@@ -23,7 +23,7 @@ import { toCents } from "../lib/money.js";
 import { VAT_CODES } from "../ledger/vat.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { currentOrigin, parseOrigin, type Origin } from "../provenance/origin.js";
-import { bookable, dutchVat, foreignVat } from "./books.js";
+import { bookable, dutchVat, foreignVat, SINK_TOOK } from "./books.js";
 import {
   answerCoderTool, buildCodingCase, CODER_EFFORT, CODER_MAX_TURNS, CODER_MODEL, CODER_SYSTEM, CODER_UNFINISHED, coderInputs, coderPrompt, coderTools, enforceCoding,
   fallbackCoding, invoiceAmounts, vatIdCountry, WHOLE_INVOICE, type CaseVatCode, type ChartAccount, type Coding, type CodingCase, type CostCentre, type EnforcedCoding, type HistoryCoding,
@@ -260,7 +260,7 @@ async function documentText(db: DB, inv: ApInvoiceRow): Promise<string> {
 
 /** Whether a sink or the stored ledger already holds this invoice's accrual. */
 function accrualBooked(db: DB, id: string): boolean {
-  if (db.prepare("SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = 'accrual'").get(id)) return true;
+  if (db.prepare(`SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = 'accrual' AND ${SINK_TOOK}`).get(id)) return true;
   const key = `ap-accrual|${id}`;
   return !!db.prepare("SELECT 1 FROM ledger_entries WHERE source_key = ? OR substr(source_key, 1, ?) = ?").get(key, key.length + 2, `${key}@v`);
 }
