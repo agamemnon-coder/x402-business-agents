@@ -38,9 +38,13 @@ const SESSION_SECRET = "s".repeat(48);
 const ADMIN_TOKEN_SHA256 = createHash("sha256").update(ADMIN_TOKEN).digest("hex");
 const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
 const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
-const EN_COPY = EN.replace(/BTX-2026-21/g, "BTX-2026-21A");
+// The engine runs in workerd and reads the real date, which a test cannot hold: the sample invoices fall due in November
+// 2027 here, not 2026 (only the due date moves; from 17 Nov 2026 they were overdue and the upload was no longer clean).
+const LATER = (s: string) => s.replace(/Due date: (\d+ November) 2026/, "Due date: $1 2027");
+const EN_DUE = LATER(EN);
+const EN_COPY = EN_DUE.replace(/BTX-2026-21/g, "BTX-2026-21A");
 /** Another invoice of the same supplier: another number, another amount. */
-const EN_NEXT = EN.replace(/BTX-2026-21/g, "BTX-2026-22").replace("1,554.62", "1,000.00").replace("295.38", "190.00").replace("1,850.00", "1,190.00").replace("2 November", "3 November").replace("16 November", "17 November");
+const EN_NEXT = EN_DUE.replace(/BTX-2026-21/g, "BTX-2026-22").replace("1,554.62", "1,000.00").replace("295.38", "190.00").replace("1,850.00", "1,190.00").replace("2 November", "3 November").replace("16 November", "17 November");
 /** Local workerd drops an idle object's memory after about 10 s (measured here on 12 November 2026 with a temporary time stamp in the host: the same after 5 s idle, a new one after 12 s). */
 const IDLE_MS = 12_000;
 
@@ -103,7 +107,7 @@ for (const { file } of D1 ? CONFIGS : []) describe(`the engine in a Durable Obje
     A = await company("northwind");
     B = await company("bravo");
     expect((await req("POST", "/v1/company", { key: A.session, body: { language: "en" } })).status).toBe(200);
-    bytes = await pdfOf(EN);
+    bytes = await pdfOf(EN_DUE);
   }, 240_000);
 
   afterAll(async () => {
