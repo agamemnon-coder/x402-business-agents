@@ -40,7 +40,8 @@ describe("visual files", () => {
     expect(all).not.toMatch(/only when all three layers say yes|none can be skipped|Only after every yes/);
     expect(all).toMatch(/Above a limit/);
     expect(all).toMatch(/sandbox runs/);
-    expect(all).toMatch(/private preview/);
+    expect(all).toMatch(/public test preview/);
+    expect(all).not.toMatch(/private preview/);
   });
   it("take their colours from the site's tokens, light and dark", () => {
     const light = palette("light"), dark = palette("dark");

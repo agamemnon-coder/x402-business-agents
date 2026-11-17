@@ -42,7 +42,7 @@ in your own test world (stand-in executors: no payment reaches Airwallex or Alta
 4. **The rail checks on its own.** Airwallex (transfer approvals, card controls), Alta (a mandate cap on chain) and
    Visa Intelligent Commerce via Airwallex's Airi (the cardholder's passkey per purchase) each keep their own limit.
 5. **Recorded.** Every step goes to the ledger's hash-chained audit log. Books were posted to T:0 and Moneybird in
-   sandbox runs; Purser Cloud (a private preview, no customer) keeps invoices, suppliers and payments with every
+   sandbox runs; Purser Cloud (a public test preview, no customer) keeps invoices, suppliers and payments with every
    version.
 
 ## Security model
@@ -98,7 +98,7 @@ Running it live (sandbox keys, an Alta RPC): [run-it.md](../run-it.md).
 |---|---|---|
 | `src/` | Purser: agents, policy, passkey approvals, executors per rail, ledger, the site's pages | 758 |
 | `cloud/` | Purser Cloud: the small-company product (invoices in, read, paid after Face ID, booked, archived) | 136 |
-| `worker/` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | 27 |
+| `worker/` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | 26 |
 | `contracts/` | Solidity contracts used on Alta testnet, with their ABIs | 7 |
 | `test/` | Unit, integration and browser checks | 750 |
 | `docs/` | Run logs, records, security, plans (the generated visuals in `docs/assets/` not counted) | 510 |

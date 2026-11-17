@@ -10,7 +10,7 @@ How Purser's premiere films (v5 to v10) are made: scenes, clips, voice-over, mus
 | **Film v10** (13 Nov, 4:58), the enterprise hand-in | [its section below](#film-v10-13-nov-enterprise-hand-in) |
 | Every on-screen figure read from its run's record by code; the render stops when one is missing | [main run log](../runs/2026-11-03-main-run.md) · `src/film/premiere.ts` |
 
-**Film v10 (13 November), the enterprise hand-in, is the hand-in video now: [its section below](#film-v10-13-nov-enterprise-hand-in).**
+**The submission form links “Purser, under the hood” (3:29) and the trailer, as the README does. Film v10 (13 November), the enterprise hand-in: [its section below](#film-v10-13-nov-enterprise-hand-in).**
 **Purser in 3:58**, film v8 (7 November), the earlier submission video: the premiere-style film made
 from the main run of 3 November 2026 (world `main-1`, [run log](../runs/2026-11-03-main-run.md)), with the two live runs
 of 7 November (awx-1 on Airwallex alone, [run log](../runs/2026-11-07-awx-1.md); the Airi run, Visa Intelligent
@@ -29,7 +29,7 @@ Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-scrip
 
 ## Film v10 (13 Nov): enterprise hand-in
 
-**Purser: the enterprise hand-in**, 4:58, **the hand-in video** for the Airwallex Agentic Banking Hackathon (Kit 11).
+**Purser: the enterprise hand-in**, 4:58, cut for the Airwallex Agentic Banking Hackathon (Kit 11); the form links the 3:29 film instead.
 It shows what Purser is today, at a company's scale: Purser Cloud as the place where a company runs Purser (its demo
 company: the Agents tab, Invoices & books, the Tokenisation tab), the approval alerts (WhatsApp, e-mail, Slack, Teams:
 built, live once Twilio keys are set), the hands-on demo recorded from the live page, the layers of security with the zero-trust

@@ -612,7 +612,7 @@ function policyAnswer(c: PaymentCase): string {
   if (alone.rule === "no_alone_limit" || !limit) said.push("Nothing is paid without the CFO: you may pay no invoice alone.");
   else {
     said.push(`You may pay an invoice alone up to ${money(limit.currency, limit.amount)}.`);
-    said.push(alone.rule === null ? `This invoice's ${money(i.currency, i.amount)} is within that.`
+    said.push(alone.rule === null ? `This invoice's ${money(i.currency, i.amount)} is within that, so you pay it today (pay_on ${c.today}) when every balance stays above its floor: scheduling a payment you may make alone for a later day is the CFO's call, not yours.`
       : alone.rule === "above_alone_limit" ? `This invoice's ${money(i.currency, i.amount)} is above that: the CFO signs the exact terms.`
       : alone.rule === "alone_limit_other_currency" ? `That limit is set in ${limit.currency || "no currency"} and this invoice is in ${i.currency || "no currency"}: the CFO signs the exact terms.`
       : "This invoice's amount is not a plain amount, so it cannot be compared with that: the CFO signs the exact terms.");

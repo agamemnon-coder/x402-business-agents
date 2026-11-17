@@ -299,7 +299,7 @@ describe("the agent's tools", () => {
 
   it("policy_limits: what the agent may pay alone, the floors, and the rule on paying late", () => {
     expect(ask(caseOf(), "policy_limits").text).toBe("You may pay an invoice alone up to EUR 500.00. This invoice's EUR 1850.00 is above that: the CFO signs the exact terms. Cash floors: EUR 25000.00, USD 3000.00. Paying after the due date is not allowed.");
-    expect(ask(small({ policy: { payLate: { maxDays: 1 } } }), "policy_limits").text).toBe("You may pay an invoice alone up to EUR 500.00. This invoice's EUR 300.00 is within that. Cash floors: EUR 25000.00, USD 3000.00. Paying up to 1 day after the due date is allowed, when the reason says so.");
+    expect(ask(small({ policy: { payLate: { maxDays: 1 } } }), "policy_limits").text).toBe("You may pay an invoice alone up to EUR 500.00. This invoice's EUR 300.00 is within that, so you pay it today (pay_on 2026-11-08) when every balance stays above its floor: scheduling a payment you may make alone for a later day is the CFO's call, not yours. Cash floors: EUR 25000.00, USD 3000.00. Paying up to 1 day after the due date is allowed, when the reason says so.");
     expect(ask(caseOf({ policy: { aloneLimit: null, cashFloors: {} } }), "policy_limits").text).toBe("Nothing is paid without the CFO: you may pay no invoice alone. No cash floor is set. Paying after the due date is not allowed.");
     expect(ask(caseOf({ policy: { aloneLimit: { currency: "USD", amount: "500.00" } } }), "policy_limits").text).toContain("That limit is set in USD and this invoice is in EUR: the CFO signs the exact terms.");
   });

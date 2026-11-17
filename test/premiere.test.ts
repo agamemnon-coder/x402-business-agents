@@ -693,8 +693,10 @@ describe("docs/video/ holds what the code writes", () => {
     expect(guide).toContain(`**The drop goes on the cut to\n\`09-six.mp4\` (${at("09-six")}).**`);
     expect(guide).toMatch(/no music and no audio track/);
     expect(guide).toContain("`scenes-v6.json`");
-    // Film v10 (13 Nov) is the hand-in video now; v8 stays described as the earlier submission video.
-    expect(guide).toContain("**Film v10 (13 November), the enterprise hand-in, is the hand-in video now");
+    // The form links "Purser, under the hood" (docs/submission/README.md), as the README does; v10 keeps its section,
+    // v8 stays described as the earlier submission video.
+    expect(guide).toContain("**The submission form links “Purser, under the hood” (3:29) and the trailer, as the README does.");
+    expect(guide).not.toContain("is the hand-in video now");
     expect(guide).toContain("the earlier submission video");
     expect(guide).toContain(RECORDED_LABEL);
     expect(guide).not.toMatch(/AI hook|02-hook|without the hook|10-second hook/i);
