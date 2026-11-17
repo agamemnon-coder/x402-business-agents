@@ -303,6 +303,20 @@ function firstMatch(text: string, re: RegExp): string {
   return re.exec(text)?.[1]?.trim() ?? "";
 }
 
+/**
+ * The first date on a line that starts with one of the labels: the label a whole word, then a colon or a space (17 Nov:
+ * the street "Datenallee 12" read as "Date" with the value "nallee 12", and the real date below it was never reached),
+ * and a labelled line that holds no date is passed over ("Date Street 4" is an address, not an empty date).
+ */
+function labelledDate(text: string, labels: string): string {
+  const re = new RegExp(`^[ \\t]*(?:${labels})(?:[ \\t]*:[ \\t]*|[ \\t]+)(.+)$`, "gimu");
+  for (const m of text.matchAll(re)) {
+    const d = readDate(m[1]!);
+    if (d) return d;
+  }
+  return "";
+}
+
 /** The IBAN after an "IBAN" label, exactly as long as its country's IBANs are (a BIC on the same line is not read into it). */
 function ibanIn(text: string): string {
   const m = /IBAN[ \t]*:?[ \t]*([A-Z]{2}\d{2}(?:[ \t]?[A-Z0-9]){10,30})/i.exec(text);
@@ -359,8 +373,8 @@ export function parseApFallback(text: string): ApReading {
   const invoiceNo =
     firstMatch(text, /(?:invoice\s*(?:no\.?|number|nr\.?|#)|factuurnummer|factuurnr\.?|rechnungsnummer|rechnungs-?nr\.?|gutschriftsnummer|gutschriftnummer|gutschrift-?nr\.?|credit\s*note\s*(?:no\.?|number|nr\.?|#)|creditnotanummer|creditnota\s*(?:nr\.?|nummer))\s*[:#]?\s*([A-Z0-9][A-Z0-9\-/.]*\d[A-Z0-9\-/.]*)(?=[\s,;)]|$)/im) ||
     firstMatch(text, /\b(?:invoice|factuur|rechnung)\s+#?\s*([A-Z0-9][A-Z0-9\-/.]*\d[A-Z0-9\-/.]*)(?=[\s,;)]|$)/im);
-  const due = firstMatch(text, /^\s*(?:due\s+date|payment\s+due|due|vervaldatum|uiterste\s+betaaldatum|fällig\s+am|fällig|zahlbar\s+bis|zahlungsziel)\s*:?\s*(.+)$/im);
-  const issued = firstMatch(text, /^\s*(?:invoice\s+date|date\s+of\s+issue|issue\s+date|factuurdatum|rechnungsdatum|datum|date)\s*:?\s*(.+)$/im);
+  const due = labelledDate(text, "due\\s+date|payment\\s+due|due|vervaldatum|uiterste\\s+betaaldatum|fällig\\s+am|fällig|zahlbar\\s+bis|zahlungsziel");
+  const issued = labelledDate(text, "invoice\\s+date|date\\s+of\\s+issue|issue\\s+date|factuurdatum|rechnungsdatum|datum|date");
   // A label as a whole word, then a colon (red team round 4: "Reflective safety vests" gave the reference "lective",
   // which the CFO signed and the payout carried); the payment-reference label wins over a bare "Ref:".
   const reference = firstMatch(text, /^\s*(?:payment\s+reference|zahlungsreferenz|betalingskenmerk|verwendungszweck)\b\s*:\s*(\S+)/im) ||
@@ -371,8 +385,8 @@ export function parseApFallback(text: string): ApReading {
     vendor: cleanText(ls.find((l) => /\p{L}/u.test(l) && !HEADING.test(cleanText(l))) ?? ""),
     vat_id: firstMatch(text, /\b(?:VAT(?:\s*(?:ID|number|no\.?|reg\.?\s*no\.?))?|BTW(?:-nummer|\s*nr\.?|-id)?|USt-?IdNr\.?|UID)\s*:?\s*([A-Z]{2}[A-Z0-9]{8,12})\b/).toUpperCase(),
     invoice_no: invoiceNo,
-    issue_date: issued ? readDate(issued) : "",
-    due_date: due ? readDate(due) : "",
+    issue_date: issued,
+    due_date: due,
     currency: invoiceCurrency(ls, total),
     subtotal: labelledAmount(ls, "subtotal")?.amount ?? "",
     tax: labelledAmount(ls, "tax")?.amount ?? "",
