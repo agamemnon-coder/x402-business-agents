@@ -417,7 +417,7 @@ describe("/runs as a timeline", () => {
     expect(text(html)).toContain(`${live.length} live runs, newest first`);
     // vic-2 is a local control test since 12 Nov (review); since 13 Nov (jury pass) the two partial runs are listed apart;
     // the records' anchor on Alta testnet joined on 13 Nov.
-    expect(known(live.map((e) => e.key))).toHaveLength(26); // the late-failure run, 17 Nov (25 with vic-5, 14 Nov)
+    expect(known(live.map((e) => e.key))).toHaveLength(27); // the late-failure run, 17 Nov; the card test of 15 Nov (17 Nov); vic-5, 14 Nov
   });
 
   it("marks exactly one run as the product: the main run", () => {
