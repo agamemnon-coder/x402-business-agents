@@ -148,7 +148,7 @@ function check(db: DB, req: ReceivedCheckout, cfg: TapMerchantConfig, now: numbe
   if (!domains.includes(cfg.authority)) return no(`key ${a.keyId} is not pinned for ${cfg.authority}`);
   let publicKey;
   try {
-    publicKey = createPublicKey({ key: JSON.parse(row.public_jwk) as import("node:crypto").JsonWebKey, format: "jwk" });
+    publicKey = createPublicKey({ key: JSON.parse(row.public_jwk) as import("node:crypto").webcrypto.JsonWebKey, format: "jwk" });
   } catch {
     return no(`key ${a.keyId}: the pinned public key is not readable`);
   }
