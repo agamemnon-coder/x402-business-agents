@@ -6,7 +6,7 @@ each earlier check as it was.
 
 ## The main run (3 November) and the site as it stands
 
-Last checked on 15 November 2026 (the Alta rows, against their run records; the rest on 14 November): this table, against the README, Home, the menu, the worst case
+Last checked on 18 November 2026 (the Alta rows, against their run records; the rest on 14 November): this table, against the README, Home, the menu, the worst case
 and llms.txt as they stand that day, each number against its run record. Two runs are named in it, and each row says
 which: **the main run** of 3 November (log `docs/runs/2026-11-03-main-run.md`, record `docs/demo/main-run.json`) and
 **awx-1**, the Airwallex-only run of 7 November (log `docs/runs/2026-11-07-awx-1.md`, record
@@ -312,7 +312,7 @@ and `/demo` to `/replay`. `/` is Home itself for a guest, with no redirect; with
 | One Face ID number, 5: "5 decisions signed with Face ID (+1 co-signature)" | the proposals Max decided with his passkey in the run's ledger (`proposal.approved`/`rejected` with approver max: P-0001, P-0002, P-0004, P-0005, P-0006), equal to the record's `proof.face_id`; the co-signature is the second approver's on P-0002 (`test/site-v4.test.ts`, `test/figures.test.ts`) |
 | The partner pages (/metal, /airwallex, /visa, /claude, /t0), short with the details folded | the same records; /visa opens with the Airi run (Visa Intelligent Commerce via Airwallex's Airi, 7 November), then the TAP run and the main run's own TAP-signed buy; /metal and /claude are labelled with the main run, /airwallex with one label for all its runs and each run's own date on its tile, /t0 as the T:0 sandbox with test data |
 | /airwallex (since 12 November): one tile per Airwallex product Purser uses (Issuing, Payouts, FX, Transfer approvals, Connected accounts, Payment acceptance, Airi), each with one number, one id and the date of its own run; the transfer-approvals tile shows the state its run log and the runs list give when the site is built | read at build time by `src/redesign/airwallexProducts.ts` from `docs/demo/airwallex-run.json`, `docs/demo/main-run.json` with `docs/runs/airwallex-transfer-approval-2026-11-06.json`, `docs/runs/2026-11-10-airwallex-two-locks.md`, `docs/runs/2026-11-10-platform-e2e/facts.json`, `docs/runs/2026-11-10-payment-acceptance-sandbox.md` and `docs/demo/airi-run.json`; `test/airwallex-products.test.ts` fails when a tile's number, id or date is not in its record |
-| `/film` is the earlier animation of 30 October, labelled so on the page; the walkthrough (film v10, 4:58; AI voice and music: ElevenLabs) is on YouTube (https://youtu.be/mp9fmOYfBWc), linked from Home, Proof and the replay at `/replay` (from /judge until 13 November) (from Home too until 12 November) | `src/film/film.html`; `FILM_URL` in `src/config/brand.ts` |
+| `/film` is the earlier animation of 30 October, labelled so on the page; the walkthrough (film v10, 4:58; AI voice and music: ElevenLabs) was on YouTube from 13 to 15 November and is now off it; the video in the submission is the demo of 18 November (3:15, the real product on test money: https://youtu.be/gEUm8RlhZac), linked from the README | `src/film/film.html`; `FILM_URL` in `src/config/brand.ts` |
 
 ## The video
 

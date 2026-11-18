@@ -75,11 +75,13 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // 175 since 15 Nov: the Kit 11 table under the header (the Kit 11 line at 171 as built).
     // 260 since 17 Nov, owner: strongest proof first (+8 lines: the six-row proof table under the links; the Kit 11 line at 255 as built).
     // 250 since 17 Nov, later (+10 lines: the For judges table, the submission line, the film's figures dated). 240 since 17 Nov (+7 lines: one engine, two jobs; what the sandbox taught us; three invariants); 230 since 15 Nov (+the invariants table); 220 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram and the system map; the Kit 11 line at 215 as built).
-    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 260).filter((l) => !l.startsWith("**Built on Airwallex.**") && !l.startsWith("[![")).join("\n")); // 17 Nov, owner: the badges at the very top, right under the title, so they are left out here
+    // 270 since 18 Nov (+6 lines: the demo in the submission at the top of "Watch it"; the Kit 11 line at 261 as built).
+    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 270).filter((l) => !l.startsWith("**Built on Airwallex.**") && !l.startsWith("[![")).join("\n")); // 17 Nov, owner: the badges at the very top, right under the title, so they are left out here
     // Since 13 Nov (the enterprise README): what Purser is in README_WHAT; the form and the deck keep WHAT_IT_IS. Since
     // 15 Nov (clarity) README_WHAT is the idea in one sentence, then the three links; the first sentence follows the Kit 11
     // table, under "At a glance".
-    expect(top.startsWith(`${README_WHAT} Try it in 2 minutes · Watch the film · Verify a payment yourself`)).toBe(true);
+    // 18 Nov: the demo in the submission (3:15) replaces the film in the links line; the film stays under "Watch it".
+    expect(top.startsWith(`${README_WHAT} Try it in 2 minutes · Watch the demo (3:15) · Verify a payment yourself`)).toBe(true);
     expect(readme.indexOf(DIFFERENTIATORS[0])).toBeGreaterThan(readme.indexOf("## Kit 11, step by step"));
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
     // (TRY_IT's 2 minutes), the film (the tour's button went with the tour, 13 Nov, evening).

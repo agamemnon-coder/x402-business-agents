@@ -35,10 +35,11 @@ describe("README badges", () => {
   // idea replaces them: Try on /try, the film (the walkthrough on YouTube), and the README's own offline check. The
   // trailer stays in "Watch it", /proof in the live demo's line.
   // 17 Nov, owner: the badges at the very top, so the three links now come under them.
-  it("puts three links under the badges: Try on /try, the film, verify it yourself", () => {
+  // 18 Nov: the demo in the submission (3:15) replaces the film as the middle link; the film stays under "Watch it".
+  it("puts three links under the badges: Try on /try, the demo, verify it yourself", () => {
     const links = readme.split("\n").find((l) => l.startsWith("**[Try it in 2 minutes]")) ?? "";
-    expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try", "https://youtu.be/PNLuqhRzVfE", "#verify-it-yourself-in-3-commands"]);
-    expect([...links.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Try it in 2 minutes", "Watch the film", "Verify a payment yourself"]);
+    expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try", "https://youtu.be/gEUm8RlhZac", "#verify-it-yourself-in-3-commands"]);
+    expect([...links.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Try it in 2 minutes", "Watch the demo (3:15)", "Verify a payment yourself"]);
     expect(readme).toContain("\n## Verify it yourself in 3 commands\n");
     expect(readme.indexOf(links)).toBeGreaterThan(readme.indexOf(badgeLine));
     expect(readme).toContain("(https://youtu.be/n3HLVGROJc4)");
