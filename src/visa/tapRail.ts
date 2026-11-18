@@ -45,7 +45,7 @@ export interface TapSigner { agent: string; keyId: string; privateKey: KeyObject
 
 /** The agent's TAP key from its key file (written by npm run visa -- setup, outside this repo, 0600). */
 export function loadTapSigner(agent: string, file = keyPath(`tap-${agent}.key.json`)): TapSigner {
-  const k = JSON.parse(readFileSync(file, "utf8")) as { keyid: string; privateJwk: import("node:crypto").JsonWebKey };
+  const k = JSON.parse(readFileSync(file, "utf8")) as { keyid: string; privateJwk: import("node:crypto").webcrypto.JsonWebKey };
   const privateKey = createPrivateKey({ key: k.privateJwk, format: "jwk" });
   if (privateKey.asymmetricKeyType !== "ed25519") throw new Error(`the TAP key of the ${agent} agent is not Ed25519`);
   return { agent, keyId: k.keyid, privateKey };

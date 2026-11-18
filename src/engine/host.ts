@@ -252,7 +252,7 @@ export const REFUSED_OTHER_TERMS = "This signature is over other terms than the 
 export const REFUSED_TERMS_NOT_ON_SCREEN = "The terms sent with this approval are not the ones on screen. Nothing was paid.";
 const LIBRARY_REFUSALS: [RegExp, string][] = [
   [/^Unexpected authentication response challenge\b/, REFUSED_OTHER_TERMS],
-  [/^Unexpected (authentication response origin|cross-origin|top origin)\b|^Detected cross-origin\b/, "This signature was made on another website than this one. Nothing was paid."],
+  [/^Unexpected (authentication response origin|response origin|cross-origin|top origin)\b|^Detected cross-origin\b/, "This signature was made on another website than this one. Nothing was paid."],
   [/\bRP ID\b/, "This signature belongs to a passkey of another website. Nothing was paid."],
   [/^User (verification required|not present)\b/, "The passkey did not confirm it was you (Face ID, fingerprint or PIN). Nothing was paid."],
   [/^Response counter value\b/, "This signature is older than one this passkey already gave, so it may be a copy. Nothing was paid."],

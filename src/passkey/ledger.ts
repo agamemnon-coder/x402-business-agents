@@ -2,7 +2,8 @@
 // code, the phone creates a passkey against the window's challenge, and the runner pins the verified public key
 // here. Only the code's hash is stored, and one passkey is active at a time.
 
-import { createHash, createPublicKey, randomBytes, randomInt, type JsonWebKey } from "node:crypto";
+import { createHash, createPublicKey, randomBytes, randomInt, type webcrypto } from "node:crypto";
+type JsonWebKey = webcrypto.JsonWebKey;
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
