@@ -30,8 +30,8 @@ const BANNER = `<a href="https://kit11.max-31b.workers.dev/"><picture><source me
 
 const README_BUILT_ON = "**Built on Airwallex.** Purser calls Airwallex's API for a card per agent with the CFO's limits (Issuing), FX quotes inside the signed terms, transfers that carry the hash the CFO signed, the payee's bank check, Airwallex's own approval as a second lock, and signed webhooks (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).";
 
-/** The README's three links under the idea (15 Nov): Try, the film, and the offline check in the README itself. */
-const README_LINKS = "**[Try it in 2 minutes](https://kit11.max-31b.workers.dev/try)** · [Watch the film](https://youtu.be/PNLuqhRzVfE) · [Verify a payment yourself](#verify-it-yourself-in-3-commands)";
+/** The README's three links under the idea (15 Nov): Try, the film, and the offline check in the README itself. 18 Nov: the demo in the submission (3:15) replaces the film there; the film stays under "Watch it". */
+const README_LINKS = "**[Try it in 2 minutes](https://kit11.max-31b.workers.dev/try)** · [Watch the demo (3:15)](https://youtu.be/gEUm8RlhZac) · [Verify a payment yourself](#verify-it-yourself-in-3-commands)";
 
 describe("the first screen (section D, 6 Nov)", () => {
   it("is what Purser is, the three sentences, then Try it in a minute", () => {

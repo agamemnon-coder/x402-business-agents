@@ -69,7 +69,7 @@ describe("the final review (13 Nov)", () => {
     const readme = readmeFull();
     // The banner (PNG, drawn from scripts/readme-banner.html) and the phone frame of the recorded /try walk count too.
     // 14 Nov (Max): the two video thumbnails in the trailer's style are made by hand, not by npm run readme:shots.
-    const handMade = ["trailer-thumb.jpg", "walkthrough-thumb.jpg", "film-thumb.jpg" /* 15 Nov: the film's YouTube thumbnail */,
+    const handMade = ["trailer-thumb.jpg", "walkthrough-thumb.jpg", "film-thumb.jpg" /* 15 Nov: the film's YouTube thumbnail */, "demo-thumb.jpg" /* 18 Nov: the demo in the submission, its YouTube thumbnail */,
       "architecture-dark.svg", "architecture-light.svg", "deployment-dark.svg", "deployment-light.svg" /* 15 Nov: the Architecture section's two diagrams */,
       ...["stats", "terminal-verify", "system-map"].flatMap((n) => [`${n}-dark.svg`, `${n}-light.svg`]) /* 15 Nov (readme-wow): drawn by scripts/readme-wow-svg.ts */,
       "proof-strip-dark.svg", "proof-strip-light.svg" /* 17 Nov (owner): the proof strip under the title, drawn by scripts/readme-proof-strip.ts */,

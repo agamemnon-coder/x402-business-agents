@@ -10,7 +10,7 @@
 
 **AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey, and one changed cent breaks the signature.**
 
-**[Try it in 2 minutes](https://kit11.max-31b.workers.dev/try)** · [Watch the film](https://youtu.be/PNLuqhRzVfE) · [Verify a payment yourself](#verify-it-yourself-in-3-commands)
+**[Try it in 2 minutes](https://kit11.max-31b.workers.dev/try)** · [Watch the demo (3:15)](https://youtu.be/gEUm8RlhZac) · [Verify a payment yourself](#verify-it-yourself-in-3-commands)
 
 | **The strongest proof, one click each** (test money) | Check it |
 |---|---|
@@ -111,6 +111,12 @@ CI runs these checks on every push; the CI badge at the top shows the result of 
 | `test/` | The tests (`npm test`) and the browser checks (`test/browser/`) |
 
 ## Watch it
+
+**[The demo (3:15)](https://youtu.be/gEUm8RlhZac)**, the video in the submission · test money only
+
+<a href="https://youtu.be/gEUm8RlhZac"><img src="docs/assets/readme/demo-thumb.jpg" alt="Purser: the demo on YouTube" width="100%"></a>
+
+Earlier videos:
 
 | [The film: Purser, under the hood (3:29)](https://youtu.be/PNLuqhRzVfE) · test money only | [The trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only |
 |---|---|
