@@ -610,7 +610,7 @@ public repository.
 | [p-icc] | Product page: Intelligent Commerce Connect |
 | [p-sandbox] | Intelligent Commerce Sandbox Sign up |
 | [a-index] | API Reference page |
-| [a-app] | API Reference page: its script, which holds the list of operations |
+| [a-app] | API Reference page: its script, which holds the list of operations. Read on 12 November as `static/js/main.BVga27j8.js`; the page now loads a newer build (`main.CoOTEp00.js` on 18 November), so the link goes to the page that loads it |
 | [s-init] | API Reference spec: Initiate a purchase intent |
 | [s-cred] | API Reference spec: Retrieve payment credentials |
 | [s-confirm] | API Reference spec: Confirm transaction events |
@@ -646,7 +646,7 @@ public repository.
 [p-icc]: https://developer.cybersource.com/products/intelligent_commerce.html
 [p-sandbox]: https://developer.cybersource.com/hello-world/agentic-sandbox.html
 [a-index]: https://developer.cybersource.com/api-reference-assets/index.html
-[a-app]: https://developer.cybersource.com/api-reference-assets/static/js/main.BVga27j8.js
+[a-app]: https://developer.cybersource.com/api-reference-assets/index.html
 [s-init]: https://developer.cybersource.com/api-reference-assets/specs/acp-swagger-purchase_intent-initiate-a-purchase-intent.json
 [s-cred]: https://developer.cybersource.com/api-reference-assets/specs/acp-swagger-payment_events-retrieve-payment-credentials.json
 [s-confirm]: https://developer.cybersource.com/api-reference-assets/specs/acp-swagger-payment_events-confirm-transaction-events.json

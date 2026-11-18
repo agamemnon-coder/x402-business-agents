@@ -3,7 +3,7 @@
 // back to GET where HEAD is refused, and reports a 429 as rate-limited. The real run is `npm run links:external`, once,
 // in Phase B; this test never uses the network.
 import { describe, expect, it } from "vitest";
-import { check, collect, MAX_REQUESTS, plan, priority, report, urlsIn } from "../scripts/linkcheck-external.js";
+import { check, collect, isApiEndpoint, MAX_REQUESTS, plan, priority, report, urlsIn } from "../scripts/linkcheck-external.js";
 
 describe("the external link check", () => {
   it("finds external URLs in Markdown and HTML, cleaned, without local, example or template hosts, and without fragments", () => {
@@ -32,7 +32,7 @@ describe("the external link check", () => {
     expect(md).toContain("**Failed:** 0");
   });
 
-  it("falls back to GET where HEAD is refused, counts both, and reports 404 as failed and 429 as rate-limited", async () => {
+  it("falls back to GET where HEAD is refused or answers 404, counts both, and reports a 404 on GET as failed and 429 as rate-limited", async () => {
     const seen: string[] = [];
     const f = (async (url: string, init: RequestInit) => {
       seen.push(`${init.method} ${url}`);
@@ -40,8 +40,24 @@ describe("the external link check", () => {
       return new Response(null, { status: s });
     }) as unknown as typeof fetch;
     const r = await check(["head-refused", "gone", "busy"].map((p) => ({ url: `https://x.dev/${p}`, where: ["README.md"] })), { fetch: f, concurrency: 1 });
-    expect(seen).toEqual(["HEAD https://x.dev/head-refused", "GET https://x.dev/head-refused", "HEAD https://x.dev/gone", "HEAD https://x.dev/busy"]);
-    expect(r.results.map((x) => [x.status, x.method, x.ok, x.note])).toEqual([[200, "GET", true, ""], [404, "HEAD", false, ""], [429, "HEAD", false, "rate-limited (not a dead link)"]]);
-    expect(r.requests).toBe(4);
+    expect(seen).toEqual(["HEAD https://x.dev/head-refused", "GET https://x.dev/head-refused", "HEAD https://x.dev/gone", "GET https://x.dev/gone", "HEAD https://x.dev/busy"]);
+    expect(r.results.map((x) => [x.status, x.method, x.ok, x.note])).toEqual([[200, "GET", true, ""], [404, "GET", false, ""], [429, "HEAD", false, "rate-limited (not a dead link)"]]);
+    expect(r.requests).toBe(5);
+  });
+
+  it("keeps a page whose host answers HEAD with 404 but GET with 200 (developer.visa.com does this, 18 Nov)", async () => {
+    const f = (async (_url: string, init: RequestInit) => new Response(null, { status: init.method === "HEAD" ? 404 : 200 })) as unknown as typeof fetch;
+    const r = await check([{ url: "https://developer.visa.com/docs/visa-intelligent-commerce/concepts", where: ["docs/claims.md"] }], { fetch: f });
+    expect(r.results.map((x) => [x.status, x.method, x.ok])).toEqual([[200, "GET", true]]);
+  });
+
+  it("reports the API endpoints the docs name as endpoints, not pages: any HTTP answer is ok, no answer still fails", async () => {
+    for (const u of ["https://api.cybersource.com/", "https://apitest.cybersource.com", "https://api.in.cybersource.com/", "https://api.sandbox.airwallex.com/api/v1", "https://api.sandbox.airwallex.com/oauth/token", "https://purser-try.max-31b.workers.dev/mcp"])
+      expect(isApiEndpoint(u), u).toBe(true);
+    for (const u of ["https://developer.cybersource.com/docs/x.md", "https://www.airwallex.com/docs/api", "https://purser-try.max-31b.workers.dev/try"])
+      expect(isApiEndpoint(u), u).toBe(false);
+    const f = (async (url: string) => { if (url.includes("down")) throw new Error("connect refused"); return new Response(null, { status: url.includes("cybersource") ? 404 : 403 }); }) as unknown as typeof fetch;
+    const r = await check([{ url: "https://api.cybersource.com/", where: ["docs/visa-icc.md"] }, { url: "https://api.sandbox.airwallex.com/api/v1", where: ["docs/airwallex.md"] }, { url: "https://api.sandbox.airwallex.com/down", where: ["docs/airwallex.md"] }], { fetch: f, concurrency: 1 });
+    expect(r.results.map((x) => [x.ok, x.note])).toEqual([[true, "API endpoint, not a page (answered 404)"], [true, "API endpoint, not a page (answered 403)"], [false, "network error (connect refused)"]]);
   });
 });

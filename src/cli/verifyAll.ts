@@ -200,24 +200,26 @@ function figures(pages: Record<string, string>) {
   const proof = text(proofHtml);
   const band = (html: string) => new Map([...html.matchAll(/data-count="(\d+)"[^>]*>[^<]*<\/span><\/b><small>([^<]+)<\/small>/g)].map((m) => [m[2]!.replace(/\s*↗$/, "").trim(), Number(m[1])]));
   const proofBand = band(proofHtml), homeBand = band(homeHtml);
+  // A band label can carry a scope after a comma ("233 Alta testnet transactions, all runs"): match the label itself.
+  const pick = (b: Map<string, number>, label: string) => b.get(label) ?? [...b].find(([k]) => k.startsWith(`${label},`))?.[1];
   const cmp = (what: string, expected: number | string, seen: number | string | undefined, source: string) =>
     add(G, seen === undefined ? "FAIL" : String(seen) === String(expected) ? "pass" : "FAIL", what, seen === undefined ? `not found on the page; the record gives ${expected}` : `page ${seen}, record ${expected}`, source);
   const inText = (t: string, re: RegExp) => { const m = re.exec(t); return m ? m[1]!.replace(/,/g, "") : undefined; };
 
   // The band: each figure recomputed here from the files, not with the page's own code (except where said).
   const ts = json<{ passed: number; failed: number }>("docs/assets/test-summary.json");
-  cmp("/proof: tests passing", ts.passed, proofBand.get("tests passing"), "docs/assets/test-summary.json (passed)");
+  cmp("/proof: tests passing", ts.passed, pick(proofBand, "tests passing"), "docs/assets/test-summary.json (passed)");
   add(G, ts.failed === 0 ? "pass" : "FAIL", "the last full test run had no failure", `failed ${ts.failed}`, "docs/assets/test-summary.json");
   const records = [...filesIn("docs/runs", /\.json$/), ...filesIn("docs/demo", /\.json$/)];
-  cmp("/proof: sandbox and testnet runs", liveRunCount(), proofBand.get("sandbox and testnet runs"), "/runs' rows (src/redesign/runs.ts liveRunCount)");
+  cmp("/proof: sandbox and testnet runs", liveRunCount(), pick(proofBand, "sandbox and testnet runs"), "/runs' rows (src/redesign/runs.ts liveRunCount)");
   // 15 Nov: one Airwallex count on /proof, the trail's (the page's own code: /airwallex/calls lists the same calls).
-  cmp(`/proof: ${AWX_CALLS_LABEL}`, apiTrail().calls, proofBand.get(AWX_CALLS_LABEL), "the Airwallex API trail of the run records (src/airwallex/apiTrail.ts, listed on /airwallex/calls)");
+  cmp(`/proof: ${AWX_CALLS_LABEL}`, apiTrail().calls, pick(proofBand, AWX_CALLS_LABEL), "the Airwallex API trail of the run records (src/airwallex/apiTrail.ts, listed on /airwallex/calls)");
   const tx = new Set<string>();
   for (const f of [...records, ...filesIn("docs/runs", /\.md$/)]) for (const m of read(f).matchAll(/testnet\.metalntwx\.com\/tx\/(0x[0-9a-f]{64})/g)) tx.add(m[1]!);
-  cmp("/proof: Alta testnet transactions", tx.size, proofBand.get("Alta testnet transactions"), "distinct explorer links in docs/runs and docs/demo, counted here");
+  cmp("/proof: Alta testnet transactions", tx.size, pick(proofBand, "Alta testnet transactions"), "distinct explorer links in docs/runs and docs/demo, counted here");
   const req = new Set<string>();
   for (const f of filesIn("docs", /\.jsonl?$/)) for (const m of read(f).matchAll(/\breq_011[A-Za-z0-9]{10,}/g)) req.add(m[0]);
-  cmp("/proof: Claude calls with request ids", req.size, proofBand.get("Claude calls with request ids"), "distinct req_011… ids in docs/**/*.json(l), counted here");
+  cmp("/proof: Claude calls with request ids", req.size, pick(proofBand, "Claude calls with request ids"), "distinct req_011… ids in docs/**/*.json(l), counted here");
   const refusals = new Set<string>();
   const walk = (o: unknown): void => {
     if (Array.isArray(o)) { o.forEach(walk); return; }
@@ -226,9 +228,9 @@ function figures(pages: Record<string, string>) {
     Object.values(o).forEach(walk);
   };
   for (const f of records) { try { walk(json(f)); } catch { /* not JSON */ } }
-  cmp("/proof: refusals on record", refusals.size, proofBand.get("refusals on record"), "audit rows of a refusal, decline, rejection or fraud stop in docs/runs and docs/demo, counted here");
+  cmp("/proof: refusals on record", refusals.size, pick(proofBand, "refusals on record"), "audit rows of a refusal, decline, rejection or fraud stop in docs/runs and docs/demo, counted here");
   for (const [label, n] of homeBand) {
-    if (proofBand.has(label)) cmp(`Home: ${label}`, proofBand.get(label)!, n, "the same figure on /proof");
+    if (proofBand.has(label)) cmp(`Home: ${label}`, pick(proofBand, label)!, n, "the same figure on /proof");
   }
 
   // The partner tiles and the note above them: they must add up.
@@ -240,7 +242,7 @@ function figures(pages: Record<string, string>) {
   else {
     cmp("/proof: the partner tiles add up to the note's count", tileSum, Number(note[2]), `the tiles: ${tiles.map(([n, c]) => `${n} ${c}`).join(", ")}`);
     cmp("/proof: live runs = tiles + the main run + on /visa", tileSum + 1 + Number(note[3] ?? 0), Number(note[1]), "/proof");
-    cmp("/proof: the note's live runs = the band's", proofBand.get("sandbox and testnet runs") ?? -1, Number(note[1]), "/proof");
+    cmp("/proof: the note's live runs = the band's", pick(proofBand, "sandbox and testnet runs") ?? -1, Number(note[1]), "/proof");
   }
 
   // The main run, from its record.

@@ -19,6 +19,17 @@ export interface Checked extends Found { status: number | null; method: "HEAD" |
 /** Hosts never asked: local, example and placeholder hosts, and the deployed site itself (served by the offline judge). */
 const SKIP_HOST = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$|(^|\.)example(\.|$)|\.invalid$|\.test$|\.local$/i;
 
+/**
+ * The API endpoints the docs name (hosts and paths a program calls, not pages a person opens). An endpoint is up when it
+ * answers at all: a 403, 404 or 405 to a bare HEAD or GET is how an API root or a POST-only route answers.
+ */
+const API_ENDPOINTS = [
+  /^https:\/\/api(\.in|test)?\.cybersource\.com\/?$/,           // Cybersource's API hosts (docs/visa-icc.md)
+  /^https:\/\/api\.sandbox\.airwallex\.com\//,                   // the Airwallex sandbox API (docs/airwallex.md, docs/real-customers.md)
+  /^https:\/\/purser-try\.max-31b\.workers\.dev\/mcp$/,            // the MCP endpoint, POST only (docs/connect-claude.md)
+];
+export function isApiEndpoint(url: string): boolean { return API_ENDPOINTS.some((re) => re.test(url)); }
+
 /** The external http(s) URLs in a text (Markdown or HTML), cleaned of trailing punctuation; placeholders skipped. */
 export function urlsIn(text: string): string[] {
   const out = new Set<string>();
@@ -56,7 +67,7 @@ export function plan(found: Found[]): Found[] {
 }
 
 /**
- * Asks each URL once with HEAD, then with GET when the host refuses HEAD (403, 405, 501) or fails it; never more than
+ * Asks each URL once with HEAD, then with GET when the host refuses HEAD (403, 404, 405, 501) or fails it; never more than
  * `budget` requests in all. A status below 400 is ok; 429 is reported as rate-limited, not as a dead link.
  */
 export async function check(ask: Found[], o: { fetch?: typeof fetch; budget?: number; timeoutMs?: number; concurrency?: number } = {}): Promise<{ results: Checked[]; requests: number }> {
@@ -81,10 +92,13 @@ export async function check(ask: Found[], o: { fetch?: typeof fetch; budget?: nu
       if (requests >= budget) { results[i] = { ...a, status: null, method: null, ok: false, note: "not asked: budget spent" }; continue; }
       let method: "HEAD" | "GET" = "HEAD";
       let r = await one("HEAD", a.url);
-      if (typeof r !== "number" || [403, 405, 501].includes(r)) { method = "GET"; r = await one("GET", a.url); }
+      // 404 too: some hosts answer HEAD with 404 for a page GET serves (developer.visa.com, 18 Nov).
+      if (typeof r !== "number" || [403, 404, 405, 501].includes(r)) { method = "GET"; r = await one("GET", a.url); }
       const status = typeof r === "number" ? r : null;
-      const ok = status !== null && status < 400;
-      results[i] = { ...a, status, method: status === null && r === "budget spent" ? null : method, ok, note: status === null ? String(r) : status === 429 ? "rate-limited (not a dead link)" : "" };
+      const endpoint = isApiEndpoint(a.url) && status !== null;
+      const ok = endpoint || (status !== null && status < 400);
+      const note = status === null ? String(r) : endpoint ? `API endpoint, not a page (answered ${status})` : status === 429 ? "rate-limited (not a dead link)" : "";
+      results[i] = { ...a, status, method: status === null && r === "budget spent" ? null : method, ok, note };
     }
   };
   await Promise.all(Array.from({ length: Math.max(1, o.concurrency ?? 4) }, worker));
