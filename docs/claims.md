@@ -6,7 +6,7 @@ each earlier check as it was.
 
 ## The main run (3 November) and the site as it stands
 
-Last checked on 18 November 2026 (the Alta rows, against their run records; the rest on 14 November): this table, against the README, Home, the menu, the worst case
+Last checked on 18 November 2026 (every figure by `npm run verify-all`, 188 checks pass; before that the Alta rows on 15 November, against their run records, and the rest on 14 November): this table, against the README, Home, the menu, the worst case
 and llms.txt as they stand that day, each number against its run record. Two runs are named in it, and each row says
 which: **the main run** of 3 November (log `docs/runs/2026-11-03-main-run.md`, record `docs/demo/main-run.json`) and
 **awx-1**, the Airwallex-only run of 7 November (log `docs/runs/2026-11-07-awx-1.md`, record

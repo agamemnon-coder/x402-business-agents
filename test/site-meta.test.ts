@@ -155,7 +155,7 @@ describe("the submission pack (Q6, Q7)", () => {
     const claims = read("docs/claims.md");
     // The opening (the main run and the site as they stand) was checked on 14 November (with /visa as one story and
     // vic-5), its Alta rows again on 15 November (the Metal Award: /alta's facts); the sections below it on 7 November.
-    expect(claims).toContain("Last checked on 15 November 2026 (the Alta rows, against their run records; the rest on 14 November)");
+    expect(claims).toContain("Last checked on 18 November 2026 (every figure by `npm run verify-all`, 188 checks pass; before that the Alta rows on 15 November, against their run records, and the rest on 14 November)"); // 18 Nov: re-checked by verify-all during judging
     expect(claims).toContain("The sections below were checked on 7 November 2026");
     // The menu is Home, Try, Proof since Watch left it (12 Nov): the section's heading says so, and no "four tabs" heading is left.
     const from = claims.indexOf("## The tabs (Home, Try, Proof;");
