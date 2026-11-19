@@ -1,0 +1,550 @@
+{
+  "run": "airwallex-deep",
+  "ran_at": "2026-11-19T15:55:22.015Z",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "simulated": "The customer's bank transfer is made by the sandbox's simulation endpoint (POST /simulation/deposit/create): nobody paid anything. No passkey signs in this run: the revoked transfer carries the hash of its test terms, and the run plays the CFO withdrawing it.",
+  "command": "npm run airwallex:deep -- live",
+  "budget": {
+    "approved": 40,
+    "used": 17,
+    "status_429": 0
+  },
+  "totals": {
+    "rows": 15,
+    "live": 14,
+    "refused": 1,
+    "new_endpoints": 9,
+    "new_endpoints_live": 8
+  },
+  "results": [
+    {
+      "capability": "1 validate and revoke",
+      "method": "POST",
+      "endpoint": "/transfers/validate",
+      "function": "validateTransfer (src/airwallex/transferRevoke.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:22.821Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "Airwallex accepted the exact terms (EUR 1.00 to Bergtex Textil GmbH, SWIFT, for 2026-11-22) without creating a transfer",
+      "id": null,
+      "request_id": "a1a38646-4f43-462e-a7c5-743411cf38fb",
+      "awx_request_id": null,
+      "trace_id": "b6d7664e25984167aed3da01ed91c135"
+    },
+    {
+      "capability": "1 validate and revoke",
+      "method": "POST",
+      "endpoint": "/transfers/create",
+      "function": "createScheduledTransfer (src/airwallex/transferRevoke.ts)",
+      "http_status": 201,
+      "error_code": null,
+      "at": "2026-11-19T15:55:23.724Z",
+      "live": true,
+      "new_endpoint": false,
+      "outcome": "created for 2026-11-22: SCHEDULED",
+      "id": "c7e7d59b-e04e-40b7-b440-a67d3d259aba",
+      "request_id": "a1a38646-4f43-462e-a7c5-743411cf38fb",
+      "awx_request_id": null,
+      "trace_id": "38a3bdb67b6f42968ce7041c9e7c2178"
+    },
+    {
+      "capability": "1 validate and revoke",
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "function": "revokeScheduledTransfer (src/airwallex/transferRevoke.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:25.070Z",
+      "live": true,
+      "new_endpoint": false,
+      "outcome": "Airwallex answered 400 service_unavailable",
+      "id": null,
+      "request_id": "a1a38646-4f43-462e-a7c5-743411cf38fb",
+      "awx_request_id": null,
+      "trace_id": "13ffdcba840c4648bbf5b1bd01f3a59f"
+    },
+    {
+      "capability": "1 validate and revoke",
+      "method": "POST",
+      "endpoint": "/transfers/{id}/cancel",
+      "function": "revokeScheduledTransfer (src/airwallex/transferRevoke.ts)",
+      "http_status": 400,
+      "error_code": "service_unavailable",
+      "at": "2026-11-19T15:55:25.384Z",
+      "live": false,
+      "new_endpoint": true,
+      "outcome": "Airwallex answered 400 service_unavailable",
+      "id": null,
+      "request_id": "a1a38646-4f43-462e-a7c5-743411cf38fb",
+      "awx_request_id": null,
+      "trace_id": "9496acfefae748498b5b52af9a9f8cab"
+    },
+    {
+      "capability": "2 receivable: link, arrival, match",
+      "method": "POST",
+      "endpoint": "/pa/payment_links/create",
+      "function": "createInvoiceLink (src/airwallex/paymentLinks.ts)",
+      "http_status": 201,
+      "error_code": null,
+      "at": "2026-11-19T15:55:26.094Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "a single-use link for EUR 312.50, reference NW-AR-155521, active",
+      "id": "05845896-8f23-46de-b6a7-5f208d23e6aa",
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "fce33a40cd124a8a95bb4123ee45fc88"
+    },
+    {
+      "capability": "2 receivable: link, arrival, match",
+      "method": "GET",
+      "endpoint": "/pa/payment_links/{id}",
+      "function": "getLink (src/airwallex/paymentLinks.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:26.548Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "read back: exactly the invoice (amount, currency, reference, single use)",
+      "id": "05845896-8f23-46de-b6a7-5f208d23e6aa",
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "16a9206e8f9845518b741562f3fe3c93"
+    },
+    {
+      "capability": "2 receivable: link, arrival, match",
+      "method": "GET",
+      "endpoint": "/global_accounts",
+      "function": "the EUR Global Account (GET /global_accounts, src/proof/awxDeepLive.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:26.863Z",
+      "live": true,
+      "new_endpoint": false,
+      "outcome": "4 ACTIVE Global Accounts",
+      "id": null,
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "7e391520324341c3bb83f06d7060d346"
+    },
+    {
+      "capability": "2 receivable: link, arrival, match",
+      "method": "POST",
+      "endpoint": "/simulation/deposit/create",
+      "function": "simulateDeposit (src/airwallex/deposits.ts; the sandbox's simulation)",
+      "http_status": 201,
+      "error_code": null,
+      "at": "2026-11-19T15:55:27.235Z",
+      "live": true,
+      "new_endpoint": false,
+      "outcome": "SIMULATED by the sandbox: EUR 312.50 from Alpenhof Sport AG, reference NW-AR-155521 (PENDING)",
+      "id": "6dbf1889-c25e-4d49-94b6-fdafea2cc888",
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "13bc5397fb3441cdbd572bd03b44ff55"
+    },
+    {
+      "capability": "2 receivable: link, arrival, match",
+      "method": "GET",
+      "endpoint": "/global_accounts/{id}/transactions",
+      "function": "listGlobalAccountTransactions (src/airwallex/globalAccountTx.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:28.051Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "1 transaction(s) on the EUR account in the window; one arrival with this amount, currency and the payer's reference or name",
+      "id": "6dbf1889-c25e-4d49-94b6-fdafea2cc888",
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "930edec5212442b099e4fac74ed12b2c"
+    },
+    {
+      "capability": "2 receivable: link, arrival, match",
+      "method": "POST",
+      "endpoint": "/pa/payment_links/{id}/deactivate",
+      "function": "retireLink (src/airwallex/paymentLinks.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:28.396Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "the invoice is PAID: link deactivated (active: false)",
+      "id": "05845896-8f23-46de-b6a7-5f208d23e6aa",
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "4b95821e24244439b6227becb9464b64"
+    },
+    {
+      "capability": "3 agent card headroom",
+      "method": "GET",
+      "endpoint": "/issuing/cards",
+      "function": "the newest ACTIVE agent card (GET /issuing/cards, src/proof/awxDeepLive.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:28.710Z",
+      "live": true,
+      "new_endpoint": false,
+      "outcome": "19 ACTIVE card(s)",
+      "id": null,
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "e0db0cb58c9040119e2606f18d5fa410"
+    },
+    {
+      "capability": "4 balance history",
+      "method": "GET",
+      "endpoint": "/balances/history",
+      "function": "listBalanceHistory (src/airwallex/balanceHistory.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:29.058Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "94 statement line(s) posted 08:49–08:53 UTC",
+      "id": null,
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "6f0a7108bad14e3d8f5dcc2291e7922a"
+    },
+    {
+      "capability": "4 balance history",
+      "method": "GET",
+      "endpoint": "/balances/history",
+      "function": "listBalanceHistory, this run's window (src/airwallex/balanceHistory.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:29.659Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "1 line(s) in this run's window; the deposit: DEPOSIT EUR 312.50, balance after EUR 9803243.24; 0 under the cancelled transfer",
+      "id": null,
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "e03e7aa6a97f42e3ab607cead3f8bd5c"
+    },
+    {
+      "capability": "5 clean-up",
+      "method": "GET",
+      "endpoint": "/global_accounts/{id}",
+      "function": "closeUnusedGlobalAccount (src/airwallex/globalAccountTx.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:31.103Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "was ACTIVE (AUD); closed; read back: CLOSED",
+      "id": "9d19f0a2-983e-4ea5-8420-23f3acadc71c",
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "515e35bb3e6a40f9879fe33096a2145b"
+    },
+    {
+      "capability": "5 clean-up",
+      "method": "POST",
+      "endpoint": "/global_accounts/{id}/close",
+      "function": "closeUnusedGlobalAccount (src/airwallex/globalAccountTx.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:55:30.398Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "was ACTIVE (AUD); closed; read back: CLOSED",
+      "id": "9d19f0a2-983e-4ea5-8420-23f3acadc71c",
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "ca0d7388610a4193b62685249e5b4a53"
+    }
+  ],
+  "facts": {
+    "revoke": {
+      "terms": {
+        "requestId": "a1a38646-4f43-462e-a7c5-743411cf38fb",
+        "beneficiaryId": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "amountCents": 100,
+        "currency": "EUR",
+        "reference": "AWXDEEP-155521",
+        "reason": "professional_business_services",
+        "transferDate": "2026-11-22",
+        "approval_sha256": "af1cdd72a99e777ff3eab20fe1b43f9af15c0c724978835ca389584bd4c8723c"
+      },
+      "validated": true,
+      "scheduled": {
+        "id": "c7e7d59b-e04e-40b7-b440-a67d3d259aba",
+        "status": "SCHEDULED",
+        "transfer_date": "2026-11-22"
+      },
+      "before": null,
+      "after": null
+    },
+    "receivable": {
+      "invoice": {
+        "invoice_no": "NW-AR-155521",
+        "customer": "Alpenhof Sport AG",
+        "currency": "EUR",
+        "amount_cents": 31250,
+        "due_date": "2026-12-19"
+      },
+      "link": {
+        "id": "05845896-8f23-46de-b6a7-5f208d23e6aa",
+        "active_at_create": true,
+        "differences": [],
+        "active_after": false
+      },
+      "global_account_id": "4e868b5f-2b52-4539-9d8b-14809a65939c",
+      "deposit_id": "6dbf1889-c25e-4d49-94b6-fdafea2cc888",
+      "arrival": {
+        "id": "6dbf1889-c25e-4d49-94b6-fdafea2cc888",
+        "amount": "312.50",
+        "currency": "EUR",
+        "status": "SETTLED",
+        "why": "one arrival with this amount, currency and the payer's reference or name"
+      },
+      "matched": {
+        "outcome": "MATCHED",
+        "invoice_no": "NW-AR-155521",
+        "detail": "NW-AR-155521 from Alpenhof Sport AG paid in full, 312.50 EUR"
+      },
+      "statement_line": "DEPOSIT +EUR 312.50 (balance after EUR 9803243.24)"
+    },
+    "card": null,
+    "statement": {
+      "window": {
+        "from": "2026-11-19T08:49:00+0000",
+        "to": "2026-11-19T08:53:00+0000"
+      },
+      "lines": 94,
+      "continuity": {
+        "currencies": {
+          "EUR": {
+            "lines": 76,
+            "links": 75,
+            "opening": "EUR 9839230.39",
+            "closing": "EUR 9810652.58"
+          },
+          "USD": {
+            "lines": 18,
+            "links": 17,
+            "opening": "USD 9994678.31",
+            "closing": "USD 9988251.37"
+          }
+        },
+        "links": 92,
+        "breaks": [
+          {
+            "currency": "USD",
+            "lineId": "01a1f2ff-7af3-7b46-a285-3fd5ac3554a5",
+            "postedAt": "2026-11-19T16:49:51+0800",
+            "expected": "USD 9994630.19",
+            "actual": "USD 9994582.07"
+          },
+          {
+            "currency": "USD",
+            "lineId": "01a1f2ff-a993-7545-a54b-2993475b278b",
+            "postedAt": "2026-11-19T16:50:03+0800",
+            "expected": "USD 9994026.81",
+            "actual": "USD 9994582.07"
+          },
+          {
+            "currency": "USD",
+            "lineId": "01a1f2ff-a992-7cd5-8b33-5841d1d736fd",
+            "postedAt": "2026-11-19T16:50:03+0800",
+            "expected": "USD 9994859.70",
+            "actual": "USD 9994304.44"
+          },
+          {
+            "currency": "USD",
+            "lineId": "01a1f2ff-e20f-74eb-bcc2-5c2a897612b9",
+            "postedAt": "2026-11-19T16:50:18+0800",
+            "expected": "USD 9990173.30",
+            "actual": "USD 9994304.44"
+          },
+          {
+            "currency": "USD",
+            "lineId": "01a1f2ff-e20f-74eb-bcc2-5c2a897612b6",
+            "postedAt": "2026-11-19T16:50:18+0800",
+            "expected": "USD 9996370.01",
+            "actual": "USD 9992238.87"
+          },
+          {
+            "currency": "USD",
+            "lineId": "01a1f300-447e-791b-8642-209c36be1c76",
+            "postedAt": "2026-11-19T16:50:43+0800",
+            "expected": "USD 9990982.77",
+            "actual": "USD 9992238.87"
+          },
+          {
+            "currency": "USD",
+            "lineId": "01a1f300-447e-791b-8642-209c36be1c73",
+            "postedAt": "2026-11-19T16:50:43+0800",
+            "expected": "USD 9992866.92",
+            "actual": "USD 9991610.82"
+          },
+          {
+            "currency": "USD",
+            "lineId": "01a1f300-b576-7235-848a-5fb333670f07",
+            "postedAt": "2026-11-19T16:51:12+0800",
+            "expected": "USD 9991055.56",
+            "actual": "USD 9991610.82"
+          },
+          {
+            "currency": "USD",
+            "lineId": "01a1f300-b576-7235-848a-5fb333670f04",
+            "postedAt": "2026-11-19T16:51:12+0800",
+            "expected": "USD 9991888.45",
+            "actual": "USD 9991333.19"
+          },
+          {
+            "currency": "USD",
+            "lineId": "01a1f301-2482-7076-bed7-72a60fea4947",
+            "postedAt": "2026-11-19T16:51:40+0800",
+            "expected": "USD 9985169.55",
+            "actual": "USD 9991333.19"
+          },
+          {
+            "currency": "USD",
+            "lineId": "01a1f301-2482-7076-bed7-72a60fea4944",
+            "postedAt": "2026-11-19T16:51:40+0800",
+            "expected": "USD 9994415.01",
+            "actual": "USD 9988251.37"
+          }
+        ]
+      },
+      "checked": 42,
+      "agree": 42,
+      "differences": [],
+      "fee_lines": 35
+    },
+    "cleanup": {
+      "global_account_id": "9d19f0a2-983e-4ea5-8420-23f3acadc71c",
+      "before": "ACTIVE",
+      "after": "CLOSED"
+    }
+  },
+  "calls": [
+    {
+      "at": "2026-11-19T15:55:22.031Z",
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "trace_id": "520cfd92169944d4b6ca5a2f27ecfc01"
+    },
+    {
+      "at": "2026-11-19T15:55:22.821Z",
+      "method": "POST",
+      "endpoint": "/transfers/validate",
+      "status": 200,
+      "trace_id": "b6d7664e25984167aed3da01ed91c135"
+    },
+    {
+      "at": "2026-11-19T15:55:23.724Z",
+      "method": "POST",
+      "endpoint": "/transfers/create",
+      "status": 201,
+      "trace_id": "38a3bdb67b6f42968ce7041c9e7c2178"
+    },
+    {
+      "at": "2026-11-19T15:55:25.070Z",
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "trace_id": "13ffdcba840c4648bbf5b1bd01f3a59f"
+    },
+    {
+      "at": "2026-11-19T15:55:25.384Z",
+      "method": "POST",
+      "endpoint": "/transfers/{id}/cancel",
+      "status": 400,
+      "trace_id": "9496acfefae748498b5b52af9a9f8cab",
+      "code": "service_unavailable"
+    },
+    {
+      "at": "2026-11-19T15:55:26.094Z",
+      "method": "POST",
+      "endpoint": "/pa/payment_links/create",
+      "status": 201,
+      "trace_id": "fce33a40cd124a8a95bb4123ee45fc88"
+    },
+    {
+      "at": "2026-11-19T15:55:26.548Z",
+      "method": "GET",
+      "endpoint": "/pa/payment_links/{id}",
+      "status": 200,
+      "trace_id": "16a9206e8f9845518b741562f3fe3c93"
+    },
+    {
+      "at": "2026-11-19T15:55:26.863Z",
+      "method": "GET",
+      "endpoint": "/global_accounts",
+      "status": 200,
+      "trace_id": "7e391520324341c3bb83f06d7060d346"
+    },
+    {
+      "at": "2026-11-19T15:55:27.235Z",
+      "method": "POST",
+      "endpoint": "/simulation/deposit/create",
+      "status": 201,
+      "trace_id": "13bc5397fb3441cdbd572bd03b44ff55"
+    },
+    {
+      "at": "2026-11-19T15:55:28.051Z",
+      "method": "GET",
+      "endpoint": "/global_accounts/{id}/transactions",
+      "status": 200,
+      "trace_id": "930edec5212442b099e4fac74ed12b2c"
+    },
+    {
+      "at": "2026-11-19T15:55:28.396Z",
+      "method": "POST",
+      "endpoint": "/pa/payment_links/{id}/deactivate",
+      "status": 200,
+      "trace_id": "4b95821e24244439b6227becb9464b64"
+    },
+    {
+      "at": "2026-11-19T15:55:28.710Z",
+      "method": "GET",
+      "endpoint": "/issuing/cards",
+      "status": 200,
+      "trace_id": "e0db0cb58c9040119e2606f18d5fa410"
+    },
+    {
+      "at": "2026-11-19T15:55:29.058Z",
+      "method": "GET",
+      "endpoint": "/balances/history",
+      "status": 200,
+      "trace_id": "6f0a7108bad14e3d8f5dcc2291e7922a"
+    },
+    {
+      "at": "2026-11-19T15:55:29.659Z",
+      "method": "GET",
+      "endpoint": "/balances/history",
+      "status": 200,
+      "trace_id": "e03e7aa6a97f42e3ab607cead3f8bd5c"
+    },
+    {
+      "at": "2026-11-19T15:55:30.024Z",
+      "method": "GET",
+      "endpoint": "/global_accounts/{id}",
+      "status": 200,
+      "trace_id": "6799711d0bd94159b4f3e1a2c7ea1cf9"
+    },
+    {
+      "at": "2026-11-19T15:55:30.398Z",
+      "method": "POST",
+      "endpoint": "/global_accounts/{id}/close",
+      "status": 200,
+      "trace_id": "ca0d7388610a4193b62685249e5b4a53"
+    },
+    {
+      "at": "2026-11-19T15:55:31.103Z",
+      "method": "GET",
+      "endpoint": "/global_accounts/{id}",
+      "status": 200,
+      "trace_id": "515e35bb3e6a40f9879fe33096a2145b"
+    }
+  ]
+}
