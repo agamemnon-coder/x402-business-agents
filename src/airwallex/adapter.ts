@@ -135,14 +135,25 @@ export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
 
   async usdGlobalAccountId(): Promise<string> {
     if (this.usdAccount) return this.usdAccount;
+    const usd = (await this.activeGlobalAccounts()).find((g) => g.currencies.includes("USD"));
+    if (usd) return (this.usdAccount = usd.id);
+    return (this.usdAccount = (await this.createGlobalAccount({ currency: "USD", countryCode: "US", nickName: "Northwind USD" })).id);
+  }
+
+  /** The ACTIVE Global Accounts, each with the currencies it supports or was opened for. */
+  async activeGlobalAccounts(): Promise<{ id: string; currencies: string[] }[]> {
     type GA = { id: string; status: string; supported_features?: { currency: string; type?: string }[]; required_features?: { currency: string }[] };
     const list = await this.api.call<{ items: GA[] }>("GET", "/global_accounts", undefined, { status: "ACTIVE", page_size: "100" });
-    const usd = list.items.find((g) => g.status === "ACTIVE" && [...(g.supported_features ?? []), ...(g.required_features ?? [])].some((f) => f.currency === "USD"));
-    if (usd) return (this.usdAccount = usd.id);
-    const created = await this.api.call<GA>("POST", "/global_accounts/create", {
-      request_id: randomUUID(), country_code: "US", nick_name: "Northwind USD", required_features: [{ currency: "USD", transfer_method: "LOCAL" }],
+    return list.items.filter((g) => g.status === "ACTIVE")
+      .map((g) => ({ id: g.id, currencies: [...new Set([...(g.supported_features ?? []), ...(g.required_features ?? [])].map((f) => f.currency))] }));
+  }
+
+  /** A new Global Account that receives `currency` by local transfer (the create the USD lookup above makes when none is ACTIVE). */
+  async createGlobalAccount(a: { currency: string; countryCode: string; nickName: string }): Promise<{ id: string; status: string }> {
+    const created = await this.api.call<{ id: string; status: string }>("POST", "/global_accounts/create", {
+      request_id: randomUUID(), country_code: a.countryCode, nick_name: a.nickName, required_features: [{ currency: a.currency, transfer_method: "LOCAL" }],
     });
-    return (this.usdAccount = created.id);
+    return { id: created.id, status: created.status };
   }
 
   async findDepositsByReference(reference: string, since: string): Promise<Deposit[]> {

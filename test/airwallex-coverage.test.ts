@@ -100,6 +100,19 @@ describe("recordMentions: the calls a run record holds", () => {
     expect(recordDate({}, "docs/runs/2026-11-13-x.json")).toBe("2026-11-13");
     expect(recordMentions({ endpoint: "GET /balances/current" }, "docs/runs/undated.json")).toEqual([]);
   });
+  it("counts a line that carries its HTTP answer only when Airwallex answered 2xx or 3xx", () => {
+    const rec = { ran_at: "2026-11-19T09:00:00Z", calls: [
+      { at: "2026-11-19T09:00:01Z", method: "GET", endpoint: "/accounts", status: 200 },
+      { at: "2026-11-19T09:00:02Z", method: "POST", endpoint: "/issuing/cardholders/create", status: 403, code: "feature_not_enabled" },
+      { at: "2026-11-19T09:00:03Z", method: "GET", endpoint: "/batch_transfers/{id}", status: 0 },
+      { at: "2026-11-19T09:00:04Z", method: "POST", endpoint: "/transfers/create", status: "PAID" },
+    ], results: [
+      { method: "POST", endpoint: "/webhooks/create", http_status: 201 },
+      { method: "POST", endpoint: "/hosted_flows/{id}/authorize", http_status: null },
+      { method: "GET", endpoint: "/deposits/{id}", http_status: 404 },
+    ] };
+    expect(recordMentions(rec, "docs/runs/r.json").map((x) => `${x.method} ${x.path}`)).toEqual(["GET /accounts", "POST /transfers/create", "POST /webhooks/create"]);
+  });
 });
 
 describe("classify: one row per endpoint, the strongest evidence wins", () => {
