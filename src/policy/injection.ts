@@ -5,6 +5,7 @@
 
 import { CONFUSABLES } from "./fraudCore.js";
 import { approvalClaimInAnyLanguage, instructionInAnyLanguage } from "./multilingual.js";
+import { withoutTypography } from "./scripts.js";
 
 export type InjectionKind = "hidden_characters" | "instruction" | "approval_claim";
 
@@ -44,7 +45,34 @@ const SCRIPT_JOINER = new RegExp(JOINING_SCRIPTS.map((sc) => {
  * Latin letters, "Ig\u200Dnore"; beside a space or a digit; between two scripts) they change nothing a person sees and are
  * still hidden characters.
  */
-const withoutScriptJoiners = (line: string) => line.replace(SCRIPT_JOINER, "");
+/**
+ * The scripts written without spaces between words, whose writers put a zero-width space there so that lines can break
+ * (Thai, Lao, Khmer, Myanmar, Tibetan, Javanese, Balinese, and Chinese and Japanese text): 19 Nov, after the held-out eval
+ * v7, v7-clean-angkor-khmer-zwsp, a Khmer thank-you written so was held as hidden characters.
+ */
+const NO_SPACE_SCRIPTS = ["Thai", "Lao", "Khmer", "Myanmar", "Tibetan", "Javanese", "Balinese", "Sundanese", "Tai_Tham", "New_Tai_Lue", "Han", "Hiragana", "Katakana"];
+/** A zero-width space between two characters (letters, marks, digits or punctuation) of one such script. */
+const SCRIPT_ZWSP = new RegExp(NO_SPACE_SCRIPTS.map((sc) => {
+  const ch = `[[\\p{L}\\p{M}\\p{N}\\p{P}]&&\\p{Script_Extensions=${sc}}]`;
+  return `(?<=${ch})\u200B(?=${ch})`;
+}).join("|"), "gv");
+/** Letters of the scripts written right to left. */
+const RTL_LETTER = /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Samaritan}\p{Script=Mandaic}\p{Script=Adlam}]/u;
+/**
+ * The left-to-right, right-to-left and Arabic letter marks (U+200E, U+200F, U+061C) in a line with right-to-left letters,
+ * where editors put them to keep a Latin number or name in order (19 Nov, after eval v7, v7-clean-khaleej-rtl-marks), but
+ * not inside a Latin word or a number ("IB\u200EAN", "FR76\u200E3000"), where they only split what a screen reads.
+ */
+const BIDI_MARK = /(?<![\p{Script=Latin}\p{Nd}])[\u200E\u200F\u061C]|[\u200E\u200F\u061C](?![\p{Script=Latin}\p{Nd}])/gu;
+/** A soft hyphen between two digits: no language hyphenates a number, so it only splits an account or an amount. */
+const SPLIT_NUMBER = /\p{Nd}\u00AD+(?=\p{Nd})/u;
+const withoutScriptJoiners = (line: string) => {
+  const own = line.replace(SCRIPT_JOINER, "").replace(SCRIPT_ZWSP, "");
+  // The marks themselves are no letters of the line (the Arabic letter mark is in the Arabic script).
+  return RTL_LETTER.test(line.replace(/\p{Cf}/gu, "")) ? own.replace(BIDI_MARK, "") : own;
+};
+/** Whether a line carries characters no one sees where its scripts do not need them. */
+const hiddenIn = (line: string) => HIDDEN.test(withoutScriptJoiners(line)) || SPLIT_NUMBER.test(line);
 
 /** The text as a person sees it: every zero-width, direction and tag character taken out. */
 export const visibleText = (text: string): string => text.replace(HIDDEN_ALL, "");
@@ -135,15 +163,18 @@ const quoted = (line: string) => [...line.matchAll(/"([^"\n]{3,})"|\u201C([^\u20
 
 /** What one line, as written, is: an instruction, an approval claim, or nothing (hidden characters are looked for apart). */
 const kindOf = (line: string): InjectionKind | null => {
-  for (const v of [line, foldForScreen(line), ...quoted(line)]) {
+  // 19 Nov (after the held-out eval v7, v7-inject-soft-hyphen: "Ig\u00ADnore all previous in\u00ADstructions" was paid): the
+  // words as a person reads them, without soft hyphens, zero-width characters, direction marks or tatweel inside them.
+  const seen = withoutTypography(line);
+  for (const v of new Set([line, seen, foldForScreen(seen), ...quoted(seen)])) {
     if (INSTRUCTION.some((re) => re.test(v))) return "instruction";
     if (APPROVAL_CLAIM.test(v) || APPROVED_ROMANCE.test(v)) return "approval_claim";
   }
   // 19 Nov, after the held-out eval v5 (docs/evals/adversarial-v5.md: orders in Chinese, Japanese and Arabic were paid,
   // because every list above is written in Latin letters with ASCII word boundaries): the same concepts in the other
   // languages and scripts suppliers write in (src/policy/multilingual.ts).
-  if (instructionInAnyLanguage(line)) return "instruction";
-  if (approvalClaimInAnyLanguage(line)) return "approval_claim";
+  if (instructionInAnyLanguage(seen)) return "instruction";
+  if (approvalClaimInAnyLanguage(seen)) return "approval_claim";
   return null;
 };
 
@@ -155,7 +186,7 @@ export function findInjections(text: string): InjectionFinding[] {
 function screen(text: string, depth: number): InjectionFinding[] {
   const out: InjectionFinding[] = [];
   for (const line of text.split("\n")) {
-    const kind: InjectionKind | null = HIDDEN.test(withoutScriptJoiners(line)) ? "hidden_characters" : kindOf(line);
+    const kind: InjectionKind | null = hiddenIn(line) ? "hidden_characters" : kindOf(line);
     if (kind) { out.push({ kind, excerpt: show(line) }); continue; }
     if (depth >= 2) continue;
     // 19 Nov, second round (eval v3, v3-inject-base64): a run of base64 that decodes to readable text is screened as text.

@@ -3,7 +3,7 @@
 // IBAN (Node's crypto in fraud.ts, WebCrypto in the Worker).
 
 import { BANK_CHANGE_ANY, BANK_DETAILS_CHANGED_ANY, BANK_UNCHANGED_ANY, bypassInAnyLanguage, CHANGE_NEGATED_ANY, fold, MESSENGER, PAY_ANY, PAY_OR_DETAILS_ANY, walletIn } from "./multilingual.js";
-import { canonicalName, mixedScriptWord, romanFold, scriptsIn, toLatin, transliterable } from "./scripts.js";
+import { canonicalName, mixedScriptWord, romanFold, scriptsIn, toLatin, toLatinVariants, transliterable, withoutTypography } from "./scripts.js";
 
 export type FraudCode =
   | "bank_details_changed" | "lookalike_vendor" | "mixed_scripts" | "account_name_mismatch" | "unknown_vendor"
@@ -55,7 +55,8 @@ export const CONFUSABLES: Readonly<Record<string, string>> = {
  * Latin letters outside a to z (ß, ø, ł) are dropped as before.
  */
 export function skeleton(name: string): string {
-  return [...name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\u03C2/g, "\u03C3")]
+  // 19 Nov (after eval v7): soft hyphens, zero-width characters, direction marks and tatweel set a name, they are no letters of it.
+  return [...withoutTypography(name).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\u03C2/g, "\u03C3")]
     .map((ch) => CONFUSABLES[ch] ?? ch)
     .filter((ch) => /[a-z0-9]/.test(ch) || (/\p{L}/u.test(ch) && !/\p{Script=Latin}/u.test(ch)))
     .join("");
@@ -94,7 +95,7 @@ export function legalName(name: string): string {
 
 /** A name's words as legalName reads them: lower case, no accents or dots, its legal form at the end dropped. */
 export function legalTokens(name: string): string[] {
-  const tokens = name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\./g, "").replace(/&/g, " & ").split(/[^\p{L}\p{N}&]+/u).filter(Boolean);
+  const tokens = withoutTypography(name).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\./g, "").replace(/&/g, " & ").split(/[^\p{L}\p{N}&]+/u).filter(Boolean);
   for (let changed = true; changed;) {
     changed = false;
     for (const form of LEGAL_FORMS) {
@@ -112,20 +113,39 @@ export function legalTokens(name: string): string[] {
 const COMPANY_WORDS: ReadonlySet<string> = new Set([
   "co", "corp", "corporation", "company", "inc", "ltd", "limited", "llc", "plc", "pvt", "pte", "private", "sdn", "bhd", "tbk", "pt", "cv", "jsc", "ojsc", "pjsc", "kk", "kabushiki", "kaisha",
   "yugen", "godo", "jusik", "hoesa", "chusik", "borisat", "jamkat", "sti", "as", "tnhh", "cty", "gmbh", "ag", "sa", "bv", "nv", "srl", "spa", "sas", "sarl", "ab", "oy", "aps",
+  // 19 Nov (after eval v7): the forms of more countries as banks print them in Latin letters (Baltic, Nordic, Balkan,
+  // Caucasus, Central and South Asian, Latin American), and the words a bank's holder field uses for a business.
+  "uab", "mb", "sia", "ou", "ehf", "hf", "sf", "kft", "zrt", "nyrt", "doo", "dd", "ad", "ood", "eood", "ead", "sro", "spol", "ltda", "sac", "saa", "eirl", "llp", "lp",
+  "shpk", "tov", "prat", "ooo", "zao", "oao", "pao", "xxk", "hhk", "jv", "fze", "fzco", "fzc", "fzllc", "wll", "spc", "saog", "psc", "pjsc", "plc", "gk", "yk", "pty",
+  "industries", "industry", "industrial", "trading", "traders", "enterprises", "enterprise", "group", "holdings", "holding", "manufacturing", "mills", "works", "exports", "imports",
+  "international", "intl", "services", "solutions", "logistics", "textile", "textiles", "partners", "associates", "firm", "agency", "cooperative", "coop",
 ]);
 /** Legal forms written in other scripts, and as banks write them in katakana, as they read after NFKC and in lower case. */
 const COMPANY_MARKS = [
   "有限公司", "股份公司", "公司", "株式会社", "有限会社", "合同会社", "(株)", "(有)", "주식회사", "유한회사", "(주)", "(유)", "บริษัท", "จำกัด", "ห้างหุ้นส่วน",
   "בע״מ", "בע\"מ", "בעמ", "חברה", "प्राइवेट लिमिटेड", "लिमिटेड", "प्रा. लि", "प्रा.लि", "شركة", "ش.م.م", "ذ.م.م", "مؤسسة", "شرکت", "ооо", "зао", "оао", "пао", "еоод", "оод", "еад", "тов",
   "α.ε.", "ε.π.ε.", "ι.κ.ε.", "công ty", "cổ phần", "a.ş.", "şti", "カ)", "(カ", "ユ)", "(ユ", "ド)", "(ド", "カブシキガイシャ", "カブシキカイシャ",
+  // 19 Nov (after eval v7, v7-name-angkor-person-holder and v7-name-addis-person-holder: the Khmer and Ethiopic companies'
+  // forms were not here, so a person's name as holder of their accounts on file was shown only). The legal forms and the
+  // word "company" in more scripts: Khmer, Ethiopic, Tamil, Bengali, Georgian, Armenian, Urdu, Sinhala, Burmese, Lao,
+  // Mongolian, Gujarati, Kannada, Malayalam, Telugu, Punjabi, Ukrainian, Kazakh. A name written with an abbreviation in
+  // its words ("ኃ/የተ/የግ/ማ", "ឯ.ក", "s.r.o.") is a company's too (namesACompany), whatever its script.
+  "ក្រុមហ៊ុន", "ឯ.ក", "សហគ្រាស", "ኃ/የተ/የግ/ማ", "ኃ.የተ.የግ.ማ", "አ.ማ", "ድርጅት", "ኩባንያ", "நிறுவனம்", "லிமிடெட்", "பிரைவேட்", "கம்பெனி",
+  "লিমিটেড", "প্রাইভেট", "কোম্পানি", "শিল্প", "შპს", "სს ", "კომპანია", "ՍՊԸ", "ՓԲԸ", "ԲԲԸ", "ընկերություն", "լիմիտեդ",
+  "کمپنی", "لمیٹڈ", "پرائیویٹ", "සමාගම", "(පුද්)", "පුද්ගලික", "ලිමිටඩ්", "ကုမ္ပဏီ", "လီမိတက်", "ບໍລິສັດ", "ຈຳກັດ", "ххк", "компани",
+  "કંપની", "લિમિટેડ", "પ્રાઇવેટ", "ಕಂಪನಿ", "ಲಿಮಿಟೆಡ್", "ಪ್ರೈವೇಟ್", "കമ്പനി", "ലിമിറ്റഡ്", "പ്രൈവറ്റ്", "కంపెనీ", "లిమిటెడ్", "ప్రైవేట్", "ਕੰਪਨੀ", "ਲਿਮਿਟੇਡ",
+  "тзов", "прат", "фоп", "товариство", "компанія", "компания", "фирма", "ჯგუფი",
 ];
+/** An abbreviation inside a word: letters with dots or slashes between them ("ኃ/የተ/የግ/ማ", "ឯ.ក", "s.r.o.", "ذ.م.م"), as legal forms are written. */
+const ABBREVIATED_FORM = /(?:^|\s)[\p{L}\p{M}]{1,4}[./](?:[\p{L}\p{M}]{1,4}[./]?)+(?=\s|$)/u;
 /**
  * Whether a name is a company's (19 Nov, after eval v6): a legal form at its end as legalName drops it, a company word
  * of the romanisations banks print ("Co., Ltd.", "K.K.", "Pvt", "Sdn Bhd"), or a legal form in its own script.
  */
 export function namesACompany(name: string): boolean {
-  const n = name.normalize("NFKC").toLowerCase();
-  if (COMPANY_MARKS.some((m) => n.includes(m))) return true;
+  const n = canonicalName(name).toLowerCase();
+  if (COMPANY_MARKS.some((m) => n.includes(m.toLowerCase()))) return true;
+  if (n.split(/\s+/).length >= 2 && ABBREVIATED_FORM.test(n)) return true;
   const raw = rawTokens(name);
   if (raw.some((t) => COMPANY_WORDS.has(t))) return true;
   return legalTokens(name).length < raw.length || ROMANISED_FORMS.has(raw.at(-1) ?? "");
@@ -170,17 +190,39 @@ const nameKey = (name: string) => {
  * account must still be the one on file (assessAgainst compares it).
  */
 export function sameName(a: string, b: string): boolean {
-  return legalName(a) === legalName(b) || nameKey(a) === nameKey(b) || nameKey(transliterate(a)) === nameKey(transliterate(b)) || sameRomanised(a, b);
+  return legalName(a) === legalName(b) || nameKey(a) === nameKey(b) || nameKey(transliterate(a)) === nameKey(transliterate(b)) || sameRomanised(a, b)
+    || (leadingForm(a) || leadingForm(b) ? sameName(withoutLeadingForm(a), withoutLeadingForm(b)) : false);
 }
+
+/**
+ * Legal forms written before the name, as Lithuanian (UAB), Latvian (SIA), Estonian (OÜ, AS), Swedish (AB), Indonesian
+ * (PT, CV), Ukrainian and Russian (ТОВ, ТзОВ, ПрАТ, ООО) companies write them (19 Nov, after eval v7: "TOV LVIVSKA
+ * TKANYNA" for "ТОВ «Львівська Тканина»"; legalName dropped legal forms only at the end).
+ */
+const LEADING_FORMS: ReadonlySet<string> = new Set(["uab", "ab", "mb", "sia", "as", "ou", "pt", "cv", "tov", "tzov", "prat", "ooo", "oao", "zao", "pao", "fop", "тов", "тзов", "прат", "ооо", "оао", "зао", "пао", "фоп"]);
+const leadingForm = (name: string) => { const t = rawTokens(name); return t.length > 1 && LEADING_FORMS.has(t[0]!); };
+/** A name without a legal form at its start (the words after it, as written). */
+const withoutLeadingForm = (name: string) => {
+  if (!leadingForm(name)) return name;
+  const plain = withoutTypography(name).normalize("NFKC");
+  return plain.replace(/^[\s\p{P}]*[\p{L}]+[.\s\p{P}]*/u, "").trim() || name;
+};
 
 /** Legal forms of Greek, Bulgarian, Russian, Ukrainian and Serbian companies, as they read in Latin letters (Α.Ε., ЕООД, ООО, ТОВ, Д.О.О.). */
 const ROMANISED_FORMS: ReadonlySet<string> = new Set(["ae", "epe", "ike", "oe", "ee", "eood", "ood", "ead", "ad", "et", "kd", "sd", "ooo", "oao", "zao", "pao", "ao", "tov", "pp", "doo"]);
 /** A name in Latin letters as romanFold reduces it, its legal form at the end dropped, with no spaces. */
 export function romanKey(name: string): string {
-  const t = legalTokens(toLatin(name));
+  return romanKeyOf(toLatin(name));
+}
+function romanKeyOf(latin: string): string {
+  const t = legalTokens(latin);
   while (t.length > 1 && ROMANISED_FORMS.has(t[t.length - 1]!)) t.pop();
+  // 19 Nov (after eval v7): and a form before the name ("TOV …", "ТОВ «…»").
+  while (t.length > 1 && (ROMANISED_FORMS.has(t[0]!) || LEADING_FORMS.has(t[0]!))) t.shift();
   return romanFold(t.filter((x, i) => !(i > 0 && i < t.length - 1 && AND_WORDS.has(x))).join("")).replace(/[^a-z0-9]/g, "");
 }
+/** Every key of a name's usual romanisations (toLatinVariants). */
+const romanKeys = (name: string) => new Set(toLatinVariants(name).map(romanKeyOf));
 /**
  * Whether two names, one of them in Greek or Cyrillic letters, are one name romanised (19 Nov, after eval v5: "TEKSTIL
  * PLOVDIV EOOD" at the IBAN on file was held as another holder than "Текстил Пловдив ЕООД"): only between Latin, Greek
@@ -190,8 +232,8 @@ export function romanKey(name: string): string {
  */
 function sameRomanised(a: string, b: string): boolean {
   if (!transliterable(a) || !transliterable(b) || !(greekOrCyrillic(a) || greekOrCyrillic(b))) return false;
-  const ka = romanKey(a);
-  return ka.length >= 3 && ka === romanKey(b);
+  const kb = romanKeys(b);
+  return [...romanKeys(a)].some((k) => k.length >= 3 && kb.has(k));
 }
 const greekOrCyrillic = (s: string) => { const x = scriptsIn(s); return x.has("Greek") || x.has("Cyrillic"); };
 /** Whether two names are written in the same alphabets. */
@@ -201,7 +243,7 @@ const sameScripts = (a: string, b: string) => {
 };
 
 /** A name's words as legalTokens reads them, its legal form kept. */
-const rawTokens = (name: string) => name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\./g, "").replace(/&/g, " & ").split(/[^\p{L}\p{N}&]+/u).filter(Boolean);
+const rawTokens = (name: string) => withoutTypography(name).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\./g, "").replace(/&/g, " & ").split(/[^\p{L}\p{N}&]+/u).filter(Boolean);
 
 /**
  * Whether a holder is the full name cut short by a bank's field (19 Nov, third round; eval v4, v4-name-lagerhaus-truncated:
@@ -428,7 +470,12 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
     // HAINING ROPE INDUSTRY CO., LTD.", a bank's "ﾔﾏﾄｾﾝｲ(ｶ") at the account on file is still shown only: the account is the
     // one on file and code cannot compare the letters. At a new or changed account there is no "shown only": another
     // holder holds the invoice (and the changed account blocks it) in any script.
-    const person = incomparable && namesACompany(expectedHolder) && !namesACompany(holder);
+    // 19 Nov (after the held-out eval v7, v7-name-angkor-person-holder and v7-name-addis-person-holder: "SOK DARA" and
+    // "ABEBE KEBEDE" at the accounts on file of a Khmer and an Ethiopic company were paid on a warning, as no company form
+    // in those scripts was known). Whatever the script: a supplier on file whose name code cannot read in Latin letters is
+    // taken to be a company (as suppliers on file are) unless its name is in Latin, Greek or Cyrillic letters and has no
+    // company form; a holder written with no company form in any script is then a person's name.
+    const person = incomparable && !namesACompany(holder) && (namesACompany(expectedHolder) || !transliterable(expectedHolder));
     signals.push(person
       ? { code: "account_name_mismatch", blocks: true, detail: `the account holder on the invoice is "${holder}", a name with no company form, at the account on file of the company ${expectedHolder}: a person's name as holder of a company's account`, asked: holder, on_file: expectedHolder }
       : incomparable
