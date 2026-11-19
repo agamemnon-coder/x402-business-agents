@@ -6,7 +6,7 @@ with an answer ready to paste: Met, Unmet or N/A, and an English justification w
 is not true today; where an answer turns into Met only after an owner action, both texts are given. The prefilled
 edit links are in [openssf-silver-links.md](openssf-silver-links.md). The criteria: <https://www.bestpractices.dev/en/criteria/1>.
 
-**Today (19 November 2026): 46 Met, 3 Unmet, 6 N/A.** Silver needs every MUST Met (or N/A where allowed); 1 MUST criterion is still Unmet: `signed_releases`, which turns Met with the v1.2.0 release. A SHOULD may stay Unmet with a justification, a SUGGESTED criterion may stay Unmet.
+**Today (19 November 2026): 47 Met, 2 Unmet, 6 N/A.** Every MUST is Met (or N/A where allowed). Unmet: `bus_factor` (SHOULD) and `version_tags_signed` (SUGGESTED), which silver allows. A SHOULD may stay Unmet with a justification, a SUGGESTED criterion may stay Unmet.
 
 ## Voor de eigenaar (Nederlands): wat jij moet doen
 
@@ -103,8 +103,7 @@ het plan staat in [GOVERNANCE.md](../../GOVERNANCE.md#continuity-if-the-maintain
 | Criterion | Level | Why | What turns it into Met |
 |---|---|---|---|
 | `bus_factor` | SHOULD | One maintainer: the bus factor is 1, and we say so. | A second maintainer joins (GOVERNANCE.md). Until then it stays Unmet with this justification, which a SHOULD allows. |
-| `signed_releases` | MUST | The signing release workflow exists but has not made a release yet. | The owner cuts v1.2.0 (step 3 above). |
-| `version_tags_signed` | SUGGESTED | The two milestone tags are unsigned. | v1.2.0 is a signed tag (step 3 above). SUGGESTED: Unmet does not block silver. |
+| `version_tags_signed` | SUGGESTED | The version tags are unsigned (v1.2.0 was made with its GitHub release). | The next tag is signed with `git tag -s`. SUGGESTED: Unmet does not block silver. |
 
 ## Every criterion
 
@@ -278,7 +277,7 @@ The instructions for change proposals say it: https://github.com/agamemnon-coder
 
 Maximally strict where practical: TypeScript strict with noUncheckedIndexedAccess and verbatimModuleSyntax (https://github.com/agamemnon-coder/x402-business-agents/blob/main/tsconfig.json); ESLint's and typescript-eslint's recommended rules plus no-explicit-any and no-unused-vars as errors (https://github.com/agamemnon-coder/x402-business-agents/blob/main/eslint.config.js); both fail CI.
 
-### Security (11 Met, 2 Unmet, 0 N/A)
+### Security (12 Met, 1 Unmet, 0 N/A)
 
 #### `implement_secure_design` (MUST): **Met**
 
@@ -312,21 +311,13 @@ All TLS connections use Node.js's or the Workers runtime's fetch, which verify t
 
 The certificate is verified during the TLS handshake, before any HTTP request is sent, so API keys and bearer tokens in request headers go only to a verified server; the relay's session cookie is HttpOnly, Secure and SameSite=Strict.
 
-#### `signed_releases` (MUST): **Unmet**
+#### `signed_releases` (MUST): **Met**
 
-Not yet: the release workflow that signs releases exists (https://github.com/agamemnon-coder/x402-business-agents/blob/main/.github/workflows/release.yml: Sigstore-signed SLSA provenance and SBOM attestations for the source tarball, SBOM and SHA256SUMS, with verification documented in https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/releasing.md#verifying-a-release), but no release has been made with it; the two releases so far (v1.0-submission, v1.1-submission) are unsigned hackathon milestones. The first signed release will be v1.2.0.
-
-After the owner action, **Met**:
-
-> Releases are signed by the release workflow (https://github.com/agamemnon-coder/x402-business-agents/blob/main/.github/workflows/release.yml): the source tarball, its CycloneDX SBOM and SHA256SUMS carry Sigstore-signed SLSA build provenance and an SBOM attestation, bound to this repository's workflow identity; the short-lived signing key is never on the download site. Users verify with gh attestation verify, as https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/releasing.md#verifying-a-release and https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security/README.md#verify-a-release document. First signed release: v1.2.0.
+> Releases are signed by the release workflow (https://github.com/agamemnon-coder/x402-business-agents/blob/main/.github/workflows/release.yml): the source tarball, its CycloneDX SBOM and SHA256SUMS carry Sigstore-signed SLSA build provenance and an SBOM attestation, bound to this repository's workflow identity; the short-lived signing key is never on the download site. Users verify with gh attestation verify, as https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/releasing.md#verifying-a-release and https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security/README.md#verify-a-release document. First signed release: v1.2.0. First signed release: https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.2.0
 
 #### `version_tags_signed` (SUGGESTED): **Unmet**
 
-Not yet: v1.0-submission and v1.1-submission are unsigned. From v1.2.0 every version tag is signed with the maintainer's key (git tag -s) and verifiable with git tag -v and the key on his GitHub account (https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/releasing.md#making-a-release).
-
-After the owner action, **Met**:
-
-> From v1.2.0 every version tag is signed (git tag -s) with the maintainer's key, published on his GitHub account, and verifiable with git tag -v (https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/releasing.md#verifying-a-release). The two hackathon milestone tags before it are unsigned and kept as submitted.
+The version tags (v1.0-submission, v1.1-submission, v1.2.0) are not GPG- or SSH-signed: v1.2.0 was created with its GitHub release. The release files themselves are signed (see signed_releases). Future tags will be signed with the maintainer's key (git tag -s), as https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/releasing.md describes.
 
 #### `input_validation` (MUST): **Met**
 
