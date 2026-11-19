@@ -15,6 +15,7 @@ import { enforceProposal } from "../ap/payerCore.js";
 import { parseApFallback, type ApReading } from "../ap/reading.js";
 import { openDb } from "../db/open.js";
 import { accountKey } from "../payouts/routes.js";
+import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SPLIT_DAYS, TWIN_DAYS } from "../config/checkNumbers.js";
 import { ADV_SUPPLIERS, ADV_V2_CASES, ADV_V2_CATEGORIES, invoiceCaseFor, paymentCaseFor, printed, readingOf, type AdvCase, type AdvCategory, type Truth } from "./adversarialV2Cases.js";
 import { alwaysPay } from "./scorecard.js";
 import { ALWAYS_PAY } from "./worstCaseWords.js";
@@ -204,6 +205,10 @@ export interface AdvReportOptions {
   before?: { result: Pick<AdvResult, "rows" | "totals" | "by_category">; ran_at: string; commit: string; record: string };
   /** Said at the top: whether the set is still held out, and why not when it is not. */
   held_out: string;
+  /** The held-out set that measures after this one's fixes, as a Markdown link ("[v3](adversarial-v3.md)"). */
+  next?: string;
+  /** What the fixes were, for the line before and after ("the fixes of 19 Nov"). Default: "the fixes". */
+  fixes?: string;
 }
 
 /** The report, as Markdown, from a result and where it came from (and, for v2, the record before the fixes). */
@@ -212,12 +217,13 @@ export function advMarkdown(r: AdvResult, meta: { ran_at: string; commit: string
   const cases = new Map(o.cases.map((k) => [k.id, k]));
   const arms = ADV_ARMS;
   const b = o.before;
+  const fixes = o.fixes ?? "the fixes";
   const file = (x: string) => x.replace("docs/evals/", "");
   const row = (label: string, f: (x: AdvTotals) => string | number) => b
     ? `| ${label} | ${f(b.result.totals.purser_script)} | ${f(t.purser_script)} | ${f(b.result.totals.purser_script_parser)} | ${f(t.purser_script_parser)} | ${f(t.no_rules)} |`
     : `| ${label} | ${arms.map((a) => f(t[a])).join(" | ")} |`;
   const head = b
-    ? `| | ${ADV_ARM_WORDS.purser_script}, before the fixes | ${ADV_ARM_WORDS.purser_script}, after | ${ADV_ARM_WORDS.purser_script_parser}, before | ${ADV_ARM_WORDS.purser_script_parser}, after | ${ADV_ARM_WORDS.no_rules} |\n|---|---|---|---|---|---|`
+    ? `| | ${ADV_ARM_WORDS.purser_script}, before ${fixes} | ${ADV_ARM_WORDS.purser_script}, after | ${ADV_ARM_WORDS.purser_script_parser}, before | ${ADV_ARM_WORDS.purser_script_parser}, after | ${ADV_ARM_WORDS.no_rules} |\n|---|---|---|---|---|---|`
     : `| | ${arms.map((a) => ADV_ARM_WORDS[a]).join(" | ")} |\n|---|${arms.map(() => "---").join("|")}|`;
   const perCat = ADV_V2_CATEGORIES.filter((c) => r.by_category[c]?.no_rules.cases).map((c) => {
     const x = r.by_category[c];
@@ -250,13 +256,13 @@ export function advMarkdown(r: AdvResult, meta: { ran_at: string; commit: string
   })();
   const beforeLine = b ? advLine(b.result.totals as Record<AdvArm, AdvTotals>) : "";
   const n = o.cases.length;
-  return `# Adversarial eval ${o.version}: ${n} invoices${b ? ", before and after the fixes" : ""}
+  return `# Adversarial eval ${o.version}: ${n} invoices${b ? `, before and after ${fixes}` : ""}
 
 ${o.held_out}
 
-${b ? `- **Before the fixes** (the held-out run, ${b.ran_at.slice(0, 10)}, commit ${b.commit.slice(0, 12)}): ${beforeLine}\n- **After the fixes** (no longer held out): ${advLine(t, "")}` : advLine(t)}
+${b ? `- **Before ${fixes}** (the held-out run, ${b.ran_at.slice(0, 10)}, commit ${b.commit.slice(0, 12)}): ${beforeLine}\n- **After ${fixes}** (no longer held out): ${advLine(t, "")}` : advLine(t)}
 
-${n} invoice cases written and committed before they were first run (commit ${o.cases_commit}, the case file ${o.case_file} alone), then run offline: no model, no network, no money. Each case is an invoice as printed, the fields a reader hands over, the world around it (suppliers on file, invoice history, balances), and its ground truth: pay (Purser may pay it alone), ask_cfo (it needs the CFO's signature) or hold (a person must look first; a reject counts as right too), with why. The truths say what a careful payables controller would want, not what Purser's code does, so where Purser has no rule the run shows the gap. ${b ? `The run before the fixes is kept as it was recorded: [${file(b.record)}](${file(b.record)}). This run was recorded` : "Recorded"} ${meta.ran_at}, commit ${meta.commit}${meta.dirty ? " (with uncommitted changes)" : ""}. The raw record, every row: [${file(meta.record)}](${file(meta.record)}). Run it again: \`${o.command}\`.
+${n} invoice cases written and committed before they were first run (commit ${o.cases_commit}, the case file ${o.case_file} alone), then run offline: no model, no network, no money. Each case is an invoice as printed, the fields a reader hands over, the world around it (suppliers on file, invoice history, balances), and its ground truth: pay (Purser may pay it alone), ask_cfo (it needs the CFO's signature) or hold (a person must look first; a reject counts as right too), with why. The truths say what a careful payables controller would want, not what Purser's code does, so where Purser has no rule the run shows the gap. ${b ? `The run before ${fixes} is kept as it was recorded: [${file(b.record)}](${file(b.record)}). This run was recorded` : "Recorded"} ${meta.ran_at}, commit ${meta.commit}${meta.dirty ? " (with uncommitted changes)" : ""}. The raw record, every row: [${file(meta.record)}](${file(meta.record)}). Run it again: \`${o.command}\`.
 
 ## Method
 
@@ -287,25 +293,25 @@ ${perCat}
 
 ## Split invoices
 
-Of the ${splits.length} split cases, ${splitStopped.length} were stopped with the script saying pay${splitRules ? ` (${splitRules})` : ""}; ${splits.length - splitStopped.length} were paid alone. possible_split is the rule added on 19 Nov (src/ap/checkerCore.ts): one supplier's invoices within 14 days, each within the limit, added up; past the limit the CFO decides. possible_duplicate catches a split into equal parts (the same total within 45 days) or nearly equal ones (within EUR 1.00 and 1%), and holds it for a person.
+Of the ${splits.length} split cases, ${splitStopped.length} were stopped with the script saying pay${splitRules ? ` (${splitRules})` : ""}; ${splits.length - splitStopped.length} were paid alone. possible_split is the rule added on 19 Nov (src/ap/checkerCore.ts): one supplier's invoices within ${SPLIT_DAYS} days (14 before the second round of fixes), each within the limit, added up; past the limit the CFO decides. possible_duplicate catches a split into equal parts (the same total within ${TWIN_DAYS} days) or nearly equal ones (within EUR ${(NEAR_TWIN_CENTS / 100).toFixed(2)} and ${NEAR_TWIN_PERCENT}%, dated within ${NEAR_TWIN_DAYS} days), and holds it for a person. These are the defaults; a company may set its own windows (src/config/checkNumbers.ts says why each).
 
 ## Purser's wrong payments, in short
 
 ${wrongShort}
 
-## Every miss: ${ADV_ARM_WORDS.purser_script}${b ? ", after the fixes" : ""}
+## Every miss: ${ADV_ARM_WORDS.purser_script}${b ? `, after ${fixes}` : ""}
 
 ${missTable(r, "purser_script", cases)}
 
-## Every miss: ${ADV_ARM_WORDS.purser_script_parser}${b ? ", after the fixes" : ""}
+## Every miss: ${ADV_ARM_WORDS.purser_script_parser}${b ? `, after ${fixes}` : ""}
 
 ${missTable(r, "purser_script_parser", cases)}
 ${b ? `
-## Every miss before the fixes: ${ADV_ARM_WORDS.purser_script} (the held-out run, as recorded)
+## Every miss before ${fixes}: ${ADV_ARM_WORDS.purser_script} (the held-out run, as recorded)
 
 ${missTable(b.result, "purser_script", cases)}
 ` : ""}
-## What stopped invoices (${ADV_ARM_WORDS.purser_script}${b ? ", after the fixes" : ""})
+## What stopped invoices (${ADV_ARM_WORDS.purser_script}${b ? `, after ${fixes}` : ""})
 
 ${rules}
 
@@ -317,7 +323,7 @@ ${every}
 
 ## What this does not prove
 
-- It is ${n} cases written by us, after reading Purser's code, so they are not blind to how Purser works; they were committed before the first run, and no case or truth changed after it.${b ? " The rules added on 19 Nov were written against this set's misses, so the after-fix numbers measure those fixes on the cases they were made for, not how Purser does on new invoices: that is what the next held-out set (v3) is for." : ""} It is no measure of every attack, nor of real supplier mail.
+- It is ${n} cases written by us, after reading Purser's code, so they are not blind to how Purser works; they were committed before the first run, and no case or truth changed after it.${b ? ` The rules of ${fixes} were written against this set's misses, so the after-fix numbers measure those fixes on the cases they were made for, not how Purser does on new invoices: that is what the next held-out set${o.next ? ` (${o.next})` : ""} is for.` : ""} It is no measure of every attack, nor of real supplier mail.
 - With a script in the model's place, Purser's code is all that decides. A model in the slot may hold what code lets through; this eval does not measure that.
 - Some truths are judgement calls (a polite overdue reminder is labelled pay; a lookalike name paid to the account on file is labelled hold). Each case says why.
 - No real money, no real bank, no phone: the payments are rows in test worlds, and the CFO's signature is not exercised here.
