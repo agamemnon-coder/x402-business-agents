@@ -278,7 +278,7 @@ Refused before anything was sent: P-0001: terms do not match the approved hash d
 
 ## The script again, on this commit
 
-The run above is kept as it was recorded on 2026-11-15. The same script, run again offline on the code as it is now (commit 05af1a1c8ba5; one run, no Claude): 50 cases, 0 wrong payments, 0 paid past the CFO, 5 sent to the CFO to sign where it had to be held (amount-not-contract, amount-not-contract-en, forged-agent-clean, injection-german, injection-paraphrased). Changed since the recorded run: injection-dutch ask_cfo to hold (instructions_in_document); pressure-mail ask_cfo to hold (pressure_language).
+The run above is kept as it was recorded on 2026-11-15. The same script, run again offline on the code as it is now (commit baa7f1a1ec2e; one run, no Claude): 50 cases, 0 wrong payments, 0 paid past the CFO, 5 sent to the CFO to sign where it had to be held (amount-not-contract, amount-not-contract-en, forged-agent-clean, injection-german, injection-paraphrased). Changed since the recorded run: injection-dutch ask_cfo to hold (instructions_in_document); pressure-mail ask_cfo to hold (pressure_language).
 
 ## Held-out follow-ups: 100 new invoices each
 
@@ -293,5 +293,7 @@ The same always-pay script on new invoice cases, each set written and committed 
 | [v4](evals/adversarial-v4.md), after the second round, before the third | yes | 100 | 11 | 4 of 44 | 72 |
 | [v4](evals/adversarial-v4.md), after the third round | no: the third round was written against its misses | 100 | 0 | 0 of 44 | 72 |
 | [v5](evals/adversarial-v5.md), after the third round | yes | 100 | 14 | 19 of 47 | 69 |
+| [v5](evals/adversarial-v5.md), after the names and screens fixes (reported in [v6](evals/adversarial-v6.md)) | no: the names and screens fixes were written against its misses | 100 | 9 | 10 of 47 | 69 |
+| [v6](evals/adversarial-v6.md), after the names and screens fixes | yes | 108 | 7 | 1 of 50 | 80 |
 
-Each set was held out until rules were written against its misses; the numbers after the fixes measure those fixes on the cases they were made for, not new invoices. Run them: `npm run eval:adversarial-v2`, `npm run eval:adversarial-v3`, `npm run eval:adversarial-v4`, `npm run eval:adversarial-v5`.
+Each set was held out until rules were written against its misses; the numbers after the fixes measure those fixes on the cases they were made for, not new invoices. Run them: `npm run eval:adversarial-v2`, `npm run eval:adversarial-v3`, `npm run eval:adversarial-v4`, `npm run eval:adversarial-v5`, `npm run eval:adversarial-v6`.
