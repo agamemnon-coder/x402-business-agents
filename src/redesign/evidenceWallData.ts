@@ -148,6 +148,16 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
     const p = v3.totals.purser_script, n = v3.totals.no_rules;
     out.push({ key: "eval-v3", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices: Purser vs no rules`, note: `Cases committed before the run (commit ${v3.cases_commit}); a script always says pay. ${p.false_holds} false holds of ${p.clean_truths}. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v3.md"), rec: V3 });
   }
+  // Eval v4 (19 Nov): 100 held-out invoices, its run before the third round of fixes kept as recorded, and beside it the
+  // run after that round, written against its misses, so no longer held out (src/cli/adversarialV4.ts).
+  const V4 = "docs/evals/adversarial-v4.json", V4_AFTER = "docs/evals/adversarial-v4-after.json";
+  type AdvTotals = Record<"purser_script" | "no_rules", { cases: number; wrong_payments: number; false_holds: number; clean_truths: number }>;
+  const v4 = json(V4) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
+  const v4a = json(V4_AFTER) as { held_out?: boolean; totals?: AdvTotals } | null;
+  if (v4?.held_out && v4.totals?.purser_script && v4.totals.no_rules && v4a && !v4a.held_out && v4a.totals?.purser_script) {
+    const p = v4.totals.purser_script, n = v4.totals.no_rules, a = v4a.totals.purser_script;
+    out.push({ key: "eval-v4", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v4): Purser vs no rules`, note: `Cases committed before the run (commit ${v4.cases_commit}); a script always says pay. ${p.false_holds} false holds of ${p.clean_truths}. After the fixes written against these misses (no longer held out): ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v4.md"), rec: V4 });
+  }
   const RT = "docs/redteam/report.json";
   const rt = json(RT) as { attempts?: number; blocked?: number; caught_after?: number } | null;
   if (rt?.attempts) {

@@ -101,6 +101,8 @@ describe("the case the checks run on, built from the ledger", () => {
       state: "ready", accountKey: BERGTEX_IBAN, blockedAsDuplicate: false, rejectedWhy: null,
       // 19 Nov: the months it printed that it bills for (src/ap/period.ts); this one prints none.
       period: null,
+      // 19 Nov, third round: the lines it printed that it bills (src/ap/period.ts itemLines); this one prints none.
+      lines: [],
     }]);
     expect(codeFindings(c).map((f) => f.code)).toEqual(["duplicate"]);
     const again = invoiceCase(db, first.reading, EN, { ...ctx, selfId: "AP-0001" });

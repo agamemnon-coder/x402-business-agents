@@ -69,13 +69,15 @@ export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContex
   const accountSha256 = account ? ibanSha(account) : null;
 
   const why = db.prepare("SELECT json_extract(payload_json, '$.reason') AS reason FROM audit_log WHERE subject = ? AND event = 'ap.status' ORDER BY seq DESC LIMIT 1");
-  const history = (db.prepare("SELECT id, vendor, invoice_no, total, currency, issue_date, received_at, status, findings_json, reading_json, period FROM ap_invoices ORDER BY received_at, id").all() as
-    { id: string; vendor: string; invoice_no: string; total: string; currency: string; issue_date: string; received_at: string; status: ApStatus; findings_json: string; reading_json: string; period: string | null }[])
+  const history = (db.prepare("SELECT id, vendor, invoice_no, total, currency, issue_date, received_at, status, findings_json, reading_json, period, lines FROM ap_invoices ORDER BY received_at, id").all() as
+    { id: string; vendor: string; invoice_no: string; total: string; currency: string; issue_date: string; received_at: string; status: ApStatus; findings_json: string; reading_json: string; period: string | null; lines: string | null }[])
     .map((x): HistoryInvoice => ({
       id: x.id, vendor: x.vendor, invoiceNo: x.invoice_no, total: x.total, currency: x.currency, issueDate: x.issue_date, receivedAt: x.received_at, state: x.status,
       accountKey: accountOfReading(JSON.parse(x.reading_json) as ApReading),
       // The months it printed that it bills for (src/ap/period.ts), kept when it came in; null for invoices from before.
       period: x.period ? (JSON.parse(x.period) as string[]) : null,
+      // The lines it printed (src/ap/period.ts itemLines), kept when it came in (19 Nov, third round); null for invoices from before.
+      lines: x.lines ? (JSON.parse(x.lines) as string[]) : null,
       blockedAsDuplicate: x.status === "blocked" && (JSON.parse(x.findings_json) as Finding[]).some((y) => y.code === "duplicate"),
       // A person's reason is looked up only for a rejected invoice under this invoice's number: the one the checks cite.
       rejectedWhy: x.status === "rejected" && x.id !== ctx.selfId && !!r.invoice_no && sameInvoiceNo(x.invoice_no, r.invoice_no)

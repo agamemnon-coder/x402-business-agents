@@ -16,11 +16,11 @@ import { apiInputSchema } from "../agents/toolSchema.js";
 import { invoiceKey, sameInvoiceNo } from "../lib/invoiceKey.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { abaOf, accountKey, chooseRoute, payableCurrency, sameAccount, validateDetails, type BankDetails, type Route } from "../payouts/routes.js";
-import { assessAgainst, legalName, type Beneficiary, type FraudFinding, type FraudSignal } from "../policy/fraudCore.js";
+import { assessAgainst, sameName, type Beneficiary, type FraudFinding, type FraudSignal } from "../policy/fraudCore.js";
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
-import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
+import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
-import { deliveryDates, periodsDiffer, servicePeriods } from "./period.js";
+import { deliveryDates, itemLines, periodsDiffer, sameLines, servicePeriods } from "./period.js";
 import { amountsIn, IBAN_LENGTHS, ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
 
 // ── The case ──
@@ -86,6 +86,8 @@ export interface HistoryInvoice {
   rejectedWhy: string | null;
   /** The months it says it bills for (src/ap/period.ts servicePeriods), when it printed any; absent or null: not known. */
   period?: string[] | null;
+  /** The lines it billed, as printed (src/ap/period.ts itemLines; [] when it printed none); absent or null: not known. */
+  lines?: string[] | null;
 }
 
 /** What a contract or a purchase order says the invoice should be. */
@@ -148,7 +150,7 @@ export interface InvoiceCase {
 
 // UNUSUAL_FACTOR and TWIN_DAYS live in src/config/checkNumbers.ts, without imports, so /try's words quote them (14 Nov) without
 // pulling the checks into the Worker's bundle.
-export { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR };
+export { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR };
 
 /** The windows of the duplicate and split checks, in days (src/config/checkNumbers.ts says why each default). */
 export interface CheckWindows { splitDays: number; twinDays: number; nearTwinDays: number }
@@ -323,8 +325,9 @@ function examine(c: InvoiceCase): Examined {
   // The same supplier is the same name, or the same account under another name (red team round 3: a supplier added
   // again under a new name, the same invoice paid twice).
   const account = bank.ok ? keyOf(bank.details) : null;
-  // 19 Nov: the name as legalName reads it, so "Lagerhaus Nord" and "Lagerhaus Nord GmbH" are one supplier here too.
-  const sameParty = (x: HistoryInvoice) => legalName(x.vendor) === legalName(r.vendor) || (!!account && !!x.accountKey && sameForm(x.accountKey) === account);
+  // 19 Nov: the name as legalName reads it, so "Lagerhaus Nord" and "Lagerhaus Nord GmbH" are one supplier here too; third
+  // round (eval v4): and "Mueller und Soehne" is "Müller & Söhne" (sameName).
+  const sameParty = (x: HistoryInvoice) => sameName(x.vendor, r.vendor) || (!!account && !!x.accountKey && sameForm(x.accountKey) === account);
   const others = c.history.filter((x) => x.id !== c.invoice.id)
     .sort((a, b) => (a.receivedAt < b.receivedAt ? -1 : a.receivedAt > b.receivedAt ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const sameSupplier = others.filter(sameParty);
@@ -410,9 +413,18 @@ function examine(c: InvoiceCase): Examined {
         const asked = toCents(r.total);
         const close = candidates.find((x) => MONEY.test(x.total) && near(x, win.nearTwinDays)
           && Math.abs(toCents(x.total) - asked) <= Math.min(NEAR_TWIN_CENTS, Math.floor((Math.max(toCents(x.total), asked) * NEAR_TWIN_PERCENT) / 100)));
+        // 19 Nov, third round (eval v4, v4-dup-zeeland-plus-150): on the same invoice date, with the same lines printed,
+        // a copy a few euros dearer (at most SAME_DAY_TWIN_CENTS and NEAR_TWIN_PERCENT). Only when this invoice prints
+        // lines and the earlier one's are not known to differ: /try's written invoices print none.
+        const lines = itemLines(text);
+        const sameDay = close || !lines.length || !r.issue_date ? undefined : candidates.find((x) => MONEY.test(x.total) && x.issueDate === r.issue_date
+          && (!x.lines || sameLines(x.lines, lines))
+          && Math.abs(toCents(x.total) - asked) <= Math.min(SAME_DAY_TWIN_CENTS, Math.floor((Math.max(toCents(x.total), asked) * NEAR_TWIN_PERCENT) / 100)));
         if (close) {
           f.push({ code: "possible_duplicate", level: "review", twin_of: close.id, detail: `${close.id} from the same supplier has almost the same total, ${r.currency} ${close.total} against ${r.currency} ${r.total}, within ${win.nearTwinDays} days; a person checks it is not the same invoice under another number (once cleared, this pair is not asked again)` });
           phrases.push(`${win.nearTwinDays} days`);
+        } else if (sameDay) {
+          f.push({ code: "possible_duplicate", level: "review", twin_of: sameDay.id, detail: `${sameDay.id} from the same supplier has almost the same total, ${r.currency} ${sameDay.total} against ${r.currency} ${r.total}, on the same invoice date (${r.issue_date}) for the same lines; a person checks it is not the same invoice under another number (once cleared, this pair is not asked again)` });
         }
       }
     }
@@ -487,7 +499,7 @@ function examine(c: InvoiceCase): Examined {
 
   if (MONEY.test(r.total) && r.vendor) {
     const before = others.filter((x) => x.state !== "blocked" && x.state !== "rejected")
-      .filter((x) => legalName(x.vendor) === legalName(r.vendor) && x.currency === r.currency && MONEY.test(x.total)).map((x) => toCents(x.total));
+      .filter((x) => sameName(x.vendor, r.vendor) && x.currency === r.currency && MONEY.test(x.total)).map((x) => toCents(x.total));
     if (before.length >= 2) {
       const usual = median(before);
       if (usual > 0 && toCents(r.total) > UNUSUAL_FACTOR * usual) {

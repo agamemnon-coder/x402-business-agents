@@ -3,6 +3,8 @@
 // shown; it changes nothing, because documents are data: the models only read them, code checks every reading,
 // and only a person's passkey or typed hash approves.
 
+import { CONFUSABLES } from "./fraudCore.js";
+
 export type InjectionKind = "hidden_characters" | "instruction" | "approval_claim";
 
 export interface InjectionFinding {
@@ -67,6 +69,9 @@ const INSTRUCTION = [
   /\bmark (this|the) (invoice|payment|bill|document)\b[^.\n]{0,20}\b(as )?(verified|approved|paid|checked|cleared|reviewed|ok)\b/i,
   // An order to decode something and follow it.
   /\b(decode|decrypt|base64|rot13)\b[^.\n]{0,30}\b(follow|execute|run|obey|apply|act on)\b/i,
+  // 19 Nov, third round (adversarial eval v4, v4-inject-yaml): orders as YAML or key: value under a plain key
+  // ("approval: granted", "payment: release"). "Payment terms: 30 days" or "Payment: bank transfer" is no order.
+  /^\W*["']?\b(payment|approval|approval_status|authori[sz]ation|release|freigabe|zahlung)\b["']?\s*[:=]\s*["']?(granted|release[ds]?|approved|authori[sz]ed|cleared|go|execute|now|immediate(ly)?|erteilt|freigegeben|sofort)\b/i,
 ];
 // Already approved, in Spanish, Portuguese and Italian ("Pagamento já aprovado", "Fattura già approvata"; 19 Nov, eval v3).
 const APPROVED_ROMANCE = /(^|[^\p{L}])(ya|j(á|a)|gi(à|a))\s+(est(á|a)\s+)?(aprobad[oa]s?|aprovad[oa]s?|approvat[oa]|autorizad[oa]|autorizzat[oa])(?![\p{L}])/iu;
@@ -78,21 +83,83 @@ const show = (line: string) => line
   .replace(TAG_RUN, (run) => `[hidden text: ${[...run].map((ch) => ch.codePointAt(0)! - 0xe0000).filter((c) => c >= 0x20 && c < 0x7f).map((c) => String.fromCharCode(c)).join("")}]`)
   .replace(HIDDEN_ALL, (ch) => `[U+${ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}]`).trim().slice(0, 200);
 
+/**
+ * A line as a model reads it (19 Nov, third round; adversarial eval v4, v4-inject-fullwidth and v4-inject-cyrillic-letters):
+ * full-width and other compatibility forms as their plain letters (NFKC), and letters from other alphabets that look like
+ * Latin ones (CONFUSABLES, letters only) as those Latin letters. A line in plain ASCII is itself.
+ */
+export function foldForScreen(line: string): string {
+  if (!/[^\u0020-\u007E\t]/.test(line)) return line;
+  const nfkc = line.normalize("NFKC");
+  return [...nfkc].map((ch) => {
+    const low = ch.toLowerCase();
+    const latin = /\p{L}/u.test(ch) && !/\p{Script=Latin}/u.test(ch) ? CONFUSABLES[low] : undefined;
+    return latin && /[a-z]/.test(latin) ? latin : ch;
+  }).join("");
+}
+
+/** Text in double or typographic quotes, a link's title among it ([text](url "title"), title="…"): each read as a line of its own. */
+const quoted = (line: string) => [...line.matchAll(/"([^"\n]{3,})"|\u201C([^\u201D\n]{3,})\u201D|\u00AB([^\u00BB\n]{3,})\u00BB/g)].map((m) => (m[1] ?? m[2] ?? m[3])!.trim());
+
+/** What one line, as written, is: an instruction, an approval claim, or nothing (hidden characters are looked for apart). */
+const kindOf = (line: string): InjectionKind | null => {
+  for (const v of [line, foldForScreen(line), ...quoted(line)]) {
+    if (INSTRUCTION.some((re) => re.test(v))) return "instruction";
+    if (APPROVAL_CLAIM.test(v) || APPROVED_ROMANCE.test(v)) return "approval_claim";
+  }
+  return null;
+};
+
 /** One finding per suspicious line, the strongest kind first: hidden characters, an instruction, an approval claim. */
 export function findInjections(text: string): InjectionFinding[] {
+  return screen(text, 0);
+}
+
+function screen(text: string, depth: number): InjectionFinding[] {
   const out: InjectionFinding[] = [];
   for (const line of text.split("\n")) {
-    const kind: InjectionKind | null = HIDDEN.test(line) ? "hidden_characters"
-      : INSTRUCTION.some((re) => re.test(line)) ? "instruction"
-      : APPROVAL_CLAIM.test(line) || APPROVED_ROMANCE.test(line) ? "approval_claim"
-      : null;
+    const kind: InjectionKind | null = HIDDEN.test(line) ? "hidden_characters" : kindOf(line);
     if (kind) { out.push({ kind, excerpt: show(line) }); continue; }
+    if (depth >= 2) continue;
     // 19 Nov, second round (eval v3, v3-inject-base64): a run of base64 that decodes to readable text is screened as text.
-    const decoded = base64Texts(line).find((t) => findInjections(t).length > 0);
-    if (decoded !== undefined) out.push({ kind: "instruction", excerpt: show(`${line.replace(/[A-Za-z0-9+/]{16,}={0,2}/g, "").trim()} [base64: ${decoded.slice(0, 120)}]`) });
+    // Third round (eval v4, v4-inject-hex, v4-inject-rot13): hex the same way, and the line read as ROT13.
+    const b64 = base64Texts(line).find((t) => screen(t, depth + 1).length > 0);
+    if (b64 !== undefined) { out.push({ kind: "instruction", excerpt: show(`${line.replace(/[A-Za-z0-9+/]{16,}={0,2}/g, "").trim()} [base64: ${b64.slice(0, 120)}]`) }); continue; }
+    const hex = hexTexts(line).find((t) => screen(t, depth + 1).length > 0);
+    if (hex !== undefined) { out.push({ kind: "instruction", excerpt: show(`${line.replace(/\b[0-9A-Fa-f]{16,}\b/g, "").trim()} [hex: ${hex.slice(0, 120)}]`) }); continue; }
+    if (depth === 0 && /[A-Za-z]{3,}\s+[A-Za-z]{3,}/.test(line)) {
+      const r13 = rot13(line);
+      if (kindOf(r13)) out.push({ kind: "instruction", excerpt: show(`${line} [ROT13: ${r13.slice(0, 120)}]`) });
+    }
   }
   return out;
 }
+
+/** A line with each Latin letter moved 13 places (ROT13 is its own inverse). */
+const rot13 = (line: string) => line.replace(/[A-Za-z]/g, (ch) => {
+  const base = ch <= "Z" ? 65 : 97;
+  return String.fromCharCode(((ch.charCodeAt(0) - base + 13) % 26) + base);
+});
+
+/** The readable texts that runs of hex digits in a line decode to (16 or more, even), as base64Texts reads base64. */
+function hexTexts(line: string): string[] {
+  const out: string[] = [];
+  for (const m of line.matchAll(/\b[0-9A-Fa-f]{16,4000}\b/g)) {
+    const run = m[0];
+    if (run.length % 2 !== 0) continue;
+    let text: string;
+    try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(Uint8Array.from(run.match(/../g)!, (h) => parseInt(h, 16))); } catch { continue; }
+    if (readable(text)) out.push(text);
+  }
+  return out;
+}
+
+/** Printable text with words in it: what an encoding of an instruction decodes to, unlike an IBAN, a hash or a number. */
+const readable = (text: string) => {
+  const chars = [...text];
+  const printable = chars.filter((ch) => /[\p{L}\p{N}\p{P}\p{S}\p{Zs}]/u.test(ch)).length;
+  return printable / Math.max(1, chars.length) >= 0.9 && /\p{L}{2,}\s+\p{L}{2,}/u.test(text);
+};
 
 /**
  * The readable texts that runs of base64 in a line decode to (16 to 2,000 characters, a length base64 has): those that
@@ -105,9 +172,7 @@ function base64Texts(line: string): string[] {
     if (run.length % 4 !== 0) continue;
     let text: string;
     try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(Uint8Array.from(atob(run), (ch) => ch.charCodeAt(0))); } catch { continue; }
-    const chars = [...text];
-    const printable = chars.filter((ch) => /[\p{L}\p{N}\p{P}\p{S}\p{Zs}]/u.test(ch)).length;
-    if (printable / Math.max(1, chars.length) >= 0.9 && /\p{L}{2,}\s+\p{L}{2,}/u.test(text)) out.push(text);
+    if (readable(text)) out.push(text);
   }
   return out;
 }

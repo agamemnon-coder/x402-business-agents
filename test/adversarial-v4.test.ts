@@ -53,16 +53,32 @@ describe("the v4 case set", () => {
 });
 
 describe("the v4 run", () => {
-  it("the committed record is what a fresh run adds up to, held out, on the cases of their own commit (npm run eval:adversarial-v4)", async () => {
-    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v4.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string };
+  // 19 Nov, third round: rules were added against v4's misses (test/eval-v4-gaps.test.ts), so v4 is no longer held out.
+  // Its first run stays as recorded ("before the third round of fixes"); the run on today's code is its own record
+  // ("after"), and the case file never changed.
+  it("the committed after-fix record is what a fresh run adds up to, no longer held out (npm run eval:adversarial-v4)", async () => {
+    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v4-after.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string };
     const r = await adversarialV2(ADV_V4_CASES, V4_WORLD);
     expect(r.rows).toHaveLength(ADV_V4_CASES.length * ADV_ARMS.length);
     expect(committed.totals).toEqual(r.totals);
     expect(committed.rows).toEqual(r.rows);
-    expect(committed.line).toBe(advLine(r.totals));
-    expect(committed).toMatchObject({ held_out: true, cases_commit: "727d99d1" });
-    // The report lists every miss of the payer with Purser's rules, and of the one with Purser's parser.
+    expect(committed.line).toBe(advLine(r.totals, ""));
+    expect(committed).toMatchObject({ held_out: false, cases_commit: "727d99d1" });
+    // The report lists every miss of the payer with Purser's rules, and of the one with Purser's parser, after and before.
     const md = readFileSync(new URL("../docs/evals/adversarial-v4.md", import.meta.url), "utf8");
     for (const x of r.rows.filter((y) => y.arm !== "no_rules" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
   }, 60_000); // 200+ runs of the payables checks: over 5 s on a loaded CI runner
+
+  it("keeps the held-out run before the third round as it was recorded: 11 wrong payments, 4 false holds, on the cases of 727d99d1", () => {
+    const before = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v4.json", import.meta.url), "utf8")) as { line: string; held_out: boolean; cases_commit: string; rows: AdvRow[]; totals: Record<string, { wrong_payments: number; false_holds: number }> };
+    expect(before).toMatchObject({ held_out: true, cases_commit: "727d99d1" });
+    expect(before.totals.purser_script).toMatchObject({ wrong_payments: 11, false_holds: 4 });
+    expect(before.totals.purser_script_parser).toMatchObject({ wrong_payments: 11, false_holds: 4 });
+    expect(before.totals.no_rules).toMatchObject({ wrong_payments: 72 });
+    const md = readFileSync(new URL("../docs/evals/adversarial-v4.md", import.meta.url), "utf8");
+    expect(md).toContain("**v4 is no longer held out.**");
+    expect(md).toContain("**Before the third round of fixes**");
+    expect(md).toContain(before.line);
+    for (const x of before.rows.filter((y) => y.arm === "purser_script" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
+  });
 });
