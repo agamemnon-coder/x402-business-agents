@@ -367,6 +367,8 @@ export const WHY = {
     mixed_scripts: { head: "Held: the supplier's name mixes alphabets." },
     new_supplier: { head: "Held: this supplier is not on file yet.", rule: "A new supplier is paid only after a person verifies its bank details with the supplier and the CFO approves it." },
     sum_mismatch: { head: "Held: the total is not its lines.", rule: "The subtotal plus tax must equal the total, to the cent." },
+    // 19 Nov (red team: one line of EUR 1,850.00 under a total of EUR 8,150.00 went to the CFO with nothing flagged).
+    totals_mismatch: { head: "Held: the lines do not add up to the total.", rule: "The lines an invoice prints, with its VAT, shipping and discount lines, must add up to its total within a cent." },
     iban_invalid: { head: "Refused: the IBAN is not valid.", rule: "An IBAN that fails its checksum is never paid to." },
     bank_details_invalid: { head: "Refused: the bank details are not valid.", rule: "Bank details that fail their checks are never paid to." },
     no_bank_details: { head: "Held: no account to pay to.", rule: "Without an IBAN or account number, a person checks how this supplier is paid." },

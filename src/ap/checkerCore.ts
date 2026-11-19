@@ -20,6 +20,7 @@ import { assessAgainst, sameName, type Beneficiary, type FraudFinding, type Frau
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
 import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
+import { lineTotals } from "./lineTotals.js";
 import { deliveryDates, itemLines, periodsDiffer, sameLines, servicePeriods } from "./period.js";
 import { amountsIn, IBAN_LENGTHS, ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
 
@@ -352,6 +353,19 @@ function examine(c: InvoiceCase): Examined {
   if (ambiguous) {
     f.push({ code: "ambiguous_total", level: "review", detail: ambiguous });
     phrases.push(...(ambiguous.match(/\d+ different totals/) ?? []));
+  }
+
+  // 19 Nov (red team: one line item of EUR 1,850.00 under a total of EUR 8,150.00 went to the CFO with nothing flagged):
+  // the lines the invoice prints, with its VAT, shipping and discount lines, add up to its total within a cent, or a
+  // person checks which amount is owed. Lines code cannot read reliably say nothing (src/ap/lineTotals.ts); an invoice
+  // already held for its arithmetic, its totals or as a credit is not asked about twice.
+  if (MONEY.test(r.total) && r.currency && !f.some((x) => ["sum_mismatch", "ambiguous_total", "credit_note"].includes(x.code))) {
+    const sums = lineTotals(text, r.total, r.currency);
+    if (sums && !sums.agree) {
+      const said = (n: number) => `${n < 0 ? "-" : ""}${moneyForPeople(r.currency, fromCents(Math.abs(n)))}`;
+      const block = sums.withTotals !== sums.lines ? ` (${said(sums.withTotals)} with the VAT, shipping and discount lines printed)` : "";
+      f.push({ code: "totals_mismatch", level: "review", detail: `the lines add up to ${said(sums.lines)}${block}, the total says ${said(sums.total)}; a person checks which amount is owed` });
+    }
   }
 
   // The dates the windows are measured from: the invoice's own and each delivery date it prints; the months it bills.
@@ -696,7 +710,7 @@ export const CHECKER_TEXT_LIMIT = 20_000;
  */
 export const FINDING_CODES = [
   "no_text", "missing_fields", "no_bank_details", "iban_invalid", "bank_details_invalid", "country_not_paid", "currency_not_paid",
-  "sum_mismatch", "credit_note", "ambiguous_total", "duplicate", "possible_duplicate", "rejected_before",
+  "sum_mismatch", "totals_mismatch", "credit_note", "ambiguous_total", "duplicate", "possible_duplicate", "rejected_before",
   "possible_fraud", "new_supplier", "payee_blocked", "account_currency", "unusual_amount", "overdue",
   "bank_details_changed", "lookalike_vendor", "mixed_scripts", "account_name_mismatch", "bank_change_language", "pressure_language",
   "instructions_in_document", "amount_not_expected", "reminder", "possible_split", "other",

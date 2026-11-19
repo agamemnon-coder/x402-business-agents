@@ -89,7 +89,7 @@ export function periodsDiffer(a: readonly string[] | null | undefined, b: readon
 }
 
 /** The first line of an invoice's totals block: its subtotal, tax or total with an amount, in the languages suppliers write in (not "BTW-nummer"). */
-const TOTALS = /^(sub-?total|subtotaal|nettobetrag|netto(betrag)?|net (amount|total)|total|totaal|gesamt\w*|summe|rechnungsbetrag|sous-total|montant|total ht|base imponible|importe|imponibile|totale|valor|mwst|ust|btw|vat|tva|iva|amount due|balance due)(?![-\w])(?=.*\d[.,]\d{2}(?!\d))/i;
+export const TOTALS = /^(sub-?total|subtotaal|nettobetrag|netto(betrag)?|net (amount|total)|total|totaal|gesamt\w*|summe|rechnungsbetrag|sous-total|montant|total ht|base imponible|importe|imponibile|totale|valor|mwst|ust|btw|vat|tva|iva|amount due|balance due)(?![-\w])(?=.*\d[.,]\d{2}(?!\d))/i;
 /** A line under a label ("Bill to: …", "An: …"): a header or a footer, never a line item. */
 const LABELLED = /^[^:]{1,40}:\s/;
 
