@@ -249,7 +249,7 @@ describe("the service worker", () => {
       // Even with a planted copy of each in the build's cache, the worker leaves every one to the network.
       for (const r of CEREMONY) w.store.get(cacheName)!.set(new URL(r.url).pathname, new Response("STALE COPY"));
       for (const r of CEREMONY) {
-        const o = r.url.startsWith(SITE) && origin === "cloud" ? { ...r, url: r.url.replace(SITE, CLOUD) } : r;
+        const o = new URL(r.url).origin === SITE && origin === "cloud" ? { ...r, url: r.url.replace(SITE, CLOUD) } : r;
         expect({ path: new URL(o.url).pathname, method: o.method, answered: await w.fetchEvent(o) }).toEqual({ path: new URL(o.url).pathname, method: o.method, answered: null });
       }
       w.offline();
