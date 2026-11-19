@@ -240,7 +240,7 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(tile(w(), "eval-v5").fig).toBe(`${v5.totals.purser_script.wrong_payments} vs ${v5.totals.no_rules.wrong_payments}`);
     expect(tile(w(), "eval-v5").note).toContain(`(commit ${v5.cases_commit})`);
     expect(tile(w(), "eval-v5").note).toContain(`${v5.totals.purser_script.false_holds} false holds of ${v5.totals.purser_script.clean_truths}`);
-    expect(tile(w(), "eval-v5").note).toContain(`After the fixes written against these misses (no longer held out): ${v5a.totals.purser_script.wrong_payments} wrong payments, ${v5a.totals.purser_script.false_holds} false holds`);
+    expect(tile(w(), "eval-v5").note).toContain(`Fixed since, no longer held out: ${v5a.totals.purser_script.wrong_payments} wrong payments, ${v5a.totals.purser_script.false_holds} false holds`);
     expect(tile(w(), "eval-v5").note).not.toContain("still held out");
     // Eval v6: held out, its one run as recorded.
     const v6 = json<Adv>("docs/evals/adversarial-v6.json");
@@ -248,7 +248,7 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(tile(w(), "eval-v6").fig).toBe(`${v6.totals.purser_script.wrong_payments} vs ${v6.totals.no_rules.wrong_payments}`);
     expect(tile(w(), "eval-v6").note).toContain(`(commit ${v6.cases_commit})`);
     expect(tile(w(), "eval-v6").note).toContain(`${v6.totals.purser_script.false_holds} false hold${v6.totals.purser_script.false_holds === 1 ? "" : "s"} of ${v6.totals.purser_script.clean_truths}`);
-    expect(tile(w(), "eval-v6").note).toContain("Not fixed: still held out");
+    expect(tile(w(), "eval-v6").note).toContain("Held out.");
     const sq = json<{ lighthouse: { path: string; preset: string; median: { performance: number; accessibility: number } }[] }>("docs/evidence/site-quality.json").lighthouse;
     expect(tile(w(), "site-quality").fig).toBe(String(Math.min(...sq.map((x) => x.median.accessibility))));
     expect(tile(w(), "site-quality").note).toContain(`lowest performance ${Math.min(...sq.map((x) => x.median.performance))}`);
