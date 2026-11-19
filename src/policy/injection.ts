@@ -23,6 +23,29 @@ const HIDDEN_ALL = new RegExp(`[${HIDDEN_CLASS}]`, "gu");
 /** A run of tag characters (U+E0020 to U+E007E spell out ASCII). */
 const TAG_RUN = /[\u{E0000}-\u{E007F}]+/gu;
 
+/**
+ * The scripts whose spelling needs the zero-width non-joiner (U+200C) or joiner (U+200D) inside a word: Arabic script
+ * (Persian, Urdu, Kurdish, Pashto write "صورت\u200Cحساب"), Syriac, N'Ko, Mongolian, and the Brahmic scripts of South and
+ * South-East Asia, which choose a conjunct's form with them (Devanagari, Bengali, Gurmukhi, Gujarati, Oriya, Tamil, Telugu,
+ * Kannada, Malayalam, Sinhala, Myanmar, Khmer, Tibetan).
+ */
+const BRAHMIC = new Set(["Devanagari", "Bengali", "Gurmukhi", "Gujarati", "Oriya", "Tamil", "Telugu", "Kannada", "Malayalam", "Sinhala", "Myanmar", "Khmer", "Tibetan"]);
+const JOINING_SCRIPTS = ["Arabic", "Syriac", "Nko", "Mongolian", ...BRAHMIC];
+/** A joiner or non-joiner between two letters (or a letter's marks) of one such script. */
+const SCRIPT_JOINER = new RegExp(JOINING_SCRIPTS.map((sc) => {
+  const letter = `[[\\p{L}\\p{M}]&&\\p{Script_Extensions=${sc}}]`;
+  // A Brahmic script also ends a word with one after the virama (Malayalam's chillu letters, "ന്\u200D").
+  const mark = `[\\p{M}&&\\p{Script_Extensions=${sc}}]`;
+  return `(?<=${letter})[\u200C\u200D](?=${letter})${BRAHMIC.has(sc) ? `|(?<=${mark})[\u200C\u200D](?![\\p{L}\\p{M}\\p{N}])` : ""}`;
+}).join("|"), "gv");
+/**
+ * A line without the joiners its own script's spelling needs (19 Nov, after the held-out eval v6, v6-clean-ege-persian-zwnj:
+ * a Persian thank-you spelled with the non-joiner Persian needs was held as hidden characters). Anywhere else (between
+ * Latin letters, "Ig\u200Dnore"; beside a space or a digit; between two scripts) they change nothing a person sees and are
+ * still hidden characters.
+ */
+const withoutScriptJoiners = (line: string) => line.replace(SCRIPT_JOINER, "");
+
 /** The text as a person sees it: every zero-width, direction and tag character taken out. */
 export const visibleText = (text: string): string => text.replace(HIDDEN_ALL, "");
 
@@ -77,7 +100,7 @@ const INSTRUCTION = [
 // Already approved, in Spanish, Portuguese and Italian ("Pagamento já aprovado", "Fattura già approvata"; 19 Nov, eval v3).
 const APPROVED_ROMANCE = /(^|[^\p{L}])(ya|j(á|a)|gi(à|a))\s+(est(á|a)\s+)?(aprobad[oa]s?|aprovad[oa]s?|approvat[oa]|autorizad[oa]|autorizzat[oa])(?![\p{L}])/iu;
 // Past the approval or the checks (16 Nov: "without approval", "skip the CFO", "don't ask the CFO", "ignore limit").
-const APPROVAL_CLAIM = /\b(al|reeds|bereits|schon|d(é|e)j(à|a)) (goedgekeurd|freigegeben|genehmigt|approuv(é|e)e?s?)\b|\bsla\b[^.\n]{0,25}\b(controle|goedkeuring|verificatie|check)\b[^.\n]{0,10}\bover\b|\b(pr(ü|ue)fung|freigabe|kontrolle|genehmigung)\b[^.\n]{0,15}\b(entf(ä|ae)llt|(ü|ue)berspringen|nicht (n(ö|oe)tig|erforderlich))\b|\bohne r(ü|ue)ckfrage\b|\bapproved\b[^.\n]{0,20}\bpay (it )?(now|immediately|at once|right away)\b|\b(do not|don'?t|never|no need to) escalate\b|\b(is|was|been|mark(ed)? (it )?as|auto(matically)?)[ -]approved\b|\bapprove (this|it|the payment|automatically|immediately|now|without)\b|\bpre-?approved\b|\balready approved\b|\bapproval (is )?(not|no longer) (needed|required)\b|\bskip (the )?(approval|verification|check|review)\b|\bno (approval|verification) (is )?(needed|required)\b|\b(without|no need for|skip(ping)?|don'?t (ask|wait for|need|involve)|do not (ask|wait for|need|involve)|ignore|bypass)\b[^.\n]{0,25}\b(approvals?|cfo|sign(ing|ature|-?off)?|checks?|checking|verification|review|passkeys?|face ?id|controls?|limits?)\b/i;
+const APPROVAL_CLAIM = /\b(al|reeds|bereits|schon|d(é|e)j(à|a)) (goedgekeurd|freigegeben|genehmigt|approuv(é|e)e?s?)\b|\bsla\b[^.\n]{0,25}\b(controle|goedkeuring|verificatie|check)\b[^.\n]{0,10}\bover\b|\b(pr(ü|ue)fung|freigabe|kontrolle|genehmigung)\b[^.\n]{0,15}\b(entf(ä|ae)llt|(ü|ue)berspringen|nicht (n(ö|oe)tig|erforderlich))\b|\bohne r(ü|ue)ckfrage\b|\bapproved\b[^.\n]{0,20}\bpay (it )?(now|immediately|at once|right away)\b|\b(do not|don'?t|never|no need to) escalate\b|\b(is|was|been|mark(ed)? (it )?as|auto(matically)?)[ -]approved\b|\bapprove (this|it|the payment|automatically|immediately|now|without)\b|\bpre-?approved\b|\bpre-?(verified|checked|cleared|validated)\b|\balready (been )?(verified|checked|validated|cleared)\b|\bno (further |more |additional )?(checks?|verification|review|approvals?) (is |are )?(needed|required|necessary)\b|\balready approved\b|\bapproval (is )?(not|no longer) (needed|required)\b|\bskip (the )?(approval|verification|check|review)\b|\bno (approval|verification) (is )?(needed|required)\b|\b(without|no need for|skip(ping)?|don'?t (ask|wait for|need|involve)|do not (ask|wait for|need|involve)|ignore|bypass)\b[^.\n]{0,25}\b(approvals?|cfo|sign(ing|ature|-?off)?|checks?|checking|verification|review|passkeys?|face ?id|controls?|limits?)\b/i;
 
 /** A line for people: a run of tag characters as the text it spells, any other hidden character as [U+XXXX]. */
 const show = (line: string) => line
@@ -124,7 +147,7 @@ export function findInjections(text: string): InjectionFinding[] {
 function screen(text: string, depth: number): InjectionFinding[] {
   const out: InjectionFinding[] = [];
   for (const line of text.split("\n")) {
-    const kind: InjectionKind | null = HIDDEN.test(line) ? "hidden_characters" : kindOf(line);
+    const kind: InjectionKind | null = HIDDEN.test(withoutScriptJoiners(line)) ? "hidden_characters" : kindOf(line);
     if (kind) { out.push({ kind, excerpt: show(line) }); continue; }
     if (depth >= 2) continue;
     // 19 Nov, second round (eval v3, v3-inject-base64): a run of base64 that decodes to readable text is screened as text.

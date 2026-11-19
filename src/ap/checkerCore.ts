@@ -20,9 +20,11 @@ import { assessAgainst, sameName, type Beneficiary, type FraudFinding, type Frau
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
 import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
+import { asksToPay, namesAccount } from "../policy/multilingual.js";
+import { plainDigits } from "../policy/numerals.js";
 import { lineTotals } from "./lineTotals.js";
 import { deliveryDates, itemLines, periodsDiffer, sameLines, servicePeriods } from "./period.js";
-import { amountsIn, IBAN_LENGTHS, ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
+import { amountsIn, askedAboveTotal, IBAN_LENGTHS, ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
 
 // ── The case ──
 
@@ -195,14 +197,26 @@ function ibansIn(text: string): string[] {
   });
   return [...new Set(out)];
 }
-/** Where the ten digits of each script start that writes its own (Arabic-Indic, Persian, Devanagari and the other Indic scripts, Thai, Lao, Tibetan, Myanmar, Khmer, Mongolian). */
-const DIGIT_ZEROS = [0x0660, 0x06F0, 0x07C0, 0x0966, 0x09E6, 0x0A66, 0x0AE6, 0x0B66, 0x0BE6, 0x0C66, 0x0CE6, 0x0D66, 0x0DE6, 0x0E50, 0x0ED0, 0x0F20, 0x1040, 0x1090, 0x17E0, 0x1810, 0xFF10];
-/** The decimal digits of those scripts written as 0 to 9. */
-const plainDigits = (text: string) => text.replace(/\p{Nd}/gu, (d) => {
-  const cp = d.codePointAt(0)!;
-  const zero = DIGIT_ZEROS.find((z) => cp >= z && cp < z + 10);
-  return zero === undefined ? d : String(cp - zero);
-});
+/**
+ * Account numbers (eight digits or more, in groups or not) written on a line that names an account and asks to pay
+ * (src/policy/multilingual.ts namesAccount and asksToPay), digits only, in any script's digits. A line that calls the
+ * account old or closed is left out, as ibansIn leaves it out; dates (2026-11-20, 20.11.2026) are no account number.
+ */
+function accountNumbersIn(text: string): string[] {
+  const out: string[] = [];
+  for (const raw of text.split("\n")) {
+    const line = plainDigits(raw.normalize("NFKC").replace(/\p{Cf}/gu, ""));
+    if (!namesAccount(line) || !asksToPay(line) || OLD_ACCOUNT.test(line.toUpperCase())) continue;
+    for (const m of line.matchAll(/(?<![\dA-Za-z])\d(?:[ \-.]?\d){7,}(?![\dA-Za-z])/g)) {
+      if (/^\d{4}-\d{2}-\d{2}$|^\d{2}\.\d{2}\.\d{4}$/.test(m[0])) continue;
+      out.push(m[0].replace(/\D/g, ""));
+    }
+  }
+  return [...new Set(out)];
+}
+/** The digits of the account a reading asks to be paid to and its routing code: an account number named beside it in the text is one of these. */
+const ownAccountDigits = (r: ApReading) => [r.iban, r.account_number, r.routing_value].map((x) => plainDigits(x ?? "").replace(/\D/g, "")).filter((x) => x.length >= 6);
+
 /** Words that call an account old or closed, in the languages suppliers write in. */
 const OLD_ACCOUNT = /\b(OLD|FORMER|PREVIOUS|CLOSED|NO LONGER|DO NOT USE|ALTE[NRS]?|EHEMALIGE[NRS]?|BISHERIGE[NRS]?|GESCHLOSSEN|AUFGEL(Ö|OE)ST|NICHT MEHR|OUDE?|VORIGE|GESLOTEN|OPGEHEVEN|NIET MEER|ANCIEN(NE)?|FERM(É|E)|ANTIGU[OA]|CERRAD[OA]|VECCHIO|CHIUSO)\b/;
 const DAY_MS = 86_400_000;
@@ -364,6 +378,11 @@ function examine(c: InvoiceCase): Examined {
   if (ambiguous) {
     f.push({ code: "ambiguous_total", level: "review", detail: ambiguous });
     phrases.push(...(ambiguous.match(/\d+ different totals/) ?? []));
+  } else if (MONEY.test(r.total)) {
+    // 19 Nov (after the held-out eval v6, v6-limit-ege-asks-more): a line that asks to pay more than the total, in any
+    // language the lists know: what is owed is not one amount (src/ap/reading.ts askedAboveTotal).
+    const more = askedAboveTotal(text, r.total, r.currency);
+    if (more) f.push({ code: "ambiguous_total", level: "review", detail: more });
   }
 
   // 19 Nov (red team: one line item of EUR 1,850.00 under a total of EUR 8,150.00 went to the CFO with nothing flagged):
@@ -507,6 +526,14 @@ function examine(c: InvoiceCase): Examined {
     if (!f.some((x) => x.code === "bank_change_language")) {
       const other = ibansIn(text).find((x) => keyOf({ ...bank.details, iban: x, accountNumber: "", routingType: "", routingValue: "" }) !== sameForm(key));
       if (other) f.push(wordsFinding(c, { code: "bank_change_language", detail: `the invoice names another account in its text, IBAN ending ${other.slice(-4)}, than the one it asks to be paid to` }));
+    }
+    // 19 Nov (after the held-out eval v6, v6-bec-haining-hong-kong: "请将货款汇入我司香港账户（汇丰银行 012-345678-001）" beside
+    // the account on file): an account number with no IBAN, named on a line that asks to pay into an account, that is not
+    // the one the invoice asks to be paid to, whatever the language around it.
+    if (!f.some((x) => x.code === "bank_change_language")) {
+      const refs = [r.invoice_no, r.reference].map((x) => plainDigits(x ?? "").replace(/\D/g, ""));
+      const other = accountNumbersIn(text).find((n) => !ownAccountDigits(r).some((own) => own.includes(n)) && !refs.includes(n));
+      if (other) f.push(wordsFinding(c, { code: "bank_change_language", detail: `the invoice asks in its text to pay into another account, number ending ${other.slice(-4)}, than the one it asks to be paid to` }));
     }
     const known = fraud.allowlisted && !fraud.suspicious ? fraud.allowlisted : null;
     if (known && c.policy.payees.blocked.includes(known.name)) f.push({ code: "payee_blocked", level: "block", detail: `${known.name} is blocked by the CFO policy` });

@@ -45,7 +45,7 @@ if (process.argv.includes("--check")) {
   const { commit, dirty } = evalCommit([RECORD]);
   const ran_at = new Date().toISOString();
   writeFileSync(resolve(ROOT, RECORD), `${JSON.stringify({
-    what: "Adversarial eval v5 after the fixes that followed its first run (non-Latin supplier names, orders in other languages and scripts): the same 100 invoice cases (src/evals/adversarialV5Cases.ts, committed alone before any run, unchanged), with thirteen suppliers on file, on today's code. No longer held out: the fixes were made after reading this set's misses. The held-out run before them is docs/evals/adversarial-v5.json; the held-out set after them is v6. Offline, test data only.",
+    what: "Adversarial eval v5 after the fixes that followed its first run (non-Latin supplier names, orders in other languages and scripts): the same 100 invoice cases (src/evals/adversarialV5Cases.ts, committed alone before any run, unchanged), with thirteen suppliers on file, on today's code (since 19 Nov, also with the fixes that followed the held-out v6). No longer held out: the fixes were made after reading this set's misses. The held-out run before them is docs/evals/adversarial-v5.json; the held-out set after them is v6. Offline, test data only.",
     held_out: false, ran_at, commit, dirty, cases_commit: V5_CASES_COMMIT, before: V5_BEFORE, command: "npm run eval:adversarial-v5", line, totals: r.totals, by_category: r.by_category, rows: r.rows,
   }, null, 2)}\n`);
   console.log(`wrote ${RECORD} (${V5_BEFORE} and docs/evals/adversarial-v5.md kept as recorded)`);
