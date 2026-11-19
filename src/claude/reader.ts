@@ -7,7 +7,7 @@
 // refused, the deterministic parsers take over, so the demo makes the same decisions either way.
 
 import { untagged } from "../lib/untagged.js";
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, { type Middleware } from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { z } from "zod";
 import { audit, type Actor } from "../audit/log.js";
@@ -52,6 +52,22 @@ export interface ReaderOptions { budget?: Budget; maxTokens?: number; announce?:
 /** The most pages of a scan sent to a model (src/ap/scan.ts SCAN_MAX_PAGES), and the most tokens a page as an image takes. */
 export const PDF_PAGES_BOUND = 3;
 const PDF_PAGE_TOKENS = 3_000;
+
+/**
+ * Anthropic's request id for one call, read from the `request-id` header of the response that answered it.
+ * beta.messages.parse() returns a copy of the message (`{ ...message }`), and the copy loses the non-enumerable
+ * `_request_id` the SDK puts on what create() returns. Without this, every claude.read row recorded request_id null
+ * (live /try, 19 November). The middleware runs on every attempt, so a retry records the id of the attempt that answered.
+ */
+function requestIdTap(): { middleware: Middleware[]; id: () => string | null } {
+  let id: string | null = null;
+  const tap: Middleware = async (request, next) => {
+    const response = await next(request);
+    if (response.ok) id = response.headers.get("request-id") ?? id;
+    return response;
+  };
+  return { middleware: [tap], id: () => id };
+}
 
 /** The roles as a page names them: the reader classifies, reads, or writes the review note. */
 const ROLE_WORD: Record<Role, string> = { classify: "classify", act: "read", review: "review" };
@@ -106,6 +122,7 @@ export class ClaudeReader {
 
     try {
       const started = this.clock();
+      const tap = requestIdTap();
       const res = await this.client.beta.messages.parse({
         model,
         max_tokens: this.maxTokens,
@@ -116,9 +133,9 @@ export class ClaudeReader {
         // Under a budget, no server-side fallback: its second attempt, on another model, is billed beyond the call's
         // worst case. A refusal then falls back to the parser, as any refusal does.
         ...(model.startsWith("claude-haiku") || this.opts.budget ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
-      });
+      }, { middleware: tap.middleware });
       const latencyMs = this.clock() - started;
-      const requestId = (res as { _request_id?: string | null })._request_id ?? null;
+      const requestId = (res as { _request_id?: string | null })._request_id ?? tap.id();
       if (res.stop_reason === "refusal") return useFallback(`refused (${res.stop_details?.category ?? "no category"})`);
       if (res.parsed_output == null) return useFallback(`no parsed output (stop_reason ${res.stop_reason})`);
       // Checked again here, not only by the SDK: a reading of the wrong shape is never used.
@@ -166,6 +183,7 @@ export class ClaudeReader {
     if ("refused" in go) return useFallback(go.refused);
     try {
       const started = this.clock();
+      const tap = requestIdTap();
       const res = await this.client.beta.messages.parse({
         model,
         max_tokens: this.maxTokens,
@@ -181,9 +199,9 @@ export class ClaudeReader {
         // Under a budget, no server-side fallback: its second attempt, on another model, is billed beyond the call's
         // worst case. A refusal then falls back to the parser, as any refusal does.
         ...(model.startsWith("claude-haiku") || this.opts.budget ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
-      });
+      }, { middleware: tap.middleware });
       const latencyMs = this.clock() - started;
-      const requestId = (res as { _request_id?: string | null })._request_id ?? null;
+      const requestId = (res as { _request_id?: string | null })._request_id ?? tap.id();
       if (res.stop_reason === "refusal") return useFallback(`refused (${res.stop_details?.category ?? "no category"})`);
       if (res.parsed_output == null) return useFallback(`no parsed output (stop_reason ${res.stop_reason})`);
       const fits = a.schema.safeParse(res.parsed_output);
