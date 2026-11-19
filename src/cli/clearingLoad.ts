@@ -4,7 +4,9 @@
 // requests each, one at a time per wallet (a clearing account pays one request at a time), all wallets at once.
 // Measured: throughput, latency per paid request (retries included), refusals by reason, the deposits' gas, and the
 // RPC calls this process made by method (the URL is never printed). Test money only; keys in a test keys dir.
-// A request whose answer was lost is sent again, as Metal's docs say. Writes docs/runs/clearing-load.json (LOAD_OUT).
+// A request whose answer was lost is sent again, as Metal's docs say (src/metal/loadPayment.ts); those resends are
+// counted apart from the epoch-boundary waits (19 Nov: until then one counter held both). Writes
+// docs/runs/clearing-load.json (LOAD_OUT).
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
@@ -12,14 +14,16 @@ import { resolve } from "node:path";
 import express from "express";
 import { formatUnits, parseUnits, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import type { LoadPayment } from "../metal/loadPayment.js";
 
 process.env.KIT11_KEYS_DIR ??= resolve(import.meta.dirname, "../../../x402-business-agents-keys/clearing-load");
 const { keyPath, metalAgent } = await import("../metal/agentCli.js");
 const { publicClient, readKeyFile, usdzBalance } = await import("../metal/chain.js");
 const { rpcUrl, FACILITATOR_URL } = await import("../metal/network.js");
-const { NETWORK, CHAIN_ID, betweenEpochs, clearingDeployment, outcomeUnknown } = await import("../metal/clearing.js");
+const { NETWORK, CHAIN_ID, clearingDeployment } = await import("../metal/clearing.js");
 const { centsToBaseUnits } = await import("../lib/money.js");
 const { redactSecrets } = await import("../lib/redact.js");
+const { payLoadRequest } = await import("../metal/loadPayment.js");
 const { ClearingServerScheme, clearingSpendable, createClearingClient, depositToClearing, registerClearingClient } = await import("@metalntwx/metal-pay");
 const { openClearingWallet } = await import("@metalntwx/metal-pay/node");
 const { HTTPFacilitatorClient, x402ResourceServer } = await import("@x402/core/server");
@@ -83,8 +87,7 @@ const http = await new Promise<import("node:http").Server>((ok) => { const s = a
 const base = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
 
 // 3. The load: every wallet at once, each paying its requests one at a time.
-type Result = { ok: boolean; ms: number; retries: number; reason: string | null };
-const results: Result[] = [];
+const results: LoadPayment[] = [];
 const t0 = Date.now();
 await Promise.all(payers.map(async (w) => {
   const clearing = createClearingClient({ serviceUrl: d.serviceUrl, rpcUrl: RPC, network: NETWORK, settlement: d.settlement, asset: d.asset, signer: w.signer, store: w.store, maxAmount: 10n ** 16n });
@@ -93,25 +96,8 @@ await Promise.all(payers.map(async (w) => {
   const client = new x402Client().setSpendControls({ allowedAssets: true });
   registerClearingClient(client, NETWORK, clearing);
   const pay = wrapFetchWithPayment(fetch, client);
-  for (let i = 0; i < N; i++) {
-    const start = Date.now();
-    let retries = 0;
-    let resends = 0;
-    for (;;) {
-      try {
-        const res = await pay(`${base}/v1/load?i=${i}`, { signal: AbortSignal.timeout(60_000) });
-        await res.text();
-        results.push({ ok: res.ok, ms: Date.now() - start, retries, reason: res.ok ? null : `HTTP ${res.status}` });
-        break;
-      } catch (e) {
-        if (betweenEpochs(e) && retries < 10) { retries++; await new Promise((r) => setTimeout(r, 3000)); continue; }
-        // A lost answer holds the wallet until the same request is sent again (Metal's documented behaviour): resend it.
-        if (outcomeUnknown(e) && resends < 5) { resends++; retries++; await new Promise((r) => setTimeout(r, 3000)); continue; }
-        results.push({ ok: false, ms: Date.now() - start, retries, reason: redactSecrets(((e as { reason?: string }).reason ?? (e as Error).message).split("\n")[0]!.slice(0, 100)) });
-        break;
-      }
-    }
-  }
+  // One at a time: an epoch boundary waited out, a lost answer's request sent again (src/metal/loadPayment.ts).
+  for (let i = 0; i < N; i++) results.push(await payLoadRequest(() => pay(`${base}/v1/load?i=${i}`, { signal: AbortSignal.timeout(60_000) })));
 }));
 const seconds = (Date.now() - t0) / 1000;
 http.close();
@@ -131,7 +117,8 @@ const out = {
   attempted: results.length, paid, failed: results.length - paid, delivered, failures_by_reason: reasons,
   seconds: Number(seconds.toFixed(1)), throughput_per_second: Number((paid / seconds).toFixed(2)),
   latency_ms: { p50: pct(50), p95: pct(95), p99: pct(99), max: okMs.at(-1) ?? null },
-  between_epochs_retries: results.reduce((a, r) => a + r.retries, 0),
+  between_epochs_retries: results.reduce((a, r) => a + r.epochRetries, 0),
+  resends_after_lost_answer: results.reduce((a, r) => a + r.resends, 0),
   seller_spendable_delta: formatUnits(sellerAfter - sellerBefore, 18), expected_earnings: formatUnits(priceUnits * BigInt(paid), 18),
   deposits: { transactions: deposits.length, gas_used: depositGas.toString(), gas_cost_test_usd: formatUnits(depositGas, 18), txs: deposits.map((x) => x.tx) },
   rpc_calls_this_process: { total: rpcTotal, per_paid_payment: paid ? Number((rpcTotal / paid).toFixed(2)) : null, by_method: rpcCalls },
