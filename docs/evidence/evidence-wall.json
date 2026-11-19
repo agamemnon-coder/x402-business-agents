@@ -355,13 +355,13 @@
         },
         {
           "key": "red-team",
-          "fig": "34 of 35",
+          "fig": "All 35",
           "label": "red-team attacks stopped before money moved, re-run, not held out",
-          "note": "Re-run of 19 Nov, after the fixes: the scripted attacks, no model; the other 1 found afterwards, not prevented (hidden-payment). First run, 30 Oct, with Claude writing 4 of the documents: 37 of 39, 2 found afterwards.",
+          "note": "Newest re-run, 19 Nov, after agent cards were frozen by default: the scripted attacks, no model; none left to be found only afterwards. Earlier re-run, 19 Nov: 34 of 35, 1 found afterwards (hidden-payment). First run, 30 Oct, with Claude writing 4 of the documents: 37 of 39, 2 found afterwards.",
           "tag": "test",
           "tone": "claude",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/rerun-2026-11-19.json",
-          "rec": "docs/redteam/rerun-2026-11-19.json docs/redteam/report.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/rerun-2026-11-19b.json",
+          "rec": "docs/redteam/rerun-2026-11-19b.json docs/redteam/rerun-2026-11-19.json docs/redteam/report.json"
         },
         {
           "key": "hostile-model",
