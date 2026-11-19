@@ -227,8 +227,9 @@ describe("no served page links to a path the site does not serve", () => {
         if (name !== "notFound") expect({ name, at, status: served(`${SITE}${at}`, pages) }).toEqual({ name, at, status: 200 });
         for (const m of noScript(html).matchAll(/<a\b[^>]*\bhref="([^"#]*)(?:#[^"]*)?"/g)) {
           const href = m[1]!.replace(/&amp;/g, "&");
-          // /health (linked from /status since 12 Nov) is the service's JSON endpoint, answered before the page router.
-          if (!href || /^(https?:|mailto:)/.test(href) || (name === "runs" && RUN_LOG.test(href)) || (name === "status" && /^health(\/live)?$/.test(href))) continue;
+          // /health (linked from /status since 12 Nov) is the service's JSON endpoint, answered before the page router; so is
+          // /status.json (19 Nov, the hourly checks: worker/src/index.ts).
+          if (!href || /^(https?:|mailto:)/.test(href) || (name === "runs" && RUN_LOG.test(href)) || (name === "status" && /^(health(\/live)?|status\.json)$/.test(href))) continue;
           links++;
           const url = new URL(href, `${SITE}${at}`);
           expect({ build, name, href, status: served(url.toString(), pages) }).toEqual({ build, name, href, status: 200 });

@@ -5,6 +5,11 @@
   "name": "kit11",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
+  // The hourly checks behind /status (src/ops/syntheticChecks.ts) ask this site's own public addresses and Purser Cloud's
+  // /mcp: with this flag the Worker's global fetch goes over the public internet, as a visitor's request does (without it
+  // a workers.dev Worker cannot fetch another workers.dev Worker of the same account). Every other fetch of this Worker
+  // goes to public APIs already (Airwallex's sandbox, Anthropic, the Alta RPC), so they are unchanged.
+  "compatibility_flags": ["global_fetch_strictly_public"],
   "workers_dev": true,
   "preview_urls": false,
   "durable_objects": {
@@ -13,5 +18,8 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RelayObject"] }],
   // The hands-on demo on this address (/try, src/tryEngine.ts): purser-try (cloud/wrangler.try.jsonc) answers it. Deploy
   // purser-try first: a deploy that binds a Worker that does not exist fails.
-  "services": [{ "binding": "TRY_ENGINE", "service": "purser-try" }]
+  "services": [{ "binding": "TRY_ENGINE", "service": "purser-try" }],
+  // Hourly, at minute 41: the synthetic checks behind /status and /status.json (worker/src/statusDesk.ts), stored in the
+  // "status" instance of RELAY. Nothing runs until the first deploy with this trigger: /status says no check has run yet.
+  "triggers": { "crons": ["41 * * * *"] }
 }
