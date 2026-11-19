@@ -190,7 +190,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/engine/proposals/{id}/payout/simulate` | admin | Sandbox: move to PAID (a test company of the hands-on demo only): the proposal's Airwallex sandbox transfer moved by the sandbox's own simulation to `SENT`, then `PAID`; no money anywhere. Answers `{ ok, note, reason? }`: `in_approval` (it waits for a person in Airwallex), `switched_off`, `no_transfer`, `refused`, `unavailable`, `timeout`. |
 | `GET /v1/engine/export` | read | The company in the product's sync format, as a file (`purser-test-company.json`): `{ format: "purser.cloud-sync/v1", company, made_at, batches }`, the batches a runner's push sends (the invoices with their documents, payments, transactions, the ledger and the audit log). No archive files. At most 5 MB; a test company may download it 5 times. |
 | `GET /v1/engine/export.pdf` | read | The same records as an A4 PDF a person reads (`purser-test-company-records.pdf`, 14 Nov): a cover with the totals, each invoice with its trail (read, checked, signed with the passkey, paid, booked), the journal with its totals per currency, the audit log and the documents' and signed terms' SHA-256. Built by the engine from the export alone. A test company may download it 5 times. The JSON export is printed with a 2-space indent and starts with a `readme` field that says what the file is. |
-| `POST /v1/try/start` | anyone | The hands-on deployment only (`HANDS_ON=on`; 404 elsewhere). A test company of your own on the engine, test money on a simulated bank, deleted after 24 hours: `{ token? }` (an event or jury token). Answers 201 `{ tenant, session, visitor_token, expires_at, session_expires_at, company, pool, mode }`; 429 `{ code: "limit" }` past a limit (per keyed address and per pool and day); 503 `{ code: "paused" }` while the switch `starts` is off. Like the renewal and every write of a test company, it must carry this site's `Origin` (the demo's own page); a program without one gets 403. |
+| `POST /v1/try/start` | anyone | The hands-on deployment only (`HANDS_ON=on`; 404 elsewhere). A test company of your own on the engine, test money on a simulated bank, deleted after 24 hours: `{ token? }` (an event or jury token). Answers 201 `{ tenant, session, visitor_token, expires_at, session_expires_at, company, pool, mode }`; 429 `{ code: "limit" }` past a limit (per keyed address and per pool and day); 503 `{ code: "paused" }` while the switch `starts` is off. With the switch `turnstile` on, it also needs `{ turnstile }`, a Cloudflare Turnstile token that siteverify accepts (403 `{ code: "turnstile" }` otherwise; see "Cloudflare Turnstile before a start" below). Like the renewal and every write of a test company, it must carry this site's `Origin` (the demo's own page); a program without one gets 403. |
 | `POST /v1/try/session` | anyone | The hands-on deployment only. `{ tenant_id, visitor_token }`: a fresh 15-minute session for that test company; `{ session, expires_at, company_expires_at }`, or 410 `{ code: "gone" }` once it was deleted. Limited per company (30 a minute), never per address. |
 | `POST /v1/try/admin` | platform admin | The hands-on deployment's controls: `{ op: "get" }` (the switches, today's counters), `{ op: "set", key, value }` (one switch, refused past its ceiling; logged without the token), `{ op: "token", pool, until }` (an event or jury token, shown once; only its hash is kept). |
 | `POST /v1/try/challenge` | anyone | The hands-on deployment only. The bot check before a start: `{ required: false }` while the switch `bot_check` is off; else `{ required: true, challenge, difficulty, expires_at }`, an HMAC-signed challenge (secret `TRY_BOTCHECK_SECRET`) of 12 to 20 leading zero bits of SHA-256, harder as more companies start. The browser sends `{ proof: { challenge, nonce } }` with `POST /v1/try/start`; a missing, wrong, expired or reused answer is 403 `{ code: "bot_check" }` before any company exists. Switched on with no secret: 503 `paused`. |
@@ -342,7 +342,8 @@ real engine, from `POST /v1/try/start` (code in `cloud/src/try/`). Purser Cloud 
   visitor's own file upload (switch `own_upload`, off); a live Airwallex payment (the sandbox leg is built only if its
   gate passes, and is then switched on separately).
 
-What a public launch would still need: a bot check, WAF rate rules at Cloudflare, a budget alert on the Claude key, the
+What a public launch would still need: a bot check on the page (the proof of work and Turnstile are on the server, each
+behind its own switch; see below), WAF rate rules at Cloudflare, a budget alert on the Claude key, the
 sweep watched, and a limit tested against a hostile PDF on the deployment itself.
 
 ## Tested on D1 itself
@@ -452,6 +453,35 @@ From the repository root, after `npm ci` and `npm ci --prefix worker`, with wran
    npm run cloud:smoke -- https://purser-try.max-31b.workers.dev --parallel 10 --poll 1000
    ```
    What they printed goes into a run record in docs/runs, dated the day it ran (none yet).
+
+### Cloudflare Turnstile before a start (19 Nov, off by default)
+
+`POST /v1/try/start` can ask Cloudflare Turnstile whether a person pressed Start (`cloud/src/try/turnstile.ts`,
+`test/try-turnstile.test.ts`). The start sends the widget's token as `turnstile`; the Worker asks Cloudflare's
+siteverify (`https://challenges.cloudflare.com/turnstile/v0/siteverify`) with the secret key, the token and the
+visitor's address, before any company or Durable Object exists. It sits beside the proof of work (`bot_check`) and is
+switched separately. It fails closed: switch on and no secret, starts are paused (503 `paused`); no token, or one
+Cloudflare refuses (wrong, older than 300 seconds, or used before), 403 `{ code: "turnstile" }`; siteverify that cannot
+be reached or answers anything but `success: true`, 503 `paused`. Nothing about the visitor is stored.
+
+**Not done yet: the widget on the page.** The /try page does not render the Turnstile widget yet, so it sends no token.
+Until it does (the widget script from `challenges.cloudflare.com`, allowed in the page's `script-src` and `frame-src`,
+rendered with the site key and `data-action="try_start"`, its token sent as `turnstile`), switching `turnstile` on refuses
+every start from the page. Only a client that sends the token itself gets through.
+
+How the owner turns it on, once the widget is on the page:
+
+1. **In the Cloudflare dashboard:** Turnstile, Add widget. Name it `purser-try`, add the hostname the demo is served from
+   (for example `purser-try.max-31b.workers.dev`), widget mode Managed, no pre-clearance. Cloudflare shows a **site
+   key** (public: it goes in the page) and a **secret key** (never in a file, a chat or a commit).
+2. **The secret, into the Worker** (typed at the prompt):
+   ```bash
+   worker/node_modules/.bin/wrangler secret put TURNSTILE_SECRET -c cloud/wrangler.try.jsonc
+   ```
+3. **The switch**, with the admin token, through `POST /v1/try/admin`: `{ "op": "set", "key": "turnstile", "value": "on" }`.
+   `{ "op": "set", "key": "turnstile", "value": "off" }` turns it off again; the secret can stay.
+4. **Check:** a start from the page works, and `curl -X POST <origin>/v1/try/start -H "Origin: <origin>" -d '{}'`
+   answers 403 `turnstile`.
 
 ## Limits on what comes in
 

@@ -72,3 +72,27 @@ declined for the limit, and the model no longer counts Purser's decision code as
   (`npm run cards -- sync` or `setup`); the runner's routine check compares its own rows and does not see it. Section 4 keeps
   the Issuing write scope off the keys that do not need it;
 - a runner host taken over with its keys stays out of scope.
+
+## 3. Cloudflare Turnstile before a public /try start
+
+**What changed.** `POST /v1/try/start` on the hands-on deployment can ask Cloudflare Turnstile's siteverify about the
+widget's token before any company or Durable Object exists (`cloud/src/try/turnstile.ts`, wired in
+`cloud/src/try/routes.ts`), next to the existing proof of work. It is behind a new switch, `turnstile`, off while its
+row is missing, and needs the Worker secret `TURNSTILE_SECRET`, which the owner sets with
+`wrangler secret put TURNSTILE_SECRET -c cloud/wrangler.try.jsonc`; the site key is public and the secret is in no file.
+It fails closed: switched on with no secret, starts are paused; a missing, wrong, expired or reused token is refused
+(403 `turnstile`); a siteverify that cannot be reached, errs or answers anything but `success: true` pauses the start.
+A reported action other than `try_start` is refused. The owner's steps are in
+[cloud.md](../cloud.md#cloudflare-turnstile-before-a-start-19-nov-off-by-default).
+
+**Tests.** `test/try-turnstile.test.ts`, with a stand-in siteverify that records what it is sent: off, starts run and
+siteverify is never called; on, no token and a wrong token are refused with no company made, a good token starts one
+and sends the secret, the token, the address and an idempotency key, and the same token again is refused; on with no
+secret, starts are paused and nothing is sent; a network error, a 500, a body that is not JSON, `success: "true"` and
+an empty answer each refuse the start.
+
+**Still open.** The /try page does not render the Turnstile widget yet (its script and frame from
+`challenges.cloudflare.com` must also be allowed in the page's Content-Security-Policy). Until it does, switching
+`turnstile` on refuses every start from the page; this was left for a change of its own because it touches the
+console's shared CSP. A token proves a browser passed Cloudflare's check, not that it is a person with good intent; the
+per-address, per-pool and per-day start limits still apply either way.
