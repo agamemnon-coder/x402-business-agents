@@ -270,6 +270,16 @@
           "rec": "docs/evals/adversarial-v3.json"
         },
         {
+          "key": "eval-v4",
+          "fig": "11 vs 72",
+          "label": "wrong payments on 100 held-out invoices (eval v4): Purser vs no rules",
+          "note": "Cases committed before the run (commit 727d99d1); a script always says pay. 4 false holds of 44. After the fixes written against these misses (no longer held out): 0 wrong payments, 0 false holds. Offline.",
+          "tag": "test",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v4.md",
+          "rec": "docs/evals/adversarial-v4.json"
+        },
+        {
           "key": "red-team",
           "fig": "37 of 39",
           "label": "red-team attacks stopped before money moved",
