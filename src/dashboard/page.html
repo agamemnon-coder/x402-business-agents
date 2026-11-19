@@ -73,6 +73,7 @@ button { font: inherit; }
 .recbanner details { margin-left: auto; font-size: 13px; color: var(--muted); }
 .recbanner details summary { cursor: pointer; }
 .btn.sm { min-height: 36px; padding: 8px 12px; font-size: 13px; }
+#notify { margin-left: auto; }
 .note { max-width: 1200px; margin: 0 auto; padding: 10px 32px 0; font-size: 12.5px; color: var(--faint); }
 .note summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px; min-height: 28px; }
 .note summary::-webkit-details-marker { display: none; }
@@ -680,7 +681,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   </div></div>
   <section class="panel" id="awx-hooks" aria-labelledby="h-hooks" hidden><div class="sect flush"><h2 id="h-hooks">Webhooks from Airwallex</h2><span class="hint">each one signed by Airwallex, checked at the relay and again here, then compared with the ledger</span></div><div id="awx-hooks-body"></div></section>
   <div class="cols">
-    <section class="panel" aria-labelledby="h-pending"><div class="sect flush"><h2 id="h-pending">Waiting for you</h2><span class="pill" id="pending-count">0</span></div><div id="pending"></div></section>
+    <section class="panel" aria-labelledby="h-pending"><div class="sect flush"><h2 id="h-pending">Waiting for you</h2><span class="pill" id="pending-count">0</span><button type="button" class="btn sm" id="notify" hidden>Notify me</button></div><div id="pending"></div></section>
     <section class="panel" aria-labelledby="h-feed"><div class="sect flush"><h2 id="h-feed">Activity</h2><span class="hint">newest first</span></div><ul class="feed" id="feed"></ul><details class="tech feed-sys" id="feed-sys-wrap" hidden><summary id="feed-sys-sum">System events</summary><ul class="feed" id="feed-sys"></ul></details></section>
   </div>
   <div class="cols">
@@ -1722,7 +1723,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   function poll() {
     fetch("api/snapshot", { cache: "no-store", headers: { accept: "application/json", "x-kit11-view": viewKey } })
       .then(function (r) { needsLink = r.status === 401; if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then(function (d) { lastData = d; lastOk = Date.now(); render(d); })
+      .then(function (d) { lastData = d; lastOk = Date.now(); render(d); pushOffer(); })
       .catch(function () {})
       .then(function () {
         // A viewer link that no longer works: stop asking, and show the way to the recording instead.
@@ -1735,6 +1736,50 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         }
         status(); setTimeout(poll, POLL_MS);
       });
+  }
+
+  // The installed app (src/pwa/, docs/app/README.md): its service worker where the relay serves one (its build links the
+  // manifest; the runner's local page does not), and "Notify me" when the relay can push (it has VAPID keys): a phone
+  // that asks is told when a payment waits for its signature, with the passkey page to open. The worker never caches /api/.
+  var appMode = !!document.querySelector('link[rel="manifest"]') && "serviceWorker" in navigator;
+  if (appMode) navigator.serviceWorker.register("/sw.js").catch(function () {});
+  var pushAsked = false;
+  function keyBytes(s) {
+    var b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), a = new Uint8Array(b.length);
+    for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
+    return a;
+  }
+  function pushSend(sub) {
+    return fetch("api/push/subscribe", { method: "POST", cache: "no-store", headers: { "content-type": "application/json", accept: "application/json", "x-kit11-view": viewKey }, body: JSON.stringify(sub) })
+      .then(function (r) { if (!r.ok) throw new Error(String(r.status)); });
+  }
+  function notifyOn(b) { b.disabled = true; b.textContent = "Notifications on"; }
+  function pushOffer() {
+    if (pushAsked || !appMode || !viewKey || !("PushManager" in window) || !("Notification" in window)) return;
+    pushAsked = true;
+    var b = document.getElementById("notify");
+    fetch("api/push/key", { cache: "no-store", headers: { accept: "application/json", "x-kit11-view": viewKey } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (k) {
+        if (!k || typeof k.public_key !== "string") return null;
+        return navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (sub) {
+          b.hidden = false;
+          // Already on (this phone said yes before): the relay is told again, in case it was cleared.
+          if (sub && Notification.permission === "granted") return pushSend(sub.toJSON()).then(function () { notifyOn(b); });
+          b.addEventListener("click", function () {
+            b.disabled = true;
+            // Asked on the tap itself: iPhone allows the question only from a tap, and only in the Home Screen app.
+            Notification.requestPermission().then(function (p) {
+              if (p !== "granted") throw new Error("not allowed");
+              return navigator.serviceWorker.ready;
+            }).then(function (reg) { return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(k.public_key) }); })
+              .then(function (s) { return pushSend(s.toJSON()); })
+              .then(function () { notifyOn(b); })
+              .catch(function () { b.disabled = false; b.textContent = "Notify me · not allowed here"; });
+          });
+          return null;
+        });
+      }).catch(function () {});
   }
 
   // Recordings made before the rename carry no company: they were made with the earlier example company.

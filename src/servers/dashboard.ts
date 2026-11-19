@@ -138,9 +138,10 @@ const inlineHash = (page: string, tag: "script" | "style") => {
   if (!m) throw new Error(`the page has no inline ${tag}`);
   return `'sha256-${createHash("sha256").update(m[1]!, "utf8").digest("base64")}'`;
 };
-const cspFor = (page: string) => [
+/** `app`: the page may be installed (src/pwa/): its manifest and its service worker, from this origin only. */
+const cspFor = (page: string, app = false) => [
   "default-src 'none'", `script-src ${inlineHash(page, "script")}`, `style-src ${inlineHash(page, "style")}`, "connect-src 'self'",
-  "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+  "font-src 'self'", "img-src 'self'", ...(app ? ["manifest-src 'self'", "worker-src 'self'"] : []), "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ");
 
 /** "30 October": a recording's day, in words (UTC), the same on every device. */
@@ -196,7 +197,7 @@ export const publicWords = (text: string) => PUBLIC_WORDS.reduce((t, [re, to]) =
 // hash below changes. The local server, npm run judge and the relay serve the same pages.
 export const PAGE = withMeta(publicWords(dashboardPage()), { description: "The CFO's dashboard: each agent's card and mandate, what it paid and what was stopped, the books and the audit log." });
 // Only the page's own script and style may run; data arrives over fetch from this origin only.
-export const CSP = cspFor(PAGE);
+export const CSP = cspFor(PAGE, true);
 /** The month replay carries its data inside the page, so it needs no request at all once loaded. */
 export const MONTH_CSP = cspFor(MONTH_TEMPLATE);
 

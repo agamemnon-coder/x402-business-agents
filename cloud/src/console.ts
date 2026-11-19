@@ -5,7 +5,7 @@
 // page as text (textContent), never as HTML; account numbers come masked from the runner. The console reads and
 // manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
 
-import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
+import { PREVIEW_TAGS } from "./brand.js";
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
@@ -24,6 +24,7 @@ import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
 import { t0CloseLine } from "./t0Close.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
+import { APP_ICON_LINKS, cloudAppResponse } from "./pwa.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
   "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy",
@@ -1495,6 +1496,9 @@ async function route(){
 $('#demo-out').onclick=(e)=>{e.preventDefault();$('#out').click()};
 $('#out').onclick=async()=>{workStop();try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}forget();S=null;ME=null;go('#/sign-in')};
 window.addEventListener('hashchange',route);
+// The installed app's service worker (cloud/src/pwa.ts, src/pwa/sw.ts): the shell and the offline page only; /v1/ (the
+// engine, sign-in, the passkey ceremony) never meets its cache.
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 setInterval(()=>{if(S&&S.exp<=Date.now()){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in')}else shell()},30000);
 route();
 `;
@@ -1716,7 +1720,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
   const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS);
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
@@ -1766,8 +1770,9 @@ parent.postMessage({type:'ready'},'*');
 export const pdfViewCsp = (n: string, origin: string) =>
   `sandbox allow-scripts; default-src 'none'; script-src 'nonce-${n}' ${origin}/assets/pdfjs.mjs; worker-src blob:; style-src 'nonce-${n}'; img-src blob: data:; font-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'`;
 
+// manifest-src and worker-src: the console installs as an app (./pwa.ts), its manifest and service worker from this origin only.
 export const consoleCsp = (n: string) =>
-  `default-src 'none'; script-src 'nonce-${n}' 'self'; style-src 'nonce-${n}'; img-src 'self' data: blob: ${SITE_ORIGIN}; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
+  `default-src 'none'; script-src 'nonce-${n}' 'self'; style-src 'nonce-${n}'; img-src 'self' data: blob: ${SITE_ORIGIN}; font-src 'self'; connect-src 'self'; frame-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
@@ -1788,6 +1793,9 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
     return new Response(consolePage(n, { origin: env.origin, rpId: env.rpId, mailDomain: env.mailDomain ?? "", engine: !!env.engine }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
   }
   if (url.pathname === "/try") return tryPageResponse(req, url, env);
+  // The installed app's files (./pwa.ts): the manifest, the service worker, the offline page and the icons.
+  const app = cloudAppResponse(url.pathname, PAGE_HEADERS);
+  if (app) return app;
   // Stage mode for the finals (cloud/src/try/stagePage.ts): the hands-on deployment only.
   if (url.pathname === "/try/stage" && env.tryIt) return stagePageResponse(req);
   // /try/negotiate (cloud/src/try/negotiatePage.ts): the agents' negotiation, a page of its own beside /try.
