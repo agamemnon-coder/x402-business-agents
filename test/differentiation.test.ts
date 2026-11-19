@@ -76,7 +76,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // 260 since 17 Nov, owner: strongest proof first (+8 lines: the six-row proof table under the links; the Kit 11 line at 255 as built).
     // 250 since 17 Nov, later (+10 lines: the For judges table, the submission line, the film's figures dated). 240 since 17 Nov (+7 lines: one engine, two jobs; what the sandbox taught us; three invariants); 230 since 15 Nov (+the invariants table); 220 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram and the system map; the Kit 11 line at 215 as built).
     // 270 since 18 Nov (+6 lines: the demo in the submission at the top of "Watch it"; the Kit 11 line at 261 as built).
-    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 270).filter((l) => !l.startsWith("**Built on Airwallex.**") && !/^(\*\*[^*]+\*\* )?\[!\[/.test(l)).join("\n")); // 17 Nov, owner: the badges at the very top, right under the title, so they are left out here (19 Nov 2026: each row starts with its bold label)
+    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 270).filter((l) => !l.startsWith("**Built on Airwallex.**") && !/^(\*\*[^*]+\*\*(<br>| ))?\[!\[/.test(l)).join("\n")); // 17 Nov, owner: the badges at the very top, right under the title, so they are left out here (19 Nov 2026: each row starts with its bold label)
     // Since 13 Nov (the enterprise README): what Purser is in README_WHAT; the form and the deck keep WHAT_IT_IS. Since
     // 15 Nov (clarity) README_WHAT is the idea in one sentence, then the three links; the first sentence follows the Kit 11
     // table, under "At a glance".
