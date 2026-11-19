@@ -213,16 +213,16 @@ token lives. When it ends, the client asks you to sign in again. The server's `i
 (`/icon.png`, `/favicon.svg`). The endpoints and their tests are in `cloud/src/claude/`, `test/cloud-claude.test.ts`
 and `test/browser/connector.check.ts`. The API table is in [cloud.md](cloud.md).
 
-## The MCP Registry (a step for the owner)
+## The MCP Registry
 
 `server.json` at the repository's root describes Purser for the official MCP Registry (schema 2025-12-11; it validates
 in `test/mcp-registry.test.ts`): `io.github.agamemnon-coder/purser`, a remote-only server at the test cloud's `/mcp`
-with an optional, secret `Authorization` header. **It is not published.** To publish, the owner runs, once this version
-is deployed:
-
-1. Install `mcp-publisher` as the registry's quickstart says (github.com/modelcontextprotocol/registry).
-2. `mcp-publisher login github` (as `agamemnon-coder`; the `io.github.agamemnon-coder/*` namespace follows the login).
-3. `mcp-publisher publish` in the repository's root.
+with an optional, secret `Authorization` header. It is listed in the registry (version 1.1.0 was published from the
+owner's login). From 19 November 2026 publishing runs online, with no personal login:
+[`.github/workflows/mcp-publish.yml`](../.github/workflows/mcp-publish.yml) logs in with the repository's GitHub OIDC
+token and publishes `server.json` whenever a release is published, or by hand (Actions → mcp-publish → Run workflow).
+It refuses to publish when `server.json`'s version differs from `package.json`'s. The publisher is pinned by version and
+SHA-256. By hand, the same is `mcp-publisher login github` then `mcp-publisher publish` in the repository's root.
 
 The registry checks the namespace, not the remote address; a later version needs `version` raised in both
 `server.json` and `cloud/src/claude/mcp.ts` (`SERVER_VERSION`; the test holds them equal).
