@@ -199,7 +199,8 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   const rt = json(RT) as RedTeam | null, rr = json(RT_RERUN) as RedTeam | null;
   if (rt?.attempts) {
     const before = (x: RedTeam) => (x.blocked ?? 0) - (x.caught_after ?? 0);
-    const first = `First run, ${day(rt.ran_at!)}, with Claude writing 4 of the documents: ${whole(before(rt), rt.attempts).toLowerCase()}, ${rt.caught_after ?? 0} found afterwards.`;
+    const written = (rt.results ?? []).filter((r) => r.id === "document").length;
+    const first = `First run, ${day(rt.ran_at!)}${rt.model && written ? `, with Claude writing ${written} of the documents` : ""}: ${whole(before(rt), rt.attempts).toLowerCase()}, ${rt.caught_after ?? 0} found afterwards.`;
     if (rr?.attempts) {
       const after = (rr.results ?? []).filter((r) => r.caught === "after").map((r) => r.id);
       out.push({ key: "red-team", fig: whole(before(rr), rr.attempts), label: `red-team attacks stopped before money moved, after the ${day(rr.ran_at!)} fixes, re-run, not held out`, note: `The scripted attacks${rr.model ? "" : ", no model"}; the other ${rr.caught_after ?? 0} found afterwards, not prevented${after.length ? ` (${after.join(", ")})` : ""}. ${first}`, tag: "test", tone: "claude", href: blob(RT_RERUN), rec: `${RT_RERUN} ${RT}` });
