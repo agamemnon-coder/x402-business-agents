@@ -202,7 +202,7 @@ Registry and is described in [agent-api.md](agent-api.md).
 [`server.json`](../server.json) describes this server for the official MCP Registry (schema 2025-12-11):
 `io.github.agamemnon-coder/purser`, a remote-only server at the hosted cloud's `/mcp`, its `Authorization` header
 optional and secret, filled from one secret variable (`Bearer {connector_token}`). It is not published; publishing is
-a step for the owner ([connect-claude.md](connect-claude.md#the-mcp-registry-a-step-for-the-owner)). Its `version` and
+a step for the owner ([connect-claude.md](connect-claude.md#the-mcp-registry)). Its `version` and
 the server's `SERVER_VERSION` are held equal by a test.
 
 ## The tests that hold this page
