@@ -8,7 +8,7 @@ import type { TenantDb } from "../tenant.js";
 import { auditTrail, cashPosition, cfoPolicy, findPayment, pendingApprovals, quarterOf } from "./insight.js";
 
 type Json = Record<string, unknown>;
-export interface ResourceCtx { db: TenantDb; now: Date; demo: boolean; origin: string; company: string }
+export interface ResourceCtx { db: TenantDb; now: Date; demo: boolean; origin: string; company: string; /** The token may file proposals. */ canPropose?: boolean }
 export interface Resource { uri: string; name: string; title: string; description: string; mimeType: string }
 export interface ResourceTemplate { uriTemplate: string; name: string; title: string; description: string; mimeType: string }
 
@@ -22,6 +22,7 @@ const BOOK_WORDS: Record<string, string> = { pnl: "Profit and loss, this year to
 export async function listResources(c: ResourceCtx): Promise<Resource[]> {
   const q = quarterOf(c.now.toISOString());
   const fixed: Resource[] = [
+    { uri: "purser://connection", name: "connection", title: "What this connection can do", description: "This token's scope, what no AI can do here, and how a proposal reaches the CFO. Read it first.", mimeType: "text/markdown" },
     { uri: "purser://company/overview", name: "company-overview", title: "Company overview", description: "Money in and out, net cash by day, spend, invoices by state, the newest decisions.", mimeType: "application/json" },
     { uri: "purser://cash", name: "cash", title: "Cash and its projection", description: "Net cash and a 4-week projection from due days (not a bank balance).", mimeType: "application/json" },
     { uri: "purser://approvals/pending", name: "pending-approvals", title: "What waits for the CFO", description: "Invoices and proposals waiting for the CFO's Face ID, with where to approve them.", mimeType: "application/json" },
@@ -51,6 +52,21 @@ function policyMarkdown(company: string, demo: boolean, p: Json): string {
     "## Settings", ...(settings.length ? settings.map((x) => `- ${x.setting}: ${x.value}`) : ["- none recorded"]), ""].join("\n");
 }
 
+/** The safety model for this one connection, as a short document an AI can attach and quote. */
+export function connectionMarkdown(company: string, demo: boolean, canPropose: boolean): string {
+  return [`# Purser over MCP: ${company}${demo && !/demo/i.test(company) ? " (demo data)" : ""}`, "",
+    canPropose && !demo ? "This connection **reads the books and may propose an invoice's payment** for the CFO's approval." : "This connection **reads the books**. It cannot propose anything.", "",
+    "## What no AI can do here, for any token",
+    "- approve a payment, a supplier, a card limit or a policy change;", "- pay, or move money on any rail;", "- change a limit or the CFO's policy;", "- write to the books.", "",
+    "Every payment needs the CFO's passkey (Face ID) in Purser Cloud: a WebAuthn signature over the payment's exact terms. No token can make one, and an AI never sees the challenge the passkey signs.", "",
+    "## How a proposal reaches the CFO",
+    "1. propose_invoice_payment files the invoice's payment (a token made to propose; never on the demo company). Purser refuses an invoice that is held, already waiting or paid.",
+    "2. The proposal waits in Purser Cloud, beside the ones filed there, with its terms and their SHA-256; pending_approvals lists it.",
+    "3. The CFO reads the terms and approves them with the passkey, or rejects them, or lets them expire. payment_proposal shows where it stands.",
+    "4. Only then does Purser pay; one changed cent breaks the signature.", "",
+    demo ? "This is the demo company: made-up data from a simulated month, test money. Say so when you quote it." : "Amounts are the company's own records; quote them as they are.", ""].join("\n");
+}
+
 const decode = (s: string) => { try { return decodeURIComponent(s); } catch { throw new NoResource("the URI is not valid percent-encoding"); } };
 
 /** One resource's contents, or NoResource. */
@@ -59,6 +75,7 @@ export async function readResource(c: ResourceCtx, uri: string): Promise<{ uri: 
   const at = c.demo ? c.now.toISOString().slice(0, 10) : undefined;
   let m: RegExpExecArray | null;
   try {
+    if (uri === "purser://connection") return { uri, mimeType: "text/markdown", text: connectionMarkdown(c.company, c.demo, !!c.canPropose) };
     if (uri === "purser://company/overview") return json(await dashboard(c.db, c.demo ? { asOf: c.now.toISOString() } : {}));
     if (uri === "purser://cash") return json(await cashPosition(c.db, c.now));
     if (uri === "purser://approvals/pending") return json(await pendingApprovals(c.db, c.origin));

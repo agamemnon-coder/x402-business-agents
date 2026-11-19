@@ -9,6 +9,9 @@ import { DEMO_CONNECTOR_TOKEN } from "../auth.js";
 import { ICON_LINKS, PREVIEW_TAGS } from "../brand.js";
 import { randomToken } from "../crypto.js";
 
+/** The MCP reference in the repository: tools, annotations, error codes, the safety model and how a proposal reaches the CFO. */
+export const MCP_REFERENCE = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/mcp.md";
+
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 
@@ -51,8 +54,9 @@ export function clientTabs(origin: string, token = DEMO_CONNECTOR_TOKEN): Client
       links: [], note: "Windsurf's MCP documentation now lives in Devin's docs." },
     { id: "other", name: "Other", intro: "Any MCP client that speaks Streamable HTTP, and the MCP Inspector.",
       steps: [`The server: ${mcp} (Streamable HTTP). Sign-in: OAuth 2.1 with PKCE (client metadata documents or dynamic registration), or a bearer header.`],
-      snippets: [{ label: "MCP Inspector", code: `npx @modelcontextprotocol/inspector --cli ${mcp} --transport http --method tools/list --header "Authorization: ${bearer}"` }],
-      links: [{ label: "OAuth metadata", href: `${origin}/.well-known/oauth-protected-resource` }], note: "" },
+      snippets: [{ label: "A client that takes a JSON config (the common mcpServers shape; the key for the address varies: url, httpUrl or serverUrl)", code: json({ mcpServers: { purser: { type: "http", url: mcp, headers: { Authorization: "Bearer ${PURSER_CONNECTOR_TOKEN}" } } } }) },
+        { label: "MCP Inspector", code: `npx @modelcontextprotocol/inspector --cli ${mcp} --transport http --method tools/list --header "Authorization: ${bearer}"` }],
+      links: [{ label: "OAuth metadata", href: `${origin}/.well-known/oauth-protected-resource` }, { label: "Tools, errors and the safety model", href: MCP_REFERENCE }], note: "Every error carries a stable code; the reference lists them, with every tool's schema and annotations." },
   ];
 }
 
@@ -94,7 +98,7 @@ ${show}
 <div><b>Sign-in</b><span>OAuth 2.1 with PKCE, or a bearer header with your connector token (Purser Cloud: Settings, Connect your AI).</span></div>
 <div><b>Demo token</b><span><code>${esc(DEMO_CONNECTOR_TOKEN)}</code> reads the demo company: made-up data, no real money.</span></div></div>
 ${radios}<nav class="tabs" aria-label="Clients">${labels}</nav><div class="panels">${panels}</div>
-<footer>Each tab follows that client's own documentation as read on 13 Nov 2026. Purser has been tried live in Claude's iOS app and with the MCP Inspector; the other clients are described from their docs.</footer>
+<footer><a href="${esc(MCP_REFERENCE)}" rel="noopener">The MCP reference</a>: every tool, its annotations, the error codes and how a proposal reaches the CFO. Each tab follows that client's own documentation as read on 13 Nov 2026. Purser has been tried live in Claude's iOS app and with the MCP Inspector; the other clients are described from their docs.</footer>
 </main></body></html>`;
   return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300", "x-content-type-options": "nosniff", "referrer-policy": "same-origin",
     "content-security-policy": `default-src 'none'; style-src 'nonce-${nonce}'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` } });
