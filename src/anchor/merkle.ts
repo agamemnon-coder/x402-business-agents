@@ -61,7 +61,9 @@ export function merkleCalldata(root: string, leaves: number): `0x${string}` {
 
 export function readMerkleCalldata(input: string): { root: string; leaves: number } | null {
   const text = Buffer.from(input.replace(/^0x/, ""), "hex").toString("utf8");
-  const m = new RegExp(`^${MERKLE_SCHEMA.replace(/[./]/g, "\\$&")} ([0-9a-f]{64}) (\\d+)$`).exec(text);
+  const prefix = `${MERKLE_SCHEMA} `;
+  if (!text.startsWith(prefix)) return null;
+  const m = /^([0-9a-f]{64}) (\d+)$/.exec(text.slice(prefix.length));
   return m ? { root: m[1]!, leaves: Number(m[2]) } : null;
 }
 
