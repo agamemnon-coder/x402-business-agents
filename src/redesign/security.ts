@@ -16,6 +16,8 @@ export { existingDoc };
 import { esc, icon, TRY_URL } from "./ui.js";
 import { CI_CSS, ciChecksHtml } from "./ciChecks.js";
 import { SECOND_KEY_COPY } from "../policy/secondKey.js";
+import { ARCH_CSS, archHtml } from "./securityArch.js";
+import { EVIDENCE_CSS, evidenceHtml } from "./securityEvidence.js";
 
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
 /** A doc as running text: bold and code marks out and line breaks as spaces, so a sentence wrapped over lines reads as one. */
@@ -492,19 +494,25 @@ export function securityLead(zt: ZeroTrust = zeroTrust(), he: HostileEval = host
   return `Three attack tests: zero trust, ${zt.run} attacks on the payment path, ${zt.stopped === zt.run ? "all" : zt.stopped} stopped; a hostile model, ${he.calls} tool calls, ${he.unsafe === 0 ? "none" : he.unsafe} unsafe by the ledger verdict; the red team, ${rt.attempts} attacks, ${rt.after ?? 0} not prevented (detected after).`;
 }
 
+/** What the architecture drawing is, in the footer's "What's real?". */
+export const ARCH_REAL_LINE = "How a payment is guarded is a schematic: its moving dots illustrate one payment, they are not a recording; the evidence items below it link the runs.";
+
 export function securityPage(): string {
   const cards = securityCards();
   return productPage({
     key: "security", title: "Security and trust", h1: "Security and trust", label: "Sandbox and testnet only",
     lead: securityLead(),
     description: "How Purser protects company money: signatures over the exact terms, no customer money held, limits outside the prompt, a hash-chained audit log, the red team's results, and what is not in place yet. Sandbox and testnet only.",
-    css: SECURITY_VIZ_CSS + CI_CSS,
-    body: `<div class="links">${outLink(repoHref(CONTROLS_MATRIX), "Every risk, its control and its test")}</div>\n${securityViz()}\n<div class="cols c3">\n  ${cards.map(cardHtml).join("\n  ")}\n</div>\n${ciChecksHtml()}`,
-    source: `Source: ${ZERO_TRUST_REPORT}, ${HOSTILE_RECORD_FILE}, ${ANCHOR_RUN}, ${REDTEAM_REPORT} and the later red-team records, ${AUDIT_LOG}, and the docs each fold names.`,
+    css: ARCH_CSS + EVIDENCE_CSS + SECURITY_VIZ_CSS + CI_CSS,
+    // 19 Nov (the owner: enterprise grade, visually strong): the architecture first, then what was done with its
+    // evidence, then the attack tests' pictures, the controls' cards and CI.
+    body: `<div class="links">${outLink(repoHref(CONTROLS_MATRIX), "Every risk, its control and its test")}</div>\n${archHtml()}\n${evidenceHtml()}\n${securityViz()}\n<div class="cols c3">\n  ${cards.map(cardHtml).join("\n  ")}\n</div>\n${ciChecksHtml()}`,
+    source: `Source: docs/evidence/evidence-wall.json and the records each evidence item links, ${ZERO_TRUST_REPORT}, ${HOSTILE_RECORD_FILE}, ${ANCHOR_RUN}, ${REDTEAM_REPORT} and the later red-team records, ${AUDIT_LOG}, and the docs each fold names.`,
     real: [
       "Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.",
       "The red team ran in a throwaway test world on simulated rails, not live.",
       HARNESS_LINE,
+      ARCH_REAL_LINE,
       NOT_YET_LINE,
     ],
   });
