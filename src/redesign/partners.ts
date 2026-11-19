@@ -49,9 +49,9 @@ import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, sweepFold } from ".
 import { CLAUDE_CSS, claudeMain } from "./claudePage.js";
 import { BOOKS_CSS, BOOKS_JS, MONEYBIRD_RECORD, RUN_FILE, booksBody, booksData } from "./booksPage.js";
 import { T0_CLOSE_JS, t0RunData } from "./t0CloseTile.js";
-import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
+import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_READBACK_RECORD, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
 import { OPEN_TARGET_JS, esc, icon, page, pageTitle, setBuiltOn, TRY_URL } from "./ui.js";
-import { EVIDENCE_WALL_CSS, evidenceStripHtml, notLiveLine } from "./evidenceWall.js";
+import { EVIDENCE_WALL_CSS, evidenceLeadHtml, evidenceStripHtml, notLiveLine } from "./evidenceWall.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
 .pp .wrap { max-width: 1040px; display: grid; gap: 18px; }
@@ -209,7 +209,11 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   const cardsAt = body.indexOf('id="awg-on"');
   const at = cardsAt < 0 ? -1 : body.lastIndexOf("<", cardsAt);
   const withStrip = at < 0 || !strip ? afterHeading(body, strip) : `${body.slice(0, at)}${strip}\n  ${body.slice(at)}`;
-  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}\n${EVIDENCE_WALL_CSS}`, body: withStrip, source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS + LIVE_CARDS_JS, stage: false, builtOn: builtOnHtml(run) });
+  // 19 Nov (the owner: "lead with the strongest live-proven result"): the wall's five strongest Airwallex figures as one
+  // row of chips right under the heading, each linked to its record; the path of products follows, still on the first
+  // screen at 390 px (test/browser/pages.check.ts).
+  const led = afterHeading(withStrip, evidenceLeadHtml("airwallex"));
+  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}\n${EVIDENCE_WALL_CSS}`, body: led, source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS + LIVE_CARDS_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 /**
@@ -523,9 +527,10 @@ export const T0_REAL = [
 ];
 /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger, from the run records alone (src/redesign/t0Page.ts). */
 export function t0Page(run: AgentRun = agentRun()): string {
-  const body = t0Body(t0Data(), { logo: T0_LOGO, pill: T0_LABEL });
-  return page({ title: "T:0", description: "How Purser uses T:0: its double-entry books posted to T:0's general ledger as journal entries, then read back line by line.", tab: "proof", css: `${CSS}\n${STATS_CSS}\n${T0_CSS}`, body,
-    source: `Source: ${T0_JOURNAL_RECORD}, ${PLATFORM_RUN_FILE}, ${T0_FIRST_RECORD} and ${T0_SECOND_RECORD}.`, real: T0_REAL, builtOn: builtOnHtml(run),
+  // 19 Nov (the owner: "we use T:0 too"): a partner page under "More" like the others, its mark with the same note.
+  const body = t0Body(t0Data(), { logo: T0_LOGO + ENDORSE_NOTE, pill: T0_LABEL });
+  return page({ title: "T:0", description: "How Purser uses T:0, a sandbox ledger: its double-entry books posted to T:0's general ledger as journal entries, read back line by line, and the month closed only when T:0 agrees.", tab: "t0", css: `${CSS}\n${STATS_CSS}\n${T0_CSS}`, body,
+    source: `Source: ${T0_READBACK_RECORD}, ${T0_JOURNAL_RECORD}, ${PLATFORM_RUN_FILE}, ${T0_FIRST_RECORD} and ${T0_SECOND_RECORD}.`, real: T0_REAL, builtOn: builtOnHtml(run),
     // The close check's button (src/redesign/t0CloseTile.ts): Purser's books as recorded, and the script that fetches the read-back.
     data: t0RunData(), js: T0_CLOSE_JS, stage: false });
 }

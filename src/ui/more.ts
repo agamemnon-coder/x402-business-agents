@@ -3,7 +3,7 @@
 // so the two definitions cannot drift apart. "More" is a <details> element: it opens and closes without any script, by
 // mouse, touch or keyboard (Enter or Space on the summary; its links take focus only while it is open).
 
-export type MoreKey = "cloud" | "negotiate" | "pricing" | "security" | "docs" | "books" | "status" | "airwallex" | "metal" | "visa" | "claude";
+export type MoreKey = "cloud" | "negotiate" | "pricing" | "security" | "docs" | "books" | "status" | "airwallex" | "metal" | "visa" | "claude" | "t0";
 
 export interface MoreLink {
   key: MoreKey;
@@ -45,6 +45,8 @@ export const MORE_LINKS: readonly MoreLink[] = [
   { key: "metal", label: "Alta", href: "alta", group: "partner" },
   { key: "visa", label: "Visa", href: "visa", group: "partner" },
   { key: "claude", label: "Claude", href: "claude", group: "partner" },
+  // 19 Nov (the owner: "we use T:0 too"): /t0 joins the partner pages; it was served since 12 Nov but marked Proof.
+  { key: "t0", label: "T:0", href: "t0", group: "partner" },
 ];
 
 /** The links the pages show: every page of the list that the site serves. */
