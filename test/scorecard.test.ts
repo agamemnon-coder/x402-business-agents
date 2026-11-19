@@ -85,9 +85,10 @@ describe("the same wrong decision, with and without Purser", () => {
   // 19 Nov, second round: the worst-case page shows each adversarial set before and after the fixes made against it,
   // and the set still held out; every record it names exists and says whether it was held out. Third round: v4 too,
   // its held-out run kept beside the run after the fixes against it.
-  it("ADV_TABLE: v2, v3 and v4 before and after their fixes, each record on disk saying the same", () => {
+  it("ADV_TABLE: v2, v3 and v4 before and after their fixes, v5 held out, each record on disk saying the same", () => {
     expect(ADV_TABLE.map((x) => [x.record.replace("docs/evals/", ""), x.held === "yes"])).toEqual([
       ["adversarial-v2.json", true], ["adversarial-v2-after.json", false], ["adversarial-v3.json", true], ["adversarial-v3-after.json", false], ["adversarial-v4.json", true], ["adversarial-v4-after.json", false],
+      ["adversarial-v5.json", true],
     ]);
     for (const x of ADV_TABLE.slice(1)) {
       const rec = JSON.parse(readFileSync(new URL(`../${x.record}`, import.meta.url), "utf8")) as { held_out: boolean };

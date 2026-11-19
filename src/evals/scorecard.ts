@@ -388,6 +388,8 @@ export const ADV_TABLE: readonly { label: string; record: string; held: string }
   { label: "[v4](evals/adversarial-v4.md), after the second round, before the third", record: "docs/evals/adversarial-v4.json", held: "yes" },
   // 19 Nov, third round: rules written against v4's misses (test/eval-v4-gaps.test.ts); v4 is no longer held out.
   { label: "[v4](evals/adversarial-v4.md), after the third round", record: "docs/evals/adversarial-v4-after.json", held: "no: the third round was written against its misses" },
+  // 19 Nov: v5, written after the third round and committed with its pre-registration before the run; held out.
+  { label: "[v5](evals/adversarial-v5.md), after the third round", record: "docs/evals/adversarial-v5.json", held: "yes" },
 ];
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
