@@ -70,8 +70,9 @@ describe("owner recovery", () => {
       // The recovery's own events, beside the passkey and key changes every company's owners are told of (ASVS V2.2.3).
       const kinds = (ev.json.items as { kind: string }[]).map((x) => x.kind);
       expect(kinds.filter((k) => k.startsWith("recovery."))).toEqual(["recovery.issued", "recovery.completed"]);
-      expect(kinds.slice(kinds.indexOf("recovery.issued"), -1)).toContain("passkey.enrolled");
-      expect(kinds.at(-1)).toBe("recovery.completed");
+      // The new passkey and the recovery's end happen at the same instant, the last: listed by time, then by random id.
+      const items = ev.json.items as { kind: string; at: string }[];
+      expect(items.filter((x) => x.at === items.at(-1)!.at).map((x) => x.kind).sort()).toEqual(["passkey.enrolled", "recovery.completed"]);
       expect(sent.filter((x) => x.startsWith("security.recovery"))).toEqual(["security.recovery_issued", "security.recovery_completed"]);
       expect(sent).toContain("security.passkey.enrolled");
     } finally { c.close(); }
