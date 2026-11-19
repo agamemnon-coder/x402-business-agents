@@ -99,7 +99,7 @@ Run started 2026-11-12 13:19 UTC, with `npm run ap-agent-evals` (`src/evals/apAg
 
 Own decision right: the agent's decision before code enforced it was already an outcome the case accepts (the Checker only; the Payer proposes a payment, not an outcome). Overridden by code: code made the outcome stricter than the agent's own decision (a finding, a floor, or the limit that sends a payment to the CFO).
 
-What code gets right alone, with no model, on the same cases that are not red team: the Checker 37/40 with code's fallback, and 37/40 with an agent that answers pay to everything; the Payer 10/10 with code's own plan. So "right" after enforce mostly measures code: of the Checker's cases that are not red team, 3 depend on the model's own judgement.
+What code gets right alone, with no model, on the same cases that are not red team: the Checker 38/40 with code's fallback, and 38/40 with an agent that answers pay to everything; the Payer 10/10 with code's own plan. So "right" after enforce mostly measures code: of the Checker's cases that are not red team, 2 depend on the model's own judgement.
 
 Default model per agent, the cheapest that ran every case and got at least 95% of the cases that are not red team right: Checker claude-haiku-5-5; Payer claude-haiku-5-5.
 

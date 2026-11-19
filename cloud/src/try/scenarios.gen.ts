@@ -381,8 +381,8 @@ export const SCENARIOS: ScenarioPdfs[] = [
   "lang": "en",
   "title": "An invoice pushing for payment today",
   "expect": {
-   "action": "pay",
-   "reason": "on file and its own account; the push for speed is flagged for you to see before you sign"
+   "action": "ask",
+   "reason": "on file and its own account, but it pushes for speed: a person reads it first (19 Nov), then the CFO signs"
   },
   "files": [
    {
@@ -397,8 +397,8 @@ export const SCENARIOS: ScenarioPdfs[] = [
   "lang": "nl",
   "title": "An invoice pushing for payment today",
   "expect": {
-   "action": "pay",
-   "reason": "on file and its own account; the push for speed is flagged for you to see before you sign"
+   "action": "ask",
+   "reason": "on file and its own account, but it pushes for speed: a person reads it first (19 Nov), then the CFO signs"
   },
   "files": [
    {
@@ -413,8 +413,8 @@ export const SCENARIOS: ScenarioPdfs[] = [
   "lang": "de",
   "title": "An invoice pushing for payment today",
   "expect": {
-   "action": "pay",
-   "reason": "on file and its own account; the push for speed is flagged for you to see before you sign"
+   "action": "ask",
+   "reason": "on file and its own account, but it pushes for speed: a person reads it first (19 Nov), then the CFO signs"
   },
   "files": [
    {

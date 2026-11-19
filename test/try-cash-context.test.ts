@@ -114,18 +114,27 @@ describe("the sample 'Inside the limit — but cash says wait' on /try's engine"
     expect(moneyOut(await events(s))).toEqual([]);
   });
 
-  it("leaves the agent's own EUR 120.00 payment as it was, filed before or after it", async () => {
-    for (const order of [["within"], [CASH_SAMPLE, "within"]]) {
-      const s = await visitor();
-      let id = "";
-      for (const key of order) {
-        const up = (await c.req("POST", `/v1/engine/samples/${key}`, { key: s })).json as { invoice: { id: string }; cash?: unknown };
-        if (key === "within") { id = up.invoice.id; expect(up.cash).toMatchObject({ outcome: "pay" }); }
-      }
-      const p = await c.req("POST", `/v1/engine/invoices/${id}/pay`, { key: s });
-      expect(p.json.alone, order.join(",")).toMatchObject({ limit: "EUR 500.00" });
-      expect(p.json.settled).toMatchObject({ invoice_status: "paid", error: null });
-    }
+  it("leaves the agent's own EUR 120.00 payment as it was when filed first", async () => {
+    const s = await visitor();
+    const up = (await c.req("POST", "/v1/engine/samples/within", { key: s })).json as { invoice: { id: string }; cash?: unknown };
+    expect(up.cash).toMatchObject({ outcome: "pay" });
+    const p = await c.req("POST", `/v1/engine/invoices/${up.invoice.id}/pay`, { key: s });
+    expect(p.json.alone).toMatchObject({ limit: "EUR 500.00" });
+    expect(p.json.settled).toMatchObject({ invoice_status: "paid", error: null });
+  });
+
+  // 19 Nov (adversarial eval v2): one supplier's invoices within 14 days, each inside the limit, are added up. Filed after
+  // the cash sample (Bergtex, EUR 480.00, three days apart), Bergtex's EUR 120.00 makes EUR 600.00, past the EUR 500.00
+  // limit: a possible split invoice, so the CFO signs it; the agent no longer pays it alone.
+  it("filed after the cash sample, the EUR 120.00 is a possible split: the CFO signs it, not paid alone", async () => {
+    const s = await visitor();
+    await c.req("POST", `/v1/engine/samples/${CASH_SAMPLE}`, { key: s });
+    const up = (await c.req("POST", "/v1/engine/samples/within", { key: s })).json as { invoice: { id: string; findings: { code: string; message: string }[] } };
+    expect(up.invoice.findings.find((f) => f.code === "possible_split")?.message).toMatch(/^possible split invoice: with AP-\d+ \(invoice BTX-2026-24, EUR 480\.00, 2026-11-12\).*together EUR 600\.00/);
+    const p = await c.req("POST", `/v1/engine/invoices/${up.invoice.id}/pay`, { key: s });
+    expect(p.status, JSON.stringify(p.json)).toBe(200);
+    expect(p.json.alone).toBeUndefined();
+    expect(p.json.proposal.status).toBe("PENDING_APPROVAL");
   });
 
   it("gives no cash check for an invoice above the limit (the CFO signs it anyway)", async () => {
