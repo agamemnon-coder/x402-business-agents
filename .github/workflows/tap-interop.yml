@@ -23,13 +23,11 @@ jobs:
     env:
       # github.com/visa/trusted-agent-protocol, the commit D25 records (16d59bd).
       TAP_REF_COMMIT: 16d59bdf3f8a542bc538d0962edbb80ea30a02af
-      # The proxy ships no lockfile: npm resolves its package.json ranges as they stood on this date (two weeks back).
-      TAP_REF_NPM_BEFORE: "2026-10-19"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # No npm cache: the reference's own npm install below would write into it.
+      # No npm cache: the reference's own npm ci below would write into it.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.22.0
@@ -42,10 +40,15 @@ jobs:
           test "$(git -C "$ref" rev-parse HEAD)" = "$TAP_REF_COMMIT"
           test -z "$(git -C "$ref" status --porcelain)"
           echo "TAP_REF_DIR=$ref" >> "$GITHUB_ENV"
-      - name: Install the proxy's dependencies (its package.json as is, no dev dependencies, no install scripts)
+      # The proxy ships no lockfile. Ours (test/interop/tap-ref-cdn-proxy.package-lock.json) is its package.json's ranges
+      # resolved as they stood on 19 October 2026 (npm install --package-lock-only --before=2026-10-19, run 19 November):
+      # the same 94 runtime packages, versions and integrity hashes as the `npm install --before=2026-10-19` this step ran
+      # until then, now installed with npm ci so each one is checked against its hash. The proxy's files stay unchanged.
+      - name: Install the proxy's dependencies (its package.json as is, our lockfile, no dev dependencies, no install scripts)
         run: |
+          cp test/interop/tap-ref-cdn-proxy.package-lock.json "$TAP_REF_DIR/cdn-proxy/package-lock.json"
           cd "$TAP_REF_DIR/cdn-proxy"
-          npm install --omit=dev --no-audit --no-fund --ignore-scripts --before="$TAP_REF_NPM_BEFORE"
+          npm ci --omit=dev --no-audit --no-fund --ignore-scripts
       - name: Install what the registry and the reference signer import (hashed, wheels only)
         # Not the reference's requirements files (unpinned, sdists allowed, a UI stack the test does not run): only the
         # registry's and create_ed25519_signature's imports, at the versions the reference pins, from a committed

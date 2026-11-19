@@ -143,7 +143,8 @@ reference proxy with `KIT11_TAP_PROXY`), `src/visa/tapLiveRun.ts` and `npm run v
   merchant's skew, in a new table `tap_rail_nonces` (per key; `tap_nonces` of the dev test is untouched).
 - **Signature 2 covers `@query`** and the request target carries none; a merchant refuses any `?`.
 - **The proxy ships no lockfile.** CI installs its `package.json` as is, without dev dependencies or install scripts,
-  with npm resolving its ranges as they stood on 19 October (`--before`). Python: not the reference's requirements files
+  with npm resolving its ranges as they stood on 19 October (`--before`); since 19 November from a committed lockfile
+  of that resolution (`test/interop/tap-ref-cdn-proxy.package-lock.json`, `npm ci`, the same 94 packages). Python: not the reference's requirements files
   (unpinned, sdists allowed, a UI stack the test does not run) but only what the registry and the signing function
   import, at the reference's own pins, from a committed hashed file (`test/interop/tap-ref-requirements.txt`, wheels
   only, `--require-hashes`). Python 3.12, because pydantic 2.5.0 has no 3.13 wheels.
