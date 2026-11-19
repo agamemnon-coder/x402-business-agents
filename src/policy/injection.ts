@@ -89,7 +89,7 @@ const show = (line: string) => line
  * Latin ones (CONFUSABLES, letters only) as those Latin letters. A line in plain ASCII is itself.
  */
 export function foldForScreen(line: string): string {
-  if (!/[^\x00-\x7F]/.test(line)) return line;
+  if (!/[^\u0020-\u007E\t]/.test(line)) return line;
   const nfkc = line.normalize("NFKC");
   return [...nfkc].map((ch) => {
     const low = ch.toLowerCase();

@@ -16,7 +16,7 @@ import { openDb } from "../src/db/open.js";
 import { ADV_V4_CASES } from "../src/evals/adversarialV4Cases.js";
 
 /** A v4 case as the Checker's code decides it, for both readings: the outcome, who decided, and the findings' codes. */
-function v4(id: string): { arm: string; outcome: Action; by: string | undefined; codes: string[]; c: InvoiceCase }[] {
+function v4(id: string): { arm: string; outcome: Action; by: string | null; codes: string[]; c: InvoiceCase }[] {
   const k = ADV_V4_CASES.find((x) => x.id === id);
   if (!k) throw new Error(`no v4 case ${id}`);
   return (["purser_script", "purser_script_parser"] as const).map((arm) => {
