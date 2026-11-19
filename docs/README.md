@@ -65,6 +65,7 @@ every pull request: [CHANGELOG.md](../CHANGELOG.md).
 - [run-it.md](run-it.md): running it live, with sandbox keys and an Alta RPC.
 - [security.md](security.md): the threat model, the attacks and what stops each one.
 - [controls.md](controls.md): every control, how it works, and its evidence.
+- [assurance.md](assurance.md): the assurance case: each invariant about money, the function that enforces it, its tests, the CI job and the record.
 - [runbook.md](runbook.md): incidents, the emergency stop, key rotation, recovery.
 - [decisions.md](decisions.md): decisions taken during the build, each with its reason and its cost if wrong.
 - [adr/README.md](adr/README.md): those decisions, D1 to D30, as an index of architecture decision records (date, status, superseded by which), and the template for new ones.
