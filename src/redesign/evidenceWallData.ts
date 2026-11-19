@@ -202,7 +202,7 @@ function attacked(): WallTile[] {
   if (cm?.totals?.scenarios && cm.invariants) {
     const t = cm.totals, broken = Object.values(cm.invariants).reduce((n, i) => n + i.broken, 0), inv = Object.keys(cm.invariants).length;
     const can = cm.canaries ?? [], caught = can.filter((c) => c.caught).length;
-    out.push({ key: "chaos-money", fig: String(broken), label: `money invariants broken in ${fmt(t.scenarios)} chaos scenarios`, note: `${inv} invariants held, never paid twice and never unsigned among them; ${t.crashes} process deaths, ${t.faults} faults from a stand-in Airwallex${can.length ? `; ${caught === can.length ? `all ${can.length}` : `${caught} of ${can.length}`} planted bugs caught` : ""}. In process, test money.`, tag: "test", tone: broken ? "" : "ok", href: blob("docs/evidence/chaos-money.md"), rec: CM });
+    out.push({ key: "chaos-money", fig: String(broken), label: `money invariants broken in ${fmt(t.scenarios)} chaos scenarios`, note: `${inv} invariants held, never paid twice and never unsigned among them; ${t.crashes} process deaths, ${t.faults} faults from a simulated Airwallex in the test${can.length ? `; ${caught === can.length ? `all ${can.length}` : `${caught} of ${can.length}`} planted bugs caught` : ""}. In process, test money.`, tag: "test", tone: broken ? "" : "ok", href: blob("docs/evidence/chaos-money.md"), rec: CM });
   }
   const FZ = "docs/evidence/fuzzing.json";
   const fz = json(FZ) as { totals?: { properties: number; runs: number; passed: number; failed: number } } | null;
