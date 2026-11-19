@@ -97,7 +97,7 @@ describe("the run", () => {
     expect(committed.rows).toEqual(r.rows);
     expect(committed.line).toBe(advLine(r.totals, ""));
     expect(committed.held_out).toBe(false);
-  });
+  }, 60_000); // 200 runs of the payables checks (two arms, 100 cases): over 5 s on a loaded CI runner
 
   it("keeps the held-out run before the fixes as it was recorded: 16 wrong payments, 2 false holds, on the cases of fe5fc388", () => {
     const before = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v2.json", import.meta.url), "utf8")) as { line: string; cases_commit: string; totals: Record<string, { wrong_payments: number; false_holds: number }> };
