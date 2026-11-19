@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "label": "Airwallex endpoints live (sandbox)",
+  "message": "60/61",
+  "color": "green",
+  "record": "docs/evidence/airwallex-api-coverage.json"
+}

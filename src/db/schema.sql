@@ -861,6 +861,10 @@ CREATE TABLE IF NOT EXISTS ap_invoices (
   -- zeroed a supplier's open payables): only an accepted one is set against the supplier's invoices.
   credit_accepted_at TEXT,
   credit_accepted_by TEXT,
+  -- The months the invoice printed that it bills for (src/ap/period.ts servicePeriods), as a JSON array; NULL: none or not read.
+  period TEXT,
+  -- The lines the invoice printed that it bills (src/ap/period.ts itemLines), as a JSON array; NULL: not read (before 19 Nov).
+  lines TEXT,
   received_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   paid_at TEXT

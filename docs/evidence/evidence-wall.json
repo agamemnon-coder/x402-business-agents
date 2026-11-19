@@ -270,6 +270,16 @@
           "rec": "docs/evals/adversarial-v3.json"
         },
         {
+          "key": "eval-v4",
+          "fig": "11 vs 72",
+          "label": "wrong payments on 100 held-out invoices (eval v4): Purser vs no rules",
+          "note": "Cases committed before the run (commit 727d99d1); a script always says pay. 4 false holds of 44. After the fixes written against these misses (no longer held out): 0 wrong payments, 0 false holds. Offline.",
+          "tag": "test",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v4.md",
+          "rec": "docs/evals/adversarial-v4.json"
+        },
+        {
           "key": "red-team",
           "fig": "37 of 39",
           "label": "red-team attacks stopped before money moved",
@@ -317,11 +327,11 @@
       "tiles": [
         {
           "key": "redteam-api",
-          "fig": "126 of 128",
+          "fig": "All 128",
           "label": "attacks on the /try API held",
-          "note": "2 fail, on the judge server only: its 404 page and its static files lack nosniff. 0 errors. Servers on this computer, no live site; 19 Nov.",
+          "note": "0 errors. Servers on this computer, no live site; 19 Nov.",
           "tag": "test",
-          "tone": "",
+          "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/redteam-api.md",
           "rec": "docs/evidence/redteam-api.json"
         },
@@ -337,11 +347,11 @@
         },
         {
           "key": "fuzzing",
-          "fig": "13 of 17",
-          "label": "fuzzed properties held; 4 findings open",
-          "note": "275,756 runs with fast-check, in process. The 4 findings are not fixed yet; each is shrunk and kept with the seed that replays it.",
+          "fig": "All 17",
+          "label": "fuzzed properties held",
+          "note": "315,300 runs with fast-check, in process.",
           "tag": "test",
-          "tone": "",
+          "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/fuzzing.md",
           "rec": "docs/evidence/fuzzing.json"
         }

@@ -122,6 +122,7 @@ const EN = {
   "finding.rejected_before": "this invoice was rejected before",
   "finding.reminder": "a payment reminder, not a new invoice",
   "finding.sum_mismatch": "subtotal plus VAT is not the total",
+  "finding.totals_mismatch": "the invoice's lines do not add up to its total; a person checks which amount is owed",
   "finding.unknown_vendor": "the supplier is not known",
   "finding.unusual_amount": "an amount unusual for this supplier",
 
@@ -1541,6 +1542,7 @@ const NL: { readonly [K in Key]: string } = {
   "finding.rejected_before": "deze factuur is eerder afgewezen",
   "finding.reminder": "een betalingsherinnering, geen nieuwe factuur",
   "finding.sum_mismatch": "subtotaal plus btw is niet het totaal",
+  "finding.totals_mismatch": "de regels van de factuur tellen niet op tot het totaal; een mens controleert welk bedrag verschuldigd is",
   "finding.unknown_vendor": "de leverancier is niet bekend",
   "finding.unusual_amount": "een ongewoon bedrag voor deze leverancier",
 

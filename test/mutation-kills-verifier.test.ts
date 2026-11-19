@@ -251,6 +251,29 @@ describe("the proof-bundle verifier (PROOF_VERIFY_JS in src/proof/bundle.ts, run
     }
   });
 
+  it("a base64url field that cannot be decoded (a length of 4n+1, such as \"A\") fails the format check, naming the field; it never throws (fuzzing: bundle-malformed)", async () => {
+    const odd = "A", odd5 = "AAAAA";
+    for (const [field, b] of [
+      ["assertion.authenticatorData", { ...copy(PAID), assertion: { ...PAID.assertion, authenticatorData: odd } }],
+      ["assertion.signature", { ...copy(PAID), assertion: { ...PAID.assertion, signature: odd5 } }],
+      ["assertion.clientDataJSON", { ...copy(PAID), assertion: { ...PAID.assertion, clientDataJSON: odd } }],
+      ["public_key.cose", { ...copy(PAID), public_key: { ...PAID.public_key, cose: odd5 } }],
+    ] as const) {
+      let out: ProofResult | undefined;
+      expect(() => { void verifyProofBundle(b).then((r) => { out = r; }); }, field).not.toThrow();
+      out = await verifyProofBundle(b);
+      expect(out.ok, field).toBe(false);
+      expect(failed(out), field).toEqual(["format"]);
+      expect(detailOf(out, "format"), field).toBe(`${field} is not base64url`);
+    }
+    // Anything at all is answered with a failed check, never a throw: an object with no prototype as the proposal id too.
+    const bare = Object.assign(Object.create(null) as object, { x: 1 });
+    for (const v of [{ ...copy(PAID), proposal_id: bare }, bare, Symbol("s"), 10n]) {
+      const r = await verifyProofBundle(v);
+      expect(r.ok).toBe(false);
+    }
+  });
+
   it("the terms hash is the file's own: a changed hash, a changed canonical text or a number in the terms fail", async () => {
     expect(failed(await verifyProofBundle({ ...copy(PAID), terms_sha256: "0".repeat(64) }))).toEqual(["terms hash"]);
     const spaced = await verifyProofBundle({ ...copy(PAID), canonical: `${PAID.canonical} ` });
@@ -322,18 +345,71 @@ describe("the proof-bundle verifier (PROOF_VERIFY_JS in src/proof/bundle.ts, run
       b.decision = { ...b.decision, sent_sha256: b.decision.signed_sha256, signature: { verified: true, reason: "x" } };
       expect(failed(await verifyProofBundle(b))).toEqual(["decision"]);
     });
-    it("any other outcome (failed, expired, not signed) only has to name the signed hash", async () => {
-      expect(failed(await verifyProofBundle(paidWith({ outcome: "failed", executor: { accepted: false, said: "x" } })))).toEqual([]);
+    // Fuzzing, bundle-context (19 Nov): the decision is the engine's record beside the signature; each field is now
+    // checked against what it must equal, so an edited copy no longer shows "decision" passing.
+    it("an outcome a bundle never has, or none, fails: the engine makes a bundle only for paid and refused", async () => {
+      for (const o of ["paidx", "failed", "expired", "not_signed", "paid_once", "Paid", undefined]) {
+        const b = paidWith({});
+        if (o === undefined) delete (b.decision as Partial<ProofBundle["decision"]>).outcome; else b.decision.outcome = o;
+        expect(failed(await verifyProofBundle(b)), String(o)).toEqual(["decision"]);
+      }
+      expect(failed(await verifyProofBundle(paidWith({ outcome: "failed", executor: { accepted: false, said: "x" } })))).toEqual(["decision"]);
+      // A refusal relabelled: every other field still fits a refusal, so only the outcome can fail.
+      for (const o of ["failed", "expired", "not_signed"]) {
+        const r = copy(REFUSED);
+        r.decision.outcome = o;
+        expect(failed(await verifyProofBundle(r)), o).toEqual(["decision"]);
+      }
+    });
+    it("the outcome agrees with what moved: a payment made a transfer, a refusal made none", async () => {
+      expect(failed(await verifyProofBundle(paidWith({ transfers_after: PAID.decision.transfers_before })))).toEqual(["decision"]);
+      const r = copy(REFUSED);
+      r.decision.transfers_after = r.decision.transfers_before + 1;
+      expect(failed(await verifyProofBundle(r))).toEqual(["decision"]);
+      const calledPaid = copy(REFUSED);
+      calledPaid.decision.outcome = "paid";
+      expect(failed(await verifyProofBundle(calledPaid))).toContain("decision");
+      expect(failed(await verifyProofBundle(paidWith({ outcome: "refused" })))).toContain("decision");
+    });
+    it("a refusal's sent hash is the asked terms' hash, its changed fields are theirs, and nothing over other terms was verified or accepted", async () => {
+      const edits: [string, (d: ProofBundle["decision"]) => void][] = [
+        ["sent hash edited", (d) => { d.sent_sha256 = `${d.sent_sha256.slice(0, -1)}${d.sent_sha256.endsWith("0") ? "1" : "0"}`; }],
+        ["signature verified", (d) => { d.signature.verified = true; }],
+        ["executor accepted", (d) => { d.executor.accepted = true; }],
+        ["verified as a string", (d) => { (d.signature as { verified: unknown }).verified = "false"; }],
+        ["verified as null", (d) => { (d.signature as { verified: unknown }).verified = null; }],
+        ["no executor answer", (d) => { delete (d.executor as { accepted?: unknown }).accepted; }],
+        ["another field changed", (d) => { d.changed = ["iban_last4"]; }],
+        ["no field changed", (d) => { d.changed = []; }],
+      ];
+      for (const [what, edit] of edits) {
+        const b = copy(REFUSED);
+        edit(b.decision);
+        expect(failed(await verifyProofBundle(b)), what).toEqual(["decision"]);
+      }
+      expect(failed(await verifyProofBundle(paidWith({ changed: ["amount"] })))).toEqual(["decision"]);
     });
   });
 
   it("a refusal's asked terms must hash as the file says, differ from the signed ones, and be there", async () => {
     const withAsked = (asked: unknown) => ({ ...copy(REFUSED), asked }) as ProofBundle;
     expect(failed(await verifyProofBundle(withAsked({ ...REFUSED.asked, sha256: "0".repeat(64) })))).toEqual(["asked terms"]);
-    expect(failed(await verifyProofBundle(withAsked({ terms: REFUSED.terms, canonical: REFUSED.canonical, sha256: REFUSED.terms_sha256 })))).toEqual(["asked terms"]);
+    // Asked terms that are the signed ones, or none: the decision's sent hash (the asked terms') no longer fits either.
+    expect(failed(await verifyProofBundle(withAsked({ terms: REFUSED.terms, canonical: REFUSED.canonical, sha256: REFUSED.terms_sha256 })))).toEqual(["decision", "asked terms"]);
     const missing = await verifyProofBundle(withAsked({}));
-    expect(failed(missing)).toEqual(["asked terms"]);
+    expect(failed(missing)).toEqual(["decision", "asked terms"]);
     expect(detailOf(missing, "asked terms")).toBe("the asked terms are missing or not terms");
+    // Their canonical text is the asked terms' own (fuzzing, bundle-context: an edited or missing one still verified).
+    const edited = await verifyProofBundle(withAsked({ ...REFUSED.asked, canonical: `${REFUSED.asked!.canonical} ` }));
+    expect(failed(edited)).toEqual(["asked terms"]);
+    expect(detailOf(edited, "asked terms")).toBe("the file's canonical text of the asked terms is not their canonical JSON");
+    const { canonical: _c, ...noCanonical } = REFUSED.asked!;
+    expect(failed(await verifyProofBundle(withAsked(noCanonical)))).toEqual(["asked terms"]);
+  });
+
+  it("the signed terms' canonical text must be in the file", async () => {
+    const { canonical: _c, ...b } = copy(PAID);
+    expect(failed(await verifyProofBundle(b))).toEqual(["terms hash"]);
   });
 
   describe("the ledger", () => {
@@ -344,7 +420,7 @@ describe("the proof-bundle verifier (PROOF_VERIFY_JS in src/proof/bundle.ts, run
     });
     it("a payment with no entries fails; a refusal with none passes only with a real ledger head", async () => {
       const paid = await verifyProofBundle({ ...copy(PAID), ledger: { ...PAID.ledger, entries: [] } });
-      expect(failed(paid)).toEqual(["ledger balance", "ledger chain"]);
+      expect(failed(paid)).toEqual(["ledger balance", "ledger chain", "ledger payment"]);
       expect(failed(await verifyProofBundle({ ...copy(REFUSED), ledger: { ...REFUSED.ledger, entries: [] } }))).toEqual([]);
       expect(failed(await verifyProofBundle({ ...copy(REFUSED), ledger: { entries: [], head: "not a hash", count: 0 } }))).toEqual(["ledger chain"]);
     });
@@ -368,6 +444,57 @@ describe("the proof-bundle verifier (PROOF_VERIFY_JS in src/proof/bundle.ts, run
       const out = await verifyProofBundle(b);
       expect(failed(out)).toEqual(["ledger chain"]);
       expect(detailOf(out, "ledger chain")).toMatch(/a number that is not whole: 0\.5$/);
+    });
+    // Fuzzing, bundle-context (19 Nov): the head and the count are checked against the entries that reach them.
+    it("the head is the hash of entry #count when the file holds it, and no entry is past the count", async () => {
+      const flip = (h: string) => `${h.slice(0, -1)}${h.endsWith("0") ? "1" : "0"}`;
+      for (const [what, ledger] of [
+        ["head edited", { ...PAID.ledger, head: flip(PAID.ledger.head!) }],
+        ["count + 1", { ...PAID.ledger, count: PAID.ledger.count + 1 }],
+        ["count - 1", { ...PAID.ledger, count: PAID.ledger.count - 1 }],
+        ["count as a string", { ...PAID.ledger, count: String(PAID.ledger.count) }],
+        ["no count", { entries: PAID.ledger.entries, head: PAID.ledger.head }],
+        ["head another entry's hash", { ...PAID.ledger, head: PAID.ledger.entries[0]!.entry_hash }],
+      ] as const) {
+        expect(failed(await verifyProofBundle({ ...copy(PAID), ledger: copy(ledger) } as unknown as ProofBundle)), what).toEqual(["ledger chain"]);
+      }
+      // A head not among these entries (as when the ledger went on after the payment): the count must still be a
+      // number of entries, and no entry may be past it.
+      const later = (count: unknown) => ({ ...copy(PAID), ledger: { ...copy(PAID.ledger), head: "a".repeat(64), count } }) as unknown as ProofBundle;
+      expect(failed(await verifyProofBundle(later(PAID.ledger.count + 3)))).toEqual([]);
+      expect(detailOf(await verifyProofBundle(later(PAID.ledger.count + 3)), "ledger chain")).toContain(`of ${PAID.ledger.count + 3} entries is not among these`);
+      for (const c of [String(PAID.ledger.count + 3), PAID.ledger.count - 1, 0, -1, 1.5]) expect(failed(await verifyProofBundle(later(c))), String(c)).toEqual(["ledger chain"]);
+      const ok = detailOf(await verifyProofBundle(copy(PAID)), "ledger chain");
+      expect(ok).toContain(`the head ${PAID.ledger.head!.slice(0, 12)}`);
+      expect(ok).toContain(`is entry #${PAID.ledger.count} of ${PAID.ledger.count}`);
+    });
+    it("a payment's own entries, named by the signed terms, are in the file: the transfer, the invoice, the conversion", async () => {
+      const r = await verifyProofBundle(copy(PAID));
+      const named = detailOf(r, "ledger payment")!;
+      expect(named).toMatch(/transfer .* in #5/);
+      expect(named).toMatch(/invoice .* in #9/);
+      expect(named).toMatch(/conversion .* in #3 and #4/);
+      for (const id of [3, 4, 5, 9]) {
+        const b = copy(PAID);
+        b.ledger.entries = b.ledger.entries.filter((e) => e.entry_id !== id);
+        expect(failed(await verifyProofBundle(b)), `#${id} dropped`).toContain("ledger payment");
+      }
+      // Another amount on the transfer than the one signed: not the signed payment (the entry rehashed, the chain intact).
+      const b = copy(PAID);
+      const t = b.ledger.entries.find((e) => e.entry_id === 5)!;
+      t.lines = t.lines.map((l) => ({ ...l, debit_cents: l.debit_cents ? l.debit_cents + 1 : 0, credit_cents: l.credit_cents ? l.credit_cents + 1 : 0 }));
+      expect(failed(await verifyProofBundle(b))).toContain("ledger payment");
+    });
+    it("an entry nothing signed names can be left out of a file, and /verify says that is the engine's record", async () => {
+      for (const [name, bundle, id] of [["paid, the fee", PAID, 6], ["refused, the transfer", REFUSED, 5]] as const) {
+        const b = copy(bundle);
+        b.ledger.entries = b.ledger.entries.filter((e) => e.entry_id !== id);
+        const out = await verifyProofBundle(b);
+        expect(failed(out), name).toEqual([]);
+        const chain = detailOf(out, "ledger chain")!;
+        expect(chain, name).toMatch(new RegExp(`not in this file: [^.]*#${id}\\b`));
+        expect(chain, name).toContain("is the engine's record, not checked here");
+      }
     });
     it("an error while checking is a failure, never a pass", async () => {
       const out = await verifyProofBundle({ ...copy(PAID), ledger: { ...PAID.ledger, entries: [null] } } as unknown as ProofBundle);

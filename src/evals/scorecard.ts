@@ -375,6 +375,21 @@ export async function scriptAtThisCommit(): Promise<ScoreRow[]> {
   return rows.sort((a, b) => a.case.localeCompare(b.case));
 }
 
+/**
+ * The held-out adversarial sets the worst-case page shows beside its run, in order: each set's record and whether it
+ * was still held out when that record was made (19 Nov, second round: v3 before and after the fixes against it, v4
+ * held out). A set stops being held out once rules are written against its misses.
+ */
+export const ADV_TABLE: readonly { label: string; record: string; held: string }[] = [
+  { label: "[v2](evals/adversarial-v2.md), before the fixes of 19 Nov", record: "docs/evals/adversarial-v2.json", held: "yes" },
+  { label: "[v2](evals/adversarial-v2.md), after all three rounds of fixes", record: "docs/evals/adversarial-v2-after.json", held: "no: the fixes were written against its misses" },
+  { label: "[v3](evals/adversarial-v3.md), after the first round, before the second", record: "docs/evals/adversarial-v3.json", held: "yes" },
+  { label: "[v3](evals/adversarial-v3.md), after the second and third rounds", record: "docs/evals/adversarial-v3-after.json", held: "no: the second round was written against its misses" },
+  { label: "[v4](evals/adversarial-v4.md), after the second round, before the third", record: "docs/evals/adversarial-v4.json", held: "yes" },
+  // 19 Nov, third round: rules written against v4's misses (test/eval-v4-gaps.test.ts); v4 is no longer held out.
+  { label: "[v4](evals/adversarial-v4.md), after the third round", record: "docs/evals/adversarial-v4-after.json", held: "no: the third round was written against its misses" },
+];
+
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 /** A count as people say it: a word up to twelve, a number above. */
 export const countWord = (n: number) => (n >= 0 && n < WORDS.length ? WORDS[n]! : String(n));

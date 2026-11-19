@@ -11,6 +11,7 @@ import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit } from "../audit/log.js";
 import { apAgentsOn } from "../config/agents.js";
 import { VENDOR_GL } from "../config/gl.js";
+import { itemLines, servicePeriods } from "./period.js";
 import type { DB } from "../db/open.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { findInjections } from "../policy/injection.js";
@@ -31,6 +32,12 @@ import { imageInfo, imageToPdf, readScan, scanFinding, scanRefusal, type ScanRes
 import type { ApReading } from "./reading.js";
 import type { ApStatus, Finding } from "./store.js";
 import { apInvoice, apInvoices, nextApId, setStatus, type ApInvoiceRow } from "./store.js";
+
+/** The months an invoice prints that it bills for, as stored with it (ap_invoices.period); null when none. */
+const periodOf = (text: string | null | undefined): string | null => {
+  const months = text ? servicePeriods(text) : [];
+  return months.length ? JSON.stringify(months) : null;
+};
 
 export type Source = "upload" | "folder" | "email" | "api";
 
@@ -252,9 +259,10 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   // is stored as one (red team round 4: a negative total kept the "invoice" kind and counted as money owed).
   const kind = findings.some((x) => x.code === "credit_note") && (cls.kind === "invoice" || cls.kind === "credit_note") ? "credit_note" : cls.kind;
   db.prepare(`INSERT INTO ap_invoices (id, doc_sha256, doc_kind, classified_by, vendor, invoice_no, issue_date, due_date, currency, subtotal, tax, total, iban_last4, bic, reading_json, read_by,
-    gl_account, gl_rule, cost_centre, status, findings_json, received_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    gl_account, gl_rule, cost_centre, status, findings_json, received_at, updated_at, period, lines) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .run(id, sha, kind, cls.by, reading.vendor, reading.invoice_no, reading.issue_date, reading.due_date, reading.currency, reading.subtotal, reading.tax, reading.total,
-      reading.iban.slice(-4), reading.bic, JSON.stringify(reading), readBy, gl.account, gl.rule, AP_COST_CENTRE, status, JSON.stringify(findings), now.toISOString(), now.toISOString());
+      reading.iban.slice(-4), reading.bic, JSON.stringify(reading), readBy, gl.account, gl.rule, AP_COST_CENTRE, status, JSON.stringify(findings), now.toISOString(), now.toISOString(),
+      periodOf(checkText), checkText ? JSON.stringify(itemLines(checkText)) : null);
   audit(db, "system", "ap.received", id, {
     doc_sha256: sha, filename: doc.filename.slice(0, 200), source: doc.source, doc_kind: kind, classified_by: cls.by, read_by: readBy, vendor: reading.vendor, invoice_no: reading.invoice_no,
     total: reading.total, currency: reading.currency, status, findings: findings.map((x) => ({ code: x.code, level: x.level })) as unknown as Json,

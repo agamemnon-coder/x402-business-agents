@@ -1,0 +1,34 @@
+# REUSE (https://reuse.software, specification 3.3): the licence and copyright of every file in this repository, in
+# one place, so no file needs a header. Checked with `reuse lint` in CI (job `reuse` in .github/workflows/ci.yml).
+# The default below covers everything; the annotations after it override it for third-party content.
+version = 1
+SPDX-PackageName = "Purser (x402-business-agents)"
+SPDX-PackageSupplier = "Max Geurtsen"
+SPDX-PackageDownloadLocation = "https://github.com/agamemnon-coder/x402-business-agents"
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Max Geurtsen"
+SPDX-License-Identifier = "MIT"
+
+# The Inter typeface, and the generated module that embeds it (SIL Open Font License 1.1, src/ui/inter-LICENSE.txt).
+[[annotations]]
+path = ["src/ui/inter.woff2", "src/ui/inter-LICENSE.txt", "cloud/src/font.gen.ts"]
+precedence = "override"
+SPDX-FileCopyrightText = "2016 The Inter Project Authors (https://github.com/rsms/inter)"
+SPDX-License-Identifier = "OFL-1.1"
+
+# Lucide icon paths (ISC, src/ui/lucide-LICENSE.txt), in our own module.
+[[annotations]]
+path = ["src/ui/icons.ts", "src/ui/lucide-LICENSE.txt"]
+precedence = "override"
+SPDX-FileCopyrightText = ["2013-2023 Cole Bemis (Feather)", "2025 Lucide Contributors", "2026 Max Geurtsen"]
+SPDX-License-Identifier = "ISC AND MIT"
+
+# Other companies' logos, unchanged, and the files that embed or compose them: not licensed here (see the licence text).
+[[annotations]]
+path = ["src/ui/logos/*.png", "src/ui/logos/*.svg", "docs/assets/logos/*.svg", "docs/assets/logos/built-with.png", "cloud/src/awxLogo.gen.ts", "cloud/src/try/logos.gen.ts"]
+precedence = "override"
+SPDX-FileCopyrightText = "The respective trademark owners: Airwallex, Alta (formerly Metal), Anthropic, Cloudflare, Visa"
+SPDX-License-Identifier = "LicenseRef-Trademark-Permission"

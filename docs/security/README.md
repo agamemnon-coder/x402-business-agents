@@ -63,3 +63,7 @@ in a clone gives the same bytes with the same git version (two runs on 19 Novemb
 
 What only the owner can switch on (Dependabot security updates, private vulnerability reporting, the OpenSSF Best
 Practices badge, and after the judging a ruleset on `main`), click by click: [owner-actions.md](owner-actions.md).
+
+The OpenSSF Best Practices silver level, criterion by criterion, with the evidence, what is still open and the owner's
+steps: [openssf-silver.md](openssf-silver.md); the security requirements, design principles, hardening, input
+validation and cryptography: [requirements.md](requirements.md).

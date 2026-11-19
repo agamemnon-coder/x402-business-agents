@@ -63,7 +63,13 @@ every pull request: [CHANGELOG.md](../CHANGELOG.md).
 - [architecture.md](architecture.md): architecture, tooling and credits.
 - [diagrams.md](diagrams.md): Purser in five diagrams (in one line, who holds which limit, one payment end to end, the mandate on Alta, where it runs), drawn by GitHub from Mermaid.
 - [run-it.md](run-it.md): running it live, with sandbox keys and an Alta RPC.
+- [install.md](install.md): install, the five-minute quick start (no keys, offline), the development environment, and uninstall.
+- [releasing.md](releasing.md): version numbers (SemVer from v1.2.0), signed tags, the attested release artefacts, how to verify them and how to upgrade.
+- [roadmap-v2.md](roadmap-v2.md): the roadmap after the hackathon; what the project intends to do and not do in the next year is [ROADMAP.md](../ROADMAP.md).
+- [GOVERNANCE.md](../GOVERNANCE.md): who decides, the roles, how changes and releases are made, how a second maintainer joins, continuity.
 - [security.md](security.md): the threat model, the attacks and what stops each one.
+- [security/requirements.md](security/requirements.md): what you can and cannot expect in terms of security, the assumptions, the secure design principles, the common weaknesses countered, hardening, input validation and cryptography.
+- [accessibility.md](accessibility.md): accessibility (what the pages do and what CI checks) and internationalisation (English only).
 - [controls.md](controls.md): every control, how it works, and its evidence.
 - [assurance.md](assurance.md): the assurance case: each invariant about money, the function that enforces it, its tests, the CI job and the record.
 - [runbook.md](runbook.md): incidents, the emergency stop, key rotation, recovery.
@@ -78,6 +84,8 @@ every pull request: [CHANGELOG.md](../CHANGELOG.md).
 - [connect-claude.md](connect-claude.md): connect your own AI (Claude, or any MCP client) to a Purser company: read and propose only; every client's steps and every tool.
 - [audit/README.md](audit/README.md): the audit log of the recorded run of 30 October.
 - [security/README.md](security/README.md): the security artefacts (the software bill of materials).
+- [security/openssf-silver.md](security/openssf-silver.md): the OpenSSF Best Practices silver criteria, one by one, with the evidence and what is still open.
+- [evidence/coverage.md](evidence/coverage.md): test coverage of the whole product (statements and branches), its scope and how it was measured.
 - [repo-settings.md](repo-settings.md): the repository's settings on GitHub (About, social preview, releases, branch protection on main), for the owner to set by hand.
 - Built after the kit (test environment, not live): [payables.md](payables.md) (the invoice inbox), [ledger.md](ledger.md) (Purser's own books), [vault.md](vault.md), [erp.md](erp.md) and [moneybird.md](moneybird.md) (ERP connectors), [airwallex-platform.md](airwallex-platform.md) (connected accounts), [cloud.md](cloud.md), [go-live.md](go-live.md) (what is open before real money) and [e2e-live.md](e2e-live.md) (three test companies, invoice to T:0).
 - More built after the kit, each saying its own status: [tokenize.md](tokenize.md) (invoice tokens on Alta, a

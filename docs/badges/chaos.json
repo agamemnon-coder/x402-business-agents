@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "label": "chaos invariants broken",
+  "message": "0 in 317 scenarios",
+  "color": "brightgreen",
+  "record": "docs/evidence/chaos-money.json"
+}

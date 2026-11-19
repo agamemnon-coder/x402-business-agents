@@ -1,6 +1,8 @@
-// The adversarial eval v3 (src/evals/adversarialV3Cases.ts, run by src/evals/adversarialV2.ts): 100 held-out cases
-// written after the fixes against v2's misses, committed alone before any run. The case set is what it says it is, no
-// case copies a v2 case, and the committed record is what a fresh run adds up to. Offline: a script stands in for the model.
+// The adversarial eval v3 (src/evals/adversarialV3Cases.ts, run by src/evals/adversarialV2.ts): 100 cases written after
+// the fixes against v2's misses, committed alone before any run, held out until the second round of fixes (19 Nov). The
+// case set is what it says it is, no case copies a v2 case, and the committed record is what a fresh run adds up to.
+// Offline: a script stands in for the model.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ADV_ARMS, adversarialV2, advLine, type AdvRow } from "../src/evals/adversarialV2.js";
@@ -38,16 +40,37 @@ describe("the v3 case set", () => {
 });
 
 describe("the v3 run", () => {
-  it("the committed record is what a fresh run adds up to, held out, on the cases of their own commit (npm run eval:adversarial-v3)", async () => {
-    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v3.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string };
+  // 19 Nov, second round: rules were added against v3's misses, so v3 is no longer held out. Its first run stays as
+  // recorded ("before the second round of fixes"); the run on today's code is its own record ("after"), and the case
+  // file never changed.
+  it("the committed after-fix record is what a fresh run adds up to, no longer held out (npm run eval:adversarial-v3)", async () => {
+    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v3-after.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string };
     const r = await adversarialV2(ADV_V3_CASES);
     expect(r.rows).toHaveLength(ADV_V3_CASES.length * ADV_ARMS.length);
     expect(committed.totals).toEqual(r.totals);
     expect(committed.rows).toEqual(r.rows);
-    expect(committed.line).toBe(advLine(r.totals));
-    expect(committed).toMatchObject({ held_out: true, cases_commit: "1013ecc8" });
-    // The report lists every miss of the payer with Purser's rules.
+    expect(committed.line).toBe(advLine(r.totals, ""));
+    expect(committed).toMatchObject({ held_out: false, cases_commit: "1013ecc8" });
+    // The report lists every miss of the payer with Purser's rules, after and before.
     const md = readFileSync(new URL("../docs/evals/adversarial-v3.md", import.meta.url), "utf8");
     for (const x of r.rows.filter((y) => y.arm === "purser_script" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
   }, 60_000); // 200 runs of the payables checks (two arms, 100 cases): over 5 s on a loaded CI runner
+
+  it("keeps the held-out run before the second round as it was recorded: 11 wrong payments, 7 false holds, on the cases of 1013ecc8", () => {
+    const before = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v3.json", import.meta.url), "utf8")) as { line: string; held_out: boolean; cases_commit: string; rows: AdvRow[]; totals: Record<string, { wrong_payments: number; false_holds: number }> };
+    expect(before).toMatchObject({ held_out: true, cases_commit: "1013ecc8" });
+    expect(before.totals.purser_script).toMatchObject({ wrong_payments: 11, false_holds: 7 });
+    expect(before.totals.purser_script_parser).toMatchObject({ wrong_payments: 11, false_holds: 7 });
+    expect(before.totals.no_rules).toMatchObject({ wrong_payments: 74 });
+    const md = readFileSync(new URL("../docs/evals/adversarial-v3.md", import.meta.url), "utf8");
+    expect(md).toContain("**v3 is no longer held out.**");
+    expect(md).toContain("**Before the second round of fixes**");
+    expect(md).toContain(before.line);
+    for (const x of before.rows.filter((y) => y.arm === "purser_script" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
+  });
+
+  it("the case file is byte for byte the one committed before the first run (1013ecc8)", () => {
+    const sha = createHash("sha256").update(readFileSync(new URL("../src/evals/adversarialV3Cases.ts", import.meta.url))).digest("hex");
+    expect(sha).toBe("067dc95a618863b2b2b96821e860d52636c963b86a2e1c9ccdaef738f5b373c2");
+  });
 });

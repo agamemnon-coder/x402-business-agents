@@ -18,7 +18,7 @@ import { fromCents } from "../lib/money.js";
 import { floorCents, fundingCurrency } from "../payouts/plan.js";
 import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
 import { skeleton } from "../policy/fraudCore.js";
-import { aloneLimit } from "../world/settings.js";
+import { aloneLimit, checkWindows } from "../world/settings.js";
 import { suppliersOnFile } from "./bank.js";
 import { accountOfReading, codeFindings, payableAccount, statusOf, type ApStatus, type ExpectedAmount, type Finding, type HistoryInvoice, type InvoiceCase } from "./checkerCore.js";
 import { handledInLedger } from "./ledgerKey.js";
@@ -69,11 +69,15 @@ export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContex
   const accountSha256 = account ? ibanSha(account) : null;
 
   const why = db.prepare("SELECT json_extract(payload_json, '$.reason') AS reason FROM audit_log WHERE subject = ? AND event = 'ap.status' ORDER BY seq DESC LIMIT 1");
-  const history = (db.prepare("SELECT id, vendor, invoice_no, total, currency, issue_date, received_at, status, findings_json, reading_json FROM ap_invoices ORDER BY received_at, id").all() as
-    { id: string; vendor: string; invoice_no: string; total: string; currency: string; issue_date: string; received_at: string; status: ApStatus; findings_json: string; reading_json: string }[])
+  const history = (db.prepare("SELECT id, vendor, invoice_no, total, currency, issue_date, received_at, status, findings_json, reading_json, period, lines FROM ap_invoices ORDER BY received_at, id").all() as
+    { id: string; vendor: string; invoice_no: string; total: string; currency: string; issue_date: string; received_at: string; status: ApStatus; findings_json: string; reading_json: string; period: string | null; lines: string | null }[])
     .map((x): HistoryInvoice => ({
       id: x.id, vendor: x.vendor, invoiceNo: x.invoice_no, total: x.total, currency: x.currency, issueDate: x.issue_date, receivedAt: x.received_at, state: x.status,
       accountKey: accountOfReading(JSON.parse(x.reading_json) as ApReading),
+      // The months it printed that it bills for (src/ap/period.ts), kept when it came in; null for invoices from before.
+      period: x.period ? (JSON.parse(x.period) as string[]) : null,
+      // The lines it printed (src/ap/period.ts itemLines), kept when it came in (19 Nov, third round); null for invoices from before.
+      lines: x.lines ? (JSON.parse(x.lines) as string[]) : null,
       blockedAsDuplicate: x.status === "blocked" && (JSON.parse(x.findings_json) as Finding[]).some((y) => y.code === "duplicate"),
       // A person's reason is looked up only for a rejected invoice under this invoice's number: the one the checks cite.
       rejectedWhy: x.status === "rejected" && x.id !== ctx.selfId && !!r.invoice_no && sameInvoiceNo(x.invoice_no, r.invoice_no)
@@ -82,8 +86,12 @@ export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContex
     }));
 
   // Name, hash and last four as the fraud check has always read them (suppliersOnFile), with each account's BIC and currency.
-  const more = new Map((db.prepare("SELECT beneficiary_id, bic, currency FROM beneficiaries WHERE status = 'ACTIVE'").all() as { beneficiary_id: string; bic: string; currency: string }[]).map((b) => [b.beneficiary_id, b]));
-  const suppliers = suppliersOnFile(db).map((b) => ({ id: b.beneficiary_id, name: b.name, accountSha256: b.iban_sha256, last4: b.iban_last4, bic: more.get(b.beneficiary_id)?.bic ?? "", currency: more.get(b.beneficiary_id)?.currency ?? "" }));
+  // 19 Nov, second round: and a US account's ABA routing number, kept beside its hash since then (src/ap/vendors.ts).
+  const more = new Map((db.prepare("SELECT beneficiary_id, bic, currency, json_extract(details_json, '$.aba') AS aba FROM beneficiaries WHERE status = 'ACTIVE'").all() as { beneficiary_id: string; bic: string; currency: string; aba: string | null }[]).map((b) => [b.beneficiary_id, b]));
+  const suppliers = suppliersOnFile(db).map((b) => {
+    const m = more.get(b.beneficiary_id);
+    return { id: b.beneficiary_id, name: b.name, accountSha256: b.iban_sha256, last4: b.iban_last4, bic: m?.bic ?? "", currency: m?.currency ?? "", ...(m?.aba ? { aba: m.aba } : {}) };
+  });
 
   const blocked = blockedPayees(db);
   const floors = [...new Set([fundingCurrency(db), r.currency].filter(payableCurrency))];
@@ -96,6 +104,8 @@ export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContex
       // The CFO's limit to pay an invoice alone: none unless the company sets one (a test company of /try: TRY_ALONE_LIMIT),
       // so every payment waits for the CFO's Face ID; within a limit, src/ap/pay.ts lets the agent pay alone (payAlone).
       aloneLimit: aloneLimit(db),
+      // 19 Nov, second round: the company's own windows for the duplicate and split checks, where it set them.
+      windows: checkWindows(db),
       cashFloors: Object.fromEntries(floors.map((cur) => [cur, fromCents(floorCents(db, cur))])),
       payees: { allowed: [...new Set(suppliers.map((s) => s.name))].filter((name) => !blocked.includes(name)), blocked },
       currencies: SWIFT_CURRENCIES.filter(payableCurrency),

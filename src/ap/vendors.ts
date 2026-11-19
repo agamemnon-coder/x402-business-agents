@@ -17,7 +17,7 @@ import { beginExecution, createProposal, expireDue, finishExecution, nextProposa
 import { assessAgainst, type Beneficiary } from "../policy/fraudCore.js";
 import { recheck, type InboxDeps } from "./inbox.js";
 import { checkpoint } from "../policy/saga.js";
-import { accountKey, chooseRoute, maskAccount, validateDetails, type BankDetails, type Method } from "../payouts/routes.js";
+import { abaOf, accountKey, chooseRoute, maskAccount, validateDetails, type BankDetails, type Method } from "../payouts/routes.js";
 import { apInvoice } from "./store.js";
 import { suppliersOnFile } from "./bank.js";
 import { freshCheck, nameCheckGate, payeeCheckOn, runNameCheck, type NameCheckRow, type PayeeNameVerifier } from "../airwallex/payeeName.js";
@@ -313,7 +313,10 @@ export async function executePayeeAdd(db: DB, rail: PayoutRail, proposalId: stri
     throw e;
   }
   const key = accountKey(bank);
-  const details = { country: bank.country, method: bank.method, clearing: bank.clearing, account: maskAccount(bank), account_key_sha256: ibanSha(key) };
+  // 19 Nov (adversarial eval v3): a US account's ABA routing number beside its hash, so an invoice to the same number at
+  // another routing number is not taken for this account (src/ap/checks.ts, checkerCore comparedWith).
+  const aba = abaOf(bank);
+  const details = { country: bank.country, method: bank.method, clearing: bank.clearing, account: maskAccount(bank), account_key_sha256: ibanSha(key), ...(aba ? { aba } : {}) };
   db.transaction(() => {
     db.prepare("INSERT OR REPLACE INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method, status, details_json) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)")
       .run(ben.id, t.vendor, key.replace(/[^A-Z0-9]/gi, "").slice(-4), ibanSha(key), bank.swiftCode ?? "", bank.currency, bank.method, JSON.stringify(details));

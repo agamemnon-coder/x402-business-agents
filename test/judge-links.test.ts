@@ -4,6 +4,9 @@
 import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { startJudge } from "../src/cli/judge.js";
+import { COMMON_HEADERS } from "../worker/src/core.js";
+import { T0_READBACK_PATH } from "../src/accounting/t0Readback.js";
+import { PROOF_SAMPLES, proofSamplePath } from "../src/proof/bundle.js";
 
 // /runs and the agent pages since 12 Nov (review DC-1: five run-log links on /runs answered 404).
 const PAGES = ["/", "/metal", "/metal/report", "/visa", "/security", "/docs", "/status", "/?recorded", "/demo", "/live", "/film", "/try", "/tasks", "/month", "/lab", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury"];
@@ -44,6 +47,16 @@ describe("npm run judge: no dead links", () => {
     }
     expect(dead).toEqual([]);
     expect(seen.size).toBeGreaterThan(10);
+  });
+
+  it("sends the hosted relay's nosniff and referrer policy on every answer: the 404 page, the font, the icons, the proof samples (red team v2: headers-pages, headers-files)", async () => {
+    const paths = ["/nope-404", "/assets/inter.woff2", "/favicon.ico", "/favicon.svg", ...Object.keys(PROOF_SAMPLES).map((k) => proofSamplePath(k as keyof typeof PROOF_SAMPLES)), T0_READBACK_PATH];
+    for (const p of paths) {
+      const res = await fetch(`${base}${p}`);
+      expect(res.status, p).toBe(p === "/nope-404" ? 404 : 200);
+      expect(res.headers.get("x-content-type-options"), p).toBe(COMMON_HEADERS["x-content-type-options"]);
+      expect(res.headers.get("referrer-policy"), p).toBe(COMMON_HEADERS["referrer-policy"]);
+    }
   });
 
   it("answers the CFO's live-only pages with a page that says so, and the emergency stop's link too", async () => {

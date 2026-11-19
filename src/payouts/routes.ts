@@ -229,6 +229,24 @@ export function accountKey(d: BankDetails): string {
   return `${d.country}:${digits(d.accountNumber).replace(/^0+(?=.)/, "")}`;
 }
 
+/** The ABA routing number of an account given with one, digits only; "" when it has none. */
+export const abaOf = (d: Pick<BankDetails, "routingType" | "routingValue">): string => (d.routingType === "aba" ? digits(d.routingValue) : "");
+
+/**
+ * Whether two sets of details are one account, for the check that an invoice pays the account on file (19 Nov,
+ * adversarial eval v3, v3-bec-pinecrest-new-routing: Pinecrest's account number at another ABA routing number was taken
+ * for the account on file): the same accountKey, and, when both carry an ABA routing number, the same one. The same
+ * digits at another bank are another account. accountKey itself stays coarse (the same number with its ABA or with its
+ * bank's BIC is one account): it serves the duplicate checks, where matching more is the safe side; here matching less is.
+ */
+export function sameAccount(a: BankDetails, b: BankDetails): boolean {
+  let ka: string, kb: string;
+  try { ka = accountKey(a); kb = accountKey(b); } catch { return false; }
+  if (!ka || digits(ka) !== digits(kb)) return false;
+  const ra = abaOf(a), rb = abaOf(b);
+  return !ra || !rb || ra === rb;
+}
+
 /** The account as the CFO sees it in the terms: enough to recognise it, not enough to reuse it. */
 export function maskAccount(d: BankDetails): string {
   if (has(d.iban)) { const i = digits(d.iban); return `IBAN ${i.slice(0, 4)}…${i.slice(-4)}`; }

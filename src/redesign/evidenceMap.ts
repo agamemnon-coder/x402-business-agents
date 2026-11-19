@@ -203,10 +203,11 @@ function svg(l: Layout, M: Metrics = PAGE, o: { links?: boolean; head?: string; 
   const pill = (p: Box) => wrapIn(`em-p ${p.n.id} em-h-${p.n.id}`, p.n.group, `${p.n.title}: ${p.n.badge}`, `<rect class="em-pb" x="${r1(p.x + 0.5)}" y="${r1(p.y + 0.5)}" width="${p.w - 1}" height="${r1(p.h - 1)}" rx="10"/>${p.badge.map((s, i) => text(p.x + 8, p.y + 10 + asc(M.size.badge) - 1 + i * M.lh.badge, "em-v", s)).join("")}`);
   return `<svg class="em-${l.variant}" viewBox="0 0 ${l.vw} ${l.vh}" width="${l.vw}" height="${l.vh}" ${o.root ?? `role="group" aria-label="${esc("The money path, with the evidence for each step")}"`}>${o.head ?? ""}
 ${l.lines.map((d) => `<path class="em-line" d="${d}"/>`).join("")}${l.branch.map((b) => `<path class="em-br ${b.cls}" d="${b.d}"/>`).join("")}
+<!-- The dots under the cards (19 Nov, the owner: "the dots run through the text"): seen on the lines between cards, hidden behind each card it enters, which lights up. -->
+${l.dots.map((d) => `<path class="em-dot halo ${d.cls}" d="${d.d}" pathLength="100"/><path class="em-dot ${d.cls}" d="${d.d}" pathLength="100"/>`).join("")}
 ${l.labels.map((t) => text(t.x, t.y, "em-k", t.text)).join("")}
 ${l.boxes.map(box).join("\n")}
 ${l.pills.map(pill).join("\n")}
-${l.dots.map((d) => `<path class="em-dot halo ${d.cls}" d="${d.d}" pathLength="100"/><path class="em-dot ${d.cls}" d="${d.d}" pathLength="100"/>`).join("")}
 </svg>`;
 }
 

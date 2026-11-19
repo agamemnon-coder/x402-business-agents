@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "label": "tamper matrix",
+  "message": "894/894 refused",
+  "color": "brightgreen",
+  "record": "docs/evidence/tamper-matrix.json"
+}

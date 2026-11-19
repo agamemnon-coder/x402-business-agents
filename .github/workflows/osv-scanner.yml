@@ -1,0 +1,91 @@
+# OSV-Scanner (19 November): every lockfile in the repository checked against the OSV database (osv.dev), daily, on
+# every pull request that changes a lockfile, and on demand. Results go to GitHub code scanning as SARIF.
+#   Product: package-lock.json and worker/package-lock.json, the code that runs and moves (test) money. Any known
+#            vulnerability fails the job.
+#   Tooling: the CI-only Semgrep install (.semgrep/requirements.txt) and the TAP interop test's copy of a third-party
+#            reference (test/interop/). Reported to code scanning, never blocking: none of it ships or runs in the
+#            payment path. Each such finding has an OpenVEX statement in docs/security/vex/ (see its README).
+# The scanner action is google/osv-scanner-action pinned by commit, with osv-scanner 2.7.1 inside its image.
+name: osv-scanner
+on:
+  schedule:
+    - cron: "41 4 * * *"
+  pull_request:
+    paths:
+      - "**/package-lock.json"
+      - "**/*package-lock.json"
+      - ".semgrep/requirements.txt"
+      - "test/interop/tap-ref-requirements.txt"
+      - ".github/workflows/osv-scanner.yml"
+  push:
+    branches: [main]
+    paths:
+      - "**/package-lock.json"
+      - "**/*package-lock.json"
+      - ".github/workflows/osv-scanner.yml"
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  scan:
+    name: OSV-Scanner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write # upload the SARIF to code scanning
+      actions: read
+    steps:
+      - name: Harden the runner (audit outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Scan the product's lockfiles
+        id: product
+        uses: google/osv-scanner-action/osv-scanner-action@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
+        continue-on-error: true
+        with:
+          scan-args: |-
+            --format=sarif
+            --output=osv-product.sarif
+            --lockfile=package-lock.json
+            --lockfile=worker/package-lock.json
+      - name: Scan the CI tooling and test lockfiles (report only)
+        id: tooling
+        uses: google/osv-scanner-action/osv-scanner-action@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
+        continue-on-error: true
+        with:
+          scan-args: |-
+            --format=sarif
+            --output=osv-tooling.sarif
+            --lockfile=package-lock.json:test/interop/tap-ref-cdn-proxy.package-lock.json
+            --lockfile=requirements.txt:test/interop/tap-ref-requirements.txt
+            --lockfile=requirements.txt:.semgrep/requirements.txt
+      # osv-scanner exits non-zero both on findings and on a failed scan; a failed scan writes no SARIF.
+      - name: Both scans completed
+        run: |
+          for f in osv-product.sarif osv-tooling.sarif; do
+            test -s "$f" || { echo "::error::$f is missing: the scan itself failed, see its step"; exit 1; }
+          done
+      - name: Upload the product scan to code scanning
+        if: always() && hashFiles('osv-product.sarif') != ''
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: osv-product.sarif
+          category: osv-product
+      - name: Upload the tooling scan to code scanning
+        if: always() && hashFiles('osv-tooling.sarif') != ''
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: osv-tooling.sarif
+          category: osv-tooling
+      - name: The product has no known vulnerability
+        if: steps.product.outcome == 'failure'
+        run: |
+          echo "::error::OSV-Scanner found known vulnerabilities in package-lock.json or worker/package-lock.json; see code scanning (category osv-product)"
+          exit 1

@@ -367,6 +367,8 @@ export const WHY = {
     mixed_scripts: { head: "Held: the supplier's name mixes alphabets." },
     new_supplier: { head: "Held: this supplier is not on file yet.", rule: "A new supplier is paid only after a person verifies its bank details with the supplier and the CFO approves it." },
     sum_mismatch: { head: "Held: the total is not its lines.", rule: "The subtotal plus tax must equal the total, to the cent." },
+    // 19 Nov (red team: one line of EUR 1,850.00 under a total of EUR 8,150.00 went to the CFO with nothing flagged).
+    totals_mismatch: { head: "Held: the lines do not add up to the total.", rule: "The lines an invoice prints, with its VAT, shipping and discount lines, must add up to its total within a cent." },
     iban_invalid: { head: "Refused: the IBAN is not valid.", rule: "An IBAN that fails its checksum is never paid to." },
     bank_details_invalid: { head: "Refused: the bank details are not valid.", rule: "Bank details that fail their checks are never paid to." },
     no_bank_details: { head: "Held: no account to pay to.", rule: "Without an IBAN or account number, a person checks how this supplier is paid." },
@@ -375,9 +377,11 @@ export const WHY = {
     currency_not_paid: { head: "Held: Purser does not pay this currency.", rule: "Purser pays two-decimal currencies that SWIFT carries; a person pays this one by hand." },
     unusual_amount: { head: "Flagged: an unusual amount.", rule: `More than ${UNUSUAL_FACTOR} times the median of this supplier's earlier invoices is flagged.` },
     overdue: { head: "Flagged: the due date has passed.", rule: "The due date is checked against today." },
-    bank_change_language: { head: "Flagged: the invoice announces a new bank.", rule: "Such words are evidence for the person who verifies; they never speed up a payment." },
+    // 19 Nov, second round (adversarial eval v3): words asking to pay another account hold the invoice, even at the IBAN on file.
+    bank_change_language: { head: "Held: the invoice asks to be paid to another account.", rule: "A person confirms the account with the supplier on a number already on file; once released, the CFO signs it." },
     // 19 Nov (adversarial eval v2): what the screen flags in the words holds the invoice for a person, below the limit too.
-    pressure_language: { head: "Held: the invoice pushes for speed.", rule: "A person reads such words first; once released, the CFO signs it. They never speed up a payment." },
+    // Second round (eval v3): words of speed alone are only shown; secrecy, another channel or approval claimed from outside hold it.
+    pressure_language: { head: "Flagged: the invoice pushes for speed or around the checks.", rule: "Speed alone is shown. Secrecy, another channel or approval claimed from outside hold it for a person; once released, the CFO signs it." },
     instructions_in_document: { head: "Held: a line in this invoice tries to instruct the AI.", rule: "Documents are data: a person reads such a line first; once released, the CFO signs it." },
     possible_split: { head: "Flagged: this may be one order split in parts, so the CFO decides.", rule: `One supplier's invoices within ${SPLIT_DAYS} days, each under the limit, are added up: past the limit, the CFO decides.` },
     missing_fields: { head: "Held: something on the invoice could not be read.", rule: "An invoice is paid only when every field it needs is read." },

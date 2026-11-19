@@ -44,6 +44,10 @@ function migrate(db: DB): void {
   if (!has("payee_adds", "details_json")) db.exec("ALTER TABLE payee_adds ADD COLUMN details_json TEXT");
   // Red team round 4: a credit note counts against the supplier's invoices only once a person accepted it.
   for (const c of ["credit_accepted_at", "credit_accepted_by"]) if (!has("ap_invoices", c)) db.exec(`ALTER TABLE ap_invoices ADD COLUMN ${c} TEXT`);
+  // 19 Nov, adversarial eval v3: the months an invoice printed that it bills for (src/ap/period.ts), as JSON; never back-filled.
+  if (!has("ap_invoices", "period")) db.exec("ALTER TABLE ap_invoices ADD COLUMN period TEXT");
+  // 19 Nov, third round (adversarial eval v4): the lines an invoice printed (src/ap/period.ts itemLines), as JSON; never back-filled.
+  if (!has("ap_invoices", "lines")) db.exec("ALTER TABLE ap_invoices ADD COLUMN lines TEXT");
   // D24: who decided each money action, recorded when it starts (src/provenance/origin.ts); readers look events up by name.
   db.exec("CREATE INDEX IF NOT EXISTS audit_event ON audit_log (event, seq)");
   for (const t of ["holds", "refunds", "sweeps", "upstream_purchases", "transfers", "money_steps"]) if (!has(t, "origin_json")) db.exec(`ALTER TABLE ${t} ADD COLUMN origin_json TEXT`);

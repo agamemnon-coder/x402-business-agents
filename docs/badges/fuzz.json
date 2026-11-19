@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "label": "fuzz runs",
+  "message": "315,300 · 0/17 properties failed",
+  "color": "brightgreen",
+  "record": "docs/evidence/fuzzing.json"
+}

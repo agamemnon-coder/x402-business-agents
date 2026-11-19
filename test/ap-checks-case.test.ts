@@ -99,6 +99,10 @@ describe("the case the checks run on, built from the ledger", () => {
     expect(c.history).toEqual([{
       id: "AP-0001", vendor: "Bergtex Textil GmbH", invoiceNo: "BTX-2026-21", total: "1850.00", currency: "EUR", issueDate: "2026-11-02", receivedAt: first.received_at,
       state: "ready", accountKey: BERGTEX_IBAN, blockedAsDuplicate: false, rejectedWhy: null,
+      // 19 Nov: the months it printed that it bills for (src/ap/period.ts); this one prints none.
+      period: null,
+      // 19 Nov, third round: the lines it printed that it bills (src/ap/period.ts itemLines); this one prints none.
+      lines: [],
     }]);
     expect(codeFindings(c).map((f) => f.code)).toEqual(["duplicate"]);
     const again = invoiceCase(db, first.reading, EN, { ...ctx, selfId: "AP-0001" });
