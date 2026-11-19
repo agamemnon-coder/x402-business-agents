@@ -235,6 +235,22 @@ jobs:
           key: tla2tools-${{ steps.pin.outputs.sha }}
       - name: TLC on the bound and on the planted bugs
         run: bash scripts/formal.sh
+  # REUSE (19 November): every file has a licence and copyright on record (REUSE.toml, LICENSES/), checked with the
+  # FSFE's reuse tool (REUSE specification 3.3). The action is pinned by commit, but it builds from the image
+  # fsfe/reuse:6, a moving tag the action names; a local run with reuse 6.3.0 (pip) was clean on 19 November.
+  reuse:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Harden the runner (audit outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: reuse lint
+        uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
   # Static analysis (Semgrep 1.180.0 and every package it imports, pinned by hash in .semgrep/requirements.txt since
   # 19 November, wheels only) and the SBOM (Max, 2 November). Semgrep blocks on any finding or if no rules loaded
   # (it started non-blocking; its first run found 0 in 110 rules). The rules are Semgrep's public (TypeScript, Node.js, secrets, OWASP Top Ten)
