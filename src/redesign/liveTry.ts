@@ -22,13 +22,27 @@ export interface LiveTryRecord { dir: string; summary: string; log: string | nul
 const isLiveTry = (s: unknown): s is { aggregate: J; runs: J[] } =>
   isRec(s) && isRec(s.aggregate) && typeof s.aggregate.runs === "number" && Array.isArray(s.runs) && s.runs.every((r) => isRec(r) && typeof r.run === "number" && isRec(r.steps_ms));
 
-/** Every recorded series of /try walks under docs/runs, oldest first. */
+/**
+ * Folders and files whose files the band does not count. 19 Nov: the 8 walks of the public /try
+ * (docs/runs/2026-11-19-live-try/), the Airwallex soak (docs/runs/2026-11-19-airwallex-soak.json and .md) and the /try
+ * mega run (docs/runs/2026-11-19-mega-run/), and the partner re-runs (the Alta testnet series with its three refusals
+ * on chain, docs/runs/2026-11-19-alta-series.*, and the fresh anchor, docs/runs/2026-11-19-anchor.*) were each left out
+ * at first, newer than the pages as deployed; since the owner's call the same day they go on the site: each is a live
+ * run on /runs (src/redesign/runs.ts) and counted here like any run. The one folder still left out is
+ * docs/runs/2026-11-19-webkit-try/, the same walk in WebKit with the software passkey
+ * (docs/runs/2026-11-19-webkit-try.md): a browser-compatibility check, not a run of record. src/cli/verifyAll.ts
+ * recounts the band with the same list, and /runs (liveTryRecords below) shows no row for them.
+ */
+export const NOT_IN_BAND: readonly string[] = ["docs/runs/2026-11-19-webkit-try"];
+
+/** Every recorded series of /try walks under docs/runs, oldest first (NOT_IN_BAND left out). */
 export function liveTryRecords(): LiveTryRecord[] {
   let names: string[];
   try { names = readdirSync(new URL(`${RUNS_DIR}/`, ROOT)); } catch { return []; }
   const out: LiveTryRecord[] = [];
   for (const name of names.sort()) {
     const dir = `${RUNS_DIR}/${name}`;
+    if (NOT_IN_BAND.includes(dir)) continue;
     if (!statSync(new URL(dir, ROOT)).isDirectory()) continue;
     const summary = `${dir}/summary.json`;
     if (!existsSync(new URL(summary, ROOT))) continue;

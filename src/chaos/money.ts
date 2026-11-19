@@ -358,7 +358,7 @@ function webhookStorm(db: DB, awx: StandInAirwallex, r: () => number, sc: Scenar
 }
 
 /** The /health alerts that tell a person a payment needs them (src/ops/health.ts). */
-const MONEY_ALERTS = ["action_stuck", "airwallex_disagrees", "reconciliation_difference", "hold_stale"];
+const MONEY_ALERTS = ["action_stuck", "airwallex_disagrees", "reconciliation_difference", "hold_stale", "approved_terms_changed"];
 const LIVE = (s: string) => !["CANCELLED", "FAILED", "REFUNDED", "RETURNED"].includes(s);
 /** Rows a person is shown (an alarm on the dashboard or in /health): the payment went to a person. */
 const TO_A_PERSON = ["transfer.left_open", "transfer.ambiguous", "transfer.payee_unconfirmed", "transfer.row_conflict", "reconcile.difference", "transfer.retry_stopped", "transfer.awaiting_airwallex_approval", "transfer.fee_over_ceiling"];

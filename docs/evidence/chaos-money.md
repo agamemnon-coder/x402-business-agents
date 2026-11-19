@@ -16,11 +16,11 @@ What runs: the real invoice payment executor, its saga and outbox (money_steps),
 
 ## Totals
 
-- Airwallex calls: 9160; faults injected: 492 (429 76, 500 49, 503 72, lost-answer 80, crash 40, 502-after 64, timeout-after 46, lost-request 65); process deaths: 77.
+- Airwallex calls: 9146; faults injected: 492 (429 76, 500 49, 503 72, lost-answer 80, crash 40, 502-after 64, timeout-after 46, lost-request 65); process deaths: 77.
 - Webhooks delivered: 1686, of which forged: 459.
-- How the payments ended: EXECUTED 218, EXPIRED 166, PENDING_APPROVAL 2, REJECTED 1, FAILED 8.
-- Scenarios where a payment went to a person (an alarm row or a /health alert) instead of a final state: 0.
-- Scenarios where an approved payment was refused before it began and sat APPROVED with no alarm until its expiry: 50 (see the findings).
+- How the payments ended: EXECUTED 218, EXPIRED 165, PENDING_APPROVAL 2, APPROVED 1, REJECTED 1, FAILED 8.
+- Scenarios where a payment went to a person (an alarm row or a /health alert) instead of a final state: 1.
+- Scenarios where an approved payment was refused before it began and sat APPROVED with no alarm until its expiry: 49 (see the findings).
 
 ## The invariants have teeth (canaries)
 
@@ -39,7 +39,7 @@ No invariant was broken in any scenario.
 
 ### Observation: an approved payment refused before it begins raises no alarm until it expires
 
-In 50 scenario(s) an approved proposal was refused by the executor before anything was sent (the terms in the ledger no longer hash to the approved hash, or the EUR floor would be broken once another payment went out) and stayed APPROVED, with no alarm row and nothing on /health, retried and refused at each start until its expiry made it EXPIRED. Nothing was paid (I1, I2 held). A person is not told while it lasts: `resumeInterrupted` (src/policy/saga.ts) keeps the refusal in its return value only. The same EUR floor refusal, met after execution began, fails the proposal instead (FAILED, on the dashboard). Why they were refused: the EUR floor 49, terms changed after the approval 1. Seen in: H17, H11, R006, R007, R010, R016, R031, R032, R034, R046, R048, R055, R071, R072, R075, R085, R095, R103, R104, R108, R113, R115, R116, R132, R148, R157, R161, R174, R191, R203, R205, R216, R221, R222, R226, R232, R235, R241, R243, R244, R245, R248, R250, R254, R261, R274, R284, R291, R293, R298.
+In 49 scenario(s) an approved proposal was refused by the executor before anything was sent (the terms in the ledger no longer hash to the approved hash, or the EUR floor would be broken once another payment went out) and stayed APPROVED, with no alarm row and nothing on /health, retried and refused at each start until its expiry made it EXPIRED. Nothing was paid (I1, I2 held). A person is not told while it lasts: `resumeInterrupted` (src/policy/saga.ts) keeps the refusal in its return value only. The same EUR floor refusal, met after execution began, fails the proposal instead (FAILED, on the dashboard). Why they were refused: the EUR floor 49. Seen in: H17, R006, R007, R010, R016, R031, R032, R034, R046, R048, R055, R071, R072, R075, R085, R095, R103, R104, R108, R113, R115, R116, R132, R148, R157, R161, R174, R191, R203, R205, R216, R221, R222, R226, R232, R235, R241, R243, R244, R245, R248, R250, R254, R261, R274, R284, R291, R293, R298.
 
 Repro: `npm run chaos:money -- --only H11` (terms edited after the approval) and `--only H17` (two approvals, the second refused at the EUR floor).
 
@@ -59,7 +59,7 @@ Repro: `npm run chaos:money -- --only H11` (terms edited after the approval) and
 | `H08` the approval is used 25 minutes later: the terms have expired | held | P-0001 EXPIRED, nothing at Airwallex |
 | `H09` a webhook storm: every event five times, shuffled, and six forged events | held | P-0001 EXECUTED, Airwallex PAID, payout row PAID |
 | `H10` never approved: the executor is asked to pay a proposal waiting for the CFO | held | P-0001 PENDING_APPROVAL, nothing at Airwallex |
-| `H11` the terms in the ledger are changed after the passkey approved them (amount +1.00) | held | P-0001 EXPIRED, nothing at Airwallex |
+| `H11` the terms in the ledger are changed after the passkey approved them (amount +1.00) | held | P-0001 APPROVED, nothing at Airwallex → a person (approved_terms_changed) |
 | `H12` the passkey signed other terms (another amount): the approval is refused, nothing is paid | held | P-0001 PENDING_APPROVAL, nothing at Airwallex |
 | `H13` rejected with the passkey, then the executor is asked to pay | held | P-0001 REJECTED, nothing at Airwallex |
 | `H14` the process dies twice: with the transfer's answer in hand, then again during the next life's settlement | held | P-0001 EXECUTED, Airwallex PAID, payout row PAID |

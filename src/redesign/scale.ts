@@ -16,6 +16,7 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { liveRunCount } from "./runs.js";
+import { NOT_IN_BAND } from "./liveTry.js";
 import { apiTrail } from "../airwallex/apiTrail.js";
 /** The band's words for the Airwallex figure: the same count as /airwallex/calls. */
 export const AWX_CALLS_LABEL = "Airwallex sandbox API calls in the run records";
@@ -25,18 +26,8 @@ import { esc, icon } from "./ui.js";
 const ROOT = new URL("../../", import.meta.url);
 const read = (p: string) => readFileSync(new URL(p, ROOT), "utf8");
 const json = (p: string): unknown => { try { return JSON.parse(read(p)); } catch { return null; } };
-/**
- * Folders and files whose files the band does not count. 19 Nov: the 8 walks of the public /try
- * (docs/runs/2026-11-19-live-try/), the Airwallex soak (docs/runs/2026-11-19-airwallex-soak.json and .md) and the /try
- * mega run (docs/runs/2026-11-19-mega-run/), and the partner re-runs (the Alta testnet series with its three refusals
- * on chain, docs/runs/2026-11-19-alta-series.*, and the fresh anchor, docs/runs/2026-11-19-anchor.*) were each left out
- * at first, newer than the pages as deployed; since the owner's call the same day they go on the site: each is a live
- * run on /runs (src/redesign/runs.ts) and counted here like any run. The one folder still left out is
- * docs/runs/2026-11-19-webkit-try/, the same walk in WebKit with the software passkey
- * (docs/runs/2026-11-19-webkit-try.md): a browser-compatibility check, not a run of record. src/cli/verifyAll.ts
- * recounts the band with the same list.
- */
-export const NOT_IN_BAND: readonly string[] = ["docs/runs/2026-11-19-webkit-try"];
+/** The folders the band does not count: kept in ./liveTry.ts, which /runs also reads, so both leave out the same ones. */
+export { NOT_IN_BAND } from "./liveTry.js";
 /** Every file under a folder of the repository, by its path from the root, whose name matches (NOT_IN_BAND skipped). */
 function filesIn(dir: string, re: RegExp): string[] {
   if (NOT_IN_BAND.includes(dir)) return [];

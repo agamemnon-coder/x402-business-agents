@@ -429,10 +429,10 @@ export async function runAttacks(ctx: Ctx): Promise<AttackResult[]> {
       return [s.slice(0, 5).every((x) => x === 201) && s.slice(5).every((x) => x === 429), s.join(",")];
     });
     const from = edgeFrom();
-    await attack(G, "rate-body-cap-length", "A start body one byte over its 2,000-byte cap, with an honest Content-Length", "edge", "400 'the body is larger than 2000 bytes'", "POST /v1/try/start with 2,001 bytes", async () => {
-      const raw = JSON.stringify({ token: "x".repeat(2_001 - 12) });
+    await attack(G, "rate-body-cap-length", "A start body one byte over its 4,000-byte cap (room for a Turnstile token since 19 Nov), with an honest Content-Length", "edge", "400 'the body is larger than 4000 bytes'", "POST /v1/try/start with 4,001 bytes", async () => {
+      const raw = JSON.stringify({ token: "x".repeat(4_001 - 12) });
       const r = await api(edge, "POST", "/v1/try/start", { raw, headers: { "content-type": "application/json" }, ...(from ? { from } : {}) });
-      return [r.status === 400 && /larger than 2000/.test(r.text), `${brief(r)}: ${say(r)} (${raw.length} bytes)`];
+      return [r.status === 400 && /larger than 4000/.test(r.text), `${brief(r)}: ${say(r)} (${raw.length} bytes)`];
     });
     await attack(G, "rate-body-cap-chunked", "A 30 MB start body sent chunked, with no Content-Length", "edge", "refused at the cap while it arrives (400), quickly; the server keeps answering", "POST /v1/try/start, Transfer-Encoding: chunked, 30 MB", async () => {
       const r = await api(edge, "POST", "/v1/try/start", { raw: new Uint8Array(30_000_000).fill(0x20), chunked: true, headers: { "content-type": "application/json" }, ...(from ? { from } : {}) });

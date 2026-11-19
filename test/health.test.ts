@@ -166,3 +166,24 @@ describe("/health between live runs and during one", () => {
     expect((await r.get("/health")).body).toMatchObject({ status: "ok", runner: "up" });
   });
 });
+
+describe("an approved payment whose stored terms were changed after the passkey (chaos H11, 19 Nov)", () => {
+  it("is a critical alarm on /health, and an untouched approval is none", async () => {
+    const { termsHash } = await import("../src/lib/terms.js");
+    const db = openDb(":memory:");
+    const now = new Date("2026-11-19T12:00:00Z");
+    const add = (id: string, terms: Record<string, string>, stored: Record<string, string>) => {
+      const signed = termsHash(terms as never);
+      db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES (?, 'invoice_payment', ?, ?, 'test', 'APPROVED', '2026-11-20T12:00:00Z', '2026-11-19T11:00:00Z')").run(id, JSON.stringify(stored), signed);
+      db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES (?, 'APPROVED', ?, 'cfo', 'passkey', '', '2026-11-19T11:30:00Z')").run(id, signed);
+    };
+    const t = { schema: "kit11.approval-terms/v1", kind: "invoice_payment", proposal_id: "P-0001", expires_at: "2026-11-20T12:00:00Z", amount: "1850.00", currency: "EUR", invoice_no: "INV-1" };
+    add("P-0001", t, t);
+    expect(health(db, now).alerts.map((a) => a.code)).not.toContain("approved_terms_changed");
+    add("P-0002", { ...t, proposal_id: "P-0002" }, { ...t, proposal_id: "P-0002", amount: "1851.00" });
+    const a = health(db, now).alerts.filter((x) => x.code === "approved_terms_changed");
+    expect(a).toHaveLength(1);
+    expect(a[0]!.severity).toBe("critical");
+    expect(a[0]!.words).toMatch(/^P-0002 was approved/);
+  });
+});

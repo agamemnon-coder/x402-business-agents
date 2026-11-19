@@ -9,7 +9,7 @@
     "hand_written": 17,
     "passed": 317,
     "failed": 0,
-    "calls": 9160,
+    "calls": 9146,
     "faults": 492,
     "crashes": 77,
     "webhooks": 1686,
@@ -26,13 +26,14 @@
     },
     "end_states": {
       "EXECUTED": 218,
-      "EXPIRED": 166,
+      "EXPIRED": 165,
       "PENDING_APPROVAL": 2,
+      "APPROVED": 1,
       "REJECTED": 1,
       "FAILED": 8
     },
-    "to_a_person": 0,
-    "silent_approvals": 50
+    "to_a_person": 1,
+    "silent_approvals": 49
   },
   "invariants": {
     "I1": {
@@ -267,7 +268,7 @@
         "life 1: P-0001 error: fetch failed: other side closed; P-0002 error: fetch failed: other side closed",
         "life 2 (calm): P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:16Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:06Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -423,7 +424,7 @@
       "broken": [],
       "outcome": [
         "P-0001 approval: approved",
-        "life 1: P-0001 error: P-0001 expired at 2026-11-19T10:33:16Z; approval void",
+        "life 1: P-0001 error: P-0001 expired at 2026-11-19T10:48:06Z; approval void",
         "life 2 (calm): nothing to resume"
       ]
     },
@@ -475,7 +476,7 @@
         "adversary": "unapproved"
       },
       "ok": true,
-      "calls": 20,
+      "calls": 16,
       "faults": 0,
       "crashes": 0,
       "end": "PENDING_APPROVAL",
@@ -506,20 +507,16 @@
         "adversary": "terms-edited"
       },
       "ok": true,
-      "calls": 22,
+      "calls": 16,
       "faults": 0,
       "crashes": 0,
-      "end": "EXPIRED",
+      "end": "APPROVED",
       "broken": [],
       "outcome": [
         "P-0001 approval: approved",
-        "life 1: P-0001 error: P-0001: terms do not match the approved hash 12b81e48354fae32072e84132da916117f5ea8",
-        "life 2 (calm): P-0001 error: P-0001: terms do not match the approved hash 12b81e48354fae32072e84132da916117f5ea8",
-        "approved, refused before it began, no alarm: P-0001",
-        "the next day's start: P-0001 error: P-0001 expired at 2026-11-19T10:33:16Z; approval void"
-      ],
-      "silent_approvals": [
-        "P-0001"
+        "life 1: P-0001 error: P-0001: terms do not match the approved hash a398f339071e38a81fc554dd41047f900b97d2",
+        "life 2 (calm): P-0001 error: P-0001: terms do not match the approved hash a398f339071e38a81fc554dd41047f900b97d2",
+        "the next day's start: P-0001 error: P-0001: terms do not match the approved hash a398f339071e38a81fc554dd41047f900b97d2"
       ]
     },
     {
@@ -571,7 +568,7 @@
         "adversary": "rejected"
       },
       "ok": true,
-      "calls": 20,
+      "calls": 16,
       "faults": 0,
       "crashes": 0,
       "end": "REJECTED",
@@ -658,7 +655,7 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /fx/conversions/create: no answer; outcome unknown; P-0002 error: Airwallex /transfers/bec00bea-0f33-42f0-a34a-2a0838fd4b7d -> 500 internal_error",
+        "life 1: P-0001 error: Airwallex /fx/conversions/create: no answer; outcome unknown; P-0002 error: Airwallex /transfers/03b7b0ca-e64f-4e0b-be42-4ddf0225ff02 -> 500 internal_error",
         "life 2: nothing to resume",
         "life 3: nothing to resume",
         "life 4 (calm): nothing to resume",
@@ -860,14 +857,14 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: the process died (a call after the crash: GET /transfers/15870dde-6f86-45c1-8607-85; P-0002 error: the process died (a call after the crash: GET /balances/current) || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
-        "  died (with GET /transfers/15870dde-6f86-45c1-8607-8576418b74c7 sent and done); restarted from the ledger as it was at that instant",
+        "life 1: P-0001 error: the process died (a call after the crash: GET /transfers/c0c18987-35e2-4b87-83d5-b1; P-0002 error: the process died (a call after the crash: GET /balances/current) || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
+        "  died (with GET /transfers/c0c18987-35e2-4b87-83d5-b1aec8c18144 sent and done); restarted from the ledger as it was at that instant",
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos || P-0001 error: P-0001 is no longer EXECUTING; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:18Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:07Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -907,7 +904,7 @@
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:18Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:07Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -1019,7 +1016,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:18Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:07Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -1212,11 +1209,11 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/af42077a-bc5a-4bd0-9325-abc6457df176/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/56877826-5d4a-4dbb-af7c-6d01e39dba0c/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:19Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:08Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -1691,7 +1688,7 @@
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:21Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:09Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -1733,7 +1730,7 @@
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:21Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:09Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -1806,11 +1803,11 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /balances/current -> 500 internal_error; P-0002 error: Airwallex /simulation/transfers/3244d83b-5896-402d-9bd1-df544cf2127d/transition: no",
+        "life 1: P-0001 error: Airwallex /balances/current -> 500 internal_error; P-0002 error: Airwallex /simulation/transfers/6c6ed234-fa05-4731-bfcb-733c9fb28b6a/transition: no",
         "life 2 (calm): P-0001 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0002: paid",
         "approved, refused before it began, no alarm: P-0001",
-        "the next day's start: P-0001 error: P-0001 expired at 2026-11-19T10:33:21Z; approval void"
+        "the next day's start: P-0001 error: P-0001 expired at 2026-11-19T10:48:09Z; approval void"
       ],
       "silent_approvals": [
         "P-0001"
@@ -2192,7 +2189,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:22Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:10Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -2269,12 +2266,12 @@
         "P-0002 approval: approved",
         "life 1: P-0001 error: crashed; P-0002 error: the process died (a call after the crash: GET /balances/current)",
         "  died (at transfer:after-call); restarted from the ledger as it was at that instant",
-        "life 1: P-0001 error: Airwallex /transfers/f5041057-18f3-429a-af28-53df3391c8b3 -> 500 internal_error; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
+        "life 1: P-0001 error: Airwallex /transfers/253f2c3a-3358-4cbd-bef2-0fce1b4309d9 -> 500 internal_error; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:22Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:10Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -2511,7 +2508,7 @@
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:23Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:11Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -3008,7 +3005,7 @@
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:24Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:12Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -3049,11 +3046,11 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/7184c74a-1e2c-4ea2-b947-35064828d007/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/0c9ac29b-7c49-434a-a2bb-1ba623dfb9d0/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:24Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:13Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -3161,7 +3158,7 @@
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:28:54Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:43Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -3498,7 +3495,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:28:56Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:44Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -3820,7 +3817,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:28:56Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:45Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -4079,12 +4076,12 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/be55a397-33df-4076-b7fe-9cf373c3689e/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/5a7c97c6-aad9-4b73-aa72-0616fe9123cb/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:28:57Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:46Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -4123,13 +4120,13 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/141ac806-cfd2-4dba-b2f8-1728e187121a/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/6bb800aa-7dc5-4739-9ccb-4e92662e5a8f/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:27Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:16Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -4256,7 +4253,7 @@
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:28:58Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:46Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -4417,7 +4414,7 @@
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:28:58Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:47Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -4485,8 +4482,8 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/aee93785-dcf1-4e98-8ccb-272e9af5240d/transition: no; P-0002 error: the process died (a call after the crash: GET /balances/current)",
-        "  died (with POST /simulation/transfers/aee93785-dcf1-4e98-8ccb-272e9af5240d/transition sent and done); restarted from the ledger as it was at that instant",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/14f5b595-abdb-4bd0-8a1c-fd558ca14e30/transition: no; P-0002 error: the process died (a call after the crash: GET /balances/current)",
+        "  died (with POST /simulation/transfers/14f5b595-abdb-4bd0-8a1c-fd558ca14e30/transition sent and done); restarted from the ledger as it was at that instant",
         "life 1: P-0001 error: crashed; P-0002 error: the process died (a call after the crash: GET /balances/current)",
         "  died (at settle:after); restarted from the ledger as it was at that instant",
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
@@ -4494,7 +4491,7 @@
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:28Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:17Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -4536,7 +4533,7 @@
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:28:58Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:47Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -5049,7 +5046,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:30Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:18Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -5565,7 +5562,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:29:01Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:49Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -5860,7 +5857,7 @@
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:32Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:20Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -5997,7 +5994,7 @@
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:32Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:20Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -6411,12 +6408,12 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: the process died (a call after the crash: GET /transfers/27c16fc3-e577-43ca-a848-d9; P-0002 error: the process died (a call after the crash: GET /balances/current)",
-        "  died (with GET /transfers/27c16fc3-e577-43ca-a848-d99947c3018e sent and done); restarted from the ledger as it was at that instant",
+        "life 1: P-0001 error: the process died (a call after the crash: GET /transfers/ebadf4da-10cc-4da7-93e8-e6; P-0002 error: the process died (a call after the crash: GET /balances/current)",
+        "  died (with GET /transfers/ebadf4da-10cc-4da7-93e8-e609dd4c9337 sent and done); restarted from the ledger as it was at that instant",
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:33Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:21Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -6974,7 +6971,7 @@
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:34Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:22Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -7347,11 +7344,11 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/74ca0225-7bd7-4b47-b9ed-54443dc35e86/transition: no; P-0002 error: Airwallex /balances/current -> 500 internal_error",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/d3ea8da1-b375-493b-9267-b77a084da3b2/transition: no; P-0002 error: Airwallex /balances/current -> 500 internal_error",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:29:05Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:52Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -7424,11 +7421,11 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/06740b95-9dd5-475d-8c44-3bd12ebe57cf/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/27985500-a80b-45ad-ab8f-e76bf4d90d4b/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:35Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:23Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -7773,14 +7770,14 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: the process died (a call after the crash: GET /transfers/eccf74fc-70d4-452b-a213-1d; P-0002 error: the process died (a call after the crash: GET /balances/current)",
-        "  died (with GET /transfers/eccf74fc-70d4-452b-a213-1dc3c715a7e5 sent and done); restarted from the ledger as it was at that instant",
+        "life 1: P-0001 error: the process died (a call after the crash: GET /transfers/2ca5aaf5-c379-40e1-a641-32; P-0002 error: the process died (a call after the crash: GET /balances/current)",
+        "  died (with GET /transfers/2ca5aaf5-c379-40e1-a641-32d51e72c36e sent and done); restarted from the ledger as it was at that instant",
         "life 1: P-0001 error: crashed; P-0002 error: the process died (a call after the crash: GET /balances/current)",
         "  died (at settle:before); restarted from the ledger as it was at that instant",
         "life 1: P-0001 EXECUTED; P-0002 error: Airwallex /balances/current -> 500 internal_error",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:29:06Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:53Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -7955,7 +7952,7 @@
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:29:06Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:54Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -8002,7 +7999,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:37Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:24Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -8139,7 +8136,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:37Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:24Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -8338,14 +8335,14 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/9785f6bb-94bf-422e-980d-0ae810cd4ef6/transition: no; P-0002 error: the process died (a call after the crash: GET /balances/current)",
-        "  died (with POST /simulation/transfers/9785f6bb-94bf-422e-980d-0ae810cd4ef6/transition sent and done); restarted from the ledger as it was at that instant",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/fd6801c2-4b53-4cb2-98bb-ff053aafd439/transition: no; P-0002 error: the process died (a call after the crash: GET /balances/current)",
+        "  died (with POST /simulation/transfers/fd6801c2-4b53-4cb2-98bb-ff053aafd439/transition sent and done); restarted from the ledger as it was at that instant",
         "life 1: P-0001 error: crashed; P-0002 error: the process died (a call after the crash: GET /balances/current)",
         "  died (at settle:after-call); restarted from the ledger as it was at that instant",
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:37Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:24Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -8455,7 +8452,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:37Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:25Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -8661,7 +8658,7 @@
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:38Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:25Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -8733,12 +8730,12 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/4cc7e271-cecf-401f-ac55-1c396a9946df/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/14e54676-71a0-4b27-a231-85f609013a9e/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:38Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:25Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -8774,12 +8771,12 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /balances/current -> 500 internal_error; P-0002 error: Airwallex /transfers/5ed71a03-96d6-4053-94c7-72c02f8c79d3 -> 500 internal_error",
+        "life 1: P-0001 error: Airwallex /balances/current -> 500 internal_error; P-0002 error: Airwallex /transfers/259f06c6-866e-4588-96b0-bd4d123d5d39 -> 500 internal_error",
         "life 2: P-0001 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0001 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0002: paid",
         "approved, refused before it began, no alarm: P-0001",
-        "the next day's start: P-0001 error: P-0001 expired at 2026-11-19T10:33:38Z; approval void"
+        "the next day's start: P-0001 error: P-0001 expired at 2026-11-19T10:48:25Z; approval void"
       ],
       "silent_approvals": [
         "P-0001"
@@ -8817,12 +8814,12 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/908ff365-6920-4761-a30d-e8df263916ad/transition: no; P-0002 error: The operation was aborted due to timeout",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/94881baf-b172-4c4c-9fa0-509620071662/transition: no; P-0002 error: The operation was aborted due to timeout",
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:38Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:25Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -8918,13 +8915,13 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/468f88a6-f920-45df-8bf0-1185bbef1ddd/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/96c89180-f996-4f17-a19a-d6cba448a85b/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos || P-0001 error: P-0001 is EXECUTING, not approved; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:29:08Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:55Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -8997,7 +8994,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:29:08Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:56Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -9136,7 +9133,7 @@
         "life 1: P-0001 EXECUTED; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:39Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:26Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -9374,7 +9371,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:29:09Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:43:56Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -9792,7 +9789,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:40Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:27Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -10108,11 +10105,11 @@
       "outcome": [
         "P-0001 approval: approved",
         "P-0002 approval: approved",
-        "life 1: P-0001 error: Airwallex /simulation/transfers/0da8be65-27fc-48d1-aeb2-1dc722a3521a/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
+        "life 1: P-0001 error: Airwallex /simulation/transfers/36544af0-9c72-4a7f-9c9e-67cf5c5741b0/transition: no; P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 2 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "a person retries P-0001: paid",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:41Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:27Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -10349,7 +10346,7 @@
         "life 2: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 3 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:41Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:28Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -10423,7 +10420,7 @@
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:41Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:28Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
@@ -10585,7 +10582,7 @@
         "life 3: P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "life 4 (calm): P-0002 error: EUR would now drop under its floor, commitments and payouts under way; a new propos",
         "approved, refused before it began, no alarm: P-0002",
-        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:33:41Z; approval void"
+        "the next day's start: P-0002 error: P-0002 expired at 2026-11-19T10:48:28Z; approval void"
       ],
       "silent_approvals": [
         "P-0002"
