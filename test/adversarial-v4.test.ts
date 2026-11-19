@@ -64,5 +64,5 @@ describe("the v4 run", () => {
     // The report lists every miss of the payer with Purser's rules, and of the one with Purser's parser.
     const md = readFileSync(new URL("../docs/evals/adversarial-v4.md", import.meta.url), "utf8");
     for (const x of r.rows.filter((y) => y.arm !== "no_rules" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
-  });
+  }, 60_000); // 200+ runs of the payables checks: over 5 s on a loaded CI runner
 });
