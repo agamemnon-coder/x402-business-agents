@@ -1,5 +1,6 @@
 // The adversarial eval v2 (src/evals/adversarialV2.ts): the scorer is plain code, the case set is what it says it is,
 // and the committed record is what a fresh run adds up to. Offline: a script stands in for the model.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ADV_ARMS, adversarialV2, advLine, advTotals, runAdvCase, scoreV2, stricter, type AdvRow } from "../src/evals/adversarialV2.js";
@@ -86,12 +87,32 @@ describe("the run", () => {
     expect((await runAdvCase(kase("floor-zeeland-exact"), "purser_script")).outcome).toBe("pay");
   });
 
-  it("the committed record is what a fresh run adds up to (npm run eval:adversarial-v2)", async () => {
-    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v2.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown };
+  // 19 Nov: rules were added against v2's misses, so v2 is no longer held out. Its first run stays as recorded ("before
+  // the fixes"); the run on today's code is its own record ("after"), and the case file never changed.
+  it("the committed after-fix record is what a fresh run adds up to (npm run eval:adversarial-v2)", async () => {
+    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v2-after.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean };
     const r = await adversarialV2();
     expect(r.rows).toHaveLength(ADV_V2_CASES.length * ADV_ARMS.length);
     expect(committed.totals).toEqual(r.totals);
     expect(committed.rows).toEqual(r.rows);
-    expect(committed.line).toBe(advLine(r.totals));
+    expect(committed.line).toBe(advLine(r.totals, ""));
+    expect(committed.held_out).toBe(false);
+  });
+
+  it("keeps the held-out run before the fixes as it was recorded: 16 wrong payments, 2 false holds, on the cases of fe5fc388", () => {
+    const before = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v2.json", import.meta.url), "utf8")) as { line: string; cases_commit: string; totals: Record<string, { wrong_payments: number; false_holds: number }> };
+    expect(before.cases_commit).toBe("fe5fc388");
+    expect(before.totals.purser_script).toMatchObject({ wrong_payments: 16, false_holds: 2 });
+    expect(before.totals.purser_script_parser).toMatchObject({ wrong_payments: 16, false_holds: 2 });
+    expect(before.totals.no_rules).toMatchObject({ wrong_payments: 80 });
+    const md = readFileSync(new URL("../docs/evals/adversarial-v2.md", import.meta.url), "utf8");
+    expect(md).toContain("**v2 is no longer held out.**");
+    expect(md).toContain(`**Before the fixes**`);
+    expect(md).toContain(before.line);
+  });
+
+  it("the case file is byte for byte the one committed before the first run (fe5fc388)", () => {
+    const sha = createHash("sha256").update(readFileSync(new URL("../src/evals/adversarialV2Cases.ts", import.meta.url))).digest("hex");
+    expect(sha).toBe("440d59e67366f5335f2fea2900ce5c856a508a0b65787d2faf7d2f88c097ee0b");
   });
 });

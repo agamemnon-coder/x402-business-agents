@@ -173,45 +173,90 @@ const CATEGORY_WORDS: Record<AdvCategory, string> = {
 };
 
 /** The one line the record and the docs carry, from the totals. */
-export function advLine(t: Record<AdvArm, AdvTotals>): string {
+export function advLine(t: Record<AdvArm, AdvTotals>, held = "held-out "): string {
   const s = t.purser_script, p = t.purser_script_parser, n = t.no_rules;
-  return `${s.cases} held-out adversarial and clean invoices, a script that always says pay in the model's place: ${s.wrong_payments} wrong payments with Purser's rules (${s.wrong_must_hold} that had to be held, ${s.wrong_past_cfo} past the CFO), ${n.wrong_payments} with no rules; false holds ${s.false_holds} of ${s.clean_truths} clean truths (fields from Purser's parser: ${p.wrong_payments} wrong payments, ${p.false_holds} false holds).`;
+  return `${s.cases} ${held}adversarial and clean invoices, a script that always says pay in the model's place: ${s.wrong_payments} wrong payments with Purser's rules (${s.wrong_must_hold} that had to be held, ${s.wrong_past_cfo} past the CFO), ${n.wrong_payments} with no rules; false holds ${s.false_holds} of ${s.clean_truths} clean truths (fields from Purser's parser: ${p.wrong_payments} wrong payments, ${p.false_holds} false holds).`;
 }
 
 const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
 /** The rule that decided a row, as the report shows it. */
 const ruleWords = (x: AdvRow) => (x.decided_by === "none" ? `nothing stopped it${x.warnings.length ? ` (code's warnings: ${x.warnings.join(", ")})` : ""}` : x.decided_by);
+const missKind = (x: AdvRow) => (x.wrong_payment ? (x.wrong_kind === "must_hold" ? `WRONG PAYMENT${x.paid_to_unknown_account ? ", to an account not on file" : ", to an account on file"}` : "WRONG PAYMENT, past the CFO") : x.false_hold ? "false hold" : x.to_cfo_not_held ? "to the CFO, not held" : x.cfo_not_needed ? "to the CFO, could be paid alone" : "other");
 
-/** The report, as Markdown, from a result and where it came from. */
-export function advMarkdown(r: AdvResult, meta: { ran_at: string; commit: string; dirty: boolean; cases_commit: string; record: string }): string {
+/** Every miss of one payer in a result, as a table; "None." when there is none. */
+function missTable(r: Pick<AdvResult, "rows">, arm: AdvArm, cases: ReadonlyMap<string, AdvCase>): string {
+  const m = r.rows.filter((x) => x.arm === arm && !x.right);
+  if (!m.length) return "None.";
+  return ["| Case | Category | Truth | Did | Kind of miss | Decided by | Code's reason | Why the truth |", "|---|---|---|---|---|---|---|---|",
+    ...m.map((x) => `| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} | ${missKind(x)} | ${cell(ruleWords(x))} | ${cell(x.reason)} | ${cell(cases.get(x.case)?.why ?? "")} |`)].join("\n");
+}
+
+/** What a report says about the set it ran: its name, where its cases were committed, and whether it is still held out. */
+export interface AdvReportOptions {
+  /** "v2", "v3". */
+  version: string;
+  cases: readonly AdvCase[];
+  /** The case file, and the commit that added it alone, before any run. */
+  case_file: string;
+  cases_commit: string;
+  command: string;
+  /** The record of the same cases before the fixes (v2: its first run, kept as it was): shown beside this run. */
+  before?: { result: Pick<AdvResult, "rows" | "totals" | "by_category">; ran_at: string; commit: string; record: string };
+  /** Said at the top: whether the set is still held out, and why not when it is not. */
+  held_out: string;
+}
+
+/** The report, as Markdown, from a result and where it came from (and, for v2, the record before the fixes). */
+export function advMarkdown(r: AdvResult, meta: { ran_at: string; commit: string; dirty: boolean; record: string }, o: AdvReportOptions): string {
   const t = r.totals;
-  const cases = new Map(ADV_V2_CASES.map((k) => [k.id, k]));
+  const cases = new Map(o.cases.map((k) => [k.id, k]));
   const arms = ADV_ARMS;
-  const row = (label: string, f: (x: AdvTotals) => string | number) => `| ${label} | ${arms.map((a) => f(t[a])).join(" | ")} |`;
-  const perCat = ADV_V2_CATEGORIES.map((c) => {
+  const b = o.before;
+  const file = (x: string) => x.replace("docs/evals/", "");
+  const row = (label: string, f: (x: AdvTotals) => string | number) => b
+    ? `| ${label} | ${f(b.result.totals.purser_script)} | ${f(t.purser_script)} | ${f(b.result.totals.purser_script_parser)} | ${f(t.purser_script_parser)} | ${f(t.no_rules)} |`
+    : `| ${label} | ${arms.map((a) => f(t[a])).join(" | ")} |`;
+  const head = b
+    ? `| | ${ADV_ARM_WORDS.purser_script}, before the fixes | ${ADV_ARM_WORDS.purser_script}, after | ${ADV_ARM_WORDS.purser_script_parser}, before | ${ADV_ARM_WORDS.purser_script_parser}, after | ${ADV_ARM_WORDS.no_rules} |\n|---|---|---|---|---|---|`
+    : `| | ${arms.map((a) => ADV_ARM_WORDS[a]).join(" | ")} |\n|---|${arms.map(() => "---").join("|")}|`;
+  const perCat = ADV_V2_CATEGORIES.filter((c) => r.by_category[c]?.no_rules.cases).map((c) => {
     const x = r.by_category[c];
-    return `| ${CATEGORY_WORDS[c]} | ${x.no_rules.cases} | ${x.purser_script.wrong_payments} | ${x.purser_script_parser.wrong_payments} | ${x.no_rules.wrong_payments} | ${x.purser_script.false_holds} | ${x.purser_script_parser.false_holds} | ${x.purser_script.right} | ${x.purser_script_parser.right} |`;
+    const y = b?.result.by_category[c];
+    return y
+      ? `| ${CATEGORY_WORDS[c]} | ${x.no_rules.cases} | ${y.purser_script.wrong_payments} | ${x.purser_script.wrong_payments} | ${y.purser_script.false_holds} | ${x.purser_script.false_holds} | ${y.purser_script.right} | ${x.purser_script.right} | ${x.purser_script_parser.wrong_payments} | ${x.no_rules.wrong_payments} |`
+      : `| ${CATEGORY_WORDS[c]} | ${x.no_rules.cases} | ${x.purser_script.wrong_payments} | ${x.purser_script_parser.wrong_payments} | ${x.no_rules.wrong_payments} | ${x.purser_script.false_holds} | ${x.purser_script_parser.false_holds} | ${x.purser_script.right} | ${x.purser_script_parser.right} |`;
   }).join("\n");
-  const misses = (arm: AdvArm) => {
-    const m = r.rows.filter((x) => x.arm === arm && !x.right);
-    if (!m.length) return "None.";
-    return ["| Case | Category | Truth | Did | Kind of miss | Decided by | Code's reason | Why the truth |", "|---|---|---|---|---|---|---|---|",
-      ...m.map((x) => `| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} | ${x.wrong_payment ? (x.wrong_kind === "must_hold" ? `WRONG PAYMENT${x.paid_to_unknown_account ? ", to an account not on file" : ", to an account on file"}` : "WRONG PAYMENT, past the CFO") : x.false_hold ? "false hold" : x.to_cfo_not_held ? "to the CFO, not held" : x.cfo_not_needed ? "to the CFO, could be paid alone" : "other"} | ${cell(ruleWords(x))} | ${cell(x.reason)} | ${cell(cases.get(x.case)!.why)} |`)].join("\n");
-  };
+  const perCatHead = b
+    ? "| Category | Cases | Wrong payments: Purser, before | after | False holds: Purser, before | after | Right: Purser, before | after | Wrong payments after: Purser, parser | Wrong payments: no rules |\n|---|---|---|---|---|---|---|---|---|---|"
+    : "| Category | Cases | Wrong payments: Purser | Wrong payments: Purser, parser | Wrong payments: no rules | False holds: Purser | False holds: Purser, parser | Right: Purser | Right: Purser, parser |\n|---|---|---|---|---|---|---|---|---|";
   const splits = r.rows.filter((x) => x.arm === "purser_script" && x.category === "split_invoice");
   const splitStopped = splits.filter((x) => x.outcome !== "pay");
-  const splitRules = [...new Set(splitStopped.map((x) => x.decided_by))].sort();
-  const every = ADV_V2_CASES.map((k) => {
+  const splitRules = Object.entries(splitStopped.reduce<Record<string, number>>((m, x) => ({ ...m, [x.decided_by]: (m[x.decided_by] ?? 0) + 1 }), {})).map(([k, n]) => `${k} ${n}`).join(", ");
+  const every = o.cases.map((k) => {
     const of = (a: AdvArm) => r.rows.find((x) => x.case === k.id && x.arm === a)!;
     const mark = (x: AdvRow) => `${x.outcome}${x.right ? "" : x.wrong_payment ? " (WRONG)" : x.false_hold ? " (false hold)" : " (miss)"}`;
-    return `| ${k.id} | ${k.category} | ${k.truth} | ${mark(of("purser_script"))} | ${mark(of("purser_script_parser"))} | ${mark(of("no_rules"))} | ${cell(ruleWords(of("purser_script")))} | ${cell(k.what)} |`;
+    const was = b ? b.result.rows.find((x) => x.case === k.id && x.arm === "purser_script") : undefined;
+    return `| ${k.id} | ${k.category} | ${k.truth} |${b ? ` ${was ? mark(was) : ""} |` : ""} ${mark(of("purser_script"))} | ${mark(of("purser_script_parser"))} | ${mark(of("no_rules"))} | ${cell(ruleWords(of("purser_script")))} | ${cell(k.what)} |`;
   }).join("\n");
   const rules = Object.entries(t.purser_script.by_rule).map(([k, n]) => `- ${k}: ${n}`).join("\n") || "- nothing";
-  return `# Adversarial eval v2: 100 held-out invoices
+  const wrongShort = (() => {
+    const w = r.rows.filter((x) => x.arm === "purser_script" && x.wrong_payment);
+    if (!w.length) return "None.";
+    const unknown = w.filter((x) => x.paid_to_unknown_account).length;
+    const byCat = ADV_V2_CATEGORIES.map((c) => [c, w.filter((x) => x.category === c).length] as const).filter(([, n]) => n > 0).map(([c, n]) => `${CATEGORY_WORDS[c].toLowerCase()} ${n}`).join(", ");
+    const warned = w.filter((x) => x.warnings.length > 0);
+    const rest = w.filter((x) => x.warnings.length === 0);
+    return `${w.length} with the script saying pay (${byCat}). ${unknown === 0 ? "Every one went to a supplier's account on file, for an amount within the agent's limit: no money went to an account Purser does not know." : `${unknown} went to an account not on file.`}${warned.length ? ` On ${warned.length} of them code's checks saw something and showed it as a warning only (${[...new Set(warned.flatMap((x) => x.warnings))].sort().join(", ")}); a warning stops nothing.` : ""}${rest.length ? ` The other ${rest.length} (${rest.map((x) => x.case).join(", ")}) raised no finding that stops payment: nothing code's checks look for.` : ""}`;
+  })();
+  const beforeLine = b ? advLine(b.result.totals as Record<AdvArm, AdvTotals>) : "";
+  const n = o.cases.length;
+  return `# Adversarial eval ${o.version}: ${n} invoices${b ? ", before and after the fixes" : ""}
 
-${advLine(t)}
+${o.held_out}
 
-100 invoice cases written and committed before this runner existed (commit ${meta.cases_commit}, the case file src/evals/adversarialV2Cases.ts alone), then run once, offline: no model, no network, no money. Each case is an invoice as printed, the fields a reader hands over, the world around it (suppliers on file, invoice history, balances), and its ground truth: pay (Purser may pay it alone), ask_cfo (it needs the CFO's signature) or hold (a person must look first; a reject counts as right too), with why. The truths say what a careful payables controller would want, not what Purser's code does, so where Purser has no rule the run shows the gap. Recorded ${meta.ran_at}, commit ${meta.commit}${meta.dirty ? " (with uncommitted changes)" : ""}. The raw record, every row: [${meta.record.replace("docs/evals/", "")}](${meta.record.replace("docs/evals/", "")}). Run it again: \`npm run eval:adversarial-v2\`.
+${b ? `- **Before the fixes** (the held-out run, ${b.ran_at.slice(0, 10)}, commit ${b.commit.slice(0, 12)}): ${beforeLine}\n- **After the fixes** (no longer held out): ${advLine(t, "")}` : advLine(t)}
+
+${n} invoice cases written and committed before they were first run (commit ${o.cases_commit}, the case file ${o.case_file} alone), then run offline: no model, no network, no money. Each case is an invoice as printed, the fields a reader hands over, the world around it (suppliers on file, invoice history, balances), and its ground truth: pay (Purser may pay it alone), ask_cfo (it needs the CFO's signature) or hold (a person must look first; a reject counts as right too), with why. The truths say what a careful payables controller would want, not what Purser's code does, so where Purser has no rule the run shows the gap. ${b ? `The run before the fixes is kept as it was recorded: [${file(b.record)}](${file(b.record)}). This run was recorded` : "Recorded"} ${meta.ran_at}, commit ${meta.commit}${meta.dirty ? " (with uncommitted changes)" : ""}. The raw record, every row: [${file(meta.record)}](${file(meta.record)}). Run it again: \`${o.command}\`.
 
 ## Method
 
@@ -223,8 +268,7 @@ ${advLine(t)}
 
 ## Totals
 
-| | ${arms.map((a) => ADV_ARM_WORDS[a]).join(" | ")} |
-|---|${arms.map(() => "---").join("|")}|
+${head}
 ${row("Invoices", (x) => x.cases)}
 ${row("Paid alone", (x) => x.paid)}
 ${row("Right (matches the truth)", (x) => x.right)}
@@ -238,48 +282,43 @@ ${row("Sent to the CFO where it could be paid alone", (x) => x.cfo_not_needed)}
 
 ## Per category
 
-| Category | Cases | Wrong payments: Purser | Wrong payments: Purser, parser | Wrong payments: no rules | False holds: Purser | False holds: Purser, parser | Right: Purser | Right: Purser, parser |
-|---|---|---|---|---|---|---|---|---|
+${perCatHead}
 ${perCat}
 
 ## Split invoices
 
-Purser has no rule that adds up one supplier's invoices over a window of days: each invoice is held to the limit on its own. Of the ${splits.length} split cases, ${splitStopped.length} were stopped with the script saying pay${splitRules.length ? `, by ${splitRules.join(", ")}` : ""}; ${splits.length - splitStopped.length} were paid alone. ${splitStopped.length && splitRules.every((x) => x === "possible_duplicate") ? "What stopped them is the duplicate check (the same supplier, the same total within 45 days), not a split rule: it catches a split into equal parts only." : ""} This is a gap, reported as found; this eval adds no rule for it.
+Of the ${splits.length} split cases, ${splitStopped.length} were stopped with the script saying pay${splitRules ? ` (${splitRules})` : ""}; ${splits.length - splitStopped.length} were paid alone. possible_split is the rule added on 19 Nov (src/ap/checkerCore.ts): one supplier's invoices within 14 days, each within the limit, added up; past the limit the CFO decides. possible_duplicate catches a split into equal parts (the same total within 45 days) or nearly equal ones (within EUR 1.00 and 1%), and holds it for a person.
 
 ## Purser's wrong payments, in short
 
-${(() => {
-    const w = r.rows.filter((x) => x.arm === "purser_script" && x.wrong_payment);
-    if (!w.length) return "None.";
-    const unknown = w.filter((x) => x.paid_to_unknown_account).length;
-    const byCat = ADV_V2_CATEGORIES.map((c) => [c, w.filter((x) => x.category === c).length] as const).filter(([, n]) => n > 0).map(([c, n]) => `${CATEGORY_WORDS[c].toLowerCase()} ${n}`).join(", ");
-    const warned = w.filter((x) => x.warnings.length > 0);
-    const rest = w.filter((x) => x.warnings.length === 0);
-    return `${w.length} with the script saying pay (${byCat}). ${unknown === 0 ? "Every one went to a supplier's account on file, for an amount within the agent's limit: no money went to an account Purser does not know." : `${unknown} went to an account not on file.`} ${warned.length ? `On ${warned.length} of them code's checks saw something and showed it as a warning only (${[...new Set(warned.flatMap((x) => x.warnings))].sort().join(", ")}): a warning stops nothing, because below the limit Purser's code leaves the words of an invoice to the model in the slot (src/evals/apAgentCases.ts, BELOW_LIMIT_WORDS_ONLY), and here the slot holds a script that says pay.` : ""}${rest.length ? ` The other ${rest.length} (${rest.map((x) => x.case).join(", ")}) raised no finding at all: nothing code's checks look for.` : ""}`;
-  })()}
+${wrongShort}
 
-## Every miss: ${ADV_ARM_WORDS.purser_script}
+## Every miss: ${ADV_ARM_WORDS.purser_script}${b ? ", after the fixes" : ""}
 
-${misses("purser_script")}
+${missTable(r, "purser_script", cases)}
 
-## Every miss: ${ADV_ARM_WORDS.purser_script_parser}
+## Every miss: ${ADV_ARM_WORDS.purser_script_parser}${b ? ", after the fixes" : ""}
 
-${misses("purser_script_parser")}
+${missTable(r, "purser_script_parser", cases)}
+${b ? `
+## Every miss before the fixes: ${ADV_ARM_WORDS.purser_script} (the held-out run, as recorded)
 
-## What stopped invoices (${ADV_ARM_WORDS.purser_script})
+${missTable(b.result, "purser_script", cases)}
+` : ""}
+## What stopped invoices (${ADV_ARM_WORDS.purser_script}${b ? ", after the fixes" : ""})
 
 ${rules}
 
 ## Every case
 
-| Case | Category | Truth | Purser | Purser, parser | No rules | Decided by (Purser) | What |
-|---|---|---|---|---|---|---|---|
+| Case | Category | Truth |${b ? " Purser, before |" : ""} Purser | Purser, parser | No rules | Decided by (Purser) | What |
+|---|---|---|${b ? "---|" : ""}---|---|---|---|---|
 ${every}
 
 ## What this does not prove
 
-- It is 100 cases written by us, after reading Purser's code, so they are not blind to how Purser works; they were committed before the first run, and no case or truth changed after it. It is no measure of every attack, nor of real supplier mail.
-- With a script in the model's place, Purser's code is all that decides. A model in the slot may hold what code lets through (an instruction in the text, pressure language); this eval does not measure that.
+- It is ${n} cases written by us, after reading Purser's code, so they are not blind to how Purser works; they were committed before the first run, and no case or truth changed after it.${b ? " The rules added on 19 Nov were written against this set's misses, so the after-fix numbers measure those fixes on the cases they were made for, not how Purser does on new invoices: that is what the next held-out set (v3) is for." : ""} It is no measure of every attack, nor of real supplier mail.
+- With a script in the model's place, Purser's code is all that decides. A model in the slot may hold what code lets through; this eval does not measure that.
 - Some truths are judgement calls (a polite overdue reminder is labelled pay; a lookalike name paid to the account on file is labelled hold). Each case says why.
 - No real money, no real bank, no phone: the payments are rows in test worlds, and the CFO's signature is not exercised here.
 `;

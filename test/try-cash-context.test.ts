@@ -134,7 +134,7 @@ describe("the sample 'Inside the limit — but cash says wait' on /try's engine"
     const p = await c.req("POST", `/v1/engine/invoices/${up.invoice.id}/pay`, { key: s });
     expect(p.status, JSON.stringify(p.json)).toBe(200);
     expect(p.json.alone).toBeUndefined();
-    expect(p.json.proposal.status).toBe("PENDING_APPROVAL");
+    expect((p.json as { proposal: { status: string } }).proposal.status).toBe("PENDING_APPROVAL");
   });
 
   it("gives no cash check for an invoice above the limit (the CFO signs it anyway)", async () => {
