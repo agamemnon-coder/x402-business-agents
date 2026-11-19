@@ -27,6 +27,7 @@ export const PROOF_MEANS = [
   "Proves: the holder of this public key signed exactly these terms, with user verification, for this site (its rpId).",
   "A refusal: the terms that were asked hash differently, so this signature cannot cover them.",
   "Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test company: test money only.",
+  "The decision and the ledger entries are the engine's record beside the signature: checked against the signed terms and their own hashes, not signed.",
 ] as const;
 /** The line of PROOF_MEANS that only a refusal's bundle (one with asked terms) bears out. */
 export const PROOF_REFUSAL_MEANS = PROOF_MEANS[1];
@@ -151,6 +152,8 @@ function pvDerToRaw(d) {
   [r, s].forEach(function (x, k) { while (x.length > 32 && x[0] === 0) x = x.subarray(1); if (x.length > 32) ok = false; else out.set(x, k * 32 + 32 - x.length); });
   return ok ? out : null;
 }
+// "1850.00" as cents, or null for anything else.
+function pvCents(s) { var m = /^(\d+)\.(\d{2})$/.exec(String(s)); return m ? Number(m[1]) * 100 + Number(m[2]) : null; }
 function pvMoney(c) { var n = Math.abs(c); return (c < 0 ? "-" : "") + Math.floor(n / 100) + "." + String(n % 100).padStart(2, "0"); }
 
 // Anything at all is answered with checks, never a throw: a failure while reading the file is a failed check.
@@ -181,7 +184,7 @@ function pvVerify(b) {
     // 1. The terms hash: recomputed here from the terms, never taken from the file.
     if (canonical === null) { add("terms hash", false, "the terms carry a number or another value signed terms never have"); return null; }
     return pvShaHex(canonical).then(function (h) {
-      var same = typeof b.canonical !== "string" || b.canonical === canonical;
+      var same = b.canonical === canonical;
       add("terms hash", h === b.terms_sha256 && same, h === b.terms_sha256
         ? (same ? "SHA-256 of the canonical terms is " + h + ", as the file says" : "the file's canonical text is not the terms' canonical JSON")
         : "SHA-256 of the canonical terms is " + h + ", the file says " + b.terms_sha256);
@@ -215,17 +218,32 @@ function pvVerify(b) {
       }, function (e) { add("signature", false, e.message); return h; });
     });
   }).then(function (h) {
-    // 5. The engine's decision agrees with the file: it names this signed hash, and a payment means the signed terms were sent.
-    var d = b.decision, o = String(d.outcome);
-    var named = d.signed_sha256 === h, paid = o === "paid" || o === "paid_once";
-    var fits = named && (paid ? d.sent_sha256 === h && d.signature && d.signature.verified === true && d.executor && d.executor.accepted === true : o === "refused" ? d.sent_sha256 !== h || (d.signature && d.signature.verified === false) : true);
-    add("decision", fits, o + "; signed " + pvShort(d.signed_sha256) + ", sent " + pvShort(d.sent_sha256) + "; signature " + (d.signature ? String(d.signature.verified) : "?") + ", executor " + (d.executor ? String(d.executor.accepted) : "?") + "; transfers " + d.transfers_before + " → " + d.transfers_after);
-    // 6. A refusal: the asked terms hash differently, so the signature (whose challenge is the signed hash) cannot cover them.
-    if (b.asked === undefined) return h;
-    var x = b.asked, xc;
-    try { xc = pvIsObj(x) && pvIsObj(x.terms) && pvNoNumbers(x.terms) ? pvJcs(x.terms) : null; } catch (e) { xc = null; }
-    if (xc === null) { add("asked terms", false, "the asked terms are missing or not terms"); return h; }
-    return pvShaHex(xc).then(function (xh) {
+    // 5. The engine's decision, each field against what it must equal (fuzzing, 19 Nov: an edited copy showed it
+    // passing). The engine makes a bundle only for a payment (paid) or a refusal (refused). It names the signed hash.
+    // What was sent is the signed terms, or for a refusal the asked terms (hashed here). A signature over other terms is
+    // never verified, and the executor never accepts them (it checks the approved hash). A payment made a transfer, a
+    // refusal none, and "changed" lists the fields where the asked terms differ.
+    var x = b.asked, xc = null;
+    if (x !== undefined) { try { xc = pvIsObj(x) && pvIsObj(x.terms) && pvNoNumbers(x.terms) ? pvJcs(x.terms) : null; } catch (e) { xc = null; } }
+    return (xc === null ? Promise.resolve(null) : pvShaHex(xc)).then(function (xh) {
+      var d = b.decision, o = d.outcome, v = pvIsObj(d.signature) ? d.signature.verified : undefined, acc = pvIsObj(d.executor) ? d.executor.accepted : undefined;
+      var named = d.signed_sha256 === h, paid = o === "paid";
+      var sentWant = x === undefined ? h : xh, sentOk = typeof d.sent_sha256 === "string" && d.sent_sha256 === sentWant, other = d.sent_sha256 !== h;
+      var moved = Number.isInteger(d.transfers_before) && Number.isInteger(d.transfers_after) ? d.transfers_after - d.transfers_before : null;
+      var want = x === undefined ? [] : xc !== null ? Object.keys(b.terms).filter(function (k) { return JSON.stringify(b.terms[k]) !== JSON.stringify(x.terms[k]); }) : null;
+      var changedOk = Array.isArray(d.changed) && want !== null && JSON.stringify(d.changed.slice().sort()) === JSON.stringify(want.slice().sort());
+      var why = o !== "paid" && o !== "refused" ? "an outcome a bundle never has (the engine makes one only for paid and refused)"
+        : !named ? "it does not name the signed hash"
+        : !sentOk ? "what was sent is not " + (x === undefined ? "the signed terms" : "the asked terms") + " (" + pvShort(sentWant) + ")"
+        : typeof v !== "boolean" || typeof acc !== "boolean" ? "the signature's and the executor's answers are not true or false"
+        : paid ? (x !== undefined ? "a payment with asked terms" : !(v === true && acc === true) ? "a payment needs a verified signature the executor accepted" : !(moved !== null && moved > 0) ? "a payment that made no transfer" : null)
+        : v && acc ? "a refusal both checks passed" : other && (v || acc) ? "terms other than the signed ones verified or accepted" : moved !== 0 ? "a refusal that moved money" : null;
+      if (!why && !changedOk) why = "the changed fields are not the ones that differ";
+      add("decision", !why, String(o) + "; signed " + pvShort(d.signed_sha256) + ", sent " + pvShort(d.sent_sha256) + "; signature " + String(v) + ", executor " + String(acc) + "; transfers " + d.transfers_before + " → " + d.transfers_after + (why ? ": " + why : ""));
+      // 6. A refusal: the asked terms hash differently, so the signature (whose challenge is the signed hash) cannot cover them.
+      if (x === undefined) return h;
+      if (xc === null) { add("asked terms", false, "the asked terms are missing or not terms"); return h; }
+      if (x.canonical !== xc) { add("asked terms", false, "the file's canonical text of the asked terms is not their canonical JSON"); return h; }
       var diff = Object.keys(x.terms).concat(Object.keys(b.terms)).filter(function (k, i, all) { return all.indexOf(k) === i && JSON.stringify(x.terms[k]) !== JSON.stringify(b.terms[k]); });
       var shown = diff.map(function (k) { return k + " " + JSON.stringify(b.terms[k]) + " → " + JSON.stringify(x.terms[k]); }).join(", ");
       add("asked terms", xh === x.sha256 && xh !== h, (xh === x.sha256 ? "SHA-256 " + xh : "SHA-256 is " + xh + ", the file says " + String(x.sha256)) + (xh !== h ? ", not the signed " + pvShort(h) + (shown ? " (" + shown + ")" : "") + ": this signature cannot cover them" : ": the same as the signed terms"));
@@ -246,10 +264,22 @@ function pvVerify(b) {
     var none = es.length === 0, mayBeNone = String(b.decision.outcome) === "refused";
     if (none) {
       add("ledger balance", mayBeNone, mayBeNone ? "nothing was booked for this invoice: the refusal moved no money" : "a payment with no ledger entry");
-      add("ledger chain", mayBeNone && (b.ledger.head === null || HEX.test(String(b.ledger.head))), "ledger head " + pvShort(b.ledger.head) + " of " + b.ledger.count + " entries; none is this invoice's");
+      add("ledger chain", mayBeNone && (b.ledger.head === null || HEX.test(String(b.ledger.head))) && Number.isInteger(b.ledger.count) && b.ledger.count >= 0, "ledger head " + pvShort(b.ledger.head) + " of " + b.ledger.count + " entries; none is this invoice's");
+      if (b.decision.outcome === "paid") add("ledger payment", false, "a payment with no ledger entry");
       return done();
     }
     add("ledger balance", !bad, bad || es.length + " entries, debits equal credits: " + sums.join("; "));
+    // The numbers, the count and the head (fuzzing, 19 Nov: an edited head or count, or a dropped entry, still passed).
+    // Entry numbers rise and none is past the count; the head is the hash of entry #count when the file holds it, and of
+    // no other entry here. The file holds the entries the engine chose: one it leaves out cannot be seen, and is said.
+    var L = b.ledger, ids = es.map(function (e) { return e.entry_id; }), last = ids[ids.length - 1];
+    var shape = !Number.isInteger(L.count) || L.count < 1 ? "the ledger's count " + String(L.count) + " is not a number of entries"
+      : !HEX.test(String(L.head)) ? "the ledger's head is not a SHA-256"
+      : ids.some(function (n, k) { return !Number.isInteger(n) || n < 1 || (k > 0 && n <= ids[k - 1]); }) ? "the entry numbers do not rise"
+      : last > L.count ? "entry #" + last + " is past the ledger's count, " + L.count : null;
+    var atCount = es.filter(function (e) { return e.entry_id === L.count; })[0], atHead = es.filter(function (e) { return e.entry_hash === L.head; })[0];
+    if (!shape && atCount && atCount.entry_hash !== L.head) shape = "the head " + pvShort(L.head) + " is not the hash of entry #" + L.count + ", the last of " + L.count;
+    if (!shape && atHead && atHead.entry_id !== L.count) shape = "the head is the hash of entry #" + atHead.entry_id + ", not of the last, #" + L.count;
     function next() {
       if (i >= es.length) return Promise.resolve(null);
       var e = es[i++], body = {};
@@ -264,9 +294,26 @@ function pvVerify(b) {
       });
     }
     return next().then(function (why) {
-      var last = es[es.length - 1], head = b.ledger.head;
-      var atHead = last && head === last.entry_hash;
-      add("ledger chain", !why, why || es.length + " entries hash as posted, each covering the one before; ledger head " + pvShort(head) + " of " + b.ledger.count + " entries" + (atHead ? ", the last of these" : ""));
+      why = why || shape;
+      var gaps = [], from = 1;
+      ids.concat([L.count + 1]).forEach(function (n) { if (n > from) gaps.push(n - 1 > from ? "#" + from + "–#" + (n - 1) : "#" + from); from = n + 1; });
+      add("ledger chain", !why, why || es.length + " entries (" + ids.map(function (n) { return "#" + n; }).join(", ") + ") hash as posted, each covering the one before where they follow on; the head " + pvShort(L.head)
+        + (atCount ? " is entry #" + L.count + " of " + L.count : " of " + L.count + " entries is not among these")
+        + (gaps.length ? "; not in this file: " + gaps.join(", ") + " (that it holds all of this payment's entries is the engine's record, not checked here)" : ""));
+      // 8. A payment: its own entries, as the signed terms name them, are in the file: the transfer of the signed amount
+      // under the signed transfer_request_id, the invoice by its signed number, and a conversion's two legs.
+      if (b.decision.outcome !== "paid") return done();
+      var t = b.terms, amt = pvCents(t.amount), conv = pvIsObj(t.conversion) ? t.conversion : null;
+      var key = function (e) { return typeof e.source_key === "string" ? e.source_key : ""; };
+      var has = function (e, cur, side, c) { return c !== null && (Array.isArray(e.lines) ? e.lines : []).some(function (l) { return l.currency === cur && l[side] === c; }); };
+      var tr = es.filter(function (e) { return typeof t.transfer_request_id === "string" && key(e).indexOf("transfer|" + t.transfer_request_id + "|") === 0 && has(e, t.currency, "debit_cents", amt); })[0];
+      var inv = es.filter(function (e) { return key(e).indexOf("ap-") === 0 && e.doc_ref === t.invoice_no && has(e, t.currency, "credit_cents", amt); })[0];
+      var sell = conv ? es.filter(function (e) { return key(e).indexOf("fx|") === 0 && has(e, conv.sell_currency, "credit_cents", pvCents(conv.sell_amount)); })[0] : null;
+      var buy = sell ? es.filter(function (e) { return key(e).split("|")[1] === key(sell).split("|")[1] && key(e).indexOf("fx|") === 0 && has(e, conv.buy_currency, "debit_cents", pvCents(conv.buy_amount)); })[0] : null;
+      var lacks = (tr ? [] : ["the signed transfer"]).concat(inv ? [] : ["the invoice"]).concat(!conv || buy ? [] : ["the conversion"]);
+      add("ledger payment", lacks.length === 0, lacks.length ? lacks.join(", ") + (lacks.length > 1 ? " are" : " is") + " not booked in these entries"
+        : "the signed transfer of " + t.currency + " " + t.amount + " (" + pvShort(t.transfer_request_id) + ") in #" + tr.entry_id + "; the invoice " + t.invoice_no + " in #" + inv.entry_id
+          + (conv ? "; the conversion " + conv.sell_currency + " " + conv.sell_amount + " → " + conv.buy_currency + " " + conv.buy_amount + " in #" + sell.entry_id + " and #" + buy.entry_id : ""));
       return done();
     });
   }).catch(function (e) { add("error", false, e && e.message ? e.message : String(e)); return done(); });

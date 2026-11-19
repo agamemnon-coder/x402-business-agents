@@ -63,7 +63,7 @@ describe("the bundle the pay route hands back", () => {
   it("a paid bundle passes every check", async () => {
     const r = await verifyProofBundle(paid);
     expect(failed(r)).toEqual([]);
-    expect(r.checks.map((x) => x.check)).toEqual(["format", "terms hash", "challenge", "client data", "rp id", "user verified", "signature", "decision", "ledger balance", "ledger chain"]);
+    expect(r.checks.map((x) => x.check)).toEqual(["format", "terms hash", "challenge", "client data", "rp id", "user verified", "signature", "decision", "ledger balance", "ledger chain", "ledger payment"]);
     expect(r.checks.find((x) => x.check === "challenge")!.detail).toContain(paid.terms_sha256);
   });
 
@@ -79,9 +79,11 @@ describe("the bundle the pay route hands back", () => {
 
 it("says what a bundle proves: the refusal's line only for a refusal", () => {
   expect(proofMeans(paid)).not.toContain(PROOF_REFUSAL_MEANS);
-  expect(proofMeans(paid)).toHaveLength(2);
+  expect(proofMeans(paid)).toHaveLength(3);
   expect(proofMeans(refused)).toContain(PROOF_REFUSAL_MEANS);
-  expect(proofMeans(refused)).toHaveLength(3);
+  expect(proofMeans(refused)).toHaveLength(4);
+  // The decision and the ledger beside the signature are said to be the engine's record (fuzzing: bundle-context).
+  for (const b of [paid, refused]) expect(proofMeans(b).join("\n")).toContain("the engine's record");
 });
 
 describe("a change fails", () => {
