@@ -9,6 +9,9 @@ import { codeFindings, codeRequires, DEFAULT_WINDOWS, enforce, SPLIT_DAYS, type 
 import { fieldsFor } from "../src/evals/adversarialV2.js";
 import { V4_WORLD } from "../src/evals/adversarialV4.js";
 import { findInjections } from "../src/policy/injection.js";
+import { itemLines } from "../src/ap/period.js";
+import { invoiceText } from "../src/engine/tryWorld.js";
+import { openDb } from "../src/db/open.js";
 import { ADV_V4_CASES } from "../src/evals/adversarialV4Cases.js";
 
 /** A v4 case as the Checker's code decides it, for both readings: the outcome, who decided, and the findings' codes. */
@@ -165,5 +168,54 @@ describe("the split window after eval v4: 27 days, the longest that never adds u
     for (const d of ["2026-10-13", "2026-10-16", "2026-10-15", "2026-10-14"]) expect(at(d), d).not.toBe("possible_split");
     expect(at("2026-10-17")).toBe("possible_split");
     expect(at("2026-10-22")).toBe("possible_split");
+  });
+});
+
+describe("a copy a little dearer on the same day, with the same lines (v4-dup-zeeland-plus-150)", () => {
+  it("v4-dup-zeeland-plus-150: ZV-7020 paid at EUR 484.00; ZV-7031 for EUR 485.50, the same date and lines, is held as a possible duplicate", () => {
+    for (const x of v4("v4-dup-zeeland-plus-150")) {
+      expect([x.arm, x.outcome, x.by]).toEqual([x.arm, "hold", "possible_duplicate"]);
+      expect(codeFindings(x.c).find((f) => f.code === "possible_duplicate")!.detail).toContain("the same invoice date");
+    }
+  });
+
+  it("itemLines: what an invoice bills, between its header and its totals; none on an invoice that prints no lines", () => {
+    const k = ADV_V4_CASES.find((x) => x.id === "v4-dup-zeeland-plus-150")!;
+    const base = V4_WORLD.invoiceCase(k, fieldsFor(k, "purser_script"));
+    expect(itemLines(base.invoice.text)).toEqual(["omdozen 50x40x30, 180 stuks"]);
+    expect(itemLines(["Bergtex Textil GmbH", "INVOICE BTX-1", "Invoice date: 17 November 2026", "Due date: 17 December 2026", "", "Softshell jackets, 20 pcs", "Rain shells, 10 pcs", "", "Total due EUR 400.00"].join("\n")))
+      .toEqual(["softshell jackets, 20 pcs", "rain shells, 10 pcs"]);
+    // /try's written invoices print no line items.
+    const tryText = invoiceText({ supplier: { name: "Bergtex Textil GmbH", street: "Textilweg 4", city: "72760 Reutlingen", bic: "COBADEFFXXX" }, invoiceNo: "BTX-9101", amountCents: 50_001, issueDate: "2026-11-18", dueDate: "2026-12-02", iban: "DE89370400440532013000" });
+    expect(itemLines(tryText)).toEqual([]);
+  });
+
+  it("only the same date, within EUR 5.00 and 1%, with lines printed and not known to differ: other days, other lines, or no lines are no copy", () => {
+    const k = ADV_V4_CASES.find((x) => x.id === "v4-dup-zeeland-plus-150")!;
+    const base = V4_WORLD.invoiceCase(k, fieldsFor(k, "purser_script"));
+    const prior = base.history[0]!;
+    const dup = (p: Partial<HistoryInvoice>, text = base.invoice.text) => codeFindings({ ...base, invoice: { ...base.invoice, text }, history: [{ ...prior, ...p }] }).map((f) => f.code);
+    expect(dup({})).toContain("possible_duplicate");
+    expect(dup({ lines: ["omdozen 50x40x30, 180 stuks"] })).toContain("possible_duplicate");
+    expect(dup({ lines: ["omdozen 60x40x40, 90 stuks"] })).not.toContain("possible_duplicate");
+    expect(dup({ issueDate: "2026-11-11", receivedAt: "2026-11-11T09:00:00.000Z" })).not.toContain("possible_duplicate");
+    expect(dup({ total: "478.00" })).not.toContain("possible_duplicate");
+    expect(dup({}, base.invoice.text.replace("Omdozen 50x40x30, 180 stuks\n", ""))).not.toContain("possible_duplicate");
+  });
+
+  it("/try's two written invoices on each side of its EUR 500.00 limit, the same day, are no copy of each other (they print no lines)", () => {
+    const f = (no: string, cents: number) => invoiceText({ supplier: { name: "Bergtex Textil GmbH", street: "Textilweg 4", city: "72760 Reutlingen", bic: "COBADEFFXXX" }, invoiceNo: no, amountCents: cents, issueDate: "2026-11-18", dueDate: "2026-12-02", iban: "DE89370400440532013000" });
+    const k = ADV_V4_CASES.find((x) => x.id === "v4-dup-zeeland-plus-150")!;
+    const base = V4_WORLD.invoiceCase(k, fieldsFor(k, "purser_script"));
+    const text = f("BTX-9101", 50_001);
+    const c: InvoiceCase = { ...base, invoice: { ...base.invoice, text, reading: { ...base.invoice.reading, vendor: "Bergtex Textil GmbH", invoice_no: "BTX-9101", total: "500.01", issue_date: "2026-11-18", iban: "DE89370400440532013000", bic: "COBADEFFXXX" } },
+      policy: { ...base.policy, aloneLimit: { currency: "EUR", amount: "500.00" } },
+      history: [{ id: "AP-0002", vendor: "Bergtex Textil GmbH", invoiceNo: "BTX-9100", total: "499.00", currency: "EUR", issueDate: "2026-11-18", receivedAt: "2026-11-18T09:00:00.000Z", state: "paid", accountKey: "DE89370400440532013000", blockedAsDuplicate: false, rejectedWhy: null, lines: itemLines(f("BTX-9100", 49_900)) }] };
+    expect(codeFindings(c).map((x) => x.code)).not.toContain("possible_duplicate");
+  });
+
+  it("the ledger keeps an invoice's lines with it (ap_invoices.lines) for the checks", () => {
+    const db = openDb(":memory:");
+    expect((db.prepare("PRAGMA table_info(ap_invoices)").all() as { name: string }[]).map((x) => x.name)).toContain("lines");
   });
 });

@@ -87,3 +87,26 @@ export function periodsDiffer(a: readonly string[] | null | undefined, b: readon
   if (!a?.length || !b?.length) return false;
   return !a.some((x) => b.includes(x));
 }
+
+/** The first line of an invoice's totals block: its subtotal, tax or total with an amount, in the languages suppliers write in (not "BTW-nummer"). */
+const TOTALS = /^(sub-?total|subtotaal|nettobetrag|netto(betrag)?|net (amount|total)|total|totaal|gesamt\w*|summe|rechnungsbetrag|sous-total|montant|total ht|base imponible|importe|imponibile|totale|valor|mwst|ust|btw|vat|tva|iva|amount due|balance due)(?![-\w])(?=.*\d[.,]\d{2}(?!\d))/i;
+/** A line under a label ("Bill to: …", "An: …"): a header or a footer, never a line item. */
+const LABELLED = /^[^:]{1,40}:\s/;
+
+/**
+ * The lines an invoice bills, as printed: the lines after its own dates and before its totals that are not under a
+ * label, folded (no case, accents or extra spaces). 19 Nov, third round (adversarial eval v4, v4-dup-zeeland-plus-150): a
+ * copy EUR 1.50 dearer under a new number on the same day, with the same lines, is a possible duplicate
+ * (src/ap/checkerCore.ts). An invoice that prints no lines (/try's written ones) has none.
+ */
+export function itemLines(text: string): string[] {
+  const lines = text.split("\n").map((l) => l.trim());
+  const end = lines.findIndex((l) => TOTALS.test(fold(l)));
+  if (end < 0) return [];
+  let start = 0;
+  for (let i = 0; i < end; i++) if (OWN_DATES.test(fold(lines[i]!))) start = i + 1;
+  return lines.slice(start, end).filter((l) => l && !LABELLED.test(l)).map((l) => fold(l).replace(/\s+/g, " "));
+}
+
+/** Whether two invoices' printed lines are the same, in any order. */
+export const sameLines = (a: readonly string[], b: readonly string[]) => a.length === b.length && [...a].sort().join("\n") === [...b].sort().join("\n");

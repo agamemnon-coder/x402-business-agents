@@ -13,6 +13,7 @@ import { abbreviates, accountHolderIn, assessAgainst } from "../src/policy/fraud
 import { findInjections } from "../src/policy/injection.js";
 import { sameAccount } from "../src/payouts/routes.js";
 import { openDb } from "../src/db/open.js";
+import { invoiceText } from "../src/engine/tryWorld.js";
 import { checkWindows, setSetting } from "../src/world/settings.js";
 
 const BERGTEX_IBAN = "DE89370400440532013000";
@@ -281,12 +282,18 @@ describe("the windows: configurable, with defaults chosen against the evals' fal
     const same = caseOf(bergtex("595.80", [], { no: "BTX-2026-311", date: "9 November 2026" }), { history: [prior({ total: "595.00", issueDate: "2026-11-09" })] });
     expect(codeFindings(same).find((f) => f.code === "possible_duplicate")).toMatchObject({ level: "review", twin_of: "AP-0001" });
     expect(decided(same).outcome).toBe("hold");
-    // EUR 2.00 apart is past the EUR 1.00 (v3-dup-lagerhaus-plus-two stays a miss: the split check sends it to the CFO),
-    // and /try's test company composes EUR 499.00 and EUR 500.01 the same day, on each side of its limit: no copy.
-    const two = caseOf(bergtex("597.00", [], { no: "BTX-2026-311", date: "9 November 2026" }), { history: [prior({ total: "595.00", issueDate: "2026-11-09" })] });
+    // EUR 2.00 apart is past the EUR 1.00: a week later, no copy (the split check sends it to the CFO). Third round (eval
+    // v4, test/eval-v4-gaps.test.ts): on the same invoice date with the same lines it is a possible duplicate, so
+    // v3-dup-lagerhaus-plus-two, a miss after the second round, is now held. /try's test company composes EUR 499.00 and
+    // EUR 500.01 the same day, on each side of its limit, in its own layout, which prints no lines: no copy.
+    const two = caseOf(bergtex("597.00", [], { no: "BTX-2026-311", date: "16 November 2026" }), { history: [prior({ total: "595.00", issueDate: "2026-11-09" })] });
     expect(codes(two)).not.toContain("possible_duplicate");
     expect(codeRequires(two, codeFindings(two))).toMatchObject({ action: "ask_cfo", by: "possible_split" });
-    expect(codes(caseOf(bergtex("500.01"), { history: [prior({ total: "499.00", issueDate: "2026-11-17" })] }))).not.toContain("possible_duplicate");
+    const twoSameDay = caseOf(bergtex("597.00", [], { no: "BTX-2026-311", date: "9 November 2026" }), { history: [prior({ total: "595.00", issueDate: "2026-11-09" })] });
+    expect(codeFindings(twoSameDay).find((f) => f.code === "possible_duplicate")).toMatchObject({ level: "review", twin_of: "AP-0001" });
+    const tryText = invoiceText({ supplier: { name: "Bergtex Textil GmbH", street: "Textilweg 4", city: "72760 Reutlingen", bic: "COBADEFFXXX" }, invoiceNo: "BTX-9101", amountCents: 50_001, issueDate: "2026-11-17", dueDate: "2026-12-01", iban: BERGTEX_IBAN });
+    expect(codes(caseOf(tryText, { history: [prior({ total: "499.00", issueDate: "2026-11-17", lines: [] })] }))).not.toContain("possible_duplicate");
+    expect(codes(caseOf(tryText, { history: [prior({ total: "499.00", issueDate: "2026-11-17" })] }))).not.toContain("possible_duplicate");
     const month = caseOf(bergtex("484.50"), { history: [prior({ total: "484.00", issueDate: "2026-10-17" })] });
     expect(codes(month)).not.toContain("possible_duplicate");
     expect(decided(month).outcome).toBe("pay");

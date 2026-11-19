@@ -30,6 +30,7 @@ const shape = (r: Row, coding?: StoredCoding | null): ApInvoiceRow => {
   // The months an invoice printed (ap_invoices.period, 19 Nov) are for the checks' history only (src/ap/checks.ts): the
   // row people and the API read is what it was.
   delete (rest as { period?: unknown }).period;
+  delete (rest as { lines?: unknown }).lines;
   return { ...rest, reading: JSON.parse(reading_json) as ApReading, findings: JSON.parse(findings_json) as Finding[], ...(coding ? { coding } : {}) };
 };
 

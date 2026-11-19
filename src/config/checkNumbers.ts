@@ -45,6 +45,14 @@ export const NEAR_TWIN_PERCENT = 1;
  * exactly still counts over TWIN_DAYS.
  */
 export const NEAR_TWIN_DAYS = 14;
+/**
+ * On the same invoice date, with the same lines, a copy may differ by more (19 Nov, third round; adversarial eval v4,
+ * v4-dup-zeeland-plus-150: a paid invoice resent under a new number EUR 1.50 dearer, the same day, the same lines): at
+ * most this many cents (EUR 5.00) and NEAR_TWIN_PERCENT of the larger total. Only where the invoice prints its lines and
+ * the earlier one's are not known to differ (src/ap/period.ts itemLines): /try's written invoices print none, so its two
+ * the same day on each side of its EUR 500.00 limit are no copy; two orders of the same goods the same day are.
+ */
+export const SAME_DAY_TWIN_CENTS = 500;
 /** The range a company's own window may take, in days: a setting outside it is not used, and the default stands. */
 export const WINDOW_MIN_DAYS = 1;
 export const WINDOW_MAX_DAYS = 180;
