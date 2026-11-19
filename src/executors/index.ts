@@ -183,7 +183,7 @@ async function executeApproved(db: DB, proposalId: string, rails?: Rails): Promi
       let batches = rails?.batches ?? null;
       if (!rails && awx) {
         const { fromEnv, Airwallex } = await import("../airwallex/client.js");
-        const cfg = fromEnv();
+        const cfg = fromEnv(process.env, "payout");
         batches = cfg ? new AirwallexBatchRest(new Airwallex(cfg)) : null;
       }
       // Once at Airwallex (a resume, or a refusal), always this path: a batch is never also run line by line.
@@ -223,7 +223,7 @@ export async function reconcileAfterPayout(db: DB, proposalId: string, now = new
   let read = bySource;
   if (!read) {
     const { fromEnv, Airwallex } = await import("../airwallex/client.js");
-    const cfg = fromEnv();
+    const cfg = fromEnv(process.env, "read");
     if (!cfg) return;
     read = ftBySourceVia(new Airwallex(cfg));
   }

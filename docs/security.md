@@ -175,6 +175,13 @@ Rate limits, where the docs say them (each asserted in the same test or the test
   | Issuing (cards) | `GET /issuing/cardholders`, `GET /issuing/cards`, `GET /issuing/cards/{id}`, `GET /issuing/transactions`, `POST /issuing/cardholders/create` and `POST /issuing/cards/create` (setup only), `POST /issuing/cards/{id}/update` (limits) | Write |
   | Webhooks | `GET /webhooks`, `POST /webhooks/create` (setup only) | Write at setup, then none |
 
+  Since 19 November the code can hold **one scoped key per role** (`AIRWALLEX_API_KEY_READ`, `_PAYOUT`, `_ISSUING`,
+  `_SPEND`, each falling back to `AIRWALLEX_API_KEY` while unset): with a role key, the client refuses any call outside
+  that role's scopes before sending it, and the runner refuses to start if its code would use a role key outside them
+  (`src/airwallex/keyScopes.ts`, `test/airwallex-key-scopes.test.ts`). The scopes the owner creates per role are in
+  [security/owner-actions.md](security/owner-actions.md). Calls made without a role (setup, webhooks, the payee name
+  check, platform and acceptance calls) still use the general key.
+
   The client refuses any base URL other than the sandbox (`src/airwallex/client.ts`). In production, an IP
   allowlist would be added as well, as Airwallex recommends
   ([API key best practices](https://www.airwallex.com/docs/developer-tools/api/api-key-best-practices)).

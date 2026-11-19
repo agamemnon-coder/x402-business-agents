@@ -32,6 +32,7 @@ import { recoverTaskCards, relayAsk } from "../agents/askPurser.js";
 import { pollQuarantine } from "../policy/quarantine.js";
 import { LiveReceivePolicy } from "../metal/receivePolicy.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
+import { assertRoleKeys } from "../airwallex/keyScopes.js";
 import { cardPollMs, cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
 import { handleAirwallexHook } from "../policy/cardHooks.js";
 import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
@@ -152,6 +153,9 @@ process.on("SIGTERM", stop);
 
 // The agents' cards (K2): every few seconds, a limit the CFO changed goes to Airwallex, and new authorisations come
 // in (the webhook, once set up, brings them sooner). A failure here is logged and tried again; it never stops the relay.
+// Scoped Airwallex keys (src/airwallex/keyScopes.ts): a role key that Purser's code would use outside its scopes stops
+// the runner here, at its start, before any card or payout call.
+assertRoleKeys(process.env);
 const issuing = issuingFromEnv(db);
 // awx-1: KIT11_CARD_POLL_MS=off leaves the transactions to the webhooks (each poll is a counted call); limits still sync.
 const pollEvery = cardPollMs();

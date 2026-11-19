@@ -96,3 +96,34 @@ an empty answer each refuse the start.
 `turnstile` on refuses every start from the page; this was left for a change of its own because it touches the
 console's shared CSP. A token proves a browser passed Cloudflare's check, not that it is a person with good intent; the
 per-address, per-pool and per-day start limits still apply either way.
+
+## 4. Scoped Airwallex keys per role
+
+**What changed.** The code can use a separate Airwallex API key per role, each from its own variable with the same
+`AIRWALLEX_CLIENT_ID`: `AIRWALLEX_API_KEY_READ` (reconciliation, verify, health, the check after a payout),
+`AIRWALLEX_API_KEY_PAYOUT` (the payout rail and the one batch transfer), `AIRWALLEX_API_KEY_ISSUING` (the agents'
+cards), `AIRWALLEX_API_KEY_SPEND` (bills and vendors; no Spend call in this build yet). Each falls back to
+`AIRWALLEX_API_KEY` while unset, so nothing changes until the owner creates them. With a role key, the client mirrors
+Airwallex's key scopes (`src/airwallex/keyScopes.ts`): Read allows a resource's GET endpoints, Write its GET and POST;
+a call outside the role's scopes is refused before anything is sent, the login included. At start, the runner
+(`src/cli/relay.ts`) and every `fromEnv(env, role)` check the calls Purser's code makes with each role key set
+(`ROLE_CALLS`) against its scopes and refuse to start on any outside them. The sandbox's card-charge simulation needs
+Simulations, a payout scope, so it runs on the payout key. The exact scopes the owner creates are in
+[owner-actions.md](owner-actions.md).
+
+**Tests.** `test/airwallex-key-scopes.test.ts`: each role reads its own variable and falls back to the general key with
+no guard; the scopes per role are the ones in owner-actions.md; per role, the allowed and refused calls (Read is GET,
+Write is GET and POST); a refused call sends nothing, not even the login, on a recording stand-in fetch; the start
+check passes on `ROLE_CALLS` and refuses a role key used outside its list; the payout rail and the card rail, run
+method by method on the stand-in with their role keys, make only calls in `ROLE_CALLS` and none is refused; the card
+rail logs in with the issuing key and its simulation with the payout key.
+
+**Still open.** The guard is Purser's own code: it makes a wrong key fail early and plainly, but the boundary is
+Airwallex's own enforcement of the key's scopes, which the owner sets in the web app. Calls made without a role
+(setup, webhooks, the payee name check, the platform's connected accounts, payment acceptance, the demo CLIs) still
+use `AIRWALLEX_API_KEY`. A runner host taken over with its keys holds every role's key; scoping limits what one leaked
+key reaches, not what the host can do.
+
+## 5. The repository's own checks on these changes
+
+Filled in below from the runs on this branch.

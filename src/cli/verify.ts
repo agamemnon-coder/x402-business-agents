@@ -132,7 +132,7 @@ for (const c of finalityChecks(db)) {
   else line(c.level === "ok", c.what, c.detail);
 }
 
-const awx = fromEnv();
+const awx = fromEnv(process.env, "read");
 if (awx) {
   for (const c of await verifyAirwallex(db, getVia(new Airwallex(awx)))) {
     if (c.level === "note") console.log(`note  ${c.what}  ${c.detail}`);
