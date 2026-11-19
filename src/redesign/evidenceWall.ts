@@ -32,6 +32,36 @@ export function committedWall(): EvidenceWall | null {
 
 const isExternal = (h: string) => /^https?:/.test(h);
 
+/** The heading of llms.txt's generated section, which npm run evidence:wall rewrites up to the next heading. */
+export const LLMS_WALL_HEADING = "## The evidence wall, from the records";
+const SITE = "https://kit11.max-31b.workers.dev";
+
+/** llms.txt's section: the wall in plain text, one line a figure with its link (a page's own link made absolute). */
+export function evidenceWallLlms(w: EvidenceWall | null = committedWall()): string {
+  if (!w?.groups.length) return "";
+  const abs = (h: string) => (isExternal(h) ? h : `${SITE}/${h}`);
+  const tagWords = (t: WallTag) => (t === "ci" ? TAG_WORDS[t] : TAG_WORDS[t].toLowerCase());
+  // A tile's note, inside a line: no closing full stop, and a plain first word in lower case (not a name or a figure).
+  const inLine = (n: string) => n.replace(/\.$/, "").replace(/^(The|Its|On|A|Each|Every|Downloaded|Simulated|Inside|Median|List)\b/, (w) => w.toLowerCase());
+  return [
+    LLMS_WALL_HEADING,
+    "",
+    `Written by npm run evidence:wall from the committed records; the same figures, each linked to its record, are on ${SITE}/proof#${WALL_ID}. Test money only; what was simulated is said on each line.`,
+    ...w.groups.flatMap((g) => ["", `${g.title}:`, ...g.tiles.map((t) => `- ${t.fig} ${t.label} (${tagWords(t.tag)}; ${inLine(t.note)}): ${abs(t.href)}`)]),
+  ].join("\n");
+}
+
+/** llms.txt with its generated section put in (after the "## For judges" section when there is none yet). */
+export function withWallSection(llms: string, section: string = evidenceWallLlms()): string {
+  const at = llms.indexOf(`${LLMS_WALL_HEADING}\n`);
+  if (at >= 0) {
+    const next = llms.indexOf("\n## ", at + LLMS_WALL_HEADING.length);
+    return `${llms.slice(0, at)}${section}\n${next >= 0 ? llms.slice(next) : ""}`;
+  }
+  const after = llms.indexOf("\n## ", llms.indexOf("## For judges") + 1);
+  return after >= 0 ? `${llms.slice(0, after)}\n${section}\n${llms.slice(after)}` : `${llms.trimEnd()}\n\n${section}\n`;
+}
+
 export function evidenceWallHtml(w: EvidenceWall | null = committedWall()): string {
   if (!w?.groups.length) return "";
   const tile = (t: WallTile) => `<li class="ew-t${t.tone ? ` ${t.tone}` : ""}" data-wall="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}"${isExternal(t.href) ? ' target="_blank" rel="noopener"' : ""}><b class="ew-f">${esc(t.fig)}</b><span class="ew-l">${esc(t.label)}</span><small class="ew-n">${esc(t.note)}</small><span class="ew-k"><span class="ew-tag ${t.tag}">${esc(TAG_WORDS[t.tag])}</span><span class="ew-r" aria-hidden="true">${isExternal(t.href) ? "↗" : "→"}</span></span></a></li>`;

@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { GUARANTEES, GUARANTEES_ID, guaranteesHtml } from "../src/redesign/guarantees.js";
+import { evidenceWallHtml } from "../src/redesign/evidenceWall.js";
 import { pageResponse } from "../worker/src/core.js";
 
 const root = (p: string) => new URL(`../${p}`, import.meta.url);
@@ -41,7 +42,10 @@ describe("What Purser guarantees", () => {
     expect(proof).toContain(guaranteesHtml());
     const between = proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim();
     expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<section class="pfacts"[\s\S]*?<\/section>\s*<ol class="pchain"[\s\S]*?<\/ol>\s*<ul class="scale"[\s\S]*?<\/ul>\s*<aside class="pverify"[\s\S]*?<\/aside>\s*<p class="pwatch">[\s\S]*?<\/p>$/);
-    expect(proof.slice(proof.indexOf(guaranteesHtml()) + guaranteesHtml().length).trim()).toMatch(/^<details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary>/);
+    // 19 Nov (the owner: "show all our data and proof"): the evidence wall between the guarantees and the folds.
+    const after = proof.slice(proof.indexOf(guaranteesHtml()) + guaranteesHtml().length).trim();
+    expect(after.startsWith(evidenceWallHtml())).toBe(true);
+    expect(after.slice(evidenceWallHtml().length).trim()).toMatch(/^<details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary>/);
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
   });
 

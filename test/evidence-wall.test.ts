@@ -4,7 +4,7 @@
 // inline script or style (the page's CSP).
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { EVIDENCE_WALL_CSS, WALL_FILE, committedWall, evidenceWallHtml, type EvidenceWall, type WallTile } from "../src/redesign/evidenceWall.js";
+import { EVIDENCE_WALL_CSS, LLMS_WALL_HEADING, WALL_FILE, committedWall, evidenceWallHtml, evidenceWallLlms, withWallSection, type EvidenceWall, type WallTile } from "../src/redesign/evidenceWall.js";
 import { evidenceWall, evidenceWallFile } from "../src/redesign/evidenceWallData.js";
 import { liveTryRecords, liveTryTotals, nearestRank, type LiveTryRecord } from "../src/redesign/liveTry.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
@@ -116,5 +116,16 @@ describe("/proof renders the wall", () => {
     expect((html.match(/<li class="ew-t/g) ?? []).length).toBe(tiles(w).length);
     expect(html).not.toMatch(/<script|style=|\son[a-z]+=/i);
     expect(EVIDENCE_WALL_CSS).toContain("@media (max-width: 420px)");
+  });
+});
+
+describe("llms.txt's evidence section", () => {
+  it("is the wall's file in plain text, after the judges' path, each line with an absolute link (npm run evidence:wall)", () => {
+    const t = read("llms.txt"), section = evidenceWallLlms(committedWall());
+    expect(t).toContain(`${section}\n\n## `);
+    expect(t.indexOf(LLMS_WALL_HEADING)).toBeGreaterThan(t.indexOf("## For judges"));
+    expect(withWallSection(t, section)).toBe(t);
+    for (const l of section.split("\n").filter((x) => x.startsWith("- "))) expect(l).toMatch(/\): https:\/\/\S+$/);
+    expect(section.split("\n").filter((x) => x.startsWith("- "))).toHaveLength(tiles(committedWall()!).length);
   });
 });

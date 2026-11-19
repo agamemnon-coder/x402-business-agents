@@ -1,6 +1,9 @@
 # Purser
 
-> AI agents spend. You sign off. For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, the CFO signs the exact terms with Face ID. Built for the Airwallex Agentic Banking Hackathon: Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award, and for the Founder's Choice Award and the Judges' Choice Award.
+> AI agents pay your suppliers within the limits the CFO sets; above a limit nothing runs until the CFO's passkey (Face ID) signs the exact terms, and one changed cent breaks the signature.
+> Purser is the control layer between a company's AI agents and its money on Airwallex and Alta (formerly Metal); everything here ran on test money, in sandboxes and on testnet.
+
+AI agents spend. You sign off. Built for the Airwallex Agentic Banking Hackathon: Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award, and for the Founder's Choice Award and the Judges' Choice Award.
 
 Who and what: Purser is for the finance team of a small company that banks with Airwallex and pays suppliers abroad (the buyer is a hypothesis). Its agents take a supplier invoice from in to booked: Claude reads it, the Checker checks it (supplier and bank details on file, totals, duplicates, due date), the CFO signs the exact terms above the agent's limit, it is paid through Airwallex (the Airwallex sandbox in the live runs; on /try, the Airwallex sandbox as one transfer when the deployment's switch is on, as it is on the live site, otherwise a simulated bank; FX on /try is never converted at Airwallex), and the books take it (double-entry, VAT, a month close checked against T:0's ledger). The finance case, each figure with its record: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/finance-value.md
 
@@ -14,10 +17,59 @@ Hands-on on Purser's real engine, a test company of your own on test money: http
 
 Test money only. Live: Claude's decisions, Airwallex sandbox calls, Alta testnet transactions, Visa via Airwallex Airi (sandbox, test card) and the T:0 sandbox ledger. Simulated: the customer, the supplier, the merchants' charges, the settlement (Purser moves the SWIFT transfer to SENT, then PAID, through the sandbox's simulation API) and the second approver (a labelled test passkey).
 
+## For judges: watch, try, verify
+
+1. Watch the demo (3:15): https://youtu.be/gEUm8RlhZac
+2. Try it (2 minutes, test money): https://kit11.max-31b.workers.dev/try: the agent pays EUR 120.00 alone; you sign EUR 1,850.00 with a passkey; the same payment with one cent changed is refused; download its proof file and check it on https://kit11.max-31b.workers.dev/verify
+3. Verify in 3 commands, offline, no keys (Node.js 22.13+, after git clone https://github.com/agamemnon-coder/x402-business-agents): `npm ci`, `npm run judge -- --check` (every page built from the main run's record), `npm run verify-approval` (the owner's real passkey approval of 7 November, checked with Node's crypto)
+4. All the evidence on one page: https://kit11.max-31b.workers.dev/proof#evidence (the evidence wall below, as tiles), every live run on https://kit11.max-31b.workers.dev/runs
+
+## The evidence wall, from the records
+
+Written by npm run evidence:wall from the committed records; the same figures, each linked to its record, are on https://kit11.max-31b.workers.dev/proof#evidence. Test money only; what was simulated is said on each line.
+
+Live on the rails:
+- All 16 Airwallex sandbox transfers PAID from the public /try (live, sandbox; 8 walks as a visitor, 19 Nov; PAID by the sandbox's simulation): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+- All 3 paid invoices made bills in Airwallex Spend (live, sandbox; the signed hash as external_id, read back exactly; transfers PAID by the sandbox's simulation, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-bills.md
+- 797d4483… the signed hash, read back from Airwallex's transfer (live, sandbox; its approval_sha256 is the hash of the terms the CFO signed): https://kit11.max-31b.workers.dev/airwallex#awx-hash
+- #24 refused on chain by Alta: over the mandate (live, testnet; on Alta's testnet explorer; the main run, 3 Nov): https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871
+- EUR 45.00 paid with Visa via Airwallex's Airi, after Face ID (live, sandbox; a test card, 14 Nov; 1 of 3 purchases paid): https://kit11.max-31b.workers.dev/visa
+- Both payouts PAID then FAILED: back to a person, none resent (live, sandbox; PAID and FAILED by the sandbox's simulation, 17 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-17-airwallex-late-failure.json
+- 50 Airwallex endpoints called live, of 61 in the code (live, sandbox; each with the first record that holds a call to it): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/airwallex-api-coverage.md
+
+Cannot be forged:
+- All 894 tampered copies of signed proofs refused (test world; every signed value of 6 proofs changed; the originals verify. Offline): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/tamper-matrix.md
+- All 8 one-cent changes after approval refused (live, sandbox; the public /try, 19 Nov; a virtual test passkey signed): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+- All 8 approvals whose hash the Airwallex transfer carries (live, sandbox; the public /try, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+- All 16 proof files VALID on /verify and offline (live, sandbox; downloaded from /try; npm run verify-bundle agrees): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+- EUR 30.01 declined by Airwallex: one cent over an agent card's limit (live, sandbox; simulated card charges, 15 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/airwallex-card-cent-2026-11-15.json
+- 3 limit changes on chain, each after the passkeys signed (live, testnet; Alta testnet, 12 Nov: P-256 checked on chain; one a test key): https://kit11.max-31b.workers.dev/alta#faceid-onchain
+
+AI under control:
+- 0 vs 35 wrong payments: an always-pay AI in Purser, vs no rules (test world; 50 hostile and clean invoices; 0 paid past the CFO): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/worst-case-ai.md
+- 37 of 39 red-team attacks stopped before anything moved (test world; the other 2 found afterwards, not prevented): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/report.json
+- 370 of 380 hostile tool calls, in Claude's place, stopped by code (test world; the other 10 stood within the rules, by the ledger): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/ap-hostile.json
+- 0 fallbacks in 120 Claude calls on /try (live, sandbox; 129 Anthropic request ids; claude-haiku-5-5): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+- All 8 invoices held by code's cash check (live, sandbox; inside the agent's limit; no payout): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+
+Built to last:
+- 189 checks passed by npm run verify-all, 0 failed (re-checked; 129 Alta transactions read from the chain; 15 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md
+- 3,879 of 4,000 payments through Alta's clearing, load test (live, testnet; 2 runs, 30 Oct; the last: all 2,000 paid): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-10-30-clearing-load.md
+- 8 CI jobs on every change (CI; 4 scan for security: gitleaks, Semgrep, CodeQL, npm audit): https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain
+
+The public /try, timed:
+- All 8 full /try journeys passed every step (live, sandbox; 19 Nov, Chromium, desktop and phone; 0 console errors): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+- 6.3 s passkey to paid, on screen (live, sandbox; median of 8, p95 6.9 s): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+- 10.2 s agent pays alone, to Airwallex PAID (live, sandbox; median of 8, p95 13.2 s; PAID by the sandbox's simulation): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+- 0.69 s one-cent change to refusal (live, sandbox; median of 8, p95 0.72 s): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+- 0.11 s proof file to verdict on /verify (live, sandbox; median of 8, p95 0.42 s): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+- USD 0.0049 Claude cost per journey (live, sandbox; list price; USD 0.0392 for 8): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md
+
 ## Start here
 
 - [Live demo](https://kit11.max-31b.workers.dev): the public site, on test money
 - [/try](https://kit11.max-31b.workers.dev/try): a test company of your own; Claude reads an invoice, the Checker agent's tool calls are shown with its model, timing and cost, you sign the exact terms with a passkey, then one cent more is refused
+- [The demo (3:15)](https://youtu.be/gEUm8RlhZac): the video in the submission; test money only
 - [The film, "Purser, under the hood" (3:29)](https://youtu.be/PNLuqhRzVfE): test money only
 - [The trailer (1:30)](https://youtu.be/n3HLVGROJc4): AI voice and music: ElevenLabs
 - [Finance value](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/finance-value.md): for a CFO: the job step by step, measured cost and time per invoice, the controls mapped, the books, what is not proven yet
@@ -35,7 +87,9 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Alta testnet
 - [The signed hash in Airwallex's record](https://kit11.max-31b.workers.dev/airwallex#awx-hash): the EUR 240.00 SWIFT payment, transfer 03360bfa-afce-457b-89d1-e1097fbe3985 (main run, 3 November; settlement simulated in the sandbox)
 - [The Airwallex-only run](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-awx-1.md): Airwallex's own card controls declined an agent's EUR 45.00 purchase (charge simulated via the sandbox) over its EUR 30.00 limit (LIMIT_EXCEEDED, card transaction 01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38; 7 November; all seven checks passed)
 - [One cent over, declined](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/airwallex-card-cent-2026-11-15.json): on an agent's sandbox card, EUR 30.00 approved and EUR 30.01 declined (LIMIT_EXCEEDED), 15 November, after the company owner's software test passkey signed the action
-- [/airwallex/calls](https://kit11.max-31b.workers.dev/airwallex/calls): 154 Airwallex sandbox calls from 11 run records (not yet the 10 Nov platform runs, the Visa runs or the 15 Nov card run), each with its method, path and record; the signed hashes recomputed offline (`npm run airwallex-trail`)
+- [/airwallex/calls](https://kit11.max-31b.workers.dev/airwallex/calls): 234 Airwallex sandbox calls from 13 run records, the Spend Bills run of 19 Nov among them (not the 10 Nov platform runs or the 15 Nov card run), each with its method, path and record; the signed hashes recomputed offline (`npm run airwallex-trail`)
+- [Airwallex Spend Bills](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-bills.md): 19 Nov, Airwallex sandbox: each paid invoice became a bill in Airwallex's own accounts payable, its PDF attached and its external_id the hash the passkey signed, then marked PAID; read back with 0 differences (transfers PAID by the sandbox's simulation; a labelled test passkey signed). Off by default (AIRWALLEX_BILLS)
+- [Airwallex API coverage](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/airwallex-api-coverage.md): every Airwallex endpoint the code calls, each LIVE (a committed record holds a call), TESTED ONLY or CODE ONLY (`npm run airwallex:coverage`)
 
 ## Agentic behaviour and controls
 
@@ -48,6 +102,8 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Alta testnet
 
 - [/proof#guarantees](https://kit11.max-31b.workers.dev/proof#guarantees): what Purser guarantees, each with its code, its test and where it ran
 - [The live verification report](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md): 15 November, 189 checks passed, 3 could not run here, 0 failed
+- [The tamper matrix](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/tamper-matrix.md): every signed value of every committed proof changed by the smallest step; each copy refused, each original valid (`npm run tamper-matrix`, offline)
+- [The public /try, walked 8 times as a visitor](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md): 19 Nov, Chromium, desktop and phone, every answer kept; one known gap, fixed after the record: the reader's Claude calls were logged without Anthropic's request id (the agents' calls carry it); the fix needs a deploy
 - [Test summary](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assets/test-summary.json): 7,242 tests passing in the last full run; CI on every change runs unit tests, the judge replay, Firefox and WebKit browser checks, a secrets scan, a security audit and CodeQL; measured on 15 November: Lighthouse Accessibility and Best Practices 100 on 12 URLs (kit11 and purser-try) (docs/evidence/live-measurement-2026-11-15.json)
 
 ## Partners: Alta, Visa, T:0
@@ -87,6 +143,9 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Alta testnet
 - src/ap/checkerCore.ts, src/ap/payerCore.ts, src/ap/books.ts: the payables agents' rules in code, and the bookings
 - src/airi/purchase.ts: Visa Intelligent Commerce through Airwallex's Airi
 - src/audit/log.ts: the hash-chained audit log
+- src/airwallex/bills.ts, src/ap/billSync.ts: paid invoices as bills in Airwallex Spend
+- src/claude/reader.ts: Claude reading an invoice, each call logged with its model, cost and Anthropic's request id
+- src/redesign/evidenceWallData.ts, docs/evidence/evidence-wall.json: the evidence wall, computed from the records (npm run evidence:wall)
 - Connect any AI: Purser Cloud is a remote MCP server at https://purser-try.max-31b.workers.dev/mcp; the demo company's public, read-only token is purser-demo-read-only. Your AI reads and can propose a payment; it can never approve or pay: docs/connect-claude.md
 
 After the hackathon, the roadmap to real customer money (nothing on it is built yet): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/roadmap-v2.md
