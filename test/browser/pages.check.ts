@@ -76,7 +76,8 @@ const WORST = worstCaseWords();
  * flat 90 went red when the five latest runs' labels grew the served page to 85 words, still within its own budget.)
  */
 const wordsOf = (t: string) => t.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
-const statusBudget = (nowText: string) => 90 + Math.max(0, wordsOf(nowText) - wordsOf((/<article class="pc card[^"]*" id="now"[\s\S]*?<\/article>/.exec(statusPage())?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")));
+// 91 as served since 19 Nov (the hourly checks card; 90 before).
+const statusBudget = (nowText: string) => 91 + Math.max(0, wordsOf(nowText) - wordsOf((/<article class="pc card[^"]*" id="now"[\s\S]*?<\/article>/.exec(statusPage())?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")));
 
 async function look(page: Page, name: string, width: number): Promise<void> {
   const text = await page.evaluate(() => document.body.innerText);
@@ -995,7 +996,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (JSON.stringify(listed) !== JSON.stringify(DOCS_TOOLS)) fail(`/docs ${tag}: the tools listed are not the code's (${listed.join(", ")})`);
         if (!/npm run -s mcp/.test(body) || !/npm run judge/.test(body) || !/\/v1\/openapi\.json/.test(body) || !(await page.locator('#offline a[href$="README.md#verify-it-yourself-in-3-commands"]').count())) fail(`/docs ${tag}: a command, the OpenAPI document's path or the README's link is missing`);
       } else {
-        if (cards !== 2 || (await page.locator("#runs ul.pl > li > a.pf").count()) !== 5 || (await page.locator('#runs a.pf[href="runs"]').count()) !== 1) fail(`/status ${tag}: not two cards with the five latest live runs and the link to every run`);
+        // Three cards since 19 Nov: the hourly checks of the public addresses (#checks, src/ops/syntheticChecks.ts) joined the two.
+        if (cards !== 3 || (await page.locator("main article#checks").count()) !== 1 || (await page.locator("#runs ul.pl > li > a.pf").count()) !== 5 || (await page.locator('#runs a.pf[href="runs"]').count()) !== 1) fail(`/status ${tag}: not three cards (now, the hourly checks, and the five latest live runs with the link to every run)`);
         if (liveAt < 0) {
           // The judge's copy: no script, no request for /health (it would be a 404 here), and it says so.
           if (healthAsked.length || (await page.locator("script").count()) || !/No live status in this copy/.test(body) || (await page.locator('main a[href$="health"]').count())) fail(`/status ${tag}: the offline copy asks for /health, carries a script or does not say it has no live status`);
@@ -1020,7 +1022,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
       if ((await page.locator("#now").getAttribute("data-tone")) !== "quiet" || now !== "No live run in progress Site Up Runner Off between runs Last sync None on record Alarms No report on record The raw answer: /health") fail(`/status on the relay ${tag}: not the quiet state in plain words (${now})`);
       const quietWords = wordsOf(await page.locator("main").innerText()), quietBudget = statusBudget(now);
-      if (quietWords > quietBudget) fail(`/status on the relay ${tag}: ${quietWords} words in sight in the quiet state, budget ${quietBudget} (90 as served, plus the answer's words)`);
+      if (quietWords > quietBudget) fail(`/status on the relay ${tag}: ${quietWords} words in sight in the quiet state, budget ${quietBudget} (91 as served, plus the answer's words)`);
       await page.screenshot({ path: join(shots, `status-quiet-${tag}.png`), fullPage: true });
       // A page of its own for the failing /health: the browser logs the failed answer as a console error, which is the point.
       const broken = await context.newPage();
@@ -1386,7 +1388,7 @@ if (relay) {
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
       if ((await page.locator("#now").getAttribute("data-tone")) !== "ok" || !/^A live run is in progress Site Up Runner Syncing Last sync In the last \d+ minutes? Alarms None The raw answer: \/health$/.test(now)) fail(`/status live ${tag}: not the live state in plain words (${now})`);
       const words = wordsOf(await page.locator("main").innerText()), budget = statusBudget(now);
-      if (words > budget) fail(`/status live ${tag}: ${words} words in sight, budget ${budget} (90 as served, plus the answer's words)`);
+      if (words > budget) fail(`/status live ${tag}: ${words} words in sight, budget ${budget} (91 as served, plus the answer's words)`);
       await page.screenshot({ path: join(shots, `status-live-${tag}.png`), fullPage: true });
       await context.close();
     }
