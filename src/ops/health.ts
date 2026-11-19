@@ -135,7 +135,7 @@ function tamperedApprovals(db: DB): { proposal_id: string; since: string | null 
   if (!has(db, "approvals")) return [];
   const rows = db.prepare("SELECT p.proposal_id, p.terms_json, p.terms_sha256, a.approved_sha256, a.created_at AS since FROM proposals p JOIN approvals a ON a.proposal_id = p.proposal_id WHERE p.status = 'APPROVED' AND a.decision = 'APPROVED'").all() as { proposal_id: string; terms_json: string; terms_sha256: string; approved_sha256: string; since: string | null }[];
   return rows.filter((r) => {
-    let h: string | null = null;
+    let h: string | null;
     try { h = termsHash(JSON.parse(r.terms_json) as Terms); } catch { h = null; }
     return h === null || h !== r.terms_sha256 || h !== r.approved_sha256;
   }).map(({ proposal_id, since }) => ({ proposal_id, since }));
