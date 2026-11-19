@@ -27,7 +27,7 @@ import { codeRequires } from "./checkerCore.js";
 import { CHECKER_DECISION } from "./checkerAgent.js";
 import { readDoc } from "./docStore.js";
 import { PAY_LATER, paymentCase, payerGate, runPayer, type EarlyPayer } from "./payerAgent.js";
-import { pdfText } from "./pdfText.js";
+import { documentText } from "./docText.js";
 import type { Asker } from "./read.js";
 import { writeReviewNote } from "./review.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
@@ -79,7 +79,7 @@ async function preparePayment(db: DB, id: string, now: Date): Promise<{ inv: ApI
   if (!payableCurrency(inv.currency)) throw new Error(`${id} is in ${inv.currency}; Purser does not pay that currency (pays EUR only in two-decimal currencies SWIFT carries), so a person pays it`);
   const doc = db.prepare("SELECT path FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string } | undefined;
   if (!doc) throw new Error(`${id}: its document is missing`);
-  const text = (await pdfText(readDoc(db, doc.path))).text;
+  const text = (await documentText(readDoc(db, doc.path))).text;
   const r = inv.reading;
   const invoiceNo = ledgerInvoiceNo(r.invoice_no, r.vendor);
   const due = r.due_date || now.toISOString().slice(0, 10);

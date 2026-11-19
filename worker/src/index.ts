@@ -4,7 +4,7 @@
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { AwxGatewayDesk, type GatewayEnv } from "./awxGateway.js";
 import type { GatewayAnswer, GatewayRequest } from "../../src/airwallex/gatewayRules.js";
-import { notFoundResponse, pageResponse, Relay } from "./core.js";
+import { COMMON_HEADERS, notFoundResponse, pageResponse, Relay } from "./core.js";
 import { goResponse } from "./go.js";
 import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
@@ -24,6 +24,8 @@ import { AWX_READ_PATH, AwxReadDesk, isAwxView, type AwxReadAnswer } from "./awx
 import { AWX_EVENTS_PATH, type AwxEventsAnswer } from "./awxEvents.js";
 import { awxBooksResponse, booksCache, isAwxBooksPath } from "./awxBooks.js";
 import type { AwxBadgeCache } from "../../src/finance/awxBadge.js";
+import { StatusDesk } from "./statusDesk.js";
+import { withChecks, type StatusSummary } from "../../src/ops/syntheticChecks.js";
 
 export interface Env extends GatewayEnv {
   RELAY: DurableObjectNamespace<RelayObject>;
@@ -115,6 +117,22 @@ export class RelayObject extends DurableObject<Env> {
   private awxBooks?: AwxBadgeCache;
   private awxFx?: AwxFxDesk;
   private awxPayout?: AwxPayoutDesk;
+  private status?: StatusDesk;
+
+  /** The "status" instance's desk (./statusDesk.ts): the hourly checks' rows, in this instance's own tables. */
+  private statusDesk(): StatusDesk {
+    // The Worker's global fetch: with global_fetch_strictly_public (wrangler.jsonc) it goes over the public internet,
+    // as a visitor's request does, even to this Worker's own address.
+    return (this.status ??= new StatusDesk(this.ctx.storage.sql, { fetch: (url, init) => fetch(url, init) }));
+  }
+  /** One round of the hourly checks, by RPC from the cron trigger only (no HTTP path reaches it). */
+  async statusRun(): Promise<{ checks: number; passed: number }> {
+    return this.statusDesk().run();
+  }
+  /** What /status and /status.json show: read only. */
+  async statusSummary(): Promise<StatusSummary> {
+    return this.statusDesk().summary();
+  }
 
   /** /try's sandbox payout, by RPC from the AwxFx entrypoint only: the "awx-payout" instance's desk, with the payout key inside its client. */
   private payoutDesk(): AwxPayoutDesk {
@@ -270,6 +288,10 @@ export class AwxCards extends WorkerEntrypoint<Env> {
 }
 
 export default {
+  /** Hourly (wrangler.jsonc triggers.crons): the synthetic checks behind /status (src/ops/syntheticChecks.ts). */
+  async scheduled(_controller, env, ctx): Promise<void> {
+    ctx.waitUntil(env.RELAY.get(env.RELAY.idFromName("status")).statusRun().then(() => undefined));
+  },
   async fetch(req, env): Promise<Response> {
     // /go: the short URL under the QR code, 302 to the hands-on demo (TRY_GO_URL, or its default).
     const go = goResponse(req, env.TRY_GO_URL);
@@ -284,6 +306,9 @@ export default {
     // /try and its page's calls, to purser-try when the binding is there (./tryEngine.ts): the request as it came.
     const tryEngine = tryEngineResponse(req, env.TRY_ENGINE);
     if (tryEngine) return tryEngine;
+    // /status and /status.json: the hourly checks, read from their own instance (./statusDesk.ts).
+    const status = await statusResponse(req, env);
+    if (status) return status;
     const page = pageResponse(req, PAGES);
     if (page) return page;
     const path = new URL(req.url).pathname;
@@ -303,3 +328,22 @@ export default {
     return notFoundResponse(PAGES);
   },
 } satisfies ExportedHandler<Env>;
+
+/** /status.json, and /status with its checks' card filled in, from the "status" instance; null for any other request. */
+async function statusResponse(req: Request, env: Env): Promise<Response | null> {
+  if (req.method !== "GET" && req.method !== "HEAD") return null;
+  const path = new URL(req.url).pathname;
+  if (path !== "/status" && path !== "/status.json") return null;
+  let summary: StatusSummary | null = null;
+  try {
+    summary = await env.RELAY.get(env.RELAY.idFromName("status")).statusSummary();
+  } catch {
+    summary = null;
+  }
+  if (path === "/status.json") {
+    return summary
+      ? Response.json(summary, { headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } })
+      : Response.json({ error: "the hourly checks could not be read just now" }, { status: 503, headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
+  }
+  return PAGES.status ? pageResponse(req, { ...PAGES, status: withChecks(PAGES.status, summary) }) : null;
+}

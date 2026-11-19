@@ -83,7 +83,9 @@ export function mutation(r: MutationRecord = json<MutationRecord>(MUTATION_REC))
 export const VEX_REC = "docs/security/vex/purser.openvex.json";
 /** The OpenVEX statements: how many, and whether every one says the component is not in the product. */
 export function vex(r: { statements: { status: string; justification?: string }[] } = json(VEX_REC)): { statements: number; notInProduct: boolean } {
-  return { statements: r.statements.length, notInProduct: r.statements.every((s) => s.status === "not_affected" && s.justification === "component_not_present") };
+  // A statement marked fixed is history (OpenVEX never deletes one); the open ones are those still not fixed.
+  const open = r.statements.filter((s) => s.status !== "fixed");
+  return { statements: open.length, notInProduct: open.every((s) => s.status === "not_affected" && s.justification === "component_not_present") };
 }
 
 const WORKFLOWS = ".github/workflows";
@@ -142,8 +144,8 @@ export function continuity(text: string = section(GOVERNANCE_REC, "Continuity: i
 export const REPORTING_REC = "SECURITY.md";
 /** How fast a private report is answered, as SECURITY.md says it. */
 export const answerDays = (text: string = flat(REPORTING_REC)): number => {
-  if (!text.includes("open a private GitHub security advisory")) throw new Error(`${REPORTING_REC} no longer asks for a private advisory`);
-  return Number(must(/We aim to answer within (\d+) working days/.exec(text)?.[1], `${REPORTING_REC}: the answer time`));
+  if (!text.includes("GitHub private vulnerability reporting") || !text.includes("/security/advisories/new")) throw new Error(`${REPORTING_REC} no longer asks for a private advisory`);
+  return Number(must(/Within (\d+) working days of the report \| We acknowledge it/.exec(text)?.[1], `${REPORTING_REC}: the answer time`));
 };
 
 /** The section's groups and items, in the page's order. */

@@ -1,0 +1,61 @@
+{
+  "what": "The official Peppol BIS Billing 3.0 example files Purser checks its Peppol reader against (src/ap/peppol.ts; test/peppol.test.ts). They are not copied into this repository: the Peppol BIS states that it may not be redistributed without OpenPeppol AISBL's consent. npm run peppol:examples downloads them into fixtures/peppol/official/ (git-ignored) and checks each against its SHA-256 below, as fetched on 2026-11-19 from the master branch.",
+  "source": "https://github.com/OpenPEPPOL/peppol-bis-invoice-3/tree/master/rules/examples",
+  "fetched": "2026-11-19",
+  "files": [
+    {
+      "name": "Allowance-example.xml",
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/master/rules/examples/Allowance-example.xml",
+      "sha256": "aa3df18eb8c634624637eb229891d989c5cfb7cd0d08894ff8e58c58f247ea5b",
+      "bytes": 16136
+    },
+    {
+      "name": "Vat-category-S.xml",
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/master/rules/examples/Vat-category-S.xml",
+      "sha256": "59f96ae9a77ed3eda4ac17f499994fbd1b050432edf3bb8c117d7f3bca8d5f95",
+      "bytes": 12456
+    },
+    {
+      "name": "base-creditnote-correction.xml",
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/master/rules/examples/base-creditnote-correction.xml",
+      "sha256": "08e0ad82e0dbe7e16d7533c01761843343a56954ea24881d0f7f1cce06f8879e",
+      "bytes": 9462
+    },
+    {
+      "name": "base-example.xml",
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/master/rules/examples/base-example.xml",
+      "sha256": "1b7cc3ff1834c8963f2c93f30f171b58002cbf0b2c52dc8765e7e83aebb9f7c9",
+      "bytes": 9228
+    },
+    {
+      "name": "base-negative-inv-correction.xml",
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/master/rules/examples/base-negative-inv-correction.xml",
+      "sha256": "000781ee8cb7794a140bb1308f7f7a2c9ded3623571b4297aef38423971ab5a4",
+      "bytes": 9412
+    },
+    {
+      "name": "sales-order-example.xml",
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/master/rules/examples/sales-order-example.xml",
+      "sha256": "cdb84e4ce1a770f6e4a8949dcbe37493bc37aeded5232b592a1a48feb221a504",
+      "bytes": 9458
+    },
+    {
+      "name": "vat-category-E.xml",
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/master/rules/examples/vat-category-E.xml",
+      "sha256": "4f2f20de65a8c088bba6c43177c75b5066bf30f54b996bc1729a82097a6591db",
+      "bytes": 5176
+    },
+    {
+      "name": "vat-category-O.xml",
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/master/rules/examples/vat-category-O.xml",
+      "sha256": "212c4eede960a775f8e79dca6cd6430e6f8c105560fbfdeaa03d5e6587eaa1ec",
+      "bytes": 4907
+    },
+    {
+      "name": "vat-category-Z.xml",
+      "url": "https://raw.githubusercontent.com/OpenPEPPOL/peppol-bis-invoice-3/master/rules/examples/vat-category-Z.xml",
+      "sha256": "fed3f3f393591e1c628f2da4a3aa77e8c66e4ed8ed4368e18837782beab60daa",
+      "bytes": 5092
+    }
+  ]
+}

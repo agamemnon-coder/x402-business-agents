@@ -32,10 +32,14 @@ const show = (v: unknown): string => {
   } catch { return String(v).slice(0, 2_000); }
 };
 
-/** One property, with its seed: `runs` and `timeLimitMs` override the property's own (the tests run fewer). */
-export async function runProperty(p: FuzzProperty, ctx: FuzzContext, o: { seed?: number; runs?: number; timeLimitMs?: number; path?: string } = {}): Promise<FuzzResult> {
+/**
+ * One property, with its seed: `runs` and `timeLimitMs` override the property's own (the tests run fewer); `scale`
+ * multiplies the property's own run count and time limit instead (the nightly run).
+ */
+export async function runProperty(p: FuzzProperty, ctx: FuzzContext, o: { seed?: number; runs?: number; timeLimitMs?: number; scale?: number; path?: string } = {}): Promise<FuzzResult> {
   const seed = o.seed ?? FUZZ_SEED + PROPERTIES.indexOf(p);
-  const runs = o.runs ?? p.runs, limit = o.timeLimitMs ?? p.timeLimitMs;
+  const scale = o.scale ?? 1;
+  const runs = o.runs ?? Math.round(p.runs * scale), limit = o.timeLimitMs ?? Math.round(p.timeLimitMs * scale);
   const prop = await p.make(ctx);
   const started = Date.now();
   const d = await fc.check(prop as fc.IAsyncProperty<unknown[]>, { numRuns: runs, seed, interruptAfterTimeLimit: limit, markInterruptAsFailure: false, ...(o.path ? { path: o.path } : {}) });
@@ -48,7 +52,7 @@ export async function runProperty(p: FuzzProperty, ctx: FuzzContext, o: { seed?:
   return { ...base, counterexample: show(d.counterexample), error: String(err?.message ?? err ?? "the property returned false").slice(0, 1_000), shrinks: d.numShrinks, path: d.counterexamplePath ?? "" };
 }
 
-export async function runFuzz(o: { only?: string; seed?: number; runs?: number; timeLimitMs?: number; path?: string; log?: (r: FuzzResult) => void } = {}): Promise<FuzzResult[]> {
+export async function runFuzz(o: { only?: string; seed?: number; runs?: number; timeLimitMs?: number; scale?: number; path?: string; log?: (r: FuzzResult) => void } = {}): Promise<FuzzResult[]> {
   const ctx = fuzzContext();
   const out: FuzzResult[] = [];
   for (const p of PROPERTIES.filter((x) => !o.only || x.id === o.only)) {

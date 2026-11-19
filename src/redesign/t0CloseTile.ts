@@ -107,6 +107,6 @@ export function t0CloseTileHtml(f: T0CloseFacts | null = t0CloseFacts()): string
 <p class="t0c-out" aria-live="polite"></p>
 <p class="t0c-src">${esc(T0_RUN.note)}</p>
 </div>
-<p class="t0c-links"><a href="${esc(T0_READBACK_PATH.slice(1))}" download>${esc(`Download the read-back (ids, amounts, times)`)}</a><a href="${esc(`${REPO_BLOB}src/accounting/closeGate.ts`)}" target="_blank" rel="noopener">${esc("The check")} ↗</a></p>
+<p class="t0c-links"><a href="${esc(T0_READBACK_PATH.slice(1))}" download>${esc(`Download the read-back (ids, amounts, times)`)}</a><a href="${esc(`${REPO_BLOB}src/accounting/closeGate.ts`)}" target="_blank" rel="noopener">${esc("The check")} ↗</a><a href="${esc(`${REPO_BLOB}${T0_READBACK_FILE.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">${esc("The record")} ↗</a></p>
 </section>`;
 }

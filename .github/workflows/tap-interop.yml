@@ -48,6 +48,9 @@ jobs:
       # resolved as they stood on 19 October 2026 (npm install --package-lock-only --before=2026-10-19, run 19 November):
       # the same 94 runtime packages, versions and integrity hashes as the `npm install --before=2026-10-19` this step ran
       # until then, now installed with npm ci so each one is checked against its hash. The proxy's files stay unchanged.
+      # Raised since, inside the ranges the proxy's package.json allows (express ~1.20.5, axios and http-proxy ^1):
+      # body-parser 1.20.8 -> 1.20.9 (GHSA-27r3-jxmh-p828) and follow-redirects 1.16.1 -> 1.16.3 (GHSA-mrwp-f3q8-3g9p).
+      # axios stays at 1.12.2, the exact version the proxy pins (its advisories: docs/security/vex/).
       - name: Install the proxy's dependencies (its package.json as is, our lockfile, no dev dependencies, no install scripts)
         run: |
           cp test/interop/tap-ref-cdn-proxy.package-lock.json "$TAP_REF_DIR/cdn-proxy/package-lock.json"
@@ -55,8 +58,8 @@ jobs:
           npm ci --omit=dev --no-audit --no-fund --ignore-scripts
       - name: Install what the registry and the reference signer import (hashed, wheels only)
         # Not the reference's requirements files (unpinned, sdists allowed, a UI stack the test does not run): only the
-        # registry's and create_ed25519_signature's imports, at the versions the reference pins (fastapi, starlette and anyio raised past their advisories), from a committed
-        # hashed file (test/interop/tap-ref-requirements.txt). Python 3.12: pydantic 2.5.0 has no wheels for 3.13.
+        # registry's and create_ed25519_signature's imports, at the versions the reference pins (fastapi, starlette, anyio and pydantic raised past their advisories), from a committed
+        # hashed file (test/interop/tap-ref-requirements.txt). Python 3.12, as the reference's own pins were resolved for it.
         run: |
           python3.12 -m venv "$RUNNER_TEMP/tap-venv"
           "$RUNNER_TEMP/tap-venv/bin/pip" install --quiet --require-hashes --only-binary :all: -r test/interop/tap-ref-requirements.txt

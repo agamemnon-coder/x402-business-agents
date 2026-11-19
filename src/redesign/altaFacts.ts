@@ -1,10 +1,13 @@
-// The opening of /alta (Metal Award, 15 Nov): three facts, each with its explorer link and the record it comes from,
-// then the numbers. Every hash, amount and date is read here from the run records, never typed in:
-//   refused on chain  docs/runs/2026-11-12-faceid-onchain.json (the refusal step)
-//   two owners        the same record (P-0002 relayed after 2 of 2 approvals) and docs/runs/passkey-owners.json
-//                     (1 Nov: the mandate bind with the CFO's passkey alone, reverted on chain)
-//   the anchor        docs/runs/2026-11-13-anchor.json, and docs/runs/2026-11-15-anchor-verified.json (verify-anchor
-//                     run live on 15 Nov: MATCH)
+// The opening of /alta (Metal Award, 15 Nov; refreshed 19 Nov with the newest live records): three facts, each with its
+// explorer links and the record it comes from, then the numbers. Every hash, amount and date is read here from the run
+// records, never typed in:
+//   inside and outside the mandate  docs/runs/2026-11-19-alta-series.json and -finish.json (19 Nov: the payments paid
+//                     under the agent's mandate, and each attempt outside it refused on chain, with its reason); without
+//                     them, the refusal of docs/runs/2026-11-12-faceid-onchain.json as before
+//   two owners        docs/runs/2026-11-12-faceid-onchain.json (P-0002 relayed after 2 of 2 approvals) and
+//                     docs/runs/passkey-owners.json (1 Nov: the mandate bind with the CFO's passkey alone, reverted on chain)
+//   the anchor        docs/runs/2026-11-19-anchor.json, its verify-anchor MATCH as docs/runs/2026-11-19-alta-series.md
+//                     prints it; without it, docs/runs/2026-11-13-anchor.json and docs/runs/2026-11-15-anchor-verified.json
 // A record that is missing or does not show its fact leaves that fact out; with no fact the block is empty.
 
 import { existsSync, readFileSync } from "node:fs";
@@ -17,8 +20,15 @@ export const OWNERS_RECORD = "docs/runs/passkey-owners.json";
 export const ANCHOR_RECORD = "docs/runs/2026-11-13-anchor.json";
 export const ANCHOR_VERIFIED_RECORD = "docs/runs/2026-11-15-anchor-verified.json";
 export const NO_ENDORSEMENT_ALTA = "No endorsement implied";
+/** The 19 Nov series on Alta testnet (pass 1 and pass 2), its run log, and the fresh anchor that pins both. */
+export const SERIES_RECORDS = ["docs/runs/2026-11-19-alta-series.json", "docs/runs/2026-11-19-alta-series-finish.json"] as const;
+export const SERIES_LOG = "docs/runs/2026-11-19-alta-series.md";
+export const ANCHOR_19_RECORD = "docs/runs/2026-11-19-anchor.json";
+/** Where the series' run log prints verify-anchor's output for the fresh anchor. */
+export const ANCHOR_19_CHECK = `${SERIES_LOG}#the-anchor-fresh-and-its-check`;
 
-type Step = { kind?: string; step?: string; outcome?: string; tx?: string | null; at?: string };
+type Step = { kind?: string; step?: string; outcome?: string; tx?: string | null; at?: string; event?: string; reason?: string; amount?: string };
+type Series = { ran_at?: string; steps?: Step[] };
 const TX = /^0x[0-9a-f]{64}$/;
 
 function read<T>(file: string): T | null {
@@ -33,18 +43,46 @@ export interface AltaFactsInput {
   owners?: { ran_at?: string; steps?: Step[] } | null;
   anchor?: { tx?: string; anchored_at?: string } | null;
   verified?: { result?: string; ran_at?: string; tx?: string } | null;
+  /** The 19 Nov series' records, in order (pass 1, pass 2). */
+  series?: (Series | null)[] | null;
+  /** The 19 Nov anchor, and the series' run log (it prints verify-anchor's output for it). */
+  anchor19?: { tx?: string; anchored_at?: string; height?: number; parts?: unknown[] } | null;
+  seriesLog?: string | null;
 }
+
+const readText = (file: string): string | null => { try { return readFileSync(new URL(`../../${file}`, import.meta.url), "utf8"); } catch { return null; } };
+/** A refusal's reason as a link's few words. */
+const REASON_LINK: Record<string, string> = { OverPerPaymentCap: "cap: tx", PayeeNotAllowed: "payee: tx", OverBudget: "budget: tx" };
 
 export function altaFacts(i: AltaFactsInput = {
   faceid: read(FACEID_RECORD), owners: read(OWNERS_RECORD), anchor: read(ANCHOR_RECORD), verified: read(ANCHOR_VERIFIED_RECORD),
+  series: SERIES_RECORDS.map((f) => read<Series>(f)), anchor19: read(ANCHOR_19_RECORD), seriesLog: readText(SERIES_LOG),
 }): AltaFact[] {
   const out: AltaFact[] = [];
   const steps = i.faceid?.steps ?? [];
   const txOf = (s: Step | undefined) => (s && typeof s.tx === "string" && TX.test(s.tx) ? s.tx : null);
 
+  // 19 Nov, the newest live run on Alta: every payment the chain paid under the agent's mandate, and every attempt
+  // outside it that the chain refused (as the evidence wall counts them, src/redesign/evidenceWallData.ts: a step planned
+  // as over the budget that the chain paid was inside it, so it is a payment, not an attempt outside the mandate).
+  const series = (i.series ?? []).filter((x): x is Series => !!x);
+  const sSteps = series.flatMap((x) => x.steps ?? []);
+  const paid = sSteps.filter((x) => x.event === "MandatePayment" && txOf(x));
+  const refused = sSteps.filter((x) => x.kind === "over-mandate" && x.outcome === "refused on chain" && x.event === "MandateRefused" && x.reason && txOf(x));
+  const tried = sSteps.filter((x) => x.kind === "over-mandate" && x.event !== "MandatePayment");
+  const ran = series[0]?.ran_at;
+  if (paid.length && refused.length && refused.length === tried.length && ran) {
+    const total = (paid.reduce((n, x) => n + Math.round(Number(x.amount) * 100), 0) / 100).toFixed(2);
+    out.push({ id: "refused", title: "Refused on chain",
+      text: `${day(ran)}: ${paid.length} payments inside the agent's mandate, ${total} test USD in all. Alta refused ${refused.length === 3 ? "all 3" : refused.length} attempts outside it on chain (${refused.map((x) => x.reason).join(", ")}); nothing moved.`,
+      links: refused.map((x) => ({ label: REASON_LINK[x.reason!] ?? "tx", href: `${EXPLORER}/tx/${txOf(x)}` })),
+      // The run log (the first record's .md) tells both passes, each step with its transaction: one link for the two.
+      record: [SERIES_RECORDS[0]] });
+  }
+
   const refusal = steps.find((s) => s.kind === "refusal" && s.outcome === "refused on chain");
   const over = refusal?.step ? /^([\d.]+) to (\w+), over the mandate's ([\d.]+) cap/.exec(refusal.step) : null;
-  if (refusal && over && txOf(refusal) && refusal.at) {
+  if (!out.length && refusal && over && txOf(refusal) && refusal.at) {
     out.push({ id: "refused", title: "Refused on chain",
       text: `${day(refusal.at)}: ${over[1]} to ${over[2]}, over the mandate's ${over[3]} cap. Alta refused it on chain; nothing moved.`,
       links: [{ label: "tx", href: `${EXPLORER}/tx/${txOf(refusal)}` }], record: [FACEID_RECORD] });
@@ -66,6 +104,18 @@ export function altaFacts(i: AltaFactsInput = {
     out.push({ id: "owners", title: "Two passkey owners", text, links, record });
   }
 
+  // The fresh anchor of 19 Nov, which pins the series' records too; verify-anchor's MATCH as the run log prints it.
+  const a19 = i.anchor19;
+  if (a19?.tx && TX.test(a19.tx) && a19.anchored_at && a19.height) {
+    // The exact line, compared as text (no pattern built from a path).
+    const match = (i.seriesLog ?? "").split(/\r?\n/).includes(`MATCH: ${ANCHOR_19_RECORD}, tx ${a19.tx}`);
+    // "The series above included" only when the series is the fact above and the anchor names its record as a part.
+    const pins = out[0]?.record[0] === SERIES_RECORDS[0] && (a19.parts ?? []).some((x) => (x as { file?: string }).file === SERIES_RECORDS[0]);
+    out.push({ id: "anchor", title: "Anchored",
+      text: `${day(a19.anchored_at)}: the head of Purser's records, ${a19.height} rows and lines${pins ? ", the series above included" : ""}, in one transaction.${match ? " verify-anchor: MATCH." : ""}`,
+      links: [{ label: "tx", href: `${EXPLORER}/tx/${a19.tx}` }], record: match ? [ANCHOR_19_RECORD, ANCHOR_19_CHECK] : [ANCHOR_19_RECORD] });
+    return out;
+  }
   const at = i.anchor?.anchored_at;
   if (i.anchor?.tx && TX.test(i.anchor.tx) && at) {
     const v = i.verified && i.verified.result === "MATCH" && i.verified.tx === i.anchor.tx && i.verified.ran_at ? i.verified : null;
@@ -91,7 +141,8 @@ const ICON: Record<AltaFact["id"], string> = { refused: "ban", owners: "users", 
 /** The record's readable page when it has one (the .md beside the .json), else the .json itself. */
 const shown = (file: string) => { const md = file.replace(/\.json$/, ".md"); return md !== file && existsSync(new URL(`../../${md}`, import.meta.url)) ? md : file; };
 /** A record named by its run's date ("12 Nov record"), its file in the link (and in the link's title). */
-const RECORD_DAY: Record<string, string> = { [FACEID_RECORD]: "12 Nov", [OWNERS_RECORD]: "1 Nov", [ANCHOR_RECORD]: "13 Nov", [ANCHOR_VERIFIED_RECORD]: "15 Nov" };
+const RECORD_DAY: Record<string, string> = { [FACEID_RECORD]: "12 Nov", [OWNERS_RECORD]: "1 Nov", [ANCHOR_RECORD]: "13 Nov", [ANCHOR_VERIFIED_RECORD]: "15 Nov",
+  [SERIES_RECORDS[0]]: "19 Nov", [ANCHOR_19_RECORD]: "19 Nov", [ANCHOR_19_CHECK]: "MATCH" };
 const recordLink = (file: string) => `<a href="${esc(`${REPO_BLOB}${shown(file)}`)}" title="${esc(shown(file))}" target="_blank" rel="noopener">${esc(`${RECORD_DAY[file] ?? file.split("/").pop()} record`)} ↗</a>`;
 
 /** The block: the three facts, then the numbers (the main run's Alta payments, with their list). */

@@ -26,6 +26,8 @@ cloud/public/assets/
 # Mutation testing (npm run mutation): Stryker's working files and full report.
 .stryker-tmp/
 reports/mutation/
+# The official Peppol BIS examples (npm run peppol:examples): downloaded, never committed (fixtures/peppol/official-examples.json).
+fixtures/peppol/official/
 
 # The Dafny translation the differential test runs is committed (scripts/formal-dafny.sh checks it).
 !formal/dafny/out/

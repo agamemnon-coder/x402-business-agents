@@ -4,15 +4,18 @@
 #   (and streamlit, which test/interop/tap-interop.ts stands in for: the signing function calls it only on an error).
 # One departure from the reference's pins (19 Nov 2026): fastapi 0.104.1 holds starlette at 0.27 and anyio at 3.x, which have
 # published advisories; fastapi, starlette and anyio are raised to fixed versions. Checked locally the same day: all 22
-# interop cases hold against the unchanged reference code at the pinned commit.
+# interop cases hold against the unchanged reference code at the pinned commit. Later the same day: starlette 0.50.0 still had
+# five published advisories (fixed only in starlette 1.x, which needs a fastapi that needs pydantic >= 2.9), so pydantic
+# is raised from the reference's 2.5.0 as well (resolved: fastapi 0.165.0, starlette 1.10.0, pydantic 2.14.4). OSV then
+# lists 0 advisories for all 24 packages, and all 22 interop cases still hold (run locally, 19 Nov 2026).
 # Compiled to tap-ref-requirements.txt with hashes, wheels only, nothing newer than 2026-11-19:
 #   uv pip compile test/interop/tap-ref-requirements.in --generate-hashes --python-version 3.12 --only-binary :all: --exclude-newer 2026-11-19 -o test/interop/tap-ref-requirements.txt
 fastapi>=0.116.1
-starlette>=0.47.2
+starlette>=1.3.1
 anyio>=4.4.0
 uvicorn==0.24.0
 sqlalchemy==2.0.23
-pydantic==2.5.0
+pydantic>=2.9.0
 python-dotenv
 requests
 cryptography

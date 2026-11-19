@@ -1,12 +1,13 @@
 // The partner pages' evidence strips (src/redesign/evidenceWall.ts evidenceStripHtml) on `npm run judge` started here:
-// /airwallex, /alta and /visa (and the TAP section's strip on /visa) at 360, 390 and 1440 px, light and dark. Every tile
+// /airwallex, /alta and /visa (and the TAP section's strip on /visa) at 360, 390 and 1440 px, light and dark, and
+// /airwallex's lead chips under its heading (19 Nov). Every tile
 // the strip names is there with the wall's figure and link, at least 44 px high, inside the screen and its own box; the
 // group link goes to /proof; the page is no wider than the screen. Screenshots of each strip at 390 and 1440, light.
 //   npx tsx test/browser/partner-strips.check.ts [screenshot dir]
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { startJudge } from "../../src/cli/judge.js";
-import { PARTNER_STRIPS, committedWall } from "../../src/redesign/evidenceWall.js";
+import { PARTNER_LEADS, PARTNER_LEAD_ID, PARTNER_STRIPS, committedWall } from "../../src/redesign/evidenceWall.js";
 import { browserName, launchBrowser } from "./support/browser.js";
 
 const shots = process.argv[2] ?? "test-results/partner-strips";
@@ -49,6 +50,25 @@ for (const [w, h] of [[360, 800], [390, 844], [1440, 900]] as const) {
         if (scheme === "light" && (w === 390 || w === 1440)) {
           await page.evaluate(() => document.querySelectorAll("header, .top").forEach((e) => { (e as HTMLElement).style.visibility = "hidden"; }));
           await page.locator(`#${id}`).screenshot({ path: join(shots, `strip-${strip}-${w}.png`) });
+        }
+      }
+      // /airwallex's lead (19 Nov): the strongest of the wall's figures as chips under the heading, each the wall's figure
+      // and link, at least 44 px high, inside the screen, above the page's path of products.
+      if (path === "/airwallex") {
+        const lead = (await page.evaluate(`(() => { const s = document.getElementById("${PARTNER_LEAD_ID("airwallex")}"), h1 = document.querySelector("main h1"), path = document.querySelector("ol.awpath"); if (!s) return null;
+          return { below: s.getBoundingClientRect().top >= h1.getBoundingClientRect().bottom, beforePath: !!path && !!(s.compareDocumentPosition(path) & Node.DOCUMENT_POSITION_FOLLOWING),
+            chips: [...s.querySelectorAll("li")].map((li) => { const a = li.querySelector("a"), r = a.getBoundingClientRect(); return { key: li.getAttribute("data-wall"), fig: (a.querySelector("b") || {}).textContent || "", href: a.getAttribute("href"), h: r.height, left: r.left, right: r.right, spill: a.scrollWidth > a.clientWidth + 1 }; }) }; })()`)) as { below: boolean; beforePath: boolean; chips: { key: string; fig: string; href: string; h: number; left: number; right: number; spill: boolean }[] } | null;
+        const want = PARTNER_LEADS.airwallex.items.map((i) => i.key).filter((k) => tiles.has(k));
+        if (!lead) fail(`${tag}: no lead #${PARTNER_LEAD_ID("airwallex")}`);
+        else {
+          if (!lead.below || !lead.beforePath) fail(`${tag}: the lead is not between the heading and the path of products`);
+          if (lead.chips.map((c) => c.key).join() !== want.join()) fail(`${tag}: lead chips ${lead.chips.map((c) => c.key).join()} not ${want.join()}`);
+          for (const c of lead.chips) {
+            const rec = tiles.get(c.key);
+            if (!rec || c.fig !== rec.fig || c.href !== rec.href) fail(`${tag}: lead ${c.key} not as the wall's file says (${c.fig})`);
+            if (c.h < 44 || c.left < 0 || c.right > w + 0.5 || c.spill) fail(`${tag}: lead ${c.key} under 44 px, outside the screen or spilling (${JSON.stringify(c)})`);
+          }
+          if (scheme === "light" && (w === 390 || w === 1440)) await page.locator(`#${PARTNER_LEAD_ID("airwallex")}`).screenshot({ path: join(shots, `lead-airwallex-${w}.png`) });
         }
       }
       const over = (await page.evaluate(() => document.documentElement.scrollWidth)) - w;

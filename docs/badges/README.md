@@ -12,6 +12,7 @@ from its record.
 | [chaos.json](chaos.json) | [chaos-money.json](../evidence/chaos-money.json) | invariant breaks across all chaos scenarios |
 | [fuzz.json](fuzz.json) | [fuzzing.json](../evidence/fuzzing.json) | fuzz runs, and properties that failed (orange while any did) |
 | [dafny.json](dafny.json) | [formal-proofs.json](../evidence/formal-proofs.json) | the Dafny verifier's summary for formal/dafny (red on any error); `npm run formal:dafny` fails while the record or this badge differs from what the verifier prints |
+| [coverage.json](coverage.json) | [coverage.json](../evidence/coverage.json) | statements and branches of the product's measured scope the test suite covers ([coverage.md](../evidence/coverage.md)); bright green only at 90% and 80% |
 
 No mutation-score badge: no mutation record is committed. The script writes one only if `docs/evidence/mutation.json` exists.
 

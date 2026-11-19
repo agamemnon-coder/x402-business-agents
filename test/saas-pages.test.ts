@@ -11,7 +11,7 @@ import { hostileClaimText, hostileSplit } from "../src/redesign/partners.js";
 import { ANCHOR_RUN, HARNESS_LINE, SECURITY_VIZ_CSS, ZT_NAMES, anchorRun, hostileEval, securityViz, zeroTrust, AUDIT_COMMAND, AUDIT_LOG, CHAIN_LINES, OVERVIEW_DOC, existingDoc, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityLead, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
 import { evidenceItems } from "../src/redesign/securityEvidence.js";
 import { buildPages, flowLinks } from "../src/relay/assets.js";
-import { AIRWALLEX_PAGE, CLAUDE_PAGE, METAL_PAGE, PROOF_PAGE, RUNS_PAGE, SECURITY_CSP, SECURITY_PAGE, VISA_PAGE } from "../src/servers/dashboard.js";
+import { AIRWALLEX_PAGE, CLAUDE_PAGE, METAL_PAGE, PROOF_PAGE, RUNS_PAGE, SECURITY_CSP, SECURITY_PAGE, T0_PAGE, VISA_PAGE } from "../src/servers/dashboard.js";
 import { menuItemOf } from "../src/ui/more.js";
 import { navHtml } from "../src/ui/nav.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
@@ -414,7 +414,8 @@ describe("the page on the site, and the one that went", () => {
       const nav = /<nav class="tabs" aria-label="Main">([\s\S]*?)<\/nav>/.exec(html)![1]!;
       return { more: /<summary class="on">More<\/summary>/.test(nav), tabs: [...nav.matchAll(/<a href="(\w+)" class="on" aria-current="page">/g)].map((m) => m[1]) };
     };
-    for (const [key, html] of [["airwallex", AIRWALLEX_PAGE], ["metal", METAL_PAGE], ["visa", VISA_PAGE], ["claude", CLAUDE_PAGE]] as const) {
+    // /t0 since 19 Nov (the owner: "we use T:0 too"): under More like the others; it marked Proof before.
+    for (const [key, html] of [["airwallex", AIRWALLEX_PAGE], ["metal", METAL_PAGE], ["visa", VISA_PAGE], ["claude", CLAUDE_PAGE], ["t0", T0_PAGE]] as const) {
       expect({ key, ...state(html), here: html.includes(`<a href="${key === "metal" ? "alta" : key}" aria-current="page">`) }).toEqual({ key, more: true, tabs: [], here: true });
     }
     expect(state(RUNS_PAGE)).toEqual({ more: false, tabs: [] });

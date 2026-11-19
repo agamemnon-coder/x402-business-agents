@@ -1,0 +1,67 @@
+# DAST (19 November): the OWASP ZAP baseline scan, weekly and on demand, against our own public test sites only: the
+# relay Worker (kit11.max-31b.workers.dev) and the hosted /try (purser-try.max-31b.workers.dev). Test money only; no
+# partner system is scanned. The baseline is passive: a one-minute spider, then ZAP's passive rules read every response;
+# it sends no attack payloads.
+# The scanner is ZAP's own image, pinned by digest (ghcr.io/zaproxy/zaproxy 2.17.0, which is also `stable`; digest read
+# from ghcr.io on 19 November 2026), running its zap-baseline.py. `-I` keeps warnings from failing the scan; the job then
+# fails only on a High-risk alert in the JSON report. Each site's reports (HTML, Markdown, JSON) are kept as an artifact.
+# The first run, its findings and why each is fixed or accepted: docs/evidence/dast-zap-2026-11-19.md.
+name: dast-zap
+on:
+  schedule:
+    - cron: "37 3 * * 3"
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  baseline:
+    name: ZAP baseline (${{ matrix.site }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - site: kit11
+            url: https://kit11.max-31b.workers.dev
+          - site: purser-try
+            url: https://purser-try.max-31b.workers.dev
+    env:
+      ZAP_IMAGE: ghcr.io/zaproxy/zaproxy:2.17.0@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af
+      SITE: ${{ matrix.site }}
+      TARGET: ${{ matrix.url }}
+    steps:
+      - name: Harden the runner (audit outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      # The image runs as its own user (uid 1000) and writes the reports into /zap/wrk.
+      - name: ZAP baseline scan
+        run: |
+          mkdir -p zap-out && chmod 0777 zap-out
+          docker run --rm -v "$PWD/zap-out:/zap/wrk/:rw" "$ZAP_IMAGE" \
+            zap-baseline.py -t "$TARGET" -I -J "zap-$SITE.json" -r "zap-$SITE.html" -w "zap-$SITE.md"
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zap-baseline-${{ matrix.site }}
+          path: zap-out/
+          retention-days: 30
+      - name: No High-risk alert
+        run: |
+          node -e '
+            const r = require(process.argv[1]);
+            const alerts = r.site.flatMap((s) => s.alerts.map((a) => ({ ...a, site: s["@name"] })));
+            const by = (c) => alerts.filter((a) => a.riskcode === c);
+            const lines = [`ZAP ${r["@version"]} baseline, ${process.env.TARGET}: High ${by("3").length}, Medium ${by("2").length}, Low ${by("1").length}, Informational ${by("0").length}`];
+            for (const a of alerts) lines.push(`- ${a.riskdesc} [${a.pluginid}] ${a.alert} (${a.count})`);
+            console.log(lines.join("\n"));
+            require("node:fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+            for (const a of by("3")) console.log(`::error::High: [${a.pluginid}] ${a.alert} on ${a.site}`);
+            process.exit(by("3").length ? 1 : 0);
+          ' "$PWD/zap-out/zap-$SITE.json"

@@ -16,6 +16,7 @@ import type { InvoiceReadSource } from "../try/claude.js";
 import type { AgentAsk } from "../try/world.js";
 import type { RecordedAgents } from "../try/recorded.js";
 import { buildPages } from "./assets.js";
+import { summarize } from "../ops/syntheticChecks.js";
 
 /** The Durable Object's SQL call shape over better-sqlite3. */
 export function sqlOver(db: Database.Database): Sql {
@@ -58,6 +59,8 @@ export async function startLocalRelay(opts: { port: number; token: string; /** /
             // /airwallex's live cards: no sandbox key here, said so (worker/src/agentCardsLive.ts).
             ?? (path === AGENT_CARDS_PATH ? Response.json({ source: "unavailable", reason: "no sandbox key on this machine", checked_at: new Date().toISOString() }) : null)
             ?? (awxLive.paths.includes(path) ? await awxLive.fetch(request) : null)
+            // /status.json: no hourly checks run on this machine (the Worker's cron runs them), so it says none has run.
+            ?? (path === "/status.json" ? Response.json(summarize([], Date.now())) : null)
             ?? (path.startsWith("/api/") || path === "/health" || path === "/health/live" ? await relay.fetch(request) : notFoundResponse(pages));
           res.writeHead(response.status, Object.fromEntries(response.headers));
           res.end(Buffer.from(await response.arrayBuffer()));

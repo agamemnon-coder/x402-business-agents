@@ -56,6 +56,13 @@ describe("shields endpoint badges from the records", () => {
     expect(dafny.verifier).toBe(`Dafny program verifier finished with ${dafny.totals.verified} verified, ${dafny.totals.errors} errors`);
     expect(d.message).toBe(`${dafny.totals.verified} verified, ${dafny.totals.errors} errors`);
     expect(d.color).toBe(dafny.totals.errors === 0 ? "brightgreen" : "red");
+    // Coverage of the product's measured scope, from the counts (docs/evidence/coverage.md); bright green only at OpenSSF
+    // gold's bar of 90% statements and 80% branches, which the record does not reach.
+    const cov = json<{ scopes: { product: { after: Record<"statements" | "branches", { covered: number; total: number }> } } }>("docs/evidence/coverage.json").scopes.product.after;
+    const pct = (k: "statements" | "branches") => ((cov[k].covered / cov[k].total) * 100).toFixed(1);
+    const c = json<{ message: string; color: string }>("docs/badges/coverage.json");
+    expect(c.message).toBe(`${pct("statements")}% statements · ${pct("branches")}% branches`);
+    expect(c.color).toBe(Number(pct("statements")) >= 90 && cov.branches.covered / cov.branches.total >= 0.8 ? "brightgreen" : "green");
   });
 
   it("writes no mutation badge while no mutation record is committed", () => {
@@ -68,5 +75,8 @@ describe("shields endpoint badges from the records", () => {
     expect(BUILD.chaos({ totals: { scenarios: 3 }, invariants: { I1: { broken: 1 }, I2: { broken: 0 } } })).toEqual({ label: "chaos invariants broken", message: "1 in 3 scenarios", color: "red" });
     expect(() => BUILD.fuzz({ totals: { runs: 5 } })).toThrow(/not a count/);
     expect(() => BUILD["airwallex-endpoints"]({})).toThrow(/no totals/);
+    expect(BUILD.coverage({ scopes: { product: { after: { statements: { covered: 90, total: 100 }, branches: { covered: 80, total: 100 } } } } })).toEqual({ label: "coverage", message: "90.0% statements · 80.0% branches", color: "brightgreen" });
+    expect(() => BUILD.coverage({ scopes: { product: { after: { statements: { covered: 5, total: 4 }, branches: { covered: 1, total: 2 } } } } })).toThrow(/not a share/);
+    expect(() => BUILD.coverage({ scopes: {} })).toThrow(/no product scope/);
   });
 });

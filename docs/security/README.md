@@ -8,7 +8,7 @@ Every security measure Purser has taken, each with its figure and its committed 
 |---|---|
 | **All 128** attacks on the /try API held (red team v2), **All 894** tampered proof copies refused, **0** money invariants broken in 317 chaos scenarios | [redteam-api.md](../evidence/redteam-api.md) · [tamper-matrix.md](../evidence/tamper-matrix.md) · [chaos-money.md](../evidence/chaos-money.md) |
 | **1,102,845** states of the payment model checked by TLC, no error; **50 of 51** planted bugs caught in the proof verifier | [formal-model.md](../evidence/formal-model.md) · [mutation-testing.md](../evidence/mutation-testing.md) |
-| **All 51** Actions pinned by SHA; `v1.2.0` released with Sigstore-signed SLSA provenance; OpenSSF Best Practices **Silver** | [releases/v1.2.0.md](../releases/v1.2.0.md) · [openssf-silver.md](openssf-silver.md) |
+| **All 60** Actions pinned by SHA; `v1.2.0` released with Sigstore-signed SLSA provenance; OpenSSF Best Practices **Silver** | [releases/v1.2.0.md](../releases/v1.2.0.md) · [openssf-silver.md](openssf-silver.md) |
 
 Test money only: the Airwallex sandbox and the Alta (formerly Metal) testnet. Nothing here is a certificate: no auditor
 has tested these controls, and no third-party penetration test has been run ([what is not in place
@@ -38,8 +38,8 @@ The threat model with every trust boundary: [security.md](../security.md#trust-b
 | Tamper matrix | **All 894** tampered proof copies refused | Test world: offline | [tamper-matrix.md](../evidence/tamper-matrix.md) |
 | Formal model (TLA+, TLC) | **1,102,845** states, no error; 3 of 3 planted bugs caught | Offline; a model of the code, not the code | [formal-model.md](../evidence/formal-model.md), [PurserPayment.tla](../../formal/PurserPayment.tla) |
 | Mutation testing of the proof verifier | **50 of 51** planted bugs caught (partial run: one Stryker group not reported) | Offline | [mutation-testing.md](../evidence/mutation-testing.md) |
-| Scanners: OSV-Scanner with VEX, Semgrep, CodeQL, gitleaks, npm audit | **8** CI jobs on every change; 35 OSV findings left, all in CI tooling and test fixtures, each with an OpenVEX statement | CI | [osv-scanner.yml](../../.github/workflows/osv-scanner.yml), [vex/README.md](vex/README.md) |
-| Harden-Runner, pinned Actions, SBOM, Sigstore-signed releases | **All 51** Actions pinned to a commit SHA; Harden-Runner on 14 of 15 jobs (audit only); 192 SBOM components; `v1.2.0` signed | CI | [v1.2.0.md](../releases/v1.2.0.md), [sbom.cdx.json](sbom.cdx.json) |
+| Scanners: OSV-Scanner with VEX, Semgrep, CodeQL, gitleaks, npm audit | **8** CI jobs on every change; 33 OSV findings left, all in CI tooling and test fixtures, each with an OpenVEX statement | CI | [osv-scanner.yml](../../.github/workflows/osv-scanner.yml), [vex/README.md](vex/README.md) |
+| Harden-Runner, pinned Actions, SBOM, Sigstore-signed releases | **All 60** Actions pinned to a commit SHA; Harden-Runner on 17 of 18 jobs (audit only); 192 SBOM components; `v1.2.0` signed | CI | [v1.2.0.md](../releases/v1.2.0.md), [sbom.cdx.json](sbom.cdx.json) |
 | STRIDE threat model | **40** attacks, each with its STRIDE class | Written down | [security.md](../security.md#attackers-and-attacks) |
 | Security mapping to NIST SSDF, OWASP Top 10 for LLM Applications and DORA | **24** controls mapped; mapped, not certified; 10 gaps named | Written down | [SECURITY-MAPPING.md](SECURITY-MAPPING.md) |
 | Security requirements | **8** requirements, each with where it is enforced and tested | Written down | [requirements.md](requirements.md) |
@@ -96,19 +96,33 @@ folder:
    gh attestation verify x402-business-agents-<tag>.tar.gz -R agamemnon-coder/x402-business-agents --bundle x402-business-agents-<tag>.provenance.intoto.jsonl
    ```
 
-To check the tarball against the code itself: `git archive --format=tar.gz --prefix=x402-business-agents-<tag>/ <tag>`
-in a clone gives the same bytes with the same git version (two runs on 19 November gave the same SHA-256).
+To check the tarball against the code itself (the build is reproducible): `git archive --format=tar.gz
+--prefix=x402-business-agents-<tag>/ <tag>` in a clone gives the same bytes. On 19 November 2026, with git 2.43.0 on
+Linux, two runs for `v1.2.0` (commit `8d5b51d`) both gave SHA-256
+`e4375a3cc90c5221b25d2efc5b018ab1f32a36222e774f84e51be79011c48fba`, the hash the release's `SHA256SUMS` lists for
+`x402-business-agents-v1.2.0.tar.gz`, which GitHub's runner built:
+
+```sh
+git fetch origin tag v1.2.0
+git archive --format=tar.gz --prefix=x402-business-agents-v1.2.0/ -o x402-business-agents-v1.2.0.tar.gz v1.2.0
+sha256sum x402-business-agents-v1.2.0.tar.gz
+```
+
+The bill of materials is not reproduced this way: `npm sbom` writes a serial number and a timestamp into it.
 
 ## The supply-chain details
 
 | Artefact or check | What it shows | Where |
 |---|---|---|
 | Bill of materials | The runtime dependencies (CycloneDX 1.5, npm 10.9.4), regenerated on 19 November 2026 from a clean `npm ci` of this lockfile: 192 components. The copy of 6 November listed 167; the lockfile changed since: the product's code merged into this repository on 15 November (#378, after which `qrcode`, `unpdf` and `@modelcontextprotocol/sdk` are runtime dependencies) and the dependency updates of 18 November (#432: `@x402/*` 2.30.0, `viem` 2.57.17, `hono` 4.13.18). CI regenerates it on every push and fails if it is empty. | `sbom.cdx.json`, `npm run sbom`, CI job `security` |
-| Pinned Actions | Every GitHub Action in `.github/workflows/` is pinned to a full commit SHA with its tag in a comment. Checked on 19 November against the tags on GitHub: `actions/checkout` v7.0.1 (`3d3c42e`), `actions/setup-node` v7.1.0 (`949feb2`), `actions/cache` v6.1.0 (`55cc834`), `gitleaks/gitleaks-action` v3.0.0 (`e0c47f4`). The two container images are pinned by digest, also checked against their tags on 19 November: `ghcr.io/gitleaks/gitleaks:v8.24.3` (`sha256:e1b35e1…`) and `mcr.microsoft.com/playwright:v1.63.0-noble` (`sha256:eff16c3…`, the WebKit and Firefox jobs). | `.github/workflows/` |
-| Locked installs | Every job installs with `npm ci` (the lockfile, with its integrity hashes), the Worker with its own. Since 19 November also Semgrep, with each of the 66 packages it installs pinned by version and hash, wheels only (`pip install --require-hashes`; it was `semgrep==1.180.0`, a version pin: a local run of the CI command with the hashed install found the same 0 findings), and the TAP interop job's reference proxy, which ships no lockfile: ours is its ranges resolved as of 19 October, the same 94 packages, versions and hashes that `npm install --before=2026-10-19` installed, now through `npm ci`. The interop job's Python packages were already hashed. | `package-lock.json`, `worker/`, `.semgrep/requirements.txt`, `test/interop/tap-ref-cdn-proxy.package-lock.json`, `test/interop/tap-ref-requirements.txt` |
+| Pinned Actions | Every GitHub Action in `.github/workflows/` is pinned to a full commit SHA with its tag in a comment. Checked on 19 November against the tags on GitHub: `actions/checkout` v7.0.1 (`3d3c42e`), `actions/setup-node` v7.1.0 (`949feb2`), `actions/cache` v6.1.0 (`55cc834`), `gitleaks/gitleaks-action` v3.0.0 (`e0c47f4`). The two container images are pinned by digest, also checked against their tags on 19 November: `ghcr.io/gitleaks/gitleaks:v8.24.3` (`sha256:e1b35e1…`) and `mcr.microsoft.com/playwright:v1.63.0-noble` (`sha256:eff16c3…`, the WebKit and Firefox jobs). Added on 19 November: `actions/dependency-review-action` v5.0.1 (`bbc44d1`, from `git ls-remote`) and ZAP's image `ghcr.io/zaproxy/zaproxy:2.17.0` (`sha256:9624669…`, read from ghcr.io). | `.github/workflows/` |
+| Locked installs | Every job installs with `npm ci` (the lockfile, with its integrity hashes), the Worker with its own. Since 19 November also Semgrep, with each of the 66 packages it installs pinned by version and hash, wheels only (`pip install --require-hashes`; it was `semgrep==1.180.0`, a version pin: a local run of the CI command with the hashed install found the same 0 findings), and the TAP interop job's reference proxy, which ships no lockfile: ours is its ranges resolved as of 19 October, the same 94 packages, versions and hashes that `npm install --before=2026-10-19` installed, now through `npm ci`; two raised since inside the proxy's own ranges for their advisories (`body-parser` 1.20.9, `follow-redirects` 1.16.3). The interop job's Python packages were already hashed. | `package-lock.json`, `worker/`, `.semgrep/requirements.txt`, `test/interop/tap-ref-cdn-proxy.package-lock.json`, `test/interop/tap-ref-requirements.txt` |
 | OpenSSF Scorecard | Since 19 November, `.github/workflows/scorecard.yml` scores the repository on every push to `main`, weekly and on demand, publishes the result to api.scorecard.dev and uploads the findings to code scanning. No token permission at the top; the job has only what Scorecard needs. No score is quoted here until it has run. | `.github/workflows/scorecard.yml` |
 | OpenSSF Best Practices | The project's badge from the OpenSSF Best Practices programme: **silver** (project 16923, 19 Nov 2026; passing earlier that day), from the project's own answers to its criteria ([openssf-silver.md](openssf-silver.md)). | [bestpractices.dev/projects/16923](https://www.bestpractices.dev/projects/16923) |
 | Updates | Dependabot opens weekly update pull requests for npm (root and `worker/`) and the Actions. | `.github/dependabot.yml` |
+| Dependency review | Since 19 November, every pull request is checked by GitHub's dependency-review-action: a dependency version it adds with a known high or critical vulnerability (runtime scope) fails the check; lower ones are listed. Read-only token, no pull request comment. | `.github/workflows/dependency-review.yml` |
+| DAST | Since 19 November, the OWASP ZAP baseline scan (passive: a one-minute spider, then the passive rules) runs weekly and on demand against our own two test sites only, the relay and the hosted /try; the reports are kept as artifacts and the job fails only on a High-risk alert. The first run, done locally the same day with ZAP 2.17.0's `zap-baseline.py`: 0 High, 0 Medium, 5 Low and 9 Informational alert types over the two sites, each accepted with its reason. | `.github/workflows/dast-zap.yml`, [dast-zap-2026-11-19.md](../evidence/dast-zap-2026-11-19.md) |
+| Nightly evidence | Since 19 November, the money chaos suite (3,000 randomized scenarios, the committed report has 300), the fuzz properties (five times their runs and time limits) and the API red team (all 128 attacks) run every night on a fresh runner against a local server only, with a new seed each night. Any broken invariant, failed property or failed attack fails the run; the reports are artifacts, nothing is committed. | `.github/workflows/nightly-evidence.yml` |
 | `npm audit` | 0 vulnerabilities of any level in the root and in `worker/` (19 November). CI fails on any advisory in `worker/` (`--audit-level=low`) and on any in the root that `.audit-allow.json` does not accept (development tools only, no patched release, with an expiry; `scripts/audit-check.ts`). | CI job `test` |
 | Static analysis | Semgrep 1.180.0 with its public TypeScript, Node.js, secrets and OWASP Top Ten rule sets, blocking since 2 November (first run: 110 rules, 279 files, 0 findings). With the OWASP set: 598 rules loaded, 118 of them apply to our TypeScript, 279 files, 0 findings (CI, f88389c). Re-run on 19 November with the CI command and the hashed install, on a Linux machine outside CI: 143 rules ran on 801 files (`src` and `worker/src` have grown), 0 findings. Results stay on the runner (metrics off). | CI job `security` |
 | Our own rules | No shell command built from a template or concatenation (`exec`/`execSync`), no `spawn` with `shell: true`. Added because the canary below showed the public sets miss that case. | `.semgrep/purser.yml` |
@@ -117,6 +131,10 @@ in a clone gives the same bytes with the same git version (two runs on 19 Novemb
 | Signed releases | Since 19 November, `.github/workflows/release.yml` turns a pushed version tag (`v…`; never `v1.0-submission` or `v1.1-submission`, which stay as submitted) into a GitHub release with the source tarball (`git archive` of the tag), its bill of materials, `SHA256SUMS`, and GitHub artifact attestations (SLSA build provenance and an SBOM attestation, signed through Sigstore with the workflow's identity), whose bundles are on the release as `*.intoto.jsonl`. It never creates or moves a tag. The first release made with it is `v1.2.0` (19 November 2026; [notes](../releases/v1.2.0.md)). | `.github/workflows/release.yml`, below |
 
 What only the owner can switch on (Dependabot security updates, private vulnerability reporting, the OpenSSF Best
-Practices badge, and after the judging a ruleset on `main`), click by click: [owner-actions.md](owner-actions.md). The
-OpenSSF Best Practices silver level, criterion by criterion: [openssf-silver.md](openssf-silver.md). To report a
-vulnerability: [SECURITY.md](../../SECURITY.md).
+Practices badge, and after the judging a ruleset on `main`), click by click: [owner-actions.md](owner-actions.md). To
+report a vulnerability: [SECURITY.md](../../SECURITY.md).
+
+The OpenSSF Best Practices silver level, criterion by criterion, with the evidence, what is still open and the owner's
+steps: [openssf-silver.md](openssf-silver.md); the gold level, with what stays Unmet while there is one maintainer:
+[openssf-gold.md](openssf-gold.md); the security requirements, design principles, hardening, input
+validation and cryptography: [requirements.md](requirements.md).

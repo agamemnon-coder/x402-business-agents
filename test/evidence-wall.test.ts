@@ -4,13 +4,14 @@
 // inline script or style (the page's CSP).
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { EVIDENCE_WALL_CSS, LLMS_WALL_HEADING, PARTNER_STRIPS, README_WALL_KEYS, evidenceStripHtml, readmeWallLine, withReadmeWallLine, WALL_FILE, committedWall, evidenceWallHtml, evidenceWallLlms, withWallSection, type EvidenceWall, type WallTile } from "../src/redesign/evidenceWall.js";
+import { EVIDENCE_WALL_CSS, LLMS_WALL_HEADING, PARTNER_STRIPS, evidenceLeadHtml, README_WALL_KEYS, evidenceStripHtml, readmeWallLine, withReadmeWallLine, WALL_FILE, committedWall, evidenceWallHtml, evidenceWallLlms, withWallSection, type EvidenceWall, type WallTile } from "../src/redesign/evidenceWall.js";
 import { evidenceWall, evidenceWallFile, wallWalks } from "../src/redesign/evidenceWallData.js";
 import { liveTryRecords, liveTryTotals, nearestRank, type LiveTryRecord } from "../src/redesign/liveTry.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { README_MAP_FILES, evidenceMapSvgFile, readmeMapLine } from "../src/redesign/evidenceMap.js";
 import { countOf } from "../src/redesign/ui.js";
+import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const json = <T>(p: string) => JSON.parse(read(p)) as T;
@@ -174,6 +175,25 @@ describe("the README's wall line and the partner pages' strips", () => {
       expect(html).not.toMatch(/<script|style=|\son[a-z]+=|endorsed by|partnered with/i);
     }
   });
+
+  // 19 Nov (the owner: "lead with the strongest live-proven result"): /airwallex opens with the wall's own figures as chips.
+  it("/airwallex's lead shows the wall's own figures and links, says what was simulated, and sits right under the heading", () => {
+    const w = committedWall()!;
+    const html = evidenceLeadHtml("airwallex", w);
+    const chips = [...html.matchAll(/<li data-wall="([^"]+)" data-rec="([^"]+)"><a href="([^"]+)"[^>]*><b>([^<]+)<\/b>([^<]+)<\/a><\/li>/g)].map((m) => ({ key: m[1]!, rec: m[2]!, href: m[3]!, fig: m[4]!, words: m[5]! }));
+    expect(chips.map((c) => c.key)).toEqual(["soak-paid", "soak-fx", "spend-bills", "try-transfers", "awx-endpoints"]);
+    for (const c of chips) expect(c).toMatchObject({ rec: tile(w, c.key).rec, href: tile(w, c.key).href.replace(/&/g, "&amp;"), fig: tile(w, c.key).fig });
+    // The endpoints' total from the tile's own label ("Airwallex endpoints live, of 61"), never typed in.
+    const cov = json<{ totals: { endpoints: number; live: number } }>("docs/evidence/airwallex-api-coverage.json");
+    expect(chips.at(-1)).toMatchObject({ fig: String(cov.totals.live), words: `of ${cov.totals.endpoints} endpoints live` });
+    expect(html).toContain("a PAID is the sandbox's simulation");
+    expect(html).not.toMatch(/<script|style=|\son[a-z]+=|endorsed by|partnered with/i);
+    expect(evidenceLeadHtml("airwallex", { ...w, groups: [] })).toBe("");
+    const page = buildPages().airwallex!;
+    const at = page.indexOf('id="lead-airwallex"');
+    expect(at).toBeGreaterThan(page.indexOf("</h1></div>"));
+    expect(at).toBeLessThan(page.indexOf('<ol class="awpath"'));
+  });
 });
 
 describe("the OpenSSF Best Practices tile", () => {
@@ -204,7 +224,7 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(tile(w(), "fuzzing").note).toContain(fz.runs.toLocaleString("en-GB"));
   });
 
-  it("reads eval v3, eval v4 before and after, site quality and the WebKit walks from their records", () => {
+  it("reads eval v3, eval v4 before and after, eval v5, site quality and the WebKit walks from their records", () => {
     const v3 = json<{ totals: { purser_script: { wrong_payments: number }; no_rules: { wrong_payments: number } } }>("docs/evals/adversarial-v3.json").totals;
     expect(tile(w(), "eval-v3").fig).toBe(`${v3.purser_script.wrong_payments} vs ${v3.no_rules.wrong_payments}`);
     // Eval v4: the held-out figure, and beside it the figures after the fixes written against its misses (third round).
@@ -213,6 +233,12 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(v4a.held_out).toBe(false);
     expect(tile(w(), "eval-v4").fig).toBe(`${v4.purser_script.wrong_payments} vs ${v4.no_rules.wrong_payments}`);
     expect(tile(w(), "eval-v4").note).toContain(`After the fixes written against these misses (no longer held out): ${v4a.totals.purser_script.wrong_payments} wrong payments, ${v4a.totals.purser_script.false_holds} false holds`);
+    // Eval v5: held out, its one run as recorded.
+    const v5 = json<{ held_out: boolean; cases_commit: string; totals: { purser_script: { wrong_payments: number; false_holds: number; clean_truths: number }; no_rules: { wrong_payments: number } } }>("docs/evals/adversarial-v5.json");
+    expect(v5.held_out).toBe(true);
+    expect(tile(w(), "eval-v5").fig).toBe(`${v5.totals.purser_script.wrong_payments} vs ${v5.totals.no_rules.wrong_payments}`);
+    expect(tile(w(), "eval-v5").note).toContain(`(commit ${v5.cases_commit})`);
+    expect(tile(w(), "eval-v5").note).toContain(`${v5.totals.purser_script.false_holds} false holds of ${v5.totals.purser_script.clean_truths}`);
     const sq = json<{ lighthouse: { path: string; preset: string; median: { performance: number; accessibility: number } }[] }>("docs/evidence/site-quality.json").lighthouse;
     expect(tile(w(), "site-quality").fig).toBe(String(Math.min(...sq.map((x) => x.median.accessibility))));
     expect(tile(w(), "site-quality").note).toContain(`lowest performance ${Math.min(...sq.map((x) => x.median.performance))}`);

@@ -122,7 +122,7 @@ export function evidenceWallHtml(all: EvidenceWall | null = committedWall()): st
  */
 export const PARTNER_STRIPS: Record<"airwallex" | "alta" | "visa" | "tap", { title: string; group: string; keys: string[]; legend: string }> = {
   airwallex: { title: "Live on Airwallex", group: "ev-rails", keys: ["soak-paid", "try-transfers", "spend-bills", "soak-fx", "awx-endpoints", "late-failure"], legend: "Airwallex sandbox, test money; a sandbox PAID is the sandbox's simulation. Each tile opens its record." },
-  alta: { title: "Live on Alta", group: "ev-rails", keys: ["alta-series-refused", "alta-series-paid", "alta-refusal", "alta-payments", "passkeys-onchain", "clearing-load"], legend: "Alta testnet, test money. Each tile opens its record." },
+  alta: { title: "Live on Alta", group: "ev-rails", keys: ["alta-series-paid", "alta-series-refused", "alta-refusal", "alta-payments", "passkeys-onchain", "clearing-load"], legend: "Alta testnet, test money. Each tile opens its record." },
   visa: { title: "Visa via Airwallex's Airi, as recorded", group: "ev-rails", keys: ["visa-airi", "visa-refused"], legend: "Airwallex sandbox, Airi's test card, test money. Each tile opens its record." },
   // /visa keeps TAP outside the VIC entry, in its own section (assertVicFirst): this strip sits inside that section.
   tap: { title: "Re-run on 19 Nov", group: "ev-forged", keys: ["tap-interop"], legend: "Run on our machine against Visa's public reference; nothing bought, no money moved." },
@@ -139,6 +139,33 @@ export function evidenceStripHtml(partner: keyof typeof PARTNER_STRIPS, o: { not
   <ul class="ew-ts">${shown.map(tile).join("")}</ul>
   <p class="ps-n">${esc(`${spec.legend}${o.note ? ` ${o.note}` : ""}`)}</p>
 </section>`;
+}
+
+/**
+ * A partner page's lead (19 Nov, the owner: "lead with the strongest live-proven result"): under the heading, one line
+ * of the wall's own figures as chips, each a link to its record, before the page's own story. The figures and links are
+ * the committed wall's (docs/evidence/evidence-wall.json); only the few words beside each are this page's.
+ */
+export const PARTNER_LEADS: Record<"airwallex", { intro: string; items: { key: string; words: (t: WallTile) => string }[] }> = {
+  airwallex: {
+    intro: "Strongest live results, Airwallex sandbox, test money (a PAID is the sandbox's simulation):",
+    items: [
+      { key: "soak-paid", words: () => "soak payouts PAID, hash read back" },
+      { key: "soak-fx", words: () => "FX conversions read back" },
+      { key: "spend-bills", words: () => "bills in Airwallex Spend" },
+      { key: "try-transfers", words: () => "/try payouts PAID" },
+      // The tile's label carries the total: "Airwallex endpoints live, of 61".
+      { key: "awx-endpoints", words: (t) => `${/of (\d+)$/.exec(t.label)?.[1] ? `of ${/of (\d+)$/.exec(t.label)![1]} ` : ""}endpoints live` },
+    ],
+  },
+};
+export const PARTNER_LEAD_ID = (partner: string) => `lead-${partner}`;
+export function evidenceLeadHtml(partner: keyof typeof PARTNER_LEADS, w: EvidenceWall | null = committedWall()): string {
+  const spec = PARTNER_LEADS[partner];
+  const tiles = new Map((w?.groups ?? []).flatMap((g) => g.tiles.map((t) => [t.key, t] as const)));
+  const shown = spec.items.map((i) => ({ i, t: tiles.get(i.key) })).filter((x): x is { i: (typeof spec.items)[number]; t: WallTile } => !!x.t);
+  if (!shown.length) return "";
+  return `<section class="plead" id="${PARTNER_LEAD_ID(partner)}" aria-label="${esc(spec.intro.replace(/:$/, ""))}" data-rec="${esc(WALL_FILE)}"><p>${esc(spec.intro)}</p><ul>${shown.map(({ i, t }) => `<li data-wall="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}" title="${esc(t.note)}"${isExternal(t.href) ? ' target="_blank" rel="noopener"' : ""}><b>${esc(t.fig)}</b>${esc(i.words(t))}</a></li>`).join("")}</ul></section>`;
 }
 
 /** /airwallex's line on the endpoints not live: each, and why, from the coverage report and its live record. */
@@ -192,4 +219,13 @@ export const EVIDENCE_WALL_CSS = `
 .ewall.pstrip ul.ew-ts { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 .ewall.pstrip .ps-n { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
 @media (max-width: 420px) { .ewall li.ew-t a { padding: 9px 10px 7px; } .ewall .ew-f { font-size: 20px; } .ewall .ew-l { font-size: 12.5px; } }
+/* A partner page's lead: the strongest figures as chips, each a link to its record (44 px high: a tap target). */
+.plead { display: grid; gap: 6px; margin: 2px 0 6px; }
+.plead p { margin: 0; font-size: 14px; color: var(--muted); }
+.plead ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.plead a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-left: 3px solid var(--awx); border-radius: 10px; background: var(--surface); color: var(--text); font-size: 14.5px; font-weight: 600; text-decoration: none; }
+.plead a:hover, .plead a:focus-visible { border-color: var(--awx); }
+.plead b { font-size: 17px; font-weight: 780; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+/* On a phone, two chips a row, the figure over its words, so the page's own path stays on the first screen. */
+@media (max-width: 520px) { .plead ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; } .plead li { display: flex; } .plead a { flex: 1; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; padding: 6px 10px; font-size: 13px; line-height: 1.25; } .plead b { font-size: 16px; } }
 `;
