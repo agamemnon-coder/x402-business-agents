@@ -35,7 +35,7 @@ export interface EngineKit<C extends EngineCtx> {
   approved?(c: C, answer: { status: string }): Promise<void>;
 }
 
-export interface EngineRoute<C extends EngineCtx> { method: "GET" | "POST"; path: string; summary: string; need: "read" | "admin"; run: (c: C) => Promise<Response> }
+export interface EngineRoute<C extends EngineCtx> { method: "GET" | "POST"; path: string; summary: string; need: "read" | "admin" | "propose"; run: (c: C) => Promise<Response> }
 
 /** An upload's whole request body, and the document in it once decoded (the inbox's own limit, src/ap/inbox.ts; it checks again). */
 export const UPLOAD_BODY_MAX_BYTES = 22_000_000;
@@ -59,6 +59,12 @@ const Supplier = z.object({
 const Batch = z.object({ invoice_ids: z.array(z.string().min(1).max(64)).min(1).max(20) }).strict();
 /** Money in on the bank's simulation: at most 500.00 at a time (the daily caps apply on top at Airwallex). */
 const DepositIn = z.object({ amount: z.string().regex(/^\d{1,3}\.\d{2}$/, "an amount such as 25.00, at most 500.00") }).strict();
+
+/** The request bodies of the engine's routes, as the OpenAPI document shows them (cloud/src/app.ts openApi). */
+export const ENGINE_BODIES: Record<string, z.ZodType> = {
+  "POST /v1/engine/documents": Upload, "POST /v1/engine/passkey/finish": PasskeyFinish, "POST /v1/engine/proposals/{id}/approve": Approve,
+  "POST /v1/engine/invoices/{id}/supplier": Supplier, "POST /v1/engine/batch": Batch, "POST /v1/engine/deposit": DepositIn,
+};
 
 /** Standard base64 into bytes, refused before it is decoded when it is not base64 or holds more than the limit. */
 function documentBytes(base64: string): Uint8Array {
@@ -123,7 +129,7 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       }
     }) },
     { method: "GET", path: "/v1/engine/invoices", summary: "The engine's invoices: status, whether it can be paid, what the checks found, and its payment proposal if one was filed; { items }.", need: "read", run: on(async (_c, e) => json(200, { items: await e.invoices() })) },
-    { method: "POST", path: "/v1/engine/invoices/{id}/pay", summary: "File the invoice's payment for approval: answers { proposal } with the exact terms' hash and what the passkey signs; 409 with the engine's reason when it will not (the invoice is held, waiting or paid). Nothing is paid before the approval, except within the company's limit to pay alone (a test company of /try): when the agents and code's checks say pay, code approves the exact terms and the agent pays at once, and the answer adds { alone: { limit, by, why }, settled, airwallex_payout (the Airwallex sandbox transfer of the policy-approved terms, or why the simulated bank alone paid) }.", need: "admin", run: on(async (c, e) => {
+    { method: "POST", path: "/v1/engine/invoices/{id}/pay", summary: "File the invoice's payment for approval: answers { proposal } with the exact terms' hash and what the passkey signs; 409 with the engine's reason when it will not (the invoice is held, waiting or paid). Nothing is paid before the approval, except within the company's limit to pay alone (a test company of /try): when the agents and code's checks say pay, code approves the exact terms and the agent pays at once, and the answer adds { alone: { limit, by, why }, settled, airwallex_payout (the Airwallex sandbox transfer of the policy-approved terms, or why the simulated bank alone paid) }. Needs the propose scope (an admin key or an owner covers it); no key approves.", need: "propose", run: on(async (c, e) => {
       if (!(await e.invoice(c.params[0]!))) return err(404, "no invoice");
       const out = await e.propose(c.params[0]!);
       return out.ok ? json(200, { proposal: out.proposal, ...(out.alone ? { alone: out.alone, settled: out.settled ?? null, ...(out.airwallex_payout ? { airwallex_payout: out.airwallex_payout } : {}) } : {}) }) : err(409, out.reason);

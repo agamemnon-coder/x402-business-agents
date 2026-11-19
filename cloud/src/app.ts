@@ -27,7 +27,9 @@ import { isProvider, type OAuthProviderName } from "../../src/lib/oauth.js";
 import { AWX_VISITOR_PER_MINUTE, awxEventsView, awxLiveView, isAwxLiveView, type AwxReadBinding } from "./awxLive.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 import type { EngineApi } from "./engine/api.js";
-import { engineRoutes } from "./engine/routes.js";
+import { ENGINE_BODIES, engineRoutes } from "./engine/routes.js";
+import { API_SCHEMAS, operationIdOf, SDK_OPERATIONS, TAG_DESCRIPTIONS, tagOf } from "./apiSpec.js";
+import { discoveryRoutes, isDiscoveryPath } from "./discovery.js";
 import { isEngineWrite, noteEngineCompany } from "./edge/autopilot.js";
 import { edgeRoutes } from "./edge/routes.js";
 import { signedTrySession, tryGate } from "./try/gate.js";
@@ -176,6 +178,10 @@ async function body<T>(c: Ctx, schema: z.ZodType<T>, maxBytes = 1_000_000): Prom
 }
 
 const db = (c: Ctx) => c.db!;
+/** A new API key's request: its name, its scopes (read, sync, admin, propose) and its life in days. */
+const KeyBody = z.object({ name: z.string().min(1).max(80), scopes: z.array(z.enum(SCOPES as [Scope, ...Scope[]])).min(1), expires_in_days: z.number().int().min(1).max(KEY_MAX_DAYS).optional() }).strict();
+/** The request bodies the OpenAPI document shows, from the zod schemas the routes parse them with. */
+const BODIES: Record<string, z.ZodType> = { "POST /v1/keys": KeyBody, ...ENGINE_BODIES };
 /** A key's row without the hash of its secret: secrets never leave, not even hashed. */
 export function withoutSecret(r: Record<string, unknown>): Record<string, unknown> {
   const copy = { ...r };
@@ -572,7 +578,7 @@ export const ROUTES: Route[] = [
   } },
   { method: "GET", path: "/v1/keys", summary: "The company's API keys (never their secrets); paginated (limit, cursor).", need: "admin", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "api_keys", "id", {}, c.url.searchParams, withoutSecret)) },
   { method: "POST", path: "/v1/keys", summary: "A new API key; returned once.", need: "admin", run: async (c) => {
-    const b = await body(c, z.object({ name: z.string().min(1).max(80), scopes: z.array(z.enum(SCOPES as [Scope, ...Scope[]])).min(1), expires_in_days: z.number().int().min(1).max(KEY_MAX_DAYS).optional() }).strict());
+    const b = await body(c, KeyBody);
     // The person behind the new key is the person behind the caller (a key made by a key inherits it), so erasing that
     // person revokes the whole chain.
     const k = await newApiKey(db(c), { name: b.name, scopes: b.scopes, caller: c.caller!, ...(b.expires_in_days ? { expiresInDays: b.expires_in_days } : {}), now: c.now });
@@ -682,6 +688,9 @@ export const ROUTES: Route[] = [
 
   // Connect Claude (cloud/src/claude/routes.ts): connector tokens, the MCP server at /mcp and its OAuth sign-in.
   ...claudeRoutes<Ctx>({ json, err, body, text: (c, max) => readCapped(c.req, max) }),
+
+  // Discovery (cloud/src/discovery.ts): the OpenAPI document at /openapi.json, the API reference page and the A2A Agent Card.
+  ...discoveryRoutes<Ctx>({ json, openApi: (origin) => openApi(origin) }),
 ];
 
 function match(path: string, pattern: string): string[] | null {
@@ -716,7 +725,7 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   // The baseline security headers each answer lacks (./baseHeaders.ts): one place for the API, redirects and files.
   const res = withBaseline(await route(req, env));
   const path = new URL(req.url).pathname;
-  const pattern = path.startsWith("/v1/") || isClaudePath(path) ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
+  const pattern = path.startsWith("/v1/") || isClaudePath(path) || isDiscoveryPath(path) ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
   // The hands-on deployment's own figures for the owner's page (cloud/src/try/metrics.ts): counts and buckets only.
   if (env.tryIt && path.startsWith("/v1/")) await noteRequest(env.sql, pattern, res.status, Date.now() - started, new Date());
   logEvent(res.status >= 500 ? "error" : res.status === 401 || res.status === 403 || res.status === 429 ? "warn" : "info", "request", { method: req.method, route: pattern, status: res.status, ms: Date.now() - started });
@@ -735,7 +744,7 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       return new Response(SECURITY_TXT, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "max-age=3600", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" } });
     }
     // The console (cloud/src/console.ts): the browser pages, everything outside /v1.
-    if (!url.pathname.startsWith("/v1/") && !isClaudePath(url.pathname)) return consoleResponse(req, url, env);
+    if (!url.pathname.startsWith("/v1/") && !isClaudePath(url.pathname) && !isDiscoveryPath(url.pathname)) return consoleResponse(req, url, env);
     // A browser request that changes something must come from the console's own origin: a page elsewhere cannot make a
     // signed-in browser post here (the console keeps its session in the tab and sends it as a bearer token, so there is
     // no cookie to ride on either). The runner and other programs send no Origin.
@@ -854,7 +863,17 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
   }
 }
 
+/** A zod schema as the document's JSON Schema (2020-12, OpenAPI 3.1's dialect), without its own $schema. */
+function jsonSchemaOf(schema: z.ZodType): Record<string, unknown> {
+  const out = z.toJSONSchema(schema, { unrepresentable: "any" }) as Record<string, unknown>;
+  delete out.$schema;
+  return out;
+}
+
 const ERROR = (description: string) => ({ description, content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } });
+/** The errors every route may answer, once in the document's components and referred to by each operation. */
+const ERRORS: Record<string, [number, string]> = { BadRequest: [400, "A request that does not fit"], Unauthorized: [401, "Not signed in"], Forbidden: [403, "Not allowed"], NotFound: [404, "Not found (also: another company's object)"], RateLimited: [429, "Rate limited"] };
+const STANDARD_ERRORS = Object.fromEntries(Object.entries(ERRORS).map(([name, [status]]) => [status, { $ref: `#/components/responses/${name}` }]));
 
 /** OpenAPI 3.1, generated from the route table. */
 /** The read API alone: every GET a read-scoped key may call (no admin, sync, platform or hands-on demo route). */
@@ -863,15 +882,19 @@ const isReadRoute = (r: { method: string; path: string; need: string }) => r.met
 export function openApi(origin: string, o: { readOnly?: boolean } = {}): Record<string, unknown> {
   const paths: Record<string, Record<string, unknown>> = {};
   for (const r of o.readOnly ? ROUTES.filter(isReadRoute) : ROUTES) {
-    const params = [...r.path.matchAll(/\{(\w+)\}/g)].map((m) => ({ name: m[1], in: "path", required: true, schema: { type: "string" } }));
+    const op = `${r.method} ${r.path}`, extra = SDK_OPERATIONS[op], reqBody = BODIES[op];
+    const params = [...[...r.path.matchAll(/\{(\w+)\}/g)].map((m) => ({ name: m[1], in: "path", required: true, schema: { type: "string" } })), ...(extra?.parameters ?? [])];
     (paths[r.path] ??= {})[r.method.toLowerCase()] = {
+      operationId: operationIdOf(r.method, r.path),
+      tags: [tagOf(r.path, r.need)],
       summary: r.summary,
       ...(params.length ? { parameters: params } : {}),
+      ...(reqBody ? { requestBody: { required: true, content: { "application/json": { schema: jsonSchemaOf(reqBody) } } } } : {}),
       security: r.need === "public" ? [] : r.need === "platform" ? [{ platformAdmin: [] }] : [{ bearer: [r.need] }],
       "x-purser-needs": r.need,
       ...(ALWAYS_STEP_UP_ROUTES.has(`${r.method} ${r.path}`) ? { "x-purser-step-up": "always: a signed-in owner, passkey checked in the last five minutes" }
         : STEP_UP_ROUTES.has(`${r.method} ${r.path}`) ? { "x-purser-step-up": SESSION_ONLY_ROUTES.has(`${r.method} ${r.path}`) ? "a signed-in owner; when the company asks again before sensitive changes, passkey checked in the last five minutes" : "when the company asks again before sensitive changes: a session's passkey checked in the last five minutes" } : {}),
-      responses: { 200: { description: "OK" }, 400: ERROR("A request that does not fit"), 401: ERROR("Not signed in"), 403: ERROR("Not allowed"), 404: ERROR("Not found (also: another company's object)"), 429: ERROR("Rate limited") },
+      responses: { ...(extra?.ok ? { [extra.ok.status]: { description: extra.ok.description, content: extra.ok.content } } : { 200: { description: "OK" } }), ...STANDARD_ERRORS },
     };
   }
   return {
@@ -880,7 +903,9 @@ export function openApi(origin: string, o: { readOnly?: boolean } = {}): Record<
       ? { title: "Purser Cloud read API", version: "1.0.0", description: "The read-only part of Purser Cloud's API: invoices, documents, suppliers, payments, the transactions register, the ledger, its reports and the accounting exports. Every route is a GET a read-scoped key may call; none moves money, approves or writes." }
       : { title: "Purser Cloud API", version: "1.0.0", description: "Everything a company's finance runs on, in one place: invoices, documents, suppliers, payments, the ledger and its reports. Test money only until a company goes live." },
     servers: [{ url: origin }],
-    components: { schemas: { Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: [...Object.values(CODES), "step_up_required"], description: "Stable, for a program" } } } }, securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...) or a passkey session (pcs....)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
+    ...(o.readOnly ? {} : { tags: Object.entries(TAG_DESCRIPTIONS).map(([name, description]) => ({ name, description })) }),
+    "x-purser-safety": "A key reads (read) and files an invoice's payment for the CFO's approval (propose). No key approves: approving is a signed-in person's passkey over the exact terms (POST /v1/engine/proposals/{id}/approve refuses every key).",
+    components: { responses: Object.fromEntries(Object.entries(ERRORS).map(([name, [, description]]) => [name, ERROR(description)])), schemas: { ...API_SCHEMAS, Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: [...Object.values(CODES), "step_up_required"], description: "Stable, for a program" } } } }, securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...; scopes read, sync, admin, propose) or a passkey session (pcs....)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
     paths,
   };
 }

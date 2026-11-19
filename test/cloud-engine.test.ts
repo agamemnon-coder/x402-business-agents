@@ -64,7 +64,7 @@ describe("the route table", () => {
       "GET /v1/engine read",
       "POST /v1/engine/documents admin",
       "GET /v1/engine/invoices read",
-      "POST /v1/engine/invoices/{id}/pay admin",
+      "POST /v1/engine/invoices/{id}/pay propose",
       "GET /v1/engine/proposals/{id} read",
       "POST /v1/engine/passkey/start admin",
       "POST /v1/engine/passkey/finish admin",
