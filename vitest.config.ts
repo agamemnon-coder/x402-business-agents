@@ -22,8 +22,17 @@ const pagesGen = {
   },
 };
 
+// The engine's schema files are text modules in the Worker's bundle (cloud/wrangler.jsonc rules: "Text" for **/*.sql),
+// so the Durable Object's host (cloud/src/engine/hostWorker.ts) imports them as strings; here they are read the same way.
+const sqlText = {
+  name: "kit11-sql-text",
+  transform(code: string, id: string) {
+    return id.endsWith(".sql") ? { code: `export default ${JSON.stringify(code)};`, map: null } : null;
+  },
+};
+
 export default defineConfig({
-  plugins: [pagesGen],
+  plugins: [pagesGen, sqlText],
   test: {
     // Agent worktrees live under .claude/worktrees inside the checkout; their copies of the tests are not this tree's.
     exclude: [...configDefaults.exclude, ".claude/**"],
