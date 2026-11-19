@@ -299,3 +299,10 @@ d74cf0415067315a60dd57a0631bb48f5b66be8d:docs/runs/2026-11-19-mega-run/run-9.jso
 8bd246425330a84d30138edf8d30233ebf654aeb:test/pwa.test.ts:generic-api-key:400
 # src/evals/adversarialV7.ts (19 Nov 2026): eval case ids ("v7-pressure-...-secret") and a regex of invisible characters; no credential.
 fa46faba0635125b06ef42675969d95682c1e56d:src/evals/adversarialV7.ts:generic-api-key:61
+# Coverage tests (19 Nov 2026): Hardhat/Anvil's public default account #1 (its well-known test private key and address 0x7099…79C8),
+# a made-up EIP-3009 authorization nonce, and made-up passkey ids in a wording test. None is a credential.
+7bc751f2fd8fcff9b2b6a35bd96b0216da430c3d:test/dashboard-vs-chain-reader.test.ts:generic-api-key:55
+8318576e82119027dc3a64a3afd5bb855514a98e:test/anchor-edges.test.ts:generic-api-key:25
+8318576e82119027dc3a64a3afd5bb855514a98e:test/anchor-edges.test.ts:generic-api-key:37
+dcdf0c10cd9cb6830478615402ebf364e619ee42:test/dashboard-feed-words.test.ts:generic-api-key:396
+dcdf0c10cd9cb6830478615402ebf364e619ee42:test/dashboard-feed-words.test.ts:generic-api-key:397
