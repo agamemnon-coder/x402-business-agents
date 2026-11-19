@@ -39,6 +39,7 @@
     "readme:strip": "tsx scripts/readme-proof-strip.ts",
     "test-count": "tsx scripts/test-count.ts",
     "site:check": "tsx scripts/site-check.ts",
+    "site:quality": "tsx scripts/site-quality.ts",
     "test:shim": "vitest run --config vitest.shim.config.ts",
     "test:coverage": "vitest run --coverage && tsx test/coverage-areas.ts",
     "typecheck": "tsc --noEmit",

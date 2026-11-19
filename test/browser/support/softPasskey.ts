@@ -5,6 +5,8 @@
 // authenticator data and the SHA-256 of the client data, its counter moving forward. The server checks both for real,
 // as it checks a phone's: so the whole flow runs in WebKit, and every signature in it is verified by the server.
 // It proves nothing about Face ID itself (no biometric is involved); that is what a person's device adds.
+// Its credentials answer getClientExtensionResults() (no extensions: {}), as a browser's PublicKeyCredential does: /try
+// reads it for every passkey it sends (19 Nov, the mega run's first Firefox walk stopped on its absence).
 
 /** The script, as text: passed to page.addInitScript before /try/sign loads. */
 export const SOFT_PASSKEY = `(() => {
@@ -40,14 +42,14 @@ export const SOFT_PASSKEY = `(() => {
       const cose = new Map([[1, 2], [3, -7], [-1, 1], [-2, unb64u(jwk.x)], [-3, unb64u(jwk.y)]]);
       const attested = [...new Uint8Array(16), 0, id.length, ...id, ...cbor(cose)];
       const att = new Uint8Array(cbor(new Map([["fmt", "none"], ["attStmt", new Map()], ["authData", await authData(0x45, attested)]])));
-      return { id: b64u(id), rawId: id.buffer, type: "public-key", response: { clientDataJSON: clientData("webauthn.create", publicKey.challenge).buffer, attestationObject: att.buffer } };
+      return { id: b64u(id), rawId: id.buffer, type: "public-key", getClientExtensionResults: () => ({}), response: { clientDataJSON: clientData("webauthn.create", publicKey.challenge).buffer, attestationObject: att.buffer } };
     },
     async get({ publicKey }) {
       if (!key) throw Object.assign(new Error("no passkey"), { name: "NotAllowedError" });
       const cd = clientData("webauthn.get", publicKey.challenge);
       const ad = await authData(0x05);
       const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key.privateKey, new Uint8Array([...ad, ...(await sha(cd))])));
-      return { id: b64u(id), rawId: id.buffer, type: "public-key", response: { clientDataJSON: cd.buffer, authenticatorData: ad.buffer, signature: der(sig).buffer } };
+      return { id: b64u(id), rawId: id.buffer, type: "public-key", getClientExtensionResults: () => ({}), response: { clientDataJSON: cd.buffer, authenticatorData: ad.buffer, signature: der(sig).buffer } };
     },
   };
   if (!window.PublicKeyCredential) window.PublicKeyCredential = function PublicKeyCredential() {};
