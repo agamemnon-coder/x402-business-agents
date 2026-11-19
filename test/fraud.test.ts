@@ -87,6 +87,46 @@ describe("invoice fraud check", () => {
     expect(f.signals.find((s) => s.code === "account_name_mismatch")).toMatchObject({ blocks: true });
   });
 
+  // Adversarial eval v3, v3-name-zeeland-logistics-own-iban: a Dutch invoice prints its holder as "Ten name van:", so a
+  // reader of "Account name:" only paid another company at the IBAN on file.
+  it("reads the account holder from the labels Purser's suppliers print, in English, Dutch and German", () => {
+    const db = ledger();
+    for (const label of ["Account name:", "Account holder:", "Account holder  ", "Beneficiary:", "Ten name van:", "Rekeninghouder:", "Kontoinhaber:", "Empfänger:", "  KONTOINHABER :"]) {
+      const text = legitText.replace("Account name: Bergtex Textil GmbH", `${label} Bergtex Logistik GmbH`);
+      const f = assessInvoice(db, parseInvoiceFallback(text), text);
+      expect({ label, signal: f.signals.find((s) => s.code === "account_name_mismatch") })
+        .toEqual({ label, signal: expect.objectContaining({ blocks: true, asked: "Bergtex Logistik GmbH", on_file: LIZ }) });
+    }
+  });
+
+  it("holds an invoice whose holder lines disagree, wherever the true name is printed", () => {
+    const db = ledger();
+    const text = legitText.replace("Account name: Bergtex Textil GmbH", "Account name: Bergtex Textil GmbH\nKontoinhaber: Mallory Trading Ltd");
+    const f = assessInvoice(db, parseInvoiceFallback(text), text);
+    expect(f.signals.find((s) => s.code === "account_name_mismatch")).toMatchObject({ blocks: true, asked: "Mallory Trading Ltd" });
+  });
+
+  it("reads a holder printed on the line under its label, but not the next labelled line", () => {
+    const db = ledger();
+    for (const label of ["Account name:", "Ten name van:", "Kontoinhaber:"]) {
+      const text = legitText.replace("Account name: Bergtex Textil GmbH", `${label}\n  Bergtex Logistik GmbH`);
+      expect({ label, asked: assessInvoice(db, parseInvoiceFallback(text), text).signals.find((s) => s.code === "account_name_mismatch")?.asked })
+        .toEqual({ label, asked: "Bergtex Logistik GmbH" });
+    }
+    const text = legitText.replace("Account name: Bergtex Textil GmbH", "Beneficiary:\nBIC: COBADEFFXXX");
+    expect(assessInvoice(db, parseInvoiceFallback(text), text).blocked).toBe(false);
+  });
+
+  it("does not hold the supplier's own name under any of those labels, nor a label without a name", () => {
+    const db = ledger();
+    for (const line of ["Ten name van: Bergtex Textil GmbH", "Kontoinhaber: BERGTEX Textil GmbH.", "Empfänger: Bergtex Textil GmbH", "Beneficiary:", "Beneficiary bank: Commerzbank AG", "Account holder name will follow by post"]) {
+      const text = legitText.replace("Account name: Bergtex Textil GmbH", line);
+      expect({ line, blocked: assessInvoice(db, parseInvoiceFallback(text), text).blocked }).toEqual({ line, blocked: false });
+    }
+    // The German invoice in fixtures/hard ("Kontoinhaber: Bergtex Textil GmbH", same IBAN and BIC) passes as it is.
+    expect(assessInvoice(db, parseInvoiceFallback(legitText), fixture("hard/bergtex-rechnung-de.txt")).blocked).toBe(false);
+  });
+
   it("keeps an unknown vendor an escalation, not a fraud claim", () => {
     const db = ledger();
     const text = legitText.replace(/Bergtex Textil GmbH/g, "Datenwerk Nord AG");

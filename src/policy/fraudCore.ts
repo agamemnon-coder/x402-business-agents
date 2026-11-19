@@ -91,6 +91,17 @@ const BANK_CHANGE = new RegExp([
   // Dutch: "ons rekeningnummer is gewijzigd", "een nieuw rekeningnummer", "bankgegevens zijn gewijzigd"
   "(rekening(nummer)?|bankrekening(nummer)?|bankgegevens)[^.\\n]{0,40}(gewijzigd|veranderd)", "\\bnieuwe? (bank)?(rekening|gegevens)", "\\bnieuwe? iban", "\\biban[^.\\n]{0,30}(gewijzigd|veranderd)",
 ].join("|"), "i");
+// The account holder, under the labels Purser's suppliers print (English, Dutch, German): after a colon or a column gap
+// on the same line, or alone on the next line when that line is not itself "Label: value". The label opens its line,
+// so "Rechnungsempfänger:" or "Beneficiary bank:" is not one. Adversarial eval v3 (v3-name-zeeland-logistics-own-iban):
+// "Ten name van: Zeeland Logistics B.V." at the IBAN on file was paid while only "Account name:" was read.
+const HOLDER = /^[ \t]*(?:account name|account holder|beneficiary|ten name van|rekeninghouder|kontoinhaber|empf(?:ä|ae)nger)(?:[ \t]*:[ \t]*(?:\r?\n[ \t]*(?![^\n:]*:))?|[ \t]{2,})([^\s:][^\n]*)$/gimu;
+
+/** Every account holder the invoice names. */
+function accountHolders(text: string): string[] {
+  return [...text.normalize("NFC").matchAll(HOLDER)].map((m) => m[1]!.trim()).filter(Boolean);
+}
+
 const PRESSURE = /\burgent(ly)?\b|\bimmediately\b|\btoday\b|avoid (an? )?(interruption|suspension|penalt)|final notice|\bconfidential\b/i;
 
 /** How close a name must be to count as a lookalike: two edits for names of eight letters or more, one below. */
@@ -132,9 +143,9 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
       asked: accountWords(iban.slice(-4), iban.slice(0, 2), inv.bic), on_file: accountWords(onFile.iban_last4, onFile.bic.slice(4, 6), onFile.bic),
     });
   }
-  const holder = /^Account name:\s*(.+)$/m.exec(text)?.[1]?.trim();
   const expectedHolder = matched?.name ?? inv.vendor;
-  if (holder && skeleton(holder) !== skeleton(expectedHolder)) {
+  const holder = accountHolders(text).find((h) => skeleton(h) !== skeleton(expectedHolder));
+  if (holder) {
     signals.push({ code: "account_name_mismatch", blocks: true, detail: `the account holder on the invoice is "${holder}", not ${expectedHolder}`, asked: holder, on_file: expectedHolder });
   }
   const line = (re: RegExp) => text.split("\n").find((l) => re.test(l))?.trim();

@@ -162,6 +162,21 @@ describe("code's checks over a case", () => {
     expect(finding(caseOf(`${EN}\nAccount name: Someone Else Ltd`), "possible_fraud")!.signals!.map((s) => s.code)).toEqual(["account_name_mismatch"]);
   });
 
+  it("possible_fraud: another account holder under a Dutch or German label, at the IBAN on file", () => {
+    // Adversarial eval v3, v3-name-zeeland-logistics-own-iban: "Ten name van:" was not read, so the invoice was paid.
+    const zeeland: SupplierOnFile = {
+      id: "ben_zeeland", name: "Zeeland Verpakkingen B.V.", last4: "4300", bic: "ABNANL2A", currency: "EUR",
+      bank: { country: "NL", currency: "EUR", accountName: "Zeeland Verpakkingen B.V.", iban: "NL91ABNA0417164300", swiftCode: "ABNANL2A" },
+    };
+    const nlCase = (text: string) => caseOf(text, { suppliers: [BERGTEX, zeeland], policy: { payees: { allowed: ["Bergtex Textil GmbH", "Zeeland Verpakkingen B.V."], blocked: [] } } });
+    expect(finding(nlCase(`${NL}\nTen name van: Zeeland Logistics B.V.`), "possible_fraud")!.signals!.map((s) => s.code)).toEqual(["account_name_mismatch"]);
+    expect(finding(nlCase(`${NL}\nRekeninghouder: Zeeland Logistics B.V.`), "possible_fraud")!.signals!.map((s) => s.code)).toEqual(["account_name_mismatch"]);
+    expect(finding(nlCase(`${NL}\nTen name van: Zeeland Verpakkingen B.V.`), "possible_fraud")).toBeUndefined();
+    expect(finding(caseOf(`${EN}\nKontoinhaber: Bergtex Logistik GmbH`), "possible_fraud")!.signals!.map((s) => s.code)).toEqual(["account_name_mismatch"]);
+    expect(finding(caseOf(`${EN}\nEmpfänger: Bergtex Logistik GmbH`), "possible_fraud")!.signals!.map((s) => s.code)).toEqual(["account_name_mismatch"]);
+    expect(finding(caseOf(`${EN}\nKontoinhaber: Bergtex Textil GmbH`), "possible_fraud")).toBeUndefined();
+  });
+
   it("new_supplier: a supplier not on file waits, with its open request", () => {
     const f = finding(caseOf(NL), "new_supplier")!;
     expect(f).toMatchObject({ level: "wait" });
