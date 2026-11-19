@@ -59,3 +59,6 @@ folder:
 
 To check the tarball against the code itself: `git archive --format=tar.gz --prefix=x402-business-agents-<tag>/ <tag>`
 in a clone gives the same bytes with the same git version (two runs on 19 November gave the same SHA-256).
+
+What only the owner can switch on (Dependabot security updates, private vulnerability reporting, the OpenSSF Best
+Practices badge, and after the judging a ruleset on `main`), click by click: [owner-actions.md](owner-actions.md).
