@@ -1,0 +1,23 @@
+{
+  "run": "t0-reports",
+  "read_at": "2026-11-19T16:05:46.569Z",
+  "entity": "entity_prod_ieEAMzvhgtHalvsm",
+  "query": {
+    "start_date": "2026-11-01",
+    "end_date": "2026-11-30",
+    "period_type": "monthly"
+  },
+  "blocked": {
+    "status": 401,
+    "code": "CAPI15",
+    "detail": "This API key is not valid: it may have been revoked or rotated, or its API connection removed. Create a new key in T0 under Connections > API keys"
+  },
+  "calls": [
+    {
+      "at": "2026-11-19T16:05:47.003Z",
+      "method": "GET",
+      "path": "/v1/reports/balance-sheet",
+      "status": 401
+    }
+  ]
+}

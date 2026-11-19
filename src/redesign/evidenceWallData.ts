@@ -16,6 +16,7 @@ import { WORST_CASE, WORST_CASE_DOC, worstOf } from "../evals/worstCase.js";
 import { CI_RUNS_URL, ciJobs } from "./ciChecks.js";
 import { NOT_IN_BAND } from "./scale.js";
 import type { EvidenceWall, WallGroup, WallTile } from "./evidenceWall.js";
+import { verifyInclusion, type ProofStep } from "../anchor/merkle.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const has = (p: string) => existsSync(new URL(p, ROOT));
@@ -85,6 +86,13 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
     if (refused.length) out.push({ key: "alta-series-refused", fig: whole(refused.length, tried.length), label: "over-mandate attempts refused on chain", note: `${refused.map((x) => x.reason).join(", ")}: each a transaction of its own, 0.00 moved; ${ran ? day(ran) : ""}.${misplanned.length ? ` One more step planned as over the budget was within it (the plan's error, said in the run log) and was paid.` : ""}`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-series.md"), rec: AS.join(" ") });
     if (paid.length) out.push({ key: "alta-series-paid", fig: String(paid.length), label: "payments inside an agent's mandate on Alta", note: `${total} test USD in all, each its own transaction; ${ran ? day(ran) : ""}.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-series.md"), rec: AS.join(" ") });
   }
+  // 19 Nov: the day's signed Airwallex payments as one Merkle tree, its root in one Alta transaction (src/anchor/merkle.ts).
+  const AM = "docs/runs/2026-11-19-alta-merkle.json";
+  const am = json(AM) as { leaves?: number; root?: string; anchored_at?: string; read_back?: { matches: boolean }; payments?: { approval_sha256: string; proof: ProofStep[]; airwallex_sha256_matches: boolean }[] } | null;
+  if (am?.leaves && am.root && am.read_back?.matches && am.payments) {
+    const proven = am.payments.filter((p) => p.airwallex_sha256_matches && verifyInclusion(p.approval_sha256, p.proof, am.root!)).length;
+    out.push({ key: "alta-merkle", fig: whole(proven, am.leaves), label: "signed Airwallex payments in one Alta transaction, each with a proof", note: `One Merkle root on chain; each proof checks offline${am.anchored_at ? `; ${day(am.anchored_at)}` : ""}.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-merkle.md"), rec: AM });
+  }
   const LF = "docs/runs/2026-11-17-airwallex-late-failure.json";
   const lf = json(LF) as { transfers?: unknown[]; audit?: { ts: string }[]; calls?: { by_endpoint?: { endpoint: string; calls: number }[] } } | null;
   const created = lf?.calls?.by_endpoint?.find((e) => e.endpoint === "POST /transfers/create")?.calls;
@@ -92,6 +100,18 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
   const COV = "docs/evidence/airwallex-api-coverage.json";
   const cov = json(COV) as { totals?: { endpoints: number; live: number } } | null;
   if (cov?.totals?.live) out.push({ key: "awx-endpoints", fig: String(cov.totals.live), label: `Airwallex endpoints live, of ${cov.totals.endpoints}`, note: "Each with the first record that holds a call to it.", tag: "sandbox", tone: "awx", href: blob("docs/evidence/airwallex-api-coverage.md"), rec: COV });
+  // Airwallex, deeper (19 Nov; src/proof/awxDeepLive.ts): the wallet statement, the seller side, a payment withdrawn.
+  // The last two are off /proof (its words in sight are at their budget, test/proof-first.test.ts): for the Airwallex
+  // partner page's strip, and in the wall file, the README and llms.txt.
+  type Deep = { ran_at?: string; facts?: { statement?: { checked: number; agree: number; lines: number; continuity: { links: number; breaks: unknown[] } } | null; receivable?: { invoice: { invoice_no: string; amount_cents: number; currency: string }; matched: { outcome: string } | null; link: { active_after: boolean | null } | null } | null; revoke?: { before: string | null; after: string | null; validated: boolean } | null } };
+  const DEEP = ["docs/runs/2026-11-19-airwallex-deep.json", "docs/runs/2026-11-19-airwallex-deep-3.json"] as const;
+  const d1 = json(DEEP[0]) as Deep | null, d3 = json(DEEP[1]) as Deep | null;
+  const st = d3?.facts?.statement;
+  if (st?.checked) out.push({ key: "awx-statement", fig: whole(st.agree, st.checked), label: "soak payouts and FX legs on Airwallex's statement, to the cent", note: `Balance history; ${whole(st.continuity.links - st.continuity.breaks.length, st.continuity.links).toLowerCase()} links add up${d3?.ran_at ? `; ${day(d3.ran_at)}` : ""}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-deep-3.md"), rec: DEEP[1] });
+  const rv = d1?.facts?.receivable;
+  if (rv?.matched?.outcome === "MATCHED" && rv.link?.active_after === false) out.push({ offProof: true, key: "awx-receivable", fig: `${rv.invoice.currency} ${(rv.invoice.amount_cents / 100).toFixed(2)}`, label: "invoice matched from a Global Account's statement; its payment link switched off", note: `Bank transfer by the sandbox's simulation${d1?.ran_at ? `, ${day(d1.ran_at)}` : ""}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-deep.md"), rec: DEEP[0] });
+  const rk = d3?.facts?.revoke;
+  if (rk?.validated && rk.before === "SCHEDULED" && rk.after === "CANCELLED") out.push({ offProof: true, key: "awx-revoke", fig: "EUR 1.00", label: "scheduled payment cancelled at Airwallex before its day", note: `Terms checked by Airwallex first; no passkey${d3?.ran_at ? `; ${day(d3.ran_at)}` : ""}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-deep-3.md"), rec: DEEP[1] });
   return out;
 }
 

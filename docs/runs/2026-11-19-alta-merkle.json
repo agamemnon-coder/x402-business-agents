@@ -1,0 +1,1160 @@
+{
+  "schema": "purser.merkle/v1",
+  "anchored_at": "2026-11-19T16:03:25.190Z",
+  "network": "Alta (formerly Metal) testnet",
+  "chain_id": 63825,
+  "test_money": true,
+  "root": "e47d3102eac753a5f7299633586f0636ad13ad99713726a75be0b63f02cd5937",
+  "leaves": 33,
+  "calldata": "0x7075727365722e6d65726b6c652f76312065343764333130326561633735336135663732393936333335383666303633366164313361643939373133373236613735626530623633663032636435393337203333",
+  "tx": "0x39d39cd8f661afd8ddfcf4b12e69e0d6357c58cd0294be33dde6cbd4233a1384",
+  "from": "0xd996570d2a70991e8793a074Fe0000B099823374",
+  "block": 35737169,
+  "explorer": "https://testnet.metalntwx.com/tx/0x39d39cd8f661afd8ddfcf4b12e69e0d6357c58cd0294be33dde6cbd4233a1384",
+  "read_back": {
+    "status": "success",
+    "block": 35737169,
+    "calldata_root": "e47d3102eac753a5f7299633586f0636ad13ad99713726a75be0b63f02cd5937",
+    "calldata_leaves": 33,
+    "matches": true
+  },
+  "tree": "leaf = SHA-256(0x00 || approval hash), node = SHA-256(0x01 || left || right), an odd node carried up (src/anchor/merkle.ts)",
+  "check": "npm run approvals:merkle -- verify",
+  "payments": [
+    {
+      "index": 0,
+      "label": "BTX-SOAK-01",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "a63888f6-3388-498e-993f-d2efbb64b578",
+      "approval_sha256": "7501cf8c149879b5344b63acc1c00c37ded8faa96ec969254ffcaf466f384d2b",
+      "airwallex_sha256_matches": true,
+      "leaf": "26df59480076ee9a330ff9f072d2ef51d081241f2a3b16d47a24d52d40b0dcb4",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "a611105d92b21815c13629c00751f4ce98151abd6ada04bf1b1925ca127f10da"
+        },
+        {
+          "side": "R",
+          "hash": "aa5fb6863f92a6ce9a8bcb67be6a5ccbfba690cb3d8387f78b6cd9dc872cb707"
+        },
+        {
+          "side": "R",
+          "hash": "4ad269547a7b2bf7722d9f83e2b9d3a1383a6ea72862ac159be31942a72c952d"
+        },
+        {
+          "side": "R",
+          "hash": "8ba7356e0a970afe0dc0a541125b6a8c702ae89ad87082736f968af9983cd160"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "label": "SLL-SOAK-02",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "11d6fbe5-76c8-404f-a528-7c200e5f794e",
+      "approval_sha256": "0e6eea8ee299ee0188331416d3dfa384f0f45cf69d4e8cdccc34808d0d88c3d5",
+      "airwallex_sha256_matches": true,
+      "leaf": "a611105d92b21815c13629c00751f4ce98151abd6ada04bf1b1925ca127f10da",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "26df59480076ee9a330ff9f072d2ef51d081241f2a3b16d47a24d52d40b0dcb4"
+        },
+        {
+          "side": "R",
+          "hash": "aa5fb6863f92a6ce9a8bcb67be6a5ccbfba690cb3d8387f78b6cd9dc872cb707"
+        },
+        {
+          "side": "R",
+          "hash": "4ad269547a7b2bf7722d9f83e2b9d3a1383a6ea72862ac159be31942a72c952d"
+        },
+        {
+          "side": "R",
+          "hash": "8ba7356e0a970afe0dc0a541125b6a8c702ae89ad87082736f968af9983cd160"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "label": "BTX-SOAK-03",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "87a403db-b7eb-4f0d-8b31-a0b2f4535251",
+      "approval_sha256": "bfb8bc638c2c99aa525dd16d45f52ee939f1efbcf2a0525a75faa8cc876eb5b7",
+      "airwallex_sha256_matches": true,
+      "leaf": "c0cf23fb7240897b06b4c7e7c093a25f6dec8a4f3a774c482c9a8617a157b691",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "637592048c81e648669606d5bd2665551213e4cff463cee7ff3996874e615e0b"
+        },
+        {
+          "side": "L",
+          "hash": "02cd8003adee3ba57df189f2b8115269590cda81379a36f4eb9c4da1ced7534c"
+        },
+        {
+          "side": "R",
+          "hash": "4ad269547a7b2bf7722d9f83e2b9d3a1383a6ea72862ac159be31942a72c952d"
+        },
+        {
+          "side": "R",
+          "hash": "8ba7356e0a970afe0dc0a541125b6a8c702ae89ad87082736f968af9983cd160"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "label": "BTX-SOAK-04",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "58c77e7d-5577-463f-a43a-732a0f6966a9",
+      "approval_sha256": "a0d3ed704075e4bdf72690c4fdad46fbad9504e70a9653973b50da3c34314b4a",
+      "airwallex_sha256_matches": true,
+      "leaf": "637592048c81e648669606d5bd2665551213e4cff463cee7ff3996874e615e0b",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "c0cf23fb7240897b06b4c7e7c093a25f6dec8a4f3a774c482c9a8617a157b691"
+        },
+        {
+          "side": "L",
+          "hash": "02cd8003adee3ba57df189f2b8115269590cda81379a36f4eb9c4da1ced7534c"
+        },
+        {
+          "side": "R",
+          "hash": "4ad269547a7b2bf7722d9f83e2b9d3a1383a6ea72862ac159be31942a72c952d"
+        },
+        {
+          "side": "R",
+          "hash": "8ba7356e0a970afe0dc0a541125b6a8c702ae89ad87082736f968af9983cd160"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "label": "BTX-SOAK-05",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "0acd2cad-fcf7-49a6-abc1-b5e4b37498d7",
+      "approval_sha256": "a120bdfe29247f0cf1c5379133f2c8c783bea722606e360e5722f8d430691311",
+      "airwallex_sha256_matches": true,
+      "leaf": "dce74c18d2093a37cbe6c9fa70e733470244923b061ff8f775639284e8f512eb",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "a7e5e74dbdad7c5c71f404508602a5565d91980452fbfe134548fefaca752889"
+        },
+        {
+          "side": "R",
+          "hash": "fa93328529158920b18bb103cb1047be85a0e337a2167b8ac9b0244a3c68bc13"
+        },
+        {
+          "side": "L",
+          "hash": "ff52f637876a0bf330f790ad93f7165581236a5eb457fe68152b80ac2aa242f4"
+        },
+        {
+          "side": "R",
+          "hash": "8ba7356e0a970afe0dc0a541125b6a8c702ae89ad87082736f968af9983cd160"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "label": "BTX-SOAK-06",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "be24bdd5-95ab-4107-baba-9f7e5e26d4d0",
+      "approval_sha256": "d1a3e8c19576e237ce137eb34e150d416a7c567bfabb813971ffb8443bb08b42",
+      "airwallex_sha256_matches": true,
+      "leaf": "a7e5e74dbdad7c5c71f404508602a5565d91980452fbfe134548fefaca752889",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "dce74c18d2093a37cbe6c9fa70e733470244923b061ff8f775639284e8f512eb"
+        },
+        {
+          "side": "R",
+          "hash": "fa93328529158920b18bb103cb1047be85a0e337a2167b8ac9b0244a3c68bc13"
+        },
+        {
+          "side": "L",
+          "hash": "ff52f637876a0bf330f790ad93f7165581236a5eb457fe68152b80ac2aa242f4"
+        },
+        {
+          "side": "R",
+          "hash": "8ba7356e0a970afe0dc0a541125b6a8c702ae89ad87082736f968af9983cd160"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "label": "SLL-SOAK-07",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "3dd8fb2c-6d6f-4347-80dd-ff81989a6acc",
+      "approval_sha256": "9b225468f657940482884f46f56b10bdb98dd4a57bf02b5589c61fe036d6800e",
+      "airwallex_sha256_matches": true,
+      "leaf": "174f45242cb62b8728f5d0a84bdddaefe80f75c77c2fa3caf57271f4b879611f",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "77ace46dbe5e0df9a951a6761c858efb948f9d82877a7f08564128a3a0992282"
+        },
+        {
+          "side": "L",
+          "hash": "01ed18858193c08ecfa3511fbf8b461862bf375a186148bb731f3d4bbf238578"
+        },
+        {
+          "side": "L",
+          "hash": "ff52f637876a0bf330f790ad93f7165581236a5eb457fe68152b80ac2aa242f4"
+        },
+        {
+          "side": "R",
+          "hash": "8ba7356e0a970afe0dc0a541125b6a8c702ae89ad87082736f968af9983cd160"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "label": "BTX-SOAK-08",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "bf959679-2866-4bfc-a3a5-e5b0b6c5d28a",
+      "approval_sha256": "0aaa62bc868d86f5cd4609bfe32b2dc6afae331fc693545f50fea432a2220a7a",
+      "airwallex_sha256_matches": true,
+      "leaf": "77ace46dbe5e0df9a951a6761c858efb948f9d82877a7f08564128a3a0992282",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "174f45242cb62b8728f5d0a84bdddaefe80f75c77c2fa3caf57271f4b879611f"
+        },
+        {
+          "side": "L",
+          "hash": "01ed18858193c08ecfa3511fbf8b461862bf375a186148bb731f3d4bbf238578"
+        },
+        {
+          "side": "L",
+          "hash": "ff52f637876a0bf330f790ad93f7165581236a5eb457fe68152b80ac2aa242f4"
+        },
+        {
+          "side": "R",
+          "hash": "8ba7356e0a970afe0dc0a541125b6a8c702ae89ad87082736f968af9983cd160"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "label": "BTX-SOAK-09",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "b420dd66-39f0-43c7-9ddd-c2b79cb3fdd0",
+      "approval_sha256": "af10439c65aabacf9d07afec22f89acf4b2a028c70586556adaf146cdb0673a2",
+      "airwallex_sha256_matches": true,
+      "leaf": "1ea2494fcf6555deef468416d7e5991f6b700af5597b057ee6afca370f5b7760",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "faa79a727fd2bc0b72c7847a908504f56176e1e5f661aaedc7ddeeb08bf762b7"
+        },
+        {
+          "side": "R",
+          "hash": "9f66e16894c45eebdfc223dfe0aa2dd32dee3ea7b047d254564c341093b3ebe6"
+        },
+        {
+          "side": "R",
+          "hash": "42202420a01bf7be102e082adf80348e8f5c60f637f1748de5b56e759bdce02b"
+        },
+        {
+          "side": "L",
+          "hash": "52fcf26116726111e04411ef06e3b8850e5ad5ee1ebad3144376e36cd32eb66d"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "label": "BTX-SOAK-10",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "e821de96-a98c-4481-b0ce-5ba55a5ff521",
+      "approval_sha256": "570105fa571a2e84c8c81dc0809a701eeacef93fddeb30e9b3ab64746ae57289",
+      "airwallex_sha256_matches": true,
+      "leaf": "faa79a727fd2bc0b72c7847a908504f56176e1e5f661aaedc7ddeeb08bf762b7",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "1ea2494fcf6555deef468416d7e5991f6b700af5597b057ee6afca370f5b7760"
+        },
+        {
+          "side": "R",
+          "hash": "9f66e16894c45eebdfc223dfe0aa2dd32dee3ea7b047d254564c341093b3ebe6"
+        },
+        {
+          "side": "R",
+          "hash": "42202420a01bf7be102e082adf80348e8f5c60f637f1748de5b56e759bdce02b"
+        },
+        {
+          "side": "L",
+          "hash": "52fcf26116726111e04411ef06e3b8850e5ad5ee1ebad3144376e36cd32eb66d"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "label": "BTX-SOAK-11",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "1fbac219-4233-4827-b127-e46a7738b3a4",
+      "approval_sha256": "56b9d682c49f154815dbbd92cd965edfdd3f9a7954b9b9500f548e2e442dd8cc",
+      "airwallex_sha256_matches": true,
+      "leaf": "c632212359e09ef3cf1601582bde96ac6a35cabc1ce8680ed703875b500e260e",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "b1417647fafac30c25e67bac8458faa4aae6733a0152c417e7280485eefb95b0"
+        },
+        {
+          "side": "L",
+          "hash": "da579c3752c3b8bc20a270ecf5d4346e51749f48fbb0d4218ead6ce2ab3e2c31"
+        },
+        {
+          "side": "R",
+          "hash": "42202420a01bf7be102e082adf80348e8f5c60f637f1748de5b56e759bdce02b"
+        },
+        {
+          "side": "L",
+          "hash": "52fcf26116726111e04411ef06e3b8850e5ad5ee1ebad3144376e36cd32eb66d"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "label": "SLL-SOAK-12",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "76ecfaa2-8d9a-47d5-b347-6a7890233788",
+      "approval_sha256": "10abe463ec8c83e7a42067134bfe3e4caf51d4d248b5adf40a1dfa5b5c3cafe6",
+      "airwallex_sha256_matches": true,
+      "leaf": "b1417647fafac30c25e67bac8458faa4aae6733a0152c417e7280485eefb95b0",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "c632212359e09ef3cf1601582bde96ac6a35cabc1ce8680ed703875b500e260e"
+        },
+        {
+          "side": "L",
+          "hash": "da579c3752c3b8bc20a270ecf5d4346e51749f48fbb0d4218ead6ce2ab3e2c31"
+        },
+        {
+          "side": "R",
+          "hash": "42202420a01bf7be102e082adf80348e8f5c60f637f1748de5b56e759bdce02b"
+        },
+        {
+          "side": "L",
+          "hash": "52fcf26116726111e04411ef06e3b8850e5ad5ee1ebad3144376e36cd32eb66d"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "label": "BTX-SOAK-13",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "82d06707-a975-4fb6-8140-ff2611e4384c",
+      "approval_sha256": "514a84b5bc44dd454b9bae9dafd30e2cfef07aaf04cefce85cc2f76212793b47",
+      "airwallex_sha256_matches": true,
+      "leaf": "36bae1837662099533fbe599bfb18f1c3463caa6d55401aacd6a4ad0f00905a8",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "37db63489fedb53e8ad863c5ce2db6b4c2d60497a5ca212ac268a582785c23f4"
+        },
+        {
+          "side": "R",
+          "hash": "a45dfb16f4d2ea479c3c6f9bd73b5f062d4c8c196e01969d9e54322bf2abfbc1"
+        },
+        {
+          "side": "L",
+          "hash": "0aaf9999bafc143d8ae00b9e2e1ea01cc036f79e49ddd49719cb90440e8463aa"
+        },
+        {
+          "side": "L",
+          "hash": "52fcf26116726111e04411ef06e3b8850e5ad5ee1ebad3144376e36cd32eb66d"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "label": "BTX-SOAK-14",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "11c9e397-9d8d-4b25-a02e-9e465a3e8221",
+      "approval_sha256": "03aa37600d11765b9054e4f1143cae43c6991049d982940d57dab94a42e3b747",
+      "airwallex_sha256_matches": true,
+      "leaf": "37db63489fedb53e8ad863c5ce2db6b4c2d60497a5ca212ac268a582785c23f4",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "36bae1837662099533fbe599bfb18f1c3463caa6d55401aacd6a4ad0f00905a8"
+        },
+        {
+          "side": "R",
+          "hash": "a45dfb16f4d2ea479c3c6f9bd73b5f062d4c8c196e01969d9e54322bf2abfbc1"
+        },
+        {
+          "side": "L",
+          "hash": "0aaf9999bafc143d8ae00b9e2e1ea01cc036f79e49ddd49719cb90440e8463aa"
+        },
+        {
+          "side": "L",
+          "hash": "52fcf26116726111e04411ef06e3b8850e5ad5ee1ebad3144376e36cd32eb66d"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "label": "BTX-SOAK-15",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "02ff4a68-3a90-431f-b805-ce00b9ba1236",
+      "approval_sha256": "6f1e393041478f841ab0a1989aab41bb86c278957027d00fd716b21631a21c03",
+      "airwallex_sha256_matches": true,
+      "leaf": "fc7bd583368e781a54fb0f5c12553e75bac5758122930ecb82c70dca97f6ea2d",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "972dc78d412eabdaca0e9380c8975e81bce403b61f85b43cd5a5264dc2672bf7"
+        },
+        {
+          "side": "L",
+          "hash": "dba1b1a331ccb702b4bdb943de1dfada50aa07c863bbaba67c20afb1d2b9af0c"
+        },
+        {
+          "side": "L",
+          "hash": "0aaf9999bafc143d8ae00b9e2e1ea01cc036f79e49ddd49719cb90440e8463aa"
+        },
+        {
+          "side": "L",
+          "hash": "52fcf26116726111e04411ef06e3b8850e5ad5ee1ebad3144376e36cd32eb66d"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "label": "BTX-SOAK-16",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "8c4a541f-bdea-4e1e-b69a-678ef112ebac",
+      "approval_sha256": "9c3ea2a5d5fd2e79b99782bc215ff905e0ce93f85e7684db11ff2928cae0ce68",
+      "airwallex_sha256_matches": true,
+      "leaf": "972dc78d412eabdaca0e9380c8975e81bce403b61f85b43cd5a5264dc2672bf7",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "fc7bd583368e781a54fb0f5c12553e75bac5758122930ecb82c70dca97f6ea2d"
+        },
+        {
+          "side": "L",
+          "hash": "dba1b1a331ccb702b4bdb943de1dfada50aa07c863bbaba67c20afb1d2b9af0c"
+        },
+        {
+          "side": "L",
+          "hash": "0aaf9999bafc143d8ae00b9e2e1ea01cc036f79e49ddd49719cb90440e8463aa"
+        },
+        {
+          "side": "L",
+          "hash": "52fcf26116726111e04411ef06e3b8850e5ad5ee1ebad3144376e36cd32eb66d"
+        },
+        {
+          "side": "R",
+          "hash": "a0b5849c1f6c12663f28f97e0f50f01e99ef4e8765b0faeaeaecf6a1aa9d91ec"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "label": "SLL-SOAK-17",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "6b037188-b075-44fd-8fb0-d4e30060ea0a",
+      "approval_sha256": "664311c446d7d4dfe6c66d219a38028578e1dd0367ca608b15de41f0cd15a65d",
+      "airwallex_sha256_matches": true,
+      "leaf": "33f4bb779f3894288d484efc1705ca905a8dd0f7dd67bf2da9f1b348642c5234",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "66c02e8983e98d9fbc6d45faf237098362f814138a562f2b335ac636e375e1f4"
+        },
+        {
+          "side": "R",
+          "hash": "9d377ef5ad82f1d9c8eb43087b8a9aa85b344efd3610a3f38b7a44623b6e54b9"
+        },
+        {
+          "side": "R",
+          "hash": "00440a83ce7ccfa4e2777390b674f320f2f1894fb40b7136a1a36c176a164b66"
+        },
+        {
+          "side": "R",
+          "hash": "3d5e3294794178f6673f05917172b9a017f91ab5569da3738aaffbd3333cd531"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "label": "BTX-SOAK-18",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "c060f57f-7605-487f-af9b-bbc611528c86",
+      "approval_sha256": "356013128836bd0ce7166be34574cda544c6be34535d41a554e29bb3e19ac715",
+      "airwallex_sha256_matches": true,
+      "leaf": "66c02e8983e98d9fbc6d45faf237098362f814138a562f2b335ac636e375e1f4",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "33f4bb779f3894288d484efc1705ca905a8dd0f7dd67bf2da9f1b348642c5234"
+        },
+        {
+          "side": "R",
+          "hash": "9d377ef5ad82f1d9c8eb43087b8a9aa85b344efd3610a3f38b7a44623b6e54b9"
+        },
+        {
+          "side": "R",
+          "hash": "00440a83ce7ccfa4e2777390b674f320f2f1894fb40b7136a1a36c176a164b66"
+        },
+        {
+          "side": "R",
+          "hash": "3d5e3294794178f6673f05917172b9a017f91ab5569da3738aaffbd3333cd531"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "label": "BTX-SOAK-19",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "d1ffc499-217a-4abb-80f4-ffe9c32f75bc",
+      "approval_sha256": "b23555d94c919f247591fc7fba8ab034ca0763747dc2334ccd2ad5e76ea9cceb",
+      "airwallex_sha256_matches": true,
+      "leaf": "b4ce46fd83f2a47ef3b9a26c18abdfc9a34fdf405f09e7bfdca888c08d87eba0",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "10510d35e6cfdc42befd60e0e86d800ef2b179e6977e98f5a4d471a5ade69dca"
+        },
+        {
+          "side": "L",
+          "hash": "46a114662b8555fddecf47888b836cf55592106e21a54b928920ea2e87cf74af"
+        },
+        {
+          "side": "R",
+          "hash": "00440a83ce7ccfa4e2777390b674f320f2f1894fb40b7136a1a36c176a164b66"
+        },
+        {
+          "side": "R",
+          "hash": "3d5e3294794178f6673f05917172b9a017f91ab5569da3738aaffbd3333cd531"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "label": "BTX-SOAK-20",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "024edb8b-f397-4f63-abcb-15cf7cb89100",
+      "approval_sha256": "f15c9f209c58b9effb2ee048cec92b4c020d498152ad403d91701488ff8932e1",
+      "airwallex_sha256_matches": true,
+      "leaf": "10510d35e6cfdc42befd60e0e86d800ef2b179e6977e98f5a4d471a5ade69dca",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "b4ce46fd83f2a47ef3b9a26c18abdfc9a34fdf405f09e7bfdca888c08d87eba0"
+        },
+        {
+          "side": "L",
+          "hash": "46a114662b8555fddecf47888b836cf55592106e21a54b928920ea2e87cf74af"
+        },
+        {
+          "side": "R",
+          "hash": "00440a83ce7ccfa4e2777390b674f320f2f1894fb40b7136a1a36c176a164b66"
+        },
+        {
+          "side": "R",
+          "hash": "3d5e3294794178f6673f05917172b9a017f91ab5569da3738aaffbd3333cd531"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "label": "SLL-SOAK-21",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "32cde8a4-58e0-4274-a4c2-a2bbe4e19003",
+      "approval_sha256": "0232a88e9d6948148cdfd00a07f2ffeb5dd730f41d3e8f04e0ccb74ed3780d6c",
+      "airwallex_sha256_matches": true,
+      "leaf": "ec3326de1969a9dfa5da17afc0efb58815fbe3a1ca5a46fcbd81ea1391a6faf8",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "3f6e09913b59a9434026a90a860de92db1271d98d502897b20e1b92a1311d4b6"
+        },
+        {
+          "side": "R",
+          "hash": "3a2aa1a422c7f20e6e0447e14d0ce322447f75d16233edfc332f6d671046a112"
+        },
+        {
+          "side": "L",
+          "hash": "d6891af6843bb89171ffe3b0fe0255796cdff2189e863a1a31ece727ec0f2428"
+        },
+        {
+          "side": "R",
+          "hash": "3d5e3294794178f6673f05917172b9a017f91ab5569da3738aaffbd3333cd531"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "label": "BTX-SOAK-22",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "f8c8b191-0059-428b-a2b3-97b39c2c86be",
+      "approval_sha256": "01fa3bec0ec4146265343963a3acf4c3cb4f3e392104932bbe141f24e92e423f",
+      "airwallex_sha256_matches": true,
+      "leaf": "3f6e09913b59a9434026a90a860de92db1271d98d502897b20e1b92a1311d4b6",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "ec3326de1969a9dfa5da17afc0efb58815fbe3a1ca5a46fcbd81ea1391a6faf8"
+        },
+        {
+          "side": "R",
+          "hash": "3a2aa1a422c7f20e6e0447e14d0ce322447f75d16233edfc332f6d671046a112"
+        },
+        {
+          "side": "L",
+          "hash": "d6891af6843bb89171ffe3b0fe0255796cdff2189e863a1a31ece727ec0f2428"
+        },
+        {
+          "side": "R",
+          "hash": "3d5e3294794178f6673f05917172b9a017f91ab5569da3738aaffbd3333cd531"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "label": "BTX-SOAK-23",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "9a786258-e411-4fe9-8cb0-886e7c6c8f07",
+      "approval_sha256": "daec47c78c84b4dbf0c313a2776566869be3cb9e618e01107e672b828c11a6ac",
+      "airwallex_sha256_matches": true,
+      "leaf": "6c3a34f0bbce44de50245ccbb23fa2519d0d79a9f9fb0141e0bb4cd6b23ad4b2",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "814a87ef216ef7ae6aa312cb0c64255ddf0b0234dfeeef51356c46d8766a2805"
+        },
+        {
+          "side": "L",
+          "hash": "ddadba89b8b69ea74a4bd8537fd36d5871a07d1865abd9f3743b9be013025045"
+        },
+        {
+          "side": "L",
+          "hash": "d6891af6843bb89171ffe3b0fe0255796cdff2189e863a1a31ece727ec0f2428"
+        },
+        {
+          "side": "R",
+          "hash": "3d5e3294794178f6673f05917172b9a017f91ab5569da3738aaffbd3333cd531"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "label": "BTX-SOAK-24",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "bfa8d306-a416-4b5e-8f96-1651fae2c112",
+      "approval_sha256": "f50519f174c46f14c15c7e14f225fe9ddf0a48e83a86d651c3742484b1d45b31",
+      "airwallex_sha256_matches": true,
+      "leaf": "814a87ef216ef7ae6aa312cb0c64255ddf0b0234dfeeef51356c46d8766a2805",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "6c3a34f0bbce44de50245ccbb23fa2519d0d79a9f9fb0141e0bb4cd6b23ad4b2"
+        },
+        {
+          "side": "L",
+          "hash": "ddadba89b8b69ea74a4bd8537fd36d5871a07d1865abd9f3743b9be013025045"
+        },
+        {
+          "side": "L",
+          "hash": "d6891af6843bb89171ffe3b0fe0255796cdff2189e863a1a31ece727ec0f2428"
+        },
+        {
+          "side": "R",
+          "hash": "3d5e3294794178f6673f05917172b9a017f91ab5569da3738aaffbd3333cd531"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 24,
+      "label": "BTX-SOAK-25",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "7b57741d-2898-4b78-979b-6954603923ef",
+      "approval_sha256": "c3d3d19a0611d8638306b3a477fa73a5ee96feab709d55ab0af5f5a948a26b37",
+      "airwallex_sha256_matches": true,
+      "leaf": "dfa3d3daa330a4c9b75ac76eded43e0a8a1cd15e8aecdacbb2d87b05c6010811",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "f1890b9243ca971350da40a9c5605f37b2424b7814be3a8fd87dfd2233fb6dda"
+        },
+        {
+          "side": "R",
+          "hash": "5ca93ed523d8b51824012a663e6b7f9728c17f912c3292711b069cc5ebd2a6b8"
+        },
+        {
+          "side": "R",
+          "hash": "5519ceff5183c06c8c0c8ecdb1a04b80dda826d38a93bba12fdd7e24dd05578c"
+        },
+        {
+          "side": "L",
+          "hash": "a4d07f795c83e67ce3997d1ef87c76ee91b7f65088b07b5345b8fb9169d3af7d"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "label": "SLL-SOAK-26",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "995cf235-ed8d-4b39-b6fc-0c33e95d5bbc",
+      "approval_sha256": "e1a8cac89447c5a44c7022ed063bfbb4bb71f437c0c97bbb8fcc60f5b7eda22e",
+      "airwallex_sha256_matches": true,
+      "leaf": "f1890b9243ca971350da40a9c5605f37b2424b7814be3a8fd87dfd2233fb6dda",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "dfa3d3daa330a4c9b75ac76eded43e0a8a1cd15e8aecdacbb2d87b05c6010811"
+        },
+        {
+          "side": "R",
+          "hash": "5ca93ed523d8b51824012a663e6b7f9728c17f912c3292711b069cc5ebd2a6b8"
+        },
+        {
+          "side": "R",
+          "hash": "5519ceff5183c06c8c0c8ecdb1a04b80dda826d38a93bba12fdd7e24dd05578c"
+        },
+        {
+          "side": "L",
+          "hash": "a4d07f795c83e67ce3997d1ef87c76ee91b7f65088b07b5345b8fb9169d3af7d"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "label": "BTX-SOAK-27",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "9e9f87b5-bebd-4782-8442-851ca6253e85",
+      "approval_sha256": "eb2fabcf038d253dea5174a869928536def225c2c305c48d5cb2670698fcf1fd",
+      "airwallex_sha256_matches": true,
+      "leaf": "1e5f9031bf1439ca88b92036f1db67b690de6da56e4ceb6ded34fadebc8421ee",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "a289648fcf9812c6a97d6c5bb2edbe54b50eaf89f7ad0be3fdd5952b1ff1d055"
+        },
+        {
+          "side": "L",
+          "hash": "8fe9ba611ed7a1ada958450b1d9c6a496b92638edad5e41e11f3324dec2e74b6"
+        },
+        {
+          "side": "R",
+          "hash": "5519ceff5183c06c8c0c8ecdb1a04b80dda826d38a93bba12fdd7e24dd05578c"
+        },
+        {
+          "side": "L",
+          "hash": "a4d07f795c83e67ce3997d1ef87c76ee91b7f65088b07b5345b8fb9169d3af7d"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 27,
+      "label": "BTX-SOAK-28",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "16c78339-156a-4f90-ac4a-d8348a05578b",
+      "approval_sha256": "abaa65d8cfbbe7d3b95242b7e23ff6b9a713b1cc3002ac29d858e0978fbe5a3a",
+      "airwallex_sha256_matches": true,
+      "leaf": "a289648fcf9812c6a97d6c5bb2edbe54b50eaf89f7ad0be3fdd5952b1ff1d055",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "1e5f9031bf1439ca88b92036f1db67b690de6da56e4ceb6ded34fadebc8421ee"
+        },
+        {
+          "side": "L",
+          "hash": "8fe9ba611ed7a1ada958450b1d9c6a496b92638edad5e41e11f3324dec2e74b6"
+        },
+        {
+          "side": "R",
+          "hash": "5519ceff5183c06c8c0c8ecdb1a04b80dda826d38a93bba12fdd7e24dd05578c"
+        },
+        {
+          "side": "L",
+          "hash": "a4d07f795c83e67ce3997d1ef87c76ee91b7f65088b07b5345b8fb9169d3af7d"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "label": "BTX-SOAK-29",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "c7444ff4-8e55-42bf-abf8-9785f5a9ed71",
+      "approval_sha256": "4d67917a7cfb93dc25af60478c3a6bf519ceeb800cee002e86f7555d81f3b5e9",
+      "airwallex_sha256_matches": true,
+      "leaf": "9585b7134f8f37ceb0e8f2c35859bd3153e7bb7775ad20ed9a9ee2ae53295f8d",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "fdf70ac3d6488384a2c44b2e59def3937ade79def621871dbffa070746f55ca1"
+        },
+        {
+          "side": "R",
+          "hash": "5360e6de84ef67e78f7d36763f4127b3b93d1f4a13953251066b3f3684fa4bb0"
+        },
+        {
+          "side": "L",
+          "hash": "6f44c124ae5efae0e04fffbffc056873142941c6ce978f2aee018dcd708399b1"
+        },
+        {
+          "side": "L",
+          "hash": "a4d07f795c83e67ce3997d1ef87c76ee91b7f65088b07b5345b8fb9169d3af7d"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 29,
+      "label": "BTX-SOAK-30",
+      "record": "docs/runs/2026-11-19-airwallex-soak.json",
+      "transfer_id": "92ad9012-369c-4d08-9a18-4aaf808b9cd4",
+      "approval_sha256": "3f6419b5452a92a9b181aa4a5acdf1333bbac7462dc9c998c526278fc7067344",
+      "airwallex_sha256_matches": true,
+      "leaf": "fdf70ac3d6488384a2c44b2e59def3937ade79def621871dbffa070746f55ca1",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "9585b7134f8f37ceb0e8f2c35859bd3153e7bb7775ad20ed9a9ee2ae53295f8d"
+        },
+        {
+          "side": "R",
+          "hash": "5360e6de84ef67e78f7d36763f4127b3b93d1f4a13953251066b3f3684fa4bb0"
+        },
+        {
+          "side": "L",
+          "hash": "6f44c124ae5efae0e04fffbffc056873142941c6ce978f2aee018dcd708399b1"
+        },
+        {
+          "side": "L",
+          "hash": "a4d07f795c83e67ce3997d1ef87c76ee91b7f65088b07b5345b8fb9169d3af7d"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "label": "SLL-2026-11B1",
+      "record": "docs/runs/2026-11-19-airwallex-bills.json",
+      "transfer_id": "786b9dfa-0299-4c4d-b209-9a530533c6dd",
+      "approval_sha256": "75eb5d22c146031478b972a470cec89f1cc4d49ca368f7be72bd67bb9277c2c5",
+      "airwallex_sha256_matches": true,
+      "leaf": "1eeb1c6972b6cb8ee805e25c954ada11835af3d290dfb2ab0c4981fe16d1c8f6",
+      "proof": [
+        {
+          "side": "R",
+          "hash": "7d92eb3eff24cda21a2e6e8e6ddef76ed8922ee70cc6adcaf86bd6c81516c627"
+        },
+        {
+          "side": "L",
+          "hash": "7e611842b0833e6717831dfad2b1ef29e3edab49da6a1c5db419025c795f7fcc"
+        },
+        {
+          "side": "L",
+          "hash": "6f44c124ae5efae0e04fffbffc056873142941c6ce978f2aee018dcd708399b1"
+        },
+        {
+          "side": "L",
+          "hash": "a4d07f795c83e67ce3997d1ef87c76ee91b7f65088b07b5345b8fb9169d3af7d"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 31,
+      "label": "SLL-2026-11B2",
+      "record": "docs/runs/2026-11-19-airwallex-bills.json",
+      "transfer_id": "36e4fc5c-8e8a-4596-85c4-1054c7c3ab5a",
+      "approval_sha256": "d3960244252e93e16b2db9ce6e561a1be3547271a63ec77e552f8ef604c21088",
+      "airwallex_sha256_matches": true,
+      "leaf": "7d92eb3eff24cda21a2e6e8e6ddef76ed8922ee70cc6adcaf86bd6c81516c627",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "1eeb1c6972b6cb8ee805e25c954ada11835af3d290dfb2ab0c4981fe16d1c8f6"
+        },
+        {
+          "side": "L",
+          "hash": "7e611842b0833e6717831dfad2b1ef29e3edab49da6a1c5db419025c795f7fcc"
+        },
+        {
+          "side": "L",
+          "hash": "6f44c124ae5efae0e04fffbffc056873142941c6ce978f2aee018dcd708399b1"
+        },
+        {
+          "side": "L",
+          "hash": "a4d07f795c83e67ce3997d1ef87c76ee91b7f65088b07b5345b8fb9169d3af7d"
+        },
+        {
+          "side": "L",
+          "hash": "979a22cd6a044279306d40b9989e0e9215d74a5e084e3866cbf92dd6bf945062"
+        },
+        {
+          "side": "R",
+          "hash": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35"
+        }
+      ]
+    },
+    {
+      "index": 32,
+      "label": "SLL-2026-11B3",
+      "record": "docs/runs/2026-11-19-airwallex-bills.json",
+      "transfer_id": "2d8ada88-4293-4a22-89eb-0f5f1fb930dc",
+      "approval_sha256": "9d55b003edcaf6182e3a005799e2919d9e80d4f2c7a1b6a14378bc9deaaa1c5d",
+      "airwallex_sha256_matches": true,
+      "leaf": "fecd086fbcbccd12f9feb5b9284f3d715277da2faaf2f8678687467bed0c3b35",
+      "proof": [
+        {
+          "side": "L",
+          "hash": "d3a07e2f73f91424c9930e59e1e9f0f89c62900b06824add130e7e78bccb70e3"
+        }
+      ]
+    }
+  ]
+}

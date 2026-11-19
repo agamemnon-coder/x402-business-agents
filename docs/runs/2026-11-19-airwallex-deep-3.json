@@ -1,0 +1,1151 @@
+{
+  "run": "airwallex-deep",
+  "ran_at": "2026-11-19T15:58:42.196Z",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "simulated": "The customer's bank transfer is made by the sandbox's simulation endpoint (POST /simulation/deposit/create): nobody paid anything. No passkey signs in this run: the revoked transfer carries the hash of its test terms, and the run plays the CFO withdrawing it.",
+  "command": "npm run airwallex:deep -- live",
+  "budget": {
+    "approved": 20,
+    "used": 7,
+    "status_429": 0
+  },
+  "totals": {
+    "rows": 5,
+    "live": 5,
+    "refused": 0,
+    "new_endpoints": 3,
+    "new_endpoints_live": 3
+  },
+  "results": [
+    {
+      "capability": "1 validate and revoke",
+      "method": "POST",
+      "endpoint": "/transfers/validate",
+      "function": "validateTransfer (src/airwallex/transferRevoke.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:58:42.975Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "Airwallex accepted the exact terms (EUR 1.00 to Bergtex Textil GmbH, SWIFT, for 2026-11-22) without creating a transfer",
+      "id": null,
+      "request_id": "a9fffb43-283b-42f4-b33e-3b71034feb5d",
+      "awx_request_id": null,
+      "trace_id": "04f051d660bc4340b700e09c47a62ce7"
+    },
+    {
+      "capability": "1 validate and revoke",
+      "method": "POST",
+      "endpoint": "/transfers/create",
+      "function": "createScheduledTransfer (src/airwallex/transferRevoke.ts)",
+      "http_status": 201,
+      "error_code": null,
+      "at": "2026-11-19T15:58:43.813Z",
+      "live": true,
+      "new_endpoint": false,
+      "outcome": "created for 2026-11-22: SCHEDULED",
+      "id": "45381b57-ec1c-4e15-b1cb-7cb0d2a2b854",
+      "request_id": "a9fffb43-283b-42f4-b33e-3b71034feb5d",
+      "awx_request_id": null,
+      "trace_id": "b738a736aed74808834c862ca8f0d4a8"
+    },
+    {
+      "capability": "1 validate and revoke",
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "function": "revokeScheduledTransfer (src/airwallex/transferRevoke.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:58:45.795Z",
+      "live": true,
+      "new_endpoint": false,
+      "outcome": "read first: SCHEDULED; the cancel answered 2xx; read back: CANCELLED",
+      "id": "45381b57-ec1c-4e15-b1cb-7cb0d2a2b854",
+      "request_id": "a9fffb43-283b-42f4-b33e-3b71034feb5d",
+      "awx_request_id": null,
+      "trace_id": "a57f21d004d2402eb9362c6c6d5be6e7"
+    },
+    {
+      "capability": "1 validate and revoke",
+      "method": "POST",
+      "endpoint": "/transfers/{id}/cancel",
+      "function": "revokeScheduledTransfer (src/airwallex/transferRevoke.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:58:45.246Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "read first: SCHEDULED; the cancel answered 2xx; read back: CANCELLED",
+      "id": "45381b57-ec1c-4e15-b1cb-7cb0d2a2b854",
+      "request_id": "a9fffb43-283b-42f4-b33e-3b71034feb5d",
+      "awx_request_id": null,
+      "trace_id": "f3ec723a3c8b4333bbf421f098d677b4"
+    },
+    {
+      "capability": "4 balance history",
+      "method": "GET",
+      "endpoint": "/balances/history",
+      "function": "listBalanceHistory (src/airwallex/balanceHistory.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T15:58:46.108Z",
+      "live": true,
+      "new_endpoint": true,
+      "outcome": "94 statement line(s) posted 08:49–08:53 UTC",
+      "id": null,
+      "request_id": null,
+      "awx_request_id": null,
+      "trace_id": "6dede0bd94dd4edc90636a4a57c7663b"
+    }
+  ],
+  "facts": {
+    "revoke": {
+      "terms": {
+        "requestId": "a9fffb43-283b-42f4-b33e-3b71034feb5d",
+        "beneficiaryId": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "amountCents": 100,
+        "currency": "EUR",
+        "reference": "AWXDEEP-155842",
+        "reason": "professional_business_services",
+        "transferDate": "2026-11-22",
+        "approval_sha256": "037b58f3c036ca0b00c102c4f2678eebf3dd2a7b79de126c5eeb0b2e56d0e9a5"
+      },
+      "validated": true,
+      "scheduled": {
+        "id": "45381b57-ec1c-4e15-b1cb-7cb0d2a2b854",
+        "status": "SCHEDULED",
+        "transfer_date": "2026-11-22"
+      },
+      "before": "SCHEDULED",
+      "after": "CANCELLED"
+    },
+    "receivable": null,
+    "card": null,
+    "statement": {
+      "window": {
+        "from": "2026-11-19T08:49:00+0000",
+        "to": "2026-11-19T08:53:00+0000"
+      },
+      "lines": 94,
+      "continuity": {
+        "currencies": {
+          "EUR": {
+            "lines": 76,
+            "links": 75,
+            "opening": "EUR 9839230.39",
+            "closing": "EUR 9810652.58"
+          },
+          "USD": {
+            "lines": 18,
+            "links": 17,
+            "opening": "USD 9994630.19",
+            "closing": "USD 9988251.37"
+          }
+        },
+        "links": 92,
+        "breaks": [],
+        "holdLines": 12
+      },
+      "checked": 42,
+      "agree": 42,
+      "differences": [],
+      "fee_lines": 35,
+      "statement_lines": [
+        {
+          "id": "01a1f302-21ef-7219-871f-57d269f54121",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 981065258,
+          "source": "1d381830-2f80-47e6-b19d-b22d5f42c759",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:52:45+0800"
+        },
+        {
+          "id": "01a1f302-21ef-7219-871f-57d269f5411e",
+          "currency": "EUR",
+          "amount_cents": -185000,
+          "balance_cents": 981066624,
+          "source": "1d381830-2f80-47e6-b19d-b22d5f42c759",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:52:45+0800"
+        },
+        {
+          "id": "01a1f301-b7b8-75a8-a112-c0bc00503624",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 981251624,
+          "source": "dfb92354-8bed-480f-b498-f84eea8b4d28",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:52:18+0800"
+        },
+        {
+          "id": "01a1f301-b7b8-75a8-a112-c0bc00503621",
+          "currency": "EUR",
+          "amount_cents": -12000,
+          "balance_cents": 981252990,
+          "source": "dfb92354-8bed-480f-b498-f84eea8b4d28",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:52:18+0800"
+        },
+        {
+          "id": "01a1f301-5bc7-760b-9cc2-d11ef919a031",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 981264990,
+          "source": "92ad9012-369c-4d08-9a18-4aaf808b9cd4",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:54+0800"
+        },
+        {
+          "id": "01a1f301-5bc6-747c-b083-a063c806e753",
+          "currency": "EUR",
+          "amount_cents": -505,
+          "balance_cents": 981266356,
+          "source": "92ad9012-369c-4d08-9a18-4aaf808b9cd4",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:54+0800"
+        },
+        {
+          "id": "01a1f301-4ae2-7fff-bbf2-dc950c62c7cd",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 981266861,
+          "source": "c7444ff4-8e55-42bf-abf8-9785f5a9ed71",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:50+0800"
+        },
+        {
+          "id": "01a1f301-4ae2-7fff-bbf2-dc950c62c7ca",
+          "currency": "EUR",
+          "amount_cents": -654321,
+          "balance_cents": 981268227,
+          "source": "c7444ff4-8e55-42bf-abf8-9785f5a9ed71",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:50+0800"
+        },
+        {
+          "id": "01a1f301-39c2-7aba-91bf-1c2dbd93f75d",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 981922548,
+          "source": "16c78339-156a-4f90-ac4a-d8348a05578b",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:46+0800"
+        },
+        {
+          "id": "01a1f301-39c2-7aba-91bf-1c2dbd93f75a",
+          "currency": "EUR",
+          "amount_cents": -8888,
+          "balance_cents": 981923914,
+          "source": "16c78339-156a-4f90-ac4a-d8348a05578b",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:46+0800"
+        },
+        {
+          "id": "01a1f301-27f0-7e97-a336-a8d227e05bda",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 981932802,
+          "source": "9e9f87b5-bebd-4782-8442-851ca6253e85",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:41+0800"
+        },
+        {
+          "id": "01a1f301-27f0-7e97-a336-a8d227e05bd7",
+          "currency": "EUR",
+          "amount_cents": -276543,
+          "balance_cents": 981934168,
+          "source": "9e9f87b5-bebd-4782-8442-851ca6253e85",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:41+0800"
+        },
+        {
+          "id": "01a1f301-2482-7076-bed7-72a60fea4949",
+          "currency": "EUR",
+          "amount_cents": 277543,
+          "balance_cents": 982210711,
+          "source": "0c0aef26-6041-45f5-9320-b10c705c6303",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_BUY",
+          "posted_at": "2026-11-19T16:51:40+0800"
+        },
+        {
+          "id": "01a1f301-2482-7076-bed7-72a60fea4948",
+          "currency": "USD",
+          "amount_cents": -308182,
+          "balance_cents": 998825137,
+          "source": "0c0aef26-6041-45f5-9320-b10c705c6303",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_SELL",
+          "posted_at": "2026-11-19T16:51:40+0800"
+        },
+        {
+          "id": "01a1f301-2482-7076-bed7-72a60fea4947",
+          "currency": "USD",
+          "amount_cents": -308182,
+          "balance_cents": 999133319,
+          "source": "0c0aef26-6041-45f5-9320-b10c705c6303",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD_RELEASE",
+          "posted_at": "2026-11-19T16:51:40+0800"
+        },
+        {
+          "id": "01a1f301-2482-7076-bed7-72a60fea4944",
+          "currency": "USD",
+          "amount_cents": 308182,
+          "balance_cents": 998825137,
+          "source": "0c0aef26-6041-45f5-9320-b10c705c6303",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD",
+          "posted_at": "2026-11-19T16:51:40+0800"
+        },
+        {
+          "id": "01a1f301-116b-7e9f-96da-47c7d9acd734",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 981933168,
+          "source": "995cf235-ed8d-4b39-b6fc-0c33e95d5bbc",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:35+0800"
+        },
+        {
+          "id": "01a1f301-116b-7e9f-96da-47c7d9acd731",
+          "currency": "EUR",
+          "amount_cents": -24000,
+          "balance_cents": 981934534,
+          "source": "995cf235-ed8d-4b39-b6fc-0c33e95d5bbc",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:35+0800"
+        },
+        {
+          "id": "01a1f301-007d-7954-8285-cf949b11ffca",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 981958534,
+          "source": "7b57741d-2898-4b78-979b-6954603923ef",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:31+0800"
+        },
+        {
+          "id": "01a1f301-007d-7954-8285-cf949b11ffc7",
+          "currency": "EUR",
+          "amount_cents": -6667,
+          "balance_cents": 981959900,
+          "source": "7b57741d-2898-4b78-979b-6954603923ef",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:31+0800"
+        },
+        {
+          "id": "01a1f300-ec1c-7ed5-82ba-f12ee9a74bad",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 981966567,
+          "source": "bfa8d306-a416-4b5e-8f96-1651fae2c112",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:26+0800"
+        },
+        {
+          "id": "01a1f300-ec1c-7ed5-82ba-f12ee9a74baa",
+          "currency": "EUR",
+          "amount_cents": -123457,
+          "balance_cents": 981967933,
+          "source": "bfa8d306-a416-4b5e-8f96-1651fae2c112",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:26+0800"
+        },
+        {
+          "id": "01a1f300-db95-738e-bf32-8a4e580508ae",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 982091390,
+          "source": "9a786258-e411-4fe9-8cb0-886e7c6c8f07",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:22+0800"
+        },
+        {
+          "id": "01a1f300-db95-738e-bf32-8a4e580508ab",
+          "currency": "EUR",
+          "amount_cents": -1234,
+          "balance_cents": 982092756,
+          "source": "9a786258-e411-4fe9-8cb0-886e7c6c8f07",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:22+0800"
+        },
+        {
+          "id": "01a1f300-cace-780a-b6ad-fc40eaf10167",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 982093990,
+          "source": "f8c8b191-0059-428b-a2b3-97b39c2c86be",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:17+0800"
+        },
+        {
+          "id": "01a1f300-cace-780a-b6ad-fc40eaf10164",
+          "currency": "EUR",
+          "amount_cents": -499999,
+          "balance_cents": 982095356,
+          "source": "f8c8b191-0059-428b-a2b3-97b39c2c86be",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:17+0800"
+        },
+        {
+          "id": "01a1f300-b833-7939-9fa0-023e22b19c5e",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 982595355,
+          "source": "32cde8a4-58e0-4274-a4c2-a2bbe4e19003",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:13+0800"
+        },
+        {
+          "id": "01a1f300-b833-7939-9fa0-023e22b19c5b",
+          "currency": "EUR",
+          "amount_cents": -24000,
+          "balance_cents": 982596721,
+          "source": "32cde8a4-58e0-4274-a4c2-a2bbe4e19003",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:13+0800"
+        },
+        {
+          "id": "01a1f300-b576-7235-848a-5fb333670f09",
+          "currency": "EUR",
+          "amount_cents": 25000,
+          "balance_cents": 982620721,
+          "source": "5c0e5c62-a6e5-4fd6-9086-438a50573e78",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_BUY",
+          "posted_at": "2026-11-19T16:51:12+0800"
+        },
+        {
+          "id": "01a1f300-b576-7235-848a-5fb333670f08",
+          "currency": "USD",
+          "amount_cents": -27763,
+          "balance_cents": 999133319,
+          "source": "5c0e5c62-a6e5-4fd6-9086-438a50573e78",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_SELL",
+          "posted_at": "2026-11-19T16:51:12+0800"
+        },
+        {
+          "id": "01a1f300-b576-7235-848a-5fb333670f07",
+          "currency": "USD",
+          "amount_cents": -27763,
+          "balance_cents": 999161082,
+          "source": "5c0e5c62-a6e5-4fd6-9086-438a50573e78",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD_RELEASE",
+          "posted_at": "2026-11-19T16:51:12+0800"
+        },
+        {
+          "id": "01a1f300-b576-7235-848a-5fb333670f04",
+          "currency": "USD",
+          "amount_cents": 27763,
+          "balance_cents": 999133319,
+          "source": "5c0e5c62-a6e5-4fd6-9086-438a50573e78",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD",
+          "posted_at": "2026-11-19T16:51:12+0800"
+        },
+        {
+          "id": "01a1f300-a3c8-744a-8bb0-109c2a589245",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 982595721,
+          "source": "024edb8b-f397-4f63-abcb-15cf7cb89100",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:07+0800"
+        },
+        {
+          "id": "01a1f300-a3c8-744a-8bb0-109c2a589242",
+          "currency": "EUR",
+          "amount_cents": -99999,
+          "balance_cents": 982597087,
+          "source": "024edb8b-f397-4f63-abcb-15cf7cb89100",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:07+0800"
+        },
+        {
+          "id": "01a1f300-9295-79c3-a16d-7b733826a88f",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 982697086,
+          "source": "d1ffc499-217a-4abb-80f4-ffe9c32f75bc",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:51:03+0800"
+        },
+        {
+          "id": "01a1f300-9295-79c3-a16d-7b733826a88c",
+          "currency": "EUR",
+          "amount_cents": -333333,
+          "balance_cents": 982698452,
+          "source": "d1ffc499-217a-4abb-80f4-ffe9c32f75bc",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:51:03+0800"
+        },
+        {
+          "id": "01a1f300-7cab-76dc-b2ee-06f8b99ffa06",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983031785,
+          "source": "c060f57f-7605-487f-af9b-bbc611528c86",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:57+0800"
+        },
+        {
+          "id": "01a1f300-7cab-76dc-b2ee-06f8b99ffa03",
+          "currency": "EUR",
+          "amount_cents": -67891,
+          "balance_cents": 983033151,
+          "source": "c060f57f-7605-487f-af9b-bbc611528c86",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:57+0800"
+        },
+        {
+          "id": "01a1f300-791c-76ea-9528-6d0b28a3c90a",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983101042,
+          "source": "af7523fb-ea7a-4e56-bbf7-828da6cabe61",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:56+0800"
+        },
+        {
+          "id": "01a1f300-791c-76ea-9528-6d0b28a3c907",
+          "currency": "EUR",
+          "amount_cents": -185000,
+          "balance_cents": 983102408,
+          "source": "af7523fb-ea7a-4e56-bbf7-828da6cabe61",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:56+0800"
+        },
+        {
+          "id": "01a1f300-6c94-74b0-aff3-4ba1e12aed04",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983287408,
+          "source": "6b037188-b075-44fd-8fb0-d4e30060ea0a",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:53+0800"
+        },
+        {
+          "id": "01a1f300-6c94-74b0-aff3-4ba1e12aed01",
+          "currency": "EUR",
+          "amount_cents": -24000,
+          "balance_cents": 983288774,
+          "source": "6b037188-b075-44fd-8fb0-d4e30060ea0a",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:53+0800"
+        },
+        {
+          "id": "01a1f300-5b21-7812-a549-4754a75e92d2",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983312774,
+          "source": "8c4a541f-bdea-4e1e-b69a-678ef112ebac",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:49+0800"
+        },
+        {
+          "id": "01a1f300-5b21-7812-a549-4754a75e92cf",
+          "currency": "EUR",
+          "amount_cents": -1000,
+          "balance_cents": 983314140,
+          "source": "8c4a541f-bdea-4e1e-b69a-678ef112ebac",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:49+0800"
+        },
+        {
+          "id": "01a1f300-476a-7979-9783-cb62cbc6a3c8",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983315140,
+          "source": "02ff4a68-3a90-431f-b805-ce00b9ba1236",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:44+0800"
+        },
+        {
+          "id": "01a1f300-476a-7979-9783-cb62cbc6a3c5",
+          "currency": "EUR",
+          "amount_cents": -55555,
+          "balance_cents": 983316506,
+          "source": "02ff4a68-3a90-431f-b805-ce00b9ba1236",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:44+0800"
+        },
+        {
+          "id": "01a1f300-447e-791b-8642-209c36be1c78",
+          "currency": "EUR",
+          "amount_cents": 56555,
+          "balance_cents": 983372061,
+          "source": "0dee0eae-4e59-47ee-8b42-568ed336767e",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_BUY",
+          "posted_at": "2026-11-19T16:50:43+0800"
+        },
+        {
+          "id": "01a1f300-447e-791b-8642-209c36be1c77",
+          "currency": "USD",
+          "amount_cents": -62805,
+          "balance_cents": 999161082,
+          "source": "0dee0eae-4e59-47ee-8b42-568ed336767e",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_SELL",
+          "posted_at": "2026-11-19T16:50:43+0800"
+        },
+        {
+          "id": "01a1f300-447e-791b-8642-209c36be1c76",
+          "currency": "USD",
+          "amount_cents": -62805,
+          "balance_cents": 999223887,
+          "source": "0dee0eae-4e59-47ee-8b42-568ed336767e",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD_RELEASE",
+          "posted_at": "2026-11-19T16:50:43+0800"
+        },
+        {
+          "id": "01a1f300-447e-791b-8642-209c36be1c73",
+          "currency": "USD",
+          "amount_cents": 62805,
+          "balance_cents": 999161082,
+          "source": "0dee0eae-4e59-47ee-8b42-568ed336767e",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD",
+          "posted_at": "2026-11-19T16:50:43+0800"
+        },
+        {
+          "id": "01a1f300-300e-7cdf-b1bf-2e59756356f7",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983315506,
+          "source": "11c9e397-9d8d-4b25-a02e-9e465a3e8221",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:38+0800"
+        },
+        {
+          "id": "01a1f300-300e-7cdf-b1bf-2e59756356f4",
+          "currency": "EUR",
+          "amount_cents": -250000,
+          "balance_cents": 983316872,
+          "source": "11c9e397-9d8d-4b25-a02e-9e465a3e8221",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:38+0800"
+        },
+        {
+          "id": "01a1f300-1e6c-7414-a571-539f3ba2b824",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983566872,
+          "source": "82d06707-a975-4fb6-8140-ff2611e4384c",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:33+0800"
+        },
+        {
+          "id": "01a1f300-1e6c-7414-a571-539f3ba2b821",
+          "currency": "EUR",
+          "amount_cents": -40404,
+          "balance_cents": 983568238,
+          "source": "82d06707-a975-4fb6-8140-ff2611e4384c",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:33+0800"
+        },
+        {
+          "id": "01a1f300-1aa8-70b1-835c-8f25229bf733",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983608642,
+          "source": "5ab3fb66-37f3-4c52-96bb-7855668b4be0",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:32+0800"
+        },
+        {
+          "id": "01a1f300-1aa8-70b1-835c-8f25229bf730",
+          "currency": "EUR",
+          "amount_cents": -12000,
+          "balance_cents": 983610008,
+          "source": "5ab3fb66-37f3-4c52-96bb-7855668b4be0",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:32+0800"
+        },
+        {
+          "id": "01a1f300-0a71-7820-bbee-6951c3f80911",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983622008,
+          "source": "76ecfaa2-8d9a-47d5-b347-6a7890233788",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:28+0800"
+        },
+        {
+          "id": "01a1f300-0a71-7820-bbee-6951c3f8090e",
+          "currency": "EUR",
+          "amount_cents": -24000,
+          "balance_cents": 983623374,
+          "source": "76ecfaa2-8d9a-47d5-b347-6a7890233788",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:28+0800"
+        },
+        {
+          "id": "01a1f2ff-f72a-72f5-a936-cf06b9c31b1e",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983647374,
+          "source": "1fbac219-4233-4827-b127-e46a7738b3a4",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:23+0800"
+        },
+        {
+          "id": "01a1f2ff-f72a-72f5-a936-cf06b9c31b1b",
+          "currency": "EUR",
+          "amount_cents": -27777,
+          "balance_cents": 983648740,
+          "source": "1fbac219-4233-4827-b127-e46a7738b3a4",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:23+0800"
+        },
+        {
+          "id": "01a1f2ff-e549-7054-938e-86811d8ec5ff",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983676517,
+          "source": "e821de96-a98c-4481-b0ce-5ba55a5ff521",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:19+0800"
+        },
+        {
+          "id": "01a1f2ff-e548-7064-b619-2a50d3e2c0ce",
+          "currency": "EUR",
+          "amount_cents": -185000,
+          "balance_cents": 983677883,
+          "source": "e821de96-a98c-4481-b0ce-5ba55a5ff521",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:19+0800"
+        },
+        {
+          "id": "01a1f2ff-e20f-74eb-bcc2-5c2a897612bb",
+          "currency": "EUR",
+          "amount_cents": 186000,
+          "balance_cents": 983862883,
+          "source": "99bba5e5-2869-4f61-bb37-b3a2d9bb7462",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_BUY",
+          "posted_at": "2026-11-19T16:50:18+0800"
+        },
+        {
+          "id": "01a1f2ff-e20f-74eb-bcc2-5c2a897612ba",
+          "currency": "USD",
+          "amount_cents": -206557,
+          "balance_cents": 999223887,
+          "source": "99bba5e5-2869-4f61-bb37-b3a2d9bb7462",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_SELL",
+          "posted_at": "2026-11-19T16:50:18+0800"
+        },
+        {
+          "id": "01a1f2ff-e20f-74eb-bcc2-5c2a897612b9",
+          "currency": "USD",
+          "amount_cents": -206557,
+          "balance_cents": 999430444,
+          "source": "99bba5e5-2869-4f61-bb37-b3a2d9bb7462",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD_RELEASE",
+          "posted_at": "2026-11-19T16:50:18+0800"
+        },
+        {
+          "id": "01a1f2ff-e20f-74eb-bcc2-5c2a897612b6",
+          "currency": "USD",
+          "amount_cents": 206557,
+          "balance_cents": 999223887,
+          "source": "99bba5e5-2869-4f61-bb37-b3a2d9bb7462",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD",
+          "posted_at": "2026-11-19T16:50:18+0800"
+        },
+        {
+          "id": "01a1f2ff-d01c-7953-bfa2-d9017512c49f",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983676883,
+          "source": "b420dd66-39f0-43c7-9ddd-c2b79cb3fdd0",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:13+0800"
+        },
+        {
+          "id": "01a1f2ff-d01c-7953-bfa2-d9017512c49c",
+          "currency": "EUR",
+          "amount_cents": -12345,
+          "balance_cents": 983678249,
+          "source": "b420dd66-39f0-43c7-9ddd-c2b79cb3fdd0",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:13+0800"
+        },
+        {
+          "id": "01a1f2ff-bfe9-7454-a9b2-fe92e021dc62",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983690594,
+          "source": "bf959679-2866-4bfc-a3a5-e5b0b6c5d28a",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:09+0800"
+        },
+        {
+          "id": "01a1f2ff-bfe9-7454-a9b2-fe92e021dc5f",
+          "currency": "EUR",
+          "amount_cents": -701,
+          "balance_cents": 983691960,
+          "source": "bf959679-2866-4bfc-a3a5-e5b0b6c5d28a",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:09+0800"
+        },
+        {
+          "id": "01a1f2ff-acab-7fb0-9dda-87b5a6dc27df",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983692661,
+          "source": "3dd8fb2c-6d6f-4347-80dd-ff81989a6acc",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:50:04+0800"
+        },
+        {
+          "id": "01a1f2ff-acab-7fb0-9dda-87b5a6dc27dc",
+          "currency": "EUR",
+          "amount_cents": -24000,
+          "balance_cents": 983694027,
+          "source": "3dd8fb2c-6d6f-4347-80dd-ff81989a6acc",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:50:04+0800"
+        },
+        {
+          "id": "01a1f2ff-a993-7545-a54b-2993475b278d",
+          "currency": "EUR",
+          "amount_cents": 25000,
+          "balance_cents": 983718027,
+          "source": "341fc481-976b-4783-9973-d820ca67d29f",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_BUY",
+          "posted_at": "2026-11-19T16:50:03+0800"
+        },
+        {
+          "id": "01a1f2ff-a993-7545-a54b-2993475b278c",
+          "currency": "USD",
+          "amount_cents": -27763,
+          "balance_cents": 999430444,
+          "source": "341fc481-976b-4783-9973-d820ca67d29f",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_SELL",
+          "posted_at": "2026-11-19T16:50:03+0800"
+        },
+        {
+          "id": "01a1f2ff-a993-7545-a54b-2993475b278b",
+          "currency": "USD",
+          "amount_cents": -27763,
+          "balance_cents": 999458207,
+          "source": "341fc481-976b-4783-9973-d820ca67d29f",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD_RELEASE",
+          "posted_at": "2026-11-19T16:50:03+0800"
+        },
+        {
+          "id": "01a1f2ff-a992-7cd5-8b33-5841d1d736fd",
+          "currency": "USD",
+          "amount_cents": 27763,
+          "balance_cents": 999430444,
+          "source": "341fc481-976b-4783-9973-d820ca67d29f",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD",
+          "posted_at": "2026-11-19T16:50:03+0800"
+        },
+        {
+          "id": "01a1f2ff-91d5-7c48-861a-b49986c3b268",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983693027,
+          "source": "be24bdd5-95ab-4107-baba-9f7e5e26d4d0",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:49:57+0800"
+        },
+        {
+          "id": "01a1f2ff-91d5-7c48-861a-b49986c3b265",
+          "currency": "EUR",
+          "amount_cents": -10101,
+          "balance_cents": 983694393,
+          "source": "be24bdd5-95ab-4107-baba-9f7e5e26d4d0",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:49:57+0800"
+        },
+        {
+          "id": "01a1f2ff-7de2-7dcb-8794-5e36a13ff208",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983704494,
+          "source": "0acd2cad-fcf7-49a6-abc1-b5e4b37498d7",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:49:52+0800"
+        },
+        {
+          "id": "01a1f2ff-7de2-7dcb-8794-5e36a13ff205",
+          "currency": "EUR",
+          "amount_cents": -3333,
+          "balance_cents": 983705860,
+          "source": "0acd2cad-fcf7-49a6-abc1-b5e4b37498d7",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:49:52+0800"
+        },
+        {
+          "id": "01a1f2ff-7af3-7b46-a285-3fd5ac3554aa",
+          "currency": "EUR",
+          "amount_cents": 4333,
+          "balance_cents": 983709193,
+          "source": "dddcd572-19c4-4bec-8d75-20d5a8a354e8",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_BUY",
+          "posted_at": "2026-11-19T16:49:51+0800"
+        },
+        {
+          "id": "01a1f2ff-7af3-7b46-a285-3fd5ac3554a9",
+          "currency": "USD",
+          "amount_cents": -4812,
+          "balance_cents": 999458207,
+          "source": "dddcd572-19c4-4bec-8d75-20d5a8a354e8",
+          "source_type": "CONVERSION",
+          "transaction_type": "CONVERSION_SELL",
+          "posted_at": "2026-11-19T16:49:51+0800"
+        },
+        {
+          "id": "01a1f2ff-7af3-7b46-a285-3fd5ac3554a8",
+          "currency": "USD",
+          "amount_cents": -4812,
+          "balance_cents": 999463019,
+          "source": "dddcd572-19c4-4bec-8d75-20d5a8a354e8",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD_RELEASE",
+          "posted_at": "2026-11-19T16:49:51+0800"
+        },
+        {
+          "id": "01a1f2ff-7af3-7b46-a285-3fd5ac3554a5",
+          "currency": "USD",
+          "amount_cents": 4812,
+          "balance_cents": 999458207,
+          "source": "dddcd572-19c4-4bec-8d75-20d5a8a354e8",
+          "source_type": "CONVERSION",
+          "transaction_type": "HOLD",
+          "posted_at": "2026-11-19T16:49:51+0800"
+        },
+        {
+          "id": "01a1f2ff-68c9-7889-95d0-97bf2874b591",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983704860,
+          "source": "58c77e7d-5577-463f-a43a-732a0f6966a9",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:49:47+0800"
+        },
+        {
+          "id": "01a1f2ff-68c9-7889-95d0-97bf2874b58e",
+          "currency": "EUR",
+          "amount_cents": -1999,
+          "balance_cents": 983706226,
+          "source": "58c77e7d-5577-463f-a43a-732a0f6966a9",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:49:47+0800"
+        },
+        {
+          "id": "01a1f2ff-57f8-7c60-9899-1fd1d4540545",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983708225,
+          "source": "87a403db-b7eb-4f0d-8b31-a0b2f4535251",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:49:42+0800"
+        },
+        {
+          "id": "01a1f2ff-57f8-7c60-9899-1fd1d4540542",
+          "currency": "EUR",
+          "amount_cents": -250,
+          "balance_cents": 983709591,
+          "source": "87a403db-b7eb-4f0d-8b31-a0b2f4535251",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:49:42+0800"
+        },
+        {
+          "id": "01a1f2ff-4666-727c-958b-9fb754a9abbb",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983709841,
+          "source": "11d6fbe5-76c8-404f-a528-7c200e5f794e",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:49:38+0800"
+        },
+        {
+          "id": "01a1f2ff-4666-727c-958b-9fb754a9abb8",
+          "currency": "EUR",
+          "amount_cents": -24000,
+          "balance_cents": 983711207,
+          "source": "11d6fbe5-76c8-404f-a528-7c200e5f794e",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:49:38+0800"
+        },
+        {
+          "id": "01a1f2ff-3487-73f1-a436-7c6025e70a37",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983735207,
+          "source": "a63888f6-3388-498e-993f-d2efbb64b578",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:49:33+0800"
+        },
+        {
+          "id": "01a1f2ff-3487-73f1-a436-7c6025e70a34",
+          "currency": "EUR",
+          "amount_cents": -100,
+          "balance_cents": 983736573,
+          "source": "a63888f6-3388-498e-993f-d2efbb64b578",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:49:33+0800"
+        },
+        {
+          "id": "01a1f2fe-e1bb-7e02-b190-7a40b536f98c",
+          "currency": "EUR",
+          "amount_cents": -1366,
+          "balance_cents": 983736673,
+          "source": "264bae42-3c6b-4df1-9789-0a31f7ea2f85",
+          "source_type": "FEE",
+          "transaction_type": "FEE",
+          "posted_at": "2026-11-19T16:49:12+0800"
+        },
+        {
+          "id": "01a1f2fe-e1bb-7e02-b190-7a40b536f989",
+          "currency": "EUR",
+          "amount_cents": -185000,
+          "balance_cents": 983738039,
+          "source": "264bae42-3c6b-4df1-9789-0a31f7ea2f85",
+          "source_type": "PAYOUT",
+          "transaction_type": "PAYOUT",
+          "posted_at": "2026-11-19T16:49:12+0800"
+        }
+      ]
+    },
+    "cleanup": null
+  },
+  "calls": [
+    {
+      "at": "2026-11-19T15:58:42.204Z",
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "trace_id": "8764e514494548e6bbc15698463f0d75"
+    },
+    {
+      "at": "2026-11-19T15:58:42.975Z",
+      "method": "POST",
+      "endpoint": "/transfers/validate",
+      "status": 200,
+      "trace_id": "04f051d660bc4340b700e09c47a62ce7"
+    },
+    {
+      "at": "2026-11-19T15:58:43.813Z",
+      "method": "POST",
+      "endpoint": "/transfers/create",
+      "status": 201,
+      "trace_id": "b738a736aed74808834c862ca8f0d4a8"
+    },
+    {
+      "at": "2026-11-19T15:58:44.822Z",
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "trace_id": "f4cbe41ffc8e46f889fa6cd07f58a6d4"
+    },
+    {
+      "at": "2026-11-19T15:58:45.246Z",
+      "method": "POST",
+      "endpoint": "/transfers/{id}/cancel",
+      "status": 200,
+      "trace_id": "f3ec723a3c8b4333bbf421f098d677b4"
+    },
+    {
+      "at": "2026-11-19T15:58:45.795Z",
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "trace_id": "a57f21d004d2402eb9362c6c6d5be6e7"
+    },
+    {
+      "at": "2026-11-19T15:58:46.108Z",
+      "method": "GET",
+      "endpoint": "/balances/history",
+      "status": 200,
+      "trace_id": "6dede0bd94dd4edc90636a4a57c7663b"
+    }
+  ]
+}
