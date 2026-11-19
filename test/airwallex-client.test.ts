@@ -80,6 +80,29 @@ describe("Airwallex client", () => {
     expect(() => new Airwallex({ clientId: "a", apiKey: "b", baseUrl: "https://api.airwallex.com/api/v1" })).toThrow(/sandbox/);
   });
 
+  it("uploads a file to the sandbox Files host as multipart, with the same token, and never to production", async () => {
+    const { client, calls } = mk([login, { status: 201, body: { file_id: "f-1", filename: "inv.pdf", size: 3 } }]);
+    const form = new FormData();
+    form.set("purpose", "SPEND_ATTACHMENT");
+    form.set("file", new Blob([new Uint8Array([1, 2, 3])], { type: "application/pdf" }), "inv.pdf");
+    expect(await client.upload("/files/upload", form)).toMatchObject({ file_id: "f-1" });
+    const up = calls[1]!;
+    expect(up.url).toBe("https://files.sandbox.airwallex.com/api/v1/files/upload");
+    expect(up.init.method).toBe("POST");
+    expect(up.init.body).toBe(form);
+    const h = up.init.headers as Record<string, string>;
+    expect(h.authorization).toBe("Bearer tok-1");
+    // fetch sets the multipart boundary itself: a content-type set here would break it.
+    expect(h["content-type"]).toBeUndefined();
+    expect(() => new Airwallex({ clientId: "a", apiKey: "b", filesBaseUrl: "https://files.airwallex.com/api/v1" })).toThrow(/sandbox/);
+  });
+
+  it("treats a lost upload answer as ambiguous, never resent", async () => {
+    const { client, calls } = mk([login, new TypeError("socket hang up")]);
+    await expect(client.upload("/files/upload", new FormData())).rejects.toBeInstanceOf(AirwallexAmbiguous);
+    expect(calls.filter((c) => c.url.endsWith("/files/upload"))).toHaveLength(1);
+  });
+
   it("redacts secrets in logged bodies", () => {
     expect(redact({ token: "t", nested: { api_key: "k", amount: "1.00" } })).toEqual({ token: "[redacted]", nested: { api_key: "[redacted]", amount: "1.00" } });
   });

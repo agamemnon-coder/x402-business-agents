@@ -291,7 +291,9 @@ describe("a calm document", () => {
   // +80 on 17 Nov: "A payout that does not stay paid" under Transfers (Airwallex's late failures after PAID).
   // +110 the same day: that section's run of record (what ran in the sandbox, what is tested only) and its row in "The
   // runs of record" (5,390 as built).
+  // +262 on 19 Nov: "Paid invoices as bills in Airwallex Spend" (AIRWALLEX_BILLS, off by default), its row in "The runs
+  // of record" and the Spend and Files rows in the key's permissions (5,652 as built).
   it("is no longer than it was before the three sections came in", () => {
-    expect(DOSSIER.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(4886 + 316 + 2 + 80 + 110);
+    expect(DOSSIER.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(4886 + 316 + 2 + 80 + 110 + 262);
   });
 });

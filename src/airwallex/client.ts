@@ -8,6 +8,8 @@ import { ACCOUNT_ID } from "./platform.js";
 import { airwallexOAuthConfig, airwallexOAuthOn, cloudTargetFromEnv } from "../cloudsync/connections.js";
 
 export const SANDBOX_BASE = "https://api.sandbox.airwallex.com/api/v1";
+/** Airwallex's Files service lives on its own host (Upload a file: files.sandbox.airwallex.com), with the same token. */
+export const SANDBOX_FILES_BASE = "https://files.sandbox.airwallex.com/api/v1";
 
 /**
  * Airwallex's answers about its own fee configuration (agent run 1). Only for these is its free-text message kept
@@ -34,6 +36,8 @@ export interface AirwallexConfig {
   /** The company's own OAuth access token instead of an API key (behind AIRWALLEX_OAUTH=on). */
   oauth?: AirwallexAccessToken;
   baseUrl?: string;
+  /** The Files service's base (uploads only, Airwallex Spend Bills): the sandbox's, like baseUrl. */
+  filesBaseUrl?: string;
   fetchImpl?: typeof fetch;
   /** Minimum gap between calls. 200 ms keeps us at 5/s, half the sandbox's per-endpoint limit. */
   minGapMs?: number;
@@ -126,6 +130,7 @@ export class Airwallex {
   private queue: Promise<unknown> = Promise.resolve();
   private lastCallAt = 0;
   private readonly base: string;
+  private readonly filesBase: string;
   private readonly fetch: typeof fetch;
   private readonly minGapMs: number;
   private readonly sleep: (ms: number) => Promise<void>;
@@ -143,6 +148,8 @@ export class Airwallex {
     if (!cfg.oauth && (!cfg.clientId || !cfg.apiKey)) throw new Error("the Airwallex client needs an API key pair or the company's OAuth token");
     this.base = cfg.baseUrl ?? SANDBOX_BASE;
     if (!this.base.startsWith("https://api.sandbox.airwallex.com/")) throw new Error("this build only talks to the Airwallex sandbox");
+    this.filesBase = cfg.filesBaseUrl ?? SANDBOX_FILES_BASE;
+    if (!this.filesBase.startsWith("https://files.sandbox.airwallex.com/")) throw new Error("this build only uploads files to the Airwallex sandbox");
     this.fetch = cfg.fetchImpl ?? fetch;
     this.minGapMs = cfg.minGapMs ?? 200;
     this.sleep = cfg.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
@@ -186,17 +193,29 @@ export class Airwallex {
    * the caller resolves it by request_id (build plan 2.5), never by blind resending.
    */
   async call<T>(method: "GET" | "POST", path: string, body?: unknown, query?: Record<string, string>): Promise<T> {
+    const url = new URL(this.base + path);
+    for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v);
+    return this.send<T>(method, url, path, body === undefined ? undefined : JSON.stringify(body), true);
+  }
+
+  /**
+   * One multipart upload to Airwallex's Files service (POST, same token, same queue and limits as `call`). A lost answer
+   * is ambiguous like any POST: the caller decides; nothing is resent here. fetch sets the multipart content type.
+   */
+  async upload<T>(path: string, form: FormData): Promise<T> {
+    return this.send<T>("POST", new URL(this.filesBase + path), path, form, false);
+  }
+
+  private async send<T>(method: "GET" | "POST", url: URL, path: string, body: BodyInit | undefined, jsonBody: boolean): Promise<T> {
     return this.enqueue(async () => {
-      const url = new URL(this.base + path);
-      for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v);
       for (let attempt = 0; ; attempt++) {
         const token = await this.bearer();
         let res: Response;
         try {
           res = await this.fetch(url, {
             method,
-            headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...(this.cfg.onBehalfOf ? { "x-on-behalf-of": this.cfg.onBehalfOf } : {}) },
-            body: body === undefined ? undefined : JSON.stringify(body),
+            headers: { authorization: `Bearer ${token}`, ...(jsonBody ? { "content-type": "application/json" } : {}), ...(this.cfg.onBehalfOf ? { "x-on-behalf-of": this.cfg.onBehalfOf } : {}) },
+            body,
             signal: AbortSignal.timeout(this.timeoutMs),
           });
         } catch (err) {

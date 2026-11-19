@@ -1,0 +1,821 @@
+{
+  "stream": "airwallex-bills",
+  "capability": "spend-bills",
+  "sandbox": "api.sandbox.airwallex.com (files: files.sandbox.airwallex.com)",
+  "test_money": true,
+  "source": "built by `npm run airwallex-bills -- record` from the run ledger's audit rows and AIRWALLEX_CALL_LOG only",
+  "signer": "airwallex-bills virtual test passkey",
+  "simulated": "each transfer's SENT and PAID came from the sandbox's simulation endpoint; the bills, vendor, file, read-backs and mark_as_paid are Airwallex's own answers",
+  "budget": {
+    "approved": 60,
+    "used": 50
+  },
+  "invoices": [
+    "SLL-2026-11B1",
+    "SLL-2026-11B2",
+    "SLL-2026-11B3"
+  ],
+  "bills": [
+    {
+      "ap_invoice": "AP-0001",
+      "invoice_no": "SLL-2026-11B1",
+      "amount": "EUR 240.00",
+      "due_date": "2026-12-15",
+      "invoice_status": "paid",
+      "proposal_id": "P-0001",
+      "signed_sha256": "75eb5d22c146031478b972a470cec89f1cc4d49ca368f7be72bd67bb9277c2c5",
+      "signed_by": "passkey",
+      "transfer_id": "786b9dfa-0299-4c4d-b209-9a530533c6dd",
+      "transfer_status": "PAID",
+      "transfer_approval_sha256": "75eb5d22c146031478b972a470cec89f1cc4d49ca368f7be72bd67bb9277c2c5",
+      "bill_id": "c90bdc31-e509-30c8-a1df-0d5acc0b7af8",
+      "external_id": "75eb5d22c146031478b972a470cec89f1cc4d49ca368f7be72bd67bb9277c2c5",
+      "external_id_is": "approval_sha256",
+      "external_id_matches_signed": true,
+      "created": {
+        "how": "created",
+        "status": "AWAITING_PAYMENT",
+        "amount": "EUR 240.00",
+        "attachment_ids": [
+          "f5135289-c042-4194-b09b-36467577c87f"
+        ],
+        "read_back": "agrees",
+        "differences": [],
+        "at": "2026-11-19T07:21:39.991Z",
+        "airwallex_created_at": "2026-11-19T07:21:44Z"
+      },
+      "paid": {
+        "status": "PAID",
+        "payments": [
+          {
+            "amount": "EUR 240.00",
+            "id": "ad452ab9-dfc7-3138-b8d5-ff45750b528e",
+            "transfer_id": null,
+            "type": "EXTERNAL"
+          }
+        ],
+        "read_back": "agrees",
+        "differences": [],
+        "at": "2026-11-19T07:21:39.991Z",
+        "airwallex_updated_at": "2026-11-19T07:21:45Z"
+      }
+    },
+    {
+      "ap_invoice": "AP-0002",
+      "invoice_no": "SLL-2026-11B2",
+      "amount": "EUR 240.00",
+      "due_date": "2026-12-15",
+      "invoice_status": "paid",
+      "proposal_id": "P-0002",
+      "signed_sha256": "d3960244252e93e16b2db9ce6e561a1be3547271a63ec77e552f8ef604c21088",
+      "signed_by": "passkey",
+      "transfer_id": "36e4fc5c-8e8a-4596-85c4-1054c7c3ab5a",
+      "transfer_status": "PAID",
+      "transfer_approval_sha256": "d3960244252e93e16b2db9ce6e561a1be3547271a63ec77e552f8ef604c21088",
+      "bill_id": "32ea54e7-ea10-320d-988d-f83cb601f4b6",
+      "external_id": "d3960244252e93e16b2db9ce6e561a1be3547271a63ec77e552f8ef604c21088",
+      "external_id_is": "approval_sha256",
+      "external_id_matches_signed": true,
+      "created": {
+        "how": "created",
+        "status": "AWAITING_PAYMENT",
+        "amount": "EUR 240.00",
+        "attachment_ids": [
+          "baae2683-7b23-4d43-89b2-e37799b9b2c0"
+        ],
+        "read_back": "agrees",
+        "differences": [],
+        "at": "2026-11-19T07:21:39.991Z",
+        "airwallex_created_at": "2026-11-19T07:21:47Z"
+      },
+      "paid": {
+        "status": "PAID",
+        "payments": [
+          {
+            "amount": "EUR 240.00",
+            "id": "ae3b6fa8-6064-3a16-aa34-ddececb45431",
+            "transfer_id": null,
+            "type": "EXTERNAL"
+          }
+        ],
+        "read_back": "agrees",
+        "differences": [],
+        "at": "2026-11-19T07:21:39.991Z",
+        "airwallex_updated_at": "2026-11-19T07:21:48Z"
+      }
+    },
+    {
+      "ap_invoice": "AP-0003",
+      "invoice_no": "SLL-2026-11B3",
+      "amount": "EUR 240.00",
+      "due_date": "2026-12-15",
+      "invoice_status": "paid",
+      "proposal_id": "P-0003",
+      "signed_sha256": "9d55b003edcaf6182e3a005799e2919d9e80d4f2c7a1b6a14378bc9deaaa1c5d",
+      "signed_by": "passkey",
+      "transfer_id": "2d8ada88-4293-4a22-89eb-0f5f1fb930dc",
+      "transfer_status": "PAID",
+      "transfer_approval_sha256": "9d55b003edcaf6182e3a005799e2919d9e80d4f2c7a1b6a14378bc9deaaa1c5d",
+      "bill_id": "a21292c4-29f7-38a3-856b-51a44b50ccb8",
+      "external_id": "9d55b003edcaf6182e3a005799e2919d9e80d4f2c7a1b6a14378bc9deaaa1c5d",
+      "external_id_is": "approval_sha256",
+      "external_id_matches_signed": true,
+      "created": {
+        "how": "created",
+        "status": "AWAITING_PAYMENT",
+        "amount": "EUR 240.00",
+        "attachment_ids": [
+          "d5c0816c-97e3-49e7-ab2b-827e949b6bdc"
+        ],
+        "read_back": "agrees",
+        "differences": [],
+        "at": "2026-11-19T07:21:39.991Z",
+        "airwallex_created_at": "2026-11-19T07:21:51Z"
+      },
+      "paid": {
+        "status": "PAID",
+        "payments": [
+          {
+            "amount": "EUR 240.00",
+            "id": "542d0511-28b7-3114-b60e-7cba249c2c80",
+            "transfer_id": null,
+            "type": "EXTERNAL"
+          }
+        ],
+        "read_back": "agrees",
+        "differences": [],
+        "at": "2026-11-19T07:21:39.991Z",
+        "airwallex_updated_at": "2026-11-19T07:21:52Z"
+      }
+    }
+  ],
+  "audit": [
+    {
+      "seq": 15,
+      "ts": "2026-11-19T07:21:30.064Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "786b9dfa-0299-4c4d-b209-9a530533c6dd",
+      "payload": {
+        "status": "SENT"
+      }
+    },
+    {
+      "seq": 16,
+      "ts": "2026-11-19T07:21:30.844Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "786b9dfa-0299-4c4d-b209-9a530533c6dd",
+      "payload": {
+        "status": "PAID"
+      }
+    },
+    {
+      "seq": 19,
+      "ts": "2026-11-19T07:21:31.202Z",
+      "actor": "system",
+      "event": "airwallex_bills.paid_out",
+      "subject": "786b9dfa-0299-4c4d-b209-9a530533c6dd",
+      "payload": {
+        "ap_invoice": "AP-0001",
+        "invoice_no": "SLL-2026-11B1",
+        "proposal_id": "P-0001",
+        "signer": "airwallex-bills virtual test passkey",
+        "status": "PAID",
+        "terms_sha256": "75eb5d22c146031478b972a470cec89f1cc4d49ca368f7be72bd67bb9277c2c5"
+      }
+    },
+    {
+      "seq": 27,
+      "ts": "2026-11-19T07:21:34.689Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "36e4fc5c-8e8a-4596-85c4-1054c7c3ab5a",
+      "payload": {
+        "status": "SENT"
+      }
+    },
+    {
+      "seq": 28,
+      "ts": "2026-11-19T07:21:35.454Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "36e4fc5c-8e8a-4596-85c4-1054c7c3ab5a",
+      "payload": {
+        "status": "PAID"
+      }
+    },
+    {
+      "seq": 31,
+      "ts": "2026-11-19T07:21:35.796Z",
+      "actor": "system",
+      "event": "airwallex_bills.paid_out",
+      "subject": "36e4fc5c-8e8a-4596-85c4-1054c7c3ab5a",
+      "payload": {
+        "ap_invoice": "AP-0002",
+        "invoice_no": "SLL-2026-11B2",
+        "proposal_id": "P-0002",
+        "signer": "airwallex-bills virtual test passkey",
+        "status": "PAID",
+        "terms_sha256": "d3960244252e93e16b2db9ce6e561a1be3547271a63ec77e552f8ef604c21088"
+      }
+    },
+    {
+      "seq": 39,
+      "ts": "2026-11-19T07:21:38.901Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "2d8ada88-4293-4a22-89eb-0f5f1fb930dc",
+      "payload": {
+        "status": "SENT"
+      }
+    },
+    {
+      "seq": 40,
+      "ts": "2026-11-19T07:21:39.655Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "2d8ada88-4293-4a22-89eb-0f5f1fb930dc",
+      "payload": {
+        "status": "PAID"
+      }
+    },
+    {
+      "seq": 43,
+      "ts": "2026-11-19T07:21:39.966Z",
+      "actor": "system",
+      "event": "airwallex_bills.paid_out",
+      "subject": "2d8ada88-4293-4a22-89eb-0f5f1fb930dc",
+      "payload": {
+        "ap_invoice": "AP-0003",
+        "invoice_no": "SLL-2026-11B3",
+        "proposal_id": "P-0003",
+        "signer": "airwallex-bills virtual test passkey",
+        "status": "PAID",
+        "terms_sha256": "9d55b003edcaf6182e3a005799e2919d9e80d4f2c7a1b6a14378bc9deaaa1c5d"
+      }
+    },
+    {
+      "seq": 47,
+      "ts": "2026-11-19T07:21:39.991Z",
+      "actor": "system",
+      "event": "awx_vendor.created",
+      "subject": "purser-vendor-92bbb4e6f22639c1b072ea0d",
+      "payload": {
+        "how": "created at Airwallex",
+        "status": "ACTIVE",
+        "vendor_id": "01a6eb17-ad60-38d3-952e-8705b194bf6b"
+      }
+    },
+    {
+      "seq": 48,
+      "ts": "2026-11-19T07:21:39.991Z",
+      "actor": "system",
+      "event": "awx_bill.attachment",
+      "subject": "AP-0001",
+      "payload": {
+        "doc_sha256": "fc883d317acbfe85f37fa3ee2bcaffc7ac6876a02075958b124fb6bbadf9bed2",
+        "file_id": "f5135289-c042-4194-b09b-36467577c87f",
+        "purpose": "SPEND_ATTACHMENT",
+        "size": 1829
+      }
+    },
+    {
+      "seq": 49,
+      "ts": "2026-11-19T07:21:39.991Z",
+      "actor": "system",
+      "event": "awx_bill.created",
+      "subject": "AP-0001",
+      "payload": {
+        "amount": "EUR 240.00",
+        "attachment_ids": [
+          "f5135289-c042-4194-b09b-36467577c87f"
+        ],
+        "attachment_note": null,
+        "bill_id": "c90bdc31-e509-30c8-a1df-0d5acc0b7af8",
+        "created_at": "2026-11-19T07:21:44Z",
+        "differences": [],
+        "external_id": "75eb5d22c146031478b972a470cec89f1cc4d49ca368f7be72bd67bb9277c2c5",
+        "external_id_is": "approval_sha256",
+        "how": "created",
+        "invoice_no": "SLL-2026-11B1",
+        "proposal_id": "P-0001",
+        "read_back": "agrees",
+        "status": "AWAITING_PAYMENT",
+        "transfer_id": "786b9dfa-0299-4c4d-b209-9a530533c6dd"
+      }
+    },
+    {
+      "seq": 50,
+      "ts": "2026-11-19T07:21:39.991Z",
+      "actor": "system",
+      "event": "awx_bill.paid",
+      "subject": "AP-0001",
+      "payload": {
+        "bill_id": "c90bdc31-e509-30c8-a1df-0d5acc0b7af8",
+        "differences": [],
+        "external_id": "75eb5d22c146031478b972a470cec89f1cc4d49ca368f7be72bd67bb9277c2c5",
+        "link": "mark_as_paid takes no transfer: the transfer is named in the bill's description",
+        "payments": [
+          {
+            "amount": "EUR 240.00",
+            "id": "ad452ab9-dfc7-3138-b8d5-ff45750b528e",
+            "transfer_id": null,
+            "type": "EXTERNAL"
+          }
+        ],
+        "read_back": "agrees",
+        "status": "PAID",
+        "transfer_id": "786b9dfa-0299-4c4d-b209-9a530533c6dd",
+        "updated_at": "2026-11-19T07:21:45Z"
+      }
+    },
+    {
+      "seq": 51,
+      "ts": "2026-11-19T07:21:39.991Z",
+      "actor": "system",
+      "event": "awx_bill.attachment",
+      "subject": "AP-0002",
+      "payload": {
+        "doc_sha256": "171cb3b3bed5ae4778697d0a2a5c3107cee9d51e18be78b806559629cba6fb0d",
+        "file_id": "baae2683-7b23-4d43-89b2-e37799b9b2c0",
+        "purpose": "SPEND_ATTACHMENT",
+        "size": 1828
+      }
+    },
+    {
+      "seq": 52,
+      "ts": "2026-11-19T07:21:39.991Z",
+      "actor": "system",
+      "event": "awx_bill.created",
+      "subject": "AP-0002",
+      "payload": {
+        "amount": "EUR 240.00",
+        "attachment_ids": [
+          "baae2683-7b23-4d43-89b2-e37799b9b2c0"
+        ],
+        "attachment_note": null,
+        "bill_id": "32ea54e7-ea10-320d-988d-f83cb601f4b6",
+        "created_at": "2026-11-19T07:21:47Z",
+        "differences": [],
+        "external_id": "d3960244252e93e16b2db9ce6e561a1be3547271a63ec77e552f8ef604c21088",
+        "external_id_is": "approval_sha256",
+        "how": "created",
+        "invoice_no": "SLL-2026-11B2",
+        "proposal_id": "P-0002",
+        "read_back": "agrees",
+        "status": "AWAITING_PAYMENT",
+        "transfer_id": "36e4fc5c-8e8a-4596-85c4-1054c7c3ab5a"
+      }
+    },
+    {
+      "seq": 53,
+      "ts": "2026-11-19T07:21:39.991Z",
+      "actor": "system",
+      "event": "awx_bill.paid",
+      "subject": "AP-0002",
+      "payload": {
+        "bill_id": "32ea54e7-ea10-320d-988d-f83cb601f4b6",
+        "differences": [],
+        "external_id": "d3960244252e93e16b2db9ce6e561a1be3547271a63ec77e552f8ef604c21088",
+        "link": "mark_as_paid takes no transfer: the transfer is named in the bill's description",
+        "payments": [
+          {
+            "amount": "EUR 240.00",
+            "id": "ae3b6fa8-6064-3a16-aa34-ddececb45431",
+            "transfer_id": null,
+            "type": "EXTERNAL"
+          }
+        ],
+        "read_back": "agrees",
+        "status": "PAID",
+        "transfer_id": "36e4fc5c-8e8a-4596-85c4-1054c7c3ab5a",
+        "updated_at": "2026-11-19T07:21:48Z"
+      }
+    },
+    {
+      "seq": 54,
+      "ts": "2026-11-19T07:21:39.991Z",
+      "actor": "system",
+      "event": "awx_bill.attachment",
+      "subject": "AP-0003",
+      "payload": {
+        "doc_sha256": "7d8f0058b327fc72507910cd352ef8d2daf78797ef7953d3c07152c4aba6fff7",
+        "file_id": "d5c0816c-97e3-49e7-ab2b-827e949b6bdc",
+        "purpose": "SPEND_ATTACHMENT",
+        "size": 1829
+      }
+    },
+    {
+      "seq": 55,
+      "ts": "2026-11-19T07:21:39.991Z",
+      "actor": "system",
+      "event": "awx_bill.created",
+      "subject": "AP-0003",
+      "payload": {
+        "amount": "EUR 240.00",
+        "attachment_ids": [
+          "d5c0816c-97e3-49e7-ab2b-827e949b6bdc"
+        ],
+        "attachment_note": null,
+        "bill_id": "a21292c4-29f7-38a3-856b-51a44b50ccb8",
+        "created_at": "2026-11-19T07:21:51Z",
+        "differences": [],
+        "external_id": "9d55b003edcaf6182e3a005799e2919d9e80d4f2c7a1b6a14378bc9deaaa1c5d",
+        "external_id_is": "approval_sha256",
+        "how": "created",
+        "invoice_no": "SLL-2026-11B3",
+        "proposal_id": "P-0003",
+        "read_back": "agrees",
+        "status": "AWAITING_PAYMENT",
+        "transfer_id": "2d8ada88-4293-4a22-89eb-0f5f1fb930dc"
+      }
+    },
+    {
+      "seq": 56,
+      "ts": "2026-11-19T07:21:39.991Z",
+      "actor": "system",
+      "event": "awx_bill.paid",
+      "subject": "AP-0003",
+      "payload": {
+        "bill_id": "a21292c4-29f7-38a3-856b-51a44b50ccb8",
+        "differences": [],
+        "external_id": "9d55b003edcaf6182e3a005799e2919d9e80d4f2c7a1b6a14378bc9deaaa1c5d",
+        "link": "mark_as_paid takes no transfer: the transfer is named in the bill's description",
+        "payments": [
+          {
+            "amount": "EUR 240.00",
+            "id": "542d0511-28b7-3114-b60e-7cba249c2c80",
+            "transfer_id": null,
+            "type": "EXTERNAL"
+          }
+        ],
+        "read_back": "agrees",
+        "status": "PAID",
+        "transfer_id": "2d8ada88-4293-4a22-89eb-0f5f1fb930dc",
+        "updated_at": "2026-11-19T07:21:52Z"
+      }
+    }
+  ],
+  "calls": {
+    "total": 50,
+    "by_endpoint": [
+      {
+        "endpoint": "POST /authentication/login",
+        "calls": 2
+      },
+      {
+        "endpoint": "GET /balances/current",
+        "calls": 9
+      },
+      {
+        "endpoint": "POST /transfers/create",
+        "calls": 3
+      },
+      {
+        "endpoint": "GET /transfers/{id}",
+        "calls": 9
+      },
+      {
+        "endpoint": "POST /simulation/transfers/{id}/transition",
+        "calls": 6
+      },
+      {
+        "endpoint": "GET /spend/bills",
+        "calls": 3
+      },
+      {
+        "endpoint": "GET /account",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /spend/vendors",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST /spend/vendors/create",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST /files/upload",
+        "calls": 3
+      },
+      {
+        "endpoint": "POST /spend/bills/create",
+        "calls": 3
+      },
+      {
+        "endpoint": "GET /spend/bills/{id}",
+        "calls": 6
+      },
+      {
+        "endpoint": "POST /spend/bills/{id}/mark_as_paid",
+        "calls": 3
+      }
+    ],
+    "first": "2026-11-19T07:21:24.799Z",
+    "last": "2026-11-19T07:21:52.334Z",
+    "lines": [
+      {
+        "at": "2026-11-19T07:21:24.799Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:25.656Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:26.266Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:26.655Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:28.481Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:28.782Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:29.710Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:30.064Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:30.548Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:30.846Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:31.247Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:31.584Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:31.912Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:32.935Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:33.306Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:34.391Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:34.689Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:35.174Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:35.455Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:35.865Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:36.289Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:36.616Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:37.550Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:37.849Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:38.608Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:38.901Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:39.377Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:39.657Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:40.010Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:40.457Z",
+        "method": "GET",
+        "endpoint": "/spend/bills",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:40.870Z",
+        "method": "GET",
+        "endpoint": "/account",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:41.208Z",
+        "method": "GET",
+        "endpoint": "/spend/vendors",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:41.524Z",
+        "method": "POST",
+        "endpoint": "/spend/vendors/create",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:41.948Z",
+        "method": "POST",
+        "endpoint": "/files/upload",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:43.498Z",
+        "method": "POST",
+        "endpoint": "/spend/bills/create",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:44.346Z",
+        "method": "GET",
+        "endpoint": "/spend/bills/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:44.843Z",
+        "method": "POST",
+        "endpoint": "/spend/bills/{id}/mark_as_paid",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:45.501Z",
+        "method": "GET",
+        "endpoint": "/spend/bills/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:46.202Z",
+        "method": "GET",
+        "endpoint": "/spend/bills",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:46.544Z",
+        "method": "POST",
+        "endpoint": "/files/upload",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:47.294Z",
+        "method": "POST",
+        "endpoint": "/spend/bills/create",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:48.089Z",
+        "method": "GET",
+        "endpoint": "/spend/bills/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:48.533Z",
+        "method": "POST",
+        "endpoint": "/spend/bills/{id}/mark_as_paid",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:49.112Z",
+        "method": "GET",
+        "endpoint": "/spend/bills/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:49.542Z",
+        "method": "GET",
+        "endpoint": "/spend/bills",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:49.889Z",
+        "method": "POST",
+        "endpoint": "/files/upload",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:50.618Z",
+        "method": "POST",
+        "endpoint": "/spend/bills/create",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:51.342Z",
+        "method": "GET",
+        "endpoint": "/spend/bills/{id}",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:51.795Z",
+        "method": "POST",
+        "endpoint": "/spend/bills/{id}/mark_as_paid",
+        "pid": 1025
+      },
+      {
+        "at": "2026-11-19T07:21:52.334Z",
+        "method": "GET",
+        "endpoint": "/spend/bills/{id}",
+        "pid": 1025
+      }
+    ]
+  }
+}
