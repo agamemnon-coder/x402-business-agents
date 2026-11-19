@@ -150,8 +150,15 @@ describe("What we did, with evidence: every figure from the wall or its own reco
     expect(byId["e-scan"]!.note).toContain(`its ${vex} findings are in CI tooling and test fixtures`);
     const wf = readdirSync(new URL("../.github/workflows", import.meta.url)).map((f) => read(`.github/workflows/${f}`)).join("\n");
     const uses = [...wf.matchAll(/^\s*(?:-\s+)?uses:\s*([^\s#]+)/gm)].map((m) => m[1]!).filter((u) => !u.startsWith("./"));
-    expect(uses.every((u) => /@[0-9a-f]{40}$/.test(u))).toBe(true);
-    expect(byId["e-pinned"]!.fig).toBe(`All ${uses.length}`);
+    // Every Action pinned to a full commit SHA, with one exception (the owner's decision, 19 November 2026): the SLSA
+    // project's generic generator in release.yml, which its README says MUST be referenced by a release tag
+    // (@vX.Y.Z), not by SHA. Exactly that reusable workflow, exactly once, by a full version tag; nothing else by tag.
+    const byTag = uses.filter((u) => !/@[0-9a-f]{40}$/.test(u));
+    expect(byTag).toHaveLength(1);
+    expect(byTag[0]).toMatch(/^slsa-framework\/slsa-github-generator\/\.github\/workflows\/generator_generic_slsa3\.yml@v\d+\.\d+\.\d+$/);
+    expect(read(".github/workflows/release.yml")).toContain(`    uses: ${byTag[0]}\n`);
+    expect(byId["e-pinned"]!.fig).toBe(`${uses.length - 1} of ${uses.length}`);
+    expect(byId["e-pinned"]!.note).toContain("The other is the SLSA generator, by its release tag as its README requires.");
     expect(byId["e-pinned"]!.note).toContain(`Harden-Runner on ${uses.filter((u) => u.startsWith("step-security/harden-runner@")).length} of ${(wf.match(/^\s+runs-on:/gm) ?? []).length} CI jobs, auditing egress (it blocks nothing yet)`);
     expect(byId["e-pinned"]!.note).toContain(`${json<{ components: unknown[] }>("docs/security/sbom.cdx.json").components.length} components; v1.2.0 released with Sigstore-signed SLSA provenance`);
     expect(read("docs/security/openssf-silver.md")).toContain("First signed release: https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.2.0");

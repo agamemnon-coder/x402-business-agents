@@ -213,7 +213,10 @@ button:focus-visible, .option:focus-visible, .reject-btn:focus-visible, a:focus-
 .guest { display: grid; gap: 12px; margin: 24px 0 0; padding: 28px 20px 20px; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); animation: rise .35s ease-out both; }
 .guest-ill { justify-self: center; width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: 4px; }
 .guest-ill .lock { width: 36px; height: 36px; }
-.guest h1 { font-size: 22px; font-weight: 750; line-height: 1.2; letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.guest h1, .guest h2 { font-size: 22px; font-weight: 750; line-height: 1.2; letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+/* /app, the installed app's start (src/pwa/appPage.ts): the private link, pasted once. */
+.app-start label { text-align: left; font-weight: 650; font-size: 14px; margin-top: 4px; }
+.app-start #say:empty { display: none; }
 .guest .muted { margin: 0 0 6px; font-size: 15px; text-wrap: balance; }
 .guest a.confirm, .guest a.secondary { display: flex; align-items: center; justify-content: center; text-decoration: none; font-weight: 650; font-size: 16px; min-height: 52px; padding: 12px 20px; border-radius: 999px; }
 .guest a.confirm { background: var(--text); color: var(--bg); }

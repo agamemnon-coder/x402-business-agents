@@ -12,6 +12,7 @@ import { pageResponse } from "../worker/src/core.js";
 import { ICON_LINKS, iconsOf } from "../cloud/src/brand.js";
 import { adminPageHtml } from "../cloud/src/try/adminPage.js";
 import { testCloud, ORIGIN } from "./support/cloud.js";
+import { APP_ICON_LINKS } from "../cloud/src/pwa.js";
 
 const SITE = "https://kit11.max-31b.workers.dev";
 const ON = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv);
@@ -93,7 +94,11 @@ describe("Purser's mark: the header's, in every icon", () => {
     expect(adminPageHtml("n")).toContain(ICON_LINKS);
     const c = testCloud({ engine: true, tryIt: { claude: false } as never });
     try {
-      for (const path of ["/", "/try"]) expect({ path, links: (await (await c.fetch(`${ORIGIN}${path}`)).text()).includes(ICON_LINKS) }).toEqual({ path, links: true });
+      expect((await (await c.fetch(`${ORIGIN}/try`)).text()).includes(ICON_LINKS)).toBe(true);
+      // The console installs as an app (cloud/src/pwa.ts): the same two icon links, and the app's own home-screen icon.
+      expect((await (await c.fetch(`${ORIGIN}/`)).text()).includes(APP_ICON_LINKS)).toBe(true);
+      expect(APP_ICON_LINKS.startsWith(ICON_LINKS.replace(/<link rel="apple-touch-icon"[^>]*>/, ""))).toBe(true);
+      expect(APP_ICON_LINKS).toContain(`<link rel="apple-touch-icon" href="/assets/app-icon-180.png?v=${ICON_VERSION}" sizes="180x180">`);
     } finally {
       c.close();
     }

@@ -2,7 +2,8 @@
 // local dashboard serves, under the same CSP), the phone's approval and enrolment pages, their stylesheet, the
 // phone script with its TypeScript types stripped, and the Inter font. npm run relay:deploy writes them to worker/src/pages.gen.ts.
 
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 
 /** What /policy is, for a link preview: the CFO changes an agent's limits there, signed with a passkey. */
 const POLICY_DESCRIPTION = "Purser's policy page: the CFO changes an agent's limits there, and every change is signed with a passkey.";
@@ -18,6 +19,12 @@ import { phonePhrases } from "../ui/i18n.js";
 import { RECORDED_PATH, readRecorded } from "../try/recorded.js";
 import { metalRecordedOf } from "../../worker/src/metalInspector.js";
 import { METAL_INSPECTOR_RECORD } from "../redesign/metalMandates.js";
+import { appManifestText, offlineCsp, offlinePage, SPLASH, withAppHead } from "../pwa/manifest.js";
+import { SHELL, SW_CSP, swSource } from "../pwa/sw.js";
+import { APP_START_SCRIPT, appStartPage } from "../pwa/appPage.js";
+import { APP_ICON_PNGS } from "../pwa/icons.gen.js";
+import { ICON_VERSION } from "../ui/brand/mark.js";
+import type { AppFiles } from "../../worker/src/pwa.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -27,8 +34,41 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
  */
 const PHONE_CSP = [
   "default-src 'none'", "script-src 'self'", "style-src 'self'", "connect-src 'self'", "font-src 'self'", "img-src 'self'",
+  // The installed app (src/pwa/): its manifest and its service worker, both from this origin only.
+  "manifest-src 'self'", "worker-src 'self'",
   "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ");
+
+/** The Android app's Digital Asset Links, once the owner made the file from docs/app/assetlinks.template.jsonc (docs/app/android-twa.md). */
+const ASSET_LINKS = new URL("../../docs/app/assetlinks.json", import.meta.url);
+
+/**
+ * The installed app's files (src/pwa/, docs/app/README.md) and its images. The service worker's version is the hash of
+ * the shell it stores (the offline page, the stylesheet, the font, the icons) and of its own code, so any change to
+ * them is a new worker, which drops the old cache.
+ */
+function appFiles(css: string, images: Record<string, { type: string; data: string }>): AppFiles {
+  const offline = offlinePage("site");
+  const h = createHash("sha256").update(swSource("site", "00000000")).update(offline).update(css).update(FONT);
+  for (const path of SHELL.site) {
+    const img = images[path.slice("/assets/".length)];
+    if (img) h.update(img.data);
+  }
+  const version = h.digest("hex").slice(0, 16);
+  return {
+    manifest: appManifestText("site"),
+    sw: swSource("site", version), swCsp: SW_CSP,
+    offline, offlineCsp: offlineCsp(),
+    start: appStartPage(ICON_VERSION), startScript: APP_START_SCRIPT, startCsp: PHONE_CSP,
+    ...(existsSync(ASSET_LINKS) ? { assetLinks: readFileSync(ASSET_LINKS, "utf8") } : {}),
+  };
+}
+
+/** The app's icons (src/pwa/icons.gen.ts) and iPhone launch screens (docs/assets/brand/app/), served at /assets/<name>. */
+const APP_IMAGES: Record<string, { type: string; data: string }> = {
+  ...Object.fromEntries(Object.entries(APP_ICON_PNGS).map(([name, data]) => [name, { type: "image/png", data }])),
+  ...Object.fromEntries(SPLASH.map((s) => [s.name, { type: "image/png", data: readFileSync(new URL(`../../docs/assets/brand/app/${s.name}`, import.meta.url)).toString("base64") }])),
+};
 
 /**
  * TRY_SIGN_ENABLED is read here, once, where the bundle is built: on, the bundle carries /try/sign (whose presence
@@ -72,10 +112,14 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
   }).outputText;
   // The phone's payables words (src/ui/i18n.ts, ph.*) ride in front of the script: it has no imports (see client.ts).
   const client = `globalThis.PURSER_PHRASES = ${JSON.stringify(phonePhrases()).replace(/</g, "\\u003c")};\n${clientCode}`;
+  const css = read("../approve/style.css");
+  // The month-end pack (DOWNLOADS) rides with the images: served the same way, at /assets/<name>, under its own type.
+  const images = { ...Object.fromEntries(Object.entries({ ...LOGOS, ...FILM_STILLS, ...DOWNLOADS }).map(([name, l]) => [name, { type: l.type, data: l.body.toString("base64") }])), ...APP_IMAGES };
   return {
     // Every public page carries the same link-preview tags and favicon (jury QA, 6 Nov, Q5): the pages built in
     // src/servers/dashboard.ts carry them already (src/ui/meta.ts withMeta), the redesign's write their own.
-    dashboard: DASHBOARD_PAGE,
+    // The installed app's tags (src/pwa/manifest.ts) on the relay's dashboard only: the runner's local page has no manifest.
+    dashboard: withAppHead(DASHBOARD_PAGE, "site"),
     exposureRate: EXPOSURE_RATE,
     metalRecorded: METAL_RECORDED,
     ...(LLMS ? { llms: LLMS } : {}),
@@ -118,16 +162,16 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     moved: trySign ? MOVED : { ...MOVED, "/try/sign": "/try", "/try/sign/": "/try" },
     // The CFO's own pages are private and reference nothing outside the relay (test/relay-assets.test.ts): no
     // link-preview tags with an absolute image there.
-    approve: read("../approve/page.html"),
-    enrol: read("../approve/enrol.html"),
+    approve: withAppHead(read("../approve/page.html"), "site"),
+    enrol: withAppHead(read("../approve/enrol.html"), "site"),
     // Jury scan, 14 Nov: a link to /policy previews with its own title and words.
     // Phone pages carry no absolute address (test/relay-assets.test.ts), so no og:image or og:url: the title and words.
-    policy: read("../approve/policy.html").replace("</title>", () => `</title><meta name="description" content="${POLICY_DESCRIPTION}"><meta property="og:type" content="website"><meta property="og:site_name" content="Purser"><meta property="og:title" content="Policy · Purser"><meta property="og:description" content="${POLICY_DESCRIPTION}">`),
+    policy: withAppHead(read("../approve/policy.html"), "site").replace("</title>", () => `</title><meta name="description" content="${POLICY_DESCRIPTION}"><meta property="og:type" content="website"><meta property="og:site_name" content="Purser"><meta property="og:title" content="Policy · Purser"><meta property="og:description" content="${POLICY_DESCRIPTION}">`),
     client,
-    css: read("../approve/style.css"),
+    css,
     font: FONT.toString("base64"),
-    // The month-end pack (DOWNLOADS) rides with the images: served the same way, at /assets/<name>, under its own type.
-    images: Object.fromEntries(Object.entries({ ...LOGOS, ...FILM_STILLS, ...DOWNLOADS }).map(([name, l]) => [name, { type: l.type, data: l.body.toString("base64") }])),
+    images,
+    app: appFiles(css, images),
     csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, awxCalls: AWX_CALLS_CSP, claude: CLAUDE_CSP, security: SECURITY_CSP, docs: DOCS_CSP, status: STATUS_CSP, t0: T0_CSP, books: BOOKS_CSP, home: home.csp, watch: FILM_WATCH_CSP, replay: WATCH_CSP, proof: PROOF_CSP, verify: VERIFY_BUNDLE_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP } : {}), approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
   };
 }

@@ -26,6 +26,7 @@ import { awxBooksResponse, booksCache, isAwxBooksPath } from "./awxBooks.js";
 import type { AwxBadgeCache } from "../../src/finance/awxBadge.js";
 import { StatusDesk } from "./statusDesk.js";
 import { withChecks, type StatusSummary } from "../../src/ops/syntheticChecks.js";
+import { pushSender, vapidFromEnv } from "./webPush.js";
 
 export interface Env extends GatewayEnv {
   RELAY: DurableObjectNamespace<RelayObject>;
@@ -96,6 +97,14 @@ export interface Env extends GatewayEnv {
    * simulation through (create a card, freeze or unfreeze it, set its limits). Off when missing; reads need only the key.
    */
   AWX_CARDS_WRITE?: string;
+  /**
+   * Web Push to the CFO's phone (./webPush.ts, docs/app/README.md): the VAPID key pair and its contact (mailto: or
+   * https:), Worker secrets the owner sets (`npx tsx scripts/vapid-keys.ts` prints a pair); never in code or config.
+   * Without all three the relay sends no push and the dashboard shows no "Notify me".
+   */
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  VAPID_SUBJECT?: string;
 }
 
 /** /try's live quote may take this long at Airwallex; the engine waits at most 3 s for the whole answer (cloud/src/engine/liveFx.ts). */
@@ -207,7 +216,10 @@ export class RelayObject extends DurableObject<Env> {
     // Its own instance ("awx-books"): it can only ask the gateway's instance for the financial view, and answers counts.
     if (isAwxBooksPath(path)) return awxBooksResponse(req, (this.awxBooks ??= booksCache(async () => (await this.env.RELAY.get(this.env.RELAY.idFromName("awx-read")).fetch(`https://relay.internal${AWX_READ_PATH}?view=financial`)).json())));
     if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);
+    const vapid = vapidFromEnv(this.env);
     return (this.relay ??= new Relay(this.ctx.storage.sql, {
+      // The private key goes into the sender only; the relay holds the public key.
+      ...(vapid ? { push: { publicKey: vapid.publicKey, send: pushSender(vapid) } } : {}),
       relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on",
       // /health's live agents: read from the try-sign instance, where their spend is kept (code review, 13 Nov).
       liveAgents: async () => {

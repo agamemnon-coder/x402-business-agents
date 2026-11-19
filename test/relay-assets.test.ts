@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { jcs } from "@metalntwx/metal-pay/mandates";
 import { buildPages, pagesModule } from "../src/relay/assets.js";
 import { CSP as LOCAL_DASHBOARD_CSP, FONT, PAGE as LOCAL_DASHBOARD } from "../src/servers/dashboard.js";
+import { withAppHead } from "../src/pwa/manifest.js";
 
 describe("relay assets", () => {
   const pages = buildPages();
@@ -22,7 +23,10 @@ describe("relay assets", () => {
 
   it("serves the dashboard under the same CSP as the local server, and the phone pages with no inline code", () => {
     expect(pages.csp.dashboard).toBe(LOCAL_DASHBOARD_CSP);
-    expect(pages.dashboard).toBe(LOCAL_DASHBOARD);
+    // The same page, with the installed app's tags in its head on the relay (src/pwa/manifest.ts); tags only, so the
+    // same CSP. The runner's local page links no manifest (it serves none).
+    expect(pages.dashboard).toBe(withAppHead(LOCAL_DASHBOARD, "site"));
+    expect(LOCAL_DASHBOARD).not.toContain('<link rel="manifest"');
     expect(Buffer.from(pages.font, "base64").equals(FONT)).toBe(true);
     for (const csp of [pages.csp.approve, pages.csp.enrol, pages.csp.policy]) {
       expect(csp).toContain("script-src 'self'");
