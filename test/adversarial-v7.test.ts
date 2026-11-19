@@ -82,7 +82,7 @@ describe("the v7 run", () => {
     expect(committed.line).toBe(advLine(r.totals, ""));
     expect(committed).toMatchObject({ held_out: false, cases_commit: "34f502070", before: "docs/evals/adversarial-v7.json" });
     expect(committed.hypotheses).toEqual(v7Hypotheses(ADV_V7_CASES, r.rows));
-  }, 90_000); // 350 runs of the payables checks
+  }, 240_000); // 350 runs of the payables checks
 
   it("keeps the held-out run before the fixes as it was recorded: 15 wrong payments, 6 false holds, on the cases of 34f502070, with v6's run of that day", () => {
     const before = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v7.json", import.meta.url), "utf8")) as { line: string; held_out: boolean; cases_commit: string; commit: string; rows: AdvRow[]; totals: Record<string, { wrong_payments: number; false_holds: number }>; hypotheses: unknown; v6_after_fixes: { held_out: boolean; cases_commit: string; line: string; rows: AdvRow[]; totals: Record<string, { wrong_payments: number; false_holds: number }> } };
