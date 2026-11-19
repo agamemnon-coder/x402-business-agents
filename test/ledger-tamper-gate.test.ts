@@ -75,3 +75,20 @@ describe("before money moves, the audit chain must verify", () => {
     expect([...CAUGHT_AFTER]).toEqual(["hidden-payment"]);
   });
 });
+
+describe("the audit check where the database refuses its own catalogue (a Durable Object)", () => {
+  it("still verifies the whole chain, and still refuses a changed row, when PRAGMA and sqlite_master answer 'not authorized'", () => {
+    const db = openDb(":memory:");
+    for (let i = 0; i < 3; i++) audit(db, "system", "x.y", `s${i}`, { i });
+    // As a Durable Object's SQLite answers: no schema_version, no sqlite_master.
+    const realPragma = db.pragma.bind(db), realPrepare = db.prepare.bind(db);
+    const refused = () => { throw new Error("not authorized: SQLITE_AUTH"); };
+    (db as unknown as { pragma: unknown }).pragma = (sql: string, o?: unknown) => (/schema_version/.test(sql) ? refused() : realPragma(sql, o as never));
+    (db as unknown as { prepare: unknown }).prepare = (sql: string) => (/sqlite_master/.test(sql) ? refused() : realPrepare(sql));
+    expect(auditChainRefusal(db)).toBeNull();
+    expect(auditChainRefusal(db)).toBeNull();
+    db.exec("DROP TRIGGER audit_log_no_update");
+    realPrepare("UPDATE audit_log SET payload_json = '{\"i\":99}' WHERE seq = 1").run();
+    expect(auditChainRefusal(db)).toMatch(/^ledger_tampered: the audit log does not verify at row 1/);
+  });
+});

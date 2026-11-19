@@ -16,13 +16,23 @@ export const AUDIT_GUARDS = ["audit_log_no_update", "audit_log_no_delete", "audi
 
 const verified = new WeakMap<DB, { schema: number; seq: number; head: string }>();
 
+/** The value, or null where the database refuses the read (a Durable Object: "not authorized"). Other errors throw. */
+function readable(read: () => number): number | null {
+  try { return read(); } catch (e) {
+    if (/not authorized/i.test(String((e as Error)?.message ?? e))) return null;
+    throw e;
+  }
+}
+
 /** Why the audit log cannot be trusted to move money on (where it breaks), or null when it verifies. */
 export function auditChainRefusal(db: DB): string | null {
-  const schema = Number(db.pragma("schema_version", { simple: true }));
-  const guards = (db.prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'audit_log' AND name IN (${AUDIT_GUARDS.map(() => "?").join(", ")})`).get(...AUDIT_GUARDS) as { n: number }).n;
+  // A Durable Object's SQLite refuses PRAGMA schema_version and reads of sqlite_master ("not authorized"). There the
+  // guards cannot be read back, so nothing is remembered and the whole chain is hashed on every check: slower, as safe.
+  const schema = readable(() => Number(db.pragma("schema_version", { simple: true })));
+  const guards = readable(() => (db.prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'audit_log' AND name IN (${AUDIT_GUARDS.map(() => "?").join(", ")})`).get(...AUDIT_GUARDS) as { n: number }).n);
   const seen = verified.get(db);
   // The rows after the point seen, if that point still stands and nothing could have changed what is before it.
-  const from = seen && seen.schema === schema && guards === AUDIT_GUARDS.length
+  const from = seen && schema !== null && seen.schema === schema && guards === AUDIT_GUARDS.length
     && (db.prepare("SELECT row_hash FROM audit_log WHERE seq = ?").get(seen.seq) as { row_hash: string } | undefined)?.row_hash === seen.head
     ? { seq: seen.seq, head: seen.head } : { seq: 0, head: GENESIS };
   const rows = db.prepare("SELECT * FROM audit_log WHERE seq > ? ORDER BY seq").all(from.seq) as AuditRowStored[];
@@ -32,7 +42,7 @@ export function auditChainRefusal(db: DB): string | null {
     return `ledger_tampered: the audit log does not verify at row ${check.seq} (${check.reason}); no money moves until a person has checked it (npm run verify)`;
   }
   // Only a log with its guards in place is remembered; without them every check hashes the whole chain again.
-  if (guards === AUDIT_GUARDS.length && check.rows > 0) verified.set(db, { schema, seq: check.rows, head: check.head });
+  if (schema !== null && guards === AUDIT_GUARDS.length && check.rows > 0) verified.set(db, { schema, seq: check.rows, head: check.head });
   else verified.delete(db);
   return null;
 }
