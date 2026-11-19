@@ -295,3 +295,5 @@ d74cf0415067315a60dd57a0631bb48f5b66be8d:docs/runs/2026-11-19-mega-run/run-9.jso
 # "ya29.from-env" in a test of reading a token from the environment. Neither is a credential.
 526cca065f073c40a37d4aecd707b947ae4d4fe4:test/workplace-accounting.test.ts:generic-api-key:95
 526cca065f073c40a37d4aecd707b947ae4d4fe4:test/workplace-signin.test.ts:generic-api-key:83
+# RFC 8291 section 5's published example (its test keys, salt and message), used to check web push encryption byte for byte; public, not a secret (19 Nov 2026).
+8bd246425330a84d30138edf8d30233ebf654aeb:test/pwa.test.ts:generic-api-key:400
