@@ -28,9 +28,9 @@ export const SPLIT_DAYS = 21;
  * Another number for almost the same total is a possible duplicate too: at most this many cents apart (EUR 1.00) and at
  * most NEAR_TWIN_PERCENT of the larger total, whichever is less (adversarial eval v2: a paid invoice resent under a new
  * number for EUR 0.01 more). Kept at EUR 1.00 in the second round (eval v3 found a copy EUR 2.00 dearer on the same day,
- * v3-dup-lagerhaus-plus-two, which the split check sends to the CFO): EUR 5.00 held the two invoices of one supplier,
- * EUR 499.00 and EUR 500.01, that /try's test company composes on each side of its EUR 500.00 limit, and would hold
- * ordinary price differences of a few euros between real orders ...
+ * v3-dup-lagerhaus-plus-two, which the split check sends to the CFO): EUR 5.00 held the two invoices of one supplier
+ * that /try's test company composes on each side of its EUR 500.00 limit (one a euro under it, one a cent over), and
+ * would hold ordinary price differences of a few euros between real orders ...
  */
 export const NEAR_TWIN_CENTS = 100;
 export const NEAR_TWIN_PERCENT = 1;
