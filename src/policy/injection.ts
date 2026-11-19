@@ -104,7 +104,7 @@ function base64Texts(line: string): string[] {
     const run = m[0];
     if (run.length % 4 !== 0) continue;
     let text: string;
-    try { text = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(atob(run), (ch) => ch.charCodeAt(0))); } catch { continue; }
+    try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(Uint8Array.from(atob(run), (ch) => ch.charCodeAt(0))); } catch { continue; }
     const chars = [...text];
     const printable = chars.filter((ch) => /[\p{L}\p{N}\p{P}\p{S}\p{Zs}]/u.test(ch)).length;
     if (printable / Math.max(1, chars.length) >= 0.9 && /\p{L}{2,}\s+\p{L}{2,}/u.test(text)) out.push(text);
