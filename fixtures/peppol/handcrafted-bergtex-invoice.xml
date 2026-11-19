@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Handcrafted test fixture for Purser (not an OpenPeppol example): a Peppol BIS Billing 3.0 invoice from Bergtex
+     Textil GmbH (a supplier on file in the test world) to Northwind Outdoor (test). Made-up data, test money only. -->
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+         xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+         xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0</cbc:CustomizationID>
+  <cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID>
+  <cbc:ID>BTX-2026-PE-001</cbc:ID>
+  <cbc:IssueDate>2026-11-13</cbc:IssueDate>
+  <cbc:DueDate>2026-12-13</cbc:DueDate>
+  <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+  <cbc:Note>Thank you for your order.</cbc:Note>
+  <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+  <cbc:BuyerReference>NW-PO-4471</cbc:BuyerReference>
+  <cac:OrderReference>
+    <cbc:ID>PO-4471</cbc:ID>
+  </cac:OrderReference>
+  <cac:AccountingSupplierParty>
+    <cac:Party>
+      <cbc:EndpointID schemeID="9930">DE123456789</cbc:EndpointID>
+      <cac:PartyName>
+        <cbc:Name>Bergtex</cbc:Name>
+      </cac:PartyName>
+      <cac:PostalAddress>
+        <cbc:StreetName>Textilweg 4</cbc:StreetName>
+        <cbc:CityName>Reutlingen</cbc:CityName>
+        <cbc:PostalZone>72760</cbc:PostalZone>
+        <cac:Country>
+          <cbc:IdentificationCode>DE</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>DE123456789</cbc:CompanyID>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>Bergtex Textil GmbH</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty>
+    <cac:Party>
+      <cbc:EndpointID schemeID="0106">12345678</cbc:EndpointID>
+      <cac:PostalAddress>
+        <cbc:CityName>Amsterdam</cbc:CityName>
+        <cac:Country>
+          <cbc:IdentificationCode>NL</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>Northwind Outdoor (test)</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:AccountingCustomerParty>
+  <cac:PaymentMeans>
+    <cbc:PaymentMeansCode name="SEPA credit transfer">58</cbc:PaymentMeansCode>
+    <cbc:PaymentID>BTX-2026-PE-001</cbc:PaymentID>
+    <cac:PayeeFinancialAccount>
+      <cbc:ID>DE89370400440532013000</cbc:ID>
+      <cbc:Name>Bergtex Textil GmbH</cbc:Name>
+      <cac:FinancialInstitutionBranch>
+        <cbc:ID>COBADEFFXXX</cbc:ID>
+      </cac:FinancialInstitutionBranch>
+    </cac:PayeeFinancialAccount>
+  </cac:PaymentMeans>
+  <cac:PaymentTerms>
+    <cbc:Note>30 days net</cbc:Note>
+  </cac:PaymentTerms>
+  <cac:AllowanceCharge>
+    <cbc:ChargeIndicator>true</cbc:ChargeIndicator>
+    <cbc:AllowanceChargeReason>Freight</cbc:AllowanceChargeReason>
+    <cbc:Amount currencyID="EUR">20.00</cbc:Amount>
+    <cac:TaxCategory>
+      <cbc:ID>S</cbc:ID>
+      <cbc:Percent>19</cbc:Percent>
+      <cac:TaxScheme>
+        <cbc:ID>VAT</cbc:ID>
+      </cac:TaxScheme>
+    </cac:TaxCategory>
+  </cac:AllowanceCharge>
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="EUR">127.30</cbc:TaxAmount>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="EUR">670.00</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="EUR">127.30</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+  </cac:TaxTotal>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="EUR">650.00</cbc:LineExtensionAmount>
+    <cbc:TaxExclusiveAmount currencyID="EUR">670.00</cbc:TaxExclusiveAmount>
+    <cbc:TaxInclusiveAmount currencyID="EUR">797.30</cbc:TaxInclusiveAmount>
+    <cbc:ChargeTotalAmount currencyID="EUR">20.00</cbc:ChargeTotalAmount>
+    <cbc:PayableAmount currencyID="EUR">797.30</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+  <cac:InvoiceLine>
+    <cbc:ID>1</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="C62">10</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="EUR">500.00</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Description>Lot 2026-W46</cbc:Description>
+      <cbc:Name>Rain shells</cbc:Name>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="EUR">50.00</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>2</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="C62">3</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="EUR">150.00</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>Stuff sacks</cbc:Name>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="EUR">50.00</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+</Invoice>

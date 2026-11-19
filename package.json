@@ -110,6 +110,8 @@
     "eval:adversarial-v3": "tsx src/cli/adversarialV3.ts",
     "eval:adversarial-v4": "tsx src/cli/adversarialV4.ts",
     "eval:adversarial-v5": "tsx src/cli/adversarialV5.ts",
+    "peppol:examples": "tsx scripts/peppol-examples.ts",
+    "peppol:check": "tsx src/cli/peppolCheck.ts",
     "coder-evals": "tsx src/cli/coderEvals.ts",
     "ledger-evals": "tsx src/cli/ledgerEvals.ts",
     "controller": "tsx src/cli/controller.ts",
