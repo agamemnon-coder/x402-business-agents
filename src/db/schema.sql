@@ -434,6 +434,12 @@ CREATE TRIGGER IF NOT EXISTS audit_log_no_update BEFORE UPDATE ON audit_log
 BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS audit_log_no_delete BEFORE DELETE ON audit_log
 BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END;
+-- 19 Nov (red team rewrite-history, fourth round): INSERT OR REPLACE deletes the row it replaces without firing the
+-- delete guard (SQLite fires delete triggers on REPLACE only with recursive_triggers on), so a row could be rewritten
+-- with both guards in place. An insert that would replace a row, by its seq or its hash, is refused before it runs.
+CREATE TRIGGER IF NOT EXISTS audit_log_no_replace BEFORE INSERT ON audit_log
+WHEN EXISTS (SELECT 1 FROM audit_log WHERE seq = NEW.seq OR row_hash = NEW.row_hash)
+BEGIN SELECT RAISE(ABORT, 'audit_log is append-only'); END;
 
 -- Runtime settings the demo changes on purpose (prices), each change audited.
 CREATE TABLE IF NOT EXISTS settings (

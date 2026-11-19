@@ -305,21 +305,21 @@
           "key": "eval-v3",
           "fig": "11 vs 74",
           "label": "wrong payments on 100 held-out invoices: Purser vs no rules",
-          "note": "Cases committed before the run (commit 1013ecc8); a script always says pay. 7 false holds of 46. Offline.",
+          "note": "Cases committed before the run (commit 1013ecc8); a script always says pay. 7 false holds of 46. Re-run after the 19 Nov fixes written against these misses (not held out): 0 wrong payments, 0 false holds. Offline.",
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v3.md",
-          "rec": "docs/evals/adversarial-v3.json"
+          "rec": "docs/evals/adversarial-v3.json docs/evals/adversarial-v3-rerun-2026-11-19.json docs/evals/adversarial-v3-after.json"
         },
         {
           "key": "eval-v4",
           "fig": "11 vs 72",
           "label": "wrong payments on 100 held-out invoices (eval v4): Purser vs no rules",
-          "note": "Cases committed before the run (commit 727d99d1); a script always says pay. 4 false holds of 44. After the fixes written against these misses (no longer held out): 0 wrong payments, 0 false holds. Offline.",
+          "note": "Cases committed before the run (commit 727d99d1); a script always says pay. 4 false holds of 44. After the fixes written against these misses (no longer held out): 0 wrong payments, 0 false holds. Re-run after the fourth round of 19 Nov: 0 wrong payments, 0 false holds. Offline.",
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v4.md",
-          "rec": "docs/evals/adversarial-v4.json"
+          "rec": "docs/evals/adversarial-v4.json docs/evals/adversarial-v4-after.json docs/evals/adversarial-v4-rerun-2026-11-19.json"
         },
         {
           "key": "eval-v5",
@@ -333,23 +333,23 @@
         },
         {
           "key": "red-team",
-          "fig": "37 of 39",
-          "label": "red-team attacks stopped before money moved",
-          "note": "The other 2 found afterwards, not prevented.",
+          "fig": "34 of 35",
+          "label": "red-team attacks stopped before money moved, re-run, not held out",
+          "note": "Re-run of 19 Nov, after the fixes: the scripted attacks, no model; the other 1 found afterwards, not prevented (hidden-payment). First run, 30 Oct, with Claude writing 4 of the documents: 37 of 39, 2 found afterwards.",
           "tag": "test",
           "tone": "claude",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/report.json",
-          "rec": "docs/redteam/report.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/rerun-2026-11-19.json",
+          "rec": "docs/redteam/rerun-2026-11-19.json docs/redteam/report.json"
         },
         {
           "key": "hostile-model",
           "fig": "370 of 380",
           "label": "hostile tool calls stopped by code",
-          "note": "The other 10 stood within the rules, by the ledger.",
+          "note": "The other 10 stood within the rules, by the ledger: each the last pay of an invoice whose right outcome is pay, within the limit. Sent to the CFO where a person had to look: 5; 0 after the 19 Nov fixes, re-run, not held out.",
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/ap-hostile.json",
-          "rec": "docs/evals/ap-hostile.json"
+          "rec": "docs/evals/ap-hostile.json docs/evals/ap-hostile-rerun-2026-11-19.json"
         },
         {
           "key": "try-claude",

@@ -24,6 +24,7 @@ import { openDisputeCase } from "../seller/desk.js";
 import { LAB_CUSTOMER, labChain, labOrder, labRefund, labSale } from "../seller/standIns.js";
 import { MORE_ATTACKS } from "./moreAttacks.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
+import { reserveSpend } from "../policy/holds.js";
 import { capRefusal, policyValue, rules } from "../policy/rules.js";
 import { stopped, velocityGate } from "../policy/velocity.js";
 import { FakeAuthenticator } from "./authenticator.js";
@@ -153,12 +154,23 @@ export const ATTACKS: Attack[] = [
     title: "Rewrite a line of the audit log",
     category: "ledger",
     run: async (w) => {
+      // A payment the CFO approved, waiting to run; then the history under it is rewritten.
+      const p = w.propose();
+      await processAssertion(w.db, w.cfoApproval(p.id, p.hash), w.now());
       audit(w.db, "treasury", "transfer.status", "tr-1", { status: "FAILED" }, w.now());
+      // First with the write guards in place: INSERT OR REPLACE slipped past them until 19 Nov (fourth round).
+      const replace = tryIt(() => w.db.prepare("INSERT OR REPLACE INTO audit_log (seq, ts, actor, event, subject, payload_json, prev_hash, row_hash) SELECT seq, ts, actor, event, subject, '{\"status\":\"PAID\"}', prev_hash, row_hash FROM audit_log WHERE event = 'transfer.status'").run());
+      // Then as someone who holds the database file: the guard dropped, the row changed.
       w.db.exec("DROP TRIGGER IF EXISTS audit_log_no_update");
       w.db.prepare("UPDATE audit_log SET payload_json = '{\"status\":\"PAID\"}' WHERE event = 'transfer.status'").run();
       const chain = verifyAuditChain(w.db);
-      return { attempt: "removed the database's write guard and changed a FAILED transfer to PAID in the audit log", blocked: !chain.ok,
-        defence: "the audit log is a hash chain; npm run verify finds the changed row", evidence: chain.ok ? "the chain still verified" : `chain broken at row ${chain.seq}` };
+      // What the rewrite is for: money moving on a history that says something else. Every payment asks the chain first.
+      const payout = tryIt(() => beginExecution(w.db, p.id, () => {}, w.now()));
+      const spend = reserveSpend(w.db, { agent: "sourcing", rail: "metal", cents: 3, ref: "rt-after-rewrite", now: w.now(), payee: "supplier" });
+      return { attempt: "changed a FAILED transfer to PAID in the audit log: first by INSERT OR REPLACE with the write guards in place, then with the guard dropped, as someone holding the database file; then ran a payment the CFO had approved and an agent's spend",
+        blocked: replace !== "it went through" && !chain.ok && payout !== "it went through" && !!spend?.startsWith("ledger_tampered"),
+        defence: "the audit log refuses a replaced row; a person holding the database file can still change one, but every payment verifies the hash chain first, so no money moves on a rewritten log until a person has checked it",
+        evidence: `replace: ${replace.slice(0, 60)}; ${chain.ok ? "the chain still verified" : `chain broken at row ${chain.seq}`}; approved payment: ${payout.slice(0, 120)}; agent spend: ${(spend ?? "reserved").slice(0, 80)}` };
     },
   },
   {
@@ -428,8 +440,13 @@ ATTACKS.push(
 // The second round (src/redteam/moreAttacks.ts), one for each threat model row that had none.
 ATTACKS.push(...MORE_ATTACKS);
 
-/** Attacks whose control finds them afterwards instead of stopping them before money or records move. */
-export const CAUGHT_AFTER = new Set(["hidden-payment", "rewrite-history"]);
+/**
+ * Attacks whose control finds them afterwards instead of stopping them before money moves. 19 Nov, fourth round:
+ * rewrite-history left this list (every payment now verifies the audit chain first, so a rewritten log moves no money;
+ * the rewrite itself, by someone holding the database file, is still found, not prevented). hidden-payment stays: a
+ * charge Airwallex approves on the card's own limits reaches the ledger only afterwards (see its defence).
+ */
+export const CAUGHT_AFTER = new Set(["hidden-payment"]);
 
 export async function runAttack(w: World, a: Attack): Promise<AttackResult> {
   try {
