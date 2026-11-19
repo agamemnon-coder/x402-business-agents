@@ -2,7 +2,9 @@
 # runtime bill of materials (CycloneDX, npm sbom as in ci.yml's security job) and SHA256SUMS, attests them with
 # GitHub's artifact attestations (SLSA build provenance and an SBOM attestation, signed through Sigstore with this
 # workflow's OIDC identity), and publishes all of it, with the attestation bundles as *.intoto.jsonl, on the tag's
-# GitHub release. How anyone verifies a download: docs/security/README.md, "Verify a release".
+# GitHub release. Then the SLSA project's generic generator (job slsa-provenance) adds SLSA Build Level 3 provenance for
+# the tarball and the bill of materials, x402-business-agents-<tag>.slsa3.intoto.jsonl, to the same release; it was added
+# after v1.2.0, so v1.2.0 has none. How anyone verifies a download: docs/security/README.md, "Verify a release".
 #
 # It never creates, moves or deletes a tag: it reads the tag that was pushed (or named), and `gh release create
 # --verify-tag` refuses to make a release for a tag that does not exist. The submission tags (v1.0-submission and
@@ -39,6 +41,9 @@ jobs:
       attestations: write # store the attestations on this repository
     env:
       TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    outputs:
+      tag: ${{ env.TAG }}
+      hashes: ${{ steps.sums.outputs.hashes }}
     steps:
       - name: Harden the runner (audit outbound calls)
         uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
@@ -68,11 +73,15 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           npm sbom --sbom-format cyclonedx --omit dev > "dist/x402-business-agents-$TAG.sbom.cdx.json"
           node -e 'const d=require(process.argv[1]); if (d.bomFormat !== "CycloneDX" || !d.components.length) process.exit(1); console.log(d.components.length, "components")' "$PWD/dist/x402-business-agents-$TAG.sbom.cdx.json" | tee -a "$GITHUB_STEP_SUMMARY"
+      # SHA256SUMS is sha256sum's output for the tarball and the bill of materials, so its base64 is exactly the subject
+      # list the SLSA generator takes (base64-subjects, job slsa-provenance).
       - name: SHA256SUMS
+        id: sums
         working-directory: dist
         run: |
           sha256sum "x402-business-agents-$TAG.tar.gz" "x402-business-agents-$TAG.sbom.cdx.json" > SHA256SUMS
           cat SHA256SUMS | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "hashes=$(base64 -w0 SHA256SUMS)" >> "$GITHUB_OUTPUT"
       # actions/attest is GitHub's attestation action; attest-build-provenance (v4) and attest-sbom (v4, deprecated)
       # are wrappers around it, and their READMEs point new workflows here.
       - name: Attest build provenance (SLSA) for the tarball, the bill of materials and SHA256SUMS
@@ -114,4 +123,29 @@ jobs:
             echo "Release $TAG (commit $TAG_COMMIT). Verify a download:"
             echo "  gh attestation verify x402-business-agents-$TAG.tar.gz -R $GITHUB_REPOSITORY"
             echo "  sha256sum -c SHA256SUMS"
+            echo "  slsa-verifier verify-artifact x402-business-agents-$TAG.tar.gz --provenance-path x402-business-agents-$TAG.slsa3.intoto.jsonl --source-uri github.com/$GITHUB_REPOSITORY --source-tag $TAG"
           } | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # SLSA Build Level 3 provenance from the SLSA project's generic generator, a reusable workflow that runs in its own
+  # jobs, isolated from the build above: it signs (Sigstore, its own OIDC identity) provenance for the release job's
+  # tarball and bill of materials and uploads it to the tag's release, which the release job has created by then. It
+  # needs no checkout and no steps of ours, so there is nothing here for Harden-Runner to wrap.
+  #
+  # The one `uses:` in .github/workflows/ that is not pinned to a full commit SHA, on purpose (the owner's decision,
+  # 19 November 2026). The generator's README ("Referencing the SLSA generator") says it MUST be referenced by a tag of
+  # the form @vX.Y.Z: the build fails with a shorter tag or a commit SHA, because the builder is identified by its
+  # release tag, which slsa-verifier checks. v2.1.0 is the latest release (24 February 2025; tag commit f7dd8c5).
+  # test/security-page.test.ts allows exactly this path by tag; every other action stays pinned by SHA.
+  slsa-provenance:
+    needs: release
+    permissions:
+      actions: read # the generator reads this workflow run to detect the GitHub Actions environment
+      id-token: write # it signs the provenance through its own OIDC identity (Sigstore)
+      contents: write # it uploads the provenance to the tag's release
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: ${{ needs.release.outputs.hashes }}
+      upload-assets: true
+      # The release job's tag, also for workflow_dispatch runs, where github.ref is not the tag.
+      upload-tag-name: ${{ needs.release.outputs.tag }}
+      provenance-name: x402-business-agents-${{ needs.release.outputs.tag }}.slsa3.intoto.jsonl

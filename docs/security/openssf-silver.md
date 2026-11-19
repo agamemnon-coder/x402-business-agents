@@ -70,6 +70,11 @@ het plan staat in [GOVERNANCE.md](../../GOVERNANCE.md#continuity-if-the-maintain
    `gh attestation verify x402-business-agents-v1.2.0.tar.gz -R agamemnon-coder/x402-business-agents`. Op GitHub staat bij
    de tag **Verified**.
 5. Daarna: `signed_releases` en `version_tags_signed` op **Met**, en op het passing-formulier `version_semver` ook.
+6. **SLSA Build L3, vanaf de volgende release:** sinds 19 november (jouw keuze) heeft `release.yml` een tweede job,
+   `slsa-provenance`, met de generieke SLSA-generator (`@v2.1.0`, met een tag zoals zijn README eist). Elke release
+   ná `v1.2.0` krijgt daardoor ook `x402-business-agents-<tag>.slsa3.intoto.jsonl`, te controleren met
+   `slsa-verifier verify-artifact` ([security/README.md](README.md#verify-a-release), stap 5). `v1.2.0` is zonder
+   gemaakt: claim voor `v1.2.0` geen SLSA Build-niveau. Het antwoord bij `signed_releases` hieronder blijft zoals het is.
 
 ### 4. Wat al kan zonder eigen werk, maar wel een klik vraagt
 
