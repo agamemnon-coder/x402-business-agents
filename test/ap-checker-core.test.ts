@@ -170,11 +170,14 @@ describe("code's checks over a case", () => {
     expect(statusOf(codeFindings(caseOf(NL)))).toBe("needs_vendor");
   });
 
-  it("bank_change_language is shown and changes nothing on its own; pressure_language holds the invoice for a person (eval v2, 19 Nov)", () => {
+  // 19 Nov, second round (eval v3): words asking to pay another account hold the invoice for a person, even at the IBAN
+  // on file; words of speed alone are shown, and only a request to get around the checks holds (test/eval-v3-gaps.test.ts).
+  it("bank_change_language holds the invoice for a person; pressure_language of speed alone is shown (eval v3, 19 Nov)", () => {
     const c = caseOf(`${EN}\nPlease note our bank details have changed. Pay urgently.`);
-    expect(codeFindings(c).map((f) => [f.code, f.level])).toEqual([["bank_change_language", "warn"], ["pressure_language", "review"]]);
+    expect(codeFindings(c).map((f) => [f.code, f.level])).toEqual([["bank_change_language", "review"], ["pressure_language", "warn"]]);
     expect(statusOf(codeFindings(c))).toBe("needs_review");
-    expect(statusOf(codeFindings(caseOf(`${EN}\nPlease note our bank details have changed.`)))).toBe("ready");
+    expect(statusOf(codeFindings(caseOf(`${EN}\nPlease note our bank details have changed.`)))).toBe("needs_review");
+    expect(statusOf(codeFindings(caseOf(`${EN}\nPay urgently.`)))).toBe("ready");
   });
 
   it("payee_blocked and account_currency: the CFO's policy and the account on file", () => {
@@ -684,13 +687,14 @@ describe("eval v2 gaps, closed in code", () => {
   const prior = (over: Partial<HistoryInvoice>) => earlier({ invoiceNo: "BTX-2026-40", total: "990.00", issueDate: "2026-11-16", receivedAt: "2026-11-16T09:00:00.000Z", state: "paid", ...over });
 
   describe("split invoices: one supplier's invoices added up over SPLIT_DAYS", () => {
-    it("is 14 days", () => expect(SPLIT_DAYS).toBe(14));
+    // 19 Nov, second round (eval v3, v3-split-bergtex-16-days): three weeks (src/config/checkNumbers.ts says why).
+    it("is 21 days", () => expect(SPLIT_DAYS).toBe(21));
 
     it("an invoice under the limit whose supplier's invoices within the window add up past it needs the CFO, naming them", () => {
       const c = caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({})] });
       const f = finding(c, "possible_split")!;
       expect(f).toMatchObject({ level: "warn" });
-      expect(f.detail).toBe("possible split invoice: with AP-0001 (invoice BTX-2026-40, EUR 990.00, 2026-11-16) from the same supplier within 14 days, together EUR 1850.00, above the EUR 1000.00 the agent may pay alone, so the CFO decides");
+      expect(f.detail).toBe("possible split invoice: with AP-0001 (invoice BTX-2026-40, EUR 990.00, 2026-11-16) from the same supplier within 21 days, together EUR 1850.00, above the EUR 1000.00 the agent may pay alone, so the CFO decides");
       expect(statusOf(codeFindings(c))).toBe("ready");
       expect(codeRequires(c, codeFindings(c))).toMatchObject({ action: "ask_cfo", by: "possible_split" });
       expect(codeRequires(c, codeFindings(c)).why).toMatch(/^possible split invoice: with AP-0001/);
@@ -707,8 +711,8 @@ describe("eval v2 gaps, closed in code", () => {
 
     it("asks nothing when the parts stay within the limit, fall outside the window, or cannot be paid", () => {
       expect(codes(caseOf(part("10.00"), { ...LIMIT_1000, history: [prior({})] }))).not.toContain("possible_split");
-      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-11-02" })] }))).not.toContain("possible_split");
-      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-11-03" })] }))).toContain("possible_split");
+      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-10-26" })] }))).not.toContain("possible_split");
+      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-10-27" })] }))).toContain("possible_split");
       for (const state of ["rejected", "blocked"] as const) expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ state })] })), state).not.toContain("possible_split");
       expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ currency: "USD" })] }))).not.toContain("possible_split");
       expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ vendor: "Someone Else GmbH", accountKey: "DE02120300000000202051" })] }))).not.toContain("possible_split");
@@ -721,12 +725,13 @@ describe("eval v2 gaps, closed in code", () => {
   });
 
   describe("near-duplicates: the same supplier, almost the same total, another number", () => {
-    it("is within EUR 1.00 and 1% of the earlier total, inside the twin window: a possible duplicate a person may clear", () => {
+    // 19 Nov, second round (eval v3): and dated within 14 days (NEAR_TWIN_DAYS).
+    it("is within EUR 1.00 and 1% of the earlier total, inside the near-twin window: a possible duplicate a person may clear", () => {
       expect([NEAR_TWIN_CENTS, NEAR_TWIN_PERCENT]).toEqual([100, 1]);
       const c = caseOf(part("595.01", "LN-2026-0961", "10 November 2026"), { ...LIMIT_1000, history: [prior({ invoiceNo: "LN-2026-0951", total: "595.00", issueDate: "2026-11-10" })] });
       const f = finding(c, "possible_duplicate")!;
       expect(f).toMatchObject({ level: "review", twin_of: "AP-0001" });
-      expect(f.detail).toBe("AP-0001 from the same supplier has almost the same total, EUR 595.00 against EUR 595.01, within 45 days; a person checks it is not the same invoice under another number (once cleared, this pair is not asked again)");
+      expect(f.detail).toBe("AP-0001 from the same supplier has almost the same total, EUR 595.00 against EUR 595.01, within 14 days; a person checks it is not the same invoice under another number (once cleared, this pair is not asked again)");
       expect(codes(caseOf(part("595.01", "LN-2026-0961"), { ...LIMIT_1000, history: [prior({ invoiceNo: "LN-2026-0951", total: "595.00" })], clearedTwins: ["AP-0001"] }))).not.toContain("possible_duplicate");
     });
 

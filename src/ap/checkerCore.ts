@@ -15,11 +15,12 @@ import { plainReason, REASON_MAX_CHARS, sentenceCount } from "../agents/timingCo
 import { apiInputSchema } from "../agents/toolSchema.js";
 import { invoiceKey, sameInvoiceNo } from "../lib/invoiceKey.js";
 import { fromCents, toCents } from "../lib/money.js";
-import { accountKey, chooseRoute, payableCurrency, validateDetails, type BankDetails, type Route } from "../payouts/routes.js";
+import { abaOf, accountKey, chooseRoute, payableCurrency, sameAccount, validateDetails, type BankDetails, type Route } from "../payouts/routes.js";
 import { assessAgainst, legalName, type Beneficiary, type FraudFinding, type FraudSignal } from "../policy/fraudCore.js";
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
-import { NEAR_TWIN_CENTS, NEAR_TWIN_PERCENT, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR } from "../config/checkNumbers.js";
+import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
+import { deliveryDates, periodsDiffer, servicePeriods } from "./period.js";
 import { amountsIn, IBAN_LENGTHS, ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
 
 // ── The case ──
@@ -57,6 +58,11 @@ export interface SupplierOnFile {
   currency: string;
   accountSha256?: string;
   bank?: BankDetails;
+  /**
+   * The ABA routing number of a US account kept as a hash (the runner's ledger keeps it beside the hash, 19 Nov): an
+   * invoice to the same account number at another routing number is not this account. Absent: not compared.
+   */
+  aba?: string;
 }
 
 /** An invoice the inbox already holds. */
@@ -78,6 +84,8 @@ export interface HistoryInvoice {
   blockedAsDuplicate: boolean;
   /** For a rejected one: the reason the person gave, when it is known. */
   rejectedWhy: string | null;
+  /** The months it says it bills for (src/ap/period.ts servicePeriods), when it printed any; absent or null: not known. */
+  period?: string[] | null;
 }
 
 /** What a contract or a purchase order says the invoice should be. */
@@ -109,6 +117,8 @@ export interface InvoiceCase {
     payees: { allowed: string[]; blocked: string[] };
     /** The currencies the company pays in. */
     currencies: string[];
+    /** The company's own windows for the duplicate and split checks, in days (windowsOf); absent: the defaults. */
+    windows?: Partial<CheckWindows> | null;
   };
   suppliers: SupplierOnFile[];
   history: HistoryInvoice[];
@@ -138,9 +148,49 @@ export interface InvoiceCase {
 
 // UNUSUAL_FACTOR and TWIN_DAYS live in src/config/checkNumbers.ts, without imports, so /try's words quote them (14 Nov) without
 // pulling the checks into the Worker's bundle.
-export { NEAR_TWIN_CENTS, NEAR_TWIN_PERCENT, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR };
+export { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR };
+
+/** The windows of the duplicate and split checks, in days (src/config/checkNumbers.ts says why each default). */
+export interface CheckWindows { splitDays: number; twinDays: number; nearTwinDays: number }
+export const DEFAULT_WINDOWS: Readonly<CheckWindows> = { splitDays: SPLIT_DAYS, twinDays: TWIN_DAYS, nearTwinDays: NEAR_TWIN_DAYS };
+/** The case's windows: the company's own where it set one in range (a whole number of days), else the default. */
+export function windowsOf(c: Pick<InvoiceCase, "policy">): CheckWindows {
+  const own = c.policy.windows ?? {};
+  const pick = (k: keyof CheckWindows) => {
+    const v = own[k];
+    return typeof v === "number" && Number.isInteger(v) && v >= WINDOW_MIN_DAYS && v <= WINDOW_MAX_DAYS ? v : DEFAULT_WINDOWS[k];
+  };
+  return { splitDays: pick("splitDays"), twinDays: pick("twinDays"), nearTwinDays: pick("nearTwinDays") };
+}
 
 const MONEY = /^\d+\.\d{2}$/;
+
+/**
+ * The valid IBANs written anywhere in a text, groups of four with or without spaces, without spaces (19 Nov, eval v3: an
+ * account named in a footer). Of a run of groups, the longest that passes its checksum is the IBAN. An account its own
+ * sentence calls old, closed or not to be used ("Old bank details (DE12 …) are closed; please do not use them") is left out.
+ */
+function ibansIn(text: string): string[] {
+  const out: string[] = [];
+  const lines = text.toUpperCase().split("\n");
+  lines.forEach((line, i) => {
+    const two = `${line} ${lines[i + 1] ?? ""}`;
+    for (const m of line.matchAll(/\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{1,4}){2,8}/g)) {
+      const groups = m[0].split(" ");
+      for (let n = groups.length; n >= 1; n--) {
+        const x = groups.slice(0, n).join("");
+        if (x.length < 15 || !ibanValid(x)) continue;
+        const from = two.slice(0, m.index).search(/[^.;]*$/);
+        const to = m.index! + m[0].length + Math.max(0, two.slice(m.index! + m[0].length).search(/[.;]|$/));
+        if (!OLD_ACCOUNT.test(two.slice(from, to))) out.push(x);
+        break;
+      }
+    }
+  });
+  return [...new Set(out)];
+}
+/** Words that call an account old or closed, in the languages suppliers write in. */
+const OLD_ACCOUNT = /\b(OLD|FORMER|PREVIOUS|CLOSED|NO LONGER|DO NOT USE|ALTE[NRS]?|EHEMALIGE[NRS]?|BISHERIGE[NRS]?|GESCHLOSSEN|AUFGEL(Ö|OE)ST|NICHT MEHR|OUDE?|VORIGE|GESLOTEN|OPGEHEVEN|NIET MEER|ANCIEN(NE)?|FERM(É|E)|ANTIGU[OA]|CERRAD[OA]|VECCHIO|CHIUSO)\b/;
 const DAY_MS = 86_400_000;
 
 /** An account key as it is compared: no spaces, upper case (the form its hash is taken of, src/agents/invoice.ts ibanSha). */
@@ -215,11 +265,13 @@ const THIS_ACCOUNT = "this invoice's account";
  * (an IBAN names its account on its own). Whether a supplier's account is this invoice's is worked out here, from its
  * clear details or the two hashes, and handed to the check as a token.
  */
-function comparedWith(c: InvoiceCase, key: string): Beneficiary[] {
-  const mine = sameForm(key);
+function comparedWith(c: InvoiceCase, details: BankDetails): Beneficiary[] {
   const sha = c.invoice.accountSha256;
+  // 19 Nov (eval v3): the same account number at another ABA routing number is another account (sameAccount).
+  const aba = abaOf(details);
   return c.suppliers.map((s) => {
-    const same = s.bank ? keyOf(s.bank) === mine : !!s.accountSha256 && !!sha && s.accountSha256.toLowerCase() === sha.toLowerCase();
+    const same = s.bank ? sameAccount(s.bank, details)
+      : !!s.accountSha256 && !!sha && s.accountSha256.toLowerCase() === sha.toLowerCase() && (!s.aba || !aba || s.aba.replace(/\D/g, "") === aba);
     return { beneficiary_id: s.id, name: s.name, iban_last4: s.last4, iban_sha256: same ? THIS_ACCOUNT : `another account (${s.id})`, bic: "" };
   });
 }
@@ -249,7 +301,7 @@ const FIELD_WORDS: Record<string, string> = { reference: "the payment reference"
 const SPLIT_SHOWN = 6;
 
 /** What the screen flags in an invoice's words, as code's own findings: held for a person, never only shown. */
-export const WORDS_FINDINGS = ["instructions_in_document", "pressure_language"] as const;
+export const WORDS_FINDINGS = ["instructions_in_document", "pressure_language", "bank_change_language"] as const;
 
 /**
  * A finding of the screen on the invoice's words: review (a person reads it before anything is paid), or, once a person
@@ -299,6 +351,14 @@ function examine(c: InvoiceCase): Examined {
     phrases.push(...(ambiguous.match(/\d+ different totals/) ?? []));
   }
 
+  // The dates the windows are measured from: the invoice's own and each delivery date it prints; the months it bills.
+  const win = windowsOf(c);
+  const day = (x: string) => Date.parse(`${x.slice(0, 10)}T00:00:00Z`);
+  const issued = day(r.issue_date || c.today);
+  const delivered = deliveryDates(text);
+  const mine = [issued, ...delivered.map(day).filter((d) => !Number.isNaN(d) && d !== issued)];
+  const periods = servicePeriods(text);
+
   // The same invoice twice: in the inbox already (another file), or already paid or on its way through the ledger. Only
   // invoices received before this one count, and not copies that were themselves refused as a copy: a resent copy never
   // blocks its original (review, 8 November).
@@ -331,51 +391,55 @@ function examine(c: InvoiceCase): Examined {
     // C; round 2 widened a week to 45 days, past a month). A monthly invoice for the same amount (rent, a subscription)
     // therefore waits for a person once: their clearance is kept per pair (clearPossibleDuplicate in src/ap/inbox.ts).
     if (!f.some((x) => x.code === "duplicate" || x.code === "possible_duplicate") && MONEY.test(r.total)) {
-      const day = (s: string) => Date.parse(`${s.slice(0, 10)}T00:00:00Z`);
-      const mine = day(r.issue_date || c.today);
+      // 19 Nov, second round (eval v3): the windows are the company's own where it set them (windowsOf); they are
+      // measured from the invoice's date and from each delivery date it prints (a delivery invoiced again two months
+      // later meets the invoice of that delivery); and two invoices that print different months are no copy.
       const cleared = new Set(c.clearedTwins);
-      const twin = earlier.find((x) => !["blocked", "needs_review"].includes(x.state) && !cleared.has(x.id)
-        && x.total === r.total && x.currency === r.currency && Math.abs(day(x.issueDate || x.receivedAt) - mine) <= TWIN_DAYS * DAY_MS);
+      const near = (x: HistoryInvoice, days: number) => mine.some((d) => Math.abs(day(x.issueDate || x.receivedAt) - d) <= days * DAY_MS);
+      const candidates = earlier.filter((x) => !["blocked", "needs_review"].includes(x.state) && !cleared.has(x.id) && x.currency === r.currency && !periodsDiffer(periods, x.period));
+      const when = (x: HistoryInvoice) => (Math.abs(day(x.issueDate || x.receivedAt) - issued) <= win.twinDays * DAY_MS
+        ? `within ${win.twinDays} days` : `within ${win.twinDays} days of the delivery it bills (${delivered.join(", ")})`);
+      const twin = candidates.find((x) => x.total === r.total && near(x, win.twinDays));
       if (twin) {
-        f.push({ code: "possible_duplicate", level: "review", twin_of: twin.id, detail: `${twin.id} from the same supplier has the same total ${r.currency} ${r.total} within ${TWIN_DAYS} days; a person checks it is not the same invoice under another number (once cleared, this pair is not asked again)` });
-        phrases.push(`${TWIN_DAYS} days`);
+        f.push({ code: "possible_duplicate", level: "review", twin_of: twin.id, detail: `${twin.id} from the same supplier has the same total ${r.currency} ${r.total} ${when(twin)}; a person checks it is not the same invoice under another number (once cleared, this pair is not asked again)` });
+        phrases.push(`${win.twinDays} days`);
       } else {
         // 19 Nov (adversarial eval v2, dup-lagerhaus-renumbered-cent): almost the same total under another number, at
-        // most EUR 1.00 (NEAR_TWIN_CENTS) and 1% (NEAR_TWIN_PERCENT) of the larger total apart, whichever is less.
+        // most NEAR_TWIN_CENTS and NEAR_TWIN_PERCENT of the larger total apart, whichever is less; eval v3: and dated
+        // within the near-twin window (a regular order a month later is no copy).
         const asked = toCents(r.total);
-        const near = earlier.find((x) => !["blocked", "needs_review"].includes(x.state) && !cleared.has(x.id) && x.currency === r.currency && MONEY.test(x.total)
-          && Math.abs(day(x.issueDate || x.receivedAt) - mine) <= TWIN_DAYS * DAY_MS
+        const close = candidates.find((x) => MONEY.test(x.total) && near(x, win.nearTwinDays)
           && Math.abs(toCents(x.total) - asked) <= Math.min(NEAR_TWIN_CENTS, Math.floor((Math.max(toCents(x.total), asked) * NEAR_TWIN_PERCENT) / 100)));
-        if (near) {
-          f.push({ code: "possible_duplicate", level: "review", twin_of: near.id, detail: `${near.id} from the same supplier has almost the same total, ${r.currency} ${near.total} against ${r.currency} ${r.total}, within ${TWIN_DAYS} days; a person checks it is not the same invoice under another number (once cleared, this pair is not asked again)` });
-          phrases.push(`${TWIN_DAYS} days`);
+        if (close) {
+          f.push({ code: "possible_duplicate", level: "review", twin_of: close.id, detail: `${close.id} from the same supplier has almost the same total, ${r.currency} ${close.total} against ${r.currency} ${r.total}, within ${win.nearTwinDays} days; a person checks it is not the same invoice under another number (once cleared, this pair is not asked again)` });
+          phrases.push(`${win.nearTwinDays} days`);
         }
       }
     }
   }
 
   // 19 Nov (adversarial eval v2: six invoices cut to stay under the limit were paid alone): one supplier's invoices dated
-  // within SPLIT_DAYS of this one, paid or still to be paid, each within the agent's limit, are added up. When this one
-  // is within the limit too and the sum is past it, the CFO decides (codeRequires: possible_split), naming the others.
-  // A copy of this same invoice (its number) is no part of it; a rejected or blocked one will not be paid.
+  // within the split window of this one, paid or still to be paid, each within the agent's limit, are added up. When this
+  // one is within the limit too and the sum is past it, the CFO decides (codeRequires: possible_split), naming the others.
+  // A copy of this same invoice (its number) is no part of it; a rejected or blocked one will not be paid; one that prints
+  // another month than this one is the supplier's regular billing, not a part (eval v3).
   const limit = c.policy.aloneLimit;
   if (limit && MONEY.test(r.total) && limitRule(limit, r.currency, r.total).rule === null) {
-    const day = (s: string) => Date.parse(`${s.slice(0, 10)}T00:00:00Z`);
-    const mine = day(r.issue_date || c.today);
     const key = r.invoice_no ? invoiceKey(r.invoice_no) : null;
     const parts = others.filter(sameParty)
       // Each part is itself within the limit: one above it went to the CFO on its own, so nothing was cut to avoid it.
       .filter((x) => x.state !== "rejected" && x.state !== "blocked" && !x.blockedAsDuplicate && x.currency === r.currency && MONEY.test(x.total) && limitRule(limit, x.currency, x.total).rule === null)
       .filter((x) => !key || invoiceKey(x.invoiceNo) !== key)
-      .filter((x) => Math.abs(day(x.issueDate || x.receivedAt) - mine) <= SPLIT_DAYS * DAY_MS);
+      .filter((x) => !periodsDiffer(periods, x.period))
+      .filter((x) => Math.abs(day(x.issueDate || x.receivedAt) - issued) <= win.splitDays * DAY_MS);
     const sum = parts.reduce((n, x) => n + toCents(x.total), toCents(r.total));
     if (parts.length && sum > toCents(limit.amount)) {
       const shown = parts.slice(0, SPLIT_SHOWN).map((x) => `${x.id} (invoice ${x.invoiceNo || "with no number"}, ${money(x.currency, x.total)}, ${(x.issueDate || x.receivedAt).slice(0, 10)})`);
       const more = parts.length > shown.length ? [`${parts.length - shown.length} more`] : [];
       const list = [...shown, ...more];
       const named = list.length === 1 ? list[0]! : `${list.slice(0, -1).join(", ")} and ${list.at(-1)!}`;
-      f.push({ code: "possible_split", level: "warn", detail: `possible split invoice: with ${named} from the same supplier within ${SPLIT_DAYS} days, together ${money(r.currency, fromCents(sum))}, above the ${money(limit.currency, limit.amount)} the agent may pay alone, so the CFO decides` });
-      phrases.push(`${SPLIT_DAYS} days`);
+      f.push({ code: "possible_split", level: "warn", detail: `possible split invoice: with ${named} from the same supplier within ${win.splitDays} days, together ${money(r.currency, fromCents(sum))}, above the ${money(limit.currency, limit.amount)} the agent may pay alone, so the CFO decides` });
+      phrases.push(`${win.splitDays} days`);
     }
   }
 
@@ -384,7 +448,7 @@ function examine(c: InvoiceCase): Examined {
   let fraud: FraudFinding | null = null;
   if (r.vendor && bank.ok) {
     const key = accountKey(bank.details);
-    fraud = assessAgainst(comparedWith(c, key), { vendor: r.vendor, iban: key, bic: "" }, text, THIS_ACCOUNT);
+    fraud = assessAgainst(comparedWith(c, bank.details), { vendor: r.vendor, iban: key, bic: "" }, text, THIS_ACCOUNT);
     const blocking = fraud.signals.filter((s) => s.blocks && s.code !== "unknown_vendor");
     if (fraud.suspicious) {
       f.push({ code: "possible_fraud", level: "block", detail: `possible invoice fraud: ${blocking.map((s) => s.detail).join("; ")}. Nothing is paid until a person checks with the supplier on a number already on file`,
@@ -394,9 +458,18 @@ function examine(c: InvoiceCase): Examined {
       f.push({ code: "new_supplier", level: "wait", detail: `${r.vendor} is not on file as a supplier yet: a person verifies its bank details with the supplier, then the CFO approves it with Face ID${pending ? ` (request ${pending.id}, ${pending.status.toLowerCase()})` : ""}` });
     }
     // 19 Nov (adversarial eval v2): pressure in the words holds the invoice for a person, below the limit too, until a
-    // person releases it after reading it (c.released); then the CFO signs it (codeRequires).
+    // person releases it after reading it (c.released); then the CFO signs it (codeRequires). Second round (eval v3):
+    // only words that ask to get around the checks or to pay another account hold it (the signal says: holds); words of
+    // speed alone are shown.
     for (const s of fraud.signals.filter((x) => !x.blocks)) {
-      f.push(s.code === "pressure_language" ? wordsFinding(c, { code: "pressure_language", detail: s.detail }) : { code: s.code, level: "warn", detail: s.detail });
+      const words = (WORDS_FINDINGS as readonly string[]).includes(s.code) ? (s.code as (typeof WORDS_FINDINGS)[number]) : null;
+      f.push(s.holds && words ? wordsFinding(c, { code: words, detail: s.detail }) : { code: s.code, level: "warn", detail: s.detail });
+    }
+    // 19 Nov (eval v3, v3-bec-zeeland-footer-new-account): another valid IBAN in the text than the one the invoice asks
+    // to be paid to, whatever the words around it: a person confirms with the supplier which account is theirs.
+    if (!f.some((x) => x.code === "bank_change_language")) {
+      const other = ibansIn(text).find((x) => keyOf({ ...bank.details, iban: x, accountNumber: "", routingType: "", routingValue: "" }) !== sameForm(key));
+      if (other) f.push(wordsFinding(c, { code: "bank_change_language", detail: `the invoice names another account in its text, IBAN ending ${other.slice(-4)}, than the one it asks to be paid to` }));
     }
     const known = fraud.allowlisted && !fraud.suspicious ? fraud.allowlisted : null;
     if (known && c.policy.payees.blocked.includes(known.name)) f.push({ code: "payee_blocked", level: "block", detail: `${known.name} is blocked by the CFO policy` });
@@ -534,7 +607,8 @@ export function codeRequires(c: InvoiceCase, findings: Finding[]): { action: Act
   if (alone.rule) return { action: "ask_cfo", by: alone.rule, why: alone.why };
   // 19 Nov (adversarial eval v2): a possible split invoice, and words a person has released after reading them, go to
   // the CFO; neither is ever paid alone.
-  const cfo = findings.find((f) => f.code === "possible_split") ?? findings.find((f) => (WORDS_FINDINGS as readonly string[]).includes(f.code));
+  // Words of speed alone (eval v3) are a warning that was never held: only words a person released send it to the CFO.
+  const cfo = findings.find((f) => f.code === "possible_split") ?? (c.released ? findings.find((f) => (WORDS_FINDINGS as readonly string[]).includes(f.code)) : undefined);
   if (cfo) return { action: "ask_cfo", by: cfo.code, why: cfo.detail };
   const differs = expectedMismatch(c);
   return differs ? { action: "ask_cfo", by: "amount_not_expected", why: differs } : { action: "pay", by: null, why: alone.why };

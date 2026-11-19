@@ -10,6 +10,11 @@ export interface FraudSignal {
   code: FraudCode;
   /** A blocking signal stops payment; the others are evidence for the person who verifies. */
   blocks: boolean;
+  /**
+   * Not a block, but a person reads it before anything is paid (19 Nov, adversarial eval v3): words that ask to pay
+   * another account, or to get around the people who check payments. Absent or false: shown only.
+   */
+  holds?: boolean;
   detail: string;
   /** What the invoice says and what is on file, side by side (14 Nov: /try shows the evidence, not only the sentence). */
   asked?: string;
@@ -76,6 +81,11 @@ const LEGAL_FORMS: readonly string[][] = [
  * account must still be the one on file (assessAgainst compares it).
  */
 export function legalName(name: string): string {
+  return skeleton(legalTokens(name).join(" "));
+}
+
+/** A name's words as legalName reads them: lower case, no accents or dots, its legal form at the end dropped. */
+export function legalTokens(name: string): string[] {
   const tokens = name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\./g, "").replace(/&/g, " & ").split(/[^\p{L}\p{N}&]+/u).filter(Boolean);
   for (let changed = true; changed;) {
     changed = false;
@@ -87,8 +97,40 @@ export function legalName(name: string): string {
       }
     }
   }
-  return skeleton(tokens.join(" "));
+  return tokens;
 }
+
+/** Whether `short` is `full` with letters left out, in order, from its first letter on ("txtl" of "textil"). */
+const shortened = (short: string, full: string) => {
+  if (short.length < Math.min(3, full.length) || short.length >= full.length || short[0] !== full[0]) return false;
+  let i = 0;
+  for (const ch of full) if (ch === short[i]) i++;
+  return i === short.length;
+};
+
+/**
+ * Whether one name is a bank's abbreviation of another (19 Nov, adversarial eval v3, v3-name-bergtex-abbreviated:
+ * "Bergtex Txtl. GmbH" at the IBAN on file was held as another account holder): the same number of words once legal
+ * forms are dropped, at least one word the same, and each other word shortened from its first letter, letters in order
+ * ("Txtl." of "Textil", "Outdr" of "Outdoor"). Another word ("Textiles", "Logistics", "Group") is another name. Used
+ * only where the account is the one on file: a name is never matched on this alone where money moves.
+ */
+export function abbreviates(short: string, full: string): boolean {
+  const a = legalTokens(short).map(skeleton), b = legalTokens(full).map(skeleton);
+  if (!a.length || a.length !== b.length || !a.some((x, i) => x === b[i])) return false;
+  return a.every((x, i) => x === b[i] || shortened(x, b[i]!));
+}
+
+/**
+ * The account holder as the document prints it, under its label in the languages suppliers write in (19 Nov, eval v3:
+ * only "Account name:" was read, so "Ten name van: Zeeland Logistics B.V." at the IBAN on file went unread): Account
+ * name / holder, Beneficiary (name), Ten name van / T.n.v., Kontoinhaber(in), Begünstigter, Empfänger, Titulaire (du
+ * compte), Titular (de la cuenta / da conta), Intestatario. At the start of a line; "Beneficiary bank:" is no holder.
+ */
+export function accountHolderIn(text: string): string | undefined {
+  return HOLDER.exec(text)?.[1]?.trim() || undefined;
+}
+const HOLDER = /^[ \t]*(?:account (?:name|holder)|name of (?:the )?account holder|beneficiary(?: name)?|ten name van|t\.?n\.?v\.?|kontoinhaber(?:in)?|beg(?:ü|ue)nstigter|empf(?:ä|ae)nger|titulaire(?: du compte)?|titular(?: de la cuenta| da conta)?|intestatario(?: del conto)?)[ \t]*:[ \t]*(\S[^\n]*)$/im;
 
 /**
  * An account in words, leaving out what is not known (screenshot pass S1: "and BIC ; on file: IBAN …3000 () and BIC ."):
@@ -132,8 +174,45 @@ const BANK_CHANGE = new RegExp([
   "\\b(iban|bankverbindung)[^.\\n]{0,30}(ge(ä|ae)ndert|gewechselt)", "\\bbankwechsel",
   // Dutch: "ons rekeningnummer is gewijzigd", "een nieuw rekeningnummer", "bankgegevens zijn gewijzigd"
   "(rekening(nummer)?|bankrekening(nummer)?|bankgegevens)[^.\\n]{0,40}(gewijzigd|veranderd)", "\\bnieuwe? (bank)?(rekening|gegevens)", "\\bnieuwe? iban", "\\biban[^.\\n]{0,30}(gewijzigd|veranderd)",
+  // 19 Nov (adversarial eval v3): French, Spanish, Italian and Portuguese ("nos nouvelles coordonnées bancaires", "nuestra
+  // nueva cuenta", "il nostro nuovo conto", "a nossa nova conta").
+  "\\bnouv(eau|el|elle)s? (compte|iban|rib|coordonn(é|e)es)", "\\bchangement de (banque|compte|rib|coordonn(é|e)es)", "coordonn(é|e)es bancaires[^.\\n]{0,30}(chang|modifi)",
+  "\\bnuev[oa]s? (cuenta|iban|n(ú|u)mero de cuenta|datos bancarios)", "\\bcuenta (bancaria )?nueva\\b", "datos bancarios[^.\\n]{0,30}(cambi|actualiz|modific)",
+  "\\bnuov[oa]? (conto|iban|coordinate)", "coordinate bancarie[^.\\n]{0,30}(cambiat|variat|aggiornat)",
+  "\\bnov[oa] (conta|iban)", "dados banc(á|a)rios[^.\\n]{0,30}(alterad|atualizad|mudad)",
+  // An account about to close or closed: the prelude to new bank details ("our bank closes this account then", "unser
+  // Konto wird zum 30.11. aufgelöst"). The customer's own account being suspended is dunning, not this.
+  "\\b(our|this|the old|unser(e|em|es)?|dieses|ons|onze|notre|nuestra|il nostro|a nossa)\\b(?:[^.\\n]|(?<=\\d)\\.){0,20}\\b(bank ?account|account|bankkonto|konto|bankrekening|rekening|compte|cuenta|conto|conta)\\b(?:[^.\\n]|(?<=\\d)\\.){0,30}\\b(clos(e|es|ed|ing)|frozen|terminated|discontinued|no longer (valid|in use|active|available)|geschlossen|aufgel(ö|oe)st|gek(ü|ue)ndigt|gesperrt|opgeheven|gesloten|ferm(é|e)|cerrad[ao]|chius[oa]|encerrad[ao])",
+  "\\bbank\\b[^.\\n]{0,20}\\bclos(es|ing|ed)\\b[^.\\n]{0,25}\\baccount\\b",
 ].join("|"), "i");
-const PRESSURE = /\burgent(ly)?\b|\bimmediately\b|\btoday\b|avoid (an? )?(interruption|suspension|penalt)|final notice|\bconfidential\b/i;
+/** "Our bank details are unchanged": no announcement of a change (19 Nov: "unchanged" read as "changed"). */
+const BANK_UNCHANGED = /\b(unchanged|not (been )?changed|remain(s)? (the same|unchanged|valid)|unver(ä|ae)ndert|nicht ge(ä|ae)ndert|ongewijzigd|niet gewijzigd|inchang(é|e)e?s?|sin cambios|invariat[ie]|inalterad[oa]s?)\b/i;
+/**
+ * Words that push for speed (19 Nov, adversarial eval v3: on their own they held a courtesy "placed today", a line item
+ * "Urgent courier delivery", a confidentiality footer and a supplier's own final notice). Shown to the person who
+ * verifies; on their own they hold nothing.
+ */
+const PRESSURE = /\burgent(ly)?\b|\bimmediately\b|\b(pay|paid|payment|wire|wired|transfer|settle|send|remit)\b[^.\n]{0,30}\btoday\b|\btoday\b[^.\n]{0,15}\b(at the latest|without fail)\b|avoid (an? )?(interruption|suspension|penalt)|final notice|letzte mahnung|laatste aanmaning|\bsofort\b|\bonmiddellijk\b/i;
+/**
+ * A request to get around the people and the numbers that check a payment (19 Nov, adversarial eval v3): secrecy from
+ * them, a channel other than the numbers on file, approval claimed from outside the process, the process skipped.
+ * These hold the invoice for a person, with or without words of speed.
+ */
+const BYPASS = new RegExp([
+  // Secrecy: "keep this between us", "no need to loop in your controller", "do not phone Bergtex about it".
+  "\\bkeep (this|it|the (payment|transfer|matter|invoice))\\b[^.\\n]{0,25}\\b(between us|confidential|secret|quiet|private|to yourself|discreet)",
+  "\\b(no need to|don'?t|do not|please do not|without|never)\\s+(loop(ing)? in|involv\\w*|inform\\w*|tell\\w*|copy\\w*|cc|check\\w* with|call\\w*|phon\\w*|ring\\w*|contact\\w*|verify\\w*|discuss\\w*|mention\\w*)\\b",
+  "\\bno (phone )?calls\\b|\\b(nicht|niemals) (an)?rufen\\b|\\brufen sie (uns )?nicht an\\b|\\bniet (bellen|contacteren)\\b|\\bbel (ons )?niet\\b|\\bne (pas )?(appeler|contacter|t(é|e)l(é|e)phoner)\\b|\\bno (llame|contacte)\\b",
+  // Only another channel: "reply only to this e-mail", "kontaktieren Sie ausschließlich …@gmail.com".
+  "\\b(only|exclusively|solely|ausschlie(ß|ss)lich|nur noch|nur per|uitsluitend|alleen( nog)?|(ú|u)nicamente|seulement|uniquement|soltanto|apenas|somente)\\b[^.\\n]{0,40}\\b(e-?mail|mail|address|adresse|adres|contact|kontakt|whatsapp|telegram|phone|telefon|number|nummer)\\b",
+  "\\b(reply|respond|confirm|contact|write|kontaktier\\w*|antwort\\w*|schreib\\w*|mail(en)?|reageer|reageren|r(é|e)pond\\w*|contact\\w*)\\b[^.\\n]{0,30}\\b(only|exclusively|ausschlie(ß|ss)lich|nur|uitsluitend|alleen|uniquement|(ú|u)nicamente)\\b",
+  "\\b(new|neue[nrs]?|nieuwe?|nouvel(le)?|nuev[oa])\\b[^\\n]{0,80}@(gmail|googlemail|yahoo|hotmail|outlook|live|gmx|web|icloud|aol|proton(mail)?|yandex|mail)\\.",
+  // The process skipped, or approval claimed from outside it: "skip your normal process", "your board approved this".
+  "\\b(skip|bypass|circumvent|outside|avoid)\\b[^.\\n]{0,20}\\b(process|procedure|workflow|controls?|channels?)\\b",
+  "\\b(board|ceo|chief executive|managing director|director|owner|chairman|gesch(ä|ae)ftsf(ü|ue)hr\\w*|vorstand|directeur|directie|bestuur|your cfo|the cfo)\\b[^.\\n]{0,25}\\b(approved|has approved|agreed|signed off|is aware|knows|needs|wants|requires|asks|asked|requests|authori[sz]ed|genehmigt|freigegeben|goedgekeurd|vraagt|wil|eist|bittet|verlangt|w(ü|ue)nscht|demande|exige|pide|chiede)\\b",
+].join("|"), "i");
+/** Someone above the payer: speed on their word in one line is the shape of CEO fraud ("URGENT: the CEO asks ... today"). */
+const AUTHORITY = /\b(ceo|chief executive|managing director|director|directeur|directie|gesch(ä|ae)ftsf(ü|ue)hr\w*|vorstand|board|chairman|owner|pr(é|e)sident|your cfo|the cfo)\b/i;
 
 /** How close a name must be to count as a lookalike: two edits for names of eight letters or more, one below. */
 function lookalikeOf(vendor: string, all: Beneficiary[]): { b: Beneficiary; how: string } | null {
@@ -170,22 +249,28 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   const onFile = matched ?? look?.b;
   if (onFile && (onFile.iban_sha256 !== invIbanSha || onFile.bic !== inv.bic)) {
     const iban = inv.iban.replace(/\s+/g, "").toUpperCase();
-    signals.push({
-      code: "bank_details_changed", blocks: true,
-      detail: `the invoice asks for ${accountWords(iban.slice(-4), iban.slice(0, 2), inv.bic)}; on file: ${accountWords(onFile.iban_last4, onFile.bic.slice(4, 6), onFile.bic)}`,
-      asked: accountWords(iban.slice(-4), iban.slice(0, 2), inv.bic), on_file: accountWords(onFile.iban_last4, onFile.bic.slice(4, 6), onFile.bic),
-    });
+    const asked = accountWords(iban.slice(-4), iban.slice(0, 2), inv.bic), had = accountWords(onFile.iban_last4, onFile.bic.slice(4, 6), onFile.bic);
+    // 19 Nov (eval v3): the same account number at another bank or routing number reads the same in four digits.
+    const same = asked === had ? " (the same last digits, at another bank or routing number)" : "";
+    signals.push({ code: "bank_details_changed", blocks: true, detail: `the invoice asks for ${asked}${same}; on file: ${had}`, asked: `${asked}${same}`, on_file: had });
   }
-  const holder = /^Account name:\s*(.+)$/m.exec(text)?.[1]?.trim();
+  const holder = accountHolderIn(text);
   const expectedHolder = matched?.name ?? inv.vendor;
-  if (holder && legalName(holder) !== legalName(expectedHolder)) {
+  // 19 Nov (eval v3): a bank's abbreviation of the supplier's own name is that name, but only at the account on file.
+  const atAccountOnFile = !!matched && !signals.some((s) => s.code === "bank_details_changed");
+  if (holder && legalName(holder) !== legalName(expectedHolder) && !(atAccountOnFile && abbreviates(holder, expectedHolder))) {
     signals.push({ code: "account_name_mismatch", blocks: true, detail: `the account holder on the invoice is "${holder}", not ${expectedHolder}`, asked: holder, on_file: expectedHolder });
   }
-  const line = (re: RegExp) => text.split("\n").find((l) => re.test(l))?.trim();
-  const change = line(BANK_CHANGE);
-  if (change) signals.push({ code: "bank_change_language", blocks: false, detail: `the invoice announces a change of bank: "${change}"` });
+  const line = (re: RegExp, not?: RegExp) => text.split("\n").find((l) => re.test(l) && !(not && not.test(l)))?.trim();
+  // 19 Nov (eval v3, v3-bec-zeeland-footer-new-account): words asking to pay another account hold the invoice for a
+  // person, even when the IBAN line is the one on file; a person confirms with the supplier on a number on file.
+  const change = line(BANK_CHANGE, BANK_UNCHANGED);
+  if (change) signals.push({ code: "bank_change_language", blocks: false, holds: true, detail: `the invoice announces a change of bank: "${change}"` });
+  // Pressure: words of speed alone are shown; a request to get around the checks holds it (eval v3).
+  const bypass = line(BYPASS) ?? text.split("\n").find((l) => AUTHORITY.test(l) && PRESSURE.test(l))?.trim();
   const pressure = line(PRESSURE);
-  if (pressure) signals.push({ code: "pressure_language", blocks: false, detail: `the invoice pushes for speed: "${pressure}"` });
+  if (bypass) signals.push({ code: "pressure_language", blocks: false, holds: true, detail: `the invoice asks to get around the people or the numbers that check a payment: "${bypass}"` });
+  else if (pressure) signals.push({ code: "pressure_language", blocks: false, detail: `the invoice pushes for speed: "${pressure}"` });
 
   const blocked = signals.some((s) => s.blocks);
   return { blocked, suspicious: signals.some((s) => s.blocks && s.code !== "unknown_vendor"), signals, allowlisted: matched ?? look?.b ?? null };

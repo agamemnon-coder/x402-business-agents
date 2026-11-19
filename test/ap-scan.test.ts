@@ -162,7 +162,10 @@ describe("reading a scanned invoice", () => {
   });
 
   it("a scan waiting for a new supplier is checked again once the supplier is added", async () => {
-    const other = { ...READING, vendor: "Zeeland Verpakkingen B.V.", iban: "NL91ABNA0417164300", bic: "ABNANL2A", bank_country: "NL", invoice_no: "ZV-1" };
+    // Its transcription is Zeeland's too: since 19 Nov a document that names another IBAN than the one read is held for a
+    // person (bank_change_language), so a reading and a transcription that disagree would wait for a person, not the supplier.
+    const transcription = READING.transcription.replace("Bergtex Textil GmbH", "Zeeland Verpakkingen B.V.").replace("DE89 3704 0044 0532 0130 00", "NL91 ABNA 0417 1643 00").replace("COBADEFFXXX", "ABNANL2A");
+    const other = { ...READING, vendor: "Zeeland Verpakkingen B.V.", iban: "NL91ABNA0417164300", bic: "ABNANL2A", bank_country: "NL", invoice_no: "ZV-1", transcription };
     const out = await ingestDocument(db, deps(fakeReader([other, other])), { bytes: await scanPdf(), filename: "z.pdf", source: "upload" });
     const id = (out as { invoice: { id: string } }).invoice.id;
     expect(apInvoice(db, id)!.status).toBe("needs_vendor");
