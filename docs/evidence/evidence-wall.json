@@ -334,8 +334,8 @@
         {
           "key": "red-team",
           "fig": "34 of 35",
-          "label": "red-team attacks stopped before money moved, after the 19 Nov fixes, re-run, not held out",
-          "note": "The scripted attacks, no model; the other 1 found afterwards, not prevented (hidden-payment). First run, 30 Oct, with Claude writing 4 of the documents: 37 of 39, 2 found afterwards.",
+          "label": "red-team attacks stopped before money moved, re-run, not held out",
+          "note": "Re-run of 19 Nov, after the fixes: the scripted attacks, no model; the other 1 found afterwards, not prevented (hidden-payment). First run, 30 Oct, with Claude writing 4 of the documents: 37 of 39, 2 found afterwards.",
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/rerun-2026-11-19.json",
