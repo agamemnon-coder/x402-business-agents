@@ -47,7 +47,11 @@ of the hackathon submission, not SemVer; they stay as submitted and are never mo
    source tarball (`git archive` of the tag), the runtime bill of materials (CycloneDX) and `SHA256SUMS`, attests them
    through GitHub's artifact attestations (SLSA build provenance and an SBOM attestation, signed with Sigstore through
    the workflow's own OIDC identity) and publishes all of it, with the attestation bundles, on the tag's GitHub
-   release. It never creates, moves or deletes a tag.
+   release. Its second job, `slsa-provenance`, then runs the SLSA project's generic generator
+   (`slsa-github-generator`, referenced by its release tag `@v2.1.0` as its README requires; every other action is
+   pinned by SHA), which adds SLSA Build Level 3 provenance for the tarball and the bill of materials to the same
+   release as `x402-business-agents-<tag>.slsa3.intoto.jsonl`. That job was added after `v1.2.0`: the first release
+   with it is the next one. The workflow never creates, moves or deletes a tag.
 7. **Paste the release notes** into the GitHub release, and check one download as below.
 
 ## What the source tarball contains
@@ -96,7 +100,10 @@ Two independent signatures, each with a documented way to check it:
   signing key is short-lived and bound in its certificate to this repository's `release.yml` and the tag's commit; it
   is never stored on GitHub's release pages, where the files are downloaded from. Check with the GitHub CLI:
   `gh attestation verify x402-business-agents-<tag>.tar.gz -R agamemnon-coder/x402-business-agents`, then
-  `sha256sum -c SHA256SUMS`. Every step, offline bundles included: [security/README.md](security/README.md#verify-a-release).
+  `sha256sum -c SHA256SUMS`. From the release after `v1.2.0` on, the SLSA Build Level 3 provenance too:
+  `slsa-verifier verify-artifact x402-business-agents-<tag>.tar.gz --provenance-path
+  x402-business-agents-<tag>.slsa3.intoto.jsonl --source-uri github.com/agamemnon-coder/x402-business-agents
+  --source-tag <tag>`. Every step, offline bundles included: [security/README.md](security/README.md#verify-a-release).
 - **The tag** is signed by the maintainer's key (from `v1.2.0`): `git fetch --tags && git tag -v v1.2.0` with the
   maintainer's public key imported from `https://github.com/agamemnon-coder.gpg` (GPG), or with an allowed-signers
   file for an SSH key (`git config gpg.ssh.allowedSignersFile`). The private key stays on the maintainer's machine.

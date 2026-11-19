@@ -78,9 +78,10 @@ hieronder. Klik **Save** per sectie.
   sleutels en zijn geen onafhankelijke persoon.
 - **De coverage-criteria niet op Met** onder 90% statements en 80% branches.
 - **`require_2FA` en `secure_2FA` niet op Met** voordat stap 2 gecontroleerd is.
-- **Geen SLSA-niveau claimen** (zie hieronder): de provenance komt van `actions/attest`, niet van de SLSA-generator.
-  De generator kan alleen met een tag (`@v2.1.0`) worden aangeroepen, niet vastgepind op een commit-SHA. Wil je SLSA
-  Build L3 toch, dan is dat jouw keuze: één uitzondering op "alles vastgepind op SHA", in `release.yml`.
+- **Geen SLSA Build L3 claimen voor `v1.2.0`** (zie hieronder): je hebt op 19 november gekozen voor de
+  SLSA-generator (`@v2.1.0`, met een tag, de enige uitzondering op "alles vastgepind op SHA", in `release.yml`), maar
+  `v1.2.0` is zonder gemaakt. L3-provenance komt pas vanaf de volgende release, en de SLSA-badge in de README pas als
+  die release er is en `slsa-verifier` hem goedkeurt.
 
 ## Still Unmet, and why
 
@@ -94,17 +95,30 @@ hieronder. Klik **Save** per sectie.
 | `require_2FA` | MUST | Not checked from here: the owner's GitHub 2FA is visible to the owner only. | The owner checks it (step 2 above). |
 | `secure_2FA` | SHOULD | The same: the 2FA method is visible to the owner only. | The owner checks that the method is an app, a security key or a passkey, not SMS alone (step 2). |
 
-## SLSA Build Level 3: not claimed
+## SLSA Build Level 3: from the next release on
 
-The owner asked to move the release provenance to the SLSA project's generic generator
-(`slsa-framework/slsa-github-generator`, `generator_generic_slsa3.yml`), pinned by full commit SHA, which would give a
-legitimate SLSA Build L3 claim. It is not done, because it cannot be done cleanly: the generator's README says its
-builders and generators "MUST be referenced by tag" (`@vX.Y.Z`), not by SHA, because slsa-verifier checks the reusable
-workflow's ref, and the build fails otherwise (latest release v2.1.0, February 2025). Every other action in this
-repository is pinned by SHA; making one exception for the provenance source is the owner's decision, not this page's.
-So the release keeps GitHub's artifact attestations (`actions/attest`, pinned by SHA): Sigstore-signed SLSA provenance
-and an SBOM attestation, verified with `gh attestation verify` ([security/README.md](README.md#verify-a-release)). We
-claim signed provenance, not an SLSA Build level, and the README has no SLSA badge.
+On 19 November 2026 the owner chose the SLSA project's generic generator
+(`slsa-framework/slsa-github-generator`, `generator_generic_slsa3.yml`) for SLSA Build Level 3 provenance, accepting
+that it is referenced by tag. Its README says the generator "MUST be referenced by a tag of the form `@vX.Y.Z`": the
+build fails with a shorter tag or a commit SHA (the builder is identified by its release tag, which slsa-verifier
+checks; the generator's main README explains the design). So `.github/workflows/release.yml` calls it at `@v2.1.0` (the latest release,
+24 February 2025) in its job `slsa-provenance`: the one `uses:` in `.github/workflows/` not pinned to a full commit SHA,
+which costs a little on OpenSSF Scorecard's Pinned-Dependencies check. Every other action stays pinned by SHA, and
+`test/security-page.test.ts` allows exactly this one reusable workflow by tag. The release keeps GitHub's artifact
+attestations (`actions/attest`, pinned by SHA) next to it.
+
+What this gives, and from when:
+
+- **From the next release on** (the first release built by `release.yml` with this change, once it is on `main` and
+  in the tagged commit), the release also carries
+  `x402-business-agents-<tag>.slsa3.intoto.jsonl`: SLSA Build L3 provenance for the source tarball and the bill of
+  materials, signed by the generator's own isolated workflow. It is checked with `slsa-verifier verify-artifact`
+  ([security/README.md](README.md#verify-a-release), step 5).
+- **Not retroactively.** `v1.2.0` was released before this change: it has the Sigstore-signed provenance of
+  `actions/attest`, not SLSA Build L3 provenance, and no SLSA Build level is claimed for it.
+- **The badge waits.** The README gets an SLSA 3 badge, linked to the workflow and to the verify steps, only after the
+  first release with L3 provenance exists and `slsa-verifier` passes on its files. Until then the README has no SLSA
+  badge (`test/readme-badges.test.ts` checks that there is none).
 
 ## Every criterion
 

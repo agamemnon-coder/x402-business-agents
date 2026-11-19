@@ -93,10 +93,16 @@ export const SBOM_REC = "docs/security/sbom.cdx.json";
 export const SILVER_REC = "docs/security/openssf-silver.md";
 export const RELEASE_REC = (tag: string) => `docs/releases/${tag}.md`;
 /**
- * The supply chain, read from the workflows and records: Actions pinned to a commit SHA, jobs behind Harden-Runner and
- * whether it only audits, the bill of materials' components, and the first release signed by the release workflow.
+ * The one reference allowed by tag, not by commit SHA: the SLSA project's generic generator (release.yml, job
+ * slsa-provenance), whose README says it MUST be referenced as @vX.Y.Z; the owner chose it on 19 November 2026.
  */
-export function supplyChain(files: string[] = readdirSync(new URL(`../../${WORKFLOWS}`, import.meta.url)).filter((f) => /\.ya?ml$/.test(f)).map((f) => `${WORKFLOWS}/${f}`)): { pinned: number; actions: number; hardened: number; jobs: number; auditOnly: boolean; components: number; release: string } {
+export const SLSA_GENERATOR = "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml";
+/**
+ * The supply chain, read from the workflows and records: Actions pinned to a commit SHA (and the SLSA generator, the
+ * one allowed by its release tag), jobs behind Harden-Runner and whether it only audits, the bill of materials'
+ * components, and the first release signed by the release workflow.
+ */
+export function supplyChain(files: string[] = readdirSync(new URL(`../../${WORKFLOWS}`, import.meta.url)).filter((f) => /\.ya?ml$/.test(f)).map((f) => `${WORKFLOWS}/${f}`)): { pinned: number; actions: number; slsaByTag: boolean; hardened: number; jobs: number; auditOnly: boolean; components: number; release: string } {
   const texts = files.map(repoText);
   const uses = texts.flatMap((t) => [...t.matchAll(/^\s*(?:-\s+)?uses:\s*([^\s#]+)/gm)].map((m) => m[1]!)).filter((u) => !u.startsWith("./") && !u.startsWith("docker://"));
   const hardened = uses.filter((u) => u.startsWith("step-security/harden-runner@")).length;
@@ -105,8 +111,11 @@ export function supplyChain(files: string[] = readdirSync(new URL(`../../${WORKF
   const silver = flat(SILVER_REC);
   if (!silver.includes("signed_releases (MUST): Met")) throw new Error(`${SILVER_REC} no longer says signed_releases is Met`);
   const release = must(/First signed release: https:\/\/github\.com\/agamemnon-coder\/x402-business-agents\/releases\/tag\/(v[\d.]+)/.exec(silver)?.[1], `${SILVER_REC}: the first signed release`);
+  const byTag = uses.filter((u) => !/@[0-9a-f]{40}$/.test(u));
+  const other = byTag.filter((u) => !(u.startsWith(`${SLSA_GENERATOR}@`) && /@v\d+\.\d+\.\d+$/.test(u)));
+  if (other.length) throw new Error(`${WORKFLOWS}: not pinned to a commit SHA: ${other.join(", ")}`);
   return {
-    pinned: uses.filter((u) => /@[0-9a-f]{40}$/.test(u)).length, actions: uses.length, hardened, jobs,
+    pinned: uses.length - byTag.length, actions: uses.length, slsaByTag: byTag.length > 0, hardened, jobs,
     auditOnly: policies.length === hardened && policies.every((p) => p === "audit"),
     components: json<{ components: unknown[] }>(SBOM_REC).components.length, release,
   };
@@ -165,7 +174,7 @@ export function securityEvidence(w: EvidenceWall | null = committedWall()): EvGr
     ] },
     { id: "ev-supply", title: "Supply chain", items: [
       { id: "e-scan", fig: ci.fig, label: ci.label, note: `${ci.note} OSV-Scanner checks every lockfile daily; its ${vx.statements} findings are in CI tooling and test fixtures, none in the product, each with an OpenVEX statement.`, tag: "ci", rec: ".github/workflows/osv-scanner.yml", wall: "ci", also: [repoHref("docs/security/vex/README.md"), "VEX"] },
-      { id: "e-pinned", fig: countOf(sc.pinned, sc.actions), label: "Actions pinned to a full commit SHA", note: `Harden-Runner on ${sc.hardened} of ${sc.jobs} CI jobs${sc.auditOnly ? ", auditing egress (it blocks nothing yet)" : ""}; a CycloneDX bill of materials, ${sc.components} components; ${sc.release} released with Sigstore-signed SLSA provenance.`, tag: "ci", rec: RELEASE_REC(sc.release), also: [repoHref("docs/security/README.md", "#verify-a-release"), "Verify a release"] },
+      { id: "e-pinned", fig: countOf(sc.pinned, sc.actions), label: "Actions pinned to a full commit SHA", note: `${sc.slsaByTag ? `The ${sc.actions - sc.pinned === 1 ? "other is" : "others are"} the SLSA generator, by its release tag as its README requires. ` : ""}Harden-Runner on ${sc.hardened} of ${sc.jobs} CI jobs${sc.auditOnly ? ", auditing egress (it blocks nothing yet)" : ""}; a CycloneDX bill of materials, ${sc.components} components; ${sc.release} released with Sigstore-signed SLSA provenance.`, tag: "ci", rec: RELEASE_REC(sc.release), also: [repoHref("docs/security/README.md", "#verify-a-release"), "Verify a release"] },
     ] },
     { id: "ev-written", title: "Governance, written down", items: [
       { id: "e-stride", fig: String(strideRows()), label: "attacks in the threat model, each with its STRIDE class and what stops it", note: "With the trust boundaries, least privilege and the accepted risks.", tag: "doc", rec: THREAT_REC, anchor: "#attackers-and-attacks" },
