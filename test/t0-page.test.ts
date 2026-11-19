@@ -12,7 +12,9 @@ import { airiRun } from "../src/redesign/airiRun.js";
 import { REPO_BLOB, metalStory } from "../src/redesign/metalStory.js";
 import { ICC_LINE, builtOnHtml, builtOnItems } from "../src/redesign/partners.js";
 import { agentRun } from "../src/redesign/run.js";
-import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, balances, ownerFunding, t0Data, t0Journal, t0Platform, t0Refusals, t0Rows } from "../src/redesign/t0Page.js";
+import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_READBACK_RECORD, T0_SECOND_RECORD, T0_USE, balances, ownerFunding, t0Data, t0Journal, t0Platform, t0Refusals, t0Rows } from "../src/redesign/t0Page.js";
+import { t0CloseFacts } from "../src/redesign/t0CloseTile.js";
+import { esc } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 import { AIRWALLEX_PAGE, CLAUDE_PAGE, HOME_PAGE, METAL_PAGE, PROOF_PAGE, T0_CSP, T0_PAGE, VISA_PAGE, WATCH_PAGE } from "../src/servers/dashboard.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
@@ -55,18 +57,27 @@ describe("/t0 reads every figure from the T:0 run records", () => {
 describe("/t0", () => {
   // Owner, 14 Nov ("also upgrade the T:0 page"): one story, result first. Three figures from the record, a calm flow,
   // the accounts ours against T:0's, the balance sheet card; the refusals and the platform run folded as history.
-  it("leads with three figures from the record, each with its record link, labelled as the T:0 sandbox, within 200 words", () => {
+  it("leads with what Purser uses T:0 for, then its figures from the records, each with its record link, labelled as the T:0 sandbox, within 215 words", () => {
     expect(T0_PAGE).toContain(`<span class="pill run">${T0_LABEL}</span>`);
     expect(T0_LABEL).toBe("T:0 sandbox, test data");
     // 170 since the partner review (14 Nov): the "Independent ledger check" tile, books close only when T:0 agrees (165 as
     // built); 190 since the partner scan the same evening: its "Run the close check" button, toggle and note (186 as built); 195 with the line that says what T:0 is (191 as built); 200 with #346 merged beside it (the parent's tested batch, 14 Nov).
-    expect(inSight(main).length).toBeLessThanOrEqual(200);
+    // 215 since 19 Nov (the owner: "we use T:0 too; say plainly what it is used for"): the line under the heading says what
+    // Purser uses T:0 for, as the code does it (+33 words, the old "T:0 is an outside ledger" line under the flow went,
+    // -20), "No endorsement implied" beside the mark as on the other partner pages, the read-back's day and its record (211 as built).
+    expect(inSight(main).length).toBeLessThanOrEqual(215);
+    expect(text(main)).toContain(T0_USE);
+    expect(main.indexOf(esc(T0_USE))).toBeLessThan(main.indexOf('<ul class="stats t0s">'));
     const stats = /<ul class="stats t0s">([\s\S]*?)<\/ul>/.exec(main)![1]!;
     const figs = [...stats.matchAll(/<b>([\s\S]*?)<\/b>/g)].map((m) => text(m[1]!).trim());
-    const j = t0Journal(journalMd)!;
-    expect(figs).toEqual([String(j.posted), String(j.differences)]);
+    const j = t0Journal(journalMd)!, close = t0CloseFacts()!;
+    // 19 Nov: the second figure is the newest record's, T:0's read-back of 14 Nov, with its day and its record.
+    expect(figs).toEqual([String(j.posted), String(close.check.problems.length)]);
     expect(figs).toEqual(["95", "0"]);
-    expect([...stats.matchAll(/href="([^"]+)"/g)]).toHaveLength(2);
+    const links = [...stats.matchAll(/href="([^"]+)"/g)].map((m) => decode(m[1]!));
+    expect(links).toHaveLength(2);
+    expect(links[1]).toBe(`${REPO_BLOB}${T0_READBACK_RECORD}`);
+    expect(text(stats)).toContain("differences on read-back, 14 Nov");
     expect(text(main)).toContain("Our books, in a real ledger");
   });
 
@@ -123,7 +134,7 @@ describe("/t0", () => {
       "A second push posted 0 and skipped 95: re-running is safe."]) expect(t).toContain(line);
     const history = /<details class="fold"><summary>How it got there<\/summary>[\s\S]*?<\/details>/.exec(main)![0];
     expect(text(history)).toContain("10 Nov: all 95 entries posted");
-    expect(t).toContain("T:0 is an outside ledger.");
+    expect(t).toContain("Purser uses T:0's sandbox as an outside general ledger");
     // Every record it links is in the repository.
     for (const href of [...main.matchAll(/href="([^"]+)"/g)].map((m) => decode(m[1]!)).filter((h) => h.startsWith(REPO_BLOB))) {
       expect(existsSync(new URL(`../${href.slice(REPO_BLOB.length).replace(/#.*$/, "")}`, import.meta.url)), href).toBe(true);

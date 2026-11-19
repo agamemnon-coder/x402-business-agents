@@ -4,13 +4,14 @@
 // inline script or style (the page's CSP).
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { EVIDENCE_WALL_CSS, LLMS_WALL_HEADING, PARTNER_STRIPS, README_WALL_KEYS, evidenceStripHtml, readmeWallLine, withReadmeWallLine, WALL_FILE, committedWall, evidenceWallHtml, evidenceWallLlms, withWallSection, type EvidenceWall, type WallTile } from "../src/redesign/evidenceWall.js";
+import { EVIDENCE_WALL_CSS, LLMS_WALL_HEADING, PARTNER_STRIPS, evidenceLeadHtml, README_WALL_KEYS, evidenceStripHtml, readmeWallLine, withReadmeWallLine, WALL_FILE, committedWall, evidenceWallHtml, evidenceWallLlms, withWallSection, type EvidenceWall, type WallTile } from "../src/redesign/evidenceWall.js";
 import { evidenceWall, evidenceWallFile, wallWalks } from "../src/redesign/evidenceWallData.js";
 import { liveTryRecords, liveTryTotals, nearestRank, type LiveTryRecord } from "../src/redesign/liveTry.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { README_MAP_FILES, evidenceMapSvgFile, readmeMapLine } from "../src/redesign/evidenceMap.js";
 import { countOf } from "../src/redesign/ui.js";
+import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const json = <T>(p: string) => JSON.parse(read(p)) as T;
@@ -173,6 +174,25 @@ describe("the README's wall line and the partner pages' strips", () => {
       expect(html).toMatch(/test money|no money moved/);
       expect(html).not.toMatch(/<script|style=|\son[a-z]+=|endorsed by|partnered with/i);
     }
+  });
+
+  // 19 Nov (the owner: "lead with the strongest live-proven result"): /airwallex opens with the wall's own figures as chips.
+  it("/airwallex's lead shows the wall's own figures and links, says what was simulated, and sits right under the heading", () => {
+    const w = committedWall()!;
+    const html = evidenceLeadHtml("airwallex", w);
+    const chips = [...html.matchAll(/<li data-wall="([^"]+)" data-rec="([^"]+)"><a href="([^"]+)"[^>]*><b>([^<]+)<\/b>([^<]+)<\/a><\/li>/g)].map((m) => ({ key: m[1]!, rec: m[2]!, href: m[3]!, fig: m[4]!, words: m[5]! }));
+    expect(chips.map((c) => c.key)).toEqual(["soak-paid", "soak-fx", "spend-bills", "try-transfers", "awx-endpoints"]);
+    for (const c of chips) expect(c).toMatchObject({ rec: tile(w, c.key).rec, href: tile(w, c.key).href.replace(/&/g, "&amp;"), fig: tile(w, c.key).fig });
+    // The endpoints' total from the tile's own label ("Airwallex endpoints live, of 61"), never typed in.
+    const cov = json<{ totals: { endpoints: number; live: number } }>("docs/evidence/airwallex-api-coverage.json");
+    expect(chips.at(-1)).toMatchObject({ fig: String(cov.totals.live), words: `of ${cov.totals.endpoints} endpoints live` });
+    expect(html).toContain("a PAID is the sandbox's simulation");
+    expect(html).not.toMatch(/<script|style=|\son[a-z]+=|endorsed by|partnered with/i);
+    expect(evidenceLeadHtml("airwallex", { ...w, groups: [] })).toBe("");
+    const page = buildPages().airwallex!;
+    const at = page.indexOf('id="lead-airwallex"');
+    expect(at).toBeGreaterThan(page.indexOf("</h1></div>"));
+    expect(at).toBeLessThan(page.indexOf('<ol class="awpath"'));
   });
 });
 

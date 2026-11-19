@@ -46,7 +46,9 @@ describe("About Purser on Home", () => {
     // Partner scan, 14 Nov: Visa named for what Purser used.
     expect(trust).toContain('<span class="tile tname visa">Visa Intelligent Commerce via Airwallex Airi (sandbox)</span>');
     expect(trust).not.toMatch(/logo-metal|logo-visa/);
-    expect(text(trust).replace(/\s+/g, " ").trim()).toBe(`${WORKS_WITH} ${VISA_WORKS_WITH} ${NO_ENDORSEMENT}`);
+    // 19 Nov (the owner: "we use T:0 too"): T:0 as text on its tile, last (no T:0 mark is on file).
+    expect(trust).toContain('<span class="tile tname t0">T:0</span>');
+    expect(text(trust).replace(/\s+/g, " ").trim()).toBe(`${WORKS_WITH} ${VISA_WORKS_WITH} T:0 ${NO_ENDORSEMENT}`);
     expect(ON).not.toMatch(/filter: (brightness|invert|grayscale)|mix-blend-mode/);
     expect(ON).toMatch(/\.trust \.tile \{[^}]*background: #ffffff/);
     // The one exception: the footer's line that says the marks imply no endorsement (review, 13 Nov).

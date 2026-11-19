@@ -9,12 +9,22 @@ import { PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE } from "./airwallexProducts.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { altaWords } from "../ui/formerly.js";
 import { esc, icon } from "./ui.js";
-import { T0_CLOSE_CSS, t0CloseTileHtml } from "./t0CloseTile.js";
+import { T0_CLOSE_CSS, t0CloseFacts, t0CloseTileHtml } from "./t0CloseTile.js";
+import { T0_READBACK_FILE } from "../accounting/t0Readback.js";
 
 export const T0_JOURNAL_RECORD = "docs/runs/2026-11-10-t0-journal-sandbox.md";
 export const T0_FIRST_RECORD = "docs/runs/2026-11-03-t0-sandbox.md";
 export const T0_SECOND_RECORD = "docs/runs/2026-11-05-t0-live.md";
 export const T0_DOC = "docs/t0.md";
+/** The read-back's run log (14 Nov), beside its JSON (T0_READBACK_FILE): the newest T:0 record, which the page leads with. */
+export const T0_READBACK_RECORD = T0_READBACK_FILE.replace(/\.json$/, ".md");
+/**
+ * What Purser uses T:0 for (19 Nov, the owner: "say plainly"), as the code does it: src/accounting/t0.ts posts the
+ * double-entry books as manual journal entries, each with a stable je_number and an idempotency key (never twice);
+ * T0Client.listJournalEntries reads them back; src/ledger/close.ts closeMonthWhenT0Agrees locks a month only when
+ * src/accounting/closeGate.ts finds T:0 agreeing to the cent.
+ */
+export const T0_USE = "Purser uses T:0's sandbox as an outside general ledger: it posts its double-entry books there as journal entries, never twice, reads them back, and locks a month only when T:0 agrees to the cent.";
 /** The page's label: every run on it is T:0's shared sandbox entity, with test data. */
 export const T0_LABEL = "T:0 sandbox, test data";
 
@@ -109,7 +119,8 @@ details.t0acc > table { margin-bottom: 6px; }
   .t0flow .node:nth-child(3) { animation-delay: 1.5s; } .t0flow .node:nth-child(5) { animation-delay: 3s; } .t0flow .node:nth-child(7) { animation-delay: 4.5s; }
 }
 @keyframes t0-lit { 0%, 30%, 100% { box-shadow: inset 0 0 0 1px transparent; } 8%, 22% { box-shadow: inset 0 0 0 2px var(--accent); } }
-@media (max-width: 700px) { .t0p a.pf { padding: 0; vertical-align: middle; max-width: 100%; } .t0p a.open { min-height: 44px; } table.t0a { font-size: 12.5px; } }`;
+/* On a phone the flow runs down: each arrow only as wide as itself, so turned it covers nothing below the flow (the folds' first header sits right under it since 19 Nov). */
+@media (max-width: 700px) { .t0p .t0flow .arrow { align-self: center; width: 22px; } .t0p a.pf { padding: 0; vertical-align: middle; max-width: 100%; } .t0p a.open { min-height: 44px; } table.t0a { font-size: 12.5px; } }`;
 
 const link = (file: string, label: string) => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
 const li = (t: string) => `<li>${esc(t)}</li>`;
@@ -122,12 +133,17 @@ export const t0Rows = (accounts: Pick<T0Account, "code" | "name" | "ours" | "t0"
 }).join("");
 const head = `<thead><tr><th scope="col">${esc("Account")}</th><th scope="col" class="n">${esc("Ours")}</th><th scope="col" class="n">T:0</th><th scope="col" class="c" aria-label="Same"></th></tr></thead>`;
 
-/** The body of /t0: three figures, the flow, the accounts and the balance sheet; the history and the ids folded. */
-export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: string }): string {
+const DAY = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
+/** The body of /t0: what Purser uses T:0 for, two figures, the close check, the flow; the accounts, the history and the ids folded. */
+export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: string; close?: ReturnType<typeof t0CloseFacts> }): string {
   const j = d.journal, p = d.platform;
   const rec = `${T0_JOURNAL_RECORD}#read-back-and-second-push-10-nov-2-more-t0-calls`;
   const stat = (n: string, label: string, ic: string, href: string) => `<li class="ok"><span class="st-ic">${icon(ic, 20)}</span><b>${esc(n)}</b><small>${esc(label)} ${link(href, "record")}</small></li>`;
-  const stats = j ? `<ul class="stats t0s">${stat(String(j.posted), `journal entries posted, ${j.day}`, "file-check", T0_JOURNAL_RECORD)}${stat(String(j.differences), "differences on read-back", "circle-check", rec)}</ul>` : "";
+  // 19 Nov: the second figure from the newest record, T:0's read-back of 14 Nov (the close check run on it at build);
+  // without that record, the read-back of 10 Nov as before.
+  const close = o.close === undefined ? t0CloseFacts() : o.close;
+  const diff = close ? stat(String(close.check.problems.length), `differences on read-back, ${DAY(close.readAt)}`, "circle-check", T0_READBACK_RECORD) : j ? stat(String(j.differences), "differences on read-back", "circle-check", rec) : "";
+  const stats = j ? `<ul class="stats t0s">${stat(String(j.posted), `journal entries posted, ${j.day}`, "file-check", T0_JOURNAL_RECORD)}${diff}</ul>` : "";
   // Jury round 3 (14 Nov): the books' amounts are the Airwallex sandbox's test balances, millions, where every other page
   // shows tens of euros. One plain line says so; the amounts themselves are folded.
   const funding = j?.accounts.find((a) => a.code === "32000");
@@ -158,12 +174,11 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
   const fold = (title: string, items: string[]) => items.length ? `<details class="fold"><summary>${esc(title)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
   return `<main class="pp t0p"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${esc(o.pill)}</span><h1>${esc("Our books, in a real ledger")}</h1></div>
-  <p class="t0what">${esc("T:0, an outside accounting ledger.")}</p>
+  <p class="t0what">${esc(T0_USE)}</p>
   ${stats}
   ${t0CloseTileHtml()}
   ${sandbox}
   ${flow}
-  <p class="vbasis">${esc("T:0 is an outside ledger. It must agree with ours to the cent, so the CFO need not take our word.")}</p>
   <div class="folds card">${lead}${fold("How it got there", history)}${fold("Next steps", notDone.map(li))}${fold("What Purser sends", sends)}${fold("The ids in T:0", ids)}</div>
   <a class="open" href="proof">All the proof</a>
 </div></main>`;
