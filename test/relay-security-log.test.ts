@@ -31,7 +31,7 @@ function state(pk: SoftPasskey, health?: unknown): RelayState {
   recordPasskey(db, { window, credentialId: "cred-1", publicKey: "pk", counter: 0, transports: null, aaguid: null, registrationJson: "{}", label: "max" }, t0);
   const s = buildRelayState(db, { rpId: RP, relayToken: TOKEN }, t0);
   s.approvals.passkey.credentials = [{ id: "cred-1", label: "max", enrolled_at: t0.toISOString(), public_key: { x: Buffer.from(pk.key.qx.slice(2), "hex").toString("base64url"), y: Buffer.from(pk.key.qy.slice(2), "hex").toString("base64url") } }];
-  if (health !== undefined) (s.snapshot as Record<string, unknown>).health = health;
+  if (health !== undefined) (s.snapshot as unknown as Record<string, unknown>).health = health;
   return s;
 }
 function relay(o: { securityAlarms?: string; webhookSecret?: string } = {}) {

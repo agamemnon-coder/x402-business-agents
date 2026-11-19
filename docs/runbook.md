@@ -351,9 +351,12 @@ their downloads), `GET /v1/status` (last runner push, mail queue, quota use, ale
 - **A person's passkey or phone:** a signed-in owner removes the passkey (`DELETE /v1/users/{id}/passkeys/{credential}`);
   that person's sessions end at once. The last owner passkey cannot be removed: enrol another owner first, or use an
   owner recovery (below).
-- **The platform admin token** (it creates companies and issues owner recoveries):
-  1. Make a new random token and set its SHA-256: `npx wrangler secret put ADMIN_TOKEN_SHA256 -c cloud/wrangler.jsonc`.
-     The old token stops working when the new secret is live.
+- **A platform admin key** (`pak_<id>_…`, see "Platform admin keys" below): remove its entry from `ADMIN_KEYS`
+  (`npx wrangler secret put ADMIN_KEYS -c <config>` with the other entries only); it stops working when the secret is
+  live. Its uses are `admin.action` rows under `platform:<id>` in `GET /v1/admin/security-log`.
+- **The legacy platform admin token** (`ADMIN_TOKEN_SHA256`; it creates companies and issues owner recoveries):
+  1. Delete it and use admin keys instead: `npx wrangler secret delete ADMIN_TOKEN_SHA256 -c <config>`. The old token
+     stops working when the deletion is live.
   2. Look for what the old one did: every owner recovery is a `recovery.issued` security event of the company and was
      sent to its webhook. List them across companies with
      `npx wrangler d1 execute purser-cloud --remote -c cloud/wrangler.jsonc --command "SELECT tenant_id, at, detail_json FROM security_events WHERE kind = 'recovery.issued' ORDER BY at"`.
@@ -364,6 +367,28 @@ their downloads), `GET /v1/status` (last runner push, mail queue, quota use, ale
   `npx wrangler secret put SESSION_SECRET`. Every session of every company ends and every export link stops working;
   owners sign in again with their passkeys and ask for fresh export links. API keys are not affected. Not yet
   exercised.
+
+### Platform admin keys
+
+The platform admin is no longer one shared token (ASVS V2.5.4; `cloud/src/adminKeys.ts`). Each person who operates the
+cloud holds their own key, named after them, with only the scopes they need (`tenants`: make a company; `recovery`:
+issue an owner's recovery key; `read`: the operator's read-only views; `try`: the hands-on deployment's controls), and
+it stops on its last day (90 days at most). The Worker keeps only each key's SHA-256; every use and every refusal is in
+the security log under `platform:<id>`.
+
+1. **Make a key** (on the holder's own computer; the key is printed once, to that terminal):
+   `npm run cloud:admin-key -- --id <holder>-<quarter> --scopes tenants,recovery,read,try --days 30`.
+   The holder keeps the key in their password manager. Never paste a key into chat, a ticket, a doc or a commit.
+2. **Allow it:** add the printed entry (`id:sha256:scopes:last-day`, no secret in it) to the other entries, one per
+   line, and set them: `npx wrangler secret put ADMIN_KEYS -c cloud/wrangler.try.jsonc` (and `-c cloud/wrangler.jsonc`
+   for the product cloud). Check it: `GET /v1/admin/companies` with `Authorization: Bearer <key>` answers 200, and
+   `GET /v1/admin/security-log?kind=admin.action` shows the call under `platform:<id>`.
+3. **Rotate** before the last day: make a new key (step 1), add its entry, then remove the old entry and set
+   `ADMIN_KEYS` again. An expired key answers 401 and says so.
+4. **Migration from the single token:** while `ADMIN_TOKEN_SHA256` is set, the old token keeps working with every
+   scope, so nothing breaks on the deploy; each use is logged as `platform:legacy` with an `admin.legacy_token_used`
+   warning. Once the admin keys work (step 2), delete it: `npx wrangler secret delete ADMIN_TOKEN_SHA256 -c <config>`.
+   Until then the platform admin is still a shared token (docs/security/asvs-l2.md, V2.5.4).
 
 ### A company compromised
 

@@ -6,8 +6,9 @@
 // kept in D1 (cloud/src/blobsSql.ts, sqlBlobs). test/cloud-try-config.test.ts holds the two files to that.
 // Deploy it only as purser-try, never pointed at an existing Worker: a Durable Object class and its migration cannot be
 // rolled back past their first deploy, so the migration list stays as it is. No secret goes in this file:
-// SESSION_SECRET, ADMIN_TOKEN_SHA256 and the demo's capped Claude key are set with wrangler secret put. No mail domain,
-// no real data.
+// SESSION_SECRET, ADMIN_KEYS (the platform admin keys' hashes; ADMIN_TOKEN_SHA256 is the legacy single token until it
+// is deleted, docs/runbook.md) and the demo's capped Claude key are set with wrangler secret put. No mail domain, no
+// real data.
 {
   "$schema": "../worker/node_modules/wrangler/config-schema.json",
   "name": "purser-try",

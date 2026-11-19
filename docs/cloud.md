@@ -409,7 +409,8 @@ Nothing here needs to be in git; every secret goes through `wrangler secret put`
    npx wrangler secret put ADMIN_TOKEN_SHA256 -c cloud/wrangler.jsonc
    ```
    `SESSION_SECRET` is 48 or more random characters. `ADMIN_TOKEN_SHA256` is the SHA-256 (hex) of a platform admin token
-   that Max keeps in a password manager.
+   that Max keeps in a password manager: the legacy single token, kept working for the move to named admin keys
+   (`ADMIN_KEYS`, made with `npm run cloud:admin-key`; docs/runbook.md, "Platform admin keys"), then deleted.
 3. **An address:** a domain on Cloudflare (for example `cloud.<domain>`) as the Worker's route; set `RP_ID` and `ORIGIN`
    in `cloud/wrangler.jsonc` to it (passkeys are bound to it).
 4. **E-mail:** in the Cloudflare dashboard, Email Routing for a mail domain (for example `in.<domain>`), a catch-all

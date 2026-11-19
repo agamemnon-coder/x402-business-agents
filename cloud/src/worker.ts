@@ -27,7 +27,10 @@ export interface Bindings {
   /** The documents' R2 bucket. Absent (a deployment without R2, cloud/wrangler.try.jsonc): they are kept in D1 (./blobsSql.ts). */
   DOCS?: R2Like;
   SESSION_SECRET: string;
+  /** The legacy platform admin token's SHA-256; works, logged as legacy, until deleted (cloud/src/adminKeys.ts). */
   ADMIN_TOKEN_SHA256: string;
+  /** The platform admin keys: "id:sha256:scopes:last-day" entries (npm run cloud:admin-key), set with wrangler secret put ADMIN_KEYS. */
+  ADMIN_KEYS?: string;
   RP_ID: string;
   ORIGIN: string;
   MAIL_DOMAIN?: string;
@@ -115,7 +118,7 @@ function envOf(b: Bindings): CloudEnv {
   const assets = b.ASSETS;
   const sql = d1Sql(b.DB);
   const connect = connectOf(b);
-  return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "", ...(b.SECURITY_ALARMS ? { securityAlarms: b.SECURITY_ALARMS } : {}),
+  return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", ...(b.ADMIN_KEYS ? { adminKeys: b.ADMIN_KEYS } : {}), rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "", ...(b.SECURITY_ALARMS ? { securityAlarms: b.SECURITY_ALARMS } : {}),
     version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}), ...(b.TURNSTILE_SECRET ? { turnstileSecret: b.TURNSTILE_SECRET, siteverify: (url: string, init: RequestInit) => fetch(url, init) } : {}) } } : {}) } : {}),

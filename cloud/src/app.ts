@@ -5,7 +5,7 @@
 import { withBaseline } from "./baseHeaders.js";
 import { z } from "zod";
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
-import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
+import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
 import { registerCsv } from "../../src/money/registerShape.js";
@@ -20,6 +20,7 @@ import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
 import { auditRequest, type Audit } from "./securityAudit.js";
+import { platformAdmin } from "./adminKeys.js";
 import { readSecurityLog, securityAlarms } from "./securityLog.js";
 import { truncatedIp } from "../../src/lib/securityEvents.js";
 import { integrations } from "./integrations.js";
@@ -58,8 +59,13 @@ export interface CloudEnv {
   blobs: Blobs;
   /** HMAC key for session tokens (a Worker secret). */
   sessionSecret: string;
-  /** SHA-256 (hex) of the platform admin token (a Worker secret); empty: no tenant can be created. */
+  /**
+   * The legacy platform admin token's SHA-256 (hex; the Worker secret ADMIN_TOKEN_SHA256): every scope, logged as
+   * platform:legacy, until the secret is deleted. Empty: no legacy token.
+   */
   adminTokenSha256: string;
+  /** The platform admin keys (the Worker secret ADMIN_KEYS; ./adminKeys.ts): named, scoped, expiring; only their hashes. */
+  adminKeys?: string;
   /** The passkey relying party: the cloud's own host and origin. */
   rpId: string;
   origin: string;
@@ -816,8 +822,16 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
       // token requests come from a client's servers (claude.ai's share addresses) and carry nothing guessable.
       if ((hit.r.path.startsWith("/v1/auth/") || hit.r.path === "/oauth/authorize") && !(await withinRate(env.sql, `ip:${ip}`, now, { windowSec: 60, max: rate.signInPerMinute }))) return err(429, "too many sign-in attempts; wait a minute");
     } else if (hit.r.need === "platform") {
-      if (!(await isPlatformAdmin(env.adminTokenSha256, req.headers.get("authorization")))) return err(401, "platform admin only");
-      audit.admin = "legacy";
+      // Named, scoped, expiring admin keys (./adminKeys.ts), or the legacy token while it is set. No lockout: a flood of
+      // wrong tokens from an address must never lock the right one out (test/try-redteam.test.ts; a key is 256 random
+      // bits); each refusal is an admin.auth_failure in the security log, and a burst raises its alarm.
+      const d = await platformAdmin(env, req.headers.get("authorization"), `${req.method} ${hit.r.path}`, now);
+      if (!d.ok) {
+        if (d.status === 401) audit.detail = { admin_key_id: d.id };
+        else audit.admin = d.id;
+        return err(d.status, d.why);
+      }
+      audit.admin = d.id;
     } else {
       // Failed keys and sessions are counted per address; past the limit the request is turned away before any lookup.
       if (await failedAuthBlocked(env.sql, ip, now, rate.failedAuthPerMinute ?? 20)) return err(429, "too many failed sign-ins from this address; wait a minute");
