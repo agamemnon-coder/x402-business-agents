@@ -38,7 +38,7 @@ Frameworks and versions used (ids and names checked on 19 November 2026 against 
 | C21 | Threat model (STRIDE, trust zones), assurance case, zero-trust matrix | `docs/security.md`, `docs/assurance.md`, `docs/zero-trust.md` | the documents themselves |
 | C22 | Vulnerability disclosure policy and scope | `SECURITY.md` | the document itself |
 | C23 | Incident runbook: emergency stop, leaked key, outages, recovery | `docs/runbook.md` | the document itself |
-| C24 | Licence and copyright of every file on record (REUSE 3.3) | `REUSE.toml`, `LICENSES/`, CI job `reuse` | `reuse lint`: 3,315 of 3,315 files |
+| C24 | Licence and copyright of every file on record (REUSE 3.3) | `REUSE.toml`, `LICENSES/`, CI job `reuse` | `reuse lint` (reuse 6.3.0, 19 Nov): compliant, 3,325 of 3,325 files |
 
 ## NIST SP 800-218 (SSDF 1.1)
 
