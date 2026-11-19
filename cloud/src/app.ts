@@ -15,7 +15,7 @@ import { applySync, SyncBatch, SyncRefused, syncState } from "./sync.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
-import { download, ExportRefused, exportStatus, purgeEndedExportParts, signedLink, stageExport } from "./exports.js";
+import { download, EXPORT_LINK_HEADER, ExportRefused, exportStatus, purgeEndedExportParts, signedLink, stageExport } from "./exports.js";
 import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
@@ -697,18 +697,18 @@ export const ROUTES: Route[] = [
     need(c.caller!, "read");
     return json(200, await exportTenant(c.env.sql, c.caller!.tenantId));
   } },
-  { method: "POST", path: "/v1/export/staged", summary: "Build the company's export into the store in parts (one at a time, kept a day); returns a 15-minute signed link to its manifest, which needs no key. Needs admin and read.", need: "admin", run: async (c) => {
+  { method: "POST", path: "/v1/export/staged", summary: "Build the company's export into the store in parts (one at a time, kept a day); returns a 15-minute, single-use signed link to its manifest, which needs no key: manifest_link (a bare URL and the x-purser-export-link header to send, for a program) or manifest_url (the same signature in the query, for a browser). Needs admin and read.", need: "admin", run: async (c) => {
     need(c.caller!, "read");
     const x = await stageExport(c.env.sql, c.env.blobs, c.caller!.tenantId, c.caller!.principal, c.now, { ...(c.env.exportPartRows ? { partRows: c.env.exportPartRows } : {}), ...(c.env.exportMaxBytes !== undefined ? { maxBytes: c.env.exportMaxBytes } : {}) });
     const l = await signedLink(c.env.origin, c.env.sessionSecret, c.caller!.tenantId, x.id, "manifest", c.now);
-    return json(201, { id: x.id, status: "ready", parts: x.parts.length, bytes: x.bytes, expires_at: x.expires_at, manifest_url: l.url, link_expires_at: l.expires_at });
+    return json(201, { id: x.id, status: "ready", parts: x.parts.length, bytes: x.bytes, expires_at: x.expires_at, manifest_url: l.url, manifest_link: l.link, link_expires_at: l.expires_at });
   } },
   { method: "GET", path: "/v1/export/staged/{id}", summary: "A staged export's state, with a fresh 15-minute link to its manifest while it is ready. Needs admin and read.", need: "admin", run: async (c) => {
     need(c.caller!, "read");
     return json(200, await exportStatus(c.env.sql, c.env.blobs, c.env.origin, c.env.sessionSecret, c.caller!.tenantId, c.params[0]!, c.now));
   } },
-  { method: "GET", path: "/v1/export/download/{id}/{part}", summary: "One part (or the manifest) of a staged export, by its signed link (no key); the manifest carries a signed link per part.", need: "public", run: async (c) => {
-    const r = await download(c.env.sql, c.env.blobs, c.env.origin, c.env.sessionSecret, c.params[0]!, c.params[1]!, c.url.searchParams, c.now);
+  { method: "GET", path: "/v1/export/download/{id}/{part}", summary: "One part (or the manifest) of a staged export, by its signed link (no key): the signature in the x-purser-export-link header, or in the query; each link is good once, for 15 minutes. The manifest carries a signed link per part.", need: "public", run: async (c) => {
+    const r = await download(c.env.sql, c.env.blobs, c.env.origin, c.env.sessionSecret, c.params[0]!, c.params[1]!, c.url.searchParams, c.now, c.req.headers.get(EXPORT_LINK_HEADER));
     return new Response(typeof r.body === "string" ? r.body : new Uint8Array(r.body), { status: r.status, headers: { ...JSON_HEADERS, ...(r.status === 200 ? { "content-disposition": `attachment; filename="${c.params[0]!}-${c.params[1]!}.json"` } : {}) } });
   } },
   { method: "POST", path: "/v1/close", summary: "Close the company's account: access ends; records are kept until the retention day, then purged.", need: "admin", run: async (c) => json(200, await closeTenant(c.env.sql, c.caller!.tenantId, c.now)) },

@@ -1,8 +1,14 @@
 // Staged exports (go-live): a company's export built into the document store (R2) in parts, not returned in one
 // response a Worker could not hold for a large company. Each part is one table's rows, at most `partRows` of them, as
 // JSON with its SHA-256; a manifest lists the parts. The owner fetches the manifest and the parts with signed links that
-// hold for 15 minutes and need no key (a browser can download them). One export at a time per company, a size limit,
-// kept a day, and every export and download recorded in the security events.
+// hold for 15 minutes, are good once and need no key. One export at a time per company, a size limit, kept a day, and
+// every export and download recorded in the security events.
+//
+// Where a link's signature travels (ASVS V8.3.1, V13.1.3): a program sends it in the x-purser-export-link header to a
+// URL that carries nothing secret (manifest_link, and each part's link). A browser cannot add a header to a download, so
+// the same signature may also come in the query (manifest_url, each part's url): that form is the trade-off for a
+// download a person clicks, and it is bounded: good once (its nonce is spent at the first download), for 15 minutes,
+// for one part of one export of one company; the cloud logs the route, never the query; pages send no Referer.
 
 import { hmacB64u, hmacValid, randomToken, sha256Hex } from "./crypto.js";
 import { SECRET_COLUMNS } from "./privacy.js";
@@ -35,6 +41,9 @@ async function removeParts(blobs: Blobs, tenantId: string, id: string): Promise<
 /** Exports past their day (and builds that died) lose their parts; their status says so. Every company or one. */
 export async function sweepExports(sql: Sql, blobs: Blobs, now: Date, tenantId?: string): Promise<number> {
   const iso = now.toISOString();
+  // Spent links past their 15 minutes need no record: their signature has expired anyway.
+  await linksTable(sql);
+  await sql.run("DELETE FROM export_links_used WHERE expires_at <= ?", [new Date(now.getTime() - 60_000).toISOString()]);
   const stale = new Date(now.getTime() - BUILD_MINUTES * 60_000).toISOString();
   const rows = await sql.all<{ tenant_id: string; id: string; status: string }>(
     `SELECT tenant_id, id, status FROM exports WHERE ((status = 'ready' AND expires_at <= ?) OR (status = 'building' AND created_at <= ?))${tenantId ? " AND tenant_id = ?" : ""}`,
@@ -112,13 +121,35 @@ export async function stageExport(sql: Sql, blobs: Blobs, tenantId: string, by: 
   return { id, expires_at, parts, bytes: total };
 }
 
-const signed = (tenantId: string, id: string, part: string, exp: number) => `export|${tenantId}|${id}|${part}|${exp}`;
+const signed = (tenantId: string, id: string, part: string, exp: number, nonce: string) => `export|${tenantId}|${id}|${part}|${exp}|${nonce}`;
+/** The header a program sends a link's signature in, to the link's bare URL. */
+export const EXPORT_LINK_HEADER = "x-purser-export-link";
 
-/** A link to one part (or "manifest") that holds for 15 minutes and fits only that part of that export of that company. */
-export async function signedLink(origin: string, secret: string, tenantId: string, id: string, part: string, now: Date): Promise<{ url: string; expires_at: string }> {
+/** Spent links (their nonce), until they would have expired anyway: one row per download (cloud/migrations/0007_export_links.sql). */
+export const EXPORT_LINKS_SCHEMA = "CREATE TABLE IF NOT EXISTS export_links_used (nonce TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, used_at TEXT NOT NULL, expires_at TEXT NOT NULL)";
+const linksReady = new WeakMap<Sql, Promise<void>>();
+function linksTable(sql: Sql): Promise<void> {
+  let p = linksReady.get(sql);
+  if (!p) { p = sql.run(EXPORT_LINKS_SCHEMA).then(() => undefined).catch((e: unknown) => { linksReady.delete(sql); throw e; }); linksReady.set(sql, p); }
+  return p;
+}
+
+export interface SignedLink {
+  /** For a browser: the bare URL with the signature in its query (good once, 15 minutes). */
+  url: string;
+  /** For a program: the bare URL (nothing secret in it) and the header to send the signature in. */
+  link: { url: string; header: string; value: string };
+  expires_at: string;
+}
+
+/** A link to one part (or "manifest") that holds for 15 minutes, is good once, and fits only that part of that export of that company. */
+export async function signedLink(origin: string, secret: string, tenantId: string, id: string, part: string, now: Date): Promise<SignedLink> {
   const exp = Math.floor(now.getTime() / 1000) + LINK_MINUTES * 60;
-  const sig = await hmacB64u(secret, signed(tenantId, id, part, exp));
-  return { url: `${origin}/v1/export/download/${id}/${part}?${new URLSearchParams({ t: tenantId, exp: String(exp), sig }).toString()}`, expires_at: new Date(exp * 1000).toISOString() };
+  const n = randomToken(12).replace(/[^A-Za-z0-9]/g, "x");
+  const sig = await hmacB64u(secret, signed(tenantId, id, part, exp, n));
+  const bare = `${origin}/v1/export/download/${id}/${part}`;
+  const q = new URLSearchParams({ t: tenantId, exp: String(exp), n, sig }).toString();
+  return { url: `${bare}?${q}`, link: { url: bare, header: EXPORT_LINK_HEADER, value: q }, expires_at: new Date(exp * 1000).toISOString() };
 }
 
 /** The export's state for its company, with fresh links while it is ready; an expired one is swept first. */
@@ -130,23 +161,27 @@ export async function exportStatus(sql: Sql, blobs: Blobs, origin: string, secre
   if (row.status === "ready") {
     const l = await signedLink(origin, secret, tenantId, id, "manifest", now);
     out.manifest_url = l.url;
+    out.manifest_link = l.link;
     out.link_expires_at = l.expires_at;
   }
   return out;
 }
 
 /**
- * A signed download: the link must be unchanged and unexpired, and the export ready. The manifest comes with a fresh link
- * per part (same 15 minutes); fetching it is recorded as a download.
+ * A signed download: the link (from the x-purser-export-link header, else the query) must be unchanged, unexpired and
+ * unused, and the export ready. The manifest comes with a fresh link per part (same 15 minutes); fetching it is
+ * recorded as a download.
  */
-export async function download(sql: Sql, blobs: Blobs, origin: string, secret: string, id: string, part: string, q: URLSearchParams, now: Date): Promise<{ status: number; body: Uint8Array | string; json: boolean }> {
+export async function download(sql: Sql, blobs: Blobs, origin: string, secret: string, id: string, part: string, query: URLSearchParams, now: Date, header: string | null = null): Promise<{ status: number; body: Uint8Array | string; json: boolean }> {
+  const q = header !== null ? new URLSearchParams(header.slice(0, 600)) : query;
   const tenantId = q.get("t") ?? "";
   const exp = Number(q.get("exp") ?? "");
+  const nonce = q.get("n") ?? "";
   const sig = q.get("sig") ?? "";
   const refused = { status: 403, body: JSON.stringify({ error: "this link is not valid or has expired; ask for a fresh one (GET /v1/export/staged/{id})", code: "forbidden" }), json: true };
-  if (!/^t_[A-Za-z0-9_-]{6,64}$/.test(tenantId) || !Number.isSafeInteger(exp) || !sig) return refused;
+  if (!/^t_[A-Za-z0-9_-]{6,64}$/.test(tenantId) || !Number.isSafeInteger(exp) || !/^[A-Za-z0-9]{16}$/.test(nonce) || !sig) return refused;
   if (exp * 1000 <= now.getTime() || exp * 1000 > now.getTime() + (LINK_MINUTES + 1) * 60_000) return refused;
-  if (!(await hmacValid(secret, signed(tenantId, id, part, exp), sig))) return refused;
+  if (!(await hmacValid(secret, signed(tenantId, id, part, exp, nonce), sig))) return refused;
   // A closed company's access has ended, its links with it.
   const company = await sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [tenantId]);
   if (!company || company.closed_at) return refused;
@@ -155,13 +190,17 @@ export async function download(sql: Sql, blobs: Blobs, origin: string, secret: s
   if (!row || row.status !== "ready" || row.expires_at <= now.toISOString()) return { status: 404, body: JSON.stringify({ error: "no such export (it may have expired)", code: "not_found" }), json: true };
   const bytes = await blobs.get(partKey(tenantId, id, part));
   if (!bytes) return { status: 404, body: JSON.stringify({ error: "no such part", code: "not_found" }), json: true };
+  // Good once: the first download spends the link's nonce; a copy of the link (from a history, a log) is refused.
+  await linksTable(sql);
+  const spent = await sql.run("INSERT INTO export_links_used (nonce, tenant_id, used_at, expires_at) VALUES (?, ?, ?, ?) ON CONFLICT(nonce) DO NOTHING", [nonce, tenantId, now.toISOString(), new Date(exp * 1000).toISOString()]);
+  if (spent.changes !== 1) return { status: 403, body: JSON.stringify({ error: "this link was used already; each link is good once: ask for a fresh one (GET /v1/export/staged/{id})", code: "forbidden" }), json: true };
   // Every part fetched is on record for the owners (red team 6: only the manifest was), with the part it was.
   if (part !== "manifest") {
     await t.apply([event(t, now.toISOString(), "export.part_downloaded", "signed link", { export_id: id, part })]);
     return { status: 200, body: bytes, json: true };
   }
-  const manifest = JSON.parse(new TextDecoder().decode(bytes)) as { parts: (Part & { url?: string })[] };
-  for (const p of manifest.parts) p.url = (await signedLink(origin, secret, tenantId, id, `${p.table}-${p.n}`, now)).url;
+  const manifest = JSON.parse(new TextDecoder().decode(bytes)) as { parts: (Part & { url?: string; link?: SignedLink["link"] })[] };
+  for (const p of manifest.parts) { const l = await signedLink(origin, secret, tenantId, id, `${p.table}-${p.n}`, now); p.url = l.url; p.link = l.link; }
   const iso = now.toISOString();
   await t.apply([t.update("exports", { id }, { downloaded_at: iso }), event(t, iso, "export.downloaded", "signed link", { export_id: id })]);
   return { status: 200, body: JSON.stringify(manifest), json: true };
