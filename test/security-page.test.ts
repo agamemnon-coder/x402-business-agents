@@ -146,7 +146,7 @@ describe("What we did, with evidence: every figure from the wall or its own reco
     expect(() => formalModel(fm.replace("**No error.**", "**Error.**"))).toThrow(/No error/);
     const mu = json<{ proof_verifier: { after: { killed: number; total: number } } }>("docs/evidence/mutation-testing.json").proof_verifier.after;
     expect(byId["e-mutation"]!.fig).toBe(`${mu.killed} of ${mu.total}`);
-    const vex = json<{ statements: unknown[] }>("docs/security/vex/purser.openvex.json").statements.length;
+    const vex = json<{ statements: { status: string }[] }>("docs/security/vex/purser.openvex.json").statements.filter((s) => s.status !== "fixed").length;
     expect(byId["e-scan"]!.note).toContain(`its ${vex} findings are in CI tooling and test fixtures`);
     const wf = readdirSync(new URL("../.github/workflows", import.meta.url)).map((f) => read(`.github/workflows/${f}`)).join("\n");
     const uses = [...wf.matchAll(/^\s*(?:-\s+)?uses:\s*([^\s#]+)/gm)].map((m) => m[1]!).filter((u) => !u.startsWith("./"));

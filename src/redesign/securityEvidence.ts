@@ -83,7 +83,9 @@ export function mutation(r: MutationRecord = json<MutationRecord>(MUTATION_REC))
 export const VEX_REC = "docs/security/vex/purser.openvex.json";
 /** The OpenVEX statements: how many, and whether every one says the component is not in the product. */
 export function vex(r: { statements: { status: string; justification?: string }[] } = json(VEX_REC)): { statements: number; notInProduct: boolean } {
-  return { statements: r.statements.length, notInProduct: r.statements.every((s) => s.status === "not_affected" && s.justification === "component_not_present") };
+  // A statement marked fixed is history (OpenVEX never deletes one); the open ones are those still not fixed.
+  const open = r.statements.filter((s) => s.status !== "fixed");
+  return { statements: open.length, notInProduct: open.every((s) => s.status === "not_affected" && s.justification === "component_not_present") };
 }
 
 const WORKFLOWS = ".github/workflows";

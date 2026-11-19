@@ -3,8 +3,8 @@
   "@id": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security/vex/purser.openvex.json",
   "author": "Purser maintainers",
   "role": "Document creator",
-  "timestamp": "2026-11-19T11:00:00Z",
-  "version": 1,
+  "timestamp": "2026-11-19T18:30:00Z",
+  "version": 2,
   "tooling": "OSV-Scanner 2.7.1 (scan source, 2026-11-19); statements generated from its JSON output, then read one by one",
   "statements": [
     {
@@ -432,9 +432,9 @@
           "@id": "pkg:github/agamemnon-coder/x402-business-agents"
         }
       ],
-      "status": "not_affected",
-      "justification": "component_not_present",
-      "impact_statement": "pkg:npm/body-parser@1.20.8 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+      "status": "fixed",
+      "status_notes": "Fixed on 19 Nov 2026 in test/interop/tap-ref-cdn-proxy.package-lock.json: body-parser 1.20.8 -> 1.20.9, inside the ranges the reference proxy's package.json allows.",
+      "timestamp": "2026-11-19T18:30:00Z"
     },
     {
       "vulnerability": {
@@ -445,9 +445,9 @@
           "@id": "pkg:github/agamemnon-coder/x402-business-agents"
         }
       ],
-      "status": "not_affected",
-      "justification": "component_not_present",
-      "impact_statement": "pkg:npm/follow-redirects@1.16.1 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+      "status": "fixed",
+      "status_notes": "Fixed on 19 Nov 2026 in test/interop/tap-ref-cdn-proxy.package-lock.json: follow-redirects 1.16.1 -> 1.16.3, inside the ranges the reference proxy's package.json allows.",
+      "timestamp": "2026-11-19T18:30:00Z"
     },
     {
       "vulnerability": {

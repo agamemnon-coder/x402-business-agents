@@ -58,8 +58,8 @@ jobs:
           npm ci --omit=dev --no-audit --no-fund --ignore-scripts
       - name: Install what the registry and the reference signer import (hashed, wheels only)
         # Not the reference's requirements files (unpinned, sdists allowed, a UI stack the test does not run): only the
-        # registry's and create_ed25519_signature's imports, at the versions the reference pins (fastapi, starlette and anyio raised past their advisories), from a committed
-        # hashed file (test/interop/tap-ref-requirements.txt). Python 3.12: pydantic 2.5.0 has no wheels for 3.13.
+        # registry's and create_ed25519_signature's imports, at the versions the reference pins (fastapi, starlette, anyio and pydantic raised past their advisories), from a committed
+        # hashed file (test/interop/tap-ref-requirements.txt). Python 3.12, as the reference's own pins were resolved for it.
         run: |
           python3.12 -m venv "$RUNNER_TEMP/tap-venv"
           "$RUNNER_TEMP/tap-venv/bin/pip" install --quiet --require-hashes --only-binary :all: -r test/interop/tap-ref-requirements.txt
