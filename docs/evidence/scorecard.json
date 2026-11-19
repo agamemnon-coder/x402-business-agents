@@ -1,0 +1,27 @@
+{
+  "what": "OpenSSF Scorecard result for this repository, read from api.securityscorecards.dev",
+  "read_on": "2026-11-19",
+  "score": 6.5,
+  "scorecard_date": "2026-11-19T15:30:03Z",
+  "commit": "aeae47cad4c027ef6b05ccd84156b3cff4b6c44b",
+  "checks": {
+    "Code-Review": 0,
+    "Dependency-Update-Tool": 10,
+    "Maintained": 0,
+    "Dangerous-Workflow": 10,
+    "Packaging": -1,
+    "Security-Policy": 4,
+    "Token-Permissions": 10,
+    "Binary-Artifacts": 10,
+    "License": 10,
+    "CII-Best-Practices": 7,
+    "Pinned-Dependencies": 10,
+    "Signed-Releases": 5,
+    "Fuzzing": 10,
+    "Branch-Protection": 0,
+    "Vulnerabilities": 5,
+    "SAST": 10,
+    "Contributors": 3,
+    "CI-Tests": 10
+  }
+}

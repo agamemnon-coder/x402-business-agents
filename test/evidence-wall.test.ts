@@ -220,10 +220,14 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(tile(w(), "webkit-try")).toMatchObject({ fig: countOf(wk.ok, wk.runs), tag: "sandbox" });
   });
 
-  it("claims no Scorecard score and no attestation: the supply-chain workflows are set up, not yet run", () => {
+  it("claims the release's attestations and the Scorecard score only from their committed records (19 Nov 2026)", () => {
     const t = tile(w(), "supply-chain");
-    expect(t.label).toContain("not yet run");
-    expect(JSON.stringify(w())).not.toMatch(/Scorecard (score|of) \d|\d+(\.\d)?\s*\/\s*10\b/);
+    expect(t.rec).toBe("docs/evidence/release-v1.2.0.json");
+    const rec = JSON.parse(readFileSync(new URL("../docs/evidence/release-v1.2.0.json", import.meta.url), "utf8")) as { attestations: { predicateType: string }[] };
+    expect(rec.attestations.map((a) => a.predicateType)).toEqual(["https://slsa.dev/provenance/v1", "https://cyclonedx.org/bom"]);
+    const sc = tile(w(), "scorecard");
+    const score = (JSON.parse(readFileSync(new URL("../docs/evidence/scorecard.json", import.meta.url), "utf8")) as { score: number }).score;
+    expect(sc.fig).toBe(`${score}/10`);
     expect(tile(w(), "openssf").tag).toBe("external");
   });
 });

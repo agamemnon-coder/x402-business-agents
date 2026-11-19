@@ -1,0 +1,32 @@
+{
+  "what": "The v1.2.0 release's signed files, as read back from GitHub on 19 Nov 2026",
+  "release": "https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.2.0",
+  "workflow_run": "https://github.com/agamemnon-coder/x402-business-agents/actions/runs/44532963516",
+  "assets": [
+    "SHA256SUMS",
+    "x402-business-agents-v1.2.0.tar.gz",
+    "x402-business-agents-v1.2.0.sbom.cdx.json",
+    "x402-business-agents-v1.2.0.provenance.intoto.jsonl",
+    "x402-business-agents-v1.2.0.sbom.intoto.jsonl"
+  ],
+  "tarball_sha256": "e4375a3cc90c5221b25d2efc5b018ab1f32a36222e774f84e51be79011c48fba",
+  "attestations": [
+    {
+      "predicateType": "https://slsa.dev/provenance/v1",
+      "subjects": [
+        "x402-business-agents-v1.2.0.tar.gz",
+        "x402-business-agents-v1.2.0.sbom.cdx.json",
+        "SHA256SUMS"
+      ],
+      "signed": "Sigstore, GitHub Actions OIDC"
+    },
+    {
+      "predicateType": "https://cyclonedx.org/bom",
+      "subjects": [
+        "x402-business-agents-v1.2.0.tar.gz"
+      ],
+      "signed": "Sigstore, GitHub Actions OIDC"
+    }
+  ],
+  "verify": "gh attestation verify x402-business-agents-v1.2.0.tar.gz -R agamemnon-coder/x402-business-agents"
+}

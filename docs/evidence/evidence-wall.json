@@ -449,13 +449,23 @@
         },
         {
           "key": "supply-chain",
-          "fig": "2",
-          "label": "supply-chain workflows set up, not yet run",
-          "note": "OpenSSF Scorecard and SLSA build provenance for releases. Neither has run yet: no score, no attestation.",
+          "fig": "v1.2.0",
+          "label": "release signed: SLSA provenance and SBOM attested",
+          "note": "2 Sigstore-signed attestations on the source archive, read back from GitHub; check with gh attestation verify.",
+          "tag": "ci",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.2.0",
+          "rec": "docs/evidence/release-v1.2.0.json"
+        },
+        {
+          "key": "scorecard",
+          "fig": "6.5/10",
+          "label": "OpenSSF Scorecard score, read from its public API",
+          "note": "Read from api.securityscorecards.dev on 2026-11-19; one maintainer keeps Code-Review and Contributors low, and a repository under 90 days old scores 0 on Maintained.",
           "tag": "ci",
           "tone": "",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/.github/workflows/scorecard.yml",
-          "rec": ".github/workflows/scorecard.yml .github/workflows/release.yml"
+          "href": "https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents",
+          "rec": "docs/evidence/scorecard.json"
         }
       ]
     },
