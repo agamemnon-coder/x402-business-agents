@@ -182,7 +182,9 @@ const BANK_CHANGE = new RegExp([
   "\\bnov[oa] (conta|iban)", "dados banc(á|a)rios[^.\\n]{0,30}(alterad|atualizad|mudad)",
   // An account about to close or closed: the prelude to new bank details ("our bank closes this account then", "unser
   // Konto wird zum 30.11. aufgelöst"). The customer's own account being suspended is dunning, not this.
-  "\\b(our|this|the old|unser(e|em|es)?|dieses|ons|onze|notre|nuestra|il nostro|a nossa)\\b(?:[^.\\n]|(?<=\\d)\\.){0,20}\\b(bank ?account|account|bankkonto|konto|bankrekening|rekening|compte|cuenta|conto|conta)\\b(?:[^.\\n]|(?<=\\d)\\.){0,30}\\b(clos(e|es|ed|ing)|frozen|terminated|discontinued|no longer (valid|in use|active|available)|geschlossen|aufgel(ö|oe)st|gek(ü|ue)ndigt|gesperrt|opgeheven|gesloten|ferm(é|e)|cerrad[ao]|chius[oa]|encerrad[ao])",
+  "\\b(our|this|the old|unser(e|em|es)?|dieses|ons|onze|notre|nuestra|il nostro|a nossa)\\b(?:[^.\\n]|(?<=\\d)\\.){0,20}(\\bbank ?account|account|konto|rekening|\\bcompte|\\bcuenta|\\bconto|\\bconta)\\b(?:[^.\\n]|(?<=\\d)\\.){0,30}\\b(clos(e|es|ed|ing)|frozen|blocked|terminated|discontinued|no longer (valid|in use|active|available)|geschlossen|aufgel(ö|oe)st|gek(ü|ue)ndigt|gesperrt|eingefroren|blockiert|opgeheven|gesloten|bevroren|geblokkeerd|ferm(é|e)|bloqu(é|e)|gel(é|e)|cerrad[ao]|congelad[ao]|bloquead[ao]|chius[oa]|bloccat[oa]|congelat[oa]|encerrad[ao]|bloqueada|congelada)",
+  // Third round (eval v4, v4-pressure-muller-eingefroren): "die neue Verbindung teilen wir Ihnen telefonisch mit".
+  "\\bneue[mnrs]? (bank)?verbindung",
   "\\bbank\\b[^.\\n]{0,20}\\bclos(es|ing|ed)\\b[^.\\n]{0,25}\\baccount\\b",
   // 19 Nov, third round (adversarial eval v4, v4-bec-valsesia-conto-aggiornato): an updated account, and bank details
   // given somewhere else than on the invoice (an attached e-mail or letter), in each language: "Si prega di effettuare il
@@ -222,6 +224,10 @@ const BYPASS = new RegExp([
   // Only another channel: "reply only to this e-mail", "kontaktieren Sie ausschließlich …@gmail.com".
   "\\b(only|exclusively|solely|ausschlie(ß|ss)lich|nur noch|nur per|uitsluitend|alleen( nog)?|(ú|u)nicamente|seulement|uniquement|soltanto|apenas|somente)\\b[^.\\n]{0,40}\\b(e-?mail|mail|address|adresse|adres|contact|kontakt|whatsapp|telegram|phone|telefon|number|nummer)\\b",
   "\\b(reply|respond|confirm|contact|write|kontaktier\\w*|antwort\\w*|schreib\\w*|mail(en)?|reageer|reageren|r(é|e)pond\\w*|contact\\w*)\\b[^.\\n]{0,30}\\b(only|exclusively|ausschlie(ß|ss)lich|nur|uitsluitend|alleen|uniquement|(ú|u)nicamente)\\b",
+  // Third round (eval v4, v4-pressure-iberico-whatsapp: "confirme el pago solo por WhatsApp"): "only" in Spanish, Italian
+  // and Portuguese before a channel, and the payment or its details through a messaging app.
+  "\\b(solo|s(ó|o)lo|s(ó|o)|soltanto|unicamente)\\s+(por|per|via|su|tramite|a|al|pelo|pela|en|in|con)\\s+(whatsapp|telegram|signal|sms|viber|wechat|imessage|e-?mail|correo|mail|tel(é|e)fono|telefone)\\b",
+  "\\b(pay\\w*|confirm\\w*|(bank |banking |payment )?details|zahlung|best(ä|ae)tig\\w*|bankverbindung|betaling|bevestig\\w*|bankgegevens|paiement|coordonn(é|e)es|pago|confirme\\w*|datos bancarios|pagamento|conferm\\w*|coordinate|dados)\\b[^\\n]{0,60}\\b(via|per|por|par|on|over|auf|op|sur|su|tramite|pelo|pela|by|through|with|mit|met|con)\\s+(whatsapp|telegram|signal|viber|wechat|imessage)\\b",
   "\\b(new|neue[nrs]?|nieuwe?|nouvel(le)?|nuev[oa])\\b[^\\n]{0,80}@(gmail|googlemail|yahoo|hotmail|outlook|live|gmx|web|icloud|aol|proton(mail)?|yandex|mail)\\.",
   // The process skipped, or approval claimed from outside it: "skip your normal process", "your board approved this".
   "\\b(skip|bypass|circumvent|outside|avoid)\\b[^.\\n]{0,20}\\b(process|procedure|workflow|controls?|channels?)\\b",
