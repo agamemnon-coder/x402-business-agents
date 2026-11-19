@@ -3,7 +3,7 @@
   "name": "io.github.agamemnon-coder/purser",
   "title": "Purser",
   "description": "Read Purser's books. Never approves or pays; a propose-scoped token files payments for CFO approval.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "websiteUrl": "https://purser-try.max-31b.workers.dev/connect-ai",
   "repository": { "url": "https://github.com/agamemnon-coder/x402-business-agents", "source": "github" },
   "icons": [

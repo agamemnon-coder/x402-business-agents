@@ -1,6 +1,6 @@
 {
   "name": "x402-business-agents",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey, and one changed cent breaks the signature.",
   "license": "MIT",
   "homepage": "https://kit11.max-31b.workers.dev",
@@ -34,7 +34,7 @@
     "mcp:local": "tsx scripts/mcp-local.ts",
     "test:d1": "CLOUD_DB=d1 vitest run --config vitest.d1.config.ts",
     "links:external": "tsx scripts/linkcheck-external.ts",
-    "changelog": "tsx scripts/changelog.ts",
+    "changelog": "tsx scripts/changelog.ts --since v1.1-submission",
     "charts": "tsx scripts/repo-charts.ts",
     "finance:svg": "tsx scripts/finance-svg.ts",
     "readme:strip": "tsx scripts/readme-proof-strip.ts",

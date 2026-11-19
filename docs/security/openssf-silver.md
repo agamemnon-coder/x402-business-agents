@@ -6,7 +6,7 @@ with an answer ready to paste: Met, Unmet or N/A, and an English justification w
 is not true today; where an answer turns into Met only after an owner action, both texts are given. The prefilled
 edit links are in [openssf-silver-links.md](openssf-silver-links.md). The criteria: <https://www.bestpractices.dev/en/criteria/1>.
 
-**Today: 44 Met, 5 Unmet, 6 N/A.** Silver needs every MUST Met (or N/A where allowed); 3 MUST criteria are still Unmet: `access_continuity`, `documentation_achievements`, `signed_releases`. A SHOULD may stay Unmet with a justification, a SUGGESTED criterion may stay Unmet.
+**Today (19 November 2026): 46 Met, 3 Unmet, 6 N/A.** Silver needs every MUST Met (or N/A where allowed); 1 MUST criterion is still Unmet: `signed_releases`, which turns Met with the v1.2.0 release. A SHOULD may stay Unmet with a justification, a SUGGESTED criterion may stay Unmet.
 
 ## Voor de eigenaar (Nederlands): wat jij moet doen
 
@@ -20,7 +20,7 @@ De onderbouwingen hieronder verwijzen naar bestanden op `main` (`GOVERNANCE.md`,
 `docs/security/requirements.md` enzovoort). Merge deze branch dus eerst, anders wijzen de links op bestpractices.dev
 naar niets.
 
-### 1. De badge in de README (`documentation_achievements`, MUST)
+### 1. De badge in de README (`documentation_achievements`, MUST): klaar, staat in de README
 
 Het silver-niveau eist dat de voorpagina de badge toont en ernaar linkt. Deze branch verandert de README niet. Zet
 deze regel bovenaan in `README.md`, bij de andere badges:
@@ -32,7 +32,7 @@ deze regel bovenaan in `README.md`, bij de andere badges:
 De badge toont vanzelf het niveau dat het project heeft (nu *passing*, later *silver*). Daarna mag
 `documentation_achievements` op **Met** (de tekst staat onder "After the owner action" bij dat criterium).
 
-### 2. Continuïteit als jij wegvalt (`access_continuity`, MUST)
+### 2. Continuïteit als jij wegvalt (`access_continuity`, MUST): klaar sinds 19 november (optie A)
 
 Silver eist dat het project binnen een week verder kan als de enige maintainer wegvalt. Dat kan alleen jij regelen;
 het plan staat in [GOVERNANCE.md](../../GOVERNANCE.md#continuity-if-the-maintainer-is-gone).
@@ -102,9 +102,7 @@ het plan staat in [GOVERNANCE.md](../../GOVERNANCE.md#continuity-if-the-maintain
 
 | Criterion | Level | Why | What turns it into Met |
 |---|---|---|---|
-| `access_continuity` | MUST | One maintainer; the continuity plan is written but not set up. | The owner sets up the successor and the sealed recovery note (step 2 above). |
 | `bus_factor` | SHOULD | One maintainer: the bus factor is 1, and we say so. | A second maintainer joins (GOVERNANCE.md). Until then it stays Unmet with this justification, which a SHOULD allows. |
-| `documentation_achievements` | MUST | The README does not show the passing badge yet; this branch does not change the README. | The owner adds the badge to the README (step 1 above). |
 | `signed_releases` | MUST | The signing release workflow exists but has not made a release yet. | The owner cuts v1.2.0 (step 3 above). |
 | `version_tags_signed` | SUGGESTED | The two milestone tags are unsigned. | v1.2.0 is a signed tag (step 3 above). SUGGESTED: Unmet does not block silver. |
 
@@ -112,7 +110,7 @@ het plan staat in [GOVERNANCE.md](../../GOVERNANCE.md#continuity-if-the-maintain
 
 Each answer is what to select and paste on the silver form. URLs point to `main`; they resolve once this branch is merged.
 
-### Basics (14 Met, 3 Unmet, 0 N/A)
+### Basics (16 Met, 1 Unmet, 0 N/A)
 
 #### `achieve_passing` (MUST): **Met**
 
@@ -138,13 +136,9 @@ Contributor Covenant 2.1 in the standard location: https://github.com/agamemnon-
 
 https://github.com/agamemnon-coder/x402-business-agents/blob/main/GOVERNANCE.md#roles-and-responsibilities lists each role (maintainer, security response, release manager, contributor, AI coding assistant, second maintainer), its tasks, and who holds it today: @agamemnon-coder holds every maintainer role; the second-maintainer role is vacant.
 
-#### `access_continuity` (MUST): **Unmet**
+#### `access_continuity` (MUST): **Met**
 
-Not yet. The project has one maintainer, and the continuity plan in https://github.com/agamemnon-coder/x402-business-agents/blob/main/GOVERNANCE.md#continuity-if-the-maintainer-is-gone (a GitHub account successor, a sealed recovery note with the account's recovery codes and the Cloudflare account, a written right to continue) is documented but not set up yet. No live key is needed to continue: all runs use sandboxes and testnets.
-
-After the owner action, **Met**:
-
-> If the maintainer is gone, a named successor can take over within a week: GitHub's account successor is set for the owner's account, and a sealed recovery note (password manager emergency access) holds the GitHub recovery codes and the Cloudflare account, with a written statement that the successor may run the project. The plan: https://github.com/agamemnon-coder/x402-business-agents/blob/main/GOVERNANCE.md#continuity-if-the-maintainer-is-gone. No live key is needed to continue: all runs use sandboxes and testnets.
+> If the maintainer is gone, a trusted person can take over within a week: a sealed recovery note in a password manager's emergency access, with a waiting period the owner can deny while able, holds the GitHub account's recovery codes and the Cloudflare account, with a written statement that the successor may run the project. In place since 19 November 2026. The plan: https://github.com/agamemnon-coder/x402-business-agents/blob/main/GOVERNANCE.md#continuity-if-the-maintainer-is-gone. No live key is needed to continue: all runs use sandboxes and testnets.
 
 #### `bus_factor` (SHOULD): **Unmet**
 
@@ -170,11 +164,7 @@ https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/install.m
 
 Documentation is kept current by tests that read it: figures in the READMEs are checked against their run records (test/readme-headers.test.ts), every link and function named in the assurance case must exist (test/assurance.test.ts), ids on public pages must be in a run record (test/link-records.test.ts), and generated documents (changelog, zero-trust report, tamper matrix) fail CI when they differ from the code. A known documentation defect is a bug, fixed as any other (https://github.com/agamemnon-coder/x402-business-agents/blob/main/CONTRIBUTING.md). Pages that are dated records say so.
 
-#### `documentation_achievements` (MUST): **Unmet**
-
-Not yet: the repository's README does not yet show the OpenSSF Best Practices badge. The owner adds it to the README.
-
-After the owner action, **Met**:
+#### `documentation_achievements` (MUST): **Met**
 
 > The README links the OpenSSF Best Practices badge (https://www.bestpractices.dev/projects/16923) at the top: https://github.com/agamemnon-coder/x402-business-agents/blob/main/README.md
 
