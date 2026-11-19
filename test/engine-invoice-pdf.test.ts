@@ -72,6 +72,11 @@ describe("a written invoice, paid on the engine", () => {
     await host.seed();
     // Under EUR 100 is refused: the bank's flat fee would be more than the invoice.
     expect(checkCompose({ supplier_key: "bergtex", invoice_no: "INV-1", amount: "1.50", issue_date: day(0), due_date: day(14), iban: SEEDED_SUPPLIERS[0]!.iban }, host.suppliers(), new Date())).toEqual({ refused: { field: "amount", message: "Demo invoices go from EUR 100 to EUR 5,000." } });
+    // A number the reader cannot read back (no digit after its first character, or a leading No that reads as the label) is refused here, with the reason, rather than filed for a person
+    // (fuzzing: parser-compose-roundtrip).
+    for (const n of ["a", "A", "INV", "INV-ABC", "0", "7", "7A", "7-B", "No00", "Nordic-1", "nr5"]) {
+      expect(checkCompose({ supplier_key: "bergtex", invoice_no: n, amount: "321.00", issue_date: day(0), due_date: day(14), iban: SEEDED_SUPPLIERS[0]!.iban }, host.suppliers(), new Date()), n).toEqual({ refused: { field: "invoice_no", message: "invoice_no needs a digit after its first character and cannot start with No or Nr (like INV-2026-1), so it can be read back from the invoice" } });
+    }
     const up = await host.compose({ supplier_key: "bergtex", invoice_no: "INV-6543", amount: "321.00", issue_date: day(0), due_date: day(14), iban: SEEDED_SUPPLIERS[0]!.iban });
     if ("refused" in up) throw new Error(up.refused.message);
     const phone = new FakeAuthenticator();

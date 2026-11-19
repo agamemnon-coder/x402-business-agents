@@ -4,17 +4,74 @@
   "how": "npm run fuzz: fast-check properties (src/fuzz/properties.ts) at high run counts, each within a time limit, with a fixed seed per property; a failure is shrunk to a small counterexample and kept with the seed and path that replay it. In process, no network.",
   "totals": {
     "properties": 17,
-    "runs": 275756,
-    "passed": 13,
-    "failed": 4,
-    "ms": 124527
+    "runs": 315300,
+    "passed": 17,
+    "failed": 0,
+    "ms": 120555
   },
   "artifacts": {
     "bundles": [
       "docs/film/under-the-hood/record.json",
       "docs/film/under-the-hood/try-proof.json",
       "docs/proof/try-paid.json",
-      "docs/proof/try-refused.json"
+      "docs/proof/try-refused.json",
+      "docs/runs/2026-11-19-live-try/attempt-3a.json",
+      "docs/runs/2026-11-19-live-try/run-1-proof-downloaded.json",
+      "docs/runs/2026-11-19-live-try/run-1-proof-paid.json",
+      "docs/runs/2026-11-19-live-try/run-2-proof-downloaded.json",
+      "docs/runs/2026-11-19-live-try/run-2-proof-paid.json",
+      "docs/runs/2026-11-19-live-try/run-3-proof-downloaded.json",
+      "docs/runs/2026-11-19-live-try/run-3-proof-paid.json",
+      "docs/runs/2026-11-19-live-try/run-4-proof-downloaded.json",
+      "docs/runs/2026-11-19-live-try/run-4-proof-paid.json",
+      "docs/runs/2026-11-19-live-try/run-5-proof-downloaded.json",
+      "docs/runs/2026-11-19-live-try/run-5-proof-paid.json",
+      "docs/runs/2026-11-19-live-try/run-6-proof-downloaded.json",
+      "docs/runs/2026-11-19-live-try/run-6-proof-paid.json",
+      "docs/runs/2026-11-19-live-try/run-7-proof-downloaded.json",
+      "docs/runs/2026-11-19-live-try/run-7-proof-paid.json",
+      "docs/runs/2026-11-19-live-try/run-8-proof-downloaded.json",
+      "docs/runs/2026-11-19-live-try/run-8-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/precheck-firefox-d.json",
+      "docs/runs/2026-11-19-mega-run/precheck-firefox-d.json",
+      "docs/runs/2026-11-19-mega-run/run-1-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-1-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-10-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-10-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-11-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-11-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-12-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-12-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-13-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-13-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-14-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-14-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-15-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-15-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-16-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-16-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-17-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-17-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-2-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-2-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-3-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-3-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-4-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-4-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-5-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-5-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-6-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-6-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-7-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-7-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-8-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-8-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-9-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-9-proof-paid.json",
+      "docs/runs/2026-11-19-webkit-try/run-1-proof-downloaded.json",
+      "docs/runs/2026-11-19-webkit-try/run-1-proof-paid.json",
+      "docs/runs/2026-11-19-webkit-try/run-2-proof-downloaded.json",
+      "docs/runs/2026-11-19-webkit-try/run-2-proof-paid.json"
     ],
     "receipts": [
       "docs/runs/2026-11-07-awx-1/receipt-P-0002.json",
@@ -37,45 +94,37 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 0,
-      "ms": 4232,
+      "ms": 2327,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261119,
-      "notes": "slowest single read 36.1 ms"
+      "notes": "slowest single read 27.6 ms"
     },
     {
       "id": "parser-compose-roundtrip",
       "target": "parseApFallback over invoiceText (src/engine/tryWorld.ts): what /try's \"write your own\" accepts",
       "what": "every invoice checkCompose accepts, written in the sample's layout, is read back by the parser with the same number, total, IBAN and due date",
-      "status": "FAIL",
+      "status": "PASS",
       "runs_asked": 20000,
-      "runs_done": 1,
-      "skipped": 0,
-      "ms": 9,
+      "runs_done": 20000,
+      "skipped": 107950,
+      "ms": 5877,
       "time_limit_ms": 120000,
       "interrupted": false,
-      "seed": 20261120,
-      "counterexample": "[{\"supplier_key\":\"bergtex\",\"invoice_no\":\"a\",\"amount\":\"100.00\",\"issue_date\":\"2026-11-19\",\"due_date\":\"2026-11-19\",\"iban\":\"DE89370400440532013000\"}]",
-      "error": "read {\"invoice_no\":\"\",\"total\":\"100.00\",\"iban\":\"DE89370400440532013000\",\"due_date\":\"2026-11-19\"}, written {\"invoice_no\":\"a\",\"total\":\"100.00\",\"iban\":\"DE89370400440532013000\",\"due_date\":\"2026-11-19\"}",
-      "shrinks": 13,
-      "path": "0:0:0:1:0:0:0:1:0:0:0:0:0:0"
+      "seed": 20261120
     },
     {
       "id": "parser-compose-roundtrip-pdf",
       "target": "the same through the PDF /try renders (src/engine/invoicePdf.ts) and the text extraction (src/ap/pdfText.ts)",
       "what": "every invoice checkCompose accepts, rendered to the enterprise PDF and its text extracted, is read back with the same number, total, IBAN and due date",
-      "status": "FAIL",
+      "status": "PASS",
       "runs_asked": 300,
-      "runs_done": 1,
-      "skipped": 3,
-      "ms": 569,
+      "runs_done": 300,
+      "skipped": 1792,
+      "ms": 3778,
       "time_limit_ms": 120000,
       "interrupted": false,
-      "seed": 20261121,
-      "counterexample": "[{\"supplier_key\":\"bergtex\",\"invoice_no\":\"A\",\"amount\":\"100.00\",\"issue_date\":\"2026-11-19\",\"due_date\":\"2026-11-19\",\"iban\":\"DE89370400440532013000\"}]",
-      "error": "read {\"invoice_no\":\"\",\"total\":\"100.00\",\"iban\":\"DE89370400440532013000\",\"due_date\":\"2026-11-19\"}, written {\"invoice_no\":\"A\",\"total\":\"100.00\",\"iban\":\"DE89370400440532013000\",\"due_date\":\"2026-11-19\"}",
-      "shrinks": 7,
-      "path": "3:0:0:0:0:0:0:0"
+      "seed": 20261121
     },
     {
       "id": "reader-runner",
@@ -85,7 +134,7 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 0,
-      "ms": 1022,
+      "ms": 701,
       "time_limit_ms": 90000,
       "interrupted": false,
       "seed": 20261122
@@ -98,7 +147,7 @@
       "runs_asked": 50000,
       "runs_done": 50000,
       "skipped": 4312,
-      "ms": 20744,
+      "ms": 18368,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261123
@@ -111,7 +160,7 @@
       "runs_asked": 30000,
       "runs_done": 30000,
       "skipped": 0,
-      "ms": 13117,
+      "ms": 9018,
       "time_limit_ms": 90000,
       "interrupted": false,
       "seed": 20261124
@@ -124,7 +173,7 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 0,
-      "ms": 2567,
+      "ms": 2649,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261125
@@ -137,7 +186,7 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 0,
-      "ms": 8368,
+      "ms": 4351,
       "time_limit_ms": 60000,
       "interrupted": false,
       "seed": 20261126
@@ -150,7 +199,7 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 0,
-      "ms": 13794,
+      "ms": 7295,
       "time_limit_ms": 60000,
       "interrupted": false,
       "seed": 20261127
@@ -163,7 +212,7 @@
       "runs_asked": 10000,
       "runs_done": 10000,
       "skipped": 285,
-      "ms": 26067,
+      "ms": 21919,
       "time_limit_ms": 180000,
       "interrupted": false,
       "seed": 20261128
@@ -171,36 +220,28 @@
     {
       "id": "bundle-context",
       "target": "verifyProofBundle: the context a bundle carries beside the signature (the engine's decision, the ledger entries of the payment and the ledger's head)",
-      "what": "the decision the engine recorded and the ledger entries /verify shows as \"ledger balance\" and \"ledger chain\" cannot be changed or dropped without a check failing",
-      "status": "FAIL",
+      "what": "the decision the engine recorded, the canonical texts, and the ledger's entries, head and count cannot be changed without a check failing; an entry the signed terms name (the payment's transfer, invoice and conversion) cannot be dropped; dropping another entry passes only where /verify's \"ledger chain\" says that entry is not in the file and that the file holding all of them is the engine's record",
+      "status": "PASS",
       "runs_asked": 10000,
-      "runs_done": 14,
-      "skipped": 1,
-      "ms": 81,
+      "runs_done": 10000,
+      "skipped": 456,
+      "ms": 19352,
       "time_limit_ms": 120000,
       "interrupted": false,
-      "seed": 20261129,
-      "counterexample": "[0,{\"pick\":0,\"op\":\"edit\",\"at\":0,\"ch\":\"x\",\"junk\":false}]",
-      "error": "docs/film/under-the-hood/record.json: edit at decision.outcome and it still verifies",
-      "shrinks": 6,
-      "path": "14:0:0:0:0:0:0"
+      "seed": 20261129
     },
     {
       "id": "bundle-malformed",
       "target": "verifyProofBundle on malformed input",
       "what": "on anything (random values, a real bundle with any field replaced by junk or by a short base64url string) it answers with its checks: it never throws or rejects, and random values are never VALID",
-      "status": "FAIL",
+      "status": "PASS",
       "runs_asked": 10000,
-      "runs_done": 740,
+      "runs_done": 10000,
       "skipped": 0,
-      "ms": 1290,
+      "ms": 9336,
       "time_limit_ms": 120000,
       "interrupted": false,
-      "seed": 20261130,
-      "counterexample": "[{\"v\":{\"format\":\"purser.proof-bundle/v1\",\"note\":\"A /try test company: test money only, nothing real moved. Check this file on /verify or with npm run verify-bundle -- <file>.\",\"made_at\":\"2026-11-15T04:26:02.186Z\",\"proposal_id\":\"P-0001\",\"terms\":{\"schema\":\"kit11.approval-terms/v1\",\"kind\":\"invoice_payment\",\"proposal_id\":\"P-0001\",\"expires_at\":\"2026-11-15T04:40:06Z\",\"invoice_no\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"vendor\":\"Bergtex Textil GmbH\",\"amount\":\"1850.00\",\"currency\":\"EUR\",\"fee_max\":\"20.00\",\"beneficiary_id\":\"ben_2\",\"beneficiary_name\":\"Bergtex Textil GmbH\",\"iban_last4\":\"3000\",\"bic\":\"COBADEFFXXX\",\"method\":\"SWIFT\",\"reference\":\"BTX-2026-21\",\"reason\":\"goods_purchased\",\"transfer_request_id\":\"a0868db8-58fb-4f5c-a73b-b3ce45d34121\",\"conversion\":{\"request_id\":\"d6fd0985-fe02-4e30-9b0b-b9a014bff6be\",\"quote_id\":\"d7e941bc-da97-3e15-b07e-566136737840\",\"client_rate\":\"1.117256\",\"valid_to\":\"2026-11-15T04:40:36.000Z\",\"buy_currency\":\"EUR\",\"buy_amount\":\"370.00\",\"sell_currency\":\"USD\",\"sell_amount\":\"413.38\"},\"balances_before\":{\"eur_available\":\"35000.00\",\"usd_available\":\"25000.00\"},\"floors\":{\"eur_floor\":\"25000.00\",\"eur_obligations\":\"8500.00\",\"usd_floor\":\"20000.00\"},\"after\":{\"eur_free\":\"0.00\",\"usd_available\":\"24586.62\"},\"evidence\":[{\"type\":\"invoice\",\"ref\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"sha256\":\"71dc0539b893d3613328b164ef280f7d52c8eb5d87b127cea0a39bc2a75d4cbd\"}],\"document_total_line\":\"Total due EUR 1,850.00\",\"document_currency\":\"EUR\",\"test_money\":true,\"source\":\"payables_inbox\"},\"canonical\":\"{\\\"after\\\":{\\\"eur_free\\\":\\\"0.00\\\",\\\"usd_available\\\":\\\"24586.62\\\"},\\\"amount\\\":\\\"1850.00\\\",\\\"balances_before\\\":{\\\"eur_available\\\":\\\"35000.00\\\",\\\"usd_available\\\":\\\"25000.00\\\"},\\\"beneficiary_id\\\":\\\"ben_2\\\",\\\"beneficiary_name\\\":\\\"Bergtex Textil GmbH\\\",\\\"bic\\\":\\\"COBADEFFXXX\\\",\\\"conversion\\\":{\\\"buy_amount\\\":\\\"370.00\\\",\\\"buy_currency\\\":\\\"EUR\\\",\\\"client_rate\\\":\\\"1.117256\\\",\\\"quote_id\\\":\\\"d7e941bc-da97-3e15-b07e-566136737840\\\",\\\"request_id\\\":\\\"d6fd0985-fe02-4e30-9b0b-b9a014bff6be\\\",\\\"sell_amount\\\":\\\"413.38\\",
-      "error": "threw InvalidCharacterError: Invalid character, with assertion.authenticatorData set to \"A\"",
-      "shrinks": 4,
-      "path": "739:0:30:31:31"
+      "seed": 20261130
     },
     {
       "id": "receipt-mutations",
@@ -210,7 +251,7 @@
       "runs_asked": 10000,
       "runs_done": 10000,
       "skipped": 365,
-      "ms": 12197,
+      "ms": 5651,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261131
@@ -223,7 +264,7 @@
       "runs_asked": 50000,
       "runs_done": 50000,
       "skipped": 15,
-      "ms": 2820,
+      "ms": 1711,
       "time_limit_ms": 90000,
       "interrupted": false,
       "seed": 20261132
@@ -236,7 +277,7 @@
       "runs_asked": 10000,
       "runs_done": 10000,
       "skipped": 913,
-      "ms": 535,
+      "ms": 635,
       "time_limit_ms": 90000,
       "interrupted": false,
       "seed": 20261133
@@ -249,7 +290,7 @@
       "runs_asked": 10000,
       "runs_done": 10000,
       "skipped": 0,
-      "ms": 13235,
+      "ms": 6475,
       "time_limit_ms": 150000,
       "interrupted": false,
       "seed": 20261134
@@ -262,363 +303,195 @@
       "runs_asked": 5000,
       "runs_done": 5000,
       "skipped": 0,
-      "ms": 3880,
+      "ms": 1112,
       "time_limit_ms": 150000,
       "interrupted": false,
       "seed": 20261135
     }
   ],
   "sweep": {
-    "tried": 3004,
+    "tried": 38722,
     "still_valid": [
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "asked",
-        "artifacts": 2,
+        "artifacts": 30,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "assertion",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "decision",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "decision.executor",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "decision.signature",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "ledger",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "public_key",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "asked",
-        "artifacts": 2,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "asked.canonical",
-        "artifacts": 2,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "assertion.credential_id",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "canonical",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "decision.changed",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "decision.changed[]",
-        "artifacts": 2,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "decision.executor",
-        "artifacts": 2,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "decision.executor.accepted",
-        "artifacts": 2,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "decision.executor.said",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "decision.outcome",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "decision.sent_sha256",
-        "artifacts": 2,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "decision.signature",
-        "artifacts": 2,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "decision.signature.reason",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "decision.signature.verified",
-        "artifacts": 2,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "decision.transfers_after",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "decision.transfers_before",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "ledger.count",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "ledger.entries[]",
-        "artifacts": 20,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "delete",
-        "path": "ledger.head",
-        "artifacts": 4,
+        "artifacts": 181,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "made_at",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "note",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "proposal_id",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "public_key.alg",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "public_key.format",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "edit",
-        "path": "asked.canonical",
-        "artifacts": 2,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "assertion.credential_id",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "edit",
-        "path": "decision.changed[]",
-        "artifacts": 2,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "edit",
-        "path": "decision.executor.accepted",
-        "artifacts": 2,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "decision.executor.said",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "edit",
-        "path": "decision.outcome",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "edit",
-        "path": "decision.sent_sha256",
-        "artifacts": 2,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "decision.signature.reason",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "edit",
-        "path": "decision.signature.verified",
-        "artifacts": 2,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "decision.transfers_after",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "edit",
-        "path": "decision.transfers_before",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "edit",
-        "path": "ledger.count",
-        "artifacts": 4,
-        "covered": "context"
-      },
-      {
-        "kind": "bundle",
-        "change": "edit",
-        "path": "ledger.head",
-        "artifacts": 4,
+        "artifacts": 31,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "made_at",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "note",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "proposal_id",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "public_key.alg",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "public_key.cose",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "same key"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "public_key.format",
-        "artifacts": 4,
+        "artifacts": 61,
         "covered": "context"
       },
       {

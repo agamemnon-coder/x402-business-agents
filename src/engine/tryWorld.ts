@@ -8,7 +8,7 @@
 // "Test invoice (fake)" in their PDF's properties (src/e2e/documents.ts).
 //
 // Host-agnostic: no node: import; the PDF writer is the one the samples script uses (pdfkit through pdfOf).
-import { ibanValid } from "../ap/reading.js";
+import { ibanValid, parseApFallback } from "../ap/reading.js";
 import { pdfOf } from "../e2e/documents.js";
 import { invoicePdf } from "./invoicePdf.js";
 // The clean sample and the suppliers on file, as data (src/config/trySample.ts): the cloud Worker's illustration
@@ -163,6 +163,10 @@ export function checkCompose(i: ComposeInput, suppliers: SupplierOnFile[], now: 
   const letterhead = SEEDED_SUPPLIERS.find((x) => x.key === i.supplier_key);
   if (!s || !letterhead) return no("supplier_key", "supplier_key is not a supplier on file in this company");
   if (!/^[A-Za-z0-9][A-Za-z0-9/-]{0,31}$/.test(i.invoice_no)) return no("invoice_no", "invoice_no is 1 to 32 letters, digits, dashes or slashes, starting with a letter or digit");
+  // One rule for this form and the reader (parseApFallback), so what is written here is read back (fuzzing:
+  // parser-compose-roundtrip): the reader reads a number only when a digit follows its first character, and takes a leading
+  // "No" or "Nr" after "INVOICE" for the label. The full check is the reader itself, below.
+  if (!/^.+\d/.test(i.invoice_no) || /^n(?:o|r)/i.test(i.invoice_no)) return no("invoice_no", NUMBER_READ_BACK);
   if (!/^\d{1,9}\.\d{2}$/.test(i.amount)) return no("amount", "amount is in euros with two decimals, such as 1850.00");
   const cents = Math.round(Number(i.amount) * 100);
   // The cap: the simulated bank holds USD 25,000 with a USD floor of 20,000 (src/agents/euroBill.ts), so a larger
@@ -187,6 +191,11 @@ export function checkCompose(i: ComposeInput, suppliers: SupplierOnFile[], now: 
   if (isoDay(i.due_date)! < isoDay(i.issue_date)!) return no("due_date", "due_date is on or after issue_date");
   const iban = i.iban.replace(/\s+/g, "").toUpperCase();
   if (iban.length < 15 || iban.length > 34 || !/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(iban) || !ibanValid(iban)) return no("iban", "iban is 15 to 34 letters and digits with a valid check (mod 97)");
-  return { supplier: { name: payee, street: letterhead.street, city: letterhead.city, bic: s.bic }, invoiceNo: i.invoice_no, amountCents: cents, issueDate: i.issue_date, dueDate: i.due_date, iban,
+  const fields: InvoiceFields = { supplier: { name: payee, street: letterhead.street, city: letterhead.city, bic: s.bic }, invoiceNo: i.invoice_no, amountCents: cents, issueDate: i.issue_date, dueDate: i.due_date, iban,
     ...(currency !== "EUR" ? { currency } : {}), ...(note ? { note } : {}) };
+  if (parseApFallback(invoiceText(fields)).invoice_no !== fields.invoiceNo) return no("invoice_no", NUMBER_READ_BACK);
+  return fields;
 }
+
+/** Why an invoice number is refused that the reader would not read back as written. */
+const NUMBER_READ_BACK = "invoice_no needs a digit after its first character and cannot start with No or Nr (like INV-2026-1), so it can be read back from the invoice";

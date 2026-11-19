@@ -8,8 +8,8 @@ import { redteamApi } from "../src/cli/redteamApi.js";
 import { GROUPS, type AttackResult } from "../src/redteamApi/attacks.js";
 import type { RedteamReport } from "../src/redteamApi/report.js";
 
-/** Open findings (docs/evidence/redteam-api.md, "Findings"): the judge's own 404 page and files lack nosniff (judge only). */
-const OPEN_FINDINGS = new Set(["headers-pages", "headers-files"]);
+/** Open findings (docs/evidence/redteam-api.md, "Findings"): none. A closed one may never fail again. */
+const OPEN_FINDINGS = new Set<string>([]);
 
 describe("red team v2 on the /try API (local)", () => {
   let results: AttackResult[] = [];
@@ -24,6 +24,8 @@ describe("red team v2 on the /try API (local)", () => {
     for (const g of ["cross-company", "signature replay", "another world's passkey", "terms tampering", "double pay"]) {
       expect(results.filter((r) => r.group === g && r.verdict !== "PASS").map((r) => r.id), g).toEqual([]);
     }
+    // Closed findings (19 Nov): the judge's 404 page and its files carry nosniff and a referrer policy.
+    expect(results.filter((r) => ["headers-pages", "headers-files"].includes(r.id)).map((r) => `${r.id} ${r.verdict}`)).toEqual(["headers-pages PASS", "headers-files PASS"]);
   });
 
   it("the committed report has the same attacks and verdicts, and lists every FAIL with its repro", () => {

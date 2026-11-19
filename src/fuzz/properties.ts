@@ -172,7 +172,16 @@ const pvCbor = new Function(`${PROOF_VERIFY_JS}\nreturn pvCbor;`)() as (u: Uint8
  * changed unseen.
  */
 const SIGNED_CORE = /^(terms(\.|\[|$)|terms_sha256$|rp_id$|origin$|assertion\.(authenticatorData|clientDataJSON|signature)$|public_key\.(cose|kty|crv|x|y)$)/;
-const BUNDLE_CONTEXT = /^(decision\.(outcome|signed_sha256|sent_sha256|signature\.verified|executor\.accepted)$|ledger\.(entries(\[|$)|head$))/;
+const BUNDLE_CONTEXT = /^(canonical$|asked\.canonical$|decision\.((outcome|signed_sha256|sent_sha256|signature\.verified|executor\.accepted)$|changed(\[|$))|ledger\.(entries(\[|$)|head$|count$))/;
+
+/** The entry numbers /verify's "ledger chain" says are not in the file ("not in this file: #1–#2, #7"). */
+function notInFile(detail: string): Set<number> {
+  const out = new Set<number>();
+  const list = /not in this file: ([^(]*)\(/.exec(detail)?.[1] ?? "";
+  for (const m of list.matchAll(/#(\d+)(?:–#(\d+))?/g)) for (let n = Number(m[1]); n <= Number(m[2] ?? m[1]); n++) out.add(n);
+  return out;
+}
+const detailOf = (r: { checks: { check: string; detail: string }[] }, check: string) => r.checks.find((c) => c.check === check)?.detail ?? "";
 
 let slowest = 0;
 const timed = <T>(f: () => T): T => { const t = performance.now(); try { return f(); } finally { slowest = Math.max(slowest, performance.now() - t); } };
@@ -336,17 +345,29 @@ export const PROPERTIES: FuzzProperty[] = [
   },
   {
     id: "bundle-context", target: "verifyProofBundle: the context a bundle carries beside the signature (the engine's decision, the ledger entries of the payment and the ledger's head)",
-    what: "the decision the engine recorded and the ledger entries /verify shows as \"ledger balance\" and \"ledger chain\" cannot be changed or dropped without a check failing",
+    what: "the decision the engine recorded, the canonical texts, and the ledger's entries, head and count cannot be changed without a check failing; an entry the signed terms name (the payment's transfer, invoice and conversion) cannot be dropped; dropping another entry passes only where /verify's \"ledger chain\" says that entry is not in the file and that the file holding all of them is the engine's record",
     runs: 10_000, timeLimitMs: 120_000,
-    make: (ctx) => fc.asyncProperty(fc.nat(), MUTATION, async (which, m) => {
-      const orig = ctx.bundles[which % ctx.bundles.length]!;
-      const x = mutate(orig.value, m, (p) => BUNDLE_CONTEXT.test(p));
-      fc.pre(x !== null);
-      let r;
-      try { r = await verifyProofBundle(x!.value); } catch { return true; }
-      if (r.ok) throw new Error(`${orig.file}: ${x!.op} at ${x!.path} and it still verifies`);
-      return true;
-    }),
+    make: (ctx) => {
+      const named = new Map<string, Promise<Set<number>>>();
+      return fc.asyncProperty(fc.nat(), MUTATION, async (which, m) => {
+        const orig = ctx.bundles[which % ctx.bundles.length]!;
+        const x = mutate(orig.value, m, (p) => BUNDLE_CONTEXT.test(p));
+        fc.pre(x !== null);
+        let r;
+        try { r = await verifyProofBundle(x!.value); } catch { return true; }
+        if (!r.ok) return true;
+        // A dropped entry nothing signed names cannot be seen from the file (it carries the payment's entries, not the
+        // whole ledger): VALID then only when /verify names it as not in the file and says completeness is not checked.
+        const drop = x!.op === "delete" ? /^ledger\.entries\[(\d+)\]$/.exec(x!.path) : null;
+        if (drop) {
+          const id = (orig.value as { ledger: { entries: { entry_id: number }[] } }).ledger.entries[Number(drop[1])]!.entry_id;
+          if (!named.has(orig.file)) named.set(orig.file, verifyProofBundle(orig.value).then((o) => new Set([...detailOf(o, "ledger payment").matchAll(/#(\d+)/g)].map((n) => Number(n[1])))));
+          const chain = detailOf(r, "ledger chain");
+          if (!(await named.get(orig.file)!).has(id) && notInFile(chain).has(id) && chain.includes("is the engine's record, not checked here")) return true;
+        }
+        throw new Error(`${orig.file}: ${x!.op} at ${x!.path} and it still verifies`);
+      });
+    },
   },
   {
     id: "bundle-malformed", target: "verifyProofBundle on malformed input",

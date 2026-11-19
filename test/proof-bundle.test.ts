@@ -63,7 +63,7 @@ describe("the bundle the pay route hands back", () => {
   it("a paid bundle passes every check", async () => {
     const r = await verifyProofBundle(paid);
     expect(failed(r)).toEqual([]);
-    expect(r.checks.map((x) => x.check)).toEqual(["format", "terms hash", "challenge", "client data", "rp id", "user verified", "signature", "decision", "ledger balance", "ledger chain"]);
+    expect(r.checks.map((x) => x.check)).toEqual(["format", "terms hash", "challenge", "client data", "rp id", "user verified", "signature", "decision", "ledger balance", "ledger chain", "ledger payment"]);
     expect(r.checks.find((x) => x.check === "challenge")!.detail).toContain(paid.terms_sha256);
   });
 
@@ -79,9 +79,11 @@ describe("the bundle the pay route hands back", () => {
 
 it("says what a bundle proves: the refusal's line only for a refusal", () => {
   expect(proofMeans(paid)).not.toContain(PROOF_REFUSAL_MEANS);
-  expect(proofMeans(paid)).toHaveLength(2);
+  expect(proofMeans(paid)).toHaveLength(3);
   expect(proofMeans(refused)).toContain(PROOF_REFUSAL_MEANS);
-  expect(proofMeans(refused)).toHaveLength(3);
+  expect(proofMeans(refused)).toHaveLength(4);
+  // The decision and the ledger beside the signature are said to be the engine's record (fuzzing: bundle-context).
+  for (const b of [paid, refused]) expect(proofMeans(b).join("\n")).toContain("the engine's record");
 });
 
 describe("a change fails", () => {
@@ -156,6 +158,15 @@ it("npm run verify-bundle: 0 on the committed sample, 1 on a copy with one cent 
   const bad = run(f);
   expect(bad.code).toBe(1);
   expect(bad.out).toMatch(/NOT VALID.*terms hash/);
+  // A base64url field that cannot be decoded: a failed check and NOT VALID, never a stack trace (fuzzing: bundle-malformed).
+  const m = JSON.parse(readFileSync("docs/proof/try-paid.json", "utf8")) as ProofBundle;
+  m.assertion.authenticatorData = "A";
+  const g = join(mkdtempSync(join(tmpdir(), "proof-")), "malformed.json");
+  writeFileSync(g, JSON.stringify(m));
+  const malformed = run(g);
+  expect(malformed.code).toBe(1);
+  expect(malformed.out).toContain("FAIL  format          assertion.authenticatorData is not base64url");
+  expect(malformed.out).toContain(`NOT VALID: ${g} (format)`);
 }, 60_000);
 
 describe("/verify, and the links to it", () => {
