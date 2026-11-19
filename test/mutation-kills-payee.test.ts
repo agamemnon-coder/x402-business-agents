@@ -112,7 +112,7 @@ describe("the invoice's text (src/policy/fraudCore.ts)", () => {
   it("a change of bank and a push for speed are quoted, each line trimmed", () => {
     const f = assess(LIZ, { text: "Please update your records.   \n   Pay today   \n" });
     expect(f.signals).toEqual([
-      { code: "bank_change_language", blocks: false, detail: 'the invoice announces a change of bank: "Please update your records."' },
+      { code: "bank_change_language", blocks: false, holds: true, detail: 'the invoice announces a change of bank: "Please update your records."' },
       { code: "pressure_language", blocks: false, detail: 'the invoice pushes for speed: "Pay today"' },
     ]);
     expect(f.blocked).toBe(false);
