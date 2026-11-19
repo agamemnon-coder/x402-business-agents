@@ -31,6 +31,10 @@ jobs:
       contents: read
       actions: read
     steps:
+      - name: Harden the runner (audit outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -39,8 +43,9 @@ jobs:
         with:
           results_file: results.sarif
           results_format: sarif
-          # Publishing needs this job to follow Scorecard's workflow restrictions (no run steps, no env, only the four
-          # actions here, a GitHub-hosted Ubuntu runner); a refusal is a warning on the run, not a failure.
+          # Publishing needs this job to follow Scorecard's workflow restrictions (no run steps, no env, only the
+          # actions Scorecard allows: the four here and step-security/harden-runner, a GitHub-hosted Ubuntu runner);
+          # a refusal is a warning on the run, not a failure.
           publish_results: true
       - name: Keep the SARIF as an artifact
         if: always()

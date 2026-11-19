@@ -40,6 +40,10 @@ jobs:
     env:
       TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
+      - name: Harden the runner (audit outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
       - name: Check the tag's name
         run: |
           if ! printf '%s' "$TAG" | grep -Eq '^v[0-9A-Za-z._-]+$'; then echo "not a version tag: $TAG"; exit 1; fi

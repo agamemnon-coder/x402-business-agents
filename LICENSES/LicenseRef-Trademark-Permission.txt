@@ -1,0 +1,10 @@
+Trademark: not licensed by this repository
+
+These files are logos and wordmarks of other companies (Airwallex, Alta (formerly Metal), Anthropic, Cloudflare, Visa).
+They belong to their owners. They are kept unchanged, byte for byte, as downloaded from the owners' or the hackathon's
+official sources, and are shown only as a plain "Built with" mark, never as an endorsement.
+
+They are NOT covered by the MIT License of this repository. No right to use, copy or change them is granted here.
+Their use in this project rests on the permission the project owner states for each one; the sources, download dates,
+SHA-256 hashes and permissions are listed in docs/assets/logos/SOURCES.md, src/ui/logos/README.md and
+docs/evidence/logo-permissions.md.
