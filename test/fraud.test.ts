@@ -8,6 +8,7 @@ import type { AirwallexRail } from "../src/airwallex/port.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { assessInvoice, editDistance, skeleton } from "../src/policy/fraud.js";
 import { fraudExplanationFallback } from "../src/claude/tools.js";
+import { assessAgainst, legalName } from "../src/policy/fraudCore.js";
 
 const LIZ = "Bergtex Textil GmbH";
 const fixture = (name: string) => readFileSync(new URL(`../fixtures/${name}`, import.meta.url), "utf8");
@@ -30,6 +31,36 @@ describe("names", () => {
     expect(skeleton("Bergtex Textil GmbH")).toBe(skeleton("Bеrgtеx Tеxtil GmbH")); // Cyrillic е
     expect(skeleton("Bergtex Textil GmbH")).toBe(skeleton("BERGTEX  Textil GmbH."));
     expect(skeleton("Bergtex Textil GmbH")).not.toBe(skeleton("Bergtex Texitl GmbH"));
+  });
+
+  // 19 Nov, adversarial eval v2: "Bergtex Textil" at the IBAN on file was held as another account holder, and
+  // "Lagerhaus Nord" as a new supplier. A legal form, case, punctuation and spacing are not another company.
+  it("legalName drops the legal form at the end of a name, then reads it as skeleton does", () => {
+    const same = [
+      ["Bergtex Textil GmbH", "Bergtex Textil"], ["Bergtex Textil GmbH", "BERGTEX TEXTIL G.m.b.H."], ["Bergtex Textil GmbH", "Bergtex Textil GmbH & Co. KG"],
+      ["Zeeland Verpakkingen B.V.", "Zeeland Verpakkingen BV"], ["Zeeland Verpakkingen B.V.", "zeeland  verpakkingen"], ["Acme N.V.", "ACME NV"],
+      ["Harbour Rope Ltd", "Harbour Rope Limited"], ["Harbour Rope Ltd", "Harbour Rope PLC"], ["Pinecrest Outdoor Supply LLC", "Pinecrest Outdoor Supply, Inc."],
+      ["Lyon Textiles SA", "Lyon Textiles SAS"], ["Lyon Textiles S.A.R.L.", "Lyon Textiles"], ["Polski Len Sp. z o.o.", "Polski Len"], ["Nordic Rope AB", "Nordic Rope"],
+      ["Wien Handel AG", "Wien Handel"], ["Milano Tessuti S.p.A.", "Milano Tessuti S.r.l."], ["Kobenhavn Reb A/S", "Kobenhavn Reb ApS"], ["Corp Corp Inc.", "Corp"],
+    ];
+    for (const [a, b] of same) expect(legalName(a!), `${a} / ${b}`).toBe(legalName(b!));
+    for (const [a, b] of [["Bergtex Textil GmbH", "Bergtex Textiles GmbH"], ["Lagerhaus Nord GmbH", "Lagerhaus Nord Logistik GmbH"], ["Zeeland Verpakkingen B.V.", "Zeeland Packaging B.V."]]) {
+      expect(legalName(a!), `${a} / ${b}`).not.toBe(legalName(b!));
+    }
+    // A name that is only a legal form keeps it; another alphabet's letters still fold as skeleton folds them.
+    expect(legalName("GmbH")).toBe("gmbh");
+    expect(legalName("Bеrgtex Textil")).toBe(legalName("Bergtex Textil GmbH"));
+  });
+
+  it("assessAgainst: a supplier written without its legal form is that supplier, and its account must still be the one on file", () => {
+    const onFile = [{ beneficiary_id: "b-1", name: LIZ, iban_last4: "3000", iban_sha256: "sha-of-3000", bic: "" }];
+    const short = assessAgainst(onFile, { vendor: "Bergtex Textil", iban: "DE89370400440532013000", bic: "" }, "Account name: Bergtex Textil", "sha-of-3000");
+    expect(short).toMatchObject({ blocked: false, suspicious: false, signals: [], allowlisted: { beneficiary_id: "b-1" } });
+    const moved = assessAgainst(onFile, { vendor: "Bergtex Textil", iban: "DE02120300000000202051", bic: "" }, "", "sha-of-2051");
+    expect(moved.signals.map((x) => x.code)).toEqual(["bank_details_changed"]);
+    expect(moved.suspicious).toBe(true);
+    // In letters from another alphabet it is still no match by name.
+    expect(assessAgainst(onFile, { vendor: "Bеrgtex Textil", iban: "DE89370400440532013000", bic: "" }, "", "sha-of-3000").signals.map((x) => x.code)).toContain("mixed_scripts");
   });
 
   it("counts a swap of two letters as one edit", () => {

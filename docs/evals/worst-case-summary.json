@@ -1,6 +1,6 @@
 {
   "test": "The worst-case AI test",
-  "headline": "Even an AI that always says “pay” can't make Purser pay wrongly.",
+  "headline": "On 50 test cases, an always-“pay” AI couldn't make Purser pay wrongly.",
   "line": "Purser's AI replaced by a script that always says pay, on 50 hostile and clean invoices: no wrong payment and nothing paid past the CFO; seven sent to the CFO to sign. A payer with no rules: 35 wrong payments and twelve paid past the CFO. One cent changed after the CFO's approval: refused on the signed hash.",
   "record": "docs/evals/scorecard-2026-11-15.json",
   "runs": 2,

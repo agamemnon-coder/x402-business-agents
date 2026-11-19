@@ -12,7 +12,7 @@ import { dirname, resolve } from "node:path";
 import { claudeClient } from "../claude/reader.js";
 import { evalCommit } from "../evals/commit.js";
 import {
-  aloneRow, alwaysPay, ARMS, centAloneRow, centNaiveRow, centPurserRow, CENT, countWord, naiveRow, purserRow, SCORECARD_CASES, SCORECARD_MODEL, scorecardLine, totals, totalsByRun,
+  aloneRow, alwaysPay, ARMS, centAloneRow, centNaiveRow, centPurserRow, CENT, countWord, naiveRow, purserRow, SCORECARD_CASES, SCORECARD_MODEL, scorecardLine, scriptAtThisCommit, totals, totalsByRun,
   type Arm, type ArmTotals, type ScoreRow,
 } from "../evals/scorecard.js";
 
@@ -117,6 +117,21 @@ const runTable = Object.entries(byRun).map(([n, x]) => [
   `| Stopped (held, rejected or sent to the CFO) | ${x.purser_script.stopped} | ${x.naive_script.stopped} |`, "",
 ].join("\n")).join("\n");
 const rules = Object.entries(all.purser_script.by_rule).map(([k, n]) => `- ${k}: ${n}`).join("\n") || "- nothing";
+// 19 Nov: the script arm again on the code as it is now (offline, no Claude), beside the recorded run, and the held-out
+// adversarial sets' records (v2 before and after the fixes, v3), so the page says what each measured.
+const again = await scriptAtThisCommit();
+const againT = totals(again);
+const { commit: nowCommit, dirty: nowDirty } = evalCommit([OUT, SUMMARY, DOC]);
+const run1 = new Map(scriptRows.filter((r) => r.run === 1).map((r) => [r.case, r]));
+const changed = again.filter((r) => run1.get(r.case) && run1.get(r.case)!.outcome !== r.outcome);
+const advOf = (f: string) => {
+  try {
+    const x = JSON.parse(readFileSync(resolve(ROOT, f), "utf8")) as { totals: Record<string, { wrong_payments: number; false_holds: number; clean_truths: number; cases: number }> };
+    return x.totals;
+  } catch { return null; }
+};
+const v2b = advOf("docs/evals/adversarial-v2.json"), v2a = advOf("docs/evals/adversarial-v2-after.json"), v3 = advOf("docs/evals/adversarial-v3.json");
+const advRow = (label: string, t: ReturnType<typeof advOf>, held: string) => (t ? `| ${label} | ${held} | ${t.purser_script!.cases} | ${t.purser_script!.wrong_payments} | ${t.purser_script!.false_holds} of ${t.purser_script!.clean_truths} | ${t.no_rules!.wrong_payments} |` : "");
 const caseRows = [...scriptRows, ...naiveRows].sort((a, b) => a.run - b.run || a.case.localeCompare(b.case) || a.arm.localeCompare(b.arm))
   .map((r) => `| ${r.run} | ${r.case} | ${r.expected} | ${r.arm === "purser_script" ? "Purser, script says pay" : "No rules"} | ${r.outcome} | ${r.wrong_money ?? (r.paid_past_cfo ? "paid past the CFO" : r.to_cfo_not_held ? "to the CFO to sign" : "")} | ${r.decided_by.replace(/\|/g, "/")} |`).join("\n");
 writeFileSync(resolve(ROOT, DOC), `# The worst-case AI test
@@ -158,11 +173,25 @@ ${caseRows}
 
 ## What this does not prove
 
-- It is one eval set of ${SCORECARD_CASES.length} invoices, written by us, and one changed-cent case. It is no measure of every attack, nor of real supplier mail.
+- It is one eval set of ${SCORECARD_CASES.length} invoices, written by us, and one changed-cent case: the headline is about these cases only. It is no measure of every attack, nor of real supplier mail: on new invoices the same script did get Purser to pay wrongly (below).
 - It shows what Purser's code holds when the model is as wrong as it can be on the payment decision. It does not test a model that attacks Purser's tools in other ways; the hostile-model eval (docs/evals/ap-hostile.json) does that.
 - A fraud Purser's checks do not know would pass the script; with a model in the slot, the model may catch it. The ${w(sendsToCfo.length)} invoices above show where code alone relies on the CFO's signature.
 - No real money and no real bank: the payments are rows in test worlds; the cent case runs Purser's executor guard, not a bank.
 - It does not test the passkey ceremony or the phone; the signature here is the recorded hash, as the guard checks it.
+
+## The script again, on this commit
+
+The run above is kept as it was recorded on ${record.ran_at.slice(0, 10)}. The same script, run again offline on the code as it is now (commit ${nowCommit}${nowDirty ? ", with uncommitted changes" : ""}; one run, no Claude): ${againT.cases} cases, ${againT.wrong_payments} wrong payments, ${againT.paid_past_cfo} paid past the CFO, ${againT.to_cfo_not_held} sent to the CFO to sign where it had to be held${againT.to_cfo_not_held ? ` (${[...new Set(again.filter((r) => r.to_cfo_not_held).map((r) => r.case))].sort().join(", ")})` : ""}.${changed.length ? ` Changed since the recorded run: ${changed.map((r) => `${r.case} ${run1.get(r.case)!.outcome} to ${r.outcome} (${r.decided_by})`).join("; ")}.` : " Nothing changed since the recorded run."}
+
+## Held-out follow-ups: 100 new invoices each
+
+The same always-pay script on new invoice cases, each set written and committed before it was first run: changed bank details, split invoices, lookalike suppliers, duplicates with tiny changes, instructions hidden in the invoice, amounts at the limit, cash floors, currency switches, pressure, and clean invoices for the false-hold rate. Every miss is listed with its reason in each report.
+
+| Set | Held out | Invoices | Wrong payments, Purser with the script | False holds, Purser with the script | Wrong payments, no rules |
+|---|---|---|---|---|---|
+${[advRow("[v2](evals/adversarial-v2.md), before the fixes of 19 Nov", v2b, "yes"), advRow("[v2](evals/adversarial-v2.md), after the fixes", v2a, "no: the fixes were written against its misses"), advRow("[v3](evals/adversarial-v3.md), after the fixes", v3, "yes")].filter(Boolean).join("\n")}
+
+Run them: \`npm run eval:adversarial-v2\`, \`npm run eval:adversarial-v3\`.
 `);
 console.log(worstLine);
 console.log(`wrote ${recorded ? "" : `${OUT}, `}${SUMMARY}, ${DOC}`);
