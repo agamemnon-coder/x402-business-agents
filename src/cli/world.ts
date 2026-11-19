@@ -42,7 +42,7 @@ import { baseUnitsToCents, fromCents } from "../lib/money.js";
 import { PLANS, REPORT_OFFER } from "../config/policy.js";
 import { execFileSync } from "node:child_process";
 import { issuingFromEnv } from "../airwallex/issuing.js";
-import { cardOf } from "../policy/cards.js";
+import { cardOf, chargeInWindow } from "../policy/cards.js";
 import { HOLDOUT_LIVE_EVENTS } from "../evals/holdouts.js";
 import { setupWorld } from "../world/options.js";
 import { claimLetThrough, letThrough, requestLetThrough, LET_THROUGH_LABEL, LET_THROUGH_TTL_MS } from "../world/letThrough.js";
@@ -188,7 +188,8 @@ if (cmd === "serve") {
   const card = cardOf(db, "sourcing");
   if (!iss || !card) { console.error("no Airwallex sandbox keys or no Sourcing card in this world (npm run cards -- setup)"); process.exit(1); }
   const pro = PLANS["packwise-pro"]!;
-  const t = await iss.sim.simulateCardCharge({ cardId: card.card_id, amountCents: pro.amountCents, currency: "EUR", merchant: pro.merchant, mcc: pro.mcc });
+  // Freeze by default: Purser thaws the card for the renewal it expects (this merchant, this price) and freezes it again.
+  const t = await chargeInWindow(db, iss.sim, "sourcing", { cardId: card.card_id, amountCents: pro.amountCents, currency: "EUR", merchant: pro.merchant, mcc: pro.mcc }, new Date(), `the ${pro.merchant} renewal the Sourcing agent expects`);
   console.log(`Packwise charged its Pro renewal, ${fromCents(pro.amountCents)} EUR, to the Sourcing agent's card ····${card.last4}: Airwallex ${t.approved ? "approved it" : `declined it (${t.failureReason ?? t.status})`} (${t.transactionId}); its webhook or the runner's poll tells the agent`);
 } else if (cmd === "report-offer") {
   // D22: a supplier offers something on two rails; the Sourcing agent picks (x402 under its mandate, or a task card).

@@ -32,7 +32,7 @@ import { executeInvoicePayment } from "../executors/invoicePayment.js";
 import { executeSupplierPayment } from "../executors/supplierPayment.js";
 import { syncLedger } from "../ledger/feed.js";
 import { decide } from "../policy/approvals.js";
-import { ingestCardTransaction, setupCards } from "../policy/cards.js";
+import { chargeInWindow, ingestCardTransaction, setupCards } from "../policy/cards.js";
 import { FakeAirwallex } from "../redteam/airwallex.js";
 import { FakePayeeNames } from "../airwallex/payeeName.js";
 import { FakeIssuing } from "../redteam/issuing.js";
@@ -124,7 +124,7 @@ export async function buildSandboxWorld(db: DB, dir: string, now = new Date()): 
   const issuing = new FakeIssuing();
   issuing.clock = () => now.getTime();
   const [card] = await setupCards(db, issuing, now, { agents: [CARD_PLAN.agent] });
-  const tx = await issuing.simulateCardCharge({ cardId: card!.card_id, amountCents: CARD_PLAN.amountCents, currency: "EUR", merchant: CARD_PLAN.merchant, mcc: CARD_PLAN.mcc });
+  const tx = await chargeInWindow(db, issuing, CARD_PLAN.agent, { cardId: card!.card_id, amountCents: CARD_PLAN.amountCents, currency: "EUR", merchant: CARD_PLAN.merchant, mcc: CARD_PLAN.mcc }, now, `${CARD_PLAN.merchant}: ${CARD_PLAN.label}`);
   if (!tx.approved) throw new Error(`the stand-in card declined the software plan: ${tx.failureReason ?? "no reason"}`);
   ingestCardTransaction(db, tx, "simulation", now, `${CARD_PLAN.merchant}: ${CARD_PLAN.label}`);
 

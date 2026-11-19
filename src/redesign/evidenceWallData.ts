@@ -220,18 +220,23 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
     const p = v7.totals.purser_script, n = v7.totals.no_rules;
     out.push({ key: "eval-v7", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v7): Purser vs no rules`, note: `Cases committed with their pre-registration (commit ${v7.cases_commit}), after the fixes for v6's misses; a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Held out. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v7.md"), rec: V7 });
   }
-  // 19 Nov, fourth round: the newest red-team run, the scripted attacks re-run after the fixes (rewrite-history is now
-  // stopped before money moves), beside the first run of 30 Oct, which stays as recorded and is linked from the note.
-  const RT = "docs/redteam/report.json", RT_RERUN = "docs/redteam/rerun-2026-11-19.json";
+  // 19 Nov, fifth round: the newest red-team run is the re-run after agent cards were frozen by default (hidden-payment
+  // is now refused before money moves). The fourth round's re-run (rewrite-history stopped before money moves) and the
+  // first run of 30 Oct stay as recorded, named in the note and kept in the tile's records.
+  const RT = "docs/redteam/report.json", RT_RERUN4 = "docs/redteam/rerun-2026-11-19.json", RT_RERUN = "docs/redteam/rerun-2026-11-19b.json";
   type RedTeam = { ran_at?: string; attempts?: number; blocked?: number; caught_after?: number; model?: string | null; results?: { id: string; caught?: string }[] };
-  const rt = json(RT) as RedTeam | null, rr = json(RT_RERUN) as RedTeam | null;
+  const rt = json(RT) as RedTeam | null, rt4 = json(RT_RERUN4) as RedTeam | null, rr = json(RT_RERUN) as RedTeam | null;
   if (rt?.attempts) {
     const before = (x: RedTeam) => (x.blocked ?? 0) - (x.caught_after ?? 0);
+    const afterIds = (x: RedTeam) => (x.results ?? []).filter((r) => r.caught === "after").map((r) => r.id);
+    const afterWords = (x: RedTeam) => `${x.caught_after ?? 0} found afterwards${afterIds(x).length ? ` (${afterIds(x).join(", ")})` : ""}`;
     const written = (rt.results ?? []).filter((r) => r.id === "document").length;
     const first = `First run, ${day(rt.ran_at!)}${rt.model && written ? `, with Claude writing ${written} of the documents` : ""}: ${whole(before(rt), rt.attempts).toLowerCase()}, ${rt.caught_after ?? 0} found afterwards.`;
+    const earlier = rt4?.attempts ? ` Earlier re-run, ${day(rt4.ran_at!)}: ${whole(before(rt4), rt4.attempts).toLowerCase()}, ${afterWords(rt4)}.` : "";
     if (rr?.attempts) {
-      const after = (rr.results ?? []).filter((r) => r.caught === "after").map((r) => r.id);
-      out.push({ key: "red-team", fig: whole(before(rr), rr.attempts), label: "red-team attacks stopped before money moved, re-run, not held out", note: `Re-run of ${day(rr.ran_at!)}, after the fixes: the scripted attacks${rr.model ? "" : ", no model"}; the other ${rr.caught_after ?? 0} found afterwards, not prevented${after.length ? ` (${after.join(", ")})` : ""}. ${first}`, tag: "test", tone: "claude", href: blob(RT_RERUN), rec: `${RT_RERUN} ${RT}` });
+      out.push({ key: "red-team", fig: whole(before(rr), rr.attempts), label: "red-team attacks stopped before money moved, re-run, not held out", note: `Newest re-run, ${day(rr.ran_at!)}, after agent cards were frozen by default: the scripted attacks${rr.model ? "" : ", no model"}; ${rr.caught_after ? `${afterWords(rr)}, not prevented` : "none left to be found only afterwards"}.${earlier} ${first}`, tag: "test", tone: "claude", href: blob(RT_RERUN), rec: [RT_RERUN, ...(rt4?.attempts ? [RT_RERUN4] : []), RT].join(" ") });
+    } else if (rt4?.attempts) {
+      out.push({ key: "red-team", fig: whole(before(rt4), rt4.attempts), label: "red-team attacks stopped before money moved, re-run, not held out", note: `Re-run of ${day(rt4.ran_at!)}, after the fixes: the scripted attacks${rt4.model ? "" : ", no model"}; the other ${afterWords(rt4)}, not prevented. ${first}`, tag: "test", tone: "claude", href: blob(RT_RERUN4), rec: `${RT_RERUN4} ${RT}` });
     } else out.push({ key: "red-team", fig: whole(before(rt), rt.attempts), label: "red-team attacks stopped before money moved", note: `The other ${rt.caught_after ?? 0} found afterwards, not prevented.`, tag: "test", tone: "claude", href: blob(RT), rec: RT });
   }
   // The hostile-model eval: the figure as CI checks it. The calls that stood are each the script's last call, a "pay" of

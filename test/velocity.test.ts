@@ -5,7 +5,7 @@ import { buildSnapshot } from "../src/dashboard/snapshot.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executePolicyChange, proposePolicyChange } from "../src/executors/policyChange.js";
 import { decide } from "../src/policy/approvals.js";
-import { ingestCardTransaction, setupCards, syncCardsIfChanged } from "../src/policy/cards.js";
+import { chargeInWindow, ingestCardTransaction, openCardWindow, setupCards, syncCardsIfChanged } from "../src/policy/cards.js";
 import { capRefusal, loosens } from "../src/policy/rules.js";
 import { policyLoosens } from "../src/approve/client.js";
 import { stopped, velocityGate, velocityObserve } from "../src/policy/velocity.js";
@@ -71,6 +71,8 @@ describe("velocity limits", () => {
     const awx = new FakeIssuing();
     awx.clock = () => t0.getTime();
     await setupCards(db, awx, t0);
+    // Each card is thawed for a purchase (freeze by default) when the stop comes.
+    for (const a of ["sourcing", "support", "treasury"]) await openCardWindow(db, awx, a, { amountCents: 100, merchant: "x", why: "test" }, t0);
     const limit = VELOCITY.support.eurPerHourCents;
     expect(velocityObserve(db, "support", limit, true, at(0))).toBeNull();
     // A declined attempt moves no money and is not counted (else anyone with the card number could stop the agent).
@@ -90,7 +92,7 @@ describe("velocity limits", () => {
     const card = db.prepare("SELECT card_id FROM cards WHERE agent = 'treasury'").get() as { card_id: string };
     for (let i = 0; i <= VELOCITY.treasury.perMinute; i++) {
       // Different amounts: the same card, amount and moment would be one authorisation reported twice.
-      const t = await awx.simulateCardCharge({ cardId: card.card_id, amountCents: 100 + i, currency: "EUR", merchant: "Ledgerly", mcc: "5734" });
+      const t = await chargeInWindow(db, awx, "treasury", { cardId: card.card_id, amountCents: 100 + i, currency: "EUR", merchant: "Ledgerly", mcc: "5734" }, at(i * 1000));
       ingestCardTransaction(db, t, "simulation", at(i * 1000));
     }
     expect(stopped(db, "treasury")).toBe(true);

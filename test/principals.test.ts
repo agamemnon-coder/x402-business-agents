@@ -8,7 +8,7 @@ import { ClaudeReader } from "../src/claude/reader.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { agentApiServer } from "../src/platform/mcpServer.js";
 import { agentId } from "../src/platform/externalAgents.js";
-import { wantCardStatus } from "../src/policy/cards.js";
+import { policyAllowsCard } from "../src/policy/cards.js";
 import { reserveSpend } from "../src/policy/holds.js";
 import { authorize, expirePrincipal, principalActive, keyMatches, listPrincipals, revokePrincipal, rotatePrincipalKey } from "../src/policy/principals.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
@@ -31,7 +31,7 @@ describe("agent principals (B5)", () => {
     expect(pay(db, "support", "r2", "customer", at(2))).toMatch(/^principal_revoked: the Support agent.*laptop lost/);
     expect(pay(db, "sourcing", "s1", "supplier", at(2))).toBeNull();
     expect(pay(db, "treasury", "t1", "sweep", at(2))).toBeNull();
-    expect(["sourcing", "support", "treasury"].map((a) => wantCardStatus(db, a))).toEqual(["ACTIVE", "INACTIVE", "ACTIVE"]);
+    expect(["sourcing", "support", "treasury"].map((a) => policyAllowsCard(db, a))).toEqual([true, false, true]);
     expect(listPrincipals(db).map((p) => [p.id, p.status])).toEqual([["sourcing", "ACTIVE"], ["support", "REVOKED"], ["treasury", "ACTIVE"]]);
   });
 

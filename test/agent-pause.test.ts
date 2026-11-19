@@ -9,7 +9,7 @@ import { decide, type ProposalRow } from "../src/policy/approvals.js";
 import { capRefusal, loosens, rules } from "../src/policy/rules.js";
 import { policyLoosens } from "../src/approve/client.js";
 import { fourEyes } from "../src/policy/fourEyes.js";
-import { wantCardStatus } from "../src/policy/cards.js";
+import { policyAllowsCard, wantCardStatus } from "../src/policy/cards.js";
 import { carriedCents, chainBudgetCents, checkCarried, lifetime, moveTargets, executePauseChange, latestRevoked, paused, pausesNotRevoked, resumeExpiresIn, resumedSince, syncPauses, type PauseChain } from "../src/policy/pause.js";
 import { health } from "../src/ops/health.js";
 import { setupCards } from "../src/policy/cards.js";
@@ -64,7 +64,7 @@ describe("pause one agent (agents on)", () => {
   it("stops only that agent: the others keep paying and keep their cards", async () => {
     await pause(db, "support", "on");
     expect(capRefusal(db, "sourcing", 2)).toBeNull();
-    expect(wantCardStatus(db, "sourcing")).toBe("ACTIVE");
+    expect(policyAllowsCard(db, "sourcing")).toBe(true);
   });
 
   it("resuming restores the mandate on chain before the switch goes off", async () => {

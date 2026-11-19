@@ -183,7 +183,7 @@ const { canonicalTerms, rejectionSha256, sha256Hex } = await import("../src/lib/
 const { payUnderMandate } = await import("../src/metal/pay.js");
 const { processPolicyRequest } = await import("../src/passkey/process.js");
 const { decide } = await import("../src/policy/approvals.js");
-const { syncCards, syncCardsAfterPolicy, syncCardsIfChanged } = await import("../src/policy/cards.js");
+const { chargeInWindow, openCardWindow, policyAllowsCard, syncCards, syncCardsAfterPolicy, syncCardsIfChanged } = await import("../src/policy/cards.js");
 const { executePauseChange } = await import("../src/policy/pause.js");
 const { policyValue, rules } = await import("../src/policy/rules.js");
 const { displayKey, signApprovals } = await import("../src/relay/sign.js");
@@ -449,6 +449,11 @@ async function cardWorld() {
   await setupCards(db, issuing, now);
   return { db, now, issuing };
 }
+/**
+ * Freeze by default (19 Nov): every agent card rests frozen at Airwallex and Purser's own code thaws it for a purchase it
+ * approves. A scenario that forces that code past its checks gets the thaw too, so the layer under test is the card's.
+ */
+const thaw = (w: { db: DB; issuing: FakeIssuingT; now: Date }, agent: string) => openCardWindow(w.db, w.issuing, agent, { amountCents: 1, merchant: "forced", why: "Purser's code forced to say pay" }, w.now);
 const approvedCharges = (issuing: FakeIssuingT) => issuing.txs.filter((t) => t.approved).length;
 const cardMoved = (w: { db: DB; issuing: FakeIssuingT }) => approvedCharges(w.issuing) + count(w.db, "SELECT COUNT(*) AS n FROM card_transactions WHERE approved = 1");
 
@@ -571,6 +576,8 @@ SCENARIOS["decision-code-over-card-limit"] = async () => {
   expect(w.issuing.cards.find((c) => c.cardId === sourcing.card_id)!.limits).toMatchObject({ perTxCents: 3000 });
   const refused = events(w.db, "card.raise_refused");
   expect(refused.map((r) => [r.key, r.wanted, r.kept])).toEqual([["card.sourcing.per_tx", "1000.00", "30.00"], ["card.sourcing.monthly", "5000.00", "100.00"]]);
+  await thaw(w, "sourcing");
+  await thaw(w, "support");
   const inCategory = await w.issuing.simulateCardCharge({ cardId: sourcing.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" });
   const raised = await w.issuing.simulateCardCharge({ cardId: sourcing.card_id, amountCents: 4500, currency: "EUR", merchant: "Offshore Gift Cards", mcc: "5947" });
   const offCategory = await w.issuing.simulateCardCharge({ cardId: support.card_id, amountCents: 1999, currency: "EUR", merchant: "Packwise", mcc: "5734" });
@@ -608,7 +615,7 @@ SCENARIOS["webhook-replayed"] = async () => {
   const w = await cardWorld();
   const card = cardOf(w.db, "sourcing")!;
   // A real, small purchase Airwallex approved; its webhook is the genuine event.
-  const real = await w.issuing.simulateCardCharge({ cardId: card.card_id, amountCents: 1999, currency: "EUR", merchant: "Packwise", mcc: "5734" });
+  const real = await chargeInWindow(w.db, w.issuing, "sourcing", { cardId: card.card_id, amountCents: 1999, currency: "EUR", merchant: "Packwise", mcc: "5734" }, w.now);
   const body = cardEvent(real, "evt-real");
   expect(handleAirwallexHook(w.db, signedHook("evt-real", body, w.now), SECRET, w.now)).toMatch(/approved 19\.99 EUR/);
   const before = cardMoved(w);
@@ -1189,7 +1196,10 @@ SCENARIOS["paused-agent-ignored"] = async () => {
   expect(signed).toMatchObject({ kind: "refused", reason: "mandate_revoked" });
   expect(charged).toMatchObject({ approved: false, failureReason: "CARD_INACTIVE" });
   expect(events(w.db, "mandate.revoked")).toHaveLength(1);
-  expect(events(w.db, "card.frozen").map((e) => e.agent)).toEqual(["sourcing"]);
+  // Frozen by default and kept so: no purchase window opens on a paused agent's card, while the others' still can.
+  expect(policyAllowsCard(w.db, "sourcing")).toBe(false);
+  expect(await openCardWindow(w.db, issuing, "sourcing", { amountCents: 1999, merchant: "Packwise", why: "test" }, w.now)).toBeNull();
+  expect(policyAllowsCard(w.db, "support")).toBe(true);
   return { moved: chainMoved(w) + approvedCharges(issuing) + count(w.db, "SELECT COUNT(*) AS n FROM card_transactions WHERE approved = 1"), control: "pause and emergency stop", record: `policy.changed pause.sourcing on; mandate.revoked; card.frozen; then: ${onChain.ok ? "" : onChain.reason.slice(0, 60)}; Metal: ${signed.kind === "refused" ? signed.reason : ""}; Airwallex: ${charged.failureReason}` };
 };
 
@@ -2558,7 +2568,9 @@ const PUSH: Record<MoneyPath, (failed: Failed, o: PushOptions) => Promise<Pushed
       return { moved: cardMoved(w), ended: `Purser's checks refused: the agent's tools answered ${list0(run.calls.map((c) => c.blocked ?? "ran"))}; the purchase code: ${refusal.slice(0, 40)}` };
     }
     if (o.stop) { await pullStop(w.db, cfo!, w.now); await syncCards(w.db, w.issuing, w.now); }
-    // Purser's checks forced to pass: the charge goes straight to the card, with no plan list and no hold.
+    // Purser's checks forced to pass: the charge goes straight to the card, with no plan list and no hold. Forced code
+    // also thaws the card for it (freeze by default is Purser's own switch), so the card's own controls are what is left.
+    await thaw(w, "sourcing");
     const t = await w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" });
     return { moved: cardMoved(w), ended: t.approved ? "charged: the card approved EUR 500.00" : `the card at Airwallex (stand-in) declined: ${t.failureReason}` };
   },
@@ -2664,8 +2676,8 @@ describe("the depth test: every combination of failed layers on every way money 
   it("the card's limit goes up only as signed: decision code alone, or a policy row alone, no longer raises it; the database file with a passkey of its own still does", async () => {
     expect(COMPONENTS.flatMap((c) => (c.voidsOn ?? []).map((v) => `${c.id} ${v.path} ${v.layer}`))).toEqual(["database card_purchase L5"]);
     expect(LIMITS.map((l) => l.id)).toContain("card-limit-set-by-purser");
-    const inCategory = (w: { db: DB; issuing: FakeIssuingT }) => w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" });
-    const outside = (w: { db: DB; issuing: FakeIssuingT }) => w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Offshore Gift Cards", mcc: "5947" });
+    const inCategory = async (w: { db: DB; issuing: FakeIssuingT; now: Date }) => { await thaw(w, "sourcing"); return w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" }); };
+    const outside = async (w: { db: DB; issuing: FakeIssuingT; now: Date }) => { await thaw(w, "sourcing"); return w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Offshore Gift Cards", mcc: "5947" }); };
     // Decision code forced, the CFO's passkey enrolled: an unsigned raise is applied and an approval row written; the
     // card sync finds no signature that verifies and keeps the card's limit.
     const a = await cardWorld();

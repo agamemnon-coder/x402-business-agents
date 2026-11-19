@@ -79,7 +79,8 @@ const record = (r: AttackResult) => {
 
 // --no-model runs every attack in order with no model, even with a key (a re-run of the scripted attacks alone).
 // --out FILE writes the report there instead of docs/redteam/report.json, which is then kept as it was recorded: a
-// re-run after fixes is a record of its own beside the first (19 Nov: docs/redteam/rerun-2026-11-19.json).
+// re-run after fixes is a record of its own beside the first (19 Nov: docs/redteam/rerun-2026-11-19.json; after the
+// fifth round, agent cards frozen by default: docs/redteam/rerun-2026-11-19b.json).
 const argv = process.argv.slice(2);
 const outArg = argv.includes("--out") ? argv[argv.indexOf("--out") + 1] : undefined;
 const apiKey = argv.includes("--no-model") ? undefined : process.env.KIT11_ANTHROPIC_API_KEY;

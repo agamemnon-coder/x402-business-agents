@@ -20,7 +20,7 @@ import { callCostMicros } from "../claude/pricing.js";
 import { formatUnits } from "viem";
 import { quarantineReason } from "../policy/quarantine.js";
 import { cardLimits, frozen, policyValue } from "../policy/rules.js";
-import { wantCardStatus } from "../policy/cards.js";
+import { policyAllowsCard, wantCardStatus } from "../policy/cards.js";
 import { stopReason } from "../policy/velocity.js";
 import { lastReconciliation } from "../finance/reconcile.js";
 import { CARDS, MCC_WORDS, type Agent } from "../config/policy.js";
@@ -557,8 +557,10 @@ function cards(db: DB, now: Date): CardView[] {
       agent: c.agent, name: ext ? `${ext.display_name} (outside agent)` : task ? `${capFirst(task.kind)} task card (${c.agent.slice(5)})` : agentName(c.agent), last4: c.last4,
       buys: ext ? ext.purpose : task ? `${task.purpose} · single use` : (CARDS[c.agent as Agent]?.buys ?? ""), per_tx: fromCents(want.perTxCents), monthly: fromCents(want.monthlyCents),
       spent_month: fromCents(spent), left_month: signed(want.monthlyCents - spent - heldCents(db, c.agent, "card")),
-      in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents && c.status === wantCardStatus(db, c.agent),
-      frozen: c.status === "INACTIVE", only: onlyWords(c), single_use: !!task, recent,
+      in_sync: c.per_tx_cents === want.perTxCents && c.monthly_cents === want.monthlyCents && c.status === wantCardStatus(db, c.agent, now),
+      // Frozen by the policy (the emergency stop, a pause or stop, a revoked agent). Every agent card also rests frozen
+      // between approved purchases (freeze by default); that is its normal state, not shown as a freeze.
+      frozen: c.status === "INACTIVE" && !policyAllowsCard(db, c.agent), only: onlyWords(c), single_use: !!task, recent,
     };
   });
 }
@@ -948,7 +950,11 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "reconcile.done": return out(`Reconciled ${str(p.checked)} money flows against Airwallex and Alta: ${Number(p.differences) ? `${str(p.differences)} difference(s)` : "no differences"}`, Number(p.differences) ? "refusal" : "ok");
     case "fx.rate_checked": return out(`Before locking a quote for ${str(p.buy)}, checked the market's current rate: ${str(p.market_cost)} now, the quote ${str(p.quote_cost)} (${(Number(p.markup_bps) / 100).toFixed(2)}% apart; above ${((Number(p.limit_bps) > 0 ? Number(p.limit_bps) : FX_QUOTE_MAX_MARKUP_BPS) / 100).toFixed(2)}% it goes to the CFO)`);
     case "velocity.tripped": return out(`Stopped automatically: ${str(p.reason)}. Every payment it tries is refused until the CFO lifts the stop with Face ID`, "refusal");
-    case "card.frozen": return out(`${str(p.why) === "velocity limit" ? "Velocity limit" : "Emergency stop"}: Airwallex froze ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "refusal");
+    case "card.frozen": return str(p.why) === "frozen by default between approved purchases"
+      ? out(`Airwallex froze ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)} again: it rests frozen between approved purchases`, "info")
+      : out(`${str(p.why) === "velocity limit" ? "Velocity limit" : "Emergency stop"}: Airwallex froze ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "refusal");
+    case "card.unexpected_authorization": return out(`Airwallex approved ${str(p.amount)} ${str(p.currency)} at ${str(p.merchant)} on ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}, a charge Purser did not start: the card is frozen again`, "refusal");
+    case "card.refreeze_failed": return out(`${capFirst(cardOwner(str(p.agent)))}'s card •••• ${str(p.last4)} was not frozen again yet at Airwallex; the runner's next card sync retries`, "refusal");
     case "card.thawed": return out(`${capFirst(cardOwner(str(p.agent)))}'s card •••• ${str(p.last4)} is active again`, "approval");
     case "payee.change_requested": return out(`${str(p.vendor)}'s bank details: a change to a ${str(p.to_country)} account ending ${str(p.to_last4)} was requested (${s}); nothing changes until a person verifies it with the supplier and the CFO approves`, "approval");
     case "payee.change_verified": return out(`${str(p.by)} verified ${s} with ${str(p.vendor)}: ${str(p.how)}`, "approval");
@@ -1146,7 +1152,8 @@ const askFrom = (actor: string, by: string) => (actor.startsWith("ext:") ? `agen
 // agent.run: the decision rows below carry the agent's own words; a tool call that simply went through stays quiet.
 // owners.tx_*, owners.unsent, owners.waiting, owners.pay_started: the passkey account's own send journal (a hash recorded
 // before its transaction leaves, src/metal/ownersTx.ts); what those sends did shows as the lines that follow them.
-const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied", "policy.version", "agent.run", "query.answered",
+// The purchase windows (freeze by default) open and close around every card purchase: the purchase and the charge say it.
+const FEED_QUIET = new Set(["card.duplicate_merged", "card.window_opened", "card.window_closed", "ask.received", "ask.replied", "policy.version", "agent.run", "query.answered",
   "owners.tx_sent", "owners.tx_unsent", "owners.tx_done", "owners.unsent", "owners.waiting", "owners.pay_started"]);
 const quietTool = (r: { event: string; payload_json: string }) => r.event === "agent.tool" && !(JSON.parse(r.payload_json) as { blocked_by?: string }).blocked_by;
 

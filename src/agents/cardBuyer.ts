@@ -11,7 +11,7 @@ import { fromCents } from "../lib/money.js";
 import type { CardTransaction, IssuingSim } from "../airwallex/issuing.js";
 import { proposePolicyChange } from "../executors/policyChange.js";
 import type { ProposalRow } from "../policy/approvals.js";
-import { cardOf, ingestCardTransaction } from "../policy/cards.js";
+import { cardOf, chargeInWindow, ingestCardTransaction } from "../policy/cards.js";
 import { chargeUnderHold } from "../policy/holds.js";
 import { withOrigin, type Origin } from "../provenance/origin.js";
 
@@ -29,7 +29,7 @@ export async function buyPlan(db: DB, sim: IssuingSim, planId: string, now = new
   if (paused(db, plan.agent)) throw new Error(`the ${plan.agent} agent is paused by the CFO; it buys nothing until the CFO resumes it with Face ID`);
   const purpose = `${plan.merchant}, ${plan.label}`;
   audit(db, plan.agent, "card.purchase_started", planId, { agent: plan.agent, last4: card.last4, merchant: plan.merchant, plan: plan.label, amount: fromCents(plan.amountCents), currency: "EUR" }, now);
-  const t = await chargeUnderHold(db, plan.agent, plan.amountCents, now, () => sim.simulateCardCharge({ cardId: card.card_id, amountCents: plan.amountCents, currency: "EUR", merchant: plan.merchant, mcc: plan.mcc }));
+  const t = await chargeUnderHold(db, plan.agent, plan.amountCents, now, () => chargeInWindow(db, sim, plan.agent, { cardId: card.card_id, amountCents: plan.amountCents, currency: "EUR", merchant: plan.merchant, mcc: plan.mcc }, now, `${plan.merchant}, ${plan.label}`));
   // D25: on the TAP rail the charge's own origin also names Airwallex's authorisation id, known only now.
   const record = () => ingestCardTransaction(db, t, "simulation", now, purpose);
   if (o.chargeOrigin) withOrigin(o.chargeOrigin(t), record);
