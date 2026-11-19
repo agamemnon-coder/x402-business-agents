@@ -107,7 +107,8 @@ export function altaFacts(i: AltaFactsInput = {
   // The fresh anchor of 19 Nov, which pins the series' records too; verify-anchor's MATCH as the run log prints it.
   const a19 = i.anchor19;
   if (a19?.tx && TX.test(a19.tx) && a19.anchored_at && a19.height) {
-    const match = new RegExp(`^MATCH: ${ANCHOR_19_RECORD.replace(/[.]/g, "\\.")}, tx ${a19.tx}$`, "m").test(i.seriesLog ?? "");
+    // The exact line, compared as text (no pattern built from a path).
+    const match = (i.seriesLog ?? "").split(/\r?\n/).includes(`MATCH: ${ANCHOR_19_RECORD}, tx ${a19.tx}`);
     // "The series above included" only when the series is the fact above and the anchor names its record as a part.
     const pins = out[0]?.record[0] === SERIES_RECORDS[0] && (a19.parts ?? []).some((x) => (x as { file?: string }).file === SERIES_RECORDS[0]);
     out.push({ id: "anchor", title: "Anchored",
