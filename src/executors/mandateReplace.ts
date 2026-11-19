@@ -11,6 +11,7 @@ import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 import { publicClient } from "../metal/chain.js";
 import { activeMandate, credentialFiles, loadCredentialFile, type MandateAgent } from "../metal/mandate.js";
 import { beginExecution, closeAsStale, finishExecution, resuming } from "../policy/approvals.js";
+import { hashFirst } from "../policy/hashFirst.js";
 import { setSetting } from "../world/settings.js";
 import { checkCarried } from "../policy/pause.js";
 import type { MandateReplaceTerms } from "../agents/treasury.js";
@@ -25,6 +26,8 @@ function byHash(agent: MandateAgent, hash: string) {
 }
 
 export async function executeMandateReplace(db: DB, proposalId: string, now = new Date()): Promise<void> {
+  // Hash first (19 November): changed or unapproved terms are refused before the chain is read.
+  hashFirst(db, proposalId);
   // A chain read that fails (a network blip) throws here with nothing recorded: the replace can still run.
   const facts = await chainFacts(db, proposalId);
   let terms: MandateReplaceTerms;

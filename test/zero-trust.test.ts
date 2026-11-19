@@ -109,6 +109,15 @@ vi.mock("../src/policy/approvals.js", async (orig) => {
   return { ...real, beginExecution };
 });
 
+// The same for the executors' earlier check of the signed hash (src/policy/hashFirst.ts, 19 November), made before any
+// outside call: it is Purser's own decision code too, so forced, it refuses nothing.
+vi.mock("../src/policy/hashFirst.js", async (orig) => {
+  const real = await orig<typeof import("../src/policy/hashFirst.js")>();
+  const hashFirst: typeof real.hashFirst = (db, id) => (forced.pay ? undefined : real.hashFirst(db, id));
+  const signedHashRefusal: typeof real.signedHashRefusal = (db, id) => (forced.pay ? null : real.signedHashRefusal(db, id));
+  return { ...real, hashFirst, signedHashRefusal };
+});
+
 // The same for the check before an on-chain payment is signed: forced, it reserves nothing and refuses nothing.
 vi.mock("../src/policy/holds.js", async (orig) => {
   const real = await orig<typeof import("../src/policy/holds.js")>();

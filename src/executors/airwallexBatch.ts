@@ -27,6 +27,7 @@ import { sha256Hex } from "../lib/terms.js";
 import { partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
 import { sameLedgerInvoice } from "../lib/invoiceKey.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
+import { hashFirst, signedHashRefusal } from "../policy/hashFirst.js";
 import { batchLinesOf, BATCH_KIND, type BatchTerms } from "../policy/batchLines.js";
 import { eurInFlightCents } from "../policy/available.js";
 import { exclusive } from "../policy/payoutLock.js";
@@ -213,6 +214,15 @@ export async function executeAsOneAirwallexBatch(db: DB, rails: { batches: Batch
   if (prior && prior.status === "REFUSED") throw new Error(`${batchId} was refused at the read-back and deleted at Airwallex; a new batch and signature are needed`);
   // Submitted at Airwallex already (a resume): what was decided then is recorded now, not judged again on balances.
   const submitted = !!prior && !BEFORE_SUBMIT.has(prior.status);
+  // Hash first (19 November): the batch's own signed terms, and each line's own terms against its own approval and the
+  // hash the batch signed for it, before anything outside Purser is called (the balance read below included).
+  hashFirst(db, batchId);
+  for (const l of (JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(batchId) as { terms_json: string }).terms_json) as BatchTerms).lines) {
+    const why = signedHashRefusal(db, l.proposal_id);
+    if (why) throw new Error(why);
+    const own = db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(l.proposal_id) as { terms_sha256: string };
+    if (own.terms_sha256 !== l.terms_sha256) throw new Error(`${l.proposal_id} is not approved on the terms signed in the batch`);
+  }
 
   // 1 and 2: every check, and in the same transaction the payout rows and the record of the Airwallex batch, under the
   // payout lock: from the moment the floor is judged, these rows count as money under way.
