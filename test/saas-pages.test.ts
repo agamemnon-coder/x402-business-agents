@@ -241,6 +241,8 @@ describe("/security: security and trust", () => {
       .concat(((z) => [z.attacks_run, z.attacks_stopped, ...z.attacks.map((x) => z.attacks.filter((y) => y.stopped_by?.layer === x.stopped_by?.layer).length), ...z.attacks.map((x) => z.attacks.filter((y) => y.target === x.target && y.stopped_by?.layer === x.stopped_by?.layer).length)].map(String))(json<{ attacks_run: number; attacks_stopped: number; attacks: { target: string; stopped_by: { layer: string } | null }[] }>("docs/zero-trust/report.json")))
       .concat(((h) => [h.blocked_by_tool, h.overridden_at_enforce, h.stood].map(String))(json<{ blocked_by_tool: number; overridden_at_enforce: number; stood: number }>("docs/evals/ap-hostile.json")))
       .concat(String(new Date(json<{ anchored_at: string }>("docs/runs/2026-11-13-anchor.json").anchored_at).getUTCDate()))
+      // And the day the zero-trust matrix last ran, from its report.
+      .concat(String(new Date(`${json<{ generated: { date: string } }>("docs/zero-trust/report.json").generated.date}T12:00:00Z`).getUTCDate()))
       // And the day the two-locks run's record names, from its own heading.
       .concat(/^# [^\n]*\((\d{1,2}) [A-Z][a-z]+ \d{4}\)/.exec(read("docs/runs/2026-11-12-airwallex-two-locks-paid.md"))![1]!)
       // 15 Nov ("Checked on every change"): the test count, from the last full run's summary.
@@ -254,7 +256,7 @@ describe("/security: security and trust", () => {
   // 13 Nov (the owner: "looks simple and a lot of text; visualise and animate all the security, use diagrams and
   // graphs"): one diagram of the layers a payment must pass, with where each attack was stopped, and two charts.
   describe("the pictures, each read from its record", () => {
-    const z = json<{ attacks_run: number; attacks_stopped: number; attacks_where_money_moved: number; reading: { harness: string }; layer_list: { id: string }[]; attacks: { target: string; moved: boolean; stopped_by: { layer: string } | null }[]; depth: { minimum: { optional_off: { depth: number } } } }>("docs/zero-trust/report.json");
+    const z = json<{ attacks_run: number; attacks_stopped: number; attacks_where_money_moved: number; reading: { harness: string }; layer_list: { id: string }[]; attacks: { target: string; moved: boolean; stopped_by: { layer: string } | null }[]; depth: { minimum: { optional_off: { depth: number } } }; generated: { date: string } }>("docs/zero-trust/report.json");
     const h = json<{ calls: number; refused: number; blocked_by_tool: number; overridden_at_enforce: number; stood: number; unsafe: number }>("docs/evals/ap-hostile.json");
     const section = (id: string) => new RegExp(`<section class="card [a-z]+" id="${id}"[\\s\\S]*?</section>`).exec(html)?.[0] ?? "";
 
@@ -276,7 +278,7 @@ describe("/security: security and trust", () => {
       expect(counts.reduce((n, [, c]) => n + (c as number ?? 0), 0)).toBe(z.attacks_stopped);
       expect(z.attacks_stopped).toBe(z.attacks_run);
       expect(z.attacks_where_money_moved).toBe(0);
-      expect(inSightOf(hero).replace(/ ,/g, ",")).toContain(`${z.attacks_run} attacks on the payment path, all stopped (zero-trust harness, 13 November); none moved money. At least two layers must fail before a hostile payment moves.`);
+      expect(inSightOf(hero).replace(/ ,/g, ",")).toContain(`${z.attacks_run} attacks on the payment path, all stopped (zero-trust harness, ${new Date(`${z.generated.date}T12:00:00Z`).getUTCDate()} November); none moved money. At least two layers must fail before a hostile payment moves.`);
       expect(z.depth.minimum.optional_off.depth).toBe(2);
       // Simulated rails, said where the figures are, and in the fold in the report's own sense.
       expect(hero).toContain('<span class="pill">Test harness, simulated rails</span>');

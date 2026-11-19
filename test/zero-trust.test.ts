@@ -549,28 +549,39 @@ SCENARIOS["hostile-agent-card"] = async () => {
 async function forcedCardRaise(w: { db: DB; now: Date; issuing: FakeIssuingT }, agent: string): Promise<void> {
   const p = proposePolicyChange(w.db, { changes: [{ key: `card.${agent}.per_tx`, to: "1000.00" }, { key: `card.${agent}.monthly`, to: "5000.00" }], reason: "forced" }, `agent:${agent}` as never, w.now);
   forced.pay = true;
-  try { executePolicyChange(w.db, p.proposal_id, w.now); await syncCardsAfterPolicy(w.db, p.proposal_id, w.issuing, w.now); } finally { forced.pay = false; }
+  try {
+    executePolicyChange(w.db, p.proposal_id, w.now);
+    // The forced decision code also records an approval of the raise, as the CFO's passkey's: a row, with no signature.
+    w.db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES (?, 'APPROVED', ?, 'max (passkey)', 'passkey', '', ?)").run(p.proposal_id, p.terms_sha256, w.now.toISOString());
+    await syncCardsAfterPolicy(w.db, p.proposal_id, w.issuing, w.now);
+  } finally { forced.pay = false; }
 }
 
-// Purser's own decision code is forced to say pay: it raises the Sourcing card's limit at Airwallex with nobody's
-// signature, then the charges go straight to the cards, with no plan list, no hold and no stop check, at merchants the
-// cards may not pay. Airwallex declines both for the merchant category, and its own webhook brings each decline into
-// the books. Inside a card's categories the raised limit would let a charge through: that is in LIMITS, and shown below.
+// Purser's own decision code is forced to say pay: it applies a raise of the Sourcing card's limit that nobody signed,
+// records an approval row for it, then the charges go straight to the cards, with no plan list, no hold and no stop
+// check. Since 19 November the card sync pushes a raise only on a stored passkey signature that verifies over the new
+// limit (src/policy/cardRaise.ts), which the decision code cannot make: the card keeps its limit at Airwallex, which
+// declines the charge inside the categories for the limit and the others for the merchant category, and its own webhook
+// brings each decline into the books. The database file can still do it, with a passkey of its own: LIMITS, and below.
 SCENARIOS["decision-code-over-card-limit"] = async () => {
   const w = await cardWorld();
+  await enrol(w.db, w.now);
   const [sourcing, support] = [cardOf(w.db, "sourcing")!, cardOf(w.db, "support")!];
   await forcedCardRaise(w, "sourcing");
-  expect(w.issuing.cards.find((c) => c.cardId === sourcing.card_id)!.limits).toMatchObject({ perTxCents: 100_000 });
-  expect(count(w.db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
+  expect(w.issuing.cards.find((c) => c.cardId === sourcing.card_id)!.limits).toMatchObject({ perTxCents: 3000 });
+  const refused = events(w.db, "card.raise_refused");
+  expect(refused.map((r) => [r.key, r.wanted, r.kept])).toEqual([["card.sourcing.per_tx", "1000.00", "30.00"], ["card.sourcing.monthly", "5000.00", "100.00"]]);
+  const inCategory = await w.issuing.simulateCardCharge({ cardId: sourcing.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" });
   const raised = await w.issuing.simulateCardCharge({ cardId: sourcing.card_id, amountCents: 4500, currency: "EUR", merchant: "Offshore Gift Cards", mcc: "5947" });
   const offCategory = await w.issuing.simulateCardCharge({ cardId: support.card_id, amountCents: 1999, currency: "EUR", merchant: "Packwise", mcc: "5734" });
+  expect(inCategory).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
   expect(raised).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
   expect(offCategory).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
   // The record does not rest on the code that was forced: Airwallex reports each decline itself.
-  for (const [i, t] of [raised, offCategory].entries()) handleAirwallexHook(w.db, signedHook(`evt-zt-${i}`, cardEvent(t, `evt-zt-${i}`), w.now), SECRET, w.now);
+  for (const [i, t] of [inCategory, raised, offCategory].entries()) handleAirwallexHook(w.db, signedHook(`evt-zt-${i}`, cardEvent(t, `evt-zt-${i}`), w.now), SECRET, w.now);
   const declined = events(w.db, "card.charge_declined");
-  expect(declined.map((d) => d.reason)).toEqual(["MERCHANT_CATEGORY_NOT_ALLOWED", "MERCHANT_CATEGORY_NOT_ALLOWED"]);
-  return { moved: cardMoved(w), control: "Airwallex card controls", record: `the Sourcing card's limit raised at Airwallex unsigned, to 1000.00; card.charge_declined: ${declined.map((d) => String(d.reason)).join(", ")}` };
+  expect(declined.map((d) => d.reason)).toEqual(["LIMIT_EXCEEDED", "MERCHANT_CATEGORY_NOT_ALLOWED", "MERCHANT_CATEGORY_NOT_ALLOWED"]);
+  return { moved: cardMoved(w), control: "Airwallex card controls", record: `card.raise_refused: ${refused.map((r) => `${String(r.key)} ${String(r.wanted)} (kept ${String(r.kept)})`).join(", ")}: no passkey signature verifies; card.charge_declined: ${declined.map((d) => String(d.reason)).join(", ")}` };
 };
 
 // A card event that Airwallex never sent: at the relay and at the runner, each of which checks Airwallex's signature itself.
@@ -2646,29 +2657,39 @@ describe("the depth test: every combination of failed layers on every way money 
   });
 
   // Where the model says one break-in voids a layer on one way out only (Component.voidsOn), the real code shows how.
-  // The card's limit: Purser's own decision code alone, or the database file alone, raises it at Airwallex, and a charge
-  // at a merchant inside the card's categories, which the card declined a moment before, goes through. An open risk.
-  it("the card's limit is Purser's to set: decision code alone, or the database file alone, raises it at Airwallex", async () => {
-    expect(COMPONENTS.flatMap((c) => (c.voidsOn ?? []).map((v) => `${c.id} ${v.path} ${v.layer}`))).toEqual(["decision_code card_purchase L5", "database card_purchase L5"]);
+  // The card's limit (since 19 November): it goes up at Airwallex only on a stored passkey signature that verifies over
+  // the new limit. Purser's own decision code alone, or a policy row written alone, no longer raises it. The database
+  // file still does, with a passkey of its own written into it: then a charge at a merchant inside the card's
+  // categories, which the card declined a moment before, goes through. An open risk.
+  it("the card's limit goes up only as signed: decision code alone, or a policy row alone, no longer raises it; the database file with a passkey of its own still does", async () => {
+    expect(COMPONENTS.flatMap((c) => (c.voidsOn ?? []).map((v) => `${c.id} ${v.path} ${v.layer}`))).toEqual(["database card_purchase L5"]);
     expect(LIMITS.map((l) => l.id)).toContain("card-limit-set-by-purser");
     const inCategory = (w: { db: DB; issuing: FakeIssuingT }) => w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" });
     const outside = (w: { db: DB; issuing: FakeIssuingT }) => w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Offshore Gift Cards", mcc: "5947" });
-    // Decision code forced: an unsigned raise is applied and pushed to the card.
+    // Decision code forced, the CFO's passkey enrolled: an unsigned raise is applied and an approval row written; the
+    // card sync finds no signature that verifies and keeps the card's limit.
     const a = await cardWorld();
-    expect(await inCategory(a)).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
+    await enrol(a.db, a.now);
     await forcedCardRaise(a, "sourcing");
-    expect(count(a.db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
-    expect(await inCategory(a)).toMatchObject({ approved: true });
-    expect(await outside(a)).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
-    // The database file alone: a settings row, which the runner's routine card sync pushes to the card.
+    expect(await inCategory(a)).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
+    // A policy row written into the database file alone: the runner's routine card sync refuses the raise.
     const b = await cardWorld();
-    expect(await inCategory(b)).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
     for (const [key, value] of [["card.sourcing.per_tx", "1000.00"], ["card.sourcing.monthly", "5000.00"]]) {
       b.db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value, b.now.toISOString());
     }
-    expect(await syncCardsIfChanged(b.db, b.issuing, b.now)).toEqual(["sourcing"]);
-    expect(await inCategory(b)).toMatchObject({ approved: true });
-    expect(await outside(b)).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
+    expect(await syncCardsIfChanged(b.db, b.issuing, b.now)).toEqual([]);
+    expect(await inCategory(b)).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
+    // The whole database file: a passkey of the attacker's own, a policy change it signs, its approval and the policy
+    // row. The real enrolment and signing below write exactly the rows such an attacker writes into the file.
+    const c = await cardWorld();
+    expect(await inCategory(c)).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
+    const own = await enrol(c.db, c.now);
+    const p = proposePolicyChange(c.db, { changes: [{ key: "card.sourcing.per_tx", to: "1000.00" }, { key: "card.sourcing.monthly", to: "5000.00" }], reason: "the attacker's own passkey" }, "human", c.now);
+    expect((await sign(c.db, own, p.proposal_id, c.now)).status).toBe("approved");
+    executePolicyChange(c.db, p.proposal_id, c.now);
+    await syncCardsAfterPolicy(c.db, p.proposal_id, c.issuing, c.now);
+    expect(await inCategory(c)).toMatchObject({ approved: true });
+    expect(await outside(c)).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
   });
 
   // L6, honestly. With every guard of a path failed (optional controls off) and the emergency stop pulled before the
