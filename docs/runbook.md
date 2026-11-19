@@ -24,7 +24,13 @@ relay's) when the runner has not synced for two minutes (`runner_down`). An upti
 pages a person; none is connected in this build. The relay's `/health` is what anyone sees: the same alarm while a live
 run is expected (the runner synced in the last 30 minutes, or the Worker variable `LIVE_RUN=on` declares a run);
 between live runs it answers 200 with "Recorded demo · the live runner runs during live runs" and the codes that stood
-at the runner's last sync (`src/ops/publicHealth.ts`). Codes (`src/ops/health.ts`):
+at the runner's last sync (`src/ops/publicHealth.ts`).
+
+**Security alarms** (ASVS V8.1.4, V11.1.8): the cloud's `GET /v1/health` and the relay's `/health` and
+`/health/live` carry `security.alarms_24h`, the number of security alarms raised in the last 24 hours (bursts of
+failed sign-ins, refusals or rate-limit hits, or a tamper alarm; `src/lib/securityEvents.ts`, thresholds in the
+`SECURITY_ALARMS` variable). Owner action: have the uptime monitor alert when it is above 0, then read the rows
+(`GET /v1/admin/security-log?kind=alarm.raised` with an admin key with `read`). Codes (`src/ops/health.ts`):
 
 | Code | Means | First action | Clears when |
 |---|---|---|---|
