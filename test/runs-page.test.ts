@@ -36,7 +36,7 @@ describe("/runs", () => {
   it("lists the live runs newest first, the last one on top", () => {
     // 12 Nov (jury check): the eight live runs whose records were missing here, each in date order.
     // 17 Nov: the late-failure run (docs/runs/2026-11-17-airwallex-late-failure.json) on top.
-    expect(rows.map((r) => r.key)).toEqual(["bills-1", "2026-11-19-live-try", "late-failure-1", "card-cent-1", "vic-5", "anchor-1", "vic-4", "awx-faceid-1", "vic-3", "real-customers-1", "tokenize-1", "batch-1", "payee-check-1", "faceid-onchain-1", "moneybird-1", "two-locks-1", "metal-hold-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "metal-passkey-owners", "friday-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
+    expect(rows.map((r) => r.key)).toEqual(["bills-1", "try-2026-11-19-live-try", "late-failure-1", "card-cent-1", "vic-5", "anchor-1", "vic-4", "awx-faceid-1", "vic-3", "real-customers-1", "tokenize-1", "batch-1", "payee-check-1", "faceid-onchain-1", "moneybird-1", "two-locks-1", "metal-hold-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "metal-passkey-owners", "friday-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
     // The connected-accounts row, held to its run log: every id and amount on it is in the log.
     const cx = rows.find((r) => r.key === "connected-1")!;
     const cxLog = readFileSync("docs/runs/2026-11-10-connected-accounts-sandbox.md", "utf8");
@@ -129,7 +129,7 @@ describe("/runs", () => {
     expect(text(pages.runs!)).toContain("Last live run: 19 Nov 2026.");
     // The newest entry is the late-failure run since 17 Nov, 14:05 (docs/runs/2026-11-17-airwallex-late-failure.json);
     // vic-5 before it since 14 Nov, 05:41 (docs/runs/2026-11-14-vic-5.json); then the records' anchor (13 Nov, 14:05).
-    expect(entriesOf(liveList(pages.runs!)).slice(0, 3).map((x) => x.key)).toEqual(["bills-1", "2026-11-19-live-try", "late-failure-1"]);
+    expect(entriesOf(liveList(pages.runs!)).slice(0, 3).map((x) => x.key)).toEqual(["bills-1", "try-2026-11-19-live-try", "late-failure-1"]);
     const first = entriesOf(liveList(pages.runs!)).find((x) => x.key === "two-locks-1")!;
     expect(inSight(first.html)).toContain(`<h2>${escAttr(tl.name!)}</h2>`);
     expect(inSight(first.html)).toContain('<time datetime="2026-11-12T09:43:58.000Z" title="12 Nov 2026">12 Nov</time>');
@@ -229,7 +229,7 @@ describe("/runs as a timeline", () => {
   // go over every row; the ones that name runs go over these.
   const KINDS: Record<string, RunKind> = {
     // 19 Nov: the Spend Bills run and the recorded walks of the public /try.
-    "bills-1": "sandbox", "2026-11-19-live-try": "sandbox",
+    "bills-1": "sandbox", "try-2026-11-19-live-try": "sandbox",
     "late-failure-1": "sandbox", "card-cent-1": "sandbox", "vic-5": "sandbox", "anchor-1": "testnet", "vic-4": "sandbox", "awx-faceid-1": "sandbox", "vic-3": "sandbox", "two-locks-1": "sandbox", "platform-e2e-1": "sandbox", "t0-1": "sandbox", "connected-1": "sandbox", "vic-2": "control", "vic-1": "sandbox",
     "awx-1": "sandbox", "main-1": "both", "agent-1": "rehearsal", "tap-1": "sandbox", "friday-1": "rehearsal",
     "real-customers-1": "sandbox", "tokenize-1": "testnet", "batch-1": "sandbox", "payee-check-1": "sandbox", "faceid-onchain-1": "testnet", "moneybird-1": "sandbox",
@@ -446,12 +446,12 @@ describe("/runs as a timeline", () => {
     const carrying = (id: string) => known(live.filter((e) => e.cls.includes(`f-${id}`)).map((e) => e.key));
     expect(carrying("alta")).toEqual(["anchor-1", "tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
     expect(carrying("testnet")).toEqual(["anchor-1", "tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
-    expect(carrying("claude")).toEqual(["2026-11-19-live-try", "vic-5", "vic-4", "awx-faceid-1", "vic-3", "platform-e2e-1", "main-1"]);
+    expect(carrying("claude")).toEqual(["try-2026-11-19-live-try", "vic-5", "vic-4", "awx-faceid-1", "vic-3", "platform-e2e-1", "main-1"]);
     // Review 12 Nov (DC-3): a partner's chip, class and count are for the runs it took part in, by the records. The second
     // Airi run made 0 Airi and 0 Airwallex calls: no Airwallex, no Visa. Visa: the runs that used a Visa credential.
     // TAP is outside the Visa entry (the jury check, 12 Nov): its row is not counted under Visa.
     expect(carrying("visa")).toEqual(["vic-5", "vic-4", "vic-3", "vic-1"]);
-    expect(carrying("airwallex")).toEqual(["bills-1", "2026-11-19-live-try", "late-failure-1", "card-cent-1", "vic-5", "vic-4", "awx-faceid-1", "vic-3", "batch-1", "payee-check-1", "two-locks-1", "platform-e2e-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    expect(carrying("airwallex")).toEqual(["bills-1", "try-2026-11-19-live-try", "late-failure-1", "card-cent-1", "vic-5", "vic-4", "awx-faceid-1", "vic-3", "batch-1", "payee-check-1", "two-locks-1", "platform-e2e-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { outside_calls: { airi: number; airwallex: number } };
     expect([v2.outside_calls.airi, v2.outside_calls.airwallex]).toEqual([0, 0]);
     const v2e = [...live, ...entriesOf(rehGroup(html))].find((e) => e.key === "vic-2")!;
@@ -460,7 +460,7 @@ describe("/runs as a timeline", () => {
     expect(row("vic-2").partners).toEqual([]);
     expect(links.find((l) => l.id === "visa")!.n).toBe(4);
     expect(links.find((l) => l.id === "airwallex")!.n).toBe(18); // 18 since 19 Nov: the Spend Bills run and the recorded /try walks (16 since 17 Nov)
-    expect(carrying("sandbox")).toEqual(["bills-1", "2026-11-19-live-try", "late-failure-1", "card-cent-1", "vic-5", "vic-4", "awx-faceid-1", "vic-3", "batch-1", "payee-check-1", "moneybird-1", "two-locks-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    expect(carrying("sandbox")).toEqual(["bills-1", "try-2026-11-19-live-try", "late-failure-1", "card-cent-1", "vic-5", "vic-4", "awx-faceid-1", "vic-3", "batch-1", "payee-check-1", "moneybird-1", "two-locks-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     // Each filter is an empty anchor before the list (a sibling the CSS can select from), and so is "All".
     const listAt = html.indexOf('<ol class="tl">');
     for (const l of links) {
@@ -489,7 +489,7 @@ describe("/runs as a timeline", () => {
     // The first row is the newest: it carries the class and a small mark.
     expect(live.filter((e) => e.cls.includes("newest")).map((e) => e.key)).toEqual([live[0]!.key]);
     // Since 19 Nov, 07:21 UTC the newest is the Spend Bills run, then the recorded /try walks (both with a rate).
-    expect(known(live.map((e) => e.key)).slice(0, 2)).toEqual(["bills-1", "2026-11-19-live-try"]);
+    expect(known(live.map((e) => e.key)).slice(0, 2)).toEqual(["bills-1", "try-2026-11-19-live-try"]);
     expect(inSight(live[0]!.html)).toContain('<span class="mk new">Newest</span>');
     expect(inSight(live.find((e) => e.key === "vic-4")!.html)).toMatch(/\d+ of \d+ purchases paid/);
     // Nothing in the filtering depends on the script: it only names the active link and copies ids.
@@ -513,7 +513,7 @@ describe("/runs as a timeline", () => {
     const pe = raw("docs/runs/2026-11-10-platform-e2e.md");
     expect(row("platform-e2e-1").rate).toEqual({ done: (pe.match(/\| \*\*PAID\*\* /g) ?? []).length, of: (pe.match(/\| \*\*PAID\*\* |\| \*\*refused at create\*\* /g) ?? []).length, what: "payouts paid" });
     expect(row("platform-e2e-1").rate).toEqual({ done: 1, of: 4, what: "payouts paid" });
-    expect(known(rows.filter((r) => r.rate).map((r) => r.key))).toEqual(["bills-1", "2026-11-19-live-try", "vic-5", "vic-4", "vic-3", "platform-e2e-1", "t0-1", "vic-2", "vic-1", "awx-1"]);
+    expect(known(rows.filter((r) => r.rate).map((r) => r.key))).toEqual(["bills-1", "try-2026-11-19-live-try", "vic-5", "vic-4", "vic-3", "platform-e2e-1", "t0-1", "vic-2", "vic-1", "awx-1"]);
     for (const r of rows.filter((x) => x.rate)) {
       const e = entriesOf(html).find((x) => x.key === r.key)!;
       // Checks have no pass-rate fraction (judge run, 13 Nov); other series keep "N of M".

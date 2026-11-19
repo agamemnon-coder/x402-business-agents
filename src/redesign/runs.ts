@@ -481,7 +481,8 @@ function extraRuns(): RunRow[] {
     const t = liveTryTotals([rec]);
     if (!t || !t.runs) continue;
     out.push({
-      key: rec.dir.split("/").pop()!, iso: rec.last, date: day(rec.first), kind: "sandbox", partners: ["Airwallex", "Claude"],
+      // An id that starts with a letter: the key is the row's anchor and a CSS selector.
+      key: `try-${rec.dir.split("/").pop()!}`, iso: rec.last, date: day(rec.first), kind: "sandbox", partners: ["Airwallex", "Claude"],
       name: `The public /try, walked ${t.runs} times as a visitor`,
       line: `${countOf(t.paid, t.transfers)} Airwallex sandbox transfers PAID (by the sandbox's simulation), ${countOf(t.refused, t.runs, true)} one-cent changes refused, ${countOf(t.held, t.runs, true)} cash holds by code. A test passkey.`,
       rate: { done: t.ok, of: t.runs, what: "journeys passed every step" },
