@@ -236,6 +236,35 @@ jobs:
           key: tla2tools-${{ steps.pin.outputs.sha }}
       - name: TLC on the bound and on the planted bugs
         run: bash scripts/formal.sh
+  # Formal proofs (19 November): Dafny verifies formal/dafny/*.dfy, machine-checked lemmas about the code that guards
+  # money (the canonical terms encoding is injective, amount parsing is exact, the pay-alone limit and the agent cap
+  # compare integer cents), with no assume or axiom; and the committed JavaScript translation of the verified functions
+  # (formal/dafny/out/reference.js) must be exactly what Dafny produces from them, because the test job's differential
+  # test (test/formal-dafny-differential.test.ts) runs it against the TypeScript; and the committed record and badge
+  # (docs/evidence/formal-proofs.json, docs/badges/dafny.json) must state the verifier's own line. Dafny is the official dafny-lang
+  # release (with its own .NET runtime and Z3), pinned by version and SHA-256 in scripts/formal-dafny.sh, the zip cached
+  # on that checksum and checked again on every run, never committed. About a minute. Record: docs/evidence/formal-proofs.md.
+  formal-dafny:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Harden the runner (audit outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Dafny's pinned checksum
+        id: pin
+        run: echo "sha=$(sed -n 's/^DAFNY_SHA256="\([0-9a-f]*\)"$/\1/p' scripts/formal-dafny.sh)" >> "$GITHUB_OUTPUT"
+      - name: Dafny zip (cache, keyed on its checksum)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/purser-dafny
+          key: dafny-${{ steps.pin.outputs.sha }}
+      - name: Dafny verifies the proofs; the committed translation, record and badge are theirs
+        run: bash scripts/formal-dafny.sh
   # REUSE (19 November): every file has a licence and copyright on record (REUSE.toml, LICENSES/), checked with the
   # FSFE's reuse tool (REUSE specification 3.3). The action is pinned by commit, but it builds from the image
   # fsfe/reuse:6, a moving tag the action names; a local run with reuse 6.3.0 (pip) was clean on 19 November.

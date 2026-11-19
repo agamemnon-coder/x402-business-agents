@@ -13,6 +13,7 @@ import { currentOrigin } from "../provenance/origin.js";
 import { hubGateRefusal } from "../hub/gate.js";
 import { hubDecisionsEnabled } from "../hub/config.js";
 import { BATCH_KIND, BATCHABLE, openBatchOf, verifyBatch } from "./batchLines.js";
+import { aloneDecision } from "./withinLimit.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
@@ -247,8 +248,6 @@ export const POLICY_METHOD = "policy";
  * records code's rule as its origin (src/executors/index.ts approvalOrigin).
  */
 export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { currency: string; amount: string }; rule: string; agent: string }, now = new Date()): { ok: true } | { ok: false; reason: string } {
-  const plain = /^\d{1,9}\.\d{2}$/;
-  const cents = (a: string) => Math.round(Number(a) * 100);
   return db.transaction((): { ok: true } | { ok: false; reason: string } => {
     const no = (reason: string) => ({ ok: false as const, reason });
     const p = get(db, args.proposalId);
@@ -262,8 +261,10 @@ export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { 
     if (BATCHABLE.has(p.kind) && openBatchOf(db, p.proposal_id)) return no(`${p.proposal_id} is in a batch: the CFO signs the batch`);
     if (expireIfDue(db, p, now)) return no(`${p.proposal_id} expired at ${p.expires_at}`);
     const { amount, currency } = terms;
-    if (!plain.test(args.limit.amount) || cents(args.limit.amount) <= 0) return no("no limit to pay alone is set");
-    if (typeof amount !== "string" || !plain.test(amount) || currency !== args.limit.currency || cents(amount) > cents(args.limit.amount)) {
+    // Integer cents only (src/policy/withinLimit.ts, proven in formal/dafny/Limit.dfy).
+    const decision = aloneDecision(amount, currency, args.limit);
+    if (decision === "no_limit") return no("no limit to pay alone is set");
+    if (decision === "not_within") {
       return no(`${String(currency)} ${String(amount)} is not within the ${args.limit.currency} ${args.limit.amount} the agent may pay alone`);
     }
     if (fourEyes(db, p)) return no(`${p.proposal_id} needs two people's approval (four eyes)`);
@@ -278,7 +279,8 @@ export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { 
     transition(db, p.proposal_id, "PENDING_APPROVAL", "APPROVED");
     audit(db, "system", WITHIN_LIMIT, p.proposal_id, {
       terms_sha256: p.terms_sha256, approver, method: POLICY_METHOD, agent: args.agent, rule: args.rule.slice(0, 600),
-      amount, currency, limit: `${args.limit.currency} ${args.limit.amount}`, policy_version: policy.version,
+      // Within the limit, the amount is a string and the currency is the limit's own (aloneDecision).
+      amount: String(amount), currency: args.limit.currency, limit: `${args.limit.currency} ${args.limit.amount}`, policy_version: policy.version,
     }, now);
     return { ok: true };
   }).immediate();

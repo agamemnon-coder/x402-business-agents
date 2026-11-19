@@ -1,0 +1,37 @@
+{
+  "what": "Dafny proofs about the code that guards money: formal/dafny/*.dfy. Written up in docs/evidence/formal-proofs.md.",
+  "date": "2026-11-19",
+  "command": "npm run formal:dafny",
+  "tool": {
+    "dafny": "4.11.0+fcb2042d6d043a2634f0854338c08feeaaaf4ae2",
+    "z3": "4.12.1 (bundled with the Dafny release)",
+    "asset": "dafny-4.11.0-x64-ubuntu-22.04.zip",
+    "sha256": "a46a9ff7cdd720f7955854c78e95df13f4cfe6b80691b05f8654fe19e8267179"
+  },
+  "verifier": "Dafny program verifier finished with 172 verified, 0 errors",
+  "totals": {
+    "verified": 172,
+    "errors": 0,
+    "lemmas": 59,
+    "files": 7
+  },
+  "theorems": {
+    "Terms.TermsBytesInjective": "equal canonical bytes (the input of SHA-256) imply equal terms, as maps, recursively",
+    "Terms.FieldChangeChangesBytes": "changing, adding or dropping any one field of a terms object changes its canonical bytes",
+    "Terms.SameCanonicalFormIffSameMembers": "the canonical form depends on the object as a map only (member order is irrelevant)",
+    "Jcs.SerInjective": "JCS serialisation of JSON without numbers is injective (a decoder is its left inverse: Jcs.ParseSer)",
+    "Utf8.EncodeInjective": "UTF-8 is injective on well-formed UTF-16 (Utf8.DecodeEncode); Terms.SerWellFormed: JCS output is well-formed",
+    "Money.ToCentsOfFromCents": "cents -> string -> cents is the identity on 0..2^53-1",
+    "Money.FromCentsOfToCents": "string -> cents -> string is the identity on every string toCents accepts",
+    "Money.AcceptedIffRendering": "toCents accepts exactly the strings fromCents writes, and refuses everything else",
+    "Money.ToCentsIsExact": "the cents are exactly 100 times the written decimal number (no rounding)",
+    "Limit.PaidAloneIffWithinLimit": "code pays alone exactly when the limit is set, the currency is the limit's and amount_cents <= limit_cents",
+    "Limit.PaidAloneIffWrittenAmountAtMostLimit": "the cent comparison is the exact comparison of the written decimal amounts",
+    "Limit.CapPassesIffAtMostCap": "capRefusal lets a payment pass the cap exactly when there is no cap or cents <= cap"
+  },
+  "differential": {
+    "test": "test/formal-dafny-differential.test.ts",
+    "comparisons_last_local_run": 57550,
+    "mismatches": 0
+  }
+}

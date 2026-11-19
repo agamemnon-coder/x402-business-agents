@@ -11,6 +11,7 @@ from its record.
 | [airwallex-endpoints.json](airwallex-endpoints.json) | [airwallex-api-coverage.json](../evidence/airwallex-api-coverage.json) | Airwallex endpoints the code calls that a committed sandbox run record holds, of all it calls |
 | [chaos.json](chaos.json) | [chaos-money.json](../evidence/chaos-money.json) | invariant breaks across all chaos scenarios |
 | [fuzz.json](fuzz.json) | [fuzzing.json](../evidence/fuzzing.json) | fuzz runs, and properties that failed (orange while any did) |
+| [dafny.json](dafny.json) | [formal-proofs.json](../evidence/formal-proofs.json) | the Dafny verifier's summary for formal/dafny (red on any error); `npm run formal:dafny` fails while the record or this badge differs from what the verifier prints |
 
 No mutation-score badge: no mutation record is committed. The script writes one only if `docs/evidence/mutation.json` exists.
 
