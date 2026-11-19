@@ -19,3 +19,17 @@ it links to, and that each CI job named is one ci.yml runs.
 The CI job `test` runs the whole suite (`npm run test:coverage`); `judge` runs the browser checks a juror's first run
 needs; `secrets` runs gitleaks. Each control with its risk, for an auditor: [controls-matrix.md](controls-matrix.md);
 every attack and what stops it: [security.md](security.md).
+
+## The rest of the assurance case
+
+The table above argues the money invariants one by one. The other parts of the case, each in its own document:
+
+- **The threat model and the trust boundaries:** [security.md](security.md#trust-boundaries) (assets, the boundaries as
+  a diagram, every attack with its STRIDE class and what stops it, the accepted risks).
+- **Secure design principles applied, and common weaknesses countered:**
+  [security/requirements.md](security/requirements.md) (Saltzer and Schroeder's principles, the OWASP Top Ten, input
+  validation, hardening, cryptography, and the assumptions the case rests on).
+- **The layers tested against each other:** [zero-trust.md](zero-trust.md), generated from a run of the attacks on the
+  real code.
+- **What has not been argued or tested:** no outside audit or penetration test; the accepted risks in
+  [security.md](security.md#accepted-risks-and-what-is-out-of-scope).

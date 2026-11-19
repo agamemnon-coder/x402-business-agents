@@ -7,6 +7,31 @@ To report a vulnerability, open a private GitHub security advisory on this repos
 vulnerability), or email the maintainer listed on the repository's GitHub profile. Please do not open a public issue for
 security reports. We aim to answer within 3 working days.
 
+## How a report is handled
+
+1. **Acknowledge** within 3 working days, in the advisory (or by e-mail), with who is looking at it.
+2. **Assess**: reproduce it, decide whether it is in scope, and rate it (CVSS where it helps), together with the
+   reporter. The reporter hears the outcome either way.
+3. **Fix in private**: in the advisory's temporary private fork, with a regression test that fails before the fix
+   (the test policy in [CONTRIBUTING.md](CONTRIBUTING.md#tests-come-with-the-change)). A fix that touches the money
+   rules is checked against the assurance case ([docs/assurance.md](docs/assurance.md)).
+4. **Release**: merge, deploy the hosted test preview if it is affected, and cut a PATCH release
+   ([docs/releasing.md](docs/releasing.md)) whose notes name the advisory.
+5. **Disclose**: publish the GitHub security advisory (with a CVE requested through GitHub when the issue affects
+   users), normally within 90 days of the report or sooner once the fix is out, at a date agreed with the reporter.
+
+## Credit
+
+Every reporter of a vulnerability that is resolved is credited by name (or handle) in the published advisory and in the
+release notes, unless they ask to stay anonymous. Resolved reports, with their credit, are listed below.
+
+| Date | Advisory | Reported by |
+|---|---|---|
+| (none yet) | No vulnerability has been reported through this process as of 19 November 2026. | |
+
+The reviews and sweeps the project ran itself (the security reviews of 1, 8 and 13 November, the sweeps of
+15 November) are in [docs/security.md](docs/security.md) and their tests; they were not outside reports.
+
 ## Scope
 
 In scope:
