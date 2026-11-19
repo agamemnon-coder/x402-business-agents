@@ -208,8 +208,9 @@ describe("the price, word for word everywhere (Max, 6 Nov; one model since the p
 
   it("every price statement is that sentence, and the earlier prices are gone", () => {
     const seen = new Set<string>();
-    // The earlier price, per agent with Claude decisions included (6 November), and the one before it.
-    const earlier = /€49 per company|per extra agent|€3 per extra|EUR 49|EUR 10 (?:a month )?for each extra agent|including 5 agents|€10 a month for each extra agent|five agents included|with agents included/;
+    // The earlier price, per agent with Claude decisions included (6 November), and the one before it. "EUR 49" as a
+    // whole amount only (19 Nov: eval v5's invoice of EUR 495.00 is no price).
+    const earlier = /€49 per company|per extra agent|€3 per extra|EUR 49(?![\d.,])|EUR 10 (?:a month )?for each extra agent|including 5 agents|€10 a month for each extra agent|five agents included|with agents included/;
     for (const [name, raw] of surfaces()) {
       // The release notes are a dated log of what each release said, and the sentence is built in two modules.
       if (name === "docs/submission/release-notes.md") continue;
