@@ -23,6 +23,7 @@ export const BADGE_RECORDS = {
   "airwallex-endpoints": "docs/evidence/airwallex-api-coverage.json",
   "chaos": "docs/evidence/chaos-money.json",
   "fuzz": "docs/evidence/fuzzing.json",
+  "coverage": "docs/evidence/coverage.json",
   "mutation": "docs/evidence/mutation.json",
   "dafny": "docs/evidence/formal-proofs.json",
 } as const;
@@ -73,6 +74,20 @@ export const BUILD: Record<BadgeName, (r: Json) => Omit<EndpointBadge, "schemaVe
     const verified = int(t.verified, "dafny verified"), errors = int(t.errors, "dafny errors");
     if (r.verifier !== `Dafny program verifier finished with ${verified} verified, ${errors} errors`) throw new Error("dafny: the totals are not the verifier's line");
     return { label: "Dafny", message: `${verified} verified, ${errors} errors`, color: errors === 0 && verified > 0 ? "brightgreen" : "red" };
+  },
+  // The product's measured scope (docs/evidence/coverage.md), from the counts, not the record's rounded pct. Bright green
+  // only at OpenSSF gold's bar (90% of statements and 80% of branches), which the product does not reach today.
+  "coverage": (r) => {
+    const scopes = r.scopes as Record<string, { after?: Record<string, { covered?: unknown; total?: unknown }> }> | undefined;
+    const after = scopes?.product?.after;
+    if (!after) throw new Error("coverage: no product scope");
+    const ratio = (k: string) => {
+      const covered = int(after[k]?.covered, `coverage ${k} covered`), total = int(after[k]?.total, `coverage ${k} total`);
+      if (!total || covered > total) throw new Error(`coverage ${k}: not a share`);
+      return (covered / total) * 100;
+    };
+    const s = ratio("statements"), b = ratio("branches");
+    return { label: "coverage", message: `${s.toFixed(1)}% statements · ${b.toFixed(1)}% branches`, color: s >= 90 && b >= 80 ? "brightgreen" : s >= 80 ? "green" : s >= 60 ? "yellow" : "red" };
   },
   "mutation": (r) => {
     const score = r.score;

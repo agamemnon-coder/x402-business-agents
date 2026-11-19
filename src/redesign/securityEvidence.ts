@@ -142,8 +142,8 @@ export function continuity(text: string = section(GOVERNANCE_REC, "Continuity: i
 export const REPORTING_REC = "SECURITY.md";
 /** How fast a private report is answered, as SECURITY.md says it. */
 export const answerDays = (text: string = flat(REPORTING_REC)): number => {
-  if (!text.includes("open a private GitHub security advisory")) throw new Error(`${REPORTING_REC} no longer asks for a private advisory`);
-  return Number(must(/We aim to answer within (\d+) working days/.exec(text)?.[1], `${REPORTING_REC}: the answer time`));
+  if (!text.includes("GitHub private vulnerability reporting") || !text.includes("/security/advisories/new")) throw new Error(`${REPORTING_REC} no longer asks for a private advisory`);
+  return Number(must(/Within (\d+) working days of the report \| We acknowledge it/.exec(text)?.[1], `${REPORTING_REC}: the answer time`));
 };
 
 /** The section's groups and items, in the page's order. */

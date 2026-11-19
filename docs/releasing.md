@@ -26,8 +26,13 @@ of the hackathon submission, not SemVer; they stay as submitted and are never mo
    upgrade step, and every vulnerability fixed with its advisory or CVE and the reporter's credit
    ([SECURITY.md](../SECURITY.md)).
 3. **Set the version** in `package.json` and `server.json`, regenerate the changelog, and merge that as a pull request
-   with CI green.
-4. **Tag the merge commit with a signed tag** and push it:
+   with CI green. CI's test suite runs every fuzz property at a low run count (`test/fuzz.test.ts`) and the
+   property-based tests (`test/property-*.test.ts`) on every pull request.
+4. **Before merging it, run the full fuzzing set** on that pull request's branch, as the dynamic analysis of the release:
+   `npm run fuzz` (fast-check, every property at its full run count, no network). Commit the report it writes
+   ([docs/evidence/fuzzing.md](evidence/fuzzing.md)) in that pull request, so the tagged commit carries it. A property that fails stops the
+   release until it is fixed, or listed as an open finding with its reason in the release notes.
+5. **Tag the merge commit with a signed tag** and push it:
 
    ```sh
    git switch main && git pull --ff-only
@@ -38,12 +43,12 @@ of the hackathon submission, not SemVer; they stay as submitted and are never mo
 
    The maintainer's public signing key is the one on their GitHub account (`https://github.com/agamemnon-coder.gpg`,
    or for an SSH signing key the account's *signing keys*), so GitHub shows the tag as *Verified*.
-5. **The release workflow runs on the pushed tag** ([release.yml](../.github/workflows/release.yml)): it builds the
+6. **The release workflow runs on the pushed tag** ([release.yml](../.github/workflows/release.yml)): it builds the
    source tarball (`git archive` of the tag), the runtime bill of materials (CycloneDX) and `SHA256SUMS`, attests them
    through GitHub's artifact attestations (SLSA build provenance and an SBOM attestation, signed with Sigstore through
    the workflow's own OIDC identity) and publishes all of it, with the attestation bundles, on the tag's GitHub
    release. It never creates, moves or deletes a tag.
-6. **Paste the release notes** into the GitHub release, and check one download as below.
+7. **Paste the release notes** into the GitHub release, and check one download as below.
 
 ## What the source tarball contains
 

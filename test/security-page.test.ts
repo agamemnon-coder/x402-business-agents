@@ -160,7 +160,7 @@ describe("What we did, with evidence: every figure from the wall or its own reco
     expect(byId["e-mapping"]!.note.startsWith("Mapped, not certified")).toBe(true);
     expect(byId["e-requirements"]!.fig).toBe(String((read("docs/security/requirements.md").match(/^\| SR\d+ \|/gm) ?? []).length));
     expect(byId["e-continuity"]!.fig).toBe(`All ${(read("GOVERNANCE.md").match(/\| In place since/g) ?? []).length}`);
-    expect(byId["e-report"]!.fig).toBe(`${/We aim to answer within (\d+) working days/.exec(read("SECURITY.md").replace(/\s+/g, " "))![1]}`);
+    expect(byId["e-report"]!.fig).toBe(`${/Within (\d+) working days of the report \| We acknowledge it/.exec(read("SECURITY.md").replace(/\s+/g, " "))![1]}`);
   });
 
   it("says where each ran, claims nothing it did not run, and keeps the site's word rules", () => {

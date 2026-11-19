@@ -8,7 +8,7 @@ Every security measure Purser has taken, each with its figure and its committed 
 |---|---|
 | **All 128** attacks on the /try API held (red team v2), **All 894** tampered proof copies refused, **0** money invariants broken in 317 chaos scenarios | [redteam-api.md](../evidence/redteam-api.md) · [tamper-matrix.md](../evidence/tamper-matrix.md) · [chaos-money.md](../evidence/chaos-money.md) |
 | **1,102,845** states of the payment model checked by TLC, no error; **50 of 51** planted bugs caught in the proof verifier | [formal-model.md](../evidence/formal-model.md) · [mutation-testing.md](../evidence/mutation-testing.md) |
-| **All 51** Actions pinned by SHA; `v1.2.0` released with Sigstore-signed SLSA provenance; OpenSSF Best Practices **Silver** | [releases/v1.2.0.md](../releases/v1.2.0.md) · [openssf-silver.md](openssf-silver.md) |
+| **All 60** Actions pinned by SHA; `v1.2.0` released with Sigstore-signed SLSA provenance; OpenSSF Best Practices **Silver** | [releases/v1.2.0.md](../releases/v1.2.0.md) · [openssf-silver.md](openssf-silver.md) |
 
 Test money only: the Airwallex sandbox and the Alta (formerly Metal) testnet. Nothing here is a certificate: no auditor
 has tested these controls, and no third-party penetration test has been run ([what is not in place
@@ -39,7 +39,7 @@ The threat model with every trust boundary: [security.md](../security.md#trust-b
 | Formal model (TLA+, TLC) | **1,102,845** states, no error; 3 of 3 planted bugs caught | Offline; a model of the code, not the code | [formal-model.md](../evidence/formal-model.md), [PurserPayment.tla](../../formal/PurserPayment.tla) |
 | Mutation testing of the proof verifier | **50 of 51** planted bugs caught (partial run: one Stryker group not reported) | Offline | [mutation-testing.md](../evidence/mutation-testing.md) |
 | Scanners: OSV-Scanner with VEX, Semgrep, CodeQL, gitleaks, npm audit | **8** CI jobs on every change; 35 OSV findings left, all in CI tooling and test fixtures, each with an OpenVEX statement | CI | [osv-scanner.yml](../../.github/workflows/osv-scanner.yml), [vex/README.md](vex/README.md) |
-| Harden-Runner, pinned Actions, SBOM, Sigstore-signed releases | **All 51** Actions pinned to a commit SHA; Harden-Runner on 14 of 15 jobs (audit only); 192 SBOM components; `v1.2.0` signed | CI | [v1.2.0.md](../releases/v1.2.0.md), [sbom.cdx.json](sbom.cdx.json) |
+| Harden-Runner, pinned Actions, SBOM, Sigstore-signed releases | **All 60** Actions pinned to a commit SHA; Harden-Runner on 17 of 18 jobs (audit only); 192 SBOM components; `v1.2.0` signed | CI | [v1.2.0.md](../releases/v1.2.0.md), [sbom.cdx.json](sbom.cdx.json) |
 | STRIDE threat model | **40** attacks, each with its STRIDE class | Written down | [security.md](../security.md#attackers-and-attacks) |
 | Security mapping to NIST SSDF, OWASP Top 10 for LLM Applications and DORA | **24** controls mapped; mapped, not certified; 10 gaps named | Written down | [SECURITY-MAPPING.md](SECURITY-MAPPING.md) |
 | Security requirements | **8** requirements, each with where it is enforced and tested | Written down | [requirements.md](requirements.md) |
@@ -96,8 +96,19 @@ folder:
    gh attestation verify x402-business-agents-<tag>.tar.gz -R agamemnon-coder/x402-business-agents --bundle x402-business-agents-<tag>.provenance.intoto.jsonl
    ```
 
-To check the tarball against the code itself: `git archive --format=tar.gz --prefix=x402-business-agents-<tag>/ <tag>`
-in a clone gives the same bytes with the same git version (two runs on 19 November gave the same SHA-256).
+To check the tarball against the code itself (the build is reproducible): `git archive --format=tar.gz
+--prefix=x402-business-agents-<tag>/ <tag>` in a clone gives the same bytes. On 19 November 2026, with git 2.43.0 on
+Linux, two runs for `v1.2.0` (commit `8d5b51d`) both gave SHA-256
+`e4375a3cc90c5221b25d2efc5b018ab1f32a36222e774f84e51be79011c48fba`, the hash the release's `SHA256SUMS` lists for
+`x402-business-agents-v1.2.0.tar.gz`, which GitHub's runner built:
+
+```sh
+git fetch origin tag v1.2.0
+git archive --format=tar.gz --prefix=x402-business-agents-v1.2.0/ -o x402-business-agents-v1.2.0.tar.gz v1.2.0
+sha256sum x402-business-agents-v1.2.0.tar.gz
+```
+
+The bill of materials is not reproduced this way: `npm sbom` writes a serial number and a timestamp into it.
 
 ## The supply-chain details
 
@@ -120,6 +131,10 @@ in a clone gives the same bytes with the same git version (two runs on 19 Novemb
 | Signed releases | Since 19 November, `.github/workflows/release.yml` turns a pushed version tag (`v…`; never `v1.0-submission` or `v1.1-submission`, which stay as submitted) into a GitHub release with the source tarball (`git archive` of the tag), its bill of materials, `SHA256SUMS`, and GitHub artifact attestations (SLSA build provenance and an SBOM attestation, signed through Sigstore with the workflow's identity), whose bundles are on the release as `*.intoto.jsonl`. It never creates or moves a tag. The first release made with it is `v1.2.0` (19 November 2026; [notes](../releases/v1.2.0.md)). | `.github/workflows/release.yml`, below |
 
 What only the owner can switch on (Dependabot security updates, private vulnerability reporting, the OpenSSF Best
-Practices badge, and after the judging a ruleset on `main`), click by click: [owner-actions.md](owner-actions.md). The
-OpenSSF Best Practices silver level, criterion by criterion: [openssf-silver.md](openssf-silver.md). To report a
-vulnerability: [SECURITY.md](../../SECURITY.md).
+Practices badge, and after the judging a ruleset on `main`), click by click: [owner-actions.md](owner-actions.md). To
+report a vulnerability: [SECURITY.md](../../SECURITY.md).
+
+The OpenSSF Best Practices silver level, criterion by criterion, with the evidence, what is still open and the owner's
+steps: [openssf-silver.md](openssf-silver.md); the gold level, with what stays Unmet while there is one maintainer:
+[openssf-gold.md](openssf-gold.md); the security requirements, design principles, hardening, input
+validation and cryptography: [requirements.md](requirements.md).
