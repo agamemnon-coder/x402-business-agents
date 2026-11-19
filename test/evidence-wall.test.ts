@@ -65,8 +65,15 @@ describe("the evidence wall's file", () => {
     expect(tile(w, "soak-fx").fig).toBe(countOf(sk.conversions.readback_matches, sk.conversions.planned));
     expect(tile(w, "soak-negatives").fig).toBe(countOf(sk.negatives.refused, sk.negatives.planned));
     expect(tile(w, "soak-negatives").note).toMatch(new RegExp(`^${sk.negatives.posts_in_window} money-moving calls .*each refusal still read the balance once`));
+    // 19 Nov, fourth round: the newest red-team run (the scripted attacks re-run after the fixes), labelled as a re-run,
+    // with the first run of 30 Oct in its note and its records.
     const rt = json<{ attempts: number; blocked: number; caught_after: number }>("docs/redteam/report.json");
-    expect(tile(w, "red-team").fig).toBe(countOf(rt.blocked - rt.caught_after, rt.attempts));
+    const rr = json<{ attempts: number; blocked: number; caught_after: number; rerun_of: string }>("docs/redteam/rerun-2026-11-19.json");
+    expect(rr.rerun_of).toBe("docs/redteam/report.json");
+    expect(tile(w, "red-team").fig).toBe(countOf(rr.blocked - rr.caught_after, rr.attempts));
+    expect(tile(w, "red-team").label).toMatch(/re-run, not held out$/);
+    expect(tile(w, "red-team").note).toContain(`${countOf(rt.blocked - rt.caught_after, rt.attempts).toLowerCase()}, ${rt.caught_after} found afterwards`);
+    expect(tile(w, "red-team").rec.split(" ")).toEqual(["docs/redteam/rerun-2026-11-19.json", "docs/redteam/report.json"]);
     const bills = json<{ bills: { bill_id: string | null }[] }>("docs/runs/2026-11-19-airwallex-bills.json").bills.filter((b) => b.bill_id);
     expect(tile(w, "spend-bills").fig).toBe(countOf(bills.length, bills.length));
   });
@@ -224,21 +231,47 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(tile(w(), "fuzzing").note).toContain(fz.runs.toLocaleString("en-GB"));
   });
 
-  it("reads eval v3, eval v4 before and after, eval v5, site quality and the WebKit walks from their records", () => {
+  it("reads eval v3, eval v4 to v6 before and after, eval v7, site quality and the WebKit walks from their records", () => {
     const v3 = json<{ totals: { purser_script: { wrong_payments: number }; no_rules: { wrong_payments: number } } }>("docs/evals/adversarial-v3.json").totals;
     expect(tile(w(), "eval-v3").fig).toBe(`${v3.purser_script.wrong_payments} vs ${v3.no_rules.wrong_payments}`);
+    // 19 Nov, fourth round: the held-out figure, and its re-run after the fixes in the note, as v4's.
+    const v3a = json<{ held_out: boolean; totals: { purser_script: { wrong_payments: number; false_holds: number } } }>("docs/evals/adversarial-v3-rerun-2026-11-19.json");
+    expect(v3a.held_out).toBe(false);
+    expect(tile(w(), "eval-v3").note).toContain(`Re-run after the 19 Nov fixes written against these misses (not held out): ${v3a.totals.purser_script.wrong_payments} wrong payments, ${v3a.totals.purser_script.false_holds} false holds`);
     // Eval v4: the held-out figure, and beside it the figures after the fixes written against its misses (third round).
     const v4 = json<{ totals: { purser_script: { wrong_payments: number; false_holds: number }; no_rules: { wrong_payments: number } } }>("docs/evals/adversarial-v4.json").totals;
     const v4a = json<{ held_out: boolean; totals: { purser_script: { wrong_payments: number; false_holds: number } } }>("docs/evals/adversarial-v4-after.json");
     expect(v4a.held_out).toBe(false);
     expect(tile(w(), "eval-v4").fig).toBe(`${v4.purser_script.wrong_payments} vs ${v4.no_rules.wrong_payments}`);
     expect(tile(w(), "eval-v4").note).toContain(`After the fixes written against these misses (no longer held out): ${v4a.totals.purser_script.wrong_payments} wrong payments, ${v4a.totals.purser_script.false_holds} false holds`);
-    // Eval v5: held out, its one run as recorded.
-    const v5 = json<{ held_out: boolean; cases_commit: string; totals: { purser_script: { wrong_payments: number; false_holds: number; clean_truths: number }; no_rules: { wrong_payments: number } } }>("docs/evals/adversarial-v5.json");
-    expect(v5.held_out).toBe(true);
+    // 19 Nov, fourth round: and the dated re-run on the code after it, not held out.
+    const v4r = json<{ held_out: boolean; totals: { purser_script: { wrong_payments: number; false_holds: number } } }>("docs/evals/adversarial-v4-rerun-2026-11-19.json");
+    expect(v4r.held_out).toBe(false);
+    expect(tile(w(), "eval-v4").note).toContain(`Re-run after the fourth round of 19 Nov: ${v4r.totals.purser_script.wrong_payments} wrong payments, ${v4r.totals.purser_script.false_holds} false holds`);
+    // Eval v5: its held-out run as recorded, and beside it the figures after the fixes written against its misses.
+    type Adv = { held_out: boolean; cases_commit: string; totals: { purser_script: { wrong_payments: number; false_holds: number; clean_truths: number }; no_rules: { wrong_payments: number } } };
+    const v5 = json<Adv>("docs/evals/adversarial-v5.json"), v5a = json<Adv>("docs/evals/adversarial-v5-after.json");
+    expect([v5.held_out, v5a.held_out]).toEqual([true, false]);
     expect(tile(w(), "eval-v5").fig).toBe(`${v5.totals.purser_script.wrong_payments} vs ${v5.totals.no_rules.wrong_payments}`);
     expect(tile(w(), "eval-v5").note).toContain(`(commit ${v5.cases_commit})`);
     expect(tile(w(), "eval-v5").note).toContain(`${v5.totals.purser_script.false_holds} false holds of ${v5.totals.purser_script.clean_truths}`);
+    expect(tile(w(), "eval-v5").note).toContain(`Fixed since, no longer held out: ${v5a.totals.purser_script.wrong_payments} wrong payments, ${v5a.totals.purser_script.false_holds} false holds`);
+    expect(tile(w(), "eval-v5").note).not.toContain("still held out");
+    // Eval v6: its held-out run as recorded, and beside it the figures after the fixes written against its misses.
+    const v6 = json<Adv>("docs/evals/adversarial-v6.json"), v6a = json<Adv>("docs/evals/adversarial-v6-after.json");
+    expect([v6.held_out, v6a.held_out]).toEqual([true, false]);
+    expect(tile(w(), "eval-v6").fig).toBe(`${v6.totals.purser_script.wrong_payments} vs ${v6.totals.no_rules.wrong_payments}`);
+    expect(tile(w(), "eval-v6").note).toContain(`(commit ${v6.cases_commit})`);
+    expect(tile(w(), "eval-v6").note).toContain(`${v6.totals.purser_script.false_holds} false hold${v6.totals.purser_script.false_holds === 1 ? "" : "s"} of ${v6.totals.purser_script.clean_truths}`);
+    expect(tile(w(), "eval-v6").note).toContain(`Fixed since, no longer held out: ${v6a.totals.purser_script.wrong_payments} wrong payments, ${v6a.totals.purser_script.false_holds} false holds`);
+    expect(tile(w(), "eval-v6").note).not.toContain("still held out");
+    // Eval v7: held out, its one run as recorded.
+    const v7 = json<Adv>("docs/evals/adversarial-v7.json");
+    expect(v7.held_out).toBe(true);
+    expect(tile(w(), "eval-v7").fig).toBe(`${v7.totals.purser_script.wrong_payments} vs ${v7.totals.no_rules.wrong_payments}`);
+    expect(tile(w(), "eval-v7").note).toContain(`(commit ${v7.cases_commit})`);
+    expect(tile(w(), "eval-v7").note).toContain(`${v7.totals.purser_script.false_holds} false hold${v7.totals.purser_script.false_holds === 1 ? "" : "s"} of ${v7.totals.purser_script.clean_truths}`);
+    expect(tile(w(), "eval-v7").note).toContain("Held out.");
     const sq = json<{ lighthouse: { path: string; preset: string; median: { performance: number; accessibility: number } }[] }>("docs/evidence/site-quality.json").lighthouse;
     expect(tile(w(), "site-quality").fig).toBe(String(Math.min(...sq.map((x) => x.median.accessibility))));
     expect(tile(w(), "site-quality").note).toContain(`lowest performance ${Math.min(...sq.map((x) => x.median.performance))}`);

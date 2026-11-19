@@ -84,6 +84,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/openapi.read.json` | anyone | The read API alone (every GET a read-scoped key may call), as OpenAPI 3.1. |
 | `GET /v1/connections` | anyone | Every connection Purser has to other systems, each labelled live, format export or built and not tested live ([connections.md](connections.md)). |
 | `GET /v1/admin/companies` | platform admin | The companies on this cloud for the operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (no key, no account number). The console shows it at `#/platform`. |
+| `GET /v1/admin/security-log` | platform admin | The cloud's security event log, newest first (`kind`, `since`, `limit` up to 500): sign-ins and their failures, refusals (403), rate-limit hits (429), the admin's own actions, key, passkey, people and policy changes, exports, webhook signature failures, tamper alarms and the alarms they raised. Ids and networks (an address cut to /24 or /48) only, never a secret. Append-only in the database (`cloud/src/securityLog.ts`). |
 | `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the starter key once (a week, the first owner's passkey only). |
 | `POST /v1/admin/tenants/{id}/recovery` | platform admin | An owner lost their passkey: after checking out of band who asks (`checked_by` says how), issue a one-time recovery key for that owner: a day long, good only for that owner's passkey enrolment. Redeemed, it removes the owner's old passkeys, ends their sessions and is spent, in the same write as the new passkey. One open recovery per company; recorded in security events and sent to the webhook. |
 | `POST /v1/auth/challenge` | anyone | Start a passkey sign-in: a one-time challenge for the company. |
@@ -158,9 +159,9 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/users/{id}/erase` | admin | Erase a person's personal data (bookkeeping records are kept for 7 years). |
 | `GET /v1/export/csv/{format}/{kind}` | read | Supplier invoices (`bills`: `xero`, `quickbooks`, `exact`) or ledger journals (`journals`: `xero`, `exact`) as CSV in that product's import columns; `from` and `to` narrow it. A format export, not a live integration ([connections.md](connections.md)). |
 | `GET /v1/export` | admin | Everything the cloud holds for the company; documents listed, each fetched from /v1/documents/{sha256}. Needs admin and read. |
-| `POST /v1/export/staged` | admin | Build the company's export into the store in parts (one at a time, kept a day); returns a 15-minute signed link to its manifest, which needs no key. Needs admin and read. |
+| `POST /v1/export/staged` | admin | Build the company's export into the store in parts (one at a time, kept a day); returns a 15-minute, single-use signed link to its manifest, which needs no key: `manifest_link` (a bare URL and the `x-purser-export-link` header to send, for a program) or `manifest_url` (the same signature in the query, for a browser). Needs admin and read. |
 | `GET /v1/export/staged/{id}` | admin | A staged export's state, with a fresh 15-minute link to its manifest while it is ready. Needs admin and read. |
-| `GET /v1/export/download/{id}/{part}` | anyone | With its signed link only: one part (or the manifest) of a staged export, by its signed link (no key); the manifest carries a signed link per part. |
+| `GET /v1/export/download/{id}/{part}` | anyone | With its signed link only: one part (or the manifest) of a staged export, by its signed link (no key): the signature in the `x-purser-export-link` header, or in the query; each link is good once, for 15 minutes. The manifest carries a signed link per part. |
 | `POST /v1/close` | admin | Close the company's account: access ends; records are kept until the retention day, then purged. |
 | `GET /v1/engine` | read | Where the company's engine stands: `mode` (`test_money`), the approval passkey, the stand-in bank's balances, whether both chains verify, who reads (`reader`: `claude` under the caps or `parser`), who decides (`agents`: `code` until the agents join), and what this company's Claude calls cost so far against its cap (`spent_micros`, `cap_micros`, micro-USD at list price). |
 | `POST /v1/engine/documents` | admin | Upload a supplier invoice: `{ filename, mime?, base64 }`, at most 15 MB once decoded (22,000,000 bytes of body). Filed, read and checked; answers `{ kind, sha256, invoice }`, or 400 with the inbox's reason when it refuses the file (not a PDF, too large). |
@@ -370,7 +371,11 @@ at once all read the final total and every one was refused; it now counts and re
 - **Staged export** (for a large company, and for a browser download): `POST /v1/export/staged` builds the same export
   into R2 under `exports/<company>/<id>/`, one table's rows per part (2,000 rows a part), each part with its SHA-256 in
   a manifest. The answer is a link to the manifest, signed (HMAC with the session secret) for that part of that export
-  of that company, valid 15 minutes and needing no key; the manifest carries a signed link per part.
+  of that company, valid 15 minutes, good once and needing no key; the manifest carries a signed link per part. A
+  program sends the signature in the `x-purser-export-link` header to a URL that holds nothing secret (`manifest_link`,
+  each part's `link`); a browser, which cannot add a header to a download, uses the query form (`manifest_url`, each
+  part's `url`) of the same link. The first download spends the link (`export_links_used`,
+  `cloud/migrations/0007_export_links.sql`), so a copy from a history or a log is refused (403, logged as access denied).
   `GET /v1/export/staged/{id}` gives fresh links. One export at a time per company (a second is refused with 409 while
   one is open, checked at commit), at most 512 MB (over it: 413, and nothing is kept), kept a day; then its parts are
   removed by the next request or the scheduled job and its status reads `expired`. Every staged export and every
@@ -408,7 +413,8 @@ Nothing here needs to be in git; every secret goes through `wrangler secret put`
    npx wrangler secret put ADMIN_TOKEN_SHA256 -c cloud/wrangler.jsonc
    ```
    `SESSION_SECRET` is 48 or more random characters. `ADMIN_TOKEN_SHA256` is the SHA-256 (hex) of a platform admin token
-   that Max keeps in a password manager.
+   that Max keeps in a password manager: the legacy single token, kept working for the move to named admin keys
+   (`ADMIN_KEYS`, made with `npm run cloud:admin-key`; docs/runbook.md, "Platform admin keys"), then deleted.
 3. **An address:** a domain on Cloudflare (for example `cloud.<domain>`) as the Worker's route; set `RP_ID` and `ORIGIN`
    in `cloud/wrangler.jsonc` to it (passkeys are bound to it).
 4. **E-mail:** in the Cloudflare dashboard, Email Routing for a mail domain (for example `in.<domain>`), a catch-all

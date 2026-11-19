@@ -107,7 +107,8 @@ describe("enforce, for any decision, findings, total and limit", () => {
     fc.assert(fc.property(anyCase, anyDecision, anyFindings, (c, d, f) => {
       const e = enforce(c, d, f);
       if (e.outcome === d.action) expect(e.overridden_by).toBeNull();
-      else if (e.outcome === "hold") expect(f.filter((x) => x.level !== "warn").map((x) => x.code)).toContain(e.overridden_by);
+      // 19 Nov, fourth round: or an amount above its contract's or purchase order's (amount_not_expected).
+      else if (e.outcome === "hold") expect([...f.filter((x) => x.level !== "warn").map((x) => x.code), "amount_not_expected"]).toContain(e.overridden_by);
       else expect(["above_alone_limit", "no_alone_limit", "alone_limit_other_currency", "amount_unreadable", "amount_not_expected"]).toContain(e.overridden_by);
     }), RUNS);
   });
@@ -149,11 +150,15 @@ describe("enforce, for anything handed in as a decision", () => {
     expect(enforce(caseWith("10.00", "EUR", { currency: "EUR", amount: "500.00" }), null as unknown as CheckerDecision, [])).toMatchObject({ outcome: "hold", overridden_by: "invalid_action" });
   });
 
-  // Breaks if code lets an amount that is not its contract's be paid alone (review round 1: below the limit it was).
+  // Breaks if code lets an amount above its contract's be paid alone (review round 1: below the limit it was), or sends it
+  // only to the CFO (19 Nov, fourth round: a person looks first, above the limit too); or if an amount below it (a part
+  // delivery) is held, or one in another currency is paid alone.
   it("never pays alone an invoice whose amount is not the one its contract or purchase order says, whatever the agent decides", () => {
     const limit = { currency: "EUR", amount: "1000.00" };
     const c = caseWith("900.00", "EUR", limit, { source: "contract", currency: "EUR", amount: "500.00", reference: "K-1" });
-    expect(enforce(c, { action: "pay", reason: "Pay it.", findings: [] }, [])).toMatchObject({ outcome: "ask_cfo", overridden_by: "amount_not_expected" });
+    expect(enforce(c, { action: "pay", reason: "Pay it.", findings: [] }, [])).toMatchObject({ outcome: "hold", overridden_by: "amount_not_expected" });
+    expect(enforce(caseWith("1900.00", "EUR", limit, { source: "contract", currency: "EUR", amount: "1500.00" }), { action: "pay", reason: "Pay it.", findings: [] }, [])).toMatchObject({ outcome: "hold", overridden_by: "amount_not_expected" });
+    expect(enforce(caseWith("400.00", "EUR", limit, { source: "purchase_order", currency: "EUR", amount: "500.00" }), { action: "pay", reason: "Pay it.", findings: [] }, [])).toMatchObject({ outcome: "pay", overridden_by: null });
     expect(enforce(caseWith("500.00", "EUR", limit, { source: "contract", currency: "EUR", amount: "500.00" }), { action: "pay", reason: "Pay it.", findings: [] }, [])).toMatchObject({ outcome: "pay", overridden_by: null });
     expect(enforce(caseWith("500.00", "EUR", limit, { source: "purchase_order", currency: "USD", amount: "500.00" }), { action: "pay", reason: "Pay it.", findings: [] }, []).outcome).toBe("ask_cfo");
   });

@@ -73,8 +73,16 @@ export function verifyAuditChain(db: DB): ChainCheck {
 
 /** The same check over rows from anywhere, such as an exported audit.jsonl, with no database. */
 export function verifyAuditRows(rows: Row[]): ChainCheck {
-  let prev = GENESIS;
-  let expectSeq = 1;
+  return verifyAuditRowsFrom(rows, { seq: 0, head: GENESIS });
+}
+
+/**
+ * The chain's rows after a point already verified (its seq and row_hash), on from there: the first row must be seq + 1
+ * and link to that hash. From { seq: 0, head: GENESIS } it is the whole chain (src/audit/intact.ts).
+ */
+export function verifyAuditRowsFrom(rows: Row[], from: { seq: number; head: string }): ChainCheck {
+  let prev = from.head;
+  let expectSeq = from.seq + 1;
   for (const r of rows) {
     if (r.seq !== expectSeq) return { ok: false, seq: r.seq, reason: `gap: expected seq ${expectSeq}` };
     if (r.prev_hash !== prev) return { ok: false, seq: r.seq, reason: "prev_hash does not match the previous row" };
@@ -82,7 +90,7 @@ export function verifyAuditRows(rows: Row[]): ChainCheck {
     prev = r.row_hash;
     expectSeq++;
   }
-  return { ok: true, rows: rows.length, head: prev };
+  return { ok: true, rows: from.seq + rows.length, head: prev };
 }
 
 /**

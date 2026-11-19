@@ -12,6 +12,7 @@
 
 import { originJson } from "../provenance/origin.js";
 import { audit } from "../audit/log.js";
+import { auditChainRefusal } from "../audit/intact.js";
 import { TOTAL_BUDGET_CENTS, type Agent } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
@@ -63,6 +64,9 @@ export function heldCents(db: DB, agent?: string, rail: HoldRail = "metal"): num
 export function reserveSpend(db: DB, r: SpendRequest): string | null {
   const now = r.now ?? new Date();
   if (!Number.isInteger(r.cents) || r.cents <= 0) return `invalid_amount: ${r.cents}`;
+  // 19 Nov, fourth round (red team rewrite-history): no agent spends on an audit log that no longer verifies.
+  const tampered = auditChainRefusal(db);
+  if (tampered) return tampered;
   return db.transaction((): string | null => {
     const existing = db.prepare("SELECT status, agent, cents, reason FROM holds WHERE ref = ?").get(r.ref) as { status: string; agent: string; cents: number; reason: string | null } | undefined;
     if (existing && existing.status !== "RELEASED") {
@@ -159,6 +163,9 @@ export const RECORD_PULL_HOLD = "record_pull";
 export function holdBeyondCap(db: DB, r: { agent: "sourcing"; cents: number; ref: string; payee: Payee; now?: Date; reason?: typeof LET_THROUGH_HOLD | typeof RECORD_PULL_HOLD }): string | null {
   const now = r.now ?? new Date();
   if (!Number.isInteger(r.cents) || r.cents <= 0) return `invalid_amount: ${r.cents}`;
+  // 19 Nov, fourth round (red team rewrite-history): no agent spends on an audit log that no longer verifies.
+  const tampered = auditChainRefusal(db);
+  if (tampered) return tampered;
   return db.transaction((): string | null => {
     if (db.prepare("SELECT 1 FROM holds WHERE ref = ?").get(r.ref)) return `hold_conflict: ${r.ref} is already held`;
     // An open mandate replace holds it too (dry-179): Metal must refuse it, but if it did not, the agent's spend would move.

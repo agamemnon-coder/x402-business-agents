@@ -59,7 +59,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines[2]!.startsWith(`${BANNER}<br><picture>`)).toBe(true);
     for (const f of ["docs/assets/readme/banner-dark.png", "docs/assets/readme/banner-light.png", "docs/assets/readme/hero-dark.webp", "docs/assets/readme/hero-light.webp"]) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
-    const badges = lines.findIndex((l) => l.startsWith("**Build & quality** [![CI]")); // 19 Nov 2026: three rows, each after its bold label
+    const badges = lines.findIndex((l) => l.startsWith("**Build & quality**<br>[![CI]")); // 19 Nov 2026: three rows, each after its bold label
     // 15 Nov (clarity, Founder's and Judges' Choice: one idea in 10 seconds): the first screen is the idea in bold (Home's
     // sentence, word for word), "Built on Airwallex" (14 Nov, factual, no partnership implied), the three links (Try,
     // the film, verify it yourself), then the Kit 11 table, within the first 25 lines. Everything else follows it.

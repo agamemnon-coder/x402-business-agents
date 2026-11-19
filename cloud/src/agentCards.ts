@@ -146,7 +146,9 @@ async function liveCard(sql: Sql, tenantId: string, row: CardRow, gateway: Cards
     if (hit && now.getTime() - hit.at < READ_TTL_MS) return JSON.parse(hit.body_json);
   }
   if (!gateway) return { card: null, items: [], read_at: null, reason: "this deployment has no card gateway" };
-  const [c, t] = await Promise.all([gateway.ask({ op: "card", card_id: row.card_id }), gateway.ask({ op: "transactions", card_id: row.card_id })]);
+  // A gateway that throws (the service binding failed) is no live answer, as at the other calls here: never a 500.
+  const asked = (q: Parameters<CardsPort["ask"]>[0]): Promise<CardsAnswer> => Promise.resolve().then(() => gateway.ask(q)).catch(() => ({ ok: false, code: "no_answer", reason: "the card gateway did not answer" }) as CardsAnswer);
+  const [c, t] = await Promise.all([asked({ op: "card", card_id: row.card_id }), asked({ op: "transactions", card_id: row.card_id })]);
   const card = c.ok && c.op === "card" ? c.card : null;
   const out = { card, items: t.ok && t.op === "transactions" ? t.items : [], read_at: card ? now.toISOString() : null, reason: c.ok ? null : c.reason };
   if (card) {

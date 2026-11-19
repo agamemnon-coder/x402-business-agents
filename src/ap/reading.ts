@@ -7,6 +7,8 @@
 
 import { z } from "zod";
 import { skeleton } from "../policy/fraudCore.js";
+import { asksToPay } from "../policy/multilingual.js";
+import { plainNumerals } from "../policy/numerals.js";
 
 export interface ApReading {
   vendor: string;
@@ -103,10 +105,14 @@ export function readDate(text: string): string {
 
 /**
  * "1,554.62", "1.000,00", "400,00", "1 190,00", Swiss "3'400.00" (also with a typographic apostrophe, \u2019 or \u02bc: red team
- * round 3) -> "1554.62" etc.; anything without exactly two decimals -> "".
+ * round 3) -> "1554.62" etc.; anything without exactly two decimals -> "". 19 Nov (after eval v6): also the Vietnamese and
+ * Indonesian "1.234.567,89" (as German writes it), a thin space between groups, and India's grouping in lakhs and crores
+ * ("12,34,567.89": groups of two before the last three).
  */
 export function decimalAmount(token: string): string {
-  const t = token.replace(/[\u00a0\u202f]/g, " ").replace(/[\u2019\u02bc]/g, "'").trim();
+  const t = token.replace(/[\u00a0\u202f\u2009]/g, " ").replace(/[\u2019\u02bc]/g, "'").trim();
+  const lakh = /^(\d{1,2}(?:,\d{2})+,\d{3})\.(\d{2})$/.exec(t);
+  if (lakh) return `${lakh[1]!.replace(/,/g, "").replace(/^0+(?=\d)/, "")}.${lakh[2]}`;
   const m = /^(\d{1,3}(?:([.,' ])\d{3})*|\d+)([.,])(\d{2})$/.exec(t);
   if (!m) return "";
   if (m[2] && m[2] === m[3]) return "";
@@ -114,7 +120,7 @@ export function decimalAmount(token: string): string {
   return `${whole}.${m[4]}`;
 }
 
-const AMOUNT_TOKEN = /\d[\d.,'\u2019\u02bc \u00a0\u202f]*\d/g;
+const AMOUNT_TOKEN = /\d[\d.,'\u2019\u02bc \u00a0\u202f\u2009]*\d/g;
 
 /** A two-decimal amount on a line: its value, where its digits start and end, and whether a digit sits right before it, split off by a mark that is no separator. */
 export interface Found { amount: string; start: number; end: number; split: boolean }
@@ -192,13 +198,18 @@ const MINUS_AFTER = new RegExp(`\\d[.,]\\d{2}\\s*${MINUS}(?!\\s*\\d)`, "u");
  * it ("1,850.00-"), "CR" before or after it, or brackets ("(1,850.00)").
  */
 export function totalIsNegative(text: string): boolean {
-  const total = chosenTotal(lines(text ?? ""));
+  const total = chosenTotal(amountLines(text ?? ""));
   if (!total) return false;
   const r = total.rest;
   return MINUS_BEFORE.test(r) || MINUS_AFTER.test(r) || /(?:^|[^\p{L}])(?:CR|Cr)(?![\p{L}])/u.test(r) || /\(\s*(?:€|\$|£|[A-Z]{3})?\s*\d[\d.,' \u00a0]*\)/.test(r);
 }
 
 const lines = (text: string) => text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+/**
+ * The lines amounts are read from (19 Nov, after eval v6: a total in Devanagari or full-width digits was read as none):
+ * every script's digits as 0 to 9, full-width forms as the plain characters (src/policy/numerals.ts plainNumerals).
+ */
+const amountLines = (text: string) => lines(plainNumerals(text));
 
 export type LineKind = "subtotal" | "tax" | "total";
 /** A labelled line with a two-decimal amount: what it is, its total label's rank (1 is "the amount to pay"), and the line after the label. */
@@ -207,11 +218,30 @@ export interface Labelled { kind: LineKind; tier: number; amount: string; line: 
 const NOT_LETTER = "(?![\\p{L}])";
 const SUBTOTAL = new RegExp(`^(?:sub-?total|subtotaal|net\\s+amount|nettobetrag|zwischensumme|netto|summe\\s+netto|total\\s+(?:excl\\.?|excluding|ex\\.?|exkl\\.?|before\\s+(?:vat|tax)|net)|totaal\\s+(?:excl\\.?|exclusief))${NOT_LETTER}`, "iu");
 const TAX = new RegExp(`^(?:vat|btw|mwst\\.?|ust\\.?|tax|sales\\s+tax|umsatzsteuer|total\\s+(?:vat|tax|btw|mwst|ust)|totaal\\s+btw)${NOT_LETTER}`, "iu");
+/**
+ * 19 Nov (after eval v6, v6-limit-saigon-vietnamese-format and v6-limit-yamato-fullwidth-total: "Tổng cộng: 1.050,00 €"
+ * and "合計 EUR 1,200.00" were read as no total): the same three ranks in the other languages suppliers write in, longer
+ * labels before the shorter ones they start with.
+ */
+const label = (xs: readonly string[]) => xs.map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s*")).join("|");
+const DUE_LABELS = label([
+  "total a pagar", "importe a pagar", "a pagar", "totale da pagare", "importo da pagare", "da pagare", "valor a pagar", "razem do zapłaty", "do zapłaty", "celkem k úhradě", "k úhradě",
+  "ödenecek tutar", "tổng tiền thanh toán", "số tiền phải trả", "số tiền thanh toán", "total yang harus dibayar", "jumlah yang harus dibayar", "total tagihan", "jumlah perlu dibayar",
+  "итого к оплате", "всего к оплате", "к оплате", "сума до сплати", "до сплати", "сума за плащане", "за плащане", "πληρωτέο ποσό", "πληρωτέο",
+  "应付金额", "應付金額", "应付总额", "應付總額", "价税合计", "價稅合計", "ご請求金額", "請求金額", "お支払い金額", "お支払金額", "税込合計",
+  "청구 금액", "결제 금액", "지급 금액", "ยอดที่ต้องชำระ", "จำนวนเงินที่ต้องชำระ", "ยอดชำระ", "סה״כ לתשלום", "סה\"כ לתשלום", "לתשלום",
+  "المبلغ المستحق", "المبلغ الواجب الدفع", "مبلغ قابل پرداخت", "قابل پرداخت", "कुल देय राशि", "देय राशि", "कुल देय",
+]);
+const TOTAL_LABELS = label([
+  "total general", "importe total", "totale fattura", "totale", "valor total", "suma", "razem", "celkem", "genel toplam", "toplam tutar", "tổng cộng", "tổng tiền", "jumlah total",
+  "итого", "всего", "разом", "общо", "σύνολο", "合计金额", "合計金額", "总计", "總計", "合计", "合計", "総額", "합계 금액", "합계", "총 금액", "총액",
+  "รวมทั้งสิ้น", "ยอดรวม", "סה״כ", "סה\"כ", "الإجمالي", "الاجمالي", "المجموع", "جمع کل", "مجموع", "कुल राशि", "कुल योग",
+]);
 /** Total labels by rank: the amount to pay first, a document total next, a bare "Total" last. */
 const TOTAL_TIERS = [
-  new RegExp(`^(?:total\\s+(?:amount\\s+)?due|amount\\s+due|amount\\s+payable|total\\s+payable|balance\\s+due|amount\\s+to\\s+pay|to\\s+pay|totaal\\s+te\\s+betalen|te\\s+betalen|zu\\s+zahlen(?:der\\s+betrag)?|zahlbetrag|net\\s+à\\s+payer|à\\s+payer|a\\s+payer|montant\\s+dû)${NOT_LETTER}`, "iu"),
-  new RegExp(`^(?:total\\s+amount|invoice\\s+total|grand\\s+total|total\\s+(?:incl\\.?|including|inclusive|inkl\\.?)\\s*(?:of\\s+)?(?:vat|tax|btw|mwst\\.?|ust\\.?)?|totaal\\s+incl\\.?\\s*(?:btw)?|totaalbedrag|factuurbedrag|gesamtbetrag|gesamtsumme|rechnungsbetrag|bruttobetrag|endbetrag|endsumme|total\\s+ttc|montant\\s+ttc)${NOT_LETTER}`, "iu"),
-  new RegExp(`^(?:total|totaal|summe|gesamt)${NOT_LETTER}`, "iu"),
+  new RegExp(`^(?:total\\s+(?:amount\\s+)?due|amount\\s+due|amount\\s+payable|total\\s+payable|balance\\s+due|amount\\s+to\\s+pay|to\\s+pay|totaal\\s+te\\s+betalen|te\\s+betalen|zu\\s+zahlen(?:der\\s+betrag)?|zahlbetrag|net\\s+à\\s+payer|à\\s+payer|a\\s+payer|montant\\s+dû|${DUE_LABELS})${NOT_LETTER}`, "iu"),
+  new RegExp(`^(?:total\\s+amount|invoice\\s+total|grand\\s+total|total\\s+(?:incl\\.?|including|inclusive|inkl\\.?)\\s*(?:of\\s+)?(?:vat|tax|btw|mwst\\.?|ust\\.?)?|totaal\\s+incl\\.?\\s*(?:btw)?|totaalbedrag|factuurbedrag|gesamtbetrag|gesamtsumme|rechnungsbetrag|bruttobetrag|endbetrag|endsumme|total\\s+ttc|montant\\s+ttc|${TOTAL_LABELS})${NOT_LETTER}`, "iu"),
+  new RegExp(`^(?:total|totaal|summe|gesamt|toplam|jumlah|कुल|รวม)${NOT_LETTER}`, "iu"),
 ];
 
 /** What a line is. A subtotal or tax label is checked before a total one: "Total excl. VAT" is a subtotal. */
@@ -256,7 +286,7 @@ function chosenTotal(ls: string[]): Labelled | null {
  * discount, a line item that starts with "Total"). A person checks which one is due; code never picks between them.
  */
 export function totalAmbiguity(text: string): string | null {
-  const all = totalLines(lines(text ?? ""));
+  const all = totalLines(amountLines(text ?? ""));
   // One total line with two amounts ("Amount due USD 2,400.00 on total USD 24,000.00"): code never picks either (red team round 3).
   const distinct = (x: Labelled) => [...new Set(x.amounts.map((a) => a.amount))];
   const two = all.find((x) => distinct(x).length > 1);
@@ -281,7 +311,7 @@ function shownLine(line: string, max: number): string {
  * is shown, so no tail past what the CFO reads can carry another amount (red team round 3).
  */
 export function totalLine(text: string): string {
-  const t = chosenTotal(lines(text ?? ""));
+  const t = chosenTotal(amountLines(text ?? ""));
   if (!t) return "";
   const end = t.amounts.at(-1)!.end;
   const after = /^\s*(?:[A-Z]{3}|\p{Sc})(?![\p{L}])/u.exec(t.line.slice(end))?.[0] ?? "";
@@ -290,7 +320,7 @@ export function totalLine(text: string): string {
 
 /** The currency the total line itself names (one code it knows and nothing else beside it), or "". */
 export function totalLineCurrency(text: string): string {
-  const t = chosenTotal(lines(text ?? ""));
+  const t = chosenTotal(amountLines(text ?? ""));
   if (!t) return "";
   const c = lineCurrency(t.rest);
   return !c.unknown && c.known.length === 1 ? c.known[0]! : "";
@@ -367,7 +397,10 @@ function accountOf(text: string, iban: string, bic: string): Pick<ApReading, "ac
 export function parseApFallback(text: string): ApReading {
   const ls = lines(text ?? "");
   if (ls.length === 0) return { ...EMPTY };
-  const total = chosenTotal(ls);
+  // The amounts, their labels and currency from the lines as numbers are read (amountLines); the name and the invoice
+  // number as written.
+  const als = amountLines(text ?? "");
+  const total = chosenTotal(als);
   // A number is read only when it ends where the word ends: "ВTX-2026-21" (a Cyrillic В) or "BTX-2026-2１" is not read
   // as part of itself; such a number is left empty for a person (red team round 2).
   const invoiceNo =
@@ -387,9 +420,9 @@ export function parseApFallback(text: string): ApReading {
     invoice_no: invoiceNo,
     issue_date: issued,
     due_date: due,
-    currency: invoiceCurrency(ls, total),
-    subtotal: labelledAmount(ls, "subtotal")?.amount ?? "",
-    tax: labelledAmount(ls, "tax")?.amount ?? "",
+    currency: invoiceCurrency(als, total),
+    subtotal: labelledAmount(als, "subtotal")?.amount ?? "",
+    tax: labelledAmount(als, "tax")?.amount ?? "",
     // Digits split by a mark that is no separator ("3‘400.00") are never read as the digits after it: left for a person.
     total: total && !total.amounts.at(-1)!.split ? total.amount : "",
     iban,
@@ -422,7 +455,7 @@ const MONEY = /^\d+\.\d{2}$/;
 /** Every two-decimal amount written in the document. */
 export function amountsIn(text: string): Set<string> {
   const out = new Set<string>();
-  for (const l of lines(text)) {
+  for (const l of amountLines(text)) {
     for (const x of l.matchAll(AMOUNT_TOKEN)) {
       const a = decimalAmount(x[0]) || decimalAmount(x[0].split(/\s+/).pop() ?? "");
       if (a) out.add(a);
@@ -430,6 +463,29 @@ export function amountsIn(text: string): Set<string> {
   }
   return out;
 }
+
+/**
+ * A line that asks to pay more than the invoice's total, or null (19 Nov, after the held-out eval v6, v6-limit-ege-asks-more:
+ * "Lütfen önceki bakiye dahil 1.450,00 EUR ödeyiniz." under a total of EUR 480.00 was paid, as v5-limit-muller-asks-more
+ * was in German). Structural, whatever the words: a line that is not the invoice's own subtotal, tax or total line, that
+ * asks to pay (src/policy/multilingual.ts asksToPay, in the languages it knows) and names an amount above the total in
+ * the invoice's currency, or in no currency. What is owed is then not one amount: a person checks it. A line that names
+ * another currency only (a reference rate) is no such request.
+ */
+export function askedAboveTotal(text: string, total: string, currency: string): string | null {
+  if (!MONEY.test(total)) return null;
+  const most = toCentsPlain(total);
+  for (const l of amountLines(text ?? "")) {
+    if (labelled(l) || !asksToPay(l)) continue;
+    const named = lineCurrency(l.replace(/\d[\d.,'\s]*\d/g, " ")).known;
+    if (named.length && !named.includes(currency)) continue;
+    const above = amountsOn(l).find((a) => toCentsPlain(a.amount) > most);
+    if (above) return `the line "${shownLine(l, 100)}" asks to pay and names ${currency ? `${currency} ` : ""}${above.amount}, more than the invoice's total ${currency ? `${currency} ` : ""}${total}; a person checks what is owed`;
+  }
+  return null;
+}
+/** Cents of a plain two-decimal amount (digits only, so no float): "1450.00" is 145000. */
+const toCentsPlain = (amount: string) => Number(amount.replace(".", ""));
 
 /**
  * Why a model's reading is not used, or null. Its invoice number, total and IBAN must be written in the document, and

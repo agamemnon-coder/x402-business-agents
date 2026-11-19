@@ -2,6 +2,9 @@
 // /try/sign runs the very same code as the runner. The caller gives the allowlist and the SHA-256 of the invoice's
 // IBAN (Node's crypto in fraud.ts, WebCrypto in the Worker).
 
+import { BANK_CHANGE_ANY, BANK_DETAILS_CHANGED_ANY, BANK_UNCHANGED_ANY, bypassInAnyLanguage, CHANGE_NEGATED_ANY, fold, MESSENGER, PAY_ANY, PAY_OR_DETAILS_ANY, walletIn } from "./multilingual.js";
+import { canonicalName, mixedScriptWord, romanFold, scriptsIn, toLatin, transliterable } from "./scripts.js";
+
 export type FraudCode =
   | "bank_details_changed" | "lookalike_vendor" | "mixed_scripts" | "account_name_mismatch" | "unknown_vendor"
   | "bank_change_language" | "pressure_language";
@@ -45,12 +48,17 @@ export const CONFUSABLES: Readonly<Record<string, string>> = {
   "0": "o", "1": "l",
 };
 
-/** A name reduced to what a reader sees: no case, accents, spacing or punctuation, lookalike letters folded to Latin. */
+/**
+ * A name reduced to what a reader sees: no case, accents, spacing or punctuation, lookalike letters folded to Latin.
+ * 19 Nov (after eval v5): letters of other alphabets that look like no Latin one are kept (they were dropped, so a name
+ * in Greek or Cyrillic was reduced to the few letters that look Latin, and two such names could not be told apart).
+ * Latin letters outside a to z (ß, ø, ł) are dropped as before.
+ */
 export function skeleton(name: string): string {
-  return [...name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()]
+  return [...name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\u03C2/g, "\u03C3")]
     .map((ch) => CONFUSABLES[ch] ?? ch)
-    .join("")
-    .replace(/[^a-z0-9]/g, "");
+    .filter((ch) => /[a-z0-9]/.test(ch) || (/\p{L}/u.test(ch) && !/\p{Script=Latin}/u.test(ch)))
+    .join("");
 }
 
 /**
@@ -100,6 +108,29 @@ export function legalTokens(name: string): string[] {
   return tokens;
 }
 
+/** Legal forms of companies as they read in Latin letters beyond Europe's: romanised Japanese, Korean, Thai, Malay, Indonesian, Turkish, Indian and Chinese forms. */
+const COMPANY_WORDS: ReadonlySet<string> = new Set([
+  "co", "corp", "corporation", "company", "inc", "ltd", "limited", "llc", "plc", "pvt", "pte", "private", "sdn", "bhd", "tbk", "pt", "cv", "jsc", "ojsc", "pjsc", "kk", "kabushiki", "kaisha",
+  "yugen", "godo", "jusik", "hoesa", "chusik", "borisat", "jamkat", "sti", "as", "tnhh", "cty", "gmbh", "ag", "sa", "bv", "nv", "srl", "spa", "sas", "sarl", "ab", "oy", "aps",
+]);
+/** Legal forms written in other scripts, and as banks write them in katakana, as they read after NFKC and in lower case. */
+const COMPANY_MARKS = [
+  "有限公司", "股份公司", "公司", "株式会社", "有限会社", "合同会社", "(株)", "(有)", "주식회사", "유한회사", "(주)", "(유)", "บริษัท", "จำกัด", "ห้างหุ้นส่วน",
+  "בע״מ", "בע\"מ", "בעמ", "חברה", "प्राइवेट लिमिटेड", "लिमिटेड", "प्रा. लि", "प्रा.लि", "شركة", "ش.م.م", "ذ.م.م", "مؤسسة", "شرکت", "ооо", "зао", "оао", "пао", "еоод", "оод", "еад", "тов",
+  "α.ε.", "ε.π.ε.", "ι.κ.ε.", "công ty", "cổ phần", "a.ş.", "şti", "カ)", "(カ", "ユ)", "(ユ", "ド)", "(ド", "カブシキガイシャ", "カブシキカイシャ",
+];
+/**
+ * Whether a name is a company's (19 Nov, after eval v6): a legal form at its end as legalName drops it, a company word
+ * of the romanisations banks print ("Co., Ltd.", "K.K.", "Pvt", "Sdn Bhd"), or a legal form in its own script.
+ */
+export function namesACompany(name: string): boolean {
+  const n = name.normalize("NFKC").toLowerCase();
+  if (COMPANY_MARKS.some((m) => n.includes(m))) return true;
+  const raw = rawTokens(name);
+  if (raw.some((t) => COMPANY_WORDS.has(t))) return true;
+  return legalTokens(name).length < raw.length || ROMANISED_FORMS.has(raw.at(-1) ?? "");
+}
+
 /** Whether `short` is `full` with letters left out, in order, from its first letter on ("txtl" of "textil"). */
 const shortened = (short: string, full: string) => {
   if (short.length < Math.min(3, full.length) || short.length >= full.length || short[0] !== full[0]) return false;
@@ -139,8 +170,35 @@ const nameKey = (name: string) => {
  * account must still be the one on file (assessAgainst compares it).
  */
 export function sameName(a: string, b: string): boolean {
-  return legalName(a) === legalName(b) || nameKey(a) === nameKey(b) || nameKey(transliterate(a)) === nameKey(transliterate(b));
+  return legalName(a) === legalName(b) || nameKey(a) === nameKey(b) || nameKey(transliterate(a)) === nameKey(transliterate(b)) || sameRomanised(a, b);
 }
+
+/** Legal forms of Greek, Bulgarian, Russian, Ukrainian and Serbian companies, as they read in Latin letters (Α.Ε., ЕООД, ООО, ТОВ, Д.О.О.). */
+const ROMANISED_FORMS: ReadonlySet<string> = new Set(["ae", "epe", "ike", "oe", "ee", "eood", "ood", "ead", "ad", "et", "kd", "sd", "ooo", "oao", "zao", "pao", "ao", "tov", "pp", "doo"]);
+/** A name in Latin letters as romanFold reduces it, its legal form at the end dropped, with no spaces. */
+export function romanKey(name: string): string {
+  const t = legalTokens(toLatin(name));
+  while (t.length > 1 && ROMANISED_FORMS.has(t[t.length - 1]!)) t.pop();
+  return romanFold(t.filter((x, i) => !(i > 0 && i < t.length - 1 && AND_WORDS.has(x))).join("")).replace(/[^a-z0-9]/g, "");
+}
+/**
+ * Whether two names, one of them in Greek or Cyrillic letters, are one name romanised (19 Nov, after eval v5: "TEKSTIL
+ * PLOVDIV EOOD" at the IBAN on file was held as another holder than "Текстил Пловдив ЕООД"): only between Latin, Greek
+ * and Cyrillic, which have standard romanisations; the spellings banks use for one letter are one (romanFold), and the
+ * legal forms of those countries are dropped as legalName drops the Latin ones ("Родопи" is "Родопи ООД"). A name is
+ * never matched on this alone where money moves: the account must still be the one on file.
+ */
+function sameRomanised(a: string, b: string): boolean {
+  if (!transliterable(a) || !transliterable(b) || !(greekOrCyrillic(a) || greekOrCyrillic(b))) return false;
+  const ka = romanKey(a);
+  return ka.length >= 3 && ka === romanKey(b);
+}
+const greekOrCyrillic = (s: string) => { const x = scriptsIn(s); return x.has("Greek") || x.has("Cyrillic"); };
+/** Whether two names are written in the same alphabets. */
+const sameScripts = (a: string, b: string) => {
+  const x = scriptsIn(a), y = scriptsIn(b);
+  return x.size === y.size && [...x].every((s) => y.has(s));
+};
 
 /** A name's words as legalTokens reads them, its legal form kept. */
 const rawTokens = (name: string) => name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\./g, "").replace(/&/g, " & ").split(/[^\p{L}\p{N}&]+/u).filter(Boolean);
@@ -205,7 +263,6 @@ export function editDistance(a: string, b: string): number {
   return d[a.length]![b.length]!;
 }
 
-const hasOtherScript = (s: string) => [...s].some((ch) => /\p{L}/u.test(ch) && !/\p{Script=Latin}/u.test(ch));
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // A change of bank announced in the text, in the languages Purser's suppliers write in (English, German, Dutch). A
@@ -250,9 +307,13 @@ const BANK_CHANGE = new RegExp([
  */
 const WEB_ADDRESS = /\bhttps?:\/\/\S+|\bwww\.\S+/gi;
 const PAY_WORD = /\b(pay|paying|payment|betaal|betalen|betaling|zahlen|bezahlen|zahlung|payez|payer|paiement|r(é|e)glez|r(é|e)gler|pague|pagar|pago|paga|pagare|pagamento)\b(?!\s*(terms|conditions|voorwaarden|bedingungen|termini|condiciones))/i;
-const payLink = (line: string) => /\bhttps?:\/\/|\bwww\./i.test(line) && PAY_WORD.test(line.replace(WEB_ADDRESS, " "));
+const payLink = (line: string) => /\bhttps?:\/\/|\bwww\./i.test(line) && (PAY_WORD.test(line.replace(WEB_ADDRESS, " ")) || PAY_ANY.test(fold(line.replace(WEB_ADDRESS, " "))));
 /** "Our bank details are unchanged": no announcement of a change (19 Nov: "unchanged" read as "changed"). */
 const BANK_UNCHANGED = /\b(unchanged|not (been )?changed|remain(s)? (the same|unchanged|valid)|unver(ä|ae)ndert|nicht ge(ä|ae)ndert|ongewijzigd|niet gewijzigd|inchang(é|e)e?s?|sin cambios|invariat[ie]|inalterad[oa]s?)\b/i;
+/** "Unchanged" in every language the lists know, over a folded line. */
+const UNCHANGED_ANY = new RegExp(`${BANK_UNCHANGED_ANY.source}|${BANK_UNCHANGED.source}`, "iu");
+/** The same, or a word of change negated: what is not an announcement of other bank details (for the concept rule). */
+const UNCHANGED_OR_NEGATED = new RegExp(`${UNCHANGED_ANY.source}|${CHANGE_NEGATED_ANY.source}`, "iu");
 /**
  * Words that push for speed (19 Nov, adversarial eval v3: on their own they held a courtesy "placed today", a line item
  * "Urgent courier delivery", a confidentiality footer and a supplier's own final notice). Shown to the person who
@@ -289,10 +350,17 @@ function lookalikeOf(vendor: string, all: Beneficiary[]): { b: Beneficiary; how:
   const sv = skeleton(vendor);
   for (const b of all) {
     const sb = skeleton(b.name);
-    if (sv === sb) return hasOtherScript(vendor) ? { b, how: "same letters, some from another alphabet" } : null;
-    const d = editDistance(sv, sb);
-    const limit = Math.min(sv.length, sb.length) >= 8 ? 2 : 1;
-    if (sb.length >= 4 && d <= limit) return { b, how: `${plural(d, "letter")} ${d === 1 ? "differs" : "differ"}` };
+    // Called only for a name that matched no supplier: the same skeleton is then letters from another alphabet.
+    if (sv === sb) return { b, how: "same letters, some from another alphabet" };
+    // 19 Nov (after eval v5): a name on file in Greek or Cyrillic is also compared as it reads in Latin letters, so a
+    // Latin "Tekstil Plovdlv" is a lookalike of "Текстил Пловдив" as "Bergtex Texitl" is of "Bergtex Textil".
+    const pairs: [string, string][] = [[sv, sb]];
+    if (!sameScripts(vendor, b.name) && transliterable(vendor) && transliterable(b.name)) pairs.push([skeleton(toLatin(vendor)), skeleton(toLatin(b.name))]);
+    for (const [x, y] of pairs) {
+      const d = editDistance(x, y);
+      const limit = Math.min(x.length, y.length) >= 8 ? 2 : 1;
+      if (y.length >= 4 && d <= limit) return { b, how: d === 0 ? "the same name in another alphabet, with another account or holder" : `${plural(d, "letter")} ${d === 1 ? "differs" : "differ"}` };
+    }
   }
   return null;
 }
@@ -300,13 +368,22 @@ function lookalikeOf(vendor: string, all: Beneficiary[]): { b: Beneficiary; how:
 /** The invoice's payee against an allowlist: the same signals, in the same order, as assessInvoice. */
 export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: string; bic: string }, text: string, invIbanSha: string): FraudFinding {
   const signals: FraudSignal[] = [];
-  // The same vendor written differently (case, spacing, punctuation) in Latin letters is that vendor; 19 Nov, also with
-  // or without its legal form (legalName). Its account is compared below all the same.
-  const latin = !hasOtherScript(inv.vendor);
-  // Third round (eval v4): also with umlauts written out and "und" for "&" (sameName).
-  const matched = all.find((b) => b.name === inv.vendor) ?? (latin ? all.find((b) => skeleton(b.name) === skeleton(inv.vendor)) ?? all.find((b) => sameName(b.name, inv.vendor)) : undefined);
+  // 19 Nov (after the held-out eval v5, docs/evals/adversarial-v5.md: every clean invoice of the suppliers on file named
+  // in Greek and in Cyrillic letters was held as possible fraud): what is suspect is a word that mixes alphabets (a
+  // Cyrillic "а" inside a Latin word), not a name written wholly in another alphabet. The name as written is the
+  // supplier's when it is the name on file after NFKC (full-width letters, composed or decomposed accents, invisible
+  // format characters aside: the injection screen holds an invoice for those). A name with no mixed word is that
+  // supplier also written differently in the same alphabets (case, spacing, punctuation, legal form, umlauts written out:
+  // skeleton and sameName), or romanised from Greek or Cyrillic (sameName). A whole name in another alphabet that only
+  // looks like one on file is not matched here, and the lookalike check below holds it.
+  const mixed = mixedScriptWord(inv.vendor);
+  const canon = canonicalName(inv.vendor);
+  const matched = all.find((b) => b.name === inv.vendor) ?? all.find((b) => canonicalName(b.name) === canon)
+    ?? (mixed ? undefined : all.find((b) => sameScripts(b.name, inv.vendor) && skeleton(b.name) === skeleton(inv.vendor))
+      ?? all.find((b) => sameScripts(b.name, inv.vendor) && sameName(b.name, inv.vendor))
+      ?? all.find((b) => sameRomanised(b.name, inv.vendor)));
 
-  if (hasOtherScript(inv.vendor)) {
+  if (mixed) {
     signals.push({ code: "mixed_scripts", blocks: true, detail: `the vendor name "${inv.vendor}" contains letters from a non-Latin alphabet` });
   }
   const look = matched ? null : lookalikeOf(inv.vendor, all);
@@ -331,21 +408,56 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   const atAccountOnFile = !!matched && !signals.some((s) => s.code === "bank_details_changed");
   // Third round (eval v4): the holder transliterated or with "und" for "&" (sameName), and, at the account on file only,
   // cut short by the bank's field (truncates) or followed by the supplier's trade name (tradeNameOf).
-  if (holder && !sameName(holder, expectedHolder)
+  // 19 Nov (after eval v5): a holder with a word that mixes alphabets is held as the vendor's name is.
+  const holderMixed = holder ? mixedScriptWord(holder) : undefined;
+  if (holder && holderMixed && !mixed) {
+    signals.push({ code: "mixed_scripts", blocks: true, detail: `the account holder "${holder}" contains letters from a non-Latin alphabet` });
+  }
+  if (holder && !holderMixed && !sameName(holder, expectedHolder)
     && !(atAccountOnFile && (abbreviates(holder, expectedHolder) || truncates(holder, expectedHolder) || tradeNameOf(holder, expectedHolder)))) {
-    signals.push({ code: "account_name_mismatch", blocks: true, detail: `the account holder on the invoice is "${holder}", not ${expectedHolder}`, asked: holder, on_file: expectedHolder });
+    // 19 Nov (after eval v5): at the account on file, a holder in another alphabet than the name on file that has no
+    // standard romanisation to compare it by (a Thai, Hebrew or Korean name on file, the holder in Latin letters as banks
+    // and SWIFT write it) cannot be told to differ: shown to the person who verifies, not held. Anywhere else, and
+    // between alphabets that can be compared, another name is another holder.
+    const incomparable = atAccountOnFile && !sameScripts(holder, expectedHolder) && !(transliterable(holder) && transliterable(expectedHolder));
+    // 19 Nov (after the held-out eval v6, v6-name-haining-person-holder: "LI WEI" as holder of the account on file of
+    // 浙江海宁绳业有限公司 was paid on a warning). Code cannot read a Chinese name in Latin letters, but it can read what kind of
+    // name it is: a company on file (its legal form in its own script: 有限公司, 株式会社, 주식회사, บริษัท … จำกัด, בע״מ,
+    // प्राइवेट लिमिटेड) whose account is held, the invoice says, in a name with no company form in any script is a person's
+    // account. That holds the invoice, as another holder in the same alphabet does. A romanised company name ("ZHEJIANG
+    // HAINING ROPE INDUSTRY CO., LTD.", a bank's "ﾔﾏﾄｾﾝｲ(ｶ") at the account on file is still shown only: the account is the
+    // one on file and code cannot compare the letters. At a new or changed account there is no "shown only": another
+    // holder holds the invoice (and the changed account blocks it) in any script.
+    const person = incomparable && namesACompany(expectedHolder) && !namesACompany(holder);
+    signals.push(person
+      ? { code: "account_name_mismatch", blocks: true, detail: `the account holder on the invoice is "${holder}", a name with no company form, at the account on file of the company ${expectedHolder}: a person's name as holder of a company's account`, asked: holder, on_file: expectedHolder }
+      : incomparable
+      ? { code: "account_name_mismatch", blocks: false, detail: `the account holder on the invoice is "${holder}", in another alphabet than ${expectedHolder} on file, which code cannot compare letter by letter; the account is the one on file`, asked: holder, on_file: expectedHolder }
+      : { code: "account_name_mismatch", blocks: true, detail: `the account holder on the invoice is "${holder}", not ${expectedHolder}`, asked: holder, on_file: expectedHolder });
   }
   const line = (re: RegExp, not?: RegExp) => text.split("\n").find((l) => re.test(l) && !(not && not.test(l)))?.trim();
+  // 19 Nov (after eval v5): the same, in the other languages and scripts suppliers write in (src/policy/multilingual.ts),
+  // over the line folded as those lists are (case, accents).
+  const anyLine = (re: RegExp, not?: RegExp) => text.split("\n").find((l) => { const f = fold(l); return re.test(f) && !(not && not.test(f)); })?.trim();
   // 19 Nov (eval v3, v3-bec-zeeland-footer-new-account): words asking to pay another account hold the invoice for a
   // person, even when the IBAN line is the one on file; a person confirms with the supplier on a number on file.
-  const change = line(BANK_CHANGE, BANK_UNCHANGED);
+  // 19 Nov (after eval v6, v6-bec-galil-details-updated: "פרטי חשבון הבנק שלנו עודכנו"): and bank details near a word of
+  // change, in any language the lists know.
+  const change = line(BANK_CHANGE, BANK_UNCHANGED) ?? anyLine(BANK_CHANGE_ANY, UNCHANGED_ANY) ?? anyLine(BANK_DETAILS_CHANGED_ANY, UNCHANGED_OR_NEGATED);
   if (change) signals.push({ code: "bank_change_language", blocks: false, holds: true, detail: `the invoice announces a change of bank: "${change}"` });
   else {
     const link = text.split("\n").find(payLink)?.trim();
+    // 19 Nov (after eval v5): a crypto wallet's address is never a supplier's bank account on file, in any language.
+    const wallet = link ? undefined : walletIn(text);
     if (link) signals.push({ code: "bank_change_language", blocks: false, holds: true, detail: `the invoice asks to be paid through a link, not to the account on file: "${link}"` });
+    else if (wallet) signals.push({ code: "bank_change_language", blocks: false, holds: true, detail: `the invoice names a crypto-currency wallet (${wallet.slice(0, 6)}…${wallet.slice(-4)}), not a bank account on file` });
   }
-  // Pressure: words of speed alone are shown; a request to get around the checks holds it (eval v3).
-  const bypass = line(BYPASS) ?? text.split("\n").find((l) => AUTHORITY.test(l) && PRESSURE.test(l))?.trim();
+  // Pressure: words of speed alone are shown; a request to get around the checks holds it (eval v3). After eval v5: also
+  // in the other languages, and paying or bank details through a messaging app in any language.
+  const bypass = line(BYPASS) ?? text.split("\n").find((l) => AUTHORITY.test(l) && PRESSURE.test(l))?.trim()
+    // 19 Nov (after eval v6, v6-pressure-galil-ceo and v6-pressure-bharat-confidential): someone above the payer with speed
+    // or a request, or secrecy with a payment, speed or "keep", in any language the lists know (bypassInAnyLanguage).
+    ?? text.split("\n").find(bypassInAnyLanguage)?.trim() ?? text.split("\n").find((l) => MESSENGER.test(l) && PAY_OR_DETAILS_ANY.test(fold(l)))?.trim();
   const pressure = line(PRESSURE);
   if (bypass) signals.push({ code: "pressure_language", blocks: false, holds: true, detail: `the invoice asks to get around the people or the numbers that check a payment: "${bypass}"` });
   else if (pressure) signals.push({ code: "pressure_language", blocks: false, detail: `the invoice pushes for speed: "${pressure}"` });

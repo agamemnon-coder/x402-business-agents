@@ -20,9 +20,11 @@ import { assessAgainst, sameName, type Beneficiary, type FraudFinding, type Frau
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
 import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
+import { asksToPay, namesAccount } from "../policy/multilingual.js";
+import { plainDigits } from "../policy/numerals.js";
 import { lineTotals } from "./lineTotals.js";
 import { deliveryDates, itemLines, periodsDiffer, sameLines, servicePeriods } from "./period.js";
-import { amountsIn, IBAN_LENGTHS, ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
+import { amountsIn, askedAboveTotal, IBAN_LENGTHS, ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
 
 // ── The case ──
 
@@ -175,7 +177,10 @@ const MONEY = /^\d+\.\d{2}$/;
  */
 function ibansIn(text: string): string[] {
   const out: string[] = [];
-  const lines = text.toUpperCase().split("\n");
+  // 19 Nov (after eval v5): as a bank reads it, whatever the script around it: full-width letters and digits as plain
+  // ones (NFKC), the digits of other scripts (Arabic-Indic, Devanagari, Thai) as 0 to 9, invisible format characters
+  // (zero-width, direction marks) taken out, so "ＴＲ３３ ０００６ …" or an IBAN split by a zero-width space is still an IBAN.
+  const lines = plainDigits(text.normalize("NFKC").replace(/\p{Cf}/gu, "")).toUpperCase().split("\n");
   lines.forEach((line, i) => {
     const two = `${line} ${lines[i + 1] ?? ""}`;
     for (const m of line.matchAll(/\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{1,4}){2,8}/g)) {
@@ -192,6 +197,26 @@ function ibansIn(text: string): string[] {
   });
   return [...new Set(out)];
 }
+/**
+ * Account numbers (eight digits or more, in groups or not) written on a line that names an account and asks to pay
+ * (src/policy/multilingual.ts namesAccount and asksToPay), digits only, in any script's digits. A line that calls the
+ * account old or closed is left out, as ibansIn leaves it out; dates (2026-11-20, 20.11.2026) are no account number.
+ */
+function accountNumbersIn(text: string): string[] {
+  const out: string[] = [];
+  for (const raw of text.split("\n")) {
+    const line = plainDigits(raw.normalize("NFKC").replace(/\p{Cf}/gu, ""));
+    if (!namesAccount(line) || !asksToPay(line) || OLD_ACCOUNT.test(line.toUpperCase())) continue;
+    for (const m of line.matchAll(/(?<![\dA-Za-z])\d(?:[ \-.]?\d){7,}(?![\dA-Za-z])/g)) {
+      if (/^\d{4}-\d{2}-\d{2}$|^\d{2}\.\d{2}\.\d{4}$/.test(m[0])) continue;
+      out.push(m[0].replace(/\D/g, ""));
+    }
+  }
+  return [...new Set(out)];
+}
+/** The digits of the account a reading asks to be paid to and its routing code: an account number named beside it in the text is one of these. */
+const ownAccountDigits = (r: ApReading) => [r.iban, r.account_number, r.routing_value].map((x) => plainDigits(x ?? "").replace(/\D/g, "")).filter((x) => x.length >= 6);
+
 /** Words that call an account old or closed, in the languages suppliers write in. */
 const OLD_ACCOUNT = /\b(OLD|FORMER|PREVIOUS|CLOSED|NO LONGER|DO NOT USE|ALTE[NRS]?|EHEMALIGE[NRS]?|BISHERIGE[NRS]?|GESCHLOSSEN|AUFGEL(Ö|OE)ST|NICHT MEHR|OUDE?|VORIGE|GESLOTEN|OPGEHEVEN|NIET MEER|ANCIEN(NE)?|FERM(É|E)|ANTIGU[OA]|CERRAD[OA]|VECCHIO|CHIUSO)\b/;
 const DAY_MS = 86_400_000;
@@ -353,6 +378,11 @@ function examine(c: InvoiceCase): Examined {
   if (ambiguous) {
     f.push({ code: "ambiguous_total", level: "review", detail: ambiguous });
     phrases.push(...(ambiguous.match(/\d+ different totals/) ?? []));
+  } else if (MONEY.test(r.total)) {
+    // 19 Nov (after the held-out eval v6, v6-limit-ege-asks-more): a line that asks to pay more than the total, in any
+    // language the lists know: what is owed is not one amount (src/ap/reading.ts askedAboveTotal).
+    const more = askedAboveTotal(text, r.total, r.currency);
+    if (more) f.push({ code: "ambiguous_total", level: "review", detail: more });
   }
 
   // 19 Nov (red team: one line item of EUR 1,850.00 under a total of EUR 8,150.00 went to the CFO with nothing flagged):
@@ -497,6 +527,14 @@ function examine(c: InvoiceCase): Examined {
       const other = ibansIn(text).find((x) => keyOf({ ...bank.details, iban: x, accountNumber: "", routingType: "", routingValue: "" }) !== sameForm(key));
       if (other) f.push(wordsFinding(c, { code: "bank_change_language", detail: `the invoice names another account in its text, IBAN ending ${other.slice(-4)}, than the one it asks to be paid to` }));
     }
+    // 19 Nov (after the held-out eval v6, v6-bec-haining-hong-kong: "请将货款汇入我司香港账户（汇丰银行 012-345678-001）" beside
+    // the account on file): an account number with no IBAN, named on a line that asks to pay into an account, that is not
+    // the one the invoice asks to be paid to, whatever the language around it.
+    if (!f.some((x) => x.code === "bank_change_language")) {
+      const refs = [r.invoice_no, r.reference].map((x) => plainDigits(x ?? "").replace(/\D/g, ""));
+      const other = accountNumbersIn(text).find((n) => !ownAccountDigits(r).some((own) => own.includes(n)) && !refs.includes(n));
+      if (other) f.push(wordsFinding(c, { code: "bank_change_language", detail: `the invoice asks in its text to pay into another account, number ending ${other.slice(-4)}, than the one it asks to be paid to` }));
+    }
     const known = fraud.allowlisted && !fraud.suspicious ? fraud.allowlisted : null;
     if (known && c.policy.payees.blocked.includes(known.name)) f.push({ code: "payee_blocked", level: "block", detail: `${known.name} is blocked by the CFO policy` });
     // A known supplier's account receives one currency: an invoice in another is not paid to it (it would escalate at
@@ -606,22 +644,38 @@ const aloneRule = (c: InvoiceCase) => limitRule(c.policy.aloneLimit, c.invoice.r
  * Why the invoice is not the amount its contract or purchase order says, or null when there is none to compare or it
  * is the same (the currency and the plain amount). Review round 1, 12 Nov: below the limit, a wrong agent's "pay" of
  * an invoice that asks more than the contract was paid alone; code now sends it to the CFO (codeRequires).
+ * 19 Nov, fourth round (the after-fix runs of evals v2 to v4 and the hostile-model eval): the direction counts. An
+ * invoice that asks more than its contract or order is held for a person ("above"), as a failed match is in any
+ * payables team, above the agent's limit too, where it only went to the CFO; one that asks less (a part delivery, a
+ * discount) is no mismatch: it never pays more than was agreed, and the limit still decides who signs. Another currency
+ * or a total that cannot be read still goes to the CFO ("other").
  */
 export function expectedMismatch(c: InvoiceCase): string | null {
+  return amountAgainstExpected(c)?.why ?? null;
+}
+
+export function amountAgainstExpected(c: InvoiceCase): { kind: "above" | "other"; why: string } | null {
   const e = c.expected;
   if (!e) return null;
   const r = c.invoice.reading;
-  const asked = cents(r.total);
-  if (asked !== null && r.currency === e.currency && asked === cents(e.amount)) return null;
+  const asked = cents(r.total), agreed = cents(e.amount);
+  const same = asked !== null && r.currency === e.currency;
+  if (same && asked === agreed) return null;
+  if (same && agreed !== null && asked! < agreed) return null;
   const doc = e.source === "contract" ? "contract" : "purchase order";
-  return `the invoice asks ${money(r.currency, r.total) || "no total that was read"}, not the ${money(e.currency, e.amount)} the ${doc}${e.reference ? ` (${e.reference})` : ""} says, so the CFO decides`;
+  const above = same && agreed !== null && asked! > agreed;
+  return {
+    kind: above ? "above" : "other",
+    why: `the invoice asks ${money(r.currency, r.total) || "no total that was read"}, ${above ? "more than" : "not"} the ${money(e.currency, e.amount)} the ${doc}${e.reference ? ` (${e.reference})` : ""} says, so ${above ? "a person looks before it is paid" : "the CFO decides"}`,
+  };
 }
 
 /**
  * What code alone requires for this invoice, from its findings and the policy's limit: hold when a finding stops
- * payment (a block, something for a person, a supplier not on file yet; the first of the gravest level names it),
- * else ask_cfo when the agent may not pay the amount alone, or when the amount is not the one its contract or purchase
- * order says (by "amount_not_expected"), else pay. Code never requires a rejection: that is a person's word, or the
+ * payment (a block, something for a person, a supplier not on file yet; the first of the gravest level names it) or
+ * when it asks more than its contract or purchase order says (by "amount_not_expected"), else ask_cfo when the agent
+ * may not pay the amount alone, or when the amount is in another currency than its contract or purchase order (by
+ * "amount_not_expected"), else pay. Code never requires a rejection: that is a person's word, or the
  * agent's. `by` is the finding's code, the limit's rule or amount_not_expected; `why` says it in code's words. Only
  * enforce and the fallback ask this: the checks' own findings (codeFindings) and the flag-off chain do not change.
  */
@@ -629,6 +683,9 @@ export function codeRequires(c: InvoiceCase, findings: Finding[]): { action: Act
   // A level this code does not know is not a warning: it stops payment too.
   const stop = findings.find((f) => f.level === "block") ?? findings.find((f) => f.level === "review") ?? findings.find((f) => f.level === "wait") ?? findings.find((f) => f.level !== "warn");
   if (stop) return { action: "hold", by: stop.code, why: stop.detail };
+  // 19 Nov, fourth round: more than the contract or order says is held, whatever the limit (amountAgainstExpected).
+  const vsExpected = amountAgainstExpected(c);
+  if (vsExpected?.kind === "above") return { action: "hold", by: "amount_not_expected", why: vsExpected.why };
   const alone = aloneRule(c);
   if (alone.rule) return { action: "ask_cfo", by: alone.rule, why: alone.why };
   // 19 Nov (adversarial eval v2): a possible split invoice, and words a person has released after reading them, go to
@@ -636,8 +693,7 @@ export function codeRequires(c: InvoiceCase, findings: Finding[]): { action: Act
   // Words of speed alone (eval v3) are a warning that was never held: only words a person released send it to the CFO.
   const cfo = findings.find((f) => f.code === "possible_split") ?? (c.released ? findings.find((f) => (WORDS_FINDINGS as readonly string[]).includes(f.code)) : undefined);
   if (cfo) return { action: "ask_cfo", by: cfo.code, why: cfo.detail };
-  const differs = expectedMismatch(c);
-  return differs ? { action: "ask_cfo", by: "amount_not_expected", why: differs } : { action: "pay", by: null, why: alone.why };
+  return vsExpected ? { action: "ask_cfo", by: "amount_not_expected", why: vsExpected.why } : { action: "pay", by: null, why: alone.why };
 }
 
 /** The agent's final answer (the decide tool's input), or code's own when Claude is unavailable. */

@@ -5,7 +5,7 @@
 // The report goes to docs/redteam/report.json (the landing page shows it) and to the console.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
@@ -15,6 +15,7 @@ import { Tools } from "../claude/tools.js";
 import { redactSecrets } from "../lib/redact.js";
 import { ATTACKS, runAttack, type AttackResult } from "../redteam/attacks.js";
 import { redTeamWorld } from "../redteam/world.js";
+import { evalCommit } from "../evals/commit.js";
 
 const MODEL = "claude-opus-5-5";
 const results: AttackResult[] = [];
@@ -76,9 +77,14 @@ const record = (r: AttackResult) => {
   return r;
 };
 
-const apiKey = process.env.KIT11_ANTHROPIC_API_KEY;
+// --no-model runs every attack in order with no model, even with a key (a re-run of the scripted attacks alone).
+// --out FILE writes the report there instead of docs/redteam/report.json, which is then kept as it was recorded: a
+// re-run after fixes is a record of its own beside the first (19 Nov: docs/redteam/rerun-2026-11-19.json).
+const argv = process.argv.slice(2);
+const outArg = argv.includes("--out") ? argv[argv.indexOf("--out") + 1] : undefined;
+const apiKey = argv.includes("--no-model") ? undefined : process.env.KIT11_ANTHROPIC_API_KEY;
 if (!apiKey) {
-  console.log("No KIT11_ANTHROPIC_API_KEY: running every attack in order, with no model.\n");
+  console.log(`${argv.includes("--no-model") ? "--no-model" : "No KIT11_ANTHROPIC_API_KEY"}: running every attack in order, with no model.\n`);
   for (const a of ATTACKS) record(await runAttack(await redTeamWorld(), a));
 } else {
   const client = new Anthropic({ apiKey, timeout: 300_000, maxRetries: 2 });
@@ -139,9 +145,11 @@ const caughtAfter = results.filter((r) => r.outcome === "blocked" && r.caught ==
 // were found afterwards (by the reconciliation or npm run verify), not prevented. The model's summary uses "blocked" for both.
 const after = results.filter((r) => r.outcome === "blocked" && r.caught === "after").map((r) => r.id);
 const reading = `"blocked" means the attack failed: ${blocked - after.length} were stopped before anything moved${after.length ? `, ${after.length} were found afterwards, not prevented (${after.join(", ")})` : ""}. The summary is the attacking model's own text and uses "blocked" for both.`;
-const report = { ran_at: new Date().toISOString(), model: apiKey && !summary.startsWith("the model declined") ? MODEL : null, reading, summary, attempts: results.length, blocked, caught_after: caughtAfter, inconclusive, not_blocked: notBlocked, results };
-const dir = resolve(import.meta.dirname, "../../docs/redteam");
-mkdirSync(dir, { recursive: true });
-writeFileSync(resolve(dir, "report.json"), JSON.stringify(report, null, 2) + "\n");
-console.log(`\n${blocked} of ${results.length} attempts blocked, ${inconclusive} inconclusive, ${notBlocked} not blocked. Report: docs/redteam/report.json`);
+const rerun = outArg ? { rerun_of: "docs/redteam/report.json", ...evalCommit([outArg]), command: `npm run redteam -- ${argv.join(" ")}` } : {};
+const report = { ran_at: new Date().toISOString(), ...rerun, model: apiKey && !summary.startsWith("the model declined") ? MODEL : null, reading, summary, attempts: results.length, blocked, caught_after: caughtAfter, inconclusive, not_blocked: notBlocked, results };
+const root = resolve(import.meta.dirname, "../..");
+const out = resolve(root, outArg ?? "docs/redteam/report.json");
+mkdirSync(dirname(out), { recursive: true });
+writeFileSync(out, JSON.stringify(report, null, 2) + "\n");
+console.log(`\n${blocked} of ${results.length} attempts blocked, ${inconclusive} inconclusive, ${notBlocked} not blocked. Report: ${relative(root, out)}`);
 process.exit(blocked === results.length && results.length > 0 ? 0 : 1);

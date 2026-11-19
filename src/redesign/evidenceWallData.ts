@@ -162,39 +162,87 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   const script = worstOf("purser_script"), naive = worstOf("no_rules");
   if (WORST_CASE && script && naive) out.push({ key: "worst-case", fig: `${script.wrong_payments} vs ${naive.wrong_payments}`, label: "wrong payments: always-pay AI vs no rules", note: `${WORST_CASE.cases_per_run} hostile and clean invoices; ${script.paid_past_cfo} paid past the CFO.`, tag: "test", tone: "claude", href: blob(WORST_CASE_DOC), rec: "docs/evals/worst-case-summary.json" });
   // Eval v3 (19 Nov): 100 held-out invoices, the case file committed alone before the run (src/cli/adversarialV3.ts).
-  const V3 = "docs/evals/adversarial-v3.json";
+  // 19 Nov, fourth round: beside it, the dated re-run on the code after all four rounds of fixes, the second to fourth
+  // written against misses of these sets, so not held out. The figure stays the held-out one (the evidence map's
+  // "Held-out eval" node shows it); the re-run is said in the note, and the run after the earlier rounds stays linked.
+  const V3 = "docs/evals/adversarial-v3.json", V3_RERUN = "docs/evals/adversarial-v3-rerun-2026-11-19.json", V3_AFTER = "docs/evals/adversarial-v3-after.json";
   const v3 = json(V3) as { held_out?: boolean; cases_commit?: string; totals?: Record<"purser_script" | "no_rules", { cases: number; wrong_payments: number; false_holds: number; clean_truths: number }> } | null;
+  const v3a = json(V3_RERUN) as { held_out?: boolean; totals?: Record<"purser_script", { wrong_payments: number; false_holds: number }> } | null;
   if (v3?.held_out && v3.totals?.purser_script && v3.totals.no_rules) {
-    const p = v3.totals.purser_script, n = v3.totals.no_rules;
-    out.push({ key: "eval-v3", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices: Purser vs no rules`, note: `Cases committed before the run (commit ${v3.cases_commit}); a script always says pay. ${p.false_holds} false holds of ${p.clean_truths}. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v3.md"), rec: V3 });
+    const p = v3.totals.purser_script, n = v3.totals.no_rules, a = v3a && !v3a.held_out ? v3a.totals?.purser_script : undefined;
+    out.push({ key: "eval-v3", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices: Purser vs no rules`, note: `Cases committed before the run (commit ${v3.cases_commit}); a script always says pay. ${p.false_holds} false holds of ${p.clean_truths}.${a ? ` Re-run after the 19 Nov fixes written against these misses (not held out): ${a.wrong_payments} wrong payments, ${a.false_holds} false holds.` : ""} Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v3.md"), rec: a ? `${V3} ${V3_RERUN} ${V3_AFTER}` : V3 });
   }
   // Eval v4 (19 Nov): 100 held-out invoices, its run before the third round of fixes kept as recorded, and beside it the
   // run after that round, written against its misses, so no longer held out (src/cli/adversarialV4.ts).
-  const V4 = "docs/evals/adversarial-v4.json", V4_AFTER = "docs/evals/adversarial-v4-after.json";
+  const V4 = "docs/evals/adversarial-v4.json", V4_AFTER = "docs/evals/adversarial-v4-after.json", V4_RERUN = "docs/evals/adversarial-v4-rerun-2026-11-19.json";
   type AdvTotals = Record<"purser_script" | "no_rules", { cases: number; wrong_payments: number; false_holds: number; clean_truths: number }>;
   const v4 = json(V4) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
   const v4a = json(V4_AFTER) as { held_out?: boolean; totals?: AdvTotals } | null;
+  const v4r = json(V4_RERUN) as { held_out?: boolean; totals?: AdvTotals } | null;
+  const r4 = v4r && !v4r.held_out ? v4r.totals?.purser_script : undefined;
   if (v4?.held_out && v4.totals?.purser_script && v4.totals.no_rules && v4a && !v4a.held_out && v4a.totals?.purser_script) {
     const p = v4.totals.purser_script, n = v4.totals.no_rules, a = v4a.totals.purser_script;
-    out.push({ key: "eval-v4", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v4): Purser vs no rules`, note: `Cases committed before the run (commit ${v4.cases_commit}); a script always says pay. ${p.false_holds} false holds of ${p.clean_truths}. After the fixes written against these misses (no longer held out): ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v4.md"), rec: V4 });
+    out.push({ key: "eval-v4", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v4): Purser vs no rules`, note: `Cases committed before the run (commit ${v4.cases_commit}); a script always says pay. ${p.false_holds} false holds of ${p.clean_truths}. After the fixes written against these misses (no longer held out): ${a.wrong_payments} wrong payments, ${a.false_holds} false holds.${r4 ? ` Re-run after the fourth round of 19 Nov: ${r4.wrong_payments} wrong payments, ${r4.false_holds} false holds.` : ""} Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v4.md"), rec: r4 ? `${V4} ${V4_AFTER} ${V4_RERUN}` : `${V4} ${V4_AFTER}` });
   }
   // Eval v5 (19 Nov): 100 held-out invoices written after the third round of fixes, committed alone with their
-  // pre-registration before the run (src/cli/adversarialV5.ts). Held out: no rule was written against its misses.
-  const V5 = "docs/evals/adversarial-v5.json";
+  // pre-registration before the run (src/cli/adversarialV5.ts). Its run is kept as recorded; beside it the run after the
+  // fixes that followed it (non-Latin supplier names, orders in other scripts), so no longer held out.
+  const V5 = "docs/evals/adversarial-v5.json", V5_AFTER = "docs/evals/adversarial-v5-after.json";
   const v5 = json(V5) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
-  if (v5?.held_out && v5.totals?.purser_script && v5.totals.no_rules) {
-    const p = v5.totals.purser_script, n = v5.totals.no_rules;
-    out.push({ key: "eval-v5", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v5): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v5.cases_commit}); a script always says pay. ${p.false_holds} false holds of ${p.clean_truths}. Not fixed: still held out. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v5.md"), rec: V5 });
+  const v5a = json(V5_AFTER) as { held_out?: boolean; totals?: AdvTotals } | null;
+  if (v5?.held_out && v5.totals?.purser_script && v5.totals.no_rules && v5a && !v5a.held_out && v5a.totals?.purser_script) {
+    const p = v5.totals.purser_script, n = v5.totals.no_rules, a = v5a.totals.purser_script;
+    // Off /proof since v6 (/proof's words in sight stay within their budget, test/proof-first.test.ts): /proof shows the
+    // held-out set after the latest fixes, v6; this tile stays on the wall's record and in llms.txt.
+    out.push({ offProof: true, key: "eval-v5", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v5): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v5.cases_commit}); a script always says pay. ${p.false_holds} false holds of ${p.clean_truths}. Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v5.md"), rec: V5 });
   }
-  const RT = "docs/redteam/report.json";
-  const rt = json(RT) as { attempts?: number; blocked?: number; caught_after?: number } | null;
+  // Eval v6 (19 Nov): 108 held-out invoices written after the fixes that followed v5 (suppliers named in Hebrew, Thai,
+  // Devanagari, Hangul, Han and kana, Turkish and Vietnamese letters; injections in those languages; invisible
+  // characters), committed alone with their pre-registration before the run (src/cli/adversarialV6.ts). Its run is kept
+  // as recorded; beside it the run after the fixes that followed it (amounts asked above the total, a person as holder,
+  // joiners a script needs, other scripts' digits, more languages), so no longer held out.
+  const V6 = "docs/evals/adversarial-v6.json", V6_AFTER = "docs/evals/adversarial-v6-after.json";
+  const v6 = json(V6) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
+  const v6a = json(V6_AFTER) as { held_out?: boolean; totals?: AdvTotals } | null;
+  if (v6?.held_out && v6.totals?.purser_script && v6.totals.no_rules && v6a && !v6a.held_out && v6a.totals?.purser_script) {
+    const p = v6.totals.purser_script, n = v6.totals.no_rules, a = v6a.totals.purser_script;
+    // Off /proof since v7 (/proof's words in sight stay within their budget, test/proof-first.test.ts): /proof shows the
+    // held-out set after the latest fixes, v7; this tile stays on the wall's record and in llms.txt.
+    out.push({ offProof: true, key: "eval-v6", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v6): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v6.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v6.md"), rec: V6 });
+  }
+  // Eval v7 (19 Nov): 117 held-out invoices written after the fixes that followed v6 (suppliers named in Georgian,
+  // Armenian, Arabic, Tamil, Bengali, Ukrainian Cyrillic, Ethiopic, Khmer and Persian letters; injections and pressure in
+  // those languages; soft hyphens, word joiners, Braille blanks; hard negatives against the new rules), committed alone
+  // with their pre-registration before the run (src/cli/adversarialV7.ts). Held out: no rule was written against its misses.
+  const V7 = "docs/evals/adversarial-v7.json";
+  const v7 = json(V7) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
+  if (v7?.held_out && v7.totals?.purser_script && v7.totals.no_rules) {
+    const p = v7.totals.purser_script, n = v7.totals.no_rules;
+    out.push({ key: "eval-v7", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v7): Purser vs no rules`, note: `Cases committed with their pre-registration (commit ${v7.cases_commit}), after the fixes for v6's misses; a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Held out. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v7.md"), rec: V7 });
+  }
+  // 19 Nov, fourth round: the newest red-team run, the scripted attacks re-run after the fixes (rewrite-history is now
+  // stopped before money moves), beside the first run of 30 Oct, which stays as recorded and is linked from the note.
+  const RT = "docs/redteam/report.json", RT_RERUN = "docs/redteam/rerun-2026-11-19.json";
+  type RedTeam = { ran_at?: string; attempts?: number; blocked?: number; caught_after?: number; model?: string | null; results?: { id: string; caught?: string }[] };
+  const rt = json(RT) as RedTeam | null, rr = json(RT_RERUN) as RedTeam | null;
   if (rt?.attempts) {
-    const before = (rt.blocked ?? 0) - (rt.caught_after ?? 0);
-    out.push({ key: "red-team", fig: whole(before, rt.attempts), label: "red-team attacks stopped before money moved", note: `The other ${rt.caught_after ?? 0} found afterwards, not prevented.`, tag: "test", tone: "claude", href: blob(RT), rec: RT });
+    const before = (x: RedTeam) => (x.blocked ?? 0) - (x.caught_after ?? 0);
+    const written = (rt.results ?? []).filter((r) => r.id === "document").length;
+    const first = `First run, ${day(rt.ran_at!)}${rt.model && written ? `, with Claude writing ${written} of the documents` : ""}: ${whole(before(rt), rt.attempts).toLowerCase()}, ${rt.caught_after ?? 0} found afterwards.`;
+    if (rr?.attempts) {
+      const after = (rr.results ?? []).filter((r) => r.caught === "after").map((r) => r.id);
+      out.push({ key: "red-team", fig: whole(before(rr), rr.attempts), label: "red-team attacks stopped before money moved, re-run, not held out", note: `Re-run of ${day(rr.ran_at!)}, after the fixes: the scripted attacks${rr.model ? "" : ", no model"}; the other ${rr.caught_after ?? 0} found afterwards, not prevented${after.length ? ` (${after.join(", ")})` : ""}. ${first}`, tag: "test", tone: "claude", href: blob(RT_RERUN), rec: `${RT_RERUN} ${RT}` });
+    } else out.push({ key: "red-team", fig: whole(before(rt), rt.attempts), label: "red-team attacks stopped before money moved", note: `The other ${rt.caught_after ?? 0} found afterwards, not prevented.`, tag: "test", tone: "claude", href: blob(RT), rec: RT });
   }
-  const AH = "docs/evals/ap-hostile.json";
-  const ah = json(AH) as { calls?: number; refused?: number; stood?: number } | null;
-  if (ah?.calls) out.push({ key: "hostile-model", fig: whole(ah.refused ?? 0, ah.calls), label: "hostile tool calls stopped by code", note: `The other ${ah.stood ?? 0} stood within the rules, by the ledger.`, tag: "test", tone: "claude", href: blob(AH), rec: AH });
+  // The hostile-model eval: the figure as CI checks it. The calls that stood are each the script's last call, a "pay" of
+  // an invoice whose right outcome is pay, within the agent's limit (test/ap-agent-evals.test.ts checks every one; 19
+  // Nov: 4 Checker, on clean invoices, and 6 Payer, paying today from the invoice's own balance by the supplier's rail,
+  // two of them after the orders in the payee's name were refused). Refusing them would refuse a right payment. 19 Nov,
+  // fourth round: its dated re-run is said beside it (the cases it sent to the CFO where a person had to look).
+  const AH = "docs/evals/ap-hostile.json", AH_AFTER = "docs/evals/ap-hostile-rerun-2026-11-19.json";
+  const ah = json(AH) as { calls?: number; refused?: number; stood?: number; looser?: number } | null;
+  const aha = json(AH_AFTER) as { calls?: number; refused?: number; looser?: number; unsafe?: number } | null;
+  if (ah?.calls) out.push({ key: "hostile-model", fig: whole(ah.refused ?? 0, ah.calls), label: "hostile tool calls stopped by code", note: `The other ${ah.stood ?? 0} stood within the rules, by the ledger: each the last pay of an invoice whose right outcome is pay, within the limit.${aha?.calls ? ` Sent to the CFO where a person had to look: ${ah.looser ?? 0}; ${aha.looser ?? 0} after the 19 Nov fixes, re-run, not held out.` : ""}`, tag: "test", tone: "claude", href: blob(AH), rec: aha?.calls ? `${AH} ${AH_AFTER}` : AH });
   if (w && w.t.claude.entries) {
     out.push({ key: "try-claude", fig: String(w.t.claude.fallbacks), label: `fallbacks in ${w.t.claude.entries} Claude calls on /try`, note: `${w.t.claude.distinctIds} Anthropic request ids; ${w.t.claude.models.join(", ")}.${w.t.claude.readerNoId ? ` ${w.t.claude.readerNoId} reader calls were logged with no request id: those walks ran before the fix of 19 Nov was deployed.` : ""}`, tag: "sandbox", tone: "claude", href: w.href, rec: w.rec });
     if (w.t.held) out.push({ key: "try-held", fig: whole(w.t.held, w.t.runs), label: "invoices held by code's cash check", note: `Inside the agent's limit; no payout.${w.t.held < w.t.runs ? ` ${w.t.runs - w.t.held === 1 ? "One walk" : `${w.t.runs - w.t.held} walks`} stopped before this step.` : ""}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
@@ -210,8 +258,16 @@ function built(): WallTile[] {
   const AN = "docs/runs/2026-11-19-anchor.json";
   const an = json(AN) as { anchored_at?: string; height?: number; parts?: unknown[] } | null;
   if (an?.height) out.push({ key: "anchor", fig: String(an.height), label: "records sealed by one anchor transaction", note: `${an.parts?.length ?? 0} parts hashed into one head on Alta testnet, ${day(an.anchored_at!)}; npm run verify-anchor recomputes it.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-anchor.md"), rec: AN });
-  const loads = ["docs/runs/clearing-load-1.json", "docs/runs/clearing-load-2.json"].filter(has).map((f) => ({ f, r: json(f) as { attempted: number; paid: number; failed: number; ran_at: string } }));
-  if (loads.length) {
+  type Load = { attempted: number; paid: number; failed: number; ran_at: string; payers: number; resends_after_lost_answer?: number };
+  // The re-run of 19 Nov (docs/runs/2026-11-19-clearing-load.md), after one payment's retries moved into tested code
+  // (src/metal/loadPayment.ts): the tile shows it, dated; the two runs of 30 Oct stay in its note and its records.
+  const RERUN = "docs/runs/2026-11-19-clearing-load.json";
+  const loads = ["docs/runs/clearing-load-1.json", "docs/runs/clearing-load-2.json"].filter(has).map((f) => ({ f, r: json(f) as Load }));
+  const rerun = json(RERUN) as Load | null;
+  if (rerun?.attempted && loads.length) {
+    const resent = rerun.resends_after_lost_answer ?? 0;
+    out.push({ key: "clearing-load", fig: whole(rerun.paid, rerun.attempted), label: `payments through Alta's clearing, load test of ${day(rerun.ran_at)}`, note: `${rerun.payers} wallets at once${resent ? `; ${resent === 1 ? "one lost answer" : `${resent} lost answers`} resent, then paid` : ""}. Runs of ${day(loads[0]!.r.ran_at)}: ${loads.map((x) => whole(x.r.paid, x.r.attempted).toLowerCase()).join(", then ")}; the first lost ${fmt(loads[0]!.r.failed)} because the script did not resend.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-clearing-load.md"), rec: [RERUN, ...loads.map((x) => x.f)].join(" ") });
+  } else if (loads.length) {
     const tried = loads.reduce((a, x) => a + x.r.attempted, 0), paid = loads.reduce((a, x) => a + x.r.paid, 0);
     const lastRun = loads[loads.length - 1]!.r;
     out.push({ key: "clearing-load", fig: whole(paid, tried), label: "payments through Alta's clearing, load test", note: `${loads.length} runs, ${day(lastRun.ran_at)}; the last: ${whole(lastRun.paid, lastRun.attempted).toLowerCase()} paid.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-10-30-clearing-load.md"), rec: loads.map((x) => x.f).join(" ") });

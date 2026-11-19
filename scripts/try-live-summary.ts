@@ -158,7 +158,8 @@ return {
 
 const runs = runsOf(dir);
 const agg = aggregate(runs);
-const record = dir.includes("mega-run") ? "docs/runs/2026-11-19-mega-run.md" : "docs/runs/2026-11-19-live-try.md";
+// The run log beside the folder (docs/runs/<name>.md for docs/runs/<name>/), as for the two series of 19 Nov.
+const record = `${dir.replace(/\/+$/, "")}.md`;
 writeFileSync(join(dir, "summary.json"), JSON.stringify({ what: `Figures of ${record}, computed by scripts/try-live-summary.ts from run-<n>.json here.`, aggregate: agg, runs }, null, 1) + "\n");
 if (also) {
   const both = [...runsOf(also), ...runs];

@@ -4,6 +4,7 @@
 import { approvalHashOf } from "../metal/ownersExecute.js";
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit, type Actor } from "../audit/log.js";
+import { auditChainRefusal } from "../audit/intact.js";
 import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { fourEyes } from "./fourEyes.js";
@@ -329,6 +330,19 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     return (p.status === "APPROVED" || p.status === "FAILED") && Date.parse(p.expires_at) <= now.getTime() ? (expireIfDue(db, p, now), p.expires_at) : null;
   }).immediate();
   if (expired) throw new Error(`${proposalId} expired at ${expired}; approval void`);
+  // 19 Nov, fourth round (red team rewrite-history): nothing the CFO approved runs on an audit log that no longer
+  // verifies, except a policy change (the emergency stop, a pause, a limit), which moves no money and must still work
+  // in an incident. A restart's resume is not a new execution: it was checked when it began.
+  const tampered = db.transaction(() => {
+    const p = get(db, proposalId);
+    // The kind the CFO signed (inside the hashed terms, checked below), not the column beside it.
+    const kind = String((JSON.parse(p.terms_json) as { kind?: unknown }).kind);
+    if (kind === "policy_change" || (p.status === "EXECUTING" && resuming.has(proposalId))) return null;
+    const why = auditChainRefusal(db);
+    if (why) audit(db, "system", "execution.refused_ledger_tampered", proposalId, { reason: why, kind }, now);
+    return why;
+  }).immediate();
+  if (tampered) throw new Error(`${proposalId}: ${tampered}`);
   // The hub gate (src/hub/gate.ts), an extra gate on top of every check below, never instead of one; off unless
   // HUB_DECISIONS_ENABLED. Its refusal is committed on its own, so the record survives the error thrown here. A
   // restart's resume is not a new execution: it was gated when it began.

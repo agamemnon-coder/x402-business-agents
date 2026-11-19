@@ -114,9 +114,9 @@ async function awlEvents(slot){
     ev.map((x)=>el('tr','',[awlTd(el('span','awev',[el('b','',x.topic),el('code','',x.type)])),awlTd(awlId(x.object_id||x.event_id)),awlTd(awlWhen(x.received_at),'num'),awlTd(el('span','obadge ok',[ic('circle-check'),t('cs.awl.ev_verified')]))]))))}
 // The Overview's live card (14 Nov): the Airwallex sandbox's money and one rate, read now, apart from the demo month.
 // Live measurement, 15 Nov: the card could sit as a skeleton for about 4 s. It says it is reading, with a spinner; when the
-// live read takes over 2 s it shows this browser's last live read (kept in localStorage, marked with its time) until the
-// live answer lands. Never a figure the sandbox did not give: the cache is a past live read, said as such.
-const AWL_OV_KEY='purser.awl.ov';
+// live read takes over 2 s it shows this tab's last live read (kept in sessionStorage under AWL_OV_KEY, console.ts, and
+// removed at sign-out: ASVS V8.2.2, V8.2.3; marked with its time) until the live answer lands. Never a figure the sandbox
+// did not give: the cache is a past live read, said as such.
 const awlReading=()=>{const p=el('p','awreading',[el('i','awspin'),t('cs.awl.reading')]);p.setAttribute('role','status');return p};
 function awlOverview(){
   const body=el('div','awov-b',awlReading()),stamp=el('span','awstamp');
@@ -130,12 +130,12 @@ function awlOverview(){
     body.replaceChildren(el('div','awov-row',[...(figs.length?figs:[el('p','awcalm',t('cs.awl.bal_all_zero',{n:((b.data&&b.data.balances)||[]).length}))]),
       rate?el('div','awov-f rate',[el('span','awtl',t('cs.awl.rate_buy',{buy:rate.buy_currency,sell:rate.sell_currency})),el('b','num',rate.says)]):null]))};
   let done=false;
-  setTimeout(()=>{if(done)return;let c=null;try{c=JSON.parse(localStorage.getItem(AWL_OV_KEY)||'null')}catch(e){c=null}
+  setTimeout(()=>{if(done)return;let c=null;try{c=JSON.parse(sessionStorage.getItem(AWL_OV_KEY)||'null')}catch(e){c=null}
     if(c&&c.b&&c.b.source==='airwallex-sandbox')draw(c.b,c.r,true)},2000);
   (async()=>{try{
     const [b,r]=await Promise.all([api('/v1/airwallex-live/balances'),api('/v1/airwallex-live/rates')]);done=true;
     if(b.source!=='airwallex-sandbox'){stamp.replaceChildren();body.replaceChildren(el('p','sub',t('cs.awl.unavailable')+(b.reason?': '+b.reason:'')));return}
-    try{localStorage.setItem(AWL_OV_KEY,JSON.stringify({b,r}))}catch(e){}
+    try{sessionStorage.setItem(AWL_OV_KEY,JSON.stringify({b,r}))}catch(e){}
     draw(b,r,false);
   }catch(e){done=true;if(!(e instanceof Expired)){stamp.replaceChildren();body.replaceChildren(el('p','sub',t('cs.awl.unavailable')))}}})();
   return card}

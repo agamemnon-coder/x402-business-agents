@@ -29,7 +29,7 @@ function plan(n: number): { profile: string; browser: string } {
 interface Line { run: number; profile: string; browser: string; started_at: string; finished_at: string; exit: number | null; ok: boolean; failures: string[]; http_429_5xx: { path: string; status: number }[]; fallbacks: number; waited_s: number; backoff_s: number; note?: string }
 const seriesFile = join(out, "series.json");
 const series: Line[] = existsSync(seriesFile) ? (JSON.parse(readFileSync(seriesFile, "utf8")) as { walks: Line[] }).walks : [];
-const save = () => writeFileSync(seriesFile, JSON.stringify({ what: "The order of the walks of docs/runs/2026-11-19-mega-run.md, written by scripts/try-live-series.ts as they ran.", gap_s: GAP_S, walks: series }, null, 1) + "\n");
+const save = () => writeFileSync(seriesFile, JSON.stringify({ what: `The order of the walks of ${out.replace(/\/+$/, "")}.md, written by scripts/try-live-series.ts as they ran.`, gap_s: GAP_S, walks: series }, null, 1) + "\n");
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 let badInRow = 0, errInRow = 0;

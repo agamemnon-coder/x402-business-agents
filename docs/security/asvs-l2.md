@@ -1,6 +1,6 @@
 # OWASP ASVS 4.0.3, Level 2: a self-assessment of Purser
 
-**A self-assessment, not a certification and not an audit.** Nobody independent has verified Purser against the ASVS. It was written on 19 November 2026 by Claude (an AI model) for the maintainer, by reading this repository's code, configuration, tests and records at commit `b8fdfa1b6114` (branch `data-asvs`), with no penetration test, no TLS scan and no test against the deployed sites made for it. Each verdict cites where it can be checked. It is strict: where a requirement is met only in part, or only by the platform without a check recorded here, it is a **Fail**, with a fix plan. Purser moves test money only (the Airwallex sandbox, Alta testnet).
+**A self-assessment, not a certification and not an audit.** Nobody independent has verified Purser against the ASVS. It was written on 19 November 2026 by Claude (an AI model) for the maintainer, by reading this repository's code, configuration, tests and records at commit `b8fdfa1b6114` (branch `data-asvs`), with no penetration test, no TLS scan and no test against the deployed sites made for it. Updated the same day, by Claude again, on branch `asvs-fix` after the first fixes: each row that changed to Pass names where it is enforced and the test that holds it; the code is not deployed by this update. Each verdict cites where it can be checked. It is strict: where a requirement is met only in part, or only by the platform without a check recorded here, it is a **Fail**, with a fix plan. Purser moves test money only (the Airwallex sandbox, Alta testnet).
 
 Standard: [OWASP Application Security Verification Standard 4.0.3](https://github.com/OWASP/ASVS/tree/v4.0.3/4.0) (October 2021), every requirement marked for Level 2 in its official CSV (`4.0/docs_en/OWASP Application Security Verification Standard 4.0.3-en.csv`): 259 requirements, V1 to V14. Requirement texts are OWASP's (CC BY-SA 3.0) and are not copied here: each row gives the id and a short name in our words; read the full text in the standard.
 
@@ -11,35 +11,51 @@ Scope: the two deployed Cloudflare Workers (the site, `kit11`, in `worker/`, and
 | Chapter | Pass | Fail | N/A | Level 2 requirements |
 |---|---|---|---|---|
 | V1 Architecture, design and threat modelling | 26 | 10 | 2 | 38 |
-| V2 Authentication | 13 | 5 | 35 | 53 |
-| V3 Session management | 15 | 2 | 1 | 18 |
+| V2 Authentication | 14 | 4 | 35 | 53 |
+| V3 Session management | 16 | 1 | 1 | 18 |
 | V4 Access control | 8 | 1 | 0 | 9 |
 | V5 Validation, sanitization and encoding | 27 | 0 | 3 | 30 |
 | V6 Stored cryptography | 7 | 5 | 1 | 13 |
-| V7 Error handling and logging | 8 | 4 | 0 | 12 |
-| V8 Data protection | 8 | 7 | 0 | 15 |
+| V7 Error handling and logging | 12 | 0 | 0 | 12 |
+| V8 Data protection | 12 | 3 | 0 | 15 |
 | V9 Communication | 4 | 3 | 0 | 7 |
 | V10 Malicious code | 4 | 0 | 1 | 5 |
-| V11 Business logic | 6 | 2 | 0 | 8 |
+| V11 Business logic | 7 | 1 | 0 | 8 |
 | V12 Files and resources | 12 | 3 | 0 | 15 |
-| V13 API and web service | 6 | 4 | 3 | 13 |
-| V14 Configuration | 19 | 3 | 1 | 23 |
-| **Total** | **163** | **49** | **47** | **259** |
+| V13 API and web service | 9 | 1 | 3 | 13 |
+| V14 Configuration | 20 | 2 | 1 | 23 |
+| **Total** | **178** | **34** | **47** | **259** |
 
-Of the 212 requirements that apply, 163 pass and 49 fail. Most N/A are authentication mechanisms Purser does not have (passwords, one-time passwords, out-of-band codes, lookup secrets), plus GraphQL, SOAP and LDAP.
+Of the 212 requirements that apply, 178 pass and 34 fail (163 and 49 at the first assessment; the 15 closed since are listed under "Fixed since"). Most N/A are authentication mechanisms Purser does not have (passwords, one-time passwords, out-of-band codes, lookup secrets), plus GraphQL, SOAP and LDAP.
 
 ## The failures and the plan
 
 Grouped by what would fix them, most important first for a deployment with real customer data. Each group names the requirements it closes.
 
-- **Security event logging and alerting** (V1.7.2, V7.1.3, V7.1.4, V7.2.1, V7.2.2, V8.1.4, V11.1.8, V2.2.3, V2.5.5, V8.3.5): Log sign-ins (success and failure), passkey and key changes and access-control refusals as events with the key or user id and a truncated address; ship the logs to a store (Workers Logs or Logpush); alert on 401, 403, 429 and 5xx rates and on failed sign-in bursts; notify owners of every passkey or key change.
-- **Platform admin and authentication strength** (V1.2.3, V1.2.4, V2.5.4, V4.3.1, V2.10.1, V2.3.3, V3.3.4): Make the platform admin named people with passkeys instead of one static token; step-up on by default and required for admin-scope keys' sensitive routes; verify WebAuthn with a maintained library or get the verifier reviewed; short-lived, runner-bound credentials for services; warn before keys expire; a list of active sessions.
+- **Security event logging and alerting** (V1.7.2, V2.5.5, V8.3.5): Ship the Workers' logs to a store (Workers Logs or Logpush) with alerting; tell the person whose passkey changed, not only the owners; an access event for bulk reads of personal data (people, payees), not only exports.
+- **Platform admin and authentication strength** (V1.2.3, V1.2.4, V2.5.4, V4.3.1, V2.10.1, V2.3.3, V3.3.4): Delete the legacy shared admin token once `ADMIN_KEYS` is set (owner action), then put the platform admin behind passkeys; step-up on by default and required for admin-scope keys' sensitive routes; verify WebAuthn with a maintained library or get the verifier reviewed; short-lived, runner-bound credentials for services; warn before keys expire; a list of active sessions.
 - **Edge protection and TLS** (V9.1.2, V9.1.3, V9.2.4, V11.1.4): A custom domain with minimum TLS 1.2, a recorded TLS scan (testssl.sh) and OCSP stapling checked; Cloudflare rate-limiting rules (a WAF) and Turnstile on public starts.
 - **Data at rest and secrets** (V6.1.1, V6.1.3, V1.6.1, V1.6.2, V6.4.1, V6.4.2, V1.8.2, V6.2.4): Encrypt the runner's SQLite ledger (SQLCipher or an encrypted volume) and record a check of D1 and R2 encryption; keep the runner's keys in the OS keychain or a secret manager; a KMS for the platform signing key; a written key-management policy and a data classification with protection levels; an algorithm field in signed records.
-- **API hygiene** (V13.1.5, V13.2.5, V14.4.2, V8.3.1, V13.1.3, V12.1.3, V12.6.1, V13.3.1, V12.4.2): 415 unless `Content-Type: application/json`; `Content-Disposition: attachment` on JSON answers; export download signatures out of the query string; a storage quota per company; an allow list or egress proxy for user-set URLs; XSD validation for incoming XML; antivirus scanning of uploads.
-- **Browser storage and cookies** (V8.2.2, V8.2.3, V3.4.4): Keep the Airwallex overview out of localStorage (or clear it at sign-out); rename the site's cookie `__Host-kit11_session` with `Path=/`.
+- **API hygiene** (V12.1.3, V12.6.1, V13.3.1, V12.4.2): a storage quota per company; an allow list or egress proxy for user-set URLs; XSD validation for incoming XML (in the Access Point, or a vetted validator: none runs in a Worker without a large dependency); antivirus scanning of uploads.
 - **Process and deployment** (V1.14.4, V14.1.1, V1.10.1, V1.1.2, V1.1.3, V14.2.2, V8.3.3): A deploy workflow that checks the deployed site's headers and configuration; a branch ruleset with linked issues; a threat-model step and security acceptance criteria in the PR and issue templates; remove the demo's samples from a production deployment; a privacy notice and terms before real data.
 - **Accepted risk** (V8.3.6): Overwriting secrets in memory is not reliably possible in a garbage-collected JavaScript runtime; secrets stay in isolates that are not shared.
+
+### Fixed since the first assessment
+
+Fifteen requirements closed on branch `asvs-fix` (not deployed by this change), each with its test:
+
+- **Security event log and alarms** (V7.1.3, V7.1.4, V7.2.1, V7.2.2, V2.2.3, V8.1.4, V11.1.8): an append-only security log in each Worker (`cloud/src/securityLog.ts`, `cloud/src/securityAudit.ts`; `worker/src/core.ts`), passkey and key changes told to the owners, configurable alarms counted on `/v1/health` and `/health`. `test/cloud-security-log.test.ts`, `test/relay-security-log.test.ts`.
+- **API hygiene** (V13.1.5, V13.2.5, V14.4.2, V8.3.1, V13.1.3): 415 unless JSON, JSON answers as attachments (`test/cloud-content-type.test.ts`, `test/relay-security-log.test.ts`); staged-export links good once, their signature in a header for programs (`cloud/src/exports.ts`, `test/cloud-export-links.test.ts`).
+- **Browser storage and cookies** (V8.2.2, V8.2.3, V3.4.4): the Airwallex overview in sessionStorage, removed at sign-out (`test/cloud-console-storage.test.ts`); the relay's cookie `__Host-kit11_session` with `Path=/` (`test/relay-security-log.test.ts`).
+
+Also done, without closing a requirement on its own: the platform admin as named, scoped, expiring keys (`ADMIN_KEYS`, `cloud/src/adminKeys.ts`, `test/cloud-admin-keys.test.ts`; towards V2.5.4 and V4.3.1).
+
+**Owner actions** (never done by an agent; no value goes in a file, a chat or a commit), in `docs/runbook.md`:
+
+1. Make a platform admin key per person and allow it: `npm run cloud:admin-key -- --id <holder>-<quarter> --scopes tenants,recovery,read,try --days 30`, then `npx wrangler secret put ADMIN_KEYS -c cloud/wrangler.try.jsonc` (and `-c cloud/wrangler.jsonc` for the product cloud).
+2. Then retire the shared token: `npx wrangler secret delete ADMIN_TOKEN_SHA256 -c cloud/wrangler.try.jsonc` (and `-c cloud/wrangler.jsonc`).
+3. Apply the new D1 migrations before or with the deploy (the Worker also makes the tables on first use): `npx wrangler d1 migrations apply purser-try --remote -c cloud/wrangler.try.jsonc` (and `purser-cloud -c cloud/wrangler.jsonc`), which adds `0006_security_log.sql` and `0007_export_links.sql`.
+4. Point an uptime monitor at `GET /v1/health` and the site's `/health`, alerting when `security.alarms_24h` is above 0 (V8.1.4, V11.1.8 rely on someone being told).
 
 ## V1 Architecture, design and threat modelling
 
@@ -55,7 +71,7 @@ Grouped by what would fix them, most important first for a deployment with real 
 | V1.2.1 | Low-privilege OS accounts per component | N/A | The deployed parts are Cloudflare Workers and Durable Objects (isolates, no OS account to set). The runner is a local CLI run by its owner. |
 | V1.2.2 | Communication between components authenticated | Pass | Worker to Worker through service bindings and named entrypoints no HTTP request reaches (`worker/src/index.ts` AwxRead, AwxFx, AwxGateway; `cloud/wrangler.try.jsonc`); runner to relay by bearer token (`worker/src/core.ts`); runner to cloud by scoped expiring keys (`cloud/src/auth.ts`); webhooks by HMAC (`src/policy/cardHooks.ts`). |
 | V1.2.3 | Single vetted authentication mechanism | **Fail** | People: WebAuthn passkeys, but verified by Purser's own code (`worker/src/webauthn.ts`), tested (`test/webauthn-soundness.test.ts`, `test/worker-webauthn.test.ts`) and not independently vetted. Fix: verify with a maintained library (`@simplewebauthn/server` is already a dependency of the runner) or have the verifier reviewed externally. |
-| V1.2.4 | Consistent strength on every authentication pathway | **Fail** | An admin-scope API key can make the same sensitive changes a passkey session can, and step-up (`cloud/src/stepUp.ts`) applies to sessions only and is off by default; the platform admin is a static token (`isPlatformAdmin`, `cloud/src/auth.ts`). Fix: step-up on by default, admin-scope keys limited to programs' routes, platform admin behind a passkey. |
+| V1.2.4 | Consistent strength on every authentication pathway | **Fail** | An admin-scope API key can make the same sensitive changes a passkey session can, and step-up (`cloud/src/stepUp.ts`) applies to sessions only and is off by default. The platform admin is now named, scoped, expiring keys (`ADMIN_KEYS`, `cloud/src/adminKeys.ts`), but a key is still one factor. Fix: step-up on by default, admin-scope keys limited to programs' routes, platform admin behind a passkey. |
 | V1.4.1 | Access control enforced at trusted points | Pass | Server side only: every route's `need` is checked in `handle()` before it runs (`cloud/src/app.ts`); `test/cloud-route-auth.test.ts`. |
 | V1.4.4 | Single access control mechanism | Pass | Route scope plus role (`cloud/src/auth.ts` `need`) and the tenant-scoped data layer every query goes through (`cloud/src/tenant.ts` TenantDb); `test/cloud-tenancy.test.ts`. |
 | V1.4.5 | Feature or data based access control | Pass | Scopes per route, roles per person, objects scoped to the caller's company (404 for another company's object): `cloud/src/app.ts`, `cloud/src/tenant.ts`, `test/cloud-tenancy.test.ts`. |
@@ -68,7 +84,7 @@ Grouped by what would fix them, most important first for a deployment with real 
 | V1.6.3 | Keys replaceable, with a process | Pass | Every API key revocable and expiring (`DELETE /v1/keys/{id}`, `KEY_MAX_DAYS`, `cloud/src/auth.ts`); Worker secrets replaced with `wrangler secret put`; leaked key steps in `docs/runbook.md`. Sealed OAuth tokens carry a version for re-sealing (`cloud/src/sealed.ts`). |
 | V1.6.4 | Client-side secrets not trusted | Pass | No secret in a page protects anything: sessions are server-checked HMAC tokens (`cloud/src/auth.ts`), the CFO's approval is a passkey signature over the terms hash checked server side (`src/policy/approvals.ts`). |
 | V1.7.1 | Common logging format | Pass | Purser Cloud: one JSON object per line with `ts`, `level`, `event` (`cloud/src/log.ts`); the runner's audit log is one hash-chained table (`src/audit/log.ts`). |
-| V1.7.2 | Logs sent to a remote system for analysis | **Fail** | Logs go to the Workers console only; nothing ships them to a log store or SIEM, and the runner's audit log stays on its machine (anchored on chain, not analysed). Fix: Workers Logs or Logpush to a store with alerting. |
+| V1.7.2 | Logs sent to a remote system for analysis | **Fail** | Security events are now kept in an append-only table (`security_log` in D1, `cloud/src/securityLog.ts`; `sec_log` in the relay's Durable Object, `worker/src/core.ts`) and each is a log line, but the Workers' logs are not shipped to a log store or SIEM (no `observability` or Logpush in `cloud/wrangler*.jsonc`, `worker/wrangler.jsonc`), and the runner's audit log stays on its machine. Fix: Workers Logs or Logpush to a store with alerting. |
 | V1.8.1 | Sensitive data identified and classified | Pass | `docs/security.md` (What we protect), `docs/cloud.md` (Privacy and retention), `cloud/src/log.ts` (fields treated as secret or personal). |
 | V1.8.2 | Protection requirements per level | **Fail** | The assets are listed but there are no protection levels with their requirements (encryption, integrity, retention, access, logging) per level. Fix: a classification table in `docs/security/`. |
 | V1.9.1 | Communications between components encrypted | Pass | HTTPS to every outside service; Worker to Worker over service bindings inside Cloudflare (`docs/security.md`, Limits on every external call). |
@@ -102,7 +118,7 @@ Grouped by what would fix them, most important first for a deployment with real 
 | V2.1.12 | Password Security | N/A | No passwords anywhere: people sign in with a passkey (WebAuthn), programs with scoped keys (`cloud/src/auth.ts`). |
 | V2.2.1 | Anti-automation against credential attacks | Pass | Passkeys cannot be guessed; keys are 32 random bytes; failed sign-ins and signatures are limited per address (20 a minute) and sign-ins to 30 a minute (`cloud/src/app.ts` `failedAuthBlocked`, `withinRate`); `test/cloud-err-429.test.ts`, `test/cloud-security.test.ts`. |
 | V2.2.2 | Weak authenticators only as secondary | Pass | No SMS or e-mail sign-in exists; approval alerts by SMS or e-mail carry no authority, the CFO approves with the passkey on Purser's page (`cloud/src/alerts.ts`). |
-| V2.2.3 | Secure notifications after authenticator changes | **Fail** | Owner recoveries and exports are recorded as security events (`GET /v1/security/events`, `cloud/src/app.ts`), but nobody is notified when a passkey or key is added or removed. Fix: send each such change to the owners through the alert channels. |
+| V2.2.3 | Secure notifications after authenticator changes | Pass | A passkey or key added or removed is a security event the owners read (`GET /v1/security/events`) and is sent to the company's alert webhook (`tellOwners`, `cloud/src/securityAudit.ts`); `test/cloud-security-log.test.ts` ("a key made and revoked", "a passkey enrolled"). |
 | V2.3.1 | Initial activation codes random and short-lived | Pass | Enrolment and invite secrets are 32 random bytes, stored as SHA-256, single use, 30 minutes (`cloud/src/auth.ts` `ENROLMENT_TTL_MS`, `startEnrolment`); `test/cloud-console-invites.test.ts`. |
 | V2.3.2 | User-provided authenticators (FIDO) supported | Pass | Sign-in is a passkey (FIDO2/WebAuthn); several per person (`cloud/src/auth.ts` `enrolPasskey`); `test/cloud-auth.test.ts`. |
 | V2.3.3 | Renewal instructions before time-bound authenticators expire | **Fail** | API keys expire (90 days by default, at most a year) but nothing warns before they do. Fix: an alert to the owners 14 and 3 days before a key's expiry. |
@@ -114,8 +130,8 @@ Grouped by what would fix them, most important first for a deployment with real 
 | V2.5.1 | Recovery secrets not sent in clear text | Pass | An owner recovery key is returned once over TLS to the platform admin's call, valid a day, for one enrolment of the named owner (`RECOVERY_KEY_DAYS`, `cloud/src/app.ts`); never e-mailed. |
 | V2.5.2 | No password hints or secret questions | Pass | Neither exists: there are no passwords, and recovery is a recovery key, not questions (`cloud/src/auth.ts`). |
 | V2.5.3 | Credential Recovery | N/A | No passwords anywhere: people sign in with a passkey (WebAuthn), programs with scoped keys (`cloud/src/auth.ts`). |
-| V2.5.4 | No shared or default accounts | **Fail** | The platform admin is one static token (`ADMIN_TOKEN_SHA256`, `isPlatformAdmin` in `cloud/src/auth.ts`), not a named person's account with a passkey. (The demo company's public read-only token is shared on purpose, for made-up data.) Fix: platform admin as named people with passkeys. |
-| V2.5.5 | User notified when an authentication factor changes | **Fail** | Adding or removing a passkey is not notified to the person or the owners (only recoveries are security events). Fix: as V2.2.3. |
+| V2.5.4 | No shared or default accounts | **Fail** | The platform admin can now be named people, each with their own scoped key that ends within 90 days (`ADMIN_KEYS`, `cloud/src/adminKeys.ts`, `test/cloud-admin-keys.test.ts`), but the shared legacy token (`ADMIN_TOKEN_SHA256`) keeps working while it is set (each use logged as `admin.legacy_token_used`), and the keys are not passkeys. Fix: the owner sets `ADMIN_KEYS` and deletes `ADMIN_TOKEN_SHA256` (`docs/runbook.md`, Platform admin keys); then passkeys for the platform admin. (The demo company's public read-only token is shared on purpose, for made-up data.) |
+| V2.5.5 | User notified when an authentication factor changes | **Fail** | A passkey or key change is told to the company's owners (security events and their alert webhook, as V2.2.3), but not to the person whose passkey it was when they are not an owner, and nobody is told when no webhook is set. Fix: tell the person too (e-mail to their address on file). |
 | V2.5.6 | Secure recovery mechanism | Pass | Recovery is a one-day key for one enrolment of the named owner, issued by the platform with who checked recorded, ending the owner's other passkeys and sessions (`cloud/src/auth.ts`, `cloud/src/app.ts`); `test/cloud-recovery.test.ts`. |
 | V2.5.7 | Identity proofing when factors are lost | Pass | The recovery records who checked the owner's identity (`checked_by`) as a security event; the new passkey is the owner's own (`test/cloud-recovery.test.ts`). The proofing itself is a person's, outside the code. |
 | V2.6.1 | Look-up Secret Verifier | N/A | No lookup secrets (recovery codes) are offered. |
@@ -146,7 +162,7 @@ Grouped by what would fix them, most important first for a deployment with real 
 
 | Requirement | Short name | Verdict | Evidence or reason |
 |---|---|---|---|
-| V3.1.1 | No session tokens in URLs | Pass | Sessions travel in the Authorization header (cloud) or an HttpOnly cookie (kit11); invite secrets and the viewer key after `#`, never sent to a server. (Signed export links carry a per-part signature in the query: see V8.3.1.) |
+| V3.1.1 | No session tokens in URLs | Pass | Sessions travel in the Authorization header (cloud) or an HttpOnly cookie (kit11); invite secrets and the viewer key after `#`, never sent to a server. (A staged-export link's browser form carries a single-use, 15-minute signature in the query: see V8.3.1.) |
 | V3.2.1 | New session token at authentication | Pass | Each sign-in issues a fresh signed token (`sessionToken`, `cloud/src/auth.ts`). |
 | V3.2.2 | Session tokens with at least 64 bits of entropy | Pass | Cloud: HMAC-SHA256 signed tokens with the server's secret; kit11: random session ids (`worker/src/core.ts`). |
 | V3.2.3 | Tokens stored securely in the browser | Pass | Console: sessionStorage, 15 minutes, no cookie (`cloud/src/console.ts`); kit11: HttpOnly, Secure, SameSite=Strict cookie (`worker/src/core.ts`). |
@@ -158,7 +174,7 @@ Grouped by what would fix them, most important first for a deployment with real 
 | V3.4.1 | Cookie Secure | Pass | `kit11_session`: `Secure` (`worker/src/core.ts`). Purser Cloud sets no cookie. |
 | V3.4.2 | Cookie HttpOnly | Pass | `kit11_session`: `HttpOnly` (`worker/src/core.ts`). |
 | V3.4.3 | Cookie SameSite | Pass | `kit11_session`: `SameSite=Strict` (`worker/src/core.ts`). |
-| V3.4.4 | Cookie `__Host-` prefix | **Fail** | `kit11_session` has no `__Host-` prefix (and uses `Path=/api`, which `__Host-` does not allow). Fix: `__Host-kit11_session` with `Path=/`. |
+| V3.4.4 | Cookie `__Host-` prefix | Pass | The relay's passkey session cookie is `__Host-kit11_session`: `Secure`, `Path=/`, no `Domain` (`worker/src/core.ts`); `test/relay-security-log.test.ts` ("the passkey session's cookie"). The cloud uses no cookie. |
 | V3.4.5 | Cookie path scoped | Pass | `Path=/api`; `workers.dev` is on the public suffix list, so no other Worker's host shares the cookie. |
 | V3.5.1 | Users can revoke OAuth tokens | Pass | A Claude connector is revoked with `DELETE /v1/claude/connectors/{id}` (tested: `test/cloud-claude.test.ts`, "ends when its token is revoked"); an OAuth access token issued for it is checked against its live key on every use (`fromAccessToken`, `cloud/src/auth.ts`), so it ends too (by code reading; no test of that path). |
 | V3.5.2 | Session tokens, not static keys, for users | Pass | People use passkey sessions; only programs use scoped, expiring, revocable keys (`cloud/src/auth.ts`). |
@@ -175,7 +191,7 @@ Grouped by what would fix them, most important first for a deployment with real 
 | V4.1.5 | Access control fails securely | Pass | Every check throws `AuthError` (fail closed); an exception becomes a 500 with a reference, never a pass (`cloud/src/app.ts`); `test/cloud-route-auth.test.ts`. |
 | V4.2.1 | IDOR protection | Pass | Every query is scoped to the caller's company; another company's object answers 404 (`cloud/src/tenant.ts`); `test/cloud-tenancy.test.ts`, `docs/evidence/redteam-api.md` (cross-company attacks). |
 | V4.2.2 | Anti-CSRF | Pass | Cloud: bearer tokens, no cookie, and a browser write from another origin is refused (`cloud/src/app.ts`); kit11: SameSite=Strict cookie. |
-| V4.3.1 | Administrative interfaces use MFA | **Fail** | Company owners sign in with a passkey, but the platform admin routes take a static token (`need: "platform"`, `cloud/src/app.ts`). Fix: as V2.5.4. |
+| V4.3.1 | Administrative interfaces use MFA | **Fail** | Company owners sign in with a passkey, but the platform admin routes (`need: "platform"`, `cloud/src/app.ts`) take a bearer key: named and scoped now (`ADMIN_KEYS`), still one factor. Fix: as V2.5.4. |
 | V4.3.2 | No directory browsing or metadata disclosure | Pass | Workers answer only their routes; no file listing; `.git` and source are never served (`worker/src/core.ts` `pageResponse`, `notFoundResponse`). |
 | V4.3.3 | Step-up or segregation of duties for high value | Pass | Above the agent's limit only the CFO's passkey approves; high-risk payments need a second key, some kinds four eyes (`src/policy/approvals.ts`, `docs/cloud.md` A second key for high-risk payments); step-up for settings (`cloud/src/stepUp.ts`). |
 
@@ -238,10 +254,10 @@ Grouped by what would fix them, most important first for a deployment with real 
 |---|---|---|---|
 | V7.1.1 | No credentials or payment details in logs | Pass | `cloud/src/log.ts` redacts anything named like a secret, keeps account numbers' last four, cuts keys, session tokens, `whsec_` secrets and Bearer values; `test/cloud-golive.test.ts` scans a whole session's log. |
 | V7.1.2 | No other sensitive data in logs | Pass | E-mail addresses keep their domain only (`cloud/src/log.ts`); `test/cloud-golive.test.ts`. |
-| V7.1.3 | Security events logged | **Fail** | Every request is a log line with its route and status, and recoveries and exports are security events, but sign-ins, passkey and key changes, and access-control failures are not logged as events with who and from where. Fix: an `auth.*` and `access.*` event for each, with key id or user id and a truncated address. |
-| V7.1.4 | Log events carry what an investigation needs | **Fail** | The request line has time, route, status and duration but no caller (key id, user id) and no source (`cloud/src/app.ts`). Fix: as V7.1.3. |
-| V7.2.1 | Authentication decisions logged | **Fail** | Failed sign-ins are counted per address for the limit (`noteFailedAuth`), not logged as events; successes are not logged as such. Fix: as V7.1.3. |
-| V7.2.2 | Access control decisions logged | **Fail** | A 403 is a `warn` request line without the caller or the scope missing. Fix: as V7.1.3. |
+| V7.1.3 | Security events logged | Pass | Sign-ins (passkey success and failure), refused keys, 403s, 429s, passkey and key changes, people and policy changes, exports, the platform admin's actions and tamper alarms are security events with the key or user id and the network (`cloud/src/securityAudit.ts`, `cloud/src/securityLog.ts`; the relay in `worker/src/core.ts`); `test/cloud-security-log.test.ts`, `test/relay-security-log.test.ts`. |
+| V7.1.4 | Log events carry what an investigation needs | Pass | Each event and each request line carries time, route, status, the caller's key or user id and the address cut to its network (`cloud/src/app.ts`, `cloud/src/securityLog.ts`); `test/cloud-security-log.test.ts` ("the request line carries who and from where"). |
+| V7.2.1 | Authentication decisions logged | Pass | Every 401 is an `auth.failure`, `passkey.failure`, `admin.auth_failure` or `webhook.signature_failure` event and every passkey sign-in a `passkey.success` (`securityKindOf`, `cloud/src/securityAudit.ts`); `test/cloud-security-log.test.ts` ("authentication decisions"), `test/relay-security-log.test.ts`. |
+| V7.2.2 | Access control decisions logged | Pass | Every 403 is an `access.denied` event with the caller, the route and why (`cloud/src/securityAudit.ts`; the relay in `worker/src/core.ts`); `test/cloud-security-log.test.ts` ("access control decisions"), `test/relay-security-log.test.ts`. |
 | V7.3.1 | Log injection prevented | Pass | Each line is one `JSON.stringify` object (`cloud/src/log.ts`); the runner's audit rows are JSON in SQLite (`src/audit/log.ts`). |
 | V7.3.3 | Security logs protected | Pass | The runner's audit log is hash-chained and its head anchored on chain (`src/audit/log.ts`, `src/anchor/`, `npm run verify-log`); the cloud's security events are written by code only (`cloud/src/app.ts`). |
 | V7.3.4 | Synchronised time in UTC | Pass | Cloudflare's clock; every timestamp ISO 8601 in UTC (`cloud/src/log.ts`). |
@@ -256,11 +272,11 @@ Grouped by what would fix them, most important first for a deployment with real 
 | V8.1.1 | Sensitive data not cached on the server side | Pass | `cache-control: no-store` on every API answer and page (`cloud/src/app.ts` JSON_HEADERS, `worker/src/core.ts` COMMON_HEADERS); no shared cache of personal data. |
 | V8.1.2 | Server-side temporary copies protected or purged | Pass | Staged exports live a day under signed, 15-minute links, then are removed (`cloud/src/exports.ts`); spent challenges and old rate windows are cleared by the scheduled job (hourly on purser-try, daily on purser-cloud: `cloud/src/worker.ts`). |
 | V8.1.3 | Minimal request parameters | Pass | No hidden fields or tokens in pages; requests carry the bearer and a JSON body (`docs/cloud.md` Conventions). |
-| V8.1.4 | Detect and alert on abnormal request numbers | **Fail** | Requests are rate-limited per address and key, but nothing detects or alerts on unusual volumes (`docs/cloud.md`, Before real customer data, item 2). Fix: Cloudflare rate-limiting rules and alerts on 4xx, 5xx and 429 rates. |
+| V8.1.4 | Detect and alert on abnormal request numbers | Pass | Rate limits per address and key, and alarm rules over all callers: 401 bursts, 403 bursts and 429 bursts per window raise one `alarm.raised` and an error log line, counted on `GET /v1/health` and the relay's `/health` (`security.alarms_24h`; `src/lib/securityEvents.ts`); `test/cloud-security-log.test.ts` ("alarms"), `test/relay-security-log.test.ts`. Someone must watch that count: owner action in `docs/runbook.md`. |
 | V8.2.1 | Anti-caching headers | Pass | `cache-control: no-store` (`cloud/src/app.ts`, `worker/src/core.ts`); `test/security-headers.test.ts`. |
-| V8.2.2 | No sensitive data in browser storage | **Fail** | The session token is in sessionStorage (allowed, V3.2.3), but the console keeps the last live Airwallex overview read in localStorage (`cloud/src/awxUi.ts`, `AWL_OV_KEY`): account balances of the sandbox, kept after sign-out. Fix: keep it in memory, or in sessionStorage cleared at sign-out. |
-| V8.2.3 | Client storage cleared after the session | **Fail** | Sign-out removes the session token (`forget`, `cloud/src/console.ts`) but not the localStorage copy of V8.2.2. |
-| V8.3.1 | Sensitive data not in query strings | **Fail** | Bodies and headers carry data, but staged-export download links carry their signature, company id and expiry in the query (`signedLink`, `cloud/src/exports.ts`). Fix: put the signature after `#` and fetch with a header, or a POST. |
+| V8.2.2 | No sensitive data in browser storage | Pass | The session token and the Overview's last live Airwallex read are in sessionStorage (this tab only; `cloud/src/console.ts`, `cloud/src/awxUi.ts`); localStorage holds only the language and the company's short name, and an older page's copy of the read is removed on load; `test/cloud-console-storage.test.ts`. |
+| V8.2.3 | Client storage cleared after the session | Pass | Sign-out, a 401 and the 15 minutes all call `forget` (`cloud/src/console.ts`), which removes the session and the Airwallex read; `test/cloud-console-storage.test.ts`. The relay's session cookie is HttpOnly and ends with its session (`worker/src/core.ts`). |
+| V8.3.1 | Sensitive data not in query strings | Pass | Bodies and headers carry data. A staged-export link gives a program a bare URL and the signature for the `x-purser-export-link` header; the query form, kept for a download a person clicks, carries only a nonce-bound signature that is good once and for 15 minutes for one part (like an authorization code), spent at the first download (`export_links_used`, `cloud/src/exports.ts`); `test/cloud-export-links.test.ts`. |
 | V8.3.2 | Users can export and remove their data | Pass | `GET /v1/export`, staged export, `POST /v1/users/{id}/erase`, `POST /v1/close` (`cloud/src/privacy.ts`); `test/cloud-export-staging.test.ts`, `test/cloud-retention.test.ts`. |
 | V8.3.3 | Clear privacy language and consent | **Fail** | No privacy notice or terms exist yet (`docs/go-live.md`: "Legal: terms, privacy notice, data processing agreement: Open"). Fix: draft them before real customer data. |
 | V8.3.4 | Sensitive data identified with a policy | Pass | `docs/cloud.md` (Privacy and retention), `docs/security.md` (What we protect). |
@@ -302,7 +318,7 @@ Grouped by what would fix them, most important first for a deployment with real 
 | V11.1.5 | Limits against identified business risks | Pass | Split-invoice, duplicate, lookalike-supplier, bank-change and injection checks from the threat model (`src/ap/checkerCore.ts`, `src/policy/fraudCore.ts`); measured on held-out sets (`docs/evals/adversarial-v5.md`). |
 | V11.1.6 | No TOCTOU on sensitive operations | Pass | The terms hash is checked again before any outside call; one live payout per invoice by a unique index; D1 commits checked (`src/policy/hashFirst.ts`, `src/db/schema.sql`, `test/cloud-concurrency.test.ts`, `docs/evidence/chaos-money.md`). |
 | V11.1.7 | Monitoring of unusual business events | Pass | The runner raises alerts (ledger mismatch, card drift, runner down) to `/health` and the alert webhook (`src/ops/publicHealth.ts`, `cloud/src/monitor.ts`); hourly reconciliation with Airwallex (`src/finance/reconcile.ts`). |
-| V11.1.8 | Configurable alerting on automated attacks | **Fail** | Alerts cover the runner's health and approvals, not attacks (rate-limit hits, failed sign-in bursts). Fix: as V8.1.4. |
+| V11.1.8 | Configurable alerting on automated attacks | Pass | Alarm thresholds and window are configurable (`SECURITY_ALARMS`, `alarmRules` in `src/lib/securityEvents.ts`) for failed sign-in, refusal, rate-limit and tamper bursts; an alarm is an `alarm.raised` row, an error log line and a count on `/v1/health`; `test/cloud-security-log.test.ts` ("alarms"). |
 
 ## V12 Files and resources
 
@@ -329,15 +345,15 @@ Grouped by what would fix them, most important first for a deployment with real 
 | Requirement | Short name | Verdict | Evidence or reason |
 |---|---|---|---|
 | V13.1.1 | Same encodings and parsers everywhere | Pass | One router per Worker using the URL API (`cloud/src/app.ts` `match`, `worker/src/core.ts`). |
-| V13.1.3 | No secrets in API URLs | **Fail** | Keys and sessions travel in headers, but signed export links put a signature in the URL (as V8.3.1). |
+| V13.1.3 | No secrets in API URLs | Pass | Keys and sessions travel in headers; a staged-export link's signature goes in a header for a program, and its browser form is single-use and 15 minutes, not a key (as V8.3.1); `test/cloud-export-links.test.ts`. |
 | V13.1.4 | Authorisation at the URI and resource level | Pass | The route's scope, then the object's company (`cloud/src/app.ts`, `cloud/src/tenant.ts`). |
-| V13.1.5 | Unexpected content types rejected | **Fail** | A JSON body is parsed whatever its `Content-Type` (`body()`, `cloud/src/app.ts`). Fix: answer 415 unless `application/json`. |
+| V13.1.5 | Unexpected content types rejected | Pass | A request body without `Content-Type: application/json` is refused with 415 before it is read (`body()`, `cloud/src/app.ts`; the relay's posts in `worker/src/core.ts`); `test/cloud-content-type.test.ts`, `test/relay-security-log.test.ts`. |
 | V13.2.1 | HTTP methods valid for the user and action | Pass | Each route has one method; another answers 405; scope per route (`cloud/src/app.ts`). |
 | V13.2.2 | JSON schema validation | Pass | zod on every body (`cloud/src/app.ts`, `cloud/src/engine/routes.ts`). |
 | V13.2.3 | CSRF on cookie-based REST | Pass | The cloud API uses no cookies; the kit11 API cookie is SameSite=Strict. |
-| V13.2.5 | Content-Type checked | **Fail** | As V13.1.5: `body()` in `cloud/src/app.ts` does not look at `Content-Type`. |
+| V13.2.5 | Content-Type checked | Pass | As V13.1.5: `body()` in `cloud/src/app.ts` checks `Content-Type` first (415); `test/cloud-content-type.test.ts`. |
 | V13.2.6 | Headers and payload trustworthy in transit | Pass | TLS; webhooks HMAC-signed; payment terms signed by the CFO's passkey over their hash (`src/policy/approvals.ts`). |
-| V13.3.1 | XSD validation of XML | **Fail** | Incoming Peppol XML is parsed strictly and its fields and business rules checked, but not validated against the UBL XSD (`src/ap/peppol.ts`; `docs/integrations/peppol.md`, What is not covered). Fix: XSD validation in the Access Point (they do) or a vetted validator. |
+| V13.3.1 | XSD validation of XML | **Fail** | Incoming Peppol XML is parsed strictly and its fields and business rules checked, but not validated against the UBL XSD (`src/ap/peppol.ts`; `docs/integrations/peppol.md`, What is not covered); no XSD validator runs in a Worker without a large native or WebAssembly dependency. Fix: XSD validation in the Access Point (they do) or a vetted validator. |
 | V13.3.2 | WS-Security signed payloads | N/A | Purser offers and calls no SOAP service. |
 | V13.4.1 | GraphQL query limits | N/A | Purser has no GraphQL or other query-language API. |
 | V13.4.2 | GraphQL authorisation layer | N/A | Purser has no GraphQL or other query-language API. |
@@ -359,7 +375,7 @@ Grouped by what would fix them, most important first for a deployment with real 
 | V14.3.2 | Debug modes off | Pass | No debug mode; errors return a reference only (`cloud/src/app.ts`). |
 | V14.3.3 | No version information in headers | Pass | No `x-powered-by` (`app.disable("x-powered-by")` in `src/servers/`); Workers add none. |
 | V14.4.1 | Content-Type with charset on every answer | Pass | `charset=utf-8` on text answers; binary answers typed (`cloud/src/app.ts`); `test/security-headers.test.ts`. |
-| V14.4.2 | Content-Disposition on API answers | **Fail** | API JSON answers carry no `Content-Disposition: attachment` (only file downloads do). Fix: add it to JSON_HEADERS (`cloud/src/app.ts`). |
+| V14.4.2 | Content-Disposition on API answers | Pass | Every JSON answer carries `Content-Disposition: attachment; filename="api.json"` (`cloud/src/baseHeaders.ts`; the relay's in `worker/src/core.ts`); files keep their own name; `test/cloud-content-type.test.ts`, `test/relay-security-log.test.ts`. |
 | V14.4.3 | Content Security Policy | Pass | Every page has its own CSP (hashes or nonces, `frame-ancestors 'none'`); JSON and text get one that allows nothing (`cloud/src/baseHeaders.ts`, `src/servers/dashboard.ts`); `test/security-headers.test.ts`. |
 | V14.4.4 | X-Content-Type-Options: nosniff | Pass | On every answer (`cloud/src/baseHeaders.ts`, `worker/src/core.ts`). |
 | V14.4.5 | HSTS on all answers | Pass | `max-age=31536000; includeSubDomains` on every answer (same files). |
@@ -372,4 +388,4 @@ Grouped by what would fix them, most important first for a deployment with real 
 
 ## How this was made
 
-The list of requirements is the official CSV of ASVS 4.0.3 (every row with a Level 2 mark: 259). Each verdict was decided by reading the files and tests it cites; `test/asvs-l2.test.ts` checks that this page lists exactly those 259 ids once each, that the summary adds up from the rows, and that every failure appears in the plan. Re-assess after the fixes above, and have it checked by someone independent before relying on it.
+The list of requirements is the official CSV of ASVS 4.0.3 (every row with a Level 2 mark: 259). Each verdict was decided by reading the files and tests it cites; `test/asvs-l2.test.ts` checks that this page lists exactly those 259 ids once each, that the summary adds up from the rows, and that every failure appears in the plan. Re-assess after the remaining fixes, and have it checked by someone independent before relying on it.

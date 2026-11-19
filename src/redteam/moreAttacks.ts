@@ -160,7 +160,7 @@ export const MORE_ATTACKS: Attack[] = [
       w.issuing.txs.push({ transactionId: "tx_hidden", cardId: card.cardId, amountCents: 4200, currency: "EUR", status: "APPROVED", approved: true, failureReason: null, merchant: "Somewhere", mcc: "5734", type: "AUTHORIZATION", occurredAt: new Date(w.now().getTime() - 3 * 3600_000).toISOString() });
       const r = await reconcile(w.db, { cardTransactions: (id) => w.issuing.listCardTransactions(id) }, w.now());
       return { attempt: "a 42.00 EUR card charge that never reached the ledger (lost webhook and poll)", blocked: r.differences.some((d) => d.ref === "tx_hidden"),
-        defence: "the hourly reconciliation compares every card's transactions with Airwallex both ways: a charge that reached neither the webhook nor the poll is found within the hour, not prevented", evidence: `${r.differences.length} difference(s)` };
+        defence: "the hourly reconciliation compares every card's transactions with Airwallex both ways: a charge that reached neither the webhook nor the poll is found within the hour, not prevented. Airwallex approves a charge on the card's own limits and merchant categories, which bound it; stopping it before it is approved would need Airwallex to ask Purser for each one, which Purser does not have", evidence: `${r.differences.length} difference(s)` };
     },
   },
   {

@@ -66,7 +66,7 @@ Who is who:
 
 | What the rule asks | Who | How Purser supports it | Proof |
 |---|---|---|---|
-| Complete, tamper-evident records | Purser | Every payment, decline, refusal and approval is in an append-only, hash-chained audit log; the database refuses edits and deletes through the application, and a change made around it (for example by removing the guard) is found afterwards by `npm run verify`. | `src/db/schema.sql` (`audit_log` triggers), `npm run verify-log` |
+| Complete, tamper-evident records | Purser | Every payment, decline, refusal and approval is in an append-only, hash-chained audit log; the database refuses edits, deletes and replaced rows through the application, and a change made around it (for example by removing the guard) is found by the next payment, which verifies the chain first and is refused (since 19 Nov), and by `npm run verify`. | `src/db/schema.sql` (`audit_log` triggers), `src/audit/intact.ts`, `npm run verify-log` |
 | Records an auditor can check | Purser | `npm run audit:report` writes a PDF; `npm run verify` re-checks every credential, pull, disputed payment, clearing receipt, Face ID approval and Airwallex booking; each payment carries a GL account and cost centre and exports to CSV or JSON. | `docs/audit/audit-report-rehearsal-3.pdf`, `docs/metal-award.md` (section 6, evidence model) |
 | Reconciliation | Purser | The runner reconciles the ledger with Airwallex and the chain every hour (and `npm run reconcile` on demand). | `src/finance/reconcile.ts` |
 | Finality kept with the record | Purser, from Alta | The runner stores Alta's finality certificate for each chain transaction (what Alta's RPC reported; the validators' signature is not verified) and checks it again in `npm run verify`. | `src/metal/finality.ts` |

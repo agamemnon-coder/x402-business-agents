@@ -158,7 +158,7 @@ describe("the README's own words elsewhere: the package, the business pages, the
     // The first sentence under the title, as written in the owner's centred top (13 Nov): bold, so the marks go.
     // 14 Nov (Max): the "Built on Airwallex" line comes first, then this sentence (test/first-screen.test.ts).
     const lines = README.split("\n");
-    const first = lines.slice(lines.findIndex((l) => l.startsWith("# Purser")) + 1).find((l) => l.trim() !== "" && !l.startsWith("**Built on Airwallex.**") && !/^(\*\*[^*]+\*\* )?\[!\[/.test(l)) /* 17 Nov, owner: the badges at the very top; 19 Nov 2026: each row after its bold label */!.trim().replace(/^\*\*|\*\*$/g, "");
+    const first = lines.slice(lines.findIndex((l) => l.startsWith("# Purser")) + 1).find((l) => l.trim() !== "" && !l.startsWith("**Built on Airwallex.**") && !/^(\*\*[^*]+\*\*(<br>| ))?\[!\[/.test(l)) /* 17 Nov, owner: the badges at the very top; 19 Nov 2026: each row after its bold label */!.trim().replace(/^\*\*|\*\*$/g, "");
     expect(first.length).toBeGreaterThan(40);
     expect(first).toMatch(/^[A-Z][^\n]*\.$/);
     expect((JSON.parse(read("package.json")) as { description?: string }).description).toBe(first);
