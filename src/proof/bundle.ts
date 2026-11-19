@@ -90,7 +90,8 @@ export interface ProofResult { ok: boolean; checks: ProofCheck[] }
 export const PROOF_VERIFY_JS = String.raw`
 var PROOF_FORMAT = "purser.proof-bundle/v1";
 function pvIsObj(v) { return typeof v === "object" && v !== null && !Array.isArray(v); }
-function pvB64u(s) { var b = atob(String(s).replace(/-/g, "+").replace(/_/g, "/") + "===".slice((String(s).length + 3) % 4)); var u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+// Base64url to bytes, or null when it cannot be decoded (a length of 4n+1 has no bytes): never throws.
+function pvB64u(s) { var t = String(s), b; if (t.length % 4 === 1) return null; try { b = atob(t.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((t.length + 3) % 4)); } catch (e) { return null; } var u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
 function pvToB64u(u) { var s = ""; for (var i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
 function pvHex(u) { var s = ""; for (var i = 0; i < u.length; i++) s += (u[i] < 16 ? "0" : "") + u[i].toString(16); return s; }
 function pvUtf8(s) { return new TextEncoder().encode(s); }
@@ -152,7 +153,11 @@ function pvDerToRaw(d) {
 }
 function pvMoney(c) { var n = Math.abs(c); return (c < 0 ? "-" : "") + Math.floor(n / 100) + "." + String(n % 100).padStart(2, "0"); }
 
+// Anything at all is answered with checks, never a throw: a failure while reading the file is a failed check.
 function verifyProofBundle(b) {
+  try { return pvVerify(b); } catch (e) { return Promise.resolve({ ok: false, checks: [{ check: "error", ok: false, detail: e && typeof e.message === "string" ? e.message : "the file could not be read" }] }); }
+}
+function pvVerify(b) {
   var checks = [];
   function add(check, ok, detail) { checks.push({ check: check, ok: !!ok, detail: detail }); return !!ok; }
   function done() { return { ok: checks.length > 0 && checks.every(function (c) { return c.ok; }), checks: checks }; }
@@ -162,12 +167,15 @@ function verifyProofBundle(b) {
     && typeof b.rp_id === "string" && b.rp_id.length > 0 && typeof b.origin === "string" && pvIsObj(a)
     && [a.authenticatorData, a.clientDataJSON, a.signature].every(function (x) { return typeof x === "string" && B64.test(x); })
     && pvIsObj(pk) && typeof pk.cose === "string" && B64.test(pk.cose) && pvIsObj(b.decision) && pvIsObj(b.ledger) && Array.isArray(b.ledger.entries);
-  if (!add("format", shaped, shaped ? PROOF_FORMAT + ", proposal " + String(b.proposal_id) : "not a " + PROOF_FORMAT + " file (a field is missing or of the wrong type)")) return Promise.resolve(done());
+  // Each base64url field decoded once, here: one that cannot be decoded fails the format check, naming it.
+  var ad = shaped ? pvB64u(a.authenticatorData) : null, cdj = shaped ? pvB64u(a.clientDataJSON) : null, sig = shaped ? pvB64u(a.signature) : null, cose = shaped ? pvB64u(pk.cose) : null;
+  var undecoded = shaped ? [["assertion.authenticatorData", ad], ["assertion.clientDataJSON", cdj], ["assertion.signature", sig], ["public_key.cose", cose]].filter(function (f) { return f[1] === null; }).map(function (f) { return f[0]; }) : [];
+  if (!add("format", shaped && undecoded.length === 0, !shaped ? "not a " + PROOF_FORMAT + " file (a field is missing or of the wrong type)"
+    : undecoded.length ? undecoded.join(", ") + (undecoded.length > 1 ? " are" : " is") + " not base64url" : PROOF_FORMAT + ", proposal " + String(b.proposal_id))) return Promise.resolve(done());
 
-  var canonical, cd, ad, sig, cose;
+  var canonical, cd;
   try { canonical = pvNoNumbers(b.terms) ? pvJcs(b.terms) : null; } catch (e) { canonical = null; }
-  try { cd = JSON.parse(new TextDecoder().decode(pvB64u(a.clientDataJSON))); } catch (e) { cd = null; }
-  ad = pvB64u(a.authenticatorData); sig = pvB64u(a.signature); cose = pvB64u(pk.cose);
+  try { cd = JSON.parse(new TextDecoder().decode(cdj)); } catch (e) { cd = null; }
 
   return Promise.resolve().then(function () {
     // 1. The terms hash: recomputed here from the terms, never taken from the file.
@@ -181,7 +189,7 @@ function verifyProofBundle(b) {
     });
   }).then(function (h) {
     // 2. The challenge the passkey signed is that hash (its 32 raw bytes, base64url), in an assertion for this origin.
-    var ch = pvIsObj(cd) && typeof cd.challenge === "string" && B64.test(cd.challenge) ? pvHex(pvB64u(cd.challenge)) : null;
+    var chb = pvIsObj(cd) && typeof cd.challenge === "string" && B64.test(cd.challenge) ? pvB64u(cd.challenge) : null, ch = chb ? pvHex(chb) : null;
     add("challenge", ch !== null && h !== null && ch === h, ch === null ? "the client data carries no challenge" : "clientDataJSON.challenge is " + ch + (h !== null && ch === h ? ", the terms hash" : ", not the terms hash " + String(h)));
     var typeOk = pvIsObj(cd) && cd.type === "webauthn.get", originOk = pvIsObj(cd) && cd.origin === b.origin, framed = pvIsObj(cd) && cd.crossOrigin === true;
     add("client data", typeOk && originOk && !framed, pvIsObj(cd) ? "type " + String(cd.type) + ", origin " + String(cd.origin) + (originOk ? "" : " (the file says " + b.origin + ")") + (framed ? ", inside a frame on another site" : "") : "clientDataJSON is not JSON");
@@ -195,7 +203,7 @@ function verifyProofBundle(b) {
     });
   }).then(function (h) {
     // 4. The signature over authenticatorData followed by SHA-256(clientDataJSON), with the public key.
-    return pvSha(pvB64u(a.clientDataJSON)).then(function (cdh) {
+    return pvSha(cdj).then(function (cdh) {
       var signed = new Uint8Array(ad.length + 32); signed.set(ad, 0); signed.set(cdh, ad.length);
       return pvKey(cose).then(function (k) {
         var s = k.alg === "ES256" ? pvDerToRaw(sig) : sig;

@@ -8,7 +8,7 @@ import { PROPERTIES } from "../src/fuzz/properties.js";
 import { fuzzContext, runProperty, type FuzzReport } from "../src/fuzz/run.js";
 
 /** Open findings (docs/evidence/fuzzing.md): they may fail here until fixed; nothing else may. */
-const OPEN_FINDINGS = new Set(["bundle-context", "bundle-malformed"]);
+const OPEN_FINDINGS = new Set(["bundle-context"]);
 
 describe("fuzzing (low run counts here; npm run fuzz runs the full set)", () => {
   const ctx = fuzzContext();

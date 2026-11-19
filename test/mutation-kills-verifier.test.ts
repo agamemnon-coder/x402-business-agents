@@ -251,6 +251,29 @@ describe("the proof-bundle verifier (PROOF_VERIFY_JS in src/proof/bundle.ts, run
     }
   });
 
+  it("a base64url field that cannot be decoded (a length of 4n+1, such as \"A\") fails the format check, naming the field; it never throws (fuzzing: bundle-malformed)", async () => {
+    const odd = "A", odd5 = "AAAAA";
+    for (const [field, b] of [
+      ["assertion.authenticatorData", { ...copy(PAID), assertion: { ...PAID.assertion, authenticatorData: odd } }],
+      ["assertion.signature", { ...copy(PAID), assertion: { ...PAID.assertion, signature: odd5 } }],
+      ["assertion.clientDataJSON", { ...copy(PAID), assertion: { ...PAID.assertion, clientDataJSON: odd } }],
+      ["public_key.cose", { ...copy(PAID), public_key: { ...PAID.public_key, cose: odd5 } }],
+    ] as const) {
+      let out: ProofResult | undefined;
+      expect(() => { void verifyProofBundle(b).then((r) => { out = r; }); }, field).not.toThrow();
+      out = await verifyProofBundle(b);
+      expect(out.ok, field).toBe(false);
+      expect(failed(out), field).toEqual(["format"]);
+      expect(detailOf(out, "format"), field).toBe(`${field} is not base64url`);
+    }
+    // Anything at all is answered with a failed check, never a throw: an object with no prototype as the proposal id too.
+    const bare = Object.assign(Object.create(null) as object, { x: 1 });
+    for (const v of [{ ...copy(PAID), proposal_id: bare }, bare, Symbol("s"), 10n]) {
+      const r = await verifyProofBundle(v);
+      expect(r.ok).toBe(false);
+    }
+  });
+
   it("the terms hash is the file's own: a changed hash, a changed canonical text or a number in the terms fail", async () => {
     expect(failed(await verifyProofBundle({ ...copy(PAID), terms_sha256: "0".repeat(64) }))).toEqual(["terms hash"]);
     const spaced = await verifyProofBundle({ ...copy(PAID), canonical: `${PAID.canonical} ` });

@@ -156,6 +156,15 @@ it("npm run verify-bundle: 0 on the committed sample, 1 on a copy with one cent 
   const bad = run(f);
   expect(bad.code).toBe(1);
   expect(bad.out).toMatch(/NOT VALID.*terms hash/);
+  // A base64url field that cannot be decoded: a failed check and NOT VALID, never a stack trace (fuzzing: bundle-malformed).
+  const m = JSON.parse(readFileSync("docs/proof/try-paid.json", "utf8")) as ProofBundle;
+  m.assertion.authenticatorData = "A";
+  const g = join(mkdtempSync(join(tmpdir(), "proof-")), "malformed.json");
+  writeFileSync(g, JSON.stringify(m));
+  const malformed = run(g);
+  expect(malformed.code).toBe(1);
+  expect(malformed.out).toContain("FAIL  format          assertion.authenticatorData is not base64url");
+  expect(malformed.out).toContain(`NOT VALID: ${g} (format)`);
 }, 60_000);
 
 describe("/verify, and the links to it", () => {
