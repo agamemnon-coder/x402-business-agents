@@ -1,0 +1,3422 @@
+{
+  "tool": {
+    "stryker_core": "10.1.1",
+    "vitest_runner": "10.1.1",
+    "vitest": "5.1.0",
+    "harness": "scripts/mutation-proof-verifier.ts (51 fixed text mutations)"
+  },
+  "status": "partial: four of the five Stryker groups measured before the new tests; the approval group (src/lib/terms.ts, src/policy/approvals.ts) was stopped at 129 of 639 mutants and is not reported; Stryker after-scores not measured",
+  "settings": {
+    "coverage_analysis": "perTest",
+    "concurrency": 2,
+    "ignore_static": true,
+    "mutators": "Stryker defaults"
+  },
+  "groups": {
+    "verifier": {
+      "tests_run": [
+        "test/try-receipt.test.ts",
+        "test/try-verify.test.ts",
+        "test/try-chain.test.ts",
+        "test/try-fx.test.ts",
+        "test/tamper-matrix.test.ts"
+      ],
+      "files": {
+        "src/try/receipt.ts": {
+          "mutants": 438,
+          "killed": 339,
+          "timeout": 0,
+          "survived": 56,
+          "no_coverage": 14,
+          "ignored_static": 29,
+          "score": 82.9,
+          "score_covered": 85.8,
+          "survivors": [
+            {
+              "id": "41",
+              "status": "Survived",
+              "line": 51,
+              "mutator": "StringLiteral",
+              "original": "\",\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "61",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "ConditionalExpression",
+              "original": "checks.length > 0",
+              "replacement": "true"
+            },
+            {
+              "id": "62",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "EqualityOperator",
+              "original": "checks.length > 0",
+              "replacement": "checks.length >= 0"
+            },
+            {
+              "id": "81",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "ConditionalExpression",
+              "original": "isObj(r) && r.receipt === RECEIPT_FORMAT && isObj(r.terms) && typeof r.terms_sha256 === \"string\" && /^[0-9a-f]{64}$/.test(r.terms_sha256)…",
+              "replacement": "true"
+            },
+            {
+              "id": "93",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "ConditionalExpression",
+              "original": "r.receipt === RECEIPT_FORMAT",
+              "replacement": "true"
+            },
+            {
+              "id": "95",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.terms_sha256 === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "98",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "Regex",
+              "original": "/^[0-9a-f]{64}$/",
+              "replacement": "/[0-9a-f]{64}$/"
+            },
+            {
+              "id": "99",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "Regex",
+              "original": "/^[0-9a-f]{64}$/",
+              "replacement": "/^[0-9a-f]{64}/"
+            },
+            {
+              "id": "102",
+              "status": "Survived",
+              "line": 71,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.rp_id === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "105",
+              "status": "Survived",
+              "line": 71,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.origin === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "108",
+              "status": "Survived",
+              "line": 72,
+              "mutator": "MethodExpression",
+              "original": "[a.authenticatorData, a.clientDataJSON, a.signature].every((x) => typeof x === \"string\" && B64URL.test(x))",
+              "replacement": "[a.authenticatorData, a.clientDataJSON, a.signature].some(x => typeof x === \"string\" && B64URL.test(x))"
+            },
+            {
+              "id": "109",
+              "status": "Survived",
+              "line": 72,
+              "mutator": "ArrayDeclaration",
+              "original": "[a.authenticatorData, a.clientDataJSON, a.signature]",
+              "replacement": "[]"
+            },
+            {
+              "id": "111",
+              "status": "Survived",
+              "line": 72,
+              "mutator": "ConditionalExpression",
+              "original": "typeof x === \"string\" && B64URL.test(x)",
+              "replacement": "true"
+            },
+            {
+              "id": "113",
+              "status": "Survived",
+              "line": 72,
+              "mutator": "LogicalOperator",
+              "original": "typeof x === \"string\" && B64URL.test(x)",
+              "replacement": "typeof x === \"string\" || B64URL.test(x)"
+            },
+            {
+              "id": "114",
+              "status": "Survived",
+              "line": 72,
+              "mutator": "ConditionalExpression",
+              "original": "typeof x === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "117",
+              "status": "Survived",
+              "line": 73,
+              "mutator": "ConditionalExpression",
+              "original": "pk.kty === \"EC\"",
+              "replacement": "true"
+            },
+            {
+              "id": "120",
+              "status": "Survived",
+              "line": 73,
+              "mutator": "ConditionalExpression",
+              "original": "pk.crv === \"P-256\"",
+              "replacement": "true"
+            },
+            {
+              "id": "123",
+              "status": "Survived",
+              "line": 73,
+              "mutator": "ConditionalExpression",
+              "original": "typeof pk.x === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "126",
+              "status": "Survived",
+              "line": 73,
+              "mutator": "ConditionalExpression",
+              "original": "typeof pk.y === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "168",
+              "status": "NoCoverage",
+              "line": 90,
+              "mutator": "BlockStatement",
+              "original": "{ return null; }",
+              "replacement": "{}"
+            },
+            {
+              "id": "173",
+              "status": "NoCoverage",
+              "line": 92,
+              "mutator": "StringLiteral",
+              "original": "\"client data\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "174",
+              "status": "NoCoverage",
+              "line": 92,
+              "mutator": "BooleanLiteral",
+              "original": "false",
+              "replacement": "true"
+            },
+            {
+              "id": "175",
+              "status": "NoCoverage",
+              "line": 92,
+              "mutator": "StringLiteral",
+              "original": "\"the client data is not a JSON object\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "171",
+              "status": "Survived",
+              "line": 92,
+              "mutator": "ConditionalExpression",
+              "original": "!client",
+              "replacement": "false"
+            },
+            {
+              "id": "188",
+              "status": "NoCoverage",
+              "line": 94,
+              "mutator": "StringLiteral",
+              "original": "`not an assertion (${String(client.type)})`",
+              "replacement": "``"
+            },
+            {
+              "id": "179",
+              "status": "Survived",
+              "line": 94,
+              "mutator": "ConditionalExpression",
+              "original": "client.type === \"webauthn.get\"",
+              "replacement": "true"
+            },
+            {
+              "id": "183",
+              "status": "Survived",
+              "line": 94,
+              "mutator": "ConditionalExpression",
+              "original": "client.type === \"webauthn.get\"",
+              "replacement": "true"
+            },
+            {
+              "id": "208",
+              "status": "Survived",
+              "line": 98,
+              "mutator": "ConditionalExpression",
+              "original": "client.crossOrigin !== true",
+              "replacement": "true"
+            },
+            {
+              "id": "219",
+              "status": "NoCoverage",
+              "line": 99,
+              "mutator": "StringLiteral",
+              "original": "\" inside a frame\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "216",
+              "status": "Survived",
+              "line": 99,
+              "mutator": "ConditionalExpression",
+              "original": "client.crossOrigin === true",
+              "replacement": "false"
+            },
+            {
+              "id": "233",
+              "status": "NoCoverage",
+              "line": 104,
+              "mutator": "StringLiteral",
+              "original": "\"too short\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "224",
+              "status": "Survived",
+              "line": 104,
+              "mutator": "ConditionalExpression",
+              "original": "auth.length >= 37",
+              "replacement": "true"
+            },
+            {
+              "id": "228",
+              "status": "Survived",
+              "line": 104,
+              "mutator": "ConditionalExpression",
+              "original": "auth.length >= 37",
+              "replacement": "true"
+            },
+            {
+              "id": "245",
+              "status": "NoCoverage",
+              "line": 108,
+              "mutator": "StringLiteral",
+              "original": "\"no user presence\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "241",
+              "status": "Survived",
+              "line": 108,
+              "mutator": "ConditionalExpression",
+              "original": "(flags & 0x01) !== 0",
+              "replacement": "true"
+            },
+            {
+              "id": "256",
+              "status": "Survived",
+              "line": 116,
+              "mutator": "ConditionalExpression",
+              "original": "typeof fx.quote_id === \"string\" && typeof fx.valid_to_at === \"string\" && typeof fx.client_rate === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "258",
+              "status": "Survived",
+              "line": 116,
+              "mutator": "LogicalOperator",
+              "original": "typeof fx.quote_id === \"string\" && typeof fx.valid_to_at === \"string\" && typeof fx.client_rate === \"string\"",
+              "replacement": "typeof fx.quote_id === \"string\" && typeof fx.valid_to_at === \"string\" || typeof fx.client_rate === \"string\""
+            },
+            {
+              "id": "259",
+              "status": "Survived",
+              "line": 116,
+              "mutator": "ConditionalExpression",
+              "original": "typeof fx.quote_id === \"string\" && typeof fx.valid_to_at === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "260",
+              "status": "Survived",
+              "line": 116,
+              "mutator": "LogicalOperator",
+              "original": "typeof fx.quote_id === \"string\" && typeof fx.valid_to_at === \"string\"",
+              "replacement": "typeof fx.quote_id === \"string\" || typeof fx.valid_to_at === \"string\""
+            },
+            {
+              "id": "261",
+              "status": "Survived",
+              "line": 116,
+              "mutator": "ConditionalExpression",
+              "original": "typeof fx.quote_id === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "264",
+              "status": "Survived",
+              "line": 116,
+              "mutator": "ConditionalExpression",
+              "original": "typeof fx.valid_to_at === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "267",
+              "status": "Survived",
+              "line": 116,
+              "mutator": "ConditionalExpression",
+              "original": "typeof fx.client_rate === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "273",
+              "status": "NoCoverage",
+              "line": 117,
+              "mutator": "StringLiteral",
+              "original": "\"the terms' fx block is not a quote\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "297",
+              "status": "Survived",
+              "line": 135,
+              "mutator": "ConditionalExpression",
+              "original": "isObj(c) && Array.isArray(c.rows)",
+              "replacement": "true"
+            },
+            {
+              "id": "299",
+              "status": "Survived",
+              "line": 135,
+              "mutator": "LogicalOperator",
+              "original": "isObj(c) && Array.isArray(c.rows)",
+              "replacement": "isObj(c) || Array.isArray(c.rows)"
+            },
+            {
+              "id": "326",
+              "status": "Survived",
+              "line": 140,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.at !== \"string\"",
+              "replacement": "false"
+            },
+            {
+              "id": "329",
+              "status": "Survived",
+              "line": 140,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.kind !== \"string\"",
+              "replacement": "false"
+            },
+            {
+              "id": "332",
+              "status": "Survived",
+              "line": 140,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.data_sha256 !== \"string\"",
+              "replacement": "false"
+            },
+            {
+              "id": "335",
+              "status": "Survived",
+              "line": 140,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.hash !== \"string\"",
+              "replacement": "false"
+            },
+            {
+              "id": "343",
+              "status": "NoCoverage",
+              "line": 141,
+              "mutator": "StringLiteral",
+              "original": "`row ${i + 1} does not follow the row before (its prev is not that row's hash)`",
+              "replacement": "``"
+            },
+            {
+              "id": "344",
+              "status": "NoCoverage",
+              "line": 141,
+              "mutator": "ArithmeticOperator",
+              "original": "i + 1",
+              "replacement": "i - 1"
+            },
+            {
+              "id": "341",
+              "status": "Survived",
+              "line": 141,
+              "mutator": "ConditionalExpression",
+              "original": "r.prev !== prev",
+              "replacement": "false"
+            },
+            {
+              "id": "360",
+              "status": "Survived",
+              "line": 145,
+              "mutator": "ConditionalExpression",
+              "original": "!isObj(c) || c.length !== rows.length",
+              "replacement": "false"
+            },
+            {
+              "id": "361",
+              "status": "Survived",
+              "line": 145,
+              "mutator": "LogicalOperator",
+              "original": "!isObj(c) || c.length !== rows.length",
+              "replacement": "!isObj(c) && c.length !== rows.length"
+            },
+            {
+              "id": "363",
+              "status": "Survived",
+              "line": 145,
+              "mutator": "ConditionalExpression",
+              "original": "c.length !== rows.length",
+              "replacement": "false"
+            },
+            {
+              "id": "380",
+              "status": "NoCoverage",
+              "line": 149,
+              "mutator": "BlockStatement",
+              "original": "{ want = null; }",
+              "replacement": "{}"
+            },
+            {
+              "id": "385",
+              "status": "Survived",
+              "line": 150,
+              "mutator": "ConditionalExpression",
+              "original": "r.kind === \"signature\"",
+              "replacement": "true"
+            },
+            {
+              "id": "384",
+              "status": "Survived",
+              "line": 150,
+              "mutator": "LogicalOperator",
+              "original": "r.kind === \"signature\" && r.data_sha256 === want",
+              "replacement": "r.kind === \"signature\" || r.data_sha256 === want"
+            },
+            {
+              "id": "388",
+              "status": "Survived",
+              "line": 150,
+              "mutator": "ConditionalExpression",
+              "original": "r.data_sha256 === want",
+              "replacement": "true"
+            },
+            {
+              "id": "399",
+              "status": "NoCoverage",
+              "line": 155,
+              "mutator": "CallExpression",
+              "original": "checks.push(...verifyE2e(R.e2e, R.terms_sha256));",
+              "replacement": ";"
+            },
+            {
+              "id": "397",
+              "status": "Survived",
+              "line": 155,
+              "mutator": "ConditionalExpression",
+              "original": "R.e2e !== undefined",
+              "replacement": "false"
+            },
+            {
+              "id": "422",
+              "status": "Survived",
+              "line": 176,
+              "mutator": "LogicalOperator",
+              "original": "r.terms && typeof r.terms === \"object\"",
+              "replacement": "r.terms || typeof r.terms === \"object\""
+            },
+            {
+              "id": "423",
+              "status": "Survived",
+              "line": 176,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.terms === \"object\"",
+              "replacement": "true"
+            },
+            {
+              "id": "432",
+              "status": "Survived",
+              "line": 177,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.note === \"string\" && /Airwallex sandbox/.test(r.note)",
+              "replacement": "true"
+            },
+            {
+              "id": "431",
+              "status": "Survived",
+              "line": 177,
+              "mutator": "LogicalOperator",
+              "original": "typeof r.note === \"string\" && /Airwallex sandbox/.test(r.note) && /test money/.test(r.note)",
+              "replacement": "typeof r.note === \"string\" && /Airwallex sandbox/.test(r.note) || /test money/.test(r.note)"
+            },
+            {
+              "id": "433",
+              "status": "Survived",
+              "line": 177,
+              "mutator": "LogicalOperator",
+              "original": "typeof r.note === \"string\" && /Airwallex sandbox/.test(r.note)",
+              "replacement": "typeof r.note === \"string\" || /Airwallex sandbox/.test(r.note)"
+            },
+            {
+              "id": "434",
+              "status": "Survived",
+              "line": 177,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.note === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "438",
+              "status": "Survived",
+              "line": 178,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.verified_by_server_at === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "442",
+              "status": "Survived",
+              "line": 178,
+              "mutator": "Regex",
+              "original": "/^(\\d{4})-(\\d{2})-(\\d{2})T/",
+              "replacement": "/(\\d{4})-(\\d{2})-(\\d{2})T/"
+            },
+            {
+              "id": "451",
+              "status": "NoCoverage",
+              "line": 179,
+              "mutator": "StringLiteral",
+              "original": "\"Airwallex sandbox approval, test money.\"",
+              "replacement": "\"\""
+            }
+          ]
+        }
+      }
+    },
+    "payee": {
+      "tests_run": [
+        "test/fraud.test.ts",
+        "test/fraud-bank-change-language.test.ts",
+        "test/try-trick.test.ts",
+        "test/invoice-duplicate-key.test.ts",
+        "test/ap-redteam2.test.ts"
+      ],
+      "files": {
+        "src/lib/invoiceKey.ts": {
+          "mutants": 119,
+          "killed": 75,
+          "timeout": 0,
+          "survived": 22,
+          "no_coverage": 21,
+          "ignored_static": 1,
+          "score": 63.6,
+          "score_covered": 77.3,
+          "survivors": [
+            {
+              "id": "4",
+              "status": "Survived",
+              "line": 8,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "11",
+              "status": "Survived",
+              "line": 8,
+              "mutator": "Regex",
+              "original": "/\\s+/g",
+              "replacement": "/\\s/g"
+            },
+            {
+              "id": "18",
+              "status": "Survived",
+              "line": 13,
+              "mutator": "Regex",
+              "original": "/^\\p{Nd}$/u",
+              "replacement": "/\\p{Nd}$/u"
+            },
+            {
+              "id": "19",
+              "status": "Survived",
+              "line": 13,
+              "mutator": "Regex",
+              "original": "/^\\p{Nd}$/u",
+              "replacement": "/^\\p{Nd}/u"
+            },
+            {
+              "id": "22",
+              "status": "Survived",
+              "line": 16,
+              "mutator": "Regex",
+              "original": "/^\\p{Nd}$/u",
+              "replacement": "/\\p{Nd}$/u"
+            },
+            {
+              "id": "23",
+              "status": "Survived",
+              "line": 16,
+              "mutator": "Regex",
+              "original": "/^\\p{Nd}$/u",
+              "replacement": "/^\\p{Nd}/u"
+            },
+            {
+              "id": "46",
+              "status": "Survived",
+              "line": 31,
+              "mutator": "ConditionalExpression",
+              "original": "latin === \"i\"",
+              "replacement": "false"
+            },
+            {
+              "id": "48",
+              "status": "Survived",
+              "line": 31,
+              "mutator": "StringLiteral",
+              "original": "\"i\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "54",
+              "status": "Survived",
+              "line": 41,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "62",
+              "status": "NoCoverage",
+              "line": 42,
+              "mutator": "ArrayDeclaration",
+              "original": "[]",
+              "replacement": "[\"Stryker was here\"]"
+            },
+            {
+              "id": "57",
+              "status": "Survived",
+              "line": 42,
+              "mutator": "Regex",
+              "original": "/[\\p{L}]+|\\d+/gu",
+              "replacement": "/[\\p{L}]|\\d+/gu"
+            },
+            {
+              "id": "64",
+              "status": "Survived",
+              "line": 43,
+              "mutator": "Regex",
+              "original": "/^\\d+$/",
+              "replacement": "/\\d+$/"
+            },
+            {
+              "id": "65",
+              "status": "Survived",
+              "line": 43,
+              "mutator": "Regex",
+              "original": "/^\\d+$/",
+              "replacement": "/^\\d+/"
+            },
+            {
+              "id": "68",
+              "status": "Survived",
+              "line": 43,
+              "mutator": "Regex",
+              "original": "/^0+(?=\\d)/",
+              "replacement": "/0+(?=\\d)/"
+            },
+            {
+              "id": "69",
+              "status": "Survived",
+              "line": 43,
+              "mutator": "Regex",
+              "original": "/^0+(?=\\d)/",
+              "replacement": "/^0(?=\\d)/"
+            },
+            {
+              "id": "73",
+              "status": "Survived",
+              "line": 43,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "85",
+              "status": "NoCoverage",
+              "line": 60,
+              "mutator": "ObjectLiteral",
+              "original": "{ no: ledgerNo.slice(0, at), vendor: ledgerNo.slice(at + LEDGER_SEPARATOR.length).trim() || null }",
+              "replacement": "{}"
+            },
+            {
+              "id": "86",
+              "status": "NoCoverage",
+              "line": 60,
+              "mutator": "MethodExpression",
+              "original": "ledgerNo.slice(0, at)",
+              "replacement": "ledgerNo"
+            },
+            {
+              "id": "87",
+              "status": "NoCoverage",
+              "line": 60,
+              "mutator": "ConditionalExpression",
+              "original": "ledgerNo.slice(at + LEDGER_SEPARATOR.length).trim() || null",
+              "replacement": "true"
+            },
+            {
+              "id": "88",
+              "status": "NoCoverage",
+              "line": 60,
+              "mutator": "ConditionalExpression",
+              "original": "ledgerNo.slice(at + LEDGER_SEPARATOR.length).trim() || null",
+              "replacement": "false"
+            },
+            {
+              "id": "89",
+              "status": "NoCoverage",
+              "line": 60,
+              "mutator": "LogicalOperator",
+              "original": "ledgerNo.slice(at + LEDGER_SEPARATOR.length).trim() || null",
+              "replacement": "ledgerNo.slice(at + LEDGER_SEPARATOR.length).trim() && null"
+            },
+            {
+              "id": "90",
+              "status": "NoCoverage",
+              "line": 60,
+              "mutator": "MethodExpression",
+              "original": "ledgerNo.slice(at + LEDGER_SEPARATOR.length).trim()",
+              "replacement": "ledgerNo.slice(at + LEDGER_SEPARATOR.length)"
+            },
+            {
+              "id": "91",
+              "status": "NoCoverage",
+              "line": 60,
+              "mutator": "MethodExpression",
+              "original": "ledgerNo.slice(at + LEDGER_SEPARATOR.length)",
+              "replacement": "ledgerNo"
+            },
+            {
+              "id": "92",
+              "status": "NoCoverage",
+              "line": 60,
+              "mutator": "ArithmeticOperator",
+              "original": "at + LEDGER_SEPARATOR.length",
+              "replacement": "at - LEDGER_SEPARATOR.length"
+            },
+            {
+              "id": "80",
+              "status": "Survived",
+              "line": 60,
+              "mutator": "ConditionalExpression",
+              "original": "at < 0",
+              "replacement": "true"
+            },
+            {
+              "id": "82",
+              "status": "Survived",
+              "line": 60,
+              "mutator": "EqualityOperator",
+              "original": "at < 0",
+              "replacement": "at <= 0"
+            },
+            {
+              "id": "98",
+              "status": "Survived",
+              "line": 74,
+              "mutator": "LogicalOperator",
+              "original": "x.vendor ?? aParty.vendor ?? null",
+              "replacement": "(x.vendor ?? aParty.vendor) && null"
+            },
+            {
+              "id": "99",
+              "status": "Survived",
+              "line": 74,
+              "mutator": "LogicalOperator",
+              "original": "x.vendor ?? aParty.vendor",
+              "replacement": "x.vendor && aParty.vendor"
+            },
+            {
+              "id": "100",
+              "status": "Survived",
+              "line": 75,
+              "mutator": "LogicalOperator",
+              "original": "y.vendor ?? bParty.vendor ?? null",
+              "replacement": "(y.vendor ?? bParty.vendor) && null"
+            },
+            {
+              "id": "101",
+              "status": "Survived",
+              "line": 75,
+              "mutator": "LogicalOperator",
+              "original": "y.vendor ?? bParty.vendor",
+              "replacement": "y.vendor && bParty.vendor"
+            },
+            {
+              "id": "106",
+              "status": "NoCoverage",
+              "line": 76,
+              "mutator": "BooleanLiteral",
+              "original": "!yv",
+              "replacement": "yv"
+            },
+            {
+              "id": "102",
+              "status": "Survived",
+              "line": 76,
+              "mutator": "ConditionalExpression",
+              "original": "!xv || !yv",
+              "replacement": "true"
+            },
+            {
+              "id": "108",
+              "status": "NoCoverage",
+              "line": 77,
+              "mutator": "ConditionalExpression",
+              "original": "skeleton(xv) === skeleton(yv)",
+              "replacement": "true"
+            },
+            {
+              "id": "109",
+              "status": "NoCoverage",
+              "line": 77,
+              "mutator": "ConditionalExpression",
+              "original": "skeleton(xv) === skeleton(yv)",
+              "replacement": "false"
+            },
+            {
+              "id": "110",
+              "status": "NoCoverage",
+              "line": 77,
+              "mutator": "EqualityOperator",
+              "original": "skeleton(xv) === skeleton(yv)",
+              "replacement": "skeleton(xv) !== skeleton(yv)"
+            },
+            {
+              "id": "111",
+              "status": "NoCoverage",
+              "line": 77,
+              "mutator": "BooleanLiteral",
+              "original": "true",
+              "replacement": "false"
+            },
+            {
+              "id": "112",
+              "status": "NoCoverage",
+              "line": 78,
+              "mutator": "ConditionalExpression",
+              "original": "!!aParty.accountSha256 && aParty.accountSha256 === bParty.accountSha256",
+              "replacement": "true"
+            },
+            {
+              "id": "113",
+              "status": "NoCoverage",
+              "line": 78,
+              "mutator": "ConditionalExpression",
+              "original": "!!aParty.accountSha256 && aParty.accountSha256 === bParty.accountSha256",
+              "replacement": "false"
+            },
+            {
+              "id": "114",
+              "status": "NoCoverage",
+              "line": 78,
+              "mutator": "LogicalOperator",
+              "original": "!!aParty.accountSha256 && aParty.accountSha256 === bParty.accountSha256",
+              "replacement": "!!aParty.accountSha256 || aParty.accountSha256 === bParty.accountSha256"
+            },
+            {
+              "id": "115",
+              "status": "NoCoverage",
+              "line": 78,
+              "mutator": "BooleanLiteral",
+              "original": "!!aParty.accountSha256",
+              "replacement": "!aParty.accountSha256"
+            },
+            {
+              "id": "116",
+              "status": "NoCoverage",
+              "line": 78,
+              "mutator": "BooleanLiteral",
+              "original": "!aParty.accountSha256",
+              "replacement": "aParty.accountSha256"
+            },
+            {
+              "id": "117",
+              "status": "NoCoverage",
+              "line": 78,
+              "mutator": "ConditionalExpression",
+              "original": "aParty.accountSha256 === bParty.accountSha256",
+              "replacement": "true"
+            },
+            {
+              "id": "118",
+              "status": "NoCoverage",
+              "line": 78,
+              "mutator": "EqualityOperator",
+              "original": "aParty.accountSha256 === bParty.accountSha256",
+              "replacement": "aParty.accountSha256 !== bParty.accountSha256"
+            }
+          ]
+        },
+        "src/policy/fraudCore.ts": {
+          "mutants": 307,
+          "killed": 179,
+          "timeout": 1,
+          "survived": 56,
+          "no_coverage": 7,
+          "ignored_static": 64,
+          "score": 74.1,
+          "score_covered": 76.3,
+          "survivors": [
+            {
+              "id": "163",
+              "status": "Survived",
+              "line": 45,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "172",
+              "status": "NoCoverage",
+              "line": 56,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "170",
+              "status": "Survived",
+              "line": 56,
+              "mutator": "MethodExpression",
+              "original": "(last4 ?? \"\").trim()",
+              "replacement": "last4 ?? \"\""
+            },
+            {
+              "id": "175",
+              "status": "NoCoverage",
+              "line": 57,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "173",
+              "status": "Survived",
+              "line": 57,
+              "mutator": "MethodExpression",
+              "original": "(country ?? \"\").trim()",
+              "replacement": "country ?? \"\""
+            },
+            {
+              "id": "178",
+              "status": "NoCoverage",
+              "line": 58,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "176",
+              "status": "Survived",
+              "line": 58,
+              "mutator": "MethodExpression",
+              "original": "(bic ?? \"\").trim()",
+              "replacement": "bic ?? \"\""
+            },
+            {
+              "id": "181",
+              "status": "NoCoverage",
+              "line": 59,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "182",
+              "status": "NoCoverage",
+              "line": 59,
+              "mutator": "StringLiteral",
+              "original": "\"an account with no IBAN\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "191",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "ConditionalExpression",
+              "original": "i === 0",
+              "replacement": "true"
+            },
+            {
+              "id": "192",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "ConditionalExpression",
+              "original": "i === 0",
+              "replacement": "false"
+            },
+            {
+              "id": "193",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "EqualityOperator",
+              "original": "i === 0",
+              "replacement": "i !== 0"
+            },
+            {
+              "id": "194",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "ConditionalExpression",
+              "original": "j === 0",
+              "replacement": "true"
+            },
+            {
+              "id": "195",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "ConditionalExpression",
+              "original": "j === 0",
+              "replacement": "false"
+            },
+            {
+              "id": "196",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "EqualityOperator",
+              "original": "j === 0",
+              "replacement": "j !== 0"
+            },
+            {
+              "id": "224",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "LogicalOperator",
+              "original": "i > 1 && j > 1 && a[i - 1] === b[j - 2]",
+              "replacement": "i > 1 && j > 1 || a[i - 1] === b[j - 2]"
+            },
+            {
+              "id": "225",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "ConditionalExpression",
+              "original": "i > 1 && j > 1",
+              "replacement": "true"
+            },
+            {
+              "id": "226",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "LogicalOperator",
+              "original": "i > 1 && j > 1",
+              "replacement": "i > 1 || j > 1"
+            },
+            {
+              "id": "227",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "ConditionalExpression",
+              "original": "i > 1",
+              "replacement": "true"
+            },
+            {
+              "id": "228",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "EqualityOperator",
+              "original": "i > 1",
+              "replacement": "i >= 1"
+            },
+            {
+              "id": "230",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "ConditionalExpression",
+              "original": "j > 1",
+              "replacement": "true"
+            },
+            {
+              "id": "231",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "EqualityOperator",
+              "original": "j > 1",
+              "replacement": "j >= 1"
+            },
+            {
+              "id": "233",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "ConditionalExpression",
+              "original": "a[i - 1] === b[j - 2]",
+              "replacement": "true"
+            },
+            {
+              "id": "237",
+              "status": "Survived",
+              "line": 70,
+              "mutator": "ConditionalExpression",
+              "original": "a[i - 2] === b[j - 1]",
+              "replacement": "true"
+            },
+            {
+              "id": "261",
+              "status": "NoCoverage",
+              "line": 77,
+              "mutator": "StringLiteral",
+              "original": "\"s\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "257",
+              "status": "Survived",
+              "line": 77,
+              "mutator": "ConditionalExpression",
+              "original": "n === 1",
+              "replacement": "true"
+            },
+            {
+              "id": "292",
+              "status": "Survived",
+              "line": 103,
+              "mutator": "ConditionalExpression",
+              "original": "Math.min(sv.length, sb.length) >= 8",
+              "replacement": "true"
+            },
+            {
+              "id": "293",
+              "status": "Survived",
+              "line": 103,
+              "mutator": "ConditionalExpression",
+              "original": "Math.min(sv.length, sb.length) >= 8",
+              "replacement": "false"
+            },
+            {
+              "id": "294",
+              "status": "Survived",
+              "line": 103,
+              "mutator": "EqualityOperator",
+              "original": "Math.min(sv.length, sb.length) >= 8",
+              "replacement": "Math.min(sv.length, sb.length) > 8"
+            },
+            {
+              "id": "295",
+              "status": "Survived",
+              "line": 103,
+              "mutator": "EqualityOperator",
+              "original": "Math.min(sv.length, sb.length) >= 8",
+              "replacement": "Math.min(sv.length, sb.length) < 8"
+            },
+            {
+              "id": "296",
+              "status": "Survived",
+              "line": 103,
+              "mutator": "MethodExpression",
+              "original": "Math.min(sv.length, sb.length)",
+              "replacement": "Math.max(sv.length, sb.length)"
+            },
+            {
+              "id": "313",
+              "status": "NoCoverage",
+              "line": 104,
+              "mutator": "StringLiteral",
+              "original": "\"differ\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "300",
+              "status": "Survived",
+              "line": 104,
+              "mutator": "ConditionalExpression",
+              "original": "sb.length >= 4",
+              "replacement": "true"
+            },
+            {
+              "id": "301",
+              "status": "Survived",
+              "line": 104,
+              "mutator": "EqualityOperator",
+              "original": "sb.length >= 4",
+              "replacement": "sb.length > 4"
+            },
+            {
+              "id": "304",
+              "status": "Survived",
+              "line": 104,
+              "mutator": "EqualityOperator",
+              "original": "d <= limit",
+              "replacement": "d < limit"
+            },
+            {
+              "id": "309",
+              "status": "Survived",
+              "line": 104,
+              "mutator": "ConditionalExpression",
+              "original": "d === 1",
+              "replacement": "true"
+            },
+            {
+              "id": "316",
+              "status": "Survived",
+              "line": 113,
+              "mutator": "LogicalOperator",
+              "original": "all.find((b) => b.name === inv.vendor) ?? (hasOtherScript(inv.vendor) ? undefined : all.find((b) => skeleton(b.name) === skeleton(inv.vendor",
+              "replacement": "all.find(b => b.name === inv.vendor) && (hasOtherScript(inv.vendor) ? undefined : all.find(b => skeleton(b.name) === skeleton(inv.vendor)))"
+            },
+            {
+              "id": "317",
+              "status": "Survived",
+              "line": 113,
+              "mutator": "ArrowFunction",
+              "original": "(b) => b.name === inv.vendor",
+              "replacement": "() => undefined"
+            },
+            {
+              "id": "319",
+              "status": "Survived",
+              "line": 113,
+              "mutator": "ConditionalExpression",
+              "original": "b.name === inv.vendor",
+              "replacement": "false"
+            },
+            {
+              "id": "321",
+              "status": "Survived",
+              "line": 113,
+              "mutator": "ArrowFunction",
+              "original": "(b) => skeleton(b.name) === skeleton(inv.vendor)",
+              "replacement": "() => undefined"
+            },
+            {
+              "id": "323",
+              "status": "Survived",
+              "line": 113,
+              "mutator": "ConditionalExpression",
+              "original": "skeleton(b.name) === skeleton(inv.vendor)",
+              "replacement": "false"
+            },
+            {
+              "id": "331",
+              "status": "Survived",
+              "line": 116,
+              "mutator": "BooleanLiteral",
+              "original": "true",
+              "replacement": "false"
+            },
+            {
+              "id": "332",
+              "status": "Survived",
+              "line": 116,
+              "mutator": "StringLiteral",
+              "original": "`the vendor name \"${inv.vendor}\" contains letters from a non-Latin alphabet`",
+              "replacement": "``"
+            },
+            {
+              "id": "357",
+              "status": "Survived",
+              "line": 127,
+              "mutator": "ConditionalExpression",
+              "original": "onFile.iban_sha256 !== invIbanSha",
+              "replacement": "false"
+            },
+            {
+              "id": "356",
+              "status": "Survived",
+              "line": 127,
+              "mutator": "LogicalOperator",
+              "original": "onFile.iban_sha256 !== invIbanSha || onFile.bic !== inv.bic",
+              "replacement": "onFile.iban_sha256 !== invIbanSha && onFile.bic !== inv.bic"
+            },
+            {
+              "id": "359",
+              "status": "Survived",
+              "line": 127,
+              "mutator": "ConditionalExpression",
+              "original": "onFile.bic !== inv.bic",
+              "replacement": "false"
+            },
+            {
+              "id": "363",
+              "status": "Survived",
+              "line": 128,
+              "mutator": "Regex",
+              "original": "/\\s+/g",
+              "replacement": "/\\s/g"
+            },
+            {
+              "id": "365",
+              "status": "Survived",
+              "line": 128,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "375",
+              "status": "Survived",
+              "line": 132,
+              "mutator": "MethodExpression",
+              "original": "iban.slice(-4)",
+              "replacement": "iban"
+            },
+            {
+              "id": "376",
+              "status": "Survived",
+              "line": 132,
+              "mutator": "UnaryOperator",
+              "original": "-4",
+              "replacement": "+4"
+            },
+            {
+              "id": "377",
+              "status": "Survived",
+              "line": 132,
+              "mutator": "MethodExpression",
+              "original": "iban.slice(0, 2)",
+              "replacement": "iban"
+            },
+            {
+              "id": "378",
+              "status": "Survived",
+              "line": 132,
+              "mutator": "MethodExpression",
+              "original": "onFile.bic.slice(4, 6)",
+              "replacement": "onFile.bic"
+            },
+            {
+              "id": "379",
+              "status": "Survived",
+              "line": 135,
+              "mutator": "MethodExpression",
+              "original": "/^Account name:\\s*(.+)$/m.exec(text)?.[1]?.trim()",
+              "replacement": "/^Account name:\\s*(.+)$/m.exec(text)?.[1]"
+            },
+            {
+              "id": "380",
+              "status": "Survived",
+              "line": 135,
+              "mutator": "OptionalChaining",
+              "original": "/^Account name:\\s*(.+)$/m.exec(text)?.[1]?.trim",
+              "replacement": "/^Account name:\\s*(.+)$/m.exec(text)?.[1].trim"
+            },
+            {
+              "id": "382",
+              "status": "Survived",
+              "line": 135,
+              "mutator": "Regex",
+              "original": "/^Account name:\\s*(.+)$/m",
+              "replacement": "/Account name:\\s*(.+)$/m"
+            },
+            {
+              "id": "383",
+              "status": "Survived",
+              "line": 135,
+              "mutator": "Regex",
+              "original": "/^Account name:\\s*(.+)$/m",
+              "replacement": "/^Account name:\\s*(.+)/m"
+            },
+            {
+              "id": "384",
+              "status": "Survived",
+              "line": 135,
+              "mutator": "Regex",
+              "original": "/^Account name:\\s*(.+)$/m",
+              "replacement": "/^Account name:\\s(.+)$/m"
+            },
+            {
+              "id": "385",
+              "status": "Survived",
+              "line": 135,
+              "mutator": "Regex",
+              "original": "/^Account name:\\s*(.+)$/m",
+              "replacement": "/^Account name:\\S*(.+)$/m"
+            },
+            {
+              "id": "399",
+              "status": "Survived",
+              "line": 138,
+              "mutator": "StringLiteral",
+              "original": "`the account holder on the invoice is \"${holder}\", not ${expectedHolder}`",
+              "replacement": "``"
+            },
+            {
+              "id": "401",
+              "status": "Survived",
+              "line": 140,
+              "mutator": "MethodExpression",
+              "original": "text.split(\"\\n\").find((l) => re.test(l))?.trim()",
+              "replacement": "text.split(\"\\n\").find(l => re.test(l))"
+            },
+            {
+              "id": "411",
+              "status": "Survived",
+              "line": 142,
+              "mutator": "StringLiteral",
+              "original": "`the invoice announces a change of bank: \"${change}\"`",
+              "replacement": "``"
+            },
+            {
+              "id": "412",
+              "status": "Survived",
+              "line": 144,
+              "mutator": "ConditionalExpression",
+              "original": "pressure",
+              "replacement": "true"
+            },
+            {
+              "id": "418",
+              "status": "Survived",
+              "line": 144,
+              "mutator": "StringLiteral",
+              "original": "`the invoice pushes for speed: \"${pressure}\"`",
+              "replacement": "``"
+            }
+          ]
+        }
+      }
+    },
+    "executor": {
+      "tests_run": [
+        "test/euroBill.test.ts",
+        "test/one-cent-three-locks.test.ts",
+        "test/swift-fee-reserve.test.ts",
+        "test/ap-review-fixes.test.ts",
+        "test/close-unsent.test.ts",
+        "test/zero-trust.test.ts"
+      ],
+      "files": {
+        "src/executors/invoicePayment.ts": {
+          "mutants": 107,
+          "killed": 44,
+          "timeout": 1,
+          "survived": 50,
+          "no_coverage": 12,
+          "ignored_static": 0,
+          "score": 42.1,
+          "score_covered": 47.4,
+          "survivors": [
+            {
+              "id": "1",
+              "status": "Survived",
+              "line": 64,
+              "mutator": "ArrowFunction",
+              "original": "(name: string) => !!db.prepare(\"SELECT 1 FROM money_steps WHERE action_id = ? AND step = ?\").get(proposalId, name)",
+              "replacement": "() => undefined"
+            },
+            {
+              "id": "2",
+              "status": "Survived",
+              "line": 64,
+              "mutator": "BooleanLiteral",
+              "original": "!!db.prepare(\"SELECT 1 FROM money_steps WHERE action_id = ? AND step = ?\").get(proposalId, name)",
+              "replacement": "!db.prepare(\"SELECT 1 FROM money_steps WHERE action_id = ? AND step = ?\").get(proposalId, name)"
+            },
+            {
+              "id": "3",
+              "status": "Survived",
+              "line": 64,
+              "mutator": "BooleanLiteral",
+              "original": "!db.prepare(\"SELECT 1 FROM money_steps WHERE action_id = ? AND step = ?\").get(proposalId, name)",
+              "replacement": "db.prepare(\"SELECT 1 FROM money_steps WHERE action_id = ? AND step = ?\").get(proposalId, name)"
+            },
+            {
+              "id": "5",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "ConditionalExpression",
+              "original": "begun(\"conversion\") && !begun(\"transfer\")",
+              "replacement": "true"
+            },
+            {
+              "id": "6",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "ConditionalExpression",
+              "original": "begun(\"conversion\") && !begun(\"transfer\")",
+              "replacement": "false"
+            },
+            {
+              "id": "7",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "LogicalOperator",
+              "original": "begun(\"conversion\") && !begun(\"transfer\")",
+              "replacement": "begun(\"conversion\") || !begun(\"transfer\")"
+            },
+            {
+              "id": "9",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "BooleanLiteral",
+              "original": "!begun(\"transfer\")",
+              "replacement": "begun(\"transfer\")"
+            },
+            {
+              "id": "10",
+              "status": "Survived",
+              "line": 65,
+              "mutator": "StringLiteral",
+              "original": "\"transfer\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "11",
+              "status": "Survived",
+              "line": 69,
+              "mutator": "StringLiteral",
+              "original": "`pre-exec:${proposalId}`",
+              "replacement": "``"
+            },
+            {
+              "id": "19",
+              "status": "Survived",
+              "line": 75,
+              "mutator": "CallExpression",
+              "original": "refuseIfInAwxBatch(db, proposalId);",
+              "replacement": ";"
+            },
+            {
+              "id": "20",
+              "status": "Survived",
+              "line": 77,
+              "mutator": "CallExpression",
+              "original": "checkPayingAccount(db, t, rail as { payingAccount?: string | null }, now());",
+              "replacement": ";"
+            },
+            {
+              "id": "25",
+              "status": "Survived",
+              "line": 83,
+              "mutator": "ObjectLiteral",
+              "original": "{ ...partyOf(db, t.invoice_no), vendor: t.vendor }",
+              "replacement": "{}"
+            },
+            {
+              "id": "35",
+              "status": "NoCoverage",
+              "line": 84,
+              "mutator": "StringLiteral",
+              "original": "`already has a payout (${other.status})`",
+              "replacement": "``"
+            },
+            {
+              "id": "30",
+              "status": "Survived",
+              "line": 84,
+              "mutator": "ConditionalExpression",
+              "original": "other.status === \"PAID\"",
+              "replacement": "true"
+            },
+            {
+              "id": "36",
+              "status": "Survived",
+              "line": 87,
+              "mutator": "ConditionalExpression",
+              "original": "begun(\"transfer\")",
+              "replacement": "true"
+            },
+            {
+              "id": "37",
+              "status": "Survived",
+              "line": 87,
+              "mutator": "ConditionalExpression",
+              "original": "begun(\"transfer\")",
+              "replacement": "false"
+            },
+            {
+              "id": "38",
+              "status": "Survived",
+              "line": 87,
+              "mutator": "StringLiteral",
+              "original": "\"transfer\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "42",
+              "status": "Survived",
+              "line": 88,
+              "mutator": "BooleanLiteral",
+              "original": "!begun(\"conversion\")",
+              "replacement": "begun(\"conversion\")"
+            },
+            {
+              "id": "40",
+              "status": "Survived",
+              "line": 88,
+              "mutator": "ConditionalExpression",
+              "original": "t.conversion && !begun(\"conversion\")",
+              "replacement": "false"
+            },
+            {
+              "id": "43",
+              "status": "Survived",
+              "line": 88,
+              "mutator": "StringLiteral",
+              "original": "\"conversion\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "44",
+              "status": "Survived",
+              "line": 88,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "51",
+              "status": "NoCoverage",
+              "line": 89,
+              "mutator": "StringLiteral",
+              "original": "`quote ${t.conversion.quote_id} expired at ${t.conversion.valid_to}; approval void`",
+              "replacement": "``"
+            },
+            {
+              "id": "46",
+              "status": "Survived",
+              "line": 89,
+              "mutator": "ConditionalExpression",
+              "original": "Date.parse(t.conversion.valid_to) - 30_000 <= now().getTime()",
+              "replacement": "false"
+            },
+            {
+              "id": "47",
+              "status": "Survived",
+              "line": 89,
+              "mutator": "EqualityOperator",
+              "original": "Date.parse(t.conversion.valid_to) - 30_000 <= now().getTime()",
+              "replacement": "Date.parse(t.conversion.valid_to) - 30_000 < now().getTime()"
+            },
+            {
+              "id": "49",
+              "status": "Survived",
+              "line": 89,
+              "mutator": "ArithmeticOperator",
+              "original": "Date.parse(t.conversion.valid_to) - 30_000",
+              "replacement": "Date.parse(t.conversion.valid_to) + 30_000"
+            },
+            {
+              "id": "56",
+              "status": "NoCoverage",
+              "line": 91,
+              "mutator": "StringLiteral",
+              "original": "`unknown quote ${t.conversion.quote_id}`",
+              "replacement": "``"
+            },
+            {
+              "id": "54",
+              "status": "Survived",
+              "line": 91,
+              "mutator": "ConditionalExpression",
+              "original": "!q",
+              "replacement": "false"
+            },
+            {
+              "id": "60",
+              "status": "NoCoverage",
+              "line": 92,
+              "mutator": "ConditionalExpression",
+              "original": "q.used_by_conversion !== t.conversion.request_id",
+              "replacement": "true"
+            },
+            {
+              "id": "61",
+              "status": "NoCoverage",
+              "line": 92,
+              "mutator": "EqualityOperator",
+              "original": "q.used_by_conversion !== t.conversion.request_id",
+              "replacement": "q.used_by_conversion === t.conversion.request_id"
+            },
+            {
+              "id": "63",
+              "status": "NoCoverage",
+              "line": 92,
+              "mutator": "StringLiteral",
+              "original": "`quote ${t.conversion.quote_id} was already used`",
+              "replacement": "``"
+            },
+            {
+              "id": "58",
+              "status": "Survived",
+              "line": 92,
+              "mutator": "ConditionalExpression",
+              "original": "q.used_by_conversion && q.used_by_conversion !== t.conversion.request_id",
+              "replacement": "false"
+            },
+            {
+              "id": "72",
+              "status": "NoCoverage",
+              "line": 93,
+              "mutator": "StringLiteral",
+              "original": "\"USD would now drop under its floor; a new proposal is needed\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "65",
+              "status": "Survived",
+              "line": 93,
+              "mutator": "ConditionalExpression",
+              "original": "pre.usdAvailableCents - toCents(t.conversion.sell_amount) - heldPayoutCents(db, \"USD\", proposalId) < pre.usdFloorCents",
+              "replacement": "false"
+            },
+            {
+              "id": "66",
+              "status": "Survived",
+              "line": 93,
+              "mutator": "EqualityOperator",
+              "original": "pre.usdAvailableCents - toCents(t.conversion.sell_amount) - heldPayoutCents(db, \"USD\", proposalId) < pre.usdFloorCents",
+              "replacement": "pre.usdAvailableCents - toCents(t.conversion.sell_amount) - heldPayoutCents(db, \"USD\", proposalId) <= pre.usdFloorCents"
+            },
+            {
+              "id": "68",
+              "status": "Survived",
+              "line": 93,
+              "mutator": "ArithmeticOperator",
+              "original": "pre.usdAvailableCents - toCents(t.conversion.sell_amount) - heldPayoutCents(db, \"USD\", proposalId)",
+              "replacement": "pre.usdAvailableCents - toCents(t.conversion.sell_amount) + heldPayoutCents(db, \"USD\", proposalId)"
+            },
+            {
+              "id": "69",
+              "status": "Survived",
+              "line": 93,
+              "mutator": "ArithmeticOperator",
+              "original": "pre.usdAvailableCents - toCents(t.conversion.sell_amount)",
+              "replacement": "pre.usdAvailableCents + toCents(t.conversion.sell_amount)"
+            },
+            {
+              "id": "70",
+              "status": "Survived",
+              "line": 93,
+              "mutator": "StringLiteral",
+              "original": "\"USD\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "74",
+              "status": "Survived",
+              "line": 95,
+              "mutator": "ConditionalExpression",
+              "original": "begun(\"conversion\")",
+              "replacement": "false"
+            },
+            {
+              "id": "73",
+              "status": "Survived",
+              "line": 95,
+              "mutator": "ConditionalExpression",
+              "original": "begun(\"conversion\")",
+              "replacement": "true"
+            },
+            {
+              "id": "75",
+              "status": "Survived",
+              "line": 95,
+              "mutator": "StringLiteral",
+              "original": "\"conversion\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "84",
+              "status": "NoCoverage",
+              "line": 98,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "78",
+              "status": "Survived",
+              "line": 98,
+              "mutator": "ConditionalExpression",
+              "original": "eurAfter - outCents(t) < pre.eurFloorCents + pre.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id, proposalId)",
+              "replacement": "false"
+            },
+            {
+              "id": "81",
+              "status": "Survived",
+              "line": 98,
+              "mutator": "ArithmeticOperator",
+              "original": "eurAfter - outCents(t)",
+              "replacement": "eurAfter + outCents(t)"
+            },
+            {
+              "id": "82",
+              "status": "Survived",
+              "line": 98,
+              "mutator": "ArithmeticOperator",
+              "original": "pre.eurFloorCents + pre.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id, proposalId)",
+              "replacement": "pre.eurFloorCents + pre.eurObligationsCents - eurInFlightCents(db, t.transfer_request_id, proposalId)"
+            },
+            {
+              "id": "83",
+              "status": "Survived",
+              "line": 98,
+              "mutator": "ArithmeticOperator",
+              "original": "pre.eurFloorCents + pre.eurObligationsCents",
+              "replacement": "pre.eurFloorCents - pre.eurObligationsCents"
+            },
+            {
+              "id": "86",
+              "status": "NoCoverage",
+              "line": 99,
+              "mutator": "StringLiteral",
+              "original": "\"EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "90",
+              "status": "Survived",
+              "line": 103,
+              "mutator": "StringLiteral",
+              "original": "\"USD\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "88",
+              "status": "Survived",
+              "line": 103,
+              "mutator": "ConditionalExpression",
+              "original": "t.conversion",
+              "replacement": "false"
+            },
+            {
+              "id": "92",
+              "status": "Survived",
+              "line": 104,
+              "mutator": "StringLiteral",
+              "original": "\"EUR\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "93",
+              "status": "Survived",
+              "line": 104,
+              "mutator": "ArithmeticOperator",
+              "original": "outCents(t) - (t.conversion ? toCents(t.conversion.buy_amount) : 0)",
+              "replacement": "outCents(t) + (t.conversion ? toCents(t.conversion.buy_amount) : 0)"
+            },
+            {
+              "id": "105",
+              "status": "NoCoverage",
+              "line": 186,
+              "mutator": "StringLiteral",
+              "original": "\"the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "103",
+              "status": "Survived",
+              "line": 186,
+              "mutator": "ConditionalExpression",
+              "original": "stopped(db, \"treasury\")",
+              "replacement": "false"
+            },
+            {
+              "id": "104",
+              "status": "Survived",
+              "line": 186,
+              "mutator": "StringLiteral",
+              "original": "\"treasury\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "109",
+              "status": "NoCoverage",
+              "line": 187,
+              "mutator": "StringLiteral",
+              "original": "\"the treasury agent is paused by the CFO; nothing is paid until the CFO resumes it with Face ID\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "107",
+              "status": "Survived",
+              "line": 187,
+              "mutator": "ConditionalExpression",
+              "original": "paused(db, \"treasury\")",
+              "replacement": "false"
+            },
+            {
+              "id": "108",
+              "status": "Survived",
+              "line": 187,
+              "mutator": "StringLiteral",
+              "original": "\"treasury\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "110",
+              "status": "Survived",
+              "line": 189,
+              "mutator": "StringLiteral",
+              "original": "\"treasury\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "111",
+              "status": "Survived",
+              "line": 189,
+              "mutator": "ObjectLiteral",
+              "original": "{ rail: \"airwallex\", currency: \"EUR\", payee: \"beneficiaries\" }",
+              "replacement": "{}"
+            },
+            {
+              "id": "113",
+              "status": "Survived",
+              "line": 189,
+              "mutator": "StringLiteral",
+              "original": "\"EUR\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "112",
+              "status": "Survived",
+              "line": 189,
+              "mutator": "StringLiteral",
+              "original": "\"airwallex\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "114",
+              "status": "Survived",
+              "line": 189,
+              "mutator": "StringLiteral",
+              "original": "\"beneficiaries\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "115",
+              "status": "NoCoverage",
+              "line": 190,
+              "mutator": "StringLiteral",
+              "original": "`${denied}; nothing is paid`",
+              "replacement": "``"
+            }
+          ]
+        }
+      }
+    },
+    "available": {
+      "tests_run": [
+        "test/available.test.ts",
+        "test/property-available.test.ts"
+      ],
+      "files": {
+        "src/policy/available.ts": {
+          "mutants": 200,
+          "killed": 30,
+          "timeout": 0,
+          "survived": 9,
+          "no_coverage": 157,
+          "ignored_static": 4,
+          "score": 15.3,
+          "score_covered": 76.9,
+          "survivors": [
+            {
+              "id": "3",
+              "status": "NoCoverage",
+              "line": 27,
+              "mutator": "BooleanLiteral",
+              "original": "!!db.prepare(\"SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?\").get(name)",
+              "replacement": "!db.prepare(\"SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?\").get(name)"
+            },
+            {
+              "id": "4",
+              "status": "NoCoverage",
+              "line": 27,
+              "mutator": "BooleanLiteral",
+              "original": "!db.prepare(\"SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?\").get(name)",
+              "replacement": "db.prepare(\"SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?\").get(name)"
+            },
+            {
+              "id": "5",
+              "status": "NoCoverage",
+              "line": 27,
+              "mutator": "StringLiteral",
+              "original": "\"SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "7",
+              "status": "NoCoverage",
+              "line": 41,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "8",
+              "status": "NoCoverage",
+              "line": 44,
+              "mutator": "ConditionalExpression",
+              "original": "scheme === undefined",
+              "replacement": "true"
+            },
+            {
+              "id": "9",
+              "status": "NoCoverage",
+              "line": 44,
+              "mutator": "ConditionalExpression",
+              "original": "scheme === undefined",
+              "replacement": "false"
+            },
+            {
+              "id": "10",
+              "status": "NoCoverage",
+              "line": 44,
+              "mutator": "EqualityOperator",
+              "original": "scheme === undefined",
+              "replacement": "scheme !== undefined"
+            },
+            {
+              "id": "11",
+              "status": "NoCoverage",
+              "line": 44,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "12",
+              "status": "NoCoverage",
+              "line": 45,
+              "mutator": "MethodExpression",
+              "original": "(db.prepare(\"PRAGMA table_info(sales)\").all() as { name: string }[]).some((c) => c.name === \"scheme\")",
+              "replacement": "(db.prepare(\"PRAGMA table_info(sales)\").all() as { name: string; }[]).every(c => c.name === \"scheme\")"
+            },
+            {
+              "id": "13",
+              "status": "NoCoverage",
+              "line": 45,
+              "mutator": "ArrowFunction",
+              "original": "(c) => c.name === \"scheme\"",
+              "replacement": "() => undefined"
+            },
+            {
+              "id": "14",
+              "status": "NoCoverage",
+              "line": 45,
+              "mutator": "ConditionalExpression",
+              "original": "c.name === \"scheme\"",
+              "replacement": "true"
+            },
+            {
+              "id": "15",
+              "status": "NoCoverage",
+              "line": 45,
+              "mutator": "ConditionalExpression",
+              "original": "c.name === \"scheme\"",
+              "replacement": "false"
+            },
+            {
+              "id": "16",
+              "status": "NoCoverage",
+              "line": 45,
+              "mutator": "EqualityOperator",
+              "original": "c.name === \"scheme\"",
+              "replacement": "c.name !== \"scheme\""
+            },
+            {
+              "id": "17",
+              "status": "NoCoverage",
+              "line": 45,
+              "mutator": "StringLiteral",
+              "original": "\"scheme\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "18",
+              "status": "NoCoverage",
+              "line": 46,
+              "mutator": "CallExpression",
+              "original": "hasScheme.set(db, scheme);",
+              "replacement": ";"
+            },
+            {
+              "id": "19",
+              "status": "NoCoverage",
+              "line": 48,
+              "mutator": "StringLiteral",
+              "original": "`FROM sales WHERE status = 'DELIVERED'${scheme ? \" AND scheme = 'exact'\" : \"\"}`",
+              "replacement": "``"
+            },
+            {
+              "id": "20",
+              "status": "NoCoverage",
+              "line": 48,
+              "mutator": "StringLiteral",
+              "original": "\" AND scheme = 'exact'\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "21",
+              "status": "NoCoverage",
+              "line": 48,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "27",
+              "status": "NoCoverage",
+              "line": 59,
+              "mutator": "StringLiteral",
+              "original": "\"SELECT SUM(price_cents) AS n FROM upstream_purchases WHERE outcome = 'PAID'\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "24",
+              "status": "Survived",
+              "line": 59,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"sourcing\"",
+              "replacement": "false"
+            },
+            {
+              "id": "26",
+              "status": "Survived",
+              "line": 59,
+              "mutator": "StringLiteral",
+              "original": "\"sourcing\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "35",
+              "status": "Survived",
+              "line": 63,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"treasury\"",
+              "replacement": "true"
+            },
+            {
+              "id": "42",
+              "status": "NoCoverage",
+              "line": 66,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"customer\"",
+              "replacement": "true"
+            },
+            {
+              "id": "43",
+              "status": "NoCoverage",
+              "line": 66,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"customer\"",
+              "replacement": "false"
+            },
+            {
+              "id": "44",
+              "status": "NoCoverage",
+              "line": 66,
+              "mutator": "EqualityOperator",
+              "original": "agent === \"customer\"",
+              "replacement": "agent !== \"customer\""
+            },
+            {
+              "id": "45",
+              "status": "NoCoverage",
+              "line": 66,
+              "mutator": "StringLiteral",
+              "original": "\"customer\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "46",
+              "status": "NoCoverage",
+              "line": 66,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "47",
+              "status": "NoCoverage",
+              "line": 67,
+              "mutator": "StringLiteral",
+              "original": "`SELECT SUM(price_cents) AS n ${customerSales(db)}`",
+              "replacement": "``"
+            },
+            {
+              "id": "48",
+              "status": "NoCoverage",
+              "line": 68,
+              "mutator": "ConditionalExpression",
+              "original": "hasTable(db, \"sale_settlements\")",
+              "replacement": "true"
+            },
+            {
+              "id": "49",
+              "status": "NoCoverage",
+              "line": 68,
+              "mutator": "ConditionalExpression",
+              "original": "hasTable(db, \"sale_settlements\")",
+              "replacement": "false"
+            },
+            {
+              "id": "50",
+              "status": "NoCoverage",
+              "line": 68,
+              "mutator": "StringLiteral",
+              "original": "\"sale_settlements\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "51",
+              "status": "NoCoverage",
+              "line": 68,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "52",
+              "status": "NoCoverage",
+              "line": 70,
+              "mutator": "AssignmentOperator",
+              "original": "paid += sum(db, `SELECT SUM(price_cents) AS n FROM sale_settlements s WHERE s.status = 'CHARGED' AND ${NO_SALE}`)",
+              "replacement": "paid -= sum(db, `SELECT SUM(price_cents) AS n FROM sale_settlements s WHERE s.status = 'CHARGED' AND ${NO_SALE}`)"
+            },
+            {
+              "id": "53",
+              "status": "NoCoverage",
+              "line": 70,
+              "mutator": "StringLiteral",
+              "original": "`SELECT SUM(price_cents) AS n FROM sale_settlements s WHERE s.status = 'CHARGED' AND ${NO_SALE}`",
+              "replacement": "``"
+            },
+            {
+              "id": "54",
+              "status": "NoCoverage",
+              "line": 72,
+              "mutator": "StringLiteral",
+              "original": "`SELECT SUM(price_cents) AS n FROM sale_settlements s WHERE s.status = 'SETTLING' AND ${NO_SALE}`",
+              "replacement": "``"
+            },
+            {
+              "id": "57",
+              "status": "Survived",
+              "line": 76,
+              "mutator": "ConditionalExpression",
+              "original": "budgetCents === null",
+              "replacement": "false"
+            },
+            {
+              "id": "63",
+              "status": "NoCoverage",
+              "line": 98,
+              "mutator": "ConditionalExpression",
+              "original": "typeof s === \"string\" && s",
+              "replacement": "true"
+            },
+            {
+              "id": "64",
+              "status": "NoCoverage",
+              "line": 98,
+              "mutator": "ConditionalExpression",
+              "original": "typeof s === \"string\" && s",
+              "replacement": "false"
+            },
+            {
+              "id": "65",
+              "status": "NoCoverage",
+              "line": 98,
+              "mutator": "LogicalOperator",
+              "original": "typeof s === \"string\" && s",
+              "replacement": "typeof s === \"string\" || s"
+            },
+            {
+              "id": "66",
+              "status": "NoCoverage",
+              "line": 98,
+              "mutator": "ConditionalExpression",
+              "original": "typeof s === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "67",
+              "status": "NoCoverage",
+              "line": 98,
+              "mutator": "EqualityOperator",
+              "original": "typeof s === \"string\"",
+              "replacement": "typeof s !== \"string\""
+            },
+            {
+              "id": "68",
+              "status": "NoCoverage",
+              "line": 98,
+              "mutator": "StringLiteral",
+              "original": "\"string\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "69",
+              "status": "NoCoverage",
+              "line": 98,
+              "mutator": "MethodExpression",
+              "original": "s.toLowerCase()",
+              "replacement": "s.toUpperCase()"
+            },
+            {
+              "id": "70",
+              "status": "NoCoverage",
+              "line": 99,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "71",
+              "status": "NoCoverage",
+              "line": 100,
+              "mutator": "ConditionalExpression",
+              "original": "typeof settlementId === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "72",
+              "status": "NoCoverage",
+              "line": 100,
+              "mutator": "ConditionalExpression",
+              "original": "typeof settlementId === \"string\"",
+              "replacement": "false"
+            },
+            {
+              "id": "73",
+              "status": "NoCoverage",
+              "line": 100,
+              "mutator": "EqualityOperator",
+              "original": "typeof settlementId === \"string\"",
+              "replacement": "typeof settlementId !== \"string\""
+            },
+            {
+              "id": "74",
+              "status": "NoCoverage",
+              "line": 100,
+              "mutator": "StringLiteral",
+              "original": "\"string\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "75",
+              "status": "NoCoverage",
+              "line": 100,
+              "mutator": "LogicalOperator",
+              "original": "settlementId.split(\":\").at(-1) ?? \"\"",
+              "replacement": "settlementId.split(\":\").at(-1) && \"\""
+            },
+            {
+              "id": "76",
+              "status": "NoCoverage",
+              "line": 100,
+              "mutator": "StringLiteral",
+              "original": "\":\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "77",
+              "status": "NoCoverage",
+              "line": 100,
+              "mutator": "UnaryOperator",
+              "original": "-1",
+              "replacement": "+1"
+            },
+            {
+              "id": "78",
+              "status": "NoCoverage",
+              "line": 100,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "79",
+              "status": "NoCoverage",
+              "line": 100,
+              "mutator": "StringLiteral",
+              "original": "\"\"",
+              "replacement": "\"Stryker was here!\""
+            },
+            {
+              "id": "80",
+              "status": "NoCoverage",
+              "line": 101,
+              "mutator": "Regex",
+              "original": "/^0x[0-9a-fA-F]{64}$/",
+              "replacement": "/0x[0-9a-fA-F]{64}$/"
+            },
+            {
+              "id": "81",
+              "status": "NoCoverage",
+              "line": 101,
+              "mutator": "Regex",
+              "original": "/^0x[0-9a-fA-F]{64}$/",
+              "replacement": "/^0x[0-9a-fA-F]{64}/"
+            },
+            {
+              "id": "82",
+              "status": "NoCoverage",
+              "line": 101,
+              "mutator": "Regex",
+              "original": "/^0x[0-9a-fA-F]{64}$/",
+              "replacement": "/^0x[0-9a-fA-F]$/"
+            },
+            {
+              "id": "83",
+              "status": "NoCoverage",
+              "line": 101,
+              "mutator": "Regex",
+              "original": "/^0x[0-9a-fA-F]{64}$/",
+              "replacement": "/^0x[^0-9a-fA-F]{64}$/"
+            },
+            {
+              "id": "84",
+              "status": "NoCoverage",
+              "line": 101,
+              "mutator": "MethodExpression",
+              "original": "last.toLowerCase()",
+              "replacement": "last.toUpperCase()"
+            },
+            {
+              "id": "85",
+              "status": "NoCoverage",
+              "line": 105,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "86",
+              "status": "NoCoverage",
+              "line": 107,
+              "mutator": "ArrowFunction",
+              "original": "(sql: string): R[] => db.prepare(sql).all() as R[]",
+              "replacement": "() => undefined"
+            },
+            {
+              "id": "87",
+              "status": "NoCoverage",
+              "line": 108,
+              "mutator": "ArrayDeclaration",
+              "original": "[]",
+              "replacement": "[\"Stryker was here\"]"
+            },
+            {
+              "id": "88",
+              "status": "NoCoverage",
+              "line": 109,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"sourcing\"",
+              "replacement": "true"
+            },
+            {
+              "id": "89",
+              "status": "NoCoverage",
+              "line": 109,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"sourcing\"",
+              "replacement": "false"
+            },
+            {
+              "id": "90",
+              "status": "NoCoverage",
+              "line": 109,
+              "mutator": "EqualityOperator",
+              "original": "agent === \"sourcing\"",
+              "replacement": "agent !== \"sourcing\""
+            },
+            {
+              "id": "91",
+              "status": "NoCoverage",
+              "line": 109,
+              "mutator": "StringLiteral",
+              "original": "\"sourcing\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "92",
+              "status": "NoCoverage",
+              "line": 109,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "93",
+              "status": "NoCoverage",
+              "line": 110,
+              "mutator": "StringLiteral",
+              "original": "\"SELECT id, price_cents, tx_hash, nonce, outcome FROM upstream_purchases WHERE outcome IN ('PAID', 'IN_DOUBT') ORDER BY id\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "94",
+              "status": "NoCoverage",
+              "line": 110,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "96",
+              "status": "NoCoverage",
+              "line": 111,
+              "mutator": "ObjectLiteral",
+              "original": "{ what: `purchase ${String(r.id)}`, cents: Number(r.price_cents), tx: lower(r.tx_hash), nonce: lower(r.nonce), state: r.outcome === \"PAID\" ?",
+              "replacement": "{}"
+            },
+            {
+              "id": "97",
+              "status": "NoCoverage",
+              "line": 111,
+              "mutator": "StringLiteral",
+              "original": "`purchase ${String(r.id)}`",
+              "replacement": "``"
+            },
+            {
+              "id": "98",
+              "status": "NoCoverage",
+              "line": 111,
+              "mutator": "ConditionalExpression",
+              "original": "r.outcome === \"PAID\"",
+              "replacement": "true"
+            },
+            {
+              "id": "99",
+              "status": "NoCoverage",
+              "line": 111,
+              "mutator": "ConditionalExpression",
+              "original": "r.outcome === \"PAID\"",
+              "replacement": "false"
+            },
+            {
+              "id": "100",
+              "status": "NoCoverage",
+              "line": 111,
+              "mutator": "EqualityOperator",
+              "original": "r.outcome === \"PAID\"",
+              "replacement": "r.outcome !== \"PAID\""
+            },
+            {
+              "id": "101",
+              "status": "NoCoverage",
+              "line": 111,
+              "mutator": "StringLiteral",
+              "original": "\"PAID\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "102",
+              "status": "NoCoverage",
+              "line": 111,
+              "mutator": "StringLiteral",
+              "original": "\"paid\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "103",
+              "status": "NoCoverage",
+              "line": 111,
+              "mutator": "StringLiteral",
+              "original": "\"in_doubt\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "104",
+              "status": "NoCoverage",
+              "line": 113,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"support\"",
+              "replacement": "true"
+            },
+            {
+              "id": "105",
+              "status": "NoCoverage",
+              "line": 113,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"support\"",
+              "replacement": "false"
+            },
+            {
+              "id": "106",
+              "status": "NoCoverage",
+              "line": 113,
+              "mutator": "EqualityOperator",
+              "original": "agent === \"support\"",
+              "replacement": "agent !== \"support\""
+            },
+            {
+              "id": "107",
+              "status": "NoCoverage",
+              "line": 113,
+              "mutator": "StringLiteral",
+              "original": "\"support\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "108",
+              "status": "NoCoverage",
+              "line": 113,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "109",
+              "status": "NoCoverage",
+              "line": 114,
+              "mutator": "StringLiteral",
+              "original": "\"SELECT payment_id, sale_id, amount_cents, tx_hash, outcome FROM refunds WHERE outcome IN ('PAID', 'PENDING', 'HELD') ORDER BY refund_id\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "110",
+              "status": "NoCoverage",
+              "line": 114,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "112",
+              "status": "NoCoverage",
+              "line": 115,
+              "mutator": "ObjectLiteral",
+              "original": "{ what: `${String(r.payment_id)} (refund of sale ${String(r.sale_id)})`, cents: Number(r.amount_cents), tx: lower(r.tx_hash), nonce: null, s",
+              "replacement": "{}"
+            },
+            {
+              "id": "113",
+              "status": "NoCoverage",
+              "line": 115,
+              "mutator": "StringLiteral",
+              "original": "`${String(r.payment_id)} (refund of sale ${String(r.sale_id)})`",
+              "replacement": "``"
+            },
+            {
+              "id": "114",
+              "status": "NoCoverage",
+              "line": 115,
+              "mutator": "ConditionalExpression",
+              "original": "r.outcome === \"PAID\"",
+              "replacement": "true"
+            },
+            {
+              "id": "115",
+              "status": "NoCoverage",
+              "line": 115,
+              "mutator": "ConditionalExpression",
+              "original": "r.outcome === \"PAID\"",
+              "replacement": "false"
+            },
+            {
+              "id": "116",
+              "status": "NoCoverage",
+              "line": 115,
+              "mutator": "EqualityOperator",
+              "original": "r.outcome === \"PAID\"",
+              "replacement": "r.outcome !== \"PAID\""
+            },
+            {
+              "id": "117",
+              "status": "NoCoverage",
+              "line": 115,
+              "mutator": "StringLiteral",
+              "original": "\"PAID\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "118",
+              "status": "NoCoverage",
+              "line": 115,
+              "mutator": "StringLiteral",
+              "original": "\"paid\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "119",
+              "status": "NoCoverage",
+              "line": 115,
+              "mutator": "StringLiteral",
+              "original": "\"pending\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "120",
+              "status": "NoCoverage",
+              "line": 117,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"treasury\"",
+              "replacement": "true"
+            },
+            {
+              "id": "121",
+              "status": "NoCoverage",
+              "line": 117,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"treasury\"",
+              "replacement": "false"
+            },
+            {
+              "id": "122",
+              "status": "NoCoverage",
+              "line": 117,
+              "mutator": "EqualityOperator",
+              "original": "agent === \"treasury\"",
+              "replacement": "agent !== \"treasury\""
+            },
+            {
+              "id": "123",
+              "status": "NoCoverage",
+              "line": 117,
+              "mutator": "StringLiteral",
+              "original": "\"treasury\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "124",
+              "status": "NoCoverage",
+              "line": 117,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "125",
+              "status": "NoCoverage",
+              "line": 118,
+              "mutator": "StringLiteral",
+              "original": "\"SELECT payment_id, amount_cents, tx_hash, outcome FROM sweeps WHERE outcome IN ('PAID', 'PENDING', 'HELD') ORDER BY created_at\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "126",
+              "status": "NoCoverage",
+              "line": 118,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "128",
+              "status": "NoCoverage",
+              "line": 119,
+              "mutator": "ObjectLiteral",
+              "original": "{ what: String(r.payment_id), cents: Number(r.amount_cents), tx: lower(r.tx_hash), nonce: null, state: r.outcome === \"PAID\" ? \"paid\" : \"pend",
+              "replacement": "{}"
+            },
+            {
+              "id": "129",
+              "status": "NoCoverage",
+              "line": 119,
+              "mutator": "ConditionalExpression",
+              "original": "r.outcome === \"PAID\"",
+              "replacement": "true"
+            },
+            {
+              "id": "130",
+              "status": "NoCoverage",
+              "line": 119,
+              "mutator": "ConditionalExpression",
+              "original": "r.outcome === \"PAID\"",
+              "replacement": "false"
+            },
+            {
+              "id": "131",
+              "status": "NoCoverage",
+              "line": 119,
+              "mutator": "EqualityOperator",
+              "original": "r.outcome === \"PAID\"",
+              "replacement": "r.outcome !== \"PAID\""
+            },
+            {
+              "id": "132",
+              "status": "NoCoverage",
+              "line": 119,
+              "mutator": "StringLiteral",
+              "original": "\"PAID\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "133",
+              "status": "NoCoverage",
+              "line": 119,
+              "mutator": "StringLiteral",
+              "original": "\"paid\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "134",
+              "status": "NoCoverage",
+              "line": 119,
+              "mutator": "StringLiteral",
+              "original": "\"pending\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "135",
+              "status": "NoCoverage",
+              "line": 121,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"customer\"",
+              "replacement": "true"
+            },
+            {
+              "id": "136",
+              "status": "NoCoverage",
+              "line": 121,
+              "mutator": "ConditionalExpression",
+              "original": "agent === \"customer\"",
+              "replacement": "false"
+            },
+            {
+              "id": "137",
+              "status": "NoCoverage",
+              "line": 121,
+              "mutator": "EqualityOperator",
+              "original": "agent === \"customer\"",
+              "replacement": "agent !== \"customer\""
+            },
+            {
+              "id": "138",
+              "status": "NoCoverage",
+              "line": 121,
+              "mutator": "StringLiteral",
+              "original": "\"customer\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "139",
+              "status": "NoCoverage",
+              "line": 121,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "140",
+              "status": "NoCoverage",
+              "line": 122,
+              "mutator": "StringLiteral",
+              "original": "`SELECT sale_id, price_cents, tx_hash, settlement_id ${customerSales(db)} ORDER BY sale_id`",
+              "replacement": "``"
+            },
+            {
+              "id": "141",
+              "status": "NoCoverage",
+              "line": 122,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "143",
+              "status": "NoCoverage",
+              "line": 123,
+              "mutator": "ObjectLiteral",
+              "original": "{ what: `sale ${String(r.sale_id)}`, cents: Number(r.price_cents), tx: lower(r.tx_hash), nonce: nonceOf(r.settlement_id), state: \"paid\" }",
+              "replacement": "{}"
+            },
+            {
+              "id": "144",
+              "status": "NoCoverage",
+              "line": 123,
+              "mutator": "StringLiteral",
+              "original": "`sale ${String(r.sale_id)}`",
+              "replacement": "``"
+            },
+            {
+              "id": "145",
+              "status": "NoCoverage",
+              "line": 123,
+              "mutator": "StringLiteral",
+              "original": "\"paid\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "146",
+              "status": "NoCoverage",
+              "line": 125,
+              "mutator": "ConditionalExpression",
+              "original": "hasTable(db, \"sale_settlements\")",
+              "replacement": "true"
+            },
+            {
+              "id": "147",
+              "status": "NoCoverage",
+              "line": 125,
+              "mutator": "ConditionalExpression",
+              "original": "hasTable(db, \"sale_settlements\")",
+              "replacement": "false"
+            },
+            {
+              "id": "148",
+              "status": "NoCoverage",
+              "line": 125,
+              "mutator": "StringLiteral",
+              "original": "\"sale_settlements\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "149",
+              "status": "NoCoverage",
+              "line": 125,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "150",
+              "status": "NoCoverage",
+              "line": 126,
+              "mutator": "StringLiteral",
+              "original": "`SELECT key, nonce, price_cents, status, tx_hash, detail, started_at FROM sale_settlements s…",
+              "replacement": "``"
+            },
+            {
+              "id": "151",
+              "status": "NoCoverage",
+              "line": 127,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "152",
+              "status": "NoCoverage",
+              "line": 128,
+              "mutator": "MethodExpression",
+              "original": "String(r.key).split(\":\")[0]!.slice(0, 10)",
+              "replacement": "String(r.key).split(\":\")[0]!"
+            },
+            {
+              "id": "153",
+              "status": "NoCoverage",
+              "line": 128,
+              "mutator": "StringLiteral",
+              "original": "\":\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "154",
+              "status": "NoCoverage",
+              "line": 129,
+              "mutator": "ConditionalExpression",
+              "original": "r.status === \"CHARGED\"",
+              "replacement": "true"
+            },
+            {
+              "id": "155",
+              "status": "NoCoverage",
+              "line": 129,
+              "mutator": "ConditionalExpression",
+              "original": "r.status === \"CHARGED\"",
+              "replacement": "false"
+            },
+            {
+              "id": "156",
+              "status": "NoCoverage",
+              "line": 129,
+              "mutator": "EqualityOperator",
+              "original": "r.status === \"CHARGED\"",
+              "replacement": "r.status !== \"CHARGED\""
+            },
+            {
+              "id": "157",
+              "status": "NoCoverage",
+              "line": 129,
+              "mutator": "StringLiteral",
+              "original": "\"CHARGED\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "158",
+              "status": "NoCoverage",
+              "line": 129,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "160",
+              "status": "NoCoverage",
+              "line": 130,
+              "mutator": "ObjectLiteral",
+              "original": "{ what: `a payment by ${by}… charged with no delivery recorded`, cents: Number(r.price_cents), tx: lower(r.tx_hash), nonce: lower(r.nonce), ",
+              "replacement": "{}"
+            },
+            {
+              "id": "161",
+              "status": "NoCoverage",
+              "line": 130,
+              "mutator": "StringLiteral",
+              "original": "`a payment by ${by}… charged with no delivery recorded`",
+              "replacement": "``"
+            },
+            {
+              "id": "162",
+              "status": "NoCoverage",
+              "line": 130,
+              "mutator": "StringLiteral",
+              "original": "\"paid\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "163",
+              "status": "NoCoverage",
+              "line": 130,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.detail === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "164",
+              "status": "NoCoverage",
+              "line": 130,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.detail === \"string\"",
+              "replacement": "false"
+            },
+            {
+              "id": "165",
+              "status": "NoCoverage",
+              "line": 130,
+              "mutator": "EqualityOperator",
+              "original": "typeof r.detail === \"string\"",
+              "replacement": "typeof r.detail !== \"string\""
+            },
+            {
+              "id": "166",
+              "status": "NoCoverage",
+              "line": 130,
+              "mutator": "StringLiteral",
+              "original": "\"string\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "168",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "ObjectLiteral",
+              "original": "{ what: `a sale being settled (paid by ${by}…)`, cents: Number(r.price_cents), tx: null, nonce: lower(r.nonce), state: r.status === \"SETTLIN",
+              "replacement": "{}"
+            },
+            {
+              "id": "169",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "StringLiteral",
+              "original": "`a sale being settled (paid by ${by}…)`",
+              "replacement": "``"
+            },
+            {
+              "id": "170",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "ConditionalExpression",
+              "original": "r.status === \"SETTLING\"",
+              "replacement": "true"
+            },
+            {
+              "id": "171",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "ConditionalExpression",
+              "original": "r.status === \"SETTLING\"",
+              "replacement": "false"
+            },
+            {
+              "id": "172",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "EqualityOperator",
+              "original": "r.status === \"SETTLING\"",
+              "replacement": "r.status !== \"SETTLING\""
+            },
+            {
+              "id": "173",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "StringLiteral",
+              "original": "\"SETTLING\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "174",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "StringLiteral",
+              "original": "\"pending\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "175",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "StringLiteral",
+              "original": "\"failed\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "176",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.detail === \"string\"",
+              "replacement": "true"
+            },
+            {
+              "id": "177",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "ConditionalExpression",
+              "original": "typeof r.detail === \"string\"",
+              "replacement": "false"
+            },
+            {
+              "id": "178",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "EqualityOperator",
+              "original": "typeof r.detail === \"string\"",
+              "replacement": "typeof r.detail !== \"string\""
+            },
+            {
+              "id": "179",
+              "status": "NoCoverage",
+              "line": 133,
+              "mutator": "StringLiteral",
+              "original": "\"string\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "180",
+              "status": "NoCoverage",
+              "line": 137,
+              "mutator": "ConditionalExpression",
+              "original": "hasTable(db, \"holds\")",
+              "replacement": "true"
+            },
+            {
+              "id": "181",
+              "status": "NoCoverage",
+              "line": 137,
+              "mutator": "ConditionalExpression",
+              "original": "hasTable(db, \"holds\")",
+              "replacement": "false"
+            },
+            {
+              "id": "182",
+              "status": "NoCoverage",
+              "line": 137,
+              "mutator": "StringLiteral",
+              "original": "\"holds\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "183",
+              "status": "NoCoverage",
+              "line": 137,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "184",
+              "status": "NoCoverage",
+              "line": 138,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "186",
+              "status": "NoCoverage",
+              "line": 139,
+              "mutator": "ObjectLiteral",
+              "original": "{ what: `the hold ${String(r.ref)}`, cents: Number(r.cents), tx: null, nonce: null, state: \"held\", since: String(r.created_at) }",
+              "replacement": "{}"
+            },
+            {
+              "id": "187",
+              "status": "NoCoverage",
+              "line": 139,
+              "mutator": "StringLiteral",
+              "original": "`the hold ${String(r.ref)}`",
+              "replacement": "``"
+            },
+            {
+              "id": "188",
+              "status": "NoCoverage",
+              "line": 139,
+              "mutator": "StringLiteral",
+              "original": "\"held\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "189",
+              "status": "NoCoverage",
+              "line": 156,
+              "mutator": "BlockStatement",
+              "original": "{…",
+              "replacement": "{}"
+            },
+            {
+              "id": "190",
+              "status": "NoCoverage",
+              "line": 158,
+              "mutator": "MethodExpression",
+              "original": "now.toISOString().slice(0, 7)",
+              "replacement": "now.toISOString()"
+            },
+            {
+              "id": "191",
+              "status": "NoCoverage",
+              "line": 160,
+              "mutator": "StringLiteral",
+              "original": "\"card\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "192",
+              "status": "NoCoverage",
+              "line": 161,
+              "mutator": "ObjectLiteral",
+              "original": "{ monthlyCents, spentCents: spent, heldCents: held, availableCents: monthlyCents - spent - held }",
+              "replacement": "{}"
+            },
+            {
+              "id": "193",
+              "status": "NoCoverage",
+              "line": 161,
+              "mutator": "ArithmeticOperator",
+              "original": "monthlyCents - spent - held",
+              "replacement": "monthlyCents - spent + held"
+            },
+            {
+              "id": "194",
+              "status": "NoCoverage",
+              "line": 161,
+              "mutator": "ArithmeticOperator",
+              "original": "monthlyCents - spent",
+              "replacement": "monthlyCents + spent"
+            },
+            {
+              "id": "198",
+              "status": "Survived",
+              "line": 171,
+              "mutator": "ConditionalExpression",
+              "original": "!db.prepare(\"SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'transfers'\").get()",
+              "replacement": "false"
+            },
+            {
+              "id": "200",
+              "status": "Survived",
+              "line": 173,
+              "mutator": "ArithmeticOperator",
+              "original": "rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + heldPayoutCents(db, \"EUR\", exceptProposalId) + owedPlatformFeeCe",
+              "replacement": "rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + heldPayoutCents(db, \"EUR\", exceptProposalId) - owedPlatformFeeCe"
+            },
+            {
+              "id": "201",
+              "status": "Survived",
+              "line": 173,
+              "mutator": "ArithmeticOperator",
+              "original": "rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + heldPayoutCents(db, \"EUR\", exceptProposalId)",
+              "replacement": "rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) - heldPayoutCents(db, \"EUR\", exceptProposalId)"
+            },
+            {
+              "id": "205",
+              "status": "Survived",
+              "line": 173,
+              "mutator": "StringLiteral",
+              "original": "\"EUR\"",
+              "replacement": "\"\""
+            },
+            {
+              "id": "206",
+              "status": "Survived",
+              "line": 173,
+              "mutator": "StringLiteral",
+              "original": "\"EUR\"",
+              "replacement": "\"\""
+            }
+          ]
+        }
+      }
+    }
+  },
+  "proof_verifier": {
+    "file": "src/proof/bundle.ts (PROOF_VERIFY_JS)",
+    "before": {
+      "total": 51,
+      "killed": 15,
+      "timeout": 0,
+      "survived": 36,
+      "score": 29.4,
+      "tests": [
+        "test/proof-bundle.test.ts",
+        "test/tamper-matrix.test.ts"
+      ]
+    },
+    "after": {
+      "total": 51,
+      "killed": 50,
+      "timeout": 0,
+      "survived": 1,
+      "score": 98,
+      "tests": [
+        "test/proof-bundle.test.ts",
+        "test/tamper-matrix.test.ts",
+        "test/mutation-kills-verifier.test.ts"
+      ]
+    },
+    "survivors_before": [
+      "format-name",
+      "format-hex",
+      "format-rp-empty",
+      "format-b64",
+      "jcs-integer",
+      "no-numbers",
+      "terms-hash-same",
+      "terms-hash-eq",
+      "terms-hash-null",
+      "client-type",
+      "client-frame",
+      "rp-short",
+      "flag-up",
+      "sig-der-len",
+      "sig-der-seq",
+      "sig-der-long",
+      "sig-key-crv",
+      "sig-key-alg",
+      "sig-not-der",
+      "sig-key-error",
+      "decision-named",
+      "decision-paid-once",
+      "decision-sent",
+      "decision-verified",
+      "decision-accepted",
+      "decision-refused",
+      "decision-other",
+      "asked-sha",
+      "asked-differ",
+      "asked-missing",
+      "ledger-one-line",
+      "ledger-none-paid",
+      "ledger-none-head",
+      "ledger-link",
+      "verdict-empty",
+      "verdict-error"
+    ],
+    "survivors_after": [
+      {
+        "id": "verdict-empty",
+        "what": "ok with no checks at all",
+        "verdict": "equivalent: done() always follows the format check, so checks is never empty"
+      }
+    ]
+  }
+}
