@@ -26,10 +26,12 @@ const ROOT = new URL("../../", import.meta.url);
 const read = (p: string) => readFileSync(new URL(p, ROOT), "utf8");
 const json = (p: string): unknown => { try { return JSON.parse(read(p)); } catch { return null; } };
 /**
- * Folders whose files the band does not count. 19 Nov: docs/runs/2026-11-19-live-try/ (8 walks of the public /try as a
- * visitor) was left out at first, as /try test companies; since the owner's call the same day it is a live run on /runs
- * (src/redesign/runs.ts liveTryRows) and its Claude request ids count here too. Kept, empty, as the one place a folder
- * would be left out; src/cli/verifyAll.ts recounts the band with the same list.
+ * Folders and files whose files the band does not count. 19 Nov: the 8 walks of the public /try
+ * (docs/runs/2026-11-19-live-try/), the Airwallex soak (docs/runs/2026-11-19-airwallex-soak.json and .md) and the /try
+ * mega run (docs/runs/2026-11-19-mega-run/) were each left out at first, newer than the pages as deployed; since the
+ * owner's call the same day they go on the site: each is a live run on /runs (src/redesign/runs.ts) and counted here
+ * like any run. Kept, empty, as the one place a folder or file would be left out; src/cli/verifyAll.ts recounts the band
+ * with the same list.
  */
 export const NOT_IN_BAND: readonly string[] = [];
 /** Every file under a folder of the repository, by its path from the root, whose name matches (NOT_IN_BAND skipped). */
@@ -39,6 +41,7 @@ function filesIn(dir: string, re: RegExp): string[] {
   try { names = readdirSync(new URL(`${dir}/`, ROOT)); } catch { return []; }
   return names.flatMap((n) => {
     const p = `${dir}/${n}`;
+    if (NOT_IN_BAND.includes(p)) return [];
     return statSync(new URL(p, ROOT)).isDirectory() ? filesIn(p, re) : re.test(n) ? [p] : [];
   });
 }

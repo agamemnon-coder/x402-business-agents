@@ -1,0 +1,4209 @@
+{
+  "stream": "airwallex-soak",
+  "sandbox": "api.sandbox.airwallex.com",
+  "test_money": true,
+  "source": "built by `npm run airwallex:soak -- record` from the run's results.json, its AIRWALLEX_CALL_LOG and the HTTP status of each call (http.json) only",
+  "signer": "airwallex-soak virtual test passkey (no person's Face ID)",
+  "simulated": "PAID (and SENT before it) came from the sandbox's simulation endpoint (POST /simulation/transfers/{id}/transition): the sandbox does not settle by itself. Every create, quote, rate, conversion, status and read-back is Airwallex's own answer.",
+  "latency_note": "create→PAID is from POST /transfers/create being sent to the GET that first answered PAID: the create, two simulated transitions and the reads between them, one at a time at most one per 200 ms (src/airwallex/client.ts). It measures the API round trips, not a settlement time.",
+  "budget": {
+    "approved": 450,
+    "used": 346
+  },
+  "summary": {
+    "planned": 30,
+    "created": 30,
+    "paid": 30,
+    "readback_matches": 30,
+    "conversions": {
+      "planned": 6,
+      "booked": 6,
+      "readback_matches": 6
+    },
+    "latency_ms": {
+      "n": 30,
+      "p50": 3055,
+      "p95": 3460,
+      "min": 2849,
+      "max": 3509
+    },
+    "calls": {
+      "total": 346,
+      "setup": 4,
+      "payments": 324,
+      "negatives": 18,
+      "per_payment": {
+        "mean": 10.8,
+        "min": 10,
+        "max": 14
+      },
+      "by_endpoint": {
+        "POST /authentication/login": 1,
+        "GET /balances/current": 101,
+        "GET /beneficiaries": 2,
+        "POST /transfers/create": 30,
+        "GET /transfers/{id}": 120,
+        "POST /simulation/transfers/{id}/transition": 60,
+        "GET /fx/rates/current": 7,
+        "POST /fx/quotes/create": 7,
+        "POST /fx/conversions/create": 6,
+        "GET /fx/conversions": 7,
+        "GET /transfers": 5
+      }
+    },
+    "negatives": {
+      "planned": 5,
+      "refused": 5,
+      "calls_in_window": 5,
+      "posts_in_window": 0,
+      "creates_in_window": 0,
+      "found_at_airwallex": 0,
+      "by_endpoint_in_window": {
+        "GET /balances/current": 5
+      }
+    },
+    "http": {
+      "requests": 346,
+      "status_429": 0,
+      "non_2xx": []
+    },
+    "errors": [],
+    "stopped": null
+  },
+  "band": {
+    "excluded": "docs/runs/2026-11-19-airwallex-soak.json and its .md are in NOT_IN_BAND (src/redesign/scale.ts; src/cli/verifyAll.ts skips them the same way): verify-all compares the band with the pages as deployed, and this record is newer than them",
+    "would_change_once_counted": [
+      {
+        "figure": "Airwallex sandbox API calls in the run records",
+        "by": 346,
+        "how": "once the record is listed in the API trail (src/airwallex/apiTrail.ts), which /airwallex/calls and the band count"
+      },
+      {
+        "figure": "sandbox and testnet runs",
+        "by": 1,
+        "how": "once the run is a row of /runs (src/redesign/runs.ts)"
+      }
+    ],
+    "unchanged": [
+      "tests passing",
+      "Alta testnet transactions (none in this record)",
+      "Claude calls with request ids (none: no model is asked)",
+      "refusals on record (the record holds no audit row with a refusal event; its negatives are counted in summary.negatives)"
+    ]
+  },
+  "setup": {
+    "calls": {
+      "total": 4,
+      "by_endpoint": {
+        "POST /authentication/login": 1,
+        "GET /balances/current": 1,
+        "GET /beneficiaries": 2
+      }
+    },
+    "balances_before": {
+      "EUR": "9837366.73",
+      "USD": "9994630.19"
+    },
+    "beneficiaries": {
+      "bergtex": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+      "stockline": "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb"
+    },
+    "floors": {
+      "eur_floor": "1000.00",
+      "usd_floor": "0.00",
+      "fx_free_eur": "10.00"
+    }
+  },
+  "started_at": "2026-11-19T08:49:30.373Z",
+  "ended_at": "2026-11-19T08:52:00.356Z",
+  "stopped": null,
+  "payments": [
+    {
+      "n": 1,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-01",
+      "amount": "1.00",
+      "currency": "EUR",
+      "why": "small",
+      "fx_planned": false,
+      "proposal_id": "P-0001",
+      "terms_sha256": "7501cf8c149879b5344b63acc1c00c37ded8faa96ec969254ffcaf466f384d2b",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "30123883-316e-426f-a6e4-411e9e81c55f",
+      "conversion": null,
+      "transfer_id": "a63888f6-3388-498e-993f-d2efbb64b578",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:49:32.987Z",
+      "create_answered_at": "2026-11-19T08:49:34.084Z",
+      "paid_seen_at": "2026-11-19T08:49:36.447Z",
+      "create_to_paid_ms": 3460,
+      "readback": {
+        "status": "PAID",
+        "amount": "1.00",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-01",
+        "request_id": "30123883-316e-426f-a6e4-411e9e81c55f",
+        "approval_sha256": "7501cf8c149879b5344b63acc1c00c37ded8faa96ec969254ffcaf466f384d2b",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:49:33+0000",
+        "updated_at": "2026-11-19T08:49:35+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:49:37.112Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:49:32.296Z",
+      "ended_at": "2026-11-19T08:49:37.112Z",
+      "error": null
+    },
+    {
+      "n": 2,
+      "payee": "Stockline Data GmbH",
+      "invoice_no": "SLL-SOAK-02",
+      "amount": "240.00",
+      "currency": "EUR",
+      "why": "licence (contract amount)",
+      "fx_planned": false,
+      "proposal_id": "P-0002",
+      "terms_sha256": "0e6eea8ee299ee0188331416d3dfa384f0f45cf69d4e8cdccc34808d0d88c3d5",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "f4c2af6f-86eb-4b18-88d2-47196fd6dd80",
+      "conversion": null,
+      "transfer_id": "11d6fbe5-76c8-404f-a528-7c200e5f794e",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:49:37.775Z",
+      "create_answered_at": "2026-11-19T08:49:38.650Z",
+      "paid_seen_at": "2026-11-19T08:49:40.845Z",
+      "create_to_paid_ms": 3070,
+      "readback": {
+        "status": "PAID",
+        "amount": "240.00",
+        "currency": "EUR",
+        "beneficiary_id": "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb",
+        "reference": "SLL-SOAK-02",
+        "request_id": "f4c2af6f-86eb-4b18-88d2-47196fd6dd80",
+        "approval_sha256": "0e6eea8ee299ee0188331416d3dfa384f0f45cf69d4e8cdccc34808d0d88c3d5",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:49:38+0000",
+        "updated_at": "2026-11-19T08:49:40+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:49:41.697Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:49:37.113Z",
+      "ended_at": "2026-11-19T08:49:41.697Z",
+      "error": null
+    },
+    {
+      "n": 3,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-03",
+      "amount": "2.50",
+      "currency": "EUR",
+      "why": "small",
+      "fx_planned": false,
+      "proposal_id": "P-0003",
+      "terms_sha256": "bfb8bc638c2c99aa525dd16d45f52ee939f1efbcf2a0525a75faa8cc876eb5b7",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "5176eea9-dccf-4fe3-a937-a81ae9a709b7",
+      "conversion": null,
+      "transfer_id": "87a403db-b7eb-4f0d-8b31-a0b2f4535251",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:49:42.372Z",
+      "create_answered_at": "2026-11-19T08:49:43.106Z",
+      "paid_seen_at": "2026-11-19T08:49:45.366Z",
+      "create_to_paid_ms": 2994,
+      "readback": {
+        "status": "PAID",
+        "amount": "2.50",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-03",
+        "request_id": "5176eea9-dccf-4fe3-a937-a81ae9a709b7",
+        "approval_sha256": "bfb8bc638c2c99aa525dd16d45f52ee939f1efbcf2a0525a75faa8cc876eb5b7",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:49:42+0000",
+        "updated_at": "2026-11-19T08:49:44+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:49:45.985Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:49:41.697Z",
+      "ended_at": "2026-11-19T08:49:45.986Z",
+      "error": null
+    },
+    {
+      "n": 4,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-04",
+      "amount": "19.99",
+      "currency": "EUR",
+      "why": "small, odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0004",
+      "terms_sha256": "a0d3ed704075e4bdf72690c4fdad46fbad9504e70a9653973b50da3c34314b4a",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "bee1d257-fd26-46d8-9b11-92baa516eba8",
+      "conversion": null,
+      "transfer_id": "58c77e7d-5577-463f-a43a-732a0f6966a9",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:49:46.634Z",
+      "create_answered_at": "2026-11-19T08:49:47.414Z",
+      "paid_seen_at": "2026-11-19T08:49:49.703Z",
+      "create_to_paid_ms": 3069,
+      "readback": {
+        "status": "PAID",
+        "amount": "19.99",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-04",
+        "request_id": "bee1d257-fd26-46d8-9b11-92baa516eba8",
+        "approval_sha256": "a0d3ed704075e4bdf72690c4fdad46fbad9504e70a9653973b50da3c34314b4a",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:49:47+0000",
+        "updated_at": "2026-11-19T08:49:49+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:49:50.336Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:49:45.986Z",
+      "ended_at": "2026-11-19T08:49:50.336Z",
+      "error": null
+    },
+    {
+      "n": 5,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-05",
+      "amount": "33.33",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": true,
+      "proposal_id": "P-0005",
+      "terms_sha256": "a120bdfe29247f0cf1c5379133f2c8c783bea722606e360e5722f8d430691311",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "b9baa50a-ebd7-47f1-9f68-a495c149ceaf",
+      "conversion": {
+        "conversion_id": "dddcd572-19c4-4bec-8d75-20d5a8a354e8",
+        "quote_id": "73c6e640-13fd-3b89-ad6d-c49c0e7b55bb",
+        "request_id": "b02ebb93-9ef0-4cf2-ac7d-dde6a0754ad6",
+        "buy": "43.33",
+        "sell": "48.12",
+        "client_rate": "1.110519",
+        "readback": {
+          "found": 1,
+          "conversion_id": "dddcd572-19c4-4bec-8d75-20d5a8a354e8",
+          "status": "SETTLED",
+          "buy_amount": "43.33",
+          "sell_amount": "48.12",
+          "approval_sha256": "a120bdfe29247f0cf1c5379133f2c8c783bea722606e360e5722f8d430691311",
+          "all_match": true,
+          "differences": []
+        }
+      },
+      "transfer_id": "0acd2cad-fcf7-49a6-abc1-b5e4b37498d7",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:49:52.035Z",
+      "create_answered_at": "2026-11-19T08:49:52.821Z",
+      "paid_seen_at": "2026-11-19T08:49:55.240Z",
+      "create_to_paid_ms": 3205,
+      "readback": {
+        "status": "PAID",
+        "amount": "33.33",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-05",
+        "request_id": "b9baa50a-ebd7-47f1-9f68-a495c149ceaf",
+        "approval_sha256": "a120bdfe29247f0cf1c5379133f2c8c783bea722606e360e5722f8d430691311",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:49:52+0000",
+        "updated_at": "2026-11-19T08:49:54+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:49:55.875Z",
+      "calls": {
+        "total": 14,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "GET /fx/rates/current": 1,
+          "POST /fx/quotes/create": 1,
+          "POST /fx/conversions/create": 1,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2,
+          "GET /fx/conversions": 1
+        }
+      },
+      "started_at": "2026-11-19T08:49:50.336Z",
+      "ended_at": "2026-11-19T08:49:56.205Z",
+      "error": null
+    },
+    {
+      "n": 6,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-06",
+      "amount": "101.01",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0006",
+      "terms_sha256": "d1a3e8c19576e237ce137eb34e150d416a7c567bfabb813971ffb8443bb08b42",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "d5b46863-4a3a-4937-ba64-3288a73c5a46",
+      "conversion": null,
+      "transfer_id": "be24bdd5-95ab-4107-baba-9f7e5e26d4d0",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:49:57.163Z",
+      "create_answered_at": "2026-11-19T08:49:57.944Z",
+      "paid_seen_at": "2026-11-19T08:50:00.218Z",
+      "create_to_paid_ms": 3055,
+      "readback": {
+        "status": "PAID",
+        "amount": "101.01",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-06",
+        "request_id": "d5b46863-4a3a-4937-ba64-3288a73c5a46",
+        "approval_sha256": "d1a3e8c19576e237ce137eb34e150d416a7c567bfabb813971ffb8443bb08b42",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:49:57+0000",
+        "updated_at": "2026-11-19T08:49:59+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:00.847Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:49:56.206Z",
+      "ended_at": "2026-11-19T08:50:00.847Z",
+      "error": null
+    },
+    {
+      "n": 7,
+      "payee": "Stockline Data GmbH",
+      "invoice_no": "SLL-SOAK-07",
+      "amount": "240.00",
+      "currency": "EUR",
+      "why": "licence",
+      "fx_planned": true,
+      "proposal_id": "P-0008",
+      "terms_sha256": "9b225468f657940482884f46f56b10bdb98dd4a57bf02b5589c61fe036d6800e",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "8a2b551f-7437-4b1e-b2aa-3189ae4ed087",
+      "conversion": {
+        "conversion_id": "341fc481-976b-4783-9973-d820ca67d29f",
+        "quote_id": "3885c163-4c6c-3b15-ac80-d48b49987bcd",
+        "request_id": "5f701c3c-507a-47f3-877b-ab17aaf63486",
+        "buy": "250.00",
+        "sell": "277.63",
+        "client_rate": "1.110519",
+        "readback": {
+          "found": 1,
+          "conversion_id": "341fc481-976b-4783-9973-d820ca67d29f",
+          "status": "SETTLED",
+          "buy_amount": "250.00",
+          "sell_amount": "277.63",
+          "approval_sha256": "9b225468f657940482884f46f56b10bdb98dd4a57bf02b5589c61fe036d6800e",
+          "all_match": true,
+          "differences": []
+        }
+      },
+      "transfer_id": "3dd8fb2c-6d6f-4347-80dd-ff81989a6acc",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:03.973Z",
+      "create_answered_at": "2026-11-19T08:50:04.849Z",
+      "paid_seen_at": "2026-11-19T08:50:07.296Z",
+      "create_to_paid_ms": 3323,
+      "readback": {
+        "status": "PAID",
+        "amount": "240.00",
+        "currency": "EUR",
+        "beneficiary_id": "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb",
+        "reference": "SLL-SOAK-07",
+        "request_id": "8a2b551f-7437-4b1e-b2aa-3189ae4ed087",
+        "approval_sha256": "9b225468f657940482884f46f56b10bdb98dd4a57bf02b5589c61fe036d6800e",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:04+0000",
+        "updated_at": "2026-11-19T08:50:06+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:07.922Z",
+      "calls": {
+        "total": 14,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "GET /fx/rates/current": 1,
+          "POST /fx/quotes/create": 1,
+          "POST /fx/conversions/create": 1,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2,
+          "GET /fx/conversions": 1
+        }
+      },
+      "started_at": "2026-11-19T08:50:02.058Z",
+      "ended_at": "2026-11-19T08:50:08.242Z",
+      "error": null
+    },
+    {
+      "n": 8,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-08",
+      "amount": "7.01",
+      "currency": "EUR",
+      "why": "small, odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0009",
+      "terms_sha256": "0aaa62bc868d86f5cd4609bfe32b2dc6afae331fc693545f50fea432a2220a7a",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "7603d3f8-b02e-4db9-be35-7ed2df05ecaf",
+      "conversion": null,
+      "transfer_id": "bf959679-2866-4bfc-a3a5-e5b0b6c5d28a",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:08.902Z",
+      "create_answered_at": "2026-11-19T08:50:09.720Z",
+      "paid_seen_at": "2026-11-19T08:50:11.885Z",
+      "create_to_paid_ms": 2983,
+      "readback": {
+        "status": "PAID",
+        "amount": "7.01",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-08",
+        "request_id": "7603d3f8-b02e-4db9-be35-7ed2df05ecaf",
+        "approval_sha256": "0aaa62bc868d86f5cd4609bfe32b2dc6afae331fc693545f50fea432a2220a7a",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:09+0000",
+        "updated_at": "2026-11-19T08:50:11+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:12.511Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:50:08.243Z",
+      "ended_at": "2026-11-19T08:50:12.511Z",
+      "error": null
+    },
+    {
+      "n": 9,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-09",
+      "amount": "123.45",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0010",
+      "terms_sha256": "af10439c65aabacf9d07afec22f89acf4b2a028c70586556adaf146cdb0673a2",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "56f3998f-d019-4a9a-ba80-7ba6f783ea55",
+      "conversion": null,
+      "transfer_id": "b420dd66-39f0-43c7-9ddd-c2b79cb3fdd0",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:13.162Z",
+      "create_answered_at": "2026-11-19T08:50:13.891Z",
+      "paid_seen_at": "2026-11-19T08:50:16.095Z",
+      "create_to_paid_ms": 2933,
+      "readback": {
+        "status": "PAID",
+        "amount": "123.45",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-09",
+        "request_id": "56f3998f-d019-4a9a-ba80-7ba6f783ea55",
+        "approval_sha256": "af10439c65aabacf9d07afec22f89acf4b2a028c70586556adaf146cdb0673a2",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:13+0000",
+        "updated_at": "2026-11-19T08:50:15+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:16.708Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:50:12.512Z",
+      "ended_at": "2026-11-19T08:50:16.708Z",
+      "error": null
+    },
+    {
+      "n": 10,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-10",
+      "amount": "1850.00",
+      "currency": "EUR",
+      "why": "large",
+      "fx_planned": true,
+      "proposal_id": "P-0011",
+      "terms_sha256": "570105fa571a2e84c8c81dc0809a701eeacef93fddeb30e9b3ab64746ae57289",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "bb270f23-2ad4-48e9-b484-d03add1ffa0a",
+      "conversion": {
+        "conversion_id": "99bba5e5-2869-4f61-bb37-b3a2d9bb7462",
+        "quote_id": "b4eeb9e3-c8cc-3b5f-8a86-eb577648d020",
+        "request_id": "67e07b2e-3418-422d-88dd-aa64d83b2270",
+        "buy": "1860.00",
+        "sell": "2065.57",
+        "client_rate": "1.110519",
+        "readback": {
+          "found": 1,
+          "conversion_id": "99bba5e5-2869-4f61-bb37-b3a2d9bb7462",
+          "status": "SETTLED",
+          "buy_amount": "1860.00",
+          "sell_amount": "2065.57",
+          "approval_sha256": "570105fa571a2e84c8c81dc0809a701eeacef93fddeb30e9b3ab64746ae57289",
+          "all_match": true,
+          "differences": []
+        }
+      },
+      "transfer_id": "e821de96-a98c-4481-b0ce-5ba55a5ff521",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:18.432Z",
+      "create_answered_at": "2026-11-19T08:50:19.302Z",
+      "paid_seen_at": "2026-11-19T08:50:21.453Z",
+      "create_to_paid_ms": 3021,
+      "readback": {
+        "status": "PAID",
+        "amount": "1850.00",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-10",
+        "request_id": "bb270f23-2ad4-48e9-b484-d03add1ffa0a",
+        "approval_sha256": "570105fa571a2e84c8c81dc0809a701eeacef93fddeb30e9b3ab64746ae57289",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:18+0000",
+        "updated_at": "2026-11-19T08:50:20+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:22.083Z",
+      "calls": {
+        "total": 14,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "GET /fx/rates/current": 1,
+          "POST /fx/quotes/create": 1,
+          "POST /fx/conversions/create": 1,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2,
+          "GET /fx/conversions": 1
+        }
+      },
+      "started_at": "2026-11-19T08:50:16.709Z",
+      "ended_at": "2026-11-19T08:50:22.399Z",
+      "error": null
+    },
+    {
+      "n": 11,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-11",
+      "amount": "277.77",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0012",
+      "terms_sha256": "56b9d682c49f154815dbbd92cd965edfdd3f9a7954b9b9500f548e2e442dd8cc",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "7cac777d-a4ee-43a6-9584-95d84e22a321",
+      "conversion": null,
+      "transfer_id": "1fbac219-4233-4827-b127-e46a7738b3a4",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:23.090Z",
+      "create_answered_at": "2026-11-19T08:50:23.881Z",
+      "paid_seen_at": "2026-11-19T08:50:26.599Z",
+      "create_to_paid_ms": 3509,
+      "readback": {
+        "status": "PAID",
+        "amount": "277.77",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-11",
+        "request_id": "7cac777d-a4ee-43a6-9584-95d84e22a321",
+        "approval_sha256": "56b9d682c49f154815dbbd92cd965edfdd3f9a7954b9b9500f548e2e442dd8cc",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:23+0000",
+        "updated_at": "2026-11-19T08:50:26+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:27.447Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:50:22.402Z",
+      "ended_at": "2026-11-19T08:50:27.447Z",
+      "error": null
+    },
+    {
+      "n": 12,
+      "payee": "Stockline Data GmbH",
+      "invoice_no": "SLL-SOAK-12",
+      "amount": "240.00",
+      "currency": "EUR",
+      "why": "licence",
+      "fx_planned": false,
+      "proposal_id": "P-0013",
+      "terms_sha256": "10abe463ec8c83e7a42067134bfe3e4caf51d4d248b5adf40a1dfa5b5c3cafe6",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "480b24d6-c6ad-4d3b-baba-b01afc7ded5d",
+      "conversion": null,
+      "transfer_id": "76ecfaa2-8d9a-47d5-b347-6a7890233788",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:28.118Z",
+      "create_answered_at": "2026-11-19T08:50:28.823Z",
+      "paid_seen_at": "2026-11-19T08:50:30.967Z",
+      "create_to_paid_ms": 2849,
+      "readback": {
+        "status": "PAID",
+        "amount": "240.00",
+        "currency": "EUR",
+        "beneficiary_id": "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb",
+        "reference": "SLL-SOAK-12",
+        "request_id": "480b24d6-c6ad-4d3b-baba-b01afc7ded5d",
+        "approval_sha256": "10abe463ec8c83e7a42067134bfe3e4caf51d4d248b5adf40a1dfa5b5c3cafe6",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:28+0000",
+        "updated_at": "2026-11-19T08:50:30+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:31.585Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:50:27.448Z",
+      "ended_at": "2026-11-19T08:50:31.585Z",
+      "error": null
+    },
+    {
+      "n": 13,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-13",
+      "amount": "404.04",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0015",
+      "terms_sha256": "514a84b5bc44dd454b9bae9dafd30e2cfef07aaf04cefce85cc2f76212793b47",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "d305ac05-aa0f-40c4-9a0a-bd5467f3278d",
+      "conversion": null,
+      "transfer_id": "82d06707-a975-4fb6-8140-ff2611e4384c",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:33.261Z",
+      "create_answered_at": "2026-11-19T08:50:33.931Z",
+      "paid_seen_at": "2026-11-19T08:50:36.153Z",
+      "create_to_paid_ms": 2892,
+      "readback": {
+        "status": "PAID",
+        "amount": "404.04",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-13",
+        "request_id": "d305ac05-aa0f-40c4-9a0a-bd5467f3278d",
+        "approval_sha256": "514a84b5bc44dd454b9bae9dafd30e2cfef07aaf04cefce85cc2f76212793b47",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:33+0000",
+        "updated_at": "2026-11-19T08:50:35+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:36.794Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:50:32.580Z",
+      "ended_at": "2026-11-19T08:50:36.794Z",
+      "error": null
+    },
+    {
+      "n": 14,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-14",
+      "amount": "2500.00",
+      "currency": "EUR",
+      "why": "large",
+      "fx_planned": false,
+      "proposal_id": "P-0016",
+      "terms_sha256": "03aa37600d11765b9054e4f1143cae43c6991049d982940d57dab94a42e3b747",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "2815e5b9-acef-4945-bdfc-2585cd43c52e",
+      "conversion": null,
+      "transfer_id": "11c9e397-9d8d-4b25-a02e-9e465a3e8221",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:37.691Z",
+      "create_answered_at": "2026-11-19T08:50:38.422Z",
+      "paid_seen_at": "2026-11-19T08:50:41.043Z",
+      "create_to_paid_ms": 3352,
+      "readback": {
+        "status": "PAID",
+        "amount": "2500.00",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-14",
+        "request_id": "2815e5b9-acef-4945-bdfc-2585cd43c52e",
+        "approval_sha256": "03aa37600d11765b9054e4f1143cae43c6991049d982940d57dab94a42e3b747",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:38+0000",
+        "updated_at": "2026-11-19T08:50:40+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:41.687Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:50:36.795Z",
+      "ended_at": "2026-11-19T08:50:41.687Z",
+      "error": null
+    },
+    {
+      "n": 15,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-15",
+      "amount": "555.55",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": true,
+      "proposal_id": "P-0017",
+      "terms_sha256": "6f1e393041478f841ab0a1989aab41bb86c278957027d00fd716b21631a21c03",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "f0b71a69-c70f-4255-8924-5a65b261bb2e",
+      "conversion": {
+        "conversion_id": "0dee0eae-4e59-47ee-8b42-568ed336767e",
+        "quote_id": "51cf82d7-1c95-39c3-9f0e-a6410e876f4b",
+        "request_id": "c1257584-9fe4-411e-b285-4dd7b2a207b8",
+        "buy": "565.55",
+        "sell": "628.05",
+        "client_rate": "1.110517",
+        "readback": {
+          "found": 1,
+          "conversion_id": "0dee0eae-4e59-47ee-8b42-568ed336767e",
+          "status": "SETTLED",
+          "buy_amount": "565.55",
+          "sell_amount": "628.05",
+          "approval_sha256": "6f1e393041478f841ab0a1989aab41bb86c278957027d00fd716b21631a21c03",
+          "all_match": true,
+          "differences": []
+        }
+      },
+      "transfer_id": "02ff4a68-3a90-431f-b805-ce00b9ba1236",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:43.631Z",
+      "create_answered_at": "2026-11-19T08:50:44.422Z",
+      "paid_seen_at": "2026-11-19T08:50:47.049Z",
+      "create_to_paid_ms": 3418,
+      "readback": {
+        "status": "PAID",
+        "amount": "555.55",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-15",
+        "request_id": "f0b71a69-c70f-4255-8924-5a65b261bb2e",
+        "approval_sha256": "6f1e393041478f841ab0a1989aab41bb86c278957027d00fd716b21631a21c03",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:44+0000",
+        "updated_at": "2026-11-19T08:50:46+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:47.673Z",
+      "calls": {
+        "total": 14,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "GET /fx/rates/current": 1,
+          "POST /fx/quotes/create": 1,
+          "POST /fx/conversions/create": 1,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2,
+          "GET /fx/conversions": 1
+        }
+      },
+      "started_at": "2026-11-19T08:50:41.688Z",
+      "ended_at": "2026-11-19T08:50:47.986Z",
+      "error": null
+    },
+    {
+      "n": 16,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-16",
+      "amount": "10.00",
+      "currency": "EUR",
+      "why": "small",
+      "fx_planned": false,
+      "proposal_id": "P-0018",
+      "terms_sha256": "9c3ea2a5d5fd2e79b99782bc215ff905e0ce93f85e7684db11ff2928cae0ce68",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "50f60810-d359-40d5-87a1-2d15cd23d9b7",
+      "conversion": null,
+      "transfer_id": "8c4a541f-bdea-4e1e-b69a-678ef112ebac",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:48.660Z",
+      "create_answered_at": "2026-11-19T08:50:49.460Z",
+      "paid_seen_at": "2026-11-19T08:50:51.739Z",
+      "create_to_paid_ms": 3079,
+      "readback": {
+        "status": "PAID",
+        "amount": "10.00",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-16",
+        "request_id": "50f60810-d359-40d5-87a1-2d15cd23d9b7",
+        "approval_sha256": "9c3ea2a5d5fd2e79b99782bc215ff905e0ce93f85e7684db11ff2928cae0ce68",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:49+0000",
+        "updated_at": "2026-11-19T08:50:51+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:52.366Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:50:47.986Z",
+      "ended_at": "2026-11-19T08:50:52.366Z",
+      "error": null
+    },
+    {
+      "n": 17,
+      "payee": "Stockline Data GmbH",
+      "invoice_no": "SLL-SOAK-17",
+      "amount": "240.00",
+      "currency": "EUR",
+      "why": "licence",
+      "fx_planned": false,
+      "proposal_id": "P-0019",
+      "terms_sha256": "664311c446d7d4dfe6c66d219a38028578e1dd0367ca608b15de41f0cd15a65d",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "fcdc13f6-8d22-461e-a918-601beb5bd56e",
+      "conversion": null,
+      "transfer_id": "6b037188-b075-44fd-8fb0-d4e30060ea0a",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:53.026Z",
+      "create_answered_at": "2026-11-19T08:50:53.926Z",
+      "paid_seen_at": "2026-11-19T08:50:56.082Z",
+      "create_to_paid_ms": 3056,
+      "readback": {
+        "status": "PAID",
+        "amount": "240.00",
+        "currency": "EUR",
+        "beneficiary_id": "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb",
+        "reference": "SLL-SOAK-17",
+        "request_id": "fcdc13f6-8d22-461e-a918-601beb5bd56e",
+        "approval_sha256": "664311c446d7d4dfe6c66d219a38028578e1dd0367ca608b15de41f0cd15a65d",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:53+0000",
+        "updated_at": "2026-11-19T08:50:55+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:50:56.707Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:50:52.367Z",
+      "ended_at": "2026-11-19T08:50:56.707Z",
+      "error": null
+    },
+    {
+      "n": 18,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-18",
+      "amount": "678.91",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0020",
+      "terms_sha256": "356013128836bd0ce7166be34574cda544c6be34535d41a554e29bb3e19ac715",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "c9ee41f9-cc92-48ce-8db3-dfeddeac6fb8",
+      "conversion": null,
+      "transfer_id": "c060f57f-7605-487f-af9b-bbc611528c86",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:50:57.374Z",
+      "create_answered_at": "2026-11-19T08:50:58.051Z",
+      "paid_seen_at": "2026-11-19T08:51:00.447Z",
+      "create_to_paid_ms": 3073,
+      "readback": {
+        "status": "PAID",
+        "amount": "678.91",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-18",
+        "request_id": "c9ee41f9-cc92-48ce-8db3-dfeddeac6fb8",
+        "approval_sha256": "356013128836bd0ce7166be34574cda544c6be34535d41a554e29bb3e19ac715",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:50:57+0000",
+        "updated_at": "2026-11-19T08:50:59+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:01.087Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:50:56.708Z",
+      "ended_at": "2026-11-19T08:51:01.087Z",
+      "error": null
+    },
+    {
+      "n": 19,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-19",
+      "amount": "3333.33",
+      "currency": "EUR",
+      "why": "large, odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0022",
+      "terms_sha256": "b23555d94c919f247591fc7fba8ab034ca0763747dc2334ccd2ad5e76ea9cceb",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "2093a88c-07cc-49cd-8f62-05e4adc76313",
+      "conversion": null,
+      "transfer_id": "d1ffc499-217a-4abb-80f4-ffe9c32f75bc",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:02.937Z",
+      "create_answered_at": "2026-11-19T08:51:03.661Z",
+      "paid_seen_at": "2026-11-19T08:51:05.965Z",
+      "create_to_paid_ms": 3028,
+      "readback": {
+        "status": "PAID",
+        "amount": "3333.33",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-19",
+        "request_id": "2093a88c-07cc-49cd-8f62-05e4adc76313",
+        "approval_sha256": "b23555d94c919f247591fc7fba8ab034ca0763747dc2334ccd2ad5e76ea9cceb",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:03+0000",
+        "updated_at": "2026-11-19T08:51:05+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:06.586Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:51:02.271Z",
+      "ended_at": "2026-11-19T08:51:06.586Z",
+      "error": null
+    },
+    {
+      "n": 20,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-20",
+      "amount": "999.99",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0023",
+      "terms_sha256": "f15c9f209c58b9effb2ee048cec92b4c020d498152ad403d91701488ff8932e1",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "aee21225-58be-4e5c-9469-a8fbdeaaabea",
+      "conversion": null,
+      "transfer_id": "024edb8b-f397-4f63-abcb-15cf7cb89100",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:07.270Z",
+      "create_answered_at": "2026-11-19T08:51:08.059Z",
+      "paid_seen_at": "2026-11-19T08:51:10.203Z",
+      "create_to_paid_ms": 2933,
+      "readback": {
+        "status": "PAID",
+        "amount": "999.99",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-20",
+        "request_id": "aee21225-58be-4e5c-9469-a8fbdeaaabea",
+        "approval_sha256": "f15c9f209c58b9effb2ee048cec92b4c020d498152ad403d91701488ff8932e1",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:07+0000",
+        "updated_at": "2026-11-19T08:51:09+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:10.828Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:51:06.586Z",
+      "ended_at": "2026-11-19T08:51:10.828Z",
+      "error": null
+    },
+    {
+      "n": 21,
+      "payee": "Stockline Data GmbH",
+      "invoice_no": "SLL-SOAK-21",
+      "amount": "240.00",
+      "currency": "EUR",
+      "why": "licence",
+      "fx_planned": true,
+      "proposal_id": "P-0024",
+      "terms_sha256": "0232a88e9d6948148cdfd00a07f2ffeb5dd730f41d3e8f04e0ccb74ed3780d6c",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "13287227-baca-4ae1-9cd7-90d43989937c",
+      "conversion": {
+        "conversion_id": "5c0e5c62-a6e5-4fd6-9086-438a50573e78",
+        "quote_id": "1a923f51-9dfc-3688-9580-99dad0a3b1e4",
+        "request_id": "49bca4a6-7a47-43cd-8086-56ecf2d9bfbd",
+        "buy": "250.00",
+        "sell": "277.63",
+        "client_rate": "1.110517",
+        "readback": {
+          "found": 1,
+          "conversion_id": "5c0e5c62-a6e5-4fd6-9086-438a50573e78",
+          "status": "SETTLED",
+          "buy_amount": "250.00",
+          "sell_amount": "277.63",
+          "approval_sha256": "0232a88e9d6948148cdfd00a07f2ffeb5dd730f41d3e8f04e0ccb74ed3780d6c",
+          "all_match": true,
+          "differences": []
+        }
+      },
+      "transfer_id": "32cde8a4-58e0-4274-a4c2-a2bbe4e19003",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:12.550Z",
+      "create_answered_at": "2026-11-19T08:51:13.302Z",
+      "paid_seen_at": "2026-11-19T08:51:15.455Z",
+      "create_to_paid_ms": 2905,
+      "readback": {
+        "status": "PAID",
+        "amount": "240.00",
+        "currency": "EUR",
+        "beneficiary_id": "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb",
+        "reference": "SLL-SOAK-21",
+        "request_id": "13287227-baca-4ae1-9cd7-90d43989937c",
+        "approval_sha256": "0232a88e9d6948148cdfd00a07f2ffeb5dd730f41d3e8f04e0ccb74ed3780d6c",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:12+0000",
+        "updated_at": "2026-11-19T08:51:14+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:16.084Z",
+      "calls": {
+        "total": 14,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "GET /fx/rates/current": 1,
+          "POST /fx/quotes/create": 1,
+          "POST /fx/conversions/create": 1,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2,
+          "GET /fx/conversions": 1
+        }
+      },
+      "started_at": "2026-11-19T08:51:10.829Z",
+      "ended_at": "2026-11-19T08:51:16.408Z",
+      "error": null
+    },
+    {
+      "n": 22,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-22",
+      "amount": "4999.99",
+      "currency": "EUR",
+      "why": "large, odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0025",
+      "terms_sha256": "01fa3bec0ec4146265343963a3acf4c3cb4f3e392104932bbe141f24e92e423f",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "f77990cd-f339-4965-a229-5c79c337b433",
+      "conversion": null,
+      "transfer_id": "f8c8b191-0059-428b-a2b3-97b39c2c86be",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:17.084Z",
+      "create_answered_at": "2026-11-19T08:51:18.049Z",
+      "paid_seen_at": "2026-11-19T08:51:20.253Z",
+      "create_to_paid_ms": 3169,
+      "readback": {
+        "status": "PAID",
+        "amount": "4999.99",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-22",
+        "request_id": "f77990cd-f339-4965-a229-5c79c337b433",
+        "approval_sha256": "01fa3bec0ec4146265343963a3acf4c3cb4f3e392104932bbe141f24e92e423f",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:17+0000",
+        "updated_at": "2026-11-19T08:51:19+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:20.886Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:51:16.410Z",
+      "ended_at": "2026-11-19T08:51:20.886Z",
+      "error": null
+    },
+    {
+      "n": 23,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-23",
+      "amount": "12.34",
+      "currency": "EUR",
+      "why": "small, odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0026",
+      "terms_sha256": "daec47c78c84b4dbf0c313a2776566869be3cb9e618e01107e672b828c11a6ac",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "fd2840bd-c8da-4947-8568-e6b8e9dc2385",
+      "conversion": null,
+      "transfer_id": "9a786258-e411-4fe9-8cb0-886e7c6c8f07",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:21.563Z",
+      "create_answered_at": "2026-11-19T08:51:22.340Z",
+      "paid_seen_at": "2026-11-19T08:51:24.576Z",
+      "create_to_paid_ms": 3013,
+      "readback": {
+        "status": "PAID",
+        "amount": "12.34",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-23",
+        "request_id": "fd2840bd-c8da-4947-8568-e6b8e9dc2385",
+        "approval_sha256": "daec47c78c84b4dbf0c313a2776566869be3cb9e618e01107e672b828c11a6ac",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:21+0000",
+        "updated_at": "2026-11-19T08:51:24+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:25.213Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:51:20.887Z",
+      "ended_at": "2026-11-19T08:51:25.213Z",
+      "error": null
+    },
+    {
+      "n": 24,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-24",
+      "amount": "1234.57",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0027",
+      "terms_sha256": "f50519f174c46f14c15c7e14f225fe9ddf0a48e83a86d651c3742484b1d45b31",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "eeddb4f7-75c0-42ec-af6c-6e0652f586a2",
+      "conversion": null,
+      "transfer_id": "bfa8d306-a416-4b5e-8f96-1651fae2c112",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:25.855Z",
+      "create_answered_at": "2026-11-19T08:51:26.578Z",
+      "paid_seen_at": "2026-11-19T08:51:28.773Z",
+      "create_to_paid_ms": 2918,
+      "readback": {
+        "status": "PAID",
+        "amount": "1234.57",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-24",
+        "request_id": "eeddb4f7-75c0-42ec-af6c-6e0652f586a2",
+        "approval_sha256": "f50519f174c46f14c15c7e14f225fe9ddf0a48e83a86d651c3742484b1d45b31",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:26+0000",
+        "updated_at": "2026-11-19T08:51:28+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:29.408Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:51:25.214Z",
+      "ended_at": "2026-11-19T08:51:29.408Z",
+      "error": null
+    },
+    {
+      "n": 25,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-25",
+      "amount": "66.67",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0029",
+      "terms_sha256": "c3d3d19a0611d8638306b3a477fa73a5ee96feab709d55ab0af5f5a948a26b37",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "bc76be9f-73c9-4078-90b5-128bf2e89366",
+      "conversion": null,
+      "transfer_id": "7b57741d-2898-4b78-979b-6954603923ef",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:31.073Z",
+      "create_answered_at": "2026-11-19T08:51:31.812Z",
+      "paid_seen_at": "2026-11-19T08:51:34.032Z",
+      "create_to_paid_ms": 2959,
+      "readback": {
+        "status": "PAID",
+        "amount": "66.67",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-25",
+        "request_id": "bc76be9f-73c9-4078-90b5-128bf2e89366",
+        "approval_sha256": "c3d3d19a0611d8638306b3a477fa73a5ee96feab709d55ab0af5f5a948a26b37",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:31+0000",
+        "updated_at": "2026-11-19T08:51:33+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:34.669Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:51:30.393Z",
+      "ended_at": "2026-11-19T08:51:34.669Z",
+      "error": null
+    },
+    {
+      "n": 26,
+      "payee": "Stockline Data GmbH",
+      "invoice_no": "SLL-SOAK-26",
+      "amount": "240.00",
+      "currency": "EUR",
+      "why": "licence",
+      "fx_planned": false,
+      "proposal_id": "P-0030",
+      "terms_sha256": "e1a8cac89447c5a44c7022ed063bfbb4bb71f437c0c97bbb8fcc60f5b7eda22e",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "54173848-daf2-4476-a1fb-2db9a992b556",
+      "conversion": null,
+      "transfer_id": "995cf235-ed8d-4b39-b6fc-0c33e95d5bbc",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:35.336Z",
+      "create_answered_at": "2026-11-19T08:51:36.145Z",
+      "paid_seen_at": "2026-11-19T08:51:38.636Z",
+      "create_to_paid_ms": 3300,
+      "readback": {
+        "status": "PAID",
+        "amount": "240.00",
+        "currency": "EUR",
+        "beneficiary_id": "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb",
+        "reference": "SLL-SOAK-26",
+        "request_id": "54173848-daf2-4476-a1fb-2db9a992b556",
+        "approval_sha256": "e1a8cac89447c5a44c7022ed063bfbb4bb71f437c0c97bbb8fcc60f5b7eda22e",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:35+0000",
+        "updated_at": "2026-11-19T08:51:38+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:39.273Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:51:34.671Z",
+      "ended_at": "2026-11-19T08:51:39.273Z",
+      "error": null
+    },
+    {
+      "n": 27,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-27",
+      "amount": "2765.43",
+      "currency": "EUR",
+      "why": "large, odd cents",
+      "fx_planned": true,
+      "proposal_id": "P-0031",
+      "terms_sha256": "eb2fabcf038d253dea5174a869928536def225c2c305c48d5cb2670698fcf1fd",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "c7c3a206-28ef-4fc6-9387-d60bf851d6c8",
+      "conversion": {
+        "conversion_id": "0c0aef26-6041-45f5-9320-b10c705c6303",
+        "quote_id": "88eaa106-cbb4-39e2-a207-b5dfe18a7191",
+        "request_id": "138ae97d-7a4e-4b8e-ae10-6a1d224c1797",
+        "buy": "2775.43",
+        "sell": "3081.82",
+        "client_rate": "1.110395",
+        "readback": {
+          "found": 1,
+          "conversion_id": "0c0aef26-6041-45f5-9320-b10c705c6303",
+          "status": "SETTLED",
+          "buy_amount": "2775.43",
+          "sell_amount": "3081.82",
+          "approval_sha256": "eb2fabcf038d253dea5174a869928536def225c2c305c48d5cb2670698fcf1fd",
+          "all_match": true,
+          "differences": []
+        }
+      },
+      "transfer_id": "9e9f87b5-bebd-4782-8442-851ca6253e85",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:40.971Z",
+      "create_answered_at": "2026-11-19T08:51:41.906Z",
+      "paid_seen_at": "2026-11-19T08:51:44.082Z",
+      "create_to_paid_ms": 3111,
+      "readback": {
+        "status": "PAID",
+        "amount": "2765.43",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-27",
+        "request_id": "c7c3a206-28ef-4fc6-9387-d60bf851d6c8",
+        "approval_sha256": "eb2fabcf038d253dea5174a869928536def225c2c305c48d5cb2670698fcf1fd",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:41+0000",
+        "updated_at": "2026-11-19T08:51:43+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:44.705Z",
+      "calls": {
+        "total": 14,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "GET /fx/rates/current": 1,
+          "POST /fx/quotes/create": 1,
+          "POST /fx/conversions/create": 1,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2,
+          "GET /fx/conversions": 1
+        }
+      },
+      "started_at": "2026-11-19T08:51:39.274Z",
+      "ended_at": "2026-11-19T08:51:45.015Z",
+      "error": null
+    },
+    {
+      "n": 28,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-28",
+      "amount": "88.88",
+      "currency": "EUR",
+      "why": "odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0032",
+      "terms_sha256": "abaa65d8cfbbe7d3b95242b7e23ff6b9a713b1cc3002ac29d858e0978fbe5a3a",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "9a94ae15-2385-4877-a4b8-497e10272239",
+      "conversion": null,
+      "transfer_id": "16c78339-156a-4f90-ac4a-d8348a05578b",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:45.710Z",
+      "create_answered_at": "2026-11-19T08:51:46.451Z",
+      "paid_seen_at": "2026-11-19T08:51:48.628Z",
+      "create_to_paid_ms": 2918,
+      "readback": {
+        "status": "PAID",
+        "amount": "88.88",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-28",
+        "request_id": "9a94ae15-2385-4877-a4b8-497e10272239",
+        "approval_sha256": "abaa65d8cfbbe7d3b95242b7e23ff6b9a713b1cc3002ac29d858e0978fbe5a3a",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:46+0000",
+        "updated_at": "2026-11-19T08:51:48+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:49.241Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:51:45.016Z",
+      "ended_at": "2026-11-19T08:51:49.242Z",
+      "error": null
+    },
+    {
+      "n": 29,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-29",
+      "amount": "6543.21",
+      "currency": "EUR",
+      "why": "large, odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0033",
+      "terms_sha256": "4d67917a7cfb93dc25af60478c3a6bf519ceeb800cee002e86f7555d81f3b5e9",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "b09d9635-02c1-4019-9236-37c5b6a921b4",
+      "conversion": null,
+      "transfer_id": "c7444ff4-8e55-42bf-abf8-9785f5a9ed71",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:49.919Z",
+      "create_answered_at": "2026-11-19T08:51:50.849Z",
+      "paid_seen_at": "2026-11-19T08:51:52.984Z",
+      "create_to_paid_ms": 3065,
+      "readback": {
+        "status": "PAID",
+        "amount": "6543.21",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-29",
+        "request_id": "b09d9635-02c1-4019-9236-37c5b6a921b4",
+        "approval_sha256": "4d67917a7cfb93dc25af60478c3a6bf519ceeb800cee002e86f7555d81f3b5e9",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:50+0000",
+        "updated_at": "2026-11-19T08:51:52+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:53.618Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:51:49.243Z",
+      "ended_at": "2026-11-19T08:51:53.618Z",
+      "error": null
+    },
+    {
+      "n": 30,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-30",
+      "amount": "5.05",
+      "currency": "EUR",
+      "why": "small, odd cents",
+      "fx_planned": false,
+      "proposal_id": "P-0034",
+      "terms_sha256": "3f6419b5452a92a9b181aa4a5acdf1333bbac7462dc9c998c526278fc7067344",
+      "signed_by": "airwallex-soak virtual test passkey",
+      "transfer_request_id": "f405b055-bde4-47d3-9a21-47557ba83f38",
+      "conversion": null,
+      "transfer_id": "92ad9012-369c-4d08-9a18-4aaf808b9cd4",
+      "status_after_execute": "PAID",
+      "create_sent_at": "2026-11-19T08:51:54.324Z",
+      "create_answered_at": "2026-11-19T08:51:55.157Z",
+      "paid_seen_at": "2026-11-19T08:51:57.350Z",
+      "create_to_paid_ms": 3026,
+      "readback": {
+        "status": "PAID",
+        "amount": "5.05",
+        "currency": "EUR",
+        "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+        "reference": "BTX-SOAK-30",
+        "request_id": "f405b055-bde4-47d3-9a21-47557ba83f38",
+        "approval_sha256": "3f6419b5452a92a9b181aa4a5acdf1333bbac7462dc9c998c526278fc7067344",
+        "fee": "EUR 13.66",
+        "created_at": "2026-11-19T08:51:54+0000",
+        "updated_at": "2026-11-19T08:51:56+0000",
+        "match": {
+          "approval_sha256": true,
+          "amount": true,
+          "currency": true,
+          "beneficiary_id": true,
+          "reference": true,
+          "request_id": true,
+          "status_paid": true
+        },
+        "all_match": true
+      },
+      "readback_at": "2026-11-19T08:51:57.989Z",
+      "calls": {
+        "total": 10,
+        "by_endpoint": {
+          "GET /balances/current": 3,
+          "POST /transfers/create": 1,
+          "GET /transfers/{id}": 4,
+          "POST /simulation/transfers/{id}/transition": 2
+        }
+      },
+      "started_at": "2026-11-19T08:51:53.619Z",
+      "ended_at": "2026-11-19T08:51:57.989Z",
+      "error": null
+    }
+  ],
+  "negatives": [
+    {
+      "n": 1,
+      "after_payment": 6,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-N01",
+      "amount": "150.00",
+      "fx_planned": false,
+      "tamper": "amount +0.01",
+      "changed": {
+        "field": "amount",
+        "from": "150.00",
+        "to": "150.01"
+      },
+      "proposal_id": "P-0007",
+      "signed_sha256": "3db35196e0e355e8d722a102d3b7e026cbe0f60f53dae3ba3db1c479403d3e83",
+      "transfer_request_id": "f195895f-2363-4684-9337-abb636fd6215",
+      "conversion_request_id": null,
+      "refused": true,
+      "refusal": "P-0007: terms do not match the approved hash 3db35196e0e355e8d722a102d3b7e026cbe0f60f53dae3ba3db1c479403d3e83",
+      "at": "2026-11-19T08:50:01.512Z",
+      "calls_from_change_to_refusal": {
+        "total": 1,
+        "post": 0,
+        "by_endpoint": {
+          "GET /balances/current": 1
+        }
+      },
+      "rail_creates_in_window": 0,
+      "ledger_transfer_rows": 0,
+      "ledger_conversion_rows": 0,
+      "airwallex_lookup": {
+        "transfer_found": false,
+        "conversion_found": null
+      },
+      "error": null
+    },
+    {
+      "n": 2,
+      "after_payment": 12,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-N02",
+      "amount": "75.25",
+      "fx_planned": false,
+      "tamper": "amount -0.01",
+      "changed": {
+        "field": "amount",
+        "from": "75.25",
+        "to": "75.24"
+      },
+      "proposal_id": "P-0014",
+      "signed_sha256": "2fa31fafdfce1e81df2801bfcdfb032d16991e3eadaefad8da07a3d68edee183",
+      "transfer_request_id": "f2c72084-b897-43f8-a8e6-9bf30291f434",
+      "conversion_request_id": null,
+      "refused": true,
+      "refusal": "P-0014: terms do not match the approved hash 2fa31fafdfce1e81df2801bfcdfb032d16991e3eadaefad8da07a3d68edee183",
+      "at": "2026-11-19T08:50:32.270Z",
+      "calls_from_change_to_refusal": {
+        "total": 1,
+        "post": 0,
+        "by_endpoint": {
+          "GET /balances/current": 1
+        }
+      },
+      "rail_creates_in_window": 0,
+      "ledger_transfer_rows": 0,
+      "ledger_conversion_rows": 0,
+      "airwallex_lookup": {
+        "transfer_found": false,
+        "conversion_found": null
+      },
+      "error": null
+    },
+    {
+      "n": 3,
+      "after_payment": 18,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-N03",
+      "amount": "310.10",
+      "fx_planned": false,
+      "tamper": "amount +0.01, terms_sha256 column recomputed",
+      "changed": {
+        "field": "amount",
+        "from": "310.10",
+        "to": "310.11"
+      },
+      "proposal_id": "P-0021",
+      "signed_sha256": "5364fd4e76fefe803dedc18d591fb6af18cdd614e9122a66a8b593d55a63737d",
+      "transfer_request_id": "20b6f0cd-b901-4cce-8152-d9e3a1d5c317",
+      "conversion_request_id": null,
+      "refused": true,
+      "refusal": "P-0021: terms do not match the approved hash 5364fd4e76fefe803dedc18d591fb6af18cdd614e9122a66a8b593d55a63737d",
+      "at": "2026-11-19T08:51:01.746Z",
+      "calls_from_change_to_refusal": {
+        "total": 1,
+        "post": 0,
+        "by_endpoint": {
+          "GET /balances/current": 1
+        }
+      },
+      "rail_creates_in_window": 0,
+      "ledger_transfer_rows": 0,
+      "ledger_conversion_rows": 0,
+      "airwallex_lookup": {
+        "transfer_found": false,
+        "conversion_found": null
+      },
+      "error": null
+    },
+    {
+      "n": 4,
+      "after_payment": 24,
+      "payee": "Stockline Data GmbH",
+      "invoice_no": "SLL-SOAK-N04",
+      "amount": "240.00",
+      "fx_planned": false,
+      "tamper": "fee_max +0.01",
+      "changed": {
+        "field": "fee_max",
+        "from": "20.00",
+        "to": "20.01"
+      },
+      "proposal_id": "P-0028",
+      "signed_sha256": "6c6ee07170321ab816a2e4d674db9cf6ca97723c708d0e96d0e191b715bf2826",
+      "transfer_request_id": "675c32e4-ee47-47db-bf41-b1525c1847dc",
+      "conversion_request_id": null,
+      "refused": true,
+      "refusal": "P-0028: terms do not match the approved hash 6c6ee07170321ab816a2e4d674db9cf6ca97723c708d0e96d0e191b715bf2826",
+      "at": "2026-11-19T08:51:30.066Z",
+      "calls_from_change_to_refusal": {
+        "total": 1,
+        "post": 0,
+        "by_endpoint": {
+          "GET /balances/current": 1
+        }
+      },
+      "rail_creates_in_window": 0,
+      "ledger_transfer_rows": 0,
+      "ledger_conversion_rows": 0,
+      "airwallex_lookup": {
+        "transfer_found": false,
+        "conversion_found": null
+      },
+      "error": null
+    },
+    {
+      "n": 5,
+      "after_payment": 30,
+      "payee": "Bergtex Textil GmbH",
+      "invoice_no": "BTX-SOAK-N05",
+      "amount": "420.42",
+      "fx_planned": true,
+      "tamper": "conversion.buy_amount +0.01",
+      "changed": {
+        "field": "conversion.buy_amount",
+        "from": "430.42",
+        "to": "430.43"
+      },
+      "proposal_id": "P-0035",
+      "signed_sha256": "d370568925cb332008d9676db27359d332051b8de7b61680089b17990a56b64a",
+      "transfer_request_id": "09e3c139-37d2-4040-93d6-71635da925cf",
+      "conversion_request_id": "eccaa006-d4ef-4613-a384-eccc05e484b1",
+      "refused": true,
+      "refusal": "P-0035: terms do not match the approved hash d370568925cb332008d9676db27359d332051b8de7b61680089b17990a56b64a",
+      "at": "2026-11-19T08:51:59.746Z",
+      "calls_from_change_to_refusal": {
+        "total": 1,
+        "post": 0,
+        "by_endpoint": {
+          "GET /balances/current": 1
+        }
+      },
+      "rail_creates_in_window": 0,
+      "ledger_transfer_rows": 0,
+      "ledger_conversion_rows": 0,
+      "airwallex_lookup": {
+        "transfer_found": false,
+        "conversion_found": false
+      },
+      "error": null
+    }
+  ],
+  "calls": {
+    "total": 346,
+    "by_endpoint": [
+      {
+        "endpoint": "POST /authentication/login",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /balances/current",
+        "calls": 101
+      },
+      {
+        "endpoint": "GET /beneficiaries",
+        "calls": 2
+      },
+      {
+        "endpoint": "POST /transfers/create",
+        "calls": 30
+      },
+      {
+        "endpoint": "GET /transfers/{id}",
+        "calls": 120
+      },
+      {
+        "endpoint": "POST /simulation/transfers/{id}/transition",
+        "calls": 60
+      },
+      {
+        "endpoint": "GET /fx/rates/current",
+        "calls": 7
+      },
+      {
+        "endpoint": "POST /fx/quotes/create",
+        "calls": 7
+      },
+      {
+        "endpoint": "POST /fx/conversions/create",
+        "calls": 6
+      },
+      {
+        "endpoint": "GET /fx/conversions",
+        "calls": 7
+      },
+      {
+        "endpoint": "GET /transfers",
+        "calls": 5
+      }
+    ],
+    "first": "2026-11-19T08:49:30.375Z",
+    "last": "2026-11-19T08:52:00.050Z",
+    "lines": [
+      {
+        "at": "2026-11-19T08:49:30.375Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:31.050Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:31.476Z",
+        "method": "GET",
+        "endpoint": "/beneficiaries",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:31.881Z",
+        "method": "GET",
+        "endpoint": "/beneficiaries",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:32.306Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:32.661Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:32.988Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:34.086Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:34.414Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:35.225Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:35.532Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:36.148Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:36.449Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:36.796Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:37.117Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:37.441Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:37.775Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:38.651Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:38.962Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:39.780Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:40.092Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:40.542Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:40.847Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:41.373Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:41.701Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:42.051Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:42.373Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:43.107Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:43.412Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:44.265Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:44.578Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:45.062Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:45.367Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:45.687Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:45.989Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:46.309Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:46.635Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:47.416Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:47.728Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:48.577Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:48.890Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:49.388Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:49.704Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:50.023Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:50.339Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:50.660Z",
+        "method": "GET",
+        "endpoint": "/fx/rates/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:50.966Z",
+        "method": "POST",
+        "endpoint": "/fx/quotes/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:51.306Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:51.632Z",
+        "method": "POST",
+        "endpoint": "/fx/conversions/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:52.035Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:52.823Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:53.125Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:53.946Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:54.247Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:54.941Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:55.242Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:55.562Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:55.875Z",
+        "method": "GET",
+        "endpoint": "/fx/conversions",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:56.211Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:56.533Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:57.163Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:57.946Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:58.246Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:59.029Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:59.330Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:49:59.908Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:00.219Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:00.547Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:00.853Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:01.183Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:01.513Z",
+        "method": "GET",
+        "endpoint": "/transfers",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:02.063Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:02.394Z",
+        "method": "GET",
+        "endpoint": "/fx/rates/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:02.702Z",
+        "method": "POST",
+        "endpoint": "/fx/quotes/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:03.050Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:03.570Z",
+        "method": "POST",
+        "endpoint": "/fx/conversions/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:03.974Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:04.851Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:05.152Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:05.970Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:06.494Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:06.998Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:07.298Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:07.623Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:07.922Z",
+        "method": "GET",
+        "endpoint": "/fx/conversions",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:08.247Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:08.581Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:08.902Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:09.721Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:10.027Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:10.804Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:11.118Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:11.574Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:11.887Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:12.208Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:12.517Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:12.837Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:13.162Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:13.892Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:14.196Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:14.992Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:15.306Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:15.777Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:16.097Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:16.411Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:16.714Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:17.038Z",
+        "method": "GET",
+        "endpoint": "/fx/rates/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:17.372Z",
+        "method": "POST",
+        "endpoint": "/fx/quotes/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:17.706Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:18.021Z",
+        "method": "POST",
+        "endpoint": "/fx/conversions/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:18.433Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:19.303Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:19.600Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:20.377Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:20.680Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:21.151Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:21.455Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:21.787Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:22.083Z",
+        "method": "GET",
+        "endpoint": "/fx/conversions",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:22.406Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:22.756Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:23.090Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:23.883Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:24.184Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:25.533Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:25.836Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:26.299Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:26.603Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:27.146Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:27.452Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:27.790Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:28.118Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:28.824Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:29.126Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:29.897Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:30.211Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:30.657Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:30.968Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:31.285Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:31.590Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:31.925Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:32.271Z",
+        "method": "GET",
+        "endpoint": "/transfers",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:32.587Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:32.937Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:33.261Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:33.933Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:34.244Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:35.076Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:35.377Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:35.842Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:36.154Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:36.487Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:36.799Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:37.353Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:37.691Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:38.423Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:38.726Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:39.725Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:40.034Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:40.730Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:41.045Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:41.369Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:41.691Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:42.222Z",
+        "method": "GET",
+        "endpoint": "/fx/rates/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:42.539Z",
+        "method": "POST",
+        "endpoint": "/fx/quotes/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:42.858Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:43.202Z",
+        "method": "POST",
+        "endpoint": "/fx/conversions/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:43.631Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:44.423Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:44.932Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:45.722Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:46.033Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:46.521Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:47.051Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:47.382Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:47.674Z",
+        "method": "GET",
+        "endpoint": "/fx/conversions",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:47.991Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:48.340Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:48.661Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:49.462Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:49.764Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:50.663Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:50.979Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:51.437Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:51.740Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:52.055Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:52.371Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:52.705Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:53.026Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:53.928Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:54.239Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:55.008Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:55.319Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:55.778Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:56.083Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:56.405Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:56.712Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:57.045Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:57.374Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:58.053Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:58.597Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:59.373Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:50:59.679Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:00.141Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:00.448Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:00.768Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:01.092Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:01.420Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:01.747Z",
+        "method": "GET",
+        "endpoint": "/transfers",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:02.279Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:02.613Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:02.937Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:03.663Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:03.972Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:04.748Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:05.199Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:05.663Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:05.967Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:06.281Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:06.601Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:06.939Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:07.270Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:08.061Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:08.362Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:09.145Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:09.441Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:09.904Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:10.205Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:10.525Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:10.834Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:11.155Z",
+        "method": "GET",
+        "endpoint": "/fx/rates/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:11.473Z",
+        "method": "POST",
+        "endpoint": "/fx/quotes/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:11.799Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:12.119Z",
+        "method": "POST",
+        "endpoint": "/fx/conversions/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:12.550Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:13.303Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:13.606Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:14.403Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:14.704Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:15.153Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:15.460Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:15.781Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:16.084Z",
+        "method": "GET",
+        "endpoint": "/fx/conversions",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:16.414Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:16.748Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:17.084Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:18.051Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:18.364Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:19.187Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:19.499Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:19.950Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:20.254Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:20.575Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:20.893Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:21.229Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:21.564Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:22.341Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:22.654Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:23.428Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:23.808Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:24.264Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:24.578Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:24.900Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:25.218Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:25.538Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:25.856Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:26.579Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:26.895Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:27.700Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:28.009Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:28.468Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:28.775Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:29.094Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:29.415Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:29.748Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:30.068Z",
+        "method": "GET",
+        "endpoint": "/transfers",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:30.397Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:30.743Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:31.073Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:31.813Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:32.126Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:32.923Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:33.227Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:33.712Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:34.033Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:34.366Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:34.677Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:35.011Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:35.336Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:36.147Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:36.460Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:37.352Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:37.867Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:38.328Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:38.638Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:38.961Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:39.279Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:39.594Z",
+        "method": "GET",
+        "endpoint": "/fx/rates/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:39.899Z",
+        "method": "POST",
+        "endpoint": "/fx/quotes/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:40.249Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:40.581Z",
+        "method": "POST",
+        "endpoint": "/fx/conversions/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:40.972Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:41.908Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:42.219Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:43.010Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:43.310Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:43.783Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:44.084Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:44.404Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:44.706Z",
+        "method": "GET",
+        "endpoint": "/fx/conversions",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:45.021Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:45.374Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:45.710Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:46.452Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:46.755Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:47.527Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:47.847Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:48.316Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:48.629Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:48.940Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:49.248Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:49.587Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:49.919Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:50.850Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:51.152Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:51.917Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:52.230Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:52.685Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:52.986Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:53.314Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:53.624Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:53.983Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:54.324Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:55.160Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:55.470Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:56.274Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:56.587Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:57.045Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:57.351Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:57.674Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:57.998Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:58.315Z",
+        "method": "GET",
+        "endpoint": "/fx/rates/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:58.872Z",
+        "method": "POST",
+        "endpoint": "/fx/quotes/create",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:59.206Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:51:59.748Z",
+        "method": "GET",
+        "endpoint": "/transfers",
+        "pid": 450
+      },
+      {
+        "at": "2026-11-19T08:52:00.050Z",
+        "method": "GET",
+        "endpoint": "/fx/conversions",
+        "pid": 450
+      }
+    ]
+  }
+}
