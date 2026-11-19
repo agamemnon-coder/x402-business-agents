@@ -135,8 +135,9 @@ jobs:
           npx tsx test/browser/trysign-webkit.check.ts test-results/trysign-webkit
   # Firefox (master list 408): the guest pages and /try/sign, the same checks as Chromium's in judge, with BROWSER=firefox
   # (test/browser/support/browser.ts). Firefox has no virtual authenticator, so /try/sign signs with the software passkey
-  # (test/browser/support/softPasskey.ts) and the server verifies every signature for real. Only Firefox is installed
-  # here, with its system libraries. About 9 minutes on a laptop on 12 November.
+  # (test/browser/support/softPasskey.ts) and the server verifies every signature for real. Firefox runs in the
+  # same pinned Playwright image as WebKit, so no system libraries come from an apt mirror (a slow mirror timed the
+  # install out on main on 18 November, before any check ran). About 9 minutes on a laptop on 12 November.
   firefox:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -147,13 +148,16 @@ jobs:
           node-version: 22.22.0
           cache: npm
       - run: npm ci
-      - name: Playwright Firefox, with its system libraries
-        timeout-minutes: 10
-        run: npx playwright install --with-deps firefox
       - name: Guest pages in Firefox (360, 390, 768 and 1440 px, light and dark)
-        run: BROWSER=firefox npx tsx test/browser/pages.check.ts test-results/pages-firefox
+        run: >
+          docker run --rm --ipc=host -e BROWSER=firefox -v "$PWD:/repo" -w /repo
+          mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+          npx tsx test/browser/pages.check.ts test-results/pages-firefox
       - name: /try/sign in Firefox (360, 390 and 1440 px, light and dark; signed with the software passkey)
-        run: BROWSER=firefox npx tsx test/browser/trysign.check.ts test-results/trysign-firefox
+        run: >
+          docker run --rm --ipc=host -e BROWSER=firefox -v "$PWD:/repo" -w /repo
+          mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+          npx tsx test/browser/trysign.check.ts test-results/trysign-firefox
   secrets:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
