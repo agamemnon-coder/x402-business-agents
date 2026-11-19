@@ -12,25 +12,40 @@
 // What is kept: the engine's own events (GET /v1/engine/events, read to the end after each part), the answers of the
 // pay, approve, payout and sample routes, every /v1 call's method, path, status and time, and the times between clicks
 // and what the page shows. Never kept: the session, the visitor token, any header. Nothing here reads a key.
-//   npx tsx scripts/try-live-record.ts <run number> <desktop|phone> <out dir>
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+//   npx tsx scripts/try-live-record.ts <run number> <desktop|phone|tablet|tablet-dark> <out dir>
+// BROWSER=firefox (or webkit) walks it in that browser instead: Playwright has no virtual authenticator there, so the
+// repository's software passkey (test/browser/support/softPasskey.ts, TEST ONLY: a real ES256 key in the page, whose
+// signatures the server verifies as it does a phone's) is injected before the pages load. NSSDB=<dir>, with Firefox: a
+// profile whose certificate store is a copy of that NSS store's (cert9.db, key4.db), for a machine whose outbound HTTPS
+// goes through a proxy with its own CA (Chromium reads ~/.pki/nssdb itself; Firefox only its profile's). Nothing is
+// trusted that the machine does not already trust, and no certificate check is turned off.
+import { createHash } from "node:crypto";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
-import type { BrowserContext, Page, Response } from "playwright";
+import type { Browser, BrowserContext, BrowserContextOptions, Page, Response } from "playwright";
 import { verifyProofBundle } from "../src/proof/bundle.js";
-import { launchBrowser } from "../test/browser/support/browser.js";
+import { browserName, contextOptions, FIREFOX_PREFS, hasVirtualAuthenticator, launchBrowser } from "../test/browser/support/browser.js";
+import { SOFT_PASSKEY } from "../test/browser/support/softPasskey.js";
 
 const BASE = "https://kit11.max-31b.workers.dev";
 const HOST = new URL(BASE).hostname;
 const [runArg, profileArg, outArg] = process.argv.slice(2);
 const run = Number(runArg);
-const profile = profileArg === "phone" ? "phone" : "desktop";
-if (!Number.isInteger(run) || run < 1 || !outArg) throw new Error("usage: try-live-record.ts <run> <desktop|phone> <out dir>");
+const PROFILE_NAMES = ["desktop", "phone", "tablet", "tablet-dark"] as const;
+const profile = (PROFILE_NAMES as readonly string[]).includes(profileArg ?? "") ? (profileArg as (typeof PROFILE_NAMES)[number]) : "desktop";
+if (!Number.isInteger(run) || run < 1 || !outArg) throw new Error("usage: try-live-record.ts <run> <desktop|phone|tablet|tablet-dark> <out dir>");
+const BROWSER = browserName();
+const passkey = hasVirtualAuthenticator(BROWSER) ? "cdp-virtual-authenticator" : "software-passkey";
 const out = outArg;
 mkdirSync(out, { recursive: true });
 const PROFILES = {
   desktop: { viewport: { width: 1440, height: 900 }, colorScheme: "light" as const },
   phone: { viewport: { width: 390, height: 844 }, colorScheme: "dark" as const, isMobile: true, hasTouch: true, deviceScaleFactor: 3 },
+  tablet: { viewport: { width: 768, height: 1024 }, colorScheme: "light" as const, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
+  "tablet-dark": { viewport: { width: 768, height: 1024 }, colorScheme: "dark" as const, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
 };
 
 /** Fields a /v1 answer may carry that are never written: a session or token, a passkey challenge. */
@@ -50,6 +65,7 @@ const outside: string[] = [];
 const failures: string[] = [];
 const steps: Record<string, number | null> = {};
 const page_says: Record<string, string | null> = {};
+const site_build: Record<string, string | null> = {};
 const KEEP = /^\/v1\/(try\/start|engine\/samples\/[a-z]+|engine\/invoices\/[^/]+\/pay|engine\/proposals\/[^/]+\/(approve|pay|payout\/simulate))$/;
 
 function watch(p: Page, tab: string): void {
@@ -77,8 +93,13 @@ async function events(p: Page): Promise<Ev[]> {
     const h = { authorization: `Bearer ${st.session ?? ""}` };
     const all: unknown[] = [];
     let after = 0;
-    for (let i = 0; i < 50; i++) {
-      const j = (await (await fetch(`/v1/engine/events?after=${after}&limit=200`, { headers: h })).json()) as { items?: { seq: number }[]; next?: number };
+    // The engine answers 2 reads a second per company (429 slow_down past that, with retry_ms), and the page reads too:
+    // a page every 0.6 s, and a 429 waited out (up to 3 times) rather than taken for the end of the events.
+    for (let i = 0, slowed = 0; i < 50; i++) {
+      await new Promise((r) => setTimeout(r, 600));
+      const res = await fetch(`/v1/engine/events?after=${after}&limit=200`, { headers: h });
+      if (res.status === 429 && slowed < 3) { slowed++; i--; const w = (await res.json().catch(() => ({}))) as { retry_ms?: number }; await new Promise((r) => setTimeout(r, Math.min(5_000, Math.max(1_000, w.retry_ms ?? 1_000)))); continue; }
+      const j = (await res.json()) as { items?: { seq: number }[]; next?: number };
       const items = j.items ?? [];
       all.push(...items);
       if (!items.length) break;
@@ -88,6 +109,12 @@ async function events(p: Page): Promise<Ev[]> {
   }) as Promise<Ev[]>;
 }
 
+/**
+ * /verify's verdict for a proof whose every check passes: "VALID", or since the redeploy of 19 Nov during the mega run
+ * (src/proof/verifyPage.ts VERIFY_BUNDLE_VERDICT, PR #438) "Proof valid · payment refused" for a refusal's proof, as the
+ * downloaded one is; never "NOT VALID".
+ */
+const validVerdict = (v: string) => /^(VALID|Proof valid · payment refused)\b/.test(v) && /every check passes/.test(v) && !/NOT VALID/.test(v);
 const clock = () => performance.now();
 const since = (t: number) => Math.round(performance.now() - t);
 const text = (p: Page) => p.evaluate(() => document.body.innerText);
@@ -99,26 +126,56 @@ async function press(p: Page, name: string | RegExp, timeout = 90_000): Promise<
   await b.click();
   return t;
 }
-const answer = (p: Page, re: RegExp, method = "POST") => p.waitForResponse((r) => r.request().method() === method && re.test(new URL(r.url()).pathname), { timeout: 120_000 });
+/** An answer waited for; one never awaited (the walk stopped before it) is not an unhandled rejection that loses the record. */
+const answer = (p: Page, re: RegExp, method = "POST") => {
+  const w = p.waitForResponse((r) => r.request().method() === method && re.test(new URL(r.url()).pathname), { timeout: 120_000 });
+  w.catch(() => undefined);
+  return w;
+};
+let mainPage: Page | null = null;
 
 const started_at = new Date().toISOString();
-const browser = await launchBrowser();
+let browser: Browser | null = null;
+let browserVersion: string | null = null;
+let profileDir: string | null = null;
 let ctx: BrowserContext | null = null;
+/** The walk's browser context: a fresh one of a launched browser, or with NSSDB in Firefox, a profile seeded with that store. */
+async function openContext(o: BrowserContextOptions): Promise<BrowserContext> {
+  if (BROWSER === "firefox" && process.env.NSSDB) {
+    profileDir = mkdtempSync(join(tmpdir(), "try-live-firefox-"));
+    for (const f of ["cert9.db", "key4.db"]) copyFileSync(join(process.env.NSSDB, f), join(profileDir, f));
+    const pw = createRequire(import.meta.url)("playwright") as { firefox: { launchPersistentContext(dir: string, o: BrowserContextOptions & { firefoxUserPrefs?: Record<string, boolean> }): Promise<BrowserContext> } };
+    const c = await pw.firefox.launchPersistentContext(profileDir, { ...contextOptions("firefox", o), firefoxUserPrefs: { ...FIREFOX_PREFS } });
+    browserVersion = c.browser()?.version() ?? null;
+    return c;
+  }
+  browser = await launchBrowser(BROWSER);
+  browserVersion = browser.version();
+  return browser.newContext(o);
+}
 let mainEvents: Ev[] = [];
 let cashEvents: Ev[] = [];
 let bundle: Record<string, unknown> = {};
 let paidBundleCli: { ok: boolean; checks: number; failed: string[] } | null = null;
 let held: Record<string, unknown> = {};
 try {
-  ctx = await browser.newContext({ ...PROFILES[profile], acceptDownloads: true });
+  ctx = await openContext({ ...PROFILES[profile], acceptDownloads: true });
+  // Firefox and WebKit: the software passkey, in every page of the context, before the page's own script runs.
+  if (passkey === "software-passkey") await ctx.addInitScript(SOFT_PASSKEY);
   const page = await ctx.newPage();
+  mainPage = page;
   watch(page, "main");
-  const cdp = await ctx.newCDPSession(page);
-  await cdp.send("WebAuthn.enable");
-  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  if (passkey === "cdp-virtual-authenticator") {
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  }
 
   // 1. Launch: a fresh test company.
   await page.goto(`${BASE}/try`, { waitUntil: "load" });
+  // Which build of /try answered: the site shows no version, so the SHA-256 of the page as served, its per-answer
+  // nonces taken out (the same build gives the same hash; 19 Nov, purser-try was redeployed during the mega run).
+  site_build.try_page_sha256 = await page.request.get(`${BASE}/try`).then(async (r) => createHash("sha256").update((await r.text()).replace(/nonce[-=]["']?[A-Za-z0-9+/=_-]+/g, "nonce")).digest("hex"), () => null);
   const startAns = answer(page, /^\/v1\/try\/start$/);
   let t = await press(page, /Launch the live transfer demo/);
   const st = await startAns;
@@ -164,13 +221,15 @@ try {
   for (let i = 0; i < 240 && approvedAt === null; i++) {
     const signBtn = page.getByRole("button", { name: /Approve & sign/ }).first();
     if (await signBtn.count() && await signBtn.isVisible() && await signBtn.isEnabled()) {
-      t = clock(); clicked.push((await signBtn.innerText()).trim()); await signBtn.click().catch(() => undefined); break;
+      t = clock(); clicked.push((await signBtn.innerText()).trim()); page_says.sign_clicks = clicked.join(" | "); await signBtn.click().catch(() => undefined); break;
     }
+    // Never a button that is only saying it is busy ("Saving your passkey…", "Waiting for your passkey…"), and at most
+    // 4 presses in all: a page that does not move on stops the walk, it is not pressed again and again.
     const setup = page.getByRole("button", { name: /passkey|Face ID|Touch ID|Windows Hello|Set up/i }).first();
-    if (await setup.count() && await setup.isVisible() && await setup.isEnabled()) {
+    if (clicked.length < 4 && await setup.count() && await setup.isVisible() && await setup.isEnabled() && !/…|\.\.\.|Saving|Waiting/i.test(await setup.innerText())) {
       // The same button pressed again only after 3 s: one passkey prompt at a time.
       const words = (await setup.innerText()).trim();
-      if (words !== clicked.at(-1) || clock() - t > 3_000) { t = clock(); clicked.push(words); await setup.click().catch(() => undefined); }
+      if (words !== clicked.at(-1) || clock() - t > 3_000) { t = clock(); clicked.push(words); page_says.sign_clicks = clicked.join(" | "); await setup.click().catch(() => undefined); }
     }
     await page.waitForTimeout(250);
   }
@@ -235,7 +294,7 @@ try {
   await v.waitForTimeout(300);
   const verdict = (await v.locator("#v-verdict").innerText()).replace(/\s+/g, " ").trim();
   const checks = await v.locator("#v-checks li").count();
-  ok(/\bVALID\b/.test(verdict) && !/NOT VALID/.test(verdict), `/verify, the downloaded proof: ${verdict}`);
+  ok(validVerdict(verdict), `/verify, the downloaded proof: ${verdict}`);
   const cli = await verifyProofBundle(JSON.parse(readFileSync(file, "utf8")));
   ok(cli.ok, `the repository's verifier, the downloaded proof: ${cli.ok ? "VALID" : "NOT VALID"}`);
   let pastedVerdict: string | null = null;
@@ -246,7 +305,7 @@ try {
     await v.locator("#v-verdict").waitFor({ state: "visible", timeout: 30_000 });
     await v.waitForTimeout(300);
     pastedVerdict = (await v.locator("#v-verdict").innerText()).replace(/\s+/g, " ").trim();
-    ok(/\bVALID\b/.test(pastedVerdict) && !/NOT VALID/.test(pastedVerdict), `/verify, the paid proof pasted: ${pastedVerdict}`);
+    ok(validVerdict(pastedVerdict), `/verify, the paid proof pasted: ${pastedVerdict}`);
   }
   await v.close();
   const dlJson = JSON.parse(readFileSync(file, "utf8")) as { decision?: { outcome?: string }; proposal_id?: string; terms_sha256?: string };
@@ -259,8 +318,7 @@ try {
   // 6. The EUR 480.00 invoice inside the limit that code's cash check holds, in a test company of its own.
   const p2 = await ctx.newPage();
   watch(p2, "cash");
-  const cdp2 = await ctx.newCDPSession(p2);
-  await cdp2.send("WebAuthn.enable");
+  if (passkey === "cdp-virtual-authenticator") await (await ctx.newCDPSession(p2)).send("WebAuthn.enable");
   await p2.goto(`${BASE}/try`, { waitUntil: "load" });
   const st2 = answer(p2, /^\/v1\/try\/start$/);
   await press(p2, /Launch the live transfer demo/);
@@ -295,10 +353,13 @@ try {
   await p2.close();
 } catch (e) {
   failures.push(`stopped: ${String((e as Error).message ?? e).split("\n")[0]}`);
+  // What the page showed when the walk stopped (its words only, no screenshot), to say why.
+  page_says.when_stopped = mainPage ? await text(mainPage).then((x) => x.replace(/\s+/g, " ").trim().slice(-1500), () => null) : null;
   console.log("STOPPED", e);
 } finally {
   await ctx?.close().catch(() => undefined);
-  await browser.close();
+  await (browser as Browser | null)?.close();
+  if (profileDir) rmSync(profileDir, { recursive: true, force: true });
 }
 ok(outside.length === 0, `no request left ${HOST}${outside.length ? `: ${[...new Set(outside)].slice(0, 5).join(", ")}` : ""}`);
 ok(errors.length === 0, `no console or page error${errors.length ? `: ${errors.slice(0, 3).join(" | ")}` : ""}`);
@@ -306,8 +367,9 @@ ok(errors.length === 0, `no console or page error${errors.length ? `: ${errors.s
 const record = {
   what: "One walk through the public /try on https://kit11.max-31b.workers.dev, recorded by scripts/try-live-record.ts (19 Nov 2026). A fresh /try test company each run; test money only; payouts to the Airwallex sandbox.",
   run, profile, viewport: PROFILES[profile].viewport, color_scheme: PROFILES[profile].colorScheme,
+  browser: { name: BROWSER, version: browserVersion }, passkey,
   started_at, finished_at: new Date().toISOString(), ok: failures.length === 0, failures,
-  steps_ms: steps, page_says, bundle, held,
+  steps_ms: steps, page_says, site_build, bundle, held,
   answers: kept, calls, console_errors: errors, outside_requests: [...new Set(outside)],
   events: { main: mainEvents, cash: cashEvents },
 };

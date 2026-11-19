@@ -41,3 +41,33 @@ describe("the /try re-check of 19 Nov", () => {
     for (const id of own) expect(counted.has(id), id).toBe(false);
   });
 });
+
+// The mega run of the same day (docs/runs/2026-11-19-mega-run.md): the same walk, many times, one at a time, in Chromium
+// at 1440, 768 and 390 and in Firefox; stopped by choice to leave the day's Airwallex sandbox payouts to other visitors.
+const MEGA = "docs/runs/2026-11-19-mega-run";
+const megaFiles = readdirSync(new URL(`${MEGA}/`, ROOT)).map((f) => `${MEGA}/${f}`);
+
+describe("the /try mega run of 19 Nov", () => {
+  it("keeps no session, token, cookie, key or secret in its raw files", () => {
+    for (const f of [...megaFiles, "docs/runs/2026-11-19-mega-run.md"]) expect(read(f), f).not.toMatch(/bearer|secret|token|cookie/i);
+  });
+
+  it("has a record per walk the series ran, and a summary computed from them", () => {
+    const series = JSON.parse(read(`${MEGA}/series.json`)) as { walks: { run: number; browser: string; profile: string }[] };
+    const runs = megaFiles.filter((f) => /\/run-\d+\.json$/.test(f)).map((f) => JSON.parse(read(f)) as { run: number; profile: string; browser: { name: string } });
+    expect(runs.map((r) => r.run).sort((a, b) => a - b)).toEqual(series.walks.map((w) => w.run));
+    for (const r of runs) expect(series.walks.find((w) => w.run === r.run), String(r.run)).toMatchObject({ browser: r.browser.name, profile: r.profile });
+    const s = JSON.parse(read(`${MEGA}/summary.json`)) as { aggregate: { runs: number }; runs: unknown[] };
+    expect(s.aggregate.runs).toBe(runs.length);
+    const both = JSON.parse(read(`${MEGA}/combined.json`)) as { aggregate: { runs: number } };
+    expect(both.aggregate.runs).toBe(runs.length + 8);
+  });
+
+  it("is left out of the /proof band: its Claude request ids are not counted", () => {
+    expect(NOT_IN_BAND).toContain(MEGA);
+    const own = new Set(megaFiles.flatMap((f) => [...read(f).matchAll(REQ)].map((m) => m[0])));
+    expect(own.size).toBeGreaterThan(0);
+    const counted = new Set(docsJson().flatMap((f) => [...read(f).matchAll(REQ)].map((m) => m[0])));
+    for (const id of own) expect(counted.has(id), id).toBe(false);
+  });
+});

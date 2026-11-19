@@ -1,0 +1,299 @@
+{
+ "what": "The runs of docs/runs/2026-11-19-live-try and docs/runs/2026-11-19-mega-run summed together (25), computed by scripts/try-live-summary.ts; each run's own figures are in its folder's summary.json.",
+ "sets": [
+  "docs/runs/2026-11-19-live-try",
+  "docs/runs/2026-11-19-mega-run"
+ ],
+ "aggregate": {
+  "runs": 25,
+  "ok": 21,
+  "desktop": 12,
+  "phone": 11,
+  "tablet": 2,
+  "by_profile": {
+   "chromium desktop 1440 light": 11,
+   "chromium phone 390 dark": 10,
+   "chromium tablet 768 light": 1,
+   "firefox desktop 1440 light": 1,
+   "chromium tablet-dark 768 dark": 1,
+   "firefox phone 390 dark": 1
+  },
+  "by_browser": {
+   "chromium": 8,
+   "chromium 153.0.8010.12": 15,
+   "firefox 155.0": 2
+  },
+  "ok_by_profile": {
+   "chromium desktop 1440 light": 10,
+   "chromium phone 390 dark": 8,
+   "chromium tablet 768 light": 1,
+   "firefox desktop 1440 light": 1,
+   "chromium tablet-dark 768 dark": 1
+  },
+  "failed_runs": [
+   {
+    "run": 2,
+    "profile": "chromium phone 390 dark",
+    "failures": [
+     "stopped: page.evaluate: ReferenceError: __name is not defined"
+    ]
+   },
+   {
+    "run": 15,
+    "profile": "chromium phone 390 dark",
+    "failures": [
+     "/verify, the downloaded proof: Proof valid · payment refused every check passes (11 of 11)"
+    ]
+   },
+   {
+    "run": 16,
+    "profile": "chromium desktop 1440 light",
+    "failures": [
+     "/verify, the downloaded proof: Proof valid · payment refused every check passes (11 of 11)"
+    ]
+   },
+   {
+    "run": 17,
+    "profile": "firefox phone 390 dark",
+    "failures": [
+     "/verify, the downloaded proof: Proof valid · payment refused every check passes (11 of 11)"
+    ]
+   }
+  ],
+  "v1_calls": 1938,
+  "v1_statuses": {
+   "200": 1880,
+   "201": 49,
+   "429": 9
+  },
+  "first_start": "2026-11-19T06:58:47.731Z",
+  "last_finish": "2026-11-19T08:53:11.012Z",
+  "steps": {
+   "start_ms": {
+    "n": 25,
+    "p50": 2876,
+    "p90": 5083,
+    "p95": 5357,
+    "min": 2418,
+    "max": 5877
+   },
+   "read_120_ms": {
+    "n": 25,
+    "p50": 6486,
+    "p90": 7027,
+    "p95": 7050,
+    "min": 5486,
+    "max": 7392
+   },
+   "autopay_ms": {
+    "n": 25,
+    "p50": 7919,
+    "p90": 9534,
+    "p95": 10356,
+    "min": 6992,
+    "max": 12534
+   },
+   "autopay_awx_paid_ms": {
+    "n": 25,
+    "p50": 10963,
+    "p90": 13174,
+    "p95": 13718,
+    "min": 9705,
+    "max": 15353
+   },
+   "read_1850_ms": {
+    "n": 25,
+    "p50": 8388,
+    "p90": 9919,
+    "p95": 9959,
+    "min": 7423,
+    "max": 10529
+   },
+   "to_sign_sheet_ms": {
+    "n": 2,
+    "p50": 6630,
+    "p90": 7740,
+    "p95": 7740,
+    "min": 6630,
+    "max": 7740
+   },
+   "sign_ms": {
+    "n": 25,
+    "p50": 537,
+    "p90": 734,
+    "p95": 744,
+    "min": 477,
+    "max": 827
+   },
+   "sign_to_pay_answer_ms": {
+    "n": 25,
+    "p50": 4882,
+    "p90": 5366,
+    "p95": 5420,
+    "min": 4269,
+    "max": 5591
+   },
+   "pay_ms": {
+    "n": 24,
+    "p50": 3900,
+    "p90": 4409,
+    "p95": 4459,
+    "min": 3304,
+    "max": 4483
+   },
+   "sign_to_paid_on_screen_ms": {
+    "n": 25,
+    "p50": 6649,
+    "p90": 7231,
+    "p95": 8214,
+    "min": 5646,
+    "max": 8495
+   },
+   "sign_to_awx_paid_ms": {
+    "n": 25,
+    "p50": 7744,
+    "p90": 8214,
+    "p95": 8469,
+    "min": 7017,
+    "max": 8495
+   },
+   "refusal_ms": {
+    "n": 25,
+    "p50": 696,
+    "p90": 751,
+    "p95": 771,
+    "min": 573,
+    "max": 784
+   },
+   "verify_ms": {
+    "n": 24,
+    "p50": 94,
+    "p90": 224,
+    "p95": 295,
+    "min": 50,
+    "max": 416
+   },
+   "hold_ms": {
+    "n": 24,
+    "p50": 6468,
+    "p90": 6975,
+    "p95": 6978,
+    "min": 5932,
+    "max": 7396
+   },
+   "cfo_to_approved_ms": {
+    "n": 23,
+    "p50": 7811,
+    "p90": 9815,
+    "p95": 9849,
+    "min": 7055,
+    "max": 10356
+   }
+  },
+  "claude": {
+   "entries": 360,
+   "api_requests": 556,
+   "distinct_request_ids": 388,
+   "reader_calls_without_request_id": 168,
+   "cost_usd_micros": 117938,
+   "cost_usd_micros_per_run": {
+    "n": 25,
+    "p50": 4871,
+    "p90": 5194,
+    "p95": 5200,
+    "min": 0,
+    "max": 5210
+   },
+   "entries_per_run": {
+    "n": 25,
+    "p50": 15,
+    "p90": 15,
+    "p95": 15,
+    "min": 0,
+    "max": 15
+   },
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "fallbacks": 0,
+   "latency_ms": {
+    "reader:classify": {
+     "n": 72,
+     "p50": 1330,
+     "p90": 1508,
+     "p95": 1591,
+     "min": 1160,
+     "max": 1761
+    },
+    "reader:read": {
+     "n": 72,
+     "p50": 1849,
+     "p90": 2074,
+     "p95": 2163,
+     "min": 1616,
+     "max": 2290
+    },
+    "reader:review": {
+     "n": 24,
+     "p50": 1895,
+     "p90": 2075,
+     "p95": 2106,
+     "min": 1630,
+     "max": 2158
+    },
+    "agent:treasury": {
+     "n": 72,
+     "p50": 3463,
+     "p90": 3851,
+     "p95": 3970,
+     "min": 2814,
+     "max": 4305
+    },
+    "agent:checker": {
+     "n": 72,
+     "p50": 3344,
+     "p90": 3851,
+     "p95": 4021,
+     "min": 2545,
+     "max": 5548
+    },
+    "agent:payer": {
+     "n": 48,
+     "p50": 3602,
+     "p90": 4190,
+     "p95": 5681,
+     "min": 2728,
+     "max": 6299
+    }
+   }
+  },
+  "airwallex": {
+   "transfers": 50,
+   "paid": 50,
+   "distinct_transfer_ids": 50,
+   "scheduled_to_paid_ms": {
+    "n": 48,
+    "p50": 2804,
+    "p90": 3418,
+    "p95": 3644,
+    "min": 2543,
+    "max": 4495
+   }
+  },
+  "approvals_matching_transfer": 25,
+  "refused": 25,
+  "held": 24,
+  "bundles_valid_on_verify": 24,
+  "paid_bundles_valid_on_verify": 24,
+  "bundles_valid_repo_verifier": 24,
+  "paid_bundles_valid_repo_verifier": 24,
+  "ok_but_verify_wording": [
+   15,
+   16,
+   17
+  ],
+  "every_site_step_passed": 24,
+  "console_errors": 0,
+  "outside_requests": 0
+ }
+}

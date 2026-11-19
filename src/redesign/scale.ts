@@ -30,9 +30,11 @@ const json = (p: string): unknown => { try { return JSON.parse(read(p)); } catch
  * re-check of the public /try (8 walks as a visitor, docs/runs/2026-11-19-live-try.md): its Claude request ids, its
  * refusal and its Airwallex sandbox transfers belong to /try test companies, are counted in that record, and are not
  * runs of record; counting them here would move the band away from the pages as deployed. src/cli/verifyAll.ts
- * recounts the band with the same exclusion.
+ * recounts the band with the same exclusion. docs/runs/2026-11-19-mega-run/ (the same walk, many times over, the same
+ * day: docs/runs/2026-11-19-mega-run.md) is left out for the same reason; that record lists what the band would gain if
+ * it were counted.
  */
-export const NOT_IN_BAND: readonly string[] = ["docs/runs/2026-11-19-live-try"];
+export const NOT_IN_BAND: readonly string[] = ["docs/runs/2026-11-19-live-try", "docs/runs/2026-11-19-mega-run"];
 /** Every file under a folder of the repository, by its path from the root, whose name matches (NOT_IN_BAND skipped). */
 function filesIn(dir: string, re: RegExp): string[] {
   if (NOT_IN_BAND.includes(dir)) return [];
