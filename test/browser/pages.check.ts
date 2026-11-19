@@ -1066,7 +1066,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // +8, partner and judge scans 14 Nov: the Metal Award line and which mandate each figure is (529 on screen as built).
       // +110, Metal Award 15 Nov: /alta opens with three facts (refused on chain, two passkey owners, the anchor), each with its tx and record, and the main run's count.
       // +17, 15 Nov: /alta says why the Sourcing cap is higher after #24.
-      if (words > 637 + 28) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 637 plus the frame`); // +7, 15 Nov: the /alta cap line (#390), 660 as built in CI
+      if (words > 707 + 28) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 707 plus the frame`); // +70, 19 Nov (the owner): the "Live on Alta" strip (728 as built); +7, 15 Nov: the /alta cap line (#390), 660 as built in CI
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
       if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Alta testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Amounts are scaled down 100× for testnet\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
