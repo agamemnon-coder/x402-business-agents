@@ -27,6 +27,26 @@
           "rec": "docs/runs/2026-11-19-airwallex-bills.json"
         },
         {
+          "key": "soak-paid",
+          "fig": "All 30",
+          "label": "soak payments PAID, signed hash read back",
+          "note": "Each read back from Airwallex as signed: hash, amount, payee, reference; PAID by the sandbox's simulation, 19 Nov.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json"
+        },
+        {
+          "key": "soak-fx",
+          "fig": "All 6",
+          "label": "FX conversions booked and read back",
+          "note": "In the soak, each before the payment it funded, 19 Nov.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json"
+        },
+        {
           "key": "approval-hash",
           "fig": "797d4483…",
           "label": "signed hash in Airwallex's transfer record",
@@ -57,10 +77,20 @@
           "rec": "docs/demo/main-run.json"
         },
         {
+          "key": "alta-payments",
+          "fig": "86",
+          "label": "payments on Alta, each its own transaction",
+          "note": "The main run, 3 Nov: every one inside the agents' mandates; each linked to Alta's testnet explorer.",
+          "tag": "testnet",
+          "tone": "metal",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-03-main-run-metal-transactions.md",
+          "rec": "docs/demo/main-run.json"
+        },
+        {
           "key": "visa-airi",
           "fig": "EUR 45.00",
-          "label": "paid via Visa and Airi, after Face ID",
-          "note": "A test card, 14 Nov; 1 of 3 purchases paid.",
+          "label": "paid via Airi after Face ID: 1 of 3 purchases",
+          "note": "Visa Intelligent Commerce via Airwallex's Airi, a test card, 14 Nov.",
           "tag": "sandbox",
           "tone": "awx",
           "href": "visa",
@@ -78,7 +108,7 @@
         },
         {
           "key": "awx-endpoints",
-          "fig": "50",
+          "fig": "60",
           "label": "Airwallex endpoints live, of 61",
           "note": "Each with the first record that holds a call to it.",
           "tag": "sandbox",
@@ -133,6 +163,16 @@
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
+          "key": "soak-negatives",
+          "fig": "All 5",
+          "label": "one-cent changes refused before any create",
+          "note": "0 money-moving calls (0 creates); each refusal still read the balance once (5 GET /balances/current). Soak, 19 Nov.",
+          "tag": "sandbox",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json"
+        },
+        {
           "key": "card-cent",
           "fig": "EUR 30.01",
           "label": "one cent over an agent's limit: declined",
@@ -141,6 +181,16 @@
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/airwallex-card-cent-2026-11-15.json",
           "rec": "docs/runs/airwallex-card-cent-2026-11-15.json"
+        },
+        {
+          "key": "visa-refused",
+          "fig": "4",
+          "label": "Visa attempts refused by Purser, before Airi",
+          "note": "0 calls to Airi or Airwallex for any of them; 2 a credential presented again or for another amount. A test card, 14 Nov.",
+          "tag": "sandbox",
+          "tone": "ok",
+          "href": "visa",
+          "rec": "docs/runs/2026-11-14-vic-5.json"
         },
         {
           "key": "passkeys-onchain",

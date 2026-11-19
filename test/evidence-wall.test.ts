@@ -4,11 +4,12 @@
 // inline script or style (the page's CSP).
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { EVIDENCE_WALL_CSS, LLMS_WALL_HEADING, WALL_FILE, committedWall, evidenceWallHtml, evidenceWallLlms, withWallSection, type EvidenceWall, type WallTile } from "../src/redesign/evidenceWall.js";
+import { EVIDENCE_WALL_CSS, LLMS_WALL_HEADING, PARTNER_STRIPS, README_WALL_KEYS, evidenceStripHtml, readmeWallLine, withReadmeWallLine, WALL_FILE, committedWall, evidenceWallHtml, evidenceWallLlms, withWallSection, type EvidenceWall, type WallTile } from "../src/redesign/evidenceWall.js";
 import { evidenceWall, evidenceWallFile } from "../src/redesign/evidenceWallData.js";
 import { liveTryRecords, liveTryTotals, nearestRank, type LiveTryRecord } from "../src/redesign/liveTry.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { proofPage } from "../src/redesign/proof.js";
+import { README_MAP_FILES, evidenceMapSvgFile, readmeMapLine } from "../src/redesign/evidenceMap.js";
 import { countOf } from "../src/redesign/ui.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -45,11 +46,21 @@ describe("the evidence wall's file", () => {
     expect(tile(w, "tamper-matrix").fig).toBe(tm.refused === tm.tried ? `All ${tm.tried.toLocaleString("en-GB")}` : `${tm.refused.toLocaleString("en-GB")} of ${tm.tried.toLocaleString("en-GB")}`);
     const cov = json<{ totals: { live: number; endpoints: number } }>("docs/evidence/airwallex-api-coverage.json").totals;
     expect(tile(w, "awx-endpoints").fig).toBe(String(cov.live));
-    const s = json<{ aggregate: { runs: number; ok: number; refused: number; airwallex: { transfers: number; paid: number }; claude: { entries: number; fallbacks: number } } }>("docs/runs/2026-11-19-live-try/summary.json").aggregate;
-    expect(tile(w, "try-journeys").fig).toBe(countOf(s.ok, s.runs));
-    expect(tile(w, "try-transfers").fig).toBe(countOf(s.airwallex.paid, s.airwallex.transfers));
-    expect(tile(w, "try-cent").fig).toBe(countOf(s.refused, s.runs));
-    expect(tile(w, "try-claude")).toMatchObject({ fig: String(s.claude.fallbacks), label: `fallbacks in ${s.claude.entries} Claude calls on /try` });
+    // The /try walks: every recorded series added up (src/redesign/liveTry.ts; 19 Nov: the morning's 8 and the mega run's 17).
+    const t = liveTryTotals()!;
+    expect(t.records.length).toBeGreaterThanOrEqual(2);
+    expect(tile(w, "try-journeys").fig).toBe(countOf(t.siteStepsPassed, t.runs));
+    expect(tile(w, "try-transfers").fig).toBe(countOf(t.paid, t.transfers));
+    expect(tile(w, "try-cent").fig).toBe(countOf(t.refused, t.runs));
+    expect(tile(w, "try-claude")).toMatchObject({ fig: String(t.claude.fallbacks), label: `fallbacks in ${t.claude.entries} Claude calls on /try` });
+    // Honest about the walks recorded before the reader's request-id fix was deployed.
+    if (t.claude.readerNoId) expect(tile(w, "try-claude").note).toContain(`${t.claude.readerNoId} reader calls were logged with no request id`);
+    if (t.ok !== t.siteStepsPassed) expect(tile(w, "try-journeys").note).toContain(`marked ${countOf(t.ok, t.runs, true)} all ok`);
+    const sk = json<{ summary: { created: number; readback_matches: number; conversions: { planned: number; readback_matches: number }; negatives: { planned: number; refused: number; posts_in_window: number } } }>("docs/runs/2026-11-19-airwallex-soak.json").summary;
+    expect(tile(w, "soak-paid").fig).toBe(countOf(sk.readback_matches, sk.created));
+    expect(tile(w, "soak-fx").fig).toBe(countOf(sk.conversions.readback_matches, sk.conversions.planned));
+    expect(tile(w, "soak-negatives").fig).toBe(countOf(sk.negatives.refused, sk.negatives.planned));
+    expect(tile(w, "soak-negatives").note).toMatch(new RegExp(`^${sk.negatives.posts_in_window} money-moving calls .*each refusal still read the balance once`));
     const rt = json<{ attempts: number; blocked: number; caught_after: number }>("docs/redteam/report.json");
     expect(tile(w, "red-team").fig).toBe(countOf(rt.blocked - rt.caught_after, rt.attempts));
     const bills = json<{ bills: { bill_id: string | null }[] }>("docs/runs/2026-11-19-airwallex-bills.json").bills.filter((b) => b.bill_id);
@@ -127,5 +138,34 @@ describe("llms.txt's evidence section", () => {
     expect(withWallSection(t, section)).toBe(t);
     for (const l of section.split("\n").filter((x) => x.startsWith("- "))) expect(l).toMatch(/\): https:\/\/\S+$/);
     expect(section.split("\n").filter((x) => x.startsWith("- "))).toHaveLength(tiles(committedWall()!).length);
+  });
+});
+
+describe("the README's wall line and the partner pages' strips", () => {
+  it("the README carries the wall's line under the judge path: its figures the wall's own (npm run evidence:wall)", () => {
+    const readme = read("README.md"), line = readmeWallLine(committedWall());
+    expect(readme).toContain(`\n\n${line}\n`);
+    expect(withReadmeWallLine(readme, line, readmeMapLine(committedWall()))).toBe(readme);
+    // The map's two pictures are what the wall's file draws now, with nothing external and a still frame for reduced motion.
+    for (const theme of ["light", "dark"] as const) {
+      const svg = read(README_MAP_FILES[theme]);
+      expect(svg).toBe(evidenceMapSvgFile(theme, committedWall()));
+      expect(svg).not.toMatch(/<script|href=|@import|url\(|<image/i);
+      expect(svg).toContain("@media (prefers-reduced-motion: reduce)");
+    }
+    expect(readme).toContain(readmeMapLine(committedWall()));
+    expect(readme.indexOf(line)).toBeGreaterThan(readme.indexOf("**1. [Watch the demo"));
+    for (const k of README_WALL_KEYS) expect(line).toContain(tile(committedWall()!, k).fig);
+  });
+
+  it("each strip shows the wall's own tiles, links to its group on /proof, and says it is test money", () => {
+    const w = committedWall()!;
+    for (const p of ["airwallex", "alta", "visa"] as const) {
+      const html = evidenceStripHtml(p, {}, w);
+      for (const k of PARTNER_STRIPS[p].keys) expect(html, `${p} ${k}`).toContain(`data-wall="${k}"`);
+      expect(html).toContain(`href="proof#${PARTNER_STRIPS[p].group}"`);
+      expect(html).toMatch(/test money/);
+      expect(html).not.toMatch(/<script|style=|\son[a-z]+=|endorsed by|partnered with/i);
+    }
   });
 });

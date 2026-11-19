@@ -6,7 +6,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { liveTryRecords, liveTryTotals, type LiveTryRecord } from "./liveTry.js";
 import { REPO_BLOB } from "./metalStory.js";
-import { agentRun } from "./run.js";
+import { agentRun, payments } from "./run.js";
+import { METAL_TX_LIST } from "./partners.js";
 import { proofFacts } from "./proof.js";
 import { centHolds, centRecord } from "./cardCent.js";
 import { ownersRun, ownersSteps } from "./metalOnchain.js";
@@ -49,6 +50,13 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
     const paid = bills.filter((b) => b.paid?.status === "PAID" && b.external_id_matches_signed).length;
     out.push({ key: "spend-bills", fig: whole(paid, bills.length), label: "paid invoices made bills in Airwallex Spend", note: `The signed hash as external_id, read back exactly; transfers PAID by the sandbox's simulation, ${day(bl!.audit![0]!.ts)}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-bills.md"), rec: BL });
   }
+  const SK = "docs/runs/2026-11-19-airwallex-soak.json";
+  const sk = json(SK) as { started_at?: string; summary?: { created: number; paid: number; readback_matches: number; conversions: { planned: number; booked: number; readback_matches: number } } } | null;
+  if (sk?.summary?.created) {
+    const m = sk.summary;
+    out.push({ key: "soak-paid", fig: whole(m.readback_matches, m.created), label: "soak payments PAID, signed hash read back", note: `Each read back from Airwallex as signed: hash, amount, payee, reference; PAID by the sandbox's simulation, ${day(sk.started_at!)}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-soak.md"), rec: SK });
+    if (m.conversions.planned) out.push({ key: "soak-fx", fig: whole(m.conversions.readback_matches, m.conversions.planned), label: "FX conversions booked and read back", note: `In the soak, each before the payment it funded, ${day(sk.started_at!)}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-soak.md"), rec: SK });
+  }
   const facts = proofFacts(agentRun());
   const hash = facts.find((f) => f.key === "awx" && f.icon === "lock");
   if (hash) out.push({ key: "approval-hash", fig: hash.fig, label: "signed hash in Airwallex's transfer record", note: "Its approval_sha256 is the hash of the terms the CFO signed.", tag: "sandbox", tone: "awx", href: hash.href, rec: hash.rec ?? "" });
@@ -56,10 +64,12 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
   if (held) out.push({ key: "two-locks", fig: held.fig, label: "held by Airwallex until a person approved", note: `${held.text.replace(/\.$/, "")}; a test passkey signed in Purser, settlement simulated.`, tag: "sandbox", tone: "awx", href: held.href, rec: held.rec ?? "" });
   const alta = facts.find((f) => f.key === "metal");
   if (alta) out.push({ key: "alta-refusal", fig: alta.fig, label: "refused on chain by Alta, over the mandate", note: `On Alta's testnet explorer; the main run, ${day(agentRun().record.recorded_at)}.`, tag: "testnet", tone: "metal", href: alta.href, rec: alta.rec ?? "" });
+  const pay = payments(agentRun().record);
+  if (pay.sums && pay.onChain) out.push({ key: "alta-payments", fig: String(pay.onChain), label: "payments on Alta, each its own transaction", note: `The main run, ${day(agentRun().record.recorded_at)}: every one inside the agents' mandates; each linked to Alta's testnet explorer.`, tag: "testnet", tone: "metal", href: blob(METAL_TX_LIST), rec: agentRun().file });
   const v = vic3Run();
   if (v) {
     const s = vic3Summary(v), fid = s.paidFaceId[0]?.request;
-    if (fid) out.push({ key: "visa-airi", fig: `${fid.currency} ${fid.amount}`, label: "paid via Visa and Airi, after Face ID", note: `A test card, ${s.date}; ${whole(s.paid, s.of).toLowerCase()} purchases paid.`, tag: "sandbox", tone: "awx", href: "visa", rec: VIC3_RUN_FILE });
+    if (fid) out.push({ key: "visa-airi", fig: `${fid.currency} ${fid.amount}`, label: `paid via Airi after Face ID: ${whole(s.paid, s.of).toLowerCase()} purchases`, note: `Visa Intelligent Commerce via Airwallex's Airi, a test card, ${s.date}.`, tag: "sandbox", tone: "awx", href: "visa", rec: VIC3_RUN_FILE });
   }
   const LF = "docs/runs/2026-11-17-airwallex-late-failure.json";
   const lf = json(LF) as { transfers?: unknown[]; audit?: { ts: string }[]; calls?: { by_endpoint?: { endpoint: string; calls: number }[] } } | null;
@@ -81,10 +91,22 @@ function forged(w: ReturnType<typeof walks>): WallTile[] {
     out.push({ key: "try-hash", fig: whole(w.t.approvalsMatching, w.t.runs), label: "approvals whose hash Airwallex carries", note: `The public /try, ${w.when}.`, tag: "sandbox", tone: "awx", href: w.href, rec: w.rec });
     if (w.t.proofs) out.push({ key: "try-proofs", fig: whole(w.t.proofsValid, w.t.proofs), label: "proof files VALID, browser and offline", note: "Downloaded from /try; npm run verify-bundle agrees.", tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
   }
+  const SK = "docs/runs/2026-11-19-airwallex-soak.json";
+  const skn = (json(SK) as { started_at?: string; summary?: { negatives?: { planned: number; refused: number; posts_in_window: number; creates_in_window: number; calls_in_window: number; by_endpoint_in_window?: Record<string, number> } } } | null);
+  const neg = skn?.summary?.negatives;
+  if (neg?.planned) {
+    const reads = Object.entries(neg.by_endpoint_in_window ?? {}).map(([e, c]) => `${c} ${e}`).join(", ");
+    out.push({ key: "soak-negatives", fig: whole(neg.refused, neg.planned), label: "one-cent changes refused before any create", note: `${neg.posts_in_window} money-moving calls (${neg.creates_in_window} creates); each refusal still read the balance once (${reads || `${neg.calls_in_window} calls`}). Soak, ${day(skn!.started_at!)}.`, tag: "sandbox", tone: "ok", href: blob("docs/runs/2026-11-19-airwallex-soak.md"), rec: SK });
+  }
   const cent = centRecord();
   if (cent && centHolds(cent.rec)) {
     const b = cent.rec.attempts[1]!;
     out.push({ key: "card-cent", fig: `EUR ${(b.amount_cents / 100).toFixed(2)}`, label: "one cent over an agent's limit: declined", note: `Simulated card charges, ${day(cent.rec.ran_at)}.`, tag: "sandbox", tone: "awx", href: blob(cent.file), rec: cent.file });
+  }
+  const vr = vic3Run();
+  if (vr) {
+    const s5 = vic3Summary(vr);
+    if (s5.byPurser.length) out.push({ key: "visa-refused", fig: String(s5.byPurser.length), label: "Visa attempts refused by Purser, before Airi", note: `0 calls to Airi or Airwallex for any of them${s5.credentialRefused.length ? `; ${s5.credentialRefused.length} a credential presented again or for another amount` : ""}. A test card, ${s5.date}.`, tag: "sandbox", tone: "ok", href: "visa", rec: VIC3_RUN_FILE });
   }
   const owners = ownersRun();
   if (owners) {

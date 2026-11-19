@@ -31,7 +31,7 @@ export function evidenceMap(w: EvidenceWall | null = committedWall()): EvidenceM
   };
   const node = (id: string, title: string, sub: string, group: string, tone: Tone, b: string | null): MapNode => ({ id, title, sub, group, tone, badge: b });
   const main = [
-    node("invoice", "Invoice in", "a PDF in the inbox", "ev-scale", "", badge(["try-journeys", "/try walks"])),
+    node("invoice", "Invoice in", "a PDF in the inbox", "ev-scale", "", badge(["try-journeys", "/try walks passed"])),
     node("claude", "Claude reads", "Haiku; each call's request id", "ev-ai", "claude", badge(["claude-main", "decisions"], ["try-claude", "fallbacks"])),
     node("rules", "Purser's rules", "limit, bank details, duplicates, cash floor", "ev-ai", "ok", badge(["worst-case", "wrong payments"])),
     node("passkey", "Passkey signs", "SHA-256 of the exact terms", "ev-forged", "ok", badge(["tamper-matrix", "forgeries refused"])),
@@ -59,37 +59,42 @@ export function wrap(text: string, max: number): string[] {
   return out;
 }
 
-interface Box { n: MapNode; x: number; y: number; w: number; h: number; sub: string[]; badge: string[] }
+interface Box { n: MapNode; x: number; y: number; w: number; h: number; title?: string[]; sub: string[]; badge: string[] }
 interface Layout { variant: "wide" | "tall"; vw: number; vh: number; boxes: Box[]; pills: Box[]; lines: string[]; branch: { cls: string; d: string }[]; dots: { cls: string; d: string }[]; hits: { id: string; at: number }[]; pillHits: { id: string; at: number }[] }
 
 const T = 6; // seconds a loop
 const MOVE = 0.8; // the share of a loop the dot moves (then it fades)
 const DELAY = { ok: 0, bad: 2, hold: 4 } as const;
-const LH = { title: 18, sub: 14, badge: 14 };
-const PAD = 10;
+/** The drawing's sizes: /proof's (PAGE), or the README's larger type (README_MAP), from which every box is laid out. */
+export interface Metrics { titleCharW: number; pad: number; lh: { title: number; sub: number; badge: number }; size: { title: number; sub: number; badge: number }; mw: number; rw: number; gap: number; pillMin: number; railGap: number; charW: number; dot: number; halo: number }
+const PAGE: Metrics = { titleCharW: 0.5, pad: 10, lh: { title: 18, sub: 14, badge: 14 }, size: { title: 14, sub: 11.5, badge: 11.5 }, mw: 128, rw: 170, gap: 30, pillMin: 50, railGap: 8, charW: 0.49, dot: 10, halo: 16 };
+/** The README's drawing: about 1,250 units wide, shown at GitHub's ~900 px, so its smallest text (19.5 units) reads at 14 px or more. */
+export const README_MAP: Metrics = { titleCharW: 0.55, pad: 13, lh: { title: 28, sub: 24, badge: 24 }, size: { title: 22, sub: 19.5, badge: 19.5 }, mw: 150, rw: 200, gap: 24, pillMin: 62, railGap: 10, charW: 0.5, dot: 14, halo: 22 };
+const PAD = PAGE.pad;
 
 /** A box's height: its title, its sub-line(s), its badge pill. */
-const heightOf = (sub: string[], badge: string[]) => PAD + LH.title + sub.length * LH.sub + (badge.length ? 6 + badge.length * LH.badge + 8 : 0) + PAD;
-const pillHeight = (lines: string[]) => Math.max(50, 10 + lines.length * LH.badge + 8);
+const heightOf = (M: Metrics, sub: string[], badge: string[], title = 1) => M.pad + title * M.lh.title + sub.length * M.lh.sub + (badge.length ? 6 + badge.length * M.lh.badge + 8 : 0) + M.pad;
+const pillHeight = (M: Metrics, lines: string[]) => Math.max(M.pillMin, 10 + lines.length * M.lh.badge + 8);
 
-function wide(m: EvidenceMap): Layout {
-  const W = 1120, mw = 128, rw = 170, gap = 30;
-  const chars = (w: number, size: number) => Math.floor((w - 2 * PAD) / (size * 0.49));
-  const mk = (n: MapNode, w: number, withSub = true): Box => ({ n, x: 0, y: 0, w, h: 0, sub: withSub ? wrap(n.sub, chars(w, 11.5)) : [], badge: n.badge ? wrap(n.badge, chars(w - 8, 11.5)) : [] });
+function wide(m: EvidenceMap, M: Metrics = PAGE): Layout {
+  const { mw, rw, gap } = M;
+  const chars = (w: number, size: number) => Math.floor((w - 2 * M.pad) / (size * M.charW));
+  const mk = (n: MapNode, w: number, withSub = true): Box => ({ n, x: 0, y: 0, w, h: 0, title: wrap(n.title, Math.floor((w - 2 * M.pad) / (M.size.title * M.titleCharW))), sub: withSub ? wrap(n.sub, chars(w, M.size.sub)) : [], badge: n.badge ? wrap(n.badge, chars(w - 8, M.size.badge)) : [] });
   const main = m.main.map((n) => mk(n, mw)), rails = m.rails.map((n) => mk(n, rw, false));
-  const H = Math.max(...main.map((b) => heightOf(b.sub, b.badge))), RH = Math.max(...rails.map((b) => heightOf(b.sub, b.badge)));
-  const top = 4, colH = 3 * RH + 16, cy = top + colH / 2;
+  const H = Math.max(...main.map((b) => heightOf(M, b.sub, b.badge, b.title!.length))), RH = Math.max(...rails.map((b) => heightOf(M, b.sub, b.badge, b.title!.length)));
+  const top = 4, colH = 3 * RH + 2 * M.railGap, cy = top + colH / 2;
   // x of each column: the four steps, the rails, the last two.
   const xs = [0, 1, 2, 3].map((i) => i * (mw + gap)), rx = 4 * (mw + gap), after = [rx + rw + gap, rx + rw + gap + mw + gap];
   [...main.slice(0, 4).map((b, i) => [b, xs[i]!] as const), [main[4]!, after[0]!] as const, [main[5]!, after[1]!] as const].forEach(([b, x]) => Object.assign(b, { x, y: cy - H / 2, h: H }));
-  rails.forEach((b, i) => Object.assign(b, { x: rx, y: top + i * (RH + 8), h: RH }));
+  rails.forEach((b, i) => Object.assign(b, { x: rx, y: top + i * (RH + M.railGap), h: RH }));
+  const W = after[1]! + mw + 2;
   const c = (b: Box) => b.x + b.w / 2, mid = (b: Box) => b.y + b.h / 2;
   const [, , rules, passkey] = main as [Box, Box, Box, Box];
   const x0 = c(main[0]!), x1 = c(main[5]!), bottom = cy + H / 2, pillTop = bottom + 28;
   const pill = (n: MapNode | null, b: Box): Box[] => {
     if (!n?.badge) return [];
-    const lines = wrap(n.badge, chars(mw, 11.5));
-    return [{ n, x: b.x, y: pillTop, w: mw, h: pillHeight(lines), sub: [], badge: lines }];
+    const lines = wrap(n.badge, chars(mw, M.size.badge));
+    return [{ n, x: b.x, y: pillTop, w: mw, h: pillHeight(M, lines), sub: [], badge: lines }];
   };
   const pills = [...pill(m.held, rules), ...pill(m.refused, passkey)];
   const vh = Math.ceil(Math.max(top + colH, ...pills.map((p) => p.y + p.h)) + 4);
@@ -119,12 +124,12 @@ function tall(m: EvidenceMap): Layout {
   // The steps in order, the rails between the signature and the bundle, Airwallex first.
   const order = [...m.main.slice(0, 4), m.rails[1]!, m.rails[0]!, m.rails[2]!, ...m.main.slice(4)].map(mk);
   let y = 4;
-  order.forEach((b, i) => { b.h = heightOf(b.sub, b.badge); b.y = y; y += b.h + (i >= 4 && i < 6 ? 8 : gap); });
+  order.forEach((b, i) => { b.h = heightOf(PAGE, b.sub, b.badge); b.y = y; y += b.h + (i >= 4 && i < 6 ? 8 : gap); });
   const end = y - gap;
   const mid = (b: Box) => b.y + b.h / 2, by = (id: string) => order.find((b) => b.n.id === id)!;
   const pill = (n: MapNode | null, at: Box): Box[] => {
     if (!n?.badge) return [];
-    const lines = wrap(n.badge, chars(pw, 11.5)), h = pillHeight(lines);
+    const lines = wrap(n.badge, chars(pw, 11.5)), h = pillHeight(PAGE, lines);
     return [{ n, x: px, y: mid(at) - h / 2, w: pw, h, sub: [], badge: lines }];
   };
   const rules = by("rules"), passkey = by("passkey");
@@ -147,23 +152,29 @@ function tall(m: EvidenceMap): Layout {
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
-function svg(l: Layout): string {
+/** The baseline below a line's top, for text of this size (the font's ascent). */
+const asc = (size: number) => Math.round(size * 0.93);
+
+function svg(l: Layout, M: Metrics = PAGE, o: { links?: boolean; head?: string; root?: string } = {}): string {
+  const links = o.links ?? true;
   const text = (x: number, y: number, cls: string, s: string) => `<text class="${cls}" x="${r1(x)}" y="${r1(y)}">${esc(s)}</text>`;
+  // A step: a link to its wall group on /proof; a plain group in a picture (the README's), where links do not work.
+  const wrapIn = (cls: string, href: string, label: string, inner: string) => (links ? `<a class="${cls}" href="#${esc(href)}" aria-label="${esc(label)}">${inner}</a>` : `<g class="${cls}">${inner}</g>`);
   const box = (b: Box) => {
     const label = [b.n.title, b.n.sub, b.n.badge].filter(Boolean).join(". ");
-    let y = b.y + PAD + 13;
-    const parts = [`<rect class="em-box" x="${r1(b.x + 0.5)}" y="${r1(b.y + 0.5)}" width="${b.w - 1}" height="${r1(b.h - 1)}" rx="10"/>`, text(b.x + PAD, y, "em-t", b.n.title)];
-    y += LH.title - 13 + 11;
-    for (const s of b.sub) { parts.push(text(b.x + PAD, y, "em-s", s)); y += LH.sub; }
+    const titles = b.title ?? [b.n.title];
+    const parts = [`<rect class="em-box" x="${r1(b.x + 0.5)}" y="${r1(b.y + 0.5)}" width="${b.w - 1}" height="${r1(b.h - 1)}" rx="10"/>`, ...titles.map((t, i) => text(b.x + M.pad, b.y + M.pad + asc(M.size.title) + i * M.lh.title, "em-t", t))];
+    let y = b.y + M.pad + titles.length * M.lh.title + asc(M.size.sub) - 1;
+    for (const s of b.sub) { parts.push(text(b.x + M.pad, y, "em-s", s)); y += M.lh.sub; }
     if (b.badge.length) {
-      const top = y - 11 + 6, h = b.badge.length * LH.badge + 8;
-      parts.push(`<rect class="em-bg" x="${r1(b.x + PAD - 4)}" y="${r1(top)}" width="${b.w - 2 * PAD + 8}" height="${h}" rx="7"/>`);
-      b.badge.forEach((s, i) => parts.push(text(b.x + PAD, top + 4 + 11 + i * LH.badge, "em-v", s)));
+      const top = y - asc(M.size.sub) + 6, h = b.badge.length * M.lh.badge + 8;
+      parts.push(`<rect class="em-bg" x="${r1(b.x + M.pad - 4)}" y="${r1(top)}" width="${b.w - 2 * M.pad + 8}" height="${h}" rx="7"/>`);
+      b.badge.forEach((s, i) => parts.push(text(b.x + M.pad, top + 4 + asc(M.size.badge) - 1 + i * M.lh.badge, "em-v", s)));
     }
-    return `<a class="em-n${b.n.tone ? ` ${b.n.tone}` : ""} em-h-${b.n.id}" href="#${esc(b.n.group)}" aria-label="${esc(label)}">${parts.join("")}</a>`;
+    return wrapIn(`em-n${b.n.tone ? ` ${b.n.tone}` : ""} em-h-${b.n.id}`, b.n.group, label, parts.join(""));
   };
-  const pill = (p: Box) => `<a class="em-p ${p.n.id} em-h-${p.n.id}" href="#${esc(p.n.group)}" aria-label="${esc(`${p.n.title}: ${p.n.badge}`)}"><rect class="em-pb" x="${r1(p.x + 0.5)}" y="${r1(p.y + 0.5)}" width="${p.w - 1}" height="${r1(p.h - 1)}" rx="10"/>${p.badge.map((s, i) => text(p.x + 8, p.y + 10 + 11 + i * LH.badge, "em-v", s)).join("")}</a>`;
-  return `<svg class="em-${l.variant}" viewBox="0 0 ${l.vw} ${l.vh}" width="${l.vw}" height="${l.vh}" role="group" aria-label="${esc("The money path, with the evidence for each step")}">
+  const pill = (p: Box) => wrapIn(`em-p ${p.n.id} em-h-${p.n.id}`, p.n.group, `${p.n.title}: ${p.n.badge}`, `<rect class="em-pb" x="${r1(p.x + 0.5)}" y="${r1(p.y + 0.5)}" width="${p.w - 1}" height="${r1(p.h - 1)}" rx="10"/>${p.badge.map((s, i) => text(p.x + 8, p.y + 10 + asc(M.size.badge) - 1 + i * M.lh.badge, "em-v", s)).join("")}`);
+  return `<svg class="em-${l.variant}" viewBox="0 0 ${l.vw} ${l.vh}" width="${l.vw}" height="${l.vh}" ${o.root ?? `role="group" aria-label="${esc("The money path, with the evidence for each step")}"`}>${o.head ?? ""}
 ${l.lines.map((d) => `<path class="em-line" d="${d}"/>`).join("")}${l.branch.map((b) => `<path class="em-br ${b.cls}" d="${b.d}"/>`).join("")}
 ${l.boxes.map(box).join("\n")}
 ${l.pills.map(pill).join("\n")}
@@ -184,10 +195,6 @@ export function evidenceMapHtml(w: EvidenceWall | null = committedWall()): strin
  */
 export function evidenceMapCss(w: EvidenceWall | null = committedWall()): string {
   const m = evidenceMap(w);
-  const timing = m ? [wide(m), tall(m)].flatMap((l) => [
-    ...l.hits.map((h) => `.emap svg.em-${l.variant} .em-h-${h.id} .em-box { animation: em-glow ${T}s linear ${(h.at * MOVE * T).toFixed(2)}s infinite; }`),
-    ...l.pillHits.map((h) => `.emap svg.em-${l.variant} .em-h-${h.id} .em-pb { animation: em-glow-${h.id === "held" ? "held" : "bad"} ${T}s linear ${(DELAY[h.id === "held" ? "hold" : "bad"] + h.at * MOVE * T).toFixed(2)}s infinite; }`),
-  ]) : [];
   return `
 .emap { margin: 6px 0 22px; --held: #b45309; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .emap { --held: #fbbf24; } }
@@ -196,34 +203,85 @@ export function evidenceMapCss(w: EvidenceWall | null = committedWall()): string
 .emap svg.em-tall { display: none; max-width: 420px; }
 @media (max-width: 760px) { .emap svg.em-wide { display: none; } .emap svg.em-tall { display: block; } }
 .emap figcaption { margin: 8px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--muted); }
-.emap .em-line { fill: none; stroke: var(--border); stroke-width: 2; }
-.emap .em-br { fill: none; stroke-width: 2; stroke-dasharray: 5 4; }
-.emap .em-br.held { stroke: var(--held); } .emap .em-br.bad { stroke: var(--bad); }
-.emap .em-n { --pc: var(--accent); --ps: var(--accent-soft); }
-.emap .em-n.awx { --pc: var(--awx); --ps: var(--awx-soft); } .emap .em-n.metal { --pc: var(--metal); --ps: var(--metal-soft); }
-.emap .em-n.claude { --pc: var(--claude); --ps: var(--claude-soft); } .emap .em-n.ok { --pc: var(--ok); --ps: var(--ok-soft); }
-.emap .em-box { fill: var(--surface); stroke: var(--border); stroke-width: 1.2; }
 .emap .em-n:hover .em-box, .emap .em-n:focus-visible .em-box { stroke: var(--pc); stroke-width: 2.5; }
-.emap .em-t { fill: var(--text); font-size: 14px; font-weight: 740; }
-.emap .em-s { fill: var(--muted); font-size: 11.5px; }
-.emap .em-bg { fill: var(--ps); }
-.emap .em-v { fill: var(--pc); font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.emap .em-p.held { --pc: var(--held); } .emap .em-p.refused { --pc: var(--bad); }
-.emap .em-pb { fill: var(--surface); stroke: var(--pc); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .emap .em-p:hover .em-pb, .emap .em-p:focus-visible .em-pb { stroke-width: 2.5; stroke-dasharray: none; }
 .emap a:focus-visible { outline: none; }
+${m ? mapRules(".emap ", PAGE, [wide(m), tall(m)]) : ""}`;
+}
+
+/** The drawing's own rules (colours from the custom properties, sizes from M), each selector after `prefix`. */
+function mapRules(prefix: string, M: Metrics, layouts: Layout[]): string {
+  const P = prefix;
+  const timing = layouts.flatMap((l) => [
+    ...l.hits.map((h) => `${P}svg.em-${l.variant} .em-h-${h.id} .em-box { animation: em-glow ${T}s linear ${(h.at * MOVE * T).toFixed(2)}s infinite; }`),
+    ...l.pillHits.map((h) => `${P}svg.em-${l.variant} .em-h-${h.id} .em-pb { animation: em-glow-${h.id === "held" ? "held" : "bad"} ${T}s linear ${(DELAY[h.id === "held" ? "hold" : "bad"] + h.at * MOVE * T).toFixed(2)}s infinite; }`),
+  ]);
+  return `${P}.em-line { fill: none; stroke: var(--border); stroke-width: 2; }
+${P}.em-br { fill: none; stroke-width: 2; stroke-dasharray: 5 4; }
+${P}.em-br.held { stroke: var(--held); } ${P}.em-br.bad { stroke: var(--bad); }
+${P}.em-n { --pc: var(--accent); --ps: var(--accent-soft); }
+${P}.em-n.awx { --pc: var(--awx); --ps: var(--awx-soft); } ${P}.em-n.metal { --pc: var(--metal); --ps: var(--metal-soft); }
+${P}.em-n.claude { --pc: var(--claude); --ps: var(--claude-soft); } ${P}.em-n.ok { --pc: var(--ok); --ps: var(--ok-soft); }
+${P}.em-box { fill: var(--surface); stroke: var(--border); stroke-width: 1.2; }
+${P}.em-t { fill: var(--text); font-size: ${M.size.title}px; font-weight: 740; }
+${P}.em-s { fill: var(--muted); font-size: ${M.size.sub}px; }
+${P}.em-bg { fill: var(--ps); }
+${P}.em-v { fill: var(--pc); font-size: ${M.size.badge}px; font-weight: 700; font-variant-numeric: tabular-nums; }
+${P}.em-p.held { --pc: var(--held); } ${P}.em-p.refused { --pc: var(--bad); }
+${P}.em-pb { fill: var(--surface); stroke: var(--pc); stroke-width: 1.5; stroke-dasharray: 5 4; }
 /* The dots: a zero-length dash with a round cap, moved along the path by its offset. Hidden when still. */
-.emap .em-dot { fill: none; stroke-width: 10; stroke-linecap: round; stroke-dasharray: 0 1000; opacity: 0; pointer-events: none; }
-.emap .em-dot.ok { stroke: var(--ok); } .emap .em-dot.bad { stroke: var(--bad); } .emap .em-dot.hold { stroke: var(--held); }
-.emap .em-dot.halo { stroke: var(--surface); stroke-width: 16; }
+${P}.em-dot { fill: none; stroke-width: ${M.dot}; stroke-linecap: round; stroke-dasharray: 0 1000; opacity: 0; pointer-events: none; }
+${P}.em-dot.ok { stroke: var(--ok); } ${P}.em-dot.bad { stroke: var(--bad); } ${P}.em-dot.hold { stroke: var(--held); }
+${P}.em-dot.halo { stroke: var(--surface); stroke-width: ${M.halo}; }
 @media (prefers-reduced-motion: no-preference) {
-  .emap .em-dot { animation: em-move ${T}s linear infinite; }
-  .emap .em-dot.bad { animation-delay: ${DELAY.bad}s; } .emap .em-dot.hold { animation-delay: ${DELAY.hold}s; }
+  ${P}.em-dot { animation: em-move ${T}s linear infinite; }
+  ${P}.em-dot.bad { animation-delay: ${DELAY.bad}s; } ${P}.em-dot.hold { animation-delay: ${DELAY.hold}s; }
   ${timing.join("\n  ")}
 }
+@media (prefers-reduced-motion: reduce) { ${P}.em-dot, ${P}.em-box, ${P}.em-pb { animation: none; } }
 @keyframes em-move { 0% { stroke-dashoffset: 0; opacity: 0; } 3% { opacity: 1; } ${MOVE * 100}% { stroke-dashoffset: -100; opacity: 1; } ${MOVE * 100 + 6}%, 100% { stroke-dashoffset: -100; opacity: 0; } }
 @keyframes em-glow { 0% { stroke: var(--pc); stroke-width: 3; } 12%, 100% { stroke: var(--border); stroke-width: 1.2; } }
 @keyframes em-glow-held { 0% { stroke-width: 3.5; stroke-dasharray: none; } 15%, 100% { stroke-width: 1.5; stroke-dasharray: 5 4; } }
 @keyframes em-glow-bad { 0% { stroke-width: 3.5; stroke-dasharray: none; } 15%, 100% { stroke-width: 1.5; stroke-dasharray: 5 4; } }
 `;
+}
+
+/** The colours of the site's two themes (src/redesign/ui.ts TOKENS), for a picture that cannot read them. */
+const THEME: Record<"light" | "dark", Record<string, string>> = {
+  light: { surface: "#ffffff", border: "#d5d9e1", text: "#0b1220", muted: "#586174", accent: "#4f46e5", "accent-soft": "#eef0ff", ok: "#0b7d43", "ok-soft": "#e6f6ee", bad: "#c5363c", held: "#b45309", awx: "#ad4a0c", "awx-soft": "#fdf0e7", metal: "#0b7a70", "metal-soft": "#e3f5f2", claude: "#a84d2b", "claude-soft": "#fbefe9" },
+  dark: { surface: "#12151d", border: "#2f3542", text: "#eef1f6", muted: "#a4adbd", accent: "#8b85ff", "accent-soft": "#23224a", ok: "#3ccf82", "ok-soft": "#12291e", bad: "#ff6b70", held: "#fbbf24", awx: "#ff8a4c", "awx-soft": "#33200f", metal: "#2dd4bf", "metal-soft": "#0f2a28", claude: "#ef9a76", "claude-soft": "#33221b" },
+};
+export const README_MAP_FILES = { light: "docs/assets/readme/evidence-map-light.svg", dark: "docs/assets/readme/evidence-map-dark.svg" } as const;
+
+/** The README's words for the drawing (its alt text): the path and every figure on it, from the same data. */
+export function evidenceMapAlt(w: EvidenceWall | null = committedWall()): string {
+  const m = evidenceMap(w);
+  if (!m) return "";
+  // Short (the README's word budget): each step's title and its badge, the two branches, what is simulated.
+  const step = (n: MapNode) => `${n.title}${n.badge ? ` (${n.badge})` : ""}`;
+  return `Animated money path: ${[...m.main.slice(0, 4), ...m.rails, ...m.main.slice(4)].map(step).join("; ")}.${m.refused?.badge ? ` Refused: ${m.refused.badge}.` : ""}${m.held?.badge ? ` Held: ${m.held.badge}.` : ""} Test money.`;
+}
+
+/** The README's line with the map: light and dark pictures, linked to the wall on /proof, the path and figures as its alt. */
+export function readmeMapLine(w: EvidenceWall | null = committedWall()): string {
+  const alt = evidenceMapAlt(w);
+  if (!alt) return "";
+  return `<a href="https://kit11.max-31b.workers.dev/proof#evidence"><picture><source media="(prefers-color-scheme: dark)" srcset="${README_MAP_FILES.dark}"><img src="${README_MAP_FILES.light}" alt="${esc(alt)}" width="100%"></picture></a>`;
+}
+
+/**
+ * The map as a picture for the README (npm run evidence:wall writes both files): the wide drawing in README_MAP's sizes,
+ * the theme's colours and a system font inside, CSS keyframes inside, nothing external; under prefers-reduced-motion the
+ * dots stay hidden.
+ */
+export function evidenceMapSvgFile(theme: "light" | "dark", w: EvidenceWall | null = committedWall()): string {
+  const m = evidenceMap(w);
+  if (!m) return "";
+  const l = wide(m, README_MAP);
+  const vars = Object.entries(THEME[theme]).map(([k, v]) => `--${k}: ${v};`).join(" ");
+  const style = `<style>
+svg.em-wide { ${vars} font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+${mapRules("", README_MAP, [l])}</style>`;
+  const head = `<title>${esc("Purser: the money path and its evidence")}</title><desc>${esc(evidenceMapAlt(w))}</desc>${style}`;
+  return `${svg(l, README_MAP, { links: false, head, root: `xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d"` }).replace("<title>", '<title id="t">').replace("<desc>", '<desc id="d">')}\n`;
 }

@@ -236,7 +236,9 @@ describe("the payments, the refusal and the replace", () => {
   });
 
   it("links in sight only the records' own transactions and account, the payment check, the check of 12 November and the inspector", () => {
-    const links = hrefs(top);
+    // 19 Nov: the "Live on Alta" strip's links are the evidence wall's (each tile's record, and the wall's group on
+    // /proof), held to docs/evidence/evidence-wall.json by test/evidence-wall.test.ts; the rest is held here.
+    const links = hrefs(top.replace(/<section class="ewall pstrip"[\s\S]*?<\/section>/, ""));
     expect(links.length).toBeGreaterThanOrEqual(10);
     for (const h of links) {
       // 12 Nov (jury check): "Since 12 Nov it does" leads to the Face ID on chain section on this page; 13 Nov: the

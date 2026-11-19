@@ -1,0 +1,52 @@
+<svg class="em-wide" viewBox="0 0 1246 466" width="1246" height="466" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d"><title id="t">Purser: the money path and its evidence</title><desc id="d">Animated money path: Invoice in (24 of 25 /try walks passed); Claude reads (24 decisions · 0 fallbacks); Purser's rules (0 vs 35 wrong payments); Passkey signs (All 894 forgeries refused); Alta (#24 refused on chain); Airwallex (All 50 PAID · 60 endpoints live); Visa via Airi (EUR 45.00 after Face ID); Proof bundle (All 48 proofs VALID); Anyone verifies (189 checks passed). Refused: All 25 one-cent changes refused. Held: 24 of 25 held at the cash floor. Test money.</desc><style>
+svg.em-wide { --surface: #12151d; --border: #2f3542; --text: #eef1f6; --muted: #a4adbd; --accent: #8b85ff; --accent-soft: #23224a; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --held: #fbbf24; --awx: #ff8a4c; --awx-soft: #33200f; --metal: #2dd4bf; --metal-soft: #0f2a28; --claude: #ef9a76; --claude-soft: #33221b; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+.em-line { fill: none; stroke: var(--border); stroke-width: 2; }
+.em-br { fill: none; stroke-width: 2; stroke-dasharray: 5 4; }
+.em-br.held { stroke: var(--held); } .em-br.bad { stroke: var(--bad); }
+.em-n { --pc: var(--accent); --ps: var(--accent-soft); }
+.em-n.awx { --pc: var(--awx); --ps: var(--awx-soft); } .em-n.metal { --pc: var(--metal); --ps: var(--metal-soft); }
+.em-n.claude { --pc: var(--claude); --ps: var(--claude-soft); } .em-n.ok { --pc: var(--ok); --ps: var(--ok-soft); }
+.em-box { fill: var(--surface); stroke: var(--border); stroke-width: 1.2; }
+.em-t { fill: var(--text); font-size: 22px; font-weight: 740; }
+.em-s { fill: var(--muted); font-size: 19.5px; }
+.em-bg { fill: var(--ps); }
+.em-v { fill: var(--pc); font-size: 19.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.em-p.held { --pc: var(--held); } .em-p.refused { --pc: var(--bad); }
+.em-pb { fill: var(--surface); stroke: var(--pc); stroke-width: 1.5; stroke-dasharray: 5 4; }
+/* The dots: a zero-length dash with a round cap, moved along the path by its offset. Hidden when still. */
+.em-dot { fill: none; stroke-width: 14; stroke-linecap: round; stroke-dasharray: 0 1000; opacity: 0; pointer-events: none; }
+.em-dot.ok { stroke: var(--ok); } .em-dot.bad { stroke: var(--bad); } .em-dot.hold { stroke: var(--held); }
+.em-dot.halo { stroke: var(--surface); stroke-width: 22; }
+@media (prefers-reduced-motion: no-preference) {
+  .em-dot { animation: em-move 6s linear infinite; }
+  .em-dot.bad { animation-delay: 2s; } .em-dot.hold { animation-delay: 4s; }
+  svg.em-wide .em-h-invoice .em-box { animation: em-glow 6s linear -0.35s infinite; }
+  svg.em-wide .em-h-claude .em-box { animation: em-glow 6s linear 0.47s infinite; }
+  svg.em-wide .em-h-rules .em-box { animation: em-glow 6s linear 1.29s infinite; }
+  svg.em-wide .em-h-passkey .em-box { animation: em-glow 6s linear 2.11s infinite; }
+  svg.em-wide .em-h-bundle .em-box { animation: em-glow 6s linear 3.98s infinite; }
+  svg.em-wide .em-h-verify .em-box { animation: em-glow 6s linear 4.80s infinite; }
+  svg.em-wide .em-h-airwallex .em-box { animation: em-glow 6s linear 2.93s infinite; }
+  svg.em-wide .em-h-held .em-pb { animation: em-glow-held 6s linear 8.80s infinite; }
+  svg.em-wide .em-h-refused .em-pb { animation: em-glow-bad 6s linear 6.80s infinite; }
+}
+@media (prefers-reduced-motion: reduce) { .em-dot, .em-box, .em-pb { animation: none; } }
+@keyframes em-move { 0% { stroke-dashoffset: 0; opacity: 0; } 3% { opacity: 1; } 80% { stroke-dashoffset: -100; opacity: 1; } 86%, 100% { stroke-dashoffset: -100; opacity: 0; } }
+@keyframes em-glow { 0% { stroke: var(--pc); stroke-width: 3; } 12%, 100% { stroke: var(--border); stroke-width: 1.2; } }
+@keyframes em-glow-held { 0% { stroke-width: 3.5; stroke-dasharray: none; } 15%, 100% { stroke-width: 1.5; stroke-dasharray: 5 4; } }
+@keyframes em-glow-bad { 0% { stroke-width: 3.5; stroke-dasharray: none; } 15%, 100% { stroke-width: 1.5; stroke-dasharray: 5 4; } }
+</style>
+<path class="em-line" d="M75 188 H1169"/><path class="em-line" d="M672 188 C690 188 678 62 696 62"/><path class="em-line" d="M672 188 C690 188 678 314 696 314"/><path class="em-line" d="M896 62 C914 62 902 188 920 188"/><path class="em-line" d="M896 314 C914 314 902 188 920 188"/><path class="em-br held" d="M423 320 V348"/><path class="em-br bad" d="M597 320 V348"/>
+<g class="em-n em-h-invoice"><rect class="em-box" x="0.5" y="56.5" width="149" height="263" rx="10"/><text class="em-t" x="13" y="89">Invoice in</text><text class="em-s" x="13" y="114">a PDF in the</text><text class="em-s" x="13" y="138">inbox</text><rect class="em-bg" x="9" y="150" width="132" height="80" rx="7"/><text class="em-v" x="13" y="171">24 of 25</text><text class="em-v" x="13" y="195">/try walks</text><text class="em-v" x="13" y="219">passed</text></g>
+<g class="em-n claude em-h-claude"><rect class="em-box" x="174.5" y="56.5" width="149" height="263" rx="10"/><text class="em-t" x="187" y="89">Claude</text><text class="em-t" x="187" y="117">reads</text><text class="em-s" x="187" y="142">Haiku; each</text><text class="em-s" x="187" y="166">call's</text><text class="em-s" x="187" y="190">request id</text><rect class="em-bg" x="183" y="202" width="132" height="80" rx="7"/><text class="em-v" x="187" y="223">24</text><text class="em-v" x="187" y="247">decisions ·</text><text class="em-v" x="187" y="271">0 fallbacks</text></g>
+<g class="em-n ok em-h-rules"><rect class="em-box" x="348.5" y="56.5" width="149" height="263" rx="10"/><text class="em-t" x="361" y="89">Purser's</text><text class="em-t" x="361" y="117">rules</text><text class="em-s" x="361" y="142">limit, bank</text><text class="em-s" x="361" y="166">details,</text><text class="em-s" x="361" y="190">duplicates,</text><text class="em-s" x="361" y="214">cash floor</text><rect class="em-bg" x="357" y="226" width="132" height="80" rx="7"/><text class="em-v" x="361" y="247">0 vs 35</text><text class="em-v" x="361" y="271">wrong</text><text class="em-v" x="361" y="295">payments</text></g>
+<g class="em-n ok em-h-passkey"><rect class="em-box" x="522.5" y="56.5" width="149" height="263" rx="10"/><text class="em-t" x="535" y="89">Passkey</text><text class="em-t" x="535" y="117">signs</text><text class="em-s" x="535" y="142">SHA-256 of</text><text class="em-s" x="535" y="166">the exact</text><text class="em-s" x="535" y="190">terms</text><rect class="em-bg" x="531" y="202" width="132" height="80" rx="7"/><text class="em-v" x="535" y="223">All 894</text><text class="em-v" x="535" y="247">forgeries</text><text class="em-v" x="535" y="271">refused</text></g>
+<g class="em-n ok em-h-bundle"><rect class="em-box" x="920.5" y="56.5" width="149" height="263" rx="10"/><text class="em-t" x="933" y="89">Proof</text><text class="em-t" x="933" y="117">bundle</text><text class="em-s" x="933" y="142">the signed</text><text class="em-s" x="933" y="166">terms and</text><text class="em-s" x="933" y="190">receipts</text><rect class="em-bg" x="929" y="202" width="132" height="80" rx="7"/><text class="em-v" x="933" y="223">All 48</text><text class="em-v" x="933" y="247">proofs</text><text class="em-v" x="933" y="271">VALID</text></g>
+<g class="em-n ok em-h-verify"><rect class="em-box" x="1094.5" y="56.5" width="149" height="263" rx="10"/><text class="em-t" x="1107" y="89">Anyone</text><text class="em-t" x="1107" y="117">verifies</text><text class="em-s" x="1107" y="142">offline:</text><text class="em-s" x="1107" y="166">/verify or</text><text class="em-s" x="1107" y="190">npm run</text><text class="em-s" x="1107" y="214">verify-bundle</text><rect class="em-bg" x="1103" y="226" width="132" height="56" rx="7"/><text class="em-v" x="1107" y="247">189 checks</text><text class="em-v" x="1107" y="271">passed</text></g>
+<g class="em-n metal em-h-alta"><rect class="em-box" x="696.5" y="4.5" width="199" height="115" rx="10"/><text class="em-t" x="709" y="37">Alta</text><rect class="em-bg" x="705" y="50" width="182" height="56" rx="7"/><text class="em-v" x="709" y="71">#24 refused on</text><text class="em-v" x="709" y="95">chain</text></g>
+<g class="em-n awx em-h-airwallex"><rect class="em-box" x="696.5" y="130.5" width="199" height="115" rx="10"/><text class="em-t" x="709" y="163">Airwallex</text><rect class="em-bg" x="705" y="176" width="182" height="56" rx="7"/><text class="em-v" x="709" y="197">All 50 PAID · 60</text><text class="em-v" x="709" y="221">endpoints live</text></g>
+<g class="em-n visa em-h-visa"><rect class="em-box" x="696.5" y="256.5" width="199" height="115" rx="10"/><text class="em-t" x="709" y="289">Visa via Airi</text><rect class="em-bg" x="705" y="302" width="182" height="56" rx="7"/><text class="em-v" x="709" y="323">EUR 45.00 after</text><text class="em-v" x="709" y="347">Face ID</text></g>
+<g class="em-p held em-h-held"><rect class="em-pb" x="348.5" y="348.5" width="149" height="89" rx="10"/><text class="em-v" x="356" y="375">24 of 25</text><text class="em-v" x="356" y="399">held at the</text><text class="em-v" x="356" y="423">cash floor</text></g>
+<g class="em-p refused em-h-refused"><rect class="em-pb" x="522.5" y="348.5" width="149" height="113" rx="10"/><text class="em-v" x="530" y="375">All 25</text><text class="em-v" x="530" y="399">one-cent</text><text class="em-v" x="530" y="423">changes</text><text class="em-v" x="530" y="447">refused</text></g>
+<path class="em-dot halo ok" d="M75 188 H1094" pathLength="100"/><path class="em-dot ok" d="M75 188 H1094" pathLength="100"/><path class="em-dot halo bad" d="M75 188 H597 V348" pathLength="100"/><path class="em-dot bad" d="M75 188 H597 V348" pathLength="100"/><path class="em-dot halo hold" d="M75 188 H423 V348" pathLength="100"/><path class="em-dot hold" d="M75 188 H423 V348" pathLength="100"/>
+</svg>

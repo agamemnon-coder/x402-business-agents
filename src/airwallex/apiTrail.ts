@@ -358,6 +358,21 @@ export function trailRuns(): TrailRun[] {
     runs.push({ key: "bills-1119", iso: str(calls[0]?.at)!, title: "Paid invoices as bills in Airwallex Spend (accounts payable)", record: "docs/runs/2026-11-19-airwallex-bills.json", alsoReads: ["docs/runs/2026-11-19-airwallex-bills.md"], calls, checks: [] });
   }
 
+  // 19 Nov soak (npm run airwallex:soak): 30 signed payments created, taken to PAID by the sandbox's simulation and read
+  // back, 6 with an FX conversion first; 5 one-cent changes refused before any create. The record itemises its calls;
+  // each create is tagged with its payment, in payment order, and each payment's read-back gives a hash check.
+  const sk = readJson("docs/runs/2026-11-19-airwallex-soak.json");
+  if (sk) {
+    const calls = lineCalls(sk), pays = arr(sk.payments);
+    pays.forEach((p, i) => tag(calls, "POST", "/transfers/create", i, `${str(p.invoice_no)}, ${str(p.currency)} ${str(p.amount)}, ${str(p.status_after_execute)}`, str(p.transfer_id)));
+    const checks: HashCheck[] = pays.filter((p) => str((p.readback as J | null)?.approval_sha256)).map((p) => {
+      const carried = str((p.readback as J).approval_sha256)!, signed = str(p.terms_sha256) ?? null;
+      return { kind: "transfer", label: `soak: transfer ${str(p.transfer_id)} (${str(p.proposal_id)}, ${str(p.invoice_no)})`, carried, signed, recomputed: null, match: !!signed && signed === carried,
+        how: "approval_sha256 read back from Airwallex against the terms hash the labelled virtual test passkey signed" };
+    });
+    runs.push({ key: "soak-1119", iso: str(calls[0]?.at)!, title: "Soak: 30 signed payments to PAID and read back, 6 with FX; 5 one-cent changes refused", record: "docs/runs/2026-11-19-airwallex-soak.json", alsoReads: ["docs/runs/2026-11-19-airwallex-soak.md"], calls, checks });
+  }
+
   for (const r of runs) r.calls.sort(byTimeDesc);
   return runs.sort((a, b) => b.iso.localeCompare(a.iso));
 }

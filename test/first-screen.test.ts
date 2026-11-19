@@ -79,7 +79,11 @@ describe("the first screen (section D, 6 Nov)", () => {
     // 17 Nov, owner: strongest proof first. Under the links, a six-row table, each row one line with where to check it
     // (one click each); "Built on Airwallex" moved, word for word, to the top of "Airwallex at the centre" (below).
     // 19 Nov 2026: +4 lines above it: the demo's thumbnail and what Purser is, each with its blank line.
-    const proof = lines.slice(18, 26);
+    // 19 Nov 2026 (the owner: the README felt like a wall of text): +4 more, the animated evidence map under the
+    // thumbnail (linked to /proof#evidence) and the wall's line of figures (both written by npm run evidence:wall).
+    expect(lines[16]!.startsWith('<a href="https://kit11.max-31b.workers.dev/proof#evidence"><picture>')).toBe(true);
+    expect(lines[18]!.startsWith("**Evidence wall, from the records:** ")).toBe(true);
+    const proof = lines.slice(22, 30);
     expect(proof[0]).toBe("| **The strongest proof, one click each** (test money) | Check it |");
     expect(proof[1]).toBe("|---|---|");
     expect(proof.slice(2).map((l) => /^\| \*\*(\d) · /.exec(l)?.[1])).toEqual(["1", "2", "3", "4", "5", "6"]);
@@ -100,7 +104,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.slice(centre + 1, centre + 3)).toEqual(["", README_BUILT_ON]);
     // 19 Nov 2026 (README tightened for the judges): the "For judges: 3 minutes" section went, its one new line (one id
     // per rail, every run) is the table's fifth row, its awards are in the submission line.
-    const judges = lines.slice(27, partners - 1);
+    const judges = lines.slice(31, partners - 1); // 31 since 19 Nov 2026: the evidence map and its line above (+4)
     expect(judges).toHaveLength(9);
     expect(judges[8]!.startsWith("**What stood at the submission:** the tag `v1.0-submission` (8 Nov)")).toBe(true);
     expect(judges[8]).toContain("(entered for the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award)");
@@ -108,14 +112,14 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(judges.slice(2, 7).map((l) => /^\| \*\*([^:]+):/.exec(l)?.[1])).toEqual(["User", "Airwallex action", "Financial context", "Controls", "Proof"]);
     expect(judges[6]).toContain("](docs/in-depth.md#what-ran-live-one-id-per-rail)");
     // 19 Nov 2026: the TIP alert went (the judges' path says Try it); under the test-money alert, a short glossary.
-    expect(lines.slice(5, glance - 9)).toEqual(["", lines[badges]!, lines[badges + 1]!, lines[badges + 2]!, "", `**${README_WHAT}**`, "", README_LINKS, "", README_THUMB, "", README_IS, "", ...proof, "", ...judges, "", lines[partners]!, "", "</div>", ""]);
+    expect(lines.slice(5, glance - 9)).toEqual(["", lines[badges]!, lines[badges + 1]!, lines[badges + 2]!, "", `**${README_WHAT}**`, "", README_LINKS, "", README_THUMB, "", lines[16]!, "", lines[18]!, "", README_IS, "", ...proof, "", ...judges, "", lines[partners]!, "", "</div>", ""]);
     expect(lines.slice(glance - 9, glance)).toEqual(["> [!IMPORTANT]", lines[glance - 8]!, "", "**Words used here:**", ...lines.slice(glance - 5, glance - 1), ""]);
     expect(lines[glance - 8]).toMatch(/^> \*\*Test money only\.\*\* Live: .* Simulated: /);
     expect(lines.slice(glance - 5, glance - 1).map((l) => /^- \*\*([^*]+):\*\* /.exec(l)?.[1])).toEqual(["VIC, Airi", "T:0", "/try/sign", "Purser Cloud"]);
     expect(README).not.toContain("> [!TIP]");
     expect(lines.slice(glance + 1, kit).filter((l) => l.startsWith("- **"))).toHaveLength(6);
     expect(README_WHAT).toBe(HOME_SUB);
-    expect(kit).toBeLessThan(64); // 64 since 19 Nov 2026 (README tightened for the judges: +12 lines above it: the demo's thumbnail, what Purser is, the Proof row, the glossary; -3: the TIP alert; 61 as built); 58 since 17 Nov, owner: strongest proof first (+8 lines: the proof table; "Built on Airwallex" moved down; 55 as built); 50 since 17 Nov later (owner: all the badges back, in three grouped rows: +2 lines; 48 as built); 48 since 17 Nov (the For judges table and the submission line, 9 lines; 46 as built); 40 since 15 Nov (readme-wow: the two alerts and the stat strip; 36 as built); 35 before
+    expect(kit).toBeLessThan(68); // 68 since 19 Nov 2026 (the evidence map and its line under the thumbnail, +4); 64 since 19 Nov 2026 (README tightened for the judges: +12 lines above it: the demo's thumbnail, what Purser is, the Proof row, the glossary; -3: the TIP alert; 61 as built); 58 since 17 Nov, owner: strongest proof first (+8 lines: the proof table; "Built on Airwallex" moved down; 55 as built); 50 since 17 Nov later (owner: all the badges back, in three grouped rows: +2 lines; 48 as built); 48 since 17 Nov (the For judges table and the submission line, 9 lines; 46 as built); 40 since 15 Nov (readme-wow: the two alerts and the stat strip; 36 as built); 35 before
     // Under the Kit 11 table: the sentence every juror repeated, then the badges (the old row of buttons went: the three
     // links above say Try and the film; the trailer is in "Watch it", the proof in the live demo's line).
     // 15 Nov (Max): the badges moved to the top; the sentence every juror repeated stays under the Kit 11 table, then
@@ -131,7 +135,8 @@ describe("the first screen (section D, 6 Nov)", () => {
     // 17 Nov, owner: the badges at the very top; the strip stays at the foot of the centred top, under the judges' table.
     // 17 Nov, owner: strongest proof first: +7 (the proof table, 8 lines with its blank; "Built on Airwallex" and its blank moved down).
     // 19 Nov 2026: +5 (the demo's thumbnail and what Purser is with their blanks, the judges' Proof row).
-    expect(partners).toBe(badges + 31);
+    // 19 Nov 2026 (the owner): +4 (the evidence map under the thumbnail and the wall's line, with their blanks).
+    expect(partners).toBe(badges + 35);
     expect(lines[live]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     // 14 Nov (jury scan): the 3-command quick start on the first screens, then where things are. 15 Nov: the Kit 11 table
     // first under the header; the badges and the live demo's line after it ("At a glance"), then the quick start.

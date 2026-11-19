@@ -14,6 +14,10 @@
 
 <a href="https://youtu.be/gEUm8RlhZac"><img src="docs/assets/readme/demo-thumb.jpg" alt="Purser: the demo on YouTube (3:15)" width="100%"></a>
 
+<a href="https://kit11.max-31b.workers.dev/proof#evidence"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/evidence-map-dark.svg"><img src="docs/assets/readme/evidence-map-light.svg" alt="Animated money path: Invoice in (24 of 25 /try walks passed); Claude reads (24 decisions · 0 fallbacks); Purser's rules (0 vs 35 wrong payments); Passkey signs (All 894 forgeries refused); Alta (#24 refused on chain); Airwallex (All 50 PAID · 60 endpoints live); Visa via Airi (EUR 45.00 after Face ID); Proof bundle (All 48 proofs VALID); Anyone verifies (189 checks passed). Refused: All 25 one-cent changes refused. Held: 24 of 25 held at the cash floor. Test money." width="100%"></picture></a>
+
+**Evidence wall, from the records:** All 30 soak payments read back · All 50 /try payouts PAID · All 894 forged copies refused · 60 Airwallex endpoints live · [every figure, with its record](https://kit11.max-31b.workers.dev/proof#evidence)
+
 **What it is:** the control layer between a company's AI agents and its money on Airwallex and Alta (formerly Metal): one engine runs agents that pay supplier invoices and agents that buy and sell data over x402, hence the repository's name, x402-business-agents, after Starter Kit 11 ("x402 Business Agents"), the hackathon brief it was built for.
 
 | **The strongest proof, one click each** (test money) | Check it |
@@ -151,7 +155,7 @@ What the sandbox taught us: eight things we ran into in Airwallex's API, what we
 - **Limits are enforced in 3 layers: Purser's code, Airwallex's card controls and Alta's on-chain mandate.** Airwallex itself declined an agent's card over the CFO's limit ([record](docs/runs/2026-11-07-awx-1.md)); Alta refused a purchase over the mandate on chain ([record](docs/runs/2026-11-03-main-run.md)). The mandates: [/api/metal/mandates](https://kit11.max-31b.workers.dev/api/metal/mandates), a live read from Alta testnet, or the recorded 12 Nov snapshot when the chain does not answer (the answer says which).
 - **The audit chain is anchored on chain.** Every event goes into a hash-chained log; its head is in a value-0 Alta testnet transaction, and `npm run verify-anchor` prints MATCH ([record](docs/runs/2026-11-13-anchor.md); run live again on 15 Nov: MATCH, [record](docs/runs/2026-11-15-anchor-verified.md)).
 
-**Run live on test money** (Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude): the main run of 3 November (24 decisions by Claude, 86 Alta payments, 16 stops, nothing paid over a limit) and 29 live runs up to 19 Nov, every id on [/proof](https://kit11.max-31b.workers.dev/proof), every figure on its [evidence wall](https://kit11.max-31b.workers.dev/proof#evidence).
+**Run live on test money** (Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude): the main run of 3 November (24 decisions by Claude, 86 Alta payments, 16 stops, nothing paid over a limit) and 31 live runs up to 19 Nov, every id on [/proof](https://kit11.max-31b.workers.dev/proof), every figure on its [evidence wall](https://kit11.max-31b.workers.dev/proof#evidence).
 
 Airwallex's AgentOS says its "components do not initiate money-out actions (transfers, FX conversions, or payouts) on
 your behalf" ([docs](https://www.airwallex.com/docs/developer-tools/ai/agentos), read 13 November 2026). Purser is the control layer for when agents do move money on Airwallex: within limits the CFO signs, and above them only with the CFO's passkey on the exact terms.

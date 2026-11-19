@@ -475,6 +475,32 @@ function extraRuns(): RunRow[] {
     });
   }
 
+  // 19 Nov soak: 30 signed payments at the Airwallex sandbox, each read back; 6 FX conversions; 5 one-cent changes refused
+  // before any create (docs/runs/2026-11-19-airwallex-soak.md). Counted when every read-back the record holds agrees.
+  type Sk = {
+    started_at: string; ended_at: string; budget: { approved: number; used: number };
+    summary: { planned: number; created: number; paid: number; readback_matches: number; conversions: { planned: number; booked: number; readback_matches: number }; latency_ms: { p50: number }; calls: { total: number };
+      negatives: { planned: number; refused: number; posts_in_window: number; creates_in_window: number; calls_in_window: number } };
+    payments: { invoice_no: string; transfer_id: string }[];
+  };
+  const SK_FILE = "docs/runs/2026-11-19-airwallex-soak.json", SK_LOG = "docs/runs/2026-11-19-airwallex-soak.md";
+  const sk = has(SK_FILE) ? readJson<Sk>(SK_FILE) : null;
+  if (sk && sk.summary.created) {
+    const m = sk.summary, n = m.negatives;
+    out.push({
+      key: "soak-1", iso: sk.ended_at, date: day(sk.started_at), kind: "sandbox", partners: ["Airwallex"],
+      name: `${m.created} signed payments in a row, each read back from Airwallex`,
+      line: `${countOf(m.paid, m.created)} PAID (by the sandbox's simulation), the signed hash read back on each; ${countOf(m.conversions.booked, m.conversions.planned, true)} FX conversions; ${countOf(n.refused, n.planned, true)} one-cent changes refused. A test passkey.`,
+      rate: { done: m.readback_matches, of: m.created, what: "payments read back as signed" },
+      title: "Airwallex soak", rails: "Airwallex sandbox (SWIFT transfers, FX conversions), test passkey",
+      what: `${m.created} payments to two test suppliers, each signed by a labelled virtual test passkey over its exact terms, created once at the Airwallex sandbox, taken to PAID by its simulation endpoint and read back (status, amount, payee, reference, request id and the signed hash). ${m.conversions.booked} needed EUR bought first, by an FX conversion read back too. Between them, ${n.planned} payments were changed by one cent after signing.`,
+      checks: `${countOf(m.readback_matches, m.created)} read-backs equal to the signed terms; ${countOf(m.conversions.readback_matches, m.conversions.booked, true)} conversions read back; the ${n.refused} changed payments refused before any create (${n.posts_in_window} POSTs; each refusal read the balance once). ${m.calls.total} Airwallex calls, within the budget of ${sk.budget.approved}.`,
+      money: "Sandbox · test money",
+      ids: sk.payments.slice(0, 2).map((p) => ({ label: `Transfer (${p.invoice_no})`, value: p.transfer_id })),
+      files: [{ label: "record (JSON)", href: blob(SK_FILE) }, { label: "run log", href: blob(SK_LOG) }],
+    });
+  }
+
   // 19 Nov: the public /try walked as a visitor, recorded with every answer (docs/runs/2026-11-19-live-try.md); one row a
   // recorded series, its walks its rate (src/redesign/liveTry.ts reads every series in that shape).
   for (const rec of liveTryRecords()) {

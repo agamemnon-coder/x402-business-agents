@@ -13,7 +13,7 @@
 // material sits in one closed fold at the very end, labelled as outside the entry (Visa, 5 Nov: TAP is not Visa tooling
 // for this hackathon). assertVicFirst fails the page build if any of that is lost.
 
-import { altaFacts, altaFactsHtml, ALTA_FACTS_CSS, NO_ENDORSEMENT_ALTA } from "./altaFacts.js";
+import { altaFacts, altaFactsHtml, ALTA_FACTS_CSS, ALTA_FACTS_ID, NO_ENDORSEMENT_ALTA } from "./altaFacts.js";
 import { quotedNote } from "../ui/formerly.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -51,6 +51,7 @@ import { BOOKS_CSS, BOOKS_JS, MONEYBIRD_RECORD, RUN_FILE, booksBody, booksData }
 import { T0_CLOSE_JS, t0RunData } from "./t0CloseTile.js";
 import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
 import { OPEN_TARGET_JS, esc, icon, page, pageTitle, setBuiltOn, TRY_URL } from "./ui.js";
+import { EVIDENCE_WALL_CSS, evidenceStripHtml, notLiveLine } from "./evidenceWall.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
 .pp .wrap { max-width: 1040px; display: grid; gap: 18px; }
@@ -107,6 +108,14 @@ ${VIC_RULES_CSS}
 ${CARD_DATA_CSS}
 ${VIC_FACTS_CSS}`;
 
+/** A page's body with `html` put right after its heading block (the first <div class="phd">…</h1></div>). */
+const afterHeading = (body: string, html: string) => {
+  if (!html) return body;
+  const at = body.indexOf("</h1></div>", body.indexOf('<div class="phd'));
+  return at < 0 ? body : `${body.slice(0, at + "</h1></div>".length)}\n  ${html}${body.slice(at + "</h1></div>".length)}`;
+};
+const readJsonOr = <T>(p: string): T | null => { try { return JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T; } catch { return null; } };
+
 const SOURCE = (run: AgentRun) => `Source: ${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`;
 const node = (ic: string, title: string, sub: string, tone = "") => `<div class="node ${tone}"><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
 const arrow = `<span class="arrow" aria-hidden="true">${icon("arrow-right", 22)}</span>`;
@@ -162,8 +171,12 @@ export function metalPage(run: AgentRun = agentRun(), tokenize: TokenizeRun | nu
     + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]);
   // The opening (Metal Award, 15 Nov): three facts with their explorer links and records, then the main run's count.
   const intro = altaFactsHtml(altaFacts(), { count: metalTxs().length, list: METAL_TX_LIST });
-  const body = metalBody(run.record, { logo: LOGO.metal, logoNote: intro ? NO_ENDORSEMENT_ALTA : undefined, intro, label: run.label, folds, proofHash: "metal", after: `\n  ${faceIdOnChainSection()}${tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : ""}` });
-  return page({ title: "Alta", description: "How Purser uses Alta: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}\n${STATS_CSS}\n${ALTA_FACTS_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
+  const bodyOnly = metalBody(run.record, { logo: LOGO.metal, logoNote: intro ? NO_ENDORSEMENT_ALTA : undefined, intro, label: run.label, folds, proofHash: "metal", after: `\n  ${faceIdOnChainSection()}${tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : ""}` });
+  // 19 Nov (the owner): the wall's Alta tiles, right after the three facts that open the page (Metal Award, 15 Nov).
+  const factsEnd = bodyOnly.indexOf("</section>", bodyOnly.indexOf(`id="${ALTA_FACTS_ID}"`));
+  const strip = evidenceStripHtml("alta");
+  const body = factsEnd < 0 || !strip ? afterHeading(bodyOnly, strip) : `${bodyOnly.slice(0, factsEnd + 10)}\n  ${strip}${bodyOnly.slice(factsEnd + 10)}`;
+  return page({ title: "Alta", description: "How Purser uses Alta: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${EVIDENCE_WALL_CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}\n${STATS_CSS}\n${ALTA_FACTS_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 export function airwallexPage(run: AgentRun = agentRun()): string {
@@ -188,7 +201,10 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     simulated: [...(licence ? [`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`] : []),
       ...money.filter((e) => e.earlier).map((e) => earlierLine(e))],
   });
-  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}`, body, source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS + LIVE_CARDS_JS, stage: false, builtOn: builtOnHtml(run) });
+  // 19 Nov (the owner: "the evidence where judges look"): the wall's Airwallex tiles under the heading, and the one
+  // endpoint not live with its reason, from the coverage report and its live record.
+  const strip = evidenceStripHtml("airwallex", { note: notLiveLine(readJsonOr("docs/evidence/airwallex-api-coverage.json"), readJsonOr("docs/runs/2026-11-19-airwallex-coverage.json")) });
+  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}\n${EVIDENCE_WALL_CSS}`, body: afterHeading(body, strip), source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS + LIVE_CARDS_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 /**
@@ -340,7 +356,8 @@ export function visaPage(run: AgentRun = agentRun()): string {
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
   <p class="vlimits" data-rec="${VIC3_RUN_FILE}">${esc(visaLimitsLine(vic3 as never))}</p>
-  ${proofFirstHtml(visaFirstFacts(vic3 as never, VIC3_RUN_FILE, `#${VISA_REUSE_ID}`))}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
+  ${proofFirstHtml(visaFirstFacts(vic3 as never, VIC3_RUN_FILE, `#${VISA_REUSE_ID}`))}
+  ${evidenceStripHtml("visa", { note: "Visa is named in text only; no endorsement." })}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
   ${visaCardSceneHtml()}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   <details class="sumd" id="visa-asks-fold"><summary>${esc("What Visa Intelligent Commerce asks for, and how Purser meets it")}</summary>
@@ -375,7 +392,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
     ...(sceneData ? { data: sceneData } : {}),
     // /visa says the ICC status once, in its body; its footer leaves that item out (assertVicFirst).
     builtOn: builtOnHtml(run, false),
-    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${PROOF_FIRST_CSS}\n.pp .vlimits { margin: 6px 0 0; font-size: 14.5px; color: var(--muted); }\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}${sceneData ? `\n${VISA_CARD_SCENE_JS}` : ""}`, stage: false,
+    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${EVIDENCE_WALL_CSS}\n${PROOF_FIRST_CSS}\n.pp .vlimits { margin: 6px 0 0; font-size: 14.5px; color: var(--muted); }\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}${sceneData ? `\n${VISA_CARD_SCENE_JS}` : ""}`, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, an ${AIRI_CREDENTIAL} for one purchase is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.

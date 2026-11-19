@@ -56,6 +56,33 @@ export function evidenceWallLlms(w: EvidenceWall | null = committedWall()): stri
   ].join("\n");
 }
 
+/** The README's line under the judge path: four headline figures of the wall, each as the wall has it, and its link. */
+export const README_WALL_PREFIX = "**Evidence wall, from the records:** ";
+export const README_WALL_KEYS = ["soak-paid", "try-transfers", "tamper-matrix", "awx-endpoints"] as const;
+/** The README's few words for each figure (its word budget); the figures are the wall's. */
+const README_WORDS: Record<(typeof README_WALL_KEYS)[number], string> = { "soak-paid": "soak payments read back", "try-transfers": "/try payouts PAID", "tamper-matrix": "forged copies refused", "awx-endpoints": "Airwallex endpoints live" };
+export function readmeWallLine(w: EvidenceWall | null = committedWall()): string {
+  const tiles = new Map((w?.groups ?? []).flatMap((g) => g.tiles.map((t) => [t.key, t] as const)));
+  const parts = README_WALL_KEYS.filter((k) => tiles.has(k)).map((k) => `${tiles.get(k)!.fig} ${README_WORDS[k]}`);
+  return `${README_WALL_PREFIX}${parts.join(" · ")} · [every figure, with its record](${SITE}/proof#${WALL_ID})`;
+}
+/**
+ * The README with its evidence block under the demo's thumbnail: the map's picture (readmeMapLine in ./evidenceMap.ts),
+ * then the wall's line; an old copy of either is taken out first, wherever it was.
+ */
+export const README_MAP_PREFIX = '<a href="https://kit11.max-31b.workers.dev/proof#evidence"><picture>';
+export function withReadmeWallLine(readme: string, line: string = readmeWallLine(), mapLine?: string): string {
+  let lines = readme.split("\n");
+  const drop = (i: number) => { lines.splice(i, 1); if (lines[i] === "" && lines[i - 1] === "") lines.splice(i, 1); };
+  for (const prefix of [README_WALL_PREFIX, README_MAP_PREFIX]) { const i = lines.findIndex((l) => l.startsWith(prefix)); if (i >= 0) drop(i); }
+  const thumb = lines.findIndex((l) => l.includes("docs/assets/readme/demo-thumb.jpg"));
+  const judge = lines.findIndex((l) => l.startsWith("**1. [Watch the demo"));
+  const at = thumb >= 0 ? thumb : judge;
+  if (at < 0) return readme;
+  lines = [...lines.slice(0, at + 1), "", ...(mapLine ? [mapLine, ""] : []), line, ...(lines[at + 1] === "" ? [] : [""]), ...lines.slice(at + 1)];
+  return lines.join("\n");
+}
+
 /** llms.txt with its generated section put in (after the "## For judges" section when there is none yet). */
 export function withWallSection(llms: string, section: string = evidenceWallLlms()): string {
   const at = llms.indexOf(`${LLMS_WALL_HEADING}\n`);
@@ -82,6 +109,41 @@ export function evidenceWallHtml(w: EvidenceWall | null = committedWall()): stri
   <nav class="ew-nav" aria-label="${esc("Evidence groups")}">${w.groups.map((g) => `<a href="#${esc(g.id)}">${esc(WALL_NAV[g.id] ?? g.title)}</a>`).join("")}</nav>
   ${w.groups.map((g) => `<div class="ew-g" id="${esc(g.id)}"><div class="ew-gh"><h3>${esc(g.title)}</h3>${notes(g)}</div><ul class="ew-ts">${g.tiles.map(tile).join("")}</ul></div>`).join("\n  ")}
 </section>`;
+}
+
+/**
+ * A partner page's strip (19 Nov, the owner: "show the evidence where judges look"): a few of the wall's own tiles, as
+ * the wall shows them (the same figures from docs/evidence/evidence-wall.json, each linking to its record), a link to
+ * the wall's group on /proof, and any line the page owes beside them (on /airwallex, the one endpoint not live and why).
+ */
+export const PARTNER_STRIPS: Record<"airwallex" | "alta" | "visa", { title: string; group: string; keys: string[]; legend: string }> = {
+  airwallex: { title: "Live on Airwallex", group: "ev-rails", keys: ["soak-paid", "try-transfers", "spend-bills", "soak-fx", "awx-endpoints", "late-failure"], legend: "Airwallex sandbox, test money; a sandbox PAID is the sandbox's simulation. Each tile opens its record." },
+  alta: { title: "Live on Alta", group: "ev-rails", keys: ["alta-refusal", "alta-payments", "passkeys-onchain", "clearing-load"], legend: "Alta testnet, test money. Each tile opens its record." },
+  visa: { title: "Visa via Airwallex's Airi, as recorded", group: "ev-rails", keys: ["visa-airi", "visa-refused"], legend: "Airwallex sandbox, Airi's test card, test money. Each tile opens its record." },
+};
+
+export function evidenceStripHtml(partner: keyof typeof PARTNER_STRIPS, o: { note?: string } = {}, w: EvidenceWall | null = committedWall()): string {
+  const spec = PARTNER_STRIPS[partner];
+  const tiles = new Map((w?.groups ?? []).flatMap((g) => g.tiles.map((t) => [t.key, t] as const)));
+  const shown = spec.keys.map((k) => tiles.get(k)).filter((t): t is WallTile => !!t);
+  if (!shown.length) return "";
+  const tile = (t: WallTile) => `<li class="ew-t${t.tone ? ` ${t.tone}` : ""}" data-wall="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}" title="${esc(t.note)}"${isExternal(t.href) ? ' target="_blank" rel="noopener"' : ""}><b class="ew-f">${esc(t.fig)}</b><span class="ew-l">${esc(t.label)}</span><span class="ew-k"><span class="ew-tag ${t.tag}">${esc(TAG_WORDS[t.tag])}</span><span class="ew-r" aria-hidden="true">${isExternal(t.href) ? "↗" : "→"}</span></span></a></li>`;
+  return `<section class="ewall pstrip" id="live-${partner}" aria-labelledby="ps-${partner}" data-rec="${esc(WALL_FILE)}">
+  <div class="ps-h"><h2 id="ps-${partner}">${esc(spec.title)}</h2><a href="proof#${esc(spec.group)}">${esc("All the evidence")} →</a></div>
+  <ul class="ew-ts">${shown.map(tile).join("")}</ul>
+  <p class="ps-n">${esc(`${spec.legend}${o.note ? ` ${o.note}` : ""}`)}</p>
+</section>`;
+}
+
+/** /airwallex's line on the endpoints not live: each, and why, from the coverage report and its live record. */
+export function notLiveLine(cover: { endpoints: { endpoint: string; status: string }[] } | null, record: { results?: { method?: string; endpoint?: string; live?: boolean; outcome?: string }[] } | null): string {
+  const out = (cover?.endpoints ?? []).filter((e) => e.status !== "LIVE");
+  if (!out.length) return "";
+  const why = (ep: string) => {
+    const r = (record?.results ?? []).find((x) => `${x.method} ${x.endpoint}` === ep && x.live === false);
+    return r?.outcome ? r.outcome.replace(/^not run: /, "").split(/ \(|; /)[0]!.replace(/\.$/, "") : null;
+  };
+  return `Not live: ${out.map((e) => `${e.endpoint}${why(e.endpoint) ? ` (${why(e.endpoint)})` : ""}`).join("; ")}.`;
 }
 
 export const EVIDENCE_WALL_CSS = `
@@ -116,5 +178,12 @@ export const EVIDENCE_WALL_CSS = `
   .ewall .ew-gh { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .ewall ul.ew-ts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* A partner page's strip: the wall's tiles, no nav, no groups. */
+.ewall.pstrip { margin: 14px 0 22px; }
+.ewall.pstrip .ps-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.ewall.pstrip .ps-h h2 { font-size: 20px; font-weight: 740; margin: 0 0 8px; }
+.ewall.pstrip .ps-h a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 650; color: var(--accent); text-decoration: none; }
+.ewall.pstrip ul.ew-ts { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+.ewall.pstrip .ps-n { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
 @media (max-width: 420px) { .ewall li.ew-t a { padding: 9px 10px 7px; } .ewall .ew-f { font-size: 20px; } .ewall .ew-l { font-size: 12.5px; } }
 `;

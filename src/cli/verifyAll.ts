@@ -24,6 +24,7 @@ import { publicClient } from "../metal/chain.js";
 import { USDZ } from "../metal/network.js";
 import { liveRunCount } from "../redesign/runs.js";
 import { AWX_CALLS_LABEL, NOT_IN_BAND } from "../redesign/scale.js";
+import { PARTNER_STRIPS } from "../redesign/evidenceWall.js";
 import { apiTrail } from "../airwallex/apiTrail.js";
 import { mdCell as cell, pageText as text } from "./verifyAllFormat.js";
 
@@ -234,8 +235,17 @@ function figures(pages: Record<string, string>) {
   // 19 Nov: the evidence wall, each tile's figure as docs/evidence/evidence-wall.json holds it (the page's own code made
   // that file from the records: npm run evidence:wall; test/evidence-wall.test.ts holds it to them).
   const wallSeen = new Map([...proofHtml.matchAll(/data-wall="([^"]+)"[^>]*>\s*<a [^>]*><b class="ew-f">([^<]+)<\/b>/g)].map((m) => [m[1]!, m[2]!.replace(/&amp;/g, "&")]));
-  for (const t of (json<{ groups: { tiles: { key: string; fig: string; rec: string }[] }[] }>("docs/evidence/evidence-wall.json")).groups.flatMap((g) => g.tiles)) {
+  const wallTiles = (json<{ groups: { tiles: { key: string; fig: string; rec: string }[] }[] }>("docs/evidence/evidence-wall.json")).groups.flatMap((g) => g.tiles);
+  for (const t of wallTiles) {
     cmp(`/proof evidence wall: ${t.key}`, t.fig, wallSeen.get(t.key), `docs/evidence/evidence-wall.json (from ${t.rec})`);
+  }
+  // The partner pages' strips (19 Nov): each tile the page shows, as the wall's file has it.
+  for (const [path, strip] of [["/airwallex", "airwallex"], ["/alta", "alta"], ["/visa", "visa"]] as const) {
+    const html = pages[path] ?? "", seen = new Map([...html.matchAll(/data-wall="([^"]+)"[^>]*>\s*<a [^>]*><b class="ew-f">([^<]+)<\/b>/g)].map((m) => [m[1]!, m[2]!.replace(/&amp;/g, "&")]));
+    for (const key of PARTNER_STRIPS[strip].keys) {
+      const t = wallTiles.find((x) => x.key === key);
+      if (t) cmp(`${path} strip: ${key}`, t.fig, seen.get(key), `docs/evidence/evidence-wall.json (from ${t.rec})`);
+    }
   }
   for (const [label, n] of homeBand) {
     if (proofBand.has(label)) cmp(`Home: ${label}`, pick(proofBand, label)!, n, "the same figure on /proof");
@@ -325,7 +335,7 @@ function timing() {
 // Run it all ---------------------------------------------------------------------------------------------------------------
 const startedAt = new Date().toISOString();
 const pages: Record<string, string> = {};
-for (const p of ["/proof", "/", "/alta", "/runs"]) {
+for (const p of ["/proof", "/", "/alta", "/runs", "/airwallex", "/visa"]) {
   try { const r = await fetch(`${SITE}${p}`); pages[p] = await r.text(); add("the site", r.ok ? "pass" : "FAIL", `GET ${SITE}${p}`, `${r.status}, ${pages[p]!.length} bytes`, "the deployed site"); }
   catch (e) { add("the site", "could not run here", `GET ${SITE}${p}`, `no answer: ${(e as Error).message}`, "the deployed site"); }
 }

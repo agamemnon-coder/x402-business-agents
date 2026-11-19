@@ -31,19 +31,24 @@ Written by npm run evidence:wall from the committed records; the same figures, e
 Live on the rails:
 - All 50 Airwallex transfers PAID from the public /try (sandbox; 25 walks as a visitor, 19 Nov; PAID by the sandbox's simulation): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
 - All 3 paid invoices made bills in Airwallex Spend (sandbox; the signed hash as external_id, read back exactly; transfers PAID by the sandbox's simulation, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-bills.md
+- All 30 soak payments PAID, signed hash read back (sandbox; each read back from Airwallex as signed: hash, amount, payee, reference; PAID by the sandbox's simulation, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md
+- All 6 FX conversions booked and read back (sandbox; In the soak, each before the payment it funded, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md
 - 797d4483… signed hash in Airwallex's transfer record (sandbox; its approval_sha256 is the hash of the terms the CFO signed): https://kit11.max-31b.workers.dev/airwallex#awx-hash
 - EUR 240.00 held by Airwallex until a person approved (sandbox; Held by Airwallex until a person approved it there; then PAID; a test passkey signed in Purser, settlement simulated): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-airwallex-two-locks-paid.md
 - #24 refused on chain by Alta, over the mandate (testnet; on Alta's testnet explorer; the main run, 3 Nov): https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871
-- EUR 45.00 paid via Visa and Airi, after Face ID (sandbox; a test card, 14 Nov; 1 of 3 purchases paid): https://kit11.max-31b.workers.dev/visa
+- 86 payments on Alta, each its own transaction (testnet; the main run, 3 Nov: every one inside the agents' mandates; each linked to Alta's testnet explorer): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-03-main-run-metal-transactions.md
+- EUR 45.00 paid via Airi after Face ID: 1 of 3 purchases (sandbox; Visa Intelligent Commerce via Airwallex's Airi, a test card, 14 Nov): https://kit11.max-31b.workers.dev/visa
 - Both PAID, then FAILED: back to a person (sandbox; PAID and FAILED by the sandbox's simulation, 17 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-17-airwallex-late-failure.json
-- 50 Airwallex endpoints live, of 61 (sandbox; each with the first record that holds a call to it): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/airwallex-api-coverage.md
+- 60 Airwallex endpoints live, of 61 (sandbox; each with the first record that holds a call to it): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/airwallex-api-coverage.md
 
 Cannot be forged:
 - All 894 tampered proof copies refused (test world; every signed value of 6 proofs changed; the originals verify. Offline): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/tamper-matrix.md
 - All 25 one-cent changes refused after approval (sandbox; the public /try, 19 Nov; a virtual test passkey signed): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
 - All 25 approvals whose hash Airwallex carries (sandbox; the public /try, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
 - All 48 proof files VALID, browser and offline (sandbox; downloaded from /try; npm run verify-bundle agrees): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- All 5 one-cent changes refused before any create (sandbox; 0 money-moving calls (0 creates); each refusal still read the balance once (5 GET /balances/current). Soak, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md
 - EUR 30.01 one cent over an agent's limit: declined (sandbox; simulated card charges, 15 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/airwallex-card-cent-2026-11-15.json
+- 4 Visa attempts refused by Purser, before Airi (sandbox; 0 calls to Airi or Airwallex for any of them; 2 a credential presented again or for another amount. A test card, 14 Nov): https://kit11.max-31b.workers.dev/visa
 - 3 limit changes signed by passkeys on chain (testnet; Alta testnet, 12 Nov: P-256 checked on chain; one a test key): https://kit11.max-31b.workers.dev/alta#faceid-onchain
 
 AI under control:
