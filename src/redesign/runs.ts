@@ -366,8 +366,8 @@ function extraRuns(): RunRow[] {
     const total = (paid.reduce((n, x) => n + Math.round(Number(x.amount) * 100), 0) / 100).toFixed(2);
     out.push({
       key: "alta-series-1", iso: recs[recs.length - 1]!.ran_at, date: day(recs[0]!.ran_at), kind: "testnet", partners: ["Alta"],
-      name: "An agent's mandate on Alta: payments inside it, attempts outside it refused on chain",
-      line: `${paid.length} payments inside the mandate (${total} test USD); ${refused.length} attempts outside it refused on chain: ${refused.map((x) => x.reason).join(", ")}.`,
+      name: "An agent's mandate on Alta, enforced on chain",
+      line: `${paid.length} payments inside the mandate (${total} test USD); ${countOf(refused.length, refused.length, true)} attempts outside it refused on chain.`,
       // A step planned as over the budget that the chain paid was within it (the plan's error; the run log says so).
       rate: { done: refused.length, of: steps.filter((x) => x.kind === "over-mandate" && x.event !== "MandatePayment").length, what: "over-mandate attempts refused on chain" },
       title: "Alta series", rails: "Alta testnet (mandate payments)",
