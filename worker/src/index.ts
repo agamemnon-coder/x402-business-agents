@@ -54,6 +54,8 @@ export interface Env extends GatewayEnv {
   AIRWALLEX_API_KEY?: string;
   /** "on" declares a live run (a plain var, off by default): /health then keeps the alarm however long the runner is silent. */
   LIVE_RUN?: string;
+  /** The security log's alarm thresholds (a var), e.g. "auth_failures=20,rate_limited=100,window=300"; unset: the defaults (src/lib/securityEvents.ts). */
+  SECURITY_ALARMS?: string;
   /** Where the short URL /go points (a plain var, an https URL; never an event token). Default: worker/src/go.ts. */
   TRY_GO_URL?: string;
   /** /x402/proof's testnet settlement (worker/src/x402.ts): "on" only with the owner's go; off by default. */
@@ -209,6 +211,7 @@ export class RelayObject extends DurableObject<Env> {
     if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);
     return (this.relay ??= new Relay(this.ctx.storage.sql, {
       relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on",
+      ...(this.env.SECURITY_ALARMS ? { securityAlarms: this.env.SECURITY_ALARMS } : {}),
       // /health's live agents: read from the try-sign instance, where their spend is kept (code review, 13 Nov).
       liveAgents: async () => {
         const r = await this.env.RELAY.get(this.env.RELAY.idFromName("try-sign")).fetch(`https://relay.internal${LIVE_AGENTS_PATH}`);

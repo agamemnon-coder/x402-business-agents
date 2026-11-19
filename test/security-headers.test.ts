@@ -108,7 +108,7 @@ describe("relay Worker: security headers on every answer", () => {
     expect(signIn.status).toBe(200);
     answers.push(["/api/session/options", opt], ["the passkey sign-in", signIn]);
     for (const [what, res] of answers) expectCommon(res, what);
-    expect(signIn.headers.get("set-cookie")).toMatch(/HttpOnly; Secure; SameSite=Strict; Path=\/api/);
+    expect(signIn.headers.get("set-cookie")).toMatch(/^__Host-kit11_session=[^;]+; HttpOnly; Secure; SameSite=Strict; Path=\/;/);
   });
 
   it("Try Purser's answers carry them too", async () => {

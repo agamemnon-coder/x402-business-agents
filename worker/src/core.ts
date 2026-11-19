@@ -10,6 +10,7 @@ import { publicHealth, publicStatus, type Health } from "../../src/ops/publicHea
 import type { RecordedAgents } from "../../src/try/recorded.js";
 import type { MetalRecorded } from "./metalInspector.js";
 import { AWX_EVENTS_PATH, AwxEventFeed } from "./awxEvents.js";
+import { alarmRules, cleanDetail, truncatedIp, windowStart, type AlarmRule, type SecurityKind } from "../../src/lib/securityEvents.js";
 
 export type SqlValue = string | number | null;
 export interface Sql {
@@ -123,6 +124,11 @@ const MAX_HOOK_BYTES = 65_536;
 const MAX_HOOKS = 500;
 const HOOKS_PER_SYNC = 50;
 const HOOK_KEEP_MS = 24 * 60 * 60 * 1000;
+/** The security log keeps a row 90 days at least (a trigger refuses to delete a younger one), and writes at most 30 rows a minute per kind and network. */
+const SEC_LOG_KEEP_DAYS = 90;
+const SEC_LOG_ROWS_PER_MINUTE = 30;
+/** The runner's alarm codes that are tamper alarms (src/passkey/failures.ts passkey_terms_tampered, a broken chain). */
+const TAMPER_CODE = /tamper|chain_broken|chain_invalid/;
 /** How far Airwallex's x-timestamp may be from our clock (a replay of an old event is refused). */
 const HOOK_TOLERANCE_MS = 5 * 60 * 1000;
 const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned", "second_key", "answered", "removed"]);
@@ -160,8 +166,9 @@ const PAGE_HEADERS: Record<string, string> = {
   ...COMMON_HEADERS, "content-type": "text/html; charset=utf-8", "permissions-policy": PERMISSIONS_POLICY, "cross-origin-opener-policy": "same-origin",
 };
 
+/** Every JSON answer is data, never a page (ASVS V14.4.2): a browser that opens one saves it. */
 function json(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), { status, headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
+  return new Response(JSON.stringify(body), { status, headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8", "content-disposition": 'attachment; filename="api.json"' } });
 }
 const error = (status: number, message: string, extra: Record<string, unknown> = {}) => json(status, { error: message, ...extra });
 
@@ -292,6 +299,12 @@ export async function viewKeyForWeek(token: string, d: Date): Promise<string> {
 }
 
 const SESSION_MS = 12 * 3600 * 1000;
+/**
+ * The passkey session's cookie (ASVS V3.4.4): the __Host- prefix makes a browser take it only when it is Secure, has
+ * Path=/ and no Domain, so no other host (a sibling under workers.dev included) can set or shadow it. Until 19 Nov it was
+ * kit11_session with Path=/api; a browser still holding that one is simply asked to sign in again.
+ */
+export const SESSION_COOKIE = "__Host-kit11_session";
 const SESSION_CHALLENGE_MS = 2 * 60 * 1000;
 const randomB64u = (n: number) => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(n)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
@@ -316,6 +329,11 @@ async function readText(req: Request, limit: number): Promise<string | null> {
   const text = await req.text();
   return new TextEncoder().encode(text).length > limit ? null : text;
 }
+
+/** application/json, with any parameters (a charset), in any case: the only type a JSON body is taken with (ASVS V13.1.5). */
+export const isJsonType = (v: string | null): boolean => /^application\/json\s*(?:;|$)/i.test((v ?? "").trim());
+/** Every JSON post (the runner's sync and the phone's posts) without that type: 415, after the token or origin check and before a byte is read. The webhook is Airwallex's own, checked by its signature. */
+const UNSUPPORTED = "send the body as JSON with Content-Type: application/json";
 
 async function readJson(req: Request, limit: number): Promise<{ text: string; value: unknown } | null | undefined> {
   const text = await readText(req, limit);
@@ -413,8 +431,14 @@ export class Relay {
    * liveAgents: /try/sign's spend on live agents today, read from its own instance ("try-sign", worker/src/index.ts),
    * where its table is; absent, /health says nothing about it.
    */
-  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean; liveRun?: boolean; liveAgents?: () => Promise<{ usd: number; budget_usd: number } | null> }) {
+  /** The security log's alarm rules (src/lib/securityEvents.ts), from the Worker's SECURITY_ALARMS var or the defaults. */
+  private readonly alarmRules: AlarmRule[];
+  /** Requests whose sync carried a newly reported tamper alarm (their security event is tamper.alarm). */
+  private readonly tampered = new WeakSet<Request>();
+
+  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean; liveRun?: boolean; liveAgents?: () => Promise<{ usd: number; budget_usd: number } | null>; securityAlarms?: string }) {
     this.now = opts.now ?? (() => new Date());
+    this.alarmRules = alarmRules(opts.securityAlarms);
     this.sql.exec("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
     this.sql.exec(`CREATE TABLE IF NOT EXISTS inbox (
       ticket TEXT PRIMARY KEY, kind TEXT NOT NULL, proposal_id TEXT, window_id TEXT, body TEXT NOT NULL,
@@ -426,6 +450,57 @@ export class Relay {
     this.sql.exec("CREATE TABLE IF NOT EXISTS session_challenges (challenge TEXT PRIMARY KEY, expires INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS cred_counters (credential TEXT PRIMARY KEY, counter INTEGER NOT NULL)");
     this.events = new AwxEventFeed(this.sql);
+    // The security event log (ASVS V7.1.3, V7.2.1, V7.2.2): append-only in the database itself, kept 90 days at least.
+    this.sql.exec("CREATE TABLE IF NOT EXISTS sec_log (seq INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL, ip TEXT NOT NULL, route TEXT NOT NULL, status INTEGER NOT NULL, detail_json TEXT NOT NULL)");
+    this.sql.exec("CREATE INDEX IF NOT EXISTS sec_log_by_kind ON sec_log (kind, at)");
+    this.sql.exec("CREATE TRIGGER IF NOT EXISTS sec_log_no_update BEFORE UPDATE ON sec_log BEGIN SELECT RAISE(ABORT, 'sec_log is append-only'); END");
+    this.sql.exec(`CREATE TRIGGER IF NOT EXISTS sec_log_keep BEFORE DELETE ON sec_log WHEN OLD.at > strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-${SEC_LOG_KEEP_DAYS} days') BEGIN SELECT RAISE(ABORT, 'sec_log rows are kept 90 days'); END`);
+    this.sql.exec("CREATE TABLE IF NOT EXISTS sec_counts (rule TEXT NOT NULL, win INTEGER NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (rule, win))");
+  }
+
+  /**
+   * One security event: a row in sec_log (at most SEC_LOG_ROWS_PER_MINUTE per kind and network a minute; past it only
+   * counted) and a JSON log line; an alarm when it brings a rule to its threshold in the rule's window. The address is
+   * cut to its network; the detail keeps short plain values and never a secret (src/lib/securityEvents.ts).
+   */
+  private securityEvent(kind: SecurityKind, req: Request, route: string, status: number, detail: Record<string, unknown> = {}): void {
+    const now = this.now();
+    const iso = now.toISOString();
+    const ip = truncatedIp(req.headers.get("cf-connecting-ip"));
+    const d = cleanDetail(detail);
+    const warn = kind.endsWith("failure") || kind === "access.denied" || kind === "rate.limited";
+    (kind === "tamper.alarm" ? console.error : warn ? console.warn : console.log)(JSON.stringify({ ts: iso, level: kind === "tamper.alarm" ? "error" : warn ? "warn" : "info", event: `security.${kind}`, ip, route, status, ...d }));
+    try {
+      const minute = new Date(Math.floor(now.getTime() / 60_000) * 60_000).toISOString();
+      const [{ n }] = this.sql.exec("SELECT COUNT(*) AS n FROM sec_log WHERE kind = ? AND at >= ? AND ip = ?", kind, minute, ip).toArray() as [{ n: number }];
+      if (n < SEC_LOG_ROWS_PER_MINUTE) this.sql.exec("INSERT INTO sec_log (at, kind, ip, route, status, detail_json) VALUES (?, ?, ?, ?, ?, ?)", iso, kind, ip, route, status, JSON.stringify(d));
+      for (const rule of this.alarmRules.filter((r) => r.kinds.includes(kind))) {
+        const win = windowStart(now, rule.windowSec);
+        const [{ n: count }] = this.sql.exec("INSERT INTO sec_counts (rule, win, n) VALUES (?, ?, 1) ON CONFLICT(rule, win) DO UPDATE SET n = n + 1 RETURNING n", rule.name, win).toArray() as [{ n: number }];
+        if (count !== rule.threshold) continue;
+        const alarm = { rule: rule.name, threshold: rule.threshold, window_sec: rule.windowSec, window_start: new Date(win * 1000).toISOString() };
+        console.error(JSON.stringify({ ts: iso, level: "error", event: "security.alarm", ...alarm }));
+        this.sql.exec("INSERT INTO sec_log (at, kind, ip, route, status, detail_json) VALUES (?, 'alarm.raised', 'unknown', ?, 0, ?)", iso, route, JSON.stringify(alarm));
+      }
+    } catch (e) {
+      console.error(JSON.stringify({ ts: iso, level: "error", event: "security_log_failed", kind, error: e instanceof Error ? e.message.slice(0, 200) : "unknown" }));
+    }
+  }
+
+  /** Alarms raised in the last 24 hours, in all and per rule: on /health (counts only). */
+  private securityAlarms(): { alarms_24h: number; rules: Record<string, number> } {
+    const since = new Date(this.now().getTime() - 86_400_000).toISOString();
+    const rows = this.sql.exec("SELECT detail_json FROM sec_log WHERE kind = 'alarm.raised' AND at > ? ORDER BY seq", since).toArray() as { detail_json: string }[];
+    const rules: Record<string, number> = {};
+    for (const r of rows) { const name = String((JSON.parse(r.detail_json) as { rule?: string }).rule ?? "unknown"); rules[name] = (rules[name] ?? 0) + 1; }
+    return { alarms_24h: rows.length, rules };
+  }
+
+  /** Rows past their 90 days go, and the counters of old windows (on each sync; the trigger refuses younger rows). */
+  private pruneSecurityLog(): void {
+    const now = this.now().getTime();
+    this.sql.exec("DELETE FROM sec_log WHERE at < ?", new Date(now - (SEC_LOG_KEEP_DAYS + 1) * 86_400_000).toISOString());
+    this.sql.exec("DELETE FROM sec_counts WHERE win < ?", Math.floor(now / 1000) - 2 * 86_400);
   }
 
   /** The viewer key: the fixed one, or with MFA on this week's or last week's (it expires). */
@@ -438,7 +513,7 @@ export class Relay {
 
   /** A live passkey session: the cookie's hash is stored, unexpired, and its passkey is still enrolled. */
   private async sessionOk(req: Request): Promise<boolean> {
-    const m = /(?:^|;\s*)kit11_session=([A-Za-z0-9_-]{43})(?:;|$)/.exec(req.headers.get("cookie") ?? "");
+    const m = /(?:^|;\s*)__Host-kit11_session=([A-Za-z0-9_-]{43})(?:;|$)/.exec(req.headers.get("cookie") ?? "");
     if (!m) return false;
     const rows = this.sql.exec("SELECT credential, expires FROM sessions WHERE id_hash = ?", await sha256Hex(m[1]!)).toArray() as { credential: string; expires: number }[];
     const row = rows[0];
@@ -483,7 +558,7 @@ export class Relay {
     this.sql.exec("INSERT INTO sessions (id_hash, credential, expires) VALUES (?, ?, ?)", await sha256Hex(id), cred.id, now + SESSION_MS);
     return new Response(JSON.stringify({ signed_in: true, label: cred.label, expires_at: new Date(now + SESSION_MS).toISOString() }), {
       status: 200,
-      headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8", "set-cookie": `kit11_session=${id}; HttpOnly; Secure; SameSite=Strict; Path=/api; Max-Age=${SESSION_MS / 1000}` },
+      headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8", "content-disposition": 'attachment; filename="api.json"', "set-cookie": `${SESSION_COOKIE}=${id}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_MS / 1000}` },
     });
   }
 
@@ -544,7 +619,43 @@ export class Relay {
     this.sql.exec("INSERT INTO hits (ip, at) VALUES (?, ?)", this.failKey(req), this.now().getTime());
   }
 
+  /**
+   * Every request, then its security event when it is one (ASVS V7.2.1, V7.2.2): decided here from the path and the
+   * status, so no refusal deep in a handler goes unlogged. 401: auth.failure (a passkey route: passkey.failure; the
+   * webhook: webhook.signature_failure). 403: access.denied (a passkey route: passkey.failure). 429: rate.limited. A
+   * signature refused as not for these terms (400 on a passkey route): passkey.failure. Successes: a passkey sign-in
+   * (passkey.success), a policy change or policy text queued (policy.change), an enrolment queued (access.change), a
+   * sync that newly reports tampered terms (tamper.alarm).
+   */
   async fetch(req: Request): Promise<Response> {
+    const res = await this.route(req);
+    const path = new URL(req.url).pathname;
+    if (!path.startsWith("/api/") && path !== "/hooks/airwallex") return res;
+    const kind = this.securityKindOf(req, path, res);
+    if (!kind) return res;
+    const detail: Record<string, unknown> = { method: req.method };
+    if (res.status >= 400) { try { const b = await res.clone().json() as { error?: unknown }; if (typeof b.error === "string") detail.reason = b.error; } catch { /* not JSON */ } }
+    if (kind === "passkey.failure" && res.status === 400 && !/signature|passkey/.test(String(detail.reason ?? ""))) return res;
+    this.securityEvent(kind, req, `${req.method} ${/^\/api\/tickets\//.test(path) ? "/api/tickets/{id}" : path}`, res.status, detail);
+    return res;
+  }
+
+  private securityKindOf(req: Request, path: string, res: Response): SecurityKind | null {
+    const passkeyRoute = path === "/api/session" || path === "/api/assertions" || path === "/api/policy" || path === "/api/enrol";
+    if (this.tampered.has(req)) return "tamper.alarm";
+    if (res.status === 401) return path === "/hooks/airwallex" ? "webhook.signature_failure" : path === "/api/session" ? "passkey.failure" : "auth.failure";
+    if (res.status === 403) return passkeyRoute && path !== "/api/enrol" ? "passkey.failure" : "access.denied";
+    if (res.status === 429) return "rate.limited";
+    if (res.status === 400 && passkeyRoute) return "passkey.failure";
+    if (res.status >= 200 && res.status < 300 && req.method === "POST") {
+      if (path === "/api/session") return "passkey.success";
+      if (path === "/api/policy" || path === "/api/policy-text") return "policy.change";
+      if (path === "/api/enrol") return "access.change";
+    }
+    return null;
+  }
+
+  private async route(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
     const route = (method: string, p: string | RegExp) => (typeof p === "string" ? path === p : p.test(path)) && (req.method === method || (method === "GET" && req.method === "HEAD"));
@@ -564,7 +675,8 @@ export class Relay {
       const h = path === "/health/live" ? publicHealth(ok, info?.age_ms ?? null) : publicStatus(ok, info?.age_ms ?? null, { liveRun: this.opts.liveRun, lastSync: info?.synced_at ?? null });
       // Section 6 (Max, 7 Nov): today's spend on /try/sign's live agents, against its daily budget, on /health.
       const live = path === "/health" ? await this.liveAgentsToday() : null;
-      return json(h.status, live ? { ...h.body, live_agents_today: live } : h.body);
+      // The security log's alarms of the last 24 hours (counts per rule, no address): an uptime monitor can watch it.
+      return json(h.status, { ...h.body, ...(live ? { live_agents_today: live } : {}), security: this.securityAlarms() });
     }
     // The live Airwallex events feed: public, read-only, four fields of each verified webhook (./awxEvents.ts).
     if (path === AWX_EVENTS_PATH) {
@@ -593,6 +705,8 @@ export class Relay {
     const sessionPath = this.opts.mfa && (path === "/api/session/options" || path === "/api/session");
     if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path === "/api/policy-text" || path === "/api/ask" || path.startsWith("/api/enrol") || sessionPath)) {
       if (req.headers.get("origin") !== url.origin) return error(403, "requests must come from this site's own pages");
+      // A JSON post that does not say it is JSON is refused before it is read (ASVS V13.1.5, V13.2.5).
+      if (!isJsonType(req.headers.get("content-type"))) return error(415, UNSUPPORTED);
       // D20: signing in (two posts) counts in its own bucket of the same size, so it never uses up the approvals'.
       if (!this.underRateLimit(req, sessionPath ? "session:" : "")) return error(429, "too many requests from this address; wait ten minutes");
       if (path === "/api/session/options") return this.sessionOptions();
@@ -616,6 +730,7 @@ export class Relay {
   private async sync(req: Request): Promise<Response> {
     const auth = req.headers.get("authorization") ?? "";
     if (!auth.startsWith("Bearer ") || !(await sameSecret(auth.slice(7), this.opts.relayToken))) return error(401, "the relay token is missing or wrong");
+    if (!isJsonType(req.headers.get("content-type"))) return error(415, UNSUPPORTED);
     const body = await readJson(req, MAX_STATE_BYTES);
     if (body === null) return error(413, "state too large");
     if (body === undefined || !isObject(body.value) || typeof body.value.state_hash !== "string") return error(400, "malformed sync");
@@ -623,10 +738,15 @@ export class Relay {
     const now = this.now();
     if (state !== undefined) {
       if (!isObject(state) || !isObject(state.snapshot) || !isObject(state.approvals)) return error(400, "malformed state");
+      // A tamper alarm the runner reports for the first time is a security event (once, not on every sync).
+      const codes = (h: unknown): string[] => (isObject(h) && Array.isArray(h.alerts) ? h.alerts.map((a) => (isObject(a) && typeof a.code === "string" ? a.code : "")).filter((c) => TAMPER_CODE.test(c)) : []);
+      const before = codes(this.state()?.snapshot.health);
+      if (codes(state.snapshot.health).some((c) => !before.includes(c))) this.tampered.add(req);
       this.put("state", JSON.stringify(state));
       this.put("state_hash", state_hash);
     }
     this.put("synced_at", now.toISOString());
+    this.pruneSecurityLog();
     if (Array.isArray(acks)) {
       for (const a of acks) {
         if (!isObject(a) || typeof a.ticket !== "string" || typeof a.status !== "string" || !ACK_STATUSES.has(a.status)) continue;
