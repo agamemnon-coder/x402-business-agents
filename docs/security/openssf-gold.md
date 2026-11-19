@@ -7,7 +7,7 @@ with its URL. Nothing is claimed that was not run or measured; where an answer t
 action, both texts are given. The criteria: <https://www.bestpractices.dev/en/criteria/2>. The form:
 <https://www.bestpractices.dev/en/projects/16923/gold/edit>.
 
-**Today (19 November 2026): 18 Met, 5 Unmet, 0 N/A. After the owner's two 2FA checks: 20 Met, 3 Unmet.** Gold needs
+**Today (19 November 2026): 20 Met, 3 Unmet, 0 N/A**, the owner's two 2FA checks done the same evening. Gold needs
 every MUST to be Met, so gold is not reachable yet. Three MUSTs stay Unmet, and we say why: `bus_factor`,
 `contributors_unassociated` and `two_person_review` need a second, unaffiliated person with merge rights; the project
 has one maintainer. `test_statement_coverage90` and `test_branch_coverage80` are Met since the evening of 19 November:
@@ -91,8 +91,6 @@ hieronder. Klik **Save** per sectie.
 | `bus_factor` | MUST | One maintainer: the bus factor is 1. | A second maintainer with merge rights (GOVERNANCE.md, "How a second maintainer joins"). |
 | `contributors_unassociated` | MUST | One significant contributor; automated update pull requests and the AI coding assistant the maintainer directs are not unassociated contributors. | Two significant contributors from different organisations. |
 | `two_person_review` | MUST | The maintainer's own pull requests are merged without a second person's review; CI is the only second check. | A second maintainer reviews at least half of the changes before release; the ruleset on `main` then requires an approving review. |
-| `require_2FA` | MUST | Not checked from here: the owner's GitHub 2FA is visible to the owner only. | The owner checks it (step 2 above). |
-| `secure_2FA` | SHOULD | The same: the 2FA method is visible to the owner only. | The owner checks that the method is an app, a security key or a passkey, not SMS alone (step 2). |
 
 ## SLSA Build Level 3: from the next release on
 
@@ -148,7 +146,7 @@ The copyright of every file is stated per file through REUSE metadata (REUSE spe
 
 The licence of every file is stated per file in the same REUSE metadata: https://github.com/agamemnon-coder/x402-business-agents/blob/main/REUSE.toml gives each path its SPDX-License-Identifier (MIT for the project's files; OFL-1.1 for the Inter font, ISC AND MIT for the Lucide icon paths, LicenseRef-Trademark-Permission for the partners' logos), with every licence text in https://github.com/agamemnon-coder/x402-business-agents/tree/main/LICENSES. reuse lint (REUSE 3.3), run in CI, reported "Files with license information: 3365 / 3365" on 19 November 2026. The three Solidity contracts also carry an SPDX-License-Identifier comment in the file, as Solidity expects.
 
-### Change Control (2 Met, 2 Unmet, 0 N/A)
+### Change Control (4 Met, 0 Unmet, 0 N/A)
 
 #### `repo_distributed` (MUST): **Met**
 
@@ -158,17 +156,13 @@ The source is in git, a distributed version control system, on GitHub: https://g
 
 https://github.com/agamemnon-coder/x402-business-agents/blob/main/CONTRIBUTING.md#small-tasks-for-a-first-contribution names the small tasks for new or casual contributors (tests for an uncovered file, an axe-core accessibility run, a Solidity linter, documentation fixes) and the issue label that marks them: https://github.com/agamemnon-coder/x402-business-agents/labels/good%20first%20issue
 
-#### `require_2FA` (MUST): **Unmet** until the owner checks it
+#### `require_2FA` (MUST): **Met** (checked by the owner, 19 November 2026)
 
-Not checked from the repository: the maintainer's two-factor setting is visible to the maintainer only.
+The only account that can change the repository or read private vulnerability reports is the maintainer's GitHub account (@agamemnon-coder, the only maintainer: https://github.com/agamemnon-coder/x402-business-agents/blob/main/GOVERNANCE.md#roles-and-responsibilities), which has two-factor authentication enabled; so does the Cloudflare account that serves the project's website. Checked by the owner on 19 November 2026.
 
-> **After the owner action:** The only account that can change the repository or read private vulnerability reports is the maintainer's GitHub account (@agamemnon-coder, the only maintainer: https://github.com/agamemnon-coder/x402-business-agents/blob/main/GOVERNANCE.md#roles-and-responsibilities), which has two-factor authentication enabled; so does the Cloudflare account that serves the project's website. Checked by the owner on <date>.
+#### `secure_2FA` (SHOULD): **Met** (checked by the owner, 19 November 2026)
 
-#### `secure_2FA` (SHOULD): **Unmet** until the owner checks it
-
-Not checked from the repository: the two-factor method is visible to the maintainer only.
-
-> **After the owner action:** The maintainer's GitHub two-factor authentication uses an authenticator app (TOTP) and/or a security key or passkey (WebAuthn); SMS is not the only method. Checked by the owner on <date>.
+The maintainer's GitHub two-factor authentication uses an authenticator app (TOTP) and/or a security key or passkey (WebAuthn); SMS is not the only method. Checked by the owner on 19 November 2026.
 
 ### Quality (6 Met, 1 Unmet, 0 N/A)
 
