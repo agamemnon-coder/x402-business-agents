@@ -16,7 +16,8 @@ describe("README badges", () => {
     const at = lines.indexOf(badgeLine);
     const names = (l: string) => [...l.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1]);
     // 19 Nov 2026 (owner): the OpenSSF Best Practices badge (passing, project 16923) beside CI and CodeQL.
-    expect(names(badgeLine)).toEqual(["CI", "CodeQL", "OpenSSF Best Practices", "Tests: from docs/assets/test-summary.json", "License: MIT"]);
+    // 19 Nov 2026 (owner): the OpenSSF Scorecard badge after it, live from api.securityscorecards.dev.
+    expect(names(badgeLine)).toEqual(["CI", "CodeQL", "OpenSSF Best Practices", "OpenSSF Scorecard", "Tests: from docs/assets/test-summary.json", "License: MIT"]);
     expect(badgeLine).toContain("[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)");
     expect(names(lines[at + 1]!)).toEqual(["Airwallex: sandbox", "Alta (formerly Metal): testnet", "Visa VIC via Airi: sandbox", "T:0: sandbox ledger", "Claude: 24 decisions"]);
     expect(names(lines[at + 2]!)).toEqual(["worst-case AI, offline eval: 0 wrong payments", "MCP server: read, propose only", "Test money only"]);

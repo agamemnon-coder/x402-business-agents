@@ -11,9 +11,9 @@ OSV-Scanner 2.7.1 (release binary, SHA-256 checked against the release's `osv-sc
 |---|---|---|---|
 | `package-lock.json` | the product | 434 | **0** |
 | `worker/package-lock.json` | the relay Worker | 92 | **0** |
-| `.semgrep/requirements.txt` | Semgrep, CI job `security` only | 66 | 6 (`mcp` 1.29.0, `opentelemetry-api` 1.37.0) |
+| `.semgrep/requirements.txt` | Semgrep, CI job `security` only | 66 | 0 since 19 Nov (`mcp` and `opentelemetry-api` raised past Semgrep's own pins with `.semgrep/overrides.txt`) |
 | `test/interop/tap-ref-cdn-proxy.package-lock.json` | a third-party reference proxy, CI job `tap-interop` only | 115 | 35 (`axios` 1.12.2, `body-parser`, `follow-redirects`, `minimatch`) |
-| `test/interop/tap-ref-requirements.txt` | a third-party reference registry, CI job `tap-interop` only | 22 | 10 (`anyio`, `fastapi`, `starlette`) |
+| `test/interop/tap-ref-requirements.txt` | a third-party reference registry, CI job `tap-interop` only | 22 | 0 since 19 Nov (`fastapi`, `starlette` and `anyio` raised; all 22 interop cases still hold) |
 
 The 51 findings are all in CI tooling and test fixtures. None is in the product's lockfiles, so none is present in
 Purser or reachable in the payment path. Each has a `not_affected` / `component_not_present` statement.
@@ -21,8 +21,9 @@ Purser or reachable in the payment path. Each has a `not_affected` / `component_
 They are still real vulnerabilities in what CI runs. The interop job runs the reference proxy and registry on the
 runner's loopback, with a test key made per run. They are reported here, not hidden:
 
-- Semgrep's `mcp` and `opentelemetry-api`: fixed upstream (`mcp` 1.30.0, `opentelemetry-api` 1.45.2). Open: raise the hashed pins in `.semgrep/requirements.txt` when Semgrep allows it.
-- The TAP reference's `axios`, `starlette` and the rest: our lockfiles reproduce the reference's own ranges as of 19 October, on purpose (the interop test runs it unchanged). Open: move to a newer reference commit, or patch the copies.
+- Semgrep's `mcp` and `opentelemetry-api`: closed on 19 Nov. Semgrep pins them exactly, so `.semgrep/overrides.txt` raises them (`mcp` 1.30.0, the OpenTelemetry packages 1.45.2) and CI installs the hashed file with `--no-deps`; the scan still runs with 143 rules.
+- The TAP reference's Python packages (`starlette`, `anyio`, `fastapi`): closed on 19 Nov, raised in `test/interop/tap-ref-requirements.in`.
+- The TAP reference's proxy packages (`axios` and the rest): our lockfiles reproduce the reference's own ranges as of 19 October, on purpose (the interop test runs it unchanged). Open: move to a newer reference commit, or patch the copies.
 
 ## The process
 
