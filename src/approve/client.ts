@@ -228,6 +228,12 @@ function utcMinute(iso: string): string {
   return `${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
 }
 
+/** A signed deadline in seconds, in words; a value that is no time is shown as it is (it is then also a problem above). */
+function untilWords(seconds: string): string {
+  const d = new Date(Number(seconds) * 1000);
+  return Number.isFinite(d.getTime()) ? utcMinute(d.toISOString()) : seconds;
+}
+
 /** The account calls an owners_execute may carry (src/metal/ownersExecute.ts OWNER_CALL_SELECTORS; a test keeps them equal). */
 export const OWNER_SELECTORS = { bind: "0x240c29bb", replace: "0x2f2c2052", revoke: "0xb75c7dc6" } as const;
 
@@ -593,7 +599,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       // A revoke approves no money: the first screen says which budget ends. An unknown change shows no amount at all.
       amount: !verb ? "" : replaces ? cap : what === "revoke" ? `${str(a.budget)} USDZ` : `${str(a.budget)} USDZ in total`, margin: null, recipient: `${str(a.payee_name)} ${shortAddr(payee)}`,
       rows: [["Account", str(t.account)], ["Mandate", str(a.mandate)], ...(replaces ? [["Replaces", str(a.replaces)] as [string, string]] : []), ["Per payment", cap], ["Budget", budget], ["May pay", whoFull(payee)],
-        ["Signed on chain", "the account's Execute digest (what your passkey signs)"], ["Digest", digest], ["Valid until", utcMinute(new Date(Number(str(t.valid_until)) * 1000).toISOString())]],
+        ["Signed on chain", "the account's Execute digest (what your passkey signs)"], ["Digest", digest], ["Valid until", untilWords(str(t.valid_until))]],
       short: "the on-chain mandate change", warnings: problems.map((w) => `${w}; this cannot be signed`),
       ...(replaces ? { amountLabel: "Per payment" } : what === "revoke" ? { amountLabel: "Ends a budget of" } : {}),
       label: "On chain", big: !verb ? "" : replaces ? str(a.cap) : str(a.budget), unit: !verb ? "" : replaces ? "USDZ per payment" : what === "revoke" ? "USDZ budget, ended" : "USDZ budget",
