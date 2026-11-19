@@ -291,3 +291,7 @@ d74cf0415067315a60dd57a0631bb48f5b66be8d:docs/runs/2026-11-19-mega-run/run-9.jso
 # docs/runs/2026-11-19-alta-series*.json: "gas_only_key" is the public 20-byte address of the testnet gas signer, not a key.
 2ac18f71ab32b7c4fe0c5a7c358c4d21c058e935:docs/runs/2026-11-19-alta-series-finish.json:generic-api-key:12
 2ac18f71ab32b7c4fe0c5a7c358c4d21c058e935:docs/runs/2026-11-19-alta-series.json:generic-api-key:12
+# test/workplace-*.test.ts (19 Nov 2026): a mock Xero connection's authEventId (a made-up UUID) and the literal fake token
+# "ya29.from-env" in a test of reading a token from the environment. Neither is a credential.
+526cca065f073c40a37d4aecd707b947ae4d4fe4:test/workplace-accounting.test.ts:generic-api-key:95
+526cca065f073c40a37d4aecd707b947ae4d4fe4:test/workplace-signin.test.ts:generic-api-key:83
