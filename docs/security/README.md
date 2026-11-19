@@ -24,3 +24,38 @@ The software bill of materials and the supply-chain and static-analysis checks; 
 | Our own rules | No shell command built from a template or concatenation (`exec`/`execSync`), no `spawn` with `shell: true`. Added because the canary below showed the public sets miss that case. | `.semgrep/purser.yml` |
 | Canary (2 November) | On branch `semgrep-canary`, one file with `eval` on request input and an `exec` with an interpolated template (removed afterwards, a79176040). The public sets caught the `eval` (2 findings, CI job red, run 41420187579) but not the `exec`; with our rules all three are caught ("Ran 121 rules on 280 files: 3 findings", job red, run 41421349282). Locally the rules also catch `cp.execSync("ls " + dir)`, `` cp.exec(`…${x}`) `` and `spawn(…, { shell: true })`, and leave SQL `db.exec(…)` alone. | CI runs 41420187579, 41421349282 |
 | Secrets | gitleaks on the pushed commits and on the whole history. | CI |
+| Signed releases | Since 19 November, `.github/workflows/release.yml` turns a pushed version tag (`v…`; never `v1.0-submission` or `v1.1-submission`, which stay as submitted) into a GitHub release with the source tarball (`git archive` of the tag), its bill of materials, `SHA256SUMS`, and GitHub artifact attestations (SLSA build provenance and an SBOM attestation, signed through Sigstore with the workflow's identity), whose bundles are on the release as `*.intoto.jsonl`. It never creates or moves a tag. No release has been made with it yet. | `.github/workflows/release.yml`, below |
+
+## Verify a release
+
+Download the files of a release (`gh release download <tag> -R agamemnon-coder/x402-business-agents`), then, in that
+folder:
+
+1. The files are the ones the release lists:
+
+   ```sh
+   sha256sum -c SHA256SUMS
+   ```
+
+2. The tarball and the bill of materials were built by this repository's release workflow, from the tag's commit, on
+   GitHub's runners (this checks the Sigstore signature, the certificate's workflow identity and the SLSA provenance):
+
+   ```sh
+   gh attestation verify x402-business-agents-<tag>.tar.gz -R agamemnon-coder/x402-business-agents
+   gh attestation verify x402-business-agents-<tag>.sbom.cdx.json -R agamemnon-coder/x402-business-agents
+   ```
+
+3. The bill of materials is attested for the tarball (CycloneDX):
+
+   ```sh
+   gh attestation verify x402-business-agents-<tag>.tar.gz -R agamemnon-coder/x402-business-agents --predicate-type https://cyclonedx.org/bom
+   ```
+
+4. The same with the bundle from the release, instead of fetching it from GitHub's attestation API:
+
+   ```sh
+   gh attestation verify x402-business-agents-<tag>.tar.gz -R agamemnon-coder/x402-business-agents --bundle x402-business-agents-<tag>.provenance.intoto.jsonl
+   ```
+
+To check the tarball against the code itself: `git archive --format=tar.gz --prefix=x402-business-agents-<tag>/ <tag>`
+in a clone gives the same bytes with the same git version (two runs on 19 November gave the same SHA-256).
