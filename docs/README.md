@@ -67,6 +67,7 @@ every pull request: [CHANGELOG.md](../CHANGELOG.md).
 - [controls.md](controls.md): every control, how it works, and its evidence.
 - [runbook.md](runbook.md): incidents, the emergency stop, key rotation, recovery.
 - [decisions.md](decisions.md): decisions taken during the build, each with its reason and its cost if wrong.
+- [adr/README.md](adr/README.md): those decisions, D1 to D30, as an index of architecture decision records (date, status, superseded by which), and the template for new ones.
 - [hardening.md](hardening.md): the hardening log, 30 October to the freeze on 4 November.
 - [cfo-policy.md](cfo-policy.md): the CFO policy.
 - [cards-and-clearing.md](cards-and-clearing.md): company cards, clearing and the simulated month.
