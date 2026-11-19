@@ -7,12 +7,12 @@ with its URL. Nothing is claimed that was not run or measured; where an answer t
 action, both texts are given. The criteria: <https://www.bestpractices.dev/en/criteria/2>. The form:
 <https://www.bestpractices.dev/en/projects/16923/gold/edit>.
 
-**Today (19 November 2026): 16 Met, 7 Unmet, 0 N/A. After the owner's two 2FA checks: 18 Met, 5 Unmet.** Gold needs
-every MUST to be Met, so gold is not reachable yet. Five MUSTs stay Unmet, and we say why: `bus_factor`,
+**Today (19 November 2026): 18 Met, 5 Unmet, 0 N/A. After the owner's two 2FA checks: 20 Met, 3 Unmet.** Gold needs
+every MUST to be Met, so gold is not reachable yet. Three MUSTs stay Unmet, and we say why: `bus_factor`,
 `contributors_unassociated` and `two_person_review` need a second, unaffiliated person with merge rights; the project
-has one maintainer. `test_statement_coverage90` and `test_branch_coverage80` need 90% of statements and 80% of
-branches; the suite measures 88.75% and 77.7% on the product today, and we do not pad the figure with tests
-that check nothing.
+has one maintainer. `test_statement_coverage90` and `test_branch_coverage80` are Met since the evening of 19 November:
+the suite covers 91.1% of statements and 80.6% of branches of the product, with tests that check behaviour, not
+lines that only run ([docs/evidence/coverage.md](../evidence/coverage.md)).
 
 ## Voor de eigenaar (Nederlands): wat jij moet doen
 
@@ -76,7 +76,8 @@ hieronder. Klik **Save** per sectie.
 - **`bus_factor`, `contributors_unassociated` en `two_person_review` niet op Met** zolang er geen tweede maintainer
   is, van een andere werkgever, die echt reviewt en merget. Claude-sessies tellen niet: zij hebben geen rechten, geen
   sleutels en zijn geen onafhankelijke persoon.
-- **De coverage-criteria niet op Met** onder 90% statements en 80% branches.
+- **De coverage-criteria alleen op Met** zolang `docs/evidence/coverage.md` 90% statements en 80% branches laat zien
+  (op 19 november 's avonds: 91,1% en 80,6%, dus nu wel Met). Merge deze branch eerst: de onderbouwing linkt naar dat bestand op `main`.
 - **`require_2FA` en `secure_2FA` niet op Met** voordat stap 2 gecontroleerd is.
 - **Geen SLSA-niveau claimen** (zie hieronder): de provenance komt van `actions/attest`, niet van de SLSA-generator.
   De generator kan alleen met een tag (`@v2.1.0`) worden aangeroepen, niet vastgepind op een commit-SHA. Wil je SLSA
@@ -89,8 +90,6 @@ hieronder. Klik **Save** per sectie.
 | `bus_factor` | MUST | One maintainer: the bus factor is 1. | A second maintainer with merge rights (GOVERNANCE.md, "How a second maintainer joins"). |
 | `contributors_unassociated` | MUST | One significant contributor; automated update pull requests and the AI coding assistant the maintainer directs are not unassociated contributors. | Two significant contributors from different organisations. |
 | `two_person_review` | MUST | The maintainer's own pull requests are merged without a second person's review; CI is the only second check. | A second maintainer reviews at least half of the changes before release; the ruleset on `main` then requires an approving review. |
-| `test_statement_coverage90` | MUST | 88.75% of statements in the product, measured on 19 November 2026. | Tests that check behaviour in the largest gaps (docs/evidence/coverage.md), until 90%. |
-| `test_branch_coverage80` | MUST | 77.7% of branches in the product, measured on 19 November 2026. | The same, until 80%. |
 | `require_2FA` | MUST | Not checked from here: the owner's GitHub 2FA is visible to the owner only. | The owner checks it (step 2 above). |
 | `secure_2FA` | SHOULD | The same: the 2FA method is visible to the owner only. | The owner checks that the method is an app, a security key or a passkey, not SMS alone (step 2). |
 
@@ -157,7 +156,7 @@ Not checked from the repository: the two-factor method is visible to the maintai
 
 > **After the owner action:** The maintainer's GitHub two-factor authentication uses an authenticator app (TOTP) and/or a security key or passkey (WebAuthn); SMS is not the only method. Checked by the owner on <date>.
 
-### Quality (4 Met, 3 Unmet, 0 N/A)
+### Quality (6 Met, 1 Unmet, 0 N/A)
 
 #### `code_review_standards` (MUST): **Met**
 
@@ -179,13 +178,13 @@ The standard way for a Node.js project: npm test (vitest run), after npm ci; npm
 
 Every push to main and every pull request runs the full test suite, type checks, lint, browser checks, the TLA+ model check, REUSE and the security scans on GitHub Actions (https://github.com/agamemnon-coder/x402-business-agents/blob/main/.github/workflows/ci.yml). Changes are integrated often: main's history has 356 commits from 29 October to 19 November 2026, on 15 of the 16 days from 4 to 19 November.
 
-#### `test_statement_coverage90` (MUST): **Unmet**
+#### `test_statement_coverage90` (MUST): **Met**
 
-Measured with vitest and V8 coverage (FLOSS) on 19 November 2026: 88.75% of statements (59,017 of 66,498, in 771 files) of the product (every TypeScript file under src/, cloud/src/ and worker/src/, untested files included, without the command-line entry points and generated files), below 90%. The command: npx vitest run --coverage, with the scope set in https://github.com/agamemnon-coder/x402-business-agents/blob/main/vitest.config.ts (7,668 tests passed in that run). The dated record of the same scope, 88.8% of statements and 78.0% of branches, with the method and the largest gaps: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md. We will not add tests that only execute lines to reach the figure.
+Measured with vitest and V8 coverage (FLOSS) on 19 November 2026: 91.1% of statements (63,436 of 69,654, in 809 files) of the product (every TypeScript file under src/, cloud/src/ and worker/src/, untested files included, without the command-line entry points and generated files). The command: npm run test:coverage (vitest run --coverage), with the scope set in https://github.com/agamemnon-coder/x402-business-agents/blob/main/vitest.config.ts, which fails the run below 88% of statements; 8,338 tests passed in that run. The dated record, with the method, the figures per area, the tests that were added (each checks behaviour, not lines) and the largest gaps left: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md. Stated plainly: with the CLI entry points included the figure is 79.2% (63,956 of 80,786).
 
-#### `test_branch_coverage80` (MUST): **Unmet**
+#### `test_branch_coverage80` (MUST): **Met**
 
-Measured with the same FLOSS tool and scope on 19 November 2026: 77.7% of branches (43,402 of 55,855), below 80%. https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md
+Measured with the same FLOSS tool and scope on 19 November 2026: 80.6% of branches (47,285 of 58,685); vitest.config.ts fails the run below 78%. https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md
 
 ### Security (5 Met, 0 Unmet, 0 N/A)
 
