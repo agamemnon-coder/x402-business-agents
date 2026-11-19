@@ -39,6 +39,6 @@ describe("the ASVS 4.0.3 Level 2 self-assessment", () => {
 
   it("puts every failure in the fix plan", () => {
     const plan = md.slice(md.indexOf("## The failures and the plan"), md.indexOf("## V1 "));
-    for (const r of rows.filter((x) => x.verdict === "Fail")) expect(plan, r.id).toMatch(new RegExp(`[(, ]${r.id.replace(/\./g, "\\.")}[,)]`));
+    for (const r of rows.filter((x) => x.verdict === "Fail")) expect(["(", ",", " "].some((b) => [",", ")"].some((a) => plan.includes(`${b}${r.id}${a}`))), r.id).toBe(true);
   });
 });
