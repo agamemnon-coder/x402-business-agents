@@ -443,10 +443,11 @@ ATTACKS.push(...MORE_ATTACKS);
 /**
  * Attacks whose control finds them afterwards instead of stopping them before money moves. 19 Nov, fourth round:
  * rewrite-history left this list (every payment now verifies the audit chain first, so a rewritten log moves no money;
- * the rewrite itself, by someone holding the database file, is still found, not prevented). hidden-payment stays: a
- * charge Airwallex approves on the card's own limits reaches the ledger only afterwards (see its defence).
+ * the rewrite itself, by someone holding the database file, is still found, not prevented). 19 Nov, fifth round:
+ * hidden-payment left it too (agent cards are frozen by default at Airwallex and thawed only for a purchase Purser
+ * approved, so a charge Purser did not start is declined before money moves; see its defence for what is left).
  */
-export const CAUGHT_AFTER = new Set(["hidden-payment"]);
+export const CAUGHT_AFTER = new Set<string>([]);
 
 export async function runAttack(w: World, a: Attack): Promise<AttackResult> {
   try {

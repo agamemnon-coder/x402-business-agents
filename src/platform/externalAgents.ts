@@ -16,8 +16,8 @@ import { proposePolicyChange } from "../executors/policyChange.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
-import { cardControls, cardOf, cardSpendCents, ingestCardTransaction, storeCard } from "../policy/cards.js";
-import { cardLimits, frozen } from "../policy/rules.js";
+import { cardControls, cardOf, cardSpendCents, chargeInWindow, ingestCardTransaction, policyAllowsCard, storeCard } from "../policy/cards.js";
+import { cardLimits } from "../policy/rules.js";
 import { chargeUnderHold } from "../policy/holds.js";
 import { cardAvailability } from "../policy/available.js";
 
@@ -107,7 +107,9 @@ export async function executeAgentOnboard(db: DB, rail: IssuingRail, proposalId:
     const holder = (await rail.findCardholderByEmail(email)) ?? (await rail.createCardholder({ email, firstName, lastName: "Agent" }));
     const business = db.prepare("SELECT address FROM metal_accounts WHERE role = 'business'").get() as { address: string } | undefined;
     const nickname = `${t.display_name.slice(0, 40)}: outside agent${business ? ` (${business.address.slice(-6).toLowerCase()})` : ""}`;
-    const card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits, controls: cardControls(t.agent_id, now) }));
+    let card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits, controls: cardControls(t.agent_id, now) }));
+    // Freeze by default (src/policy/cards.ts): the card waits frozen until a purchase Purser approves thaws it.
+    if (card.status === "ACTIVE") card = await rail.setCardStatus(card.cardId, "INACTIVE");
     // Trust what Airwallex says the card has, not what we asked for.
     if (!card.limits || card.limits.perTxCents !== limits.perTxCents || card.limits.monthlyCents !== limits.monthlyCents) {
       throw new Error(`the card at Airwallex has other limits than the approved ${t.card.per_tx} / ${t.card.monthly} EUR`);
@@ -142,7 +144,7 @@ export function cardStatus(db: DB, id: ExternalAgentId, now = new Date()): CardS
     agent_id: id, status: r?.status ?? "NONE", proposal_id: r?.proposal_id ?? null, proposal_status: proposalStatus,
     card: card && limits ? {
       last4: card.last4, per_tx: fromCents(limits.perTxCents), monthly: fromCents(limits.monthlyCents),
-      spent_this_month: fromCents(cardSpendCents(db, id, now)), left_this_month: fromCents(Math.max(0, cardAvailability(db, id, now).availableCents)), frozen: frozen(db) || card.status === "INACTIVE", currency: "EUR",
+      spent_this_month: fromCents(cardSpendCents(db, id, now)), left_this_month: fromCents(Math.max(0, cardAvailability(db, id, now).availableCents)), frozen: !policyAllowsCard(db, id) || card.status === "CLOSED", currency: "EUR",
     } : null,
     recent: (db.prepare("SELECT merchant, amount_cents, approved, failure_reason, occurred_at FROM card_transactions WHERE agent = ? ORDER BY occurred_at DESC, rowid DESC LIMIT 10").all(id) as
       { merchant: string; amount_cents: number; approved: number; failure_reason: string | null; occurred_at: string }[])
@@ -169,7 +171,7 @@ export async function payWithCard(db: DB, sim: IssuingSim, id: ExternalAgentId, 
   if (amountCents <= 0) throw new Error("the amount must be more than 0.00");
   const purpose = `${merchant}, ${a.description.trim().slice(0, 120)}`;
   audit(db, id as Actor, "card.purchase_started", id, { origin: { actor: "external", party: "outside_agent", name: id }, agent: id, last4: card.last4, merchant, amount: fromCents(amountCents), currency: "EUR", description: a.description.trim().slice(0, 120) }, now);
-  const t = await chargeUnderHold(db, id, amountCents, now, () => sim.simulateCardCharge({ cardId: card.card_id, amountCents, currency: "EUR", merchant, mcc: MCC }));
+  const t = await chargeUnderHold(db, id, amountCents, now, () => chargeInWindow(db, sim, id, { cardId: card.card_id, amountCents, currency: "EUR", merchant, mcc: MCC }, now, purpose));
   ingestCardTransaction(db, t, "simulation", now, purpose);
   return t;
 }

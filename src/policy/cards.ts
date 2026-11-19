@@ -9,7 +9,7 @@ import { agentCardControls } from "./cardRules.js";
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
-import type { Card, CardLimits, CardTransaction, IssuingRail, CardControls } from "../airwallex/issuing.js";
+import type { Card, CardLimits, CardTransaction, IssuingRail, IssuingSim, CardControls } from "../airwallex/issuing.js";
 import { cardLimits, frozen, paused } from "./rules.js";
 import { stopped, velocityObserve } from "./velocity.js";
 import { principalActive } from "./principals.js";
@@ -79,10 +79,112 @@ const controlWords = (c: Pick<CardControls, "mccs" | "currencies"> | null | unde
 const sameControls = (a: Pick<CardControls, "mccs" | "currencies"> | null | undefined, b: Pick<CardControls, "mccs" | "currencies">) =>
   !!a && a.mccs.join(",") === b.mccs.join(",") && a.currencies.join(",") === b.currencies.join(",");
 
-/** The status the policy wants a card in: frozen by the emergency stop or its agent's velocity stop, closed once a task card is used, or active. */
 const taskUsed = (db: DB, agent: string) => agent.startsWith("task:") && !!db.prepare("SELECT 1 FROM task_cards WHERE task_id = ? AND status = 'USED'").get(agent);
-// A revoked or expired agent identity (B5) freezes its card too; the other agents' cards stay as they are.
-export const wantCardStatus = (db: DB, agent: string): "ACTIVE" | "INACTIVE" => (frozen(db) || stopped(db, agent) || paused(db, agent) || taskUsed(db, agent) || !principalActive(db, agent) ? "INACTIVE" : "ACTIVE");
+/**
+ * Whether the policy lets this card pay at all: not under the emergency stop, its agent's velocity stop or pause, not a
+ * used task card, and its agent's identity (B5) is neither revoked nor expired; the other agents' cards stay as they are.
+ */
+export const policyAllowsCard = (db: DB, agent: string): boolean => !(frozen(db) || stopped(db, agent) || paused(db, agent) || taskUsed(db, agent) || !principalActive(db, agent));
+
+/**
+ * Freeze by default (19 Nov, red team hidden-payment). An agent's card is INACTIVE at Airwallex except inside a window
+ * Purser opens for one purchase it approved under the policy (src/agents/cardBuyer.ts, the outside agents' payWithCard,
+ * a renewal it expects): thawed for that charge, frozen again as soon as Airwallex answers, when the window runs out
+ * (the runner's card sync, every few seconds), or at the first authorisation it did not expect, whichever comes first.
+ * A charge that reaches the card outside a window is declined by Airwallex itself (CARD_INACTIVE) before money moves.
+ * A task card (Ask Purser) is issued for one approved purchase, single-use, and keeps the status the policy allows.
+ */
+export const CARD_WINDOW_MS = 2 * 60_000;
+/** How far apart Airwallex's clock and ours may be when an authorisation is matched to a window. */
+const WINDOW_SKEW_MS = 60_000;
+export interface CardWindow { agent: string; amount: string; merchant: string; until: string; why: string }
+
+/** The window open on this card at `now`, if any: the newest window event for it is an opening that has not run out. */
+export function openWindow(db: DB, agent: string, now = new Date()): CardWindow | undefined {
+  const r = db.prepare("SELECT event, payload_json FROM audit_log WHERE subject = ? AND event IN ('card.window_opened', 'card.window_closed') ORDER BY seq DESC LIMIT 1").get(agent) as { event: string; payload_json: string } | undefined;
+  if (r?.event !== "card.window_opened") return undefined;
+  const w = JSON.parse(r.payload_json) as CardWindow;
+  return Date.parse(w.until) > now.getTime() ? w : undefined;
+}
+
+/** Whether Purser opened a purchase window on this card in the last few minutes (a status webhook for its thaw is late news). */
+export function recentWindow(db: DB, agent: string, now = new Date()): boolean {
+  return !!db.prepare("SELECT 1 FROM audit_log WHERE subject = ? AND event = 'card.window_opened' AND ts >= ? LIMIT 1").get(agent, new Date(now.getTime() - CARD_WINDOW_MS - WINDOW_SKEW_MS).toISOString());
+}
+
+/** The status the policy wants a card in: an agent's card frozen except inside an open window; a task card as the policy allows. */
+export const wantCardStatus = (db: DB, agent: string, now = new Date()): "ACTIVE" | "INACTIVE" =>
+  !policyAllowsCard(db, agent) ? "INACTIVE" : agent.startsWith("task:") || openWindow(db, agent, now) ? "ACTIVE" : "INACTIVE";
+
+/** What thaws and refreezes a card: Airwallex's status switch (the REST client and the test double both have it). */
+type StatusSwitch = Pick<IssuingRail, "setCardStatus">;
+
+/**
+ * Opens a window for one purchase Purser approved: records it in the audit log (so the runner's sync, in another
+ * process, leaves the card thawed until it closes or runs out) and thaws the card at Airwallex. Nothing is opened while
+ * the policy has the card frozen: the charge then meets a frozen card and Airwallex declines it.
+ */
+export async function openCardWindow(db: DB, rail: StatusSwitch, agent: string, a: { amountCents: number; merchant: string; why: string }, now: Date): Promise<CardWindow | null> {
+  const card = cardOf(db, agent);
+  if (!card) throw new Error(`the ${agent} agent has no card`);
+  if (agent.startsWith("task:") || card.status === "CLOSED" || !policyAllowsCard(db, agent)) return null;
+  const w: CardWindow = { agent, amount: fromCents(a.amountCents), merchant: a.merchant, until: new Date(now.getTime() + CARD_WINDOW_MS).toISOString(), why: a.why };
+  audit(db, "awx-executor", "card.window_opened", agent, { ...w, last4: card.last4, currency: "EUR" }, now);
+  let after: Card;
+  try {
+    after = await rail.setCardStatus(card.card_id, "ACTIVE");
+  } catch (e) {
+    audit(db, "awx-executor", "card.window_closed", agent, { agent, last4: card.last4, why: `not thawed at Airwallex: ${(e as Error).message.slice(0, 120)}` }, now);
+    throw new Error(`the ${agent} agent's card was not thawed for the purchase at Airwallex: ${(e as Error).message}`, { cause: e });
+  }
+  db.prepare("UPDATE cards SET status = ?, synced_at = ? WHERE agent = ?").run(after.status, now.toISOString(), agent);
+  return w;
+}
+
+/**
+ * Closes the card's window and freezes it again at Airwallex. A refreeze Airwallex refuses is recorded, not thrown: the
+ * charge it follows must still reach the ledger, and the runner's next sync freezes the card (the policy wants it so).
+ */
+export async function closeCardWindow(db: DB, rail: StatusSwitch, agent: string, why: string, now: Date): Promise<void> {
+  const card = cardOf(db, agent);
+  if (!card) return;
+  audit(db, "awx-executor", "card.window_closed", agent, { agent, last4: card.last4, why }, now);
+  if (wantCardStatus(db, agent, now) !== "INACTIVE" || card.status === "CLOSED") return;
+  try {
+    const after = await rail.setCardStatus(card.card_id, "INACTIVE");
+    db.prepare("UPDATE cards SET status = ?, synced_at = ? WHERE agent = ?").run(after.status, now.toISOString(), agent);
+  } catch (e) {
+    audit(db, "awx-executor", "card.refreeze_failed", agent, { agent, last4: card.last4, error: (e as Error).message.slice(0, 200), next: "the runner's card sync freezes it" }, now);
+  }
+}
+
+/**
+ * One approved purchase on an agent's card: the window opens, the merchant charges (in the sandbox, Airwallex's
+ * simulation endpoint), and the window closes the moment Airwallex answers, approved or declined. Airwallex still
+ * decides on the card's own limits, merchant categories and currencies.
+ */
+export async function chargeInWindow(db: DB, sim: IssuingSim, agent: string, a: { cardId: string; amountCents: number; currency: "EUR"; merchant: string; mcc: string }, now: Date, why = "a purchase Purser approved under the policy"): Promise<CardTransaction> {
+  const w = await openCardWindow(db, sim, agent, { amountCents: a.amountCents, merchant: a.merchant, why }, now);
+  if (!w) return sim.simulateCardCharge(a);
+  try {
+    return await sim.simulateCardCharge(a);
+  } finally {
+    await closeCardWindow(db, sim, agent, "Airwallex answered the purchase", now);
+  }
+}
+
+/**
+ * Whether an authorisation Purser did not start itself fits a window it opened: the same card, the same amount, at a
+ * moment the window was open. One that does not is unexpected: the window closes, and the card is frozen again.
+ */
+function expectedByWindow(db: DB, agent: string, amountCents: number, at: Date): boolean {
+  const rows = db.prepare("SELECT ts, payload_json FROM audit_log WHERE subject = ? AND event = 'card.window_opened' AND ts <= ? ORDER BY seq DESC LIMIT 20")
+    .all(agent, new Date(at.getTime() + WINDOW_SKEW_MS).toISOString()) as { ts: string; payload_json: string }[];
+  return rows.some((r) => {
+    const w = JSON.parse(r.payload_json) as CardWindow;
+    return w.amount === fromCents(amountCents) && Date.parse(w.until) + WINDOW_SKEW_MS >= at.getTime();
+  });
+}
 
 /** Makes one card match the policy (status, then limits). Returns true if Airwallex had something else. */
 export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Card, now: Date): Promise<boolean> {
@@ -92,7 +194,7 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
     return false;
   }
   let changed = false;
-  const status = wantCardStatus(db, agent);
+  const status = wantCardStatus(db, agent, now);
   if (card.status !== status) {
     let after: Card;
     try {
@@ -101,7 +203,7 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
       throw new Error(`the ${agent} agent's card was not ${status === "INACTIVE" ? "frozen" : "thawed"} at Airwallex: ${(e as Error).message}`, { cause: e });
     }
     if (after.status !== status) throw new Error(`the ${agent} agent's card is ${after.status} at Airwallex, not ${status}`);
-    audit(db, "awx-executor", status === "INACTIVE" ? "card.frozen" : "card.thawed", agent, { agent, last4: after.last4, ...(status === "INACTIVE" ? { why: frozen(db) ? "emergency stop" : "velocity limit" } : {}) }, now);
+    audit(db, "awx-executor", status === "INACTIVE" ? "card.frozen" : "card.thawed", agent, { agent, last4: after.last4, ...(status === "INACTIVE" ? { why: frozen(db) ? "emergency stop" : !policyAllowsCard(db, agent) ? "velocity limit" : "frozen by default between approved purchases" } : {}) }, now);
     card = after;
     changed = true;
   }
@@ -192,7 +294,7 @@ export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Da
     if (row.status === "CLOSED") continue;
     const allowed = await allowedCardLimits(db, row.agent, { currency: "EUR", perTxCents: row.per_tx_cents, monthlyCents: row.monthly_cents }, cardLimits(db, row.agent));
     const want = allowed.limits;
-    if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantCardStatus(db, row.agent)) {
+    if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantCardStatus(db, row.agent, now)) {
       recordRaiseRefusals(db, row.agent, allowed.refused, now);
       continue;
     }
@@ -300,6 +402,13 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
         merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, reason: t.failureReason ?? t.status, transaction_id: t.transactionId,
         last4: card.last4, via: source === "webhook" ? "Airwallex webhook" : "Airwallex poll", decided_by: "Airwallex",
       }, card.agent as AgentName, "system", now);
+    }
+    // Freeze by default: an approval Purser did not start (seen by the webhook or the poll) that fits no window it opened
+    // closes any open window, so the card is frozen again at the next sync (every few seconds on the runner).
+    if (t.approved && source !== "simulation" && !card.agent.startsWith("task:") && !/REFUND|REVERSAL|CREDIT/i.test(t.type)
+      && !expectedByWindow(db, card.agent, t.amountCents, Number.isFinite(Date.parse(t.occurredAt)) ? new Date(t.occurredAt) : now)) {
+      audit(db, "system", "card.unexpected_authorization", t.transactionId, { agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, source, action: "window closed; the card is frozen again" }, now);
+      if (openWindow(db, card.agent, now)) audit(db, "awx-executor", "card.window_closed", card.agent, { agent: card.agent, last4: card.last4, why: `an authorisation Purser did not expect (${t.transactionId})` }, now);
     }
     // Counted against the agent's velocity limits at the moment it happened; a breach stops the agent, and the next
     // card sync (every few seconds on the runner) freezes its card at Airwallex.

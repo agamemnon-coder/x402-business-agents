@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { handleAirwallexHook } from "../src/policy/cardHooks.js";
 import { airwallexEventsView, ALL_EVENTS, setKnownGlobalAccounts } from "../src/policy/airwallexEvents.js";
-import { setupCards } from "../src/policy/cards.js";
+import { openCardWindow, setupCards } from "../src/policy/cards.js";
 import { openReceivable } from "../src/agents/receivables.js";
 import { health } from "../src/ops/health.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
@@ -67,12 +67,15 @@ describe("Airwallex webhooks for every object Purser uses", () => {
   it("flags a card that is live at Airwallex while Purser has it frozen, and not the other way round", async () => {
     const { db, awx } = await world();
     const card = awx.cards[0]!.cardId;
+    // Freeze by default: live with no purchase window open is flagged; inside a window Purser opened it matches.
+    expect(send(db, "issuing.card.active", { card_id: card, card_status: "ACTIVE" })).toMatch(/live at Airwallex while the policy has it frozen/);
+    await openCardWindow(db, awx, "sourcing", { amountCents: 1999, merchant: "Packwise", why: "test" }, t0);
     expect(send(db, "issuing.card.active", { card_id: card, card_status: "ACTIVE" })).toMatch(/matches the policy/);
     db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('freeze', 'on', ?)").run(t0.toISOString());
     expect(send(db, "issuing.card.inactive", { card_id: card, card_status: "INACTIVE" })).toMatch(/matches the policy/);
     expect(send(db, "issuing.card.active", { card_id: card, card_status: "ACTIVE" })).toMatch(/live at Airwallex while the policy has it frozen/);
     expect(send(db, "issuing.card.active", { card_id: "card-of-no-agent", card_status: "ACTIVE" })).toMatch(/not one of Purser's cards/);
-    expect(recorded(db).map((r) => (r as { agrees: number }).agrees)).toEqual([1, 1, 0, 0]);
+    expect(recorded(db).map((r) => (r as { agrees: number }).agrees)).toEqual([0, 1, 1, 0, 0]);
   });
 
   it("hands a settled deposit into a known Global Account to the receivables agent, once", async () => {
@@ -111,6 +114,7 @@ describe("Airwallex webhooks for every object Purser uses", () => {
     const { db, awx } = await world();
     send(db, "payout.transfer.paid", { id: "tr-ours", status: "PAID" });
     send(db, "payout.transfer.sent", { id: "tr-other", status: "SENT" });
+    await openCardWindow(db, awx, "sourcing", { amountCents: 1999, merchant: "Packwise", why: "test" }, t0);
     send(db, "issuing.card.active", { card_id: awx.cards[0]!.cardId, card_status: "ACTIVE" });
     const v = airwallexEventsView(db);
     expect(v.total).toBe(3);

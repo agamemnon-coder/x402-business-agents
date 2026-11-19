@@ -67,11 +67,12 @@ describe("before money moves, the audit chain must verify", () => {
     expect(() => beginExecution(w.db, p.id, () => {}, w.now())).not.toThrow();
   });
 
-  it("the red team's rewrite-history attack is now stopped before money moves; only hidden-payment is found afterwards", async () => {
+  it("the red team's rewrite-history attack is now stopped before money moves; since the fifth round nothing is only found afterwards", async () => {
     const a = ATTACKS.find((x) => x.id === "rewrite-history")!;
     const r = await runAttack(await redTeamWorld(), a);
     expect(r).toMatchObject({ outcome: "blocked", caught: "before" });
     expect(r.evidence).toMatch(/replace: audit_log is append-only; chain broken at row \d+; approved payment: P-\d+: ledger_tampered/);
-    expect([...CAUGHT_AFTER]).toEqual(["hidden-payment"]);
+    // 19 Nov, fifth round: hidden-payment is prevented too (agent cards frozen by default; test/card-freeze-default.test.ts).
+    expect([...CAUGHT_AFTER]).toEqual([]);
   });
 });

@@ -7,7 +7,7 @@ import { proposeCardRaise } from "../src/agents/cardBuyer.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { applyPolicyChanges, executePolicyChange, proposePolicyChange } from "../src/executors/policyChange.js";
 import { decide } from "../src/policy/approvals.js";
-import { cardOf, setupCards, syncCards, syncCardsAfterPolicy, syncCardsIfChanged } from "../src/policy/cards.js";
+import { cardOf, chargeInWindow, setupCards, syncCards, syncCardsAfterPolicy, syncCardsIfChanged } from "../src/policy/cards.js";
 import { cardRaiseRefusal } from "../src/policy/cardRaise.js";
 import { confirmPasskey, fingerprintOf, openEnrolment } from "../src/passkey/ledger.js";
 import { processAssertion, processRegistration, type InboxItem } from "../src/passkey/process.js";
@@ -83,7 +83,7 @@ describe("a card's limit goes up only on a verified passkey signature over the n
     expect(sourcing(awx, db)).toMatchObject({ perTxCents: 3000 });
     expect(refusals(db)).toHaveLength(1);
     // A charge over the signed limit is still declined at Airwallex.
-    const t = await awx.simulateCardCharge({ cardId: cardOf(db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" });
+    const t = await chargeInWindow(db, awx, "sourcing", { cardId: cardOf(db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" }, now);
     expect(t).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
   });
 

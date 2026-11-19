@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { buyPlan } from "../src/agents/cardBuyer.js";
 import { openDb, type DB } from "../src/db/open.js";
-import { cardOf, ingestCardTransaction, setupCards } from "../src/policy/cards.js";
+import { cardOf, chargeInWindow, ingestCardTransaction, setupCards } from "../src/policy/cards.js";
 import { chargeUnderHold, heldCents, recoverHolds } from "../src/policy/holds.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
 
@@ -43,7 +43,7 @@ describe("card holds", () => {
     expect(recoverHolds(db, now)).toEqual({ settled: 0, released: 0, open: 1 });
     // The authorisation did happen: the card's transactions show it.
     const card = cardOf(db, "sourcing")!;
-    const t = await awx.simulateCardCharge({ cardId: card.card_id, amountCents: 1999, currency: "EUR", merchant: "Packwise", mcc: "5734" });
+    const t = await chargeInWindow(db, awx, "sourcing", { cardId: card.card_id, amountCents: 1999, currency: "EUR", merchant: "Packwise", mcc: "5734" }, now);
     ingestCardTransaction(db, t, "simulation", now);
     expect(recoverHolds(db, now)).toEqual({ settled: 1, released: 0, open: 0 });
     expect(heldCents(db, "sourcing", "card")).toBe(0);

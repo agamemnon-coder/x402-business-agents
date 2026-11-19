@@ -17,7 +17,7 @@ import { seedTreasury, snapshot, treasuryState, type InvoicePaymentTerms } from 
 import { CARD_ACTIVE_DAYS, LICENCE_INVOICE_FIXTURE, PLANS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
-import { cardControls, cardOf, cardRows, pollCardTransactions, setupCards } from "../policy/cards.js";
+import { cardControls, cardOf, cardRows, chargeInWindow, pollCardTransactions, setupCards } from "../policy/cards.js";
 import { cardLimits } from "../policy/rules.js";
 import { planInvoice } from "../cli/s3-airwallex.js";
 import { verifyAirwallex, type Get } from "../airwallex/verify.js";
@@ -55,7 +55,9 @@ async function merchantCharge(d: Awx1Deps, step: Step, agent: string, plan: keyo
   const p = PLANS[plan]!;
   const card = cardOf(d.db, agent);
   if (!card) throw new Error(`the ${agent} agent has no card in this world (step a)`);
-  const t = await d.issuing.simulateCardCharge({ cardId: card.card_id, amountCents: p.amountCents, currency: "EUR", merchant: p.merchant, mcc: p.mcc });
+  // Freeze by default: Purser thaws the card for the charge this scene expects (the plan's merchant and price), and
+  // freezes it again the moment Airwallex answers; the approve or decline is still Airwallex's.
+  const t = await chargeInWindow(d.db, d.issuing, agent, { cardId: card.card_id, amountCents: p.amountCents, currency: "EUR", merchant: p.merchant, mcc: p.mcc }, (d.now ?? (() => new Date()))(), `the ${p.merchant} charge this scene expects`);
   audit(d.db, "system", "awx1.merchant_charged", t.transactionId, {
     run: RUN, step, agent, last4: card.last4, merchant: p.merchant, mcc: p.mcc, amount: fromCents(p.amountCents), currency: "EUR",
     per_tx_limit: fromCents(card.per_tx_cents), allowed_mccs: card.allowed_mccs, approved: t.approved, decline_code: t.failureReason, simulated: "the merchant's charge (Airwallex sandbox simulation); the decision is Airwallex's",
