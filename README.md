@@ -83,7 +83,7 @@ npm run judge -- --check     # about 5 s: every page in CHECK_PATHS built from t
 npm run verify-approval      # under 1 s: the owner's real passkey approval of 7 November, checked with Node's crypto
 ```
 
-<p align="center"><img src="docs/assets/readme/refusal.webp" width="600" alt="Recorded live on /try (test money): the CFO signs EUR 1,850.00 with a passkey, it is paid, one cent is changed, and the payment is refused"></p>
+<p align="center"><img src="docs/assets/readme/refusal.webp" width="600" alt="Live on /try, test money: the CFO signs EUR 1,850.00 with a passkey and it is paid; one cent changed is refused"></p>
 
 > [!NOTE]
 > **Verify it yourself, offline:** `npm run verify-approval` checks the real approval; change one cent in a copy and `npm run verify-receipt -- tampered.json` says NOT VALID. Below, the real output of both.

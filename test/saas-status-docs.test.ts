@@ -535,8 +535,10 @@ describe("/status: the latest live runs", () => {
       expect({ i, iso: it.iso, full: it.full }).toEqual({ i, iso: row.iso, full: row.title });
       // The day as /runs writes it, without the year; the title up to its first colon or bracket, never other words.
       expect({ i, day: it.day }).toEqual({ i, day: row.date.replace(/ \d{4}$/, "") });
-      expect({ i, starts: row.title.startsWith(it.short), short: it.short.length > 0 && it.short.length <= row.title.length }).toEqual({ i, starts: true, short: true });
-      expect(five[i]).toMatchObject({ key: row.key, title: row.title, short: it.short, href: it.href });
+      // The page names Alta "Alta (formerly Metal)" at its first mention (the house rule); the title is the same otherwise.
+      const short = it.short.replace("Alta (formerly Metal)", "Alta");
+      expect({ i, starts: row.title.startsWith(short), short: short.length > 0 && short.length <= row.title.length }).toEqual({ i, starts: true, short: true });
+      expect(five[i]).toMatchObject({ key: row.key, title: row.title, short, href: it.href });
     });
     expect(plain(runs)).toContain("Latest live runs");
   });
