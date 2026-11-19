@@ -6,7 +6,9 @@ out of scope. It covers our own system only. Every claim below points to code or
 what was added since 30 October: the autonomous agents, D24 origins, MFA sessions, the TAP plan and test-money
 recycling (rows 31 to 38), and the headers and rate limits as the code serves them. The controls in SOC 2 form, with
 their evidence and what is not in place: [controls.md](controls.md). Corrected on 12 November from the zero-trust
-matrix (rows 8, 9, 15, 19 and 23, and the accepted risks).
+matrix (rows 8, 9, 15, 19 and 23, and the accepted risks). The rows have not been re-read in full since 12 November:
+their content is as of that date. The pinned versions and the bill of materials are in
+[security/README.md](security/README.md), updated on 19 November.
 
 ## What we protect
 
