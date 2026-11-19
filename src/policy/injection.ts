@@ -4,6 +4,7 @@
 // and only a person's passkey or typed hash approves.
 
 import { CONFUSABLES } from "./fraudCore.js";
+import { approvalClaimInAnyLanguage, instructionInAnyLanguage } from "./multilingual.js";
 
 export type InjectionKind = "hidden_characters" | "instruction" | "approval_claim";
 
@@ -21,6 +22,29 @@ const HIDDEN = new RegExp(`[${HIDDEN_CLASS}]`, "u");
 const HIDDEN_ALL = new RegExp(`[${HIDDEN_CLASS}]`, "gu");
 /** A run of tag characters (U+E0020 to U+E007E spell out ASCII). */
 const TAG_RUN = /[\u{E0000}-\u{E007F}]+/gu;
+
+/**
+ * The scripts whose spelling needs the zero-width non-joiner (U+200C) or joiner (U+200D) inside a word: Arabic script
+ * (Persian, Urdu, Kurdish, Pashto write "صورت\u200Cحساب"), Syriac, N'Ko, Mongolian, and the Brahmic scripts of South and
+ * South-East Asia, which choose a conjunct's form with them (Devanagari, Bengali, Gurmukhi, Gujarati, Oriya, Tamil, Telugu,
+ * Kannada, Malayalam, Sinhala, Myanmar, Khmer, Tibetan).
+ */
+const BRAHMIC = new Set(["Devanagari", "Bengali", "Gurmukhi", "Gujarati", "Oriya", "Tamil", "Telugu", "Kannada", "Malayalam", "Sinhala", "Myanmar", "Khmer", "Tibetan"]);
+const JOINING_SCRIPTS = ["Arabic", "Syriac", "Nko", "Mongolian", ...BRAHMIC];
+/** A joiner or non-joiner between two letters (or a letter's marks) of one such script. */
+const SCRIPT_JOINER = new RegExp(JOINING_SCRIPTS.map((sc) => {
+  const letter = `[[\\p{L}\\p{M}]&&\\p{Script_Extensions=${sc}}]`;
+  // A Brahmic script also ends a word with one after the virama (Malayalam's chillu letters, "ന്\u200D").
+  const mark = `[\\p{M}&&\\p{Script_Extensions=${sc}}]`;
+  return `(?<=${letter})[\u200C\u200D](?=${letter})${BRAHMIC.has(sc) ? `|(?<=${mark})[\u200C\u200D](?![\\p{L}\\p{M}\\p{N}])` : ""}`;
+}).join("|"), "gv");
+/**
+ * A line without the joiners its own script's spelling needs (19 Nov, after the held-out eval v6, v6-clean-ege-persian-zwnj:
+ * a Persian thank-you spelled with the non-joiner Persian needs was held as hidden characters). Anywhere else (between
+ * Latin letters, "Ig\u200Dnore"; beside a space or a digit; between two scripts) they change nothing a person sees and are
+ * still hidden characters.
+ */
+const withoutScriptJoiners = (line: string) => line.replace(SCRIPT_JOINER, "");
 
 /** The text as a person sees it: every zero-width, direction and tag character taken out. */
 export const visibleText = (text: string): string => text.replace(HIDDEN_ALL, "");
@@ -84,7 +108,7 @@ const INSTRUCTION = [
 // Already approved, in Spanish, Portuguese and Italian ("Pagamento já aprovado", "Fattura già approvata"; 19 Nov, eval v3).
 const APPROVED_ROMANCE = /(^|[^\p{L}])(ya|j(á|a)|gi(à|a))\s+(est(á|a)\s+)?(aprobad[oa]s?|aprovad[oa]s?|approvat[oa]|autorizad[oa]|autorizzat[oa])(?![\p{L}])/iu;
 // Past the approval or the checks (16 Nov: "without approval", "skip the CFO", "don't ask the CFO", "ignore limit").
-const APPROVAL_CLAIM = /\b(al|reeds|bereits|schon|d(é|e)j(à|a)) (goedgekeurd|freigegeben|genehmigt|approuv(é|e)e?s?)\b|\bsla\b[^.\n]{0,25}\b(controle|goedkeuring|verificatie|check)\b[^.\n]{0,10}\bover\b|\b(pr(ü|ue)fung|freigabe|kontrolle|genehmigung)\b[^.\n]{0,15}\b(entf(ä|ae)llt|(ü|ue)berspringen|nicht (n(ö|oe)tig|erforderlich))\b|\bohne r(ü|ue)ckfrage\b|\bapproved\b[^.\n]{0,20}\bpay (it )?(now|immediately|at once|right away)\b|\b(do not|don'?t|never|no need to) escalate\b|\b(is|was|been|mark(ed)? (it )?as|auto(matically)?)[ -]approved\b|\bapprove (this|it|the payment|automatically|immediately|now|without)\b|\bpre-?approved\b|\balready approved\b|\bapproval (is )?(not|no longer) (needed|required)\b|\bskip (the )?(approval|verification|check|review)\b|\bno (approval|verification) (is )?(needed|required)\b|\b(without|no need for|skip(ping)?|don'?t (ask|wait for|need|involve)|do not (ask|wait for|need|involve)|ignore|bypass)\b[^.\n]{0,25}\b(approvals?|cfo|sign(ing|ature|-?off)?|checks?|checking|verification|review|passkeys?|face ?id|controls?|limits?)\b/i;
+const APPROVAL_CLAIM = /\b(al|reeds|bereits|schon|d(é|e)j(à|a)) (goedgekeurd|freigegeben|genehmigt|approuv(é|e)e?s?)\b|\bsla\b[^.\n]{0,25}\b(controle|goedkeuring|verificatie|check)\b[^.\n]{0,10}\bover\b|\b(pr(ü|ue)fung|freigabe|kontrolle|genehmigung)\b[^.\n]{0,15}\b(entf(ä|ae)llt|(ü|ue)berspringen|nicht (n(ö|oe)tig|erforderlich))\b|\bohne r(ü|ue)ckfrage\b|\bapproved\b[^.\n]{0,20}\bpay (it )?(now|immediately|at once|right away)\b|\b(do not|don'?t|never|no need to) escalate\b|\b(is|was|been|mark(ed)? (it )?as|auto(matically)?)[ -]approved\b|\bapprove (this|it|the payment|automatically|immediately|now|without)\b|\bpre-?approved\b|\bpre-?(verified|checked|cleared|validated)\b|\balready (been )?(verified|checked|validated|cleared)\b|\bno (further |more |additional )?(checks?|verification|review|approvals?) (is |are )?(needed|required|necessary)\b|\balready approved\b|\bapproval (is )?(not|no longer) (needed|required)\b|\bskip (the )?(approval|verification|check|review)\b|\bno (approval|verification) (is )?(needed|required)\b|\b(without|no need for|skip(ping)?|don'?t (ask|wait for|need|involve)|do not (ask|wait for|need|involve)|ignore|bypass)\b[^.\n]{0,25}\b(approvals?|cfo|sign(ing|ature|-?off)?|checks?|checking|verification|review|passkeys?|face ?id|controls?|limits?)\b/i;
 
 /** A line for people: a run of tag characters as the text it spells, any other hidden character as [U+XXXX]. */
 const show = (line: string) => line
@@ -115,6 +139,11 @@ const kindOf = (line: string): InjectionKind | null => {
     if (INSTRUCTION.some((re) => re.test(v))) return "instruction";
     if (APPROVAL_CLAIM.test(v) || APPROVED_ROMANCE.test(v)) return "approval_claim";
   }
+  // 19 Nov, after the held-out eval v5 (docs/evals/adversarial-v5.md: orders in Chinese, Japanese and Arabic were paid,
+  // because every list above is written in Latin letters with ASCII word boundaries): the same concepts in the other
+  // languages and scripts suppliers write in (src/policy/multilingual.ts).
+  if (instructionInAnyLanguage(line)) return "instruction";
+  if (approvalClaimInAnyLanguage(line)) return "approval_claim";
   return null;
 };
 
@@ -126,7 +155,7 @@ export function findInjections(text: string): InjectionFinding[] {
 function screen(text: string, depth: number): InjectionFinding[] {
   const out: InjectionFinding[] = [];
   for (const line of text.split("\n")) {
-    const kind: InjectionKind | null = HIDDEN.test(line) ? "hidden_characters" : kindOf(line);
+    const kind: InjectionKind | null = HIDDEN.test(withoutScriptJoiners(line)) ? "hidden_characters" : kindOf(line);
     if (kind) { out.push({ kind, excerpt: show(line) }); continue; }
     if (depth >= 2) continue;
     // 19 Nov, second round (eval v3, v3-inject-base64): a run of base64 that decodes to readable text is screened as text.
@@ -135,10 +164,24 @@ function screen(text: string, depth: number): InjectionFinding[] {
     if (b64 !== undefined) { out.push({ kind: "instruction", excerpt: show(`${line.replace(/[A-Za-z0-9+/]{16,}={0,2}/g, "").trim()} [base64: ${b64.slice(0, 120)}]`) }); continue; }
     const hex = hexTexts(line).find((t) => screen(t, depth + 1).length > 0);
     if (hex !== undefined) { out.push({ kind: "instruction", excerpt: show(`${line.replace(/\b[0-9A-Fa-f]{16,}\b/g, "").trim()} [hex: ${hex.slice(0, 120)}]`) }); continue; }
+    // 19 Nov (after eval v5): percent-encoding, which spells any language in ASCII ("%E5%BF%BD%E7%95%A5" is 忽略).
+    const pct = percentTexts(line).find((t) => screen(t, depth + 1).length > 0);
+    if (pct !== undefined) { out.push({ kind: "instruction", excerpt: show(`${line.replace(/(?:%[0-9A-Fa-f]{2}){4,}/g, "").trim()} [URL-encoded: ${pct.slice(0, 120)}]`) }); continue; }
     if (depth === 0 && /[A-Za-z]{3,}\s+[A-Za-z]{3,}/.test(line)) {
       const r13 = rot13(line);
       if (kindOf(r13)) out.push({ kind: "instruction", excerpt: show(`${line} [ROT13: ${r13.slice(0, 120)}]`) });
     }
+  }
+  return out;
+}
+
+/** The readable texts that runs of percent-encoded bytes (four or more) in a line decode to. */
+function percentTexts(line: string): string[] {
+  const out: string[] = [];
+  for (const m of line.matchAll(/(?:%[0-9A-Fa-f]{2}|[A-Za-z0-9 ._~+-])*(?:%[0-9A-Fa-f]{2}){4,}(?:%[0-9A-Fa-f]{2}|[A-Za-z0-9 ._~+-])*/g)) {
+    let text: string;
+    try { text = decodeURIComponent(m[0].replace(/\+/g, " ")); } catch { continue; }
+    if (readable(text)) out.push(text);
   }
   return out;
 }
@@ -162,11 +205,16 @@ function hexTexts(line: string): string[] {
   return out;
 }
 
-/** Printable text with words in it: what an encoding of an instruction decodes to, unlike an IBAN, a hash or a number. */
+/**
+ * Printable text with words in it: what an encoding of an instruction decodes to, unlike an IBAN, a hash or a number.
+ * 19 Nov (after eval v5): words are also four letters running on in a script written without spaces (Chinese,
+ * Japanese, Korean, Thai), so an encoded order in those languages is decoded and screened too.
+ */
 const readable = (text: string) => {
   const chars = [...text];
-  const printable = chars.filter((ch) => /[\p{L}\p{N}\p{P}\p{S}\p{Zs}]/u.test(ch)).length;
-  return printable / Math.max(1, chars.length) >= 0.9 && /\p{L}{2,}\s+\p{L}{2,}/u.test(text);
+  const printable = chars.filter((ch) => /[\p{L}\p{M}\p{N}\p{P}\p{S}\p{Zs}]/u.test(ch)).length;
+  return printable / Math.max(1, chars.length) >= 0.9
+    && (/\p{L}{2,}\s+\p{L}{2,}/u.test(text) || /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]{4,}/u.test(text));
 };
 
 /**

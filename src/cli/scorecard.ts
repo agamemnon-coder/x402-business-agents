@@ -191,7 +191,7 @@ The same always-pay script on new invoice cases, each set written and committed 
 |---|---|---|---|---|---|
 ${ADV_TABLE.map((x) => advRow(x.label, advOf(x.record), x.held)).filter(Boolean).join("\n")}
 
-Each set was held out until rules were written against its misses; the numbers after the fixes measure those fixes on the cases they were made for, not new invoices. Run them: \`npm run eval:adversarial-v2\`, \`npm run eval:adversarial-v3\`, \`npm run eval:adversarial-v4\`, \`npm run eval:adversarial-v5\`.
+Each set was held out until rules were written against its misses; the numbers after the fixes measure those fixes on the cases they were made for, not new invoices. Run them: \`npm run eval:adversarial-v2\`, \`npm run eval:adversarial-v3\`, \`npm run eval:adversarial-v4\`, \`npm run eval:adversarial-v5\`, \`npm run eval:adversarial-v6\`, \`npm run eval:adversarial-v7\`.
 `);
 console.log(worstLine);
 console.log(`wrote ${recorded ? "" : `${OUT}, `}${SUMMARY}, ${DOC}`);
