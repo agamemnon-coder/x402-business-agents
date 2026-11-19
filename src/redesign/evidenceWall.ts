@@ -18,7 +18,12 @@ const ROOT = new URL("../../", import.meta.url);
 
 /** What a tile's figure is: live at a partner's sandbox, live on Alta's testnet, a test world (no partner), a re-check of the records, or CI. */
 export type WallTag = "sandbox" | "testnet" | "test" | "check" | "ci";
-export const TAG_WORDS: Record<WallTag, string> = { sandbox: "Live, sandbox", testnet: "Live, testnet", test: "Test world", check: "Re-checked", ci: "CI" };
+// 19 Nov, second pass (the owner: "clearer and tighter"): one word a tag; the wall's lead says sandbox and testnet are live.
+export const TAG_WORDS: Record<WallTag, string> = { sandbox: "Sandbox", testnet: "Testnet", test: "Test world", check: "Re-checked", ci: "CI" };
+/** The wall's legend, in sight above the tiles: what the tags mean, and what was simulated everywhere. */
+export const WALL_LEGEND = "Sandbox and testnet: live runs, test money; a sandbox PAID is simulated. Test world: offline evals. Tap a tile for its record.";
+/** The groups' names in the wall's sticky nav. */
+export const WALL_NAV: Record<string, string> = { "ev-rails": "Live on the rails", "ev-forged": "Cannot be forged", "ev-ai": "AI under control", "ev-built": "Built to last", "ev-scale": "/try timed" };
 /** The partner whose colour the tile carries, if one. */
 export type WallTone = "awx" | "metal" | "claude" | "ok" | "";
 export interface WallTile { key: string; fig: string; label: string; note: string; tag: WallTag; tone: WallTone; href: string; rec: string }
@@ -62,35 +67,54 @@ export function withWallSection(llms: string, section: string = evidenceWallLlms
   return after >= 0 ? `${llms.slice(0, after)}\n${section}\n${llms.slice(after)}` : `${llms.trimEnd()}\n\n${section}\n`;
 }
 
+/**
+ * The wall (19 Nov, second pass: "clearer and tighter"): a sticky nav of its groups, then one row a group: its name, its
+ * tiles (the figure, a few words, the tag, the link; what the figure counts in the link's title), and the group's notes
+ * folded under its name.
+ */
 export function evidenceWallHtml(w: EvidenceWall | null = committedWall()): string {
   if (!w?.groups.length) return "";
-  const tile = (t: WallTile) => `<li class="ew-t${t.tone ? ` ${t.tone}` : ""}" data-wall="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}"${isExternal(t.href) ? ' target="_blank" rel="noopener"' : ""}><b class="ew-f">${esc(t.fig)}</b><span class="ew-l">${esc(t.label)}</span><small class="ew-n">${esc(t.note)}</small><span class="ew-k"><span class="ew-tag ${t.tag}">${esc(TAG_WORDS[t.tag])}</span><span class="ew-r" aria-hidden="true">${isExternal(t.href) ? "↗" : "→"}</span></span></a></li>`;
+  const tile = (t: WallTile) => `<li class="ew-t${t.tone ? ` ${t.tone}` : ""}" data-wall="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}" title="${esc(t.note)}"${isExternal(t.href) ? ' target="_blank" rel="noopener"' : ""}><b class="ew-f">${esc(t.fig)}</b><span class="ew-l">${esc(t.label)}</span><span class="ew-k"><span class="ew-tag ${t.tag}">${esc(TAG_WORDS[t.tag])}</span><span class="ew-r" aria-hidden="true">${isExternal(t.href) ? "↗" : "→"}</span></span></a></li>`;
+  const notes = (g: WallGroup) => `<details class="ew-more"><summary>What each counts</summary><ul>${g.tiles.map((t) => `<li${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><b>${esc(t.fig)}</b> ${esc(t.label)}: ${esc(t.note)}</li>`).join("")}</ul></details>`;
   return `<section class="ewall" id="${WALL_ID}" aria-labelledby="ew-h" data-rec="${esc(WALL_FILE)}">
   <h2 id="ew-h">${esc(WALL_TITLE)}</h2>
-  <p class="ew-lead">${esc("Each figure is read from its record; open a tile for it. Test money only; simulated steps are said.")}</p>
-  ${w.groups.map((g) => `<div class="ew-g" id="${esc(g.id)}"><h3>${esc(g.title)}</h3><ul class="ew-ts">${g.tiles.map(tile).join("")}</ul></div>`).join("\n  ")}
+  <p class="ew-lead">${esc(WALL_LEGEND)}</p>
+  <nav class="ew-nav" aria-label="${esc("Evidence groups")}">${w.groups.map((g) => `<a href="#${esc(g.id)}">${esc(WALL_NAV[g.id] ?? g.title)}</a>`).join("")}</nav>
+  ${w.groups.map((g) => `<div class="ew-g" id="${esc(g.id)}"><div class="ew-gh"><h3>${esc(g.title)}</h3>${notes(g)}</div><ul class="ew-ts">${g.tiles.map(tile).join("")}</ul></div>`).join("\n  ")}
 </section>`;
 }
 
 export const EVIDENCE_WALL_CSS = `
-.ewall { margin: 8px 0 30px; }
-.ewall > h2 { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; letter-spacing: -.01em; margin: 0 0 6px; }
-.ewall .ew-lead { margin: 0 0 14px; font-size: 15px; line-height: 1.5; color: var(--muted); max-width: 46em; }
-.ewall .ew-g { margin: 0 0 18px; }
-.ewall .ew-g h3 { font-size: 17px; font-weight: 720; margin: 0 0 8px; }
-.ewall ul.ew-ts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 1100px) { .ewall ul.ew-ts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 760px) { .ewall ul.ew-ts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ewall { margin: 6px 0 28px; }
+.ewall > h2 { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; letter-spacing: -.01em; margin: 0 0 4px; }
+.ewall .ew-lead { margin: 0 0 10px; font-size: 14px; line-height: 1.45; color: var(--muted); max-width: 60em; }
+/* The groups' nav, sticky under the site's header; it scrolls sideways inside itself on a phone. */
+.ewall .ew-nav { position: sticky; top: 64px; z-index: 30; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; padding: 6px 0; background: var(--bg); }
+.ewall .ew-nav::-webkit-scrollbar { display: none; }
+.ewall .ew-nav a { flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 14px; font-weight: 650; text-decoration: none; white-space: nowrap; }
+.ewall .ew-nav a:hover, .ewall .ew-nav a:focus-visible { border-color: var(--accent); color: var(--accent); }
+.ewall .ew-g { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 8px 16px; padding: 12px 0; border-top: 1px solid var(--border); scroll-margin-top: 130px; }
+.ewall .ew-g h3 { font-size: 16px; font-weight: 720; line-height: 1.3; margin: 4px 0 2px; }
+.ewall details.ew-more > summary { cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; font-size: 13.5px; font-weight: 650; color: var(--accent); list-style: none; }
+.ewall details.ew-more > summary::-webkit-details-marker { display: none; }
+.ewall details.ew-more > summary::after { content: " ▾"; } .ewall details.ew-more[open] > summary::after { content: " ▴"; }
+.ewall details.ew-more ul { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 6px; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.ewall details.ew-more b { color: var(--text); font-variant-numeric: tabular-nums; }
+.ewall ul.ew-ts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
 .ewall li.ew-t { --pc: var(--accent); min-width: 0; }
 .ewall li.ew-t.awx { --pc: var(--awx); } .ewall li.ew-t.metal { --pc: var(--metal); } .ewall li.ew-t.claude { --pc: var(--claude); } .ewall li.ew-t.ok { --pc: var(--ok); }
-.ewall li.ew-t a { display: flex; flex-direction: column; gap: 4px; height: 100%; min-height: 44px; padding: 14px 14px 12px; border: 1px solid var(--border); border-top: 3px solid var(--pc); border-radius: 14px; background: var(--surface); color: inherit; text-decoration: none; }
+.ewall li.ew-t a { display: flex; flex-direction: column; gap: 2px; height: 100%; min-height: 44px; padding: 10px 12px 8px; border: 1px solid var(--border); border-left: 3px solid var(--pc); border-radius: 10px; background: var(--surface); color: inherit; text-decoration: none; }
 .ewall li.ew-t a:hover, .ewall li.ew-t a:focus-visible { border-color: var(--pc); }
-.ewall .ew-f { font-size: clamp(24px, 2.4vw, 30px); line-height: 1.1; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.ewall .ew-l { font-size: 14.5px; font-weight: 650; line-height: 1.35; }
-.ewall .ew-n { font-size: 13px; line-height: 1.4; color: var(--muted); flex: 1; }
-.ewall .ew-k { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin-top: 6px; }
-.ewall .ew-tag { font-size: 12px; font-weight: 650; padding: 2px 8px; border-radius: 999px; background: var(--sunken); color: var(--muted); white-space: nowrap; }
+.ewall .ew-f { font-size: 22px; line-height: 1.15; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.ewall .ew-l { font-size: 13px; font-weight: 600; line-height: 1.3; flex: 1; }
+.ewall .ew-k { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; }
+.ewall .ew-tag { font-size: 11.5px; font-weight: 650; padding: 1px 7px; border-radius: 999px; background: var(--sunken); color: var(--muted); white-space: nowrap; }
 .ewall .ew-tag.sandbox, .ewall .ew-tag.testnet { background: var(--ok-soft); color: var(--ok); }
-.ewall .ew-r { font-size: 13px; font-weight: 650; color: var(--pc); white-space: nowrap; }
-@media (max-width: 420px) { .ewall li.ew-t a { padding: 12px 11px 10px; } .ewall .ew-f { font-size: 22px; } .ewall .ew-l { font-size: 13.5px; } .ewall .ew-n { font-size: 12.5px; } }
+.ewall .ew-r { font-size: 13px; font-weight: 650; color: var(--pc); }
+@media (max-width: 760px) {
+  .ewall .ew-g { grid-template-columns: minmax(0, 1fr); gap: 0 0; }
+  .ewall .ew-gh { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .ewall ul.ew-ts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) { .ewall li.ew-t a { padding: 9px 10px 7px; } .ewall .ew-f { font-size: 20px; } .ewall .ew-l { font-size: 12.5px; } }
 `;

@@ -9,7 +9,7 @@
         {
           "key": "try-transfers",
           "fig": "All 16",
-          "label": "Airwallex sandbox transfers PAID from the public /try",
+          "label": "Airwallex transfers PAID from the public /try",
           "note": "8 walks as a visitor, 19 Nov; PAID by the sandbox's simulation.",
           "tag": "sandbox",
           "tone": "awx",
@@ -29,7 +29,7 @@
         {
           "key": "approval-hash",
           "fig": "797d4483…",
-          "label": "the signed hash, read back from Airwallex's transfer",
+          "label": "signed hash in Airwallex's transfer record",
           "note": "Its approval_sha256 is the hash of the terms the CFO signed.",
           "tag": "sandbox",
           "tone": "awx",
@@ -37,9 +37,19 @@
           "rec": "docs/runs/airwallex-transfer-approval-2026-11-06.json"
         },
         {
+          "key": "two-locks",
+          "fig": "EUR 240.00",
+          "label": "held by Airwallex until a person approved",
+          "note": "Held by Airwallex until a person approved it there; then PAID; a test passkey signed in Purser, settlement simulated.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-airwallex-two-locks-paid.md",
+          "rec": "docs/runs/2026-11-12-airwallex-two-locks-paid.md"
+        },
+        {
           "key": "alta-refusal",
           "fig": "#24",
-          "label": "refused on chain by Alta: over the mandate",
+          "label": "refused on chain by Alta, over the mandate",
           "note": "On Alta's testnet explorer; the main run, 3 Nov.",
           "tag": "testnet",
           "tone": "metal",
@@ -49,7 +59,7 @@
         {
           "key": "visa-airi",
           "fig": "EUR 45.00",
-          "label": "paid with Visa via Airwallex's Airi, after Face ID",
+          "label": "paid via Visa and Airi, after Face ID",
           "note": "A test card, 14 Nov; 1 of 3 purchases paid.",
           "tag": "sandbox",
           "tone": "awx",
@@ -59,7 +69,7 @@
         {
           "key": "late-failure",
           "fig": "Both",
-          "label": "payouts PAID then FAILED: back to a person, none resent",
+          "label": "PAID, then FAILED: back to a person",
           "note": "PAID and FAILED by the sandbox's simulation, 17 Nov.",
           "tag": "sandbox",
           "tone": "awx",
@@ -69,7 +79,7 @@
         {
           "key": "awx-endpoints",
           "fig": "50",
-          "label": "Airwallex endpoints called live, of 61 in the code",
+          "label": "Airwallex endpoints live, of 61",
           "note": "Each with the first record that holds a call to it.",
           "tag": "sandbox",
           "tone": "awx",
@@ -85,7 +95,7 @@
         {
           "key": "tamper-matrix",
           "fig": "All 894",
-          "label": "tampered copies of signed proofs refused",
+          "label": "tampered proof copies refused",
           "note": "Every signed value of 6 proofs changed; the originals verify. Offline.",
           "tag": "test",
           "tone": "ok",
@@ -95,7 +105,7 @@
         {
           "key": "try-cent",
           "fig": "All 8",
-          "label": "one-cent changes after approval refused",
+          "label": "one-cent changes refused after approval",
           "note": "The public /try, 19 Nov; a virtual test passkey signed.",
           "tag": "sandbox",
           "tone": "ok",
@@ -105,7 +115,7 @@
         {
           "key": "try-hash",
           "fig": "All 8",
-          "label": "approvals whose hash the Airwallex transfer carries",
+          "label": "approvals whose hash Airwallex carries",
           "note": "The public /try, 19 Nov.",
           "tag": "sandbox",
           "tone": "awx",
@@ -115,7 +125,7 @@
         {
           "key": "try-proofs",
           "fig": "All 16",
-          "label": "proof files VALID on /verify and offline",
+          "label": "proof files VALID, browser and offline",
           "note": "Downloaded from /try; npm run verify-bundle agrees.",
           "tag": "sandbox",
           "tone": "ok",
@@ -125,7 +135,7 @@
         {
           "key": "card-cent",
           "fig": "EUR 30.01",
-          "label": "declined by Airwallex: one cent over an agent card's limit",
+          "label": "one cent over an agent's limit: declined",
           "note": "Simulated card charges, 15 Nov.",
           "tag": "sandbox",
           "tone": "awx",
@@ -135,7 +145,7 @@
         {
           "key": "passkeys-onchain",
           "fig": "3",
-          "label": "limit changes on chain, each after the passkeys signed",
+          "label": "limit changes signed by passkeys on chain",
           "note": "Alta testnet, 12 Nov: P-256 checked on chain; one a test key.",
           "tag": "testnet",
           "tone": "metal",
@@ -149,9 +159,19 @@
       "title": "AI under control",
       "tiles": [
         {
+          "key": "claude-main",
+          "fig": "24",
+          "label": "decisions by Claude in the main run",
+          "note": "Decisions by Claude in the main run, 0 fallbacks; code enforces the limits.",
+          "tag": "sandbox",
+          "tone": "claude",
+          "href": "claude",
+          "rec": "docs/demo/main-run.json"
+        },
+        {
           "key": "worst-case",
           "fig": "0 vs 35",
-          "label": "wrong payments: an always-pay AI in Purser, vs no rules",
+          "label": "wrong payments: always-pay AI vs no rules",
           "note": "50 hostile and clean invoices; 0 paid past the CFO.",
           "tag": "test",
           "tone": "claude",
@@ -161,7 +181,7 @@
         {
           "key": "red-team",
           "fig": "37 of 39",
-          "label": "red-team attacks stopped before anything moved",
+          "label": "red-team attacks stopped before money moved",
           "note": "The other 2 found afterwards, not prevented.",
           "tag": "test",
           "tone": "claude",
@@ -171,7 +191,7 @@
         {
           "key": "hostile-model",
           "fig": "370 of 380",
-          "label": "hostile tool calls, in Claude's place, stopped by code",
+          "label": "hostile tool calls stopped by code",
           "note": "The other 10 stood within the rules, by the ledger.",
           "tag": "test",
           "tone": "claude",
@@ -207,7 +227,7 @@
         {
           "key": "verify-all",
           "fig": "189",
-          "label": "checks passed by npm run verify-all, 0 failed",
+          "label": "checks passed by verify-all, 0 failed",
           "note": "129 Alta transactions read from the chain; 15 Nov.",
           "tag": "check",
           "tone": "ok",
@@ -243,7 +263,7 @@
         {
           "key": "try-journeys",
           "fig": "All 8",
-          "label": "full /try journeys passed every step",
+          "label": "/try journeys passed every step",
           "note": "19 Nov, Chromium, desktop and phone; 0 console errors.",
           "tag": "sandbox",
           "tone": "ok",
@@ -293,7 +313,7 @@
         {
           "key": "try-cost",
           "fig": "USD 0.0049",
-          "label": "Claude cost per journey",
+          "label": "Claude cost per /try journey",
           "note": "List price; USD 0.0392 for 8.",
           "tag": "sandbox",
           "tone": "claude",

@@ -1104,12 +1104,12 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // Jury panel, 15 Nov ("/proof is too long"): the heading, the lead, five facts a judge can check. Max, the same day
       // ("just links, no more visuals"): the facts as cards, then the payment-check chain, the numbers band, the offline
       // check, the film links and the guarantees in sight; every live run and all the rest in two folds closed on load.
-      // 19 Nov (the owner: "show all our data and proof"): the evidence wall after the guarantees, before the folds.
-      if (first.order !== "h1 p.plead section.pfacts ol.pchain ul.scale aside.pverify p.pwatch section.gtee section.ewall" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the five fact cards, the chain, the band, the offline check, the film links, the guarantees and the folds (every live run, ${PROOF_RUN_ROWS}, in the first), closed on load (${JSON.stringify(first)})`);
+      // 19 Nov, second pass (the owner: "clearer and tighter, more visuals"): the evidence map and the wall lead the page.
+      if (first.order !== "h1 p.plead figure.emap section.ewall ul.scale aside.pverify p.pwatch section.gtee details.sumd" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the five fact cards, the chain, the band, the offline check, the film links, the guarantees and the folds (every live run, ${PROOF_RUN_ROWS}, in the first), closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
-        // The five facts start on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
-        const facts = await page.evaluate(`(() => { const e = document.querySelector("main section.pfacts"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
-        if (facts < 0 || facts >= 440) fail(`/proof ${tag}: the five facts start at ${facts} px, not on the first screen`);
+        // The evidence map starts on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
+        const map = await page.evaluate(`(() => { const e = document.querySelector("main figure.emap"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
+        if (map < 0 || map >= 440) fail(`/proof ${tag}: the evidence map starts at ${map} px, not on the first screen`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 6) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);

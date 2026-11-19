@@ -37,15 +37,16 @@ describe("What Purser guarantees", () => {
   // live run come first; the guarantees follow, in sight, above the fold with the partners and the numbers.
   // Jury panel, 15 Nov: the five facts lead. Max, the same day ("just links, no more visuals"): the facts as cards, then
   // the chain, the band, the offline check, the film links and the guarantees, all in sight; the folds after them.
-  it("is in sight under the fact cards, the chain, the band, the offline check and the film links, above the folds", () => {
+  // 19 Nov, second pass (the owner): the evidence map and the wall lead; the band, the offline check and the film links
+  // follow, then the guarantees in sight, then the folds.
+  it("is in sight under the map, the wall, the band, the offline check and the film links, above the folds", () => {
     const proof = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).proof!;
     expect(proof).toContain(guaranteesHtml());
     const between = proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim();
-    expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<section class="pfacts"[\s\S]*?<\/section>\s*<ol class="pchain"[\s\S]*?<\/ol>\s*<ul class="scale"[\s\S]*?<\/ul>\s*<aside class="pverify"[\s\S]*?<\/aside>\s*<p class="pwatch">[\s\S]*?<\/p>$/);
-    // 19 Nov (the owner: "show all our data and proof"): the evidence wall between the guarantees and the folds.
+    expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<figure class="emap"[\s\S]*?<\/figure>\s*<section class="ewall"[\s\S]*?<\/section>\s*<ul class="scale"[\s\S]*?<\/ul>\s*<aside class="pverify"[\s\S]*?<\/aside>\s*<p class="pwatch">[\s\S]*?<\/p>$/);
+    expect(between).toContain(evidenceWallHtml());
     const after = proof.slice(proof.indexOf(guaranteesHtml()) + guaranteesHtml().length).trim();
-    expect(after.startsWith(evidenceWallHtml())).toBe(true);
-    expect(after.slice(evidenceWallHtml().length).trim()).toMatch(/^<details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary>/);
+    expect(after).toMatch(/^<details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary>/);
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
   });
 
