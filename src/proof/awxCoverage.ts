@@ -20,8 +20,8 @@ const isVerb = (s: string): s is Verb => (VERBS as readonly string[]).includes(s
  * Claude) and is not counted.
  */
 export const AWX_ROOTS = [
-  "accounts", "authentication", "balances", "batch_transfers", "beneficiaries", "connected_account_transfers", "deposits",
-  "financial_transactions", "fx", "global_accounts", "hosted_flows", "issuing", "oauth", "pa", "simulation", "transfers", "webhooks",
+  "account", "accounts", "authentication", "balances", "batch_transfers", "beneficiaries", "connected_account_transfers", "deposits", "files",
+  "financial_transactions", "fx", "global_accounts", "hosted_flows", "issuing", "oauth", "pa", "simulation", "spend", "transfers", "webhooks",
 ] as const;
 
 /** One endpoint: a method and a path template under /api/v1, ids folded to {id}. */
