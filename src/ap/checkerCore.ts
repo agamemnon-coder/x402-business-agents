@@ -20,7 +20,7 @@ import { assessAgainst, sameName, type Beneficiary, type FraudFinding, type Frau
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
 import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
-import { asksToPay, namesAccount } from "../policy/multilingual.js";
+import { asksToPay, customerNumberBefore, namesAccount } from "../policy/multilingual.js";
 import { plainDigits } from "../policy/numerals.js";
 import { lineTotals } from "./lineTotals.js";
 import { deliveryDates, itemLines, periodsDiffer, sameLines, servicePeriods } from "./period.js";
@@ -209,6 +209,8 @@ function accountNumbersIn(text: string): string[] {
     if (!namesAccount(line) || !asksToPay(line) || OLD_ACCOUNT.test(line.toUpperCase())) continue;
     for (const m of line.matchAll(/(?<![\dA-Za-z])\d(?:[ \-.]?\d){7,}(?![\dA-Za-z])/g)) {
       if (/^\d{4}-\d{2}-\d{2}$|^\d{2}\.\d{2}\.\d{4}$/.test(m[0])) continue;
+      // 19 Nov (after eval v7): the customer's own number with the supplier, quoted when paying, is no account to pay into.
+      if (customerNumberBefore(line.slice(0, m.index).split(/[.;!?。।]\s/u).at(-1) ?? "")) continue;
       out.push(m[0].replace(/\D/g, ""));
     }
   }
@@ -226,6 +228,10 @@ const sameForm = (key: string) => key.replace(/\s+/g, "").toUpperCase();
 
 /** The invoice's account: its IBAN, or account number and routing code; the bank's country; the invoice's currency. */
 export function bankFromReading(r: ApReading): BankDetails {
+  // 19 Nov (after eval v7): an account written in another script's digits or full-width forms, or with invisible
+  // characters inside it, is the account a bank reads: its digits as 0 to 9, nothing invisible.
+  const plain = (x: string) => plainDigits((x ?? "").normalize("NFKC").replace(/\p{Cf}/gu, ""));
+  r = { ...r, iban: plain(r.iban), account_number: plain(r.account_number), routing_value: plain(r.routing_value), bic: plain(r.bic) };
   const routing = r.routing_type === "aba" || r.routing_type === "sort_code" || r.routing_type === "cnaps" ? r.routing_type : "";
   return {
     country: r.bank_country || (r.iban ? r.iban.slice(0, 2) : r.bic.length >= 6 ? r.bic.slice(4, 6) : ""),
@@ -257,8 +263,8 @@ function checkBank(r: ApReading): BankCheck {
   const findings: Finding[] = [];
   let ok = false;
   let route: Route | null = null;
-  if (!r.iban && !r.account_number) findings.push({ code: "no_bank_details", level: "review", detail: "the invoice gives no IBAN or account number to pay to; a person checks how this supplier is paid" });
-  else if (r.iban && !ibanValid(r.iban)) findings.push({ code: "iban_invalid", level: "block", detail: `the IBAN ending ${r.iban.slice(-4)} fails its checksum: a typing error or a forged number; nothing is paid to it` });
+  if (!details.iban && !details.accountNumber) findings.push({ code: "no_bank_details", level: "review", detail: "the invoice gives no IBAN or account number to pay to; a person checks how this supplier is paid" });
+  else if (details.iban && !ibanValid(details.iban)) findings.push({ code: "iban_invalid", level: "block", detail: `the IBAN ending ${details.iban.slice(-4)} fails its checksum: a typing error or a forged number; nothing is paid to it` });
   else if (r.currency) {
     const chosen = chooseRoute(details);
     if (!chosen.ok) {

@@ -56,9 +56,21 @@ export function mixedScriptWord(name: string): string | undefined {
   return undefined;
 }
 
-/** The name as written, for an exact comparison: NFKC, without invisible format characters, spacing collapsed. */
+/**
+ * A text without the characters that only shape how it is set, never which letters it has (19 Nov, after the held-out
+ * eval v7, docs/evals/adversarial-v7.md: an Arabic name stretched with tatweel was held as another holder, and an order
+ * with soft hyphens inside its words went past the screen of words): every invisible format character (Unicode Cf: soft
+ * hyphen, zero-width space, joiners, direction marks, word joiner, tag characters) and the Arabic tatweel (kashida, U+0640),
+ * which justifies a line by stretching a letter. For comparing and matching only: whether such characters are where a
+ * script's spelling puts them is the injection screen's question (src/policy/injection.ts), not this one's.
+ */
+export function withoutTypography(text: string): string {
+  return text.replace(/[\p{Cf}\u0640]/gu, "");
+}
+
+/** The name as written, for an exact comparison: NFKC, without invisible format characters or tatweel, spacing collapsed. */
 export function canonicalName(name: string): string {
-  return name.normalize("NFKC").replace(/\p{Cf}/gu, "").replace(/\s+/g, " ").trim();
+  return withoutTypography(name.normalize("NFKC")).replace(/\s+/g, " ").trim();
 }
 
 /** Whether every letter of a text is Latin, Greek or Cyrillic: the alphabets toLatin writes in Latin letters. */
@@ -100,6 +112,19 @@ export function toLatin(text: string): string {
     out += GREEK[ch] ?? CYRILLIC[ch] ?? ch;
   }
   return out;
+}
+
+/**
+ * A text in Latin letters as the other usual romanisations of Russian and Ukrainian write it (19 Nov, after the held-out
+ * eval v7, v7-name-lviv-translit-holder: the Ukrainian national romanisation "LVIVSKA TKANYNA" of "Львівська Тканина" was
+ * held as another holder, because toLatin follows Bulgaria's system, which writes the soft sign "ь" as "y", where Russian
+ * and Ukrainian banks drop it): the soft and hard signs dropped, "щ" as "shch", "ё" as "e", and "г" also as Ukrainian and Belarusian
+ * write it, "h". Every spelling is compared; none is ever shown.
+ */
+export function toLatinVariants(text: string): string[] {
+  const low = text.normalize("NFKC").toLowerCase();
+  const east = low.replace(/[ьъ]/gu, "").replace(/щ/gu, "shch").replace(/ё/gu, "е");
+  return [...new Set([toLatin(text), toLatin(east), toLatin(east.replace(/г/gu, "h"))])];
 }
 
 /**
