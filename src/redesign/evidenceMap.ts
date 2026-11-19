@@ -107,16 +107,21 @@ function wide(m: EvidenceMap): Layout {
   };
 }
 
+/**
+ * Top to bottom (a phone). The dot never crosses a card's text (the owner's review, 19 Nov: at 390 px it ran through the
+ * cards): it runs down a spine in the left gutter, a short tick into each card; a branch leaves the spine in the gap
+ * under its card, crosses that gap to the right of the cards and rises to its pill.
+ */
 function tall(m: EvidenceMap): Layout {
-  const W = 340, nw = 232, px = 248, pw = 92, gap = 26;
+  const W = 340, sx = 7, nx = 20, nw = 220, px = 252, pw = 88, gap = 26;
   const chars = (w: number, size: number) => Math.floor((w - 2 * PAD) / (size * 0.49));
-  const mk = (n: MapNode): Box => ({ n, x: 0, y: 0, w: nw, h: 0, sub: wrap(n.sub, chars(nw, 11.5)), badge: n.badge ? wrap(n.badge, chars(nw - 8, 11.5)) : [] });
+  const mk = (n: MapNode): Box => ({ n, x: nx, y: 0, w: nw, h: 0, sub: wrap(n.sub, chars(nw, 11.5)), badge: n.badge ? wrap(n.badge, chars(nw - 8, 11.5)) : [] });
   // The steps in order, the rails between the signature and the bundle, Airwallex first.
   const order = [...m.main.slice(0, 4), m.rails[1]!, m.rails[0]!, m.rails[2]!, ...m.main.slice(4)].map(mk);
   let y = 4;
   order.forEach((b, i) => { b.h = heightOf(b.sub, b.badge); b.y = y; y += b.h + (i >= 4 && i < 6 ? 8 : gap); });
   const end = y - gap;
-  const cx = nw / 2, mid = (b: Box) => b.y + b.h / 2, by = (id: string) => order.find((b) => b.n.id === id)!;
+  const mid = (b: Box) => b.y + b.h / 2, by = (id: string) => order.find((b) => b.n.id === id)!;
   const pill = (n: MapNode | null, at: Box): Box[] => {
     if (!n?.badge) return [];
     const lines = wrap(n.badge, chars(pw, 11.5)), h = pillHeight(lines);
@@ -125,14 +130,17 @@ function tall(m: EvidenceMap): Layout {
   const rules = by("rules"), passkey = by("passkey");
   const pills = [...pill(m.held, rules), ...pill(m.refused, passkey)];
   const heldPill = pills.find((p) => p.n.id === "held"), badPill = pills.find((p) => p.n.id === "refused");
-  const y0 = mid(order[0]!), y1 = mid(order[order.length - 1]!);
-  const railsTop = by("airwallex").y - 6, railsBottom = by("visa").y + by("visa").h + 6;
+  const first = order[0]!, last = order[order.length - 1]!;
+  const y0 = mid(first), y1 = mid(last);
+  // A branch: down the spine to the gap under its card, across it to under the pill, up to the pill's bottom edge.
+  const under = (b: Box) => b.y + b.h + gap / 2;
+  const toPill = (b: Box, p: Box) => `M${sx} ${y0} V${under(b)} H${p.x + p.w / 2} V${p.y + p.h}`;
   return {
     variant: "tall", vw: W, vh: Math.ceil(end + 4), boxes: order, pills,
-    lines: [`M${cx} ${y0} V${y1}`, `M${nw + 6} ${railsTop} H${nw + 10} V${railsBottom} H${nw + 6}`],
-    branch: [...(heldPill ? [{ cls: "held", d: `M${nw} ${mid(rules)} H${px}` }] : []), ...(badPill ? [{ cls: "bad", d: `M${nw} ${mid(passkey)} H${px}` }] : [])],
-    dots: [{ cls: "ok", d: `M${cx} ${y0} V${order[order.length - 1]!.y}` }, ...(badPill ? [{ cls: "bad", d: `M${cx} ${y0} V${mid(passkey)} H${px}` }] : []), ...(heldPill ? [{ cls: "hold", d: `M${cx} ${y0} V${mid(rules)} H${px}` }] : [])],
-    hits: order.map((b) => ({ id: b.n.id, at: Math.max(0, Math.min(1, (b.y - y0) / (order[order.length - 1]!.y - y0))) })),
+    lines: [`M${sx} ${y0} V${y1}`, ...order.map((b) => `M${sx} ${mid(b)} H${nx}`)],
+    branch: [...(heldPill ? [{ cls: "held", d: `M${nx + nw} ${mid(rules)} H${px}` }] : []), ...(badPill ? [{ cls: "bad", d: `M${nx + nw} ${mid(passkey)} H${px}` }] : [])],
+    dots: [{ cls: "ok", d: `M${sx} ${y0} V${y1}` }, ...(badPill ? [{ cls: "bad", d: toPill(passkey, badPill) }] : []), ...(heldPill ? [{ cls: "hold", d: toPill(rules, heldPill) }] : [])],
+    hits: order.map((b) => ({ id: b.n.id, at: Math.max(0, Math.min(1, (mid(b) - y0) / (y1 - y0))) })),
     pillHits: pills.map((p) => ({ id: p.n.id, at: 1 })),
   };
 }

@@ -62,6 +62,25 @@ for (const [w, h] of [[360, 800], [390, 844], [1440, 900]] as const) {
     if (map.links.length < 11) fail(`${tag}: only ${map.links.length} steps in the map`);
     for (const l of map.links) if (!l.href.startsWith("#") || !l.to || l.h < 44 || l.left < 0 || l.right > w + 0.5) fail(`${tag}: map step ${JSON.stringify(l)} does not link to a group on the page, or is under 44 px or outside the screen`);
     if (map.anim !== "em-move") fail(`${tag}: the map's dot does not move (animation ${map.anim})`);
+    if (w <= 760) {
+      // On a phone the dots run in the gutter, never over a card's text (the owner's review, 19 Nov): every point of every
+      // dot's path, as wide as the dot, outside every text box of the drawing.
+      const over = (await page.evaluate(`(() => {
+        const svg = document.querySelector("main figure.emap svg.em-tall"), m = svg.getScreenCTM(), k = m.a;
+        const boxes = [...svg.querySelectorAll("text")].map((t) => t.getBoundingClientRect());
+        const hits = [];
+        for (const p of svg.querySelectorAll("path.em-dot:not(.halo)")) {
+          const len = p.getTotalLength(), r = (parseFloat(getComputedStyle(p).strokeWidth) / 2) * k;
+          for (let i = 0; i <= 200; i++) {
+            const q = p.getPointAtLength((len * i) / 200), x = m.a * q.x + m.c * q.y + m.e, y = m.b * q.x + m.d * q.y + m.f;
+            const b = boxes.find((b) => x + r > b.left && x - r < b.right && y + r > b.top && y - r < b.bottom);
+            if (b) { hits.push(p.getAttribute("class") + " at " + Math.round(x) + "," + Math.round(y)); break; }
+          }
+        }
+        return hits;
+      })()`)) as string[];
+      if (over.length) fail(`${tag}: the map's dot runs over card text: ${over.join("; ")}`);
+    }
     // The wall's sticky nav sits under the site's header, never behind it, once the reader is in the wall.
     await page.evaluate(() => document.getElementById("ev-ai")?.scrollIntoView());
     const stuck = (await page.evaluate(`(() => { const h = document.querySelector("header.top"), n = document.querySelector("main .ew-nav"); return h && n ? [h.getBoundingClientRect().bottom, n.getBoundingClientRect().top] : null; })()`)) as [number, number] | null;
