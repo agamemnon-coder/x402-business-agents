@@ -66,6 +66,7 @@ Built to last:
 - 189 checks passed by verify-all, 0 failed (re-checked; 129 Alta transactions read from the chain; 15 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md
 - 731 records sealed by one anchor transaction (testnet; 5 parts hashed into one head on Alta testnet, 19 Nov; npm run verify-anchor recomputes it): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-anchor.md
 - 3,879 of 4,000 payments through Alta's clearing, load test (testnet; 2 runs, 30 Oct; the last: all 2,000 paid): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-10-30-clearing-load.md
+- Passing OpenSSF Best Practices badge, project 16923 (external; From the project's own answers to the programme's criteria, as of 19 Nov; the live status is on the project page): https://www.bestpractices.dev/projects/16923
 - 8 CI jobs on every change (CI; 4 of them scan for security: gitleaks, Semgrep, CodeQL, npm audit): https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain
 
 The public /try, timed:

@@ -17,9 +17,9 @@ export const WALL_TITLE = "The evidence wall";
 const ROOT = new URL("../../", import.meta.url);
 
 /** What a tile's figure is: live at a partner's sandbox, live on Alta's testnet, a test world (no partner), a re-check of the records, or CI. */
-export type WallTag = "sandbox" | "testnet" | "test" | "check" | "ci";
+export type WallTag = "sandbox" | "testnet" | "test" | "check" | "ci" | "external";
 // 19 Nov, second pass (the owner: "clearer and tighter"): one word a tag; the wall's lead says sandbox and testnet are live.
-export const TAG_WORDS: Record<WallTag, string> = { sandbox: "Sandbox", testnet: "Testnet", test: "Test world", check: "Re-checked", ci: "CI" };
+export const TAG_WORDS: Record<WallTag, string> = { sandbox: "Sandbox", testnet: "Testnet", test: "Test world", check: "Re-checked", ci: "CI", external: "External" };
 /** The wall's legend, in sight above the tiles: what the tags mean, and what was simulated everywhere. */
 export const WALL_LEGEND = "Sandbox and testnet: live runs, test money; a sandbox PAID is simulated. Test world: offline evals. Tap a tile for its record.";
 /** The groups' names in the wall's sticky nav. */

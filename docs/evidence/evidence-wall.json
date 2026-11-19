@@ -336,6 +336,16 @@
           "rec": "docs/runs/clearing-load-1.json docs/runs/clearing-load-2.json"
         },
         {
+          "key": "openssf",
+          "fig": "Passing",
+          "label": "OpenSSF Best Practices badge, project 16923",
+          "note": "From the project's own answers to the programme's criteria, as of 19 Nov; the live status is on the project page.",
+          "tag": "external",
+          "tone": "ok",
+          "href": "https://www.bestpractices.dev/projects/16923",
+          "rec": "docs/evidence/openssf-best-practices.json"
+        },
+        {
           "key": "ci",
           "fig": "8",
           "label": "CI jobs on every change",

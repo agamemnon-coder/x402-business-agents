@@ -166,6 +166,10 @@ function built(): WallTile[] {
     const lastRun = loads[loads.length - 1]!.r;
     out.push({ key: "clearing-load", fig: whole(paid, tried), label: "payments through Alta's clearing, load test", note: `${loads.length} runs, ${day(lastRun.ran_at)}; the last: ${whole(lastRun.paid, lastRun.attempted).toLowerCase()} paid.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-10-30-clearing-load.md"), rec: loads.map((x) => x.f).join(" ") });
   }
+  // An outside programme's badge, as a text tile (no outside image: the page's CSP allows images from itself only).
+  const OS = "docs/evidence/openssf-best-practices.json";
+  const os = json(OS) as { programme?: string; project?: number; status?: string; as_of?: string; url?: string; basis?: string } | null;
+  if (os?.status && os.url) out.push({ key: "openssf", fig: os.status[0]!.toUpperCase() + os.status.slice(1), label: `${os.programme} badge, project ${os.project}`, note: `From ${os.basis}, as of ${day(`${os.as_of}T12:00:00Z`)}; the live status is on the project page.`, tag: "external", tone: "ok", href: os.url, rec: OS });
   const jobs = ciJobs();
   const scans = jobs.filter((j) => /gitleaks|Semgrep|code scanning|npm audit/i.test(j.what)).length;
   out.push({ key: "ci", fig: String(jobs.length), label: "CI jobs on every change", note: `${scans} of them scan for security: gitleaks, Semgrep, CodeQL, npm audit.`, tag: "ci", tone: "", href: CI_RUNS_URL, rec: ".github/workflows/ci.yml" });

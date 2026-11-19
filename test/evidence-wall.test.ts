@@ -29,7 +29,8 @@ describe("the evidence wall's file", () => {
     const keys = tiles(w).map((t) => t.key);
     expect(new Set(keys).size).toBe(keys.length);
     for (const t of tiles(w)) {
-      expect(t.fig, t.key).toMatch(/\d|^Both$/);
+      // A figure, or (for an outside programme's badge, tagged external) its status word.
+      expect(t.fig, t.key).toMatch(t.tag === "external" ? /^[A-Z][a-z]+$/ : /\d|^Both$/);
       expect(t.label.length, t.key).toBeGreaterThan(10);
       expect(`${t.fig} ${t.label} ${t.note}`, t.key).not.toMatch(/\b(\d[\d,]*)\/\1\b|\b(\d[\d,]*) of \2\b/);
       expect(t.rec, t.key).not.toBe("");
@@ -170,5 +171,16 @@ describe("the README's wall line and the partner pages' strips", () => {
       expect(html).toMatch(/test money|no money moved/);
       expect(html).not.toMatch(/<script|style=|\son[a-z]+=|endorsed by|partnered with/i);
     }
+  });
+});
+
+describe("the OpenSSF Best Practices tile", () => {
+  it("is the record's status, links to the project page, and is text: no outside image on /proof", () => {
+    const os = json<{ status: string; url: string; project: number }>("docs/evidence/openssf-best-practices.json");
+    const t = tile(committedWall()!, "openssf");
+    expect(t).toMatchObject({ tag: "external", href: os.url, rec: "docs/evidence/openssf-best-practices.json" });
+    expect(t.fig.toLowerCase()).toBe(os.status);
+    expect(t.label).toContain(String(os.project));
+    expect(proofPage()).not.toContain("bestpractices.dev/projects/16923/badge");
   });
 });
