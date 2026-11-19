@@ -2568,7 +2568,9 @@ const PUSH: Record<MoneyPath, (failed: Failed, o: PushOptions) => Promise<Pushed
       return { moved: cardMoved(w), ended: `Purser's checks refused: the agent's tools answered ${list0(run.calls.map((c) => c.blocked ?? "ran"))}; the purchase code: ${refusal.slice(0, 40)}` };
     }
     if (o.stop) { await pullStop(w.db, cfo!, w.now); await syncCards(w.db, w.issuing, w.now); }
-    // Purser's checks forced to pass: the charge goes straight to the card, with no plan list and no hold.
+    // Purser's checks forced to pass: the charge goes straight to the card, with no plan list and no hold. Forced code
+    // also thaws the card for it (freeze by default is Purser's own switch), so the card's own controls are what is left.
+    await thaw(w, "sourcing");
     const t = await w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" });
     return { moved: cardMoved(w), ended: t.approved ? "charged: the card approved EUR 500.00" : `the card at Airwallex (stand-in) declined: ${t.failureReason}` };
   },
