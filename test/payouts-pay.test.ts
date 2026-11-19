@@ -13,7 +13,9 @@ import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoice } from "../src/ap/store.js";
-import { executePayeeAdd, checkThenProposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { executePayeeAdd, checkThenProposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { ibanSha } from "../src/agents/invoice.js";
+import type { BankDetails } from "../src/payouts/routes.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executeSupplierPayment } from "../src/executors/supplierPayment.js";
 import { decide } from "../src/policy/approvals.js";
@@ -170,6 +172,63 @@ describe("stopped before anything moves", () => {
     const inv = apInvoice(db, id)!;
     expect(inv.status).toBe("blocked");
     expect(inv.findings.find((f) => f.code === "possible_fraud")?.detail).toMatch(/possible invoice fraud/);
+  });
+
+  it("a known supplier's invoice with its account number at another bank (another ABA) is blocked as possible fraud", async () => {
+    // Held-out adversarial eval v3, v3-bec-pinecrest-new-routing, through the ledger: the supplier on file by hash only.
+    const first = await add(US, "us.pdf");
+    expect((await addSupplier(first)).status).not.toBe("blocked");
+    const id = await add(US.replace(/PC-7781/g, "PC-7790").replace("021000021", "121000248"), "us2.pdf");
+    const inv = apInvoice(db, id)!;
+    expect(inv.status).toBe("blocked");
+    expect(inv.findings.find((f) => f.code === "possible_fraud")?.signals?.map((s) => s.code)).toContain("bank_details_changed");
+    // The same account at its own bank is still the supplier's.
+    const again = await add(US.replace(/PC-7781/g, "PC-7791"), "us3.pdf");
+    expect(apInvoice(db, again)!.findings.map((f) => f.code)).not.toContain("possible_fraud");
+  });
+
+  it("one US account number is not added under a second name with only its bank's BIC; at another ABA it is another account", async () => {
+    await addSupplier(await add(US, "us.pdf"));
+    const other = (bank: Partial<BankDetails>) => ({ vendor: "Harbor Goods Inc", source: null, bank: { country: "US", currency: "USD", accountName: "Harbor Goods Inc", accountNumber: "50001121", ...bank } });
+    // Red team round 4: the same account, written with its bank's BIC instead of its ABA, cannot be told apart.
+    expect(() => requestPayeeAdd(db, other({ swiftCode: "CHASUS33" }), "treasury", now)).toThrow(/already on file for Pinecrest Outdoor Supply LLC/);
+    // The same number at another bank is another account.
+    expect(requestPayeeAdd(db, other({ routingType: "aba", routingValue: "121000248" }), "treasury", now).status).toBe("REQUESTED");
+  });
+
+  it("a ledger from before keyed its ABA suppliers without the routing number: opening it rekeys them", async () => {
+    // The supplier and its payment as the code before this change stored them: the hash of US:50001121.
+    const file = join(dir, "ledger.sqlite");
+    db.close();
+    db = openDb(file);
+    await seedTreasury(db, awx, awx);
+    setSetting(db, "human", "eur_obligations", "0.00");
+    const first = await add(US, "us.pdf");
+    await addSupplier(first);
+    await pay(first);
+    const oldSha = ibanSha("US:50001121");
+    const newSha = ibanSha("US:021000021:50001121");
+    const ben = db.prepare("SELECT beneficiary_id, iban_sha256 FROM beneficiaries WHERE name = 'Pinecrest Outdoor Supply LLC'").get() as { beneficiary_id: string; iban_sha256: string };
+    expect(ben.iban_sha256).toBe(newSha);
+    db.prepare("UPDATE beneficiaries SET iban_sha256 = ?, details_json = json_set(details_json, '$.account_key_sha256', ?) WHERE beneficiary_id = ?").run(oldSha, oldSha, ben.beneficiary_id);
+    db.prepare("UPDATE invoices SET iban_sha256 = ? WHERE beneficiary_id = ?").run(oldSha, ben.beneficiary_id);
+    db.close();
+
+    db = openDb(file);
+    const after = db.prepare("SELECT iban_sha256, iban_last4, json_extract(details_json, '$.account_key_sha256') AS k FROM beneficiaries WHERE beneficiary_id = ?").get(ben.beneficiary_id);
+    expect(after).toEqual({ iban_sha256: newSha, iban_last4: "1121", k: newSha });
+    expect((db.prepare("SELECT DISTINCT iban_sha256 FROM invoices WHERE beneficiary_id = ?").all(ben.beneficiary_id) as { iban_sha256: string }[]).map((r) => r.iban_sha256)).toEqual([newSha]);
+    const audits = db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'payee.rekeyed'").get() as { n: number };
+    expect(audits.n).toBe(1);
+    // Once done, opening again changes nothing.
+    db.close();
+    db = openDb(file);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'payee.rekeyed'").get() as { n: number }).n).toBe(1);
+    // The supplier's next invoice to the same account is its own; to another bank, it is held.
+    const next = await add(US.replace(/PC-7781/g, "PC-7795"), "us4.pdf");
+    expect(apInvoice(db, next)!.findings.map((f) => f.code)).not.toContain("possible_fraud");
+    const moved = await add(US.replace(/PC-7781/g, "PC-7796").replace("021000021", "121000248"), "us5.pdf");
+    expect(apInvoice(db, moved)!.status).toBe("blocked");
   });
 
   it("a lost answer to the payout is resolved by looking the request up, never by sending again", async () => {

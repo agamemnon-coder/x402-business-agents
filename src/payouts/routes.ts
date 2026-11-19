@@ -215,9 +215,14 @@ const digits = (s: string | undefined) => (s ?? "").replace(/[\s-]/g, "").toUppe
  * - a GB IBAN is its sort code and account number with a bank code and check digits in front, so both forms key to
  *   GB:<sort code>:<account number>;
  * - any other IBAN is the IBAN;
- * - an account without an IBAN keys to its country and account number (leading zeros dropped): the same account comes
- *   with its local routing number or with its bank's BIC. Two banks in one country giving the same number is rare, and
- *   then a person sees a possible duplicate, never a second payment.
+ * - an account with its ABA routing number keys to <country>:<routing number>:<account number> (leading zeros
+ *   dropped): a US account number is unique only within its bank, so the same number at another bank is another
+ *   account (held-out adversarial eval v3, v3-bec-pinecrest-new-routing: an invoice asking for the number on file at
+ *   another bank raised no bank_details_changed). Ledgers from before keyed these as <country>:<account number>;
+ *   src/ap/accountRekey.ts rekeys them when the ledger is opened;
+ * - any other account without an IBAN keys to its country and account number (leading zeros dropped), with its bank's
+ *   BIC alike. Such a number with only a BIC cannot say which bank it is at, so it is not the ABA form's identity; the
+ *   new-supplier flow still refuses it as one account under a second name (src/ap/vendors.ts accountTaken).
  */
 export function accountKey(d: BankDetails): string {
   if (has(d.iban)) {
@@ -226,6 +231,15 @@ export function accountKey(d: BankDetails): string {
     return i;
   }
   if (d.routingType === "sort_code") return `${d.country}:${digits(d.routingValue)}:${digits(d.accountNumber).padStart(8, "0")}`;
+  if (d.routingType === "aba" && has(d.routingValue)) return `${d.country}:${digits(d.routingValue)}:${numberKey(d).slice(d.country.length + 1)}`;
+  return numberKey(d);
+}
+
+/**
+ * An account without an IBAN as its country and number alone (leading zeros dropped), whatever routing it came with:
+ * what two forms of one account (its ABA, its bank's BIC) still share, and an ABA account's identity before 19 November.
+ */
+export function numberKey(d: BankDetails): string {
   return `${d.country}:${digits(d.accountNumber).replace(/^0+(?=.)/, "")}`;
 }
 

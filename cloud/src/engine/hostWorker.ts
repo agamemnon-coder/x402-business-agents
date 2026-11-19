@@ -23,6 +23,7 @@ import { readPdfInline } from "../../../src/ap/pdfTextInline.js";
 import { doDb, type DoStorage } from "../../../src/db/doSql.js";
 import LEDGER from "../../../src/db/ledger.sql";
 import { prepareDb } from "../../../src/db/migrate.js";
+import { rekeyAbaAccounts } from "../../../src/ap/accountRekey.js";
 import SCHEMA from "../../../src/db/schema.sql";
 import { feedCloud } from "../../../src/engine/feed.js";
 import { EngineHost, parserOnly } from "../../../src/engine/host.js";
@@ -108,6 +109,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
 
   const db = doDb(storage, "company");
   prepareDb(db, SCHEMA, LEDGER);
+  rekeyAbaAccounts(db);
   useDocStore(db, docChunks(storage));
   // The object's own table, do_state (./object.ts made it and keeps the company's id in it): the bank and the seed's mark live there too.
   const state = {

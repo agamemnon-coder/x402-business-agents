@@ -73,14 +73,26 @@ describe("bank details are checked in code before anything is sent", () => {
 
   it("gives one account identity per account, whichever form it came in, and masks it for the CFO", () => {
     expect(accountKey(NL_IBAN)).toBe("NL91ABNA0417164300");
-    // Red team round 4: an account without an IBAN is its country and number, with its ABA or with its bank's BIC alike;
-    // a GB IBAN and its sort code + account number are one account.
-    expect(accountKey(US_LOCAL)).toBe("US:50001121");
+    // An account with only its bank's BIC is its country and number; a GB IBAN and its sort code + account number are
+    // one account (red team round 4).
     expect(accountKey({ ...US_LOCAL, routingType: "", routingValue: "", swiftCode: "CHASUS33" })).toBe("US:50001121");
     expect(accountKey(CN_SWIFT)).toBe("CN:6222021001115222");
     expect(accountKey(UK_LOCAL)).toBe(accountKey({ ...UK_LOCAL, iban: "GB29NWBK60161331926819", accountNumber: "", routingType: "", routingValue: "" }));
     expect(maskAccount(US_LOCAL)).toBe("account …1121, ABA 021000021 (US)");
     expect(maskAccount(TR_IBAN)).toBe("IBAN TR33…1326");
     expect(maskAccount(UK_LOCAL)).toBe("account …6819, sort code 60-16-13 (GB)");
+  });
+
+  it("an ABA account is its routing number and its number: the same number at another bank is another account", () => {
+    // US account numbers are unique only within their bank: 50001121 at ABA 021000021 and at ABA 121000248 are two
+    // accounts (held-out adversarial eval v3, case v3-bec-pinecrest-new-routing).
+    expect(accountKey(US_LOCAL)).toBe("US:021000021:50001121");
+    expect(accountKey({ ...US_LOCAL, routingValue: "121000248" })).toBe("US:121000248:50001121");
+    // However it is written: spaces or dashes, the account number's leading zeros.
+    expect(accountKey({ ...US_LOCAL, routingValue: "0210-0002 1", accountNumber: "0050001121" })).toBe("US:021000021:50001121");
+    // The same number with only its bank's BIC cannot be told apart from either, so it is neither's identity.
+    expect(accountKey({ ...US_LOCAL, routingType: "", routingValue: "", swiftCode: "CHASUS33" })).not.toBe(accountKey(US_LOCAL));
+    // The identity still ends in the account number's last four (the ledger's iban_last4).
+    expect(accountKey(US_LOCAL).slice(-4)).toBe("1121");
   });
 });
