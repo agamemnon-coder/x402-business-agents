@@ -1,0 +1,53 @@
+# Developer Certificate of Origin (19 November): on every pull request, list each commit whose message has no
+# "Signed-off-by:" line with the commit author's e-mail address (CONTRIBUTING.md, "Sign-off"). Advisory for now: it
+# warns (an annotation on the run and a line in its summary) and never fails, because the history before 19 November
+# has no sign-offs and the ruleset on main is not in place yet (GOVERNANCE.md). To make it blocking, set BLOCKING to
+# "true" below and add the job to the ruleset's required checks.
+#
+# It reads the pull request's commits through GitHub's API (no checkout, no code from the branch runs). Commit
+# messages and e-mail addresses are untrusted: they reach the shell only through environment variables and files,
+# never through ${{ }} in the script.
+name: dco
+on:
+  pull_request:
+permissions: {}
+jobs:
+  sign-off:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      BLOCKING: "false"
+    steps:
+      - name: Signed-off-by on every commit (advisory)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # One line per commit: sha, number of parents, author e-mail, message (base64, so newlines survive).
+          gh api --paginate "repos/$REPO/pulls/$PR/commits" \
+            --jq '.[] | [.sha, (.parents | length | tostring), (.commit.author.email // ""), (.commit.message | @base64)] | @tsv' > commits.tsv
+          total=0; unsigned=0
+          while IFS=$'\t' read -r sha parents email message; do
+            # A merge commit (main merged into the branch) carries no change of its own to sign off.
+            if [ "$parents" -gt 1 ]; then continue; fi
+            total=$((total + 1))
+            if printf '%s' "$message" | base64 -d | grep -i '^Signed-off-by: ' | grep -Fqi "<$email>"; then continue; fi
+            unsigned=$((unsigned + 1))
+            echo "::warning title=DCO::commit ${sha:0:12} has no Signed-off-by line for its author (git commit -s; see CONTRIBUTING.md)"
+          done < commits.tsv
+          {
+            echo "### Developer Certificate of Origin"
+            echo
+            echo "$((total - unsigned)) of $total commits signed off by their author (merge commits not counted)."
+            if [ "$unsigned" -gt 0 ]; then
+              echo
+              echo "Sign off with \`git commit -s\`; for commits already made: \`git rebase --signoff main\`, then push with \`--force-with-lease\`."
+              echo "This check is advisory for now (CONTRIBUTING.md, \"Sign-off\")."
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$BLOCKING" = "true" ] && [ "$unsigned" -gt 0 ]; then exit 1; fi
