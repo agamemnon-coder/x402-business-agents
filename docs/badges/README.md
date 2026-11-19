@@ -11,6 +11,7 @@ from its record.
 | [airwallex-endpoints.json](airwallex-endpoints.json) | [airwallex-api-coverage.json](../evidence/airwallex-api-coverage.json) | Airwallex endpoints the code calls that a committed sandbox run record holds, of all it calls |
 | [chaos.json](chaos.json) | [chaos-money.json](../evidence/chaos-money.json) | invariant breaks across all chaos scenarios |
 | [fuzz.json](fuzz.json) | [fuzzing.json](../evidence/fuzzing.json) | fuzz runs, and properties that failed (orange while any did) |
+| [coverage.json](coverage.json) | [coverage.json](../evidence/coverage.json) | statements and branches of the product's measured scope the test suite covers ([coverage.md](../evidence/coverage.md)); bright green only at 90% and 80% |
 
 No mutation-score badge: no mutation record is committed. The script writes one only if `docs/evidence/mutation.json` exists.
 

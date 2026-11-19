@@ -23,6 +23,7 @@ export const BADGE_RECORDS = {
   "airwallex-endpoints": "docs/evidence/airwallex-api-coverage.json",
   "chaos": "docs/evidence/chaos-money.json",
   "fuzz": "docs/evidence/fuzzing.json",
+  "coverage": "docs/evidence/coverage.json",
   "mutation": "docs/evidence/mutation.json",
 } as const;
 
@@ -65,6 +66,20 @@ export const BUILD: Record<BadgeName, (r: Json) => Omit<EndpointBadge, "schemaVe
     const t = totals(r, BADGE_RECORDS.fuzz);
     const runs = int(t.runs, "fuzz runs"), props = int(t.properties, "fuzz properties"), failed = int(t.failed, "fuzz failed");
     return { label: "fuzz runs", message: `${n(runs)} · ${n(failed)}/${n(props)} properties failed`, color: failed === 0 ? "brightgreen" : "orange" };
+  },
+  // The product's measured scope (docs/evidence/coverage.md), from the counts, not the record's rounded pct. Bright green
+  // only at OpenSSF gold's bar (90% of statements and 80% of branches), which the product does not reach today.
+  "coverage": (r) => {
+    const scopes = r.scopes as Record<string, { after?: Record<string, { covered?: unknown; total?: unknown }> }> | undefined;
+    const after = scopes?.product?.after;
+    if (!after) throw new Error("coverage: no product scope");
+    const ratio = (k: string) => {
+      const covered = int(after[k]?.covered, `coverage ${k} covered`), total = int(after[k]?.total, `coverage ${k} total`);
+      if (!total || covered > total) throw new Error(`coverage ${k}: not a share`);
+      return (covered / total) * 100;
+    };
+    const s = ratio("statements"), b = ratio("branches");
+    return { label: "coverage", message: `${s.toFixed(1)}% statements · ${b.toFixed(1)}% branches`, color: s >= 90 && b >= 80 ? "brightgreen" : s >= 80 ? "green" : s >= 60 ? "yellow" : "red" };
   },
   "mutation": (r) => {
     const score = r.score;

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// The badge row under the README's first lines: the two live GitHub badges, then the proof strip.
+// The badge rows under the README's title: build and quality, security and supply chain, product and partners.
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
 const badgeLine = readme.split("\n").find((l) => l.includes("actions/workflows/ci.yml/badge.svg")) ?? "";
 
@@ -9,19 +9,46 @@ describe("README badges", () => {
   // 17 Nov (owner: "one calm, branded set"): only the live GitHub badges stay, CI and CodeQL; the static shields (the
   // partners' status, the tests, MIT, the MCP server) went into the proof strip under them, one picture drawn from the
   // records by scripts/readme-proof-strip.ts (test/readme-proof-strip.test.ts).
-  it("is one row of the two live badges, CI and CodeQL, then the proof strip linked to /proof", () => {
+  it("is three labelled rows, build and quality, security and supply chain, product and partners, then the proof strip", () => {
     // 17 Nov, later (owner: "keep all the badges, tidy and grouped"): three rows under one style (flat-square, one
-    // label colour): build (CI, CodeQL, tests, licence), the partners as they ran live, and the proof; then the strip.
+    // label colour); then the strip. 19 Nov 2026 (owner, OpenSSF gold): each row named by a bold label: build and
+    // quality (CI, CodeQL, tests, coverage, licence), security and supply chain (OpenSSF Best Practices, OpenSSF
+    // Scorecard, REUSE, Sigstore-signed releases, the TLA+ model, the Dafny proofs), and the product and its partners as they ran. No SLSA
+    // level badge: the release provenance comes from actions/attest, not the SLSA generator (docs/security/openssf-gold.md).
     const lines = readme.split("\n");
     const at = lines.indexOf(badgeLine);
     const names = (l: string) => [...l.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1]);
-    // 19 Nov 2026 (owner): the OpenSSF Best Practices badge (passing, project 16923) beside CI and CodeQL.
-    expect(names(badgeLine)).toEqual(["CI", "CodeQL", "OpenSSF Best Practices", "Tests: from docs/assets/test-summary.json", "License: MIT"]);
-    expect(badgeLine).toContain("[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)");
-    expect(names(lines[at + 1]!)).toEqual(["Airwallex: sandbox", "Alta (formerly Metal): testnet", "Visa VIC via Airi: sandbox", "T:0: sandbox ledger", "Claude: 24 decisions"]);
-    expect(names(lines[at + 2]!)).toEqual(["worst-case AI, offline eval: 0 wrong payments", "MCP server: read, propose only", "Test money only"]);
+    expect(badgeLine.startsWith("**Build & quality** [![CI]")).toBe(true);
+    expect(names(badgeLine)).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "Coverage: from docs/badges/coverage.json", "License: MIT"]);
+    expect(lines[at + 1]!.startsWith("**Security & supply chain** [![OpenSSF Best Practices]")).toBe(true);
+    expect(names(lines[at + 1]!)).toEqual(["OpenSSF Best Practices", "OpenSSF Scorecard", "REUSE 3.3: compliant", "Releases: Sigstore-signed", "TLA+ model: 1,102,845 states, 0 errors", "Dafny: verified"]);
+    expect(lines[at + 2]!.startsWith("**Product & partners** [![Airwallex: sandbox]")).toBe(true);
+    expect(names(lines[at + 2]!)).toEqual(["Airwallex: sandbox", "Alta (formerly Metal): testnet", "Visa VIC via Airi: sandbox", "T:0: sandbox ledger", "Claude: 24 decisions", "worst-case AI, offline eval: 0 wrong payments", "MCP server: read, propose only", "Test money only"]);
+    expect(badgeLine.endsWith("<br>") && lines[at + 1]!.endsWith("<br>")).toBe(true);
+    expect(lines[at + 1]).toContain("[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923) [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/agamemnon-coder/x402-business-agents/badge)](https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents)");
     expect(badgeLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
+    expect(readme).not.toMatch(/\[!\[SLSA/);
     for (const l of lines.slice(at, at + 3)) for (const u of l.matchAll(/img\.shields\.io\/[^)]+/g)) expect(u[0]).toContain("style=flat-square");
+    // Every badge of the two new rows points to its evidence, and says what that evidence says.
+    // Coverage: a shields endpoint badge read from the committed JSON (src/proof/badges.ts, test/badges.test.ts).
+    expect(badgeLine).toContain("(https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fbadges%2Fcoverage.json&style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)");
+    expect(existsSync(new URL("../docs/badges/coverage.json", import.meta.url))).toBe(true);
+    // REUSE: reuse lint runs in CI (job reuse) over REUSE.toml.
+    expect(lines[at + 1]).toContain("(REUSE.toml)");
+    expect(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")).toMatch(/\n {2}reuse:\n[\s\S]*?uses: fsfe\/reuse-action@[0-9a-f]{40}/);
+    // Sigstore-signed releases: the release workflow attests every file it publishes (actions/attest, id-token).
+    const release = readFileSync(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
+    expect(release).toMatch(/uses: actions\/attest@[0-9a-f]{40}/);
+    expect(release).toContain("id-token: write");
+    expect(lines[at + 1]).toContain("(docs/security/README.md#verify-a-release)");
+    // The TLA+ model: the figure is the committed model check's.
+    const formal = readFileSync(new URL("../docs/evidence/formal-model.md", import.meta.url), "utf8");
+    expect(formal).toContain("**1,102,845 distinct states**");
+    expect(formal).toContain("**No error.**");
+    expect(lines[at + 1]).toContain("(docs/evidence/formal-model.md)");
+    // The Dafny proofs: the badge JSON and docs/evidence/formal-proofs.md come with the formal-proof branch, merged
+    // together with this one (19 Nov 2026, coordinator).
+    expect(lines[at + 1]).toContain("[![Dafny: verified](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/agamemnon-coder/x402-business-agents/main/docs/badges/dafny.json&style=flat-square)](docs/evidence/formal-proofs.md)");
     // 17 Nov, owner: the badges at the very top: the three rows right under the title; the proof strip stays at the
     // foot of the centred top, after the For judges table.
     expect(lines[at - 2]).toBe("# Purser · AI agents spend. You sign off.");

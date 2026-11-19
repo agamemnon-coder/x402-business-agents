@@ -58,12 +58,24 @@ folder:
    gh attestation verify x402-business-agents-<tag>.tar.gz -R agamemnon-coder/x402-business-agents --bundle x402-business-agents-<tag>.provenance.intoto.jsonl
    ```
 
-To check the tarball against the code itself: `git archive --format=tar.gz --prefix=x402-business-agents-<tag>/ <tag>`
-in a clone gives the same bytes with the same git version (two runs on 19 November gave the same SHA-256).
+To check the tarball against the code itself (the build is reproducible): `git archive --format=tar.gz
+--prefix=x402-business-agents-<tag>/ <tag>` in a clone gives the same bytes. On 19 November 2026, with git 2.43.0 on
+Linux, two runs for `v1.2.0` (commit `8d5b51d`) both gave SHA-256
+`e4375a3cc90c5221b25d2efc5b018ab1f32a36222e774f84e51be79011c48fba`, the hash the release's `SHA256SUMS` lists for
+`x402-business-agents-v1.2.0.tar.gz`, which GitHub's runner built:
+
+```sh
+git fetch origin tag v1.2.0
+git archive --format=tar.gz --prefix=x402-business-agents-v1.2.0/ -o x402-business-agents-v1.2.0.tar.gz v1.2.0
+sha256sum x402-business-agents-v1.2.0.tar.gz
+```
+
+The bill of materials is not reproduced this way: `npm sbom` writes a serial number and a timestamp into it.
 
 What only the owner can switch on (Dependabot security updates, private vulnerability reporting, the OpenSSF Best
 Practices badge, and after the judging a ruleset on `main`), click by click: [owner-actions.md](owner-actions.md).
 
 The OpenSSF Best Practices silver level, criterion by criterion, with the evidence, what is still open and the owner's
-steps: [openssf-silver.md](openssf-silver.md); the security requirements, design principles, hardening, input
+steps: [openssf-silver.md](openssf-silver.md); the gold level, with what stays Unmet while there is one maintainer:
+[openssf-gold.md](openssf-gold.md); the security requirements, design principles, hardening, input
 validation and cryptography: [requirements.md](requirements.md).

@@ -88,6 +88,52 @@ only warns, because the history before 19 November 2026 has none; it will become
 Use the template (What changed, Why, Tests and checks run, Live calls made, Not done). Keep one topic per pull request;
 merge `main` into your branch rather than rebasing a shared one. The changelog is generated: `npm run changelog`.
 
+## Code review
+
+Every pull request is reviewed before it is merged ([GOVERNANCE.md](GOVERNANCE.md#how-a-change-is-proposed-reviewed-and-merged)).
+How a review is done:
+
+1. **CI first.** The reviewer starts once the checks are green (typecheck, lint, the full test suite with coverage,
+   the browser checks, `npm audit`, Semgrep, gitleaks, REUSE). A red check is answered before anything else.
+2. **Read the whole diff** in GitHub's *Files changed* view, with the pull request's template: what changed, why, which
+   tests were added and run, which live calls were made, what is not done.
+3. **Check each of these**, and say in the review which one fails:
+   - **Behaviour:** the change does what the pull request says, and nothing else; a new path has a test of what it must
+     do and of what it must refuse; a fix has a regression test ([Tests come with the change](#tests-come-with-the-change)).
+   - **Money and approval:** no change lets a model approve, lowers or skips a limit, or pays without the CFO's passkey
+     over the exact terms beyond the limits; the signed terms' hash is still checked before any outside call; amounts
+     stay integer cents.
+   - **Inputs:** every new input from outside the runner is parsed with a zod schema or an equally strict parser
+     ([requirements.md](docs/security/requirements.md#input-validation)).
+   - **Secrets and money:** no key, token or environment value anywhere; live calls only to sandboxes and testnets,
+     within the budget the pull request states.
+   - **Claims:** every figure in a page or doc comes from a run record or a measurement the pull request names;
+     simulated, sandbox and stand-in parts are labelled.
+   - **Dependencies:** a new dependency is needed, maintained, pinned in the lockfile and passes `npm audit`.
+   - **Style:** what the tools do not catch: names that say what a thing is, comments that say why, no dead code.
+4. **Decide:** *Approve*, or *Request changes* with each failing point named. A change is acceptable when CI is green,
+   every point above holds, and the commits are signed off. The author answers every comment, by a change or a reason.
+5. **Merge** only then (squash or merge commit), by a maintainer.
+
+While there is one maintainer, the maintainer's own pull requests are reviewed by CI and by the maintainer only; a
+second person's review becomes required when a second maintainer joins ([GOVERNANCE.md](GOVERNANCE.md#how-a-second-maintainer-joins)).
+
+## Small tasks for a first contribution
+
+Issues that suit a new or casual contributor carry the label
+[`good first issue`](https://github.com/agamemnon-coder/x402-business-agents/labels/good%20first%20issue): small, with
+the files named, no key and no live call needed, and checkable with `npm test`. Comment on the issue to take it. Tasks of
+that size open today:
+
+- **Tests for an uncovered file:** [coverage.md](docs/evidence/coverage.md#the-largest-gaps-left-in-the-measured-scope)
+  lists the files with the most uncovered statements; `src/agents/treasury.ts` (the treasury agent's price-rise
+  planning) is one. Add tests of what it must do and refuse, with the stand-ins in `test/fakes/`.
+- **An automated accessibility rule set:** run axe-core on the pages the browser checks already open
+  (`test/browser/*.check.ts`), as [accessibility.md](docs/accessibility.md) lists under "Not done yet".
+- **A linter for the three Solidity contracts** in `contracts/` (for example solhint with its recommended rules), run
+  in CI; today no linter checks their style.
+- **A broken link or an unclear sentence** in the docs: fix it in a pull request of its own.
+
 ## Conduct
 
 Security reports go to [SECURITY.md](SECURITY.md), not to a public issue.

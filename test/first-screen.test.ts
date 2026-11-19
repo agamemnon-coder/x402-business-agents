@@ -59,7 +59,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines[2]!.startsWith(`${BANNER}<br><picture>`)).toBe(true);
     for (const f of ["docs/assets/readme/banner-dark.png", "docs/assets/readme/banner-light.png", "docs/assets/readme/hero-dark.webp", "docs/assets/readme/hero-light.webp"]) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
-    const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
+    const badges = lines.findIndex((l) => l.startsWith("**Build & quality** [![CI]")); // 19 Nov 2026: three rows, each after its bold label
     // 15 Nov (clarity, Founder's and Judges' Choice: one idea in 10 seconds): the first screen is the idea in bold (Home's
     // sentence, word for word), "Built on Airwallex" (14 Nov, factual, no partnership implied), the three links (Try,
     // the film, verify it yourself), then the Kit 11 table, within the first 25 lines. Everything else follows it.
@@ -132,7 +132,9 @@ describe("the first screen (section D, 6 Nov)", () => {
     // The two live GitHub badges (CI, CodeQL), then the proof strip (17 Nov, owner: the static shields went into it).
     // 17 Nov later (owner: all the badges, grouped): build (4), partners (5), proof (3), then the strip.
     // 19 Nov 2026 (owner): + the OpenSSF Best Practices badge in the build row.
-    expect([0, 1, 2].map((i) => lines[badges + i]!.match(/\[!\[/g)?.length)).toEqual([5, 5, 3]);
+    // 19 Nov 2026 (owner, OpenSSF gold): three labelled rows: build and quality (5), security and supply chain (6, the
+    // Dafny proofs included), product and partners (8).
+    expect([0, 1, 2].map((i) => lines[badges + i]!.match(/\[!\[/g)?.length)).toEqual([5, 6, 8]);
     // 17 Nov, owner: the badges at the very top; the strip stays at the foot of the centred top, under the judges' table.
     // 17 Nov, owner: strongest proof first: +7 (the proof table, 8 lines with its blank; "Built on Airwallex" and its blank moved down).
     // 19 Nov 2026: +5 (the demo's thumbnail and what Purser is with their blanks, the judges' Proof row).
