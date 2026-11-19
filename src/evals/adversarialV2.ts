@@ -314,7 +314,7 @@ ${perCat}
 
 ## Split invoices
 
-Of the ${splits.length} split cases, ${splitStopped.length} were stopped with the script saying pay${splitRules ? ` (${splitRules})` : ""}; ${splits.length - splitStopped.length} were paid alone. possible_split is the rule added on 19 Nov (src/ap/checkerCore.ts): one supplier's invoices within ${SPLIT_DAYS} days (14 before the second round of fixes), each within the limit, added up; past the limit the CFO decides. possible_duplicate catches a split into equal parts (the same total within ${TWIN_DAYS} days) or nearly equal ones (within EUR ${(NEAR_TWIN_CENTS / 100).toFixed(2)} and ${NEAR_TWIN_PERCENT}%, dated within ${NEAR_TWIN_DAYS} days), and holds it for a person. These are the defaults; a company may set its own windows (src/config/checkNumbers.ts says why each).
+Of the ${splits.length} split cases, ${splitStopped.length} were stopped with the script saying pay${splitRules ? ` (${splitRules})` : ""}; ${splits.length - splitStopped.length} were paid alone. possible_split is the rule added on 19 Nov (src/ap/checkerCore.ts): one supplier's invoices within ${SPLIT_DAYS} days (14 before the second round of fixes, 21 before the third), each within the limit, added up; past the limit the CFO decides. possible_duplicate catches a split into equal parts (the same total within ${TWIN_DAYS} days) or nearly equal ones (within EUR ${(NEAR_TWIN_CENTS / 100).toFixed(2)} and ${NEAR_TWIN_PERCENT}%, dated within ${NEAR_TWIN_DAYS} days), and holds it for a person. These are the defaults; a company may set its own windows (src/config/checkNumbers.ts says why each).
 
 ## Purser's wrong payments, in short
 

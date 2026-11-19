@@ -249,9 +249,10 @@ describe("service periods and delivery dates, as printed", () => {
 });
 
 describe("the windows: configurable, with defaults chosen against the evals' false holds", () => {
-  it("defaults: split 21 days, duplicate 45 days, a near duplicate 14 days and at most EUR 1.00 (and 1%)", () => {
-    expect([SPLIT_DAYS, TWIN_DAYS, NEAR_TWIN_DAYS, NEAR_TWIN_CENTS]).toEqual([21, 45, 14, 100]);
-    expect(DEFAULT_WINDOWS).toEqual({ splitDays: 21, twinDays: 45, nearTwinDays: 14 });
+  // Third round (eval v4, v4-split-iberico-22-days): the split window is 27 days (test/eval-v4-gaps.test.ts says why).
+  it("defaults: split 27 days, duplicate 45 days, a near duplicate 14 days and at most EUR 1.00 (and 1%)", () => {
+    expect([SPLIT_DAYS, TWIN_DAYS, NEAR_TWIN_DAYS, NEAR_TWIN_CENTS]).toEqual([27, 45, 14, 100]);
+    expect(DEFAULT_WINDOWS).toEqual({ splitDays: 27, twinDays: 45, nearTwinDays: 14 });
     expect(windowsOf(caseOf(bergtex("1.00")))).toEqual(DEFAULT_WINDOWS);
     expect(windowsOf(caseOf(bergtex("1.00"), { policy: { ...caseOf("").policy, windows: { splitDays: 31 } } }))).toEqual({ ...DEFAULT_WINDOWS, splitDays: 31 });
     // A window out of range is not taken: the default stands.
@@ -261,7 +262,7 @@ describe("the windows: configurable, with defaults chosen against the evals' fal
   it("a split over 16 days is added up (v3-split-bergtex-16-days); a company may set its own window", () => {
     const c = caseOf(bergtex("400.00", [], { no: "BTX-2026-210", items: ["Fleece, PO-8812, part 2 of 2"] }), { history: [prior({ issueDate: "2026-11-01" })] });
     expect(codeRequires(c, codeFindings(c))).toMatchObject({ action: "ask_cfo", by: "possible_split" });
-    expect(codeFindings(c).find((f) => f.code === "possible_split")!.detail).toContain("within 21 days");
+    expect(codeFindings(c).find((f) => f.code === "possible_split")!.detail).toContain("within 27 days");
     const narrow = { ...c, policy: { ...c.policy, windows: { splitDays: 14 } } };
     expect(codes(narrow)).not.toContain("possible_split");
     // A month apart: a supplier's monthly invoices are no split.

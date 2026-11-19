@@ -687,14 +687,15 @@ describe("eval v2 gaps, closed in code", () => {
   const prior = (over: Partial<HistoryInvoice>) => earlier({ invoiceNo: "BTX-2026-40", total: "990.00", issueDate: "2026-11-16", receivedAt: "2026-11-16T09:00:00.000Z", state: "paid", ...over });
 
   describe("split invoices: one supplier's invoices added up over SPLIT_DAYS", () => {
-    // 19 Nov, second round (eval v3, v3-split-bergtex-16-days): three weeks (src/config/checkNumbers.ts says why).
-    it("is 21 days", () => expect(SPLIT_DAYS).toBe(21));
+    // 19 Nov, second round (eval v3, v3-split-bergtex-16-days): three weeks; third round (eval v4, v4-split-iberico-22-days):
+    // 27 days, under the shortest month (src/config/checkNumbers.ts says why).
+    it("is 27 days", () => expect(SPLIT_DAYS).toBe(27));
 
     it("an invoice under the limit whose supplier's invoices within the window add up past it needs the CFO, naming them", () => {
       const c = caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({})] });
       const f = finding(c, "possible_split")!;
       expect(f).toMatchObject({ level: "warn" });
-      expect(f.detail).toBe("possible split invoice: with AP-0001 (invoice BTX-2026-40, EUR 990.00, 2026-11-16) from the same supplier within 21 days, together EUR 1850.00, above the EUR 1000.00 the agent may pay alone, so the CFO decides");
+      expect(f.detail).toBe("possible split invoice: with AP-0001 (invoice BTX-2026-40, EUR 990.00, 2026-11-16) from the same supplier within 27 days, together EUR 1850.00, above the EUR 1000.00 the agent may pay alone, so the CFO decides");
       expect(statusOf(codeFindings(c))).toBe("ready");
       expect(codeRequires(c, codeFindings(c))).toMatchObject({ action: "ask_cfo", by: "possible_split" });
       expect(codeRequires(c, codeFindings(c)).why).toMatch(/^possible split invoice: with AP-0001/);
@@ -711,8 +712,8 @@ describe("eval v2 gaps, closed in code", () => {
 
     it("asks nothing when the parts stay within the limit, fall outside the window, or cannot be paid", () => {
       expect(codes(caseOf(part("10.00"), { ...LIMIT_1000, history: [prior({})] }))).not.toContain("possible_split");
-      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-10-26" })] }))).not.toContain("possible_split");
-      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-10-27" })] }))).toContain("possible_split");
+      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-10-20" })] }))).not.toContain("possible_split");
+      expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ issueDate: "2026-10-21" })] }))).toContain("possible_split");
       for (const state of ["rejected", "blocked"] as const) expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ state })] })), state).not.toContain("possible_split");
       expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ currency: "USD" })] }))).not.toContain("possible_split");
       expect(codes(caseOf(part("860.00"), { ...LIMIT_1000, history: [prior({ vendor: "Someone Else GmbH", accountKey: "DE02120300000000202051" })] }))).not.toContain("possible_split");

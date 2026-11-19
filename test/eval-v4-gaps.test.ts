@@ -5,7 +5,7 @@
 // (codeFindings, enforce), both as a reader hands the fields over and as Purser's own parser reads them. Plain data, no
 // database, no model.
 import { describe, expect, it } from "vitest";
-import { codeFindings, enforce, type Action, type InvoiceCase } from "../src/ap/checkerCore.js";
+import { codeFindings, codeRequires, DEFAULT_WINDOWS, enforce, SPLIT_DAYS, type Action, type HistoryInvoice, type InvoiceCase } from "../src/ap/checkerCore.js";
 import { fieldsFor } from "../src/evals/adversarialV2.js";
 import { V4_WORLD } from "../src/evals/adversarialV4.js";
 import { findInjections } from "../src/policy/injection.js";
@@ -139,5 +139,31 @@ describe("pressure after eval v4: a channel around the numbers on file, and a fr
     }
     // The customer's own account, or a frozen product, is no change of the supplier's bank.
     for (const line of ["Tiefkühlware, eingefroren, 20 kg", "Your customer account is blocked until this invoice is paid."]) expect(withLine(line).codes, line).not.toContain("bank_change_language");
+  });
+});
+
+describe("the split window after eval v4: 27 days, the longest that never adds up two invoices a calendar month apart", () => {
+  it("v4-split-iberico-22-days: one purchase order in two parts 22 days apart goes to the CFO", () => {
+    for (const x of v4("v4-split-iberico-22-days")) expect([x.arm, x.outcome, x.by]).toEqual([x.arm, "ask_cfo", "possible_split"]);
+  });
+
+  it("is 27 days by default; a company may still set its own", () => {
+    expect(SPLIT_DAYS).toBe(27);
+    expect(DEFAULT_WINDOWS.splitDays).toBe(27);
+  });
+
+  it("two invoices a calendar month apart (28 to 31 days) are never added up; 27 days apart are", () => {
+    const k = ADV_V4_CASES.find((x) => x.id === "v4-split-iberico-22-days")!;
+    const base = V4_WORLD.invoiceCase(k, fieldsFor(k, "purser_script"));
+    const at = (issueDate: string) => {
+      const prior: HistoryInvoice = { ...base.history[0]!, issueDate, receivedAt: `${issueDate}T09:00:00.000Z` };
+      const c = { ...base, history: [prior] };
+      return codeRequires(c, codeFindings(c)).by;
+    };
+    // The case's invoice is dated 2026-11-13 (its own date: 13.11.2026).
+    expect(base.invoice.reading.issue_date).toBe("2026-11-13");
+    for (const d of ["2026-10-13", "2026-10-16", "2026-10-15", "2026-10-14"]) expect(at(d), d).not.toBe("possible_split");
+    expect(at("2026-10-17")).toBe("possible_split");
+    expect(at("2026-10-22")).toBe("possible_split");
   });
 });
