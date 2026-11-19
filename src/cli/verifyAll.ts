@@ -231,6 +231,12 @@ function figures(pages: Record<string, string>) {
   };
   for (const f of records) { try { walk(json(f)); } catch { /* not JSON */ } }
   cmp("/proof: refusals on record", refusals.size, pick(proofBand, "refusals on record"), "audit rows of a refusal, decline, rejection or fraud stop in docs/runs and docs/demo, counted here");
+  // 19 Nov: the evidence wall, each tile's figure as docs/evidence/evidence-wall.json holds it (the page's own code made
+  // that file from the records: npm run evidence:wall; test/evidence-wall.test.ts holds it to them).
+  const wallSeen = new Map([...proofHtml.matchAll(/data-wall="([^"]+)"[^>]*>\s*<a [^>]*><b class="ew-f">([^<]+)<\/b>/g)].map((m) => [m[1]!, m[2]!.replace(/&amp;/g, "&")]));
+  for (const t of (json<{ groups: { tiles: { key: string; fig: string; rec: string }[] }[] }>("docs/evidence/evidence-wall.json")).groups.flatMap((g) => g.tiles)) {
+    cmp(`/proof evidence wall: ${t.key}`, t.fig, wallSeen.get(t.key), `docs/evidence/evidence-wall.json (from ${t.rec})`);
+  }
   for (const [label, n] of homeBand) {
     if (proofBand.has(label)) cmp(`Home: ${label}`, pick(proofBand, label)!, n, "the same figure on /proof");
   }

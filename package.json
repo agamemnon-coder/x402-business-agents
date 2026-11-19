@@ -26,6 +26,7 @@
     "cloud:logos": "tsx cloud/scripts/tryLogos.ts",
     "cloud:pdfjs": "tsx cloud/scripts/pdfjs.ts",
     "cloud:proof": "tsx cloud/scripts/tryProof.ts",
+    "evidence:wall": "tsx scripts/evidence-wall.ts",
     "cloud:samples": "tsx cloud/scripts/samples.ts",
     "cloud:scenarios": "tsx cloud/scripts/scenarios.ts",
     "cloud:smoke": "tsx scripts/engine-smoke.ts",

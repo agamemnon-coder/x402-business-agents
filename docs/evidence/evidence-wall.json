@@ -1,0 +1,306 @@
+{
+  "what": "/proof's evidence wall: every figure read from the committed record its tile links to. Test money only; what was simulated is said on each tile.",
+  "made_by": "npm run evidence:wall (scripts/evidence-wall.ts, src/redesign/evidenceWallData.ts)",
+  "groups": [
+    {
+      "id": "ev-rails",
+      "title": "Live on the rails",
+      "tiles": [
+        {
+          "key": "try-transfers",
+          "fig": "All 16",
+          "label": "Airwallex sandbox transfers PAID from the public /try",
+          "note": "8 walks as a visitor, 19 Nov; PAID by the sandbox's simulation.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        },
+        {
+          "key": "spend-bills",
+          "fig": "All 3",
+          "label": "paid invoices made bills in Airwallex Spend",
+          "note": "The signed hash as external_id, read back exactly; transfers PAID by the sandbox's simulation, 19 Nov.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-bills.md",
+          "rec": "docs/runs/2026-11-19-airwallex-bills.json"
+        },
+        {
+          "key": "approval-hash",
+          "fig": "797d4483…",
+          "label": "the signed hash, read back from Airwallex's transfer",
+          "note": "Its approval_sha256 is the hash of the terms the CFO signed.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "airwallex#awx-hash",
+          "rec": "docs/runs/airwallex-transfer-approval-2026-11-06.json"
+        },
+        {
+          "key": "alta-refusal",
+          "fig": "#24",
+          "label": "refused on chain by Alta: over the mandate",
+          "note": "On Alta's testnet explorer; the main run, 3 Nov.",
+          "tag": "testnet",
+          "tone": "metal",
+          "href": "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871",
+          "rec": "docs/demo/main-run.json"
+        },
+        {
+          "key": "visa-airi",
+          "fig": "EUR 45.00",
+          "label": "paid with Visa via Airwallex's Airi, after Face ID",
+          "note": "A test card, 14 Nov; 1 of 3 purchases paid.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "visa",
+          "rec": "docs/runs/2026-11-14-vic-5.json"
+        },
+        {
+          "key": "late-failure",
+          "fig": "Both",
+          "label": "payouts PAID then FAILED: back to a person, none resent",
+          "note": "PAID and FAILED by the sandbox's simulation, 17 Nov.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-17-airwallex-late-failure.json",
+          "rec": "docs/runs/2026-11-17-airwallex-late-failure.json"
+        },
+        {
+          "key": "awx-endpoints",
+          "fig": "50",
+          "label": "Airwallex endpoints called live, of 61 in the code",
+          "note": "Each with the first record that holds a call to it.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/airwallex-api-coverage.md",
+          "rec": "docs/evidence/airwallex-api-coverage.json"
+        }
+      ]
+    },
+    {
+      "id": "ev-forged",
+      "title": "Cannot be forged",
+      "tiles": [
+        {
+          "key": "tamper-matrix",
+          "fig": "All 894",
+          "label": "tampered copies of signed proofs refused",
+          "note": "Every signed value of 6 proofs changed; the originals verify. Offline.",
+          "tag": "test",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/tamper-matrix.md",
+          "rec": "docs/evidence/tamper-matrix.json"
+        },
+        {
+          "key": "try-cent",
+          "fig": "All 8",
+          "label": "one-cent changes after approval refused",
+          "note": "The public /try, 19 Nov; a virtual test passkey signed.",
+          "tag": "sandbox",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        },
+        {
+          "key": "try-hash",
+          "fig": "All 8",
+          "label": "approvals whose hash the Airwallex transfer carries",
+          "note": "The public /try, 19 Nov.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        },
+        {
+          "key": "try-proofs",
+          "fig": "All 16",
+          "label": "proof files VALID on /verify and offline",
+          "note": "Downloaded from /try; npm run verify-bundle agrees.",
+          "tag": "sandbox",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        },
+        {
+          "key": "card-cent",
+          "fig": "EUR 30.01",
+          "label": "declined by Airwallex: one cent over an agent card's limit",
+          "note": "Simulated card charges, 15 Nov.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/airwallex-card-cent-2026-11-15.json",
+          "rec": "docs/runs/airwallex-card-cent-2026-11-15.json"
+        },
+        {
+          "key": "passkeys-onchain",
+          "fig": "3",
+          "label": "limit changes on chain, each after the passkeys signed",
+          "note": "Alta testnet, 12 Nov: P-256 checked on chain; one a test key.",
+          "tag": "testnet",
+          "tone": "metal",
+          "href": "alta#faceid-onchain",
+          "rec": "docs/runs/2026-11-12-faceid-onchain.json"
+        }
+      ]
+    },
+    {
+      "id": "ev-ai",
+      "title": "AI under control",
+      "tiles": [
+        {
+          "key": "worst-case",
+          "fig": "0 vs 35",
+          "label": "wrong payments: an always-pay AI in Purser, vs no rules",
+          "note": "50 hostile and clean invoices; 0 paid past the CFO.",
+          "tag": "test",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/worst-case-ai.md",
+          "rec": "docs/evals/worst-case-summary.json"
+        },
+        {
+          "key": "red-team",
+          "fig": "37 of 39",
+          "label": "red-team attacks stopped before anything moved",
+          "note": "The other 2 found afterwards, not prevented.",
+          "tag": "test",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/report.json",
+          "rec": "docs/redteam/report.json"
+        },
+        {
+          "key": "hostile-model",
+          "fig": "370 of 380",
+          "label": "hostile tool calls, in Claude's place, stopped by code",
+          "note": "The other 10 stood within the rules, by the ledger.",
+          "tag": "test",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/ap-hostile.json",
+          "rec": "docs/evals/ap-hostile.json"
+        },
+        {
+          "key": "try-claude",
+          "fig": "0",
+          "label": "fallbacks in 120 Claude calls on /try",
+          "note": "129 Anthropic request ids; claude-haiku-5-5.",
+          "tag": "sandbox",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        },
+        {
+          "key": "try-held",
+          "fig": "All 8",
+          "label": "invoices held by code's cash check",
+          "note": "Inside the agent's limit; no payout.",
+          "tag": "sandbox",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        }
+      ]
+    },
+    {
+      "id": "ev-built",
+      "title": "Built to last",
+      "tiles": [
+        {
+          "key": "verify-all",
+          "fig": "189",
+          "label": "checks passed by npm run verify-all, 0 failed",
+          "note": "129 Alta transactions read from the chain; 15 Nov.",
+          "tag": "check",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md",
+          "rec": "docs/evidence/verification-2026-11-15.json"
+        },
+        {
+          "key": "clearing-load",
+          "fig": "3,879 of 4,000",
+          "label": "payments through Alta's clearing, load test",
+          "note": "2 runs, 30 Oct; the last: all 2,000 paid.",
+          "tag": "testnet",
+          "tone": "metal",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-10-30-clearing-load.md",
+          "rec": "docs/runs/clearing-load-1.json docs/runs/clearing-load-2.json"
+        },
+        {
+          "key": "ci",
+          "fig": "8",
+          "label": "CI jobs on every change",
+          "note": "4 scan for security: gitleaks, Semgrep, CodeQL, npm audit.",
+          "tag": "ci",
+          "tone": "",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain",
+          "rec": ".github/workflows/ci.yml"
+        }
+      ]
+    },
+    {
+      "id": "ev-scale",
+      "title": "The public /try, timed",
+      "tiles": [
+        {
+          "key": "try-journeys",
+          "fig": "All 8",
+          "label": "full /try journeys passed every step",
+          "note": "19 Nov, Chromium, desktop and phone; 0 console errors.",
+          "tag": "sandbox",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        },
+        {
+          "key": "try-sign-paid",
+          "fig": "6.3 s",
+          "label": "passkey to paid, on screen",
+          "note": "Median of 8, p95 6.9 s.",
+          "tag": "sandbox",
+          "tone": "",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        },
+        {
+          "key": "try-autopay",
+          "fig": "10.2 s",
+          "label": "agent pays alone, to Airwallex PAID",
+          "note": "Median of 8, p95 13.2 s; PAID by the sandbox's simulation.",
+          "tag": "sandbox",
+          "tone": "",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        },
+        {
+          "key": "try-refusal",
+          "fig": "0.69 s",
+          "label": "one-cent change to refusal",
+          "note": "Median of 8, p95 0.72 s.",
+          "tag": "sandbox",
+          "tone": "",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        },
+        {
+          "key": "try-verify",
+          "fig": "0.11 s",
+          "label": "proof file to verdict on /verify",
+          "note": "Median of 8, p95 0.42 s.",
+          "tag": "sandbox",
+          "tone": "",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        },
+        {
+          "key": "try-cost",
+          "fig": "USD 0.0049",
+          "label": "Claude cost per journey",
+          "note": "List price; USD 0.0392 for 8.",
+          "tag": "sandbox",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+        }
+      ]
+    }
+  ]
+}

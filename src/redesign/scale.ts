@@ -26,13 +26,12 @@ const ROOT = new URL("../../", import.meta.url);
 const read = (p: string) => readFileSync(new URL(p, ROOT), "utf8");
 const json = (p: string): unknown => { try { return JSON.parse(read(p)); } catch { return null; } };
 /**
- * Folders whose files the band does not count (19 Nov). docs/runs/2026-11-19-live-try/ holds the raw answers of a
- * re-check of the public /try (8 walks as a visitor, docs/runs/2026-11-19-live-try.md): its Claude request ids, its
- * refusal and its Airwallex sandbox transfers belong to /try test companies, are counted in that record, and are not
- * runs of record; counting them here would move the band away from the pages as deployed. src/cli/verifyAll.ts
- * recounts the band with the same exclusion.
+ * Folders whose files the band does not count. 19 Nov: docs/runs/2026-11-19-live-try/ (8 walks of the public /try as a
+ * visitor) was left out at first, as /try test companies; since the owner's call the same day it is a live run on /runs
+ * (src/redesign/runs.ts liveTryRows) and its Claude request ids count here too. Kept, empty, as the one place a folder
+ * would be left out; src/cli/verifyAll.ts recounts the band with the same list.
  */
-export const NOT_IN_BAND: readonly string[] = ["docs/runs/2026-11-19-live-try"];
+export const NOT_IN_BAND: readonly string[] = [];
 /** Every file under a folder of the repository, by its path from the root, whose name matches (NOT_IN_BAND skipped). */
 function filesIn(dir: string, re: RegExp): string[] {
   if (NOT_IN_BAND.includes(dir)) return [];

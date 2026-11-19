@@ -1,6 +1,6 @@
 // The re-check of the public /try on 19 Nov (docs/runs/2026-11-19-live-try.md): its raw records hold no secret, its
-// summary is what scripts/try-live-summary.ts computes from them, and the /proof band does not count them (scale.ts
-// NOT_IN_BAND): their Claude request ids belong to /try test companies, and the band stays what the deployed pages show.
+// summary is what scripts/try-live-summary.ts computes from them, and (since the owner's call of 19 Nov) it is a live run
+// whose Claude request ids the /proof band counts, like every other run's.
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { NOT_IN_BAND, scaleFigures } from "../src/redesign/scale.js";
@@ -32,12 +32,12 @@ describe("the /try re-check of 19 Nov", () => {
     expect(s.runs).toHaveLength(8);
   });
 
-  it("is left out of the /proof band: its Claude request ids are not counted", () => {
-    expect(NOT_IN_BAND).toContain(DIR);
+  it("is counted in the /proof band (19 Nov, the owner's call): its Claude request ids are among the band's", () => {
+    expect(NOT_IN_BAND).not.toContain(DIR);
     const own = new Set(files.flatMap((f) => [...read(f).matchAll(REQ)].map((m) => m[0])));
     expect(own.size).toBeGreaterThan(0);
     const counted = new Set(docsJson().flatMap((f) => [...read(f).matchAll(REQ)].map((m) => m[0])));
     expect(scaleFigures().claudeCalls).toBe(counted.size);
-    for (const id of own) expect(counted.has(id), id).toBe(false);
+    for (const id of own) expect(counted.has(id), id).toBe(true);
   });
 });

@@ -27,6 +27,7 @@ import { CHROME, checkTaps } from "./tapTargets.js";
 import { tokenizeRun } from "../../src/redesign/tokenizeRun.js";
 import { ICC_RUN_EXTRA_WORDS, iccRecordIn } from "../../src/redesign/iccBlock.js";
 import { METAL_CSP } from "../../src/servers/dashboard.js";
+import { committedWall } from "../../src/redesign/evidenceWall.js";
 
 const args = process.argv.slice(2);
 const liveAt = args.indexOf("--live");
@@ -1103,7 +1104,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // Jury panel, 15 Nov ("/proof is too long"): the heading, the lead, five facts a judge can check. Max, the same day
       // ("just links, no more visuals"): the facts as cards, then the payment-check chain, the numbers band, the offline
       // check, the film links and the guarantees in sight; every live run and all the rest in two folds closed on load.
-      if (first.order !== "h1 p.plead section.pfacts ol.pchain ul.scale aside.pverify p.pwatch section.gtee details.sumd" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the five fact cards, the chain, the band, the offline check, the film links, the guarantees and the folds (every live run, ${PROOF_RUN_ROWS}, in the first), closed on load (${JSON.stringify(first)})`);
+      // 19 Nov (the owner: "show all our data and proof"): the evidence wall after the guarantees, before the folds.
+      if (first.order !== "h1 p.plead section.pfacts ol.pchain ul.scale aside.pverify p.pwatch section.gtee section.ewall" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the five fact cards, the chain, the band, the offline check, the film links, the guarantees and the folds (every live run, ${PROOF_RUN_ROWS}, in the first), closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
         // The five facts start on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
         const facts = await page.evaluate(`(() => { const e = document.querySelector("main section.pfacts"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
@@ -1121,6 +1123,20 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (all.length < 80) fail(`/proof ${tag}: only ${all.length} links and fold headers with every fold open, the check is not looking at the page`);
       }
       await page.goto(`${base}/proof`, { waitUntil: "load" });
+      // The evidence wall (src/redesign/evidenceWall.ts): one tile per figure of docs/evidence/evidence-wall.json, each a
+      // link that names its record, its figure and its tag in sight, inside the screen.
+      const wall = committedWall()!;
+      const tiles = (await page.evaluate(`(() => [...document.querySelectorAll("main section.ewall li.ew-t")].map((li) => { const a = li.querySelector("a"), r = li.getBoundingClientRect();
+        return { key: li.getAttribute("data-wall"), rec: li.getAttribute("data-rec") || "", href: a ? a.getAttribute("href") : null, fig: (li.querySelector(".ew-f") || {}).textContent || "", tag: (li.querySelector(".ew-tag") || {}).textContent || "", h: a ? a.getBoundingClientRect().height : 0, left: r.left, right: r.right };
+      }))()`)) as { key: string; rec: string; href: string | null; fig: string; tag: string; h: number; left: number; right: number }[];
+      const want = wall.groups.flatMap((g) => g.tiles);
+      if (tiles.length !== want.length) fail(`/proof ${tag}: ${tiles.length} evidence tiles, the wall's file has ${want.length}`);
+      for (const t of want) {
+        const seen = tiles.find((x) => x.key === t.key);
+        if (!seen || seen.fig !== t.fig || seen.href !== t.href || !seen.rec || !seen.tag) fail(`/proof ${tag}: evidence tile ${t.key} not as its record says (${JSON.stringify(seen)})`);
+        else if (seen.h < 44 || seen.left < 0 || seen.right > w + 0.5) fail(`/proof ${tag}: evidence tile ${t.key} under 44 px or outside the screen (${JSON.stringify(seen)})`);
+      }
+      await page.locator("#evidence").screenshot({ path: join(shots, `proof-evidence-${tag}.png`) });
     }
     {
       // The Airi run (7 Nov): behind the first closed line since 12 Nov (in sight under the partners before). Closed on

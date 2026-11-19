@@ -29,6 +29,7 @@ import { VIC3_PREV_FILE, VIC3_PREV_LOG, VIC3_RUN_FILE, VIC3_RUN_LOG, VIC4_FILE, 
 import { CAVEAT_LINE } from "../config/brand.js";
 import { centHolds, centLine, centRecord } from "./cardCent.js";
 import { EXPLORER_TX } from "../metal/network.js";
+import { liveTryRecords, liveTryTotals } from "./liveTry.js";
 
 export const RUNS_URL = "runs";
 export const RUNS_TITLE = "Every live run";
@@ -445,6 +446,51 @@ function extraRuns(): RunRow[] {
       money: "Sandbox · test money",
       ids: t.map((x) => ({ label: `Transfer (${x.invoice_no.split(" · ")[0]})`, value: x.transfer_id })),
       files: [{ label: "record (JSON)", href: blob(LF_FILE) }],
+    });
+  }
+
+  // 19 Nov: each paid invoice became a bill in Airwallex's own accounts payable (Spend Bills), the bill's external_id the
+  // hash a passkey signed (docs/runs/2026-11-19-airwallex-bills.md). Counted only when every bill was read back agreeing.
+  type Bl = {
+    bills: { invoice_no: string; amount: string; bill_id: string | null; external_id_matches_signed: boolean; transfer_status: string; created: { status: string; read_back: string } | null; paid: { status: string; read_back: string } | null }[];
+    audit: { ts: string }[]; budget: { approved: number }; calls: { total: number };
+  };
+  const BL_FILE = "docs/runs/2026-11-19-airwallex-bills.json", BL_LOG = "docs/runs/2026-11-19-airwallex-bills.md";
+  const bl = has(BL_FILE) ? readJson<Bl>(BL_FILE) : null;
+  const bills = bl?.bills.filter((b) => b.bill_id) ?? [];
+  if (bl && bills.length && bills.every((b) => b.created?.read_back === "agrees" && b.paid?.read_back === "agrees")) {
+    const first = bl.audit[0]!.ts, last = bl.audit[bl.audit.length - 1]!.ts;
+    const paid = bills.filter((b) => b.paid?.status === "PAID").length, hashed = bills.filter((b) => b.external_id_matches_signed).length;
+    out.push({
+      key: "bills-1", iso: last, date: day(first), kind: "sandbox", partners: ["Airwallex"],
+      name: "Paid invoices become bills in Airwallex's own accounts payable",
+      line: `${pl(bills.length, "bill")} made from paid invoices, PDF attached, the signed hash as external_id, then marked PAID. Transfers PAID by simulation; a test passkey.`,
+      rate: { done: paid, of: bills.length, what: "bills marked PAID" },
+      title: "Airwallex Spend Bills", rails: "Airwallex sandbox (Spend bills, vendors, files; SWIFT transfers), test passkey",
+      what: `${pl(bills.length, "invoice")} of ${bills[0]!.amount} each (${bills.map((b) => b.invoice_no).join(", ")}) were read by the parser (no model), signed by a labelled virtual test passkey and paid by SWIFT transfer at the Airwallex sandbox (SENT and PAID by its simulation endpoint). One payment sync then made each paid invoice a bill in Airwallex Spend, with its PDF attached and the signed terms hash as its external_id, and marked it paid.`,
+      checks: `${countOf(hashed, bills.length)} bills carry the signed hash as external_id; each read back after the create and after mark_as_paid, 0 differences. ${bl.calls.total} Airwallex calls, within the budget of ${bl.budget.approved}.`,
+      money: "Sandbox · test money",
+      ids: bills.map((b) => ({ label: `Bill (${b.invoice_no})`, value: b.bill_id! })),
+      files: [{ label: "record (JSON)", href: blob(BL_FILE) }, { label: "run log", href: blob(BL_LOG) }],
+    });
+  }
+
+  // 19 Nov: the public /try walked as a visitor, recorded with every answer (docs/runs/2026-11-19-live-try.md); one row a
+  // recorded series, its walks its rate (src/redesign/liveTry.ts reads every series in that shape).
+  for (const rec of liveTryRecords()) {
+    const t = liveTryTotals([rec]);
+    if (!t || !t.runs) continue;
+    out.push({
+      key: rec.dir.split("/").pop()!, iso: rec.last, date: day(rec.first), kind: "sandbox", partners: ["Airwallex", "Claude"],
+      name: `The public /try, walked ${t.runs} times as a visitor`,
+      line: `${countOf(t.paid, t.transfers)} Airwallex sandbox transfers PAID (by the sandbox's simulation), ${countOf(t.refused, t.runs, true)} one-cent changes refused, ${countOf(t.held, t.runs, true)} cash holds by code. A test passkey.`,
+      rate: { done: t.ok, of: t.runs, what: "journeys passed every step" },
+      title: "The public /try, recorded", rails: "Airwallex sandbox (SWIFT transfers), Claude, virtual test passkey",
+      what: `The judge's journey on https://kit11.max-31b.workers.dev/try, ${t.runs} times in Chromium, each a fresh test company: an invoice paid by the agent alone, one approved with a passkey and paid, a one-cent change refused, the proof checked on /verify, an invoice held by the cash check.`,
+      checks: `${countOf(t.approvalsMatching, t.runs)} approvals carry the hash the transfer carries; ${countOf(t.proofsValid, t.proofs, true)} proof files VALID; ${t.claude.entries} Claude entries, ${t.claude.fallbacks} fallbacks.`,
+      money: "Sandbox · test money",
+      ids: [],
+      files: [{ label: "summary (JSON)", href: blob(rec.summary) }, ...(rec.log ? [{ label: "run log", href: blob(rec.log) }] : [])],
     });
   }
 

@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { PACK_LINK, PACK_NAME } from "../src/accounting/monthPack.js";
 import { CFO_VIEW_LINK, CFO_VIEW_URL, FILM_LINK, FILM_URL, PROOF_SENTENCES, SPLIT_LINE, TRAILER_URL } from "../src/config/brand.js";
 import { AWX_CONTROLS_ID, AWX_HASH_ID, awxCardId, cardControlRows, cardsReadback, hashTravel, transferReadback } from "../src/redesign/airwallexProof.js";
+import { evidenceWallHtml } from "../src/redesign/evidenceWall.js";
 import { GUARANTEES_ID, guaranteesHtml } from "../src/redesign/guarantees.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { proofLeads, reliabilityFix, RELIABILITY_CASE } from "../src/redesign/proofLead.js";
@@ -272,7 +273,10 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
     expect(main.replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <section class="pfacts"[\s\S]*?<\/section> <ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <p class="pwatch">[\s\S]*?<\/p> <section class="gtee"/);
-    expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary><p class="ptnote">[^<]+<\/p><ul class="ptiles"/);
+    // 19 Nov (the owner: "show all our data and proof"): the evidence wall between the guarantees and the folds.
+    const wall = evidenceWallHtml();
+    expect(main.slice(g + guaranteesHtml().length).trimStart().startsWith(wall)).toBe(true);
+    expect(main.slice(g + guaranteesHtml().length).trimStart().slice(wall.length).trimStart()).toMatch(/^<details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary><p class="ptnote">[^<]+<\/p><ul class="ptiles"/);
     expect(main).toMatch(/<\/section>\s*<\/details>\s*<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
     const facts = /<section class="pfacts"[\s\S]*?<\/section>/.exec(main)![0];
     expect([...facts.matchAll(/<li class="pf (awx|metal|claude|runs)"[^>]*><a href="[^"]+"[^>]*><span class="pf-ic"[^>]*><svg[\s\S]*?<\/svg><\/span><b class="pf-fig">[^<]+<\/b><span class="pf-t">[^<]+<\/span><span class="pf-l">/g)].map((m) => m[1])).toEqual(["awx", "awx", "metal", "claude", "runs"]);
@@ -455,8 +459,10 @@ describe("/proof's words in sight", () => {
     // Visa judge, 14 Nov: the live vic-5 run in that list and one line on the Visa outcome to /visa: 837 as built.
     // 14 Nov: "Alta (formerly Metal)" at the first mention (Metal renamed itself): 841 as built.
     // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words): 917 as built.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(960);
-    expect(visibleWords(html)).toBeLessThanOrEqual(1345); // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words). // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
+    // 19 Nov (the owner: "show all our data and proof, the stronger the technical case the better"): +214 for the
+    // evidence wall, five headings and 27 tiles, each a figure, a short line, what was simulated and its tag (1,131 as built).
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(1140);
+    expect(visibleWords(html)).toBeLessThanOrEqual(1900); // 19 Nov (the owner: "show all our data and proof"): +550 for the evidence wall's 27 tiles and their notes (1,895 as built). // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words). // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
@@ -464,6 +470,8 @@ describe("/proof's words in sight", () => {
     // +28, 12 Nov wire-in: the Visa and T:0 cards (343 as built).
     // +10, 12 Nov: the rail cards' fold header, once per drawing (wide and tall); the cards themselves got shorter.
     // 14 Nov: "Alta (formerly Metal)" at the first mention (Metal renamed itself): 841 as built.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(960); // 960 since 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words); 357 until the live runs came into sight (the owner, 13 Nov; 810 as built); 837 with vic-5 and the Visa line (14 Nov)
+    // 19 Nov (the owner: "show all our data and proof, the stronger the technical case the better"): +214 for the
+    // evidence wall, five headings and 27 tiles, each a figure, a short line, what was simulated and its tag (1,131 as built).
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(1140); // 960 since 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words); 357 until the live runs came into sight (the owner, 13 Nov; 810 as built); 837 with vic-5 and the Visa line (14 Nov)
   });
 });
