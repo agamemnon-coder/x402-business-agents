@@ -28,6 +28,12 @@ export interface TryConfig {
   railAwx?: boolean;
   /** The bot check's HMAC secret (TRY_BOTCHECK_SECRET, a Worker secret); with the switch bot_check on and no secret, starts are refused. */
   botSecret?: string;
+  /**
+   * Cloudflare Turnstile's secret key (TURNSTILE_SECRET, a Worker secret the owner sets) and the way out to its
+   * siteverify (./turnstile.ts); with the switch turnstile on and either missing, starts are refused.
+   */
+  turnstileSecret?: string;
+  siteverify?: (url: string, init: RequestInit) => Promise<Response>;
 }
 
 export const TRY_PREFIX = "t_try_";

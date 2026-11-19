@@ -6,6 +6,7 @@ import { redactSecrets } from "../lib/redact.js";
 import { AirwallexBudgetSpent, budgetFromEnv } from "./callBudget.js";
 import { ACCOUNT_ID } from "./platform.js";
 import { airwallexOAuthConfig, airwallexOAuthOn, cloudTargetFromEnv } from "../cloudsync/connections.js";
+import { assertRoleKeys, checkScope, ROLE_ENV, type AirwallexRole } from "./keyScopes.js";
 
 export const SANDBOX_BASE = "https://api.sandbox.airwallex.com/api/v1";
 /** Airwallex's Files service lives on its own host (Upload a file: files.sandbox.airwallex.com), with the same token. */
@@ -51,6 +52,11 @@ export interface AirwallexConfig {
    * company's own wallet.
    */
   onBehalfOf?: string;
+  /**
+   * The role of a scoped key (src/airwallex/keyScopes.ts, 19 November): every call outside that role's scopes is
+   * refused before it is sent. Unset (the general key, or OAuth): no such check.
+   */
+  role?: AirwallexRole;
 }
 
 /** An Airwallex account id (acct_…), defined with the platform rail, which the cloud imports without this Node-only client. */
@@ -111,18 +117,26 @@ const MAX_429_RETRIES = 4;
 /** Answers that mean "try again shortly": a gateway or the service briefly down. Only reads are retried. */
 const TRANSIENT = new Set([502, 503, 504]);
 
-export function fromEnv(env = process.env): AirwallexConfig | null {
+/**
+ * The client's configuration from the environment. With a `role` (src/airwallex/keyScopes.ts): that role's own scoped
+ * key (AIRWALLEX_API_KEY_READ, _PAYOUT, _ISSUING or _SPEND) when it is set, guarded by the role's scopes, after
+ * checking that Purser's code makes no call with it outside them (a throw here stops the process at its start);
+ * else AIRWALLEX_API_KEY, as before. Without a role: AIRWALLEX_API_KEY.
+ */
+export function fromEnv(env: Record<string, string | undefined> = process.env, role?: AirwallexRole): AirwallexConfig | null {
   // AIRWALLEX_OAUTH=on (docs/real-customers.md): the company's own connected account, with its own token from Purser
   // Cloud; no API key is read. Off (the default): the API key pair, exactly as before.
   if (airwallexOAuthOn(env)) return airwallexOAuthConfig(cloudTargetFromEnv(env), env);
   const clientId = env.AIRWALLEX_CLIENT_ID;
-  const apiKey = env.AIRWALLEX_API_KEY;
+  const scoped = role ? env[ROLE_ENV[role]] : undefined;
+  if (scoped) assertRoleKeys({ [ROLE_ENV[role!]]: scoped });
+  const apiKey = scoped || env.AIRWALLEX_API_KEY;
   if (!clientId || !apiKey) return null;
   // A live run with an approved call budget (src/airwallex/callBudget.ts): every request is counted, none goes over it.
   const budgeted = budgetFromEnv(env, (...a) => fetch(...a));
   // Purser as a platform (AIRWALLEX_PLATFORM=on): the company's connected account, when it has one.
   const onBehalfOf = env.AIRWALLEX_PLATFORM === "on" && env.AIRWALLEX_ON_BEHALF_OF ? env.AIRWALLEX_ON_BEHALF_OF : undefined;
-  return { clientId, apiKey, ...(budgeted ? { fetchImpl: budgeted } : {}), ...(onBehalfOf ? { onBehalfOf } : {}) };
+  return { clientId, apiKey, ...(budgeted ? { fetchImpl: budgeted } : {}), ...(onBehalfOf ? { onBehalfOf } : {}), ...(scoped ? { role } : {}) };
 }
 
 export class Airwallex {
@@ -207,6 +221,8 @@ export class Airwallex {
   }
 
   private async send<T>(method: "GET" | "POST", url: URL, path: string, body: BodyInit | undefined, jsonBody: boolean): Promise<T> {
+    // A scoped key's role: a call outside its scopes is refused here, before the login or the call is sent.
+    if (this.cfg.role) checkScope(this.cfg.role, method, path);
     return this.enqueue(async () => {
       for (let attempt = 0; ; attempt++) {
         const token = await this.bearer();

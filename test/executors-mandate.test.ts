@@ -17,6 +17,8 @@ const h = vi.hoisted(() => ({
   chain: new Map<string, State>(),
   cli: [] as string[][],
   failReplaceOf: null as string | null,
+  /** Every read of the chain (a mandate's state, the bound mandate): an outside call, made only after the hash check. */
+  reads: 0,
 }));
 
 const cliOut = (lines: string[]): CliResult => {
@@ -49,7 +51,7 @@ vi.mock("../src/metal/agentCli.js", () => ({
 vi.mock("../src/metal/chain.js", () => ({ publicClient: () => ({}) }));
 vi.mock("@metalntwx/metal-pay/mandates", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@metalntwx/metal-pay/mandates")>()),
-  readMandateState: async (_pc: unknown, _principal: string, reference: string) => h.chain.get(reference) ?? { boundBlock: 0n, revoked: false, spent: 0n },
+  readMandateState: async (_pc: unknown, _principal: string, reference: string) => { h.reads++; return h.chain.get(reference) ?? { boundBlock: 0n, revoked: false, spent: 0n }; },
 }));
 vi.mock("../src/metal/mandate.js", () => {
   const load = (agent: string, path: string) => {
@@ -60,6 +62,7 @@ vi.mock("../src/metal/mandate.js", () => {
     credentialFiles: (agent: string) => h.creds.filter((c) => c.agent === agent).map((c) => c.path),
     loadCredentialFile: load,
     activeMandate: async (agent: string) => {
+      h.reads++;
       const live = h.creds.filter((c) => c.agent === agent && (h.chain.get(c.reference)?.boundBlock ?? 0n) > 0n && !h.chain.get(c.reference)!.revoked);
       if (live.length !== 1) throw new Error(`${agent}: expected one bound mandate, found ${live.length}`);
       return load(agent, live[0]!.path);
@@ -158,8 +161,11 @@ describe("executeMandateReplace", () => {
     t.steps[0].budget = "16.00";
     db.prepare("UPDATE proposals SET terms_json = ? WHERE proposal_id = ?").run(JSON.stringify(t), p.id);
     // Fails if: the approved-hash check is removed.
+    h.reads = 0;
     await expect(executeMandateReplace(db, p.id)).rejects.toThrow("terms do not match the approved hash");
     expect(h.cli).toEqual([]);
+    // Hash first (19 November): the chain is not even read for terms that no longer hash to what was signed.
+    expect(h.reads).toBe(0);
   });
 
   it("refuses a total above 20.00 before any replace, and closes the proposal with the reason (dry-179: it can never run)", async () => {

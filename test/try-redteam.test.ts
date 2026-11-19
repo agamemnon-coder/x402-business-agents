@@ -174,7 +174,7 @@ describe("bodies and origins", () => {
     /** A JSON body of exactly `bytes` bytes: one string field padded to fit. */
     const sized = (field: string, bytes: number) => { const shell = JSON.stringify({ [field]: "" }).length; return JSON.stringify({ [field]: "x".repeat(bytes - shell) }); };
     const cases: [string, string, number, string | null, string][] = [
-      ["POST", "/v1/try/start", 2_000, null, "token"],
+      ["POST", "/v1/try/start", 4_000, null, "token"], // 4,000 since 19 Nov: room for a Turnstile token (at most 2,048 characters)
       ["POST", "/v1/try/session", 2_000, null, "tenant_id"],
       ["POST", "/v1/try/admin", 8_000, ADMIN_TOKEN, "op"],
       ["POST", "/v1/engine/compose", 4_000, v.s, "invoice_no"],

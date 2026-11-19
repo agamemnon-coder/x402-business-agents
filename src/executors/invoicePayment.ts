@@ -30,6 +30,7 @@ import { exclusive, heldPayoutCents, holdPayout, releasePayout } from "../policy
 import { checkpoint, step } from "../policy/saga.js";
 import { authorize } from "../policy/principals.js";
 import { refuseIfInAwxBatch } from "../policy/awxBatchLink.js";
+import { hashFirst } from "../policy/hashFirst.js";
 
 export interface InvoicePaymentResult {
   conversionId: string | null;
@@ -59,6 +60,9 @@ export const FEE_RETRY: FeeRetry = { delaysMs: [15_000, 30_000, 60_000, 90_000, 
 export const FEE_RETRY_CODES = AIRWALLEX_FEE_CODES;
 
 export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: SandboxSim | null, proposalId: string, now = () => new Date(), feeRetry: FeeRetry = FEE_RETRY): Promise<InvoicePaymentResult> {
+  // Hash first (19 November): terms that no longer hash to what was signed reach nothing outside Purser, not even the
+  // balance read below. beginExecution checks again inside its lock.
+  hashFirst(db, proposalId);
   const sha = (db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_sha256: string }).terms_sha256;
 
   const begun = (name: string) => !!db.prepare("SELECT 1 FROM money_steps WHERE action_id = ? AND step = ?").get(proposalId, name);

@@ -371,7 +371,8 @@ export function payerOf(p: NewPayoutTransfer["payer"]): { payer?: Record<string,
 
 /** The adapter when the sandbox keys are set; null otherwise, so callers stop instead of pretending. */
 export async function airwallexFromEnv(): Promise<{ rail: AirwallexRail & PayoutRail; sim: SandboxSim } | null> {
-  const cfg = fromEnv();
+  // The payout role's scoped key when set (AIRWALLEX_API_KEY_PAYOUT, src/airwallex/keyScopes.ts), else the general key.
+  const cfg = fromEnv(process.env, "payout");
   if (!cfg) return null;
   const rest = new AirwallexRest(new Airwallex(cfg));
   return { rail: rest, sim: rest };

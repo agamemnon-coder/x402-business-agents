@@ -48,7 +48,7 @@ export const LAYERS: readonly Layer[] = [
   },
   {
     id: "L5", name: "The rail's own controls", owner: "the rail", kind: "prevents",
-    does: "Airwallex and Metal refuse by themselves: the merchant categories on each agent's card, fixed when the card is issued; the card's limits, as Purser last set them at Airwallex; Airwallex's transfer approval (optional, once the company switches it on); and the on-chain mandate per agent (cap, budget, payee, end date).",
+    does: "Airwallex and Metal refuse by themselves: the merchant categories on each agent's card, fixed at issue, and its limits, raised only on a passkey signature; Airwallex's transfer approval (optional, once the company switches it on); and the on-chain mandate per agent (cap, budget, payee, end date).",
     where: ["Airwallex Issuing: authorization controls on each card", "Airwallex: transfer approval workflow", "Metal: Mandate Binding on chain"],
   },
   {
@@ -74,7 +74,7 @@ export interface Component {
   means: string;
 }
 
-const CARD_LIMIT_IS_PURSERS = "Purser sets a card's limit at Airwallex with its own key, so this raises it there, and a charge at a merchant inside the card's categories goes through; only the categories, fixed when the card is issued, still hold.";
+const CARD_LIMIT_IS_PURSERS = "Purser sets a card's limit at Airwallex with its own key and raises it only on a verified passkey signature over the new limit (since 19 November); whoever writes the database file can enrol a passkey of their own in it and sign the raise with that, so this raises it there, and a charge at a merchant inside the card's categories goes through; only the categories, fixed when the card is issued, still hold.";
 
 export const COMPONENTS: readonly Component[] = [
   { id: "agent_output", name: "the agent's output", voids: ["L1"], means: "The model answers whatever the attacker wants: pay, any payee, any amount." },
@@ -84,7 +84,7 @@ export const COMPONENTS: readonly Component[] = [
   { id: "phone_page", name: "the phone page", voids: ["L3"], means: "The attacker controls the page the CFO signs on, so the CFO's own passkey may sign what the page sends." },
   { id: "second_phone_page", name: "the second person's phone page", voids: ["L4"], means: "The attacker controls the page the second person signs on, so that person's own passkey may sign what the page sends." },
   { id: "approval_in_transit", name: "a signed approval in transit", voids: [], means: "The attacker holds a genuine signed approval and sends it again, later, or for something else." },
-  { id: "decision_code", name: "Purser's own decision code", voids: ["L2", "L3", "L4"], voidsOn: [{ path: "card_purchase", layer: "L5", why: CARD_LIMIT_IS_PURSERS }], means: "Every check in Purser's own code is forced to answer pay, the signature checks included, and an unsigned change of the policy is applied. It does not reach further: a runner host taken over with its keys is out of scope (docs/security.md)." },
+  { id: "decision_code", name: "Purser's own decision code", voids: ["L2", "L3", "L4"], means: "Every check in Purser's own code is forced to answer pay, the signature checks included, and an unsigned change of the policy is applied. It cannot make a passkey signature: a card's limit goes up at Airwallex only on a stored passkey signature that verifies over the new limit, checked where the card is synced (since 19 November). It does not reach further: a runner host taken over with its keys is out of scope (docs/security.md)." },
   { id: "stored_terms", name: "a payment's stored terms", voids: ["L1", "L2"], means: "The attacker rewrites the terms of one payment in the ledger file (the payee, the amount, the currency), so neither the agent nor the checks made when it was planned protect it any more. The approval is out of reach: forging that too is the breach \"the database file\"." },
   { id: "database", name: "the database file", voids: ["L1", "L2", "L3", "L4"], voidsOn: [{ path: "card_purchase", layer: "L5", why: CARD_LIMIT_IS_PURSERS }], means: "The attacker writes any row in the ledger file: a payment nobody asked for, an approval with terms and hashes that agree, the log itself. Purser's executor trusts its own database, so this gets past the agent, the checks and both signatures; only the rail and verify answer it." },
   { id: "network", name: "the network to the rail", voids: [], means: "The attacker, or bad luck, drops an answer from Airwallex, cuts the connection or stops the runner at the worst moment. They cannot read or change what is sent." },
@@ -115,7 +115,7 @@ export const MONEY_PATHS: readonly PathSpec[] = [
     id: "card_purchase", name: "Card purchase (Airwallex card)",
     hostile: "A charge of EUR 500.00 on an agent's company card, at a merchant inside the card's categories.",
     guards: ["L2", "L5"], optional: [],
-    notCounted: "Nothing relies on the agent (L1): the depth test puts the payment to Purser's code whatever the agent asks, so it is not counted. No signature is asked for a purchase inside the card's limits, so L3 and L4 do not guard this path; they guard a raise of the limits, which Purser's own decision code or the database file alone can push to the card (see the open risks).",
+    notCounted: "Nothing relies on the agent (L1): the depth test puts the payment to Purser's code whatever the agent asks, so it is not counted. No signature is asked for a purchase inside the card's limits, so L3 and L4 do not guard this path; they guard a raise of the limits, which goes to the card only on a verified passkey signature over the new limit. The database file alone can still push one, with a passkey of its own written into it (see the open risks).",
   },
   {
     id: "bank_payout", name: "Bank payout (Airwallex transfer)",
@@ -402,11 +402,11 @@ export const ATTACKS: readonly Attack[] = [
   },
   {
     id: "decision-code-over-card-limit",
-    description: "Purser's own decision code is forced to say pay, raises a card's limit at Airwallex with nobody's signature, and charges merchants the card may not pay.",
+    description: "Purser's own decision code is forced to say pay, applies a raise of a card's limit that nobody signed, records an approval for it, and charges the card, at a merchant inside its categories and at merchants outside them.",
     breach: ["agent_output", "decision_code"], target: "card_purchase",
-    action: "Charge EUR 45.00 and EUR 19.99 at merchants outside the cards' categories, after raising the Sourcing card's limit to EUR 1,000.00.",
+    action: "Raise the Sourcing card's limit to EUR 1,000.00 in the policy, then charge EUR 500.00 inside its categories and EUR 45.00 and EUR 19.99 at merchants outside the cards' categories.",
     bypasses: ["L1", "L2", "L3", "L4"], stoppedBy: "L5",
-    note: "Only the merchant categories stop this: the limit was raised. Inside the card's categories the raised limit lets the charge through (see the open risks).",
+    note: "Since 19 November the card sync pushes a raise only on a stored passkey signature that verifies over the new limit, which the decision code cannot make: the card at Airwallex keeps its limit, so the charge inside the categories is declined for the limit and the others for the merchant category. The database file can still do it with a passkey of its own (see the open risks).",
     evidence: EVIDENCE.cardCategory,
   },
   {
@@ -839,9 +839,9 @@ export const LIMITS: readonly Limit[] = [
   },
   {
     id: "card-limit-set-by-purser",
-    what: "A card's limit at Airwallex is whatever Purser last set. Whoever controls Purser's own decision code, or the database file, can raise it with Purser's own key and no signature; a charge at a merchant inside the card's categories then goes through, with the optional controls on too.",
-    stillHolds: "The merchant categories, fixed when each card is issued, still refuse every other merchant; the limit and every change of it are in the audit log and in what Airwallex holds for the card; the CFO's pause or the emergency stop freezes the card at Airwallex.",
-    source: "src/policy/cards.ts, syncCardsIfChanged; test/zero-trust.test.ts, the card's limit is Purser's to set",
+    what: "A card's limit at Airwallex goes up only on a verified passkey signature over the new limit, checked where Purser syncs the card (since 19 November). Whoever writes the database file can still enrol a passkey of their own in it and sign a raise with that; before any passkey is enrolled (local development), the approval on record is all that is checked; and anyone with the company's Airwallex web app or an Issuing API key can change the limit at Airwallex directly. A charge at a merchant inside the card's categories then goes through, with the optional controls on too.",
+    stillHolds: "Purser's own decision code alone, or a policy row written alone, no longer raises it. The merchant categories, fixed when each card is issued, still refuse every other merchant; every raise, and every refused one (card.raise_refused), is in the audit log, and the limit in what Airwallex holds for the card; the CFO's pause or the emergency stop freezes the card at Airwallex.",
+    source: "src/policy/cardRaise.ts; src/policy/cards.ts, syncOne; test/card-raise-signed.test.ts; test/zero-trust.test.ts, the card's limit goes up only as signed",
   },
   {
     id: "optional-controls",
@@ -911,6 +911,12 @@ export const FIXES: readonly Fix[] = [
     was: "The executor of a change of the agents' on-chain mandates ran whatever kind was filed beside the terms: terms signed by one person as a kind that needs one person, filed back as a mandate change, replaced both mandates where two people must sign.",
     now: "The mandate executor runs only terms whose signed kind is a mandate change; otherwise it changes nothing and closes the proposal with the reason.",
     where: "src/executors/mandateReplace.ts",
+  },
+  {
+    attack: "decision-code-over-card-limit",
+    was: "Purser pushed a card's limits to Airwallex as the policy table said: Purser's own decision code forced to apply an unsigned raise, or a policy row written into the database file, raised the card at Airwallex with nobody's signature, and a charge inside the card's categories went through.",
+    now: "A limit goes up at Airwallex only when the last change of it on record is a policy change to exactly that value whose stored passkey signature verifies over its terms; otherwise the card keeps its limit and the refusal is in the audit log (card.raise_refused). Lowering stays free.",
+    where: "src/policy/cardRaise.ts",
   },
 ];
 
