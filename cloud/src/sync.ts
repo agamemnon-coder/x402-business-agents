@@ -13,7 +13,8 @@ import { WriteConflict, type Stmt, type Table, type TenantDb } from "./tenant.js
 import { randomToken } from "./crypto.js";
 
 export class SyncRefused extends Error {
-  constructor(readonly status: 409 | 422, message: string) { super(message); }
+  /** tamper: a chained record that changed after it was pushed, or a chain that does not continue (a tamper alarm). */
+  constructor(readonly status: 409 | 422, message: string, readonly tamper = false) { super(message); }
 }
 
 const ID = z.string().min(1).max(120);
@@ -136,12 +137,12 @@ async function chainPart<T extends { prev_hash: string }>(rows: T[], n: (r: T) =
       const h = await stored(n(r));
       // The hash it comes with must be the stored one, and its content must still hash to it: a row whose content
       // changed under its old hash is refused, never counted as unchanged.
-      if (h !== own(r) || (await recompute(r)) !== own(r)) throw new SyncRefused(409, `${what} ${n(r)} changed after it was pushed; a posted record is corrected with a new, reversing one, never edited`);
+      if (h !== own(r) || (await recompute(r)) !== own(r)) throw new SyncRefused(409, `${what} ${n(r)} changed after it was pushed; a posted record is corrected with a new, reversing one, never edited`, true);
       unchanged += 1;
     } else fresh.push(r);
   }
   const broken = await continues(fresh, head, n, own, recompute);
-  if (broken) throw new SyncRefused(409, `${what}s do not continue the cloud's chain: ${broken}`);
+  if (broken) throw new SyncRefused(409, `${what}s do not continue the cloud's chain: ${broken}`, true);
   return { fresh, unchanged };
 }
 

@@ -32,5 +32,7 @@ export function withBaseline(res: Response): Response {
   const headers = new Headers(res.headers);
   for (const [k, v] of Object.entries(BASELINE)) if (!headers.has(k)) headers.set(k, v);
   if (!headers.has("content-security-policy") && inert(res)) headers.set("content-security-policy", INERT_CSP);
+  // An API answer is data, never a page (ASVS V14.4.2): a browser that opens one saves it. A file keeps its own name.
+  if (!headers.has("content-disposition") && /^application\/(?:[\w.+-]+\+)?json\b/i.test(headers.get("content-type") ?? "")) headers.set("content-disposition", 'attachment; filename="api.json"');
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 }

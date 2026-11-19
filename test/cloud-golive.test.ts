@@ -90,7 +90,8 @@ describe("alert webhooks", () => {
     await report(sk, [{ code: "passkey_enrol_closed", severity: "warning" }]);
     await report(sk, [{ code: "passkey_enrol_closed", severity: "warning" }]);
     await report(sk, []);
-    expect(calls.map((x) => (JSON.parse(x.body) as { type: string; alert: { code: string } }))).toMatchObject([
+    // The runner's alerts only (a key made meanwhile is a security event of its own, told to the owners too).
+    expect(calls.map((x) => (JSON.parse(x.body) as { type: string; alert: { code: string } })).filter((x) => x.type.startsWith("alert."))).toMatchObject([
       { type: "alert.raised", alert: { code: "passkey_enrol_closed" } },
       { type: "alert.cleared", alert: { code: "passkey_enrol_closed" } },
     ]);

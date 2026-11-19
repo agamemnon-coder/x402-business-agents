@@ -289,6 +289,7 @@ components:
             - method_not_allowed
             - conflict
             - too_large
+            - unsupported_media_type
             - unprocessable
             - rate_limited
             - internal
@@ -309,7 +310,7 @@ paths:
       operationId: getV1Health
       tags:
         - Company
-      summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all (no company's data); 503 when something is down."
+      summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all, and the security alarms raised in the last 24 hours per rule (security.alarms_24h; no company's data); 503 when something is down."
       security: []
       x-purser-needs: public
       responses:
@@ -1015,6 +1016,28 @@ paths:
       tags:
         - Platform
       summary: "The companies on this cloud for the platform operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (never a key or an account number)."
+      security:
+        - platformAdmin: []
+      x-purser-needs: platform
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/admin/security-log":
+    get:
+      operationId: getV1AdminSecurityLog
+      tags:
+        - Platform
+      summary: "The cloud's security event log for the platform operator, newest first (kind, since, limit up to 500): sign-ins and their failures, refusals, rate-limit hits, the admin's actions, key, passkey and policy changes, webhook signature failures, tamper alarms and the alarms they raised. Ids and networks only; never a secret."
       security:
         - platformAdmin: []
       x-purser-needs: platform

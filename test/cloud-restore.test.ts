@@ -62,6 +62,9 @@ describe("export → import round trip", () => {
     // The fresh company's own owner and first key are its own; everything the backup held is back, row for row.
     for (const table of TENANT_TABLES) {
       if (["users", "api_keys", "credentials", "enrolments", "push_log"].includes(table)) continue;
+      // The fresh company's own first passkey and key are security events of its own (told to its owners); every event
+      // the backup held is back beside them.
+      if (table === "security_events") { expect(strip(after[table], target.id)).toEqual(expect.arrayContaining(strip(before.data[table], t.id) as unknown[])); continue; }
       expect({ table, rows: strip(after[table], target.id) }).toEqual({ table, rows: strip(before.data[table], t.id) });
     }
     const people = (after.users as { display_name: string }[]).map((u) => u.display_name).sort();
