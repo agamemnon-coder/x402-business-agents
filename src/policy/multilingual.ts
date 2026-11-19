@@ -24,7 +24,9 @@ export function fold(text: string): string {
   // 19 Nov (after eval v6): the zero-width non-joiner Persian spelling puts inside words ("صورت\u200Cحساب", "می\u200Cخواهم") reads as
   // the space its lists write there; a joiner or non-joiner anywhere else changes no letter and is dropped (the screen
   // holds a document for those where no script needs them: src/policy/injection.ts).
-  return text.replace(/(?<=\p{Script_Extensions=Arabic})\u200C/gu, " ").replace(/[\u200C\u200D]/g, "")
+  // 19 Nov (after eval v7): every other invisible format character (soft hyphen, zero-width space, direction marks, word
+  // joiner) and the Arabic tatweel are dropped too: they set a line, they spell nothing.
+  return text.replace(/(?<=\p{Script_Extensions=Arabic})\u200C/gu, " ").replace(/[\p{Cf}\u0640]/gu, "")
     .normalize("NFKC").toLowerCase().normalize("NFKD")
     .replace(/[\u0300-\u036F\u0483-\u0489\u0591-\u05C7\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u093C\u3099\u309A]/g, "")
     .replace(/[\u0131\u0142\u0111\u00F8\u00DF\u00E6\u0153\u03C2]/g, (ch) => LETTER_FOLD[ch]!).replace(/[\u2018\u2019\u02BC\u0060\u00B4]/g, "'").normalize("NFC");
@@ -71,6 +73,11 @@ const DISREGARD = anyOf([
   "تجاهل", "اهمل", "تناس", "نادیده بگیر", "نادیده", "התעלם", "תתעלם", "התעלמו", "אל תתייחס", "שכחו",
   // Hindi, Thai
   "अनदेखा", "नजरअंदाज", "भूल जाओ", "भूल जाए", "เพิกเฉย", "ไม่ต้องสนใจ", "ละเว้น", "ลืม",
+  // 19 Nov (after eval v7): Georgian, Armenian, Bengali, Tamil, Amharic, Urdu, Khmer, Ukrainian, and more
+  "უგულებელყ", "იგნორ", "დაივიწყ", "ნუ მიაქცევ", "անտեսե", "անտես", "մոռացե", "մի հաշվի առեք", "উপেক্ষা", "অগ্রাহ্য", "ভুলে যান", "এড়িয়ে যান",
+  "புறக்கணி", "மறந்துவிடு", "மறந்து விடு", "கவனிக்க வேண்டாம்", "ችላ በ", "ችላ ይበሉ", "ቸል ", "እርሳ", "نظر انداز", "نظرانداز", "بھول جا", "ملحوظ نہ",
+  "មិនអើពើ", "បំភ្លេច", "កុំខ្វល់", "ігноруй", "ігноруйте", "не зважай", "не зважайте", "забудь", "nepaisyk", "pamirškite", "ignoruok", "neņem vērā", "ignorē", "aizmirsti",
+  "hunsa", "gleymdu", "ignorer", "glem", "bortse fra", "ignorera", "glöm", "ohita", "unohda", "älä huomioi",
 ]);
 
 /**
@@ -84,6 +91,10 @@ const INSTRUCTIONS = anyOf([
   "инструкц", "указани", "правил", "команд", "вказівк", "упутств", "οδηγι", "κανον", "εντολ",
   "指令", "指示", "规则", "規則", "提示词", "提示詞", "命令", "ルール", "プロンプト", "지시", "지침", "명령", "규칙", "프롬프트",
   "تعليمات", "الاوامر", "اوامر", "القواعد", "دستورالعمل", "دستورات", "הוראות", "כללים", "הנחיות", "निर्देश", "नियम", "คำสั่ง", "คำแนะนำ",
+  // 19 Nov (after eval v7)
+  "ინსტრუქცი", "მითითებ", "წესებ", "հրահանգ", "կանոն", "নির্দেশ", "নিয়ম", "অনুশাসন", "அறிவுறுத்தல்", "விதிமுறை", "விதிகள்", "விதி", "கட்டளை", "መመሪያ", "ትዕዛዝ", "ደንብ",
+  "ہدایات", "ہدایت", "قواعد", "اصول", "احکامات", "សេចក្ដីណែនាំ", "សេចក្តីណែនាំ", "ការណែនាំ", "ច្បាប់", "інструкці", "nurodym", "taisykl", "instrukcij", "norādījum", "noteikum",
+  "fyrirmæl", "leiðbeining", "reglur", "instruks", "regler", "ohje", "säänt",
 ]);
 
 /** A reader that is a machine: an AI, an assistant, the system, a model, an agent, a bot. */
@@ -96,6 +107,11 @@ const MACHINE_WORDS = [
   "人工智能", "助手", "系统", "系統", "智能体", "システム", "アシスタント", "人工知能", "시스템", "어시스턴트", "인공지능",
   "الذكاء الاصطناعي", "المساعد", "النظام", "دستیار", "هوش مصنوعی", "בינה מלאכותית", "העוזר", "המערכת", "עוזר", "מערכת",
   "एआई", "सहायक", "सिस्टम", "कृत्रिम बुद्धि", "ปัญญาประดิษฐ์", "ผู้ช่วย", "ระบบ", "เอไอ",
+  // 19 Nov (after eval v7)
+  "სისტემ", "ასისტენტ", "ხელოვნური ინტელექტ", "ავტომატურ", "համակարգ", "օգնական", "ասիստենտ", "արհեստական բանականություն", "ավտոմատ",
+  "এআই", "সহকারী", "সিস্টেম", "কৃত্রিম বুদ্ধিমত্তা", "স্বয়ংক্রিয়", "உதவியாளர்", "அமைப்பு", "செயற்கை நுண்ணறிவு", "தானியங்கி",
+  "ስርዓት", "ሲስተም", "ረዳት", "ሰው ሰራሽ አስተውሎት", "ራስ-ሰር", "ራስሰር", "ራስ ሰር", "اسسٹنٹ", "سسٹم", "مصنوعی ذہانت", "اے آئی", "خودکار",
+  "ប្រព័ន្ធ", "ជំនួយការ", "បញ្ញាសិប្បនិម្មិត", "ស្វ័យប្រវត្តិ", "автоматичн", "автоматическ", "sistem", "sistēm", "asistent", "dirbtin", "mākslīg", "kerfi", "aðstoðar",
 ];
 const MACHINE = anyOf(MACHINE_WORDS);
 
@@ -107,12 +123,15 @@ const NOTE = anyOf([
   "σημειωση", "μηνυμα",
   "备注", "備註", "注意", "说明给", "留言", "メモ", "注記", "備考", "참고", "메모", "알림",
   "ملاحظة", "رسالة", "یادداشت", "הערה", "הודעה", "नोट", "संदेश", "सूचना", "หมายเหตุ", "ข้อความ",
+  "შენიშვნ", "შეტყობინებ", "նշում", "հաղորդագրություն", "নোট", "বার্তা", "নির্দেশ", "குறிப்பு", "செய்தி", "ማሳሰቢያ", "ማስታወሻ", "መልእክት", "نوٹ", "پیغام", "ہدایت",
+  "កំណត់សម្គាល់", "សារ", "pastaba", "piezīme", "athugasemd",
 ]);
 /** "To" or "for", before the one addressed (and the dative endings and postpositions that do it in other languages). */
 const TO = anyOf([
   "to", "for", "an", "fur", "aan", "voor", "pour", "a", "para", "al", "per", "dla", "do", "pro", "icin", "cho", "gui", "danh cho", "untuk", "kepada",
   "для", "к", "за", "до", "για", "προς", "στον", "στο",
   "给", "給", "致", "へ", "に", "에게", "께", "الى", "لل", "ל", "के लिए", "को", "ถึง", "สำหรับ", "เรียน",
+  "জন্য", "এর জন্য", "க்கு", "ለ", "کے لیے", "کے لئے", "សម្រាប់", "ជូន",
 ]);
 
 /** Approve, authorise, release (an order to sign off). */
@@ -124,6 +143,9 @@ const APPROVE = anyOf([
   "εγκρινετε$", "εγκρινε$",
   "批准", "核准", "承認", "승인", "وافق", "اعتمد", "تایید کنید", "אשרו", "לאשר",
   "स्वीकृत करें", "मंजूर करें", "अनुमोदित करें", "स्वीकृत कर", "मंजूर कर", "อนุมัติ",
+  // 19 Nov (after eval v7)
+  "დაამტკიცე", "დაადასტურე", "დაამტკიცეთ", "հաստատեք", "հաստատիր", "অনুমোদন করুন", "অনুমোদন দিন", "মঞ্জুর করুন", "அங்கீகரி", "ஒப்புதல் அளி", "ያጽድቁ", "አጽድቅ",
+  "منظور کریں", "منظوری دیں", "منظور کر", "អនុម័ត", "затвердь", "підтвердь", "patvirtink", "apstiprin", "samþykk",
 ]);
 /** Pay, transfer, settle, and the invoice or payment itself. */
 const PAY_OR_INVOICE = anyOf([
@@ -133,6 +155,9 @@ const PAY_OR_INVOICE = anyOf([
   "支付", "付款", "发票", "發票", "汇款", "匯款", "转账", "轉帳", "請求書", "支払", "振込", "送金", "청구서", "송장", "인보이스", "지급", "결제", "송금", "납부",
   "الفاتورة", "فاتورة", "الدفع", "ادفع", "دفع", "السداد", "سداد", "التحويل", "پرداخت", "فاکتور", "חשבונית", "תשלום", "לשלם", "שלם", "העברה",
   "भुगतान", "चालान", "बिल", "ใบแจ้งหนี้", "ชำระ", "จ่าย", "โอน",
+  // 19 Nov (after eval v7)
+  "ინვოის", "ანგარიშ-ფაქტურ", "გადაიხად", "გადახდ", "հաշիվ", "վճար", "চালান", "বিল", "পরিশোধ", "অর্থপ্রদান", "টাকা পাঠান", "விலைப்பட்டியல்", "செலுத்த", "பணம்",
+  "ደረሰኝ", "ክፍያ", "ይክፈሉ", "ክፈል", "ادائیگی", "انوائس", "វិក្កយបត្រ", "ទូទាត់", "បង់ប្រាក់", "сплат", "оплат", "sąskait", "mokėj", "apmaks", "rēķin", "reikning", "greiðsl", "borga",
 ]);
 
 /** Without a check, a review, an approval or a verification, in one phrase. */
@@ -149,6 +174,11 @@ const WITHOUT_CHECK = anyOf([
   "بدون مراجعة", "دون مراجعة", "بدون تحقق", "دون تحقق", "دون موافقة", "بدون موافقة", "بدون تدقيق", "دون تدقيق", "لا حاجة للمراجعة", "لا حاجة للتحقق", "بدون بررسی", "بدون تایید",
   "ללא בדיקה", "בלי בדיקה", "ללא אישור", "בלי אישור", "אין צורך באישור", "אין צורך בבדיקה", "ללא אימות",
   "बिना जांच", "बिना जाँच", "बिना अनुमोदन", "बिना सत्यापन", "बिना समीक्षा", "बिना मंजूरी",
+  // 19 Nov (after eval v7): "without a check" where the word for "without" follows (Georgian "გარეშე", Bengali "ছাড়া",
+  // Tamil "இல்லாமல்", Urdu "بغیر") or comes first (Amharic "ያለ", Armenian "առանց", Khmer "ដោយគ្មាន", Ukrainian "без").
+  "შემოწმების გარეშე", "დადასტურების გარეშე", "გადამოწმების გარეშე", "առանց ստուգման", "առանց հաստատման", "առանց ստուգելու", "যাচাই ছাড়া", "যাচাই না করে", "অনুমোদন ছাড়া", "পরীক্ষা ছাড়া",
+  "சரிபார்ப்பு இல்லாமல்", "சரிபார்க்காமல்", "ஒப்புதல் இல்லாமல்", "ያለ ማረጋገጫ", "ያለ ፍተሻ", "ያለ ፈቃድ", "تصدیق کے بغیر", "جانچ کے بغیر", "منظوری کے بغیر", "بغیر تصدیق", "بغیر جانچ",
+  "ដោយគ្មានការត្រួតពិនិត្យ", "ដោយមិនត្រួតពិនិត្យ", "គ្មានការផ្ទៀងផ្ទាត់", "без перевірки", "без погодження", "be patikrinimo", "be tikrinimo", "bez pārbaudes", "án athugunar", "án samþykkis",
   "โดยไม่ต้องตรวจสอบ", "ไม่ต้องตรวจสอบ", "ไม่ต้องอนุมัติ", "ข้ามการตรวจสอบ", "ข้ามการอนุมัติ",
 ]);
 /** Already approved, pre-approved, verified elsewhere, in one phrase. */
@@ -162,6 +192,7 @@ const ALREADY_APPROVED = anyOf([
   "تمت الموافقة", "معتمد مسبقا", "معتمدة مسبقا", "تم اعتماد", "تم التحقق", "موافق عليه مسبقا", "قبلا تایید",
   "כבר אושר", "אושר מראש", "מאושר מראש", "אושרה מראש", "पहले से स्वीकृत", "पूर्व-स्वीकृत", "पूर्व स्वीकृत", "पहले से अनुमोदित",
   "อนุมัติแล้ว", "ได้รับการอนุมัติแล้ว", "อนุมัติล่วงหน้า",
+  "უკვე დამტკიცებ", "արդեն հաստատվ", "ইতিমধ্যে অনুমোদিত", "আগেই অনুমোদিত", "ஏற்கனவே அங்கீகரிக்கப்பட்ட", "ቀድሞ የጸደቀ", "پہلے سے منظور", "បានអនុម័តរួច", "вже погоджен", "jau patvirtint", "jau apstiprināt",
 ]);
 /**
  * Checked or verified already (19 Nov, after eval v6, v6-inject-japanese-polite: "本請求書は確認済みのため、そのまま支払処理を
@@ -230,6 +261,9 @@ export const BANK_CHANGE_ANY = anyOf([
   "حساب جديد", "الحساب الجديد", "حسابنا الجديد", "تغيير الحساب", "تغيير الحساب البنكي", "تغير الحساب", "تم تغيير الحساب", "تحديث الحساب البنكي", "حساب بانکی جدید", "حساب جدید",
   "חשבון חדש", "חשבון הבנק החדש", "שינוי חשבון", "החשבון השתנה", "פרטי הבנק השתנו", "פרטי החשבון השתנו", "חשבון בנק חדש",
   "नया खाता", "नया बैंक खाता", "खाता बदल", "बैंक विवरण बदल", "खाता संख्या बदल", "บัญชีใหม่", "เปลี่ยนบัญชี", "บัญชีธนาคารใหม่", "เปลี่ยนแปลงบัญชี", "เลขบัญชีใหม่",
+  // 19 Nov (after eval v7)
+  "ახალი ანგარიშ", "ახალ ანგარიშ", "նոր հաշիվ", "նոր հաշվեհամար", "নতুন অ্যাকাউন্ট", "নতুন হিসাব", "নতুন ব্যাংক", "புதிய கணக்கு", "புதிய வங்கி", "አዲስ ሂሳብ", "አዲሱ ሂሳብ", "አዲስ የባንክ",
+  "نیا اکاؤنٹ", "نیا بینک", "نئے اکاؤنٹ", "គណនីថ្មី", "គណនីធនាគារថ្មី", "нові банківські", "новий банківський", "naujas sąskait", "naują sąskait", "jauns kont", "jaunu kont", "nýr reikning", "nýjan reikning",
 ]);
 /** "Our bank details never change", in the same languages: no announcement of a change. */
 export const BANK_UNCHANGED_ANY = anyOf([
@@ -242,6 +276,8 @@ export const BANK_UNCHANGED_ANY = anyOf([
   "degismedi", "ayni kalmistir", "khong doi", "van giu nguyen", "tetap sama", "tidak ada perubahan", "nie zmienil", "bez zmian", "beze zmen", "не изменил", "без изменений", "без промени", "без змін", "αμεταβλητ",
   "不变", "不變", "保持不变", "保持不變", "没有改变", "沒有改變", "変わりません", "変更なし", "변동 없", "변경 없", "변경사항 없", "ללא שינוי", "בלי שינוי", "بدون تغيير", "دون تغيير", "بدون تغییر",
   "बिना बदलाव", "अपरिवर्तित", "कोई बदलाव नहीं", "เหมือนเดิม",
+  "უცვლელ", "არ შეცვლილ", "არ იცვლება", "անփոփոխ", "չեն փոխվել", "չի փոխվել", "অপরিবর্তিত", "পরিবর্তন হয়নি", "மாறவில்லை", "மாற்றமில்லை", "አልተቀየረም", "አይቀየርም",
+  "تبدیل نہیں", "کوئی تبدیلی نہیں", "មិនផ្លាស់ប្តូរ", "មិនបានផ្លាស់ប្តូរ", "nepasikeit", "nemainīg", "nav mainīj", "óbreytt",
 ]);
 /** Words that ask to pay or to send money (for a link on the same line). */
 export const PAY_ANY = anyOf([
@@ -252,6 +288,11 @@ export const PAY_ANY = anyOf([
   // 19 Nov (after eval v6, v6-bec-haining-hong-kong: "请将货款汇入我司香港账户"): money sent into an account.
   "汇入", "匯入", "打款", "入金", "입금", "odeyiniz", "havale", "yatirin", "chuyen tien", "transfer", "setor", "przelej", "przelac", "prevedte", "переведите", "перечислите",
   "להעביר", "העבירו", "حولوا", "قم بتحويل", "واریز", "जमा करें", "ट्रांसफर", "โอน",
+  // 19 Nov (after eval v7, v7-limit-lviv-asks-more: "Просимо сплатити …"; the Georgian, Armenian, Bengali, Tamil, Amharic,
+  // Urdu and Khmer verbs for paying and sending money)
+  "сплат", "переказ", "перерах", "გადაიხად", "გადარიცხ", "ჩარიცხ", "վճարե", "վճարել", "փոխանցե", "পরিশোধ কর", "টাকা পাঠান", "অর্থ পাঠান", "জমা দিন", "ট্রান্সফার",
+  "செலுத்து", "செலுத்த", "அனுப்பு", "ይክፈሉ", "ክፈል", "ያስተላልፉ", "ادا کریں", "ادائیگی کریں", "بھیجیں", "منتقل کریں", "បង់ប្រាក់", "ទូទាត់", "ផ្ទេរប្រាក់",
+  "sumokėk", "pervesk", "apmaksāj", "pārskaitiet", "pārskait", "greiðið", "millifær", "borgið",
 ]);
 /** A request to keep the payment from the people who check it, or not to call. */
 export const BYPASS_ANY = anyOf([
@@ -261,6 +302,10 @@ export const BYPASS_ANY = anyOf([
   "不要告诉", "請勿告知", "请勿告知", "不要联系", "不要致电", "不要打电话", "勿致电", "不要告訴", "不要聯繫", "電話しないで", "連絡しないで", "内密に", "他言無用", "誰にも言わないで",
   "전화하지 마", "연락하지 마", "비밀로", "아무에게도 말하지", "لا تتصل", "لا تخبر", "سرا", "تماس نگیرید", "אל תתקשר", "אל תספר", "בסוד", "אל תתקשרו",
   "फोन मत", "किसी को मत बता", "गुप्त रखें", "อย่าโทร", "อย่าบอก", "เก็บเป็นความลับ",
+  // 19 Nov (after eval v7)
+  "არავის უთხრა", "არ დარეკო", "არ დაგვირეკო", "ոչ մեկին մի ասեք", "մի զանգահարեք", "কাউকে বলবেন না", "ফোন করবেন না", "யாரிடமும் சொல்ல", "அழைக்க வேண்டாம்",
+  "ለማንም አይንገሩ", "አይደውሉ", "کسی کو نہ بتائیں", "کسی کو مت بتائیں", "فون نہ کریں", "កុំប្រាប់អ្នកណា", "កុំទូរស័ព្ទ", "нікому не кажіть", "не дзвоніть", "niekam nesakykite", "neskambinkite",
+  "nevienam nesakiet", "nezvaniet", "ekki hringja", "segðu engum",
 ]);
 // 19 Nov, after the held-out eval v6 (docs/evals/adversarial-v6.md: "פרטי חשבון הבנק שלנו עודכנו" (our bank details were
 // updated), "דחוף! המנכ״ל ביקש לשלם היום, אין צורך לעדכן אף אחד" (urgent, the CEO asked to pay today, no need to tell anyone)
@@ -281,6 +326,10 @@ const BANK_DETAILS = anyOf([
   "الحساب البنكي", "حساب بنكي", "الحساب المصرفي", "حسابنا", "تفاصيل البنك", "البيانات المصرفية", "بيانات الحساب", "رقم الحساب", "معلومات الحساب",
   "حساب بانکی", "شماره حساب", "اطلاعات بانکی", "شماره شبا", "حساب ما",
   "बैंक खाता", "बैंक खाते", "बैंक विवरण", "खाता संख्या", "खाते का विवरण", "खाता विवरण",
+  // 19 Nov (after eval v7, v7-bec-ararat-details-changed-words: "մեր բանկային տվյալները փոխվել են")
+  "საბანკო", "ბანკის რეკვიზიტ", "ანგარიშის ნომერ", "რეკვიზიტ", "բանկային", "հաշվեհամար", "բանկի տվյալներ", "ব্যাংক অ্যাকাউন্ট", "ব্যাংক হিসাব", "ব্যাংকের তথ্য", "হিসাব নম্বর", "অ্যাকাউন্ট নম্বর", "অ্যাকাউন্ট",
+  "வங்கி கணக்கு", "வங்கிக் கணக்கு", "வங்கி விவரங்கள்", "கணக்கு எண்", "የባንክ ሂሳብ", "የባንክ መረጃ", "የሂሳብ ቁጥር", "ሂሳብ ቁጥር", "بینک اکاؤنٹ", "اکاؤنٹ نمبر", "بینک کی تفصیلات", "اکاؤنٹ",
+  "គណនីធនាគារ", "លេខគណនី", "ព័ត៌មានធនាគារ", "банківськ", "sąskaitos numer", "banko sąskait", "banko rekvizit", "bankas kont", "konta numur", "rekvizīt", "bankareikning", "reikningsnúmer",
 ]);
 /** A word of change: changed, updated, new, replaced, moved. */
 const CHANGED = anyOf([
@@ -292,6 +341,9 @@ const CHANGED = anyOf([
   "เปลี่ยน", "อัปเดต", "อัพเดท", "ปรับปรุง", "ใหม่",
   "השתנ", "עודכנ", "עודכן", "שונו", "שונה", "חדש", "הוחלפ", "התעדכנ", "تغير", "تغيير", "تحديث", "تعديل", "جديد", "تغییر", "بروز", "به روز", "جدید", "عوض",
   "बदल", "अपडेट", "नया", "नए", "नई", "परिवर्तन",
+  // 19 Nov (after eval v7)
+  "შეიცვალ", "შეცვლილ", "განახლდ", "ახალი", "ახალ", "փոխվ", "փոխել", "թարմացվ", "նոր", "পরিবর্তন", "বদল", "নতুন", "হালনাগাদ", "மாற்ற", "மாறி", "புதிய",
+  "ተቀይሯል", "ተቀይሮ", "ተለውጧ", "አዲስ", "تبدیل", "نیا", "نئی", "نئے", "اپڈیٹ", "ផ្លាស់ប្តូរ", "ផ្លាស់ប្ដូរ", "ថ្មី", "змін", "онов", "pasikeit", "pakeist", "nauj", "mainīj", "jaun", "breytt", "nýj", "nýr",
 ]);
 /** Bank details near a word of change, in either order: an announcement of other bank details. */
 export const BANK_DETAILS_CHANGED_ANY = near(BANK_DETAILS, CHANGED, 40);
@@ -300,9 +352,10 @@ const NOT_BEFORE = anyOf([
   "not", "never", "nicht", "nie", "niemals", "niet", "nooit", "pas", "jamais", "no", "nunca", "non", "mai", "nao", "nigdy", "ne", "khong", "chua", "tidak", "tak", "bukan", "belum",
   "не", "ні", "никога", "никогда", "δεν", "μην", "ποτε", "不会", "不會", "并未", "並未", "没有", "沒有", "从未", "從未", "绝不", "絕不", "未变", "未變", "未更", "絶対に",
   "^לא$", "לעולם", "^لا$", "^لم$", "^لن$", "هرگز", "नहीं", "कभी", "ไม่",
+  "არ$", "არასდროს", "երբեք", "কখনো", "نہیں", "کبھی", "មិន", "កុំ", "ні", "nie", "ne", "niekada", "nekad", "ekki", "aldrei",
 ]);
 /** A negation after the verb it negates (Japanese, Korean, Persian, Hindi, Turkish write it there). */
-const NOT_AFTER = anyOf(["ない", "ません", "せず", "않", "없", "نمی", "نخواهد", "نشده", "नहीं", "मत", "degil", "ไม่"]);
+const NOT_AFTER = anyOf(["ない", "ません", "せず", "않", "없", "نمی", "نخواهد", "نشده", "नहीं", "मत", "degil", "ไม่", "না", "নি", "இல்லை", "வில்லை", "አል", "نہیں"]);
 /** A word of change negated ("我们的银行账户不会通过邮件更改", "口座は変更されません"): no announcement of a change. */
 export const CHANGE_NEGATED_ANY = new RegExp(`(?:${NOT_BEFORE.source})[^\\n]{0,12}(?:${CHANGED.source})|(?:${CHANGED.source})[^\\n]{0,8}(?:${NOT_AFTER.source})`, "u");
 
@@ -313,6 +366,10 @@ const AUTHORITY = anyOf([
   "总经理", "總經理", "董事长", "董事長", "老板", "老闆", "总裁", "總裁", "首席执行官", "财务总监", "財務總監", "社長", "代表取締役", "取締役", "上司", "대표이사", "사장님", "회장님", "대표님",
   "กรรมการผู้จัดการ", "ผู้บริหาร", "ซีอีโอ", "เจ้านาย", "מנכ״ל", "מנכ\"ל", "מנכל", "המנהל הכללי", "הבעלים", "יו״ר", "סמנכ״ל",
   "المدير العام", "المدير التنفيذي", "الرئيس التنفيذي", "رئيس مجلس", "مدیرعامل", "مدیر عامل", "رئیس$", "सीईओ", "प्रबंध निदेशक", "निदेशक", "मालिक", "बॉस",
+  // 19 Nov (after eval v7)
+  "დირექტორ", "გენერალურ", "ხელმძღვანელ", "მფლობელ", "տնօրեն", "ղեկավար", "սեփականատեր", "পরিচালক", "প্রধান নির্বাহী", "মালিক", "বস", "சிஇஓ", "தலைமை நிர்வாக", "இயக்குநர்", "முதலாளி",
+  "ዋና ሥራ አስኪያጅ", "ዋና ስራ አስኪያጅ", "ሥራ አስኪያጅ", "ዳይሬክተር", "ባለቤት", "چیف ایگزیکٹو", "ڈائریکٹر", "مالک", "باس", "នាយកប្រតិបត្តិ", "នាយក", "ម្ចាស់", "директор", "керівниц",
+  "direktor", "vadov", "valdyb", "direktors", "vadītāj", "forstjór", "framkvæmdastjór", "eigand",
 ]);
 /** Speed: urgent, immediately, today. */
 const URGENT = anyOf([
@@ -320,6 +377,9 @@ const URGENT = anyOf([
   "срочно", "немедленно", "сегодня", "незамедлительно", "спешно", "днес", "терміново", "негайно", "сьогодні", "επειγον", "αμεσωσ", "σημερα",
   "紧急", "緊急", "立即", "马上", "馬上", "今天", "尽快", "盡快", "至急", "本日中", "今日中", "直ちに", "すぐに", "긴급", "급히", "즉시", "오늘", "당장",
   "ด่วน", "ทันที", "วันนี้", "דחוף", "^מיד$", "^ומיד$", "היום", "عاجل", "فورا", "اليوم", "فوری", "امروز", "तुरंत", "अत्यावश्यक", "आज ही", "जल्दी",
+  // 19 Nov (after eval v7)
+  "დღესვე", "დღეს", "სასწრაფო", "დაუყოვნებლივ", "ახლავე", "այսօր", "անմիջապես", "շտապ", "հրատապ", "আজই", "আজকে", "আজ ", "জরুরি", "অবিলম্বে", "এখনই", "இன்றே", "இன்று", "உடனே", "உடனடியாக", "அவசர",
+  "ዛሬ", "አስቸኳይ", "ወዲያውኑ", "آج ہی", "آج", "فوراً", "فورا", "فوری طور", "ថ្ងៃនេះ", "ជាបន្ទាន់", "ភ្លាមៗ", "сьогодні", "негайно", "терміново", "šiandien", "skubiai", "nedelsiant", "šodien", "steidzami", "nekavējoties", "í dag", "strax", "áríðandi",
 ]);
 /** Asked, wants, approved, instructed (what someone above the payer is said to have done). */
 const ASKED = anyOf([
@@ -327,6 +387,8 @@ const ASKED = anyOf([
   "просил", "просит", "хочет", "одобрил", "поручил", "распоряд", "поиска", "одобри", "просив", "ζητησ", "ζητα", "εγκρινε",
   "要求", "希望", "批准", "指示", "交代", "依頼", "承認", "求め", "요청", "지시", "원하", "승인", "ขอให้", "สั่ง", "ต้องการ",
   "ביקש", "מבקש", "רוצה", "אישר", "הורה", "طلب", "يريد", "وافق", "يطلب", "خواست", "دستور", "कहा", "चाहते", "चाहता", "अनुरोध", "निर्देश",
+  "ითხოვა", "მოითხოვა", "სთხოვა", "უნდა", "დაავალა", "խնդրել", "պահանջ", "ցանկան", "հանձնարար", "চেয়েছেন", "বলেছেন", "নির্দেশ", "অনুরোধ", "சொன்னார்", "கேட்டார்", "விரும்புகிறார்", "உத்தரவு",
+  "ጠይቀ", "ይፈልጋ", "አዝዟ", "کہا", "چاہتے", "حکم", "درخواست", "ស្នើ", "ចង់", "បញ្ជា", "просить", "хоче", "доручив", "prašo", "nurodė", "lūdz", "vēlas", "bað", "vill",
 ]);
 /** Secrecy: confidential, secret, between us, no one. */
 const SECRET = anyOf([
@@ -335,9 +397,13 @@ const SECRET = anyOf([
   "конфиденциальн", "секрет", "тайн", "между нами", "никому", "поверителн", "нікому", "εμπιστευτικ", "μυστικ",
   "保密", "机密", "機密", "私下", "任何人", "内密", "極秘", "秘密", "内緒", "誰にも", "비밀", "기밀", "극비", "아무에게도", "ความลับ", "ใครทราบ", "บอกใคร",
   "סודי", "בסוד", "חסוי", "דיסקרטי", "אף אחד", "לאף אחד", "سري", "سرية", "بسرية", "كتمان", "لا أحد", "محرمانه", "به کسی", "गोपनीय", "गुप्त", "किसी को",
+  // 19 Nov (after eval v7)
+  "საიდუმლო", "კონფიდენციალურ", "არავის", "գաղտնի", "կոնֆիդենցիալ", "ոչ ոքի", "ոչ մեկին", "গোপন", "কাউকে", "রহস্য", "இரகசிய", "ரகசிய", "யாரிடமும்", "யாருக்கும்",
+  "ሚስጥር", "ምስጢር", "ለማንም", "خفیہ", "راز", "کسی کو", "សម្ងាត់", "អាថ៌កំបាំង", "អ្នកណាម្នាក់", "таємн", "конфіденційн", "slapt", "konfidencial", "niekam", "slepen", "konfidenciāl", "nevienam", "trúnað", "leynd", "engum",
 ]);
 /** Keep (as in "keep this confidential"). */
-const KEEP = anyOf(["tutun", "tutunuz", "giu", "jaga", "zachowaj", "zachowac", "держите", "сохраните", "κρατηστε", "保持", "保守", "守って", "유지", "รักษา", "שמרו", "שמור", "احتفظ", "نگه", "रखें", "रखिए"]);
+const KEEP = anyOf(["tutun", "tutunuz", "giu", "jaga", "zachowaj", "zachowac", "держите", "сохраните", "κρατηστε", "保持", "保守", "守って", "유지", "รักษา", "שמרו", "שמור", "احتفظ", "نگه", "रखें", "रखिए",
+  "შეინახ", "დაიცავ", "պահել", "պահեք", "রাখুন", "வைத்திருங்கள்", "வையுங்கள்", "ይጠብቁ", "ያቆዩ", "رکھیں", "រក្សា", "тримайте", "зберігайте", "laikykite", "saglabājiet", "haldið"]);
 const AUTHORITY_SPEED = new RegExp(`(?=[^\n]*(?:${AUTHORITY.source}))(?=[^\n]*(?:${URGENT.source}|${ASKED.source}))`, "u");
 const SECRET_PAY = new RegExp(`(?=[^\n]*(?:${SECRET.source}))(?=[^\n]*(?:${PAY_ANY.source}|${URGENT.source}|${KEEP.source}))`, "u");
 const SECRET_ONLY = new RegExp(`(?:${SECRET.source})`, "u");
@@ -351,14 +417,52 @@ export function bypassInAnyLanguage(line: string): boolean {
 }
 
 /** An account, in the languages above (for an account number named on a line that asks to pay). */
-const ACCOUNT_WORD = new RegExp(`${BANK_DETAILS.source}|(?<![\\p{L}])(account|acct|konto|compte|cuenta|conto|conta|akaun|hesap|ucet|uctu)(?![\\p{L}])|счет|счёт|حساب|חשבון|खाता|खाते|บัญชี`, "u");
+const ACCOUNT_WORD = new RegExp(`${BANK_DETAILS.source}|(?<![\\p{L}])(account|acct|konto|compte|cuenta|conto|conta|akaun|hesap|ucet|uctu|saskaita|konts|reikningur)(?![\\p{L}])|счет|счёт|рахун|ანგარიშ|հաշիվ|হিসাব|অ্যাকাউন্ট|கணக்கு|ሂሳብ|اکاؤنٹ|គណនី|حساب|חשבון|खाता|खाते|บัญชี`, "u");
 /** Whether a line names an account (folded as the lists are). */
 export const namesAccount = (line: string) => ACCOUNT_WORD.test(fold(line));
+
+/**
+ * The customer's own number with the supplier (a customer, client or member number, quoted as a reference when paying),
+ * which is no bank account (19 Nov, after the held-out eval v7, v7-bec-addis-customer-account-number: "Please quote your
+ * customer account number … when you pay" was held as another account to pay into).
+ */
+const CUSTOMER = anyOf([
+  "customer", "client", "member", "debtor", "kunde", "kunden", "debitor", "klant", "debiteur", "cliente", "musteri", "klient", "klienta", "klientu", "kliento", "viðskiptavin", "khach hang", "pelanggan",
+  "клиент", "клієнт", "абонент", "πελατ", "客户", "客戶", "顧客", "お客様", "고객", "عميل", "العميل", "مشتری", "לקוח", "ग्राहक", "ลูกค้า",
+  "მომხმარებ", "კლიენტ", "հաճախորդ", "গ্রাহক", "வாடிக்கையாளர்", "ደንበኛ", "کسٹمر", "گاہک", "صارف", "អតិថិជន",
+]);
+/** A new or changed account in the words before a number, in any language the lists know: then it is no customer number. */
+const NEW_ACCOUNT_WORDS = new RegExp(`${BANK_CHANGE_ANY.source}|${CHANGED.source}`, "u");
+/** Whether the words just before a number call it the customer's own number (and not a new account). */
+export const customerNumberBefore = (before: string) => { const f = fold(before); return CUSTOMER.test(f) && !NEW_ACCOUNT_WORDS.test(f); };
 
 /** Words that ask to pay, in the Latin-script languages of src/policy/fraudCore.ts (not "payment terms"). */
 const PAY_LATIN = /(?<![\p{L}\p{N}])(pay|paying|payment|remit|wire|settle|zahlen|bezahlen|zahlung|(ü|ue)berweis\p{L}*|betaal|betalen|betaling|overmaken|payer|payez|paiement|r(é|e)glez|r(é|e)gler|virement|pague|pagar|pago|paga|pagare|pagamento|bonifico|versare)(?![\p{L}\p{N}])(?!\s*(terms|conditions|voorwaarden|bedingungen|termini|condiciones))/iu;
 /** Whether a line asks to pay or to send money, in any language the lists know. */
 export const asksToPay = (line: string) => PAY_LATIN.test(line) || PAY_ANY.test(fold(line));
+
+/**
+ * Money already received or paid, or a figure given for information (a company's share capital, a credit limit, a
+ * year's turnover, a minimum order, free delivery above an amount): a line with an amount that asks nothing (19 Nov,
+ * after the held-out eval v7, v7-limit-addis-payments-received: "Total payment received in 2026: EUR 6,300.00" above the
+ * total was held as a second total). Used only to tell such a line from a request to pay more than the total; a line in
+ * words the lists do not know is read as a request, and holds the invoice for a person.
+ */
+const INFORMATION = anyOf([
+  "received", "receipt of", "already paid", "paid to date", "paid so far", "amount paid", "total paid", "has been paid", "have been paid", "were paid", "you paid", "paid with thanks", "year to date", "ytd$",
+  "turnover", "share capital", "capital stock", "registered capital", "credit limit", "credit line", "minimum order", "free shipping", "free delivery", "insured value", "insurance value",
+  "erhalten", "eingegangen", "bereits bezahlt", "bereits gezahlt", "stammkapital", "grundkapital", "kreditlimit", "mindestbestellwert", "versandkostenfrei",
+  "ontvangen", "reeds betaald", "al betaald", "maatschappelijk kapitaal", "kredietlimiet", "recu", "deja paye", "capital social", "chiffre d'affaires", "franco de port",
+  "recibido", "ya pagado", "pagado", "ricevut", "gia pagat", "capitale sociale", "recebid", "ja pago", "otrzyman", "zaplacon", "kapital zakladowy", "alindi", "odendi", "sermaye",
+  "получен", "оплачено", "уставный капитал", "отримано", "сплачено", "статутний капітал", "получено", "платено", "ελήφθη", "εξοφληθηκε", "μετοχικο κεφαλαιο",
+  "已收", "已付", "已支付", "注册资本", "註冊資本", "入金済", "受領", "資本金", "支払済", "수령", "납부 완료", "지급 완료", "자본금",
+  "تم استلام", "مدفوع", "رأس المال", "دریافت شد", "پرداخت شده", "سرمایه", "התקבל", "שולם", "הון רשום", "प्राप्त", "भुगतान किया गया", "पूंजी", "ได้รับ", "ชำระแล้ว", "ทุนจดทะเบียน",
+  "მიღებულ", "გადახდილ", "საწესდებო კაპიტალ", "ստացված", "վճարված", "կանոնադրական կապիտալ", "প্রাপ্ত", "পরিশোধিত", "মূলধন", "பெறப்பட்ட", "செலுத்தப்பட்ட", "மூலதனம்",
+  "የተቀበል", "የተከፈለ", "ካፒታል", "موصول", "ادا شدہ", "سرمایہ", "បានទទួល", "បានបង់", "ដើមទុន",
+  "gauta", "sumoketa", "istatinis kapitalas", "sanemts", "samaksats", "pamatkapitals", "mottekid", "greitt", "hlutafe", "da nhan", "da thanh toan", "von dieu le", "diterima", "sudah dibayar", "modal dasar",
+]);
+/** Whether a line (or a clause of one) gives an amount for information only, in the languages the lists know. */
+export const isInformation = (line: string) => INFORMATION.test(fold(line));
 
 /** Messaging apps: paying or confirming bank details through one is going around the numbers on file, in any language. */
 export const MESSENGER = /(?<![\p{Script=Latin}\p{N}])(whatsapp|telegram|viber|wechat|weixin|imessage|kakaotalk|kakao|zalo)(?![\p{Script=Latin}\p{N}])|微信|카카오톡/iu;

@@ -7,8 +7,8 @@
 
 import { z } from "zod";
 import { skeleton } from "../policy/fraudCore.js";
-import { asksToPay } from "../policy/multilingual.js";
-import { plainNumerals } from "../policy/numerals.js";
+import { asksToPay, isInformation } from "../policy/multilingual.js";
+import { plainDigits, plainNumerals } from "../policy/numerals.js";
 
 export interface ApReading {
   vendor: string;
@@ -144,6 +144,8 @@ export function amountsOn(line: string): Found[] {
 /** The currencies code knows, by ISO code. Anything else written beside a total is a currency code does not know. */
 export const KNOWN_CODES = new Set(["EUR", "GBP", "USD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "HKD", "SGD", "AUD", "CAD", "JPY", "CNY", "NZD", "TRY", "HUF", "RON", "BGN"]);
 const SYMBOLS: Readonly<Record<string, string>> = { "€": "EUR", "£": "GBP", $: "USD" };
+/** Currencies written as words or abbreviations, which a label's words must never be taken for. */
+const CURRENCY_WORDS: ReadonlySet<string> = new Set(["kr", "kn", "zł", "zl", "kč", "kc", "ft", "lei", "lev", "leva", "lv", "лв", "тл", "грн", "₾", "֏", "руб", "р", "ден", "дин", "din", "fr", "sfr", "chf", "rs", "rp", "tl", "eur", "usd", "gbp", "euro", "euros", "dollar", "dollars", "pound", "pounds", "yen", "yuan", "won", "baht", "taka", "টাকা", "রুপি", "ரூபாய்", "रुपये", "रुपया", "ريال", "درهم", "دينار", "روپے", "ብር", "រៀល", "ლარი", "դրամ", "гривень", "гривня", "рублей", "крон", "kronor", "kroner", "krónur", "lari", "dram", "birr", "riel"]);
 /** Words a total, subtotal or tax line may carry beside its label, amount and currency (compared in lower case). */
 const FILLER = new Set([
   "total", "due", "amount", "payable", "to", "pay", "now", "balance", "incl", "including", "inclusive", "excl", "excluding", "inkl", "exkl", "of", "on", "in",
@@ -157,6 +159,14 @@ const FILLER = new Set([
 function lineCurrency(rest: string): { known: string[]; unknown: boolean } {
   const known = new Set<string>();
   let unknown = false;
+  // 19 Nov (after eval v7, v7-limit-lviv-space-grouping: "Разом до сплати: 1 150,00 EUR" was read as no currency): the
+  // rest of a label before its colon ("до сплати:", "à payer :") is the label's, not a currency, when it is words of three
+  // letters or more and none of them is written like a currency ("kr", "zł", "Kč", "грн", "лв", an upper-case code).
+  const colon = rest.search(/[:：]/);
+  if (colon > 0 && !/\d/.test(rest.slice(0, colon))) {
+    const words = rest.slice(0, colon).split(/[^\p{L}\p{M}\p{Sc}]+/u).filter(Boolean);
+    if (words.every((w) => [...w].length >= 3 && !/\p{Sc}/u.test(w) && !/^[A-Z]{3}$/.test(w) && !CURRENCY_WORDS.has(w.toLowerCase()))) rest = rest.slice(colon + 1);
+  }
   const s = rest.replace(/US\$/g, " USD ").replace(/\d+/g, " ");
   for (const tok of s.split(/[^\p{L}\p{Sc}]+/u).filter(Boolean)) {
     for (const part of tok.split(/(\p{Sc})/u).filter(Boolean)) {
@@ -231,11 +241,18 @@ const DUE_LABELS = label([
   "应付金额", "應付金額", "应付总额", "應付總額", "价税合计", "價稅合計", "ご請求金額", "請求金額", "お支払い金額", "お支払金額", "税込合計",
   "청구 금액", "결제 금액", "지급 금액", "ยอดที่ต้องชำระ", "จำนวนเงินที่ต้องชำระ", "ยอดชำระ", "סה״כ לתשלום", "סה\"כ לתשלום", "לתשלום",
   "المبلغ المستحق", "المبلغ الواجب الدفع", "مبلغ قابل پرداخت", "قابل پرداخت", "कुल देय राशि", "देय राशि", "कुल देय",
+  // 19 Nov (after eval v7: totals under labels in Ukrainian, Bengali, Khmer and Tamil were read as none by the parser), and
+  // the languages of the suppliers on file since: Georgian, Armenian, Amharic, Urdu, Baltic, Nordic.
+  "разом до сплати", "усього до сплати", "всього до сплати", "მოსაკრებელი თანხა", "გადასახდელი თანხა", "სულ გადასახდელი", "გადასახდელი", "վճարման ենթակա գումար", "վճարման ենթակա",
+  "মোট প্রদেয়", "প্রদেয় অর্থ", "প্রদেয়", "செலுத்த வேண்டிய மொத்தம்", "செலுத்த வேண்டிய தொகை", "செலுத்த வேண்டியது", "የሚከፈል ጠቅላላ", "የሚከፈል መጠን", "የሚከፈል",
+  "کل واجب الادا", "واجب الادا رقم", "واجب الادا", "قابل ادائیگی", "ចំនួនទឹកប្រាក់ត្រូវបង់", "ត្រូវបង់", "mokėtina suma", "iš viso mokėti", "apmaksai", "kopā apmaksai", "samtals til greiðslu", "til greiðslu", "att betala", "å betale", "at betale", "maksettava",
 ]);
 const TOTAL_LABELS = label([
   "total general", "importe total", "totale fattura", "totale", "valor total", "suma", "razem", "celkem", "genel toplam", "toplam tutar", "tổng cộng", "tổng tiền", "jumlah total",
   "итого", "всего", "разом", "общо", "σύνολο", "合计金额", "合計金額", "总计", "總計", "合计", "合計", "総額", "합계 금액", "합계", "총 금액", "총액",
   "รวมทั้งสิ้น", "ยอดรวม", "סה״כ", "סה\"כ", "الإجمالي", "الاجمالي", "المجموع", "جمع کل", "مجموع", "कुल राशि", "कुल योग",
+  "усього", "ჯამი", "სულ", "ընդամենը", "ընդհանուր", "মোট", "সর্বমোট", "மொத்தம்", "மொத்த தொகை", "ጠቅላላ ድምር", "ጠቅላላ", "ድምር", "کل رقم", "میزان", "សរុប", "សរុបទាំងអស់",
+  "iš viso", "viso", "kopā", "summa", "samtals", "alls", "yhteensä", "summa yhteensä", "i alt", "totalt", "tổng",
 ]);
 /** Total labels by rank: the amount to pay first, a document total next, a bare "Total" last. */
 const TOTAL_TIERS = [
@@ -255,9 +272,32 @@ export function labelled(l: string): Labelled | null {
   if (tax) return { kind: "tax", tier: 0, amount, line: l, rest: l.slice(tax[0].length), amounts };
   for (const [i, re] of TOTAL_TIERS.entries()) {
     const m = re.exec(l);
-    if (m) return { kind: "total", tier: i + 1, amount, line: l, rest: l.slice(m[0].length), amounts };
+    // 19 Nov (after eval v7, v7-limit-addis-payments-received): "Total payment received in 2026: EUR 6,300.00" is
+    // information about money already received, not a total to pay.
+    if (m) return isInformation(l) ? null : { kind: "total", tier: i + 1, amount, line: l, rest: l.slice(m[0].length), amounts };
   }
   return null;
+}
+
+/**
+ * 19 Nov (after eval v7: totals under labels the lists do not know were read as none): when no line carries a total label,
+ * the one line written as a label, a colon and an amount in a currency code knows ("মোট প্রদেয়: EUR ৭৮০.০০" shape), and
+ * no other such line, is the total, ranked below every label. Two or more such lines (a net and a VAT line in words code
+ * does not know) give none: a person reads it.
+ */
+function labelColonTotal(ls: string[]): Labelled | null {
+  const shaped = ls.map((l): Labelled | null => {
+    const m = /^([^\d:：]{1,40})[:：]\s*(.*)$/u.exec(l);
+    if (!m || labelled(l)) return null;
+    const amounts = amountsOn(l);
+    const rest = m[2]!;
+    if (amounts.length !== 1 || !/\p{L}/u.test(m[1]!) || isInformation(l)) return null;
+    const c = lineCurrency(rest);
+    if (c.unknown || c.known.length !== 1) return null;
+    if (rest.replace(/[\d.,'\s\u00a0\u202f\u2009]/gu, "").replace(c.known[0]!, "").replace(/\p{Sc}/gu, "").length) return null;
+    return { kind: "total", tier: TOTAL_TIERS.length + 1, amount: amounts[0]!.amount, line: l, rest, amounts };
+  }).filter((x): x is Labelled => x !== null);
+  return shaped.length === 1 ? shaped[0]! : null;
 }
 
 /** The first subtotal or tax line with an amount. */
@@ -277,6 +317,7 @@ function totalLines(ls: string[]): Labelled[] {
 /** The amount to pay: the first line with the best-ranked total label ("Balance due" before a bare "Total"). */
 function chosenTotal(ls: string[]): Labelled | null {
   const all = totalLines(ls);
+  if (!all.length) return labelColonTotal(ls);
   const best = Math.min(...all.map((x) => x.tier));
   return all.find((x) => x.tier === best) ?? null;
 }
@@ -412,8 +453,10 @@ export function parseApFallback(text: string): ApReading {
   // which the CFO signed and the payout carried); the payment-reference label wins over a bare "Ref:".
   const reference = firstMatch(text, /^\s*(?:payment\s+reference|zahlungsreferenz|betalingskenmerk|verwendungszweck)\b\s*:\s*(\S+)/im) ||
     firstMatch(text, /^\s*(?:reference|ref|kenmerk)\b\.?\s*:\s*(\S+)/im);
-  const iban = ibanIn(text);
-  const bic = firstMatch(text, /\b(?:BIC|SWIFT(?:\/BIC)?(?:\s+code)?)\s*:?\s*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b/).toUpperCase();
+  // 19 Nov (after eval v7): the bank's lines as a bank reads them, in any script's digits, without invisible characters.
+  const bankText = plainDigits(text.normalize("NFKC").replace(/\p{Cf}/gu, ""));
+  const iban = ibanIn(bankText);
+  const bic = firstMatch(bankText, /\b(?:BIC|SWIFT(?:\/BIC)?(?:\s+code)?)\s*:?\s*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b/).toUpperCase();
   return {
     vendor: cleanText(ls.find((l) => /\p{L}/u.test(l) && !HEADING.test(cleanText(l))) ?? ""),
     vat_id: firstMatch(text, /\b(?:VAT(?:\s*(?:ID|number|no\.?|reg\.?\s*no\.?))?|BTW(?:-nummer|\s*nr\.?|-id)?|USt-?IdNr\.?|UID)\s*:?\s*([A-Z]{2}[A-Z0-9]{8,12})\b/).toUpperCase(),
@@ -427,7 +470,7 @@ export function parseApFallback(text: string): ApReading {
     total: total && !total.amounts.at(-1)!.split ? total.amount : "",
     iban,
     bic,
-    ...accountOf(text, iban, bic),
+    ...accountOf(bankText, iban, bic),
     // Kept up to 200 characters, so a reference too long for SWIFT is refused at payment, never cut silently.
     reference: cleanText(reference || invoiceNo, 200),
     gl_account: "",
@@ -475,14 +518,38 @@ export function amountsIn(text: string): Set<string> {
 export function askedAboveTotal(text: string, total: string, currency: string): string | null {
   if (!MONEY.test(total)) return null;
   const most = toCentsPlain(total);
-  for (const l of amountLines(text ?? "")) {
-    if (labelled(l) || !asksToPay(l)) continue;
-    const named = lineCurrency(l.replace(/\d[\d.,'\s]*\d/g, " ")).known;
-    if (named.length && !named.includes(currency)) continue;
-    const above = amountsOn(l).find((a) => toCentsPlain(a.amount) > most);
-    if (above) return `the line "${shownLine(l, 100)}" asks to pay and names ${currency ? `${currency} ` : ""}${above.amount}, more than the invoice's total ${currency ? `${currency} ` : ""}${total}; a person checks what is owed`;
+  const ls = amountLines(text ?? "");
+  // 19 Nov (after the held-out eval v7, v7-limit-lviv-asks-more and v7-limit-kartuli-asks-more: "Просимо сплатити 1 480,00
+  // EUR …" and a Georgian line asking for EUR 1,350.00 under totals of EUR 480.00 and 450.00 were paid, the pay verbs not in
+  // the lists). Structural, whatever the language: below the invoice's own total line (where its notes and footer are),
+  // any clause that names an amount above the total, in its currency or none, holds it, unless it says the amount is
+  // information (money received or paid, share capital, a credit limit: isInformation, in the languages it knows). Above
+  // the total line, among the items, only a clause that asks to pay does, as before.
+  const at = chosenTotal(ls);
+  const from = at ? ls.indexOf(at.line) : ls.findIndex((l) => amountsOn(l).some((a) => a.amount === total));
+  for (const [i, l] of ls.entries()) {
+    if (labelled(l)) continue;
+    for (const clause of l.split(/\.(?!\d)|[;!?。।።៕\n]/u)) {
+      const named = lineCurrency(clause.replace(/\d[\d.,'\s]*\d/g, " ")).known;
+      if (named.length && !named.includes(currency)) continue;
+      const above = amountsOn(clause).find((a) => toCentsPlain(a.amount) > most);
+      if (!above || isInformation(clause)) continue;
+      const asks = asksToPay(clause);
+      // A clause that names the amount in another currency (a reference rate: "(≈ ₹40,100.00 for reference)", "1 916,71
+      // лв.") asks for nothing in the invoice's: only a request in words holds it (as before).
+      if (!asks && (!(from >= 0 && i > from) || otherCurrencyIn(clause, currency))) continue;
+      return `the line "${shownLine(l, 100)}" ${asks ? "asks to pay and names" : "names"} ${currency ? `${currency} ` : ""}${above.amount}, more than the invoice's total ${currency ? `${currency} ` : ""}${total}; a person checks what is owed`;
+    }
   }
   return null;
+}
+/** ISO 4217 codes of the currencies in use, beyond those code pays (KNOWN_CODES). */
+const ISO_CODES = new Set(`AED AFN ALL AMD ANG AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF BMD BND BOB BRL BSD BTN BWP BYN BZD CAD CDF CHF CLP CNY COP CRC CUP CVE CZK DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP GEL GHS GIP GMD GNF GTQ GYD HKD HNL HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY KES KGS KHR KMF KPW KRW KWD KYD KZT LAK LBP LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR MWK MXN MYR MZN NAD NGN NIO NOK NPR NZD OMR PAB PEN PGK PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SOS SRD SSP STN SVC SYP SZL THB TJS TMT TND TOP TRY TTD TWD TZS UAH UGX USD UYU UZS VES VND VUV WST XAF XCD XOF XPF YER ZAR ZMW ZWL`.split(" "));
+/** Whether a clause names a currency other than the invoice's: a symbol, an ISO code or a currency's word or abbreviation. */
+function otherCurrencyIn(clause: string, currency: string): boolean {
+  for (const sym of clause.match(/\p{Sc}/gu) ?? []) if ((SYMBOLS[sym] ?? sym) !== currency) return true;
+  for (const code of clause.match(/(?<![\p{L}])[A-Z]{3}(?![\p{L}])/gu) ?? []) if (ISO_CODES.has(code) && code !== currency) return true;
+  return clause.split(/[^\p{L}\p{M}]+/u).some((w) => CURRENCY_WORDS.has(w.toLowerCase()) && !["eur", "euro", "euros", "usd", "gbp"].includes(w.toLowerCase()));
 }
 /** Cents of a plain two-decimal amount (digits only, so no float): "1450.00" is 145000. */
 const toCentsPlain = (amount: string) => Number(amount.replace(".", ""));
@@ -498,8 +565,11 @@ export function readingCheck(r: ApReading, text: string): string | null {
   const doc = compact(text);
   if (!r.invoice_no || !doc.includes(compact(r.invoice_no))) return `the invoice number ${JSON.stringify(r.invoice_no)} is not in the document`;
   if (!amountsIn(text).has(r.total)) return `the total ${r.total} is not in the document`;
-  if (r.iban && !doc.includes(compact(r.iban))) return "the IBAN is not in the document";
-  if (r.account_number && !doc.replace(/-/g, "").includes(compact(r.account_number).replace(/-/g, ""))) return "the account number is not in the document";
+  // The account as a bank reads it (19 Nov, after eval v7): in any script's digits, without invisible characters.
+  const bankDoc = compact(plainDigits(text.normalize("NFKC").replace(/\p{Cf}/gu, "")));
+  const plainAccount = (x: string) => compact(plainDigits(x.normalize("NFKC")));
+  if (r.iban && !bankDoc.includes(plainAccount(r.iban))) return "the IBAN is not in the document";
+  if (r.account_number && !bankDoc.replace(/-/g, "").includes(plainAccount(r.account_number).replace(/-/g, ""))) return "the account number is not in the document";
   const own = parseApFallback(text);
   // A model's figure alone is never accepted: the document's own total line must give the same (red team B).
   if (!own.total) return "the document's own lines give no total that code can check the reading against";

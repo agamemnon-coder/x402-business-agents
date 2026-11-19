@@ -12,7 +12,7 @@ import { matchReceipt } from "../agents/receivables.js";
 import { acceptanceOn, bookCardPayment, intentFromEvent } from "../airwallex/acceptance.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { CARD_EVENTS } from "../airwallex/webhooks.js";
-import { wantCardStatus } from "./cards.js";
+import { policyAllowsCard, recentWindow, wantCardStatus } from "./cards.js";
 import { RECHECK_EVENT } from "../payouts/follow.js";
 
 export type EventObject = "card_transaction" | "card" | "transfer" | "conversion" | "deposit" | "payment_intent" | "other";
@@ -83,8 +83,12 @@ export function checkEvent(db: DB, name: string, o: Record<string, unknown>, now
     const id = str(o.card_id) ?? str(o.id);
     const card = id ? (db.prepare("SELECT agent FROM cards WHERE card_id = ?").get(id) as { agent: string } | undefined) : undefined;
     if (!card) return { object, object_id: id, status, amount_cents: null, currency: null, agrees: false, outcome: `card ${id ?? "?"} is ${status}: not one of Purser's cards` };
-    const want = wantCardStatus(db, card.agent);
-    // Stricter than the policy (frozen, closed, blocked) is never a risk; live while the policy has it frozen is.
+    const want = wantCardStatus(db, card.agent, now);
+    // Stricter than the policy (frozen, closed, blocked) is never a risk; live while the policy has it frozen is, unless
+    // it is the thaw of a purchase window Purser opened moments ago (its webhook arrives after the refreeze).
+    if (status === "ACTIVE" && want !== "ACTIVE" && policyAllowsCard(db, card.agent) && recentWindow(db, card.agent, now)) {
+      return { object, object_id: id, status, amount_cents: null, currency: null, agrees: true, outcome: `${card.agent}'s card was thawed for a purchase Purser approved; it is frozen again (frozen by default)` };
+    }
     if (status === "ACTIVE" && want !== "ACTIVE") {
       return { object, object_id: id, status, amount_cents: null, currency: null, agrees: false, outcome: `${card.agent}'s card is live at Airwallex while the policy has it frozen; the next sync freezes it again` };
     }

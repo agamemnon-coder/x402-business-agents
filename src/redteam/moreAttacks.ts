@@ -156,11 +156,19 @@ export const MORE_ATTACKS: Attack[] = [
     title: "Hide a card payment from the ledger",
     category: "ledger",
     run: async (w) => {
+      // 19 Nov, fifth round: no longer a row pushed into the issuer's list as if Airwallex had approved it. The merchant
+      // (or anyone holding the card number) charges an agent's card by itself, inside the card's own limits and
+      // merchant categories, outside any purchase Purser approved; then the webhook and the poll are lost.
       const card = w.issuing.cards[0]!;
-      w.issuing.txs.push({ transactionId: "tx_hidden", cardId: card.cardId, amountCents: 4200, currency: "EUR", status: "APPROVED", approved: true, failureReason: null, merchant: "Somewhere", mcc: "5734", type: "AUTHORIZATION", occurredAt: new Date(w.now().getTime() - 3 * 3600_000).toISOString() });
+      const amountCents = Math.min(4200, card.limits?.perTxCents ?? 4200);
+      const mcc = card.controls?.mccs[0] ?? "5734";
+      const t = await w.issuing.simulateCardCharge({ cardId: card.cardId, amountCents, currency: "EUR", merchant: "Somewhere", mcc });
       const r = await reconcile(w.db, { cardTransactions: (id) => w.issuing.listCardTransactions(id) }, w.now());
-      return { attempt: "a 42.00 EUR card charge that never reached the ledger (lost webhook and poll)", blocked: r.differences.some((d) => d.ref === "tx_hidden"),
-        defence: "the hourly reconciliation compares every card's transactions with Airwallex both ways: a charge that reached neither the webhook nor the poll is found within the hour, not prevented. Airwallex approves a charge on the card's own limits and merchant categories, which bound it; stopping it before it is approved would need Airwallex to ask Purser for each one, which Purser does not have", evidence: `${r.differences.length} difference(s)` };
+      const moved = w.issuing.txs.some((x) => x.cardId === card.cardId && x.approved);
+      return { attempt: `a ${(amountCents / 100).toFixed(2)} EUR charge on an agent's card, inside its limits and merchant categories, that Purser never started (and whose webhook and poll are lost)`,
+        blocked: !t.approved && t.failureReason === "CARD_INACTIVE" && !moved,
+        defence: "every agent card is frozen at Airwallex by default; Purser thaws it only for a purchase it approved under the policy and freezes it again the moment Airwallex answers, when the two-minute window runs out, or at the first authorisation it did not expect. A charge outside a window is declined by Airwallex before money moves. Left: a charge that races Purser's own purchase inside its window is still approved on the card's limits, and is found afterwards by the webhook, the poll and the hourly reconciliation (the card is then frozen at once)",
+        evidence: `Airwallex ${t.approved ? "APPROVED" : `declined (${t.failureReason})`}; card ${card.status}; approved charges on the card: ${moved ? "yes" : "none"}; reconciliation: ${r.differences.length} difference(s)` };
     },
   },
   {

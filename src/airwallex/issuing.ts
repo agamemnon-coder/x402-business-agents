@@ -66,8 +66,11 @@ export interface IssuingRail {
   listCardTransactions(cardId: string): Promise<CardTransaction[]>;
 }
 
-/** Sandbox only: a merchant charging the card. In production the merchant does this, not us. */
-export interface IssuingSim {
+/**
+ * Sandbox only: a merchant charging the card. In production the merchant does this, not us. It carries the card's
+ * status switch too: an agent's card is frozen by default and thawed only for the purchase (src/policy/cards.ts).
+ */
+export interface IssuingSim extends Pick<IssuingRail, "setCardStatus"> {
   simulateCardCharge(a: { cardId: string; amountCents: number; currency: "EUR"; merchant: string; mcc: string }): Promise<CardTransaction>;
 }
 

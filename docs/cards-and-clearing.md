@@ -16,6 +16,11 @@ The merchants are fictional (Microsoft's sample company names).
   It sets the card's per-purchase and monthly limits to the CFO policy's `card.<agent>.per_tx` and
   `card.<agent>.monthly`. The runner checks every few seconds that each card at Airwallex still has the policy's
   limits, and it trusts what Airwallex reads back, not what it asked for.
+- **Frozen by default (19 November).** Each agent card rests INACTIVE at Airwallex. Purser thaws it only for a
+  purchase it approved under the policy and freezes it again as soon as Airwallex answers, when the two-minute window
+  runs out, or at the first authorisation it did not expect. A charge outside a window is declined by Airwallex with
+  `CARD_INACTIVE` before money moves. Tested against the Issuing stand-in, not yet against the live sandbox; the limits
+  of this control are in [security.md](security.md#agent-cards-frozen-by-default-19-november-fifth-round).
 - **The card is the guardrail.** The agent does not check its own limit before buying, on purpose: even an agent that
   ignores its policy cannot spend past the card. `npm run cards -- buy packwise-pro` (45.00 EUR on a 30.00 card)
   is declined by Airwallex with `LIMIT_EXCEEDED`. The decline is in the audit log and shown red on the dashboard.

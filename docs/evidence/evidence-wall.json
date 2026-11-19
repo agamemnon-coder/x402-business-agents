@@ -344,24 +344,35 @@
           "rec": "docs/evals/adversarial-v6.json"
         },
         {
+          "offProof": true,
           "key": "eval-v7",
           "fig": "15 vs 71",
           "label": "wrong payments on 117 held-out invoices (eval v7): Purser vs no rules",
-          "note": "Cases committed with their pre-registration (commit 34f502070), after the fixes for v6's misses; a script always says pay. 6 false holds of 64. Held out. Offline.",
+          "note": "Cases committed with their pre-registration before the run (commit 34f502070); a script always says pay. 6 false holds of 64. Fixed since, no longer held out: 0 wrong payments, 0 false holds. Offline.",
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v7.md",
           "rec": "docs/evals/adversarial-v7.json"
         },
         {
-          "key": "red-team",
-          "fig": "34 of 35",
-          "label": "red-team attacks stopped before money moved, re-run, not held out",
-          "note": "Re-run of 19 Nov, after the fixes: the scripted attacks, no model; the other 1 found afterwards, not prevented (hidden-payment). First run, 30 Oct, with Claude writing 4 of the documents: 37 of 39, 2 found afterwards.",
+          "key": "eval-v8",
+          "fig": "20 vs 79",
+          "label": "wrong payments on 140 held-out invoices (eval v8): Purser vs no rules",
+          "note": "Cases committed with their pre-registration (commit 7fabd5262), after the fixes for v7's misses; a script always says pay. 6 false holds of 74. Held out. Offline.",
           "tag": "test",
           "tone": "claude",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/rerun-2026-11-19.json",
-          "rec": "docs/redteam/rerun-2026-11-19.json docs/redteam/report.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v8.md",
+          "rec": "docs/evals/adversarial-v8.json"
+        },
+        {
+          "key": "red-team",
+          "fig": "All 35",
+          "label": "red-team attacks stopped before money moved, re-run, not held out",
+          "note": "Newest re-run, 19 Nov, after agent cards were frozen by default: the scripted attacks, no model; none left to be found only afterwards. Earlier re-run, 19 Nov: 34 of 35, 1 found afterwards (hidden-payment). First run, 30 Oct, with Claude writing 4 of the documents: 37 of 39, 2 found afterwards.",
+          "tag": "test",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/rerun-2026-11-19b.json",
+          "rec": "docs/redteam/rerun-2026-11-19b.json docs/redteam/rerun-2026-11-19.json docs/redteam/report.json"
         },
         {
           "key": "hostile-model",

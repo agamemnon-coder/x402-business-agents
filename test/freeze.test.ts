@@ -6,7 +6,7 @@ import { buildSnapshot } from "../src/dashboard/snapshot.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { proposePolicyChange, executePolicyChange } from "../src/executors/policyChange.js";
 import { decide } from "../src/policy/approvals.js";
-import { setupCards, syncCardsAfterPolicy, syncCardsIfChanged } from "../src/policy/cards.js";
+import { openCardWindow, setupCards, syncCardsAfterPolicy, syncCardsIfChanged } from "../src/policy/cards.js";
 import { capRefusal, frozen, loosens } from "../src/policy/rules.js";
 import { policyLoosens } from "../src/approve/client.js";
 import { buyPlan } from "../src/agents/cardBuyer.js";
@@ -37,7 +37,11 @@ describe("the emergency stop", () => {
     }
   });
 
+  // Every card rests frozen (freeze by default); here each is thawed mid-purchase when the CFO pulls the stop.
+  const thawAll = async () => { for (const a of ["sourcing", "support", "treasury"]) await openCardWindow(db, awx, a, { amountCents: 100, merchant: "x", why: "test" }, now); };
+
   it("stops every agent payment before signing, and freezes every card at Airwallex", async () => {
+    await thawAll();
     const p = proposePolicyChange(db, { changes: [{ key: "freeze", to: "on" }], reason: "suspicious activity" }, "human", now);
     approveAndRun(db, p.proposal_id);
     expect(frozen(db)).toBe(true);
@@ -52,7 +56,9 @@ describe("the emergency stop", () => {
     const s = buildSnapshot(db, now);
     expect(s.frozen).toMatchObject({ by: "Max", proposal_id: p.proposal_id, reason: "suspicious activity" });
     expect(s.cards.every((c) => c.frozen)).toBe(true);
-    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'card.frozen'").get()).toEqual({ n: 3 });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'card.frozen' AND json_extract(payload_json, '$.why') = 'emergency stop'").get()).toEqual({ n: 3 });
+    // No purchase window opens while the stop is on.
+    expect(await openCardWindow(db, awx, "sourcing", { amountCents: 100, merchant: "x", why: "test" }, now)).toBeNull();
   });
 
   it("unfreezes only through an approved proposal, and the cards follow", async () => {
@@ -61,13 +67,15 @@ describe("the emergency stop", () => {
     const off = proposePolicyChange(db, { changes: [{ key: "freeze", to: "off" }], reason: "checked, all clear" }, "human", now);
     approveAndRun(db, off.proposal_id);
     await syncCardsAfterPolicy(db, off.proposal_id, awx, now);
-    expect(awx.cards.map((c) => c.status)).toEqual(["ACTIVE", "ACTIVE", "ACTIVE"]);
+    // The cards rest frozen by default; an approved purchase thaws its card again.
+    expect(awx.cards.map((c) => c.status)).toEqual(["INACTIVE", "INACTIVE", "INACTIVE"]);
     expect(capRefusal(db, "sourcing", 1)).toBeNull();
     expect(buildSnapshot(db, now).frozen).toBeNull();
     expect((await buyPlan(db, awx, "packwise-starter", now)).approved).toBe(true);
   });
 
   it("keeps the freeze on a card the runner could not reach yet: the next stock check retries", async () => {
+    await thawAll();
     approveAndRun(db, proposePolicyChange(db, { changes: [{ key: "freeze", to: "on" }], reason: "stop" }, "human", now).proposal_id);
     const real = awx.setCardStatus.bind(awx);
     awx.setCardStatus = async () => { throw new Error("socket hang up"); };

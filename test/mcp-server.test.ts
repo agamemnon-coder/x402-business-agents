@@ -135,6 +135,8 @@ describe("what an outside agent reads back (the agent API's results)", () => {
   it("names no next tool when the card is frozen", async () => {
     const { client, awx } = await withCard();
     await awx.setCardStatus(awx.cards[0]!.cardId, "INACTIVE");
+    // Frozen at Airwallex and kept so (Purser's thaw for the purchase does not take): Airwallex declines the charge.
+    awx.setCardStatus = async (id) => awx.getCard(id);
     const r = await pay(client, "TrailData Reports", "19.00");
     expect(r.isError).toBe(true);
     expect(r.structuredContent).toMatchObject({ approved: false, refused_by: "airwallex", reason: "CARD_INACTIVE" });

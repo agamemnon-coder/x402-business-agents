@@ -1125,7 +1125,7 @@ function guestWithoutLink(app: HTMLElement): boolean {
 const SESSION_NEEDED = /^sign in with your passkey first/;
 
 /** D20: signs in with the enrolled passkey (Face ID); the relay sets a session cookie the page itself cannot read. */
-async function passkeySignIn(): Promise<boolean> {
+export async function passkeySignIn(): Promise<boolean> {
   const view = { "x-kit11-view": viewKey };
   const o = await fetch("/api/session/options", { method: "POST", cache: "no-store", headers: { "content-type": "application/json", accept: "application/json", ...view }, body: "{}" }).catch(() => null);
   if (!o || !o.ok) return false;
@@ -1149,7 +1149,7 @@ async function passkeySignIn(): Promise<boolean> {
 let sessionMissing: boolean | null = null;
 const SESSION_PATHS = new Set(["/api/policy", "/api/policy-text", "/api/ask"]);
 
-async function api(path: string, body?: unknown, retried = false): Promise<{ status: number; data: Obj }> {
+export async function api(path: string, body?: unknown, retried = false): Promise<{ status: number; data: Obj }> {
   const view = { "x-kit11-view": viewKey };
   // D20: sign in first when the relay said this device has no session, so the CFO's action is not refused first.
   if (body !== undefined && !retried && sessionMissing === true && SESSION_PATHS.has(path)) {
@@ -1197,7 +1197,7 @@ function termsTable(v: unknown): Node {
   return txt("span", "mono", v === null ? "null" : v);
 }
 
-function serializeAssertion(c: PublicKeyCredential): Obj {
+export function serializeAssertion(c: PublicKeyCredential): Obj {
   const r = c.response as AuthenticatorAssertionResponse;
   return {
     id: c.id, rawId: bytesToB64url(c.rawId), type: c.type,
@@ -1210,7 +1210,7 @@ function serializeAssertion(c: PublicKeyCredential): Obj {
   };
 }
 
-function serializeRegistration(c: PublicKeyCredential): Obj {
+export function serializeRegistration(c: PublicKeyCredential): Obj {
   const r = c.response as AuthenticatorAttestationResponse;
   return {
     id: c.id, rawId: bytesToB64url(c.rawId), type: c.type,
@@ -1223,7 +1223,7 @@ function serializeRegistration(c: PublicKeyCredential): Obj {
   };
 }
 
-function passkeyError(e: unknown, lang?: PhoneLang): string {
+export function passkeyError(e: unknown, lang?: PhoneLang): string {
   const name = e instanceof Error ? e.name : "";
   if (name === "NotAllowedError" || name === "AbortError") return lang ? ph(lang, "ph.cancelled") : "Cancelled. Nothing was signed.";
   if (name === "InvalidStateError") return "This phone already has a passkey for this site.";
@@ -1443,7 +1443,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
 }
 
 /** The terms as sent, for the reject screen of a proposal whose terms did not check out (it still names what it is). */
-function parsedOrEmpty(canonical: string): Obj {
+export function parsedOrEmpty(canonical: string): Obj {
   try {
     const v: unknown = JSON.parse(canonical);
     return isObj(v) ? v : {};
@@ -1644,7 +1644,7 @@ async function approvePage(attempt = 0): Promise<void> {
 }
 
 /** A line's account, as the signed terms show it: the masked account, or the IBAN's last four. */
-function lineAccount(t: Obj): string {
+export function lineAccount(t: Obj): string {
   return str(t.account) || (str(t.iban_last4) ? `IBAN …${str(t.iban_last4)}` : "");
 }
 

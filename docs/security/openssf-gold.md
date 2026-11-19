@@ -11,7 +11,7 @@ action, both texts are given. The criteria: <https://www.bestpractices.dev/en/cr
 every MUST to be Met, so gold is not reachable yet. Three MUSTs stay Unmet, and we say why: `bus_factor`,
 `contributors_unassociated` and `two_person_review` need a second, unaffiliated person with merge rights; the project
 has one maintainer. `test_statement_coverage90` and `test_branch_coverage80` are Met since the evening of 19 November:
-the suite covers 91.1% of statements and 80.6% of branches of the product, with tests that check behaviour, not
+the suite covers 91.7% of statements and 81.4% of branches of the product, with tests that check behaviour, not
 lines that only run ([docs/evidence/coverage.md](../evidence/coverage.md)).
 
 ## Voor de eigenaar (Nederlands): wat jij moet doen
@@ -77,7 +77,7 @@ hieronder. Klik **Save** per sectie.
   is, van een andere werkgever, die echt reviewt en merget. Claude-sessies tellen niet: zij hebben geen rechten, geen
   sleutels en zijn geen onafhankelijke persoon.
 - **De coverage-criteria alleen op Met** zolang `docs/evidence/coverage.md` 90% statements en 80% branches laat zien
-  (op 19 november 's avonds: 91,1% en 80,6%, dus nu wel Met). Merge deze branch eerst: de onderbouwing linkt naar dat bestand op `main`.
+  (op 19 november laat op de avond: 91,7% en 81,4%, dus nu wel Met). Merge deze branch eerst: de onderbouwing linkt naar dat bestand op `main`.
 - **`require_2FA` en `secure_2FA` niet op Met** voordat stap 2 gecontroleerd is.
 - **Geen SLSA Build L3 claimen voor `v1.2.0`** (zie hieronder): je hebt op 19 november gekozen voor de
   SLSA-generator (`@v2.1.0`, met een tag, de enige uitzondering op "alles vastgepind op SHA", in `release.yml`), maar
@@ -188,11 +188,11 @@ Every push to main and every pull request runs the full test suite, type checks,
 
 #### `test_statement_coverage90` (MUST): **Met**
 
-Measured with vitest and V8 coverage (FLOSS) on 19 November 2026: 91.1% of statements (63,436 of 69,654, in 809 files) of the product (every TypeScript file under src/, cloud/src/ and worker/src/, untested files included, without the command-line entry points and generated files). The command: npm run test:coverage (vitest run --coverage), with the scope set in https://github.com/agamemnon-coder/x402-business-agents/blob/main/vitest.config.ts, which fails the run below 88% of statements; 8,338 tests passed in that run. The dated record, with the method, the figures per area, the tests that were added (each checks behaviour, not lines) and the largest gaps left: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md. Stated plainly: with the CLI entry points included the figure is 79.2% (63,956 of 80,786).
+Measured with vitest and V8 coverage (FLOSS) on 19 November 2026: 91.7% of statements (64,948 of 70,834, in 828 files) of the product (every TypeScript file under src/, cloud/src/ and worker/src/, untested files included, without the command-line entry points and generated files). The command: npm run test:coverage (vitest run --coverage), with the scope set in https://github.com/agamemnon-coder/x402-business-agents/blob/main/vitest.config.ts, which fails the run below 89% of statements; 8,534 tests passed in that run. The dated record, with the method, the figures per area, the tests that were added (each checks behaviour, not lines) and the largest gaps left: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md. Stated plainly: with the CLI entry points included the figure is 79.8% (65,468 of 82,054).
 
 #### `test_branch_coverage80` (MUST): **Met**
 
-Measured with the same FLOSS tool and scope on 19 November 2026: 80.6% of branches (47,285 of 58,685); vitest.config.ts fails the run below 78%. https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md
+Measured with the same FLOSS tool and scope on 19 November 2026: 81.4% of branches (48,611 of 59,703); vitest.config.ts fails the run below 79%. https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md
 
 ### Security (5 Met, 0 Unmet, 0 N/A)
 
