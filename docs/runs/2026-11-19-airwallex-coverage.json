@@ -1,0 +1,282 @@
+{
+  "run": "airwallex-coverage-live",
+  "ran_at": "2026-11-19T09:13:07.589Z",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "command": "npm run airwallex:coverage-live -- live",
+  "why": "Each endpoint docs/evidence/airwallex-api-coverage.md listed as TESTED ONLY or CODE ONLY, called once through Purser's own function for it. A row is live only when Airwallex answered the call itself 2xx.",
+  "budget": {
+    "approved": 30,
+    "used": 19,
+    "status_429": 0
+  },
+  "totals": {
+    "targets": 11,
+    "live": 10,
+    "refused": 0,
+    "not_run": 1
+  },
+  "results": [
+    {
+      "method": "GET",
+      "endpoint": "/accounts",
+      "function": "AirwallexPlatformRest.findConnectedAccount (src/airwallex/platform.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T09:13:08.600Z",
+      "live": true,
+      "outcome": "listed; no account under this request id (none was opened with it)",
+      "id": null,
+      "precondition": null,
+      "cleanup": null
+    },
+    {
+      "method": "GET",
+      "endpoint": "/batch_transfers",
+      "function": "AirwallexBatchRest.findBatchByRequestId (src/airwallex/batchTransfers.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T09:13:09.644Z",
+      "live": true,
+      "outcome": "found the batch just made, by its request_id (DRAFTING)",
+      "id": "a5d9f755-0979-461b-9f6f-5433a6f77d38",
+      "precondition": "createBatch made batch a5d9f755-0979-461b-9f6f-5433a6f77d38 (DRAFTING, no items) under request_id awxcov-batch-20261119091307",
+      "cleanup": "the batch was deleted again (the next row)"
+    },
+    {
+      "method": "POST",
+      "endpoint": "/batch_transfers/{id}/delete",
+      "function": "AirwallexBatchRest.deleteBatch (src/airwallex/batchTransfers.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T09:13:10.105Z",
+      "live": true,
+      "outcome": "deleted the DRAFTING batch",
+      "id": "a5d9f755-0979-461b-9f6f-5433a6f77d38",
+      "precondition": "createBatch made batch a5d9f755-0979-461b-9f6f-5433a6f77d38 (DRAFTING, no items) under request_id awxcov-batch-20261119091307",
+      "cleanup": "the batch is deleted; read back after the delete: Airwallex answered 404 not_found"
+    },
+    {
+      "method": "POST",
+      "endpoint": "/webhooks/create",
+      "function": "createWebhook (src/airwallex/webhooks.ts)",
+      "http_status": 201,
+      "error_code": null,
+      "at": "2026-11-19T09:13:10.787Z",
+      "live": true,
+      "outcome": "subscribed https://example.com/purser-awx-coverage-check to 1 event (the signing secret was dropped, never stored)",
+      "id": "wh_SgVVHZtqHhdkqZgIK7roEDHQy0_nGMC3",
+      "precondition": null,
+      "cleanup": "deleted again (the next row); none left at the check's URL (listed after)"
+    },
+    {
+      "method": "POST",
+      "endpoint": "/webhooks/{id}/delete",
+      "function": "deleteWebhook (src/airwallex/webhooks.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T09:13:11.151Z",
+      "live": true,
+      "outcome": "deleted the subscription",
+      "id": "wh_SgVVHZtqHhdkqZgIK7roEDHQy0_nGMC3",
+      "precondition": "createWebhook made subscription wh_SgVVHZtqHhdkqZgIK7roEDHQy0_nGMC3",
+      "cleanup": "deleted"
+    },
+    {
+      "method": "POST",
+      "endpoint": "/issuing/cardholders/create",
+      "function": "IssuingRest.createCardholder (src/airwallex/issuing.ts)",
+      "http_status": 202,
+      "error_code": null,
+      "at": "2026-11-19T09:13:11.807Z",
+      "live": true,
+      "outcome": "cardholder READY, no card issued",
+      "id": "100a81eb-6d4d-4987-9c47-fdac352b338a",
+      "precondition": null,
+      "cleanup": "none: Purser's client has no call that removes a cardholder (it holds no card and no money)"
+    },
+    {
+      "method": "POST",
+      "endpoint": "/global_accounts/create",
+      "function": "AirwallexRest.createGlobalAccount (src/airwallex/adapter.ts; the create usdGlobalAccountId makes)",
+      "http_status": 201,
+      "error_code": null,
+      "at": "2026-11-19T09:13:12.598Z",
+      "live": true,
+      "outcome": "opened a Global Account for AUD (ACTIVE)",
+      "id": "9d19f0a2-983e-4ea5-8420-23f3acadc71c",
+      "precondition": "activeGlobalAccounts: 3 ACTIVE (EUR, GBP, USD); AUD is not among them",
+      "cleanup": "none: Purser's client has no call that closes a Global Account (it holds no money)"
+    },
+    {
+      "method": "GET",
+      "endpoint": "/deposits/{id}",
+      "function": "airwallexDiffs, a deposit (src/finance/dataQa.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T09:13:13.287Z",
+      "live": true,
+      "outcome": "found: GBP 125.00, SETTLED, reference awx-switch…osit; agrees with the 13 Nov record",
+      "id": "59769c92-01dd-43e4-8b13-4296d71bd171",
+      "precondition": "the deposit the sandbox simulated on 13 Nov (docs/runs/2026-11-13-airwallex-deposits.json)",
+      "cleanup": null
+    },
+    {
+      "method": "GET",
+      "endpoint": "/issuing/transactions/{id}",
+      "function": "airwallexDiffs, a card transaction (src/finance/dataQa.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T09:13:14.512Z",
+      "live": true,
+      "outcome": "found: EUR 45.00, FAILED LIMIT_EXCEEDED; agrees with the list",
+      "id": "cda6e6d1-9ca8-413e-870a-6fddd52cb103",
+      "precondition": "the newest card transaction in the sandbox's list (FAILED, simulated)",
+      "cleanup": null
+    },
+    {
+      "method": "POST",
+      "endpoint": "/pa/payment_intents/{id}/confirm",
+      "function": "AcceptanceRest.confirmWithTestCard (src/airwallex/acceptance.ts)",
+      "http_status": 200,
+      "error_code": null,
+      "at": "2026-11-19T09:13:16.001Z",
+      "live": true,
+      "outcome": "confirmed with the sandbox success test card: SUCCEEDED; read back: SUCCEEDED, card ending 0008",
+      "id": "int_sgpvv6qjhhoaw6jo8fi",
+      "precondition": "createPaymentIntent made int_sgpvv6qjhhoaw6jo8fi (EUR 1.00, REQUIRES_PAYMENT_METHOD)",
+      "cleanup": "none needed: EUR 1.00 of test money on a sandbox test card; nobody is paid out"
+    },
+    {
+      "method": "POST",
+      "endpoint": "/hosted_flows/{id}/authorize",
+      "function": "AirwallexPlatformRest.onboardingLink (src/airwallex/platform.ts)",
+      "http_status": null,
+      "error_code": null,
+      "at": null,
+      "live": false,
+      "outcome": "not run: it needs a hosted flow, and hosted_flows/create needs the onboarding template id that Airwallex's account manager issues; this sandbox account has none (on 12 Nov the create answered 400 twice without one: docs/runs/2026-11-12-real-customers.md), so no flow id exists to authorize",
+      "id": null,
+      "precondition": "a hosted flow id: none can be made without the template",
+      "cleanup": null
+    }
+  ],
+  "calls": [
+    {
+      "at": "2026-11-19T09:13:07.590Z",
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201
+    },
+    {
+      "at": "2026-11-19T09:13:08.600Z",
+      "method": "GET",
+      "endpoint": "/accounts",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:09.255Z",
+      "method": "POST",
+      "endpoint": "/batch_transfers/create",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:09.644Z",
+      "method": "GET",
+      "endpoint": "/batch_transfers",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:10.105Z",
+      "method": "POST",
+      "endpoint": "/batch_transfers/{id}/delete",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:10.480Z",
+      "method": "GET",
+      "endpoint": "/batch_transfers/{id}",
+      "status": 404,
+      "code": "not_found"
+    },
+    {
+      "at": "2026-11-19T09:13:10.787Z",
+      "method": "POST",
+      "endpoint": "/webhooks/create",
+      "status": 201
+    },
+    {
+      "at": "2026-11-19T09:13:11.151Z",
+      "method": "POST",
+      "endpoint": "/webhooks/{id}/delete",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:11.506Z",
+      "method": "GET",
+      "endpoint": "/webhooks",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:11.807Z",
+      "method": "POST",
+      "endpoint": "/issuing/cardholders/create",
+      "status": 202
+    },
+    {
+      "at": "2026-11-19T09:13:12.218Z",
+      "method": "GET",
+      "endpoint": "/global_accounts",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:12.598Z",
+      "method": "POST",
+      "endpoint": "/global_accounts/create",
+      "status": 201
+    },
+    {
+      "at": "2026-11-19T09:13:13.287Z",
+      "method": "GET",
+      "endpoint": "/deposits/{id}",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:13.630Z",
+      "method": "GET",
+      "endpoint": "/issuing/transactions",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:14.512Z",
+      "method": "GET",
+      "endpoint": "/issuing/transactions/{id}",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:14.892Z",
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201
+    },
+    {
+      "at": "2026-11-19T09:13:15.378Z",
+      "method": "POST",
+      "endpoint": "/pa/payment_intents/create",
+      "status": 201
+    },
+    {
+      "at": "2026-11-19T09:13:16.001Z",
+      "method": "POST",
+      "endpoint": "/pa/payment_intents/{id}/confirm",
+      "status": 200
+    },
+    {
+      "at": "2026-11-19T09:13:17.030Z",
+      "method": "GET",
+      "endpoint": "/pa/payment_intents/{id}",
+      "status": 200
+    }
+  ]
+}

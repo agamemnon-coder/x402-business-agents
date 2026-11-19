@@ -181,11 +181,18 @@ export function recordDate(json: unknown, record: string): string | null {
   return dateIn(record);
 }
 
+/** False for a call-log line whose own HTTP answer says the call did not succeed (or was never sent); true otherwise. */
+export function answered(line: Record<string, unknown>): boolean {
+  const s = "http_status" in line ? line.http_status : typeof line.status === "number" ? line.status : undefined;
+  return s === undefined || (typeof s === "number" && s >= 200 && s < 400);
+}
+
 /**
  * The Airwallex calls a run record holds, read generically: an object with a method and an endpoint (or path), whose
  * service is Airwallex or unnamed (call logs list Claude's and T:0's calls beside Airwallex's), and any string that
  * starts with "METHOD /path". Dated by the object's own `at` where it has one, else by the record. A path that is not an
- * Airwallex path is skipped.
+ * Airwallex path is skipped. A line that carries its HTTP answer (`http_status`, or a numeric `status`) counts only when
+ * Airwallex answered 2xx or 3xx: a call it refused (4xx, 5xx), one with no answer (0) or one never sent (null) is not live.
  */
 export function recordMentions(json: unknown, record: string): LiveMention[] {
   const out: LiveMention[] = [];
@@ -203,7 +210,7 @@ export function recordMentions(json: unknown, record: string): LiveMention[] {
     const service = v.service;
     if (service !== undefined && service !== "airwallex") return;
     const ep = typeof v.endpoint === "string" ? v.endpoint : typeof v.path === "string" ? v.path : null;
-    if (typeof v.method === "string" && isVerb(v.method) && ep && ep.startsWith("/")) {
+    if (typeof v.method === "string" && isVerb(v.method) && ep && ep.startsWith("/") && answered(v)) {
       const path = normalizePath(ep);
       if (path && here) out.push({ method: v.method, path, record, at: here, how: "a call-log line" });
     }

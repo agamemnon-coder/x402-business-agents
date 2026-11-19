@@ -68,6 +68,7 @@
     "verify-all": "tsx src/cli/verifyAll.ts",
     "airwallex:coverage": "tsx src/cli/airwallexCoverage.ts",
     "airwallex:soak": "tsx src/cli/airwallexSoak.ts",
+    "airwallex:coverage-live": "tsx src/cli/airwallexCoverageLive.ts",
     "tamper-matrix": "tsx src/cli/tamperMatrix.ts",
     "e2e:live": "tsx src/cli/e2eLive.ts",
     "alerts:live": "tsx scripts/approval-alert-live.ts",

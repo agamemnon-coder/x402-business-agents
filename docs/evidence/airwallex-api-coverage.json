@@ -23,14 +23,20 @@
       "endpoint": "GET /accounts",
       "method": "GET",
       "path": "/accounts",
-      "status": "CODE ONLY",
+      "status": "LIVE",
       "sites": [
         "src/airwallex/platform.ts:122"
       ],
-      "firstLive": null,
-      "liveRecords": [],
-      "firstTest": null,
-      "testFiles": 0
+      "firstLive": {
+        "date": "2026-11-19",
+        "at": "2026-11-19T09:13:08.600Z",
+        "record": "docs/runs/2026-11-19-airwallex-coverage.json"
+      },
+      "liveRecords": [
+        "docs/runs/2026-11-19-airwallex-coverage.json"
+      ],
+      "firstTest": "test/airwallex-coverage-live.test.ts:26",
+      "testFiles": 1
     },
     {
       "endpoint": "GET /accounts/{id}",
@@ -142,10 +148,12 @@
         "docs/runs/2026-11-13-airwallex-switch-on.json",
         "docs/runs/2026-11-17-airwallex-late-failure.json",
         "docs/runs/2026-11-19-airwallex-bills.json",
+        "docs/runs/2026-11-19-airwallex-coverage.json",
+        "docs/runs/2026-11-19-airwallex-soak.json",
         "docs/runs/airwallex-vic-payment-intents-2026-11-12.json"
       ],
       "firstTest": "test/agent-cards.test.ts:16",
-      "testFiles": 11
+      "testFiles": 12
     },
     {
       "endpoint": "GET /balances/current",
@@ -154,7 +162,7 @@
       "status": "LIVE",
       "sites": [
         "src/airwallex/adapter.ts:125",
-        "src/airwallex/adapter.ts:280",
+        "src/airwallex/adapter.ts:291",
         "src/cli/awx1.ts:66",
         "src/cli/dataQa.ts:38",
         "src/cli/health.ts:43",
@@ -174,7 +182,8 @@
         "docs/runs/2026-11-12-airwallex-batch-transfer.json",
         "docs/runs/2026-11-13-airwallex-switch-on.json",
         "docs/runs/2026-11-17-airwallex-late-failure.json",
-        "docs/runs/2026-11-19-airwallex-bills.json"
+        "docs/runs/2026-11-19-airwallex-bills.json",
+        "docs/runs/2026-11-19-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-client.test.ts:29",
       "testFiles": 7
@@ -183,14 +192,20 @@
       "endpoint": "GET /batch_transfers",
       "method": "GET",
       "path": "/batch_transfers",
-      "status": "CODE ONLY",
+      "status": "LIVE",
       "sites": [
         "src/airwallex/batchTransfers.ts:150"
       ],
-      "firstLive": null,
-      "liveRecords": [],
-      "firstTest": null,
-      "testFiles": 0
+      "firstLive": {
+        "date": "2026-11-19",
+        "at": "2026-11-19T09:13:09.644Z",
+        "record": "docs/runs/2026-11-19-airwallex-coverage.json"
+      },
+      "liveRecords": [
+        "docs/runs/2026-11-19-airwallex-coverage.json"
+      ],
+      "firstTest": "test/airwallex-coverage-live.test.ts:27",
+      "testFiles": 1
     },
     {
       "endpoint": "GET /batch_transfers/{id}",
@@ -208,8 +223,8 @@
       "liveRecords": [
         "docs/runs/2026-11-12-airwallex-batch-transfer.json"
       ],
-      "firstTest": null,
-      "testFiles": 0
+      "firstTest": "test/airwallex-coverage-live.test.ts:27",
+      "testFiles": 1
     },
     {
       "endpoint": "POST /batch_transfers/{id}/add_items",
@@ -236,14 +251,20 @@
       "endpoint": "POST /batch_transfers/{id}/delete",
       "method": "POST",
       "path": "/batch_transfers/{id}/delete",
-      "status": "CODE ONLY",
+      "status": "LIVE",
       "sites": [
         "src/airwallex/batchTransfers.ts:177"
       ],
-      "firstLive": null,
-      "liveRecords": [],
-      "firstTest": null,
-      "testFiles": 0
+      "firstLive": {
+        "date": "2026-11-19",
+        "at": "2026-11-19T09:13:10.105Z",
+        "record": "docs/runs/2026-11-19-airwallex-coverage.json"
+      },
+      "liveRecords": [
+        "docs/runs/2026-11-19-airwallex-coverage.json"
+      ],
+      "firstTest": "test/airwallex-coverage-live.test.ts:27",
+      "testFiles": 1
     },
     {
       "endpoint": "GET /batch_transfers/{id}/items",
@@ -324,10 +345,11 @@
       "liveRecords": [
         "docs/runs/2026-11-12-airwallex-batch-transfer-2.json",
         "docs/runs/2026-11-12-airwallex-batch-transfer.json",
-        "docs/runs/2026-11-13-airwallex-switch-on.json"
+        "docs/runs/2026-11-13-airwallex-switch-on.json",
+        "docs/runs/2026-11-19-airwallex-coverage.json"
       ],
-      "firstTest": null,
-      "testFiles": 0
+      "firstTest": "test/airwallex-coverage-live.test.ts:27",
+      "testFiles": 1
     },
     {
       "endpoint": "GET /beneficiaries",
@@ -335,8 +357,8 @@
       "path": "/beneficiaries",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:214",
-        "src/airwallex/adapter.ts:332",
+        "src/airwallex/adapter.ts:225",
+        "src/airwallex/adapter.ts:343",
         "worker/src/awxRead.ts:291"
       ],
       "firstLive": {
@@ -347,7 +369,8 @@
       "liveRecords": [
         "docs/demo/airwallex-run.json",
         "docs/runs/2026-11-10-platform-e2e/calls-earlier-attempts.jsonl",
-        "docs/runs/2026-11-10-platform-e2e/calls.jsonl"
+        "docs/runs/2026-11-10-platform-e2e/calls.jsonl",
+        "docs/runs/2026-11-19-airwallex-soak.json"
       ],
       "firstTest": null,
       "testFiles": 0
@@ -377,8 +400,8 @@
       "path": "/beneficiaries/create",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:244",
-        "src/airwallex/adapter.ts:314"
+        "src/airwallex/adapter.ts:255",
+        "src/airwallex/adapter.ts:325"
       ],
       "firstLive": {
         "date": "2026-11-10",
@@ -397,8 +420,8 @@
       "path": "/beneficiaries/schema",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:236",
-        "src/airwallex/adapter.ts:309"
+        "src/airwallex/adapter.ts:247",
+        "src/airwallex/adapter.ts:320"
       ],
       "firstLive": {
         "date": "2026-11-10",
@@ -418,8 +441,8 @@
       "path": "/beneficiaries/validate",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:243",
-        "src/airwallex/adapter.ts:313"
+        "src/airwallex/adapter.ts:254",
+        "src/airwallex/adapter.ts:324"
       ],
       "firstLive": {
         "date": "2026-11-10",
@@ -478,7 +501,7 @@
       "path": "/deposits",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:151",
+        "src/airwallex/adapter.ts:162",
         "src/airwallex/deposits.ts:49",
         "src/airwallex/verify.ts:39",
         "src/cli/awxReadback.ts:31",
@@ -502,14 +525,20 @@
       "endpoint": "GET /deposits/{id}",
       "method": "GET",
       "path": "/deposits/{id}",
-      "status": "CODE ONLY",
+      "status": "LIVE",
       "sites": [
         "src/finance/dataQa.ts:251"
       ],
-      "firstLive": null,
-      "liveRecords": [],
-      "firstTest": null,
-      "testFiles": 0
+      "firstLive": {
+        "date": "2026-11-19",
+        "at": "2026-11-19T09:13:13.287Z",
+        "record": "docs/runs/2026-11-19-airwallex-coverage.json"
+      },
+      "liveRecords": [
+        "docs/runs/2026-11-19-airwallex-coverage.json"
+      ],
+      "firstTest": "test/airwallex-coverage-live.test.ts:30",
+      "testFiles": 1
     },
     {
       "endpoint": "GET /financial_transactions",
@@ -539,9 +568,11 @@
       "path": "/fx/conversions",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:203",
+        "src/airwallex/adapter.ts:214",
         "src/airwallex/verify.ts:62",
         "src/cli/fail.ts:112",
+        "src/e2e/airwallexSoak.ts:365",
+        "src/e2e/airwallexSoak.ts:414",
         "src/finance/dataQa.ts:238"
       ],
       "firstLive": {
@@ -550,7 +581,8 @@
         "record": "docs/demo/airwallex-run.json"
       },
       "liveRecords": [
-        "docs/demo/airwallex-run.json"
+        "docs/demo/airwallex-run.json",
+        "docs/runs/2026-11-19-airwallex-soak.json"
       ],
       "firstTest": null,
       "testFiles": 0
@@ -581,7 +613,7 @@
       "path": "/fx/conversions/create",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:190",
+        "src/airwallex/adapter.ts:201",
         "src/airwallex/apiTrail.ts:242"
       ],
       "firstLive": {
@@ -590,7 +622,8 @@
         "record": "docs/demo/airwallex-run.json"
       },
       "liveRecords": [
-        "docs/demo/airwallex-run.json"
+        "docs/demo/airwallex-run.json",
+        "docs/runs/2026-11-19-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-client.test.ts:76",
       "testFiles": 3
@@ -620,7 +653,7 @@
       "path": "/fx/quotes/create",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:179",
+        "src/airwallex/adapter.ts:190",
         "src/airwallex/apiTrail.ts:241",
         "worker/src/fxQuote.ts:133"
       ],
@@ -630,7 +663,8 @@
         "record": "docs/demo/airwallex-run.json"
       },
       "liveRecords": [
-        "docs/demo/airwallex-run.json"
+        "docs/demo/airwallex-run.json",
+        "docs/runs/2026-11-19-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-adapter.test.ts:53",
       "testFiles": 4
@@ -641,7 +675,7 @@
       "path": "/fx/rates/current",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:169",
+        "src/airwallex/adapter.ts:180",
         "worker/src/awxRead.ts:279"
       ],
       "firstLive": {
@@ -652,7 +686,8 @@
       "liveRecords": [
         "docs/demo/airwallex-run.json",
         "docs/runs/2026-11-10-platform-e2e/calls-earlier-attempts.jsonl",
-        "docs/runs/2026-11-10-platform-e2e/calls.jsonl"
+        "docs/runs/2026-11-10-platform-e2e/calls.jsonl",
+        "docs/runs/2026-11-19-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-adapter.test.ts:33",
       "testFiles": 3
@@ -663,7 +698,7 @@
       "path": "/global_accounts",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:139",
+        "src/airwallex/adapter.ts:146",
         "src/cli/awxSwitchOn.ts:295",
         "src/cli/receivables.ts:31",
         "worker/src/awxRead.ts:263"
@@ -674,37 +709,44 @@
         "record": "docs/runs/2026-11-13-airwallex-deposits.json"
       },
       "liveRecords": [
-        "docs/runs/2026-11-13-airwallex-deposits.json"
+        "docs/runs/2026-11-13-airwallex-deposits.json",
+        "docs/runs/2026-11-19-airwallex-coverage.json"
       ],
-      "firstTest": null,
-      "testFiles": 0
+      "firstTest": "test/airwallex-coverage-live.test.ts:29",
+      "testFiles": 1
     },
     {
       "endpoint": "POST /global_accounts/create",
       "method": "POST",
       "path": "/global_accounts/create",
-      "status": "TESTED ONLY",
+      "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:142",
+        "src/airwallex/adapter.ts:153",
         "src/cli/receivables.ts:34"
       ],
-      "firstLive": null,
-      "liveRecords": [],
-      "firstTest": "test/cloud-awx-act.test.ts:35",
-      "testFiles": 1
+      "firstLive": {
+        "date": "2026-11-19",
+        "at": "2026-11-19T09:13:12.598Z",
+        "record": "docs/runs/2026-11-19-airwallex-coverage.json"
+      },
+      "liveRecords": [
+        "docs/runs/2026-11-19-airwallex-coverage.json"
+      ],
+      "firstTest": "test/airwallex-coverage-live.test.ts:29",
+      "testFiles": 2
     },
     {
       "endpoint": "POST /hosted_flows/{id}/authorize",
       "method": "POST",
       "path": "/hosted_flows/{id}/authorize",
-      "status": "CODE ONLY",
+      "status": "TESTED ONLY",
       "sites": [
         "src/airwallex/platform.ts:107"
       ],
       "firstLive": null,
       "liveRecords": [],
-      "firstTest": null,
-      "testFiles": 0
+      "firstTest": "test/airwallex-coverage-live.test.ts:62",
+      "testFiles": 1
     },
     {
       "endpoint": "POST /hosted_flows/create",
@@ -749,15 +791,21 @@
       "endpoint": "POST /issuing/cardholders/create",
       "method": "POST",
       "path": "/issuing/cardholders/create",
-      "status": "TESTED ONLY",
+      "status": "LIVE",
       "sites": [
         "src/airwallex/issuing.ts:185",
         "worker/src/awxCards.ts:181"
       ],
-      "firstLive": null,
-      "liveRecords": [],
-      "firstTest": "test/support/awxCardsFake.ts:36",
-      "testFiles": 1
+      "firstLive": {
+        "date": "2026-11-19",
+        "at": "2026-11-19T09:13:11.807Z",
+        "record": "docs/runs/2026-11-19-airwallex-coverage.json"
+      },
+      "liveRecords": [
+        "docs/runs/2026-11-19-airwallex-coverage.json"
+      ],
+      "firstTest": "test/airwallex-coverage-live.test.ts:29",
+      "testFiles": 2
     },
     {
       "endpoint": "GET /issuing/cards",
@@ -858,6 +906,7 @@
         "src/airwallex/issuing.ts:259",
         "src/cli/awxReadback.ts:40",
         "src/finance/dataQa.ts:263",
+        "src/proof/awxCoverageLive.ts:234",
         "worker/src/awxCards.ts:166"
       ],
       "firstLive": {
@@ -867,24 +916,31 @@
       },
       "liveRecords": [
         "docs/demo/airwallex-run.json",
+        "docs/runs/2026-11-19-airwallex-coverage.json",
         "docs/runs/airwallex-readback.json"
       ],
       "firstTest": "test/agent-cards.test.ts:22",
-      "testFiles": 3
+      "testFiles": 4
     },
     {
       "endpoint": "GET /issuing/transactions/{id}",
       "method": "GET",
       "path": "/issuing/transactions/{id}",
-      "status": "CODE ONLY",
+      "status": "LIVE",
       "sites": [
         "src/cli/awxReadback.ts:54",
         "src/finance/dataQa.ts:262"
       ],
-      "firstLive": null,
-      "liveRecords": [],
-      "firstTest": null,
-      "testFiles": 0
+      "firstLive": {
+        "date": "2026-11-19",
+        "at": "2026-11-19T09:13:14.512Z",
+        "record": "docs/runs/2026-11-19-airwallex-coverage.json"
+      },
+      "liveRecords": [
+        "docs/runs/2026-11-19-airwallex-coverage.json"
+      ],
+      "firstTest": "test/airwallex-coverage-live.test.ts:30",
+      "testFiles": 1
     },
     {
       "endpoint": "GET /pa/payment_intents/{id}",
@@ -906,24 +962,31 @@
       },
       "liveRecords": [
         "docs/demo/airi-run.json",
+        "docs/runs/2026-11-19-airwallex-coverage.json",
         "docs/runs/airwallex-vic-payment-intents-2026-11-12.json"
       ],
-      "firstTest": null,
-      "testFiles": 0
+      "firstTest": "test/airwallex-coverage-live.test.ts:31",
+      "testFiles": 1
     },
     {
       "endpoint": "POST /pa/payment_intents/{id}/confirm",
       "method": "POST",
       "path": "/pa/payment_intents/{id}/confirm",
-      "status": "CODE ONLY",
+      "status": "LIVE",
       "sites": [
         "src/airi/checkout.ts:133",
         "src/airwallex/acceptance.ts:68"
       ],
-      "firstLive": null,
-      "liveRecords": [],
-      "firstTest": null,
-      "testFiles": 0
+      "firstLive": {
+        "date": "2026-11-19",
+        "at": "2026-11-19T09:13:16.001Z",
+        "record": "docs/runs/2026-11-19-airwallex-coverage.json"
+      },
+      "liveRecords": [
+        "docs/runs/2026-11-19-airwallex-coverage.json"
+      ],
+      "firstTest": "test/airwallex-coverage-live.test.ts:31",
+      "testFiles": 1
     },
     {
       "endpoint": "POST /pa/payment_intents/create",
@@ -940,10 +1003,11 @@
         "record": "docs/demo/airi-run.json"
       },
       "liveRecords": [
-        "docs/demo/airi-run.json"
+        "docs/demo/airi-run.json",
+        "docs/runs/2026-11-19-airwallex-coverage.json"
       ],
       "firstTest": "test/airi-checkout.test.ts:57",
-      "testFiles": 4
+      "testFiles": 5
     },
     {
       "endpoint": "POST /simulation/accounts/{id}/update_status",
@@ -970,7 +1034,7 @@
       "path": "/simulation/deposit/create",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:162",
+        "src/airwallex/adapter.ts:173",
         "src/airwallex/deposits.ts:87",
         "src/cli/receivables.ts:61",
         "src/cli/receivables.ts:75"
@@ -1013,7 +1077,7 @@
       "path": "/simulation/transfers/{id}/transition",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:274",
+        "src/airwallex/adapter.ts:285",
         "worker/src/awxPayout.ts:138"
       ],
       "firstLive": {
@@ -1025,7 +1089,8 @@
         "docs/demo/airwallex-run.json",
         "docs/runs/2026-11-10-platform-e2e/calls.jsonl",
         "docs/runs/2026-11-17-airwallex-late-failure.json",
-        "docs/runs/2026-11-19-airwallex-bills.json"
+        "docs/runs/2026-11-19-airwallex-bills.json",
+        "docs/runs/2026-11-19-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-dossier.test.ts:196",
       "testFiles": 2
@@ -1112,10 +1177,11 @@
       "path": "/transfers",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:258",
-        "src/airwallex/adapter.ts:264",
+        "src/airwallex/adapter.ts:269",
+        "src/airwallex/adapter.ts:275",
         "src/airwallex/verify.ts:78",
         "src/cli/fail.ts:113",
+        "src/e2e/airwallexSoak.ts:413",
         "src/finance/closeUnsent.ts:103",
         "worker/src/awxRead.ts:286"
       ],
@@ -1125,7 +1191,8 @@
         "record": "docs/demo/airwallex-run.json"
       },
       "liveRecords": [
-        "docs/demo/airwallex-run.json"
+        "docs/demo/airwallex-run.json",
+        "docs/runs/2026-11-19-airwallex-soak.json"
       ],
       "firstTest": "test/cloud-awx-act.test.ts:37",
       "testFiles": 2
@@ -1136,9 +1203,10 @@
       "path": "/transfers/{id}",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:270",
+        "src/airwallex/adapter.ts:281",
         "src/cli/awxReadback.ts:52",
         "src/cli/lateFailure.ts:404",
+        "src/e2e/airwallexSoak.ts:361",
         "src/finance/dataQa.ts:227",
         "worker/src/awxPayout.ts:145",
         "worker/src/awxRead.ts:288"
@@ -1154,6 +1222,7 @@
         "docs/runs/2026-11-13-airwallex-switch-on.json",
         "docs/runs/2026-11-17-airwallex-late-failure.json",
         "docs/runs/2026-11-19-airwallex-bills.json",
+        "docs/runs/2026-11-19-airwallex-soak.json",
         "docs/runs/airwallex-readback.json",
         "docs/runs/airwallex-transfer-approval-2026-11-06.json"
       ],
@@ -1166,8 +1235,8 @@
       "path": "/transfers/create",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/adapter.ts:249",
-        "src/airwallex/adapter.ts:342",
+        "src/airwallex/adapter.ts:260",
+        "src/airwallex/adapter.ts:353",
         "src/airwallex/apiTrail.ts:239",
         "worker/src/awxPayout.ts:127"
       ],
@@ -1181,7 +1250,8 @@
         "docs/runs/2026-11-10-platform-e2e/calls-retry.jsonl",
         "docs/runs/2026-11-10-platform-e2e/calls.jsonl",
         "docs/runs/2026-11-17-airwallex-late-failure.json",
-        "docs/runs/2026-11-19-airwallex-bills.json"
+        "docs/runs/2026-11-19-airwallex-bills.json",
+        "docs/runs/2026-11-19-airwallex-soak.json"
       ],
       "firstTest": "test/agent-cards.test.ts:31",
       "testFiles": 7
@@ -1200,46 +1270,59 @@
         "record": "docs/demo/airwallex-run.json"
       },
       "liveRecords": [
-        "docs/demo/airwallex-run.json"
+        "docs/demo/airwallex-run.json",
+        "docs/runs/2026-11-19-airwallex-coverage.json"
       ],
-      "firstTest": "test/awx1-world.test.ts:68",
-      "testFiles": 1
+      "firstTest": "test/airwallex-coverage-live.test.ts:28",
+      "testFiles": 2
     },
     {
       "endpoint": "POST /webhooks/{id}/delete",
       "method": "POST",
       "path": "/webhooks/{id}/delete",
-      "status": "CODE ONLY",
+      "status": "LIVE",
       "sites": [
         "src/airwallex/webhooks.ts:44"
       ],
-      "firstLive": null,
-      "liveRecords": [],
-      "firstTest": null,
-      "testFiles": 0
+      "firstLive": {
+        "date": "2026-11-19",
+        "at": "2026-11-19T09:13:11.151Z",
+        "record": "docs/runs/2026-11-19-airwallex-coverage.json"
+      },
+      "liveRecords": [
+        "docs/runs/2026-11-19-airwallex-coverage.json"
+      ],
+      "firstTest": "test/airwallex-coverage-live.test.ts:28",
+      "testFiles": 1
     },
     {
       "endpoint": "POST /webhooks/create",
       "method": "POST",
       "path": "/webhooks/create",
-      "status": "TESTED ONLY",
+      "status": "LIVE",
       "sites": [
         "src/airwallex/webhooks.ts:38"
       ],
-      "firstLive": null,
-      "liveRecords": [],
-      "firstTest": "test/contract/airwallex.test.ts:127",
-      "testFiles": 1
+      "firstLive": {
+        "date": "2026-11-19",
+        "at": "2026-11-19T09:13:10.787Z",
+        "record": "docs/runs/2026-11-19-airwallex-coverage.json"
+      },
+      "liveRecords": [
+        "docs/runs/2026-11-19-airwallex-coverage.json"
+      ],
+      "firstTest": "test/airwallex-coverage-live.test.ts:28",
+      "testFiles": 2
     }
   ],
   "totals": {
     "endpoints": 61,
-    "live": 50,
-    "testedOnly": 3,
-    "codeOnly": 8,
-    "liveAndTested": 22,
-    "callSites": 138,
-    "dynamicSites": 5
+    "live": 60,
+    "testedOnly": 1,
+    "codeOnly": 0,
+    "liveAndTested": 36,
+    "callSites": 143,
+    "dynamicSites": 6
   },
   "dynamic": [
     {
@@ -1265,6 +1348,12 @@
       "line": 39,
       "method": "GET",
       "expr": "call(\"GET\", p)"
+    },
+    {
+      "file": "src/proof/awxCoverageLive.ts",
+      "line": 226,
+      "method": "GET",
+      "expr": "call(\"GET\", path)"
     },
     {
       "file": "worker/src/awxRead.ts",
@@ -1331,8 +1420,8 @@
     }
   ],
   "scanned": {
-    "sourceFiles": 924,
-    "testFiles": 742,
-    "records": 245
+    "sourceFiles": 936,
+    "testFiles": 746,
+    "records": 304
   }
 }
