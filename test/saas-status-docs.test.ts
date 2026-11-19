@@ -331,9 +331,11 @@ describe("/status: what the page says before anything is read, and without JavaS
     expect(html).toContain("<h1>Status</h1>");
     expect(html).toContain("<title>Purser · Status</title>");
     expect(html).toMatch(/<span class="pill note">(?:<svg[\s\S]*?<\/svg>)?Sandbox and testnet only<\/span>/);
-    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["now", "runs"]);
-    expect(visibleWords(html)).toBeLessThanOrEqual(90);
-    expect(visibleWords(statusPage("offline"))).toBeLessThanOrEqual(90);
+    // 19 Nov: a third card, the hourly synthetic checks (src/ops/syntheticChecks.ts; test/status-checks.test.ts), whose
+    // numbers the Worker writes in when it serves the page: as built it has none, so the page stays short.
+    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["now", "runs", "checks"]);
+    expect(visibleWords(html)).toBeLessThanOrEqual(120);
+    expect(visibleWords(statusPage("offline"))).toBeLessThanOrEqual(110);
   });
 
   it("starts neutral: nothing in its HTML says the site is up, that no alarm stands or that a run is or is not going on", () => {

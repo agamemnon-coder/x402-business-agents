@@ -13,6 +13,7 @@
 // script and links to the hosted page instead of an address that would not answer.
 
 import { RUNNER_DOWN_AFTER_MS } from "../ops/publicHealth.js";
+import { CHECKS_END, CHECKS_START } from "../ops/syntheticChecks.js";
 import { SITE_URL } from "../ui/meta.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { outLink, productPage, repoHref, siteLink } from "./productPage.js";
@@ -125,9 +126,30 @@ const STATUS_CSS = `.kv { margin: 0; }
 #now[data-tone="unread"] .kv dd { color: var(--muted); }
 #now[data-tone="ok"] h2 .ic { color: var(--ok); } #now[data-tone="alarm"] h2 .ic { color: var(--bad); } #now[data-tone="unread"] h2 .ic { color: var(--muted); }
 ul.pl time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 4px; white-space: nowrap; }
-ul.pl li.grp { border-left: 0; padding-left: 0; color: var(--muted); font-weight: 600; }`;
+ul.pl li.grp { border-left: 0; padding-left: 0; color: var(--muted); font-weight: 600; }
+#checks { margin-top: 16px; }
+#checks .muted { color: var(--muted); font-weight: 400; }
+.ck-wrap { overflow-x: auto; max-width: 100%; }
+table.ck { border-collapse: collapse; width: 100%; font-size: 14px; line-height: 1.35; font-variant-numeric: tabular-nums; }
+table.ck th, table.ck td { text-align: left; padding: 8px 10px 8px 0; border-top: 1px solid var(--border); vertical-align: top; }
+table.ck thead th { color: var(--muted); font-weight: 600; border-top: 0; }`;
 
 const line = (label: string, id: string, rowId = "") => `<div${rowId ? ` id="${rowId}" hidden` : ""}><dt>${esc(label)}</dt><dd id="${id}">—</dd></div>`;
+
+/**
+ * The hourly synthetic checks (src/ops/syntheticChecks.ts). Hosted, the Worker fills in what is between the markers
+ * from its own store when it serves the page (worker/src/index.ts); as built, and in any copy without the Worker, it
+ * says there are no results here. Never a number the page did not get from the checks.
+ */
+function checksCard(mode: StatusMode): string {
+  const inner = mode === "hosted"
+    ? `<p>No check results in this copy: the hosted site fills this in from its hourly checks.</p>`
+    : `<p>No hourly checks in this offline copy.</p>`;
+  const link = mode === "hosted" ? siteLink("status.json", "The raw numbers: /status.json") : outLink(`${SITE_URL}/status`, "The hosted status page");
+  return `<article class="pc card" id="checks"><h2><span class="ic">${icon("clock", 19)}</span>Hourly checks of the public addresses</h2>
+    ${CHECKS_START}${inner}${CHECKS_END}
+    <div class="links">${link}</div></article>`;
+}
 
 export function statusPage(mode: StatusMode = "hosted"): string {
   // A partial run (runs.ts PARTIAL_RUNS) is not a live run here either.
@@ -144,7 +166,8 @@ export function statusPage(mode: StatusMode = "hosted"): string {
   <article class="pc card" id="runs"><h2><span class="ic">${icon("calendar-range", 19)}</span>Latest live runs${pill === null ? "" : `<span class="pill">${esc(pill)}</span>`}</h2>
     <ul class="pl">${runs.map((r, i) => `${groups && (i === 0 || rows[i]!.money !== rows[i - 1]!.money) ? `<li class="grp">${esc(rows[i]!.money)}</li>` : ""}<li><time datetime="${esc(r.iso)}">${esc(r.day)}</time> <a class="pf" href="${esc(r.href)}" target="_blank" rel="noopener" title="${esc(r.title)}">${esc(r.short)} ↗</a></li>`).join("")}</ul>
     <div class="links">${siteLink(RUNS_URL, RUNS_TITLE)}</div></article>
-</div>`;
+</div>
+${checksCard(mode)}`;
   return productPage({
     key: "status", title: "Status", h1: "Status", label: "Sandbox and testnet only",
     lead: mode === "hosted" ? "Read live from this site itself." : "An offline copy, with no live status.",

@@ -27,6 +27,8 @@ import { needsNote, writeReviewNote } from "./review.js";
 import { parseApFallback } from "./reading.js";
 import { parseEml } from "./eml.js";
 import { isPdf, pdfText } from "./pdfText.js";
+import { documentText } from "./docText.js";
+import { looksLikeXml, receivePeppol, type PeppolResult } from "./peppol.js";
 import { EXPENSE_ACCOUNTS, readDocument, type Asker } from "./read.js";
 import { imageInfo, imageToPdf, readScan, scanFinding, scanRefusal, type ScanResult } from "./scan.js";
 import type { ApReading } from "./reading.js";
@@ -145,9 +147,19 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
     if (depth > 0) throw new Error(`${doc.filename} is an e-mail inside an e-mail; it is not opened (forward its PDF instead); nothing was filed`);
     return { kind: "email", results: await ingestEmail(db, deps, doc.bytes, { ...doc.meta, file: doc.filename }, doc.source === "email" ? "email" : doc.source) };
   }
+  // A Peppol UBL invoice or credit note (src/ap/peppol.ts): read strictly from its XML, its business rules checked; one
+  // that cannot be read as UBL is refused before anything is filed.
+  let peppol: PeppolResult | null = null;
+  if (looksLikeXml(doc.bytes)) {
+    try {
+      peppol = receivePeppol(doc.bytes);
+    } catch (e) {
+      throw new Error(`${doc.filename} is XML but not a Peppol invoice Purser can read (${(e as Error).message.slice(0, 200)}); nothing was filed`, { cause: e });
+    }
+  }
   // A photo (JPEG or PNG) is kept as a one-page PDF and read like a scan; its size is checked from its header first.
-  const photo = isPdf(doc.bytes) ? null : imageInfo(doc.bytes);
-  if (!isPdf(doc.bytes) && !photo) throw new Error(`${doc.filename} is not a PDF: only PDF invoices, photos of invoices (JPEG or PNG), or e-mails (.eml) with one attached, are taken in; nothing was filed`);
+  const photo = peppol || isPdf(doc.bytes) ? null : imageInfo(doc.bytes);
+  if (!peppol && !isPdf(doc.bytes) && !photo) throw new Error(`${doc.filename} is not a PDF: only PDF invoices, photos of invoices (JPEG or PNG), Peppol UBL invoices (XML), or e-mails (.eml) with one attached, are taken in; nothing was filed`);
   const bytes = photo ? await imageToPdf(doc.bytes, photo) : doc.bytes;
   const meta = photo ? { ...doc.meta, original_type: photo.type, original_bytes: String(doc.bytes.length) } : doc.meta;
   const now = (deps.now ?? (() => new Date()))();
@@ -166,7 +178,7 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   // bytes there; without one they are a file in the payables folder, as before.
   const store = docStoreOf(db);
   const docs = join(deps.dir, "docs");
-  const path = store ? store.put(sha, bytes) : join(docs, `${sha}.pdf`);
+  const path = store ? store.put(sha, bytes) : join(docs, `${sha}.${peppol ? "xml" : "pdf"}`);
   if (!store) {
     mkdirSync(docs, { recursive: true });
     if (!existsSync(path)) {
@@ -179,7 +191,8 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   let noText: string | undefined;
   let scan: ScanResult | null = null;
   try {
-    const read = await pdfText(bytes);
+    // A Peppol invoice's words are its rendering (the XML itself is kept as filed).
+    const read = peppol ? { text: peppol.text, pages: 1 } : await pdfText(bytes);
     text = read.text;
     if (!text) {
       // A scan (or a photo): read by a model as pages, twice, within the limits; otherwise it waits for a person.
@@ -192,8 +205,8 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   }
 
   if (!known) {
-    db.prepare("INSERT INTO ap_documents (sha256, filename, mime, bytes, path, source, meta_json, text_chars, received_at) VALUES (?, ?, 'application/pdf', ?, ?, ?, ?, ?, ?)")
-      .run(sha, doc.filename.slice(0, 200), bytes.length, path, doc.source, JSON.stringify(meta ?? {}), text.length, now.toISOString());
+    db.prepare("INSERT INTO ap_documents (sha256, filename, mime, bytes, path, source, meta_json, text_chars, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(sha, doc.filename.slice(0, 200), peppol ? "application/xml" : "application/pdf", bytes.length, path, doc.source, JSON.stringify(peppol ? { ...meta, format: "peppol-ubl" } : meta ?? {}), text.length, now.toISOString());
   }
   // Points where a test may stop the process (src/policy/saga.ts checkpoint); in a live run they do nothing.
   await checkpoint("ap.ingest:filed");
@@ -202,11 +215,12 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   // carries the label its two readings gave.
   // Speed (12 Nov): where the caller says so (the cloud engine), the full reading starts together with the label, so the
   // two model calls overlap; a document the label says is not read in full keeps the parser's reading, as before.
-  const readAhead = deps.readInParallel && !scan && !noText ? readDocument(db, deps.reader, text, sha).catch(() => null) : null;
-  const cls = scan ? { kind: scan.docKind as DocKind, by: `claude-scan:${scan.model}` } : noText ? { kind: "unread" as const, by: "none" } : await classifyDocument(db, deps.reader, text, sha);
+  // A Peppol invoice needs no model: its kind and fields are in the XML.
+  const readAhead = deps.readInParallel && !scan && !noText && !peppol ? readDocument(db, deps.reader, text, sha).catch(() => null) : null;
+  const cls = peppol ? { kind: peppol.invoice.kind as DocKind, by: "peppol-ubl" } : scan ? { kind: scan.docKind as DocKind, by: `claude-scan:${scan.model}` } : noText ? { kind: "unread" as const, by: "none" } : await classifyDocument(db, deps.reader, text, sha);
   const readFully = cls.kind === "invoice" || cls.kind === "credit_note" || cls.kind === "reminder";
   const earlyRead = readAhead ? await readAhead : null;
-  const { reading, readBy } = scan ? { reading: scan.reading, readBy: `claude-scan:${scan.model}` } : readFully ? earlyRead ?? await readDocument(db, deps.reader, text, sha) : { reading: parseApFallback(text), readBy: "parser" };
+  const { reading, readBy } = peppol ? { reading: peppol.reading, readBy: "peppol-ubl" } : scan ? { reading: scan.reading, readBy: `claude-scan:${scan.model}` } : readFully ? earlyRead ?? await readDocument(db, deps.reader, text, sha) : { reading: parseApFallback(text), readBy: "parser" };
   // A scan has no text layer: its checks run on the model's transcription of the pages (red team 6: credit-note words,
   // a bracketed total or a bank-change line on a scan were never seen by any check).
   const checkText = scan ? scan.transcription : text;
@@ -224,6 +238,9 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
     const c = readFully || noText ? invoiceCase(db, reading, checkText, ctx) : null;
     const findings = c ? [...codeFindings(c)] : [...notAnInvoice(cls.kind).findings];
     if (scan && readFully) findings.push(scanFinding(scan));
+    // A Peppol invoice's broken business rules and Purser's payment flags (a payee who is not the seller, two accounts, a
+    // direct debit) each hold it for a person.
+    if (peppol) for (const f of peppol.findings) if (!findings.some((x) => x.code === f.code && x.detail === f.detail)) findings.push(f);
     if ((cls.kind === "credit_note" || rules.credit_note) && !findings.some((x) => x.code === "credit_note")) {
       findings.push({ code: "credit_note", level: "review", detail: `a credit note${cls.kind === "credit_note" ? "" : " by its own words (whatever the model's label)"}: nothing is paid; a person sets it against this supplier's next invoice` });
     }
@@ -333,7 +350,8 @@ export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink" | "cl
     if (!["invoice", "credit_note", "reminder"].includes(inv.doc_kind)) continue;
     const doc = db.prepare("SELECT path, text_chars FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string; text_chars: number };
     let text: string;
-    try { text = doc.text_chars ? (await pdfText(readDoc(db, doc.path))).text : ""; } catch { text = ""; }
+    let peppol: PeppolResult | null = null;
+    try { ({ text, peppol } = doc.text_chars ? await documentText(readDoc(db, doc.path)) : { text: "", peppol: null }); } catch { text = ""; }
     // A scan has no text: it is checked again on its stored reading, with its scan finding as read.
     const scanned = text ? undefined : (db.prepare("SELECT agreed, differ_json, readings, transcription FROM ap_scan_readings WHERE invoice_id = ?").get(inv.id) as { agreed: number; differ_json: string; readings: number; transcription: string | null } | undefined);
     if (!text && !scanned) { out.push(inv); continue; }
@@ -342,6 +360,8 @@ export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink" | "cl
     const codeChecks = (): CodeChecks => {
       const c = invoiceCase(db, inv.reading, scanned ? scanned.transcription ?? "" : text, { docSha: inv.doc_sha256, now, selfId: inv.id });
       const findings = [...codeFindings(c)];
+      // A Peppol invoice keeps its rule findings on every check (src/ap/peppol.ts).
+      if (peppol) for (const f of peppol.findings) if (!findings.some((x) => x.code === f.code && x.detail === f.detail)) findings.push(f);
       if (scanned) findings.push(scanFinding({ agreed: scanned.agreed === 1 && !!scanned.transcription, differ: JSON.parse(scanned.differ_json) as string[], readings: scanned.readings }));
       if (scanned?.transcription) {
         const signals = ruleSignals(scanned.transcription);
