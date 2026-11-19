@@ -277,7 +277,8 @@ export function classify(scan: Scan, tests: TestHit[], live: LiveMention[], coun
 /** By path, then method: an endpoint's GET and POST sit together. */
 const sortEndpoints = (a: string, b: string) => { const [ma, pa] = a.split(" "), [mb, pb] = b.split(" "); return pa!.localeCompare(pb!) || ma!.localeCompare(mb!); };
 
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+/** One Markdown table cell: backslashes first, then pipes, so no value can end a cell early. */
+export const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
 
 /** The report, as Markdown. Everything in it is from the scan; nothing is typed by hand. */
 export function coverageMarkdown(c: Coverage): string {

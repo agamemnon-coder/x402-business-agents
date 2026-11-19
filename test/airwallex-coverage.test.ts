@@ -154,3 +154,13 @@ describe("the committed report (docs/evidence/airwallex-api-coverage.json)", () 
     expect(t.liveRecords).toContain("docs/demo/airwallex-run.json");
   });
 });
+
+describe("Markdown cells (CodeQL, 19 Nov 2026)", () => {
+  it("escapes a backslash before a pipe, so a value cannot end its cell early", async () => {
+    const { cell } = await import("../src/proof/awxCoverage.js");
+    expect(cell("a|b")).toBe("a\\|b");
+    expect(cell("a\\|b")).toBe("a\\\\\\|b");
+    expect(cell("ends\\")).toBe("ends\\\\");
+    expect(cell("two\nlines")).toBe("two lines");
+  });
+});

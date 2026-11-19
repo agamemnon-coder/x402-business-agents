@@ -9,6 +9,7 @@
 import { createHash } from "node:crypto";
 import { verifyProofBundle, PROOF_FORMAT } from "./bundle.js";
 import { canonicalTerms, RECEIPT_FORMAT, verifyReceipt } from "../try/receipt.js";
+import { cell } from "./awxCoverage.js";
 
 export type Kind = "receipt" | "bundle";
 type J = Record<string, unknown>;
@@ -171,7 +172,6 @@ export function totalsOf(artifacts: ArtifactResult[]): Matrix["totals"] {
   };
 }
 
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
 const where = (a: ArtifactResult) => (a.at === "$" ? a.file : `${a.file} (${a.at})`);
 
 /** The report, as Markdown: totals first, any accepted change loudly, then every artifact's matrix. */

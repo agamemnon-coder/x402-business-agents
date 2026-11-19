@@ -19,7 +19,7 @@ test/airwallex-coverage.test.ts). Offline: nothing here calls Airwallex. Every c
    it only counts calls. The Markdown run logs are not read: only machine-readable records count.
 3. **TESTED ONLY.** No record holds it, but a test under test/ names this method and this path together: a call
    with both, a "METHOD /path" string (a stand-in's call log), or an object with a method and a path (a stand-in's
-   route). A path named without its method does not count. 739 test files read (not this report's own test, whose fixtures name endpoints on purpose).
+   route). A path named without its method does not count. 740 test files read (not this report's own test, whose fixtures name endpoints on purpose).
 4. **CODE ONLY.** Neither: the code can make the call; nothing committed shows it ran or a test that names it.
 
 What this does not show: that a LIVE call succeeded (some records hold refusals, which are the point of those runs),
