@@ -33,8 +33,26 @@ const head = (bytes: Uint8Array) => new TextDecoder("utf-8", { fatal: false }).d
 
 /** Whether the bytes look like a UBL invoice or credit note (cheap: the first element only). */
 export function looksLikeUbl(bytes: Uint8Array): boolean {
-  return /^\s*(<\?xml[^>]*\?>\s*)?(<!--[\s\S]*?-->\s*)*<([A-Za-z_][\w.-]*:)?(Invoice|CreditNote)[\s>]/.test(head(bytes));
+  return /^<([A-Za-z_][\w.-]*:)?(Invoice|CreditNote)[\s>]/.test(afterProlog(head(bytes)));
 }
+
+/** The text after the XML declaration and any leading comments, found by index (no backtracking regex). */
+export function afterProlog(xml: string): string {
+  let s = xml.trimStart();
+  if (s.startsWith("<?xml")) {
+    const end = s.indexOf("?>");
+    if (end < 0) return s;
+    s = s.slice(end + 2).trimStart();
+  }
+  while (s.startsWith("<!--")) {
+    const end = s.indexOf("-->", 4);
+    if (end < 0) return s;
+    s = s.slice(end + 3).trimStart();
+  }
+  return s;
+}
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** The text of the first element with this local name (any prefix), unescaped, cleaned; "" when absent. */
 function first(xml: string, local: string): string {
@@ -52,11 +70,11 @@ export function readUbl(bytes: Uint8Array): UblInvoice {
   let xml: string;
   try { xml = new TextDecoder("utf-8", { fatal: true }).decode(bytes).replace(/^\uFEFF/, ""); } catch { throw new WorkplaceError("invalid", "the UBL file is not UTF-8 text"); }
   if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw new WorkplaceError("invalid", "the UBL file declares a DOCTYPE or an entity; such files are refused unread");
-  const root = /^\s*(?:<\?xml[^>]*\?>\s*)?(?:<!--[\s\S]*?-->\s*)*<(?:([A-Za-z_][\w.-]*):)?(Invoice|CreditNote)(\s[^>]*)?>/.exec(xml);
+  const root = /^<(?:([A-Za-z_][\w.-]*):)?(Invoice|CreditNote)(\s[^>]*)?>/.exec(afterProlog(xml));
   if (!root) throw new WorkplaceError("invalid", "the file is not a UBL Invoice or CreditNote");
   const kind = root[2] as "Invoice" | "CreditNote";
   const nsAttr = root[1] ? `xmlns:${root[1]}` : "xmlns";
-  const ns = new RegExp(`${nsAttr.replace(/[.]/g, "\\.")}\\s*=\\s*"([^"]*)"`).exec(root[3] ?? "")?.[1];
+  const ns = new RegExp(`${escapeRegExp(nsAttr)}\\s*=\\s*"([^"]*)"`).exec(root[3] ?? "")?.[1];
   if (ns !== NS[kind]) throw new WorkplaceError("invalid", `the root ${kind} is not in the UBL namespace ${NS[kind]}`);
 
   let pdf: UblInvoice["pdf"] = null;
