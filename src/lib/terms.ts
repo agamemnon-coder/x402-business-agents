@@ -29,7 +29,9 @@ function assertNoNumbers(value: Json, path: string): void {
 
 export function canonicalTerms(terms: Terms): string {
   if (terms.schema !== TERMS_SCHEMA) throw new Error(`unknown terms schema: ${terms.schema}`);
-  if (!ISO_UTC.test(terms.expires_at)) throw new Error(`expires_at must be UTC ISO-8601 with Z: ${terms.expires_at}`);
+  // A string, not anything that coerces to one: RegExp.test(["2026-11-19T10:00:00Z"]) is true (found while modelling
+  // canonicalTerms in formal/dafny/Terms.dfy, 19 November).
+  if (typeof terms.expires_at !== "string" || !ISO_UTC.test(terms.expires_at)) throw new Error(`expires_at must be UTC ISO-8601 with Z: ${String(terms.expires_at)}`);
   assertNoNumbers(terms, "terms");
   return jcs(terms);
 }

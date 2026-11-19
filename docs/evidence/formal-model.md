@@ -138,3 +138,12 @@ npm run formal -- --bugs    # the planted bugs only (seconds)
 It downloads `tla2tools.jar` v1.7.4 from the official tlaplus GitHub release once, checks its SHA-256, and caches it
 in `~/.cache/purser-tla` (or `TLA_CACHE`). The jar is never committed. CI job `formal` runs the same, with Java 21 and
 the jar cached on its checksum.
+
+## One step closer to the code: Dafny proofs
+
+This model takes hashes as identities ("Terms are one of two values"). [formal-proofs.md](formal-proofs.md) closes part
+of that gap with machine-checked Dafny proofs about the TypeScript itself (`formal/dafny/`, `npm run formal:dafny`, CI
+job `formal-dafny`): the canonical encoding of the terms is injective down to the bytes SHA-256 reads, so a forged
+invoice with the signed hash needs a real SHA-256 collision; `toCents`/`fromCents` are exact and refuse everything else;
+and the pay-alone limit and the agent's cap compare integer cents correctly. A differential test runs the verified
+functions against the production code on every test run. What those proofs assume and leave out is listed there.

@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "label": "Dafny",
+  "message": "172 verified, 0 errors",
+  "color": "brightgreen",
+  "record": "docs/evidence/formal-proofs.json"
+}

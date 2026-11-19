@@ -163,6 +163,7 @@
     "chaos:money": "tsx --require ./test/support/no-network.cjs src/cli/chaosMoney.ts",
     "fuzz": "tsx --require ./test/support/no-network.cjs src/cli/fuzz.ts",
     "formal": "bash scripts/formal.sh",
+    "formal:dafny": "bash scripts/formal-dafny.sh",
     "badges": "tsx scripts/badges.ts",
     "reconcile": "tsx src/cli/reconcile.ts",
     "smoke:sandbox": "tsx src/cli/smokeSandbox.ts",
