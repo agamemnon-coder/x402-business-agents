@@ -156,6 +156,7 @@
     "redteam:api": "tsx --require ./test/support/no-network.cjs src/cli/redteamApi.ts",
     "chaos:money": "tsx --require ./test/support/no-network.cjs src/cli/chaosMoney.ts",
     "fuzz": "tsx --require ./test/support/no-network.cjs src/cli/fuzz.ts",
+    "formal": "bash scripts/formal.sh",
     "reconcile": "tsx src/cli/reconcile.ts",
     "smoke:sandbox": "tsx src/cli/smokeSandbox.ts",
     "data-qa": "tsx src/cli/dataQa.ts",
