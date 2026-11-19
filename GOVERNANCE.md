@@ -81,10 +81,10 @@ is incapacitated or stops. **With one maintainer, that rests on a plan the owner
 
 | What someone else needs | How it reaches them | Status |
 |---|---|---|
-| The repository itself | GitHub's *successor* setting on the owner's personal account (Settings → Account → **Successor settings**): a named person who may take over the account's public repositories if the owner dies. Anyone can also fork the code under the MIT licence. | Owner action: invite a successor and have them accept |
-| Merge and release rights within a week | A sealed recovery note in a password manager's emergency access (or a lockbox with a trusted person) holding the GitHub account's recovery codes, with a waiting period the owner can deny while able | Owner action |
-| The hosted test preview | The Cloudflare account that serves the Workers (`*.max-31b.workers.dev`), in the same sealed note. The site is a test preview with test money only; losing it stops no user's payments. | Owner action |
-| The legal right to continue | A short written statement (in the will, or a signed letter with the sealed note) that the successor may run the project, its name and its accounts | Owner action |
+| The repository itself | Through the sealed note below: the GitHub account's recovery codes reach a trusted person. GitHub's *successor* setting (Settings → Account → **Successor settings**) is a further option, not set. Anyone can also fork the code under the MIT licence. | In place since 19 November 2026 (sealed note) |
+| Merge and release rights within a week | A sealed recovery note in a password manager's emergency access (or a lockbox with a trusted person) holding the GitHub account's recovery codes, with a waiting period the owner can deny while able | In place since 19 November 2026: a password manager's emergency access, with a waiting period |
+| The hosted test preview | The Cloudflare account that serves the Workers (`*.max-31b.workers.dev`), in the same sealed note. The site is a test preview with test money only; losing it stops no user's payments. | In place since 19 November 2026 (same note) |
+| The legal right to continue | A short written statement (in the will, or a signed letter with the sealed note) that the successor may run the project, its name and its accounts | In place since 19 November 2026 (with the sealed note) |
 | Keys for live runs | Not needed to continue: every live run uses the Airwallex sandbox and Alta testnet, and a successor creates new sandbox and testnet keys of their own ([docs/runbook.md](docs/runbook.md)). The private keys repository is not passed on. | Nothing to hand over |
 
 Once a second maintainer has joined, they hold merge and release rights directly and the plan above becomes the
