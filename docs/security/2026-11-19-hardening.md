@@ -126,4 +126,22 @@ key reaches, not what the host can do.
 
 ## 5. The repository's own checks on these changes
 
-Filled in below from the runs on this branch.
+Run on this branch on 19 November, with every key unset (no model, no Airwallex, no chain):
+
+| Check | Result |
+|---|---|
+| `npm run redteam` | 35 of 35 attempts blocked, 0 inconclusive, 0 not blocked (scripted attacks, no model); the committed report left as it was |
+| `npm run zero-trust` | 53 attacks run, 53 stopped, money moved in 0; 9 holes found and fixed; report regenerated at the commit of section 2 |
+| `npm run lint`, `npm run typecheck` | clean |
+| Tests of the touched areas (111 files, `--testTimeout=60000`) | 1,657 passed after one fix: `test/try-redteam.test.ts` pinned the start's body cap at 2,000 bytes; it is 4,000 now, to fit a Turnstile token |
+| `npm run verify-all -- --no-write` | 58 passed, 5 could not run here (they need the chain or the full ledger), 0 failed; no evidence file written |
+| Semgrep | not run here (not installed in this environment); CI's `security` job runs it, blocking, with `.semgrep/purser.yml` |
+
+## What remains open, in one list
+
+- Purser's own code, if in an attacker's hands, can skip the hash-first check like any other check (section 1).
+- A card's limit: the database file with a passkey of its own, the no-passkey development mode, and Airwallex web-app
+  or Issuing-key access can still raise it (section 2).
+- Turnstile is on the server only; the /try page does not render the widget yet (section 3).
+- Role keys narrow what one leaked key reaches; the general key still serves calls without a role, and a runner host
+  taken over holds every key (section 4).
