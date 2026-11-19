@@ -363,6 +363,18 @@ export function totalsByRun(rows: readonly ScoreRow[]): Record<string, Record<Ar
 
 export const SCORECARD_CASES: readonly ApAgentCase[] = AP_AGENT_CASES;
 
+/**
+ * 19 Nov: the worst-case test's script arm again, on the code as it is now: every case and the changed cent once,
+ * offline (no Claude, no key). The recorded run stays as it was; the doc shows this beside it, so a change of code's
+ * rules since that run is visible.
+ */
+export async function scriptAtThisCommit(): Promise<ScoreRow[]> {
+  const rows: ScoreRow[] = [];
+  for (const k of SCORECARD_CASES) rows.push(await purserRow(k, 1, alwaysPay(), "always-pay-script", "purser_script"));
+  rows.push(centPurserRow(1, undefined, "purser_script"));
+  return rows.sort((a, b) => a.case.localeCompare(b.case));
+}
+
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 /** A count as people say it: a word up to twelve, a number above. */
 export const countWord = (n: number) => (n >= 0 && n < WORDS.length ? WORDS[n]! : String(n));

@@ -1,7 +1,12 @@
 // The worst-case AI test's words (15 Nov): its headline and the one line made from a run's figures. Pure, no imports,
 // so the CLI that writes the record and the site that reads it (src/evals/worstCase.ts) share them.
 
-export const WORST_CASE_HEADLINE = "Even an AI that always says “pay” can't make Purser pay wrongly.";
+/**
+ * 19 Nov: scoped to what was measured, the 50 test cases of the run (49 invoices of the payables eval set and one cent
+ * changed after the CFO's approval). It was "Even an AI that always says pay can't make Purser pay wrongly", which the
+ * held-out adversarial eval v2 showed was not true of every invoice (docs/evals/adversarial-v2.md).
+ */
+export const WORST_CASE_HEADLINE = "On these 50 test cases, an AI that always says “pay” couldn't make Purser pay wrongly.";
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 const word = (n: number) => (n >= 0 && n < WORDS.length ? WORDS[n]! : String(n));
