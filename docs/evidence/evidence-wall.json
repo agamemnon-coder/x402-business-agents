@@ -344,14 +344,25 @@
           "rec": "docs/evals/adversarial-v6.json"
         },
         {
+          "offProof": true,
           "key": "eval-v7",
           "fig": "15 vs 71",
           "label": "wrong payments on 117 held-out invoices (eval v7): Purser vs no rules",
-          "note": "Cases committed with their pre-registration (commit 34f502070), after the fixes for v6's misses; a script always says pay. 6 false holds of 64. Held out. Offline.",
+          "note": "Cases committed with their pre-registration before the run (commit 34f502070); a script always says pay. 6 false holds of 64. Fixed since, no longer held out: 0 wrong payments, 0 false holds. Offline.",
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v7.md",
           "rec": "docs/evals/adversarial-v7.json"
+        },
+        {
+          "key": "eval-v8",
+          "fig": "20 vs 79",
+          "label": "wrong payments on 140 held-out invoices (eval v8): Purser vs no rules",
+          "note": "Cases committed with their pre-registration (commit 7fabd5262), after the fixes for v7's misses; a script always says pay. 6 false holds of 74. Held out. Offline.",
+          "tag": "test",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v8.md",
+          "rec": "docs/evals/adversarial-v8.json"
         },
         {
           "key": "red-team",
