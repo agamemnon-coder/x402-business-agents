@@ -8,7 +8,7 @@ Every security measure Purser has taken, each with its figure and its committed 
 |---|---|
 | **All 128** attacks on the /try API held (red team v2), **All 894** tampered proof copies refused, **0** money invariants broken in 317 chaos scenarios | [redteam-api.md](../evidence/redteam-api.md) · [tamper-matrix.md](../evidence/tamper-matrix.md) · [chaos-money.md](../evidence/chaos-money.md) |
 | **1,102,845** states of the payment model checked by TLC, no error; **50 of 51** planted bugs caught in the proof verifier | [formal-model.md](../evidence/formal-model.md) · [mutation-testing.md](../evidence/mutation-testing.md) |
-| **All 46** Actions pinned by SHA; `v1.2.0` released with Sigstore-signed SLSA provenance; OpenSSF Best Practices **Silver** | [releases/v1.2.0.md](../releases/v1.2.0.md) · [openssf-silver.md](openssf-silver.md) |
+| **All 51** Actions pinned by SHA; `v1.2.0` released with Sigstore-signed SLSA provenance; OpenSSF Best Practices **Silver** | [releases/v1.2.0.md](../releases/v1.2.0.md) · [openssf-silver.md](openssf-silver.md) |
 
 Test money only: the Airwallex sandbox and the Alta (formerly Metal) testnet. Nothing here is a certificate: no auditor
 has tested these controls, and no third-party penetration test has been run ([what is not in place
@@ -38,8 +38,8 @@ The threat model with every trust boundary: [security.md](../security.md#trust-b
 | Tamper matrix | **All 894** tampered proof copies refused | Test world: offline | [tamper-matrix.md](../evidence/tamper-matrix.md) |
 | Formal model (TLA+, TLC) | **1,102,845** states, no error; 3 of 3 planted bugs caught | Offline; a model of the code, not the code | [formal-model.md](../evidence/formal-model.md), [PurserPayment.tla](../../formal/PurserPayment.tla) |
 | Mutation testing of the proof verifier | **50 of 51** planted bugs caught (partial run: one Stryker group not reported) | Offline | [mutation-testing.md](../evidence/mutation-testing.md) |
-| Scanners: OSV-Scanner with VEX, Semgrep, CodeQL, gitleaks, npm audit | **8** CI jobs on every change; 51 OSV findings, all in CI tooling and test fixtures, each with an OpenVEX statement | CI | [osv-scanner.yml](../../.github/workflows/osv-scanner.yml), [vex/README.md](vex/README.md) |
-| Harden-Runner, pinned Actions, SBOM, Sigstore-signed releases | **All 46** Actions pinned to a commit SHA; Harden-Runner on 12 of 13 jobs (audit only); 192 SBOM components; `v1.2.0` signed | CI | [v1.2.0.md](../releases/v1.2.0.md), [sbom.cdx.json](sbom.cdx.json) |
+| Scanners: OSV-Scanner with VEX, Semgrep, CodeQL, gitleaks, npm audit | **8** CI jobs on every change; 35 OSV findings left, all in CI tooling and test fixtures, each with an OpenVEX statement | CI | [osv-scanner.yml](../../.github/workflows/osv-scanner.yml), [vex/README.md](vex/README.md) |
+| Harden-Runner, pinned Actions, SBOM, Sigstore-signed releases | **All 51** Actions pinned to a commit SHA; Harden-Runner on 14 of 15 jobs (audit only); 192 SBOM components; `v1.2.0` signed | CI | [v1.2.0.md](../releases/v1.2.0.md), [sbom.cdx.json](sbom.cdx.json) |
 | STRIDE threat model | **40** attacks, each with its STRIDE class | Written down | [security.md](../security.md#attackers-and-attacks) |
 | Security mapping to NIST SSDF, OWASP Top 10 for LLM Applications and DORA | **24** controls mapped; mapped, not certified; 10 gaps named | Written down | [SECURITY-MAPPING.md](SECURITY-MAPPING.md) |
 | Security requirements | **8** requirements, each with where it is enforced and tested | Written down | [requirements.md](requirements.md) |
