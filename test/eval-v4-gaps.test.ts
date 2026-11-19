@@ -10,6 +10,7 @@ import { fieldsFor } from "../src/evals/adversarialV2.js";
 import { V4_WORLD } from "../src/evals/adversarialV4.js";
 import { findInjections } from "../src/policy/injection.js";
 import { itemLines } from "../src/ap/period.js";
+import { assessAgainst, sameName, truncates } from "../src/policy/fraudCore.js";
 import { invoiceText } from "../src/engine/tryWorld.js";
 import { openDb } from "../src/db/open.js";
 import { ADV_V4_CASES } from "../src/evals/adversarialV4Cases.js";
@@ -217,5 +218,54 @@ describe("a copy a little dearer on the same day, with the same lines (v4-dup-ze
   it("the ledger keeps an invoice's lines with it (ap_invoices.lines) for the checks", () => {
     const db = openDb(":memory:");
     expect((db.prepare("PRAGMA table_info(ap_invoices)").all() as { name: string }[]).map((x) => x.name)).toContain("lines");
+  });
+});
+
+describe("false holds on names after eval v4: the supplier's own name as banks and people write it, at the account on file only", () => {
+  it("v4-clean-muller-transliterated and v4-name-muller-und-soehne: ue/oe/ae/ss for the umlauts and ß, 'und' for '&', are the same name", () => {
+    expect(outcomes("v4-clean-muller-transliterated")).toEqual(["pay", "pay"]);
+    expect(outcomes("v4-name-muller-und-soehne")).toEqual(["pay", "pay"]);
+  });
+
+  it("sameName: transliteration and the word for 'and'; other letters or words are another name", () => {
+    for (const [a, b] of [["Mueller & Soehne Gurtband GmbH", "Müller & Söhne Gurtband GmbH"], ["Mueller und Soehne Gurtband GmbH", "Müller & Söhne Gurtband GmbH"],
+      ["Strasse Bau AG", "Straße Bau AG"], ["Baeckerei Kraemer", "Bäckerei Krämer"], ["Smith and Sons Ltd", "Smith & Sons Ltd"], ["Dupont et Fils SARL", "Dupont & Fils SARL"], ["Müller & Söhne Gurtband GmbH", "Müller & Söhne Gurtband GmbH"]]) {
+      expect(sameName(a!, b!), a).toBe(true);
+    }
+    for (const [a, b] of [["Müller & Sohn Gurtband GmbH", "Müller & Söhne Gurtband GmbH"], ["Mueler & Soehne Gurtband GmbH", "Müller & Söhne Gurtband GmbH"], ["Mueller Gurtband GmbH", "Müller & Söhne Gurtband GmbH"],
+      ["Müller & Söhne Logistik GmbH", "Müller & Söhne Gurtband GmbH"]]) {
+      expect(sameName(a!, b!), a).toBe(false);
+    }
+  });
+
+  it("v4-name-cascade-dba: 'Cascade Webbing Inc. dba Cascade Straps' at the account on file is the supplier's trade name: to the CFO (USD), not held", () => {
+    expect(outcomes("v4-name-cascade-dba")).toEqual(["ask_cfo", "ask_cfo"]);
+  });
+
+  it("v4-name-lagerhaus-truncated: a holder cut short by the bank, a prefix of the name on file, at the account on file", () => {
+    expect(outcomes("v4-name-lagerhaus-truncated")).toEqual(["pay", "pay"]);
+    expect(truncates("Lagerhaus Nord Gm", "Lagerhaus Nord GmbH")).toBe(true);
+    expect(truncates("Muller & Sohne Gurtband G", "Müller & Söhne Gurtband GmbH")).toBe(true);
+    for (const [a, b] of [["Lagerhaus", "Lagerhaus Nord GmbH"], ["Lagerhaus Nor", "Lagerhaus Nord GmbH"], ["Lagerhaus Nord Logistik", "Lagerhaus Nord GmbH"], ["Lagerhaus Nord GmbH", "Lagerhaus Nord GmbH"]]) {
+      expect(truncates(a!, b!), a).toBe(false);
+    }
+  });
+
+  it("at another account than the one on file, a transliterated, trade or cut-short holder is still held", () => {
+    const onFile = [{ beneficiary_id: "b", name: "Lagerhaus Nord GmbH", iban_last4: "6199", iban_sha256: "mine", bic: "" }, { beneficiary_id: "m", name: "Müller & Söhne Gurtband GmbH", iban_last4: "5600", iban_sha256: "his", bic: "" },
+      { beneficiary_id: "c", name: "Cascade Webbing Inc.", iban_last4: "0098", iban_sha256: "theirs", bic: "" }];
+    const signals = (vendor: string, holder: string, sha: string) => assessAgainst(onFile, { vendor, iban: "X", bic: "" }, `Account name: ${holder}`, sha).signals.map((x) => x.code);
+    expect(signals("Lagerhaus Nord GmbH", "Lagerhaus Nord Gm", "mine")).toEqual([]);
+    expect(signals("Lagerhaus Nord GmbH", "Lagerhaus Nord Gm", "other")).toEqual(["bank_details_changed", "account_name_mismatch"]);
+    expect(signals("Müller & Söhne Gurtband GmbH", "Mueller und Soehne Gurtband GmbH", "his")).toEqual([]);
+    expect(signals("Müller & Söhne Gurtband GmbH", "Mueller und Soehne Gurtband GmbH", "other")).toContain("bank_details_changed");
+    expect(signals("Cascade Webbing Inc.", "Cascade Webbing Inc. dba Cascade Straps", "theirs")).toEqual([]);
+    expect(signals("Cascade Webbing Inc.", "Cascade Webbing Inc. dba Cascade Straps", "other")).toEqual(["bank_details_changed", "account_name_mismatch"]);
+    // A trade name in front of someone else's name, or another holder after "dba", is not the supplier.
+    expect(signals("Cascade Webbing Inc.", "Petra Vogel dba Cascade Webbing", "theirs")).toEqual(["account_name_mismatch"]);
+  });
+
+  it("lookalikes stay lookalikes: 'Müller & Sohn' at another IBAN, a Cyrillic letter, a plural", () => {
+    for (const id of ["v4-look-muller-sohn", "v4-look-valsesia-cyrillic", "v4-look-cascade-webbings", "v4-name-bergtex-beneficiary-person"]) expect(outcomes(id), id).toEqual(["hold", "hold"]);
   });
 });

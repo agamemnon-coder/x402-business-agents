@@ -16,7 +16,7 @@ import { apiInputSchema } from "../agents/toolSchema.js";
 import { invoiceKey, sameInvoiceNo } from "../lib/invoiceKey.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { abaOf, accountKey, chooseRoute, payableCurrency, sameAccount, validateDetails, type BankDetails, type Route } from "../payouts/routes.js";
-import { assessAgainst, legalName, type Beneficiary, type FraudFinding, type FraudSignal } from "../policy/fraudCore.js";
+import { assessAgainst, sameName, type Beneficiary, type FraudFinding, type FraudSignal } from "../policy/fraudCore.js";
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
 import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
@@ -325,8 +325,9 @@ function examine(c: InvoiceCase): Examined {
   // The same supplier is the same name, or the same account under another name (red team round 3: a supplier added
   // again under a new name, the same invoice paid twice).
   const account = bank.ok ? keyOf(bank.details) : null;
-  // 19 Nov: the name as legalName reads it, so "Lagerhaus Nord" and "Lagerhaus Nord GmbH" are one supplier here too.
-  const sameParty = (x: HistoryInvoice) => legalName(x.vendor) === legalName(r.vendor) || (!!account && !!x.accountKey && sameForm(x.accountKey) === account);
+  // 19 Nov: the name as legalName reads it, so "Lagerhaus Nord" and "Lagerhaus Nord GmbH" are one supplier here too; third
+  // round (eval v4): and "Mueller und Soehne" is "Müller & Söhne" (sameName).
+  const sameParty = (x: HistoryInvoice) => sameName(x.vendor, r.vendor) || (!!account && !!x.accountKey && sameForm(x.accountKey) === account);
   const others = c.history.filter((x) => x.id !== c.invoice.id)
     .sort((a, b) => (a.receivedAt < b.receivedAt ? -1 : a.receivedAt > b.receivedAt ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const sameSupplier = others.filter(sameParty);
@@ -498,7 +499,7 @@ function examine(c: InvoiceCase): Examined {
 
   if (MONEY.test(r.total) && r.vendor) {
     const before = others.filter((x) => x.state !== "blocked" && x.state !== "rejected")
-      .filter((x) => legalName(x.vendor) === legalName(r.vendor) && x.currency === r.currency && MONEY.test(x.total)).map((x) => toCents(x.total));
+      .filter((x) => sameName(x.vendor, r.vendor) && x.currency === r.currency && MONEY.test(x.total)).map((x) => toCents(x.total));
     if (before.length >= 2) {
       const usual = median(before);
       if (usual > 0 && toCents(r.total) > UNUSUAL_FACTOR * usual) {

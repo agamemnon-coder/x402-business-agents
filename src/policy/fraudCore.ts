@@ -121,6 +121,54 @@ export function abbreviates(short: string, full: string): boolean {
   return a.every((x, i) => x === b[i] || shortened(x, b[i]!));
 }
 
+/** German letters as they are written without them (Müller as Mueller, Söhne as Soehne, Straße as Strasse). */
+const transliterate = (name: string) => name.replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/Ä/g, "Ae").replace(/Ö/g, "Oe").replace(/Ü/g, "Ue").replace(/ß/g, "ss");
+/** The word for "and" in the languages suppliers write in: between two words it reads as "&" does. */
+const AND_WORDS: ReadonlySet<string> = new Set(["&", "and", "und", "en", "et", "y", "e"]);
+/** A name as sameName compares it: legalName's words without a word for "and" between them, reduced as skeleton reduces them. */
+const nameKey = (name: string) => {
+  const t = legalTokens(name);
+  return skeleton(t.filter((x, i) => !(i > 0 && i < t.length - 1 && AND_WORDS.has(x))).join(" "));
+};
+
+/**
+ * Whether two names are one name as people write it (19 Nov, third round; adversarial eval v4, v4-clean-muller-transliterated
+ * and v4-name-muller-und-soehne: "Mueller und Soehne Gurtband GmbH" at the IBAN on file was held as another holder):
+ * legalName's sameness, and also with umlauts and ß written out (ue, oe, ae, ss) and "und", "and", "et", "en", "y" or "e"
+ * for "&". Other letters or other words are another name. A name is never matched on this alone where money moves: the
+ * account must still be the one on file (assessAgainst compares it).
+ */
+export function sameName(a: string, b: string): boolean {
+  return legalName(a) === legalName(b) || nameKey(a) === nameKey(b) || nameKey(transliterate(a)) === nameKey(transliterate(b));
+}
+
+/** A name's words as legalTokens reads them, its legal form kept. */
+const rawTokens = (name: string) => name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\./g, "").replace(/&/g, " & ").split(/[^\p{L}\p{N}&]+/u).filter(Boolean);
+
+/**
+ * Whether a holder is the full name cut short by a bank's field (19 Nov, third round; eval v4, v4-name-lagerhaus-truncated:
+ * "Lagerhaus Nord Gm" for "Lagerhaus Nord GmbH"): the name's every word before its legal form, whole, then its legal form
+ * cut short. A cut inside the name itself ("Lagerhaus Nor") or another word is not this. Used only at the account on file.
+ */
+export function truncates(short: string, full: string): boolean {
+  const s = rawTokens(short), f = rawTokens(full), core = legalTokens(full).length;
+  if (s.length <= core || s.length > f.length) return false;
+  const last = s.length - 1;
+  if (!s.slice(0, last).every((x, i) => x === f[i])) return false;
+  return (s[last] !== f[last] && f[last]!.startsWith(s[last]!)) || (s[last] === f[last] && s.length < f.length);
+}
+
+/** A trade name after the holder ("Cascade Webbing Inc. dba Cascade Straps", "t/a", "trading as"): the holder before it. */
+const TRADE_NAME = /\s+(?:d\/b\/a|d\.b\.a\.?|dba|doing business as|t\/a|trading as)\s+/i;
+/**
+ * Whether a holder is the supplier under a trade name (19 Nov, third round; eval v4, v4-name-cascade-dba): the name before
+ * "dba" is the supplier's own. Another holder before it ("Petra Vogel dba Cascade Webbing") is not. Used only at the account on file.
+ */
+export function tradeNameOf(holder: string, name: string): boolean {
+  const [legal, trade] = holder.split(TRADE_NAME);
+  return !!trade && !!legal && sameName(legal, name);
+}
+
 /**
  * The account holder as the document prints it, under its label in the languages suppliers write in (19 Nov, eval v3:
  * only "Account name:" was read, so "Ten name van: Zeeland Logistics B.V." at the IBAN on file went unread): Account
@@ -255,7 +303,8 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   // The same vendor written differently (case, spacing, punctuation) in Latin letters is that vendor; 19 Nov, also with
   // or without its legal form (legalName). Its account is compared below all the same.
   const latin = !hasOtherScript(inv.vendor);
-  const matched = all.find((b) => b.name === inv.vendor) ?? (latin ? all.find((b) => skeleton(b.name) === skeleton(inv.vendor)) ?? all.find((b) => legalName(b.name) === legalName(inv.vendor)) : undefined);
+  // Third round (eval v4): also with umlauts written out and "und" for "&" (sameName).
+  const matched = all.find((b) => b.name === inv.vendor) ?? (latin ? all.find((b) => skeleton(b.name) === skeleton(inv.vendor)) ?? all.find((b) => sameName(b.name, inv.vendor)) : undefined);
 
   if (hasOtherScript(inv.vendor)) {
     signals.push({ code: "mixed_scripts", blocks: true, detail: `the vendor name "${inv.vendor}" contains letters from a non-Latin alphabet` });
@@ -280,7 +329,10 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   const expectedHolder = matched?.name ?? inv.vendor;
   // 19 Nov (eval v3): a bank's abbreviation of the supplier's own name is that name, but only at the account on file.
   const atAccountOnFile = !!matched && !signals.some((s) => s.code === "bank_details_changed");
-  if (holder && legalName(holder) !== legalName(expectedHolder) && !(atAccountOnFile && abbreviates(holder, expectedHolder))) {
+  // Third round (eval v4): the holder transliterated or with "und" for "&" (sameName), and, at the account on file only,
+  // cut short by the bank's field (truncates) or followed by the supplier's trade name (tradeNameOf).
+  if (holder && !sameName(holder, expectedHolder)
+    && !(atAccountOnFile && (abbreviates(holder, expectedHolder) || truncates(holder, expectedHolder) || tradeNameOf(holder, expectedHolder)))) {
     signals.push({ code: "account_name_mismatch", blocks: true, detail: `the account holder on the invoice is "${holder}", not ${expectedHolder}`, asked: holder, on_file: expectedHolder });
   }
   const line = (re: RegExp, not?: RegExp) => text.split("\n").find((l) => re.test(l) && !(not && not.test(l)))?.trim();
