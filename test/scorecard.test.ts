@@ -1,9 +1,10 @@
 // The scorecard, with Purser vs Claude alone (src/evals/scorecard.ts): the scoring is plain code, the same for every
 // payer, and the committed record is what its rows add up to. No network: a script stands in for Claude here.
+import { readFileSync } from "node:fs";
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import {
-  aloneRow, centNaiveRow, centPurserRow, alwaysPay, centScore, CENT, naiveRow, numbersNotShown, purserRow, SCORECARD_CASES, scoreOutcome, scorecardLine, scriptAtThisCommit, totals,
+  ADV_TABLE, aloneRow, centNaiveRow, centPurserRow, alwaysPay, centScore, CENT, naiveRow, numbersNotShown, purserRow, SCORECARD_CASES, scoreOutcome, scorecardLine, scriptAtThisCommit, totals,
 } from "../src/evals/scorecard.js";
 
 const kase = (id: string) => SCORECARD_CASES.find((k) => k.id === id)!;
@@ -79,6 +80,18 @@ describe("the same wrong decision, with and without Purser", () => {
     const t = totals(rows);
     expect(t).toMatchObject({ wrong_payments: 0, paid_past_cfo: 0 });
     expect(rows.find((r) => r.case === CENT.id)).toMatchObject({ outcome: "hold" });
+  });
+
+  // 19 Nov, second round: the worst-case page shows each adversarial set before and after the fixes made against it,
+  // and the set still held out; every record it names exists and says whether it was held out.
+  it("ADV_TABLE: v2 and v3 before and after their fixes, v4 held out, each record on disk saying the same", () => {
+    expect(ADV_TABLE.map((x) => [x.record.replace("docs/evals/", ""), x.held === "yes"])).toEqual([
+      ["adversarial-v2.json", true], ["adversarial-v2-after.json", false], ["adversarial-v3.json", true], ["adversarial-v3-after.json", false], ["adversarial-v4.json", true],
+    ]);
+    for (const x of ADV_TABLE.slice(1)) {
+      const rec = JSON.parse(readFileSync(new URL(`../${x.record}`, import.meta.url), "utf8")) as { held_out: boolean };
+      expect(rec.held_out, x.record).toBe(x.held === "yes");
+    }
   });
 
   it("above the limit: Claude alone pays it past the CFO, with Purser it goes to the CFO", async () => {

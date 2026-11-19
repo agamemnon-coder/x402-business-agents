@@ -12,7 +12,7 @@ import { dirname, resolve } from "node:path";
 import { claudeClient } from "../claude/reader.js";
 import { evalCommit } from "../evals/commit.js";
 import {
-  aloneRow, alwaysPay, ARMS, centAloneRow, centNaiveRow, centPurserRow, CENT, countWord, naiveRow, purserRow, SCORECARD_CASES, SCORECARD_MODEL, scorecardLine, scriptAtThisCommit, totals, totalsByRun,
+  ADV_TABLE, aloneRow, alwaysPay, ARMS, centAloneRow, centNaiveRow, centPurserRow, CENT, countWord, naiveRow, purserRow, SCORECARD_CASES, SCORECARD_MODEL, scorecardLine, scriptAtThisCommit, totals, totalsByRun,
   type Arm, type ArmTotals, type ScoreRow,
 } from "../evals/scorecard.js";
 
@@ -118,7 +118,8 @@ const runTable = Object.entries(byRun).map(([n, x]) => [
 ].join("\n")).join("\n");
 const rules = Object.entries(all.purser_script.by_rule).map(([k, n]) => `- ${k}: ${n}`).join("\n") || "- nothing";
 // 19 Nov: the script arm again on the code as it is now (offline, no Claude), beside the recorded run, and the held-out
-// adversarial sets' records (v2 before and after the fixes, v3), so the page says what each measured.
+// adversarial sets' records (v2 and v3 before and after the fixes made against each, v4 held out), so the page says
+// what each measured.
 const again = await scriptAtThisCommit();
 const againT = totals(again);
 const { commit: nowCommit, dirty: nowDirty } = evalCommit([OUT, SUMMARY, DOC]);
@@ -130,7 +131,6 @@ const advOf = (f: string) => {
     return x.totals;
   } catch { return null; }
 };
-const v2b = advOf("docs/evals/adversarial-v2.json"), v2a = advOf("docs/evals/adversarial-v2-after.json"), v3 = advOf("docs/evals/adversarial-v3.json");
 const advRow = (label: string, t: ReturnType<typeof advOf>, held: string) => (t ? `| ${label} | ${held} | ${t.purser_script!.cases} | ${t.purser_script!.wrong_payments} | ${t.purser_script!.false_holds} of ${t.purser_script!.clean_truths} | ${t.no_rules!.wrong_payments} |` : "");
 const caseRows = [...scriptRows, ...naiveRows].sort((a, b) => a.run - b.run || a.case.localeCompare(b.case) || a.arm.localeCompare(b.arm))
   .map((r) => `| ${r.run} | ${r.case} | ${r.expected} | ${r.arm === "purser_script" ? "Purser, script says pay" : "No rules"} | ${r.outcome} | ${r.wrong_money ?? (r.paid_past_cfo ? "paid past the CFO" : r.to_cfo_not_held ? "to the CFO to sign" : "")} | ${r.decided_by.replace(/\|/g, "/")} |`).join("\n");
@@ -189,9 +189,9 @@ The same always-pay script on new invoice cases, each set written and committed 
 
 | Set | Held out | Invoices | Wrong payments, Purser with the script | False holds, Purser with the script | Wrong payments, no rules |
 |---|---|---|---|---|---|
-${[advRow("[v2](evals/adversarial-v2.md), before the fixes of 19 Nov", v2b, "yes"), advRow("[v2](evals/adversarial-v2.md), after the fixes", v2a, "no: the fixes were written against its misses"), advRow("[v3](evals/adversarial-v3.md), after the fixes", v3, "yes")].filter(Boolean).join("\n")}
+${ADV_TABLE.map((x) => advRow(x.label, advOf(x.record), x.held)).filter(Boolean).join("\n")}
 
-Run them: \`npm run eval:adversarial-v2\`, \`npm run eval:adversarial-v3\`.
+Each set was held out until rules were written against its misses; the numbers after the fixes measure those fixes on the cases they were made for, not new invoices. Run them: \`npm run eval:adversarial-v2\`, \`npm run eval:adversarial-v3\`, \`npm run eval:adversarial-v4\`.
 `);
 console.log(worstLine);
 console.log(`wrote ${recorded ? "" : `${OUT}, `}${SUMMARY}, ${DOC}`);
