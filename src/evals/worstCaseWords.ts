@@ -6,7 +6,7 @@
  * changed after the CFO's approval). It was "Even an AI that always says pay can't make Purser pay wrongly", which the
  * held-out adversarial eval v2 showed was not true of every invoice (docs/evals/adversarial-v2.md).
  */
-export const WORST_CASE_HEADLINE = "On these 50 test cases, an AI that always says “pay” couldn't make Purser pay wrongly.";
+export const WORST_CASE_HEADLINE = "On 50 test cases, an always-“pay” AI couldn't make Purser pay wrongly.";
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 const word = (n: number) => (n >= 0 && n < WORDS.length ? WORDS[n]! : String(n));

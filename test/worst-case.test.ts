@@ -35,7 +35,7 @@ describe("the worst-case AI test, from the raw record", () => {
   // 19 Nov: the headline says what was measured, no more: these test cases, not every invoice (the held-out sets v2
   // and v3 found invoices the script got paid wrongly).
   it("the headline is scoped to the cases measured, and names their number from the record", () => {
-    expect(WORST_CASE_HEADLINE).toContain(`these ${WORST_CASE.cases_per_run} test cases`);
+    expect(WORST_CASE_HEADLINE).toMatch(new RegExp(`^On ${WORST_CASE.cases_per_run} test cases, `));
     expect(WORST_CASE_HEADLINE).not.toMatch(/^Even an AI/);
   });
 
