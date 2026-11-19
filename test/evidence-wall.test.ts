@@ -224,7 +224,7 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(tile(w(), "fuzzing").note).toContain(fz.runs.toLocaleString("en-GB"));
   });
 
-  it("reads eval v3, eval v4 and v5 before and after, eval v6, site quality and the WebKit walks from their records", () => {
+  it("reads eval v3, eval v4 to v6 before and after, eval v7, site quality and the WebKit walks from their records", () => {
     const v3 = json<{ totals: { purser_script: { wrong_payments: number }; no_rules: { wrong_payments: number } } }>("docs/evals/adversarial-v3.json").totals;
     expect(tile(w(), "eval-v3").fig).toBe(`${v3.purser_script.wrong_payments} vs ${v3.no_rules.wrong_payments}`);
     // Eval v4: the held-out figure, and beside it the figures after the fixes written against its misses (third round).
@@ -242,13 +242,21 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(tile(w(), "eval-v5").note).toContain(`${v5.totals.purser_script.false_holds} false holds of ${v5.totals.purser_script.clean_truths}`);
     expect(tile(w(), "eval-v5").note).toContain(`Fixed since, no longer held out: ${v5a.totals.purser_script.wrong_payments} wrong payments, ${v5a.totals.purser_script.false_holds} false holds`);
     expect(tile(w(), "eval-v5").note).not.toContain("still held out");
-    // Eval v6: held out, its one run as recorded.
-    const v6 = json<Adv>("docs/evals/adversarial-v6.json");
-    expect(v6.held_out).toBe(true);
+    // Eval v6: its held-out run as recorded, and beside it the figures after the fixes written against its misses.
+    const v6 = json<Adv>("docs/evals/adversarial-v6.json"), v6a = json<Adv>("docs/evals/adversarial-v6-after.json");
+    expect([v6.held_out, v6a.held_out]).toEqual([true, false]);
     expect(tile(w(), "eval-v6").fig).toBe(`${v6.totals.purser_script.wrong_payments} vs ${v6.totals.no_rules.wrong_payments}`);
     expect(tile(w(), "eval-v6").note).toContain(`(commit ${v6.cases_commit})`);
     expect(tile(w(), "eval-v6").note).toContain(`${v6.totals.purser_script.false_holds} false hold${v6.totals.purser_script.false_holds === 1 ? "" : "s"} of ${v6.totals.purser_script.clean_truths}`);
-    expect(tile(w(), "eval-v6").note).toContain("Held out.");
+    expect(tile(w(), "eval-v6").note).toContain(`Fixed since, no longer held out: ${v6a.totals.purser_script.wrong_payments} wrong payments, ${v6a.totals.purser_script.false_holds} false holds`);
+    expect(tile(w(), "eval-v6").note).not.toContain("still held out");
+    // Eval v7: held out, its one run as recorded.
+    const v7 = json<Adv>("docs/evals/adversarial-v7.json");
+    expect(v7.held_out).toBe(true);
+    expect(tile(w(), "eval-v7").fig).toBe(`${v7.totals.purser_script.wrong_payments} vs ${v7.totals.no_rules.wrong_payments}`);
+    expect(tile(w(), "eval-v7").note).toContain(`(commit ${v7.cases_commit})`);
+    expect(tile(w(), "eval-v7").note).toContain(`${v7.totals.purser_script.false_holds} false hold${v7.totals.purser_script.false_holds === 1 ? "" : "s"} of ${v7.totals.purser_script.clean_truths}`);
+    expect(tile(w(), "eval-v7").note).toContain("Held out.");
     const sq = json<{ lighthouse: { path: string; preset: string; median: { performance: number; accessibility: number } }[] }>("docs/evidence/site-quality.json").lighthouse;
     expect(tile(w(), "site-quality").fig).toBe(String(Math.min(...sq.map((x) => x.median.accessibility))));
     expect(tile(w(), "site-quality").note).toContain(`lowest performance ${Math.min(...sq.map((x) => x.median.performance))}`);

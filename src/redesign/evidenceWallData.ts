@@ -192,13 +192,27 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   }
   // Eval v6 (19 Nov): 108 held-out invoices written after the fixes that followed v5 (suppliers named in Hebrew, Thai,
   // Devanagari, Hangul, Han and kana, Turkish and Vietnamese letters; injections in those languages; invisible
-  // characters), committed alone with their pre-registration before the run (src/cli/adversarialV6.ts). Held out: no
-  // rule was written against its misses.
-  const V6 = "docs/evals/adversarial-v6.json";
+  // characters), committed alone with their pre-registration before the run (src/cli/adversarialV6.ts). Its run is kept
+  // as recorded; beside it the run after the fixes that followed it (amounts asked above the total, a person as holder,
+  // joiners a script needs, other scripts' digits, more languages), so no longer held out.
+  const V6 = "docs/evals/adversarial-v6.json", V6_AFTER = "docs/evals/adversarial-v6-after.json";
   const v6 = json(V6) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
-  if (v6?.held_out && v6.totals?.purser_script && v6.totals.no_rules) {
-    const p = v6.totals.purser_script, n = v6.totals.no_rules;
-    out.push({ key: "eval-v6", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v6): Purser vs no rules`, note: `Cases committed with their pre-registration (commit ${v6.cases_commit}), after the fixes for non-Latin names; a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Held out. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v6.md"), rec: V6 });
+  const v6a = json(V6_AFTER) as { held_out?: boolean; totals?: AdvTotals } | null;
+  if (v6?.held_out && v6.totals?.purser_script && v6.totals.no_rules && v6a && !v6a.held_out && v6a.totals?.purser_script) {
+    const p = v6.totals.purser_script, n = v6.totals.no_rules, a = v6a.totals.purser_script;
+    // Off /proof since v7 (/proof's words in sight stay within their budget, test/proof-first.test.ts): /proof shows the
+    // held-out set after the latest fixes, v7; this tile stays on the wall's record and in llms.txt.
+    out.push({ offProof: true, key: "eval-v6", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v6): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v6.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v6.md"), rec: V6 });
+  }
+  // Eval v7 (19 Nov): 117 held-out invoices written after the fixes that followed v6 (suppliers named in Georgian,
+  // Armenian, Arabic, Tamil, Bengali, Ukrainian Cyrillic, Ethiopic, Khmer and Persian letters; injections and pressure in
+  // those languages; soft hyphens, word joiners, Braille blanks; hard negatives against the new rules), committed alone
+  // with their pre-registration before the run (src/cli/adversarialV7.ts). Held out: no rule was written against its misses.
+  const V7 = "docs/evals/adversarial-v7.json";
+  const v7 = json(V7) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
+  if (v7?.held_out && v7.totals?.purser_script && v7.totals.no_rules) {
+    const p = v7.totals.purser_script, n = v7.totals.no_rules;
+    out.push({ key: "eval-v7", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v7): Purser vs no rules`, note: `Cases committed with their pre-registration (commit ${v7.cases_commit}), after the fixes for v6's misses; a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Held out. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v7.md"), rec: V7 });
   }
   const RT = "docs/redteam/report.json";
   const rt = json(RT) as { attempts?: number; blocked?: number; caught_after?: number } | null;
