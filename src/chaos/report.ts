@@ -58,7 +58,7 @@ export function chaosReport(seed: number, random: ScenarioResult[], hand: Scenar
   };
 }
 
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
 
 export function chaosMarkdown(r: ChaosReport, hand: ScenarioResult[]): string {
   const t = r.totals;

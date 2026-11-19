@@ -25,7 +25,7 @@ export function reportOf(results: AttackResult[], checked: string): RedteamRepor
   };
 }
 
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
 
 export function reportMarkdown(r: RedteamReport): string {
   const t = r.totals;

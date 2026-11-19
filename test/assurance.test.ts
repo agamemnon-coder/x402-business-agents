@@ -37,7 +37,7 @@ describe("docs/assurance.md", () => {
       for (const [, name, href] of fns) {
         const file = target(href!);
         expect(file).toMatch(/^src\/.+\.ts$/);
-        const defined = new RegExp(`(?:function\\*?|class|const|let)\\s+${name!.replace(/\$/g, "\\$")}\\b`).test(read(file));
+        const defined = new RegExp(`(?:function\\*?|class|const|let)\\s+${name!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(read(file));
         expect({ name, file, defined }).toEqual({ name, file, defined: true });
         named++;
       }

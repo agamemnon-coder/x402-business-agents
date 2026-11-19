@@ -298,7 +298,7 @@ export function coverageRecord(rows: EndpointResult[], lines: HttpLine[], o: { r
   };
 }
 
-const cell = (s: string | number | null) => String(s ?? "–").replace(/\|/g, "\\|").replace(/\n/g, " ");
+const cell = (s: string | number | null) => String(s ?? "–").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
 
 export function coverageMarkdownRecord(r: CoverageRecord, date: string): string {
   const t = r.totals;

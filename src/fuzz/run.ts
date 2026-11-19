@@ -129,7 +129,7 @@ export function fuzzReport(results: FuzzResult[], ctx: FuzzContext, checked: str
   };
 }
 
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
 
 export function fuzzMarkdown(r: FuzzReport): string {
   const t = r.totals;
