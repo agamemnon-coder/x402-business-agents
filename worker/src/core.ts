@@ -10,6 +10,8 @@ import { publicHealth, publicStatus, type Health } from "../../src/ops/publicHea
 import type { RecordedAgents } from "../../src/try/recorded.js";
 import type { MetalRecorded } from "./metalInspector.js";
 import { AWX_EVENTS_PATH, AwxEventFeed } from "./awxEvents.js";
+import { appResponse, type AppFiles } from "./pwa.js";
+import { readSubscription, type PushSend } from "./webPush.js";
 
 export type SqlValue = string | number | null;
 export interface Sql {
@@ -82,6 +84,8 @@ export interface Pages {
   agents?: Record<string, { page: string; csp: string }>;
   /** The clean 404 page (no script); absent in a bundle built before it. */
   notFound?: string;
+  /** Purser as an installed app (src/pwa/, ./pwa.ts): the manifest, the service worker, the offline page and /app; absent in a bundle built before them. */
+  app?: AppFiles;
   /** /try/sign: a visitor signs with their own passkey in a test world (worker/src/trySign.ts). Present only in a bundle
    * built with TRY_SIGN_ENABLED on; without it the page and its API answer 404. */
   trySign?: string;
@@ -130,6 +134,14 @@ const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "fa
 const MAX_POLICY_TEXT = 2000;
 /** A chat message to Purser (Ask Purser): the runner reads it and proposes a task card for Face ID. */
 const MAX_ASK_TEXT = 500;
+/** Web Push: the phones the relay tells (the newest ones). */
+const MAX_PUSH_SUBS = 5;
+
+/** The push message for a proposal waiting for the CFO: its kind in words, its id, and the passkey page; never its terms. */
+export function pushMessage(p: { proposal_id: string; kind?: string }): { title: string; body: string; url: string } {
+  const title = p.kind === "policy_change" ? "A policy change needs your signature" : p.kind === "mandate_replace" ? "A mandate change needs your signature" : "Payment needs your signature";
+  return { title, body: `${p.proposal_id} waits above the agents' limit. Open it to check the exact terms, then sign with your passkey.`, url: `/approve/${p.proposal_id}` };
+}
 
 /**
  * The CSP of every answer that is not a page (JSON, a redirect, the script, the stylesheet, the font, the logos): it
@@ -156,7 +168,7 @@ export const COMMON_HEADERS: Record<string, string> = {
 export const PERMISSIONS_POLICY = "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()";
 
 /** Every HTML document (each page and the 404): the common headers, the permissions policy and its own window. Its CSP is the page's own. */
-const PAGE_HEADERS: Record<string, string> = {
+export const PAGE_HEADERS: Record<string, string> = {
   ...COMMON_HEADERS, "content-type": "text/html; charset=utf-8", "permissions-policy": PERMISSIONS_POLICY, "cross-origin-opener-policy": "same-origin",
 };
 
@@ -186,6 +198,9 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/verify" && pages.verify && pages.csp.verify) return page(pages.verify, pages.csp.verify);
   if (path === "/trace" && pages.trace && pages.csp.trace) return page(pages.trace, pages.csp.trace);
   if (path === "/runs" && pages.runs && pages.csp.runs) return page(pages.runs, pages.csp.runs);
+  // The installed app's files: /manifest.webmanifest, /sw.js, /offline, /app and its script (./pwa.ts).
+  const app = pages.app ? appResponse(path, pages.app) : null;
+  if (app) return app;
   const agent = /^\/agents\/([a-z]{1,20})$/.exec(path)?.[1];
   if (agent && pages.agents && Object.hasOwn(pages.agents, agent)) return page(pages.agents[agent]!.page, pages.agents[agent]!.csp);
   const moved = pages.redirects && Object.hasOwn(pages.redirects, path) ? pages.redirects[path] : undefined;
@@ -413,7 +428,11 @@ export class Relay {
    * liveAgents: /try/sign's spend on live agents today, read from its own instance ("try-sign", worker/src/index.ts),
    * where its table is; absent, /health says nothing about it.
    */
-  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean; liveRun?: boolean; liveAgents?: () => Promise<{ usd: number; budget_usd: number } | null> }) {
+  /**
+   * push: Web Push to the CFO's phone (./webPush.ts), when the Worker has its VAPID secrets: the public key, and a sender
+   * that holds the private key (the relay never does). Absent, the push routes answer 404 and nothing is sent.
+   */
+  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean; liveRun?: boolean; liveAgents?: () => Promise<{ usd: number; budget_usd: number } | null>; push?: { publicKey: string; send: PushSend } }) {
     this.now = opts.now ?? (() => new Date());
     this.sql.exec("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
     this.sql.exec(`CREATE TABLE IF NOT EXISTS inbox (
@@ -425,6 +444,9 @@ export class Relay {
     this.sql.exec("CREATE TABLE IF NOT EXISTS sessions (id_hash TEXT PRIMARY KEY, credential TEXT NOT NULL, expires INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS session_challenges (challenge TEXT PRIMARY KEY, expires INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS cred_counters (credential TEXT PRIMARY KEY, counter INTEGER NOT NULL)");
+    // Web Push: the phones that asked to be told (at most MAX_PUSH_SUBS), and the proposals they were already told about.
+    this.sql.exec("CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at TEXT NOT NULL)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS push_told (proposal_id TEXT PRIMARY KEY, at TEXT NOT NULL)");
     this.events = new AwxEventFeed(this.sql);
   }
 
@@ -548,7 +570,7 @@ export class Relay {
     const url = new URL(req.url);
     const path = url.pathname;
     const route = (method: string, p: string | RegExp) => (typeof p === "string" ? path === p : p.test(path)) && (req.method === method || (method === "GET" && req.method === "HEAD"));
-    const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/policy-text", "/api/ask", "/api/enrol/options", "/api/enrol", ...(this.opts.mfa ? ["/api/session/options", "/api/session"] : [])];
+    const known = ["/api/runner/sync", "/api/snapshot", "/api/approvals", "/api/assertions", "/api/policy", "/api/policy-text", "/api/ask", "/api/enrol/options", "/api/enrol", "/api/push/key", "/api/push/subscribe", "/api/push/unsubscribe", ...(this.opts.mfa ? ["/api/session/options", "/api/session"] : [])];
 
     if (route("POST", "/api/runner/sync")) return this.sync(req);
     // Monitoring (B7), alarm codes only; no amounts, names or ids (the details stay behind the viewer key).
@@ -589,12 +611,15 @@ export class Relay {
     if (route("GET", "/api/snapshot")) return this.snapshot();
     if (route("GET", "/api/approvals")) return this.approvals(req);
     if (route("GET", /^\/api\/tickets\/[^/]+$/)) return this.ticket(path.slice("/api/tickets/".length));
+    // Web Push: the public key the phone subscribes with; 404 when this relay has none (no VAPID secrets).
+    if (route("GET", "/api/push/key")) return this.opts.push ? json(200, { public_key: this.opts.push.publicKey }) : error(404, "push is not set up on this relay");
     // Everything the phone posts must come from the relay's own pages.
     const sessionPath = this.opts.mfa && (path === "/api/session/options" || path === "/api/session");
-    if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path === "/api/policy-text" || path === "/api/ask" || path.startsWith("/api/enrol") || sessionPath)) {
+    if (req.method === "POST" && (path === "/api/assertions" || path === "/api/policy" || path === "/api/policy-text" || path === "/api/ask" || path.startsWith("/api/enrol") || path.startsWith("/api/push/") || sessionPath)) {
       if (req.headers.get("origin") !== url.origin) return error(403, "requests must come from this site's own pages");
       // D20: signing in (two posts) counts in its own bucket of the same size, so it never uses up the approvals'.
-      if (!this.underRateLimit(req, sessionPath ? "session:" : "")) return error(429, "too many requests from this address; wait ten minutes");
+      // Push subscriptions count in a bucket of their own too.
+      if (!this.underRateLimit(req, sessionPath ? "session:" : path.startsWith("/api/push/") ? "push:" : "")) return error(429, "too many requests from this address; wait ten minutes");
       if (path === "/api/session/options") return this.sessionOptions();
       if (path === "/api/session") return this.openSession(req, url.origin);
       // D20: the CFO's endpoints need a passkey session; the viewer link alone only reads. Approvals keep their own
@@ -608,6 +633,8 @@ export class Relay {
       if (path === "/api/ask") return this.ask(req);
       if (path === "/api/enrol/options") return this.enrolOptions(req);
       if (path === "/api/enrol") return this.enrol(req);
+      if (path === "/api/push/subscribe") return this.pushSubscribe(req);
+      if (path === "/api/push/unsubscribe") return this.pushUnsubscribe(req);
     }
     if (known.includes(path) || path.startsWith("/api/tickets/")) return error(405, "method not allowed");
     return error(404, "not found");
@@ -625,6 +652,8 @@ export class Relay {
       if (!isObject(state) || !isObject(state.snapshot) || !isObject(state.approvals)) return error(400, "malformed state");
       this.put("state", JSON.stringify(state));
       this.put("state_hash", state_hash);
+      // A proposal newly waiting for the CFO (above an agent's limit): tell the phones that asked. Never the terms.
+      try { await this.pushNew(state as unknown as StoredState); } catch { /* a failed notice never fails the sync */ }
     }
     this.put("synced_at", now.toISOString());
     if (Array.isArray(acks)) {
@@ -671,6 +700,55 @@ export class Relay {
     // A flood cannot grow the store: the oldest events go first (the runner's poll still finds their transactions).
     this.sql.exec("DELETE FROM hooks WHERE id IN (SELECT id FROM hooks ORDER BY received_at DESC, id DESC LIMIT -1 OFFSET ?)", MAX_HOOKS);
     return json(200, { received: true });
+  }
+
+  /** A phone's push subscription ({endpoint, keys}), from the dashboard's "Notify me"; only a known push service's address. */
+  private async pushSubscribe(req: Request): Promise<Response> {
+    if (!this.opts.push) return error(404, "push is not set up on this relay");
+    const body = await readJson(req, 4096);
+    const sub = body ? readSubscription(body.value) : null;
+    if (!sub) return error(400, "malformed subscription (a browser push subscription from a known push service)");
+    this.sql.exec("INSERT INTO push_subs (endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth",
+      sub.endpoint, sub.p256dh, sub.auth, this.now().toISOString());
+    // The newest few only: an old phone's subscription goes first.
+    this.sql.exec("DELETE FROM push_subs WHERE endpoint IN (SELECT endpoint FROM push_subs ORDER BY created_at DESC, endpoint DESC LIMIT -1 OFFSET ?)", MAX_PUSH_SUBS);
+    return json(201, { subscribed: true });
+  }
+
+  private async pushUnsubscribe(req: Request): Promise<Response> {
+    const body = await readJson(req, 4096);
+    const endpoint = body && isObject(body.value) && typeof body.value.endpoint === "string" ? body.value.endpoint : null;
+    if (!endpoint) return error(400, "malformed request");
+    this.sql.exec("DELETE FROM push_subs WHERE endpoint = ?", endpoint);
+    return json(200, { subscribed: false });
+  }
+
+  /**
+   * "Payment needs your signature", once per proposal, to every subscribed phone: the proposal's id and the passkey page
+   * to open, nothing of its terms (a lock screen shows it). A push service that says the subscription is gone (404, 410)
+   * loses it. Sending never holds up or fails the runner's sync.
+   */
+  private async pushNew(state: StoredState): Promise<void> {
+    const push = this.opts.push;
+    const proposals = Array.isArray(state.approvals?.proposals) ? state.approvals.proposals : [];
+    if (!push) return;
+    const now = this.now();
+    const fresh = proposals.filter((p) => typeof p.proposal_id === "string" && PROPOSAL_ID.test(p.proposal_id) && !(Date.parse(p.expires_at) <= now.getTime())
+      && !(this.sql.exec("SELECT 1 FROM push_told WHERE proposal_id = ?", p.proposal_id).toArray().length));
+    if (!fresh.length) return;
+    for (const p of fresh) this.sql.exec("INSERT INTO push_told (proposal_id, at) VALUES (?, ?) ON CONFLICT(proposal_id) DO NOTHING", p.proposal_id, now.toISOString());
+    this.sql.exec("DELETE FROM push_told WHERE at <= ?", new Date(now.getTime() - 30 * 864e5).toISOString());
+    const subs = this.sql.exec("SELECT endpoint, p256dh, auth FROM push_subs").toArray() as { endpoint: string; p256dh: string; auth: string }[];
+    const sends: Promise<void>[] = [];
+    for (const p of fresh.slice(0, 5)) {
+      const payload = JSON.stringify(pushMessage(p));
+      for (const sub of subs) {
+        sends.push(push.send(sub, payload).then((status) => {
+          if (status === 404 || status === 410) this.sql.exec("DELETE FROM push_subs WHERE endpoint = ?", sub.endpoint);
+        }, () => undefined));
+      }
+    }
+    await Promise.all(sends);
   }
 
   private snapshot(): Response {

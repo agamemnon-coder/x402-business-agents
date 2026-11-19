@@ -94,4 +94,5 @@ describe("the cloud pages carry the site's header", () => {
 const HEADER_CSS_MARK = '/* Header: brand, four tabs and "More" (a <details>, no script), nothing else. */';
 /** The console's policy (cloud/src/console.ts consoleCsp) as it was before the header came (12 Nov), with NONCE for the nonce. */
 // 14 Nov: images from the site's origin too, for the "Built on Airwallex" badge's logo (src/ui/builtOn.ts), served by the site.
-const CSP_BEFORE = "default-src 'none'; script-src 'nonce-NONCE' 'self'; style-src 'nonce-NONCE'; img-src 'self' data: blob: https://kit11.max-31b.workers.dev; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";
+// 19 Nov: the installed app's manifest and service worker (cloud/src/pwa.ts), from this origin only.
+const CSP_BEFORE = "default-src 'none'; script-src 'nonce-NONCE' 'self'; style-src 'nonce-NONCE'; img-src 'self' data: blob: https://kit11.max-31b.workers.dev; font-src 'self'; connect-src 'self'; frame-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";

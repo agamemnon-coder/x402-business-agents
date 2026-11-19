@@ -2200,6 +2200,9 @@ export function boot(): void {
   runnerPin = takeRunnerKey(location.hash, store);
   if (location.hash.includes("view=") || location.hash.includes("runner=")) history.replaceState(null, "", location.pathname + location.search);
   setInterval(tickCountdowns, 1000);
+  // The installed app's service worker (src/pwa/sw.ts), where the relay's build linked the manifest. It never caches
+  // /api/, this page or this script: the terms and the passkey ceremony always come from the network.
+  if ("serviceWorker" in navigator && document.querySelector('link[rel="manifest"]')) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   if (document.body.dataset.page === "approve") void approvePage();
   if (document.body.dataset.page === "enrol") enrolPage();
   if (document.body.dataset.page === "policy") void policyPage();

@@ -1,0 +1,17 @@
+// The Android app's Digital Asset Links (docs/app/android-twa.md): a template. It says that the Android app with this
+// package name, signed with this key, may open this site full screen as a Trusted Web Activity.
+//
+// To use it: copy it to docs/app/assetlinks.json (that file is not in git until you make it), remove these comment
+// lines, put your package name and the SHA-256 fingerprint of your signing key (`keytool -list -v -keystore
+// android.keystore`, or Google Play Console > Setup > App integrity > App signing key certificate), then deploy the
+// site: the Worker serves the file at /.well-known/assetlinks.json (src/relay/assets.ts). Without it, nothing is served.
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.purser.app",
+      "sha256_cert_fingerprints": ["REPLACE:WITH:YOUR:SIGNING:KEY:SHA256:FINGERPRINT"]
+    }
+  }
+]
