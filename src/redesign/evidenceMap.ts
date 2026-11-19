@@ -17,7 +17,9 @@ export const MAP_CAPTION = "How a payment is checked, each step with its evidenc
 type Tone = "" | "awx" | "metal" | "visa" | "claude" | "ok";
 /** One step of the path: its words, the wall group it links to, its badge (null when a figure is missing). */
 export interface MapNode { id: string; title: string; sub: string; group: string; tone: Tone; badge: string | null }
-export interface EvidenceMap { main: MapNode[]; rails: MapNode[]; held: MapNode | null; refused: MapNode | null }
+export interface EvidenceMap { main: MapNode[]; rails: MapNode[]; held: MapNode | null; refused: MapNode | null; checks: MapNode[] }
+/** The row under the path (19 Nov): the attacks and checks made on purpose, each with its wall figure. */
+export const CHECKS_TITLE = "Attacked and checked on purpose";
 
 /** The map's steps and badges, from the wall's file. */
 export function evidenceMap(w: EvidenceWall | null = committedWall()): EvidenceMap | null {
@@ -45,7 +47,15 @@ export function evidenceMap(w: EvidenceWall | null = committedWall()): EvidenceM
   ];
   const held = fig("try-held") ? node("held", "Held", "", "ev-ai", "", badge(["try-held", "held at the cash floor"])) : null;
   const refused = fig("try-cent") ? node("refused", "Refused", "", "ev-forged", "", badge(["try-cent", "one-cent changes refused"])) : null;
-  return { main, rails, held, refused };
+  // The row under the path: only a check whose figure is on the wall.
+  const checks = [
+    node("c-redteam", "Red team", "the /try API, on this computer", "ev-attacked", "ok", badge(["redteam-api", "attacks held"])),
+    node("c-chaos", "Chaos", "faults and crashes, money path", "ev-attacked", "ok", badge(["chaos-money", "invariants broken"])),
+    node("c-fuzz", "Fuzzing", "properties at high run counts", "ev-attacked", "ok", badge(["fuzzing", "properties held"])),
+    node("c-eval", "Held-out eval", "100 invoices, written first", "ev-ai", "claude", badge(["eval-v3", "wrong payments"])),
+    node("c-site", "The public site", "Lighthouse, axe, WebKit", "ev-quality", "ok", badge(["site-quality", "accessibility"], ["webkit-try", "WebKit walks passed"])),
+  ].filter((n) => n.badge);
+  return { main, rails, held, refused, checks };
 }
 
 /** Words into lines of at most `max` characters (a long word keeps its own line). */
@@ -60,7 +70,7 @@ export function wrap(text: string, max: number): string[] {
 }
 
 interface Box { n: MapNode; x: number; y: number; w: number; h: number; title?: string[]; sub: string[]; badge: string[] }
-interface Layout { variant: "wide" | "tall"; vw: number; vh: number; boxes: Box[]; pills: Box[]; lines: string[]; branch: { cls: string; d: string }[]; dots: { cls: string; d: string }[]; hits: { id: string; at: number }[]; pillHits: { id: string; at: number }[] }
+interface Layout { variant: "wide" | "tall"; vw: number; vh: number; boxes: Box[]; pills: Box[]; labels: { x: number; y: number; text: string }[]; lines: string[]; branch: { cls: string; d: string }[]; dots: { cls: string; d: string }[]; hits: { id: string; at: number }[]; pillHits: { id: string; at: number }[] }
 
 const T = 6; // seconds a loop
 const MOVE = 0.8; // the share of a loop the dot moves (then it fades)
@@ -97,20 +107,31 @@ function wide(m: EvidenceMap, M: Metrics = PAGE): Layout {
     return [{ n, x: b.x, y: pillTop, w: mw, h: pillHeight(M, lines), sub: [], badge: lines }];
   };
   const pills = [...pill(m.held, rules), ...pill(m.refused, passkey)];
-  const vh = Math.ceil(Math.max(top + colH, ...pills.map((p) => p.y + p.h)) + 4);
+  // The checks' row under it all: its name, then one box a check, across the drawing's width.
+  const below = Math.max(top + colH, ...pills.map((p) => p.y + p.h));
+  const n = m.checks.length, cw = n ? (W - 2 - (n - 1) * gap) / n : 0;
+  const checks = m.checks.map((c) => mk(c, cw));
+  const labelY = below + 24, rowY = labelY + M.lh.title - 4;
+  const CH = checks.length ? Math.max(...checks.map((b) => heightOf(M, b.sub, b.badge, b.title!.length))) : 0;
+  checks.forEach((b, i) => Object.assign(b, { x: i * (cw + gap), y: rowY, h: CH }));
+  const vh = Math.ceil((checks.length ? rowY + CH : below) + 4);
   const [alta, , visa] = rails as [Box, Box, Box];
   const fork = (r: Box) => `M${passkey.x + mw} ${cy} C${passkey.x + mw + 18} ${cy} ${r.x - 18} ${mid(r)} ${r.x} ${mid(r)}`;
   const merge = (r: Box) => `M${r.x + rw} ${mid(r)} C${r.x + rw + 18} ${mid(r)} ${after[0]! - 18} ${cy} ${after[0]!} ${cy}`;
   const heldPill = pills.find((p) => p.n.id === "held"), badPill = pills.find((p) => p.n.id === "refused");
   return {
-    variant: "wide", vw: W, vh, boxes: [...main, ...rails], pills,
+    variant: "wide", vw: W, vh, boxes: [...main, ...rails, ...checks], pills,
+    labels: checks.length ? [{ x: 0, y: labelY, text: CHECKS_TITLE }] : [],
     lines: [`M${x0} ${cy} H${x1}`, fork(alta), fork(visa), merge(alta), merge(visa)],
     branch: [...(heldPill ? [{ cls: "held", d: `M${c(rules)} ${bottom} V${heldPill.y}` }] : []), ...(badPill ? [{ cls: "bad", d: `M${c(passkey)} ${bottom} V${badPill.y}` }] : [])],
     dots: [{ cls: "ok", d: `M${x0} ${cy} H${main[5]!.x}` }, ...(badPill ? [{ cls: "bad", d: `M${x0} ${cy} H${c(passkey)} V${badPill.y}` }] : []), ...(heldPill ? [{ cls: "hold", d: `M${x0} ${cy} H${c(rules)} V${heldPill.y}` }] : [])],
-    hits: [...main, rails[1]!].map((b) => ({ id: b.n.id, at: Math.min(1, (b.x - x0) / (main[5]!.x - x0)) })),
+    hits: [...main, rails[1]!].map((b) => ({ id: b.n.id, at: Math.min(1, (b.x - x0) / (main[5]!.x - x0)) })).concat(checkHits(checks)),
     pillHits: pills.map((p) => ({ id: p.n.id, at: 1 })),
   };
 }
+
+/** The checks light up one after another, left to right (top to bottom on a phone), while the dot runs. */
+const checkHits = (checks: Box[]) => checks.map((b, i) => ({ id: b.n.id, at: (i + 0.5) / checks.length }));
 
 /**
  * Top to bottom (a phone). The dot never crosses a card's text (the owner's review, 19 Nov: at 390 px it ran through the
@@ -137,15 +158,21 @@ function tall(m: EvidenceMap): Layout {
   const heldPill = pills.find((p) => p.n.id === "held"), badPill = pills.find((p) => p.n.id === "refused");
   const first = order[0]!, last = order[order.length - 1]!;
   const y0 = mid(first), y1 = mid(last);
+  // The checks under the path, off the spine: their name, then one card each.
+  const labelY = end + 26;
+  let cy = labelY + 8;
+  const checks = m.checks.map((n) => { const b = mk(n); b.x = sx - 3; b.w = W - b.x; b.sub = wrap(n.sub, chars(b.w, 11.5)); b.badge = n.badge ? wrap(n.badge, chars(b.w - 8, 11.5)) : []; b.h = heightOf(PAGE, b.sub, b.badge); b.y = cy; cy += b.h + 8; return b; });
+  const vh = Math.ceil((checks.length ? cy - 8 : end) + 4);
   // A branch: down the spine to the gap under its card, across it to under the pill, up to the pill's bottom edge.
   const under = (b: Box) => b.y + b.h + gap / 2;
   const toPill = (b: Box, p: Box) => `M${sx} ${y0} V${under(b)} H${p.x + p.w / 2} V${p.y + p.h}`;
   return {
-    variant: "tall", vw: W, vh: Math.ceil(end + 4), boxes: order, pills,
+    variant: "tall", vw: W, vh, boxes: [...order, ...checks], pills,
+    labels: checks.length ? [{ x: sx - 3, y: labelY, text: CHECKS_TITLE }] : [],
     lines: [`M${sx} ${y0} V${y1}`, ...order.map((b) => `M${sx} ${mid(b)} H${nx}`)],
     branch: [...(heldPill ? [{ cls: "held", d: `M${nx + nw} ${mid(rules)} H${px}` }] : []), ...(badPill ? [{ cls: "bad", d: `M${nx + nw} ${mid(passkey)} H${px}` }] : [])],
     dots: [{ cls: "ok", d: `M${sx} ${y0} V${y1}` }, ...(badPill ? [{ cls: "bad", d: toPill(passkey, badPill) }] : []), ...(heldPill ? [{ cls: "hold", d: toPill(rules, heldPill) }] : [])],
-    hits: order.map((b) => ({ id: b.n.id, at: Math.max(0, Math.min(1, (mid(b) - y0) / (y1 - y0))) })),
+    hits: order.map((b) => ({ id: b.n.id, at: Math.max(0, Math.min(1, (mid(b) - y0) / (y1 - y0))) })).concat(checkHits(checks)),
     pillHits: pills.map((p) => ({ id: p.n.id, at: 1 })),
   };
 }
@@ -176,6 +203,7 @@ function svg(l: Layout, M: Metrics = PAGE, o: { links?: boolean; head?: string; 
   const pill = (p: Box) => wrapIn(`em-p ${p.n.id} em-h-${p.n.id}`, p.n.group, `${p.n.title}: ${p.n.badge}`, `<rect class="em-pb" x="${r1(p.x + 0.5)}" y="${r1(p.y + 0.5)}" width="${p.w - 1}" height="${r1(p.h - 1)}" rx="10"/>${p.badge.map((s, i) => text(p.x + 8, p.y + 10 + asc(M.size.badge) - 1 + i * M.lh.badge, "em-v", s)).join("")}`);
   return `<svg class="em-${l.variant}" viewBox="0 0 ${l.vw} ${l.vh}" width="${l.vw}" height="${l.vh}" ${o.root ?? `role="group" aria-label="${esc("The money path, with the evidence for each step")}"`}>${o.head ?? ""}
 ${l.lines.map((d) => `<path class="em-line" d="${d}"/>`).join("")}${l.branch.map((b) => `<path class="em-br ${b.cls}" d="${b.d}"/>`).join("")}
+${l.labels.map((t) => text(t.x, t.y, "em-k", t.text)).join("")}
 ${l.boxes.map(box).join("\n")}
 ${l.pills.map(pill).join("\n")}
 ${l.dots.map((d) => `<path class="em-dot halo ${d.cls}" d="${d.d}" pathLength="100"/><path class="em-dot ${d.cls}" d="${d.d}" pathLength="100"/>`).join("")}
@@ -225,6 +253,7 @@ ${P}.em-n.claude { --pc: var(--claude); --ps: var(--claude-soft); } ${P}.em-n.ok
 ${P}.em-box { fill: var(--surface); stroke: var(--border); stroke-width: 1.2; }
 ${P}.em-t { fill: var(--text); font-size: ${M.size.title}px; font-weight: 740; }
 ${P}.em-s { fill: var(--muted); font-size: ${M.size.sub}px; }
+${P}.em-k { fill: var(--muted); font-size: ${M.size.sub}px; font-weight: 700; letter-spacing: .02em; }
 ${P}.em-bg { fill: var(--ps); }
 ${P}.em-v { fill: var(--pc); font-size: ${M.size.badge}px; font-weight: 700; font-variant-numeric: tabular-nums; }
 ${P}.em-p.held { --pc: var(--held); } ${P}.em-p.refused { --pc: var(--bad); }
@@ -259,7 +288,7 @@ export function evidenceMapAlt(w: EvidenceWall | null = committedWall()): string
   if (!m) return "";
   // Short (the README's word budget): each step's title and its badge, the two branches, what is simulated.
   const step = (n: MapNode) => `${n.title}${n.badge ? ` (${n.badge})` : ""}`;
-  return `Animated money path: ${[...m.main.slice(0, 4), ...m.rails, ...m.main.slice(4)].map(step).join("; ")}.${m.refused?.badge ? ` Refused: ${m.refused.badge}.` : ""}${m.held?.badge ? ` Held: ${m.held.badge}.` : ""} Test money.`;
+  return `Animated money path: ${[...m.main.slice(0, 4), ...m.rails, ...m.main.slice(4)].map(step).join("; ")}.${m.refused?.badge ? ` Refused: ${m.refused.badge}.` : ""}${m.held?.badge ? ` Held: ${m.held.badge}.` : ""}${m.checks.length ? ` ${CHECKS_TITLE}: ${m.checks.map(step).join("; ")}.` : ""} Test money.`;
 }
 
 /** The README's line with the map: light and dark pictures, linked to the wall on /proof, the path and figures as its alt. */

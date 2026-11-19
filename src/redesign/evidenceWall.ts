@@ -1,6 +1,7 @@
 // /proof's evidence wall, as rendered from docs/evidence/evidence-wall.json; its figures are computed in
 // ./evidenceWallData.ts. (The owner, 19 Nov: "show all our data and proof"): every figure read from a committed record
-// here, grouped (live on the rails, cannot be forged, AI under control, built to last, the recorded /try walks), each a
+// here, grouped (live on the rails, cannot be forged, AI under control, attacked and broken on purpose, built to last,
+// quality and supply chain, the recorded /try walks), each a
 // tile with one big figure, one line, what was live or simulated, and a link to its record. Figures already in the band
 // above it on /proof (tests, live runs, Airwallex calls, Alta transactions, Claude request ids, refusals) are not
 // repeated here. `npm run evidence:wall` (scripts/evidence-wall.ts) writes the wall to docs/evidence/evidence-wall.json;
@@ -16,14 +17,14 @@ export const WALL_TITLE = "The evidence wall";
 
 const ROOT = new URL("../../", import.meta.url);
 
-/** What a tile's figure is: live at a partner's sandbox, live on Alta's testnet, a test world (no partner), a re-check of the records, or CI. */
-export type WallTag = "sandbox" | "testnet" | "test" | "check" | "ci" | "external";
+/** What a tile's figure is: live at a partner's sandbox, live on Alta's testnet, a test world (no partner), a re-check of the records, CI, an outside programme, or the public site measured read-only. */
+export type WallTag = "sandbox" | "testnet" | "test" | "check" | "ci" | "external" | "site";
 // 19 Nov, second pass (the owner: "clearer and tighter"): one word a tag; the wall's lead says sandbox and testnet are live.
-export const TAG_WORDS: Record<WallTag, string> = { sandbox: "Sandbox", testnet: "Testnet", test: "Test world", check: "Re-checked", ci: "CI", external: "External" };
+export const TAG_WORDS: Record<WallTag, string> = { sandbox: "Sandbox", testnet: "Testnet", test: "Test world", check: "Re-checked", ci: "CI", external: "External", site: "Public site" };
 /** The wall's legend, in sight above the tiles: what the tags mean, and what was simulated everywhere. */
-export const WALL_LEGEND = "Sandbox and testnet: live runs, test money; a sandbox PAID is simulated. Test world: offline evals. Tap a tile for its record.";
+export const WALL_LEGEND = "Sandbox and testnet: live runs, test money; a sandbox PAID is simulated. Test world: offline evals and attacks on this computer. Tap a tile for its record.";
 /** The groups' names in the wall's sticky nav. */
-export const WALL_NAV: Record<string, string> = { "ev-rails": "Live on the rails", "ev-forged": "Cannot be forged", "ev-ai": "AI under control", "ev-built": "Built to last", "ev-scale": "/try timed" };
+export const WALL_NAV: Record<string, string> = { "ev-rails": "Live on the rails", "ev-forged": "Cannot be forged", "ev-ai": "AI under control", "ev-attacked": "Attacked on purpose", "ev-built": "Built to last", "ev-quality": "Quality", "ev-scale": "/try timed" };
 /** The partner whose colour the tile carries, if one. */
 export type WallTone = "awx" | "metal" | "claude" | "ok" | "";
 export interface WallTile { key: string; fig: string; label: string; note: string; tag: WallTag; tone: WallTone; href: string; rec: string; /** Not on /proof (a partner page's strip shows it). */ offProof?: boolean }
@@ -49,7 +50,7 @@ export function evidenceWallLlms(w: EvidenceWall | null = committedWall()): stri
   const abs = (h: string) => (isExternal(h) ? h : `${SITE}/${h}`);
   const tagWords = (t: WallTag) => (t === "ci" ? TAG_WORDS[t] : TAG_WORDS[t].toLowerCase());
   // A tile's note, inside a line: no closing full stop, and a plain first word in lower case (not a name or a figure).
-  const inLine = (n: string) => n.replace(/\.$/, "").replace(/^(The|Its|On|A|Each|Every|Downloaded|Simulated|Inside|Median|List)\b/, (w) => w.toLowerCase());
+  const inLine = (n: string) => n.replace(/\.$/, "").replace(/^(The|Its|On|A|Each|Every|Downloaded|Simulated|Inside|Median|List|Cases|Desktop|From)\b/, (w) => w.toLowerCase());
   return [
     LLMS_WALL_HEADING,
     "",

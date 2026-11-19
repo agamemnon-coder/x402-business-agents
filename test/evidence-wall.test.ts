@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EVIDENCE_WALL_CSS, LLMS_WALL_HEADING, PARTNER_STRIPS, README_WALL_KEYS, evidenceStripHtml, readmeWallLine, withReadmeWallLine, WALL_FILE, committedWall, evidenceWallHtml, evidenceWallLlms, withWallSection, type EvidenceWall, type WallTile } from "../src/redesign/evidenceWall.js";
-import { evidenceWall, evidenceWallFile } from "../src/redesign/evidenceWallData.js";
+import { evidenceWall, evidenceWallFile, wallWalks } from "../src/redesign/evidenceWallData.js";
 import { liveTryRecords, liveTryTotals, nearestRank, type LiveTryRecord } from "../src/redesign/liveTry.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { proofPage } from "../src/redesign/proof.js";
@@ -23,9 +23,9 @@ describe("the evidence wall's file", () => {
     expect(read(WALL_FILE)).toBe(evidenceWallFile());
   });
 
-  it("has five groups, each tile with a figure, a line, a tag, a record that exists and a link to it", () => {
+  it("has seven groups, each tile with a figure, a line, a tag, a record that exists and a link to it", () => {
     const w = committedWall()!;
-    expect(w.groups.map((g) => g.title)).toEqual(["Live on the rails", "Cannot be forged", "AI under control", "Built to last", "The public /try, timed"]);
+    expect(w.groups.map((g) => g.title)).toEqual(["Live on the rails", "Cannot be forged", "AI under control", "Attacked and broken on purpose", "Built to last", "Quality and supply chain", "The public /try, timed"]);
     const keys = tiles(w).map((t) => t.key);
     expect(new Set(keys).size).toBe(keys.length);
     for (const t of tiles(w)) {
@@ -47,8 +47,10 @@ describe("the evidence wall's file", () => {
     expect(tile(w, "tamper-matrix").fig).toBe(tm.refused === tm.tried ? `All ${tm.tried.toLocaleString("en-GB")}` : `${tm.refused.toLocaleString("en-GB")} of ${tm.tried.toLocaleString("en-GB")}`);
     const cov = json<{ totals: { live: number; endpoints: number } }>("docs/evidence/airwallex-api-coverage.json").totals;
     expect(tile(w, "awx-endpoints").fig).toBe(String(cov.live));
-    // The /try walks: every recorded series added up (src/redesign/liveTry.ts; 19 Nov: the morning's 8 and the mega run's 17).
-    const t = liveTryTotals()!;
+    // The /try walks: every recorded series added up (src/redesign/liveTry.ts; 19 Nov: the morning's 8 and the mega run's 17),
+    // but the WebKit check, out of the band (scale.ts NOT_IN_BAND), which has a tile of its own.
+    expect(wallWalks().map((r) => r.dir)).not.toContain("docs/runs/2026-11-19-webkit-try");
+    const t = liveTryTotals(wallWalks())!;
     expect(t.records.length).toBeGreaterThanOrEqual(2);
     expect(tile(w, "try-journeys").fig).toBe(countOf(t.siteStepsPassed, t.runs));
     expect(tile(w, "try-transfers").fig).toBe(countOf(t.paid, t.transfers));
@@ -182,5 +184,40 @@ describe("the OpenSSF Best Practices tile", () => {
     expect(t.fig.toLowerCase()).toBe(os.status);
     expect(t.label).toContain(String(os.project));
     expect(proofPage()).not.toContain("bestpractices.dev/projects/16923/badge");
+  });
+});
+
+describe("the evidence of 19 Nov: attacked and broken on purpose, quality and supply chain", () => {
+  const w = () => committedWall()!;
+  it("reads the red team, chaos and fuzzing figures from their records, and says the failures", () => {
+    const ra = json<{ totals: { attacks: number; pass: number; fail: number }; results: { verdict: string; target: string }[] }>("docs/evidence/redteam-api.json");
+    expect(tile(w(), "redteam-api")).toMatchObject({ fig: countOf(ra.totals.pass, ra.totals.attacks), tag: "test", rec: "docs/evidence/redteam-api.json" });
+    if (ra.totals.fail) expect(tile(w(), "redteam-api").note).toMatch(new RegExp(`^${ra.totals.fail} fail`));
+    const cm = json<{ totals: { scenarios: number; crashes: number; faults: number }; invariants: Record<string, { broken: number }> }>("docs/evidence/chaos-money.json");
+    const broken = Object.values(cm.invariants).reduce((n, i) => n + i.broken, 0);
+    expect(tile(w(), "chaos-money").fig).toBe(String(broken));
+    expect(tile(w(), "chaos-money").label).toContain(cm.totals.scenarios.toLocaleString("en-GB"));
+    expect(tile(w(), "chaos-money").note).toContain(`${cm.totals.crashes} process deaths, ${cm.totals.faults} faults`);
+    const fz = json<{ totals: { properties: number; runs: number; passed: number; failed: number } }>("docs/evidence/fuzzing.json").totals;
+    expect(tile(w(), "fuzzing").fig).toBe(countOf(fz.passed, fz.properties));
+    if (fz.failed) expect(tile(w(), "fuzzing").label).toContain(`${fz.failed} findings open`);
+    expect(tile(w(), "fuzzing").note).toContain(fz.runs.toLocaleString("en-GB"));
+  });
+
+  it("reads eval v3, site quality and the WebKit walks from their records", () => {
+    const v3 = json<{ totals: { purser_script: { wrong_payments: number }; no_rules: { wrong_payments: number } } }>("docs/evals/adversarial-v3.json").totals;
+    expect(tile(w(), "eval-v3").fig).toBe(`${v3.purser_script.wrong_payments} vs ${v3.no_rules.wrong_payments}`);
+    const sq = json<{ lighthouse: { path: string; preset: string; median: { performance: number; accessibility: number } }[] }>("docs/evidence/site-quality.json").lighthouse;
+    expect(tile(w(), "site-quality").fig).toBe(String(Math.min(...sq.map((x) => x.median.accessibility))));
+    expect(tile(w(), "site-quality").note).toContain(`lowest performance ${Math.min(...sq.map((x) => x.median.performance))}`);
+    const wk = json<{ aggregate: { runs: number; ok: number } }>("docs/runs/2026-11-19-webkit-try/summary.json").aggregate;
+    expect(tile(w(), "webkit-try")).toMatchObject({ fig: countOf(wk.ok, wk.runs), tag: "sandbox" });
+  });
+
+  it("claims no Scorecard score and no attestation: the supply-chain workflows are set up, not yet run", () => {
+    const t = tile(w(), "supply-chain");
+    expect(t.label).toContain("not yet run");
+    expect(JSON.stringify(w())).not.toMatch(/Scorecard (score|of) \d|\d+(\.\d)?\s*\/\s*10\b/);
+    expect(tile(w(), "openssf").tag).toBe("external");
   });
 });

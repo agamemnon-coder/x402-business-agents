@@ -14,6 +14,7 @@ import { ownersRun, ownersSteps } from "./metalOnchain.js";
 import { VIC3_RUN_FILE, vic3Run, vic3Summary } from "./vic3Run.js";
 import { WORST_CASE, WORST_CASE_DOC, worstOf } from "../evals/worstCase.js";
 import { CI_RUNS_URL, ciJobs } from "./ciChecks.js";
+import { NOT_IN_BAND } from "./scale.js";
 import type { EvidenceWall, WallGroup, WallTile } from "./evidenceWall.js";
 
 const ROOT = new URL("../../", import.meta.url);
@@ -140,6 +141,13 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   if (claude) out.push({ key: "claude-main", fig: claude.fig, label: "decisions by Claude in the main run", note: claude.text, tag: "sandbox", tone: "claude", href: claude.href, rec: claude.rec ?? "" });
   const script = worstOf("purser_script"), naive = worstOf("no_rules");
   if (WORST_CASE && script && naive) out.push({ key: "worst-case", fig: `${script.wrong_payments} vs ${naive.wrong_payments}`, label: "wrong payments: always-pay AI vs no rules", note: `${WORST_CASE.cases_per_run} hostile and clean invoices; ${script.paid_past_cfo} paid past the CFO.`, tag: "test", tone: "claude", href: blob(WORST_CASE_DOC), rec: "docs/evals/worst-case-summary.json" });
+  // Eval v3 (19 Nov): 100 held-out invoices, the case file committed alone before the run (src/cli/adversarialV3.ts).
+  const V3 = "docs/evals/adversarial-v3.json";
+  const v3 = json(V3) as { held_out?: boolean; cases_commit?: string; totals?: Record<"purser_script" | "no_rules", { cases: number; wrong_payments: number; false_holds: number; clean_truths: number }> } | null;
+  if (v3?.held_out && v3.totals?.purser_script && v3.totals.no_rules) {
+    const p = v3.totals.purser_script, n = v3.totals.no_rules;
+    out.push({ key: "eval-v3", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices: Purser vs no rules`, note: `Cases committed before the run (commit ${v3.cases_commit}); a script always says pay. ${p.false_holds} false holds of ${p.clean_truths}. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v3.md"), rec: V3 });
+  }
   const RT = "docs/redteam/report.json";
   const rt = json(RT) as { attempts?: number; blocked?: number; caught_after?: number } | null;
   if (rt?.attempts) {
@@ -170,13 +178,75 @@ function built(): WallTile[] {
     const lastRun = loads[loads.length - 1]!.r;
     out.push({ key: "clearing-load", fig: whole(paid, tried), label: "payments through Alta's clearing, load test", note: `${loads.length} runs, ${day(lastRun.ran_at)}; the last: ${whole(lastRun.paid, lastRun.attempted).toLowerCase()} paid.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-10-30-clearing-load.md"), rec: loads.map((x) => x.f).join(" ") });
   }
+  const jobs = ciJobs();
+  const scans = jobs.filter((j) => /gitleaks|Semgrep|code scanning|npm audit/i.test(j.what)).length;
+  out.push({ key: "ci", fig: String(jobs.length), label: "CI jobs on every change", note: `${scans} of them scan for security: gitleaks, Semgrep, CodeQL, npm audit.`, tag: "ci", tone: "", href: CI_RUNS_URL, rec: ".github/workflows/ci.yml" });
+  return out;
+}
+
+/** Attacked and broken on purpose (19 Nov): the /try API's red team, chaos on the money path, fuzzing; findings said. */
+function attacked(): WallTile[] {
+  const out: WallTile[] = [];
+  const RA = "docs/evidence/redteam-api.json";
+  const ra = json(RA) as { checked?: string; totals?: { attacks: number; pass: number; fail: number; error: number }; results?: { id: string; group: string; target: string; verdict: string }[] } | null;
+  if (ra?.totals?.attacks) {
+    const t = ra.totals, fails = (ra.results ?? []).filter((r) => r.verdict !== "PASS");
+    const judgeOnly = fails.length > 0 && fails.every((r) => r.target === "judge");
+    const ids = fails.map((r) => r.id).sort().join(" ");
+    // The findings in words when they are the two of 19 Nov (a missing nosniff header); otherwise the record lists them.
+    const what = judgeOnly && ids === "headers-files headers-pages" ? "its 404 page and its static files lack nosniff" : `${[...new Set(fails.map((r) => r.group))].join(", ")}; the record lists them`;
+    out.push({ key: "redteam-api", fig: whole(t.pass, t.attacks), label: "attacks on the /try API held", note: `${t.fail ? `${t.fail === 1 ? "One fails" : `${t.fail} fail`}${judgeOnly ? ", on the judge server only" : ""}: ${what}. ` : ""}${t.error} errors. Servers on this computer, no live site; ${day(`${ra.checked}T12:00:00Z`)}.`, tag: "test", tone: t.fail ? "" : "ok", href: blob("docs/evidence/redteam-api.md"), rec: RA });
+  }
+  const CM = "docs/evidence/chaos-money.json";
+  const cm = json(CM) as { checked?: string; totals?: { scenarios: number; passed: number; faults: number; crashes: number }; invariants?: Record<string, { held: number; broken: number }>; canaries?: { caught: boolean }[] } | null;
+  if (cm?.totals?.scenarios && cm.invariants) {
+    const t = cm.totals, broken = Object.values(cm.invariants).reduce((n, i) => n + i.broken, 0), inv = Object.keys(cm.invariants).length;
+    const can = cm.canaries ?? [], caught = can.filter((c) => c.caught).length;
+    out.push({ key: "chaos-money", fig: String(broken), label: `money invariants broken in ${fmt(t.scenarios)} chaos scenarios`, note: `${inv} invariants held, never paid twice and never unsigned among them; ${t.crashes} process deaths, ${t.faults} faults from a stand-in Airwallex${can.length ? `; ${caught === can.length ? `all ${can.length}` : `${caught} of ${can.length}`} planted bugs caught` : ""}. In process, test money.`, tag: "test", tone: broken ? "" : "ok", href: blob("docs/evidence/chaos-money.md"), rec: CM });
+  }
+  const FZ = "docs/evidence/fuzzing.json";
+  const fz = json(FZ) as { totals?: { properties: number; runs: number; passed: number; failed: number } } | null;
+  if (fz?.totals?.properties) {
+    const t = fz.totals;
+    out.push({ key: "fuzzing", fig: whole(t.passed, t.properties), label: `fuzzed properties held${t.failed ? `; ${t.failed} findings open` : ""}`, note: `${fmt(t.runs)} runs with fast-check, in process.${t.failed ? ` The ${t.failed} findings are not fixed yet; each is shrunk and kept with the seed that replays it.` : ""}`, tag: "test", tone: t.failed ? "" : "ok", href: blob("docs/evidence/fuzzing.md"), rec: FZ });
+  }
+  return out;
+}
+
+/** Quality and supply chain (19 Nov): the public site measured, /try in WebKit, the assurance case, the badge, the workflows set up. */
+function quality(): WallTile[] {
+  const out: WallTile[] = [];
+  const SQ = "docs/evidence/site-quality.json";
+  type Lh = { path: string; preset: string; median: { performance: number; accessibility: number } };
+  const sq = json(SQ) as { measured_at?: string; tools?: { lighthouse?: string }; lighthouse_runs_per_page?: number; lighthouse?: Lh[]; axe?: { path: string; counts: { critical: number }; violations: { id: string; impact: string }[] }[] } | null;
+  if (sq?.lighthouse?.length && sq.axe?.length) {
+    const lh = sq.lighthouse, pages = [...new Set(lh.map((x) => x.path))], presets = [...new Set(lh.map((x) => x.preset))];
+    const a11y = Math.min(...lh.map((x) => x.median.accessibility)), low = [...lh].sort((a, b) => a.median.performance - b.median.performance)[0]!;
+    const critical = sq.axe.reduce((n, x) => n + x.counts.critical, 0);
+    const serious = [...new Set(sq.axe.flatMap((x) => x.violations.filter((v) => v.impact === "serious").map((v) => `${v.id} on ${x.path}`)))];
+    out.push({ key: "site-quality", fig: String(a11y), label: `accessibility score on ${a11y === 100 ? "all " : ""}${pages.length} public pages, ${presets.length === 2 ? "mobile and desktop" : presets.join(", ")}`, note: `Lighthouse ${sq.tools?.lighthouse}, median of ${sq.lighthouse_runs_per_page}; lowest performance ${low.median.performance} (${low.path}, ${low.preset}). axe: ${critical} critical${serious.length ? `, serious: ${serious.join(", ")}` : ""}. Read-only, ${day(sq.measured_at!)}.`, tag: "site", tone: "ok", href: blob("docs/evidence/site-quality.md"), rec: SQ });
+  }
+  // The /try walk in WebKit (Safari's engine): a browser check, out of the band and of the walks' sums above (scale.ts NOT_IN_BAND).
+  const WK = "docs/runs/2026-11-19-webkit-try";
+  const wk = json(`${WK}/summary.json`) as { aggregate?: { runs: number; ok: number; first_start?: string; by_browser?: Record<string, number> } } | null;
+  const wkSteps = has(`${WK}.md`) ? [...readFileSync(new URL(`${WK}.md`, ROOT), "utf8").matchAll(/all ok \((\d+) of (\d+) steps\)/g)].map((m) => [Number(m[1]), Number(m[2])] as const) : [];
+  if (wk?.aggregate?.runs && wkSteps.length === wk.aggregate.runs && wkSteps.every(([a, b]) => a === b)) {
+    const a = wk.aggregate, steps = wkSteps[0]![1];
+    out.push({ key: "webkit-try", fig: whole(a.ok, a.runs), label: `/try walks in WebKit (Safari's engine): all ${steps} steps passed`, note: `Desktop light and phone dark; a software test passkey, no Touch ID; payouts PAID by the sandbox's simulation. A browser check, not counted with the walks above; ${day(a.first_start!)}.`, tag: "sandbox", tone: "ok", href: blob(`${WK}.md`), rec: `${WK}/summary.json` });
+  }
+  const AC = "docs/assurance.md";
+  if (has(AC)) {
+    const rows = readFileSync(new URL(AC, ROOT), "utf8").split("\n").filter((l) => /^\| \*\*/.test(l)).length;
+    if (rows) out.push({ key: "assurance", fig: String(rows), label: "invariants, each mapped to code, tests and CI", note: "The assurance case; test/assurance.test.ts checks every file, function and CI job it names.", tag: "check", tone: "ok", href: blob(AC), rec: AC });
+  }
   // An outside programme's badge, as a text tile (no outside image: the page's CSP allows images from itself only).
   const OS = "docs/evidence/openssf-best-practices.json";
   const os = json(OS) as { programme?: string; project?: number; status?: string; as_of?: string; url?: string; basis?: string } | null;
   if (os?.status && os.url) out.push({ key: "openssf", fig: os.status[0]!.toUpperCase() + os.status.slice(1), label: `${os.programme} badge, project ${os.project}`, note: `From ${os.basis}, as of ${day(`${os.as_of}T12:00:00Z`)}; the live status is on the project page.`, tag: "external", tone: "ok", href: os.url, rec: OS });
-  const jobs = ciJobs();
-  const scans = jobs.filter((j) => /gitleaks|Semgrep|code scanning|npm audit/i.test(j.what)).length;
-  out.push({ key: "ci", fig: String(jobs.length), label: "CI jobs on every change", note: `${scans} of them scan for security: gitleaks, Semgrep, CodeQL, npm audit.`, tag: "ci", tone: "", href: CI_RUNS_URL, rec: ".github/workflows/ci.yml" });
+  // Set up, not yet run (19 Nov): the Scorecard workflow and the release workflow's SLSA attestations. No score is claimed.
+  const SC = ".github/workflows/scorecard.yml", RL = ".github/workflows/release.yml";
+  const supply = [SC, RL].filter((f) => has(f) && (f === SC ? /ossf\/scorecard-action/ : /attest-build-provenance/).test(readFileSync(new URL(f, ROOT), "utf8")));
+  if (supply.length === 2) out.push({ key: "supply-chain", fig: String(supply.length), label: "supply-chain workflows set up, not yet run", note: "OpenSSF Scorecard and SLSA build provenance for releases. Neither has run yet: no score, no attestation.", tag: "ci", tone: "", href: blob(SC), rec: supply.join(" ") });
   return out;
 }
 
@@ -199,14 +269,19 @@ function scale(w: ReturnType<typeof walks>): WallTile[] {
   return out;
 }
 
+/** The recorded /try walks the wall adds up: every series but those out of the band (the WebKit check has a tile of its own). */
+export const wallWalks = (): LiveTryRecord[] => liveTryRecords().filter((r) => !NOT_IN_BAND.includes(r.dir));
+
 /** The wall, computed from the records now. */
-export function evidenceWall(records: LiveTryRecord[] = liveTryRecords()): EvidenceWall {
+export function evidenceWall(records: LiveTryRecord[] = wallWalks()): EvidenceWall {
   const w = walks(records);
   const groups: WallGroup[] = [
     { id: "ev-rails", title: "Live on the rails", tiles: rails(w) },
     { id: "ev-forged", title: "Cannot be forged", tiles: forged(w) },
     { id: "ev-ai", title: "AI under control", tiles: ai(w) },
+    { id: "ev-attacked", title: "Attacked and broken on purpose", tiles: attacked() },
     { id: "ev-built", title: "Built to last", tiles: built() },
+    { id: "ev-quality", title: "Quality and supply chain", tiles: quality() },
     { id: "ev-scale", title: "The public /try, timed", tiles: scale(w) },
   ].filter((g) => g.tiles.length);
   return {
