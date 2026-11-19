@@ -161,6 +161,9 @@ for (const width of [1440, 390]) {
     await page.waitForFunction((n) => (document.getElementById("v-status")?.textContent ?? "").includes(n), `${name}-${width}.json`);
     const v = await verdict();
     ok(v.ok === "true" && v.lines >= 10 && v.pass === v.lines, `${tag}: the ${name} proof from /try passes every line (${v.pass}/${v.lines})`);
+    // 19 Nov 2026 (live review: a big green "VALID 11 of 11" over a refused payment): the headline says what is valid.
+    const head = (await page.textContent("#v-verdict b")) ?? "";
+    ok(head === (name === "refused" ? VERIFY_BUNDLE_VERDICT.validRefused : VERIFY_BUNDLE_VERDICT.valid), `${tag}: the ${name} proof's headline reads "${head}"`);
     if (name === "refused") ok((await page.locator('#v-checks li[data-check="asked terms"]').innerText()).includes("cannot cover them"), `${tag}: the refusal's line shows the asked terms hash differently`);
     const refusalLine = await page.locator("#v-means-refusal").evaluate((li) => !(li as HTMLElement).hidden);
     ok(refusalLine === (name === "refused"), `${tag}: "What this proves" names the refusal ${name === "refused" ? "for the refused proof" : "not for the paid proof"}`);
@@ -173,6 +176,8 @@ for (const width of [1440, 390]) {
   await page.click("#v-sample-refused");
   v = await verdict();
   ok(v.ok === "true", `${tag}: the refused sample passes`);
+  ok((await page.textContent("#v-verdict b")) === VERIFY_BUNDLE_VERDICT.validRefused, `${tag}: the refused sample's headline says the proof is valid and the payment refused`);
+  await shot(page, `${tag}-refused`);
   const changed = { ...bundles.paid!, terms: { ...bundles.paid!.terms, amount: "1850.01" } };
   await page.fill("#v-paste", JSON.stringify(changed));
   await page.click("#v-check");

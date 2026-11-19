@@ -170,7 +170,11 @@ export async function startCompany(a: { sql: Sql; engine: (tenantId: string) => 
   // The engine's treasury of test money and its suppliers on file (safe to repeat; the engine also seeds itself once).
   await a.engine(tenant).seed();
   const session = await sessionToken(a.secret, { tenantId: tenant, userId: user, role: "owner", gen: 0 }, now);
-  const live = on(s, "claude") && a.config.claude === true;
+  // 19 Nov 2026 (live review): the switch alone said "live" while cap_action_micros was unset, and every action fell back
+  // to Purser's code (cloud/src/engine/spend.ts reserve(): a missing cap is 0). "live" now also needs every cap an action
+  // of this pool reserves from to be set, and room for one in flight. Only read here; the caps are the owner's.
+  const capsSet = ["cap_action_micros", "cap_company_micros", `cap_day_micros_${pool}`, "cap_all_micros", "max_inflight", ...(pool === "public" ? ["cap_addr_micros"] : [])].every((k) => num(s, k) > 0);
+  const live = on(s, "claude") && a.config.claude === true && capsSet;
   return {
     tenant, session, visitor_token: visitorToken, expires_at: expiresAt, session_expires_at: sessionEnd(now), company: { name }, pool,
     mode: { claude: live ? "live" : "code", agents: live && on(s, "agents") ? "live" : "code", rail_awx: on(s, "rail_awx") && a.config.railAwx === true ? "on" : "off" },

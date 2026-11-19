@@ -8,6 +8,8 @@ What the organisers answered in the hackathon Slack, in our own words, and the v
 |---|---|
 | **Entered for the Metal Award and the Visa Award** since 7 Nov; the Visa Award on the Airi run, never on TAP | [decisions.md](../decisions.md) (D27, D28) |
 | **189 checks passed**, 3 could not run here, 0 failed (15 Nov, `npm run verify-all`) | [verification-2026-11-15.md](verification-2026-11-15.md) · [.json](verification-2026-11-15.json) |
+| **Airwallex API coverage**: 56 endpoints the code calls; 45 in a committed sandbox run record, 3 named only by tests, 8 in the code only (19 Nov, `npm run airwallex:coverage`, offline) | [airwallex-api-coverage.md](airwallex-api-coverage.md) · [.json](airwallex-api-coverage.json) |
+| **Tamper matrix**: every signed field of the 6 receipts and proof bundles committed here changed by one step (a cent, a digit, a letter, a second); 894 changed copies, 894 refused, 0 accepted; all 6 originals verify (19 Nov, `npm run tamper-matrix`, offline) | [tamper-matrix.md](tamper-matrix.md) · [.json](tamper-matrix.json) |
 
 ## What the organisers answered
 

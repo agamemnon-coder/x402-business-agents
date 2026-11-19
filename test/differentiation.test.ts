@@ -81,7 +81,8 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // 15 Nov (clarity) README_WHAT is the idea in one sentence, then the three links; the first sentence follows the Kit 11
     // table, under "At a glance".
     // 18 Nov: the demo in the submission (3:15) replaces the film in the links line; the film stays under "Watch it".
-    expect(top.startsWith(`${README_WHAT} Try it in 2 minutes · Watch the demo (3:15) · Verify a payment yourself`)).toBe(true);
+    // 19 Nov 2026 (README tightened for the judges): the links line is the judges' numbered path, the demo first.
+    expect(top.startsWith(`${README_WHAT} 1. Watch the demo (3:15) · 2. Try it (2 min, test money) · 3. Verify a payment (3 commands)`)).toBe(true);
     expect(readme.indexOf(DIFFERENTIATORS[0])).toBeGreaterThan(readme.indexOf("## Kit 11, step by step"));
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
     // (TRY_IT's 2 minutes), the film (the tour's button went with the tour, 13 Nov, evening).

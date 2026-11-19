@@ -137,7 +137,8 @@ export const INVOICE = {
   loadingAgain: "Loading the samples…",
   /** Judges, 14 Nov: one muted line per sample on what it shows (by key; the titles are the engine's), and where to start. */
   hints: {
-    clean: "Ready to pay · the agents can negotiate a discount",
+    // 19 Nov 2026 (live review): EUR 1,850.00 is above the agent's EUR 500.00 limit, so it is not "Ready to pay" on its own.
+    clean: "Needs your signature · the agents can negotiate a discount",
     again: "The same file again: Purser holds it",
     renumbered: "A paid invoice, new number: held",
     bank: "New bank details: held for your check",
@@ -146,8 +147,10 @@ export const INVOICE = {
     cash: "Cash says wait: held, not paid",
   } as Record<string, string>,
   startHere: "Start here",
-  /** 16 Nov: the heading over the samples Purser holds on purpose (so they do not read as broken). */
-  heldGroup: "Held on purpose: Purser stops these four.",
+  /** 16 Nov: the heading over the samples Purser holds on purpose (so they do not read as broken). 19 Nov 2026 (live
+   * review): it sat after the EUR 480.00 sample, which cash holds too; it now starts at the first held sample, and says no
+   * count of its own. */
+  heldGroup: "Held on purpose: Purser stops each one.",
   /** The skip link, first in the tab order (judges, 14 Nov). */
   skip: "Skip to the demo",
   failed: "Purser could not load this. Try again.",
@@ -1075,7 +1078,7 @@ export const LIVE = {
   caps: {
     pool_day_cap: "today's live budget for Claude is used", company_cap: "this test company's live budget for Claude is used",
     address_cap: "today's live budget for Claude from this address is used", all_time_cap: "the live budget for Claude is used",
-    action_budget: "this step's live budget for Claude is used", switch_off: "live Claude is switched off", no_key: "live Claude is not set up",
+    action_budget: "the demo's Claude budget is used up", switch_off: "live Claude is switched off", no_key: "live Claude is not set up",
     busy: "Claude is busy",
   } as Record<string, string>,
   method: { passkey: "with your passkey" } as Record<string, string>,

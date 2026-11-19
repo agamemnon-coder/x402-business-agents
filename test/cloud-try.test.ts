@@ -90,6 +90,10 @@ describe("a visitor's company", () => {
     clouds.push(d);
     await set(d, "starts", "on");
     await set(d, "claude", "on");
+    // 19 Nov 2026 (live review): the switch alone is not enough. With a cap the spend ledger needs still unset (a missing
+    // row is 0, cloud/src/engine/spend.ts reserve()), every action falls back to Purser's code, so the start says "code".
+    expect((await started(d, "192.0.2.3")).mode).toEqual({ claude: "code", agents: "code", rail_awx: "off" });
+    for (const [k, v] of [["cap_action_micros", 200_000], ["cap_company_micros", 600_000], ["cap_addr_micros", 1_000_000], ["cap_day_micros_public", 5_000_000], ["cap_all_micros", 10_000_000], ["max_inflight", 4]] as const) await set(d, k, v);
     expect((await started(d)).mode).toEqual({ claude: "live", agents: "code", rail_awx: "off" });
     await set(d, "agents", "on");
     await set(d, "rail_awx", "on");

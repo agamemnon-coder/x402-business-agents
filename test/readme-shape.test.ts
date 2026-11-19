@@ -40,11 +40,15 @@ describe("the README's shape (jury panel, 12 Nov)", () => {
 
   // The final review (13 Nov): "For reviewers in 30 seconds" under 120 words, its table of one id per rail moved to
   // docs/in-depth.md, "What ran live, one id per rail", which the block links.
-  it("keeps 'For judges: 3 minutes' under 120 words, linking the table of one id per rail", () => {
-    const start = README.indexOf("## For judges: 3 minutes");
-    const block = README.slice(start + "## For judges: 3 minutes".length, README.indexOf("\n## ", start + 5)).split("<picture>")[0]!;
+  // 19 Nov 2026 (README tightened for the judges): the section "For judges: 3 minutes" only repeated the judges' path
+  // and the table above it; its one new line (one id per rail, every run) is the judges' table's Proof row. The table,
+  // five rows, stays under 170 words (156 as built), and still links the table of one id per rail.
+  it("keeps the judges' table under 170 words, linking the table of one id per rail", () => {
+    expect(README).not.toContain("## For judges: 3 minutes");
+    const start = lines.findIndex((l) => l.startsWith("| **For judges:**"));
+    const block = lines.slice(start, lines.indexOf("", start)).join("\n");
     const words = block.replace(/\]\([^)]*\)/g, "]").replace(/<[^>]+>/g, " ").replace(/\\/g, " ").split(/\s+/).filter(Boolean);
-    expect(words.length).toBeLessThan(120);
+    expect(words.length).toBeLessThan(170);
     expect(block).toContain("](docs/in-depth.md#what-ran-live-one-id-per-rail)");
   });
 

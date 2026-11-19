@@ -18,10 +18,11 @@
 //   company), O the outcome card, Escape closes a card.
 // Every value from an answer is put on the page as text (textContent), never as HTML.
 
-import { INVOICE, PAY, WORK } from "../tryCopy.js";
+import { INVOICE, LIVE, PAY, WORK } from "../tryCopy.js";
 import { TRY_ALONE_LIMIT } from "../../../src/config/policy.js";
 import { AIRWALLEX_LOGO_DATA_URL } from "../awxLogo.gen.js";
 import { LOGO_FILES } from "./logos.gen.js";
+import { AWX_TRAIL_CALLS } from "./proof.gen.js";
 import { SYSTEM_MAP_DATA_URL } from "./systemMap.gen.js";
 
 const NEG_HINT = INVOICE.hints.clean ?? "";
@@ -91,12 +92,16 @@ export const V2_COPY = {
   },
 } as const;
 
-/** The partners' proof, each from a run record, each a link to it (Metal and Visa awards; test networks only). */
+/**
+ * The partners' proof, each from a run record, each a link to it (Metal and Visa awards; test networks only).
+ * 19 Nov 2026 (live review: "154 sandbox calls" here, 184 on /airwallex): the Airwallex count is the one /airwallex lists,
+ * from the run records (src/airwallex/apiTrail.ts), written into ./proof.gen.ts by npm run cloud:proof.
+ */
 export const PRESENT_PARTNERS = {
   heading: "Tested on partner sandboxes and testnet",
   sub: "The same controls, on each partner's own rails, each from a recorded run you can open. Test money only.",
   cards: [
-    { logo: "airwallex", label: "Airwallex · sandbox", h: "Your approval travels with the money", p: "Each bank transfer carries the fingerprint of exactly what the CFO approved (797d4483… on a EUR 240.00 test transfer). Agent card limits are enforced by Airwallex itself: EUR 30.00 approved, EUR 30.01 declined.", link: "154 sandbox calls on /airwallex", href: "https://kit11.max-31b.workers.dev/airwallex" },
+    { logo: "airwallex", label: "Airwallex · sandbox", h: "Your approval travels with the money", p: "Each bank transfer carries the fingerprint of exactly what the CFO approved (797d4483… on a EUR 240.00 test transfer). Agent card limits are enforced by Airwallex itself: EUR 30.00 approved, EUR 30.01 declined.", link: `${AWX_TRAIL_CALLS} sandbox calls on /airwallex`, href: "https://kit11.max-31b.workers.dev/airwallex" },
     { logo: "alta", label: "Alta (formerly Metal) · testnet · x402", h: "Agent spending limits, enforced on chain", p: "86 agent payments on Alta testnet in the main run. When an agent tried to pay more than its limit allows, the chain itself refused it (purchase #24).", link: "tx 0x2e92f9cb…1871", href: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871" },
     { logo: "", word: "Visa Intelligent Commerce", label: "via Airwallex Airi · sandbox", h: "One credential, one purchase", p: "Each agent purchase gets its own card credential, bound to the exact amount. Used again, or for another amount, Purser refuses it before any payment is tried. 6 purchases paid across 4 sandbox runs.", link: "See it on /visa", href: "https://kit11.max-31b.workers.dev/visa" },
   ],
@@ -125,6 +130,19 @@ export const PRESENT_GUIDE = {
   done: { k: "Done", t: "That's Purser.", d: "AI agents do the work. You approve the exceptions. Nobody can change what you approved." },
 } as const;
 
+/**
+ * 19 Nov 2026 (live review: the hosted Claude switch's action cap was unset, so every run fell back to Purser's code while
+ * these lines said the AI agent read the invoice): the same moments when Purser's code reads the invoice in this run
+ * (the engine's read_by, claude.capped or claude.fallback; before any of them, the start's mode). The reading line is
+ * tryCopy's own (WORK.readingCode).
+ */
+export const PRESENT_GUIDE_CODE = {
+  invoice: { k: "Step 1 of 4", t: "A supplier's invoice arrives.", d: "Pick one. In this run Purser's code reads it and checks it: Claude is not asked." },
+  reading: { k: "Step 1 of 4", t: WORK.readingCode, d: "Claude is not asked in this run, so Purser's code reads the PDF and checks it. Each step below is the engine's own event, as it happens." },
+  workInj: { k: "Step 1 of 4", t: "Purser's code caught a hidden instruction in the invoice.", d: "It was ignored: an invoice can't order a payment. It is checked like any other and still needs the CFO." },
+  work: { k: "Step 1 of 4", t: "Purser's code read the invoice and checked it.", d: "Claude was not asked in this run. It is above the agent's limit, so it can't be paid alone: it goes to the CFO." },
+} as const;
+
 /** A note that tries to give the AI orders (the engine's own flag, document.injection_flagged): said, never hidden. */
 /** The finish (16 Nov, Max: "tell the jury and partners what is happening and how everything is verified"): each step of
  * the run and how anyone checks it without trusting us. Every line is a fact of the code or a recorded run. */
@@ -143,7 +161,32 @@ export const PRESENT_VERIFY = {
   all: "See all the proof",
   allHref: "https://kit11.max-31b.workers.dev/proof",
   foot: "Test money only. Partner names and marks belong to their owners; no endorsement implied.",
+  /** 19 Nov 2026 (live review): the first line when Purser's code read the invoice in this run (tryCopy's own words). */
+  code: {
+    h: LIVE.ev["claude.fallback"]!.split(". ")[0]!,
+    p: "Claude was not asked in this run, so no model answer was used: Purser's code read the invoice and its rules checked it. When Claude reads, each call is logged with its model, time, cost and Anthropic's request id.",
+    run: "This run: {n} Claude calls, {cost}.", none: "This run: no Claude call.",
+  },
 } as const;
+
+/**
+ * 19 Nov 2026 (Max, after the all-time Claude cap ran out silently on the hosted demo): when live Claude did not read the
+ * invoice, the visitor sees it in the main flow, on the reading step and on the end card, in one calm line, why first.
+ * The reason is the engine's own (claude.capped's reason, src/engine/budget.ts CappedReason), in tryCopy's words
+ * (LIVE.caps); "mode_code" is a start that said code reads (the switch, a key or a cap not set); anything else (a
+ * fallback with no cap: a refusal, an answer that did not fit) says only that Claude's reading was not used. Never shown
+ * when Claude read the invoice. `caps` is LIVE.caps, passed in: the page runs this function's own text.
+ */
+export const pausedNotice = (reason: string, done: boolean, caps: Record<string, string>): string => {
+  const budget = /^(action_budget|pool_day_cap|company_cap|address_cap|all_time_cap)$/.test(reason) && typeof caps[reason] === "string";
+  const head = budget ? "Live Claude is paused right now: " + caps[reason] + "."
+    : reason === "switch_off" ? "Live Claude is switched off right now."
+    : reason === "no_key" ? "Live Claude is not set up here."
+    : reason === "busy" ? "Live Claude is busy right now."
+    : reason === "mode_code" ? "Live Claude is off for this demo right now."
+    : "Claude's reading was not used for this invoice.";
+  return head + " Purser's code " + (done ? "read" : "reads") + " this invoice instead. Every limit, check and signature works exactly the same.";
+};
 
 /** "Under the hood" (16 Nov, Max: "small screens of the code and what is happening, simple"): per step, the real flow
  * in a few simplified lines, with this run's own values (Claude's call, the terms, their fingerprint, the refused one). */
@@ -179,7 +222,9 @@ export const PRESENT_SHELL = {
   nav: ["Inbox", "Approvals", "Payments", "Books", "Agents"],
   usage: "Claude · this run",
   none: "No Claude call yet",
-  calls: "calls",
+  /** 19 Nov 2026: when Purser's code read the invoice in this run. */
+  noneCode: "No Claude call in this run",
+  calls: "calls", call: "call",
   user: "CFO",
   userSub: "Signs with a passkey",
   reader: "Reader",
@@ -520,6 +565,13 @@ body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; fon
 @media (prefers-reduced-motion: no-preference) { .pv-cap.in { animation: mvUp .5s cubic-bezier(.2,.8,.2,1) both; } }
 @media (max-width: 700px) { .pv-cap.on { grid-template-columns: 1fr; } .pv-cap .k { grid-row: auto; justify-self: start; margin-bottom: 8px; } .pv-cap .d { grid-column: 1; } .pv-cap b { font-size: 18px; } }
 body.pv-shell #main > .band { opacity: .7; }
+/* 19 Nov 2026 (Max): live Claude did not read this invoice: one calm line in the flow (reading step, end card). */
+.pv-paused { margin: 0 0 12px; padding: 10px 14px; border: 1px solid color-mix(in srgb, #f5b544 55%, var(--border)); border-radius: 12px; background: color-mix(in srgb, #f5b544 10%, var(--surface)); color: var(--text); font: 500 14.5px/1.45 Inter, system-ui, sans-serif; }
+.pv-verify .pv-paused { margin: 4px 0 14px; }
+.screen.work > .pv-paused { order: -2; }
+/* 19 Nov 2026 (live review: on a 390 x 844 phone the main button started at y 926): below the two-column start, the
+   button and its small print come before the three steps, so the button is on the first screen. */
+@media (max-width: 1023px) { body.pv-shell:has(.screen.start) main { grid-template-areas: "eyebrow" "h1" "lede" "cta" "fine" "flow" "partners" "real"; } }
 /* The guide says what the heading said, in the visitor's words: the heading stays for screen readers only. */
 body.pv-shell #main:has(> .pv-cap.on) > h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -741,12 +793,59 @@ export const callSaid = (event: string, f: Record<string, unknown>): { req: stri
   return { req, said: line.length > 120 ? line.slice(0, 119).trimEnd() + "\u2026" : line };
 };
 
+/**
+ * 19 Nov 2026 (live review: "$0.0000 · 3 calls this run" over three agent runs that never reached Claude): the Claude
+ * calls an engine event holds, or null. claude.read is the reader's answer, written only when Claude answered
+ * (src/claude/reader.ts). agent.run is an agent's run (src/agents/loop.ts): its claude_ms lists each answered call's
+ * time, so n is their number; without it, a run that spent something, carries a request id, or finished (done, or
+ * incomplete: out of turns) held at least one. A run that never reached Claude (unavailable: no client, a cap, nothing
+ * spent) holds none, and no other event is a call.
+ */
+export const claudeCall = (event: string, f: Record<string, unknown>): { n: number } | null => {
+  if (event === "claude.read") return { n: 1 };
+  if (event !== "agent.run") return null;
+  const ms = typeof f.claude_ms === "string" ? f.claude_ms.split(",").filter((x) => /^\d+$/.test(x)).length : 0;
+  if (ms > 0) return { n: ms };
+  const cost = Number(f.cost_usd_micros);
+  const req = typeof f.request_id === "string" && f.request_id !== "";
+  return (Number.isFinite(cost) && cost > 0) || req || f.status === "done" || f.status === "incomplete" ? { n: 1 } : null;
+};
+
+/**
+ * 19 Nov 2026: who read the invoice, from one engine event: sure from ap.received's read_by ("parser", or
+ * "claude:<model>" / "claude-scan:<model>"); a hint, while the reading is under way, from claude.read (Claude answered),
+ * claude.capped or claude.fallback (Purser's code reads). Null for any other event.
+ */
+export const readerOf = (event: string, f: Record<string, unknown>): { by: "claude" | "code"; sure: boolean } | null => {
+  if (event === "ap.received") {
+    const r = typeof f.read_by === "string" ? f.read_by : "";
+    return r === "parser" ? { by: "code", sure: true } : /^claude(-scan)?:/.test(r) ? { by: "claude", sure: true } : null;
+  }
+  if (event === "claude.capped" || event === "claude.fallback") return { by: "code", sure: false };
+  if (event === "claude.read") return { by: "claude", sure: false };
+  return null;
+};
+
 const SHARED = String.raw`
 // --- Shared by recording mode and the public page: the app shell, Claude's usage per call, "How Purser works". ---
 const mk=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids==null?[]:kids))e.append(k instanceof Node?k:document.createTextNode(String(k)));return e};
 const CALLS=new Map();
 // The agent's own line per call (callSaid, cloud/src/try/presentMode.ts), by Anthropic's request id.
 const callSaid=__CALL_SAID__;const SAID=new Map();
+// 19 Nov 2026 (live review): a call counts only when Claude answered (claudeCall); who read the invoice in this run is
+// the engine's own word (readerOf), else the start's mode; and why live Claude did not read it (claude.capped's reason).
+const claudeCall=__CLAUDE_CALL__;const readerOf=__READER_OF__;const pausedNotice=__PAUSED_NOTICE__;
+const nCalls=(cs)=>cs.reduce((x,c)=>x+(Number(c.n)||1),0);
+const READ={by:'',sure:false,why:''};
+try{const r=JSON.parse(sessionStorage.getItem('purser.read')||'null');if(r&&(r.by==='claude'||r.by==='code')){READ.by=r.by;READ.sure=!!r.sure;READ.why=typeof r.why==='string'&&Object.prototype.hasOwnProperty.call(PC.caps,r.why)?r.why:''}}catch(e){}
+const keepRead=()=>{try{sessionStorage.setItem('purser.read',JSON.stringify(READ))}catch(e){}};
+function noteRead(e,f){const ev=String(e.event||'');if(ev==='claude.capped'&&typeof f.reason==='string'&&Object.prototype.hasOwnProperty.call(PC.caps,f.reason)&&READ.why!==f.reason&&!(READ.sure&&READ.by==='claude')){READ.why=f.reason;keepRead()}
+  const r=readerOf(ev,f);if(!r||(READ.sure&&!r.sure))return;if(READ.by!==r.by||READ.sure!==r.sure){READ.by=r.by;READ.sure=r.sure;if(r.by==='claude')READ.why='';keepRead()}}
+const forgetRead=()=>{READ.by='';READ.sure=false;READ.why='';keepRead()};
+const modeOf=()=>{let st={};try{st=JSON.parse(sessionStorage.getItem('purser.try')||'{}')||{}}catch(e){}return st.mode&&typeof st.mode==='object'?(st.mode.claude==='live'?'claude':'code'):''};
+const readerIs=()=>READ.by||modeOf();
+// The notice in the main flow when live Claude did not read this invoice (Max, 19 Nov): never when Claude read it.
+const pausedText=(done)=>readerIs()==='code'?pausedNotice(READ.why||(modeOf()==='code'?'mode_code':''),done,PC.caps):'';
 const chip=mk('details','pv-usechip',[mk('summary',''),mk('ol','')]);
 const capMeta=mk('div','pv-meta');
 // The Live Engine rail (16 Nov, Max): read-only, beside the step on a wide screen and a drawer under it on a smaller one.
@@ -760,19 +859,19 @@ rail.append(railHead,mk('div','pv-rail-b',[capMeta,rClaude,rAgents,rHood,rRails]
 // Claude's calls kept across reloads in this tab (the run's own tally, Step 1 to the end).
 try{const kept=JSON.parse(sessionStorage.getItem('purser.calls')||'[]');if(Array.isArray(kept))for(const [k,v] of kept)if(typeof k==='number'&&v&&typeof v==='object')CALLS.set(k,v)}catch(e){}
 const keepCalls=()=>{try{sessionStorage.setItem('purser.calls',JSON.stringify([...CALLS.entries()].slice(-40)))}catch(e){}};
-const PAYAT={seq:-1};
+const PAYAT={seq:-1,tried:false};
 // The engine's own flag on a document that tries to give orders (document.injection_flagged), since the last filing.
 const INJ={since:-1,flag:false,max:0};
 const EVT=[];
 function noteEvent(e){if(e&&typeof e.seq==='number'&&e.seq>INJ.since&&!EVT.some((x)=>x.seq===e.seq)){EVT.push({seq:e.seq,event:String(e.event||''),f:e.fields&&typeof e.fields==='object'?e.fields:{}});EVT.sort((a,b)=>a.seq-b.seq);if(EVT.length>60)EVT.splice(0,EVT.length-60)}
-  if(e&&typeof e.seq==='number'){if(e.seq>INJ.max)INJ.max=e.seq;if(e.event==='document.injection_flagged'&&e.seq>INJ.since)INJ.flag=true}}
-function noteFiling(p,m){if(m==='POST'&&/^\/v1\/engine\/(compose$|samples\/)/.test(p)){INJ.since=INJ.max;INJ.flag=false;EVT.length=0}}
+  if(e&&typeof e.seq==='number'){if(e.seq>INJ.max)INJ.max=e.seq;if(e.event==='document.injection_flagged'&&e.seq>INJ.since)INJ.flag=true;if(e.seq>INJ.since)noteRead(e,e.fields&&typeof e.fields==='object'?e.fields:{})}}
+function noteFiling(p,m){if(m==='POST'&&/^\/v1\/engine\/(compose$|samples\/)/.test(p)){INJ.since=INJ.max;INJ.flag=false;EVT.length=0;forgetRead()}}
 const usd=(m)=>'$'+(m/1e6).toFixed(4);
 const title=(s)=>String(s||'').replace(/[^a-z0-9 _-]/gi,'').replace(/[_-]+/g,' ').replace(/\b\w/g,(c)=>c.toUpperCase());
 const modelName=(m)=>{const x=/^claude-([a-z]+)-(\d+)-(\d+)/.exec(String(m||''));return x?title(x[1])+' '+x[2]+'.'+x[3]:''};
 // One Claude call from the engine's own events (claude.read: the invoice reader; agent.run: an agent's run).
 function takeSaid(e,f){const s=callSaid(String(e.event||''),f);if(!s)return;SAID.set(s.req,s.said);for(const c of CALLS.values())if(c.req===s.req&&c.said!==s.said){c.said=s.said;keepCalls()}}
-function takeCall(e,f){takeSaid(e,f);if((e.event==='claude.read'||e.event==='agent.run')&&!CALLS.has(e.seq)){const c=Number(f.cost_usd_micros);if(isFinite(c)&&c>=0)CALLS.set(e.seq,{who:e.event==='claude.read'?PC.shell.reader:title(f.agent),model:modelName(f.model),cost:c,ms:Number(f.latency_ms)||0,req:typeof f.request_id==='string'&&/^req_[A-Za-z0-9]{6,64}$/.test(f.request_id)?f.request_id:'',tin:Number(f.input_tokens)||0,tout:Number(f.output_tokens)||0});keepCalls()}}
+function takeCall(e,f){takeSaid(e,f);const cc=claudeCall(String(e.event||''),f);if(cc&&!CALLS.has(e.seq)){const c=Number(f.cost_usd_micros);if(isFinite(c)&&c>=0)CALLS.set(e.seq,{who:e.event==='claude.read'?PC.shell.reader:title(f.agent),n:cc.n,model:modelName(f.model),cost:c,ms:Number(f.latency_ms)||0,req:typeof f.request_id==='string'&&/^req_[A-Za-z0-9]{6,64}$/.test(f.request_id)?f.request_id:'',tin:Number(f.input_tokens)||0,tout:Number(f.output_tokens)||0});keepCalls()}}
 const SHELL=new URLSearchParams(location.search).get('shell')!=='0';
 const SH=PC.shell;let useBox=null;
 // "How Purser works": the flow in five steps, and the whole system's map (the README's), as a card over the page.
@@ -824,27 +923,27 @@ function guideKey(){const m=document.getElementById('main');if(!m)return '';cons
 // "Under the hood": the step's real flow in a few lines, this run's own values filled in as they appear.
 const HOOD={fp:'',amount:'',payee:'',iban:'',due:'',open:innerWidth>=1200};
 const hoodBox=mk('div','pv-hood');
-function hoodLines(g,m){const C=[...CALLS.values()];const rd=C.find((c)=>c.who===PC.shell.reader);const n=C.length;const usdS=(x)=>usd(x);
+function hoodLines(g,m){const C=[...CALLS.values()];const rd=C.find((c)=>c.who===PC.shell.reader);const n=nCalls(C);const code=readerIs()==='code';const readNote=rd?'':code?'what Purser’s code read · Claude not asked':'what Claude read';const usdS=(x)=>usd(x);
   const q=(v)=>v?'"'+v+'"':'…';const L=[];const c=(code,note,cls)=>L.push({code,note,cls});
   let st={};try{st=JSON.parse(sessionStorage.getItem('purser.try')||'{}')||{}}catch(e){}
   const pr=st.proof&&typeof st.proof==='object'?st.proof:null;const sha=(st.proposal&&typeof st.proposal.terms_sha256==='string'?st.proposal.terms_sha256:'')||(pr&&pr.terms_sha256)||'';
   const s12=(x)=>typeof x==='string'&&x?x.slice(0,12)+'…':'…';
   const inv=()=>{const o={};for(const r of m.querySelectorAll('.screen.work .card.inv dl > div')){const k=(r.children[0]||{}).textContent||'';const v=((r.children[1]||{}).textContent||'').trim();if(/Supplier/.test(k))o.supplier=v;if(/Invoice number/.test(k))o.number=v;if(/Amount/.test(k))o.amount=v;if(/Due/.test(k))o.due=v}return o};
   const amt=(v)=>{const mm=/([A-Z]{3})\s*([\d,]+\.\d{2})/.exec(v||'');return mm?{cur:mm[1],n:mm[2].replace(/,/g,'')}:null};
-  if(g==='invoice'){c('invoice = inbox.receive(pdf)','a supplier\'s invoice arrives');c('agent = claude.agent("payables")','an AI agent picks it up')}
-  else if(g==='reading'){const lab={'ap.received':'inbox.receive(pdf) → sha256 of the file','claude.asking':'claude.read(invoice) …','claude.read':'claude.read(invoice) ✓','document.injection_flagged':'findInjections(text) → found, ignored','agent.tool':'agent.check()','agent.run':'agent.decide()','ap.checker_decided':'checker.decide() ✓','ap.coded':'ledger.code(invoice) ✓','ap.payer_proposed':'payer.propose() ✓','fx.rate_checked':'treasury.rate() ✓','airwallex.quote':'airwallex.quote() ✓','invoice.escalated':'escalate(CFO)','invoice.fraud_suspected':'fraud check → held','ap.status':'invoice.status()','proposal.within_limit':'approveWithinLimit() → policy ✓','transfer.created':'transfer.created ✓','proposal.executed':'proposal.executed ✓'};
+  if(g==='invoice'){c('invoice = inbox.receive(pdf)','a supplier\'s invoice arrives');if(code)c('reading = parser.read(pdf)','Purser’s code reads it: Claude is not asked in this run');else c('agent = claude.agent("payables")','an AI agent picks it up')}
+  else if(g==='reading'){const lab={'ap.received':'inbox.receive(pdf) → sha256 of the file','claude.asking':'claude.read(invoice) …','claude.read':'claude.read(invoice) ✓','claude.capped':'claude.read(invoice) → not asked','claude.fallback':'parser.read(invoice) ✓','document.injection_flagged':'findInjections(text) → found, ignored','agent.tool':'agent.check()','agent.run':'agent.decide()','ap.checker_decided':'checker.decide() ✓','ap.coded':'ledger.code(invoice) ✓','ap.payer_proposed':'payer.propose() ✓','fx.rate_checked':'treasury.rate() ✓','airwallex.quote':'airwallex.quote() ✓','invoice.escalated':'escalate(CFO)','invoice.fraud_suspected':'fraud check → held','ap.status':'invoice.status()','proposal.within_limit':'approveWithinLimit() → policy ✓','transfer.created':'transfer.created ✓','proposal.executed':'proposal.executed ✓'};
     const seen=[];for(const e of EVT){const l=lab[e.event];if(!l)continue;const tool=e.event==='agent.tool'&&typeof e.f.tool==='string'?'agent.'+e.f.tool+'()':l;const last=seen[seen.length-1];if(last&&last.code===tool){last.k++;continue}
-      const who=typeof e.f.model==='string'?modelName(e.f.model):'';seen.push({code:tool,k:1,note:e.event==='claude.read'&&rd?(rd.model||'Claude')+(rd.ms?' · '+(rd.ms/1000).toFixed(1)+' s':'')+' · '+usdS(rd.cost):who,cls:e.event==='document.injection_flagged'?'bad':/✓/.test(tool)?'ok':''})}
+      const who=e.event==='claude.capped'?'Claude not asked: '+(PC.caps[e.f.reason]||'its live budget is used'):e.event==='claude.fallback'?'Purser’s code read it':e.event==='agent.run'&&!claudeCall('agent.run',e.f)?'Claude not asked · code decides':typeof e.f.model==='string'?modelName(e.f.model):'';seen.push({code:tool,k:1,note:e.event==='claude.read'&&rd?(rd.model||'Claude')+(rd.ms?' · '+(rd.ms/1000).toFixed(1)+' s':'')+' · '+usdS(rd.cost):who,cls:e.event==='document.injection_flagged'?'bad':/✓/.test(tool)?'ok':''})}
     for(const x of seen.slice(-7))c(x.code+(x.k>1?' ×'+x.k:''),x.note,x.cls);if(!seen.length)c('waiting for the engine…','the first step arrives in a moment');c('▍','','cur')}
   else if(g==='work'||g==='workInj'){const o=inv();const a=amt(o.amount);
-    c('reading = '+JSON.stringify({supplier:o.supplier||'…',invoice:o.number||'…',amount:a?a.n:'…',currency:a?a.cur:'…',due:o.due||'…'}),rd?'Claude '+(rd.model?'· '+rd.model+' ':'')+(rd.ms?'· '+(rd.ms/1000).toFixed(1)+' s ':'')+'· '+usdS(rd.cost):'what Claude read');
+    c('reading = '+JSON.stringify({supplier:o.supplier||'…',invoice:o.number||'…',amount:a?a.n:'…',currency:a?a.cur:'…',due:o.due||'…'}),rd?'Claude '+(rd.model?'· '+rd.model+' ':'')+(rd.ms?'· '+(rd.ms/1000).toFixed(1)+' s ':'')+'· '+usdS(rd.cost):readNote);
     if(g==='workInj')c('findInjections(text) → 1 found','an order to the AI: logged, ignored','bad');
     c('checks = [notPaidBefore ✓, ibanOnFile ✓, knownSupplier ✓]','code checks it, not the AI','ok');
     if(a&&PC.limit)c('amount <= agent_limit  →  '+a.n+' <= '+PC.limit+'  →  '+(Number(a.n)<=Number(PC.limit)?'true':'false'),Number(a.n)<=Number(PC.limit)?'the agent may pay it alone':'above the limit: the CFO decides',Number(a.n)<=Number(PC.limit)?'ok':'warn');
     else c('limitRule(amount) → ask_cfo','above the agent’s limit: the CFO decides','warn');
-    if(n)c('// '+n+' Claude calls so far · '+usdS(C.reduce((x,y)=>x+y.cost,0)),'')}
+    if(n)c('// '+n+' Claude call'+(n===1?'':'s')+' so far · '+usdS(C.reduce((x,y)=>x+y.cost,0)),'');else if(code)c('// no Claude call in this run','')}
   else if(g==='workAlone'){const o=inv();const a=amt(o.amount);
-    c('reading = '+JSON.stringify({supplier:o.supplier||'…',invoice:o.number||'…',amount:a?a.n:'…',currency:a?a.cur:'…'}),rd?'Claude '+(rd.model?'· '+rd.model+' ':'')+'· '+usdS(rd.cost):'what Claude read');
+    c('reading = '+JSON.stringify({supplier:o.supplier||'…',invoice:o.number||'…',amount:a?a.n:'…',currency:a?a.cur:'…'}),rd?'Claude '+(rd.model?'· '+rd.model+' ':'')+'· '+usdS(rd.cost):readNote);
     c('checks = [notPaidBefore ✓, ibanOnFile ✓, knownSupplier ✓]','code checks it, not the AI','ok');
     if(a)c('amount <= agent_limit  →  '+a.n+' <= '+PC.limit+'  →  true','inside the limit','ok');
     c('approveWithinLimit(terms) → method: "policy"','your policy approves it; no person, no signature','ok');c('payer.pay(terms)','the agent pays it now, on its own')}
@@ -890,22 +989,27 @@ function hood(m){const g=cap.dataset.k||'';const now=performance.now();if(g===HO
   hoodBox.className='pv-hood'+(HOOD.open?' open':'')+(fresh?' fresh':'');hoodBox.replaceChildren(mk('div','pv-hood-h',[mk('b','',PC.hood.h),mk('span','',PC.hood.tag),tog]),ol)}
 // The rail's modules, from the run's own state (no number here that the engine did not report).
 function railDraw(){const g=cap.dataset.k||'';const calls=[...CALLS.entries()].sort((a,b)=>a[0]-b[0]);const tot=calls.reduce((x,[,c])=>x+c.cost,0);
-  if((g==='pay'||g==='refused')&&PAYAT.seq<0)PAYAT.seq=INJ.max;if(g!=='pay'&&g!=='refused'&&g!=='done')PAYAT.seq=-1;
-  const extra=PAYAT.seq>=0?calls.filter(([s])=>s>PAYAT.seq).length:-1;
-  railHead.querySelector('.sum').textContent=calls.length?usd(tot)+' · '+calls.length+' calls':'no Claude call yet';
+  if((g==='pay'||g==='refused')&&PAYAT.seq<0)PAYAT.seq=INJ.max;if(g!=='pay'&&g!=='refused'&&g!=='done'){PAYAT.seq=-1;PAYAT.tried=false}
+  // 19 Nov 2026 (live review): the extra calls since the change are said only once the change was tried (the refusal).
+  if(g==='refused')PAYAT.tried=true;
+  const N=nCalls(calls.map(([,c])=>c));const code=readerIs()==='code';
+  const extra=PAYAT.seq>=0?nCalls(calls.filter(([s])=>s>PAYAT.seq).map(([,c])=>c)):-1;
+  railHead.querySelector('.sum').textContent=N?usd(tot)+' · '+N+(N===1?' call':' calls'):code?'no Claude call · code read it':'no Claude call yet';
   // The Airwallex transfer's status is in the key: "Sandbox: move to PAID" changes it after the paid screen is drawn.
   let st={};try{st=JSON.parse(sessionStorage.getItem('purser.try')||'{}')||{}}catch(e){}const awx=st.awx&&typeof st.awx==='object'?st.awx:null;
-  const key=JSON.stringify([g,calls.length,tot,extra,INJ.flag,aloneRun(),awx&&awx.status||'']);if(rail.dataset.k===key)return;rail.dataset.k=key;
+  const key=JSON.stringify([g,N,tot,extra,PAYAT.tried,code,INJ.flag,aloneRun(),awx&&awx.status||'']);if(rail.dataset.k===key)return;rail.dataset.k=key;
   // 1. Claude: the run's cumulative cost, its calls, each with model, tokens, time and Anthropic's request id.
   const list=mk('ol','',calls.slice(-10).reverse().map(([,c])=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.tin||c.tout?(c.tin+c.tout)+' tokens':'',c.ms?(c.ms/1000).toFixed(1)+' s':'',c.req?c.req.slice(0,10)+'…'+c.req.slice(-4):''].filter(Boolean).join(' · ')),...((c.said||SAID.get(c.req))?[mk('span','w',String(c.said||SAID.get(c.req)))]:[])])));
   const det=mk('details','',[mk('summary','','Each call'),list]);
-  rClaude.replaceChildren(mk('h3','',[mk('span','sp','✦'),'Claude · live cost & calls']),mk('div','tot',calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' calls this run':'No Claude call yet'),...(calls.length?[det]:[]),...(extra>=0?[mk('p','x'+(extra===0?' ok':''),extra===0?'0 extra calls · blocked locally by SHA-256':extra+' extra calls since the change')]:[]));
+  rClaude.replaceChildren(mk('h3','',[mk('span','sp','✦'),'Claude · live cost & calls']),mk('div','tot',calls.length?usd(tot):'$0.0000'),mk('div','sub',N?N+(N===1?' call':' calls')+' this run':code?'Not asked in this run: Purser’s code read the invoice':'No Claude call yet'),...(calls.length?[det]:[]),...(PAYAT.tried&&extra>=0?[mk('p','x'+(extra===0?' ok':''),extra===0?'0 extra calls · blocked locally by SHA-256':extra+' extra calls since the change')]:[]));
   // 2. Agents and the mandate: who acts now, and whether the agent may pay alone.
-  const al=g==='workAlone'||g==='booksAlone';const S3=[['Reader agent','Claude reads the PDF'],['Checker agent','checks, limits, signature'],['Payer agent','pays; the Coder agent books']];
+  // 19 Nov 2026: when Purser's code read the invoice and no agent reached Claude, the roles say code did the work.
+  const agentsRan=calls.some(([,c])=>c.who!==PC.shell.reader);
+  const al=g==='workAlone'||g==='booksAlone';const S3=[code?['Reader','Purser’s code read the PDF; Claude not asked']:['Reader agent','Claude reads the PDF'],code&&!agentsRan?['Checker','Purser’s code checks, limits, signature']:['Checker agent','checks, limits, signature'],code&&!agentsRan?['Payer','Purser’s code pays and books']:['Payer agent','pays; the Coder agent books']];
   const state=(i)=>{if(g==='reading')return i===0?'cur':'';if(g==='work'||g==='workInj')return i===0?'done':i===1?'cur':'';if(g==='workAlone')return i<2?'done':'cur';if(g==='workCash')return i<2?'done':'';if(g==='approve')return i===0?'done':i===1?'wait':'';
     if(g==='books'||g==='booksAlone'||g==='done')return 'done';if(g==='pay')return i===1?'cur':'done';if(g==='refused')return i===1?'bad':'done';return ''};
   const mode=g==='workCash'?mk('span','mode warn','Inside EUR '+PC.limit+' · held by the cash floor'):al?mk('span','mode ok','Auto-pay ≤ EUR '+PC.limit):g&&g!=='invoice'&&g!=='reading'?mk('span','mode warn','Above EUR '+PC.limit+' · CFO passkey required'):mk('span','mode','Auto-pay ≤ EUR '+PC.limit+' · above it, CFO passkey');
-  rAgents.replaceChildren(mk('h3','','Agents & mandate'),mode,mk('ol','',S3.map(([n,d],i)=>mk('li',state(i),[mk('b','',n),mk('span','',state(i)==='wait'?'waiting for the CFO’s passkey':state(i)==='bad'?'blocked: the fingerprint does not match':d)]))));
+  rAgents.replaceChildren(mk('h3','','Agents & mandate'),mode,mk('ol','',S3.map(([n,d],i)=>mk('li',state(i),[mk('b','',state(i)==='bad'?'Purser’s code':n),mk('span','',state(i)==='wait'?'waiting for the CFO’s passkey':state(i)==='bad'?'blocked: the fingerprint does not match':d)]))));
   // 3. Partner rails: lit when this run used them; the recorded runs said as such.
   const fx=EVT.some((e)=>e.event==='fx.rate_checked'||e.event==='airwallex.quote');
   const row=(cls,logo,name,txt,on)=>mk('li',(on?'on ':'')+cls,[logo,mk('div','',[mk('b','',name),mk('span','',txt)])]);
@@ -918,7 +1022,8 @@ function v2(){
    // 16 Nov (Max): the Live Engine rail beside the step on a wide screen, a drawer under the step card on a smaller one.
    {const wide=innerWidth>=1280;rail.classList.toggle('side',wide);if(wide){if(rail.parentElement!==document.body)document.body.append(rail)}else if(mm&&cap.parentElement===mm&&cap.nextElementSibling!==rail)cap.after(rail)}
    const res=mm&&mm.querySelector('.screen.work .result');if(res&&INJ.flag&&!res.querySelector('.pv-warn')){const w=mk('div','pv-warn',[mk('b','',PC.inj.h),mk('p','',PC.inj.p)]);const big=res.querySelector('p.big');if(big)res.insertBefore(w,big);else res.prepend(w)}}
-  {const g=guideKey();const m0=document.getElementById('main');if(cap.dataset.k!==g){cap.dataset.k=g;if(g&&PC.guide[g]){const G=PC.guide[g];cap.children[0].textContent=G.k;cap.children[1].textContent=G.t;cap.children[2].textContent=G.d;cap.className='pv-cap on '+g.replace('workInj','work refused');void cap.offsetWidth;cap.classList.add('in')}else cap.className='pv-cap'}
+  // 19 Nov 2026: the step's line in the code's words when Purser's code reads this invoice (PRESENT_GUIDE_CODE).
+  {const g=guideKey();const m0=document.getElementById('main');const gc=readerIs()==='code'&&PC.guideCode[g]?PC.guideCode[g]:null;const gv=g+(gc?'|code':'');if(cap.dataset.k!==g||cap.dataset.v!==gv){cap.dataset.k=g;cap.dataset.v=gv;if(g&&PC.guide[g]){const G=gc||PC.guide[g];cap.children[0].textContent=G.k;cap.children[1].textContent=G.t;cap.children[2].textContent=G.d;cap.className='pv-cap on '+g.replace('workInj','work refused');void cap.offsetWidth;cap.classList.add('in')}else cap.className='pv-cap'}
    if(m0&&g){const anchor=stages.parentElement===m0?stages:null;if(anchor){if(anchor.nextElementSibling!==cap)anchor.after(cap)}else if(m0.firstElementChild!==cap)m0.prepend(cap)}}
   const k=stageOf();document.body.classList.toggle('pv-staged',k>=0);
   {const g0=cap.dataset.k||'';const al=g0==='workAlone'||g0==='booksAlone';[...stages.querySelectorAll(':scope > li:not(.x)')].forEach((li,i)=>{li.className=al&&i===1?'notneeded':i<k?'done':i===k?'cur':''})}
@@ -937,11 +1042,16 @@ function v2(){
     if(st){ax.dataset.v2='1';st.textContent='Waiting for approval in Airwallex';for(const b of ax.querySelectorAll('button'))(b.closest('p')||b).hidden=true;for(const h of ax.querySelectorAll('p.hint'))h.hidden=true;ax.append(mk('p','pv-lock2',[mk('b','',PC.awx2.h),' ',PC.awx2.p]))}
     else if(dds.length){const paid=dds.find((d)=>/^PAID$/.test((d.textContent||'').trim()));if(!paid&&!ax.dataset.sim)continue;ax.dataset.v2='1';
       if(paid)ax.append(mk('p','pv-lock2 opt',[mk('b','',PC.awx2.okH),' ',PC.awx2.okP]))}}
-  for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pv-verify')){const V=PC.verify;const calls=[...CALLS.values()];const tot=calls.reduce((x,c)=>x+c.cost,0);
-    const vh=sc.querySelector('a.verifyl');const ol=mk('ol','',V.rows.map((r,i)=>{const kids=[mk('span','n',String(i+1)),mk('div','',[mk('b','',r.h),mk('p','',r.p+(r.run&&calls.length?' '+r.run.replace('{n}',String(calls.length)).replace('{cost}',usd(tot)):''))])];
+  // 19 Nov 2026 (Max): live Claude did not read this invoice: said plainly on the reading step, why first, never when it did.
+  {const wk=m.querySelector('.screen.work');const t=wk?pausedText(!wk.querySelector('.skel')):'';let pn=wk?wk.querySelector(':scope > .pv-paused'):null;
+   if(wk&&t){if(!pn){pn=mk('p','pv-paused','');pn.setAttribute('role','note');wk.prepend(pn)}if(pn.textContent!==t)pn.textContent=t}else if(pn)pn.remove()}
+  // The finish's first line says who read the invoice in this run, and counts only Claude's real calls.
+  for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pv-verify')){const V=PC.verify;const calls=[...CALLS.values()];const tot=calls.reduce((x,c)=>x+c.cost,0);const N=nCalls(calls);const code=readerIs()==='code';const paused=pausedText(true);
+    const vh=sc.querySelector('a.verifyl');const ol=mk('ol','',V.rows.map((r,i)=>{const cr=code&&r.k==='claude';const h=cr?V.code.h:r.h;const run=cr?(N?V.code.run:V.code.none):(r.run&&N?r.run:'');const kids=[mk('span','n',String(i+1)),mk('div','',[mk('b','',h),mk('p','',(cr?V.code.p:r.p)+(run?' '+run.replace('{n}',String(N)).replace(N===1?' calls':'{n}',N===1?' call':'{n}').replace('{cost}',usd(tot)):''))])];
       const href=r.href==='verify'?(vh&&vh.getAttribute('href')):r.href;if(r.link&&href){const l=mk('a','',r.link+' →');l.href=href;l.target='_blank';l.rel='noopener';kids[1].append(l)}return mk('li','',kids)}));
     const all=mk('a','btn primary big pv-all',V.all+' →');all.href=V.allHref;all.target='_blank';all.rel='noopener';
-    const card=mk('section','pv-verify',[mk('h2','',V.h),mk('p','sub',V.sub),ol,all,mk('p','foot',V.foot)]);const pp=sc.querySelector('.pp');if(pp)pp.before(card);else sc.append(card)}
+    const pn=paused?mk('p','pv-paused',paused):null;if(pn)pn.setAttribute('role','note');
+    const card=mk('section','pv-verify',[mk('h2','',V.h),mk('p','sub',V.sub),...(pn?[pn]:[]),ol,all,mk('p','foot',V.foot)]);const pp=sc.querySelector('.pp');if(pp)pp.before(card);else sc.append(card)}
   // 16 Nov (review of the full run): three figures on the landing, not five; the warning in the green line too; terms are
   // locked by the Face ID, not before; no raw transfer ids on the paid card (they stay in the proof).
   for(const pk of m.querySelectorAll('.screen.start ul.rl li .pk'))if(/live runs|decisions by Claude/.test(pk.textContent||'')){const li=pk.closest('li');if(li)li.hidden=true}
@@ -977,13 +1087,13 @@ if(SHELL){
   capMeta.append(mk('span','pv-sm',PC.money),howBtn);
 }
 function drawUse(){
-  const calls=[...CALLS.values()];const tot=calls.reduce((a,c)=>a+c.cost,0);
+  const calls=[...CALLS.values()];const tot=calls.reduce((a,c)=>a+c.cost,0);const N=nCalls(calls);const none=readerIs()==='code'?SH.noneCode:SH.none;
   const rows=calls.slice(-5).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.ms?(c.ms/1000).toFixed(1)+' s':'',c.ms&&c.req?' · ':'',c.req?c.req.slice(0,8)+'…'+c.req.slice(-5):''].join(''))]));
-  if(chip){chip.querySelector('summary').replaceChildren(mk('span','sp','✦'),mk('b','',SH.usage),mk('span','',calls.length?calls.length+' '+SH.calls+' · '+usd(tot):SH.none));const ol=chip.querySelector('ol');ol.replaceChildren(...calls.slice(-8).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','',usd(c.cost)+(c.ms?' · '+(c.ms/1000).toFixed(1)+' s':'')+(c.req?' · '+c.req.slice(0,8)+'…'+c.req.slice(-5):''))])))}
+  if(chip){chip.querySelector('summary').replaceChildren(mk('span','sp','✦'),mk('b','',SH.usage),mk('span','',N?N+' '+(N===1?SH.call:SH.calls)+' · '+usd(tot):none));const ol=chip.querySelector('ol');ol.replaceChildren(...calls.slice(-8).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','',usd(c.cost)+(c.ms?' · '+(c.ms/1000).toFixed(1)+' s':'')+(c.req?' · '+c.req.slice(0,8)+'…'+c.req.slice(-5):''))])))}
   railDraw();
   if(!useBox)return;
   const flash=calls.length&&useBox.dataset.tot!==String(tot);useBox.dataset.tot=String(tot);
-  useBox.replaceChildren(mk('h3','',SH.usage),mk('div','tot'+(flash?' flash':''),calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' '+SH.calls:SH.none),mk('ol','',rows));
+  useBox.replaceChildren(mk('h3','',SH.usage),mk('div','tot'+(flash?' flash':''),calls.length?usd(tot):'$0.0000'),mk('div','sub',N?N+' '+(N===1?SH.call:SH.calls):none),mk('ol','',rows));
 }
 drawUse();
 `;
@@ -1019,7 +1129,7 @@ window.fetch=async(input,init)=>{
       const at=Date.now();
       res.clone().json().then((j)=>{
         if(!j||typeof j!=='object')return;
-        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear();keepCalls()}
+        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear();keepCalls();forgetRead()}
         else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);takeCall(e,f);noteEvent(e);}}}
         else{
           let sent=null;try{sent=JSON.parse(String(init&&init.body||'null'))}catch(e){}
@@ -1132,7 +1242,7 @@ window.fetch=async(input,init)=>{
   const res=await real(input,init);
   try{const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;
     if(res.ok&&(p==='/v1/try/start'||p==='/v1/engine/events'))res.clone().json().then((j)=>{if(!j||typeof j!=='object')return;
-      if(p==='/v1/try/start'){CALLS.clear();keepCalls()}else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number'){takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});noteEvent(e)}
+      if(p==='/v1/try/start'){CALLS.clear();keepCalls();forgetRead()}else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number'){takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});noteEvent(e)}
       drawUse()}).catch(()=>{});
   }catch(e){}
   return res;
@@ -1148,10 +1258,10 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, payAlone: WORK.payAlone, payingAlone: PAY.paying, inj: PRESENT_INJ, awx2: PRESENT_AWX2, verify: PRESENT_VERIFY, hood: PRESENT_HOOD, limit: PRESENT_AGENT_LIMIT, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, guideCode: PRESENT_GUIDE_CODE, caps: LIVE.caps, payAlone: WORK.payAlone, payingAlone: PAY.paying, inj: PRESENT_INJ, awx2: PRESENT_AWX2, verify: PRESENT_VERIFY, hood: PRESENT_HOOD, limit: PRESENT_AGENT_LIMIT, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };
-  const body = (kind === "public" ? PUBLIC_SCRIPT : SCRIPT).replace("__SHARED__", () => SHARED.replace("__CALL_SAID__", () => callSaid.toString()));
+  const body = (kind === "public" ? PUBLIC_SCRIPT : SCRIPT).replace("__SHARED__", () => SHARED.replace("__CALL_SAID__", () => callSaid.toString()).replace("__CLAUDE_CALL__", () => claudeCall.toString()).replace("__READER_OF__", () => readerOf.toString()).replace("__PAUSED_NOTICE__", () => pausedNotice.toString()));
   return { css: CSS, script: body.replace("__PRESENT_CFG__", () => json(cfg)) };
 }

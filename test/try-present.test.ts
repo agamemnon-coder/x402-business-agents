@@ -51,7 +51,8 @@ describe("recording mode", () => {
     const { script, css } = presentExtra();
     expect(script).toContain("get('shell')!=='0'");
     expect(script).toContain("get('neg')!=='1'");
-    expect(script).toContain("e.event==='claude.read'||e.event==='agent.run'");
+    // 19 Nov 2026 (live review): a call counts only when the engine's fields say Claude answered (claudeCall; test/try-honest.test.ts).
+    expect(script).toContain("const cc=claudeCall(String(e.event||''),f);if(cc&&!CALLS.has(e.seq))");
         expect(css).toContain("body.pv-shell .acts.pdfl { display: flex !important; }");
     expect(css).toContain("body.pv-noneg .negcard { display: none !important; }");
     for (const w of ["Inbox", "Approvals", "Payments", "Books", "Agents", "Claude · this run"]) expect(script).toContain(w);
