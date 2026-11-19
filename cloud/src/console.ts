@@ -426,7 +426,12 @@ const hasPasskeys=()=>!!(window.PublicKeyCredential&&navigator.credentials);
 const KEY='purser.cloud.session';
 const load=()=>{try{const s=JSON.parse(sessionStorage.getItem(KEY)||'null');return s&&s.exp>Date.now()?s:null}catch(e){return null}};
 const save=(s)=>{try{sessionStorage.setItem(KEY,JSON.stringify(s))}catch(e){}};
-const forget=()=>{try{sessionStorage.removeItem(KEY)}catch(e){}};
+// The Overview's last live Airwallex read (awxUi.ts) is kept beside it in this tab (ASVS V8.2.2) and goes with it (V8.2.3).
+const AWL_OV_KEY='purser.awl.ov';
+const forget=()=>{try{sessionStorage.removeItem(KEY);sessionStorage.removeItem(AWL_OV_KEY)}catch(e){}};
+// An older page kept that read in localStorage, past sign-out: it is removed.
+const dropOldCopies=()=>{try{localStorage.removeItem(AWL_OV_KEY)}catch(e){}};
+dropOldCopies();
 let S=load();let ME=null;let notice=null;let connNote=null;
 
 class Expired extends Error{}

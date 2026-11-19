@@ -5,7 +5,7 @@
 import { withBaseline } from "./baseHeaders.js";
 import { z } from "zod";
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
-import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
+import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
 import { registerCsv } from "../../src/money/registerShape.js";
@@ -15,10 +15,14 @@ import { applySync, SyncBatch, SyncRefused, syncState } from "./sync.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
-import { download, ExportRefused, exportStatus, purgeEndedExportParts, signedLink, stageExport } from "./exports.js";
+import { download, EXPORT_LINK_HEADER, ExportRefused, exportStatus, purgeEndedExportParts, signedLink, stageExport } from "./exports.js";
 import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
+import { auditRequest, type Audit } from "./securityAudit.js";
+import { platformAdmin } from "./adminKeys.js";
+import { readSecurityLog, securityAlarms } from "./securityLog.js";
+import { truncatedIp } from "../../src/lib/securityEvents.js";
 import { integrations } from "./integrations.js";
 import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, refreshAccount, type AwxPlatformEnv } from "./awxPlatform.js";
@@ -55,8 +59,13 @@ export interface CloudEnv {
   blobs: Blobs;
   /** HMAC key for session tokens (a Worker secret). */
   sessionSecret: string;
-  /** SHA-256 (hex) of the platform admin token (a Worker secret); empty: no tenant can be created. */
+  /**
+   * The legacy platform admin token's SHA-256 (hex; the Worker secret ADMIN_TOKEN_SHA256): every scope, logged as
+   * platform:legacy, until the secret is deleted. Empty: no legacy token.
+   */
   adminTokenSha256: string;
+  /** The platform admin keys (the Worker secret ADMIN_KEYS; ./adminKeys.ts): named, scoped, expiring; only their hashes. */
+  adminKeys?: string;
   /** The passkey relying party: the cloud's own host and origin. */
   rpId: string;
   origin: string;
@@ -126,16 +135,22 @@ export interface CloudEnv {
    * a service binding (AWX_READ). Purser Cloud holds no Airwallex key. Absent: each view says the sandbox is unavailable.
    */
   awxRead?: AwxReadBinding;
+  /**
+   * The security log's alarm thresholds (src/lib/securityEvents.ts alarmRules), e.g. "auth_failures=20,window=300"; a
+   * Worker var. Unset: the defaults.
+   */
+  securityAlarms?: string;
 }
 
-interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
+/** audit: what the request found out about its caller, for its security event (./securityAudit.ts); a route may add to it. */
+interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null; audit: Audit }
 type Need = "public" | "platform" | Scope;
 interface Route { method: "GET" | "POST" | "DELETE"; path: string; summary: string; need: Need; run: (c: Ctx) => Promise<Response> }
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" };
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 /** Every error has one shape: a sentence for a person and a stable code for a program. */
-const CODES: Record<number, string> = { 400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 405: "method_not_allowed", 409: "conflict", 413: "too_large", 422: "unprocessable", 429: "rate_limited", 500: "internal", 502: "upstream" };
+const CODES: Record<number, string> = { 400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 405: "method_not_allowed", 409: "conflict", 413: "too_large", 415: "unsupported_media_type", 422: "unprocessable", 429: "rate_limited", 500: "internal", 502: "upstream" };
 // A 429 says when to come back (security scan, 14 Nov).
 export const err = (status: number, error: string) => {
   const r = json(status, { error, code: CODES[status] ?? "error" });
@@ -166,7 +181,13 @@ async function readCapped(req: Request, maxBytes: number): Promise<string> {
   return new TextDecoder().decode(all);
 }
 
+/** A body that does not say it is JSON (ASVS V13.1.5, V13.2.5): refused with 415 before a byte of it is read. */
+export class UnsupportedMediaType extends Error {}
+/** application/json, with any parameters (a charset), in any case; nothing else (not text/json, not application/jsonp). */
+export const isJsonType = (v: string | null): boolean => /^application\/json\s*(?:;|$)/i.test((v ?? "").trim());
+
 async function body<T>(c: Ctx, schema: z.ZodType<T>, maxBytes = 1_000_000): Promise<T> {
+  if (!isJsonType(c.req.headers.get("content-type"))) throw new UnsupportedMediaType("send the body as JSON with Content-Type: application/json");
   const len = Number(c.req.headers.get("content-length") ?? 0);
   if (len > maxBytes) throw new BadRequest(`the body is larger than ${maxBytes} bytes`);
   const text = await readCapped(c.req, maxBytes);
@@ -222,14 +243,21 @@ export const RESERVED_SLUGS = new Set([DEMO_SLUG, "postmaster", "hostmaster", "w
 const NEW_SLUG = SLUG.refine((v) => !RESERVED_SLUGS.has(v), "this address is reserved");
 
 export const ROUTES: Route[] = [
-  { method: "GET", path: "/v1/health", summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all (no company's data); 503 when something is down.", need: "public", run: async (c) => {
+  { method: "GET", path: "/v1/health", summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all, and the security alarms raised in the last 24 hours per rule (security.alarms_24h; no company's data); 503 when something is down.", need: "public", run: async (c) => {
     const h = await cloudHealth(c.env.sql, c.env.blobs, c.env.version ?? "dev");
-    return json(h.status, h.body);
+    // The security log's alarms of the last 24 hours (./securityLog.ts): counts per rule, no company, no address.
+    let security: Record<string, unknown> = { alarms_24h: null };
+    try { const a = await securityAlarms(c.env.sql, c.now); security = { alarms_24h: a.last_24h, rules: a.rules }; } catch { /* the database is down: d1 says so */ }
+    return json(h.status, { ...h.body, security });
   } },
   { method: "GET", path: "/v1/status", summary: "Where the company stands, for its owners: the last push from the runner, the mail queue, today's mail quota, the runner's alert codes and the webhook (never its secret).", need: "admin", run: async (c) => json(200, await companyStatus(c.env.sql, c.caller!.tenantId, c.now)) },
   { method: "POST", path: "/v1/health/report", summary: "The runner reports its health: alert codes and severities (their words are dropped). Alerts raised or cleared since the last report go to the company's webhook.", need: "sync", run: async (c) => {
     const r = await body(c, HealthReport, 64_000);
-    return json(200, await receiveReport(c.env.sql, c.caller!.tenantId, r, c.now, c.env.outbound, c.env.retryDelayMs));
+    const out = await receiveReport(c.env.sql, c.caller!.tenantId, r, c.now, c.env.outbound, c.env.retryDelayMs);
+    // The runner newly reports tampered terms or a broken chain: a tamper alarm in the security log (once, when raised).
+    const tampered = out.raised.filter((code) => /tamper|chain_broken|chain_invalid/.test(code));
+    if (tampered.length) { c.audit.tamper = true; c.audit.detail = { codes: tampered.join(" ") }; }
+    return json(200, out);
   } },
   { method: "GET", path: "/v1/integrations", summary: "Where the company's accounting links stand (Moneybird): not_connected, connected or attention, the last sync, what was sent, what failed and what waits for a person; from the runner's ERP sync results in the audit log, never a credential.", need: "admin", run: async (c) => json(200, await integrations(c.env.sql, c.caller!.tenantId)) },
   { method: "GET", path: "/v1/webhook", summary: "The company's alert webhook (its URL and delivery state; never its secret).", need: "admin", run: async (c) => json(200, (await webhookOf(c.env.sql, c.caller!.tenantId)) ?? { url: null }) },
@@ -345,6 +373,11 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/connections", summary: "Every connection Purser has to other systems, what each does and whether it is a live integration or a format export.", need: "public", run: async (c) => json(200, connectionsCatalogue(c.env.origin)) },
 
   { method: "GET", path: "/v1/admin/companies", summary: "The companies on this cloud for the platform operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (never a key or an account number).", need: "platform", run: async (c) => json(200, await platformCompanies(c.env.sql)) },
+  { method: "GET", path: "/v1/admin/security-log", summary: "The cloud's security event log for the platform operator, newest first (kind, since, limit up to 500): sign-ins and their failures, refusals, rate-limit hits, the admin's actions, key, passkey and policy changes, webhook signature failures, tamper alarms and the alarms they raised. Ids and networks only; never a secret.", need: "platform", run: async (c) => {
+    const since = c.url.searchParams.get("since");
+    if (since && Number.isNaN(Date.parse(since))) throw new BadRequest("since must be a time like 2026-11-19T00:00:00Z");
+    return json(200, await readSecurityLog(c.env.sql, { kind: c.url.searchParams.get("kind"), since, limit: Number(c.url.searchParams.get("limit") ?? 100) || 100 }));
+  } },
   { method: "POST", path: "/v1/admin/tenants", summary: "Create a company and its first owner; returns the owner's API key once.", need: "platform", run: async (c) => {
     const b = await body(c, z.object({ slug: NEW_SLUG, name: z.string().min(1).max(200), owner: z.object({ display_name: z.string().min(1).max(120), email: z.string().email().max(200).optional() }).strict() }).strict());
     if (await c.env.sql.first("SELECT 1 FROM tenants WHERE slug = ?", [b.slug])) return err(409, `the address ${b.slug} is taken`);
@@ -401,7 +434,10 @@ export const ROUTES: Route[] = [
       assertion: z.object({ authenticatorData: z.string().max(4000), clientDataJSON: z.string().max(8000), signature: z.string().max(400) }).strict() }).strict());
     const t = await c.env.sql.first<{ id: string; closed_at: string | null }>("SELECT id, closed_at FROM tenants WHERE slug = ?", [b.tenant]);
     if (!t || t.closed_at) return notFound("company");
+    c.audit.tenant = t.id;
+    c.audit.detail = { credential_id: b.credential_id.slice(0, 12) };
     const s = await passkeyLogin(c.env.sql, { tenantId: t.id, challengeId: b.challenge_id, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, secret: c.env.sessionSecret, now: c.now });
+    c.audit.actor = s.user_id;
     return json(200, { session: s.token, role: s.role, user_id: s.user_id, expires_in: 900 });
   } },
   { method: "POST", path: "/v1/auth/enrol", summary: "Enrol a person's passkey with the single-use enrolment an owner started: the new passkey signs the enrolment's secret.", need: "public", run: async (c) => {
@@ -410,7 +446,10 @@ export const ROUTES: Route[] = [
       assertion: z.object({ authenticatorData: z.string().max(4000), clientDataJSON: z.string().max(8000), signature: z.string().max(400) }).strict() }).strict());
     const t = await c.env.sql.first<{ id: string; closed_at: string | null }>("SELECT id, closed_at FROM tenants WHERE slug = ?", [b.tenant]);
     if (!t || t.closed_at) return notFound("company");
+    c.audit.tenant = t.id;
+    c.audit.detail = { enrolment_id: b.enrolment_id.slice(0, 20), credential_id: b.credential_id.slice(0, 12) };
     const r = await enrolPasskey(c.env.sql, { tenantId: t.id, enrolmentId: b.enrolment_id, token: b.token, credentialId: b.credential_id, x: b.x, y: b.y, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now });
+    c.audit.actor = r.user_id;
     if (r.recovery) await notify(c.env.sql, t.id, "security.recovery_completed", { owner: r.user_id }, c.now, c.env.outbound, c.env.retryDelayMs);
     return json(201, r);
   } },
@@ -658,18 +697,18 @@ export const ROUTES: Route[] = [
     need(c.caller!, "read");
     return json(200, await exportTenant(c.env.sql, c.caller!.tenantId));
   } },
-  { method: "POST", path: "/v1/export/staged", summary: "Build the company's export into the store in parts (one at a time, kept a day); returns a 15-minute signed link to its manifest, which needs no key. Needs admin and read.", need: "admin", run: async (c) => {
+  { method: "POST", path: "/v1/export/staged", summary: "Build the company's export into the store in parts (one at a time, kept a day); returns a 15-minute, single-use signed link to its manifest, which needs no key: manifest_link (a bare URL and the x-purser-export-link header to send, for a program) or manifest_url (the same signature in the query, for a browser). Needs admin and read.", need: "admin", run: async (c) => {
     need(c.caller!, "read");
     const x = await stageExport(c.env.sql, c.env.blobs, c.caller!.tenantId, c.caller!.principal, c.now, { ...(c.env.exportPartRows ? { partRows: c.env.exportPartRows } : {}), ...(c.env.exportMaxBytes !== undefined ? { maxBytes: c.env.exportMaxBytes } : {}) });
     const l = await signedLink(c.env.origin, c.env.sessionSecret, c.caller!.tenantId, x.id, "manifest", c.now);
-    return json(201, { id: x.id, status: "ready", parts: x.parts.length, bytes: x.bytes, expires_at: x.expires_at, manifest_url: l.url, link_expires_at: l.expires_at });
+    return json(201, { id: x.id, status: "ready", parts: x.parts.length, bytes: x.bytes, expires_at: x.expires_at, manifest_url: l.url, manifest_link: l.link, link_expires_at: l.expires_at });
   } },
   { method: "GET", path: "/v1/export/staged/{id}", summary: "A staged export's state, with a fresh 15-minute link to its manifest while it is ready. Needs admin and read.", need: "admin", run: async (c) => {
     need(c.caller!, "read");
     return json(200, await exportStatus(c.env.sql, c.env.blobs, c.env.origin, c.env.sessionSecret, c.caller!.tenantId, c.params[0]!, c.now));
   } },
-  { method: "GET", path: "/v1/export/download/{id}/{part}", summary: "One part (or the manifest) of a staged export, by its signed link (no key); the manifest carries a signed link per part.", need: "public", run: async (c) => {
-    const r = await download(c.env.sql, c.env.blobs, c.env.origin, c.env.sessionSecret, c.params[0]!, c.params[1]!, c.url.searchParams, c.now);
+  { method: "GET", path: "/v1/export/download/{id}/{part}", summary: "One part (or the manifest) of a staged export, by its signed link (no key): the signature in the x-purser-export-link header, or in the query; each link is good once, for 15 minutes. The manifest carries a signed link per part.", need: "public", run: async (c) => {
+    const r = await download(c.env.sql, c.env.blobs, c.env.origin, c.env.sessionSecret, c.params[0]!, c.params[1]!, c.url.searchParams, c.now, c.req.headers.get(EXPORT_LINK_HEADER));
     return new Response(typeof r.body === "string" ? r.body : new Uint8Array(r.body), { status: r.status, headers: { ...JSON_HEADERS, ...(r.status === 200 ? { "content-disposition": `attachment; filename="${c.params[0]!}-${c.params[1]!}.json"` } : {}) } });
   } },
   { method: "POST", path: "/v1/close", summary: "Close the company's account: access ends; records are kept until the retention day, then purged.", need: "admin", run: async (c) => json(200, await closeTenant(c.env.sql, c.caller!.tenantId, c.now)) },
@@ -722,20 +761,26 @@ export function ensureSchema(sql: Sql): Promise<void> {
 /** The API and the console, with one structured log line per request (the route's pattern, never a token or a body). */
 export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const started = Date.now();
+  const audit: Audit = {};
   // The baseline security headers each answer lacks (./baseHeaders.ts): one place for the API, redirects and files.
-  const res = withBaseline(await route(req, env));
+  const res = withBaseline(await route(req, env, audit));
   const path = new URL(req.url).pathname;
   const pattern = path.startsWith("/v1/") || isClaudePath(path) || isDiscoveryPath(path) ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
   // The hands-on deployment's own figures for the owner's page (cloud/src/try/metrics.ts): counts and buckets only.
   if (env.tryIt && path.startsWith("/v1/")) await noteRequest(env.sql, pattern, res.status, Date.now() - started, new Date());
-  logEvent(res.status >= 500 ? "error" : res.status === 401 || res.status === 403 || res.status === 429 ? "warn" : "info", "request", { method: req.method, route: pattern, status: res.status, ms: Date.now() - started });
+  // Who and from where (ASVS V7.1.4): the key or person's id, the platform admin key's id, the address cut to its network.
+  logEvent(res.status >= 500 ? "error" : res.status === 401 || res.status === 403 || res.status === 429 ? "warn" : "info", "request", {
+    method: req.method, route: pattern, status: res.status, ms: Date.now() - started, tenant: audit.tenant ?? null,
+    caller: audit.admin ? `platform:${audit.admin}` : audit.actor ?? null, ip: truncatedIp(req.headers.get("cf-connecting-ip")) });
+  // Sign-ins, refusals, limits, the admin's actions and access changes (./securityAudit.ts); the console's pages are not.
+  if (pattern !== "console") await auditRequest(env, req, res, pattern, audit, (env.now ?? (() => new Date()))());
   return res;
 }
 
 /** Claude's web origins, which may call /mcp from a browser (cloud/src/claude/routes.ts). */
 const CLAUDE_ORIGINS = new Set(["https://claude.ai", "https://claude.com"]);
 
-async function route(req: Request, env: CloudEnv): Promise<Response> {
+async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Response> {
   const now = (env.now ?? (() => new Date()))();
   const url = new URL(req.url);
   try {
@@ -766,7 +811,8 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (!candidates.length) return err(404, "no such route");
     const hit = candidates.find((x) => x.r.method === req.method);
     if (!hit) return err(405, `use ${candidates.map((x) => x.r.method).join(" or ")}`);
-    const ctx: Ctx = { env, req, url, now, params: hit.p!, caller: null, db: null };
+    const ctx: Ctx = { env, req, url, now, params: hit.p!, caller: null, db: null, audit };
+    audit.platform = hit.r.need === "platform";
     const rate = env.rate ?? { perMinute: 600, signInPerMinute: 30 };
     // The caller's address: Cloudflare's edge sets cf-connecting-ip and overwrites any value a client sends; behind any
     // other proxy this header must not be trusted (docs/cloud.md).
@@ -776,7 +822,16 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       // token requests come from a client's servers (claude.ai's share addresses) and carry nothing guessable.
       if ((hit.r.path.startsWith("/v1/auth/") || hit.r.path === "/oauth/authorize") && !(await withinRate(env.sql, `ip:${ip}`, now, { windowSec: 60, max: rate.signInPerMinute }))) return err(429, "too many sign-in attempts; wait a minute");
     } else if (hit.r.need === "platform") {
-      if (!(await isPlatformAdmin(env.adminTokenSha256, req.headers.get("authorization")))) return err(401, "platform admin only");
+      // Named, scoped, expiring admin keys (./adminKeys.ts), or the legacy token while it is set. No lockout: a flood of
+      // wrong tokens from an address must never lock the right one out (test/try-redteam.test.ts; a key is 256 random
+      // bits); each refusal is an admin.auth_failure in the security log, and a burst raises its alarm.
+      const d = await platformAdmin(env, req.headers.get("authorization"), `${req.method} ${hit.r.path}`, now);
+      if (!d.ok) {
+        if (d.status === 401) audit.detail = { admin_key_id: d.id };
+        else audit.admin = d.id;
+        return err(d.status, d.why);
+      }
+      audit.admin = d.id;
     } else {
       // Failed keys and sessions are counted per address; past the limit the request is turned away before any lookup.
       if (await failedAuthBlocked(env.sql, ip, now, rate.failedAuthPerMinute ?? 20)) return err(429, "too many failed sign-ins from this address; wait a minute");
@@ -794,6 +849,8 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
         }
         throw e;
       }
+      audit.tenant = caller.tenantId;
+      audit.actor = caller.principal;
       // A visitor's test company calls only the hands-on demo's routes, while it lives (cloud/src/try/gate.ts).
       const tryCaller = isTryTenant(caller.tenantId);
       if (tryCaller) {
@@ -845,8 +902,12 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     }
     if (e instanceof StepUpRequired) return json(403, { error: e.message, code: e.code });
     if (e instanceof AlertRefused) return err(e.status, e.message);
-    if (e instanceof SyncRefused) return err(e.status, e.message);
+    if (e instanceof SyncRefused) {
+      if (e.tamper) audit.tamper = true;
+      return err(e.status, e.message);
+    }
     if (e instanceof BadRequest) return err(400, e.message);
+    if (e instanceof UnsupportedMediaType) return err(415, e.message);
     if (e instanceof PrivacyRefused) return err(409, e.message);
     if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);

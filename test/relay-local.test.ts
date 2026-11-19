@@ -15,7 +15,7 @@ describe("local relay", () => {
     expect(page.headers.get("content-security-policy")).toContain("script-src 'self'");
     expect(await page.text()).toContain('data-page="approve"');
     expect((await fetch(`${url}/assets/approve.js`)).headers.get("content-type")).toMatch(/javascript/);
-    const sync = (token: string) => fetch(`${url}/api/runner/sync`, { method: "POST", headers: { authorization: `Bearer ${token}` }, body: JSON.stringify({ state_hash: "x" }) });
+    const sync = (token: string) => fetch(`${url}/api/runner/sync`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ state_hash: "x" }) });
     expect((await sync("nope")).status).toBe(401);
     expect(await (await sync("local-token")).json()).toEqual({ need_state: true, inbox: [], hooks: [] });
     expect((await fetch(`${url}/nothing`)).status).toBe(404);

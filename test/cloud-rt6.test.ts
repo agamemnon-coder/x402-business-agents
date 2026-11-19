@@ -106,9 +106,10 @@ describe("RT6-X staged exports and erasure", () => {
       const m0 = await c.req("GET", relative(st0.json.manifest_url as string));
       const part = (m0.json.parts as { table: string; url: string }[]).find((p) => p.table === "users")!;
       expect(await (await c.fetch(part.url)).text()).toContain("jane@private.example");
-      await c.fetch(part.url);
+      // Each link is good once (ASVS V8.3.1): the copy is refused, and only the download that happened is on record.
+      expect((await c.fetch(part.url)).status).toBe(403);
       const ev0 = (await c.req("GET", "/v1/security/events", { key: t.key })).json.items as { kind: string }[];
-      expect(ev0.filter((x) => x.kind === "export.part_downloaded")).toHaveLength(2);
+      expect(ev0.filter((x) => x.kind === "export.part_downloaded")).toHaveLength(1);
       expect((await c.req("POST", `/v1/users/${u.json.id as string}/erase`, { key: t.session })).status).toBe(200);
       const st = await c.req("GET", `/v1/export/staged/${s.json.id as string}`, { key: t.key });
       expect(st.json.status).toBe("expired");

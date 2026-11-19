@@ -26,7 +26,7 @@ const hook = (r: Relay, body: string, opts: { ts?: string; sig?: string } = {}) 
   return r.fetch(new Request(`${BASE}/hooks/airwallex`, { method: "POST", headers: { "content-type": "application/json", "x-timestamp": ts, "x-signature": opts.sig ?? sign(ts, body) }, body }));
 };
 const sync = async (r: Relay, extra: Record<string, unknown> = {}) =>
-  (await (await r.fetch(new Request(`${BASE}/api/runner/sync`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` }, body: JSON.stringify({ state_hash: "h", ...extra }) }))).json()) as { hooks: { id: string; ts: string; signature: string; body: string }[] };
+  (await (await r.fetch(new Request(`${BASE}/api/runner/sync`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" }, body: JSON.stringify({ state_hash: "h", ...extra }) }))).json()) as { hooks: { id: string; ts: string; signature: string; body: string }[] };
 
 const event = (cardId: string, over: Record<string, unknown> = {}) => JSON.stringify({
   id: "evt-1", name: "issuing.card_transaction_event.failed", account_id: "acct", created_at: t0.toISOString(), version: "2025-11-11",

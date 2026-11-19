@@ -76,12 +76,12 @@ describe("MFA on the relay (D20)", () => {
     }
   });
 
-  it("opens a session on a verified passkey: a cookie the page cannot read, for /api only, strict same-site; the CFO's endpoints then answer", async () => {
+  it("opens a session on a verified passkey: a cookie the page cannot read, __Host- (Secure, Path=/, no Domain), strict same-site; the CFO's endpoints then answer", async () => {
     const { r } = relay(); const pk = softPasskey(); await push(r, state(pk));
     const view = await viewKeyForWeek(TOKEN, t0);
     const { res, cookie } = await signIn(r, pk, view);
     expect(res.status).toBe(200);
-    expect(res.headers.get("set-cookie")).toMatch(/^kit11_session=[A-Za-z0-9_-]{43}; HttpOnly; Secure; SameSite=Strict; Path=\/api; Max-Age=43200$/);
+    expect(res.headers.get("set-cookie")).toMatch(/^__Host-kit11_session=[A-Za-z0-9_-]{43}; HttpOnly; Secure; SameSite=Strict; Path=\/; Max-Age=43200$/);
     const after = await r.fetch(req("/api/ask", { method: "POST", view, cookie, body: {} }));
     expect(after.status).not.toBe(401);
   });
