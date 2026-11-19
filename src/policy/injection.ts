@@ -148,7 +148,7 @@ function hexTexts(line: string): string[] {
     const run = m[0];
     if (run.length % 2 !== 0) continue;
     let text: string;
-    try { text = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(run.match(/../g)!, (h) => parseInt(h, 16))); } catch { continue; }
+    try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(Uint8Array.from(run.match(/../g)!, (h) => parseInt(h, 16))); } catch { continue; }
     if (readable(text)) out.push(text);
   }
   return out;
@@ -171,7 +171,7 @@ function base64Texts(line: string): string[] {
     const run = m[0];
     if (run.length % 4 !== 0) continue;
     let text: string;
-    try { text = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(atob(run), (ch) => ch.charCodeAt(0))); } catch { continue; }
+    try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(Uint8Array.from(atob(run), (ch) => ch.charCodeAt(0))); } catch { continue; }
     if (readable(text)) out.push(text);
   }
   return out;
