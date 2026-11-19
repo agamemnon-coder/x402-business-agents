@@ -2,21 +2,30 @@
 // docs/runs/2026-11-19-live-try/): per run, what Claude was asked (from the engine's own events), the Airwallex sandbox
 // transfers and their SCHEDULED → PAID path, the approval's hash, the refusal, the hold, the proof's checks and the step
 // times; then the aggregates (p50 and p95 by nearest rank). Writes summary.json beside the runs and prints the tables.
-//   npx tsx scripts/try-live-summary.ts [dir]
+// p50, p90 and p95 by nearest rank, with the min and max. Also used for docs/runs/2026-11-19-mega-run.md (50 walks):
+// with --also <dir>, the runs of both folders are summed together too, written as combined.json beside the first's.
+//   npx tsx scripts/try-live-summary.ts [dir] [--also <dir>]
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const dir = process.argv[2] ?? "docs/runs/2026-11-19-live-try";
+const argv = process.argv.slice(2);
+const alsoAt = argv.indexOf("--also");
+const also = alsoAt >= 0 ? argv[alsoAt + 1] ?? null : null;
+const dir = argv.filter((a, i) => !a.startsWith("--") && !(alsoAt >= 0 && i === alsoAt + 1))[0] ?? "docs/runs/2026-11-19-live-try";
 interface Ev { seq: number; ts: string; actor: string; event: string; subject: string | null; fields: Record<string, unknown> }
 interface Answer { tab: string; path: string; status: number; body: Record<string, unknown> | null }
 interface Rec {
-  run: number; profile: string; viewport: { width: number }; color_scheme: string; started_at: string; finished_at: string; ok: boolean; failures: string[];
+  run: number; profile: string; browser?: { name: string; version: string | null }; passkey?: string; calls: { status: number; path: string }[]; viewport: { width: number }; color_scheme: string; started_at: string; finished_at: string; ok: boolean; failures: string[];
   steps_ms: Record<string, number | null>; page_says: Record<string, string | null>;
   bundle: { downloaded?: { outcome: string; verify_page: { verdict: string }; repo_verifier: { ok: boolean; checks: number } }; paid?: { verify_page_pasted: { verdict: string | null }; repo_verifier: { ok: boolean; checks: number } | null } | null };
   held: { invoice?: { invoice_no?: string; total?: string; status?: string } | null; cash?: Record<string, unknown> | null; payout_events?: string[] };
   answers: Answer[]; events: { main: Ev[]; cash: Ev[] }; console_errors: string[]; outside_requests: string[];
 }
 
+/** /verify's verdict when every check passes: "VALID", or "Proof valid · payment refused" for a refusal's proof (19 Nov, PR #438). */
+const validVerdict = (v: string | null | undefined) => !!v && /^(VALID|Proof valid · payment refused)\b/.test(v) && /every check passes/.test(v) && !/NOT VALID/.test(v);
+/** A failure that is only the recorder not knowing /verify's new words for a valid refusal proof (runs before the fix). */
+const wordingOnly = (f: string) => /^\/verify, the downloaded proof: Proof valid · payment refused every check passes/.test(f);
 const pct = (xs: number[], q: number) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.ceil(q * s.length) - 1)]! : null; };
 const str = (v: unknown) => (typeof v === "string" ? v : null);
 const num = (v: unknown) => (typeof v === "number" ? v : null);
@@ -55,9 +64,13 @@ function fallbacks(evs: Ev[]) {
   return out;
 }
 
+/** Every run of a folder (run-<n>.json), summed up one by one. */
+function runsOf(dir: string) {
 const files = readdirSync(dir).filter((f) => /^run-\d+\.json$/.test(f)).sort((a, b) => Number(a.slice(4, -5)) - Number(b.slice(4, -5)));
-const runs = files.map((f) => {
+return files.map((f) => {
   const r = JSON.parse(readFileSync(join(dir, f), "utf8")) as Rec;
+  const statuses: Record<string, number> = {};
+  for (const c of r.calls ?? []) statuses[String(c.status)] = (statuses[String(c.status)] ?? 0) + 1;
   const main = r.events.main, cash = r.events.cash;
   const calls = [...claudeCalls(main, "main"), ...claudeCalls(cash, "cash")];
   const pays = r.answers.filter((a) => a.tab === "main" && /\/pay$/.test(a.path));
@@ -77,7 +90,8 @@ const runs = files.map((f) => {
   const big = transfers.find((t) => t.amount === "EUR 1850.00");
   const layers = (refused?.layers ?? {}) as { signature?: { reason?: string }; executor?: { said?: string } };
   return {
-    run: r.run, profile: `${r.profile} ${r.viewport.width} ${r.color_scheme}`, started_at: r.started_at, finished_at: r.finished_at, ok: r.ok, failures: r.failures,
+    set: dir, run: r.run, profile: `${r.profile} ${r.viewport.width} ${r.color_scheme}`, browser: r.browser?.name ?? "chromium", browser_version: r.browser?.version ?? null, passkey: r.passkey ?? "cdp-virtual-authenticator",
+    v1_calls: (r.calls ?? []).length, v1_statuses: statuses, started_at: r.started_at, finished_at: r.finished_at, ok: r.ok, failures: r.failures,
     claude: {
       calls, entries: calls.length, api_requests: calls.reduce((k, c) => k + c.turns, 0), with_request_id: calls.filter((c) => c.request_ids.length).length,
       reader_calls_without_request_id: calls.filter((c) => c.kind === "reader" && !c.request_ids.length).length,
@@ -93,38 +107,63 @@ const runs = files.map((f) => {
     steps_ms: r.steps_ms, page_says: r.page_says, console_errors: r.console_errors.length, outside_requests: r.outside_requests.length,
   };
 });
+}
+type Run = ReturnType<typeof runsOf>[number];
+const dist = (xs: number[]) => ({ n: xs.length, p50: pct(xs, 0.5), p90: pct(xs, 0.9), p95: pct(xs, 0.95), min: xs.length ? Math.min(...xs) : null, max: xs.length ? Math.max(...xs) : null });
+
+/** The aggregates of a set of runs. */
+function aggregate(runs: Run[]) {
 
 const stepNames = [...new Set(runs.flatMap((r) => Object.keys(r.steps_ms)))];
-const steps = Object.fromEntries(stepNames.map((k) => {
-  const xs = runs.map((r) => r.steps_ms[k]).filter((x): x is number => typeof x === "number");
-  return [k, { n: xs.length, p50: pct(xs, 0.5), p95: pct(xs, 0.95), min: xs.length ? Math.min(...xs) : null, max: xs.length ? Math.max(...xs) : null }];
-}));
+const steps = Object.fromEntries(stepNames.map((k) => [k, dist(runs.map((r) => r.steps_ms[k]).filter((x): x is number => typeof x === "number"))]));
+const by = (key: (r: Run) => string) => runs.reduce<Record<string, number>>((m, r) => { const k = key(r); m[k] = (m[k] ?? 0) + 1; return m; }, {});
+const statuses = runs.reduce<Record<string, number>>((m, r) => { for (const [k, v] of Object.entries(r.v1_statuses)) m[k] = (m[k] ?? 0) + v; return m; }, {});
+const costs = runs.map((r) => r.claude.cost_usd_micros);
 const allCalls = runs.flatMap((r) => r.claude.calls);
-const agg = {
+return {
   runs: runs.length, ok: runs.filter((r) => r.ok).length, desktop: runs.filter((r) => r.profile.startsWith("desktop")).length, phone: runs.filter((r) => r.profile.startsWith("phone")).length,
+  tablet: runs.filter((r) => r.profile.startsWith("tablet")).length, by_profile: by((r) => `${r.browser} ${r.profile}`), by_browser: by((r) => `${r.browser} ${r.browser_version ?? ""}`.trim()),
+  ok_by_profile: runs.filter((r) => r.ok).reduce<Record<string, number>>((m, r) => { const k = `${r.browser} ${r.profile}`; m[k] = (m[k] ?? 0) + 1; return m; }, {}),
+  failed_runs: runs.filter((r) => !r.ok).map((r) => ({ run: r.run, profile: `${r.browser} ${r.profile}`, failures: r.failures })),
+  v1_calls: runs.reduce((k, r) => k + r.v1_calls, 0), v1_statuses: statuses,
   first_start: runs[0]?.started_at ?? null, last_finish: runs.at(-1)?.finished_at ?? null,
   steps,
   claude: {
     entries: allCalls.length, api_requests: runs.reduce((k, r) => k + r.claude.api_requests, 0), distinct_request_ids: new Set(runs.flatMap((r) => r.claude.request_ids)).size,
     reader_calls_without_request_id: runs.reduce((k, r) => k + r.claude.reader_calls_without_request_id, 0), cost_usd_micros: runs.reduce((k, r) => k + r.claude.cost_usd_micros, 0),
+    cost_usd_micros_per_run: dist(costs), entries_per_run: dist(runs.map((r) => r.claude.entries)),
     models: [...new Set(allCalls.map((c) => c.model))], fallbacks: runs.reduce((k, r) => k + r.claude.fallbacks.length, 0),
     latency_ms: Object.fromEntries([...new Set(allCalls.map((c) => `${c.kind}:${c.kind === "reader" ? c.role : c.agent}`))].map((k) => {
       const xs = allCalls.filter((c) => `${c.kind}:${c.kind === "reader" ? c.role : c.agent}` === k).map((c) => c.latency_ms).filter((x): x is number => typeof x === "number");
-      return [k, { n: xs.length, p50: pct(xs, 0.5), p95: pct(xs, 0.95) }];
+      return [k, dist(xs)];
     })),
   },
   airwallex: {
     transfers: runs.reduce((k, r) => k + r.airwallex.length, 0), paid: runs.reduce((k, r) => k + r.airwallex.filter((t) => t.path[1]?.status === "PAID").length, 0),
-    scheduled_to_paid_ms: (() => { const xs = runs.flatMap((r) => r.airwallex.map((t) => t.scheduled_to_paid_ms)).filter((x): x is number => typeof x === "number"); return { n: xs.length, p50: pct(xs, 0.5), p95: pct(xs, 0.95) }; })(),
+    distinct_transfer_ids: new Set(runs.flatMap((r) => r.airwallex.map((t) => t.transfer_id))).size,
+    scheduled_to_paid_ms: dist(runs.flatMap((r) => r.airwallex.map((t) => t.scheduled_to_paid_ms)).filter((x): x is number => typeof x === "number")),
   },
   approvals_matching_transfer: runs.filter((r) => r.approval.equals_transfer_metadata).length,
   refused: runs.filter((r) => r.refusal?.outcome === "refused" && r.refusal.transfers_before === r.refusal.transfers_after).length,
   held: runs.filter((r) => r.held.outcome === "hold" && (r.held.payout_events?.length ?? 1) === 0).length,
-  bundles_valid_on_verify: runs.filter((r) => /^VALID/.test(r.bundle.downloaded?.verify_page ?? "")).length,
-  paid_bundles_valid_on_verify: runs.filter((r) => /^VALID/.test(r.bundle.paid?.verify_page ?? "")).length,
+  bundles_valid_on_verify: runs.filter((r) => validVerdict(r.bundle.downloaded?.verify_page)).length,
+  paid_bundles_valid_on_verify: runs.filter((r) => validVerdict(r.bundle.paid?.verify_page)).length,
+  bundles_valid_repo_verifier: runs.filter((r) => r.bundle.downloaded?.repo_verifier.ok).length,
+  paid_bundles_valid_repo_verifier: runs.filter((r) => r.bundle.paid?.repo_verifier?.ok).length,
+  ok_but_verify_wording: runs.filter((r) => !r.ok && r.failures.length > 0 && r.failures.every(wordingOnly)).map((r) => r.run),
+  every_site_step_passed: runs.filter((r) => r.ok || (r.failures.length > 0 && r.failures.every(wordingOnly))).length,
   console_errors: runs.reduce((k, r) => k + r.console_errors, 0), outside_requests: runs.reduce((k, r) => k + r.outside_requests, 0),
 };
-writeFileSync(join(dir, "summary.json"), JSON.stringify({ what: "Figures of docs/runs/2026-11-19-live-try.md, computed by scripts/try-live-summary.ts from run-<n>.json here.", aggregate: agg, runs }, null, 1) + "\n");
+}
+
+const runs = runsOf(dir);
+const agg = aggregate(runs);
+const record = dir.includes("mega-run") ? "docs/runs/2026-11-19-mega-run.md" : "docs/runs/2026-11-19-live-try.md";
+writeFileSync(join(dir, "summary.json"), JSON.stringify({ what: `Figures of ${record}, computed by scripts/try-live-summary.ts from run-<n>.json here.`, aggregate: agg, runs }, null, 1) + "\n");
+if (also) {
+  const both = [...runsOf(also), ...runs];
+  writeFileSync(join(dir, "combined.json"), JSON.stringify({ what: `The runs of ${also} and ${dir} summed together (${both.length}), computed by scripts/try-live-summary.ts; each run's own figures are in its folder's summary.json.`, sets: [also, dir], aggregate: aggregate(both) }, null, 1) + "\n");
+}
 console.log(JSON.stringify(agg, null, 1));
 const t = (iso: string | null) => (iso ? iso.slice(11, 19) : "–");
 const s = (ms: number | null | undefined) => (typeof ms === "number" ? (ms / 1000).toFixed(1) : "–");

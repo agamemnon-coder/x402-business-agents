@@ -485,7 +485,7 @@ function extraRuns(): RunRow[] {
       key: `try-${rec.dir.split("/").pop()!}`, iso: rec.last, date: day(rec.first), kind: "sandbox", partners: ["Airwallex", "Claude"],
       name: `The public /try, walked ${t.runs} times as a visitor`,
       line: `${countOf(t.paid, t.transfers)} Airwallex sandbox transfers PAID (by the sandbox's simulation), ${countOf(t.refused, t.runs, true)} one-cent changes refused, ${countOf(t.held, t.runs, true)} cash holds by code. A test passkey.`,
-      rate: { done: t.ok, of: t.runs, what: "journeys passed every step" },
+      rate: { done: t.siteStepsPassed, of: t.runs, what: "walks passed every site step" },
       title: "The public /try, recorded", rails: "Airwallex sandbox (SWIFT transfers), Claude, virtual test passkey",
       what: `The judge's journey on https://kit11.max-31b.workers.dev/try, ${t.runs} times in Chromium, each a fresh test company: an invoice paid by the agent alone, one approved with a passkey and paid, a one-cent change refused, the proof checked on /verify, an invoice held by the cash check.`,
       checks: `${countOf(t.approvalsMatching, t.runs)} approvals carry the hash the transfer carries; ${countOf(t.proofsValid, t.proofs, true)} proof files VALID; ${t.claude.entries} Claude entries, ${t.claude.fallbacks} fallbacks.`,

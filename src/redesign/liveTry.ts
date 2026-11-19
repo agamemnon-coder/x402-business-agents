@@ -56,10 +56,13 @@ export interface LiveTryTotals {
   records: string[];
   days: string[];
   runs: number; ok: number;
+  /** Walks in which every step the site was asked to do passed (the record's every_site_step_passed; else its ok). */
+  siteStepsPassed: number;
   transfers: number; paid: number; scheduledToPaid: Pct;
   approvalsMatching: number; refused: number; held: number;
   proofs: number; proofsValid: number;
-  claude: { entries: number; requests: number; distinctIds: number; fallbacks: number; costMicros: number; models: string[] };
+  /** readerNoId: the reader's calls logged with no Anthropic request id (before the fix of 19 Nov was deployed). */
+  claude: { entries: number; requests: number; distinctIds: number; fallbacks: number; costMicros: number; models: string[]; readerNoId: number };
   consoleErrors: number; outsideRequests: number;
   steps: Record<string, Pct>;
 }
@@ -78,17 +81,20 @@ export function liveTryTotals(records: LiveTryRecord[] = liveTryRecords()): Live
   const proofs = runs.reduce((a, r) => a + (isRec(r.bundle) ? (isRec(r.bundle.downloaded) ? 1 : 0) + (isRec(r.bundle.paid) ? 1 : 0) : 0), 0);
   const valid = runs.reduce((a, r) => {
     if (!isRec(r.bundle)) return a;
-    const ok = (b: unknown) => isRec(b) && /^VALID\b/.test(String(b.verify_page ?? "")) && isRec(b.repo_verifier) && b.repo_verifier.ok === true;
+    // /verify's verdict: "VALID …", or since its redeploy of 19 Nov "Proof valid · payment refused …" for a refusal's
+    // proof; either way every check passed, and the repository's verifier agrees.
+    const ok = (b: unknown) => isRec(b) && /^(VALID\b|Proof valid\b)/.test(String(b.verify_page ?? "")) && /every check passes/.test(String(b.verify_page ?? "")) && isRec(b.repo_verifier) && b.repo_verifier.ok === true;
     return a + (ok(r.bundle.downloaded) ? 1 : 0) + (ok(r.bundle.paid) ? 1 : 0);
   }, 0);
   return {
     records: records.map((r) => r.summary),
     days: [...new Set(records.map((r) => r.first.slice(0, 10)))],
     runs: sum("runs"), ok: sum("ok"),
+    siteStepsPassed: records.reduce((a, r) => a + n(typeof r.aggregate.every_site_step_passed === "number" ? r.aggregate.every_site_step_passed : r.aggregate.ok), 0),
     transfers: awx("transfers"), paid: awx("paid"), scheduledToPaid: pctOf(s2p),
     approvalsMatching: sum("approvals_matching_transfer"), refused: sum("refused"), held: sum("held"),
     proofs, proofsValid: valid,
-    claude: { entries: claude("entries"), requests: claude("api_requests"), distinctIds: ids.size, fallbacks: claude("fallbacks"), costMicros: claude("cost_usd_micros"), models },
+    claude: { entries: claude("entries"), requests: claude("api_requests"), distinctIds: ids.size, fallbacks: claude("fallbacks"), costMicros: claude("cost_usd_micros"), models, readerNoId: claude("reader_calls_without_request_id") },
     consoleErrors: sum("console_errors"), outsideRequests: sum("outside_requests"),
     steps,
   };

@@ -33,7 +33,7 @@ function walks(records: LiveTryRecord[]) {
   const href = records.length === 1 ? blob(last.log ?? last.summary) : `${REPO_BLOB.replace("/blob/", "/tree/")}docs/runs`;
   const rec = records.map((r) => r.summary).join(" ");
   const when = t.days.length === 1 ? day(`${t.days[0]}T12:00:00Z`) : `${day(`${t.days[0]}T12:00:00Z`)} to ${day(`${t.days.at(-1)}T12:00:00Z`)}`;
-  return { t, href, rec, when };
+  return { t, href, rec, when, records };
 }
 
 /** A count as the site writes one (src/redesign/ui.ts countOf): "All 16", "Both", or "37 of 39"; never "16/16". */
@@ -111,8 +111,8 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   const ah = json(AH) as { calls?: number; refused?: number; stood?: number } | null;
   if (ah?.calls) out.push({ key: "hostile-model", fig: whole(ah.refused ?? 0, ah.calls), label: "hostile tool calls stopped by code", note: `The other ${ah.stood ?? 0} stood within the rules, by the ledger.`, tag: "test", tone: "claude", href: blob(AH), rec: AH });
   if (w && w.t.claude.entries) {
-    out.push({ key: "try-claude", fig: String(w.t.claude.fallbacks), label: `fallbacks in ${w.t.claude.entries} Claude calls on /try`, note: `${w.t.claude.distinctIds} Anthropic request ids; ${w.t.claude.models.join(", ")}.`, tag: "sandbox", tone: "claude", href: w.href, rec: w.rec });
-    if (w.t.held) out.push({ key: "try-held", fig: whole(w.t.held, w.t.runs), label: "invoices held by code's cash check", note: "Inside the agent's limit; no payout.", tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
+    out.push({ key: "try-claude", fig: String(w.t.claude.fallbacks), label: `fallbacks in ${w.t.claude.entries} Claude calls on /try`, note: `${w.t.claude.distinctIds} Anthropic request ids; ${w.t.claude.models.join(", ")}.${w.t.claude.readerNoId ? ` ${w.t.claude.readerNoId} reader calls were logged with no request id: those walks ran before the fix of 19 Nov was deployed.` : ""}`, tag: "sandbox", tone: "claude", href: w.href, rec: w.rec });
+    if (w.t.held) out.push({ key: "try-held", fig: whole(w.t.held, w.t.runs), label: "invoices held by code's cash check", note: `Inside the agent's limit; no payout.${w.t.held < w.t.runs ? ` ${w.t.runs - w.t.held === 1 ? "One walk" : `${w.t.runs - w.t.held} walks`} stopped before this step.` : ""}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
   }
   return out;
 }
@@ -137,7 +137,10 @@ function built(): WallTile[] {
 function scale(w: ReturnType<typeof walks>): WallTile[] {
   if (!w) return [];
   const t = w.t, st = (k: string) => t.steps[k];
-  const out: WallTile[] = [{ key: "try-journeys", fig: whole(t.ok, t.runs), label: "/try journeys passed every step", note: `${w.when}, Chromium, desktop and phone; ${t.consoleErrors} console errors.`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec }];
+  const browsers = [...new Set(w.records.flatMap((r) => r.runs.map((x) => (typeof x.browser === "string" ? x.browser : "chromium"))))].map((b) => b[0]!.toUpperCase() + b.slice(1)).join(" and ");
+  const devices = (["desktop", "tablet", "phone"] as const).filter((d) => w.records.some((r) => r.runs.some((x) => String(x.profile ?? "").startsWith(d))));
+  const deviceWords = devices.length > 1 ? `${devices.slice(0, -1).join(", ")} and ${devices.at(-1)}` : devices.join("");
+  const out: WallTile[] = [{ key: "try-journeys", fig: whole(t.siteStepsPassed, t.runs), label: "/try walks: every site step passed", note: `${w.when}, ${browsers}, ${deviceWords}; ${t.consoleErrors} console errors.${t.ok !== t.siteStepsPassed ? ` The recording script marked ${whole(t.ok, t.runs).toLowerCase()} all ok: the others stopped on its own bug or on /verify's new words; the run logs say which.` : ""}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec }];
   const tile = (key: string, step: string, label: string, extra = "") => {
     const p = st(step);
     if (p?.p50 != null) out.push({ key, fig: secs(p.p50), label, note: `Median of ${p.n}, p95 ${secs(p.p95)}${extra}.`, tag: "sandbox", tone: "", href: w.href, rec: w.rec });

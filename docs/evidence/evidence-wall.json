@@ -8,13 +8,13 @@
       "tiles": [
         {
           "key": "try-transfers",
-          "fig": "All 16",
+          "fig": "All 50",
           "label": "Airwallex transfers PAID from the public /try",
-          "note": "8 walks as a visitor, 19 Nov; PAID by the sandbox's simulation.",
+          "note": "25 walks as a visitor, 19 Nov; PAID by the sandbox's simulation.",
           "tag": "sandbox",
           "tone": "awx",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
           "key": "spend-bills",
@@ -104,33 +104,33 @@
         },
         {
           "key": "try-cent",
-          "fig": "All 8",
+          "fig": "All 25",
           "label": "one-cent changes refused after approval",
           "note": "The public /try, 19 Nov; a virtual test passkey signed.",
           "tag": "sandbox",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
           "key": "try-hash",
-          "fig": "All 8",
+          "fig": "All 25",
           "label": "approvals whose hash Airwallex carries",
           "note": "The public /try, 19 Nov.",
           "tag": "sandbox",
           "tone": "awx",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
           "key": "try-proofs",
-          "fig": "All 16",
+          "fig": "All 48",
           "label": "proof files VALID, browser and offline",
           "note": "Downloaded from /try; npm run verify-bundle agrees.",
           "tag": "sandbox",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
           "key": "card-cent",
@@ -201,22 +201,22 @@
         {
           "key": "try-claude",
           "fig": "0",
-          "label": "fallbacks in 120 Claude calls on /try",
-          "note": "129 Anthropic request ids; claude-haiku-5-5.",
+          "label": "fallbacks in 360 Claude calls on /try",
+          "note": "388 Anthropic request ids; claude-haiku-5-5. 168 reader calls were logged with no request id: those walks ran before the fix of 19 Nov was deployed.",
           "tag": "sandbox",
           "tone": "claude",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
           "key": "try-held",
-          "fig": "All 8",
+          "fig": "24 of 25",
           "label": "invoices held by code's cash check",
-          "note": "Inside the agent's limit; no payout.",
+          "note": "Inside the agent's limit; no payout. One walk stopped before this step.",
           "tag": "sandbox",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         }
       ]
     },
@@ -262,63 +262,63 @@
       "tiles": [
         {
           "key": "try-journeys",
-          "fig": "All 8",
-          "label": "/try journeys passed every step",
-          "note": "19 Nov, Chromium, desktop and phone; 0 console errors.",
+          "fig": "24 of 25",
+          "label": "/try walks: every site step passed",
+          "note": "19 Nov, Chromium and Firefox, desktop, tablet and phone; 0 console errors. The recording script marked 21 of 25 all ok: the others stopped on its own bug or on /verify's new words; the run logs say which.",
           "tag": "sandbox",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
           "key": "try-sign-paid",
-          "fig": "6.3 s",
+          "fig": "6.6 s",
           "label": "passkey to paid, on screen",
-          "note": "Median of 8, p95 6.9 s.",
+          "note": "Median of 25, p95 8.2 s.",
           "tag": "sandbox",
           "tone": "",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
           "key": "try-autopay",
-          "fig": "10.2 s",
+          "fig": "11.0 s",
           "label": "agent pays alone, to Airwallex PAID",
-          "note": "Median of 8, p95 13.2 s; PAID by the sandbox's simulation.",
+          "note": "Median of 25, p95 13.7 s; PAID by the sandbox's simulation.",
           "tag": "sandbox",
           "tone": "",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
           "key": "try-refusal",
-          "fig": "0.69 s",
+          "fig": "0.70 s",
           "label": "one-cent change to refusal",
-          "note": "Median of 8, p95 0.72 s.",
+          "note": "Median of 25, p95 0.77 s.",
           "tag": "sandbox",
           "tone": "",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
           "key": "try-verify",
-          "fig": "0.11 s",
+          "fig": "0.09 s",
           "label": "proof file to verdict on /verify",
-          "note": "Median of 8, p95 0.42 s.",
+          "note": "Median of 24, p95 0.29 s.",
           "tag": "sandbox",
           "tone": "",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         },
         {
           "key": "try-cost",
-          "fig": "USD 0.0049",
+          "fig": "USD 0.0047",
           "label": "Claude cost per /try journey",
-          "note": "List price; USD 0.0392 for 8.",
+          "note": "List price; USD 0.1179 for 25.",
           "tag": "sandbox",
           "tone": "claude",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
         }
       ]
     }

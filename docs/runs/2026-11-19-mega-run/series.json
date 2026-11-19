@@ -1,0 +1,257 @@
+{
+ "what": "The order of the walks of docs/runs/2026-11-19-mega-run.md, written by scripts/try-live-series.ts as they ran.",
+ "gap_s": 35,
+ "walks": [
+  {
+   "run": 1,
+   "profile": "desktop",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:23:20.602Z",
+   "finished_at": "2026-11-19T08:24:26.299Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [
+    {
+     "path": "/v1/engine/events",
+     "status": 429
+    }
+   ],
+   "fallbacks": 0,
+   "waited_s": 0,
+   "backoff_s": 0
+  },
+  {
+   "run": 2,
+   "profile": "phone",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:26:01.393Z",
+   "finished_at": "2026-11-19T08:26:56.432Z",
+   "exit": 1,
+   "ok": false,
+   "failures": [
+    "stopped: page.evaluate: ReferenceError: __name is not defined"
+   ],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 95,
+   "backoff_s": 60
+  },
+  {
+   "run": 3,
+   "profile": "desktop",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:27:31.465Z",
+   "finished_at": "2026-11-19T08:28:43.973Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 4,
+   "profile": "phone",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:29:19.005Z",
+   "finished_at": "2026-11-19T08:30:32.074Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 5,
+   "profile": "tablet",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:31:07.110Z",
+   "finished_at": "2026-11-19T08:32:12.318Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 6,
+   "profile": "desktop",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:32:47.353Z",
+   "finished_at": "2026-11-19T08:33:54.994Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 7,
+   "profile": "phone",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:34:30.029Z",
+   "finished_at": "2026-11-19T08:35:40.087Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 8,
+   "profile": "desktop",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:36:15.121Z",
+   "finished_at": "2026-11-19T08:37:20.082Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 9,
+   "profile": "desktop",
+   "browser": "firefox",
+   "started_at": "2026-11-19T08:37:55.118Z",
+   "finished_at": "2026-11-19T08:39:08.698Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 10,
+   "profile": "phone",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:39:43.734Z",
+   "finished_at": "2026-11-19T08:40:55.989Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 11,
+   "profile": "desktop",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:41:31.029Z",
+   "finished_at": "2026-11-19T08:42:39.394Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 12,
+   "profile": "phone",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:43:14.429Z",
+   "finished_at": "2026-11-19T08:44:20.911Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 13,
+   "profile": "tablet-dark",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:44:55.945Z",
+   "finished_at": "2026-11-19T08:46:03.523Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 14,
+   "profile": "desktop",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:46:38.557Z",
+   "finished_at": "2026-11-19T08:47:52.027Z",
+   "exit": 0,
+   "ok": true,
+   "failures": [],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 15,
+   "profile": "phone",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:48:27.063Z",
+   "finished_at": "2026-11-19T08:49:37.034Z",
+   "exit": 1,
+   "ok": false,
+   "failures": [
+    "/verify, the downloaded proof: Proof valid · payment refused every check passes (11 of 11)"
+   ],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 16,
+   "profile": "desktop",
+   "browser": "chromium",
+   "started_at": "2026-11-19T08:50:12.066Z",
+   "finished_at": "2026-11-19T08:51:21.876Z",
+   "exit": 1,
+   "ok": false,
+   "failures": [
+    "/verify, the downloaded proof: Proof valid · payment refused every check passes (11 of 11)"
+   ],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  },
+  {
+   "run": 17,
+   "profile": "phone",
+   "browser": "firefox",
+   "started_at": "2026-11-19T08:51:56.893Z",
+   "finished_at": "2026-11-19T08:53:11.026Z",
+   "exit": 1,
+   "ok": false,
+   "failures": [
+    "/verify, the downloaded proof: Proof valid · payment refused every check passes (11 of 11)"
+   ],
+   "http_429_5xx": [],
+   "fallbacks": 0,
+   "waited_s": 35,
+   "backoff_s": 0
+  }
+ ]
+}
