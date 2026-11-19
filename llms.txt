@@ -55,7 +55,7 @@ AI under control:
 Built to last:
 - 189 checks passed by npm run verify-all, 0 failed (re-checked; 129 Alta transactions read from the chain; 15 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md
 - 3,879 of 4,000 payments through Alta's clearing, load test (live, testnet; 2 runs, 30 Oct; the last: all 2,000 paid): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-10-30-clearing-load.md
-- 8 CI jobs on every change (CI; 4 scan for security: gitleaks, Semgrep, CodeQL, npm audit): https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain
+- 8 CI jobs on every change (CI; 4 of them scan for security: gitleaks, Semgrep, CodeQL, npm audit): https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain
 
 The public /try, timed:
 - All 8 full /try journeys passed every step (live, sandbox; 19 Nov, Chromium, desktop and phone; 0 console errors): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-live-try.md

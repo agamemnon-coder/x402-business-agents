@@ -126,7 +126,7 @@ function built(): WallTile[] {
   }
   const jobs = ciJobs();
   const scans = jobs.filter((j) => /gitleaks|Semgrep|code scanning|npm audit/i.test(j.what)).length;
-  out.push({ key: "ci", fig: String(jobs.length), label: "CI jobs on every change", note: `${scans} scan for security: gitleaks, Semgrep, CodeQL, npm audit.`, tag: "ci", tone: "", href: CI_RUNS_URL, rec: ".github/workflows/ci.yml" });
+  out.push({ key: "ci", fig: String(jobs.length), label: "CI jobs on every change", note: `${scans} of them scan for security: gitleaks, Semgrep, CodeQL, npm audit.`, tag: "ci", tone: "", href: CI_RUNS_URL, rec: ".github/workflows/ci.yml" });
   return out;
 }
 

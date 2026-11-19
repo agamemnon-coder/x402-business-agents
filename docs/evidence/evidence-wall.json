@@ -228,7 +228,7 @@
           "key": "ci",
           "fig": "8",
           "label": "CI jobs on every change",
-          "note": "4 scan for security: gitleaks, Semgrep, CodeQL, npm audit.",
+          "note": "4 of them scan for security: gitleaks, Semgrep, CodeQL, npm audit.",
           "tag": "ci",
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain",
