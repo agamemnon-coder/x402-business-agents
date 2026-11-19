@@ -213,12 +213,28 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   // Eval v7 (19 Nov): 117 held-out invoices written after the fixes that followed v6 (suppliers named in Georgian,
   // Armenian, Arabic, Tamil, Bengali, Ukrainian Cyrillic, Ethiopic, Khmer and Persian letters; injections and pressure in
   // those languages; soft hyphens, word joiners, Braille blanks; hard negatives against the new rules), committed alone
-  // with their pre-registration before the run (src/cli/adversarialV7.ts). Held out: no rule was written against its misses.
-  const V7 = "docs/evals/adversarial-v7.json";
+  // with their pre-registration before the run. Its run is kept as recorded; beside it the run after the fixes that
+  // followed it (typography read as letters, amounts above the total in any language, a person as holder in any script,
+  // more languages), so no longer held out (src/cli/adversarialV7.ts).
+  const V7 = "docs/evals/adversarial-v7.json", V7_AFTER = "docs/evals/adversarial-v7-after.json";
   const v7 = json(V7) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
-  if (v7?.held_out && v7.totals?.purser_script && v7.totals.no_rules) {
-    const p = v7.totals.purser_script, n = v7.totals.no_rules;
-    out.push({ key: "eval-v7", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v7): Purser vs no rules`, note: `Cases committed with their pre-registration (commit ${v7.cases_commit}), after the fixes for v6's misses; a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Held out. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v7.md"), rec: V7 });
+  const v7a = json(V7_AFTER) as { held_out?: boolean; totals?: AdvTotals } | null;
+  if (v7?.held_out && v7.totals?.purser_script && v7.totals.no_rules && v7a && !v7a.held_out && v7a.totals?.purser_script) {
+    const p = v7.totals.purser_script, n = v7.totals.no_rules, a = v7a.totals.purser_script;
+    // Off /proof since v8 (/proof's words in sight stay within their budget, test/proof-first.test.ts): /proof shows the
+    // held-out set after the latest fixes, v8; this tile stays on the wall's record and in llms.txt.
+    out.push({ offProof: true, key: "eval-v7", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v7): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v7.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v7.md"), rec: V7 });
+  }
+  // Eval v8 (19 Nov): 140 held-out invoices written after the fixes that followed v7 (suppliers named in Sinhala, Lao,
+  // Mongolian Cyrillic, Burmese, Gujarati, Malayalam, Telugu, Yiddish, Lithuanian, Icelandic, Latvian and Kannada;
+  // injections and pressure in those languages and in Tibetan, Syriac, Inuktitut and Javanese; hard negatives against the
+  // new rules), committed alone with their pre-registration before the run (src/cli/adversarialV8.ts). Held out: no rule
+  // was written against its misses.
+  const V8 = "docs/evals/adversarial-v8.json";
+  const v8 = json(V8) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
+  if (v8?.held_out && v8.totals?.purser_script && v8.totals.no_rules) {
+    const p = v8.totals.purser_script, n = v8.totals.no_rules;
+    out.push({ key: "eval-v8", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v8): Purser vs no rules`, note: `Cases committed with their pre-registration (commit ${v8.cases_commit}), after the fixes for v7's misses; a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Held out. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v8.md"), rec: V8 });
   }
   // 19 Nov, fourth round: the newest red-team run, the scripted attacks re-run after the fixes (rewrite-history is now
   // stopped before money moves), beside the first run of 30 Oct, which stays as recorded and is linked from the note.

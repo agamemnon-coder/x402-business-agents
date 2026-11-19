@@ -403,6 +403,10 @@ export const ADV_TABLE: readonly { label: string; record: string; held: string }
   // out. v7 was written after them and committed with its pre-registration before the run.
   { label: "[v6](evals/adversarial-v6.md), after the fixes that followed it (reported in [v7](evals/adversarial-v7.md))", record: "docs/evals/adversarial-v6-after.json", held: "no: the fixes that followed it were written against its misses" },
   { label: "[v7](evals/adversarial-v7.md), after the fixes that followed v6", record: "docs/evals/adversarial-v7.json", held: "yes" },
+  // 19 Nov, after v7: fixes were written against v7's misses (test/i18n-v7-root-causes.test.ts); v7 is no longer held
+  // out. v8 was written after them and committed with its pre-registration before the run.
+  { label: "[v7](evals/adversarial-v7.md), after the fixes that followed it (reported in [v8](evals/adversarial-v8.md))", record: "docs/evals/adversarial-v7-after.json", held: "no: the fixes that followed it were written against its misses" },
+  { label: "[v8](evals/adversarial-v8.md), after the fixes that followed v7", record: "docs/evals/adversarial-v8.json", held: "yes" },
 ];
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
