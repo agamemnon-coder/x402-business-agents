@@ -1,11 +1,12 @@
-// npm run chaos:money [-- --seed <n>] [-- --count <n>] [-- --only <id>] [-- --no-write]
+// npm run chaos:money [-- --seed <n>] [-- --count <n>] [-- --only <id>] [-- --no-write] [-- --out <dir>]
 // Chaos for money movement (src/chaos/money.ts): the real executor, saga, Airwallex client and recovery against a
 // stand-in Airwallex that times out, answers 5xx and 429, drops connections after doing the work, while the runner's
 // process dies and restarts, clocks are skewed and webhooks arrive twice, out of order or forged. 300 randomized
 // scenarios from a fixed seed (default 20261119) plus the hand-written ones, then the canaries (planted breaks the
-// invariants must catch). Writes docs/evidence/chaos-money.md and .json (unless --no-write or --only). Exit 1 when an
-// invariant is broken or a canary is not caught: a finding, never hidden. In process; no network, no key.
-import { writeFileSync } from "node:fs";
+// invariants must catch). Writes docs/evidence/chaos-money.md and .json (unless --no-write or --only), or into <dir>
+// with --out (the nightly run, .github/workflows/nightly-evidence.yml: the committed evidence is left alone). Exit 1
+// when an invariant is broken or a canary is not caught: a finding, never hidden. In process; no network, no key.
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CANARIES, HAND_WRITTEN, randomScenarios, runScenario, type Scenario, type ScenarioResult } from "../chaos/money.js";
 import { chaosMarkdown, chaosReport } from "../chaos/report.js";
@@ -37,10 +38,13 @@ if (process.argv[1]?.endsWith("chaosMoney.ts")) {
   const t = report.totals;
   const missed = report.canaries.filter((c) => !c.caught);
   print(`\n${t.scenarios} scenarios: ${t.passed} held, ${t.failed} broke an invariant; ${t.crashes} process deaths, ${t.faults} faults; canaries caught ${report.canaries.length - missed.length} of ${report.canaries.length}`);
+  const outDir = arg("--out");
   if (!process.argv.includes("--no-write") && !only) {
-    writeFileSync(join(ROOT, `${CHAOS_MONEY_OUT}.json`), `${JSON.stringify(report, null, 2)}\n`);
-    writeFileSync(join(ROOT, `${CHAOS_MONEY_OUT}.md`), chaosMarkdown(report, res.hand));
-    print(`written: ${CHAOS_MONEY_OUT}.md and .json`);
+    const base = outDir ? join(resolve(outDir), "chaos-money") : join(ROOT, CHAOS_MONEY_OUT);
+    if (outDir) mkdirSync(resolve(outDir), { recursive: true });
+    writeFileSync(`${base}.json`, `${JSON.stringify(report, null, 2)}\n`);
+    writeFileSync(`${base}.md`, chaosMarkdown(report, res.hand));
+    print(`written: ${base}.md and .json`);
   }
   process.exit(t.failed || missed.length ? 1 : 0);
 }

@@ -3,9 +3,34 @@
 This is a hackathon project that only uses test money (Alta (formerly Metal) testnet, the Airwallex sandbox). Please do not test
 against the hosted relay with real credentials.
 
-To report a vulnerability, open a private GitHub security advisory on this repository (Security → Advisories → Report a
-vulnerability), or email the maintainer listed on the repository's GitHub profile. Please do not open a public issue for
-security reports. We aim to answer within 3 working days.
+## Reporting a vulnerability
+
+Please report privately, never in a public issue, pull request or discussion.
+
+- **GitHub private vulnerability reporting** (enabled on this repository; the preferred way):
+  https://github.com/agamemnon-coder/x402-business-agents/security/advisories/new
+  (on the repository: Security → Advisories → Report a vulnerability). Only you and the maintainer see the report, and
+  the fix is prepared in the advisory's private fork.
+- If you cannot use GitHub's form, contact the maintainer through their GitHub profile,
+  https://github.com/agamemnon-coder, and ask for a private channel; do not put the details in a public place.
+- The same contact, machine-readable, is in `/.well-known/security.txt` on the relay
+  (https://kit11.max-31b.workers.dev/.well-known/security.txt). Published advisories:
+  https://github.com/agamemnon-coder/x402-business-agents/security/advisories
+
+Please include what is affected (the route, file or commit), how to reproduce it, and what an attacker gains. Test money
+only: do not use real credentials, and do not test against partners' systems (see Scope).
+
+### Disclosure timeline
+
+| When | What happens |
+|---|---|
+| Within 3 working days of the report | We acknowledge it and say who is looking at it. |
+| Within 10 working days | We tell you whether it is in scope and how severe we think it is (CVSS where it helps). |
+| As soon as a fix is ready | A PATCH release, and the hosted test preview redeployed if it is affected. |
+| Within 90 days of the report at the latest | Coordinated public disclosure: the GitHub security advisory is published (with a CVE requested through GitHub when the issue affects users), sooner once the fix is out, at a date agreed with you. |
+
+If we cannot fix it within 90 days, we agree a later date with you and say why in the advisory. You are free to disclose
+after 90 days if we have stopped answering.
 
 ## How a report is handled
 

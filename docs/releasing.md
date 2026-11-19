@@ -45,6 +45,44 @@ of the hackathon submission, not SemVer; they stay as submitted and are never mo
    release. It never creates, moves or deletes a tag.
 6. **Paste the release notes** into the GitHub release, and check one download as below.
 
+## What the source tarball contains
+
+The tarball is `git archive` of the tag, so it holds the tracked files minus those marked `export-ignore` in
+[`.gitattributes`](../.gitattributes). Since 19 November that leaves out the screenshots, screen recordings and films
+under `docs/` that neither the build nor the tests read: they made the tarball 238 MB, almost all of it media. They stay
+in git and on GitHub, where the docs show them.
+
+What is kept was found by running the whole test suite on an extracted archive (19 November, 685 test files), then
+the files that failed again until none failed for a missing file: the README's images (a test lists
+`docs/assets/readme/`), `docs/assets/media/` and `docs/assets/screens/` with the READMEs that describe them, the images
+the site's pages embed (`docs/assets/try-walk/`, the built-with logo, the social preview), the submission form's
+screenshots, and every image a document links to (the relative-link test checks each one exists). Nothing outside
+`docs/` is left out: `src/` keeps its film stills and logos. Three test files cannot pass on any tarball, with or without
+this change: two run `git ls-files` (there is no `.git`), and one (`test/cloud-engine-bundle.test.ts`) failed the same
+way on the checkout it was compared with.
+
+Measured on a test commit (the commit before this change plus the new `.gitattributes`), 19 November 2026:
+
+| `git archive` of | `git archive HEAD \| wc -c` (tar) | `--format=tar.gz` (as the release ships it) |
+|---|---|---|
+| `3a5aebdbf` (before) | 282,798,080 bytes | 238,626,713 bytes (238.6 MB) |
+| the test commit (after) | 79,421,440 bytes | 45,156,097 bytes (45.2 MB) |
+
+A new image that a test or the code reads, outside the kept folders, needs its own `-export-ignore` line in
+`.gitattributes`; otherwise the test fails on the tarball (never in CI, which runs on a checkout).
+
+## Packages
+
+Purser is not published to npm or any other package registry: it is run from a checkout or this tarball
+([install.md](install.md)). The one registry it is listed in is the MCP Registry (`server.json`), published by its own
+workflow (`mcp-publish.yml`, with the MCP publisher's GitHub OIDC login) when a release is published.
+
+OpenSSF Scorecard's Packaging check does not count that: it recognises a fixed list of publishing steps (for example
+`npm publish` after `actions/setup-node` with the npm registry, `docker push`, the PyPI publish action, GoReleaser;
+read in Scorecard's `checks/fileparser/github_workflow.go` on 19 November 2026) and needs a successful run of that
+workflow. The MCP publisher is not on the list, so the check stays inconclusive (shown as -1), which Scorecard leaves
+out of the overall score. We do not publish an npm package only to satisfy the check.
+
 ## Verifying a release
 
 Two independent signatures, each with a documented way to check it:

@@ -1,0 +1,98 @@
+# Nightly evidence (19 November): the three in-process suites behind docs/evidence/ run again every night, with more
+# runs than the committed reports and a new seed each night, against a local server only (no network beyond npm, no
+# key, test money):
+#   chaos-money:  npm run chaos:money (src/cli/chaosMoney.ts), 3,000 randomized scenarios (the committed report: 300)
+#                 plus the hand-written ones and the canaries; invariants I1-I5 (docs/evidence/chaos-money.md).
+#   fuzz:         npm run fuzz (src/cli/fuzz.ts) with --scale 5: every property's run count and time limit times five
+#                 (docs/evidence/fuzzing.md).
+#   redteam-api:  npm run redteam:api (src/cli/redteamApi.ts), all 128 attacks on the judge's offline server and the
+#                 edge stand-in on this runner's loopback (docs/evidence/redteam-api.md). The set is fixed; it does not
+#                 scale.
+# Each CLI exits 1 on a broken invariant, a failed property, an uncaught canary or an attack that is FAIL or ERROR, and
+# the job fails with it. The reports go to an artifact (--out), never into docs/evidence: this workflow commits nothing
+# (read-only token, credentials not kept) and checks at the end that the checkout is unchanged. A finding is replayed
+# from the seed in its report.
+name: nightly-evidence
+on:
+  schedule:
+    - cron: "13 1 * * *"
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Seed for the chaos and fuzz runs (default: today's date as YYYYMMDD)"
+        required: false
+        type: string
+      chaos_count:
+        description: "Randomized chaos scenarios"
+        required: false
+        default: "3000"
+        type: string
+      fuzz_scale:
+        description: "Multiplier on every fuzz property's runs and time limit"
+        required: false
+        default: "5"
+        type: string
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  evidence:
+    name: ${{ matrix.suite }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [chaos-money, fuzz, redteam-api]
+    env:
+      SUITE: ${{ matrix.suite }}
+      SEED_INPUT: ${{ inputs.seed }}
+      CHAOS_COUNT: ${{ inputs.chaos_count || '3000' }}
+      FUZZ_SCALE: ${{ inputs.fuzz_scale || '5' }}
+    steps:
+      - name: Harden the runner (audit outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm ci
+      - name: Run the suite (reports outside the checkout)
+        run: |
+          OUT="$RUNNER_TEMP/nightly-evidence"
+          seed="${SEED_INPUT:-$(date -u +%Y%m%d)}"
+          for v in "$seed" "$CHAOS_COUNT" "$FUZZ_SCALE"; do
+            printf '%s' "$v" | grep -Eq '^[0-9]+$' || { echo "::error::not a whole number: $v"; exit 1; }
+          done
+          echo "suite $SUITE, seed $seed" | tee -a "$GITHUB_STEP_SUMMARY"
+          case "$SUITE" in
+            chaos-money) npm run -s chaos:money -- --seed "$seed" --count "$CHAOS_COUNT" --out "$OUT" ;;
+            fuzz)        npm run -s fuzz -- --seed "$seed" --scale "$FUZZ_SCALE" --out "$OUT" ;;
+            redteam-api) npm run -s redteam:api -- --out "$OUT" ;;
+          esac
+      - name: Headline into the job summary
+        if: always()
+        run: |
+          f="$RUNNER_TEMP/nightly-evidence/$SUITE.md"
+          if [ -f "$f" ]; then grep -m1 '^Run on ' "$f" | tee -a "$GITHUB_STEP_SUMMARY"; else echo "no report: the run stopped before writing it" | tee -a "$GITHUB_STEP_SUMMARY"; fi
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-${{ matrix.suite }}
+          path: ${{ runner.temp }}/nightly-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: The checkout is unchanged (nothing to commit)
+        if: always()
+        run: |
+          git status --porcelain
+          test -z "$(git status --porcelain)"

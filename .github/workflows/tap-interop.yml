@@ -48,6 +48,9 @@ jobs:
       # resolved as they stood on 19 October 2026 (npm install --package-lock-only --before=2026-10-19, run 19 November):
       # the same 94 runtime packages, versions and integrity hashes as the `npm install --before=2026-10-19` this step ran
       # until then, now installed with npm ci so each one is checked against its hash. The proxy's files stay unchanged.
+      # Raised since, inside the ranges the proxy's package.json allows (express ~1.20.5, axios and http-proxy ^1):
+      # body-parser 1.20.8 -> 1.20.9 (GHSA-27r3-jxmh-p828) and follow-redirects 1.16.1 -> 1.16.3 (GHSA-mrwp-f3q8-3g9p).
+      # axios stays at 1.12.2, the exact version the proxy pins (its advisories: docs/security/vex/).
       - name: Install the proxy's dependencies (its package.json as is, our lockfile, no dev dependencies, no install scripts)
         run: |
           cp test/interop/tap-ref-cdn-proxy.package-lock.json "$TAP_REF_DIR/cdn-proxy/package-lock.json"

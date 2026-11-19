@@ -17,3 +17,42 @@ test/fixtures/iso20022/*.xsd -text
 *.woff2 binary
 *.ttf binary
 *.sqlite binary
+# The release tarball (`git archive` in release.yml) leaves out the screenshots, recordings and films under docs/: the
+# build and the tests do not need them, and they made the tarball 238 MB (sizes in docs/releasing.md). They stay in git
+# and on GitHub. Kept: every image the code or a test reads, found by running the whole test suite on the archive
+# (19 Nov): the README's images (a test lists docs/assets/readme/), the media and screens folders with the READMEs that
+# describe them, the images the site's pages embed, the submission form's screenshots, and each file a doc links to
+# (the relative-link test) or the code opens.
+docs/**/*.mp4 export-ignore
+docs/**/*.webm export-ignore
+docs/**/*.mov export-ignore
+docs/**/*.gif export-ignore
+docs/**/*.png export-ignore
+docs/**/*.jpg export-ignore
+docs/**/*.jpeg export-ignore
+docs/**/*.webp export-ignore
+docs/assets/readme/** -export-ignore
+docs/assets/media/** -export-ignore
+docs/assets/screens/** -export-ignore
+docs/assets/try-walk/** -export-ignore
+docs/assets/social-preview.png -export-ignore
+docs/submission/screens/form/** -export-ignore
+docs/assets/cloud/cloud-agents-card-1440.png -export-ignore
+docs/assets/cloud/cloud-agents-card-older-1440.png -export-ignore
+docs/assets/logos/built-with.png -export-ignore
+docs/finals/present-01-opener.png -export-ignore
+docs/finals/present-05-approve-phone.png -export-ignore
+docs/finals/present-09-outcome.png -export-ignore
+docs/finals/stage-1920.png -export-ignore
+docs/finals/stage-390.png -export-ignore
+docs/media/social-preview.png -export-ignore
+docs/media/try-sign-qr.png -export-ignore
+docs/screens/approve-against-advice.png -export-ignore
+docs/screens/approve-done.png -export-ignore
+docs/screens/approve-keychange.png -export-ignore
+docs/screens/approve-view.png -export-ignore
+docs/screens/dashboard-desktop.png -export-ignore
+docs/screens/dashboard-phone-policy.png -export-ignore
+docs/screenshots/after-kit/1-payables-inbox.png -export-ignore
+docs/screenshots/after-kit/3-batch-face-id-phone.png -export-ignore
+docs/screenshots/after-kit/4-airwallex-account.png -export-ignore
