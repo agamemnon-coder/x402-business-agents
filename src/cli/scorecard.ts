@@ -163,6 +163,9 @@ ${caseRows}
 - A fraud Purser's checks do not know would pass the script; with a model in the slot, the model may catch it. The ${w(sendsToCfo.length)} invoices above show where code alone relies on the CFO's signature.
 - No real money and no real bank: the payments are rows in test worlds; the cent case runs Purser's executor guard, not a bank.
 - It does not test the passkey ceremony or the phone; the signature here is the recorded hash, as the guard checks it.
+## A held-out follow-up: 100 new invoices
+
+The [adversarial eval v2](evals/adversarial-v2.md) runs the same always-pay script on 100 new invoice cases, written and committed before they were first run: changed bank details, split invoices, lookalike suppliers, duplicates with tiny changes, instructions hidden in the invoice, amounts at the limit, cash floors, currency switches, pressure, and clean invoices for the false-hold rate. There Purser's code alone does not stop everything: it pays split invoices that each stay under the limit, and invoices under the limit whose only problem is in their words. Every miss is listed with its reason. Run it: \`npm run eval:adversarial-v2\`.
 `);
 console.log(worstLine);
 console.log(`wrote ${recorded ? "" : `${OUT}, `}${SUMMARY}, ${DOC}`);

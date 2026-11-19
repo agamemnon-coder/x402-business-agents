@@ -101,6 +101,7 @@
     "ap-agent-evals": "tsx src/cli/apAgentEvals.ts",
     "precedent-eval": "tsx src/cli/precedentEval.ts",
     "ap-hostile-eval": "tsx src/cli/apHostile.ts",
+    "eval:adversarial-v2": "tsx src/cli/adversarialV2.ts",
     "coder-evals": "tsx src/cli/coderEvals.ts",
     "ledger-evals": "tsx src/cli/ledgerEvals.ts",
     "controller": "tsx src/cli/controller.ts",
