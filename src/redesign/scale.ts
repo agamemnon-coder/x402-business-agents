@@ -25,12 +25,25 @@ import { esc, icon } from "./ui.js";
 const ROOT = new URL("../../", import.meta.url);
 const read = (p: string) => readFileSync(new URL(p, ROOT), "utf8");
 const json = (p: string): unknown => { try { return JSON.parse(read(p)); } catch { return null; } };
-/** Every file under a folder of the repository, by its path from the root, whose name matches. */
+/**
+ * Folders and files the band does not count (19 Nov). The partner re-runs of 19 Nov, run while the jury looks at the
+ * deployed pages: a fresh Alta testnet series of mandate-checked payments with three refusals on chain
+ * (docs/runs/2026-11-19-alta-series.md and its two records) and a fresh anchor that pins them
+ * (docs/runs/2026-11-19-anchor.json and .md). Their explorer links are counted in those records; counting them here
+ * would move the band away from the pages as deployed. src/cli/verifyAll.ts recounts the band with the same exclusion.
+ */
+export const NOT_IN_BAND: readonly string[] = [
+  "docs/runs/2026-11-19-alta-series.json", "docs/runs/2026-11-19-alta-series-finish.json", "docs/runs/2026-11-19-alta-series.md",
+  "docs/runs/2026-11-19-anchor.json", "docs/runs/2026-11-19-anchor.md",
+];
+/** Every file under a folder of the repository, by its path from the root, whose name matches (NOT_IN_BAND skipped). */
 function filesIn(dir: string, re: RegExp): string[] {
+  if (NOT_IN_BAND.includes(dir)) return [];
   let names: string[];
   try { names = readdirSync(new URL(`${dir}/`, ROOT)); } catch { return []; }
   return names.flatMap((n) => {
     const p = `${dir}/${n}`;
+    if (NOT_IN_BAND.includes(p)) return [];
     return statSync(new URL(p, ROOT)).isDirectory() ? filesIn(p, re) : re.test(n) ? [p] : [];
   });
 }

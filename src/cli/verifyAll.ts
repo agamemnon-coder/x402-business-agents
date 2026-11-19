@@ -23,7 +23,7 @@ import type { Hex } from "viem";
 import { publicClient } from "../metal/chain.js";
 import { USDZ } from "../metal/network.js";
 import { liveRunCount } from "../redesign/runs.js";
-import { AWX_CALLS_LABEL } from "../redesign/scale.js";
+import { AWX_CALLS_LABEL, NOT_IN_BAND } from "../redesign/scale.js";
 import { apiTrail } from "../airwallex/apiTrail.js";
 import { mdCell as cell, pageText as text } from "./verifyAllFormat.js";
 
@@ -43,10 +43,12 @@ const add = (group: string, status: Status, what: string, seen: string, source: 
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 const json = <T = unknown>(p: string): T => JSON.parse(read(p)) as T;
 const isRec = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+/** Every file under a folder whose name matches; the folders and files the band does not count (scale.ts NOT_IN_BAND) skipped. */
 function filesIn(dir: string, re: RegExp): string[] {
+  if (NOT_IN_BAND.includes(dir)) return [];
   let names: string[];
   try { names = readdirSync(join(ROOT, dir)); } catch { return []; }
-  return names.flatMap((n) => { const p = `${dir}/${n}`; return statSync(join(ROOT, p)).isDirectory() ? filesIn(p, re) : re.test(n) ? [p] : []; });
+  return names.flatMap((n) => { const p = `${dir}/${n}`; return NOT_IN_BAND.includes(p) ? [] : statSync(join(ROOT, p)).isDirectory() ? filesIn(p, re) : re.test(n) ? [p] : []; });
 }
 /** Never let a URL with a key in it reach the report. */
 const scrub = (s: string) => (process.env.METAL_RPC_URL ? s.split(process.env.METAL_RPC_URL).join("<METAL_RPC_URL>") : s).replace(/https?:\/\/[^\s"']*(key|token|secret)[^\s"']*/gi, "<url>");
@@ -81,7 +83,8 @@ function verifiers() {
   }
   if (!process.env.METAL_RPC_URL) add(G, "could not run here", "npm run verify-anchor", "METAL_RPC_URL is not set: the anchor transaction cannot be read from Alta testnet", "docs/runs/2026-11-13-anchor.json");
   else {
-    const r = runCli("verifyAnchor.ts", []);
+    // The 13 Nov anchor by name: the newest record (19 Nov, not counted in the band) is checked in its own run log.
+    const r = runCli("verifyAnchor.ts", ["docs/runs/2026-11-13-anchor.json"]);
     const ok = r.lines.filter((l) => l.startsWith("ok")).length;
     add(G, r.code === 0 ? "pass" : r.code === 2 ? "could not run here" : "FAIL", "npm run verify-anchor (Alta testnet, read-only)", `${ok} lines ok; ${lastLine(r.lines, /MATCH/).replace(ROOT + "/", "")}`, "docs/runs/2026-11-13-anchor.json");
   }

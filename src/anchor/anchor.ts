@@ -37,14 +37,14 @@ export interface AnchorRecord {
 export const CHECK_COMMAND = "npm run verify-anchor";
 
 /** The dry run: what would be sent, with no network and no key. */
-export function planAnchor(root: string): { head: AnchorHead; calldata: `0x${string}` } {
-  const head = computeAnchorHead(root);
+export function planAnchor(root: string, sources?: AnchorSource[]): { head: AnchorHead; calldata: `0x${string}` } {
+  const head = computeAnchorHead(root, sources);
   return { head, calldata: anchorCalldata(head) };
 }
 
 /** The live run: sends the one transaction, refuses a reverted one, and returns the record (not yet written). */
-export async function sendAnchor(root: string, chain: AnchorChain, now = new Date()): Promise<AnchorRecord> {
-  const { head, calldata } = planAnchor(root);
+export async function sendAnchor(root: string, chain: AnchorChain, now = new Date(), sources?: AnchorSource[]): Promise<AnchorRecord> {
+  const { head, calldata } = planAnchor(root, sources);
   const sent = await chain.send(calldata);
   if (sent.status !== "success") throw new Error(`the anchor transaction ${sent.hash} reverted`);
   return {
@@ -74,7 +74,7 @@ ${parts}
 
 The anchor head is SHA-256 over the canonical JSON (RFC 8785) of \`{schema, parts}\` (src/anchor/head.ts). The decision
 log's rows are each recomputed; the main run's audit chain is published as links only, so its part proves the order and
-that no row was cut, not what a row says; the books part is a digest of the main run's journal, not a chain head.
+that no row was cut, not what a row says; the books part is a digest of the main run's journal, not a chain head.${r.parts.some((p) => p.kind === "record-digest") ? "\nEach run record part (record-digest) is a SHA-256 of that record's canonical JSON, its height the record's steps." : ""}
 
 ## Check it yourself
 

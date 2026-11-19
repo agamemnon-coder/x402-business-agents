@@ -134,6 +134,7 @@
     "readme:shots": "tsx scripts/readme-shots.ts",
     "four-eyes": "tsx src/cli/fourEyes.ts",
     "passkey-owners": "tsx src/cli/passkeyOwners.ts",
+    "alta-series": "tsx src/cli/altaSeries.ts",
     "owners": "tsx src/cli/ownersExecute.ts",
     "agent-summary": "tsx src/cli/agentSummary.ts",
     "agent": "tsx src/cli/agent.ts",
