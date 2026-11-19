@@ -184,7 +184,23 @@ const BANK_CHANGE = new RegExp([
   // Konto wird zum 30.11. aufgelöst"). The customer's own account being suspended is dunning, not this.
   "\\b(our|this|the old|unser(e|em|es)?|dieses|ons|onze|notre|nuestra|il nostro|a nossa)\\b(?:[^.\\n]|(?<=\\d)\\.){0,20}\\b(bank ?account|account|bankkonto|konto|bankrekening|rekening|compte|cuenta|conto|conta)\\b(?:[^.\\n]|(?<=\\d)\\.){0,30}\\b(clos(e|es|ed|ing)|frozen|terminated|discontinued|no longer (valid|in use|active|available)|geschlossen|aufgel(ö|oe)st|gek(ü|ue)ndigt|gesperrt|opgeheven|gesloten|ferm(é|e)|cerrad[ao]|chius[oa]|encerrad[ao])",
   "\\bbank\\b[^.\\n]{0,20}\\bclos(es|ing|ed)\\b[^.\\n]{0,25}\\baccount\\b",
+  // 19 Nov, third round (adversarial eval v4, v4-bec-valsesia-conto-aggiornato): an updated account, and bank details
+  // given somewhere else than on the invoice (an attached e-mail or letter), in each language: "Si prega di effettuare il
+  // bonifico sul conto aggiornato indicato nella mail allegata", "the updated account", "das Konto aus der beigefügten E-Mail".
+  "\\bupdated (bank |banking |payment )?(account|iban|details)\\b", "\\b(conto|iban)( corrente)? aggiornat[oa]\\b", "coordinate (bancarie )?aggiornate",
+  "\\bcuenta (bancaria )?actualizada", "\\bcompte (bancaire )?mis (à|a) jour", "coordonn(é|e)es (bancaires )?mises (à|a) jour", "\\bconta (banc(á|a)ria )?atualizada",
+  "\\baktualisierte[mnrs]? (bank|konto|iban)", "\\bbijgewerkte? (bank)?(rekening|gegevens|iban)",
+  "\\b((bank|banking|payment) (details|account)|account (details|number)|iban|konto|kontodaten|bankverbindung|rekening(nummer)?|bankgegevens|compte|coordonn(é|e)es bancaires|cuenta|datos bancarios|conto|coordinate bancarie|conta|dados banc(á|a)rios)\\b[^.\\n]{0,60}\\b(attached|enclosed|allegat[oa]|adjunt[oa]|ci-joint|(en )?pi(è|e)ce jointe|beigef(ü|ue)gt\\w*|angeh(ä|ae)ngt\\w*|bijgevoegde?|anexad?[oa])\\b",
+  "\\b(attached|enclosed|allegat[oa]|adjunt[oa]|ci-joint|beigef(ü|ue)gt\\w*|angeh(ä|ae)ngt\\w*|bijgevoegde?|anexad?[oa])\\b[^.\\n]{0,40}\\b((bank|banking|payment) (details|account)|account (details|number)|iban|bankverbindung|bankgegevens|coordonn(é|e)es bancaires|datos bancarios|coordinate bancarie|dados banc(á|a)rios)\\b",
 ].join("|"), "i");
+/**
+ * A link to pay through instead of the account on file (19 Nov, third round; eval v4, v4-bec-zeeland-payment-link:
+ * "Betaal eenvoudig en veilig via onze nieuwe betaalpagina: https://…"): a web address on a line that asks to pay, in
+ * the words outside the address. A website, an e-mail address, a link to the terms or to view the invoice is no such request.
+ */
+const WEB_ADDRESS = /\bhttps?:\/\/\S+|\bwww\.\S+/gi;
+const PAY_WORD = /\b(pay|paying|payment|betaal|betalen|betaling|zahlen|bezahlen|zahlung|payez|payer|paiement|r(é|e)glez|r(é|e)gler|pague|pagar|pago|paga|pagare|pagamento)\b(?!\s*(terms|conditions|voorwaarden|bedingungen|termini|condiciones))/i;
+const payLink = (line: string) => /\bhttps?:\/\/|\bwww\./i.test(line) && PAY_WORD.test(line.replace(WEB_ADDRESS, " "));
 /** "Our bank details are unchanged": no announcement of a change (19 Nov: "unchanged" read as "changed"). */
 const BANK_UNCHANGED = /\b(unchanged|not (been )?changed|remain(s)? (the same|unchanged|valid)|unver(ä|ae)ndert|nicht ge(ä|ae)ndert|ongewijzigd|niet gewijzigd|inchang(é|e)e?s?|sin cambios|invariat[ie]|inalterad[oa]s?)\b/i;
 /**
@@ -266,6 +282,10 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   // person, even when the IBAN line is the one on file; a person confirms with the supplier on a number on file.
   const change = line(BANK_CHANGE, BANK_UNCHANGED);
   if (change) signals.push({ code: "bank_change_language", blocks: false, holds: true, detail: `the invoice announces a change of bank: "${change}"` });
+  else {
+    const link = text.split("\n").find(payLink)?.trim();
+    if (link) signals.push({ code: "bank_change_language", blocks: false, holds: true, detail: `the invoice asks to be paid through a link, not to the account on file: "${link}"` });
+  }
   // Pressure: words of speed alone are shown; a request to get around the checks holds it (eval v3).
   const bypass = line(BYPASS) ?? text.split("\n").find((l) => AUTHORITY.test(l) && PRESSURE.test(l))?.trim();
   const pressure = line(PRESSURE);
