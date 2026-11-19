@@ -2,9 +2,28 @@
 // per area (money, policy, passkey, executors, relay, clearing and the others) and holds each area to its floor.
 // Since 19 November the measured scope is the whole product, not src/ alone; the numbers, before and after, are in
 // docs/evidence/coverage.md.
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { configDefaults, defineConfig } from "vitest/config";
 
+// The relay Worker's pages are baked in by npm run relay:build (worker/src/pages.gen.ts, git-ignored). Without a build,
+// the Worker's entry point (worker/src/index.ts) imports an empty set of pages here, which a test fills with only what it
+// routes (test/relay-worker-entry.test.ts); with a build, the built file is used as it is.
+const PAGES_GEN = resolve(import.meta.dirname, "worker/src/pages.gen.ts");
+const NO_PAGES = "\0kit11:no-pages-gen";
+const pagesGen = {
+  name: "kit11-pages-gen",
+  resolveId(id: string, importer?: string) {
+    if (!/\/pages\.gen(\.js|\.ts)?$/.test(id) || !importer || existsSync(PAGES_GEN)) return null;
+    return resolve(importer, "..", id).replace(/\.js$/, ".ts") === PAGES_GEN ? NO_PAGES : null;
+  },
+  load(id: string) {
+    return id === NO_PAGES ? "export const PAGES = { csp: {} };" : null;
+  },
+};
+
 export default defineConfig({
+  plugins: [pagesGen],
   test: {
     // Agent worktrees live under .claude/worktrees inside the checkout; their copies of the tests are not this tree's.
     exclude: [...configDefaults.exclude, ".claude/**"],
