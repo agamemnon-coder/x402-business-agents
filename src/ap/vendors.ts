@@ -17,7 +17,7 @@ import { beginExecution, createProposal, expireDue, finishExecution, nextProposa
 import { assessAgainst, type Beneficiary } from "../policy/fraudCore.js";
 import { recheck, type InboxDeps } from "./inbox.js";
 import { checkpoint } from "../policy/saga.js";
-import { accountKey, chooseRoute, maskAccount, validateDetails, type BankDetails, type Method } from "../payouts/routes.js";
+import { accountKey, chooseRoute, maskAccount, numberKey, validateDetails, type BankDetails, type Method } from "../payouts/routes.js";
 import { apInvoice } from "./store.js";
 import { suppliersOnFile } from "./bank.js";
 import { freshCheck, nameCheckGate, payeeCheckOn, runNameCheck, type NameCheckRow, type PayeeNameVerifier } from "../airwallex/payeeName.js";
@@ -76,7 +76,29 @@ export function accountOnFile(db: DB, accountSha256: string): string | null {
   return r?.name ?? null;
 }
 
-const onFile = (db: DB) => db.prepare("SELECT beneficiary_id, name, iban_last4, iban_sha256, bic FROM beneficiaries WHERE status = 'ACTIVE'").all() as Beneficiary[];
+/**
+ * The supplier on file that may already be paid to this account, or null: the same account identity (accountOnFile), or
+ * an account without an IBAN or sort code with the same number in the same country where the two cannot be told apart
+ * (red team round 4: one written with its ABA routing number, the other with only its bank's BIC). Two numbers that
+ * both carry an ABA routing number are at the banks those name: different ones are different accounts.
+ */
+export function accountTaken(db: DB, bank: BankDetails): string | null {
+  const byKey = accountOnFile(db, ibanSha(accountKey(bank)));
+  if (byKey || bank.iban || bank.routingType === "sort_code") return byKey;
+  const mine = numberKey(bank);
+  const added = db.prepare(`SELECT a.vendor, a.details_json, b.iban_sha256 FROM payee_adds a JOIN beneficiaries b ON b.name = a.vendor AND b.status = 'ACTIVE'
+    WHERE a.status = 'APPLIED' AND a.details_json IS NOT NULL`).all() as { vendor: string; details_json: string; iban_sha256: string }[];
+  for (const r of added) {
+    const theirs = JSON.parse(r.details_json) as BankDetails;
+    if (theirs.iban || theirs.routingType === "sort_code" || ibanSha(accountKey(theirs)) !== r.iban_sha256) continue;
+    if (numberKey(theirs) !== mine) continue;
+    if (theirs.routingType === "aba" && bank.routingType === "aba") continue;
+    return r.vendor;
+  }
+  return null;
+}
+
+const onFile =(db: DB) => db.prepare("SELECT beneficiary_id, name, iban_last4, iban_sha256, bic FROM beneficiaries WHERE status = 'ACTIVE'").all() as Beneficiary[];
 
 /** The bank details as given: a full set, or (as before) an IBAN and BIC, with the country taken from the IBAN. */
 function bankOf(a: { vendor: string; iban?: string; bic?: string; currency?: string; bank?: Partial<BankDetails> }): BankDetails {
@@ -122,7 +144,7 @@ export function requestPayeeAdd(db: DB, a: { vendor: string; iban?: string; bic?
   const finding = assessAgainst(all, { vendor, iban: key, bic: "" }, "", ibanSha(key));
   const odd = finding.signals.filter((s) => s.blocks && s.code !== "unknown_vendor");
   if (odd.length) throw new Error(`${odd.map((s) => s.detail).join("; ")}: a name that looks like a supplier on file is not added as a new one`);
-  const sameAccount = accountOnFile(db, ibanSha(key));
+  const sameAccount = accountTaken(db, bank);
   if (sameAccount) throw new Error(`this account is already on file for ${sameAccount}; one account is never added under a second name (its invoices would be paid twice), so a person checks who ${vendor} is`);
   closeDeadAdds(db, now);
   const open = db.prepare("SELECT add_id FROM payee_adds WHERE vendor = ? AND status NOT IN ('APPLIED', 'CLOSED')").get(vendor) as { add_id: string } | undefined;
@@ -246,7 +268,7 @@ export function proposePayeeAdd(db: DB, id: string, by: Actor, now = new Date())
   if (r.status !== "VERIFIED" || !r.verification_json) throw new Error(`${id} is not verified by a person yet; nothing to propose`);
   if (onFile(db).some((b) => b.name.trim() === r.vendor)) throw new Error(`${r.vendor} is on file already`);
   const proposedBank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : legacyPayeeBank(r.vendor, r.iban, r.bic);
-  const taken = accountOnFile(db, ibanSha(accountKey(proposedBank)));
+  const taken = accountTaken(db, proposedBank);
   if (taken) throw new Error(`this account is already on file for ${taken}; one account is never added under a second name`);
   const v = JSON.parse(r.verification_json) as { by: string; how: string; at: string; address: Address };
   const bank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : legacyPayeeBank(r.vendor, r.iban, r.bic);
@@ -273,7 +295,7 @@ export async function executePayeeAdd(db: DB, rail: PayoutRail, proposalId: stri
     if (terms.kind !== "payee_add") throw new Error(`${proposalId} is not a new supplier`);
     if (onFile(db).some((b) => b.name.trim() === terms.vendor)) throw new Error(`${terms.vendor} is on file already; nothing was added`);
     const bank = terms.bank ?? legacyPayeeBank(terms.vendor, terms.iban, terms.bic);
-    const taken = accountOnFile(db, ibanSha(accountKey(bank)));
+    const taken = accountTaken(db, bank);
     if (taken) throw new Error(`this account is already on file for ${taken}; nothing was added under a second name`);
   }, now);
   // Terms approved before the payout routes carry only the IBAN and BIC the CFO saw: their route is the IBAN's own.

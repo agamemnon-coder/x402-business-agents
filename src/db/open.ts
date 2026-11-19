@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { prepareDb } from "./migrate.js";
+import { rekeyAbaAccounts } from "../ap/accountRekey.js";
 
 // The schema and its migrations live in ./migrate.ts, which imports nothing from Node: a Durable Object runs the same
 // steps over its own SQLite (src/db/doSql.ts).
@@ -26,6 +27,8 @@ export function openDb(path = process.env.KIT11_DB ?? DEFAULT_LEDGER): DB {
   walWithRetry(db);
   db.pragma("foreign_keys = ON");
   prepareDb(db, SCHEMA, LEDGER);
+  // Stored account identities brought up to the payout routes' accountKey (an ABA account carries its routing number).
+  rekeyAbaAccounts(db);
   return db;
 }
 

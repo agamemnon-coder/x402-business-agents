@@ -156,6 +156,24 @@ describe("code's checks over a case", () => {
     expect(codes(caseOf(EN, { suppliers: [BERGTEX_HASHED] }))).toEqual(["possible_fraud"]);
   });
 
+  it("possible_fraud: a known US supplier's invoice with its account number at another bank (another ABA routing number)", () => {
+    // Held-out adversarial eval v3, v3-bec-pinecrest-new-routing: the account number on file, at another bank. Before,
+    // only the ABA-less identity was compared, so this raised nothing and went to the CFO only for being in USD.
+    const policy = { payees: { allowed: ["Pinecrest Outdoor Supply LLC"], blocked: [] } };
+    const onFileBank = { country: "US", currency: "USD", accountName: "Pinecrest Outdoor Supply LLC", accountNumber: "50001121", routingType: "aba" as const, routingValue: "021000021" };
+    const PINECREST: SupplierOnFile = { id: "ben_pinecrest", name: "Pinecrest Outdoor Supply LLC", last4: "1121", bic: "", currency: "USD", bank: onFileBank };
+    const pinecrestHashed: SupplierOnFile = { ...PINECREST, bank: undefined, accountSha256: ibanSha(payableAccount(parseApFallback(US))!) };
+    const newRouting = US.replace("021000021", "121000248");
+    const hashOf = (text: string) => ibanSha(payableAccount(parseApFallback(text))!);
+
+    const f = finding(caseOf(newRouting, { suppliers: [PINECREST], policy }), "possible_fraud");
+    expect(f).toMatchObject({ level: "block", signals: [{ code: "bank_details_changed" }] });
+    expect(codes(caseOf(newRouting, { suppliers: [pinecrestHashed], policy, invoice: { accountSha256: hashOf(newRouting) } }))).toEqual(["possible_fraud"]);
+    // The account on file, at its own bank, is still the supplier's: compared in the clear and by hash.
+    expect(codes(caseOf(US, { suppliers: [PINECREST], policy }))).not.toContain("possible_fraud");
+    expect(codes(caseOf(US, { suppliers: [pinecrestHashed], policy, invoice: { accountSha256: hashOf(US) } }))).not.toContain("possible_fraud");
+  });
+
   it("possible_fraud: a lookalike name, letters from another alphabet, another account holder", () => {
     expect(finding(caseOf(EN.replace("Bergtex Textil GmbH", "Bergtex Texitl GmbH")), "possible_fraud")!.signals!.map((s) => s.code)).toEqual(["lookalike_vendor"]);
     expect(finding(caseOf(EN.replace("Bergtex Textil GmbH", "Bеrgtex Textil GmbH")), "possible_fraud")!.signals!.map((s) => s.code)).toContain("mixed_scripts");

@@ -8,6 +8,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { doDb } from "../../src/db/doSql.js";
 import { prepareDb } from "../../src/db/migrate.js";
+import { rekeyAbaAccounts } from "../../src/ap/accountRekey.js";
 import { sqliteDoStorage } from "./doStorage.js";
 
 export { settlementsTable } from "../../src/db/migrate.js";
@@ -26,5 +27,6 @@ export function openDb(path = process.env.KIT11_DB ?? "data/kit11.sqlite"): DB {
   raw.pragma("foreign_keys = ON");
   const db = doDb(sqliteDoStorage(raw), path);
   prepareDb(db, SCHEMA, LEDGER);
+  rekeyAbaAccounts(db);
   return db;
 }
