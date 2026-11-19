@@ -317,11 +317,11 @@
       "tiles": [
         {
           "key": "redteam-api",
-          "fig": "126 of 128",
+          "fig": "All 128",
           "label": "attacks on the /try API held",
-          "note": "2 fail, on the judge server only: its 404 page and its static files lack nosniff. 0 errors. Servers on this computer, no live site; 19 Nov.",
+          "note": "0 errors. Servers on this computer, no live site; 19 Nov.",
           "tag": "test",
-          "tone": "",
+          "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/redteam-api.md",
           "rec": "docs/evidence/redteam-api.json"
         },
@@ -337,11 +337,11 @@
         },
         {
           "key": "fuzzing",
-          "fig": "13 of 17",
-          "label": "fuzzed properties held; 4 findings open",
-          "note": "275,756 runs with fast-check, in process. The 4 findings are not fixed yet; each is shrunk and kept with the seed that replays it.",
+          "fig": "All 17",
+          "label": "fuzzed properties held",
+          "note": "315,300 runs with fast-check, in process.",
           "tag": "test",
-          "tone": "",
+          "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/fuzzing.md",
           "rec": "docs/evidence/fuzzing.json"
         }

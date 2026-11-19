@@ -64,9 +64,9 @@ AI under control:
 - 24 of 25 invoices held by code's cash check (sandbox; inside the agent's limit; no payout. One walk stopped before this step): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
 
 Attacked and broken on purpose:
-- 126 of 128 attacks on the /try API held (test world; 2 fail, on the judge server only: its 404 page and its static files lack nosniff. 0 errors. Servers on this computer, no live site; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/redteam-api.md
+- All 128 attacks on the /try API held (test world; 0 errors. Servers on this computer, no live site; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/redteam-api.md
 - 0 money invariants broken in 317 chaos scenarios (test world; 5 invariants held, never paid twice and never unsigned among them; 77 process deaths, 492 faults from a stand-in Airwallex; all 4 planted bugs caught. In process, test money): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/chaos-money.md
-- 13 of 17 fuzzed properties held; 4 findings open (test world; 275,756 runs with fast-check, in process. The 4 findings are not fixed yet; each is shrunk and kept with the seed that replays it): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/fuzzing.md
+- All 17 fuzzed properties held (test world; 315,300 runs with fast-check, in process): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/fuzzing.md
 
 Built to last:
 - 189 checks passed by verify-all, 0 failed (re-checked; 129 Alta transactions read from the chain; 15 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md

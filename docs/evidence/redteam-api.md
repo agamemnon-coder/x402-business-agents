@@ -1,6 +1,6 @@
 # Red team v2: the public /try API, on this computer
 
-Run on 2026-11-19 with `npm run redteam:api` (src/cli/redteamApi.ts). 128 attacks: **126 PASS, 2 FAIL, 0 ERROR**.
+Run on 2026-11-19 with `npm run redteam:api` (src/cli/redteamApi.ts). 128 attacks: **128 PASS, 0 FAIL, 0 ERROR**.
 
 Every attack is one or more HTTP requests to a server on this computer, never to the live site:
 
@@ -26,22 +26,12 @@ Passkeys are software authenticators (src/redteam/authenticator.ts) that can sig
 | prompt injection | 4 | 4 | 0 | 0 |
 | path traversal | 2 | 2 | 0 | 0 |
 | open redirect | 2 | 2 | 0 | 0 |
-| headers | 3 | 1 | 2 | 0 |
-| **all** | **128** | **126** | **2** | **0** |
+| headers | 3 | 3 | 0 | 0 |
+| **all** | **128** | **128** | **0** | **0** |
 
 ## Findings (every FAIL and ERROR, with its repro)
 
-### FAIL: Every page the judge serves (33): CSP with frame-ancestors 'none' (or X-Frame-Options DENY), no unsafe script, nosniff, a referrer policy (`headers-pages`, judge)
-
-- Expected: every page has them
-- Actual: /nope-404 (404): nosniff, referrer-policy
-- Repro: / /home /watch /replay /proof /verify /trace /runs /agents/sourcing /agents/support /agents/treasury /alta /metal/report /visa /airwallex /airwallex/calls /claude /security /docs /status /t0 /books /?autonomy /?recorded /demo /live /film /try /tasks /month /lab /nope-404 /try/negotiate
-
-### FAIL: Files the judge serves (font, icons, the proof samples, downloads): nosniff (`headers-files`, judge)
-
-- Expected: each has nosniff
-- Actual: /assets/inter.woff2: nosniff; /favicon.ico: nosniff; /favicon.svg: nosniff; /verify/samples/try-paid.json: nosniff
-- Repro: /assets/inter.woff2 /favicon.ico /favicon.svg /verify/samples/x /t0/readback.json
+None: every attack was stopped as expected.
 
 ## Every attack
 
@@ -56,7 +46,7 @@ Passkeys are software authenticators (src/redteam/authenticator.ts) that can sig
 | B renews a session for A's company with B's visitor token (`xc-renew-other`) | judge | 401; no session | 401 unauthorized | PASS |
 | B rewrites its session token to name A's company (HMAC kept) (`xc-forged-session`) | judge | 401 | 401 unauthorized | PASS |
 | B fetches A's document by its SHA-256 and A's archive files by path (`xc-document`) | judge | refused (try-only route list) or 404; never the bytes | document 403 try_only, vault file 404 not_found | PASS |
-| B downloads its export and searches it for A (`xc-export`) | judge | B's own company only | 200, 11982 bytes, no A data | PASS |
+| B downloads its export and searches it for A (`xc-export`) | judge | B's own company only | 200, 11980 bytes, no A data | PASS |
 
 ### signature replay
 
@@ -72,8 +62,8 @@ Passkeys are software authenticators (src/redteam/authenticator.ts) that can sig
 | A signature without user verification (no Face ID) (`replay-no-uv`) | judge | refused | 200 status=refused: The passkey did not confirm it was you (Face ID, fingerprint or PIN). Nothing was paid. | PASS |
 | A signature with a counter not above the last one seen (a cloned authenticator) (`replay-counter`) | judge | refused | 200 status=refused: This signature is older than one this passkey already gave, so it may be a copy. Nothing was paid. | PASS |
 | Approve and pay with credentials that are not WebAuthn answers (`replay-malformed-credential`) | judge | 4xx or refused; never approved, never paid; no 500 | 200/refused+200/refused 200/refused+200/refused 200/refused+200/refused 200/refused+200/refused 200/refused+200/refused | PASS |
-| A valid approval used to pay after the terms expired (`replay-after-expiry`) | judge | outcome expired or refused; no transfer | 200 outcome=expired: signature verified=true; executor accepted=false: P-0001 expired at 2026-11-19T10:47:56Z; approval void; transfers 0 | PASS |
-| A fresh signature over the stored terms, made after they expired (`approve-after-expiry`) | judge | refused; no transfer | approve 200 status=too_late: P-0001 expired at 2026-11-19T10:47:56Z; nothing was approved; pay 200 outcome=not_signed; transfers 0 | PASS |
+| A valid approval used to pay after the terms expired (`replay-after-expiry`) | judge | outcome expired or refused; no transfer | 200 outcome=expired: signature verified=true; executor accepted=false: P-0001 expired at 2026-11-19T11:28:52Z; approval void; transfers 0 | PASS |
+| A fresh signature over the stored terms, made after they expired (`approve-after-expiry`) | judge | refused; no transfer | approve 200 status=too_late: P-0001 expired at 2026-11-19T11:28:52Z; nothing was approved; pay 200 outcome=not_signed; transfers 0 | PASS |
 
 ### another world's passkey
 
@@ -89,22 +79,22 @@ Passkeys are software authenticators (src/redteam/authenticator.ts) that can sig
 
 | Attack | Target | Expected | Actual | Verdict |
 |---|---|---|---|---|
-| Pay with the terms changed (amount +0.01) and the approval over the original (`tamper-pay-amount-0-01`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| The visitor signs the changed terms (amount +0.01) with their own passkey and pays with that (`tamper-resign-amount-0-01`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| Pay with the terms changed (amount 1.00) and the approval over the original (`tamper-pay-amount-1-00`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| The visitor signs the changed terms (amount 1.00) with their own passkey and pays with that (`tamper-resign-amount-1-00`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| Pay with the terms changed (IBAN (account ending)) and the approval over the original (`tamper-pay-iban-account-ending-`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| The visitor signs the changed terms (IBAN (account ending)) with their own passkey and pays with that (`tamper-resign-iban-account-ending-`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| Pay with the terms changed (currency USD) and the approval over the original (`tamper-pay-currency-usd`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| The visitor signs the changed terms (currency USD) with their own passkey and pays with that (`tamper-resign-currency-usd`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| Pay with the terms changed (BIC) and the approval over the original (`tamper-pay-bic`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| The visitor signs the changed terms (BIC) with their own passkey and pays with that (`tamper-resign-bic`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| Pay with the terms changed (payee name) and the approval over the original (`tamper-pay-payee-name`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| The visitor signs the changed terms (payee name) with their own passkey and pays with that (`tamper-resign-payee-name`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
+| Pay with the terms changed (amount +0.01) and the approval over the original (`tamper-pay-amount-0-01`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| The visitor signs the changed terms (amount +0.01) with their own passkey and pays with that (`tamper-resign-amount-0-01`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| Pay with the terms changed (amount 1.00) and the approval over the original (`tamper-pay-amount-1-00`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| The visitor signs the changed terms (amount 1.00) with their own passkey and pays with that (`tamper-resign-amount-1-00`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| Pay with the terms changed (IBAN (account ending)) and the approval over the original (`tamper-pay-iban-account-ending-`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| The visitor signs the changed terms (IBAN (account ending)) with their own passkey and pays with that (`tamper-resign-iban-account-ending-`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| Pay with the terms changed (currency USD) and the approval over the original (`tamper-pay-currency-usd`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| The visitor signs the changed terms (currency USD) with their own passkey and pays with that (`tamper-resign-currency-usd`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| Pay with the terms changed (BIC) and the approval over the original (`tamper-pay-bic`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| The visitor signs the changed terms (BIC) with their own passkey and pays with that (`tamper-resign-bic`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| Pay with the terms changed (payee name) and the approval over the original (`tamper-pay-payee-name`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| The visitor signs the changed terms (payee name) with their own passkey and pays with that (`tamper-resign-payee-name`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
 | Pay with the terms changed (payee id) and the approval over the original (`tamper-pay-payee-id`) | judge | refused or 400 bad_terms; no transfer | 400 bad_terms: only the amount, the currency, the payee, the account ending, the BIC and the invoice number can be changed here | PASS |
 | The visitor signs the changed terms (payee id) with their own passkey and pays with that (`tamper-resign-payee-id`) | judge | refused (the executor pays only the approved hash); no transfer | 400 bad_terms: only the amount, the currency, the payee, the account ending, the BIC and the invoice number can be changed here | PASS |
-| Pay with the terms changed (invoice number) and the approval over the original (`tamper-pay-invoice-number`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
-| The visitor signs the changed terms (invoice number) with their own passkey and pays with that (`tamper-resign-invoice-number`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash e54ad17e49290d1e8a08607bd44a38f981f7a93bbce209a33470e9f42e64b00c | PASS |
+| Pay with the terms changed (invoice number) and the approval over the original (`tamper-pay-invoice-number`) | judge | refused or 400 bad_terms; no transfer | 200 outcome=refused: signature verified=false; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
+| The visitor signs the changed terms (invoice number) with their own passkey and pays with that (`tamper-resign-invoice-number`) | judge | refused (the executor pays only the approved hash); no transfer | 200 outcome=refused: signature verified=true; executor accepted=false: P-0001: terms do not match the approved hash c49b10c981d111606b8fa87dea3b6fc17dde787a988a470ae3db106f2ffb7d03 | PASS |
 | Pay with the terms changed (expiry date +1 day) and the approval over the original (`tamper-pay-expiry-date-1-day`) | judge | refused or 400 bad_terms; no transfer | 400 bad_terms: only the amount, the currency, the payee, the account ending, the BIC and the invoice number can be changed here | PASS |
 | The visitor signs the changed terms (expiry date +1 day) with their own passkey and pays with that (`tamper-resign-expiry-date-1-day`) | judge | refused (the executor pays only the approved hash); no transfer | 400 bad_terms: only the amount, the currency, the payee, the account ending, the BIC and the invoice number can be changed here | PASS |
 | Pay with the terms changed (fee reserve) and the approval over the original (`tamper-pay-fee-reserve`) | judge | refused or 400 bad_terms; no transfer | 400 bad_terms: only the amount, the currency, the payee, the account ending, the BIC and the invoice number can be changed here | PASS |
@@ -150,7 +140,7 @@ Passkeys are software authenticators (src/redteam/authenticator.ts) that can sig
 | IPv6: one /48 rotating through 30 of its /64s (edge stand-in in process) (`rate-ipv6-48`) | edge (in process) | the /48 is counted too: at most 20 start in the hour | 20 started, then 429,429,429,429,429,429,429,429,429,429 | PASS |
 | IPv6: one /64 written six ways (case, zeros, brackets, IPv4-mapped tail) (`rate-ipv6-spellings`) | edge (in process) | one address: the 6th answers 429 | 201,201,201,201,201,429,429 | PASS |
 | A start body one byte over its 4,000-byte cap (room for a Turnstile token since 19 Nov), with an honest Content-Length (`rate-body-cap-length`) | edge | 400 'the body is larger than 4000 bytes' | 400 bad_request: the body is larger than 4000 bytes (4001 bytes) | PASS |
-| A 30 MB start body sent chunked, with no Content-Length (`rate-body-cap-chunked`) | edge | refused at the cap while it arrives (400), quickly; the server keeps answering | 400 bad_request in 60 ms: the body is larger than 4000 bytes; health after 200 | PASS |
+| A 30 MB start body sent chunked, with no Content-Length (`rate-body-cap-chunked`) | edge | refused at the cap while it arrives (400), quickly; the server keeps answering | 400 bad_request in 36 ms: the body is larger than 4000 bytes; health after 200 | PASS |
 | A body larger than its Content-Length says (a lie of 10 bytes for 50 KB) (`rate-body-cap-lying-length`) | edge | the server reads no more than the header says, or refuses: 400; never parses the extra | 400:  | PASS |
 | 35 pay attempts on one test company (30 in its life) (`rate-pay-cap-per-company`) | edge | the 31st and later answer 429 limit | 30 × 200, then 429,429,429,429,429 | PASS |
 | 40 session renewals of one company in a minute (30 allowed) (`rate-renewals`) | edge | the 31st and later answer 429 | 30 × 200, then 429,429,429,429,429,429,429,429,429,429 | PASS |
@@ -234,8 +224,8 @@ Passkeys are software authenticators (src/redteam/authenticator.ts) that can sig
 
 | Attack | Target | Expected | Actual | Verdict |
 |---|---|---|---|---|
-| Every page the judge serves (33): CSP with frame-ancestors 'none' (or X-Frame-Options DENY), no unsafe script, nosniff, a referrer policy (`headers-pages`) | judge | every page has them | /nope-404 (404): nosniff, referrer-policy | FAIL |
+| Every page the judge serves (33): CSP with frame-ancestors 'none' (or X-Frame-Options DENY), no unsafe script, nosniff, a referrer policy (`headers-pages`) | judge | every page has them | 33 pages | PASS |
 | Every kind of API answer (200, 401, 403, 404, 405, 429-shaped): nosniff, no-store, a CSP that loads nothing (`headers-api`) | judge | each answer has them | 10 answers | PASS |
-| Files the judge serves (font, icons, the proof samples, downloads): nosniff (`headers-files`) | judge | each has nosniff | /assets/inter.woff2: nosniff; /favicon.ico: nosniff; /favicon.svg: nosniff; /verify/samples/try-paid.json: nosniff | FAIL |
+| Files the judge serves (font, icons, the proof samples, downloads): nosniff (`headers-files`) | judge | each has nosniff | 5 files | PASS |
 
 The JSON beside this file (`redteam-api.json`) holds the same results with each attack's repro.
