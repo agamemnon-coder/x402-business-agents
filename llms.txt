@@ -79,7 +79,7 @@ Quality and supply chain:
 - 100 accessibility score on all 5 public pages, mobile and desktop (public site; Lighthouse 13.6.0, median of 3; lowest performance 92 (/proof, mobile). axe: 0 critical, serious: color-contrast on /. Read-only, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/site-quality.md
 - Both /try walks in WebKit (Safari's engine): all 21 steps passed (sandbox; desktop light and phone dark; a software test passkey, no Touch ID; payouts PAID by the sandbox's simulation. A browser check, not counted with the walks above; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-webkit-try.md
 - 6 invariants, each mapped to code, tests and CI (re-checked; the assurance case; test/assurance.test.ts checks every file, function and CI job it names): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assurance.md
-- Passing OpenSSF Best Practices badge, project 16923 (external; from the project's own answers to the programme's criteria, as of 19 Nov; the live status is on the project page): https://www.bestpractices.dev/projects/16923
+- Silver OpenSSF Best Practices badge, project 16923 (external; from the project's own answers to the programme's criteria, as of 19 Nov; the live status is on the project page): https://www.bestpractices.dev/projects/16923
 - 2 supply-chain workflows set up, not yet run (CI; OpenSSF Scorecard and SLSA build provenance for releases. Neither has run yet: no score, no attestation): https://github.com/agamemnon-coder/x402-business-agents/blob/main/.github/workflows/scorecard.yml
 
 The public /try, timed:

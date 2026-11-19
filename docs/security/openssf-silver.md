@@ -313,7 +313,7 @@ The certificate is verified during the TLS handshake, before any HTTP request is
 
 #### `signed_releases` (MUST): **Met**
 
-> Releases are signed by the release workflow (https://github.com/agamemnon-coder/x402-business-agents/blob/main/.github/workflows/release.yml): the source tarball, its CycloneDX SBOM and SHA256SUMS carry Sigstore-signed SLSA build provenance and an SBOM attestation, bound to this repository's workflow identity; the short-lived signing key is never on the download site. Users verify with gh attestation verify, as https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/releasing.md#verifying-a-release and https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security/README.md#verify-a-release document. First signed release: v1.2.0. First signed release: https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.2.0
+> Releases are signed by the release workflow (https://github.com/agamemnon-coder/x402-business-agents/blob/main/.github/workflows/release.yml): the source tarball, its CycloneDX SBOM and SHA256SUMS carry Sigstore-signed SLSA build provenance and an SBOM attestation, bound to this repository's workflow identity; the short-lived signing key is never on the download site. Users verify with gh attestation verify, as https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/releasing.md#verifying-a-release and https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security/README.md#verify-a-release document. First signed release: https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.2.0
 
 #### `version_tags_signed` (SUGGESTED): **Unmet**
 
