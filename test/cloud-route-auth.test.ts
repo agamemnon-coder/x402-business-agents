@@ -1,5 +1,5 @@
 // Every route of Purser Cloud's API states its auth requirement, and the router enforces it (zero-trust hardening, 13 Nov).
-// It holds: each route in the table names one of the five requirements; the routes anyone may call are exactly the list
+// It holds: each route in the table names one of the six requirements; the routes anyone may call are exactly the list
 // below, each with the reason it needs no key or session (a route made public by mistake fails here until it is
 // reviewed and added); every other route, called with no credential, is refused with 401 before it runs; and the
 // sensitive settings (alert targets, the webhook, connector tokens, keys, team members, the export, closing) are all
@@ -10,7 +10,7 @@ import { ROUTES } from "../cloud/src/app.js";
 import { ALWAYS_STEP_UP_ROUTES, SESSION_ONLY_ROUTES, STEP_UP_ROUTES } from "../cloud/src/stepUp.js";
 import { testCloud, type TestCloud } from "./support/cloud.js";
 
-const NEEDS = new Set(["public", "platform", "read", "sync", "admin"]);
+const NEEDS = new Set(["public", "platform", "read", "sync", "admin", "propose"]);
 
 /** The public routes and why each needs no key or session: it is the sign-in itself, checks its own signature, or holds nothing of a company. */
 const PUBLIC: Record<string, string> = {
@@ -47,6 +47,10 @@ const PUBLIC: Record<string, string> = {
   "GET /oauth/authorize": "the consent page: the owner pastes a connector token there (rate limited per address)",
   "POST /oauth/authorize": "the consent page's answer: its own signed, single-use form token",
   "POST /oauth/token": "OAuth's token request: a code bound to its PKCE verifier",
+  "GET /openapi.json": "the API's description (the same document as /v1/openapi.json)",
+  "GET /api": "the API reference page: the API's description as HTML",
+  "GET /.well-known/agent.json": "the A2A Agent Card: Purser's skills and how to authenticate; no company's data",
+  "GET /.well-known/agent-card.json": "the A2A Agent Card at its newer name",
 };
 
 const key = (r: { method: string; path: string }) => `${r.method} ${r.path}`;
@@ -57,7 +61,7 @@ beforeEach(() => { c = testCloud(); });
 afterEach(() => c.close());
 
 describe("every API route states its auth requirement", () => {
-  it("names one of public, platform, read, sync or admin, and no route is listed twice", () => {
+  it("names one of public, platform, read, sync, admin or propose, and no route is listed twice", () => {
     const bad = ROUTES.filter((r) => !NEEDS.has(String((r as { need?: unknown }).need))).map(key);
     expect(bad).toEqual([]);
     expect(new Set(ROUTES.map(key)).size).toBe(ROUTES.length);

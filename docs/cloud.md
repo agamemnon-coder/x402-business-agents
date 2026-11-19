@@ -32,7 +32,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 ### Conventions
 
 - **Authentication:** `Authorization: Bearer <key or session>`. An API key (`pck_…`) carries scopes `read`, `sync`,
-  `admin`; a passkey session (`pcs.…`, 15 minutes) carries the person's role. "Needs" below is the scope a route asks for.
+  `admin`, `propose` (files an invoice's payment for the CFO's approval and nothing more; `admin` covers it; no scope
+  approves); a passkey session (`pcs.…`, 15 minutes) carries the person's role. "Needs" below is the scope a route asks for.
 - **Lists** answer `{ "items": [...], "next_cursor": "…" | null }`. Ask for the next page with `?cursor=<next_cursor>`;
   `limit` is 1 to 200 (default 50). Every list pages this way, except the engine's (`/v1/engine`): its invoices and
   archive files come whole, and its events page with `?after=<seq>` and `next`.
@@ -144,6 +145,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /oauth/register` | anyone | Dynamic client registration (RFC 7591), public clients: `{ redirect_uris, client_name? }` (https, or http on localhost). The client's id is signed; nothing is stored. |
 | `GET /oauth/authorize` | anyone | The consent page: paste a connector token made in Purser Cloud, or open the demo company (read only). PKCE S256 required. No script; its form may go only to this page and the client's own address. |
 | `POST /oauth/authorize` | anyone | The consent page's answer. First comes the form's own token: signed, bound to this request (client, redirect address, PKCE challenge, state, resource), ten minutes, good once. That is what holds this route rather than the Origin check, since the page is reached through the client's redirects, often with `Origin: null` in an app's own browser. Then it takes a live connector token (no other key) or the demo, and sends the browser back to the client with a one-time code (five minutes, kept as its hash). |
+| `GET /openapi.json` | anyone | This API as OpenAPI 3.1, the same document as `/v1/openapi.json` (committed as [`openapi/purser.yaml`](../openapi/purser.yaml); [integrations](integrations/README.md)). |
+| `GET /api` | anyone | The API reference: the OpenAPI document rendered as one HTML page, no script (styles by nonce only). |
+| `GET /.well-known/agent.json` | anyone | The A2A Agent Card: Purser's skills (read and propose; none approves), the bearer auth scheme and where to call it (MCP, REST). |
+| `GET /.well-known/agent-card.json` | anyone | The same A2A Agent Card at its newer well-known name. |
 | `POST /oauth/token` | anyone | `authorization_code` with the PKCE verifier, for an access token. The code is spent on the first try, right or wrong. The token names the connector token it was issued for, never its secret, and lasts 30 days at most (never past the connector token). Revoking the connector token ends it. |
 | `GET /v1/users` | admin | The company's people and their roles; paginated (limit, cursor). |
 | `GET /v1/users/{id}/passkeys` | admin | A person's passkeys (their ids and when each was enrolled). |
@@ -160,7 +165,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/engine` | read | Where the company's engine stands: `mode` (`test_money`), the approval passkey, the stand-in bank's balances, whether both chains verify, who reads (`reader`: `claude` under the caps or `parser`), who decides (`agents`: `code` until the agents join), and what this company's Claude calls cost so far against its cap (`spent_micros`, `cap_micros`, micro-USD at list price). |
 | `POST /v1/engine/documents` | admin | Upload a supplier invoice: `{ filename, mime?, base64 }`, at most 15 MB once decoded (22,000,000 bytes of body). Filed, read and checked; answers `{ kind, sha256, invoice }`, or 400 with the inbox's reason when it refuses the file (not a PDF, too large). |
 | `GET /v1/engine/invoices` | read | The engine's invoices: status, whether it can be paid, what the checks found, its proposal; `{ items }`. |
-| `POST /v1/engine/invoices/{id}/pay` | admin | File the invoice's payment for approval: `{ proposal }`, or 409 with the engine's reason; 404 for an invoice the company's engine does not hold. Nothing is paid before the approval. |
+| `POST /v1/engine/invoices/{id}/pay` | propose | File the invoice's payment for approval: `{ proposal }`, or 409 with the engine's reason; 404 for an invoice the company's engine does not hold. Nothing is paid before the approval. A key with `read` and `propose` is what an agent or integration gets ([integrations](integrations/README.md)); `admin` covers it. |
 | `GET /v1/engine/proposals/{id}` | read | One proposal: the hash of its exact terms, the challenge a passkey signs, the facts a person reads; `{ proposal }`. |
 | `POST /v1/engine/passkey/start` | admin | A session only, never a key. Start the signed-in person's approval passkey: `{ challenge, code, rp, user, exclude }`. |
 | `POST /v1/engine/passkey/finish` | admin | A session only. `{ code, credential }`: the new passkey, labelled with the signed-in person's name; answers `{ credential_id }`, or 409 with the engine's reason when refused. |

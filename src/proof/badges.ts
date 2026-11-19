@@ -24,6 +24,7 @@ export const BADGE_RECORDS = {
   "chaos": "docs/evidence/chaos-money.json",
   "fuzz": "docs/evidence/fuzzing.json",
   "mutation": "docs/evidence/mutation.json",
+  "dafny": "docs/evidence/formal-proofs.json",
 } as const;
 
 export type BadgeName = keyof typeof BADGE_RECORDS;
@@ -65,6 +66,13 @@ export const BUILD: Record<BadgeName, (r: Json) => Omit<EndpointBadge, "schemaVe
     const t = totals(r, BADGE_RECORDS.fuzz);
     const runs = int(t.runs, "fuzz runs"), props = int(t.properties, "fuzz properties"), failed = int(t.failed, "fuzz failed");
     return { label: "fuzz runs", message: `${n(runs)} · ${n(failed)}/${n(props)} properties failed`, color: failed === 0 ? "brightgreen" : "orange" };
+  },
+  // The Dafny verifier's own summary (scripts/formal-dafny.sh fails while the record or this badge differs from it).
+  "dafny": (r) => {
+    const t = totals(r, BADGE_RECORDS.dafny);
+    const verified = int(t.verified, "dafny verified"), errors = int(t.errors, "dafny errors");
+    if (r.verifier !== `Dafny program verifier finished with ${verified} verified, ${errors} errors`) throw new Error("dafny: the totals are not the verifier's line");
+    return { label: "Dafny", message: `${verified} verified, ${errors} errors`, color: errors === 0 && verified > 0 ? "brightgreen" : "red" };
   },
   "mutation": (r) => {
     const score = r.score;

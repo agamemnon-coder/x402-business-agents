@@ -32,3 +32,11 @@ path = ["src/ui/logos/*.png", "src/ui/logos/*.svg", "docs/assets/logos/*.svg", "
 precedence = "override"
 SPDX-FileCopyrightText = "The respective trademark owners: Airwallex, Alta (formerly Metal), Anthropic, Cloudflare, Visa"
 SPDX-License-Identifier = "LicenseRef-Trademark-Permission"
+
+# Dafny's JavaScript translation of formal/dafny/Reference.dfy (npm run formal:dafny): our functions, and the Dafny
+# runtime it embeds (MIT, the Dafny Project contributors).
+[[annotations]]
+path = ["formal/dafny/out/reference.js"]
+precedence = "override"
+SPDX-FileCopyrightText = ["The Dafny Project contributors (https://github.com/dafny-lang/dafny)", "2026 Max Geurtsen"]
+SPDX-License-Identifier = "MIT"

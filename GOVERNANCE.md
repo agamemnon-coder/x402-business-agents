@@ -76,8 +76,8 @@ in public.
 ## Continuity: if the maintainer is gone
 
 The project must be able to go on (open and close issues, merge changes, release) within a week if its maintainer dies,
-is incapacitated or stops. **With one maintainer, that rests on a plan the owner must set up; it is not in place yet**
-(19 November 2026). The plan:
+is incapacitated or stops. **With one maintainer, that rests on the plan below, in place since 19 November 2026** (the table says which part is
+which). The plan:
 
 | What someone else needs | How it reaches them | Status |
 |---|---|---|

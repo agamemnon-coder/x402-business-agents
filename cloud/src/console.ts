@@ -1402,7 +1402,7 @@ async function settingsView(){
       if(live){const rv=btn(t('cs.revoke'),'danger','x');rv.onclick=async()=>{if(!confirm(t('cs.revoke_confirm',{name:data('key',x.name)})))return;try{await api('/v1/keys/'+encodeURIComponent(x.id),{method:'DELETE'});await drawKeys()}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}};acts.append(rv)}
       tb.append(el('tr','',[el('td','',[el('b','',data('key',x.name)),el('span','sub',' '+x.id)]),el('td','',String(x.scopes||'').split(/[ ,]+/).filter(Boolean).map(sc=>tk('cs.scope.'+sc,sc)).join(', ')),el('td','',live?day(x.expires_at):[el('span','pill bad',x.revoked_at?t('cs.revoked'):t('cs.expired'))]),acts]))}
     tbl.append(tb);
-    const name=el('input','field');name.placeholder=t('cs.key_placeholder');const scope=el('select','field');for(const [v,l] of [['read',t('cs.scope.read')],['sync',t('cs.scope.sync')],['read sync',t('cs.scope.read_sync')]]){const o=el('option','',l);o.value=v;scope.append(o)}
+    const name=el('input','field');name.placeholder=t('cs.key_placeholder');const scope=el('select','field');for(const [v,l] of [['read',t('cs.scope.read')],['sync',t('cs.scope.sync')],['read sync',t('cs.scope.read_sync')],['read propose',t('cs.scope.read_propose')]]){const o=el('option','',l);o.value=v;scope.append(o)}
     const days=el('input','field');days.type='number';days.min='1';days.max='365';days.value='90';
     const out=el('div','');
     const mk=btn(t('cs.make_key'),'primary','key-round');mk.onclick=async()=>{if(!name.value.trim())return;mk.disabled=true;try{const r=await api('/v1/keys',{method:'POST',body:{name:name.value.trim(),scopes:scope.value.split(' '),expires_in_days:Math.max(1,Math.min(365,Number(days.value)||90))}});

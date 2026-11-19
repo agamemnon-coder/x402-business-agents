@@ -9,6 +9,7 @@ import { CHECK_PATHS } from "../src/cli/judge.js";
 import { repoHref } from "../src/redesign/productPage.js";
 import { hostileClaimText, hostileSplit } from "../src/redesign/partners.js";
 import { ANCHOR_RUN, HARNESS_LINE, SECURITY_VIZ_CSS, ZT_NAMES, anchorRun, hostileEval, securityViz, zeroTrust, AUDIT_COMMAND, AUDIT_LOG, CHAIN_LINES, OVERVIEW_DOC, existingDoc, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityLead, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
+import { evidenceItems } from "../src/redesign/securityEvidence.js";
 import { buildPages, flowLinks } from "../src/relay/assets.js";
 import { AIRWALLEX_PAGE, CLAUDE_PAGE, METAL_PAGE, PROOF_PAGE, RUNS_PAGE, SECURITY_CSP, SECURITY_PAGE, VISA_PAGE } from "../src/servers/dashboard.js";
 import { menuItemOf } from "../src/ui/more.js";
@@ -226,7 +227,8 @@ describe("/security: security and trust", () => {
     // A doc that stops saying a sentence stops the build: the page never keeps a line the docs dropped.
     expect(() => docLine({ doc: "docs/security.md", anchor: "", quote: "A third party has tested everything" })).toThrow(/no longer says/);
     // Never a certificate, an endorsement or an approval claimed.
-    expect(text).not.toMatch(/\b(certified|certification|endorsed|approved by|compliant|audited by)\b/i);
+    // 19 Nov: the security mapping says what it is, "Mapped, not certified"; any other use of the words is a claim.
+    expect(text.replace(/\bMapped, not certified\b/g, "")).not.toMatch(/\b(certified|certification|endorsed|approved by|compliant|audited by)\b/i);
   });
 
   it("shows no number that is not read from a report, a record or the published log", () => {
@@ -246,7 +248,10 @@ describe("/security: security and trust", () => {
       // And the day the two-locks run's record names, from its own heading.
       .concat(/^# [^\n]*\((\d{1,2}) [A-Z][a-z]+ \d{4}\)/.exec(read("docs/runs/2026-11-12-airwallex-two-locks-paid.md"))![1]!)
       // 15 Nov ("Checked on every change"): the test count, from the last full run's summary.
-      .concat(json<{ passed: number }>("docs/assets/test-summary.json").passed.toLocaleString("en-GB")));
+      .concat(json<{ passed: number }>("docs/assets/test-summary.json").passed.toLocaleString("en-GB"))
+      // 19 Nov ("What we did, with evidence"): each item's figure and words, which test/security-page.test.ts holds to
+      // the committed evidence wall and to each item's own record.
+      .concat(evidenceItems().flatMap((i) => numbers(`${i.fig} ${i.label} ${i.note}`))));
     // Names that carry a digit are not figures: "SOC 2", "SHA-256", "P-256" (the passkeys' curve), and the files the folds name.
     const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256|P-256|AES-256-GCM|ISO 27001/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
     expect(figures(text).filter((n) => !allowed.has(n))).toEqual([]);

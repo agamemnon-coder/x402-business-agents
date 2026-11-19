@@ -117,6 +117,16 @@
           "rec": "docs/runs/2026-11-19-alta-series.json docs/runs/2026-11-19-alta-series-finish.json"
         },
         {
+          "key": "alta-merkle",
+          "fig": "All 33",
+          "label": "signed Airwallex payments in one Alta transaction, each with a proof",
+          "note": "One Merkle root on chain; each proof checks offline; 19 Nov.",
+          "tag": "testnet",
+          "tone": "metal",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-alta-merkle.md",
+          "rec": "docs/runs/2026-11-19-alta-merkle.json"
+        },
+        {
           "key": "late-failure",
           "fig": "Both",
           "label": "PAID, then FAILED: back to a person",
@@ -128,13 +138,45 @@
         },
         {
           "key": "awx-endpoints",
-          "fig": "60",
-          "label": "Airwallex endpoints live, of 61",
+          "fig": "71",
+          "label": "Airwallex endpoints live, of 72",
           "note": "Each with the first record that holds a call to it.",
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/airwallex-api-coverage.md",
           "rec": "docs/evidence/airwallex-api-coverage.json"
+        },
+        {
+          "key": "awx-statement",
+          "fig": "All 42",
+          "label": "soak payouts and FX legs on Airwallex's statement, to the cent",
+          "note": "Balance history; all 92 links add up; 19 Nov.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md",
+          "rec": "docs/runs/2026-11-19-airwallex-deep-3.json"
+        },
+        {
+          "offProof": true,
+          "key": "awx-receivable",
+          "fig": "EUR 312.50",
+          "label": "invoice matched from a Global Account's statement; its payment link switched off",
+          "note": "Bank transfer by the sandbox's simulation, 19 Nov.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep.md",
+          "rec": "docs/runs/2026-11-19-airwallex-deep.json"
+        },
+        {
+          "offProof": true,
+          "key": "awx-revoke",
+          "fig": "EUR 1.00",
+          "label": "scheduled payment cancelled at Airwallex before its day",
+          "note": "Terms checked by Airwallex first; no passkey; 19 Nov.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md",
+          "rec": "docs/runs/2026-11-19-airwallex-deep-3.json"
         }
       ]
     },
@@ -449,13 +491,23 @@
         },
         {
           "key": "supply-chain",
-          "fig": "2",
-          "label": "supply-chain workflows set up, not yet run",
-          "note": "OpenSSF Scorecard and SLSA build provenance for releases. Neither has run yet: no score, no attestation.",
+          "fig": "v1.2.0",
+          "label": "release signed: SLSA provenance and SBOM attested",
+          "note": "2 Sigstore-signed attestations on the source archive, read back from GitHub; check with gh attestation verify.",
+          "tag": "ci",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.2.0",
+          "rec": "docs/evidence/release-v1.2.0.json"
+        },
+        {
+          "key": "scorecard",
+          "fig": "6.5/10",
+          "label": "OpenSSF Scorecard score, read from its public API",
+          "note": "Read from api.securityscorecards.dev on 2026-11-19; one maintainer keeps Code-Review and Contributors low, and a repository under 90 days old scores 0 on Maintained.",
           "tag": "ci",
           "tone": "",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/.github/workflows/scorecard.yml",
-          "rec": ".github/workflows/scorecard.yml .github/workflows/release.yml"
+          "href": "https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents",
+          "rec": "docs/evidence/scorecard.json"
         }
       ]
     },

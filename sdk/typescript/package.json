@@ -1,0 +1,12 @@
+{
+  "name": "purser-client",
+  "version": "0.1.0",
+  "description": "Purser's TypeScript client: read the books, propose an invoice's payment, read a proposal's status. It cannot approve: only the CFO's passkey does.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": ["src", "README.md"],
+  "engines": { "node": ">=20" }
+}

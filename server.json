@@ -5,17 +5,47 @@
   "description": "Read Purser's books. Never approves or pays; a propose-scoped token files payments for CFO approval.",
   "version": "1.2.0",
   "websiteUrl": "https://purser-try.max-31b.workers.dev/connect-ai",
-  "repository": { "url": "https://github.com/agamemnon-coder/x402-business-agents", "source": "github" },
+  "repository": {
+    "url": "https://github.com/agamemnon-coder/x402-business-agents",
+    "source": "github",
+    "id": "1437950660"
+  },
   "icons": [
-    { "src": "https://purser-try.max-31b.workers.dev/icon.png", "mimeType": "image/png", "sizes": ["512x512"] },
-    { "src": "https://purser-try.max-31b.workers.dev/favicon.svg", "mimeType": "image/svg+xml", "sizes": ["any"] }
+    {
+      "src": "https://purser-try.max-31b.workers.dev/icon.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "512x512"
+      ]
+    },
+    {
+      "src": "https://purser-try.max-31b.workers.dev/favicon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ]
+    }
   ],
   "remotes": [
     {
       "type": "streamable-http",
       "url": "https://purser-try.max-31b.workers.dev/mcp",
       "headers": [
-        { "name": "Authorization", "description": "Optional: 'Bearer <connector token>' from Purser Cloud (Settings, Connect your AI), or 'Bearer purser-demo-read-only' for the demo company. Without it the client signs in by OAuth.", "isRequired": false, "isSecret": true }
+        {
+          "name": "Authorization",
+          "description": "Optional. A connector token from Purser Cloud (Settings, Connect your AI), or purser-demo-read-only for the made-up demo company. Without it the client signs in by OAuth. Read and propose only: no token can approve or pay.",
+          "value": "Bearer {connector_token}",
+          "isRequired": false,
+          "isSecret": true,
+          "variables": {
+            "connector_token": {
+              "description": "Your Purser connector token, or purser-demo-read-only for the demo company",
+              "isRequired": true,
+              "isSecret": true,
+              "placeholder": "purser-demo-read-only"
+            }
+          }
+        }
       ]
     }
   ]

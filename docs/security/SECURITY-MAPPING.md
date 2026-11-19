@@ -28,9 +28,9 @@ Frameworks and versions used (ids and names checked on 19 November 2026 against 
 | C11 | gitleaks on every push and the whole history | `.github/workflows/ci.yml` (job `secrets`), `.gitleaksignore` | CI |
 | C12 | Static analysis: Semgrep (blocking, public sets and our own rules); CodeQL through GitHub's default setup | `.github/workflows/ci.yml` (job `security`), `.semgrep/purser.yml` | [README.md](README.md) |
 | C13 | SBOM (CycloneDX), locked installs, every Action pinned by SHA, Dependabot | `docs/security/sbom.cdx.json`, `.github/workflows/`, `.github/dependabot.yml` | [README.md](README.md) |
-| C14 | Signed releases: build provenance and SBOM attestations through Sigstore, `SHA256SUMS` | `.github/workflows/release.yml` | Not run yet: no release made with it |
+| C14 | Signed releases: build provenance and SBOM attestations through Sigstore, `SHA256SUMS` | `.github/workflows/release.yml` | Ran for v1.2.0 (19 Nov 2026): [record](../evidence/release-v1.2.0.json) |
 | C15 | OSV-Scanner daily and on lockfile changes, with OpenVEX statements | `.github/workflows/osv-scanner.yml`, `docs/security/vex/` | [vex/README.md](vex/README.md): 0 in the product's lockfiles, 51 in CI tooling and test fixtures |
-| C16 | Harden-Runner on every CI job (egress audit, not block) | `.github/workflows/*.yml` | Not run yet in CI |
+| C16 | Harden-Runner on every CI job (egress audit, not block) | `.github/workflows/*.yml` | Runs in CI (audit mode) on every job that has it |
 | C17 | Chaos for money movement: the real executor against a faulty Airwallex stand-in, crashes and webhook storms | `src/chaos/`, `npm run chaos:money` | [chaos-money.md](../evidence/chaos-money.md): 317 scenarios, 0 invariants broken |
 | C18 | Fuzzing of the reader, canonical terms, verifiers, webhook signatures, MCP schemas | `src/fuzz/`, `npm run fuzz` | [fuzzing.md](../evidence/fuzzing.md): 275,756 runs, 13 properties held, 4 failed (open) |
 | C19 | Formal model of the payment state machine, model-checked with TLC, with planted bugs it must catch | `formal/`, `npm run formal`, CI job `formal` | [formal-model.md](../evidence/formal-model.md) |
@@ -50,7 +50,7 @@ Frameworks and versions used (ids and names checked on 19 November 2026 against 
 | PO.4 Define and use criteria for software security checks | Checks that block on failure | C11, C12 (Semgrep blocks), C15 (product scan blocks), C19 (formal job blocks) | mapped |
 | PO.5 Implement and maintain secure environments | Separated, hardened build environments | GitHub-hosted runners, least token permissions per workflow, C16 | partial: **gap**: Harden-Runner only audits egress; no branch ruleset on `main` yet ([owner-actions.md](owner-actions.md)) |
 | PS.1 Protect all forms of code from unauthorized access and tampering | Code under access control | GitHub, C11, C13 (pinned Actions) | partial: **gap**: no signed commits, no branch ruleset yet |
-| PS.2 Provide a mechanism for verifying software release integrity | Hashes and signatures for releases | C14 ([README.md, Verify a release](README.md#verify-a-release)) | mapped; not run yet |
+| PS.2 Provide a mechanism for verifying software release integrity | Hashes and signatures for releases | C14 ([README.md, Verify a release](README.md#verify-a-release)) | mapped; ran for v1.2.0 |
 | PS.3 Archive and protect each software release | Kept releases and provenance | C14, C13 (SBOM per release) | mapped; not run yet |
 | PW.1 Design software to meet security requirements and mitigate security risks | Threat modelling | C21, C19 | mapped |
 | PW.2 Review the software design | Design review against requirements | [decisions.md](../decisions.md), [adr/](../adr/), C19 | mapped |
@@ -103,7 +103,7 @@ Frameworks and versions used (ids and names checked on 19 November 2026 against 
 2. One maintainer: no separate security role, and most changes have no second human reviewer.
 3. No branch ruleset on `main` and no signed commits yet ([owner-actions.md](owner-actions.md)).
 4. Harden-Runner audits egress only; it blocks nothing yet.
-5. The release workflow (attestations) and Harden-Runner have not run yet.
+5. Closed on 19 Nov 2026: the release workflow attested v1.2.0 ([record](../evidence/release-v1.2.0.json)) and Harden-Runner runs in CI (audit mode).
 6. Fuzzing found 4 open property failures ([fuzzing.md](../evidence/fuzzing.md)).
 7. 51 known vulnerabilities in CI tooling and test fixtures (not in the product): [vex/README.md](vex/README.md).
 8. No incident classification or authority reporting, no register of third-party providers, no exit plans, no recorded restore test.

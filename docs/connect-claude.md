@@ -117,6 +117,8 @@ The protocol itself, both eras, is checked in `test/mcp-upgrade.test.ts` against
 
 ## What your AI can do
 
+Each tool's annotations, the resources, the prompts and the error codes are in the reference, [mcp.md](mcp.md).
+
 | Tool | What it does | Needs |
 |---|---|---|
 | `company_overview` | Money in and out, net cash, invoices by state, spend by agent, the newest decisions | any token |
@@ -188,8 +190,10 @@ Purser speaks MCP **2026-07-28** (the current revision: every request carries it
 `_meta`, mirrored into the `MCP-Protocol-Version`, `Mcp-Method` and `Mcp-Name` headers, which Purser checks against the
 body; `server/discover`; `resultType` and `serverInfo` on every result; `ttlMs`/`cacheScope` on lists and reads), and,
 for clients that open with `initialize`, **2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05**. No session is kept in
-either. Every tool has a title, Purser's icons, annotations (`readOnlyHint: true`, `openWorldHint: false`) and an
-`outputSchema` its `structuredContent` conforms to. Lists page with an opaque cursor. Errors say what to do next:
+either. Every tool has a title, Purser's icons, annotations (`readOnlyHint: true` on every reading tool;
+`destructiveHint: false` and `openWorldHint: false` on all) and an `outputSchema` its `structuredContent` conforms to.
+Lists page with an opaque cursor. Every error carries a stable code from one list ([mcp.md, Errors](mcp.md#errors)).
+Errors say what to do next:
 a wrong argument is a tool result with `isError` naming the argument; an unknown tool, prompt, resource or cursor is
 `-32602` with the list to look in; a header that disagrees with the body is `-32020` (HTTP 400); an unsupported
 version is `-32022` (HTTP 400) with the versions Purser speaks; an unknown method is `-32601` (HTTP 404). The Origin

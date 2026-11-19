@@ -50,6 +50,12 @@ describe("shields endpoint badges from the records", () => {
     expect(f.message).toBe(`${fuzz.runs.toLocaleString("en-US")} · ${fuzz.failed}/${fuzz.properties} properties failed`);
     // Failed properties are never shown green.
     expect(f.color).toBe(fuzz.failed === 0 ? "brightgreen" : "orange");
+
+    const dafny = json<{ verifier: string; totals: { verified: number; errors: number } }>("docs/evidence/formal-proofs.json");
+    const d = json<{ message: string; color: string }>("docs/badges/dafny.json");
+    expect(dafny.verifier).toBe(`Dafny program verifier finished with ${dafny.totals.verified} verified, ${dafny.totals.errors} errors`);
+    expect(d.message).toBe(`${dafny.totals.verified} verified, ${dafny.totals.errors} errors`);
+    expect(d.color).toBe(dafny.totals.errors === 0 ? "brightgreen" : "red");
   });
 
   it("writes no mutation badge while no mutation record is committed", () => {
