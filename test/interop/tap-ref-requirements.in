@@ -2,9 +2,14 @@
 # - agent-registry/main.py (and database.py, models.py, schemas.py) imports fastapi, uvicorn, sqlalchemy, pydantic, dotenv;
 # - tap-agent/agent_app.py's create_ed25519_signature needs cryptography; the module imports requests and dotenv at the top
 #   (and streamlit, which test/interop/tap-interop.ts stands in for: the signing function calls it only on an error).
-# Compiled to tap-ref-requirements.txt with hashes, wheels only, nothing newer than 2026-10-19:
-#   uv pip compile test/interop/tap-ref-requirements.in --generate-hashes --python-version 3.12 --only-binary :all: --exclude-newer 2026-10-19 -o test/interop/tap-ref-requirements.txt
-fastapi==0.104.1
+# One departure from the reference's pins (19 Nov 2026): fastapi 0.104.1 holds starlette at 0.27 and anyio at 3.x, which have
+# published advisories; fastapi, starlette and anyio are raised to fixed versions. Checked locally the same day: all 22
+# interop cases hold against the unchanged reference code at the pinned commit.
+# Compiled to tap-ref-requirements.txt with hashes, wheels only, nothing newer than 2026-11-19:
+#   uv pip compile test/interop/tap-ref-requirements.in --generate-hashes --python-version 3.12 --only-binary :all: --exclude-newer 2026-11-19 -o test/interop/tap-ref-requirements.txt
+fastapi>=0.116.1
+starlette>=0.47.2
+anyio>=4.4.0
 uvicorn==0.24.0
 sqlalchemy==2.0.23
 pydantic==2.5.0

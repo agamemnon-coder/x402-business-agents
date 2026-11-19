@@ -1,0 +1,44 @@
+# Publishes server.json to the official MCP Registry (registry.modelcontextprotocol.io) as
+# io.github.agamemnon-coder/purser, online, with no personal login: the registry trusts this repository's GitHub OIDC
+# token for the io.github.agamemnon-coder/* namespace. Runs when a release is published, or by hand (Actions → mcp-publish
+# → Run workflow). The publisher binary is pinned by version and SHA-256 (checked on 19 Nov 2026 against the v1.8.9
+# release asset).
+name: mcp-publish
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: mcp-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # the OIDC token the MCP Registry checks for the io.github.agamemnon-coder namespace
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.9
+      MCP_PUBLISHER_SHA256: 4d527ca8f1ced0394c962dc925c2a4a4addef441cbefd62501c875e9481823a8
+    steps:
+      - name: Harden the runner (audit outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check that server.json carries the package version
+        run: |
+          node -e 'const s=require("./server.json"), p=require("./package.json"); if (s.version !== p.version) { console.error(`server.json ${s.version} != package.json ${p.version}`); process.exit(1) } console.log(`publishing ${s.name} ${s.version}`)'
+      - name: Install mcp-publisher (pinned, checksum verified)
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/mcp-publisher.tar.gz" "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          echo "${MCP_PUBLISHER_SHA256}  $RUNNER_TEMP/mcp-publisher.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/mcp-publisher.tar.gz" -C "$RUNNER_TEMP" mcp-publisher
+      - name: Log in with this repository's GitHub OIDC token
+        run: '"$RUNNER_TEMP/mcp-publisher" login github-oidc'
+      - name: Publish server.json
+        run: '"$RUNNER_TEMP/mcp-publisher" publish'
