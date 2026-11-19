@@ -17,7 +17,7 @@ import { findInjections } from "../policy/injection.js";
 import { checkpoint } from "../policy/saga.js";
 import { accrualEntries, bookable, pushOnce, type BookkeepingSink } from "./books.js";
 import { enforceAgain, recordChecked, runChecker, statusAfter, type CheckerOutcome } from "./checkerAgent.js";
-import { codeFindings, type InvoiceCase } from "./checkerCore.js";
+import { codeFindings, WORDS_FINDINGS, type InvoiceCase } from "./checkerCore.js";
 import { invoiceCase, statusOf, type CheckContext } from "./checks.js";
 import { docStoreOf, readDoc } from "./docStore.js";
 import { classifyDocument, ruleSignals, type DocKind } from "./classify.js";
@@ -387,5 +387,28 @@ export function clearPossibleDuplicate(db: DB, deps: Pick<InboxDeps, "now" | "si
     }
     audit(db, "human", "ap.duplicate_cleared", id, { by: who, note, twins }, now);
   })();
+  return recheck(db, deps, [id]).then(([next]) => next ?? apInvoice(db, id)!);
+}
+
+/**
+ * A person's word, after reading them, that the words the screen flagged in an invoice (an instruction to its reader,
+ * pressure: instructions_in_document, pressure_language) do not stop it (adversarial eval v2, 19 Nov: such an invoice
+ * is held for a person, below the agent's limit too). Kept in the audit log; the invoice is checked again, every other
+ * check still applies, and the words then send it to the CFO's Face ID: the agent never pays it alone. Only a person
+ * ("human") may do this. Throws before anything changes.
+ */
+export function releaseFlaggedWords(db: DB, deps: Pick<InboxDeps, "now" | "sink"> & { reader?: Asker }, id: string, by: { by: string; note: string; actor: string }): Promise<ApInvoiceRow> {
+  if (by.actor !== "human") throw new Error("only a person can release an invoice held for its words; an agent cannot");
+  const who = by.by.trim();
+  const note = by.note.trim();
+  if (!who || who.length > 100) throw new Error("say who read it (at most 100 characters)");
+  if (note.length < 10 || note.length > 500) throw new Error("say why the words do not stop it (10 to 500 characters), e.g. \"called the supplier on the number on file\"");
+  const inv = apInvoice(db, id);
+  if (!inv) throw new Error(`no invoice ${id}`);
+  const words = inv.findings.filter((x) => (WORDS_FINDINGS as readonly string[]).includes(x.code) && x.level === "review");
+  if (words.length === 0) throw new Error(`${id} is not held for its words`);
+  if (inv.status !== "needs_review") throw new Error(`${id} is ${inv.status.replace(/_/g, " ")}, not waiting for a person`);
+  const now = (deps.now ?? (() => new Date()))();
+  audit(db, "human", "ap.words_released", id, { by: who, note, findings: words.map((x) => x.code) }, now);
   return recheck(db, deps, [id]).then(([next]) => next ?? apInvoice(db, id)!);
 }

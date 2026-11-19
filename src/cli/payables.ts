@@ -12,6 +12,10 @@
 // npm run payables -- not-duplicate <id> --by <name> --note "<why it is a new invoice>"
 //                                       an invoice with the same supplier and total as an earlier one (monthly rent) is
 //                                       new: asks you to type its total back, in this terminal; recorded in the audit log
+// npm run payables -- release-words <id> --by <name> --note "<why the flagged words do not stop it>"
+//                                       an invoice held for words the screen flagged (an instruction to its reader,
+//                                       pressure): after reading them, a person releases it to the CFO's Face ID (never
+//                                       paid alone); asks you to type its total back; recorded in the audit log
 // npm run payables -- export journal|invoices [--out <file>]
 // Test money only: the Airwallex sandbox. Every payment and every new supplier needs the CFO's Face ID.
 
@@ -20,7 +24,7 @@ import { createInterface } from "node:readline/promises";
 import { basename } from "node:path";
 import { airwallexFromEnv } from "../airwallex/adapter.js";
 import { apJournal, invoicesCsv, journalCsv, payablesSink } from "../ap/books.js";
-import { clearPossibleDuplicate, ingestDocument, recheck, type InboxDeps, type IngestResult } from "../ap/inbox.js";
+import { clearPossibleDuplicate, ingestDocument, recheck, releaseFlaggedWords, type InboxDeps, type IngestResult } from "../ap/inbox.js";
 import { insights } from "../ap/insights.js";
 import { payApInvoice, syncPayments } from "../ap/pay.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
@@ -127,6 +131,13 @@ async function main(): Promise<void> {
     for (const f of i.findings.filter((x) => x.code === "possible_duplicate")) console.log(`${i.id}: ${f.detail}`);
     await typedBack(`Type the total of ${i.id} (${i.vendor} ${i.invoice_no}) to confirm it is a new invoice: `, i.total);
     const next = await clearPossibleDuplicate(db, deps, i.id, { by: flag("--by") ?? "", note: flag("--note") ?? "", actor: "human" });
+    console.log(`${next.id}  ${next.status.replace(/_/g, " ")}`);
+  } else if (cmd === "release-words") {
+    const i = apInvoice(db, args[1] ?? "");
+    if (!i) throw new Error(`no payables invoice ${args[1]}`);
+    for (const f of i.findings.filter((x) => x.code === "instructions_in_document" || x.code === "pressure_language")) console.log(`${i.id}: ${f.detail}`);
+    await typedBack(`Type the total of ${i.id} (${i.vendor} ${i.invoice_no}) to confirm you read the flagged words and the CFO may sign it: `, i.total);
+    const next = await releaseFlaggedWords(db, deps, i.id, { by: flag("--by") ?? "", note: flag("--note") ?? "", actor: "human" });
     console.log(`${next.id}  ${next.status.replace(/_/g, " ")}`);
   } else if (cmd === "export") {
     const what = args[1] ?? "journal";
