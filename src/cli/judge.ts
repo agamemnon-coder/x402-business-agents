@@ -28,6 +28,9 @@ import { offlineTry, type OfflineTry } from "./judgeTry.js";
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
   const app = express();
   app.disable("x-powered-by");
+  // On every answer, as the hosted relay sends them (worker/src/core.ts COMMON_HEADERS): the 404 page, the font, the
+  // icons and the downloads too, not only the pages (red team v2: headers-pages, headers-files). A route may add more.
+  app.use((_req, res, next) => { res.setHeader("X-Content-Type-Options", "nosniff"); res.setHeader("Referrer-Policy", "no-referrer"); next(); });
   const page = (csp: string, html: () => string) => (_req: express.Request, res: express.Response) => {
     res.setHeader("Content-Security-Policy", csp);
     res.setHeader("X-Content-Type-Options", "nosniff");

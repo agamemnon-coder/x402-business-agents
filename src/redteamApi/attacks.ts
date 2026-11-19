@@ -2,6 +2,7 @@
 // this computer (./net.ts), each with what must happen, what did happen, and PASS or FAIL. An attack that cannot be run
 // here (the harness itself failed) is ERROR, never PASS. The live site is never called.
 import PDFDocument from "pdfkit";
+import { T0_READBACK_PATH } from "../accounting/t0Readback.js";
 import { termsHash, type Terms } from "../lib/terms.js";
 import { challengeFor } from "../passkey/webauthn.js";
 import { FakeAuthenticator } from "../redteam/authenticator.js";
@@ -756,7 +757,7 @@ export async function runAttacks(ctx: Ctx): Promise<AttackResult[]> {
       }
       return [bad.length === 0, bad.length ? bad.join("; ") : `${rs.length} answers`];
     });
-    const files = ["/assets/inter.woff2", "/favicon.ico", "/favicon.svg", "/verify/samples/" + "x", "/t0/readback.json"];
+    const files = ["/assets/inter.woff2", "/favicon.ico", "/favicon.svg", "/verify/samples/" + "x", T0_READBACK_PATH];
     await attack(G, "headers-files", "Files the judge serves (font, icons, the proof samples, downloads): nosniff", "judge", "each has nosniff", files.join(" "), async () => {
       const bad: string[] = [];
       const real = [...files];
