@@ -56,7 +56,7 @@ describe("the reliability run's acceptance list", () => {
   it("fails every row of an empty world, saying what is missing", () => {
     const rows = acceptance(measureRun(openDb(":memory:")), { checks: {}, secondApproverLabel: false });
     expect(rows.filter((r) => r.ok).map((r) => r.item)).toEqual(["§2 Fallbacks under 10%, every Claude call with a request id", "§2 Audit chain intact"]);
-    const ev = Object.fromEntries(rows.map((r) => [r.item.split(" ")[0] + r.item.split(" ")[1], r.evidence]));
+    const ev = Object.fromEntries(rows.map((r) => [`${r.item.split(" ")[0]}${r.item.split(" ")[1]}`, r.evidence]));
     expect(ev["5The"]).toBe("no let-through refused by Metal");
     expect(ev["9Four"]).toBe("no mandate replace signed 2 of 2");
     expect(rows.find((r) => r.item.startsWith("Flow: Treasury"))!.evidence).toBe("options none; replace txs 0");

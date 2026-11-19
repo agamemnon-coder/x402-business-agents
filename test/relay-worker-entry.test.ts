@@ -13,10 +13,25 @@ vi.mock("cloudflare:workers", () => ({
   WorkerEntrypoint: class { constructor(protected ctx: unknown, protected env: unknown) {} },
 }));
 
-const { default: worker, RelayObject, AwxRead, AwxFx, AwxGateway, AwxCards, LIVE_AGENTS_PATH } = await import("../worker/src/index.js");
+// worker/src/index.ts is type-checked with the Worker's own types (worker/tsconfig.json, Cloudflare's workers types),
+// which the root program does not carry; so it is loaded by a path the root type check does not follow, typed here
+// with what the tests call.
+type Ctor<T> = new (ctx: unknown, env: unknown) => T;
+interface Entry {
+  default: { fetch(req: Request, env: never): Promise<Response>; scheduled(controller: never, env: never, ctx: never): Promise<void> };
+  RelayObject: Ctor<{ fetch(req: Request): Promise<Response>; awxFxQuote(a: unknown): Promise<unknown>; awxPayoutCreate(a: unknown): Promise<unknown>; awxPayoutSimulate(a: unknown): Promise<unknown> }>;
+  AwxRead: Ctor<{ read(view: string): Promise<unknown>; events(): Promise<unknown> }>;
+  AwxFx: Ctor<{ quote(a: unknown): Promise<unknown>; payout(a: unknown): Promise<unknown>; payoutSimulate(a: unknown): Promise<unknown> }>;
+  AwxGateway: Ctor<{ call(r: unknown): Promise<unknown> }>;
+  AwxCards: Ctor<{ ask(a: unknown): Promise<unknown> }>;
+  LIVE_AGENTS_PATH: string;
+}
+const ENTRY = "../worker/src/index.js";
+const { default: worker, RelayObject, AwxRead, AwxFx, AwxGateway, AwxCards, LIVE_AGENTS_PATH } = (await import(/* @vite-ignore */ ENTRY)) as Entry;
 // The pages the build bakes in (npm run relay:build; without a build, an empty set: vitest.config.ts). Each test sets
 // only what the routes it checks read.
-const PAGES = (await import("../worker/src/pages.gen.js")).PAGES as unknown as Record<string, unknown>;
+const PAGES_GEN = "../worker/src/pages.gen.js";
+const { PAGES } = (await import(/* @vite-ignore */ PAGES_GEN)) as { PAGES: Record<string, unknown> };
 const { AWX_READ_PATH } = await import("../worker/src/awxRead.js");
 const { AGENT_CARDS_PATH } = await import("../worker/src/agentCardsLive.js");
 const { AWX_EVENTS_PATH } = await import("../worker/src/awxEvents.js");
@@ -149,7 +164,7 @@ describe("the agents' cards at the Airwallex sandbox", () => {
 
   it("AwxCards refuses an ask off the card allow-list without a call", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
-    const cards = new (AwxCards as unknown as new (c: unknown, e: unknown) => InstanceType<typeof AwxCards>)({}, env());
+    const cards = new AwxCards({}, env());
     const answer = (await cards.ask({ op: "steal" } as never)) as { ok?: boolean };
     expect(answer.ok).toBe(false);
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -185,7 +200,7 @@ describe("/status and /status.json", () => {
   it("the hourly cron runs one round of the checks in the status instance, and waits for it", async () => {
     const ns = namespace();
     const waited: Promise<unknown>[] = [];
-    await worker.scheduled!({} as never, env(ns), { waitUntil: (p: Promise<unknown>) => waited.push(p), passThroughOnException: () => {} } as never);
+    await worker.scheduled({} as never, env(ns), { waitUntil: (p: Promise<unknown>) => waited.push(p), passThroughOnException: () => {} } as never);
     expect(waited).toHaveLength(1);
     expect(await waited[0]).toBeUndefined();
     expect(ns.rpc).toEqual([{ instance: "status", method: "statusRun" }]);
@@ -195,7 +210,7 @@ describe("/status and /status.json", () => {
 describe("the named entrypoints reach their own instance only", () => {
   it("AwxRead refuses a view it does not know before any call, and reads a known one from the awx-read instance", async () => {
     const ns = namespace({ fetch: async (instance) => Response.json(instance === "awx-read" ? { view: "balances", rows: [] } : { error: "no answer" }, { status: instance === "relay" ? 500 : 200 }) });
-    const read = new (AwxRead as unknown as new (c: unknown, e: unknown) => InstanceType<typeof AwxRead>)({}, env(ns));
+    const read = new AwxRead({}, env(ns));
     expect(await read.read("everything")).toEqual({ error: "no such view" });
     expect(ns.calls).toEqual([]);
     expect(await read.read("balances")).toEqual({ view: "balances", rows: [] });
@@ -207,7 +222,7 @@ describe("the named entrypoints reach their own instance only", () => {
 
   it("AwxFx asks the awx-fx instance for a quote and the awx-payout instance for a payout or its simulation", async () => {
     const ns = namespace();
-    const fx = new (AwxFx as unknown as new (c: unknown, e: unknown) => InstanceType<typeof AwxFx>)({}, env(ns));
+    const fx = new AwxFx({}, env(ns));
     await fx.quote({ company: "c1" } as never);
     await fx.payout({ company: "c1" } as never);
     await fx.payoutSimulate({ company: "c1", terms_sha256: "a".repeat(64) });
@@ -215,7 +230,7 @@ describe("the named entrypoints reach their own instance only", () => {
   });
 
   it("AwxGateway refuses a call off its allow-list before any request", async () => {
-    const gw = new (AwxGateway as unknown as new (c: unknown, e: unknown) => InstanceType<typeof AwxGateway>)({}, env());
+    const gw = new AwxGateway({}, env());
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     expect(await gw.call({ method: "DELETE", path: "/api/v1/everything" } as never)).toEqual({ ok: false, status: 400, code: "gateway_refused", trace_id: null, refused: "not a call" });
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -225,7 +240,7 @@ describe("the named entrypoints reach their own instance only", () => {
 describe("inside one instance, the desk for the path", () => {
   const object = (over: Record<string, unknown> = {}, ns = namespace()) => {
     const ctx = { storage: { sql: sqlOver(new Database(":memory:")) } };
-    return { ns, obj: new (RelayObject as unknown as new (c: unknown, e: unknown) => InstanceType<typeof RelayObject>)(ctx, env(ns, over)) };
+    return { ns, obj: new RelayObject(ctx, env(ns, over)) };
   };
 
   it("the relay instance answers the relay's own paths, and its /health asks the try-sign instance for the live agents' spend", async () => {

@@ -70,7 +70,7 @@ describe("a company's engine in its Durable Object", () => {
 
     // A payment's conversion moves the bank; the object then keeps the bank as it stands.
     const [clean] = (await api.samples()) as { key: string }[];
-    expect((await api.uploadSample(clean!.key)).invoice).toMatchObject({ id: "AP-0001", status: "ready", vendor: "Bergtex Textil GmbH", total: "1850.00" });
+    expect((await api.uploadSample(clean!.key))!.invoice).toMatchObject({ id: "AP-0001", status: "ready", vendor: "Bergtex Textil GmbH", total: "1850.00" });
     const proposed = await api.propose("AP-0001");
     expect(proposed).toMatchObject({ ok: true, proposal: { id: "P-0001", kind: "invoice_payment", status: "PENDING_APPROVAL" } });
     const bankAfter = w.state("bank");
@@ -139,7 +139,7 @@ describe("a /try company's engine with the Airwallex binding", () => {
     // The facts in the company's language.
     expect((proposed as { proposal: { facts: [string, string][] } }).proposal.facts[0]).toEqual(["Bedrag", "€ 1.850,00"]);
     expect(asked).toEqual([["quote", { company: "t_try_abc123", buyCurrency: "EUR", sellCurrency: "USD", buyAmount: "370.00" }]]);
-    const terms = (await api.terms("P-0001")) as { terms: { conversion: { quote_id: string } }; fx_quote: Record<string, string> };
+    const terms = (await api.terms("P-0001")) as unknown as { terms: { conversion: { quote_id: string } }; fx_quote: Record<string, string> };
     expect(terms.fx_quote).toMatchObject({ source: "recorded", quote_id: terms.terms.conversion.quote_id, reason: "day_cap", buy_currency: "EUR", buy_amount: "370.00" });
     // A payment not yet signed has no transfer at the sandbox to move to PAID: said so, and the binding is not asked.
     expect(await api.payoutSimulate("P-0001")).toMatchObject({ ok: false, reason: "no_transfer" });

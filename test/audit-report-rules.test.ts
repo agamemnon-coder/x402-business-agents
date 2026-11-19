@@ -1,6 +1,7 @@
 // The audit report's words (src/audit/report.ts): the rule behind every automatic refusal, the rule that sent each
 // kind of proposal to a person (the emergency stop and a card limit have their own), the outcome of a proposal in each
 // state, and what the report prints for a broken chain, Metal finality certificates and the agents' own work.
+import type { Json } from "@metalntwx/metal-pay/mandates";
 import { describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { buildAuditReport, refusalRule, reportLines, type AuditReport } from "../src/audit/report.js";
@@ -70,7 +71,7 @@ describe("each decision's rule and outcome", () => {
     for (const [id, status, executed] of cases) {
       createProposal(db, { terms: terms("dev_test", id, { label: "t", purpose: "p" }), createdBy: "system" }, t0);
       db.prepare("UPDATE proposals SET status = ? WHERE proposal_id = ?").run(status, id);
-      if (executed) audit(db, "system", "proposal.executed", id, executed, t0);
+      if (executed) audit(db, "system", "proposal.executed", id, executed as Json, t0);
     }
     audit(db, "system", "proposal.needs_reapproval", "P-0013", { error: "the quote expired" }, t0);
     const r = buildAuditReport(db, t0);

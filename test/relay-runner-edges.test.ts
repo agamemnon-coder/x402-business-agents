@@ -15,13 +15,13 @@ type Sync = { state_hash: string; state?: unknown; acks: Ack[]; hook_acks: strin
 /** A relay that answers each sync with the next scripted answer, recording what the runner sent. */
 function relay(answers: (Response | (() => Response))[]) {
   const sent: Sync[] = [];
-  const fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+  const fetchImpl = (async (_url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     sent.push(JSON.parse(String(init!.body)) as Sync);
     const a = answers.shift();
     if (!a) throw new Error("no answer scripted");
     return typeof a === "function" ? a() : a;
   }) as typeof fetch;
-  return { sent, fetch };
+  return { sent, fetch: fetchImpl };
 }
 const ok = (inbox: InboxItem[] = [], o: { need_state?: boolean; hooks?: unknown[] } = {}) => new Response(JSON.stringify({ need_state: o.need_state ?? false, inbox, hooks: o.hooks ?? [] }), { status: 200 });
 const item = (ticket: string, kind: string, body: string) => ({ ticket, kind, body, received_at: t0.toISOString() }) as unknown as InboxItem;

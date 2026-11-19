@@ -2,6 +2,7 @@
 // where there is a real one. Retailers' payments matched or escalated, webhooks the ledger could or could not explain,
 // refusals by Purser, recorded on chain or by Alta's facilitator, payments under a revoked mandate, the sweep after
 // finality, clearing sales, money from strangers held, and the dispute desk counting the orders of a case.
+import type { Json } from "@metalntwx/metal-pay/mandates";
 import { beforeEach, describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
@@ -12,7 +13,7 @@ const TX = `0x${"c".repeat(64)}`;
 const at = (n: number) => new Date(Date.parse("2026-11-19T10:00:00Z") + n * 1000);
 let db: DB;
 let n = 0;
-const row = (event: string, subject: string | null, payload: Record<string, unknown>) => audit(db, "system", event, subject, payload, at(n++));
+const row = (event: string, subject: string | null, payload: Record<string, unknown>) => audit(db, "system", event, subject, payload as Json, at(n++));
 const item = (rail: "airwallex" | "metal", what: string) => railsView(db)[rail].find((x) => x.what === what);
 
 beforeEach(() => {

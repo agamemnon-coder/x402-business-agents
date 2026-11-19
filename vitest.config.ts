@@ -9,13 +9,16 @@ import { configDefaults, defineConfig } from "vitest/config";
 // The relay Worker's pages are baked in by npm run relay:build (worker/src/pages.gen.ts, git-ignored). Without a build,
 // the Worker's entry point (worker/src/index.ts) imports an empty set of pages here, which a test fills with only what it
 // routes (test/relay-worker-entry.test.ts); with a build, the built file is used as it is.
-const PAGES_GEN = resolve(import.meta.dirname, "worker/src/pages.gen.ts");
+const ROOT = import.meta.dirname;
+const PAGES_GEN = resolve(ROOT, "worker/src/pages.gen.ts");
 const NO_PAGES = "\0kit11:no-pages-gen";
 const pagesGen = {
   name: "kit11-pages-gen",
   resolveId(id: string, importer?: string) {
-    if (!/\/pages\.gen(\.js|\.ts)?$/.test(id) || !importer || existsSync(PAGES_GEN)) return null;
-    return resolve(importer, "..", id).replace(/\.js$/, ".ts") === PAGES_GEN ? NO_PAGES : null;
+    if (!/\/pages\.gen(\.js|\.ts)?$/.test(id) || existsSync(PAGES_GEN)) return null;
+    // Relative to the importer, or (a dynamic import of a computed path) relative to the root.
+    const abs = id.startsWith(".") && importer ? resolve(importer, "..", id) : id.startsWith(ROOT) ? id : resolve(ROOT, `.${id}`);
+    return abs.replace(/\.js$/, ".ts") === PAGES_GEN ? NO_PAGES : null;
   },
   load(id: string) {
     return id === NO_PAGES ? "export const PAGES = { csp: {} };" : null;
