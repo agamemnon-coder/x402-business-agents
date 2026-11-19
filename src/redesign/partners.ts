@@ -204,7 +204,10 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   // 19 Nov (the owner: "the evidence where judges look"): the wall's Airwallex tiles under the heading, and the one
   // endpoint not live with its reason, from the coverage report and its live record.
   const strip = evidenceStripHtml("airwallex", { note: notLiveLine(readJsonOr("docs/evidence/airwallex-api-coverage.json"), readJsonOr("docs/runs/2026-11-19-airwallex-coverage.json")) });
-  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}\n${EVIDENCE_WALL_CSS}`, body: afterHeading(body, strip), source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS + LIVE_CARDS_JS, stage: false, builtOn: builtOnHtml(run) });
+  // Under the heading's path of products (the first screen stays about Airwallex's products: test/browser/pages.check.ts).
+  const pathEnd = body.indexOf("</ol>", body.indexOf('<ol class="awpath"'));
+  const withStrip = pathEnd < 0 || !strip ? afterHeading(body, strip) : `${body.slice(0, pathEnd + 5)}\n  ${strip}${body.slice(pathEnd + 5)}`;
+  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}\n${EVIDENCE_WALL_CSS}`, body: withStrip, source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS + LIVE_CARDS_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 /**
