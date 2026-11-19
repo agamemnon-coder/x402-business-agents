@@ -30,12 +30,13 @@ const json = (p: string): unknown => { try { return JSON.parse(read(p)); } catch
  * (docs/runs/2026-11-19-live-try/), the Airwallex soak (docs/runs/2026-11-19-airwallex-soak.json and .md) and the /try
  * mega run (docs/runs/2026-11-19-mega-run/), and the partner re-runs (the Alta testnet series with its three refusals
  * on chain, docs/runs/2026-11-19-alta-series.*, and the fresh anchor, docs/runs/2026-11-19-anchor.*) were each left out
- * at first, newer than the pages as deployed; since the
- * owner's call the same day they go on the site: each is a live run on /runs (src/redesign/runs.ts) and counted here
- * like any run. Kept, empty, as the one place a folder or file would be left out; src/cli/verifyAll.ts recounts the band
- * with the same list.
+ * at first, newer than the pages as deployed; since the owner's call the same day they go on the site: each is a live
+ * run on /runs (src/redesign/runs.ts) and counted here like any run. The one folder still left out is
+ * docs/runs/2026-11-19-webkit-try/, the same walk in WebKit with the software passkey
+ * (docs/runs/2026-11-19-webkit-try.md): a browser-compatibility check, not a run of record. src/cli/verifyAll.ts
+ * recounts the band with the same list.
  */
-export const NOT_IN_BAND: readonly string[] = [];
+export const NOT_IN_BAND: readonly string[] = ["docs/runs/2026-11-19-webkit-try"];
 /** Every file under a folder of the repository, by its path from the root, whose name matches (NOT_IN_BAND skipped). */
 function filesIn(dir: string, re: RegExp): string[] {
   if (NOT_IN_BAND.includes(dir)) return [];
