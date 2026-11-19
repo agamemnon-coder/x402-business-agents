@@ -88,7 +88,7 @@ const X402_DOC = "docs/metal-award.md", X402_ANCHOR = "#3-x402-on-alta-agents-pa
 const WEBHOOKS_DOC = "docs/airwallex.md", WEBHOOKS_ANCHOR = "#webhooks";
 const README = "README.md", README_ANCHOR = "#verify-it-yourself-in-3-commands";
 /** Connect your AI (owner, 13 Nov): the connector's own guide, and the demo company's public read-only token. */
-const CONNECT_DOC = "docs/connect-claude.md", DEMO_TOKEN = DEMO_CONNECTOR_TOKEN;
+const CONNECT_DOC = "docs/connect-claude.md", MCP_DOC = "docs/mcp.md", DEMO_TOKEN = DEMO_CONNECTOR_TOKEN;
 /** Said beside the token wherever it is shown bare (jury scan, 14 Nov). */
 export const DEMO_TOKEN_NOTE = "public, read-only demo token (demo company only)";
 const DEMO_TOKEN_LABEL = `${DEMO_TOKEN_NOTE[0]!.toUpperCase()}${DEMO_TOKEN_NOTE.slice(1)}`;
@@ -181,6 +181,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
       `Claude Code: ${code(`claude mcp add --transport http purser ${PURSER_CLOUD_MCP} --header "Authorization: Bearer ${DEMO_TOKEN}"`)} (${esc(DEMO_TOKEN_NOTE)})`,
       `Then ask "what's waiting for the CFO?". The demo token reads and proposes nothing.`,
       outLink(repoHref(CONNECT_DOC), "The connector's guide"),
+      outLink(repoHref(MCP_DOC), "The MCP reference: every tool, its annotations, the error codes, the safety model"),
     ])}
     ${foldHtml("Other connections", [
       `Live: the MCP server, the read API and its OpenAPI (${code("/v1/openapi.read.json")}), signed webhooks for ${code("payment.paid")}, ${code("approval.needed")} and ${code("books.closed")}.`,

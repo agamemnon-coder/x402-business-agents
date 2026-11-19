@@ -9,6 +9,11 @@
 // body, resultType and serverInfo on every result, ttlMs and cacheScope on lists and reads); an initialize request
 // selects the legacy revisions (2025-11-25 back to 2024-11-05), which this server also answers without a session.
 // The protocol is small enough to answer here without the SDK's transport (nothing new in the Worker's bundle).
+//
+// Every error carries one stable code from ERROR_CODES, whichever way it travels: a tool's own refusal is a result with
+// isError, its sentence first and then {"error":{"code","message","next"}} as a second text item (structuredContent is
+// kept for successful results, so a client that checks it against the outputSchema never trips on an error); a request
+// the server cannot take is a JSON-RPC error whose data carries the same code. docs/mcp.md lists them.
 
 import { z } from "zod";
 import type { Caller } from "../auth.js";
@@ -57,6 +62,39 @@ interface Tool {
   run(ctx: McpCtx, args: Json): Promise<ToolResult>;
 }
 
+/** Tool annotations (MCP 2025-03-26 and later): a reading tool changes nothing and may be called again freely; the one
+ *  tool that files something only adds a proposal for the CFO, which nothing here can approve. None reaches outside
+ *  Purser (openWorldHint false), and none destroys anything. */
+export function annotationsOf(t: { title: string; readOnly: boolean }): { title: string; readOnlyHint: boolean; destructiveHint: false; idempotentHint: boolean; openWorldHint: false } {
+  return { title: t.title, readOnlyHint: t.readOnly, destructiveHint: false, idempotentHint: t.readOnly, openWorldHint: false };
+}
+
+/**
+ * The one list of error codes. A tool's refusal carries one in {"error":{"code"}} (its second text item); a JSON-RPC
+ * error carries one in data.code. Clients can branch on the code; the sentence is for people.
+ */
+export const ERROR_CODES = {
+  invalid_arguments: "The arguments do not fit the tool's inputSchema. Fix them and call again.",
+  not_found: "No invoice, payment or proposal in this company's books has that id.",
+  could_not_answer: "The books could not answer that question as asked (for example a filter with no meaning).",
+  refused: "Purser refused to file the proposal (the invoice is held, already waiting or paid). Nothing was proposed.",
+  demo_read_only: "The demo company is read only: nothing can be proposed in it.",
+  runner_only: "This company's payments are filed on its own runner, not in the cloud, so nothing can be proposed here.",
+  unknown_tool: "No tool by that name; tools/list shows the tools this token has.",
+  needs_propose_token: "The tool files a proposal; this token reads only. A token made to propose files payments, never approves them.",
+  not_available_over_mcp: "Approving, paying, changing a limit or writing to the books is never possible over MCP, for any token: the CFO approves with a passkey in Purser Cloud.",
+  unknown_prompt: "No prompt by that name; prompts/list shows them.",
+  missing_argument: "A required parameter or prompt argument is missing or malformed.",
+  invalid_cursor: "The cursor is not one this server gave; pass the previous page's nextCursor, or none.",
+  resource_not_found: "No resource at that URI; resources/list and resources/templates/list show what there is.",
+  unknown_method: "The server does not answer that method.",
+  invalid_request: "The body is not a JSON-RPC request this server takes.",
+  parse_error: "The body is not JSON.",
+  header_mismatch: "A mirrored header (MCP-Protocol-Version, Mcp-Method, Mcp-Name) is missing or disagrees with the body.",
+  unsupported_protocol_version: "The protocol version is not one this server speaks; data.supported lists them.",
+} as const;
+export type ErrorCode = keyof typeof ERROR_CODES;
+
 /**
  * A result as a phone chat reads it (owner, 13 Nov): one plain sentence first, then a few short lines, money as
  * "EUR 1,793.00". The whole record goes along as structuredContent, for a client that reads data.
@@ -75,7 +113,9 @@ interface Inv { id: string; vendor: string; invoice_no: string; currency: string
 const invLine = (i: Inv) => `${i.id} · ${i.vendor} · ${i.invoice_no} · ${eur(i.total, i.currency)} · due ${dayWords(i.due_date)} · ${i.status_words ?? i.status}`;
 interface Tx { id: string; at: string; direction: string; rail_label?: string; rail: string; amount: string; currency: string; counterparty: string; status_words?: string; status: string; approval?: { authority?: string } }
 const txLine = (t: Tx) => `${dayWords(t.at)} · ${t.direction === "in" ? "in" : t.direction === "out" ? "out" : t.direction} ${eur(t.amount, t.currency)} · ${t.counterparty} · ${t.rail_label ?? t.rail} · ${t.status_words ?? t.status}`;
-const refuse = (sentence: string): ToolResult => ({ content: [{ type: "text", text: sentence }], isError: true });
+/** A tool's refusal: the sentence first, then the same error as JSON with its code (and what to do next, when known). */
+const refuse = (code: ErrorCode, sentence: string, extra: { next?: string; next_tool?: string } = {}): ToolResult =>
+  ({ content: [{ type: "text", text: sentence }, { type: "text", text: JSON.stringify({ error: { code, message: sentence, ...extra } }) }], isError: true });
 const params = (o: Record<string, unknown>) => {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(o)) if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
@@ -85,9 +125,14 @@ const params = (o: Record<string, unknown>) => {
 const DAY = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "a day as YYYY-MM-DD");
 const ID = z.string().regex(/^[A-Za-z0-9_.:-]{1,120}$/, "an id as Purser shows it, like AP-0004");
 const LIMIT = z.number().int().min(1).max(100);
-const dayProp = (what: string) => ({ type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: what });
-const limitProp = { type: "integer", minimum: 1, maximum: 100, description: "How many at most (default 25)" };
-const cursorProp = { type: "string", description: "The next_cursor of the previous page, to read on" };
+const dayProp = (what: string, example = "2026-11-30") => ({ type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: `${what}, as YYYY-MM-DD`, examples: [example] });
+const limitProp = { type: "integer", minimum: 1, maximum: 100, description: "How many at most, 1 to 100 (default 10)", examples: [10] };
+/** A page's cursor: opaque to the client, so an example is given only where its shape is plain (an invoice id). */
+const cursorProp = (example?: string) => ({ type: "string", maxLength: 200, description: "The next_cursor of the previous page, to read on; leave out for the first page", ...(example ? { examples: [example] } : {}) });
+/** An id as Purser shows it; the same rule as ID below. */
+const idProp = (description: string, examples: string[]) => ({ type: "string", pattern: "^[A-Za-z0-9_.:-]{1,120}$", description, examples });
+const quarterProp = (description: string) => ({ type: "string", pattern: "^\\d{4}Q[1-4]$", description, examples: ["2026Q4"] });
+const REPORTS = ["pnl", "balance", "trial", "vat", "payables", "receivables"] as const;
 const obj = (properties: Json, required: string[] = []) => ({ type: "object", properties, required, additionalProperties: false });
 /** An output shape: the named fields are promised, more may come along. */
 const shape = (properties: Json, required: string[] = Object.keys(properties)) => ({ type: "object", properties, required });
@@ -139,7 +184,7 @@ const READ_TOOLS: Tool[] = [
   {
     name: "company_overview",
     title: "Company overview",
-    description: "The company's start screen in one answer: money in and out and net cash day by day, spend by who started it (each agent's own card, supplier invoices the CFO approved), payments per week by how each was allowed, invoices by state, and the newest decisions in words. Every figure is counted from the company's own records.",
+    description: "The company's start screen in one answer: money in and out and net cash day by day, spend by who started it (each agent's own card, supplier invoices the CFO approved), payments per week by how each was allowed, invoices by state, and the newest decisions in words. Every figure is counted from the company's own records. Takes no arguments. Read only.",
     inputSchema: obj({}),
     outputSchema: shape({ currency: S, as_of: NS, since: NS, money: shape({ in: S, out: S, net: S }), cash: arr(shape({ day: S, in: S, out: S, net: S })), spend: arr(shape({ label: S, amount: S, count: I })), invoices: { type: "object" }, agents: shape({ decisions: I, by_fallback: I }), feed: arr(shape({ at: S, who: S, text: S })) }),
     args: z.object({}).strict(),
@@ -160,10 +205,10 @@ const READ_TOOLS: Tool[] = [
   {
     name: "list_invoices",
     title: "Supplier invoices",
-    description: "The company's supplier invoices, newest first: supplier, number, amount, due day and status (for example waiting_cfo: filed for the CFO's Face ID; needs_vendor: the supplier is new; paid). Filter by status and due days.",
-    inputSchema: obj({ status: { type: "string", description: "Only this status, e.g. waiting_cfo, needs_vendor, paid" }, due_from: dayProp("Due on or after this day"), due_to: dayProp("Due on or before this day"), limit: limitProp, cursor: cursorProp }),
+    description: "The company's supplier invoices by id, 10 a page unless limit says otherwise: supplier, number, amount, due day and status (waiting_cfo: filed for the CFO's Face ID; needs_vendor: the supplier is new; paid). Filter by status and due days; read on with next_cursor. Use get_invoice for one invoice's checks and history. Read only.",
+    inputSchema: obj({ status: { type: "string", pattern: "^[a-z_]{2,40}$", description: "Only invoices with this status, a word like waiting_cfo, needs_vendor, needs_review, blocked or paid", examples: ["waiting_cfo"] }, due_from: dayProp("Only invoices due on or after this day", "2026-11-01"), due_to: dayProp("Only invoices due on or before this day"), limit: limitProp, cursor: cursorProp("AP-0010") }),
     outputSchema: PAGE,
-    args: z.object({ status: z.string().max(40).optional(), due_from: DAY.optional(), due_to: DAY.optional(), limit: LIMIT.optional(), cursor: z.string().max(200).optional() }).strict(),
+    args: z.object({ status: z.string().regex(/^[a-z_]{2,40}$/, "a status word like waiting_cfo or paid").optional(), due_from: DAY.optional(), due_to: DAY.optional(), limit: LIMIT.optional(), cursor: z.string().max(200).optional() }).strict(),
     readOnly: true,
     run: async (c, a) => {
       const page = await listInvoices(c.db, params({ ...a, limit: a.limit ?? 10 })) as { items: Inv[]; next_cursor: string | null };
@@ -173,14 +218,14 @@ const READ_TOOLS: Tool[] = [
   {
     name: "get_invoice",
     title: "One invoice",
-    description: "One supplier invoice by its id (like AP-0004), with what Purser read from it, its checks and its earlier versions.",
-    inputSchema: obj({ id: { type: "string", description: "The invoice's id, like AP-0004" } }, ["id"]),
+    description: "One supplier invoice by its id (like AP-0004): what Purser read from it (supplier, number, net, VAT, total, due day), the checks it ran and what they found, its status and its earlier versions. list_invoices shows the ids. Read only.",
+    inputSchema: obj({ id: idProp("The invoice's id as Purser shows it, like AP-0004 (list_invoices shows them)", ["AP-0004"]) }, ["id"]),
     outputSchema: shape({ invoice: shape({ id: S, vendor: S, invoice_no: S, currency: S, total: S, due_date: S, status: S }) }),
     args: z.object({ id: ID }).strict(),
     readOnly: true,
     run: async (c, a) => {
       const inv = await oneInvoice(c.db, a.id as string) as Inv | null;
-      if (!inv) return refuse(`There is no invoice ${String(a.id)} in ${c.company}'s books.`);
+      if (!inv) return refuse("not_found", `There is no invoice ${String(a.id)} in ${c.company}'s books.`, { next_tool: "list_invoices" });
       const lines = [
         `${inv.vendor} · invoice ${inv.invoice_no}${inv.issue_date ? ` of ${dayWords(inv.issue_date)}` : ""} · due ${dayWords(inv.due_date)}.`,
         `Total ${eur(inv.total, inv.currency)}${inv.tax ? ` (net ${eur(inv.subtotal ?? "0", inv.currency)}, VAT ${eur(inv.tax, inv.currency)})` : ""}${inv.gl_account ? ` · booked to ${inv.gl_account}` : ""}.`,
@@ -193,10 +238,10 @@ const READ_TOOLS: Tool[] = [
   {
     name: "list_transactions",
     title: "Money movements",
-    description: "The transactions register: every money movement on every rail (bank transfer, card, stablecoin), newest first, with its approval, booking and proof. Filter by rail, currency and days.",
-    inputSchema: obj({ rail: { type: "string", description: "Only this rail" }, currency: { type: "string", description: "Only this currency, like EUR" }, from: dayProp("From this day"), to: dayProp("Up to this day"), limit: limitProp, cursor: cursorProp }),
+    description: "The transactions register: every money movement on every rail (bank transfer, card, stablecoin), newest first, 10 a page unless limit says otherwise, each with its approval, booking and proof. Filter by rail, currency and days; read on with next_cursor. The ids it shows work in explain_payment and payment_audit_trail. Read only.",
+    inputSchema: obj({ rail: { type: "string", pattern: "^[a-z_]{2,40}$", description: "Only this rail, a word like airwallex_transfer or metal", examples: ["airwallex_transfer"] }, currency: { type: "string", pattern: "^[A-Z]{3,4}$", description: "Only this currency, as its code", examples: ["EUR"] }, from: dayProp("Only movements on or after this day", "2026-11-01"), to: dayProp("Only movements on or before this day"), limit: limitProp, cursor: cursorProp() }),
     outputSchema: PAGE,
-    args: z.object({ rail: z.string().max(40).optional(), currency: z.string().regex(/^[A-Z]{3,5}$/).optional(), from: DAY.optional(), to: DAY.optional(), limit: LIMIT.optional(), cursor: z.string().max(200).optional() }).strict(),
+    args: z.object({ rail: z.string().regex(/^[a-z_]{2,40}$/, "a rail word like airwallex_transfer or metal").optional(), currency: z.string().regex(/^[A-Z]{3,4}$/, "a currency code like EUR").optional(), from: DAY.optional(), to: DAY.optional(), limit: LIMIT.optional(), cursor: z.string().max(200).optional() }).strict(),
     readOnly: true,
     run: async (c, a) => {
       const page = await listTransactions(c.db, params({ ...a, limit: a.limit ?? 10 })) as { items: Tx[]; next_cursor: string | null };
@@ -206,10 +251,10 @@ const READ_TOOLS: Tool[] = [
   {
     name: "books_report",
     title: "The books",
-    description: "A report computed from the ledger: pnl (profit and loss), balance (balance sheet), trial (trial balance), vat (a quarter's VAT, e.g. quarter 2026Q4; the current quarter when left out), payables or receivables.",
-    inputSchema: obj({ report: { type: "string", enum: ["pnl", "balance", "trial", "vat", "payables", "receivables"] }, quarter: { type: "string", pattern: "^\\d{4}Q[1-4]$", description: "For vat: the quarter, like 2026Q4" } }, ["report"]),
-    outputSchema: shape({ report: { type: "string", enum: ["pnl", "balance", "trial", "vat", "payables", "receivables"] } }),
-    args: z.object({ report: z.enum(["pnl", "balance", "trial", "vat", "payables", "receivables"]), quarter: z.string().regex(/^\d{4}Q[1-4]$/).optional() }).strict(),
+    description: "A report computed from the ledger: pnl (profit and loss, this year to date), balance (balance sheet), trial (trial balance), vat (a quarter's VAT; the current quarter when quarter is left out), payables or receivables (open items, aged). Read only.",
+    inputSchema: obj({ report: { type: "string", enum: [...REPORTS], description: "Which report: pnl, balance, trial, vat, payables or receivables", examples: ["pnl"] }, quarter: quarterProp("For vat only: the quarter, like 2026Q4 (default: the current one)") }, ["report"]),
+    outputSchema: shape({ report: { type: "string", enum: [...REPORTS] } }),
+    args: z.object({ report: z.enum(REPORTS), quarter: z.string().regex(/^\d{4}Q[1-4]$/, "a quarter like 2026Q4").optional() }).strict(),
     readOnly: true,
     run: async (c, a) => {
       // The demo company's books end on its own last day, as its overview does.
@@ -223,8 +268,8 @@ const READ_TOOLS: Tool[] = [
   {
     name: "agent_decisions",
     title: "What the agents decided",
-    description: "The newest decisions in the company's audit trail, in words, newest first: who decided (an agent, the CFO, or Purser's code), what, and when. A decision code made when no model answered says so; it is never called Claude's.",
-    inputSchema: obj({ limit: { ...limitProp, description: "How many entries at most (default 20, short enough for a phone)" } }),
+    description: "The newest decisions in the company's audit trail, in words, newest first: who decided (an agent, the CFO, or Purser's code), what, and when, with how many the agents made in all. A decision code made when no model answered says so; it is never called Claude's. Read only.",
+    inputSchema: obj({ limit: { ...limitProp, description: "How many entries at most, 1 to 100 (default 20, short enough for a phone)", examples: [20] } }),
     outputSchema: shape({ agent_decisions: I, by_fallback: I, entries_total: I, items: arr(shape({ at: S, who: S, text: S, by: S })) }),
     args: z.object({ limit: LIMIT.optional() }).strict(),
     readOnly: true,
@@ -240,7 +285,7 @@ const READ_TOOLS: Tool[] = [
   {
     name: "what_needs_attention",
     title: "What needs attention",
-    description: "Payables at a glance: what is open, due within 7 and 30 days, overdue, waiting for the CFO or a new supplier, blocked, and spend per supplier.",
+    description: "Payables at a glance, per currency in cents: what is open, due within 7 and 30 days, overdue, how many invoices wait for the CFO, a new supplier's check or a person, and what is blocked and why. Takes no arguments. Read only.",
     inputSchema: obj({}),
     outputSchema: shape({ as_of: S, open_cents: { type: "object" }, due_7_days_cents: { type: "object" }, due_30_days_cents: { type: "object" }, overdue_cents: { type: "object" }, waiting: shape({ for_cfo: I, for_supplier_check: I, for_a_person: I }), blocked_by_reason: { type: "object" } }),
     args: z.object({}).strict(),
@@ -259,8 +304,8 @@ const READ_TOOLS: Tool[] = [
   {
     name: "cash_position",
     title: "Cash and its projection",
-    description: "Net cash in the main currency (money in minus money out on every rail, fees included, since the first movement Purser recorded; not a bank balance), the last 30 days' net flow, and a week-by-week projection from the books' open receivables and payables by due day. A projection from due days, not a forecast model.",
-    inputSchema: obj({ weeks: { type: "integer", minimum: 1, maximum: 13, description: "How many weeks to project (default 4)" } }),
+    description: "Net cash in the main currency (money in minus money out on every rail, fees included, since the first movement Purser recorded; not a bank balance), the last 30 days' net flow, and a week-by-week projection from the books' open receivables and payables by due day. A projection from due days, not a forecast model. Read only.",
+    inputSchema: obj({ weeks: { type: "integer", minimum: 1, maximum: 13, description: "How many weeks to project, 1 to 13 (default 4)", examples: [4] } }),
     outputSchema: shape({ currency: S, as_of: S, net_cash: S, money_in: S, money_out: S, net_flow_last_30_days: S, open: shape({ receivables: S, payables: S }), projection: arr(shape({ week_from: S, week_to: S, expected_in: S, due_out: S, net: S, projected_net_cash: S })), basis: S }),
     args: z.object({ weeks: z.number().int().min(1).max(13).optional() }).strict(),
     readOnly: true,
@@ -277,7 +322,7 @@ const READ_TOOLS: Tool[] = [
   {
     name: "pending_approvals",
     title: "What waits for the CFO's approval",
-    description: "Read only: the invoices filed for the CFO's Face ID and every other proposal with no decision yet (a new supplier, a card limit, a policy change), each with a link to approve it in Purser Cloud. You cannot approve: only the CFO can, with Face ID, in Purser Cloud.",
+    description: "Read only: the invoices filed for the CFO's Face ID and every other proposal with no decision yet (a new supplier, a card limit, a policy change), each with a link to approve it in Purser Cloud. You cannot approve: only the CFO can, with Face ID, in Purser Cloud. Takes no arguments.",
     inputSchema: obj({}),
     outputSchema: shape({ invoices: arr(shape({ id: S, vendor: S, currency: S, total: S, due_date: S, approve_in: S })), proposals: arr(shape({ id: S, kind: S, filed_at: S, approve_in: S })), how_to_approve: S }),
     args: z.object({}).strict(),
@@ -294,7 +339,7 @@ const READ_TOOLS: Tool[] = [
   {
     name: "cfo_policy",
     title: "The CFO's policy, in plain words",
-    description: "The rules Purser holds every payment to, in plain words, and what the company's records say the CFO set: the policy version in force, each agent's card limits, the treasury settings and how many proposals were approved, rejected or expired.",
+    description: "The rules Purser holds every payment to, in plain words, and what the company's records say the CFO set: the policy version in force, each agent's card limits, the treasury settings and how many proposals were approved, rejected or expired. Takes no arguments. Read only: no tool changes the policy or a limit.",
     inputSchema: obj({}),
     outputSchema: shape({ rules: arr(S), rules_source: S, policy_version: { anyOf: [{ type: "object" }, { type: "null" }] }, agent_cards: arr(shape({ agent: S, name: S, currency: S, per_purchase: S, per_month: S })), settings: arr(shape({ setting: S, value: S, at: S })), decisions: shape({ approved: I, rejected: I, expired: I }) }),
     args: z.object({}).strict(),
@@ -313,8 +358,8 @@ const READ_TOOLS: Tool[] = [
   {
     name: "spend_breakdown",
     title: "Spend by agent or supplier",
-    description: "Money that moved out, grouped by agent (each agent's own card; supplier invoices the CFO approved as one line) or by supplier, per currency, fees included, with declined charges counted. Optionally between two days.",
-    inputSchema: obj({ by: { type: "string", enum: ["agent", "supplier"], description: "Group by agent or by supplier (default agent)" }, from: dayProp("From this day"), to: dayProp("Up to this day") }),
+    description: "Money that moved out, grouped by agent (each agent's own card; supplier invoices the CFO approved as one line) or by supplier, per currency, fees included, with declined charges counted. Optionally between two days. Read only.",
+    inputSchema: obj({ by: { type: "string", enum: ["agent", "supplier"], description: "Group by agent or by supplier (default agent)", examples: ["supplier"] }, from: dayProp("Only money out on or after this day", "2026-11-01"), to: dayProp("Only money out on or before this day") }),
     outputSchema: shape({ by: S, items: arr(shape({ key: S, label: S, currency: S, amount: S, count: I, declined: I })), totals: { type: "object" }, basis: S }),
     args: z.object({ by: z.enum(["agent", "supplier"]).optional(), from: DAY.optional(), to: DAY.optional() }).strict(),
     readOnly: true,
@@ -328,8 +373,8 @@ const READ_TOOLS: Tool[] = [
   {
     name: "vat_summary",
     title: "VAT summary",
-    description: "A quarter's VAT from the ledger, as the Dutch return's rubrics: owed (5a), input VAT (5b) and the balance (5c), foreign VAT kept outside the return, and lines without a VAT code. An overview, not a filing. The current quarter when none is given.",
-    inputSchema: obj({ quarter: { type: "string", pattern: "^\\d{4}Q[1-4]$", description: "The quarter, like 2026Q4 (default: the current one)" } }),
+    description: "A quarter's VAT from the ledger, as the Dutch return's rubrics: owed (5a), input VAT (5b) and the balance (5c), foreign VAT kept outside the return, and lines without a VAT code. An overview, not a filing. The current quarter when none is given. Read only.",
+    inputSchema: obj({ quarter: quarterProp("The quarter, like 2026Q4 (default: the current one)") }),
     outputSchema: shape({ quarter: S, owed_5a_cents: I, input_5b_cents: I, balance_5c_cents: I, uncoded_lines: I }),
     args: z.object({ quarter: z.string().regex(/^\d{4}Q[1-4]$/, "a quarter like 2026Q4").optional() }).strict(),
     readOnly: true,
@@ -343,14 +388,14 @@ const READ_TOOLS: Tool[] = [
   {
     name: "payment_audit_trail",
     title: "A payment's audit trail",
-    description: "Every recorded step of one payment, in order: the invoice received and checked, the proposal filed, the CFO's Face ID approval (or the agent's card limit that allowed it), the transfer at the bank, the booking in the ledger. Find it by the payment's id, its invoice's id (AP-0004) or its proposal's id (P-0003). list_transactions shows payment ids.",
-    inputSchema: obj({ id: { type: "string", description: "A payment id (from list_transactions), an invoice id like AP-0004, or a proposal id like P-0003" } }, ["id"]),
+    description: "Every recorded step of one payment, in order: the invoice received and checked, the proposal filed, the CFO's Face ID approval (or the agent's card limit that allowed it), the transfer at the bank, the booking in the ledger. Find it by the payment's id, its invoice's id (AP-0004) or its proposal's id (P-0003). list_transactions shows payment ids; an unpaid invoice has no trail yet. Read only.",
+    inputSchema: obj({ id: idProp("A payment id (from list_transactions), an invoice id like AP-0004, or a proposal id like P-0003", ["AP-0004", "P-0003"]) }, ["id"]),
     outputSchema: shape({ payment: shape({ id: S, at: S, amount: S, currency: S, counterparty: S }), approval: { type: "object" }, steps: arr(shape({ seq: I, at: S, who: S, event: S, text: S, row_hash: S })), books: arr(shape({ entry_id: I, posting_date: S, entry_hash: S })) }),
     args: z.object({ id: ID }).strict(),
     readOnly: true,
     run: async (c, a) => {
       const t = await findPayment(c.db, a.id as string);
-      if (!t) return refuse(`No payment in ${c.company}'s books is ${String(a.id)}, or paid that invoice or proposal. list_transactions shows the payment ids; an unpaid invoice has no trail yet.`);
+      if (!t) return refuse("not_found", `No payment in ${c.company}'s books is ${String(a.id)}, or paid that invoice or proposal. list_transactions shows the payment ids; an unpaid invoice has no trail yet.`, { next_tool: "list_transactions" });
       const trail = await auditTrail(c.db, t) as { steps: { at: string; who: string; text: string }[]; books: { entry_id: number; posting_date: string }[] };
       return answer(`${plural(trail.steps.length, "recorded step")} for ${t.counterparty}, ${eur(t.amount, t.currency)} on ${dayWords(t.at)}${c.demo ? " (demo data)" : ""}.`, trail as unknown as Json, [
         ...trail.steps.map((x) => `- ${dayWords(x.at)} · ${x.who}: ${x.text}`),
@@ -361,14 +406,14 @@ const READ_TOOLS: Tool[] = [
   {
     name: "explain_payment",
     title: "Explain this payment",
-    description: "One payment in plain words: who was paid (or paid the company), how much, why, who allowed it and how (the CFO's Face ID over the exact terms, or an agent within its card's limits), where it is booked and whether it reconciles. Find it by the payment's id, its invoice's id (AP-0004) or its proposal's id (P-0003).",
-    inputSchema: obj({ id: { type: "string", description: "A payment id (from list_transactions), an invoice id like AP-0004, or a proposal id like P-0003" } }, ["id"]),
+    description: "One payment in plain words: who was paid (or paid the company), how much, why, who allowed it and how (the CFO's Face ID over the exact terms, or an agent within its card's limits), where it is booked and whether it reconciles. Find it by the payment's id, its invoice's id (AP-0004) or its proposal's id (P-0003). Read only.",
+    inputSchema: obj({ id: idProp("A payment id (from list_transactions), an invoice id like AP-0004, or a proposal id like P-0003", ["P-0008", "AP-0004"]) }, ["id"]),
     outputSchema: shape({ payment: { type: "object" }, explanation: shape({ what: S, allowed_by: S, booked: S, reconciliation: S }), approval: { type: "object" }, steps: arr(), books: arr() }),
     args: z.object({ id: ID }).strict(),
     readOnly: true,
     run: async (c, a) => {
       const t = await findPayment(c.db, a.id as string);
-      if (!t) return refuse(`No payment in ${c.company}'s books is ${String(a.id)}, or paid that invoice or proposal. list_transactions shows the payment ids.`);
+      if (!t) return refuse("not_found", `No payment in ${c.company}'s books is ${String(a.id)}, or paid that invoice or proposal. list_transactions shows the payment ids.`, { next_tool: "list_transactions" });
       const e = explain(t, await auditTrail(c.db, t));
       return answer(e.sentence + (c.demo ? " Demo data, no real money." : ""), e.data, e.lines, [RES.payment(t.id, `${t.counterparty} ${eur(t.amount, t.currency)}`), ...(t.invoice?.ap_id ? [RES.invoice(t.invoice.ap_id)] : [])]);
     },
@@ -384,18 +429,18 @@ const PROPOSE_TOOLS: Tool[] = [
   {
     name: "propose_invoice_payment",
     title: "Propose an invoice's payment",
-    description: "File a supplier invoice's payment for the CFO's approval. Nothing is paid: the CFO approves the exact terms with Face ID in Purser Cloud, or it expires. Purser refuses an invoice that is held, already waiting or paid, and says why. You cannot approve.",
-    inputSchema: obj({ invoice_id: { type: "string", description: "The invoice's id, like AP-0004 (list_invoices shows them)" } }, ["invoice_id"]),
+    description: "File a supplier invoice's payment for the CFO's approval: the one tool that adds anything, and only a proposal. Nothing is paid: the CFO approves the exact terms with a passkey (Face ID) in Purser Cloud, or it expires. Purser refuses an invoice that is held, already waiting or paid, and says why. You cannot approve. Needs a token made to propose; never on the demo company.",
+    inputSchema: obj({ invoice_id: idProp("The invoice's id, like AP-0004 (list_invoices shows them)", ["AP-0004"]) }, ["invoice_id"]),
     outputSchema: shape({ proposal: shape({ id: S, kind: S, status: S, terms_sha256: S }), paid: { const: false }, next: S }),
     args: z.object({ invoice_id: ID }).strict(),
     readOnly: false,
     run: async (c, a) => {
-      if (c.demo) return refuse("The demo company is read only: nothing can be proposed in it.");
-      if (!c.engine) return refuse(NO_ENGINE);
+      if (c.demo) return refuse("demo_read_only", "The demo company is read only: nothing can be proposed in it.");
+      if (!c.engine) return refuse("runner_only", NO_ENGINE);
       const id = a.invoice_id as string;
-      if (!(await c.engine.invoice(id))) return refuse(`There is no invoice ${id} in ${c.company}'s Purser.`);
+      if (!(await c.engine.invoice(id))) return refuse("not_found", `There is no invoice ${id} in ${c.company}'s Purser.`, { next_tool: "list_invoices" });
       const out = await c.engine.propose(id);
-      if (!out.ok) return refuse(`Purser did not file ${id}: ${out.reason}. Nothing was proposed.`);
+      if (!out.ok) return refuse("refused", `Purser did not file ${id}: ${out.reason}. Nothing was proposed.`, { next: "Tell your user why; check where it stands with get_invoice or pending_approvals." });
       return answer(`Filed ${out.proposal.id} for the CFO. Nothing is paid until the CFO approves these exact terms with Face ID in Purser Cloud; tell your user so.`,
         { proposal: proposalOut(out.proposal), paid: false, next: "The CFO approves or lets it expire in Purser Cloud (Invoices). Call payment_proposal to see its status." },
         [...out.proposal.facts.map(([k, v]) => `- ${k}: ${v}`), ...out.proposal.warnings.map((w) => `Warning: ${w}`)]);
@@ -404,15 +449,15 @@ const PROPOSE_TOOLS: Tool[] = [
   {
     name: "payment_proposal",
     title: "A payment proposal's status",
-    description: "Where a payment proposal stands: waiting for the CFO, approved and paid, refused or expired, with the terms it is for.",
-    inputSchema: obj({ proposal_id: { type: "string", description: "The proposal's id, like P-0009" } }, ["proposal_id"]),
+    description: "Where a payment proposal stands: waiting for the CFO, approved and paid, refused or expired, with the terms it is for and their SHA-256 (the hash the CFO's passkey signs over). Needs a token made to propose. Read only.",
+    inputSchema: obj({ proposal_id: idProp("The proposal's id, like P-0009 (propose_invoice_payment gives it)", ["P-0009"]) }, ["proposal_id"]),
     outputSchema: shape({ proposal: shape({ id: S, kind: S, status: S, terms_sha256: S }) }),
     args: z.object({ proposal_id: ID }).strict(),
     readOnly: true,
     run: async (c, a) => {
-      if (!c.engine) return refuse(NO_ENGINE);
+      if (!c.engine) return refuse("runner_only", NO_ENGINE);
       const p = await c.engine.proposal(a.proposal_id as string);
-      return p ? answer(`${p.id}: ${p.status}.`, { proposal: proposalOut(p) }, p.facts.map(([k, v]) => `- ${k}: ${v}`)) : refuse(`There is no proposal ${String(a.proposal_id)}.`);
+      return p ? answer(`${p.id}: ${p.status}.`, { proposal: proposalOut(p) }, p.facts.map(([k, v]) => `- ${k}: ${v}`)) : refuse("not_found", `There is no proposal ${String(a.proposal_id)}.`, { next_tool: "pending_approvals" });
     },
   },
 ];
@@ -427,7 +472,7 @@ function instructions(c: McpCtx): string {
     ? "read the books and propose an invoice's payment for the CFO's approval"
     : "read the books";
   return [`You are connected to Purser for ${c.company}. You can ${can}.`,
-    "Start with company_overview or pending_approvals; explain_payment and payment_audit_trail take a payment, invoice (AP-…) or proposal (P-…) id; the books, invoices, payments and the CFO's policy are also resources (purser://).",
+    "Start with company_overview or pending_approvals (purser://connection says what this connection can do); explain_payment and payment_audit_trail take a payment, invoice (AP-…) or proposal (P-…) id; the books, invoices, payments and the CFO's policy are also resources (purser://).",
     "You cannot approve, pay, change a limit or write to the books: every payment needs the CFO's Face ID in Purser Cloud, and you must say so when a payment comes up.",
     c.demo ? "This is the demo company: made-up data from a simulated month, no real money. Say so when you show its figures." : "Amounts are the company's own records; quote them as they are."].join(" ");
 }
@@ -449,7 +494,13 @@ export const PROMPTS = [
 type Rpc = { jsonrpc?: unknown; id?: unknown; method?: unknown; params?: unknown };
 export interface McpOut { status: number; body: unknown }
 const META = "io.modelcontextprotocol/";
-const rpcError = (id: unknown, code: number, message: string, data?: Json) => ({ jsonrpc: "2.0", id: id ?? null, error: { code, message, ...(data ? { data } : {}) } });
+/** A JSON-RPC error; data always carries the stable string code (ERROR_CODES), and what else the client can act on. */
+const rpcError = (id: unknown, code: number, message: string, why: ErrorCode, data: Json = {}) => ({ jsonrpc: "2.0", id: id ?? null, error: { code, message, data: { code: why, ...data } } });
+
+/** A tool name that asks for what no MCP tool here can do, for any token: approve, pay, change a limit or write. */
+const NEVER_OVER_MCP = /^(approve|authori[sz]e|confirm|reject|cancel|pay|make|execute|send|transfer|refund|sign|release|freeze|unfreeze|raise|set|change|update|edit|write|create|add|insert|delete|remove|post|book)(_|$)|(^|_)(approve|approval|pay|payout|sign|limit)(_|$)/i;
+/** What the server says to such a call: the safety model, and the one thing an AI can do instead. */
+export const NEVER_SENTENCE = "Purser's MCP server never approves, pays, changes a limit or writes to the books, for any token: every payment needs the CFO's passkey (Face ID) over its exact terms in Purser Cloud. To get an invoice paid, a token made to propose can file it with propose_invoice_payment; then tell your user the CFO approves it.";
 /** MCP's own error codes (2026-07-28, schema.ts): the reserved -32020 to -32099 range. */
 export const HEADER_MISMATCH = -32020, UNSUPPORTED_PROTOCOL_VERSION = -32022;
 
@@ -486,66 +537,71 @@ const cache = (ms: number) => ({ ttlMs: ms, cacheScope: "private" as const });
 
 async function call(c: McpCtx, m: Rpc & { id: string | number; method: string }, p: Json, isModern: boolean): Promise<{ status?: number; body: Json }> {
   const ok = (result: Json, cacheMs?: number) => ({ body: { jsonrpc: "2.0", id: m.id, result: isModern ? { resultType: "complete", ...result, ...(cacheMs !== undefined ? cache(cacheMs) : {}), _meta: { [`${META}serverInfo`]: identity(c) } } : result } });
-  const bad = (code: number, message: string, data?: Json) => ({ body: rpcError(m.id, code, message, data) });
-  const rctx = { db: c.db, now: c.now, demo: c.demo, origin: c.origin ?? "", company: c.company };
+  const bad = (code: number, message: string, why: ErrorCode, data?: Json) => ({ body: rpcError(m.id, code, message, why, data) });
+  const rctx = { db: c.db, now: c.now, demo: c.demo, origin: c.origin ?? "", company: c.company, canPropose: c.caller.purpose === "claude-propose" };
   switch (m.method) {
     case "server/discover":
       return ok({ supportedVersions: [...PROTOCOL_VERSIONS], capabilities, instructions: instructions(c), ...(isModern ? {} : { serverInfo: identity(c) }) }, 60_000);
     case "ping": return ok({});
     case "tools/list": {
       const pg = page(toolsFor(c.caller), p.cursor, PAGE_SIZE.tools);
-      if (!pg) return bad(-32602, "invalid cursor: pass the nextCursor of the previous page, or none for the first");
+      if (!pg) return bad(-32602, "invalid cursor: pass the nextCursor of the previous page, or none for the first", "invalid_cursor");
       return ok({ tools: pg.items.map((t) => ({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, outputSchema: t.outputSchema,
         ...(c.origin ? { icons: iconsAt(c.origin) } : {}),
-        annotations: { title: t.title, readOnlyHint: t.readOnly, destructiveHint: false, idempotentHint: t.readOnly, openWorldHint: false } })), ...(pg.nextCursor ? { nextCursor: pg.nextCursor } : {}) }, 300_000);
+        annotations: annotationsOf(t) })), ...(pg.nextCursor ? { nextCursor: pg.nextCursor } : {}) }, 300_000);
     }
     case "tools/call": {
-      if (typeof p.name !== "string") return bad(-32602, "tools/call needs params.name, a tool's name from tools/list");
+      if (typeof p.name !== "string") return bad(-32602, "tools/call needs params.name, a tool's name from tools/list", "missing_argument");
       const tool = toolsFor(c.caller).find((t) => t.name === p.name);
-      if (!tool) return bad(-32602, `no tool ${p.name}${PROPOSE_TOOLS.some((t) => t.name === p.name) ? ": this token reads only; a token made to propose files payments (never approves them)" : "; tools/list shows the tools this token has"}`);
+      if (!tool) {
+        const name = p.name.slice(0, 80);
+        if (PROPOSE_TOOLS.some((t) => t.name === name)) return bad(-32602, `no tool ${name}: this token reads only; a token made to propose files payments (never approves them)`, "needs_propose_token", { tool: name });
+        if (NEVER_OVER_MCP.test(name)) return bad(-32602, `no tool ${name}; tools/list shows the tools this token has. ${NEVER_SENTENCE}`, "not_available_over_mcp", { tool: name });
+        return bad(-32602, `no tool ${name}; tools/list shows the tools this token has`, "unknown_tool", { tool: name });
+      }
       const args = tool.args.safeParse(p.arguments ?? {});
-      if (!args.success) return ok(wire(refuse(`The arguments do not fit ${tool.name}: ${args.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "arguments"}: ${i.message}`).join("; ")}. Fix them and call again.`), c.version));
+      if (!args.success) return ok(wire(refuse("invalid_arguments", `The arguments do not fit ${tool.name}: ${args.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "arguments"}: ${i.message}`).join("; ")}. Fix them and call again.`, { next: "Fix the arguments as the tool's inputSchema says and call again." }), c.version));
       try {
         return ok(wire(await tool.run(c, args.data), c.version));
       } catch (e) {
-        if (e instanceof BadRequest) return ok(wire(refuse(`${tool.name} could not answer: ${e.message}.`), c.version));
+        if (e instanceof BadRequest) return ok(wire(refuse("could_not_answer", `${tool.name} could not answer: ${e.message}.`), c.version));
         throw e;
       }
     }
     case "prompts/list": {
       const pg = page(PROMPTS, p.cursor, PAGE_SIZE.prompts);
-      if (!pg) return bad(-32602, "invalid cursor: pass the nextCursor of the previous page, or none for the first");
+      if (!pg) return bad(-32602, "invalid cursor: pass the nextCursor of the previous page, or none for the first", "invalid_cursor");
       return ok({ prompts: pg.items.map((x) => ({ name: x.name, title: x.title, description: x.description, ...(c.origin ? { icons: iconsAt(c.origin) } : {}), ...(x.arguments.length ? { arguments: x.arguments } : {}) })), ...(pg.nextCursor ? { nextCursor: pg.nextCursor } : {}) }, 300_000);
     }
     case "prompts/get": {
       const x = PROMPTS.find((y) => y.name === p.name);
-      if (!x) return bad(-32602, `no prompt ${String(p.name)}; prompts/list shows them`);
+      if (!x) return bad(-32602, `no prompt ${String(p.name).slice(0, 80)}; prompts/list shows them`, "unknown_prompt");
       const args = (p.arguments && typeof p.arguments === "object" ? p.arguments : {}) as Record<string, unknown>;
-      for (const a of x.arguments) if (a.required && !(typeof args[a.name] === "string" && /^[A-Za-z0-9_.:-]{1,120}$/.test(args[a.name] as string))) return bad(-32602, `the prompt ${x.name} needs ${a.name}: ${a.description}`);
+      for (const a of x.arguments) if (a.required && !(typeof args[a.name] === "string" && /^[A-Za-z0-9_.:-]{1,120}$/.test(args[a.name] as string))) return bad(-32602, `the prompt ${x.name} needs ${a.name}: ${a.description}`, "missing_argument", { argument: a.name });
       return ok({ description: x.description, messages: [{ role: "user", content: { type: "text", text: x.text(args as Record<string, string>) } }] });
     }
     case "resources/list": {
       const pg = page(await listResources(rctx), p.cursor, PAGE_SIZE.resources);
-      if (!pg) return bad(-32602, "invalid cursor: pass the nextCursor of the previous page, or none for the first");
+      if (!pg) return bad(-32602, "invalid cursor: pass the nextCursor of the previous page, or none for the first", "invalid_cursor");
       return ok({ resources: pg.items.map((r) => ({ ...r, ...(c.origin ? { icons: iconsAt(c.origin) } : {}) })), ...(pg.nextCursor ? { nextCursor: pg.nextCursor } : {}) }, 60_000);
     }
     case "resources/templates/list": {
       const pg = page(RESOURCE_TEMPLATES, p.cursor, PAGE_SIZE.templates);
-      if (!pg) return bad(-32602, "invalid cursor: pass the nextCursor of the previous page, or none for the first");
+      if (!pg) return bad(-32602, "invalid cursor: pass the nextCursor of the previous page, or none for the first", "invalid_cursor");
       return ok({ resourceTemplates: pg.items, ...(pg.nextCursor ? { nextCursor: pg.nextCursor } : {}) }, 300_000);
     }
     case "resources/read": {
-      if (typeof p.uri !== "string" || p.uri.length > 300) return bad(-32602, "resources/read needs params.uri, a purser:// URI from resources/list");
+      if (typeof p.uri !== "string" || p.uri.length > 300) return bad(-32602, "resources/read needs params.uri, a purser:// URI from resources/list", "missing_argument");
       try {
         return ok({ contents: [await readResource(rctx, p.uri)] }, 60_000);
       } catch (e) {
         // Resource not found: -32602 since 2026-07-28, -32002 before it.
-        if (e instanceof NoResource) return bad(isModern ? -32602 : -32002, `Resource not found: ${e.message}`, { uri: p.uri });
+        if (e instanceof NoResource) return bad(isModern ? -32602 : -32002, `Resource not found: ${e.message}`, "resource_not_found", { uri: p.uri });
         throw e;
       }
     }
     default:
-      return { status: isModern ? 404 : undefined, body: rpcError(m.id, -32601, `no method ${m.method}; this server answers server/discover, tools/*, prompts/* and resources/*${isModern ? "" : ", initialize and ping"}`) };
+      return { status: isModern ? 404 : undefined, body: rpcError(m.id, -32601, `no method ${m.method.slice(0, 80)}; this server answers server/discover, tools/*, prompts/* and resources/*${isModern ? "" : ", initialize and ping"}`, "unknown_method") };
   }
 }
 
@@ -562,13 +618,13 @@ async function modernOne(c: McpCtx, m: Rpc, headers: Headers): Promise<McpOut> {
   const p = (m.params && typeof m.params === "object" ? m.params : {}) as Json;
   const meta = (p._meta && typeof p._meta === "object" ? p._meta : {}) as Json;
   const id = typeof m.id === "string" || typeof m.id === "number" ? m.id : null;
-  const mismatch = (message: string) => ({ status: 400, body: rpcError(id, HEADER_MISMATCH, `Header mismatch: ${message}`) });
+  const mismatch = (message: string) => ({ status: 400, body: rpcError(id, HEADER_MISMATCH, `Header mismatch: ${message}`, "header_mismatch") });
   const bodyVersion = meta[`${META}protocolVersion`], headerVersion = headers.get("mcp-protocol-version");
   if (typeof bodyVersion !== "string") return mismatch(`the MCP-Protocol-Version header says ${headerVersion ?? "nothing"}, but params._meta["${META}protocolVersion"] is missing`);
   if (headerVersion === null) return mismatch("the MCP-Protocol-Version header is required");
   if (headerVersion !== bodyVersion) return mismatch(`MCP-Protocol-Version header '${headerVersion}' does not match the body's '${bodyVersion}'`);
-  if (!modern(bodyVersion)) return { status: 400, body: rpcError(id, UNSUPPORTED_PROTOCOL_VERSION, `Unsupported protocol version ${bodyVersion}: this server speaks ${MODERN_VERSIONS.join(", ")} per request, and ${LEGACY_VERSIONS.join(", ")} after initialize`, { supported: [...PROTOCOL_VERSIONS], requested: bodyVersion }) };
-  if (typeof m.method !== "string") return { status: 400, body: rpcError(id, -32600, "not a JSON-RPC request: method is missing") };
+  if (!modern(bodyVersion)) return { status: 400, body: rpcError(id, UNSUPPORTED_PROTOCOL_VERSION, `Unsupported protocol version ${bodyVersion}: this server speaks ${MODERN_VERSIONS.join(", ")} per request, and ${LEGACY_VERSIONS.join(", ")} after initialize`, "unsupported_protocol_version", { supported: [...PROTOCOL_VERSIONS], requested: bodyVersion }) };
+  if (typeof m.method !== "string") return { status: 400, body: rpcError(id, -32600, "not a JSON-RPC request: method is missing", "invalid_request") };
   const method = headers.get("mcp-method");
   if (method === null) return mismatch("the Mcp-Method header is required");
   if (method !== m.method) return mismatch(`Mcp-Method header '${method}' does not match body value '${m.method}'`);
@@ -586,7 +642,7 @@ async function modernOne(c: McpCtx, m: Rpc, headers: Headers): Promise<McpOut> {
 async function legacyOne(c: McpCtx, m: Rpc, headerVersion: string | null): Promise<Json | null> {
   const isRequest = typeof m.method === "string" && (typeof m.id === "string" || typeof m.id === "number");
   if (typeof m.method === "string" && m.id === undefined) return null; // a notification: taken, no answer
-  if (!isRequest) return m.method === undefined && ("result" in m || "error" in m) ? null : rpcError(m.id, -32600, "not a JSON-RPC request");
+  if (!isRequest) return m.method === undefined && ("result" in m || "error" in m) ? null : rpcError(m.id, -32600, "not a JSON-RPC request", "invalid_request");
   const p = (m.params && typeof m.params === "object" ? m.params : {}) as Json;
   if (m.method === "initialize") {
     const asked = typeof p.protocolVersion === "string" ? p.protocolVersion : "";
@@ -604,17 +660,17 @@ async function legacyOne(c: McpCtx, m: Rpc, headerVersion: string | null): Promi
  */
 export async function mcpAnswer(c: McpCtx, text: string, headers: Headers = new Headers()): Promise<McpOut> {
   let parsed: unknown;
-  try { parsed = JSON.parse(text); } catch { return { status: 400, body: rpcError(null, -32700, "Parse error: the body is not JSON") }; }
+  try { parsed = JSON.parse(text); } catch { return { status: 400, body: rpcError(null, -32700, "Parse error: the body is not JSON", "parse_error") }; }
   const headerVersion = headers.get("mcp-protocol-version");
   const batch = Array.isArray(parsed);
   const msgs = (batch ? parsed : [parsed]) as Rpc[];
-  if (!msgs.length || msgs.length > 20 || msgs.some((x) => !x || typeof x !== "object")) return { status: 400, body: rpcError(null, -32600, "Invalid request: one JSON-RPC message, or (before 2025-06-18) a batch of 1 to 20") };
+  if (!msgs.length || msgs.length > 20 || msgs.some((x) => !x || typeof x !== "object")) return { status: 400, body: rpcError(null, -32600, "Invalid request: one JSON-RPC message, or (before 2025-06-18) a batch of 1 to 20", "invalid_request") };
   const metaVersion = (x: Rpc) => { const pm = (x.params as Json | undefined)?._meta as Json | undefined; return pm && typeof pm === "object" ? pm[`${META}protocolVersion`] : undefined; };
   const isModern = !batch && msgs[0]!.method !== "initialize" && (metaVersion(msgs[0]!) !== undefined || modern(headerVersion ?? undefined));
   if (isModern) return modernOne(c, msgs[0]!, headers);
-  if (batch && msgs.some((x) => metaVersion(x) !== undefined)) return { status: 400, body: rpcError(null, -32600, "Invalid request: a batch is not part of protocol 2026-07-28; send one request per POST") };
+  if (batch && msgs.some((x) => metaVersion(x) !== undefined)) return { status: 400, body: rpcError(null, -32600, "Invalid request: a batch is not part of protocol 2026-07-28; send one request per POST", "invalid_request") };
   if (headerVersion !== null && !(LEGACY_VERSIONS as readonly string[]).includes(headerVersion)) {
-    return { status: 400, body: rpcError(null, UNSUPPORTED_PROTOCOL_VERSION, `Unsupported protocol version ${headerVersion}`, { supported: [...PROTOCOL_VERSIONS], requested: headerVersion }) };
+    return { status: 400, body: rpcError(null, UNSUPPORTED_PROTOCOL_VERSION, `Unsupported protocol version ${headerVersion}`, "unsupported_protocol_version", { supported: [...PROTOCOL_VERSIONS], requested: headerVersion }) };
   }
   const out: Json[] = [];
   for (const m of msgs) { const r = await legacyOne(c, m, headerVersion); if (r) out.push(r); }

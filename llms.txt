@@ -177,7 +177,7 @@ The public /try, timed:
 - src/airwallex/bills.ts, src/ap/billSync.ts: paid invoices as bills in Airwallex Spend
 - src/claude/reader.ts: Claude reading an invoice, each call logged with its model, cost and Anthropic's request id
 - src/redesign/evidenceWallData.ts, docs/evidence/evidence-wall.json: the evidence wall, computed from the records (npm run evidence:wall)
-- Connect any AI: Purser Cloud is a remote MCP server at https://purser-try.max-31b.workers.dev/mcp; the demo company's public, read-only token is purser-demo-read-only. Your AI reads and can propose a payment; it can never approve or pay: docs/connect-claude.md
+- Connect any AI: Purser Cloud is a remote MCP server at https://purser-try.max-31b.workers.dev/mcp; the demo company's public, read-only token is purser-demo-read-only. Your AI reads and can propose a payment; it can never approve or pay: docs/connect-claude.md; every tool, its annotations, the error codes and the safety model: docs/mcp.md
 
 After the hackathon, the roadmap to real customer money (nothing on it is built yet): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/roadmap-v2.md
 
