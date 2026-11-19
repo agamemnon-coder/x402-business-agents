@@ -6,11 +6,11 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ADV_ARMS, advLine, type AdvRow } from "../src/evals/adversarialV2.js";
+import { ADV_ARMS, adversarialV2, advLine, type AdvRow } from "../src/evals/adversarialV2.js";
 import { ADV_V2_CASES, ADV_V2_CATEGORIES, printed, readingOf, sumsOf, type AdvCase } from "../src/evals/adversarialV2Cases.js";
 import { ADV_V3_CASES } from "../src/evals/adversarialV3Cases.js";
 import { ADV_V4_CASES } from "../src/evals/adversarialV4Cases.js";
-import { V5_ON_FILE } from "../src/evals/adversarialV5.js";
+import { V5_ON_FILE, V5_WORLD } from "../src/evals/adversarialV5.js";
 import { ADV_V5_CASES } from "../src/evals/adversarialV5Cases.js";
 import { ibanValid } from "../src/ap/reading.js";
 
@@ -64,6 +64,16 @@ describe("the v5 run", () => {
   // 19 Nov, after v5's record: its misses led to fixes in the shared rules (non-Latin supplier names, orders in other
   // languages: test/i18n-names-and-screens.test.ts), so v5 is no longer held out. Its first run stays as recorded, never
   // written again; the run on the fixed code is reported apart, beside the held-out set that followed, v6.
+  it("the committed after-fix record is what a fresh run adds up to, no longer held out (npm run eval:adversarial-v5)", async () => {
+    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v5-after.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string; before: string };
+    const r = await adversarialV2(ADV_V5_CASES, V5_WORLD);
+    expect(r.rows).toHaveLength(ADV_V5_CASES.length * ADV_ARMS.length);
+    expect(committed.totals).toEqual(r.totals);
+    expect(committed.rows).toEqual(r.rows);
+    expect(committed.line).toBe(advLine(r.totals, ""));
+    expect(committed).toMatchObject({ held_out: false, cases_commit: "9e8d59c1", before: "docs/evals/adversarial-v5.json" });
+  }, 60_000); // 200+ runs of the payables checks: over 5 s on a loaded CI runner
+
   it("keeps the held-out run before the fixes as it was recorded: 14 wrong payments, 19 false holds, on the cases of 9e8d59c1", () => {
     const before = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v5.json", import.meta.url), "utf8")) as { line: string; held_out: boolean; cases_commit: string; commit: string; rows: AdvRow[]; totals: Record<string, { wrong_payments: number; false_holds: number }> };
     expect(before).toMatchObject({ held_out: true, cases_commit: "9e8d59c1", commit: "47797178f391" });

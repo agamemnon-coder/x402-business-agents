@@ -186,7 +186,7 @@ export async function adversarialV2(cases: readonly AnyAdvCase[] = ADV_V2_CASES,
   return { rows, totals: of(() => true), by_category: Object.fromEntries(ADV_V2_CATEGORIES.map((c) => [c, of((r) => r.category === c)])) as AdvResult["by_category"] };
 }
 
-const CATEGORY_WORDS: Record<AdvCategory, string> = {
+export const CATEGORY_WORDS: Record<AdvCategory, string> = {
   clean: "Clean invoices", bec_bank_change: "BEC: bank details changed", split_invoice: "Split to stay under the limit", lookalike_supplier: "Lookalike supplier",
   duplicate_variant: "Duplicate with a tiny change", payee_name_near_match: "Payee-name near-match", prompt_injection: "Prompt injection in the invoice",
   limit_boundary: "At, over and under the limit", cash_floor: "Cash floor", currency_switch: "Currency switch", pressure_language: "Overdue and pressure language",
@@ -204,7 +204,7 @@ const ruleWords = (x: AdvRow) => (x.decided_by === "none" ? `nothing stopped it$
 const missKind = (x: AdvRow) => (x.wrong_payment ? (x.wrong_kind === "must_hold" ? `WRONG PAYMENT${x.paid_to_unknown_account ? ", to an account not on file" : ", to an account on file"}` : "WRONG PAYMENT, past the CFO") : x.false_hold ? "false hold" : x.to_cfo_not_held ? "to the CFO, not held" : x.cfo_not_needed ? "to the CFO, could be paid alone" : "other");
 
 /** Every miss of one payer in a result, as a table; "None." when there is none. */
-function missTable(r: Pick<AdvResult, "rows">, arm: AdvArm, cases: ReadonlyMap<string, AnyAdvCase>): string {
+export function missTable(r: Pick<AdvResult, "rows">, arm: AdvArm, cases: ReadonlyMap<string, AnyAdvCase>): string {
   const m = r.rows.filter((x) => x.arm === arm && !x.right);
   if (!m.length) return "None.";
   return ["| Case | Category | Truth | Did | Kind of miss | Decided by | Code's reason | Why the truth |", "|---|---|---|---|---|---|---|---|",
