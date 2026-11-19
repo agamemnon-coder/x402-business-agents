@@ -175,7 +175,10 @@ const MONEY = /^\d+\.\d{2}$/;
  */
 function ibansIn(text: string): string[] {
   const out: string[] = [];
-  const lines = text.toUpperCase().split("\n");
+  // 19 Nov (after eval v5): as a bank reads it, whatever the script around it: full-width letters and digits as plain
+  // ones (NFKC), the digits of other scripts (Arabic-Indic, Devanagari, Thai) as 0 to 9, invisible format characters
+  // (zero-width, direction marks) taken out, so "ＴＲ３３ ０００６ …" or an IBAN split by a zero-width space is still an IBAN.
+  const lines = plainDigits(text.normalize("NFKC").replace(/\p{Cf}/gu, "")).toUpperCase().split("\n");
   lines.forEach((line, i) => {
     const two = `${line} ${lines[i + 1] ?? ""}`;
     for (const m of line.matchAll(/\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{1,4}){2,8}/g)) {
@@ -192,6 +195,14 @@ function ibansIn(text: string): string[] {
   });
   return [...new Set(out)];
 }
+/** Where the ten digits of each script start that writes its own (Arabic-Indic, Persian, Devanagari and the other Indic scripts, Thai, Lao, Tibetan, Myanmar, Khmer, Mongolian). */
+const DIGIT_ZEROS = [0x0660, 0x06F0, 0x07C0, 0x0966, 0x09E6, 0x0A66, 0x0AE6, 0x0B66, 0x0BE6, 0x0C66, 0x0CE6, 0x0D66, 0x0DE6, 0x0E50, 0x0ED0, 0x0F20, 0x1040, 0x1090, 0x17E0, 0x1810, 0xFF10];
+/** The decimal digits of those scripts written as 0 to 9. */
+const plainDigits = (text: string) => text.replace(/\p{Nd}/gu, (d) => {
+  const cp = d.codePointAt(0)!;
+  const zero = DIGIT_ZEROS.find((z) => cp >= z && cp < z + 10);
+  return zero === undefined ? d : String(cp - zero);
+});
 /** Words that call an account old or closed, in the languages suppliers write in. */
 const OLD_ACCOUNT = /\b(OLD|FORMER|PREVIOUS|CLOSED|NO LONGER|DO NOT USE|ALTE[NRS]?|EHEMALIGE[NRS]?|BISHERIGE[NRS]?|GESCHLOSSEN|AUFGEL(Ö|OE)ST|NICHT MEHR|OUDE?|VORIGE|GESLOTEN|OPGEHEVEN|NIET MEER|ANCIEN(NE)?|FERM(É|E)|ANTIGU[OA]|CERRAD[OA]|VECCHIO|CHIUSO)\b/;
 const DAY_MS = 86_400_000;

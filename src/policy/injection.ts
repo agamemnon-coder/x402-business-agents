@@ -4,6 +4,7 @@
 // and only a person's passkey or typed hash approves.
 
 import { CONFUSABLES } from "./fraudCore.js";
+import { approvalClaimInAnyLanguage, instructionInAnyLanguage } from "./multilingual.js";
 
 export type InjectionKind = "hidden_characters" | "instruction" | "approval_claim";
 
@@ -107,6 +108,11 @@ const kindOf = (line: string): InjectionKind | null => {
     if (INSTRUCTION.some((re) => re.test(v))) return "instruction";
     if (APPROVAL_CLAIM.test(v) || APPROVED_ROMANCE.test(v)) return "approval_claim";
   }
+  // 19 Nov, after the held-out eval v5 (docs/evals/adversarial-v5.md: orders in Chinese, Japanese and Arabic were paid,
+  // because every list above is written in Latin letters with ASCII word boundaries): the same concepts in the other
+  // languages and scripts suppliers write in (src/policy/multilingual.ts).
+  if (instructionInAnyLanguage(line)) return "instruction";
+  if (approvalClaimInAnyLanguage(line)) return "approval_claim";
   return null;
 };
 
@@ -127,10 +133,24 @@ function screen(text: string, depth: number): InjectionFinding[] {
     if (b64 !== undefined) { out.push({ kind: "instruction", excerpt: show(`${line.replace(/[A-Za-z0-9+/]{16,}={0,2}/g, "").trim()} [base64: ${b64.slice(0, 120)}]`) }); continue; }
     const hex = hexTexts(line).find((t) => screen(t, depth + 1).length > 0);
     if (hex !== undefined) { out.push({ kind: "instruction", excerpt: show(`${line.replace(/\b[0-9A-Fa-f]{16,}\b/g, "").trim()} [hex: ${hex.slice(0, 120)}]`) }); continue; }
+    // 19 Nov (after eval v5): percent-encoding, which spells any language in ASCII ("%E5%BF%BD%E7%95%A5" is 忽略).
+    const pct = percentTexts(line).find((t) => screen(t, depth + 1).length > 0);
+    if (pct !== undefined) { out.push({ kind: "instruction", excerpt: show(`${line.replace(/(?:%[0-9A-Fa-f]{2}){4,}/g, "").trim()} [URL-encoded: ${pct.slice(0, 120)}]`) }); continue; }
     if (depth === 0 && /[A-Za-z]{3,}\s+[A-Za-z]{3,}/.test(line)) {
       const r13 = rot13(line);
       if (kindOf(r13)) out.push({ kind: "instruction", excerpt: show(`${line} [ROT13: ${r13.slice(0, 120)}]`) });
     }
+  }
+  return out;
+}
+
+/** The readable texts that runs of percent-encoded bytes (four or more) in a line decode to. */
+function percentTexts(line: string): string[] {
+  const out: string[] = [];
+  for (const m of line.matchAll(/(?:%[0-9A-Fa-f]{2}|[A-Za-z0-9 ._~+-])*(?:%[0-9A-Fa-f]{2}){4,}(?:%[0-9A-Fa-f]{2}|[A-Za-z0-9 ._~+-])*/g)) {
+    let text: string;
+    try { text = decodeURIComponent(m[0].replace(/\+/g, " ")); } catch { continue; }
+    if (readable(text)) out.push(text);
   }
   return out;
 }
@@ -154,11 +174,16 @@ function hexTexts(line: string): string[] {
   return out;
 }
 
-/** Printable text with words in it: what an encoding of an instruction decodes to, unlike an IBAN, a hash or a number. */
+/**
+ * Printable text with words in it: what an encoding of an instruction decodes to, unlike an IBAN, a hash or a number.
+ * 19 Nov (after eval v5): words are also four letters running on in a script written without spaces (Chinese,
+ * Japanese, Korean, Thai), so an encoded order in those languages is decoded and screened too.
+ */
 const readable = (text: string) => {
   const chars = [...text];
-  const printable = chars.filter((ch) => /[\p{L}\p{N}\p{P}\p{S}\p{Zs}]/u.test(ch)).length;
-  return printable / Math.max(1, chars.length) >= 0.9 && /\p{L}{2,}\s+\p{L}{2,}/u.test(text);
+  const printable = chars.filter((ch) => /[\p{L}\p{M}\p{N}\p{P}\p{S}\p{Zs}]/u.test(ch)).length;
+  return printable / Math.max(1, chars.length) >= 0.9
+    && (/\p{L}{2,}\s+\p{L}{2,}/u.test(text) || /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]{4,}/u.test(text));
 };
 
 /**
