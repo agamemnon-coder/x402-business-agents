@@ -2,7 +2,7 @@
 // each direction, with or without an invoice, an approval given or still missing, a booking or none, flags and proof;
 // and the CFO policy from the company's own rows: each agent's card as issued with a raise on top, settings, decisions.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cfoPolicy, explain } from "../cloud/src/claude/insight.js";
+import { auditTrail, cfoPolicy, explain } from "../cloud/src/claude/insight.js";
 import { TenantDb } from "../cloud/src/tenant.js";
 import { testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 
@@ -84,5 +84,34 @@ describe("the CFO policy from the company's rows", () => {
   it("a company with no rows has the fixed rules and nothing else", async () => {
     const p = await cfoPolicy(db) as { agent_cards: unknown[]; settings: unknown[]; policy_version: unknown; decisions: Record<string, number> };
     expect(p).toMatchObject({ agent_cards: [], settings: [], policy_version: null, decisions: { approved: 0, rejected: 0, expired: 0 } });
+  });
+
+  it("a payment's trail: each row that names it, the bank's words for its own steps, and its bookings", async () => {
+    await db.apply([
+      row("awx-executor", "transfer.created", "tr_1", { amount: "EUR 1850.00" }),
+      row("awx-executor", "transfer.fee", "tr_1", { fee: "EUR 13.41", fee_max: "EUR 20.00" }),
+      row("awx-executor", "transfer.fee", "tr_1", { fee: "EUR 13.41" }),
+      row("awx-executor", "transfer.status", "tr_1", { status: "PAID" }),
+      row("system", "proposal.executing", "P-0004", {}),
+      row("treasury", "ap.review_note", "inv_1", { by: "code", status: "ready_to_pay" }),
+      row("human", "ap.review_note", "inv_1", { status: "on_hold" }),
+      row("human", "something.else_happened", "P-0004", {}),
+      row("human", "unrelated.row", "P-9999", {}),
+    ]);
+    const tr = await auditTrail(db, tx({ booking: { entry_ids: [], accounts: [] } as never })) as { steps: { event: string; who: string; text: string }[]; books: unknown[]; payment: { status: string } };
+    const text = Object.fromEntries(tr.steps.map((s, i) => [`${i}:${s.event}`, s.text]));
+    expect(tr.steps.map((s) => s.event)).not.toContain("unrelated.row");
+    expect(text["0:transfer.created"]).toBe("Transfer tr_1 created at the bank");
+    expect(text["1:transfer.fee"]).toBe("The bank's fee: EUR 13.41 (at most EUR 20.00 was approved)");
+    expect(text["2:transfer.fee"]).toBe("The bank's fee: EUR 13.41");
+    expect(text["3:transfer.status"]).toBe("Transfer tr_1 is paid");
+    expect(text["4:proposal.executing"]).toBe("P-0004 being carried out");
+    expect(text["5:ap.review_note"]).toBe("Checked by Purser's code; status ready to pay");
+    expect(text["6:ap.review_note"]).toBe("Checked by a person; status on hold");
+    expect(text["7:something.else_happened"]).toBe("something else happened");
+    expect(tr.steps.find((s) => s.event === "transfer.status")!.who).toBe("Purser (Airwallex)");
+    expect(tr.steps.find((s) => s.event === "something.else_happened")!.who).toBe("The CFO");
+    expect(tr.books).toEqual([]);
+    expect(tr.payment.status).toBe("paid");
   });
 });
