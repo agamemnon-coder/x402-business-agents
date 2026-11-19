@@ -10,7 +10,8 @@ import { describe, expect, it } from "vitest";
 import { BROWSER_CALLS, pageFunctionsUsingHelpers } from "./support/pageFunctions.js";
 
 const ROOT = new URL("../", import.meta.url);
-const SENDS_CODE = new RegExp(`\\.(${BROWSER_CALLS.map((c) => c.replace(/\$/g, "\\$")).join("|")})\\(`);
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const SENDS_CODE = new RegExp(`\\.(${BROWSER_CALLS.map(escapeRegExp).join("|")})\\(`);
 
 /** Every TypeScript file under these folders that hands something to a browser call. */
 function browserDrivers(): string[] {
