@@ -90,13 +90,16 @@ describe("the run", () => {
   // 19 Nov: rules were added against v2's misses, so v2 is no longer held out. Its first run stays as recorded ("before
   // the fixes"); the run on today's code is its own record ("after"), and the case file never changed.
   it("the committed after-fix record is what a fresh run adds up to (npm run eval:adversarial-v2)", async () => {
-    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v2-after.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean };
+    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v2-rerun-2026-11-19.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; previous_after: string };
     const r = await adversarialV2();
     expect(r.rows).toHaveLength(ADV_V2_CASES.length * ADV_ARMS.length);
     expect(committed.totals).toEqual(r.totals);
     expect(committed.rows).toEqual(r.rows);
     expect(committed.line).toBe(advLine(r.totals, ""));
     expect(committed.held_out).toBe(false);
+    // 19 Nov, fourth round: the run on today's code is a dated re-run; the after-fix run before it is kept as recorded.
+    expect(committed.previous_after).toBe("docs/evals/adversarial-v2-after.json");
+    expect(JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v2-after.json", import.meta.url), "utf8")).held_out).toBe(false);
   }, 60_000); // 200 runs of the payables checks (two arms, 100 cases): over 5 s on a loaded CI runner
 
   it("keeps the held-out run before the fixes as it was recorded: 16 wrong payments, 2 false holds, on the cases of fe5fc388", () => {

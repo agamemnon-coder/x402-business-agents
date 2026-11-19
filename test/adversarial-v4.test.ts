@@ -57,13 +57,15 @@ describe("the v4 run", () => {
   // Its first run stays as recorded ("before the third round of fixes"); the run on today's code is its own record
   // ("after"), and the case file never changed.
   it("the committed after-fix record is what a fresh run adds up to, no longer held out (npm run eval:adversarial-v4)", async () => {
-    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v4-after.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string };
+    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v4-rerun-2026-11-19.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; previous_after: string; cases_commit: string };
     const r = await adversarialV2(ADV_V4_CASES, V4_WORLD);
     expect(r.rows).toHaveLength(ADV_V4_CASES.length * ADV_ARMS.length);
     expect(committed.totals).toEqual(r.totals);
     expect(committed.rows).toEqual(r.rows);
     expect(committed.line).toBe(advLine(r.totals, ""));
     expect(committed).toMatchObject({ held_out: false, cases_commit: "727d99d1" });
+    // 19 Nov, fourth round: the run on today's code is a dated re-run; the after-fix run before it is kept as recorded.
+    expect(committed.previous_after).toBe("docs/evals/adversarial-v4-after.json");
     // The report lists every miss of the payer with Purser's rules, and of the one with Purser's parser, after and before.
     const md = readFileSync(new URL("../docs/evals/adversarial-v4.md", import.meta.url), "utf8");
     for (const x of r.rows.filter((y) => y.arm !== "no_rules" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);

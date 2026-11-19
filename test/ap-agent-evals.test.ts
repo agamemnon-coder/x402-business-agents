@@ -42,8 +42,9 @@ describe("the AI can be wrong, the rail cannot be talked out of it: zero unsafe 
     expect(outcomes.filter(({ k, out }) => unsafe(k.expected, out.outcome)).map(({ k }) => k.id)).toEqual([]);
     // The wrong agent is overridden on every case that must not be paid alone, by code's finding or its limit.
     for (const { k, out } of outcomes.filter(({ k }) => k.expected !== "pay")) expect(out.overridden_by, k.id).not.toBeNull();
-    // Below the limit, an amount that is not its contract's or order's goes to the CFO by code's own rule.
-    for (const k of AP_BOUNDARY_CASES) expect(enforce(k.case, wrong(), codeFindings(k.case)), k.id).toMatchObject({ outcome: "ask_cfo", overridden_by: "amount_not_expected" });
+    // Below the limit, an amount above its contract's or order's is held by code's own rule (19 Nov, fourth round: it
+    // went to the CFO until then).
+    for (const k of AP_BOUNDARY_CASES) expect(enforce(k.case, wrong(), codeFindings(k.case)), k.id).toMatchObject({ outcome: "hold", overridden_by: "amount_not_expected" });
   });
 
   it("covers below the limit only what code can see: an invoice whose only problem is its words is paid alone if the agent misses it", () => {

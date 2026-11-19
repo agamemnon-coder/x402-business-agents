@@ -87,7 +87,9 @@ describe("the same wrong decision, with and without Purser", () => {
   // its held-out run kept beside the run after the fixes against it.
   it("ADV_TABLE: v2, v3 and v4 before and after their fixes, v5 held out, each record on disk saying the same", () => {
     expect(ADV_TABLE.map((x) => [x.record.replace("docs/evals/", ""), x.held === "yes"])).toEqual([
-      ["adversarial-v2.json", true], ["adversarial-v2-after.json", false], ["adversarial-v3.json", true], ["adversarial-v3-after.json", false], ["adversarial-v4.json", true], ["adversarial-v4-after.json", false],
+      ["adversarial-v2.json", true], ["adversarial-v2-after.json", false], ["adversarial-v2-rerun-2026-11-19.json", false],
+      ["adversarial-v3.json", true], ["adversarial-v3-after.json", false], ["adversarial-v3-rerun-2026-11-19.json", false],
+      ["adversarial-v4.json", true], ["adversarial-v4-after.json", false], ["adversarial-v4-rerun-2026-11-19.json", false],
       ["adversarial-v5.json", true],
     ]);
     for (const x of ADV_TABLE.slice(1)) {

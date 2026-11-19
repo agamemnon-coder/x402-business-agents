@@ -606,22 +606,38 @@ const aloneRule = (c: InvoiceCase) => limitRule(c.policy.aloneLimit, c.invoice.r
  * Why the invoice is not the amount its contract or purchase order says, or null when there is none to compare or it
  * is the same (the currency and the plain amount). Review round 1, 12 Nov: below the limit, a wrong agent's "pay" of
  * an invoice that asks more than the contract was paid alone; code now sends it to the CFO (codeRequires).
+ * 19 Nov, fourth round (the after-fix runs of evals v2 to v4 and the hostile-model eval): the direction counts. An
+ * invoice that asks more than its contract or order is held for a person ("above"), as a failed match is in any
+ * payables team, above the agent's limit too, where it only went to the CFO; one that asks less (a part delivery, a
+ * discount) is no mismatch: it never pays more than was agreed, and the limit still decides who signs. Another currency
+ * or a total that cannot be read still goes to the CFO ("other").
  */
 export function expectedMismatch(c: InvoiceCase): string | null {
+  return amountAgainstExpected(c)?.why ?? null;
+}
+
+export function amountAgainstExpected(c: InvoiceCase): { kind: "above" | "other"; why: string } | null {
   const e = c.expected;
   if (!e) return null;
   const r = c.invoice.reading;
-  const asked = cents(r.total);
-  if (asked !== null && r.currency === e.currency && asked === cents(e.amount)) return null;
+  const asked = cents(r.total), agreed = cents(e.amount);
+  const same = asked !== null && r.currency === e.currency;
+  if (same && asked === agreed) return null;
+  if (same && agreed !== null && asked! < agreed) return null;
   const doc = e.source === "contract" ? "contract" : "purchase order";
-  return `the invoice asks ${money(r.currency, r.total) || "no total that was read"}, not the ${money(e.currency, e.amount)} the ${doc}${e.reference ? ` (${e.reference})` : ""} says, so the CFO decides`;
+  const above = same && agreed !== null && asked! > agreed;
+  return {
+    kind: above ? "above" : "other",
+    why: `the invoice asks ${money(r.currency, r.total) || "no total that was read"}, ${above ? "more than" : "not"} the ${money(e.currency, e.amount)} the ${doc}${e.reference ? ` (${e.reference})` : ""} says, so ${above ? "a person looks before it is paid" : "the CFO decides"}`,
+  };
 }
 
 /**
  * What code alone requires for this invoice, from its findings and the policy's limit: hold when a finding stops
- * payment (a block, something for a person, a supplier not on file yet; the first of the gravest level names it),
- * else ask_cfo when the agent may not pay the amount alone, or when the amount is not the one its contract or purchase
- * order says (by "amount_not_expected"), else pay. Code never requires a rejection: that is a person's word, or the
+ * payment (a block, something for a person, a supplier not on file yet; the first of the gravest level names it) or
+ * when it asks more than its contract or purchase order says (by "amount_not_expected"), else ask_cfo when the agent
+ * may not pay the amount alone, or when the amount is in another currency than its contract or purchase order (by
+ * "amount_not_expected"), else pay. Code never requires a rejection: that is a person's word, or the
  * agent's. `by` is the finding's code, the limit's rule or amount_not_expected; `why` says it in code's words. Only
  * enforce and the fallback ask this: the checks' own findings (codeFindings) and the flag-off chain do not change.
  */
@@ -629,6 +645,9 @@ export function codeRequires(c: InvoiceCase, findings: Finding[]): { action: Act
   // A level this code does not know is not a warning: it stops payment too.
   const stop = findings.find((f) => f.level === "block") ?? findings.find((f) => f.level === "review") ?? findings.find((f) => f.level === "wait") ?? findings.find((f) => f.level !== "warn");
   if (stop) return { action: "hold", by: stop.code, why: stop.detail };
+  // 19 Nov, fourth round: more than the contract or order says is held, whatever the limit (amountAgainstExpected).
+  const vsExpected = amountAgainstExpected(c);
+  if (vsExpected?.kind === "above") return { action: "hold", by: "amount_not_expected", why: vsExpected.why };
   const alone = aloneRule(c);
   if (alone.rule) return { action: "ask_cfo", by: alone.rule, why: alone.why };
   // 19 Nov (adversarial eval v2): a possible split invoice, and words a person has released after reading them, go to
@@ -636,8 +655,7 @@ export function codeRequires(c: InvoiceCase, findings: Finding[]): { action: Act
   // Words of speed alone (eval v3) are a warning that was never held: only words a person released send it to the CFO.
   const cfo = findings.find((f) => f.code === "possible_split") ?? (c.released ? findings.find((f) => (WORDS_FINDINGS as readonly string[]).includes(f.code)) : undefined);
   if (cfo) return { action: "ask_cfo", by: cfo.code, why: cfo.detail };
-  const differs = expectedMismatch(c);
-  return differs ? { action: "ask_cfo", by: "amount_not_expected", why: differs } : { action: "pay", by: null, why: alone.why };
+  return vsExpected ? { action: "ask_cfo", by: "amount_not_expected", why: vsExpected.why } : { action: "pay", by: null, why: alone.why };
 }
 
 /** The agent's final answer (the decide tool's input), or code's own when Claude is unavailable. */

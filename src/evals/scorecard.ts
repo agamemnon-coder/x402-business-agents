@@ -382,13 +382,18 @@ export async function scriptAtThisCommit(): Promise<ScoreRow[]> {
  */
 export const ADV_TABLE: readonly { label: string; record: string; held: string }[] = [
   { label: "[v2](evals/adversarial-v2.md), before the fixes of 19 Nov", record: "docs/evals/adversarial-v2.json", held: "yes" },
-  { label: "[v2](evals/adversarial-v2.md), after all three rounds of fixes", record: "docs/evals/adversarial-v2-after.json", held: "no: the fixes were written against its misses" },
+  { label: "[v2](evals/adversarial-v2.md), after three rounds of fixes", record: "docs/evals/adversarial-v2-after.json", held: "no: the fixes were written against its misses" },
+  // 19 Nov, fourth round: a dated re-run of v2 to v4 on the code with it, beside the after-fix runs, kept as recorded.
+  { label: "[v2](evals/adversarial-v2.md), re-run after the fourth round", record: "docs/evals/adversarial-v2-rerun-2026-11-19.json", held: "no: the fixes were written against its misses" },
   { label: "[v3](evals/adversarial-v3.md), after the first round, before the second", record: "docs/evals/adversarial-v3.json", held: "yes" },
   { label: "[v3](evals/adversarial-v3.md), after the second and third rounds", record: "docs/evals/adversarial-v3-after.json", held: "no: the second round was written against its misses" },
+  { label: "[v3](evals/adversarial-v3.md), re-run after the fourth round", record: "docs/evals/adversarial-v3-rerun-2026-11-19.json", held: "no: the second round was written against its misses" },
   { label: "[v4](evals/adversarial-v4.md), after the second round, before the third", record: "docs/evals/adversarial-v4.json", held: "yes" },
   // 19 Nov, third round: rules written against v4's misses (test/eval-v4-gaps.test.ts); v4 is no longer held out.
   { label: "[v4](evals/adversarial-v4.md), after the third round", record: "docs/evals/adversarial-v4-after.json", held: "no: the third round was written against its misses" },
-  // 19 Nov: v5, written after the third round and committed with its pre-registration before the run; held out.
+  { label: "[v4](evals/adversarial-v4.md), re-run after the fourth round", record: "docs/evals/adversarial-v4-rerun-2026-11-19.json", held: "no: the third round was written against its misses" },
+  // 19 Nov: v5, written after the third round and committed with its pre-registration before the run; held out. The
+  // fourth round changed none of its outcomes (npm run eval:adversarial-v5 -- --check still matches).
   { label: "[v5](evals/adversarial-v5.md), after the third round", record: "docs/evals/adversarial-v5.json", held: "yes" },
 ];
 
