@@ -9,6 +9,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { apAgentsOn } from "../config/agents.js";
 import { followPayouts } from "../payouts/follow.js";
 import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
+import type { BillsRail } from "../airwallex/bills.js";
 import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
 import type { InboxDeps } from "./inbox.js";
@@ -244,8 +245,12 @@ function bookingProblem(db: DB, proposalId: string, paid: PaidPayout): string | 
   return null;
 }
 
-/** Follows each invoice waiting for the CFO: paid when its transfer is PAID; rejected; or ready again when its terms ran out. */
-export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: BookkeepingSink; rail?: PayoutRail } = {}): Promise<ApInvoiceRow[]> {
+/**
+ * Follows each invoice waiting for the CFO: paid when its transfer is PAID; rejected; or ready again when its terms ran out.
+ * `bills`: Airwallex Spend Bills (src/ap/billSync.ts). Left out, it follows AIRWALLEX_BILLS (off by default: nothing is
+ * called); null turns it off for this sync.
+ */
+export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: BookkeepingSink; rail?: PayoutRail; bills?: BillsRail | null } = {}): Promise<ApInvoiceRow[]> {
   const now = (opts.now ?? (() => new Date()))();
   // With Airwallex at hand: each sent supplier payout is read again, and a PAID one's Purser fee taken (red team 6).
   if (opts.rail) await followPayouts(db, opts.rail, now);
@@ -318,6 +323,10 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
       if (took("payment") && !took("return")) await pushOnce(db, opts.sink, "return", returnEntries(inv, back), inv, now);
     }
   }
+  // Each invoice paid as a bill in Airwallex's own accounts payable, marked paid once its transfer is PAID (off by
+  // default). It never fails the sync: an error is recorded per invoice and tried again on the next one.
+  const bills = opts.bills !== undefined ? opts.bills : await (await import("../airwallex/bills.js")).billsFromEnv();
+  if (bills) await (await import("./billSync.js")).syncBills(db, bills, { now: () => now });
   return changed;
 }
 

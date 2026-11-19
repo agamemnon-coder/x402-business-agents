@@ -25,8 +25,17 @@ import { esc, icon } from "./ui.js";
 const ROOT = new URL("../../", import.meta.url);
 const read = (p: string) => readFileSync(new URL(p, ROOT), "utf8");
 const json = (p: string): unknown => { try { return JSON.parse(read(p)); } catch { return null; } };
-/** Every file under a folder of the repository, by its path from the root, whose name matches. */
+/**
+ * Folders whose files the band does not count (19 Nov). docs/runs/2026-11-19-live-try/ holds the raw answers of a
+ * re-check of the public /try (8 walks as a visitor, docs/runs/2026-11-19-live-try.md): its Claude request ids, its
+ * refusal and its Airwallex sandbox transfers belong to /try test companies, are counted in that record, and are not
+ * runs of record; counting them here would move the band away from the pages as deployed. src/cli/verifyAll.ts
+ * recounts the band with the same exclusion.
+ */
+export const NOT_IN_BAND: readonly string[] = ["docs/runs/2026-11-19-live-try"];
+/** Every file under a folder of the repository, by its path from the root, whose name matches (NOT_IN_BAND skipped). */
 function filesIn(dir: string, re: RegExp): string[] {
+  if (NOT_IN_BAND.includes(dir)) return [];
   let names: string[];
   try { names = readdirSync(new URL(`${dir}/`, ROOT)); } catch { return []; }
   return names.flatMap((n) => {

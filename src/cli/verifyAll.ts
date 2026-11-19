@@ -23,7 +23,7 @@ import type { Hex } from "viem";
 import { publicClient } from "../metal/chain.js";
 import { USDZ } from "../metal/network.js";
 import { liveRunCount } from "../redesign/runs.js";
-import { AWX_CALLS_LABEL } from "../redesign/scale.js";
+import { AWX_CALLS_LABEL, NOT_IN_BAND } from "../redesign/scale.js";
 import { apiTrail } from "../airwallex/apiTrail.js";
 import { mdCell as cell, pageText as text } from "./verifyAllFormat.js";
 
@@ -43,7 +43,9 @@ const add = (group: string, status: Status, what: string, seen: string, source: 
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 const json = <T = unknown>(p: string): T => JSON.parse(read(p)) as T;
 const isRec = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+/** Every file under a folder whose name matches; the folders the band does not count (scale.ts NOT_IN_BAND) skipped. */
 function filesIn(dir: string, re: RegExp): string[] {
+  if (NOT_IN_BAND.includes(dir)) return [];
   let names: string[];
   try { names = readdirSync(join(ROOT, dir)); } catch { return []; }
   return names.flatMap((n) => { const p = `${dir}/${n}`; return statSync(join(ROOT, p)).isDirectory() ? filesIn(p, re) : re.test(n) ? [p] : []; });
