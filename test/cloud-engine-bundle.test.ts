@@ -101,9 +101,12 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // URLs, about 35 KB over 11.5 MB; the budget moves to 11.75 MB, the compressed size far inside Cloudflare's limit.
   // Then 19 Nov: scoped Airwallex keys per role, Turnstile's server check and the request-id fix: 12,325,635 bytes in CI,
   // about 5 KB over 11.75 MB; the budget moves to 11.8 MB, the compressed size still far inside Cloudflare's limit.
-  it("stays under 11.8 MB, and under 3 MB gzipped", () => {
+  // Then 19 Nov, later: the closed findings (bundle verifier checks, invoice reader round trip), eval v3/v4 rules
+  // (Unicode folding, hex/ROT13 screens, line items, period), about 50 to 100 KB; the budget moves to 12 MB, gzipped
+  // still far inside Cloudflare's 3 MiB free limit (checked below).
+  it("stays under 12 MB, and under 3 MB gzipped", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
-    expect(bytes).toBeLessThan(11.8 * 1024 * 1024);
+    expect(bytes).toBeLessThan(12 * 1024 * 1024);
     expect(gzipped).toBeLessThan(3 * 1024 * 1024);
   });
 });
