@@ -9,6 +9,9 @@
 //   published without row content, so its head proves the order and that no row was cut, not what a row says;
 // - the main run's books (the same file's journal): the trace carries no entry hashes, so this part is a SHA-256 of the
 //   journal's canonical JSON (RFC 8785), not a chain head. It still changes if any line of the books changes.
+// - (19 Nov, `npm run anchor -- --live --with <file>`) a committed run record named on the command line: a SHA-256 of
+//   its canonical JSON (RFC 8785), its height the number of its `steps` (1 when it has none). Like the books part, a
+//   digest, not a chain head; it changes if any field of the record changes.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -18,7 +21,7 @@ import { sha256Hex } from "../lib/terms.js";
 
 export const ANCHOR_SCHEMA = "purser.anchor/v1";
 
-export type AnchorKind = "audit-rows" | "audit-links" | "journal-digest";
+export type AnchorKind = "audit-rows" | "audit-links" | "journal-digest" | "record-digest";
 
 export interface AnchorSource { name: string; file: string; kind: AnchorKind }
 
@@ -37,6 +40,12 @@ export class AnchorSourceError extends Error {}
 
 function partOf(src: AnchorSource, root: string): AnchorPart {
   const text = readFileSync(join(root, src.file), "utf8");
+  if (src.kind === "record-digest") {
+    let rec: unknown;
+    try { rec = JSON.parse(text); } catch { throw new AnchorSourceError(`${src.file}: not JSON`); }
+    const steps = rec && typeof rec === "object" && Array.isArray((rec as { steps?: unknown }).steps) ? (rec as { steps: unknown[] }).steps.length : 0;
+    return { ...src, height: Math.max(steps, 1), head: sha256Hex(jcs(rec as Json)) };
+  }
   if (src.kind === "audit-rows") {
     const rows = text.split("\n").filter((l) => l.trim()).map((l) => JSON.parse(l) as AuditRowStored);
     const c = verifyAuditRows(rows);
@@ -53,6 +62,12 @@ function partOf(src: AnchorSource, root: string): AnchorPart {
   const journal = trace.journal;
   if (!Array.isArray(journal) || journal.length === 0) throw new AnchorSourceError(`${src.file}: no journal`);
   return { ...src, height: journal.length, head: sha256Hex(jcs(journal as Json)) };
+}
+
+/** A committed run record as an anchor source (kind record-digest): a JSON file under docs/, by its path from the repo root. */
+export function recordSource(file: string): AnchorSource {
+  if (!/^docs\/[\w./-]+\.json$/.test(file) || file.includes("..")) throw new AnchorSourceError(`${file}: a run record is a .json file under docs/, named from the repo root`);
+  return { name: `run record (${file.split("/").pop()!.replace(/\.json$/, "")})`, file, kind: "record-digest" };
 }
 
 /** The anchor head over the given sources, read from the repo at root. Throws AnchorSourceError when a source does not verify on its own. */

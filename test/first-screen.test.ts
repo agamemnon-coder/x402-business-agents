@@ -131,7 +131,8 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(README_BUILT_ON).not.toMatch(/partner|endors|certif|official|approved/i);
     // The two live GitHub badges (CI, CodeQL), then the proof strip (17 Nov, owner: the static shields went into it).
     // 17 Nov later (owner: all the badges, grouped): build (4), partners (5), proof (3), then the strip.
-    expect([0, 1, 2].map((i) => lines[badges + i]!.match(/\[!\[/g)?.length)).toEqual([4, 5, 3]);
+    // 19 Nov 2026 (owner): + the OpenSSF Best Practices badge in the build row.
+    expect([0, 1, 2].map((i) => lines[badges + i]!.match(/\[!\[/g)?.length)).toEqual([5, 5, 3]);
     // 17 Nov, owner: the badges at the very top; the strip stays at the foot of the centred top, under the judges' table.
     // 17 Nov, owner: strongest proof first: +7 (the proof table, 8 lines with its blank; "Built on Airwallex" and its blank moved down).
     // 19 Nov 2026: +5 (the demo's thumbnail and what Purser is with their blanks, the judges' Proof row).

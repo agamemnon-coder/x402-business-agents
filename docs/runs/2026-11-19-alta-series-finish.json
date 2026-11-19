@@ -1,0 +1,76 @@
+{
+  "run": "2026-11-19-alta-series-finish",
+  "ran_at": "2026-11-19T09:37:16.059Z",
+  "network": "Alta (formerly Metal) testnet",
+  "chain_id": 63825,
+  "test_money": true,
+  "made_by": "npm run alta-series (src/cli/altaSeries.ts)",
+  "account": "0xB6f3903bd90e4EBa3239888a99141c2ceCcb30bD",
+  "owner": "0x7B01Ae7919C1d625b003fE00429abe96bE7B6072",
+  "payee": "0x557DE06a06591504C4Cc90d96E98d15803066a21",
+  "stranger": "0x2bE3449DCe3234A0D2a4B107a524F375C70Afa6f",
+  "gas_only_key": "0xd996570d2a70991e8793a074Fe0000B099823374",
+  "mandate": {
+    "reference": "0x795f0c6826809a83b4721c69e9e922eb0b0107a1eefb2ac46a02a8769250c07d",
+    "cap": "0.10",
+    "budget": "1.00",
+    "payees": [
+      "0x557DE06a06591504C4Cc90d96E98d15803066a21"
+    ]
+  },
+  "summary": {
+    "payments_paid": 1,
+    "payments_planned": null,
+    "paid_total": "0.02",
+    "over_mandate_attempts": 1,
+    "refused_on_chain": 1,
+    "unexpected": 0
+  },
+  "mandate_status_after": {
+    "bound": "yes",
+    "revoked": "no",
+    "spent": "1 *USDZ of 1 *USDZ",
+    "payments": "21"
+  },
+  "steps": [
+    {
+      "n": 1,
+      "kind": "setup",
+      "step": "fund the account to 1.50 test USD",
+      "outcome": "done",
+      "tx": "0x846f6f4e161763f3ace5e70239d95470fcf77255a4b5aec48d987cd05ae7e9ac",
+      "block": null,
+      "detail": ""
+    },
+    {
+      "n": 2,
+      "kind": "payment",
+      "step": "payment 21: 0.02 to the test payee, what is left of the budget",
+      "tx": "0x6118415bc330f13276b0a24bce0de0938601375767468c38bca227526903d481",
+      "block": 35370414,
+      "amount": "0.02",
+      "to": "0x557DE06a06591504C4Cc90d96E98d15803066a21",
+      "event": "MandatePayment",
+      "payee_delta": "0.02",
+      "account_delta": "-0.02",
+      "spent_after": "1.00",
+      "outcome": "paid",
+      "detail": "paid; the payee received 0.02; spent 1.00 of 1.00"
+    },
+    {
+      "n": 3,
+      "kind": "over-mandate",
+      "step": "over the budget: the budget's 1.00 is spent; the agent asks for 0.01 more",
+      "tx": "0xd6d4ba5b9ccae6a9f9e8715029723beffb47a473f61831482dc92cedccdd32de",
+      "block": 35370525,
+      "amount": "0.01",
+      "to": "0x557DE06a06591504C4Cc90d96E98d15803066a21",
+      "event": "MandateRefused",
+      "payee_delta": "0.00",
+      "account_delta": "0.00",
+      "reason": "OverBudget",
+      "outcome": "refused on chain",
+      "detail": "Alta's Mandate Binding refused it in this transaction (OverBudget); the payee and the account moved 0.00"
+    }
+  ]
+}

@@ -68,8 +68,8 @@ const DELAY = { ok: 0, bad: 2, hold: 4 } as const;
 /** The drawing's sizes: /proof's (PAGE), or the README's larger type (README_MAP), from which every box is laid out. */
 export interface Metrics { titleCharW: number; pad: number; lh: { title: number; sub: number; badge: number }; size: { title: number; sub: number; badge: number }; mw: number; rw: number; gap: number; pillMin: number; railGap: number; charW: number; dot: number; halo: number }
 const PAGE: Metrics = { titleCharW: 0.5, pad: 10, lh: { title: 18, sub: 14, badge: 14 }, size: { title: 14, sub: 11.5, badge: 11.5 }, mw: 128, rw: 170, gap: 30, pillMin: 50, railGap: 8, charW: 0.49, dot: 10, halo: 16 };
-/** The README's drawing: about 1,250 units wide, shown at GitHub's ~900 px, so its smallest text (19.5 units) reads at 14 px or more. */
-export const README_MAP: Metrics = { titleCharW: 0.55, pad: 13, lh: { title: 28, sub: 24, badge: 24 }, size: { title: 22, sub: 19.5, badge: 19.5 }, mw: 150, rw: 200, gap: 24, pillMin: 62, railGap: 10, charW: 0.5, dot: 14, halo: 22 };
+/** The README's drawing: about 1,250 units wide, shown at GitHub's ~900 px, so its smallest text (20 units, with the 12-unit margin) reads at 14 px or more. */
+export const README_MAP: Metrics = { titleCharW: 0.55, pad: 13, lh: { title: 28, sub: 25, badge: 25 }, size: { title: 22, sub: 20, badge: 20 }, mw: 150, rw: 200, gap: 24, pillMin: 62, railGap: 10, charW: 0.5, dot: 14, halo: 22 };
 const PAD = PAGE.pad;
 
 /** A box's height: its title, its sub-line(s), its badge pill. */
@@ -283,5 +283,8 @@ export function evidenceMapSvgFile(theme: "light" | "dark", w: EvidenceWall | nu
 svg.em-wide { ${vars} font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 ${mapRules("", README_MAP, [l])}</style>`;
   const head = `<title>${esc("Purser: the money path and its evidence")}</title><desc>${esc(evidenceMapAlt(w))}</desc>${style}`;
-  return `${svg(l, README_MAP, { links: false, head, root: `xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d"` }).replace("<title>", '<title id="t">').replace("<desc>", '<desc id="d">')}\n`;
+  // Cropped to the drawing, with a margin of 12 units (about 9 px at GitHub's width) on every side.
+  const M0 = 12, out = svg(l, README_MAP, { links: false, head, root: `xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d"` })
+    .replace(`viewBox="0 0 ${l.vw} ${l.vh}" width="${l.vw}" height="${l.vh}"`, `viewBox="${-M0} ${-M0} ${l.vw + 2 * M0} ${l.vh + 2 * M0}" width="${l.vw + 2 * M0}" height="${l.vh + 2 * M0}"`);
+  return `${out.replace("<title>", '<title id="t">').replace("<desc>", '<desc id="d">')}\n`;
 }

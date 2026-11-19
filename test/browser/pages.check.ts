@@ -1129,7 +1129,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const tiles = (await page.evaluate(`(() => [...document.querySelectorAll("main section.ewall li.ew-t")].map((li) => { const a = li.querySelector("a"), r = li.getBoundingClientRect();
         return { key: li.getAttribute("data-wall"), rec: li.getAttribute("data-rec") || "", href: a ? a.getAttribute("href") : null, fig: (li.querySelector(".ew-f") || {}).textContent || "", tag: (li.querySelector(".ew-tag") || {}).textContent || "", h: a ? a.getBoundingClientRect().height : 0, left: r.left, right: r.right };
       }))()`)) as { key: string; rec: string; href: string | null; fig: string; tag: string; h: number; left: number; right: number }[];
-      const want = wall.groups.flatMap((g) => g.tiles);
+      const want = wall.groups.flatMap((g) => g.tiles).filter((t) => !t.offProof);
       if (tiles.length !== want.length) fail(`/proof ${tag}: ${tiles.length} evidence tiles, the wall's file has ${want.length}`);
       for (const t of want) {
         const seen = tiles.find((x) => x.key === t.key);

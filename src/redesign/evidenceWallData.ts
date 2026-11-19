@@ -71,6 +71,15 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
     const s = vic3Summary(v), fid = s.paidFaceId[0]?.request;
     if (fid) out.push({ key: "visa-airi", fig: `${fid.currency} ${fid.amount}`, label: `paid via Airi after Face ID: ${whole(s.paid, s.of).toLowerCase()} purchases`, note: `Visa Intelligent Commerce via Airwallex's Airi, a test card, ${s.date}.`, tag: "sandbox", tone: "awx", href: "visa", rec: VIC3_RUN_FILE });
   }
+  const AS = ["docs/runs/2026-11-19-alta-series.json", "docs/runs/2026-11-19-alta-series-finish.json"].filter(has);
+  if (AS.length) {
+    const steps = AS.flatMap((f) => ((json(f) as { steps?: { kind: string; outcome: string; event?: string; reason?: string; amount?: string }[] } | null)?.steps ?? []));
+    const paid = steps.filter((x) => x.event === "MandatePayment"), refused = steps.filter((x) => x.outcome === "refused on chain"), tried = steps.filter((x) => x.kind === "over-mandate");
+    const total = (paid.reduce((n, x) => n + Math.round(Number(x.amount) * 100), 0) / 100).toFixed(2);
+    const ran = (json(AS[0]!) as { ran_at?: string } | null)?.ran_at;
+    if (refused.length) out.push({ key: "alta-series-refused", fig: whole(refused.length, tried.length), label: "over-mandate attempts refused on chain", note: `${refused.map((x) => x.reason).join(", ")}: each a transaction of its own, 0.00 moved; ${ran ? day(ran) : ""}.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-series.md"), rec: AS.join(" ") });
+    if (paid.length) out.push({ key: "alta-series-paid", fig: String(paid.length), label: "payments inside an agent's mandate on Alta", note: `${total} test USD in all, each its own transaction; ${ran ? day(ran) : ""}.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-series.md"), rec: AS.join(" ") });
+  }
   const LF = "docs/runs/2026-11-17-airwallex-late-failure.json";
   const lf = json(LF) as { transfers?: unknown[]; audit?: { ts: string }[]; calls?: { by_endpoint?: { endpoint: string; calls: number }[] } } | null;
   const created = lf?.calls?.by_endpoint?.find((e) => e.endpoint === "POST /transfers/create")?.calls;
@@ -108,6 +117,10 @@ function forged(w: ReturnType<typeof walks>): WallTile[] {
     const s5 = vic3Summary(vr);
     if (s5.byPurser.length) out.push({ key: "visa-refused", fig: String(s5.byPurser.length), label: "Visa attempts refused by Purser, before Airi", note: `0 calls to Airi or Airwallex for any of them${s5.credentialRefused.length ? `; ${s5.credentialRefused.length} a credential presented again or for another amount` : ""}. A test card, ${s5.date}.`, tag: "sandbox", tone: "ok", href: "visa", rec: VIC3_RUN_FILE });
   }
+  const TAP = "docs/runs/2026-11-19-visa-tap-interop.md";
+  const tapm = has(TAP) ? /\*\*Result: (\d+) of (\d+) interop cases hold\*\*/.exec(readFileSync(new URL(TAP, ROOT), "utf8")) : null;
+  // Off /proof (Max's last round, item 2: TAP is told on /visa only); /visa's TAP section and llms.txt show it.
+  if (tapm) out.push({ key: "tap-interop", fig: whole(Number(tapm[1]), Number(tapm[2])), label: "TAP cases against Visa's public reference", note: "Our signed agent checkout against Visa's public Trusted Agent Protocol reference, run unchanged at a pinned commit; nothing bought, no money moved. 19 Nov.", tag: "test", tone: "", href: blob(TAP), rec: TAP, offProof: true });
   const owners = ownersRun();
   if (owners) {
     const steps = ownersSteps(owners.rec), changes = steps.filter((x) => x.key === "bind" || x.key === "replace" || x.key === "revoke").length;
@@ -144,6 +157,9 @@ function built(): WallTile[] {
   const VR = "docs/evidence/verification-2026-11-15.json";
   const vr = json(VR) as { counts?: { passed: number; could_not_run_here: number; failed: number }; transactions?: { read_from_chain: number; found: number }; started_at?: string } | null;
   if (vr?.counts) out.push({ key: "verify-all", fig: String(vr.counts.passed), label: `checks passed by verify-all, ${vr.counts.failed} failed`, note: `${vr.transactions?.found ?? 0} Alta transactions read from the chain${vr.started_at ? `; ${day(vr.started_at)}` : ""}.`, tag: "check", tone: "ok", href: blob("docs/evidence/verification-2026-11-15.md"), rec: VR });
+  const AN = "docs/runs/2026-11-19-anchor.json";
+  const an = json(AN) as { anchored_at?: string; height?: number; parts?: unknown[] } | null;
+  if (an?.height) out.push({ key: "anchor", fig: String(an.height), label: "records sealed by one anchor transaction", note: `${an.parts?.length ?? 0} parts hashed into one head on Alta testnet, ${day(an.anchored_at!)}; npm run verify-anchor recomputes it.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-anchor.md"), rec: AN });
   const loads = ["docs/runs/clearing-load-1.json", "docs/runs/clearing-load-2.json"].filter(has).map((f) => ({ f, r: json(f) as { attempted: number; paid: number; failed: number; ran_at: string } }));
   if (loads.length) {
     const tried = loads.reduce((a, x) => a + x.r.attempted, 0), paid = loads.reduce((a, x) => a + x.r.paid, 0);

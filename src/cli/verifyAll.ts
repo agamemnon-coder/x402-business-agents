@@ -84,7 +84,8 @@ function verifiers() {
   }
   if (!process.env.METAL_RPC_URL) add(G, "could not run here", "npm run verify-anchor", "METAL_RPC_URL is not set: the anchor transaction cannot be read from Alta testnet", "docs/runs/2026-11-13-anchor.json");
   else {
-    const r = runCli("verifyAnchor.ts", []);
+    // The 13 Nov anchor by name: the newest record (19 Nov, not counted in the band) is checked in its own run log.
+    const r = runCli("verifyAnchor.ts", ["docs/runs/2026-11-13-anchor.json"]);
     const ok = r.lines.filter((l) => l.startsWith("ok")).length;
     add(G, r.code === 0 ? "pass" : r.code === 2 ? "could not run here" : "FAIL", "npm run verify-anchor (Alta testnet, read-only)", `${ok} lines ok; ${lastLine(r.lines, /MATCH/).replace(ROOT + "/", "")}`, "docs/runs/2026-11-13-anchor.json");
   }
@@ -235,12 +236,12 @@ function figures(pages: Record<string, string>) {
   // 19 Nov: the evidence wall, each tile's figure as docs/evidence/evidence-wall.json holds it (the page's own code made
   // that file from the records: npm run evidence:wall; test/evidence-wall.test.ts holds it to them).
   const wallSeen = new Map([...proofHtml.matchAll(/data-wall="([^"]+)"[^>]*>\s*<a [^>]*><b class="ew-f">([^<]+)<\/b>/g)].map((m) => [m[1]!, m[2]!.replace(/&amp;/g, "&")]));
-  const wallTiles = (json<{ groups: { tiles: { key: string; fig: string; rec: string }[] }[] }>("docs/evidence/evidence-wall.json")).groups.flatMap((g) => g.tiles);
-  for (const t of wallTiles) {
+  const wallTiles = (json<{ groups: { tiles: { key: string; fig: string; rec: string; offProof?: boolean }[] }[] }>("docs/evidence/evidence-wall.json")).groups.flatMap((g) => g.tiles);
+  for (const t of wallTiles.filter((x) => !x.offProof)) {
     cmp(`/proof evidence wall: ${t.key}`, t.fig, wallSeen.get(t.key), `docs/evidence/evidence-wall.json (from ${t.rec})`);
   }
   // The partner pages' strips (19 Nov): each tile the page shows, as the wall's file has it.
-  for (const [path, strip] of [["/airwallex", "airwallex"], ["/alta", "alta"], ["/visa", "visa"]] as const) {
+  for (const [path, strip] of [["/airwallex", "airwallex"], ["/alta", "alta"], ["/visa", "visa"], ["/visa", "tap"]] as const) {
     const html = pages[path] ?? "", seen = new Map([...html.matchAll(/data-wall="([^"]+)"[^>]*>\s*<a [^>]*><b class="ew-f">([^<]+)<\/b>/g)].map((m) => [m[1]!, m[2]!.replace(/&amp;/g, "&")]));
     for (const key of PARTNER_STRIPS[strip].keys) {
       const t = wallTiles.find((x) => x.key === key);

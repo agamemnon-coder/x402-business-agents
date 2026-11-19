@@ -123,8 +123,11 @@ describe("/proof renders the wall", () => {
     const w = committedWall()!;
     const html = evidenceWallHtml(w);
     expect(proofPage()).toContain(html);
-    for (const t of tiles(w) as WallTile[]) expect(html).toContain(`data-wall="${t.key}"`);
-    expect((html.match(/<li class="ew-t/g) ?? []).length).toBe(tiles(w).length);
+    const shown = (tiles(w) as WallTile[]).filter((t) => !t.offProof);
+    for (const t of shown) expect(html).toContain(`data-wall="${t.key}"`);
+    expect((html.match(/<li class="ew-t/g) ?? []).length).toBe(shown.length);
+    // A tile kept off /proof (TAP: told on /visa only) is not on the page.
+    for (const t of (tiles(w) as WallTile[]).filter((x) => x.offProof)) expect(html).not.toContain(`data-wall="${t.key}"`);
     expect(html).not.toMatch(/<script|style=|\son[a-z]+=/i);
     expect(EVIDENCE_WALL_CSS).toContain("@media (max-width: 420px)");
   });
@@ -160,11 +163,11 @@ describe("the README's wall line and the partner pages' strips", () => {
 
   it("each strip shows the wall's own tiles, links to its group on /proof, and says it is test money", () => {
     const w = committedWall()!;
-    for (const p of ["airwallex", "alta", "visa"] as const) {
+    for (const p of ["airwallex", "alta", "visa", "tap"] as const) {
       const html = evidenceStripHtml(p, {}, w);
       for (const k of PARTNER_STRIPS[p].keys) expect(html, `${p} ${k}`).toContain(`data-wall="${k}"`);
       expect(html).toContain(`href="proof#${PARTNER_STRIPS[p].group}"`);
-      expect(html).toMatch(/test money/);
+      expect(html).toMatch(/test money|no money moved/);
       expect(html).not.toMatch(/<script|style=|\son[a-z]+=|endorsed by|partnered with/i);
     }
   });

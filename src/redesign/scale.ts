@@ -28,7 +28,9 @@ const json = (p: string): unknown => { try { return JSON.parse(read(p)); } catch
 /**
  * Folders and files whose files the band does not count. 19 Nov: the 8 walks of the public /try
  * (docs/runs/2026-11-19-live-try/), the Airwallex soak (docs/runs/2026-11-19-airwallex-soak.json and .md) and the /try
- * mega run (docs/runs/2026-11-19-mega-run/) were each left out at first, newer than the pages as deployed; since the
+ * mega run (docs/runs/2026-11-19-mega-run/), and the partner re-runs (the Alta testnet series with its three refusals
+ * on chain, docs/runs/2026-11-19-alta-series.*, and the fresh anchor, docs/runs/2026-11-19-anchor.*) were each left out
+ * at first, newer than the pages as deployed; since the
  * owner's call the same day they go on the site: each is a live run on /runs (src/redesign/runs.ts) and counted here
  * like any run. Kept, empty, as the one place a folder or file would be left out; src/cli/verifyAll.ts recounts the band
  * with the same list.

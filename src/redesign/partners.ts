@@ -383,7 +383,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   ${more ? `<div class="awrb"><div class="card" id="${VISA_MORE_ID}">${more}</div></div>` : ""}
   <a class="open" href="proof#${AIRI_RUN_ID}">All the proof ${icon("arrow-right", 15)}</a>
   </details>
-  ${visaTapSectionHtml(VISA_TAP_ID, `<div class="folds card">${visaTapFold(run)}</div>`)}
+  ${visaTapSectionHtml(VISA_TAP_ID, `${evidenceStripHtml("tap")}<div class="folds card">${visaTapFold(run)}</div>`)}
   ${visaNotYetHtml()}
 </div></main>`;
   // The card scene's buttons run Purser's credential check in the browser on the recorded purchase (its data block).

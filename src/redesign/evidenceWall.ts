@@ -26,7 +26,9 @@ export const WALL_LEGEND = "Sandbox and testnet: live runs, test money; a sandbo
 export const WALL_NAV: Record<string, string> = { "ev-rails": "Live on the rails", "ev-forged": "Cannot be forged", "ev-ai": "AI under control", "ev-built": "Built to last", "ev-scale": "/try timed" };
 /** The partner whose colour the tile carries, if one. */
 export type WallTone = "awx" | "metal" | "claude" | "ok" | "";
-export interface WallTile { key: string; fig: string; label: string; note: string; tag: WallTag; tone: WallTone; href: string; rec: string }
+export interface WallTile { key: string; fig: string; label: string; note: string; tag: WallTag; tone: WallTone; href: string; rec: string; /** Not on /proof (a partner page's strip shows it). */ offProof?: boolean }
+/** The tiles /proof's wall shows. */
+export const onProof = (w: EvidenceWall): EvidenceWall => ({ ...w, groups: w.groups.map((g) => ({ ...g, tiles: g.tiles.filter((t) => !t.offProof) })).filter((g) => g.tiles.length) });
 export interface WallGroup { id: string; title: string; tiles: WallTile[] }
 export interface EvidenceWall { what: string; made_by: string; groups: WallGroup[] }
 
@@ -99,8 +101,9 @@ export function withWallSection(llms: string, section: string = evidenceWallLlms
  * tiles (the figure, a few words, the tag, the link; what the figure counts in the link's title), and the group's notes
  * folded under its name.
  */
-export function evidenceWallHtml(w: EvidenceWall | null = committedWall()): string {
-  if (!w?.groups.length) return "";
+export function evidenceWallHtml(all: EvidenceWall | null = committedWall()): string {
+  if (!all?.groups.length) return "";
+  const w = onProof(all);
   const tile = (t: WallTile) => `<li class="ew-t${t.tone ? ` ${t.tone}` : ""}" data-wall="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}" title="${esc(t.note)}"${isExternal(t.href) ? ' target="_blank" rel="noopener"' : ""}><b class="ew-f">${esc(t.fig)}</b><span class="ew-l">${esc(t.label)}</span><span class="ew-k"><span class="ew-tag ${t.tag}">${esc(TAG_WORDS[t.tag])}</span><span class="ew-r" aria-hidden="true">${isExternal(t.href) ? "↗" : "→"}</span></span></a></li>`;
   const notes = (g: WallGroup) => `<details class="ew-more"><summary>What each counts</summary><ul>${g.tiles.map((t) => `<li${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><b>${esc(t.fig)}</b> ${esc(t.label)}: ${esc(t.note)}</li>`).join("")}</ul></details>`;
   return `<section class="ewall" id="${WALL_ID}" aria-labelledby="ew-h" data-rec="${esc(WALL_FILE)}">
@@ -116,10 +119,12 @@ export function evidenceWallHtml(w: EvidenceWall | null = committedWall()): stri
  * the wall shows them (the same figures from docs/evidence/evidence-wall.json, each linking to its record), a link to
  * the wall's group on /proof, and any line the page owes beside them (on /airwallex, the one endpoint not live and why).
  */
-export const PARTNER_STRIPS: Record<"airwallex" | "alta" | "visa", { title: string; group: string; keys: string[]; legend: string }> = {
+export const PARTNER_STRIPS: Record<"airwallex" | "alta" | "visa" | "tap", { title: string; group: string; keys: string[]; legend: string }> = {
   airwallex: { title: "Live on Airwallex", group: "ev-rails", keys: ["soak-paid", "try-transfers", "spend-bills", "soak-fx", "awx-endpoints", "late-failure"], legend: "Airwallex sandbox, test money; a sandbox PAID is the sandbox's simulation. Each tile opens its record." },
-  alta: { title: "Live on Alta", group: "ev-rails", keys: ["alta-refusal", "alta-payments", "passkeys-onchain", "clearing-load"], legend: "Alta testnet, test money. Each tile opens its record." },
+  alta: { title: "Live on Alta", group: "ev-rails", keys: ["alta-series-refused", "alta-series-paid", "alta-refusal", "alta-payments", "passkeys-onchain", "clearing-load"], legend: "Alta testnet, test money. Each tile opens its record." },
   visa: { title: "Visa via Airwallex's Airi, as recorded", group: "ev-rails", keys: ["visa-airi", "visa-refused"], legend: "Airwallex sandbox, Airi's test card, test money. Each tile opens its record." },
+  // /visa keeps TAP outside the VIC entry, in its own section (assertVicFirst): this strip sits inside that section.
+  tap: { title: "Re-run on 19 Nov", group: "ev-forged", keys: ["tap-interop"], legend: "Run on our machine against Visa's public reference; nothing bought, no money moved." },
 };
 
 export function evidenceStripHtml(partner: keyof typeof PARTNER_STRIPS, o: { note?: string } = {}, w: EvidenceWall | null = committedWall()): string {

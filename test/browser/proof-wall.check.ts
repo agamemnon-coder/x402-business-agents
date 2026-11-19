@@ -18,7 +18,7 @@ const judge = liveAt >= 0 ? null : await startJudge(0);
 const base = liveAt >= 0 ? args[liveAt + 1]!.replace(/\/$/, "") : judge!.url;
 const wall = committedWall();
 if (!wall) throw new Error("no docs/evidence/evidence-wall.json: run npm run evidence:wall");
-const want = wall.groups.flatMap((g) => g.tiles);
+const want = wall.groups.flatMap((g) => g.tiles).filter((t) => !t.offProof);
 
 let failed = 0;
 const fail = (what: string) => { failed++; console.log(`FAIL  ${what}`); };

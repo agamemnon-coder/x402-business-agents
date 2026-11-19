@@ -49,8 +49,8 @@ for (const scheme of ["light", "dark"] as const) {
     if (r.out.length) fail(`${file} ${motion}: text wider than its box: ${r.out.join(" | ")}`);
     if (r.small.length) fail(`${file} ${motion}: text under 14 px at ${WIDTH} px: ${r.small.slice(0, 4).join(" | ")}`);
     if (motion === "no-preference" ? r.anim !== "em-move" : r.anim !== "none") fail(`${file} ${motion}: the dot's animation is ${r.anim}`);
-    if (motion === "reduce" && scheme === "light") await page.screenshot({ path: join(shots, "readme-map-reduced-motion.png"), timeout: 90_000 });
-    if (motion === "no-preference" && scheme === "light") { await page.waitForTimeout(2600); await page.screenshot({ path: join(shots, "readme-map-mid-animation.png"), animations: "allow", timeout: 90_000 }); }
+    if (motion === "reduce" && scheme === "light") await page.locator("svg").screenshot({ path: join(shots, "readme-map-reduced-motion.png"), timeout: 90_000 });
+    if (motion === "no-preference" && scheme === "light") { await page.waitForTimeout(2600); await page.locator("svg").screenshot({ path: join(shots, "readme-map-mid-animation.png"), animations: "allow", timeout: 90_000 }); }
     if (!failed) console.log(`ok    ${file} at ${WIDTH} px, ${motion}: every line in its box, none under 14 px`);
     await context.close();
   }
@@ -64,7 +64,7 @@ for (const scheme of ["light", "dark"] as const) {
     <p><a href="#"><img src="${dataUri(file)}" width="100%" alt=""></a></p>
   </article></body></html>`);
   await page.waitForTimeout(800);
-  await page.screenshot({ path: join(shots, `readme-map-${scheme}.png`), fullPage: true, animations: "allow", timeout: 90_000 });
+  await page.locator("article").screenshot({ path: join(shots, `readme-map-${scheme}.png`), animations: "allow", timeout: 90_000 });
   await context.close();
 }
 await browser.close();

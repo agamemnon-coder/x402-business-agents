@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { latestRecordFile, readRecord, sendAnchor, verifyAnchor, writeRecord, type AnchorChain, type AnchorTx } from "../src/anchor/anchor.js";
-import { ANCHOR_SOURCES, anchorCalldata, computeAnchorHead, readAnchorCalldata } from "../src/anchor/head.js";
+import { ANCHOR_SOURCES, anchorCalldata, computeAnchorHead, readAnchorCalldata, recordSource } from "../src/anchor/head.js";
 
 const FROM = "0x00000000000000000000000000000000000a11ce";
 const TX = `0x${"ab".repeat(32)}`;
@@ -119,6 +119,33 @@ describe("npm run anchor --live, then npm run verify-anchor", () => {
     const check = await verifyAnchor(dir, forged, chain);
     expect(check.match).toBe(false);
     expect(check.lines.find((l) => l.what === "calldata")?.ok).toBe(false);
+  });
+
+  it("pins a run record named with --with (record-digest), and is MISMATCH once that record changes", async () => {
+    const dir = repoCopy();
+    const file = "docs/runs/2026-11-19-example-series.json";
+    writeFileSync(join(dir, file), JSON.stringify({ run: "example", steps: [{ n: 1, tx: TX }, { n: 2, tx: null }] }, null, 2));
+    const sources = [...ANCHOR_SOURCES, recordSource(file)];
+    const chain = mockChain();
+    const record = await sendAnchor(dir, chain, new Date("2026-11-19T12:00:00Z"), sources);
+    expect(record.parts.map((p) => p.kind)).toEqual(["audit-rows", "audit-links", "journal-digest", "record-digest"]);
+    expect(record.parts[3]).toMatchObject({ file, height: 2, name: "run record (2026-11-19-example-series)" });
+    expect(record.head).not.toBe(computeAnchorHead(dir).head);
+    const files = writeRecord(dir, record);
+    expect(readFileSync(files.md, "utf8")).toContain("record-digest");
+    // verify-anchor recomputes the record's own list of parts, the run record among them.
+    expect((await verifyAnchor(dir, readRecord(files.json), chain)).match).toBe(true);
+    writeFileSync(join(dir, file), JSON.stringify({ run: "example", steps: [{ n: 1, tx: TX }, { n: 2, tx: TX }] }, null, 2));
+    const check = await verifyAnchor(dir, readRecord(files.json), chain);
+    expect(check.match).toBe(false);
+    expect(check.lines.find((l) => l.what.startsWith("run record"))?.ok).toBe(false);
+  });
+
+  it("takes as a run record only a .json file under docs/", () => {
+    expect(() => recordSource("../keys/owner.key.json")).toThrow(/under docs\//);
+    expect(() => recordSource("docs/runs/../../x.json")).toThrow(/under docs\//);
+    expect(() => recordSource("docs/runs/2026-11-19-alta-series.md")).toThrow(/under docs\//);
+    expect(recordSource("docs/runs/2026-11-19-alta-series.json").kind).toBe("record-digest");
   });
 
   it("is MISMATCH when the transaction is unknown, reverted or on another chain", async () => {

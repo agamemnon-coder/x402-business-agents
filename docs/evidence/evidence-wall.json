@@ -97,6 +97,26 @@
           "rec": "docs/runs/2026-11-14-vic-5.json"
         },
         {
+          "key": "alta-series-refused",
+          "fig": "3 of 4",
+          "label": "over-mandate attempts refused on chain",
+          "note": "OverPerPaymentCap, PayeeNotAllowed, OverBudget: each a transaction of its own, 0.00 moved; 19 Nov.",
+          "tag": "testnet",
+          "tone": "metal",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-alta-series.md",
+          "rec": "docs/runs/2026-11-19-alta-series.json docs/runs/2026-11-19-alta-series-finish.json"
+        },
+        {
+          "key": "alta-series-paid",
+          "fig": "21",
+          "label": "payments inside an agent's mandate on Alta",
+          "note": "1.00 test USD in all, each its own transaction; 19 Nov.",
+          "tag": "testnet",
+          "tone": "metal",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-alta-series.md",
+          "rec": "docs/runs/2026-11-19-alta-series.json docs/runs/2026-11-19-alta-series-finish.json"
+        },
+        {
           "key": "late-failure",
           "fig": "Both",
           "label": "PAID, then FAILED: back to a person",
@@ -193,6 +213,17 @@
           "rec": "docs/runs/2026-11-14-vic-5.json"
         },
         {
+          "key": "tap-interop",
+          "fig": "All 22",
+          "label": "TAP cases against Visa's public reference",
+          "note": "Our signed agent checkout against Visa's public Trusted Agent Protocol reference, run unchanged at a pinned commit; nothing bought, no money moved. 19 Nov.",
+          "tag": "test",
+          "tone": "",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-visa-tap-interop.md",
+          "rec": "docs/runs/2026-11-19-visa-tap-interop.md",
+          "offProof": true
+        },
+        {
           "key": "passkeys-onchain",
           "fig": "3",
           "label": "limit changes signed by passkeys on chain",
@@ -283,6 +314,16 @@
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md",
           "rec": "docs/evidence/verification-2026-11-15.json"
+        },
+        {
+          "key": "anchor",
+          "fig": "731",
+          "label": "records sealed by one anchor transaction",
+          "note": "5 parts hashed into one head on Alta testnet, 19 Nov; npm run verify-anchor recomputes it.",
+          "tag": "testnet",
+          "tone": "metal",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-anchor.md",
+          "rec": "docs/runs/2026-11-19-anchor.json"
         },
         {
           "key": "clearing-load",

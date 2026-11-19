@@ -356,6 +356,38 @@ function extraRuns(): RunRow[] {
     files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-13-anchor.json") }, { label: "run log", href: blob("docs/runs/2026-11-13-anchor.md") }],
   });
 
+  // 19 Nov: a fresh Alta testnet series (21 mandate payments, 3 over-mandate attempts refused on chain) and the anchor
+  // that pins it (docs/runs/2026-11-19-alta-series.md, docs/runs/2026-11-19-anchor.md).
+  type Series = { ran_at: string; mandate: { cap: string; budget: string }; steps: { kind: string; outcome: string; event?: string; reason?: string; amount?: string; tx: string | null }[] };
+  const AS = ["docs/runs/2026-11-19-alta-series.json", "docs/runs/2026-11-19-alta-series-finish.json"].filter(has);
+  if (AS.length) {
+    const recs = AS.map((f) => readJson<Series>(f)), steps = recs.flatMap((r) => r.steps);
+    const paid = steps.filter((x) => x.event === "MandatePayment"), refused = steps.filter((x) => x.outcome === "refused on chain");
+    const total = (paid.reduce((n, x) => n + Math.round(Number(x.amount) * 100), 0) / 100).toFixed(2);
+    out.push({
+      key: "alta-series-1", iso: recs[recs.length - 1]!.ran_at, date: day(recs[0]!.ran_at), kind: "testnet", partners: ["Alta"],
+      name: "An agent's mandate on Alta: payments inside it, attempts outside it refused on chain",
+      line: `${paid.length} payments inside the mandate (${total} test USD); ${refused.length} attempts outside it refused on chain: ${refused.map((x) => x.reason).join(", ")}.`,
+      rate: { done: refused.length, of: steps.filter((x) => x.kind === "over-mandate").length, what: "over-mandate attempts refused on chain" },
+      title: "Alta series", rails: "Alta testnet (mandate payments)",
+      what: `A fresh Alta account and an agent's mandate (cap ${recs[0]!.mandate.cap} a payment, budget ${recs[0]!.mandate.budget}, one payee) took ${paid.length} payments, each its own transaction; attempts over the cap, to another payee and past the budget were sent to the chain on purpose, and Alta's mandate refused each in a transaction of its own.`,
+      checks: "Each refusal moved 0.00 for the payee and the account, as the record's balance deltas show; the first pass's plan was a cent over the budget, said in the run log.", money: "Testnet · test money",
+      ids: refused.filter((x) => x.tx).map((x) => tx(`Refused (${x.reason})`, x.tx!)),
+      files: [...AS.map((f) => ({ label: `record (${f.includes("finish") ? "finish" : "series"})`, href: blob(f) })), { label: "run log", href: blob("docs/runs/2026-11-19-alta-series.md") }],
+    });
+  }
+  const an2 = has("docs/runs/2026-11-19-anchor.json") ? readJson<Anchor>("docs/runs/2026-11-19-anchor.json") : null;
+  if (an2) out.push({
+    key: "anchor-2", iso: an2.anchored_at, date: day(an2.anchored_at), kind: "testnet", partners: ["Alta"],
+    name: "Records anchored on chain again, the new Alta series among them",
+    line: `One transaction seals ${an2.height} records, the 19 Nov Alta series among them; anyone can re-check them. Alta testnet, test money.`,
+    title: "Records anchored", rails: "Alta testnet (one anchor transaction)",
+    what: `Purser hashed ${an2.parts.length} parts of its committed records into one head and wrote it as the calldata of one Alta testnet transaction.`,
+    checks: "npm run verify-anchor -- docs/runs/2026-11-19-anchor.json recomputes the head from the repository, reads the transaction from the chain (an Alta testnet RPC is needed) and prints MATCH or MISMATCH.", money: "Testnet · test money",
+    ids: [tx("Anchor", an2.tx), { label: "Block", value: String(an2.block) }],
+    files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-19-anchor.json") }, { label: "run log", href: blob("docs/runs/2026-11-19-anchor.md") }],
+  });
+
   type Owners = { ran_at: string; account: string; steps: { kind: string; outcome: string; tx: string | null }[]; proposals: { proposal_id: string }[] };
   const ow = has("docs/runs/2026-11-12-faceid-onchain.json") ? readJson<Owners>("docs/runs/2026-11-12-faceid-onchain.json") : null;
   if (ow) {
