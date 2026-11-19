@@ -1,0 +1,701 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security/vex/purser.openvex.json",
+  "author": "Purser maintainers",
+  "role": "Document creator",
+  "timestamp": "2026-11-19T11:00:00Z",
+  "version": 1,
+  "tooling": "OSV-Scanner 2.7.1 (scan source, 2026-11-19); statements generated from its JSON output, then read one by one",
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "GHSA-5h93-6whr-6q8j"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/mcp@1.29.0 is installed only in the Semgrep install of the CI job \"security\" (.semgrep/requirements.txt), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-84m7-p3x7-pcfv"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/mcp@1.29.0 is installed only in the Semgrep install of the CI job \"security\" (.semgrep/requirements.txt), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-rwrf-2pqf-9j8j"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/mcp@1.29.0 is installed only in the Semgrep install of the CI job \"security\" (.semgrep/requirements.txt), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-w4fh-qvv9-3v23"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/mcp@1.29.0 is installed only in the Semgrep install of the CI job \"security\" (.semgrep/requirements.txt), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-mf5v-w3w3-f6cg"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/opentelemetry-api@1.37.0 is installed only in the Semgrep install of the CI job \"security\" (.semgrep/requirements.txt), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-xcq7-p3pf-p88h"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/opentelemetry-api@1.37.0 is installed only in the Semgrep install of the CI job \"security\" (.semgrep/requirements.txt), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-35jp-ww65-95wh"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-3g43-6gmg-66jw"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-3p68-rc4w-qgx5"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-3w6x-2g7m-8v23"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-42h9-826w-cgv3"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-43fc-jf86-j433"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-445q-vr5w-6q77"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-4hqw-qxg8-jxx2"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-5c9x-8gcm-mpgx"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-62hf-57xw-28j9"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-6chq-wfr3-2hj9"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-777c-7fjr-54vf"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-7q8q-rj6j-mhjq"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-898c-q2cr-xwhg"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-9fr6-4gfg-395g"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-fvcv-3m26-pcqx"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-hfxv-24rg-xrqf"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-j5f8-grm9-p9fc"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-j8rh-479h-cp32"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-jqh4-m9w3-8hp9"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-m7pr-hjqh-92cm"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-mmx7-hfxf-jppx"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-p92q-9vqr-4j8v"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-pf86-5x62-jrwf"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-pmv8-rq9r-6j72"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-pmwg-cvhr-8vh7"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-q8qp-cvcw-x6jj"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-vf2m-468p-8v99"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-vh66-26gq-q6x8"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-w9j2-pvgh-6h63"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-xhjh-pmcv-23jw"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-xx6v-rp6x-q39c"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/axios@1.12.2 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-27r3-jxmh-p828"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/body-parser@1.20.8 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-mrwp-f3q8-3g9p"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/follow-redirects@1.16.1 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-g3hv-75wg-m249"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:npm/minimatch@10.2.6 is installed only in the TAP interop test's copy of a third-party reference CDN proxy (test/interop/tap-ref-cdn-proxy.package-lock.json, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "PYSEC-2026-4024",
+        "aliases": [
+          "GHSA-5p39-cfhj-2xmp"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/anyio@3.7.1 is installed only in the TAP interop test's copy of a third-party reference agent registry (test/interop/tap-ref-requirements.txt, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "PYSEC-2026-4025",
+        "aliases": [
+          "GHSA-82r6-8w77-94w6"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/anyio@3.7.1 is installed only in the TAP interop test's copy of a third-party reference agent registry (test/interop/tap-ref-requirements.txt, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "PYSEC-2024-38"
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/fastapi@0.104.1 is installed only in the TAP interop test's copy of a third-party reference agent registry (test/interop/tap-ref-requirements.txt, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "PYSEC-2026-161",
+        "aliases": [
+          "GHSA-86qp-5c8j-p5mr"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/starlette@0.27.0 is installed only in the TAP interop test's copy of a third-party reference agent registry (test/interop/tap-ref-requirements.txt, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "PYSEC-2026-1941",
+        "aliases": [
+          "GHSA-2c2j-9gv5-cj73"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/starlette@0.27.0 is installed only in the TAP interop test's copy of a third-party reference agent registry (test/interop/tap-ref-requirements.txt, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "PYSEC-2026-1943",
+        "aliases": [
+          "GHSA-f96h-pmfr-66vw"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/starlette@0.27.0 is installed only in the TAP interop test's copy of a third-party reference agent registry (test/interop/tap-ref-requirements.txt, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "PYSEC-2026-2280",
+        "aliases": [
+          "GHSA-x746-7m8f-x49c"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/starlette@0.27.0 is installed only in the TAP interop test's copy of a third-party reference agent registry (test/interop/tap-ref-requirements.txt, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "PYSEC-2026-2281",
+        "aliases": [
+          "GHSA-wqp7-x3pw-xc5r"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/starlette@0.27.0 is installed only in the TAP interop test's copy of a third-party reference agent registry (test/interop/tap-ref-requirements.txt, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "PYSEC-2026-248",
+        "aliases": [
+          "GHSA-jp82-jpqv-5vv3"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/starlette@0.27.0 is installed only in the TAP interop test's copy of a third-party reference agent registry (test/interop/tap-ref-requirements.txt, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    },
+    {
+      "vulnerability": {
+        "name": "PYSEC-2026-249",
+        "aliases": [
+          "GHSA-82w8-qh3p-5jfq"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:github/agamemnon-coder/x402-business-agents"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "component_not_present",
+      "impact_statement": "pkg:pypi/starlette@0.27.0 is installed only in the TAP interop test's copy of a third-party reference agent registry (test/interop/tap-ref-requirements.txt, workflow tap-interop.yml), a CI job on a throwaway runner. It is not in package-lock.json or worker/package-lock.json, the product's dependencies, so it is not present in Purser and never runs in the payment path. OSV-Scanner 2.7.1 found 0 vulnerabilities in those two lockfiles on 2026-11-19."
+    }
+  ]
+}
