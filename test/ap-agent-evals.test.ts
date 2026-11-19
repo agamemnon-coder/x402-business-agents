@@ -160,7 +160,7 @@ describe("the live eval's report (pure parts; the live run itself never runs in 
     // The baseline with no model is in the section too.
     expect(md).toMatch(/What code gets right alone, with no model, .*the Checker \d+\/\d+ with code's fallback/);
     expect(apSection(rec(checker), { start: "<s>", end: "<e>" })).toContain("code never had to stop");
-  });
+  }, 60_000); // about 0.2 s alone; it hit the 5 s default on main's CI run of 19 Nov (2ef0f7a), the full suite running in parallel
 
   it("takes p50 and p95 by the nearest rank", () => {
     expect(latencyPercentile([5, 1, 3, 2, 4], 50)).toBe(3);
