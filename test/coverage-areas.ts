@@ -20,12 +20,17 @@ const AREAS: Record<string, { prefixes: string[]; floor: number }> = {
 };
 
 const root = resolve(import.meta.dirname, "..");
+const SRC = `${resolve(root, "src").replace(/\\/g, "/")}/`;
 const summary = JSON.parse(readFileSync(resolve(root, "coverage/coverage-summary.json"), "utf8")) as Record<string, { lines: { covered: number; total: number } }>;
 let failed = false;
 for (const [name, a] of Object.entries(AREAS)) {
   let covered = 0, total = 0;
   for (const [file, v] of Object.entries(summary)) {
-    const rel = file.startsWith(root) ? file.slice(root.length + 5) : file; // strip "<root>/src/"
+    // The areas are directories of src/; since 19 November the measured scope also holds cloud/src and worker/src
+    // (vitest.config.ts), whose files belong to no area here.
+    const path = file.replace(/\\/g, "/"); // Windows paths, with forward slashes
+    if (!path.startsWith(SRC)) continue;
+    const rel = path.slice(SRC.length); // strip "<root>/src/"
     if (a.prefixes.some((p) => rel.startsWith(p))) { covered += v.lines.covered; total += v.lines.total; }
   }
   const pct = total ? (100 * covered) / total : 100;
