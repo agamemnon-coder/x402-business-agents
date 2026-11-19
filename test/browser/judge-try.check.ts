@@ -58,6 +58,8 @@ try {
   await page.getByRole("button", { name: "See the agent pay it" }).waitFor({ timeout: 60_000 });
   await page.waitForTimeout(800);
   if (!live) ok(/no Claude call/i.test(await text(page)), "EUR 120.00: the page says no Claude call read it");
+  // Max, 19 Nov 2026: offline, live Claude does not run; the step itself says so, not only the rail.
+  if (!live) ok(await page.locator("#main .screen.work .pv-paused").isVisible(), "EUR 120.00: the reading step's notice says live Claude did not read it");
   ok(await page.getByText("Checks passed. Approved by your policy.").isVisible(), "EUR 120.00: within the limit, approved by the policy");
   await page.screenshot({ path: join(shots, "1-agent-alone.png") });
   await click("See the agent pay it");
@@ -98,9 +100,19 @@ try {
   ok(live ? /Paid · test money/i.test(await text(page)) : /simulated bank/i.test(await text(page)), live ? "EUR 1,850.00 paid: the page says test money" : "EUR 1,850.00 paid: the page says the simulated bank paid");
   await click("Now try to change it");
   await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.01", null, { timeout: 20_000 });
+  await page.waitForTimeout(800);
+  // 19 Nov 2026 (live review): "0 extra calls · blocked locally by SHA-256" only once the change was tried, not before.
+  ok(!/extra calls/.test(await page.locator(".pv-rail").innerText()), "the tamper step, before trying: no \"extra calls\" line yet");
   await click("Try to pay with my earlier approval");
   await page.waitForSelector(".why .head", { timeout: 30_000 });
   ok(/Blocked|refused/i.test(await text(page)), "1,850.01: refused");
+  await page.waitForTimeout(800);
+  {
+    // 19 Nov 2026: the SHA-256 check is Purser's code, not an AI agent; and now the line about extra calls is earned.
+    const rail = await page.locator(".pv-rail").innerText();
+    ok(/Purser’s code\s*blocked: the fingerprint does not match/.test(rail) && !/Checker agent\s*blocked/.test(rail), "1,850.01: the rail credits Purser's code with the block");
+    ok(/0 extra calls · blocked locally by SHA-256/.test(rail), "1,850.01: after the try, \"0 extra calls · blocked locally by SHA-256\"");
+  }
   await page.waitForTimeout(1_500);
   await page.screenshot({ path: join(shots, "3-refused.png") });
   await click("See your result");
@@ -108,6 +120,14 @@ try {
   await dl.waitFor({ timeout: 30_000 });
   await page.waitForTimeout(1_500);
   await page.screenshot({ path: join(shots, "4-result.png") });
+  if (!live) {
+    // 19 Nov 2026 (live review): the finish says who read the invoice in this run; offline, code did, and no call is counted.
+    const card = await page.locator(".pv-verify").innerText();
+    ok(/Read by Purser's code/.test(card) && !/Claude read the invoice/.test(card) && !/This run: \d+ calls/.test(card), `the finish: "Read by Purser's code", no Claude calls claimed (${card.replace(/\s+/g, " ").slice(0, 140)})`);
+    // Max, 19 Nov 2026: and plainly, in the end card itself.
+    const paused = page.locator(".pv-verify .pv-paused");
+    ok(await paused.isVisible() && /^Live Claude is off for this demo right now\. Purser's code read this invoice instead\./.test(await paused.innerText()), "the finish: the notice says live Claude did not read this invoice");
+  }
   const [download] = await Promise.all([page.waitForEvent("download"), dl.click()]);
   const file = join(shots, download.suggestedFilename() || "purser-proof.json");
   await download.saveAs(file);

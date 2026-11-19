@@ -2,6 +2,8 @@
 // README with one line that links its file. readmeFull() puts each moved body back under its heading, with its links
 // as from the repository's root again, so a test of what the README tells a reader (with the docs it links in place of
 // a section) still reads the same words. Tests of the README's own length and first screen read README.md itself.
+// 19 Nov 2026 (README tightened for the judges): the one-line sections that only pointed to their file are rows of one
+// "More" table; readmeFull() puts such a row back as its heading (the file's own title) and the body it moved.
 import { readFileSync } from "node:fs";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -25,13 +27,21 @@ export function movedBody(file: string): string {
   return rootLinks(t.slice(i + MOVED.length).replace(/\n+$/, ""));
 }
 
-/** The README with every moved section's body in place of its one-line link. */
+/** A moved file's title, as the README's heading had it: "# Gallery" → "## Gallery". */
+const title = (file: string) => `#${read(file).split("\n")[0]!}`;
+
+/** The README with every moved section's body in place of its one-line link (or of its row in the "More" table, with its heading). */
 export function readmeFull(readme = read("README.md")): string {
   let out = readme;
   for (const f of README_DOCS) {
-    const line = new RegExp(`\\n[^\\n]*\\]\\(${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\.\\n`);
-    if (!line.test(out)) throw new Error(`the README has no line linking ${f}`);
-    out = out.replace(line, () => `\n${movedBody(f)}\n`);
+    const esc = f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const line = new RegExp(`\\n[^\\n]*\\]\\(${esc}\\)\\.\\n`);
+    const row = new RegExp(`\\n\\| [^\\n]*\\]\\(${esc}\\) \\|\\n`);
+    // Found in the README itself, not in a body put back before it (a moved file may link another moved file).
+    const l = line.exec(readme)?.[0], r = row.exec(readme)?.[0];
+    if (l) out = out.replace(l, () => `\n${movedBody(f)}\n`);
+    else if (r) out = out.replace(r, () => `\n\n${title(f)}\n\n${movedBody(f)}\n\n`);
+    else throw new Error(`the README has no line or row linking ${f}`);
   }
   return out;
 }

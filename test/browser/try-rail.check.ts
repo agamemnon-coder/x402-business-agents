@@ -16,6 +16,7 @@ import type { Page } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
+import { LIVE } from "../../cloud/src/tryCopy.js";
 import { gotoLoaded, launchBrowser } from "./support/browser.js";
 
 const shots = process.argv[2] ?? "test-results/try-rail";
@@ -85,7 +86,10 @@ function sideChecks(g: Geo, tag: string) {
   ok(g.links === 0, `${tag}: no navigation links in the rail (${g.links})`);
 }
 function moduleChecks(g: Geo, tag: string) {
-  for (const w of ["Live engine", "Claude", "Reader agent", "Checker agent", "Payer agent", "Under the hood", "Airwallex", "Alta", "Visa Intelligent Commerce"]) ok(g.text.includes(w), `${tag}: the rail shows "${w}"`);
+  // 19 Nov 2026 (live review): this cloud has no model key, so Purser's code reads and decides; the rail names the roles
+  // ("Reader", "Checker", "Payer") and says code did the work in this run, never "Reader agent: Claude reads the PDF".
+  for (const w of ["Live engine", "Claude", "Reader", "Checker", "Payer", "Under the hood", "Airwallex", "Alta", "Visa Intelligent Commerce"]) ok(g.text.includes(w), `${tag}: the rail shows "${w}"`);
+  ok(!/Claude reads the PDF/.test(g.text), `${tag}: the rail does not say Claude reads the PDF (code read it in this run)`);
   ok(g.visa && /rgb\(255, 255, 255\)/.test(g.visa.bg), `${tag}: Visa Intelligent Commerce in a white pill (${g.visa?.bg})`);
 }
 
@@ -146,10 +150,20 @@ function moduleChecks(g: Geo, tag: string) {
 // 3. Phone: a closed drawer under the step, opened by a tap.
 {
   const { ctx, page } = await open("/try", 390, 844);
+  // 19 Nov 2026 (live review: the button started at y≈926 on a 390 x 844 phone): the main button is on the first screen.
+  const launch = await page.getByRole("button", { name: /Launch the live transfer demo/ }).boundingBox();
+  ok(launch && launch.y >= 0 && launch.y + launch.height <= 844, `390 x 844: "Launch the live transfer demo" is on the first screen (bottom ${launch ? Math.round(launch.y + launch.height) : "none"} ≤ 844)`);
+  await page.screenshot({ path: join(shots, "phone-390-start.png") });
   await page.getByRole("button", { name: /Launch the live transfer demo/ }).click();
   await page.waitForTimeout(1500);
   let g = await geo(page);
   ok(g.rail?.shown && !g.rail.side && !g.rail.open, "390: the rail is a closed drawer in the page");
+  // 19 Nov 2026 (live review): the EUR 1,850.00 sample is above the agent's limit, so it says it needs a signature; the
+  // "held on purpose" heading comes before the first held sample (the EUR 480.00 one cash holds), not after it.
+  await page.locator(".samples button[aria-pressed]").first().waitFor({ timeout: 30_000 });
+  const picker = (await page.locator(".samples").innerText()).replace(/\s+/g, " ");
+  ok(/Needs your signature.*?1,850\.00/.test(picker) && !/Ready to pay/.test(picker), `390: the EUR 1,850.00 sample says it needs your signature (${picker.slice(0, 160)})`);
+  ok(picker.indexOf("Held on purpose") >= 0 && picker.indexOf("Held on purpose") < picker.indexOf("480.00"), "390: \"Held on purpose\" comes before the EUR 480.00 sample cash holds");
   ok(g.sw <= g.iw, `390: no horizontal scroll (${g.sw} ≤ ${g.iw})`);
   await page.locator(".pv-rail-h").click();
   await page.waitForTimeout(400);
@@ -159,6 +173,95 @@ function moduleChecks(g: Geo, tag: string) {
   ok(g.rail && g.rail.right <= g.iw, "390 (open): the drawer fits the screen");
   moduleChecks(g, "390 (open)");
   await page.screenshot({ path: join(shots, "phone-390-drawer.png"), fullPage: true });
+  await ctx.close();
+}
+
+// 4. 19 Nov 2026 (live review): the hosted run whose Claude switch said "live" while its action cap was unset. The start
+//    answer says Claude is live and the engine's events say every call was capped (claude.capped, agent.run unavailable,
+//    as the hosted engine wrote them that day), stood in here on top of this cloud's real answers. The page must count no
+//    call and say Purser's code read the invoice.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: "light" });
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => errors.push(`capped 1280: ${e.message}`));
+  page.on("console", (m) => { if (m.type() === "error") errors.push(`capped 1280: ${m.text()}`); });
+  await ctx.route("**/v1/try/start", async (route) => {
+    const res = await route.fetch();
+    const j = await res.json() as { mode?: Record<string, string> };
+    await route.fulfill({ response: res, json: { ...j, mode: { ...(j.mode ?? {}), claude: "live", agents: "live" } } });
+  });
+  await ctx.route("**/v1/engine/events*", async (route) => {
+    const u = new URL(route.request().url());
+    const after = u.searchParams.get("after");
+    if (after && !/^\d+$/.test(after)) u.searchParams.set("after", String(Math.floor(Number(after))));
+    const res = await route.fetch({ url: u.href });
+    const j = await res.json() as { items?: { seq: number; event: string; fields?: Record<string, unknown> }[] };
+    const items = Array.isArray(j.items) ? j.items : [];
+    const add = items.filter((e) => e.event === "ap.received" && e.fields?.amount === "1850.00").flatMap((e) => [
+      { ...e, seq: e.seq - 0.5, event: "claude.capped", fields: { reason: "action_budget" } },
+      ...["checker", "coder", "payer"].map((agent, i) => ({ ...e, seq: e.seq + 0.1 * (i + 1), event: "agent.run", fields: { agent, model: "claude-haiku-5-5", status: "unavailable", turns: 0, cost_usd_micros: 0, latency_ms: 0 } })),
+    ]);
+    await route.fulfill({ response: res, json: { ...j, items: [...items, ...add].sort((a, b) => a.seq - b.seq) } });
+  });
+  await gotoLoaded(page, `${ORIGIN}/try`);
+  await page.waitForTimeout(800);
+  await page.getByRole("button", { name: /Launch the live transfer demo/ }).click();
+  await page.locator(".samples button[aria-pressed]").first().waitFor({ timeout: 30_000 });
+  await page.getByRole("button", { name: /A supplier's invoice/ }).first().click();
+  await page.getByRole("button", { name: /File this invoice|Give it to the AI agent/ }).click();
+  await page.getByRole("button", { name: /Send to CFO for approval/ }).waitFor({ timeout: 60_000 });
+  await page.waitForTimeout(1200);
+  const g = await geo(page);
+  const body = await page.evaluate(() => document.body.innerText);
+  ok(!/\d+ calls? this run/.test(g.text) && !/\d+ calls?\b/.test(g.text.split("\n").slice(0, 3).join(" ")), `capped 1280: the rail counts no Claude call (${g.text.replace(/\s+/g, " ").slice(0, 120)})`);
+  ok(/Not asked in this run/.test(g.text), "capped 1280: the rail says Claude was not asked in this run");
+  ok(!/Haiku/.test(g.text), "capped 1280: no agent run that never reached Claude is listed as a Haiku call");
+  ok(/what Purser’s code read/.test(g.text) && !/what Claude read/.test(g.text), "capped 1280: the code window says what Purser's code read");
+  ok(!/Claude reads the PDF/.test(g.text), "capped 1280: the agents module does not say Claude reads the PDF");
+  ok(!/The AI agent read the invoice/.test(body) && /Purser's code read the invoice and checked it\./.test(body), "capped 1280: the step's line says Purser's code read the invoice");
+  // Max, 19 Nov 2026: the visitor sees it in the main flow, why first, not only in the rail.
+  const notice = page.locator("#main .screen.work .pv-paused");
+  ok(await notice.isVisible() && (await notice.innerText()).startsWith(`Live Claude is paused right now: ${LIVE.caps.action_budget}.`), `capped 1280: the reading step says live Claude is paused and why (${(await notice.innerText().catch(() => "none")).slice(0, 90)})`);
+  await page.screenshot({ path: join(shots, "capped-1280-work.png") });
+  await ctx.close();
+}
+
+// 5. 19 Nov 2026: the live case, stood in the same way: the engine's events say Claude read the invoice (claude.read, and
+//    ap.received's read_by "claude:<model>"). One call is counted, the live words stay, and no "paused" notice shows.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: "light" });
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => errors.push(`live 1280: ${e.message}`));
+  page.on("console", (m) => { if (m.type() === "error") errors.push(`live 1280: ${m.text()}`); });
+  await ctx.route("**/v1/try/start", async (route) => {
+    const res = await route.fetch();
+    const j = await res.json() as { mode?: Record<string, string> };
+    await route.fulfill({ response: res, json: { ...j, mode: { ...(j.mode ?? {}), claude: "live" } } });
+  });
+  await ctx.route("**/v1/engine/events*", async (route) => {
+    const u = new URL(route.request().url());
+    const after = u.searchParams.get("after");
+    if (after && !/^\d+$/.test(after)) u.searchParams.set("after", String(Math.floor(Number(after))));
+    const res = await route.fetch({ url: u.href });
+    const j = await res.json() as { items?: { seq: number; event: string; fields?: Record<string, unknown> }[] };
+    const items = (Array.isArray(j.items) ? j.items : []).filter((e) => e.event !== "claude.fallback")
+      .map((e) => (e.event === "ap.received" ? { ...e, fields: { ...(e.fields ?? {}), read_by: "claude:claude-haiku-5-5" } } : e));
+    const add = items.filter((e) => e.event === "ap.received" && e.fields?.amount === "1850.00").map((e) => ({ ...e, seq: e.seq - 0.5, event: "claude.read", fields: { source: "claude", model: "claude-haiku-5-5", request_id: "req_0123456789abcdef", cost_usd_micros: 1234, latency_ms: 900 } }));
+    await route.fulfill({ response: res, json: { ...j, items: [...items, ...add].sort((a, b) => a.seq - b.seq) } });
+  });
+  await gotoLoaded(page, `${ORIGIN}/try`);
+  await page.waitForTimeout(800);
+  await page.getByRole("button", { name: /Launch the live transfer demo/ }).click();
+  await page.locator(".samples button[aria-pressed]").first().waitFor({ timeout: 30_000 });
+  await page.getByRole("button", { name: /A supplier's invoice/ }).first().click();
+  await page.getByRole("button", { name: /File this invoice|Give it to the AI agent/ }).click();
+  await page.getByRole("button", { name: /Send to CFO for approval/ }).waitFor({ timeout: 60_000 });
+  await page.waitForTimeout(1200);
+  const g = await geo(page);
+  ok(/1 call this run/.test(g.text) && /Reader agent/.test(g.text) && /Claude reads the PDF/.test(g.text), `live 1280: one Claude call counted and the live words kept (${g.text.replace(/\s+/g, " ").slice(0, 120)})`);
+  ok(await page.locator(".pv-paused").count() === 0, "live 1280: no \"paused\" notice when Claude read the invoice");
+  ok(/The AI agent read the invoice and checked it\./.test(await page.evaluate(() => document.body.innerText)), "live 1280: the step's line says the AI agent read it");
+  await page.screenshot({ path: join(shots, "live-1280-work.png") });
   await ctx.close();
 }
 

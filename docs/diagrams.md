@@ -1,7 +1,7 @@
 # Purser in five diagrams
 
-Mermaid, so GitHub draws them from this text. Each names the file that does the step; the README's
-[How it works in 5 files](../README.md#how-it-works-in-5-files) links the exact lines. Test money only: the Airwallex
+Mermaid, so GitHub draws them from this text. Each names the file that does the step;
+[How it works in 5 files](how-it-works.md) links the exact lines. Test money only: the Airwallex
 sandbox and Alta (formerly Metal) testnet.
 
 ## 0. In one line

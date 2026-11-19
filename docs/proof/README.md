@@ -9,6 +9,7 @@ The file /try hands over on Paid and on the one-cent refusal, so anyone can chec
 | Format `purser.proof-bundle/v1`: the signed terms, the passkey's signature, the decision, the ledger entries | [src/proof/bundle.ts](../../src/proof/bundle.ts) |
 | **7 checks**, the same code in the browser and offline | [/verify](https://kit11.max-31b.workers.dev/verify) · `npm run verify-bundle` |
 | **2 samples** from the live /try, 15 Nov 2026: EUR 1,850.00 paid; EUR 1,850.01 refused | [try-paid.json](try-paid.json) · [try-refused.json](try-refused.json) |
+| Every signed field of both samples (and of the other signed files committed here) changed by one step: every changed copy refused, 0 accepted | [tamper-matrix.md](../evidence/tamper-matrix.md) · `npm run tamper-matrix` |
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="../assets/payment-life-wide-dark.svg"><img src="../assets/payment-life-wide-light.svg" alt="One payment's life: invoice, read by Claude, checked by Purser's code, the exact terms hashed, signed by the CFO's Face ID, checked again by the rail's own control, paid, booked. Sandbox and testnet runs, test money." width="100%"></picture>
 

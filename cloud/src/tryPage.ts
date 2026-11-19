@@ -943,7 +943,8 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
       // 16 Nov (owner: the held ones read as "not working"): the two that get paid first, the agent's own first; then,
       // under their own heading, the ones Purser holds on purpose.
       const paid=(s)=>s.key==='within'||s.key==='clean';
-      // 17 Nov: the one inside the limit that code's cash check holds, right after them, before the held group.
+      // 17 Nov: the one inside the limit that code's cash check holds, right after them, first of the held group (19 Nov
+      // 2026, live review: it is held too, so the group's heading comes before it).
       const cashK=(s)=>s.key==='cash';
       const items=[...all.filter(paid).sort((a,b)=>(a.key==='within'?0:1)-(b.key==='within'?0:1)),...all.filter(cashK),...all.filter((s)=>!paid(s)&&!cashK(s))];
       if(!items.length){
@@ -957,7 +958,7 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
       for(const s of items){
         // Judges, 14 Nov: each sample says in one muted line what it shows; the first is where to start.
         const hint=C.invoice.hints[s.key];const first=!list.children.length;
-        if(!paid(s)&&!cashK(s)&&!list.querySelector('.igroup'))list.append(el('div','igroup',C.invoice.heldGroup));
+        if(!paid(s)&&!list.querySelector('.igroup'))list.append(el('div','igroup',C.invoice.heldGroup));
         const title=String(s.title??s.key),sh=hint?el('span','sh',hint):null;
         // 14 Nov (inbox table): the row is the button: supplier (with the sample's title and its line), number, amount,
         // due date and the risk the engine measured for it.
@@ -1144,6 +1145,8 @@ function skeleton(){
   const see=(items)=>{for(const e of items){
     const st=e&&typeof e.event==='string'?LIMIT.test(e.event)?2:CHECK.test(e.event)?1:0:0;
     if(st>stage){stage=st;said.textContent=st===2?C.work.limit:C.work.checking;askClose('skeleton');n.remove()}
+    // 19 Nov 2026 (live review): the engine says Claude was not asked (a cap, a switch) or not used: Purser's code reads.
+    if(live&&stage===0&&/^claude\.(capped|fallback)$/.test(String(e&&e.event||''))){said.textContent=C.work.readingCode;n.remove()}
     if(live&&stage===0){if(agentRow(e))askClose('skeleton');if(lineOf(e).asking)askOpen('skeleton',n)}}};
   return {node:el('div','',[line,card]),see};
 }

@@ -223,7 +223,8 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(long).toContain(T0_STATUS);
     expect(longRaw).toMatch(/^### What is real and what is simulated$/m);
     // Who does what stays on the README and in the long text (section D: the form tells problem to proof).
-    expect(read("README.md")).toContain("## Who does what");
+    // 19 Nov 2026 (README tightened for the judges): a row of the README's "More" table, linking its file.
+    expect(read("README.md")).toContain("\n| Who does what | Who built what, and what each partner runs | [docs/who-does-what.md](docs/who-does-what.md) |\n");
   });
 
   // /try since 13 Nov (judge panel): /try/sign answers 301 to it (#283).

@@ -36,10 +36,15 @@ describe("README badges", () => {
   // trailer stays in "Watch it", /proof in the live demo's line.
   // 17 Nov, owner: the badges at the very top, so the three links now come under them.
   // 18 Nov: the demo in the submission (3:15) replaces the film as the middle link; the film stays under "Watch it".
-  it("puts three links under the badges: Try on /try, the demo, verify it yourself", () => {
-    const links = readme.split("\n").find((l) => l.startsWith("**[Try it in 2 minutes]")) ?? "";
-    expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try", "https://youtu.be/gEUm8RlhZac", "#verify-it-yourself-in-3-commands"]);
-    expect([...links.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Try it in 2 minutes", "Watch the demo (3:15)", "Verify a payment yourself"]);
+  // 19 Nov 2026 (README tightened for the judges): the same three links as the judges' numbered path, the demo first,
+  // its thumbnail right under it.
+  it("puts three links under the badges, numbered: the demo, Try on /try, verify it yourself", () => {
+    const links = readme.split("\n").find((l) => l.startsWith("**1. [Watch the demo (3:15)]")) ?? "";
+    expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://youtu.be/gEUm8RlhZac", "https://kit11.max-31b.workers.dev/try", "#verify-it-yourself-in-3-commands"]);
+    expect([...links.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Watch the demo (3:15)", "Try it (2 min, test money)", "Verify a payment (3 commands)"]);
+    expect(links).toBe("**1. [Watch the demo (3:15)](https://youtu.be/gEUm8RlhZac) · 2. [Try it (2 min, test money)](https://kit11.max-31b.workers.dev/try) · 3. [Verify a payment (3 commands)](#verify-it-yourself-in-3-commands)**");
+    const lines = readme.split("\n");
+    expect(lines[lines.indexOf(links) + 2]).toBe('<a href="https://youtu.be/gEUm8RlhZac"><img src="docs/assets/readme/demo-thumb.jpg" alt="Purser: the demo on YouTube (3:15)" width="100%"></a>');
     expect(readme).toContain("\n## Verify it yourself in 3 commands\n");
     expect(readme.indexOf(links)).toBeGreaterThan(readme.indexOf(badgeLine));
     expect(readme).toContain("(https://youtu.be/n3HLVGROJc4)");
@@ -55,15 +60,19 @@ describe("README badges", () => {
     // line follows the Kit 11 table's closing sentence.
     const at = lines.findIndex((l) => l.startsWith("**Live demo: "));
     expect(at).toBeGreaterThan(lines.indexOf(badgeLine));
-    expect(lines[at]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film](https://youtu.be/PNLuqhRzVfE) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
+    // 19 Nov 2026: the demo in the submission (3:15) in place of the film here too; the film stays under "Watch it".
+    expect(lines[at]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the demo (3:15)](https://youtu.be/gEUm8RlhZac) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
     // 14 Nov (Max): "In 30 seconds" (three bullets) now comes first; the three proofs follow it.
     // 14 Nov: "Airwallex at the centre" sits between; the three proofs open "How it works in 3 steps".
-    const proofs = lines.slice(lines.indexOf("## How it works in 3 steps")).filter((l) => l.startsWith("- **")).slice(0, 3);
-    expect(proofs.map((l) => /^- \*\*([^.:]+)/.exec(l)![1])).toEqual(["Face ID or a passkey signs the exact terms", "Limits are enforced in 3 layers", "The audit chain is anchored on chain"]);
+    // 19 Nov 2026 (README tightened for the judges): one "How it works" (the 3 steps, the three proofs, the sequence
+    // diagram), the passkey named, as the 3 steps above it name it (Face ID on iPhone).
+    expect(lines).not.toContain("## How it works in 3 steps");
+    const proofs = lines.slice(lines.indexOf("## How it works")).filter((l) => l.startsWith("- **")).slice(0, 3);
+    expect(proofs.map((l) => /^- \*\*([^.:]+)/.exec(l)![1])).toEqual(["A passkey signs the exact terms", "Limits are enforced in 3 layers", "The audit chain is anchored on chain"]);
     for (const l of proofs) expect({ l: l.slice(0, 40), record: /\[record\]\(docs\/runs\/[^)]+\)/.test(l) }).toEqual({ l: l.slice(0, 40), record: true });
     for (const r of proofs.flatMap((l) => [...l.matchAll(/\(docs\/runs\/([^)]+)\)/g)].map((m) => m[1]!))) expect({ r, there: existsSync(new URL(`../docs/runs/${r}`, import.meta.url)) }).toEqual({ r, there: true });
     expect(proofs[1]).toContain("(https://kit11.max-31b.workers.dev/api/metal/mandates)");
     expect(proofs[1]).toContain("or the recorded 12 Nov snapshot when the chain does not answer");
-    expect(readme).toContain("Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude.");
+    expect(readme).toContain("**Run live on test money** (Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude): ");
   });
 });

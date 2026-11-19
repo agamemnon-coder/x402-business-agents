@@ -10,7 +10,18 @@ import { PROOF_FORMAT, PROOF_MEANS, PROOF_REFUSAL_MEANS, PROOF_SAMPLES, PROOF_VE
 /** The line under the heading, word for word. */
 export const VERIFY_BUNDLE_LEAD = "Don't trust our server: check the payment yourself.";
 /** The verdicts, word for word. */
-export const VERIFY_BUNDLE_VERDICT = { valid: "VALID", invalid: "NOT VALID", count: "every check passes ({n} of {n})" } as const;
+export const VERIFY_BUNDLE_VERDICT = { valid: "VALID", validRefused: "Proof valid · payment refused", invalid: "NOT VALID", count: "every check passes ({n} of {n})" } as const;
+
+/**
+ * 19 Nov 2026 (live review: a big green "VALID 11 of 11" over a refused payment): the headline. A bundle whose decision
+ * records a refusal (decision.outcome "refused", as src/proof/bundle.ts's checks read it) says the proof is valid and the
+ * payment refused. Words only: the checks and their verdict are unchanged. The page runs this function's own text.
+ */
+export function verdictWords(ok: boolean, b: unknown, v: { valid: string; validRefused: string; invalid: string }): string {
+  if (!ok) return v.invalid;
+  const d = b && typeof b === "object" ? (b as { decision?: unknown }).decision : null;
+  return d && typeof d === "object" && (d as { outcome?: unknown }).outcome === "refused" ? v.validRefused : v.valid;
+}
 /** The largest file the page reads. */
 export const VERIFY_BUNDLE_MAX = 262_144;
 
@@ -56,6 +67,7 @@ const JS = `
   var D = JSON.parse(document.getElementById("run-data").textContent);
   var $ = function (id) { return document.getElementById(id); };
   ${PROOF_VERIFY_JS}
+  var verdictWords = ${verdictWords.toString()};
   function el(tag, cls, kids) { var n = document.createElement(tag); if (cls) n.className = cls; (kids || []).forEach(function (k) { if (k !== null && k !== undefined) n.appendChild(typeof k === "string" ? document.createTextNode(k) : k); }); return n; }
   function ic(name) { var s = document.createElement("span"); s.innerHTML = D.icons[name]; var n = s.firstChild; n.setAttribute("class", "i"); return n; }
   function status(text, bad) { $("v-status").textContent = text; $("v-status").className = "status" + (bad ? " bad" : ""); }
@@ -66,7 +78,7 @@ const JS = `
     return verifyProofBundle(b).then(function (v) {
       var box = $("v-verdict"), bad = v.checks.filter(function (c) { return !c.ok; });
       box.className = "vv " + (v.ok ? "ok" : "bad");
-      box.replaceChildren(ic(v.ok ? "circle-check" : "octagon-x"), el("span", "", [el("b", "", [v.ok ? D.verdict.valid : D.verdict.invalid]), " ", el("small", "", [v.ok ? D.verdict.count.split("{n}").join(String(v.checks.length)) : "failed: " + bad.map(function (c) { return c.check; }).join(", ")])]));
+      box.replaceChildren(ic(v.ok ? "circle-check" : "octagon-x"), el("span", "", [el("b", "", [verdictWords(v.ok, b, D.verdict)]), " ", el("small", "", [v.ok ? D.verdict.count.split("{n}").join(String(v.checks.length)) : "failed: " + bad.map(function (c) { return c.check; }).join(", ")])]));
       box.hidden = false; box.dataset.ok = String(v.ok); box.dataset.failed = bad.map(function (c) { return c.check; }).join(",");
       $("v-checks").replaceChildren.apply($("v-checks"), v.checks.map(function (c) {
         var li = el("li", c.ok ? "ok" : "bad", [ic(c.ok ? "check" : "octagon-x"), el("b", "", [c.ok ? "pass" : "FAIL"]), el("span", "", [el("em", "", [c.check + ": "]), c.detail])]);
