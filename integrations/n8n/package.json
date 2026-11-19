@@ -1,0 +1,27 @@
+{
+  "name": "n8n-nodes-purser",
+  "version": "0.1.0",
+  "description": "n8n community node for Purser: read supplier invoices, propose a payment for the CFO's approval, read a proposal's status. It cannot approve: only the CFO's passkey does.",
+  "keywords": ["n8n-community-node-package", "purser", "accounts-payable"],
+  "license": "MIT",
+  "homepage": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/integrations/n8n",
+  "repository": { "type": "git", "url": "git+https://github.com/agamemnon-coder/x402-business-agents.git" },
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && cp nodes/Purser/purser.svg dist/nodes/Purser/"
+  },
+  "files": ["dist"],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": ["dist/credentials/PurserApi.credentials.js"],
+    "nodes": ["dist/nodes/Purser/Purser.node.js"]
+  },
+  "devDependencies": {
+    "n8n-workflow": "*",
+    "typescript": "6.0.3"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}

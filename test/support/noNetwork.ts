@@ -10,6 +10,8 @@ export const LIVE_KEYS = [
   "METAL_RPC_URL", "METAL_ENDPOINT_SECRET", "T0_API_KEY", "CLOUDFLARE_API_TOKEN", "HUB_PUSH_TOKEN",
   // A live ERP run's go and call budget (src/erp/callBudget.ts): a test run never counts in a real run's log.
   "ERP_LIVE_GO", "ERP_CALL_BUDGET", "ERP_CALL_LOG",
+  // Approval notifications' chat webhooks and an integration's key (src/integrations/approvalChat.ts): a test never posts to a real channel.
+  "PURSER_SLACK_WEBHOOK_URL", "PURSER_TEAMS_WEBHOOK_URL", "PURSER_API_KEY",
 ] as const;
 for (const k of LIVE_KEYS) delete process.env[k];
 

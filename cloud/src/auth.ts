@@ -7,7 +7,12 @@ import { hmacB64u, randomToken, sameString, sha256Hex, signedPayload, toB64u } f
 import type { Sql } from "./store.js";
 import { TenantDb, WriteConflict, type Stmt } from "./tenant.js";
 
-export type Scope = "read" | "sync" | "admin";
+/**
+ * What a key may do. "propose" (19 Nov, integrations): file an invoice's payment for the CFO's approval and nothing
+ * more, for an agent or an integration that should not hold "admin"; "admin" covers it. No scope approves: approving
+ * takes a signed-in person's passkey over the exact terms (cloud/src/engine/routes.ts).
+ */
+export type Scope = "read" | "sync" | "admin" | "propose";
 /**
  * A Claude connector token (cloud/src/claude/): an API key with the read scope that works at /mcp only. 'claude' reads;
  * 'claude-propose' also files an invoice's payment for the CFO's approval, which only the CFO's passkey (Face ID) can
@@ -20,7 +25,9 @@ export const DEMO_CONNECTOR_TOKEN = "purser-demo-read-only";
 export const DEMO_CONNECTOR_TENANT = "t_demo_company";
 export type Role = "owner" | "cfo" | "accountant" | "viewer";
 export const ROLES: Role[] = ["owner", "cfo", "accountant", "viewer"];
-export const SCOPES: Scope[] = ["read", "sync", "admin"];
+export const SCOPES: Scope[] = ["read", "sync", "admin", "propose"];
+/** Whether a caller's scopes cover one: "admin" covers "propose" (an owner may file what an integration may). */
+export const hasScope = (scopes: Set<Scope>, s: Scope): boolean => scopes.has(s) || (s === "propose" && scopes.has("admin"));
 
 export interface Caller {
   tenantId: string;
@@ -64,7 +71,7 @@ export async function newApiKey(db: TenantDb, a: { name: string; scopes: Scope[]
   let expires_at = new Date(a.now.getTime() + days * 86_400_000).toISOString();
   let parent: string | null = null;
   if (a.caller.kind === "key") {
-    const more = a.scopes.filter((s) => !a.caller.scopes.has(s));
+    const more = a.scopes.filter((s) => !hasScope(a.caller.scopes, s));
     if (more.length) throw new AuthError(403, `a key cannot make a key with more scope than its own (${more.join(", ")})`);
     const p = await db.one<{ expires_at: string | null }>("api_keys", { id: a.caller.principal });
     if (p?.expires_at && p.expires_at < expires_at) expires_at = p.expires_at;
@@ -208,7 +215,7 @@ export async function callerOf(sql: Sql, sessionSecret: string, authorization: s
 }
 
 export function need(c: Caller, scope: Scope): void {
-  if (!c.scopes.has(scope)) throw new AuthError(403, `this ${c.kind === "key" ? "key" : "sign-in"} may not ${scope === "read" ? "read" : scope === "sync" ? "push data" : "manage this company"}`);
+  if (!hasScope(c.scopes, scope)) throw new AuthError(403, `this ${c.kind === "key" ? "key" : "sign-in"} may not ${scope === "read" ? "read" : scope === "sync" ? "push data" : scope === "propose" ? "propose payments" : "manage this company"}`);
 }
 
 /** The platform admin's token: only its SHA-256 is configured (a Worker secret). */
