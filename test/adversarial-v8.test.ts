@@ -32,7 +32,7 @@ describe("the v8 case set", () => {
     expect(ADV_V8_CASES.filter((k) => k.truth !== "hold" && k.category !== "split_invoice").length).toBeGreaterThanOrEqual(50);
   });
 
-  it("is in scripts and with tricks v5 to v7 never had: Sinhala, Lao, Burmese, Gujarati, Malayalam, Telugu, Kannada, Tibetan, Syriac, Cherokee, syllabics", () => {
+  it("is in scripts and with tricks v2 to v7 never had: Sinhala, Lao, Burmese, Gujarati, Malayalam, Telugu, Kannada, Tibetan, Syriac, syllabics", () => {
     const text = ADV_V8_CASES.map((k) => printed(k.doc)).join("\n");
     const scripts = [["Sinhala", /\p{Script=Sinhala}/u], ["Lao", /\p{Script=Lao}/u], ["Myanmar", /\p{Script=Myanmar}/u], ["Gujarati", /\p{Script=Gujarati}/u], ["Malayalam", /\p{Script=Malayalam}/u],
       ["Telugu", /\p{Script=Telugu}/u], ["Kannada", /\p{Script=Kannada}/u], ["Tibetan", /\p{Script=Tibetan}/u], ["Syriac", /\p{Script=Syriac}/u], ["Cherokee", /\p{Script=Cherokee}/u],
@@ -40,7 +40,9 @@ describe("the v8 case set", () => {
       ["dotless i", /ı/u], ["Icelandic thorn", /Þ/u], ["Lithuanian caron", /Ž/u], ["Latvian macron", /ī/u], ["Hebrew points", /[ַָֿ]/u]] as const;
     for (const [what, re] of scripts) expect(re.test(text), what).toBe(true);
     const old = OLD.map((k) => printed(k.doc)).join("\n");
-    for (const re of [/\p{Script=Sinhala}/u, /\p{Script=Lao}/u, /\p{Script=Myanmar}/u, /\p{Script=Gujarati}/u, /\p{Script=Malayalam}/u, /\p{Script=Telugu}/u, /\p{Script=Kannada}/u, /\p{Script=Tibetan}/u, /\p{Script=Syriac}/u, /\p{Script=Cherokee}/u, /\p{Script=Canadian_Aboriginal}/u]) expect(re.test(old), String(re)).toBe(false);
+    // Not Cherokee: v6 already had Cherokee letters inside a Latin name (v8's header lists them among what is new; it is
+    // the whole name in Cherokee lookalikes that is).
+    for (const re of [/\p{Script=Sinhala}/u, /\p{Script=Lao}/u, /\p{Script=Myanmar}/u, /\p{Script=Gujarati}/u, /\p{Script=Malayalam}/u, /\p{Script=Telugu}/u, /\p{Script=Kannada}/u, /\p{Script=Tibetan}/u, /\p{Script=Syriac}/u, /\p{Script=Canadian_Aboriginal}/u]) expect(re.test(old), String(re)).toBe(false);
     // Suppliers on file whose names no earlier set had on file.
     const onFileBefore = new Set(V8_ON_FILE.slice(0, 30).map((s) => s.name));
     expect(V8_ON_FILE.slice(30).every((s) => !onFileBefore.has(s.name))).toBe(true);
