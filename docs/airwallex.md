@@ -19,6 +19,7 @@ All calls go to the Airwallex sandbox (`https://api.sandbox.airwallex.com/api/v1
 | 10 Nov | Two locks: Airwallex's approval workflow | [log](runs/2026-11-10-airwallex-two-locks.md) |
 | 12 Nov | Two locks: approved, then PAID | [log](runs/2026-11-12-airwallex-two-locks-paid.md) |
 | 17 Nov | A payout that does not stay paid: PAID, then FAILED by the sandbox's simulation | [record](runs/2026-11-17-airwallex-late-failure.json) |
+| 19 Nov | Paid invoices as bills in Airwallex Spend (accounts payable) | [log](runs/2026-11-19-airwallex-bills.md), [record](runs/2026-11-19-airwallex-bills.json) |
 
 Runs of 29 and 30 October are cited only where no later run shows the step, each with its date. Every live run: [docs/runs/README.md](runs/README.md).
 
@@ -32,6 +33,17 @@ passkey, not a person's Face ID. Nothing was approved in Airwallex's web app.
 | One signed batch as ONE Airwallex batch transfer (`AIRWALLEX_BATCH_TRANSFER=on`; `src/executors/airwallexBatch.ts`) | `POST /batch_transfers/create`, `/{id}/add_items`, `/{id}/quote`, `/{id}/submit`, `/{id}/delete` (only a DRAFTING batch, on a read-back difference); `GET /batch_transfers` (by request_id, after a lost answer), `/{id}`, `/{id}/items` | twice: two EUR 240.00 test invoices, signed once, became one Airwallex batch with the batch hash in its metadata (`3960a081-b058-422b-95b1-6298e45fe257`; then `40486a4e-a08c-4480-847b-d22012f3c604` under the stricter read-back: fee EUR 13.53 per item, total EUR 507.06); read back item by item with 0 differences; submitted; Airwallex's approval workflow holds both `IN_APPROVAL`. Not approved, booked or paid. A line of an Airwallex batch is never sent on its own. | [batch transfer](runs/2026-11-12-airwallex-batch-transfer.md) |
 | The payee's bank checks the account and name before the CFO is asked (`AIRWALLEX_PAYEE_CHECK=on`; `src/airwallex/payeeName.ts`) | `POST /beneficiaries/verify_account` | four checks: `NOT_MATCHED` twice on our German test IBAN, `PARTIAL_MATCH` on Airwallex's documented example (held as "Betty Morris"), `FULL_MATCH` on the name the bank gave back | [payee check](runs/2026-11-12-airwallex-payee-check.md) |
 | Reconciliation with Airwallex's own ledger, to the cent (`AIRWALLEX_FINANCIAL_TX=on`: `npm run reconcile -- --financial-transactions <from> <to>`; `src/finance/awxFinancialTx.ts`) | `GET /financial_transactions` | the awx-1 window: both payouts (a PAYOUT debit and a FEE debit each), and the conversion's credit and debit, agree with the awx-1 record exactly, with their signs; 0 differences; no payout, fee or conversion at Airwallex that the record lacks (2 card holds not compared) | [financial transactions](runs/2026-11-12-airwallex-financial-transactions.md) |
+
+## Paid invoices as bills in Airwallex Spend (19 November; sandbox, test money; `AIRWALLEX_BILLS=on`, off by default)
+
+Each invoice Purser pays becomes a Bill in Airwallex's own accounts payable, so the CFO sees the agent-paid bills in
+Airwallex (`src/airwallex/bills.ts`, `src/ap/billSync.ts`, run from `syncPayments`). The bill's `external_id` is the
+SHA-256 of the terms the CFO signed (the transfer's `metadata.approval_sha256`), or Purser's invoice id when no person
+signed. 50 Airwallex calls of the 60 approved; signed by a labelled virtual test passkey; each transfer's PAID simulated.
+
+| Capability | Endpoints | What ran live | Run record |
+|---|---|---|---|
+| Spend Bills | `GET /account` (the legal entity); `GET /spend/vendors`, `POST /spend/vendors/create`; `POST /files/upload` on `files.sandbox.airwallex.com` (purpose `SPEND_ATTACHMENT`); `GET /spend/bills` (every page, matched on external_id by Purser: Airwallex ignores the filter and does not keep external_id unique); `POST /spend/bills/create`; `GET /spend/bills/{id}`; `POST /spend/bills/{id}/mark_as_paid` | three EUR 240.00 invoices: three bills with the invoice PDF attached, external_id equal to the signed hash, read back with 0 differences, marked `PAID` and read back again. `mark_as_paid` records an `EXTERNAL` payment with no transfer: the transfer is named in the bill's description, not linked. | [bills](runs/2026-11-19-airwallex-bills.md) |
 
 ## The Airwallex-only run (7 November)
 
@@ -295,6 +307,8 @@ The key of a company's own Airwallex account, as in the main run and on 7 Novemb
 | FX | `GET /fx/rates/current`; `POST /fx/quotes/create`; `POST /fx/conversions/create`; `GET /fx/conversions` | Write |
 | Transfers | `POST /transfers/create`; `GET /transfers`; `GET /transfers/{id}`; batch transfers (`/batch_transfers…`, with `AIRWALLEX_BATCH_TRANSFER=on`) | Write |
 | Financial transactions | `GET /financial_transactions` (with `AIRWALLEX_FINANCIAL_TX=on`) | Read |
+| Spend: bills and vendors (with `AIRWALLEX_BILLS=on`) | `GET /account`; `GET /spend/vendors`; `POST /spend/vendors/create`; `GET /spend/bills`; `GET /spend/bills/{id}`; `POST /spend/bills/create`; `POST /spend/bills/{id}/mark_as_paid` | Spend > Bills > Write, Spend > Vendors > Write (Organization level, Airwallex says) |
+| Files (with `AIRWALLEX_BILLS=on`) | `POST /files/upload` (files.sandbox.airwallex.com) | Supporting Services > Files > Write |
 | Issuing | `GET /issuing/cardholders`; `POST /issuing/cardholders/create`; `GET /issuing/cards`; `POST /issuing/cards/create`; `GET /issuing/cards/{id}`; `POST /issuing/cards/{id}/update`; `GET /issuing/transactions` | Write |
 | Webhooks | `GET /webhooks`; `POST /webhooks/create`; `POST /webhooks/{id}/delete` | Write at setup, then none |
 | Payment acceptance (Airi rail, or `AIRWALLEX_PAYMENT_ACCEPTANCE=on`) | `POST /pa/payment_intents/create`; `POST /pa/payment_intents/{id}/confirm`; `GET /pa/payment_intents/{id}` | Write |

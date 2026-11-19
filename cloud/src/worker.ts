@@ -51,6 +51,8 @@ export interface Bindings {
   KIT11_ANTHROPIC_API_KEY?: string;
   /** The hands-on demo's bot check secret (cloud/src/try/botCheck.ts); a secret set by hand, read only by that check. */
   TRY_BOTCHECK_SECRET?: string;
+  /** Cloudflare Turnstile's secret key for the /try start (cloud/src/try/turnstile.ts); a secret set by hand, read only by that check. */
+  TURNSTILE_SECRET?: string;
   /**
    * Connecting a company's own accounts by OAuth (cloud/src/connect.ts, docs/real-customers.md), off unless
    * PURSER_OAUTH_CONNECT is "on": the sealing key (32 bytes, base64) and, per provider, the OAuth application Purser
@@ -113,7 +115,7 @@ function envOf(b: Bindings): CloudEnv {
   return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "",
     version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
-    ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}) } } : {}) } : {}),
+    ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}), ...(b.TURNSTILE_SECRET ? { turnstileSecret: b.TURNSTILE_SECRET, siteverify: (url: string, init: RequestInit) => fetch(url, init) } : {}) } } : {}) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE && b.HANDS_ON === "on" ? { negotiateClaude: negotiateClaudeOf(sql, b.ENGINE_CLAUDE, b.KIT11_ANTHROPIC_API_KEY) } : {}),
     edge: { stats: b.STATS !== "off" }, ...(connect ? { connect } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}) };
 }

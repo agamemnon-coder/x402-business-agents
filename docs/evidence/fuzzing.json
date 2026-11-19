@@ -1,0 +1,752 @@
+{
+  "format": "purser.fuzzing/v1",
+  "checked": "2026-11-19",
+  "how": "npm run fuzz: fast-check properties (src/fuzz/properties.ts) at high run counts, each within a time limit, with a fixed seed per property; a failure is shrunk to a small counterexample and kept with the seed and path that replay it. In process, no network.",
+  "totals": {
+    "properties": 17,
+    "runs": 275756,
+    "passed": 13,
+    "failed": 4,
+    "ms": 124527
+  },
+  "artifacts": {
+    "bundles": [
+      "docs/film/under-the-hood/record.json",
+      "docs/film/under-the-hood/try-proof.json",
+      "docs/proof/try-paid.json",
+      "docs/proof/try-refused.json"
+    ],
+    "receipts": [
+      "docs/runs/2026-11-07-awx-1/receipt-P-0002.json",
+      "docs/runs/2026-11-10-platform-e2e/receipt-SANDBOXTEST-P-0002.json"
+    ]
+  },
+  "canonicalization": [
+    "Terms are canonicalized with RFC 8785 (JCS): keys sorted by UTF-16 code units, no whitespace, strings escaped as JSON.stringify escapes them (lone surrogates as \\uXXXX). Key order and the whitespace the JSON was written with never change the hash (terms-order-whitespace).",
+    "No Unicode normalization is done anywhere: a payee written in NFC (é, U+00E9) and in NFD (e + U+0301) are different code points, so different canonical bytes and different hashes (terms-unicode). The passkey signs the exact code points the phone shows and hashes itself; a normalized copy of the terms would be refused, never accepted.",
+    "Terms carry no JSON numbers: money is a two-decimal string. The runner (src/lib/terms.ts), the receipt verifier (src/try/receipt.ts) and /verify (src/proof/bundle.ts) refuse a number anywhere in the terms (terms-numbers). The phone's canonicalize (src/approve/client.ts) would write a finite number in JS form; it never meets one, since the terms it hashes come from the runner. /verify's JCS writes whole numbers only, for the ledger entries a bundle carries.",
+    "Amounts are compared as strings: 1850.00, 1850.0, 1,850.00 and \"1850.00 \" are four different terms with four different hashes (terms-numbers). The reader turns what a document says into dddd.dd before anything is proposed (parser-total).",
+    "The four implementations (the runner's metal-pay jcs, the phone's, the receipt verifier's and /verify's) write the same bytes for any number-free JSON, and Node's SHA-256 and WebCrypto's agree (terms-four-canonicals-agree)."
+  ],
+  "results": [
+    {
+      "id": "parser-total",
+      "target": "parseApFallback (src/ap/reading.ts), the reader /try uses offline and every fallback uses",
+      "what": "on any text (invoice lines, random unicode, binary, 100-5,000 repeats of what its regexes look for) it never throws, answers in under 2 s, reads a total only as dddd.dd, an IBAN and an invoice number only as written in the text (an IBAN failing mod 97 is read as written, for the checker to block: iban_invalid)",
+      "status": "PASS",
+      "runs_asked": 20000,
+      "runs_done": 20000,
+      "skipped": 0,
+      "ms": 4232,
+      "time_limit_ms": 120000,
+      "interrupted": false,
+      "seed": 20261119,
+      "notes": "slowest single read 36.1 ms"
+    },
+    {
+      "id": "parser-compose-roundtrip",
+      "target": "parseApFallback over invoiceText (src/engine/tryWorld.ts): what /try's \"write your own\" accepts",
+      "what": "every invoice checkCompose accepts, written in the sample's layout, is read back by the parser with the same number, total, IBAN and due date",
+      "status": "FAIL",
+      "runs_asked": 20000,
+      "runs_done": 1,
+      "skipped": 0,
+      "ms": 9,
+      "time_limit_ms": 120000,
+      "interrupted": false,
+      "seed": 20261120,
+      "counterexample": "[{\"supplier_key\":\"bergtex\",\"invoice_no\":\"a\",\"amount\":\"100.00\",\"issue_date\":\"2026-11-19\",\"due_date\":\"2026-11-19\",\"iban\":\"DE89370400440532013000\"}]",
+      "error": "read {\"invoice_no\":\"\",\"total\":\"100.00\",\"iban\":\"DE89370400440532013000\",\"due_date\":\"2026-11-19\"}, written {\"invoice_no\":\"a\",\"total\":\"100.00\",\"iban\":\"DE89370400440532013000\",\"due_date\":\"2026-11-19\"}",
+      "shrinks": 13,
+      "path": "0:0:0:1:0:0:0:1:0:0:0:0:0:0"
+    },
+    {
+      "id": "parser-compose-roundtrip-pdf",
+      "target": "the same through the PDF /try renders (src/engine/invoicePdf.ts) and the text extraction (src/ap/pdfText.ts)",
+      "what": "every invoice checkCompose accepts, rendered to the enterprise PDF and its text extracted, is read back with the same number, total, IBAN and due date",
+      "status": "FAIL",
+      "runs_asked": 300,
+      "runs_done": 1,
+      "skipped": 3,
+      "ms": 569,
+      "time_limit_ms": 120000,
+      "interrupted": false,
+      "seed": 20261121,
+      "counterexample": "[{\"supplier_key\":\"bergtex\",\"invoice_no\":\"A\",\"amount\":\"100.00\",\"issue_date\":\"2026-11-19\",\"due_date\":\"2026-11-19\",\"iban\":\"DE89370400440532013000\"}]",
+      "error": "read {\"invoice_no\":\"\",\"total\":\"100.00\",\"iban\":\"DE89370400440532013000\",\"due_date\":\"2026-11-19\"}, written {\"invoice_no\":\"A\",\"total\":\"100.00\",\"iban\":\"DE89370400440532013000\",\"due_date\":\"2026-11-19\"}",
+      "shrinks": 7,
+      "path": "3:0:0:0:0:0:0:0"
+    },
+    {
+      "id": "reader-runner",
+      "target": "parseInvoiceFallback (src/claude/invoiceReading.ts), the runner's invoice reader without a model",
+      "what": "on any text it either reads an invoice whose amount is dddd.dd and whose IBAN and number are written in the text, or refuses with its own error (\"invoice: ...\"); never another exception",
+      "status": "PASS",
+      "runs_asked": 20000,
+      "runs_done": 20000,
+      "skipped": 0,
+      "ms": 1022,
+      "time_limit_ms": 90000,
+      "interrupted": false,
+      "seed": 20261122
+    },
+    {
+      "id": "terms-any-change",
+      "target": "termsHash (src/lib/terms.ts): the hash a passkey signs",
+      "what": "any change of any field (a character, a key renamed, removed or added, a type swapped, a value replaced) either makes the terms unhashable (refused) or changes the hash",
+      "status": "PASS",
+      "runs_asked": 50000,
+      "runs_done": 50000,
+      "skipped": 4312,
+      "ms": 20744,
+      "time_limit_ms": 120000,
+      "interrupted": false,
+      "seed": 20261123
+    },
+    {
+      "id": "terms-order-whitespace",
+      "target": "canonicalTerms (src/lib/terms.ts, RFC 8785)",
+      "what": "the hash is the same whatever the key order (at every depth) and whatever whitespace the JSON was written with",
+      "status": "PASS",
+      "runs_asked": 30000,
+      "runs_done": 30000,
+      "skipped": 0,
+      "ms": 13117,
+      "time_limit_ms": 90000,
+      "interrupted": false,
+      "seed": 20261124
+    },
+    {
+      "id": "terms-four-canonicals-agree",
+      "target": "the four canonical forms: the runner's (src/lib/terms.ts, metal-pay jcs), the phone's (src/approve/client.ts), the receipt verifier's (src/try/receipt.ts) and /verify's (src/proof/bundle.ts)",
+      "what": "on any number-free JSON (lone surrogates, unicode keys, __proto__ included) all four write the same bytes, and Node's SHA-256 and the phone's WebCrypto SHA-256 agree",
+      "status": "PASS",
+      "runs_asked": 20000,
+      "runs_done": 20000,
+      "skipped": 0,
+      "ms": 2567,
+      "time_limit_ms": 120000,
+      "interrupted": false,
+      "seed": 20261125
+    },
+    {
+      "id": "terms-unicode",
+      "target": "canonicalTerms and termsHash: Unicode normalization (NFC/NFD)",
+      "what": "canonicalization does no Unicode normalization: a payee written in NFC and the same text in NFD (different code points) hash differently, and the canonical text gives back exactly the code points it was given",
+      "status": "PASS",
+      "runs_asked": 20000,
+      "runs_done": 20000,
+      "skipped": 0,
+      "ms": 8368,
+      "time_limit_ms": 60000,
+      "interrupted": false,
+      "seed": 20261126
+    },
+    {
+      "id": "terms-numbers",
+      "target": "canonicalTerms and the verifiers: numbers and number formats",
+      "what": "a JSON number anywhere in the terms is refused by the runner, the receipt verifier and /verify (money is a decimal string); amounts written differently (1850.00, 1850.0, 1,850.00, 1850.00 with a space) are different strings and never share a hash",
+      "status": "PASS",
+      "runs_asked": 20000,
+      "runs_done": 20000,
+      "skipped": 0,
+      "ms": 13794,
+      "time_limit_ms": 60000,
+      "interrupted": false,
+      "seed": 20261127
+    },
+    {
+      "id": "bundle-mutations",
+      "target": "verifyProofBundle (src/proof/bundle.ts: /verify and npm run verify-bundle), on the committed bundles",
+      "what": "a change to anything the passkey's signature covers (the terms and their hash, the canonical text, rp_id, origin, the assertion, the public key) is never VALID",
+      "status": "PASS",
+      "runs_asked": 10000,
+      "runs_done": 10000,
+      "skipped": 285,
+      "ms": 26067,
+      "time_limit_ms": 180000,
+      "interrupted": false,
+      "seed": 20261128
+    },
+    {
+      "id": "bundle-context",
+      "target": "verifyProofBundle: the context a bundle carries beside the signature (the engine's decision, the ledger entries of the payment and the ledger's head)",
+      "what": "the decision the engine recorded and the ledger entries /verify shows as \"ledger balance\" and \"ledger chain\" cannot be changed or dropped without a check failing",
+      "status": "FAIL",
+      "runs_asked": 10000,
+      "runs_done": 14,
+      "skipped": 1,
+      "ms": 81,
+      "time_limit_ms": 120000,
+      "interrupted": false,
+      "seed": 20261129,
+      "counterexample": "[0,{\"pick\":0,\"op\":\"edit\",\"at\":0,\"ch\":\"x\",\"junk\":false}]",
+      "error": "docs/film/under-the-hood/record.json: edit at decision.outcome and it still verifies",
+      "shrinks": 6,
+      "path": "14:0:0:0:0:0:0"
+    },
+    {
+      "id": "bundle-malformed",
+      "target": "verifyProofBundle on malformed input",
+      "what": "on anything (random values, a real bundle with any field replaced by junk or by a short base64url string) it answers with its checks: it never throws or rejects, and random values are never VALID",
+      "status": "FAIL",
+      "runs_asked": 10000,
+      "runs_done": 740,
+      "skipped": 0,
+      "ms": 1290,
+      "time_limit_ms": 120000,
+      "interrupted": false,
+      "seed": 20261130,
+      "counterexample": "[{\"v\":{\"format\":\"purser.proof-bundle/v1\",\"note\":\"A /try test company: test money only, nothing real moved. Check this file on /verify or with npm run verify-bundle -- <file>.\",\"made_at\":\"2026-11-15T04:26:02.186Z\",\"proposal_id\":\"P-0001\",\"terms\":{\"schema\":\"kit11.approval-terms/v1\",\"kind\":\"invoice_payment\",\"proposal_id\":\"P-0001\",\"expires_at\":\"2026-11-15T04:40:06Z\",\"invoice_no\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"vendor\":\"Bergtex Textil GmbH\",\"amount\":\"1850.00\",\"currency\":\"EUR\",\"fee_max\":\"20.00\",\"beneficiary_id\":\"ben_2\",\"beneficiary_name\":\"Bergtex Textil GmbH\",\"iban_last4\":\"3000\",\"bic\":\"COBADEFFXXX\",\"method\":\"SWIFT\",\"reference\":\"BTX-2026-21\",\"reason\":\"goods_purchased\",\"transfer_request_id\":\"a0868db8-58fb-4f5c-a73b-b3ce45d34121\",\"conversion\":{\"request_id\":\"d6fd0985-fe02-4e30-9b0b-b9a014bff6be\",\"quote_id\":\"d7e941bc-da97-3e15-b07e-566136737840\",\"client_rate\":\"1.117256\",\"valid_to\":\"2026-11-15T04:40:36.000Z\",\"buy_currency\":\"EUR\",\"buy_amount\":\"370.00\",\"sell_currency\":\"USD\",\"sell_amount\":\"413.38\"},\"balances_before\":{\"eur_available\":\"35000.00\",\"usd_available\":\"25000.00\"},\"floors\":{\"eur_floor\":\"25000.00\",\"eur_obligations\":\"8500.00\",\"usd_floor\":\"20000.00\"},\"after\":{\"eur_free\":\"0.00\",\"usd_available\":\"24586.62\"},\"evidence\":[{\"type\":\"invoice\",\"ref\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"sha256\":\"71dc0539b893d3613328b164ef280f7d52c8eb5d87b127cea0a39bc2a75d4cbd\"}],\"document_total_line\":\"Total due EUR 1,850.00\",\"document_currency\":\"EUR\",\"test_money\":true,\"source\":\"payables_inbox\"},\"canonical\":\"{\\\"after\\\":{\\\"eur_free\\\":\\\"0.00\\\",\\\"usd_available\\\":\\\"24586.62\\\"},\\\"amount\\\":\\\"1850.00\\\",\\\"balances_before\\\":{\\\"eur_available\\\":\\\"35000.00\\\",\\\"usd_available\\\":\\\"25000.00\\\"},\\\"beneficiary_id\\\":\\\"ben_2\\\",\\\"beneficiary_name\\\":\\\"Bergtex Textil GmbH\\\",\\\"bic\\\":\\\"COBADEFFXXX\\\",\\\"conversion\\\":{\\\"buy_amount\\\":\\\"370.00\\\",\\\"buy_currency\\\":\\\"EUR\\\",\\\"client_rate\\\":\\\"1.117256\\\",\\\"quote_id\\\":\\\"d7e941bc-da97-3e15-b07e-566136737840\\\",\\\"request_id\\\":\\\"d6fd0985-fe02-4e30-9b0b-b9a014bff6be\\\",\\\"sell_amount\\\":\\\"413.38\\",
+      "error": "threw InvalidCharacterError: Invalid character, with assertion.authenticatorData set to \"A\"",
+      "shrinks": 4,
+      "path": "739:0:30:31:31"
+    },
+    {
+      "id": "receipt-mutations",
+      "target": "verifyReceipt (src/try/receipt.ts: /try/verify and npm run verify-receipt), on the committed receipts",
+      "what": "a change to anything the signature covers (the terms and their hash, rp_id, origin, the assertion, the public key) is never valid, and any input at all is answered without throwing",
+      "status": "PASS",
+      "runs_asked": 10000,
+      "runs_done": 10000,
+      "skipped": 365,
+      "ms": 12197,
+      "time_limit_ms": 120000,
+      "interrupted": false,
+      "seed": 20261131
+    },
+    {
+      "id": "webhook-runner",
+      "target": "hookSignatureOk (src/policy/cardHooks.ts): the runner's check of Airwallex's x-signature",
+      "what": "the true HMAC-SHA256(secret, x-timestamp + body) verifies (in either hex case); a one-character change to the timestamp, the body or the signature, another secret, or any other string never does; nothing throws",
+      "status": "PASS",
+      "runs_asked": 50000,
+      "runs_done": 50000,
+      "skipped": 15,
+      "ms": 2820,
+      "time_limit_ms": 90000,
+      "interrupted": false,
+      "seed": 20261132
+    },
+    {
+      "id": "webhook-cloud",
+      "target": "receiveAccountEvent and receivePartnerEvent (cloud/src/awxPlatform.ts, cloud/src/connect.ts): Purser Cloud's Airwallex webhooks",
+      "what": "any request whose x-signature is not HMAC-SHA256(secret, x-timestamp + body) or whose x-timestamp is not within 5 minutes is refused with 401, before anything is read or written; nothing else is ever thrown",
+      "status": "PASS",
+      "runs_asked": 10000,
+      "runs_done": 10000,
+      "skipped": 913,
+      "ms": 535,
+      "time_limit_ms": 90000,
+      "interrupted": false,
+      "seed": 20261133
+    },
+    {
+      "id": "mcp-cloud",
+      "target": "Purser Cloud's MCP server (cloud/src/claude/mcp.ts mcpAnswer): every tool, any JSON-RPC message",
+      "what": "any message is answered without throwing (no 5xx); a tool call is carried out only when its arguments fit the tool's own published inputSchema (checked here with Ajv); nothing approves, pays or writes",
+      "status": "PASS",
+      "runs_asked": 10000,
+      "runs_done": 10000,
+      "skipped": 0,
+      "ms": 13235,
+      "time_limit_ms": 150000,
+      "interrupted": false,
+      "seed": 20261134
+    },
+    {
+      "id": "mcp-agent-api",
+      "target": "the agent API's MCP server (src/platform/mcpServer.ts): every tool an outside agent can call",
+      "what": "any arguments to any tool are refused or handled: a call that succeeds fits the tool's published inputSchema (Ajv), nothing is approved, no card is issued or charged, the policy is never changed",
+      "status": "PASS",
+      "runs_asked": 5000,
+      "runs_done": 5000,
+      "skipped": 0,
+      "ms": 3880,
+      "time_limit_ms": 150000,
+      "interrupted": false,
+      "seed": 20261135
+    }
+  ],
+  "sweep": {
+    "tried": 3004,
+    "still_valid": [
+      {
+        "kind": "bundle",
+        "change": "add a key",
+        "path": "asked",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "add a key",
+        "path": "assertion",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "add a key",
+        "path": "decision",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "add a key",
+        "path": "decision.executor",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "add a key",
+        "path": "decision.signature",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "add a key",
+        "path": "ledger",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "add a key",
+        "path": "public_key",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "asked",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "asked.canonical",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "assertion.credential_id",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "canonical",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.changed",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.changed[]",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.executor",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.executor.accepted",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.executor.said",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.outcome",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.sent_sha256",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.signature",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.signature.reason",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.signature.verified",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.transfers_after",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "decision.transfers_before",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "ledger.count",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "ledger.entries[]",
+        "artifacts": 20,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "ledger.head",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "made_at",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "note",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "proposal_id",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "public_key.alg",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "delete",
+        "path": "public_key.format",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "asked.canonical",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "assertion.credential_id",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "decision.changed[]",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "decision.executor.accepted",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "decision.executor.said",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "decision.outcome",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "decision.sent_sha256",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "decision.signature.reason",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "decision.signature.verified",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "decision.transfers_after",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "decision.transfers_before",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "ledger.count",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "ledger.head",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "made_at",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "note",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "proposal_id",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "public_key.alg",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "public_key.cose",
+        "artifacts": 4,
+        "covered": "same key"
+      },
+      {
+        "kind": "bundle",
+        "change": "edit",
+        "path": "public_key.format",
+        "artifacts": 4,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "add a key",
+        "path": "assertion",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "add a key",
+        "path": "e2e",
+        "artifacts": 1,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "add a key",
+        "path": "e2e.chain",
+        "artifacts": 1,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "add a key",
+        "path": "e2e.chain.rows[]",
+        "artifacts": 8,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "add a key",
+        "path": "e2e.steps[]",
+        "artifacts": 8,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "add a key",
+        "path": "public_key",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "delete",
+        "path": "credential_id",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "delete",
+        "path": "e2e",
+        "artifacts": 1,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "delete",
+        "path": "e2e.company",
+        "artifacts": 1,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "delete",
+        "path": "note",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "delete",
+        "path": "verified_by_server_at",
+        "artifacts": 1,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "delete",
+        "path": "verify",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "edit",
+        "path": "assertion.signature",
+        "artifacts": 1,
+        "covered": "same bytes"
+      },
+      {
+        "kind": "receipt",
+        "change": "edit",
+        "path": "credential_id",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "edit",
+        "path": "e2e.company",
+        "artifacts": 1,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "edit",
+        "path": "note",
+        "artifacts": 2,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "edit",
+        "path": "verified_by_server_at",
+        "artifacts": 1,
+        "covered": "context"
+      },
+      {
+        "kind": "receipt",
+        "change": "edit",
+        "path": "verify",
+        "artifacts": 2,
+        "covered": "context"
+      }
+    ]
+  }
+}

@@ -27,7 +27,7 @@ if (process.argv.includes("--holds")) {
 }
 const rh = process.argv.indexOf("--release-hold");
 if (rh >= 0) {
-  const cfg = fromEnv();
+  const cfg = fromEnv(process.env, "read");
   if (!cfg) {
     console.log("STOP             no Airwallex sandbox keys (AIRWALLEX_CLIENT_ID / AIRWALLEX_API_KEY): Airwallex cannot be asked, so nothing is released");
     process.exit(2);
@@ -44,7 +44,7 @@ if (rh >= 0) {
 const at = process.argv.indexOf("--close-unsent");
 if (at >= 0) {
   const requestId = process.argv[at + 1] ?? "";
-  const cfg = fromEnv();
+  const cfg = fromEnv(process.env, "read");
   if (!cfg) {
     console.log("STOP             no Airwallex sandbox keys (AIRWALLEX_CLIENT_ID / AIRWALLEX_API_KEY): Airwallex cannot be asked, so nothing is closed");
     process.exit(2);
@@ -66,7 +66,7 @@ const ftAt = process.argv.indexOf("--financial-transactions");
 if (ftAt >= 0) {
   const { financialTxOn, ledgerMovementsFromDb, listFinancialTransactions, reconcileFinancialTransactions, recordReconciliation } = await import("../finance/awxFinancialTx.js");
   if (!financialTxOn()) { console.log("STOP             AIRWALLEX_FINANCIAL_TX=off (the emergency stop); nothing was asked"); process.exit(2); }
-  const cfg = fromEnv();
+  const cfg = fromEnv(process.env, "read");
   if (!cfg) { console.log("STOP             no Airwallex sandbox keys: Airwallex cannot be asked"); process.exit(2); }
   const window = { from: process.argv[ftAt + 1] ?? "", to: process.argv[ftAt + 2] ?? "" };
   if (!window.from || !window.to) { console.log("usage: npm run reconcile -- --financial-transactions <from ISO 8601> <to ISO 8601>"); process.exit(2); }

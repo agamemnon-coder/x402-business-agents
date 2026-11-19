@@ -23,7 +23,8 @@ import type { Hex } from "viem";
 import { publicClient } from "../metal/chain.js";
 import { USDZ } from "../metal/network.js";
 import { liveRunCount } from "../redesign/runs.js";
-import { AWX_CALLS_LABEL } from "../redesign/scale.js";
+import { AWX_CALLS_LABEL, NOT_IN_BAND } from "../redesign/scale.js";
+import { PARTNER_STRIPS } from "../redesign/evidenceWall.js";
 import { apiTrail } from "../airwallex/apiTrail.js";
 import { mdCell as cell, pageText as text } from "./verifyAllFormat.js";
 
@@ -43,10 +44,12 @@ const add = (group: string, status: Status, what: string, seen: string, source: 
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 const json = <T = unknown>(p: string): T => JSON.parse(read(p)) as T;
 const isRec = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+/** Every file under a folder whose name matches; the folders and files the band does not count (scale.ts NOT_IN_BAND) skipped. */
 function filesIn(dir: string, re: RegExp): string[] {
+  if (NOT_IN_BAND.includes(dir)) return [];
   let names: string[];
   try { names = readdirSync(join(ROOT, dir)); } catch { return []; }
-  return names.flatMap((n) => { const p = `${dir}/${n}`; return statSync(join(ROOT, p)).isDirectory() ? filesIn(p, re) : re.test(n) ? [p] : []; });
+  return names.flatMap((n) => { const p = `${dir}/${n}`; return NOT_IN_BAND.includes(p) ? [] : statSync(join(ROOT, p)).isDirectory() ? filesIn(p, re) : re.test(n) ? [p] : []; });
 }
 /** Never let a URL with a key in it reach the report. */
 const scrub = (s: string) => (process.env.METAL_RPC_URL ? s.split(process.env.METAL_RPC_URL).join("<METAL_RPC_URL>") : s).replace(/https?:\/\/[^\s"']*(key|token|secret)[^\s"']*/gi, "<url>");
@@ -81,7 +84,8 @@ function verifiers() {
   }
   if (!process.env.METAL_RPC_URL) add(G, "could not run here", "npm run verify-anchor", "METAL_RPC_URL is not set: the anchor transaction cannot be read from Alta testnet", "docs/runs/2026-11-13-anchor.json");
   else {
-    const r = runCli("verifyAnchor.ts", []);
+    // The 13 Nov anchor by name: the newest record (19 Nov, not counted in the band) is checked in its own run log.
+    const r = runCli("verifyAnchor.ts", ["docs/runs/2026-11-13-anchor.json"]);
     const ok = r.lines.filter((l) => l.startsWith("ok")).length;
     add(G, r.code === 0 ? "pass" : r.code === 2 ? "could not run here" : "FAIL", "npm run verify-anchor (Alta testnet, read-only)", `${ok} lines ok; ${lastLine(r.lines, /MATCH/).replace(ROOT + "/", "")}`, "docs/runs/2026-11-13-anchor.json");
   }
@@ -229,6 +233,21 @@ function figures(pages: Record<string, string>) {
   };
   for (const f of records) { try { walk(json(f)); } catch { /* not JSON */ } }
   cmp("/proof: refusals on record", refusals.size, pick(proofBand, "refusals on record"), "audit rows of a refusal, decline, rejection or fraud stop in docs/runs and docs/demo, counted here");
+  // 19 Nov: the evidence wall, each tile's figure as docs/evidence/evidence-wall.json holds it (the page's own code made
+  // that file from the records: npm run evidence:wall; test/evidence-wall.test.ts holds it to them).
+  const wallSeen = new Map([...proofHtml.matchAll(/data-wall="([^"]+)"[^>]*>\s*<a [^>]*><b class="ew-f">([^<]+)<\/b>/g)].map((m) => [m[1]!, m[2]!.replace(/&amp;/g, "&")]));
+  const wallTiles = (json<{ groups: { tiles: { key: string; fig: string; rec: string; offProof?: boolean }[] }[] }>("docs/evidence/evidence-wall.json")).groups.flatMap((g) => g.tiles);
+  for (const t of wallTiles.filter((x) => !x.offProof)) {
+    cmp(`/proof evidence wall: ${t.key}`, t.fig, wallSeen.get(t.key), `docs/evidence/evidence-wall.json (from ${t.rec})`);
+  }
+  // The partner pages' strips (19 Nov): each tile the page shows, as the wall's file has it.
+  for (const [path, strip] of [["/airwallex", "airwallex"], ["/alta", "alta"], ["/visa", "visa"], ["/visa", "tap"]] as const) {
+    const html = pages[path] ?? "", seen = new Map([...html.matchAll(/data-wall="([^"]+)"[^>]*>\s*<a [^>]*><b class="ew-f">([^<]+)<\/b>/g)].map((m) => [m[1]!, m[2]!.replace(/&amp;/g, "&")]));
+    for (const key of PARTNER_STRIPS[strip].keys) {
+      const t = wallTiles.find((x) => x.key === key);
+      if (t) cmp(`${path} strip: ${key}`, t.fig, seen.get(key), `docs/evidence/evidence-wall.json (from ${t.rec})`);
+    }
+  }
   for (const [label, n] of homeBand) {
     if (proofBand.has(label)) cmp(`Home: ${label}`, pick(proofBand, label)!, n, "the same figure on /proof");
   }
@@ -317,7 +336,7 @@ function timing() {
 // Run it all ---------------------------------------------------------------------------------------------------------------
 const startedAt = new Date().toISOString();
 const pages: Record<string, string> = {};
-for (const p of ["/proof", "/", "/alta", "/runs"]) {
+for (const p of ["/proof", "/", "/alta", "/runs", "/airwallex", "/visa"]) {
   try { const r = await fetch(`${SITE}${p}`); pages[p] = await r.text(); add("the site", r.ok ? "pass" : "FAIL", `GET ${SITE}${p}`, `${r.status}, ${pages[p]!.length} bytes`, "the deployed site"); }
   catch (e) { add("the site", "could not run here", `GET ${SITE}${p}`, `no answer: ${(e as Error).message}`, "the deployed site"); }
 }

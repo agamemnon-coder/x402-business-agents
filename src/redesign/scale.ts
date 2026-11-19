@@ -16,6 +16,7 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { liveRunCount } from "./runs.js";
+import { NOT_IN_BAND } from "./liveTry.js";
 import { apiTrail } from "../airwallex/apiTrail.js";
 /** The band's words for the Airwallex figure: the same count as /airwallex/calls. */
 export const AWX_CALLS_LABEL = "Airwallex sandbox API calls in the run records";
@@ -25,12 +26,16 @@ import { esc, icon } from "./ui.js";
 const ROOT = new URL("../../", import.meta.url);
 const read = (p: string) => readFileSync(new URL(p, ROOT), "utf8");
 const json = (p: string): unknown => { try { return JSON.parse(read(p)); } catch { return null; } };
-/** Every file under a folder of the repository, by its path from the root, whose name matches. */
+/** The folders the band does not count: kept in ./liveTry.ts, which /runs also reads, so both leave out the same ones. */
+export { NOT_IN_BAND } from "./liveTry.js";
+/** Every file under a folder of the repository, by its path from the root, whose name matches (NOT_IN_BAND skipped). */
 function filesIn(dir: string, re: RegExp): string[] {
+  if (NOT_IN_BAND.includes(dir)) return [];
   let names: string[];
   try { names = readdirSync(new URL(`${dir}/`, ROOT)); } catch { return []; }
   return names.flatMap((n) => {
     const p = `${dir}/${n}`;
+    if (NOT_IN_BAND.includes(p)) return [];
     return statSync(new URL(p, ROOT)).isDirectory() ? filesIn(p, re) : re.test(n) ? [p] : [];
   });
 }

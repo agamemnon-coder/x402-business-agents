@@ -1,0 +1,111 @@
+# Signed releases (19 November). For a version tag (v…), this builds the source tarball (git archive of the tag), the
+# runtime bill of materials (CycloneDX, npm sbom as in ci.yml's security job) and SHA256SUMS, attests them with
+# GitHub's artifact attestations (SLSA build provenance and an SBOM attestation, signed through Sigstore with this
+# workflow's OIDC identity), and publishes all of it, with the attestation bundles as *.intoto.jsonl, on the tag's
+# GitHub release. How anyone verifies a download: docs/security/README.md, "Verify a release".
+#
+# It never creates, moves or deletes a tag: it reads the tag that was pushed (or named), and `gh release create
+# --verify-tag` refuses to make a release for a tag that does not exist. The submission tags (v1.0-submission and
+# v1.1-submission) are kept as they were submitted, so a push of one of them never starts this workflow (filter and
+# guard below); a release for an existing tag, those included, can be made deliberately with workflow_dispatch.
+name: release
+on:
+  push:
+    tags:
+      - "v*"
+      - "!v1.0-submission"
+      - "!v1.1-submission"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "An existing tag to build and attest a release for (for example v1.2.0)"
+        required: true
+        type: string
+permissions: {}
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  release:
+    # The same exclusion as the tag filter above, written out again: the submission tags are never released on push.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.ref_type == 'tag' && github.ref_name != 'v1.0-submission' && github.ref_name != 'v1.1-submission')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write # create the release and upload its files
+      id-token: write # sign the attestations (Sigstore, through this workflow's OIDC token)
+      attestations: write # store the attestations on this repository
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Check the tag's name
+        run: |
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9A-Za-z._-]+$'; then echo "not a version tag: $TAG"; exit 1; fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.22.0
+      - name: Source tarball (git archive of the tag)
+        run: |
+          commit="$(git rev-parse --verify "refs/tags/$TAG^{commit}")"
+          test "$(git rev-parse HEAD)" = "$commit"
+          mkdir dist
+          git archive --format=tar.gz --prefix="x402-business-agents-$TAG/" -o "dist/x402-business-agents-$TAG.tar.gz" "$commit"
+          echo "TAG_COMMIT=$commit" >> "$GITHUB_ENV"
+      # The same command as ci.yml's security job, on a clean npm ci of the tag's lockfile (no install scripts: the
+      # bill of materials reads the installed packages' metadata, nothing is built or run).
+      - name: Bill of materials (CycloneDX, runtime dependencies)
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm sbom --sbom-format cyclonedx --omit dev > "dist/x402-business-agents-$TAG.sbom.cdx.json"
+          node -e 'const d=require(process.argv[1]); if (d.bomFormat !== "CycloneDX" || !d.components.length) process.exit(1); console.log(d.components.length, "components")' "$PWD/dist/x402-business-agents-$TAG.sbom.cdx.json" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: SHA256SUMS
+        working-directory: dist
+        run: |
+          sha256sum "x402-business-agents-$TAG.tar.gz" "x402-business-agents-$TAG.sbom.cdx.json" > SHA256SUMS
+          cat SHA256SUMS | tee -a "$GITHUB_STEP_SUMMARY"
+      # actions/attest is GitHub's attestation action; attest-build-provenance (v4) and attest-sbom (v4, deprecated)
+      # are wrappers around it, and their READMEs point new workflows here.
+      - name: Attest build provenance (SLSA) for the tarball, the bill of materials and SHA256SUMS
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            dist/x402-business-agents-${{ env.TAG }}.tar.gz
+            dist/x402-business-agents-${{ env.TAG }}.sbom.cdx.json
+            dist/SHA256SUMS
+      - name: Attest the bill of materials for the tarball
+        id: sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/x402-business-agents-${{ env.TAG }}.tar.gz
+          sbom-path: dist/x402-business-agents-${{ env.TAG }}.sbom.cdx.json
+      - name: Keep the attestation bundles with the release
+        env:
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom.outputs.bundle-path }}
+        run: |
+          cp "$PROVENANCE_BUNDLE" "dist/x402-business-agents-$TAG.provenance.intoto.jsonl"
+          cp "$SBOM_BUNDLE" "dist/x402-business-agents-$TAG.sbom.intoto.jsonl"
+          ls -l dist | tee -a "$GITHUB_STEP_SUMMARY"
+      # Creates the tag's release, or replaces these files on it if it exists; never creates or moves the tag.
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --verify-tag --title "$TAG" --generate-notes
+          fi
+          {
+            echo "Release $TAG (commit $TAG_COMMIT). Verify a download:"
+            echo "  gh attestation verify x402-business-agents-$TAG.tar.gz -R $GITHUB_REPOSITORY"
+            echo "  sha256sum -c SHA256SUMS"
+          } | tee -a "$GITHUB_STEP_SUMMARY"

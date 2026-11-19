@@ -18,7 +18,8 @@ describe("/security: the three attack tests, named with their totals under the h
   it("says the same zero-trust count as the layers headline on the same page", () => {
     const page = securityPage();
     // Judge review, 13 Nov: the hero names its set and day, so 53 never reads as every attack Purser faced.
-    expect(page).toMatch(/<p class="zsub"><b>\d+ attacks on the payment path<\/b>, all stopped \(zero-trust harness, 13 November\)/);
+    const ran = new Date(`${(json("docs/zero-trust/report.json") as unknown as { generated: { date: string } }).generated.date}T12:00:00Z`).getUTCDate();
+    expect(page).toMatch(new RegExp(`<p class="zsub"><b>\\d+ attacks on the payment path</b>, all stopped \\(zero-trust harness, ${ran} November\\)`));
     const headline = /<p class="zsub"><b>(\d+) attacks on the payment path<\/b>/.exec(page)?.[1];
     const line = /zero trust, (\d+) attacks on the payment path/.exec(securityLead())?.[1];
     expect(headline).toBeDefined();

@@ -4,7 +4,7 @@
 // (src/ui/i18n.ts). Honest words only: "test company", "test money", "simulated bank"; "Claude" only where Claude ran.
 
 import { WORST_CASE_HEADLINE, WORST_CASE_LINE } from "../../src/evals/worstCase.js";
-import { TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/config/checkNumbers.js";
+import { SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/config/checkNumbers.js";
 import { FX_QUOTE_MAX_MARKUP_BPS, TRY_ALONE_LIMIT } from "../../src/config/policy.js";
 import { CASH_COMMITTED } from "../../src/config/trySample.js";
 
@@ -376,9 +376,10 @@ export const WHY = {
     unusual_amount: { head: "Flagged: an unusual amount.", rule: `More than ${UNUSUAL_FACTOR} times the median of this supplier's earlier invoices is flagged.` },
     overdue: { head: "Flagged: the due date has passed.", rule: "The due date is checked against today." },
     bank_change_language: { head: "Flagged: the invoice announces a new bank.", rule: "Such words are evidence for the person who verifies; they never speed up a payment." },
-    pressure_language: { head: "Flagged: the invoice pushes for speed.", rule: "Such words are evidence for the person who verifies; they never speed up a payment." },
-    // 15 Nov: code's injection screen, as the warning the Checker agent is handed (src/ap/checkerCore.ts).
-    instructions_in_document: { head: "Flagged: a line in this invoice tries to instruct the AI.", rule: "Documents are data: such a line is a warning for the Checker agent and changes nothing by itself." },
+    // 19 Nov (adversarial eval v2): what the screen flags in the words holds the invoice for a person, below the limit too.
+    pressure_language: { head: "Held: the invoice pushes for speed.", rule: "A person reads such words first; once released, the CFO signs it. They never speed up a payment." },
+    instructions_in_document: { head: "Held: a line in this invoice tries to instruct the AI.", rule: "Documents are data: a person reads such a line first; once released, the CFO signs it." },
+    possible_split: { head: "Flagged: this may be one order split in parts, so the CFO decides.", rule: `One supplier's invoices within ${SPLIT_DAYS} days, each under the limit, are added up: past the limit, the CFO decides.` },
     missing_fields: { head: "Held: something on the invoice could not be read.", rule: "An invoice is paid only when every field it needs is read." },
     no_text: { head: "Held: no text could be read.", rule: "A document Purser cannot read goes to a person." },
     ambiguous_total: { head: "Held: the total is not clear.", rule: "When the page shows more than one total, a person decides." },

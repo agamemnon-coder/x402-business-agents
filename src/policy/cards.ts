@@ -1,6 +1,7 @@
 // The agents' company cards (K2). The CFO policy holds each card's limits (card.<agent>.per_tx / .monthly); this
 // code makes the card at Airwallex match them, so Airwallex itself declines anything over the limit, whatever the
-// agent does. Every authorisation Airwallex makes on a card is recorded once, from whichever source sees it first.
+// agent does. A limit goes UP only on a verified passkey signature over the exact new limit (src/policy/cardRaise.ts,
+// 19 November); lowering is free. Every authorisation Airwallex makes on a card is recorded once, from whichever source sees it first.
 
 import { currentOrigin, parseOrigin, type Origin } from "../provenance/origin.js";
 import { AGENTS, CARDS, type Agent } from "../config/policy.js";
@@ -14,6 +15,7 @@ import { stopped, velocityObserve } from "./velocity.js";
 import { principalActive } from "./principals.js";
 import { autonomyOn } from "../config/agents.js";
 import { AGENT_NAMES, publish, type AgentName } from "../autonomy/bus.js";
+import { allowedCardLimits, recordRaiseRefusals } from "./cardRaise.js";
 
 export interface CardRow {
   /** An own agent (sourcing, support, treasury) or an outside one (ext:<name>, P1). */
@@ -117,7 +119,10 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
     card = after;
     changed = true;
   }
-  const want = cardLimits(db, agent);
+  // A raise only as signed: any limit the policy would raise without a verified signature stays as the card has it.
+  const allowed = await allowedCardLimits(db, agent, card.limits, cardLimits(db, agent));
+  recordRaiseRefusals(db, agent, allowed.refused, now);
+  const want = allowed.limits;
   if (same(card.limits, want)) {
     storeCard(db, agent, card, now);
     return changed;
@@ -158,7 +163,10 @@ export async function setupCards(db: DB, rail: IssuingRail, now = new Date(), o:
     // never adopts another world's card with the plain name.
     const nickname = o.nicknameSuffix ? `${c.nickname} (${o.nicknameSuffix})` : cardNickname(db, agent);
     const found = await rail.findCard(holder.id, nickname);
-    const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: cardLimits(db, agent), controls: cardControls(agent, now) }));
+    // A new card starts at no more than the signed limits: above the limit in the code only on a verified signature.
+    const issue = await allowedCardLimits(db, agent, { currency: "EUR", perTxCents: c.perTxCents, monthlyCents: c.monthlyCents }, cardLimits(db, agent));
+    recordRaiseRefusals(db, agent, issue.refused, now);
+    const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: issue.limits, controls: cardControls(agent, now) }));
     // An adopted card is recorded with the limits it has; syncOne then logs any change it makes to them.
     storeCard(db, agent, card, now);
     audit(db, "awx-executor", found ? "card.adopted" : "card.issued", agent, { agent, last4: card.last4, nickname, limits: words(card.limits), currency: "EUR" }, now);
@@ -174,12 +182,20 @@ export async function syncCards(db: DB, rail: IssuingRail, now = new Date()): Pr
   return changed;
 }
 
-/** The cheap check the runner makes every few seconds: only a card whose stored limits differ from the policy is touched. */
+/**
+ * The cheap check the runner makes every few seconds: only a card whose stored limits differ from what it may have
+ * (the policy's, a raise only as signed) is touched. A refused raise is recorded here without calling Airwallex.
+ */
 export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Date()): Promise<string[]> {
   const changed: string[] = [];
   for (const row of cardRows(db)) {
-    const want = cardLimits(db, row.agent);
-    if (row.status === "CLOSED" || (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantCardStatus(db, row.agent))) continue;
+    if (row.status === "CLOSED") continue;
+    const allowed = await allowedCardLimits(db, row.agent, { currency: "EUR", perTxCents: row.per_tx_cents, monthlyCents: row.monthly_cents }, cardLimits(db, row.agent));
+    const want = allowed.limits;
+    if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantCardStatus(db, row.agent)) {
+      recordRaiseRefusals(db, row.agent, allowed.refused, now);
+      continue;
+    }
     await syncOne(db, rail, row.agent, await rail.getCard(row.card_id), now);
     changed.push(row.agent);
   }

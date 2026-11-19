@@ -38,7 +38,7 @@ const checks: Check[] = [
     name: "airwallex sandbox",
     required: false,
     run: async () => {
-      const cfg = fromEnv();
+      const cfg = fromEnv(process.env, "read");
       if (!cfg) throw new Error("AIRWALLEX_CLIENT_ID / AIRWALLEX_API_KEY not set");
       const balances = await new Airwallex(cfg).call<{ currency: string; available_amount: number }[]>("GET", "/balances/current");
       return balances.map((b) => `${b.currency} ${b.available_amount}`).join(", ") || "no balances";

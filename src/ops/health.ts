@@ -10,6 +10,7 @@ import { pausesNotRevoked } from "../policy/pause.js";
 import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/disputeDecision.js";
 import { codeMayCarryOut, escalatedUndecided } from "../agents/disputeSource.js";
 import { failureAlerts, failureCounts } from "../passkey/failures.js";
+import { termsHash, type Terms } from "../lib/terms.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -66,6 +67,12 @@ export function health(db: DB, now = new Date()): Health {
   for (const s of stuck.filter((x) => now.getTime() - Date.parse(x.since) > STUCK_AFTER_MS)) {
     alerts.push({ code: "action_stuck", severity: "warning", since: s.since, words: `${s.proposal_id} has been executing since ${s.since}; a restart resumes it from its last finished step.` });
   }
+  // Chaos for money movement (19 Nov, H11): an approved payment whose stored terms no longer hash to what the passkey
+  // signed is refused by its executor at every start, so nothing is paid; this tells a person at once, instead of it
+  // waiting silently, APPROVED, until it expires.
+  for (const t of tamperedApprovals(db)) {
+    alerts.push({ code: "approved_terms_changed", severity: "critical", since: t.since, words: `${t.proposal_id} was approved with a passkey, but its stored terms no longer match the signed hash: it will not be paid. Check who changed them; a new proposal needs a new approval.` });
+  }
   // dry-179 review: a mandate replace that failed after a step of it ran leaves the mandates half replaced. Its guard
   // never closes it (src/executors/mandateReplace.ts) and the spending hold lifts at its expiry, so a person looks.
   const halfRun = db.prepare(`SELECT p.proposal_id, (SELECT MAX(a.ts) FROM audit_log a WHERE a.subject = p.proposal_id AND a.event = 'proposal.failed') AS since,
@@ -121,4 +128,15 @@ export function prometheus(h: Health, extra: Record<string, number> = {}): strin
   }
   for (const a of h.alerts) lines.push(`purser_alert{code="${a.code}",severity="${a.severity}"} 1`);
   return `${lines.join("\n")}\n`;
+}
+
+/** Approved proposals whose stored terms no longer hash to the signed hash (nothing is paid for them; a person looks). */
+function tamperedApprovals(db: DB): { proposal_id: string; since: string | null }[] {
+  if (!has(db, "approvals")) return [];
+  const rows = db.prepare("SELECT p.proposal_id, p.terms_json, p.terms_sha256, a.approved_sha256, a.created_at AS since FROM proposals p JOIN approvals a ON a.proposal_id = p.proposal_id WHERE p.status = 'APPROVED' AND a.decision = 'APPROVED'").all() as { proposal_id: string; terms_json: string; terms_sha256: string; approved_sha256: string; since: string | null }[];
+  return rows.filter((r) => {
+    let h: string | null;
+    try { h = termsHash(JSON.parse(r.terms_json) as Terms); } catch { h = null; }
+    return h === null || h !== r.terms_sha256 || h !== r.approved_sha256;
+  }).map(({ proposal_id, since }) => ({ proposal_id, since }));
 }

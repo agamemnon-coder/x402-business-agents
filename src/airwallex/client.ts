@@ -6,8 +6,11 @@ import { redactSecrets } from "../lib/redact.js";
 import { AirwallexBudgetSpent, budgetFromEnv } from "./callBudget.js";
 import { ACCOUNT_ID } from "./platform.js";
 import { airwallexOAuthConfig, airwallexOAuthOn, cloudTargetFromEnv } from "../cloudsync/connections.js";
+import { assertRoleKeys, checkScope, ROLE_ENV, type AirwallexRole } from "./keyScopes.js";
 
 export const SANDBOX_BASE = "https://api.sandbox.airwallex.com/api/v1";
+/** Airwallex's Files service lives on its own host (Upload a file: files.sandbox.airwallex.com), with the same token. */
+export const SANDBOX_FILES_BASE = "https://files.sandbox.airwallex.com/api/v1";
 
 /**
  * Airwallex's answers about its own fee configuration (agent run 1). Only for these is its free-text message kept
@@ -34,6 +37,8 @@ export interface AirwallexConfig {
   /** The company's own OAuth access token instead of an API key (behind AIRWALLEX_OAUTH=on). */
   oauth?: AirwallexAccessToken;
   baseUrl?: string;
+  /** The Files service's base (uploads only, Airwallex Spend Bills): the sandbox's, like baseUrl. */
+  filesBaseUrl?: string;
   fetchImpl?: typeof fetch;
   /** Minimum gap between calls. 200 ms keeps us at 5/s, half the sandbox's per-endpoint limit. */
   minGapMs?: number;
@@ -47,6 +52,11 @@ export interface AirwallexConfig {
    * company's own wallet.
    */
   onBehalfOf?: string;
+  /**
+   * The role of a scoped key (src/airwallex/keyScopes.ts, 19 November): every call outside that role's scopes is
+   * refused before it is sent. Unset (the general key, or OAuth): no such check.
+   */
+  role?: AirwallexRole;
 }
 
 /** An Airwallex account id (acct_…), defined with the platform rail, which the cloud imports without this Node-only client. */
@@ -107,18 +117,26 @@ const MAX_429_RETRIES = 4;
 /** Answers that mean "try again shortly": a gateway or the service briefly down. Only reads are retried. */
 const TRANSIENT = new Set([502, 503, 504]);
 
-export function fromEnv(env = process.env): AirwallexConfig | null {
+/**
+ * The client's configuration from the environment. With a `role` (src/airwallex/keyScopes.ts): that role's own scoped
+ * key (AIRWALLEX_API_KEY_READ, _PAYOUT, _ISSUING or _SPEND) when it is set, guarded by the role's scopes, after
+ * checking that Purser's code makes no call with it outside them (a throw here stops the process at its start);
+ * else AIRWALLEX_API_KEY, as before. Without a role: AIRWALLEX_API_KEY.
+ */
+export function fromEnv(env: Record<string, string | undefined> = process.env, role?: AirwallexRole): AirwallexConfig | null {
   // AIRWALLEX_OAUTH=on (docs/real-customers.md): the company's own connected account, with its own token from Purser
   // Cloud; no API key is read. Off (the default): the API key pair, exactly as before.
   if (airwallexOAuthOn(env)) return airwallexOAuthConfig(cloudTargetFromEnv(env), env);
   const clientId = env.AIRWALLEX_CLIENT_ID;
-  const apiKey = env.AIRWALLEX_API_KEY;
+  const scoped = role ? env[ROLE_ENV[role]] : undefined;
+  if (scoped) assertRoleKeys({ [ROLE_ENV[role!]]: scoped });
+  const apiKey = scoped || env.AIRWALLEX_API_KEY;
   if (!clientId || !apiKey) return null;
   // A live run with an approved call budget (src/airwallex/callBudget.ts): every request is counted, none goes over it.
   const budgeted = budgetFromEnv(env, (...a) => fetch(...a));
   // Purser as a platform (AIRWALLEX_PLATFORM=on): the company's connected account, when it has one.
   const onBehalfOf = env.AIRWALLEX_PLATFORM === "on" && env.AIRWALLEX_ON_BEHALF_OF ? env.AIRWALLEX_ON_BEHALF_OF : undefined;
-  return { clientId, apiKey, ...(budgeted ? { fetchImpl: budgeted } : {}), ...(onBehalfOf ? { onBehalfOf } : {}) };
+  return { clientId, apiKey, ...(budgeted ? { fetchImpl: budgeted } : {}), ...(onBehalfOf ? { onBehalfOf } : {}), ...(scoped ? { role } : {}) };
 }
 
 export class Airwallex {
@@ -126,6 +144,7 @@ export class Airwallex {
   private queue: Promise<unknown> = Promise.resolve();
   private lastCallAt = 0;
   private readonly base: string;
+  private readonly filesBase: string;
   private readonly fetch: typeof fetch;
   private readonly minGapMs: number;
   private readonly sleep: (ms: number) => Promise<void>;
@@ -143,6 +162,8 @@ export class Airwallex {
     if (!cfg.oauth && (!cfg.clientId || !cfg.apiKey)) throw new Error("the Airwallex client needs an API key pair or the company's OAuth token");
     this.base = cfg.baseUrl ?? SANDBOX_BASE;
     if (!this.base.startsWith("https://api.sandbox.airwallex.com/")) throw new Error("this build only talks to the Airwallex sandbox");
+    this.filesBase = cfg.filesBaseUrl ?? SANDBOX_FILES_BASE;
+    if (!this.filesBase.startsWith("https://files.sandbox.airwallex.com/")) throw new Error("this build only uploads files to the Airwallex sandbox");
     this.fetch = cfg.fetchImpl ?? fetch;
     this.minGapMs = cfg.minGapMs ?? 200;
     this.sleep = cfg.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
@@ -186,17 +207,31 @@ export class Airwallex {
    * the caller resolves it by request_id (build plan 2.5), never by blind resending.
    */
   async call<T>(method: "GET" | "POST", path: string, body?: unknown, query?: Record<string, string>): Promise<T> {
+    const url = new URL(this.base + path);
+    for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v);
+    return this.send<T>(method, url, path, body === undefined ? undefined : JSON.stringify(body), true);
+  }
+
+  /**
+   * One multipart upload to Airwallex's Files service (POST, same token, same queue and limits as `call`). A lost answer
+   * is ambiguous like any POST: the caller decides; nothing is resent here. fetch sets the multipart content type.
+   */
+  async upload<T>(path: string, form: FormData): Promise<T> {
+    return this.send<T>("POST", new URL(this.filesBase + path), path, form, false);
+  }
+
+  private async send<T>(method: "GET" | "POST", url: URL, path: string, body: BodyInit | undefined, jsonBody: boolean): Promise<T> {
+    // A scoped key's role: a call outside its scopes is refused here, before the login or the call is sent.
+    if (this.cfg.role) checkScope(this.cfg.role, method, path);
     return this.enqueue(async () => {
-      const url = new URL(this.base + path);
-      for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v);
       for (let attempt = 0; ; attempt++) {
         const token = await this.bearer();
         let res: Response;
         try {
           res = await this.fetch(url, {
             method,
-            headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...(this.cfg.onBehalfOf ? { "x-on-behalf-of": this.cfg.onBehalfOf } : {}) },
-            body: body === undefined ? undefined : JSON.stringify(body),
+            headers: { authorization: `Bearer ${token}`, ...(jsonBody ? { "content-type": "application/json" } : {}), ...(this.cfg.onBehalfOf ? { "x-on-behalf-of": this.cfg.onBehalfOf } : {}) },
+            body,
             signal: AbortSignal.timeout(this.timeoutMs),
           });
         } catch (err) {

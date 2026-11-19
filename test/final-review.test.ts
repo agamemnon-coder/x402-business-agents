@@ -73,7 +73,8 @@ describe("the final review (13 Nov)", () => {
       "architecture-dark.svg", "architecture-light.svg", "deployment-dark.svg", "deployment-light.svg" /* 15 Nov: the Architecture section's two diagrams */,
       ...["stats", "terminal-verify", "system-map"].flatMap((n) => [`${n}-dark.svg`, `${n}-light.svg`]) /* 15 Nov (readme-wow): drawn by scripts/readme-wow-svg.ts */,
       "proof-strip-dark.svg", "proof-strip-light.svg" /* 17 Nov (owner): the proof strip under the title, drawn by scripts/readme-proof-strip.ts */,
-      "promo.webp" /* 16 Nov (Max): the animated payment story at 30 fps, rendered from scripts/readme-promo.html with the live /try run's values */];
+      "refusal.webp" /* 19 Nov: the refusal clip, captured live on /try by scripts/readme-refusal-webp.ts */, "promo.webp" /* 16 Nov (Max): the animated payment story at 30 fps, rendered from scripts/readme-promo.html with the live /try run's values */,
+      "evidence-map-dark.svg", "evidence-map-light.svg" /* 19 Nov 2026 (the owner): the animated evidence map under the demo, drawn by npm run evidence:wall (src/redesign/evidenceMap.ts) */];
     const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif|png|svg))"/g)].map((m) => m[1]!);
     const script = read("scripts/readme-shots.ts");
     expect(shots.length).toBeGreaterThanOrEqual(13); // the banner, the 2x2 gallery, Home's picture and the partner pages

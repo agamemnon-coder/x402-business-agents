@@ -42,7 +42,16 @@ const also = /<details class="fold" id="also"[\s\S]*?<\/details>/.exec(main)?.[0
 const decoded = /<details class="fold" id="refusals"[\s\S]*?<\/details>/.exec(main)?.[0] ?? "";
 const simulated = /<details class="fold"><summary>What is simulated<\/summary>[\s\S]*?<\/details>/.exec(main)?.[0] ?? "";
 const hrefs = (html: string) => [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!.replace(/&amp;/g, "&"));
-const link = (href: string, label: string) => new RegExp(`href="${href.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}"[^>]*>${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} ↗</a>`);
+/** Whether the html has a link to exactly `href` whose text is `label ↗` (string search: no URL is turned into a pattern). */
+const hasLink = (html: string, href: string, label: string) => {
+  const open = `href="${href}"`;
+  for (let at = html.indexOf(open); at >= 0; at = html.indexOf(open, at + 1)) {
+    const end = html.indexOf("</a>", at);
+    const tagEnd = html.indexOf(">", at);
+    if (end > 0 && tagEnd > 0 && tagEnd < end && html.slice(tagEnd + 1, end) === `${label} ↗`) return true;
+  }
+  return false;
+};
 
 describe("/metal plays the main run's record", () => {
   it("is labelled with the main run, and opens on one picture: a payment paid and one refused, under the same mandate", () => {
@@ -58,7 +67,7 @@ describe("/metal plays the main run's record", () => {
     const t = text(hero), first = trace.mandates.find((m) => m.agent === "sourcing" && m.event === "mandate.bound")!;
     const p23 = (JSON.parse(traceRaw) as { payments: { kind: string; ref: string; amount: string; rail_id: string }[] }).payments.find((p) => p.kind === "purchase" && p.ref === "23")!;
     expect(t).toContain(`cap ${first.cap} a payment · budget ${first.budget} · payee Stockline bind`);
-    expect(hero).toMatch(link(`${EXPLORER}/tx/${first.tx}`, "bind"));
+    expect(hasLink(hero, `${EXPLORER}/tx/${first.tx}`, "bind")).toBe(true);
     expect(t).toContain(`Within the cap: paid #23 · ${p23.amount} *USDZ Under the ${first.cap} cap.`);
     expect(hero).toContain(`href="${EXPLORER}/tx/${p23.rail_id}"`);
     expect(t).toContain(`Over the cap: refused on chain #24 · ${story.refusal!.amount} *USDZ Over the ${story.refusal!.cap} cap: MandateRefused on chain, nothing moved.`);
@@ -90,11 +99,11 @@ describe("the four mandates, one table", () => {
       expect({ cap: r.cap, budget: r.budget, tx: r.tx }).toEqual({ cap: last.cap, budget: last.budget, tx: last.tx });
       expect({ cap: r.cap, budget: r.budget, payee: r.payee, expires: r.expires, spent: r.spent }).toEqual({ cap: b.cap, budget: b.budget, payee: b.payee, expires: b.expires_on, spent: b.spent });
       expect(traceRaw).toContain(r.tx);
-      expect(table).toMatch(link(`${EXPLORER}/tx/${r.tx}`, r.cap));
+      expect(hasLink(table, `${EXPLORER}/tx/${r.tx}`, r.cap)).toBe(true);
       if (last.event === "mandate.replaced") {
         expect(r.first).toEqual({ cap: first.cap, budget: first.budget, tx: first.tx });
         expect(table).toContain(`was ${first.cap}: `);
-        expect(table).toMatch(link(`${EXPLORER}/tx/${first.tx}`, "first bind"));
+        expect(hasLink(table, `${EXPLORER}/tx/${first.tx}`, "first bind")).toBe(true);
         expect(text(table)).toContain(`${r.budget} (was ${first.budget})`);
       } else expect(r.first).toBeNull();
     }
@@ -177,7 +186,7 @@ describe("the payments, the refusal and the replace", () => {
     expect(Number(row("sweep")?.[1])).toBe(story.payments.sweeps);
     const paidUpstream = [...qa.matchAll(/\| Metal upstream purchase \| `\d+` \| [\d.]+ \*USDZ to the supplier, PAID \| n\/a \| match \| match \|/g)].length;
     expect(paidUpstream).toBe(story.payments.purchases);
-    expect(grid).toMatch(link(`${REPO_BLOB}${MAIN_RUN_CHECK}`, "checked one by one"));
+    expect(hasLink(grid, `${REPO_BLOB}${MAIN_RUN_CHECK}`, "checked one by one")).toBe(true);
     expect(existsSync(new URL(`../${MAIN_RUN_CHECK}`, import.meta.url))).toBe(true);
   });
 
@@ -236,7 +245,9 @@ describe("the payments, the refusal and the replace", () => {
   });
 
   it("links in sight only the records' own transactions and account, the payment check, the check of 12 November and the inspector", () => {
-    const links = hrefs(top);
+    // 19 Nov: the "Live on Alta" strip's links are the evidence wall's (each tile's record, and the wall's group on
+    // /proof), held to docs/evidence/evidence-wall.json by test/evidence-wall.test.ts; the rest is held here.
+    const links = hrefs(top.replace(/<section class="ewall pstrip"[\s\S]*?<\/section>/, ""));
     expect(links.length).toBeGreaterThanOrEqual(10);
     for (const h of links) {
       // 12 Nov (jury check): "Since 12 Nov it does" leads to the Face ID on chain section on this page; 13 Nov: the

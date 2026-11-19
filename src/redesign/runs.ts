@@ -29,6 +29,7 @@ import { VIC3_PREV_FILE, VIC3_PREV_LOG, VIC3_RUN_FILE, VIC3_RUN_LOG, VIC4_FILE, 
 import { CAVEAT_LINE } from "../config/brand.js";
 import { centHolds, centLine, centRecord } from "./cardCent.js";
 import { EXPLORER_TX } from "../metal/network.js";
+import { liveTryRecords, liveTryTotals } from "./liveTry.js";
 
 export const RUNS_URL = "runs";
 export const RUNS_TITLE = "Every live run";
@@ -355,6 +356,39 @@ function extraRuns(): RunRow[] {
     files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-13-anchor.json") }, { label: "run log", href: blob("docs/runs/2026-11-13-anchor.md") }],
   });
 
+  // 19 Nov: a fresh Alta testnet series (21 mandate payments, 3 over-mandate attempts refused on chain) and the anchor
+  // that pins it (docs/runs/2026-11-19-alta-series.md, docs/runs/2026-11-19-anchor.md).
+  type Series = { ran_at: string; mandate: { cap: string; budget: string }; steps: { kind: string; outcome: string; event?: string; reason?: string; amount?: string; tx: string | null }[] };
+  const AS = ["docs/runs/2026-11-19-alta-series.json", "docs/runs/2026-11-19-alta-series-finish.json"].filter(has);
+  if (AS.length) {
+    const recs = AS.map((f) => readJson<Series>(f)), steps = recs.flatMap((r) => r.steps);
+    const paid = steps.filter((x) => x.event === "MandatePayment"), refused = steps.filter((x) => x.outcome === "refused on chain");
+    const total = (paid.reduce((n, x) => n + Math.round(Number(x.amount) * 100), 0) / 100).toFixed(2);
+    out.push({
+      key: "alta-series-1", iso: recs[recs.length - 1]!.ran_at, date: day(recs[0]!.ran_at), kind: "testnet", partners: ["Alta"],
+      name: "An agent's mandate on Alta, enforced on chain",
+      line: `${paid.length} payments inside the mandate (${total} test USD); ${countOf(refused.length, refused.length, true)} attempts outside it refused on chain.`,
+      // A step planned as over the budget that the chain paid was within it (the plan's error; the run log says so).
+      rate: { done: refused.length, of: steps.filter((x) => x.kind === "over-mandate" && x.event !== "MandatePayment").length, what: "over-mandate attempts refused on chain" },
+      title: "Alta series", rails: "Alta testnet (mandate payments)",
+      what: `A fresh Alta account and an agent's mandate (cap ${recs[0]!.mandate.cap} a payment, budget ${recs[0]!.mandate.budget}, one payee) took ${paid.length} payments, each its own transaction; attempts over the cap, to another payee and past the budget were sent to the chain on purpose, and Alta's mandate refused each in a transaction of its own.`,
+      checks: "Each refusal moved 0.00 for the payee and the account, as the record's balance deltas show; the first pass's plan was a cent over the budget, said in the run log.", money: "Testnet · test money",
+      ids: refused.filter((x) => x.tx).map((x) => tx(`Refused (${x.reason})`, x.tx!)),
+      files: [...AS.map((f) => ({ label: `record (${f.includes("finish") ? "finish" : "series"})`, href: blob(f) })), { label: "run log", href: blob("docs/runs/2026-11-19-alta-series.md") }],
+    });
+  }
+  const an2 = has("docs/runs/2026-11-19-anchor.json") ? readJson<Anchor>("docs/runs/2026-11-19-anchor.json") : null;
+  if (an2) out.push({
+    key: "anchor-2", iso: an2.anchored_at, date: day(an2.anchored_at), kind: "testnet", partners: ["Alta"],
+    name: "Records anchored on chain again, the new Alta series among them",
+    line: `One transaction seals ${an2.height} records, the 19 Nov Alta series among them; anyone can re-check them. Alta testnet, test money.`,
+    title: "Records anchored", rails: "Alta testnet (one anchor transaction)",
+    what: `Purser hashed ${an2.parts.length} parts of its committed records into one head and wrote it as the calldata of one Alta testnet transaction.`,
+    checks: "npm run verify-anchor -- docs/runs/2026-11-19-anchor.json recomputes the head from the repository, reads the transaction from the chain (an Alta testnet RPC is needed) and prints MATCH or MISMATCH.", money: "Testnet · test money",
+    ids: [tx("Anchor", an2.tx), { label: "Block", value: String(an2.block) }],
+    files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-19-anchor.json") }, { label: "run log", href: blob("docs/runs/2026-11-19-anchor.md") }],
+  });
+
   type Owners = { ran_at: string; account: string; steps: { kind: string; outcome: string; tx: string | null }[]; proposals: { proposal_id: string }[] };
   const ow = has("docs/runs/2026-11-12-faceid-onchain.json") ? readJson<Owners>("docs/runs/2026-11-12-faceid-onchain.json") : null;
   if (ow) {
@@ -445,6 +479,78 @@ function extraRuns(): RunRow[] {
       money: "Sandbox · test money",
       ids: t.map((x) => ({ label: `Transfer (${x.invoice_no.split(" · ")[0]})`, value: x.transfer_id })),
       files: [{ label: "record (JSON)", href: blob(LF_FILE) }],
+    });
+  }
+
+  // 19 Nov: each paid invoice became a bill in Airwallex's own accounts payable (Spend Bills), the bill's external_id the
+  // hash a passkey signed (docs/runs/2026-11-19-airwallex-bills.md). Counted only when every bill was read back agreeing.
+  type Bl = {
+    bills: { invoice_no: string; amount: string; bill_id: string | null; external_id_matches_signed: boolean; transfer_status: string; created: { status: string; read_back: string } | null; paid: { status: string; read_back: string } | null }[];
+    audit: { ts: string }[]; budget: { approved: number }; calls: { total: number };
+  };
+  const BL_FILE = "docs/runs/2026-11-19-airwallex-bills.json", BL_LOG = "docs/runs/2026-11-19-airwallex-bills.md";
+  const bl = has(BL_FILE) ? readJson<Bl>(BL_FILE) : null;
+  const bills = bl?.bills.filter((b) => b.bill_id) ?? [];
+  if (bl && bills.length && bills.every((b) => b.created?.read_back === "agrees" && b.paid?.read_back === "agrees")) {
+    const first = bl.audit[0]!.ts, last = bl.audit[bl.audit.length - 1]!.ts;
+    const paid = bills.filter((b) => b.paid?.status === "PAID").length, hashed = bills.filter((b) => b.external_id_matches_signed).length;
+    out.push({
+      key: "bills-1", iso: last, date: day(first), kind: "sandbox", partners: ["Airwallex"],
+      name: "Paid invoices become bills in Airwallex's own accounts payable",
+      line: `${pl(bills.length, "bill")} made from paid invoices, PDF attached, the signed hash as external_id, then marked PAID. Transfers PAID by simulation; a test passkey.`,
+      rate: { done: paid, of: bills.length, what: "bills marked PAID" },
+      title: "Airwallex Spend Bills", rails: "Airwallex sandbox (Spend bills, vendors, files; SWIFT transfers), test passkey",
+      what: `${pl(bills.length, "invoice")} of ${bills[0]!.amount} each (${bills.map((b) => b.invoice_no).join(", ")}) were read by the parser (no model), signed by a labelled virtual test passkey and paid by SWIFT transfer at the Airwallex sandbox (SENT and PAID by its simulation endpoint). One payment sync then made each paid invoice a bill in Airwallex Spend, with its PDF attached and the signed terms hash as its external_id, and marked it paid.`,
+      checks: `${countOf(hashed, bills.length)} bills carry the signed hash as external_id; each read back after the create and after mark_as_paid, 0 differences. ${bl.calls.total} Airwallex calls, within the budget of ${bl.budget.approved}.`,
+      money: "Sandbox · test money",
+      ids: bills.map((b) => ({ label: `Bill (${b.invoice_no})`, value: b.bill_id! })),
+      files: [{ label: "record (JSON)", href: blob(BL_FILE) }, { label: "run log", href: blob(BL_LOG) }],
+    });
+  }
+
+  // 19 Nov soak: 30 signed payments at the Airwallex sandbox, each read back; 6 FX conversions; 5 one-cent changes refused
+  // before any create (docs/runs/2026-11-19-airwallex-soak.md). Counted when every read-back the record holds agrees.
+  type Sk = {
+    started_at: string; ended_at: string; budget: { approved: number; used: number };
+    summary: { planned: number; created: number; paid: number; readback_matches: number; conversions: { planned: number; booked: number; readback_matches: number }; latency_ms: { p50: number }; calls: { total: number };
+      negatives: { planned: number; refused: number; posts_in_window: number; creates_in_window: number; calls_in_window: number } };
+    payments: { invoice_no: string; transfer_id: string }[];
+  };
+  const SK_FILE = "docs/runs/2026-11-19-airwallex-soak.json", SK_LOG = "docs/runs/2026-11-19-airwallex-soak.md";
+  const sk = has(SK_FILE) ? readJson<Sk>(SK_FILE) : null;
+  if (sk && sk.summary.created) {
+    const m = sk.summary, n = m.negatives;
+    out.push({
+      key: "soak-1", iso: sk.ended_at, date: day(sk.started_at), kind: "sandbox", partners: ["Airwallex"],
+      name: `${m.created} signed payments in a row, each read back from Airwallex`,
+      line: `${countOf(m.paid, m.created)} PAID (by the sandbox's simulation), the signed hash read back on each; ${countOf(m.conversions.booked, m.conversions.planned, true)} FX conversions; ${countOf(n.refused, n.planned, true)} one-cent changes refused. A test passkey.`,
+      rate: { done: m.readback_matches, of: m.created, what: "payments read back as signed" },
+      title: "Airwallex soak", rails: "Airwallex sandbox (SWIFT transfers, FX conversions), test passkey",
+      what: `${m.created} payments to two test suppliers, each signed by a labelled virtual test passkey over its exact terms, created once at the Airwallex sandbox, taken to PAID by its simulation endpoint and read back (status, amount, payee, reference, request id and the signed hash). ${m.conversions.booked} needed EUR bought first, by an FX conversion read back too. Between them, ${n.planned} payments were changed by one cent after signing.`,
+      checks: `${countOf(m.readback_matches, m.created)} read-backs equal to the signed terms; ${countOf(m.conversions.readback_matches, m.conversions.booked, true)} conversions read back; the ${n.refused} changed payments refused before any create (${n.posts_in_window} POSTs; each refusal read the balance once). ${m.calls.total} Airwallex calls, within the budget of ${sk.budget.approved}.`,
+      money: "Sandbox · test money",
+      ids: sk.payments.slice(0, 2).map((p) => ({ label: `Transfer (${p.invoice_no})`, value: p.transfer_id })),
+      files: [{ label: "record (JSON)", href: blob(SK_FILE) }, { label: "run log", href: blob(SK_LOG) }],
+    });
+  }
+
+  // 19 Nov: the public /try walked as a visitor, recorded with every answer (docs/runs/2026-11-19-live-try.md); one row a
+  // recorded series, its walks its rate (src/redesign/liveTry.ts reads every series in that shape).
+  for (const rec of liveTryRecords()) {
+    const t = liveTryTotals([rec]);
+    if (!t || !t.runs) continue;
+    out.push({
+      // An id that starts with a letter: the key is the row's anchor and a CSS selector.
+      key: `try-${rec.dir.split("/").pop()!}`, iso: rec.last, date: day(rec.first), kind: "sandbox", partners: ["Airwallex", "Claude"],
+      name: `The public /try, walked ${t.runs} times as a visitor`,
+      line: `${countOf(t.paid, t.transfers)} Airwallex sandbox transfers PAID (by the sandbox's simulation), ${countOf(t.refused, t.runs, true)} one-cent changes refused, ${countOf(t.held, t.runs, true)} cash holds by code. A test passkey.`,
+      rate: { done: t.siteStepsPassed, of: t.runs, what: "walks passed every site step" },
+      title: "The public /try, recorded", rails: "Airwallex sandbox (SWIFT transfers), Claude, virtual test passkey",
+      what: `The judge's journey on https://kit11.max-31b.workers.dev/try, ${t.runs} times in Chromium, each a fresh test company: an invoice paid by the agent alone, one approved with a passkey and paid, a one-cent change refused, the proof checked on /verify, an invoice held by the cash check.`,
+      checks: `${countOf(t.approvalsMatching, t.runs)} approvals carry the hash the transfer carries; ${countOf(t.proofsValid, t.proofs, true)} proof files VALID; ${t.claude.entries} Claude entries, ${t.claude.fallbacks} fallbacks.`,
+      money: "Sandbox · test money",
+      ids: [],
+      files: [{ label: "summary (JSON)", href: blob(rec.summary) }, ...(rec.log ? [{ label: "run log", href: blob(rec.log) }] : [])],
     });
   }
 

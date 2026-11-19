@@ -2,6 +2,7 @@
 
 Purser is a hackathon project (Airwallex Agentic Banking Hackathon, Starter Kit 11) that runs on test money only: the
 Airwallex sandbox and Alta (formerly Metal) testnet. Issues and pull requests are welcome.
+Everyone who takes part follows the [code of conduct](CODE_OF_CONDUCT.md) (Contributor Covenant 2.1).
 
 ## Before you open a pull request
 

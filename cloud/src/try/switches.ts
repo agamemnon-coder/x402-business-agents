@@ -22,7 +22,8 @@ export const ON_OFF = ["starts", "claude", "agents", "rail_awx", "rail_metal", "
 /** Whole numbers with a ceiling no `set` may pass; a missing row is 0 unless it has a default here. */
 export const NUMBERS: Record<string, { ceiling: number; fallback: number }> = {
   // Claude, in micro-dollars (USD 1 = 1,000,000).
-  cap_all_micros: { ceiling: 78_000_000, fallback: 0 },
+  // 19 Nov 2026: USD 100 all time (the owner's decision; was USD 78).
+  cap_all_micros: { ceiling: 100_000_000, fallback: 0 },
   cap_day_micros_public: { ceiling: 30_000_000, fallback: 0 },
   cap_day_micros_event: { ceiling: 30_000_000, fallback: 0 },
   cap_day_micros_jury: { ceiling: 30_000_000, fallback: 0 },

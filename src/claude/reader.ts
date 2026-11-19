@@ -7,7 +7,7 @@
 // refused, the deterministic parsers take over, so the demo makes the same decisions either way.
 
 import { untagged } from "../lib/untagged.js";
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, { type Middleware } from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { z } from "zod";
 import { audit, type Actor } from "../audit/log.js";
@@ -52,6 +52,21 @@ export interface ReaderOptions { budget?: Budget; maxTokens?: number; announce?:
 /** The most pages of a scan sent to a model (src/ap/scan.ts SCAN_MAX_PAGES), and the most tokens a page as an image takes. */
 export const PDF_PAGES_BOUND = 3;
 const PDF_PAGE_TOKENS = 3_000;
+
+/**
+ * Anthropic's id for one call, from the answer's `request-id` header. SDK 1.3.0's beta.messages.parse() returns a copy
+ * of the message (`{ ...message }`) that drops the non-enumerable `_request_id` the SDK attaches, so the live /try's
+ * reader rows said null (docs/runs/2026-11-19-live-try.md); a per-request middleware sees the response itself.
+ */
+function requestIdSeen(): { middleware: Middleware[]; id: (res: unknown) => string | null } {
+  let seen: string | null = null;
+  const middleware: Middleware[] = [async (request, next) => {
+    const response = await next(request);
+    seen = response.headers.get("request-id") ?? seen;
+    return response;
+  }];
+  return { middleware, id: (res) => (res as { _request_id?: string | null })._request_id ?? seen };
+}
 
 /** The roles as a page names them: the reader classifies, reads, or writes the review note. */
 const ROLE_WORD: Record<Role, string> = { classify: "classify", act: "read", review: "review" };
@@ -106,6 +121,7 @@ export class ClaudeReader {
 
     try {
       const started = this.clock();
+      const rid = requestIdSeen();
       const res = await this.client.beta.messages.parse({
         model,
         max_tokens: this.maxTokens,
@@ -116,9 +132,9 @@ export class ClaudeReader {
         // Under a budget, no server-side fallback: its second attempt, on another model, is billed beyond the call's
         // worst case. A refusal then falls back to the parser, as any refusal does.
         ...(model.startsWith("claude-haiku") || this.opts.budget ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
-      });
+      }, { middleware: rid.middleware });
       const latencyMs = this.clock() - started;
-      const requestId = (res as { _request_id?: string | null })._request_id ?? null;
+      const requestId = rid.id(res);
       if (res.stop_reason === "refusal") return useFallback(`refused (${res.stop_details?.category ?? "no category"})`);
       if (res.parsed_output == null) return useFallback(`no parsed output (stop_reason ${res.stop_reason})`);
       // Checked again here, not only by the SDK: a reading of the wrong shape is never used.
@@ -166,6 +182,7 @@ export class ClaudeReader {
     if ("refused" in go) return useFallback(go.refused);
     try {
       const started = this.clock();
+      const rid = requestIdSeen();
       const res = await this.client.beta.messages.parse({
         model,
         max_tokens: this.maxTokens,
@@ -181,9 +198,9 @@ export class ClaudeReader {
         // Under a budget, no server-side fallback: its second attempt, on another model, is billed beyond the call's
         // worst case. A refusal then falls back to the parser, as any refusal does.
         ...(model.startsWith("claude-haiku") || this.opts.budget ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
-      });
+      }, { middleware: rid.middleware });
       const latencyMs = this.clock() - started;
-      const requestId = (res as { _request_id?: string | null })._request_id ?? null;
+      const requestId = rid.id(res);
       if (res.stop_reason === "refusal") return useFallback(`refused (${res.stop_details?.category ?? "no category"})`);
       if (res.parsed_output == null) return useFallback(`no parsed output (stop_reason ${res.stop_reason})`);
       const fits = a.schema.safeParse(res.parsed_output);

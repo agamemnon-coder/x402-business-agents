@@ -7,7 +7,7 @@ Every Purser document, grouped by who reads it; test money only throughout.
 | At a glance | Record |
 |---|---|
 | **7,242 tests passing**, 0 failed, in the last full run | [assets/test-summary.json](assets/test-summary.json) |
-| **27 live runs**, the last on 17 Nov 2026 | [runs/README.md](runs/README.md) |
+| **33 live runs**, the last on 19 Nov 2026 | [runs/README.md](runs/README.md) |
 | **189 checks passed**, 3 could not run here, 0 failed | [evidence/verification-2026-11-15.md](evidence/verification-2026-11-15.md) |
 | **37 of 39** red-team attacks stopped, 2 caught afterwards (a test world) | [redteam/report.json](redteam/report.json) |
 
@@ -65,8 +65,10 @@ every pull request: [CHANGELOG.md](../CHANGELOG.md).
 - [run-it.md](run-it.md): running it live, with sandbox keys and an Alta RPC.
 - [security.md](security.md): the threat model, the attacks and what stops each one.
 - [controls.md](controls.md): every control, how it works, and its evidence.
+- [assurance.md](assurance.md): the assurance case: each invariant about money, the function that enforces it, its tests, the CI job and the record.
 - [runbook.md](runbook.md): incidents, the emergency stop, key rotation, recovery.
 - [decisions.md](decisions.md): decisions taken during the build, each with its reason and its cost if wrong.
+- [adr/README.md](adr/README.md): those decisions, D1 to D30, as an index of architecture decision records (date, status, superseded by which), and the template for new ones.
 - [hardening.md](hardening.md): the hardening log, 30 October to the freeze on 4 November.
 - [cfo-policy.md](cfo-policy.md): the CFO policy.
 - [cards-and-clearing.md](cards-and-clearing.md): company cards, clearing and the simulated month.

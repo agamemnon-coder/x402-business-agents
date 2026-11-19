@@ -22,3 +22,7 @@ out
 
 # The Worker's copy of pdf.js (npm run cloud:pdfjs)
 cloud/public/assets/
+
+# Mutation testing (npm run mutation): Stryker's working files and full report.
+.stryker-tmp/
+reports/mutation/

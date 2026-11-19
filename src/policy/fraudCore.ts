@@ -49,6 +49,48 @@ export function skeleton(name: string): string {
 }
 
 /**
+ * Legal forms, as the tokens they read as once dots are dropped and the rest is split on what is not a letter or a
+ * digit: GmbH and "G.m.b.H." are both "gmbh", "Sp. z o.o." is "sp z oo", "& Co. KG" is "& co kg". Only at the end of a
+ * name, and only while something is left before them.
+ */
+const LEGAL_FORMS: readonly string[][] = [
+  // German, Austrian, Swiss
+  ["gmbh"], ["mbh"], ["gesmbh"], ["ag"], ["kg"], ["kgaa"], ["ohg"], ["gbr"], ["ug"], ["ek"], ["ev"], ["eg"], ["se"], ["haftungsbeschrankt"],
+  // Dutch, Belgian
+  ["bv"], ["nv"], ["vof"], ["cv"], ["bvba"], ["srl"],
+  // English, Irish, American
+  ["ltd"], ["limited"], ["plc"], ["llp"], ["lp"], ["llc"], ["inc"], ["incorporated"], ["corp"], ["corporation"], ["co"], ["company"], ["pty"], ["pte"],
+  // French, Spanish, Italian, Portuguese
+  ["sa"], ["sas"], ["sasu"], ["sarl"], ["eurl"], ["sl"], ["slu"], ["spa"], ["sapa"], ["snc"], ["lda"],
+  // Nordic, Polish, Czech, Slovak, Hungarian, Baltic
+  ["ab"], ["as"], ["a", "s"], ["asa"], ["aps"], ["oy"], ["oyj"], ["ou"], ["hf"], ["sp", "z", "oo"], ["spzoo"], ["sp", "j"], ["sp", "k"], ["sro"], ["s", "r", "o"], ["kft"], ["zrt"], ["nyrt"], ["uab"], ["sia"],
+  // "& Co.", "and Co."
+  ["&"], ["and"],
+];
+
+/**
+ * A name as the payee checks compare it (19 Nov, adversarial eval v2: "Bergtex Textil" at the IBAN on file was held as
+ * another account holder): its legal form at the end dropped, then reduced as skeleton reduces it (case, accents,
+ * punctuation, spacing, lookalike letters). "Bergtex Textil GmbH & Co. KG", "BERGTEX TEXTIL G.m.b.H." and "Bergtex
+ * Textil" are one name; "Bergtex Textiles" is another. A name is never matched on this alone where money moves: the
+ * account must still be the one on file (assessAgainst compares it).
+ */
+export function legalName(name: string): string {
+  const tokens = name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\./g, "").replace(/&/g, " & ").split(/[^\p{L}\p{N}&]+/u).filter(Boolean);
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const form of LEGAL_FORMS) {
+      if (tokens.length > form.length && form.every((t, i) => tokens[tokens.length - form.length + i] === t)) {
+        tokens.splice(tokens.length - form.length);
+        changed = true;
+        break;
+      }
+    }
+  }
+  return skeleton(tokens.join(" "));
+}
+
+/**
  * An account in words, leaving out what is not known (screenshot pass S1: "and BIC ; on file: IBAN …3000 () and BIC ."):
  * "IBAN ...3000 (DE) and BIC COBADEFFXXX", "IBAN ...3000", "an account with no IBAN".
  */
@@ -109,8 +151,10 @@ function lookalikeOf(vendor: string, all: Beneficiary[]): { b: Beneficiary; how:
 /** The invoice's payee against an allowlist: the same signals, in the same order, as assessInvoice. */
 export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: string; bic: string }, text: string, invIbanSha: string): FraudFinding {
   const signals: FraudSignal[] = [];
-  // The same vendor written differently (case, spacing, punctuation) in Latin letters is that vendor.
-  const matched = all.find((b) => b.name === inv.vendor) ?? (hasOtherScript(inv.vendor) ? undefined : all.find((b) => skeleton(b.name) === skeleton(inv.vendor)));
+  // The same vendor written differently (case, spacing, punctuation) in Latin letters is that vendor; 19 Nov, also with
+  // or without its legal form (legalName). Its account is compared below all the same.
+  const latin = !hasOtherScript(inv.vendor);
+  const matched = all.find((b) => b.name === inv.vendor) ?? (latin ? all.find((b) => skeleton(b.name) === skeleton(inv.vendor)) ?? all.find((b) => legalName(b.name) === legalName(inv.vendor)) : undefined);
 
   if (hasOtherScript(inv.vendor)) {
     signals.push({ code: "mixed_scripts", blocks: true, detail: `the vendor name "${inv.vendor}" contains letters from a non-Latin alphabet` });
@@ -134,7 +178,7 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   }
   const holder = /^Account name:\s*(.+)$/m.exec(text)?.[1]?.trim();
   const expectedHolder = matched?.name ?? inv.vendor;
-  if (holder && skeleton(holder) !== skeleton(expectedHolder)) {
+  if (holder && legalName(holder) !== legalName(expectedHolder)) {
     signals.push({ code: "account_name_mismatch", blocks: true, detail: `the account holder on the invoice is "${holder}", not ${expectedHolder}`, asked: holder, on_file: expectedHolder });
   }
   const line = (re: RegExp) => text.split("\n").find((l) => re.test(l))?.trim();

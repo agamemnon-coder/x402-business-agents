@@ -99,9 +99,11 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // object): 11,635,948 bytes with #333 and #330, gzipped 2,456,708 (Cloudflare limits the compressed size: 3 MiB free, 10 MiB paid).
   // Then /try's app shell and "How Purser works" (15 Nov, Max): the README's system map and the partners' logos as data
   // URLs, about 35 KB over 11.5 MB; the budget moves to 11.75 MB, the compressed size far inside Cloudflare's limit.
-  it("stays under 11.75 MB, and under 3 MB gzipped", () => {
+  // Then 19 Nov: scoped Airwallex keys per role, Turnstile's server check and the request-id fix: 12,325,635 bytes in CI,
+  // about 5 KB over 11.75 MB; the budget moves to 11.8 MB, the compressed size still far inside Cloudflare's limit.
+  it("stays under 11.8 MB, and under 3 MB gzipped", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
-    expect(bytes).toBeLessThan(11.75 * 1024 * 1024);
+    expect(bytes).toBeLessThan(11.8 * 1024 * 1024);
     expect(gzipped).toBeLessThan(3 * 1024 * 1024);
   });
 });

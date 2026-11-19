@@ -33,3 +33,5 @@ those notes.
 
 Suggested, not yet set: require the `ci` workflow's jobs (test, judge, webkit, firefox, secrets, security) to pass
 before merging, and require one review from CODEOWNERS.
+The clicks for a ruleset that does this and blocks force pushes, to set after the judging:
+[security/owner-actions.md](security/owner-actions.md#3-een-ruleset-op-main-na-de-jurering).

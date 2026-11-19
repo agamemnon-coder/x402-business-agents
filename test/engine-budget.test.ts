@@ -69,10 +69,22 @@ describe("the reader's options for the engine (budget, maxTokens, announce)", ()
     const budget = actionBudget(250_000);
     await new ClaudeReader(db, s.client, Date.now, {}, { budget, maxTokens: 4_000 }).ask(ask, fallback);
     const read = JSON.parse(rows(db).at(-1)!.payload_json) as { model: string; cost_usd_micros: number };
-    // (request_id: the reader takes it from the parsed answer, which the SDK 1.3.0 leaves without it over a stand-in fetch.)
     expect(read).toMatchObject({ model: MODELS.act });
     expect(read.cost_usd_micros).toBe(callCostMicros(MODELS.act, { input: 1200, output: 80, cache_read: 0, cache_write: 0 }));
     expect(budget.left()).toBe(250_000 - read.cost_usd_micros);
+  });
+
+  // 19 Nov 2026: the live /try's reader rows said request_id null (docs/runs/2026-11-19-live-try.md). SDK 1.3.0's
+  // beta.messages.parse() returns `{ ...message }`, a copy that drops the non-enumerable _request_id; the reader now
+  // reads the response's request-id header itself. Over the SDK's own client on a stand-in fetch, as the deployed engine.
+  it("logs Anthropic's request id with every reading, plain text and PDF alike (the response's request-id header)", async () => {
+    const db = openDb(":memory:");
+    const s = standIn();
+    const reader = new ClaudeReader(db, s.client, Date.now, {}, { budget: actionBudget(5_000_000), maxTokens: 4_000, announce: true });
+    await reader.ask(ask, fallback);
+    await reader.askPdf({ task: "ap.scan", role: "act", actor: "treasury", schema: Reading, instruction: "Read.", pdf: new Uint8Array(300) }, fallback);
+    const reads = rows(db).filter((x) => x.event === "claude.read").map((x) => (JSON.parse(x.payload_json) as { request_id: string | null }).request_id);
+    expect(reads).toEqual(["req_stand_in_1", "req_stand_in_2"]);
   });
 
   it("does not send a call whose worst case is more than the action has left: the parser reads, and the rows say why", async () => {

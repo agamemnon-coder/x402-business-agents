@@ -1,0 +1,1056 @@
+{
+ "what": "Figures of docs/runs/2026-11-19-live-try.md, computed by scripts/try-live-summary.ts from run-<n>.json here.",
+ "aggregate": {
+  "runs": 2,
+  "ok": 2,
+  "desktop": 1,
+  "phone": 1,
+  "tablet": 0,
+  "by_profile": {
+   "webkit desktop 1440 light": 1,
+   "webkit phone 390 dark": 1
+  },
+  "by_browser": {
+   "webkit 26.6": 2
+  },
+  "ok_by_profile": {
+   "webkit desktop 1440 light": 1,
+   "webkit phone 390 dark": 1
+  },
+  "failed_runs": [],
+  "v1_calls": 160,
+  "v1_statuses": {
+   "200": 156,
+   "201": 4
+  },
+  "first_start": "2026-11-19T09:12:45.424Z",
+  "last_finish": "2026-11-19T09:15:47.352Z",
+  "steps": {
+   "start_ms": {
+    "n": 2,
+    "p50": 2980,
+    "p90": 7637,
+    "p95": 7637,
+    "min": 2980,
+    "max": 7637
+   },
+   "read_120_ms": {
+    "n": 2,
+    "p50": 7251,
+    "p90": 7757,
+    "p95": 7757,
+    "min": 7251,
+    "max": 7757
+   },
+   "autopay_ms": {
+    "n": 2,
+    "p50": 7363,
+    "p90": 9093,
+    "p95": 9093,
+    "min": 7363,
+    "max": 9093
+   },
+   "autopay_awx_paid_ms": {
+    "n": 2,
+    "p50": 10141,
+    "p90": 12497,
+    "p95": 12497,
+    "min": 10141,
+    "max": 12497
+   },
+   "read_1850_ms": {
+    "n": 2,
+    "p50": 8761,
+    "p90": 9347,
+    "p95": 9347,
+    "min": 8761,
+    "max": 9347
+   },
+   "sign_ms": {
+    "n": 2,
+    "p50": 784,
+    "p90": 897,
+    "p95": 897,
+    "min": 784,
+    "max": 897
+   },
+   "cfo_to_approved_ms": {
+    "n": 2,
+    "p50": 9012,
+    "p90": 10651,
+    "p95": 10651,
+    "min": 9012,
+    "max": 10651
+   },
+   "sign_to_pay_answer_ms": {
+    "n": 2,
+    "p50": 5347,
+    "p90": 5368,
+    "p95": 5368,
+    "min": 5347,
+    "max": 5368
+   },
+   "pay_ms": {
+    "n": 2,
+    "p50": 4090,
+    "p90": 4205,
+    "p95": 4205,
+    "min": 4090,
+    "max": 4205
+   },
+   "sign_to_paid_on_screen_ms": {
+    "n": 2,
+    "p50": 6690,
+    "p90": 7250,
+    "p95": 7250,
+    "min": 6690,
+    "max": 7250
+   },
+   "sign_to_awx_paid_ms": {
+    "n": 2,
+    "p50": 8232,
+    "p90": 8457,
+    "p95": 8457,
+    "min": 8232,
+    "max": 8457
+   },
+   "refusal_ms": {
+    "n": 2,
+    "p50": 838,
+    "p90": 1550,
+    "p95": 1550,
+    "min": 838,
+    "max": 1550
+   },
+   "verify_ms": {
+    "n": 2,
+    "p50": 159,
+    "p90": 206,
+    "p95": 206,
+    "min": 159,
+    "max": 206
+   },
+   "hold_ms": {
+    "n": 2,
+    "p50": 7380,
+    "p90": 7900,
+    "p95": 7900,
+    "min": 7380,
+    "max": 7900
+   }
+  },
+  "claude": {
+   "entries": 30,
+   "api_requests": 46,
+   "distinct_request_ids": 32,
+   "reader_calls_without_request_id": 14,
+   "cost_usd_micros": 10642,
+   "cost_usd_micros_per_run": {
+    "n": 2,
+    "p50": 4885,
+    "p90": 5757,
+    "p95": 5757,
+    "min": 4885,
+    "max": 5757
+   },
+   "entries_per_run": {
+    "n": 2,
+    "p50": 15,
+    "p90": 15,
+    "p95": 15,
+    "min": 15,
+    "max": 15
+   },
+   "models": [
+    "claude-haiku-5-5"
+   ],
+   "fallbacks": 0,
+   "latency_ms": {
+    "reader:classify": {
+     "n": 6,
+     "p50": 1294,
+     "p90": 1785,
+     "p95": 1785,
+     "min": 1166,
+     "max": 1785
+    },
+    "reader:read": {
+     "n": 6,
+     "p50": 1953,
+     "p90": 2145,
+     "p95": 2145,
+     "min": 1842,
+     "max": 2145
+    },
+    "reader:review": {
+     "n": 2,
+     "p50": 1786,
+     "p90": 2071,
+     "p95": 2071,
+     "min": 1786,
+     "max": 2071
+    },
+    "agent:checker": {
+     "n": 6,
+     "p50": 3239,
+     "p90": 3634,
+     "p95": 3634,
+     "min": 3096,
+     "max": 3634
+    },
+    "agent:treasury": {
+     "n": 6,
+     "p50": 3610,
+     "p90": 3905,
+     "p95": 3905,
+     "min": 3527,
+     "max": 3905
+    },
+    "agent:payer": {
+     "n": 4,
+     "p50": 3610,
+     "p90": 3744,
+     "p95": 3744,
+     "min": 3459,
+     "max": 3744
+    }
+   }
+  },
+  "airwallex": {
+   "transfers": 4,
+   "paid": 4,
+   "distinct_transfer_ids": 4,
+   "scheduled_to_paid_ms": {
+    "n": 4,
+    "p50": 2958,
+    "p90": 3414,
+    "p95": 3414,
+    "min": 2789,
+    "max": 3414
+   }
+  },
+  "approvals_matching_transfer": 2,
+  "refused": 2,
+  "held": 2,
+  "bundles_valid_on_verify": 2,
+  "paid_bundles_valid_on_verify": 2,
+  "bundles_valid_repo_verifier": 2,
+  "paid_bundles_valid_repo_verifier": 2,
+  "ok_but_verify_wording": [],
+  "every_site_step_passed": 2,
+  "console_errors": 0,
+  "outside_requests": 0
+ },
+ "runs": [
+  {
+   "set": "docs/runs/2026-11-19-webkit-try",
+   "run": 1,
+   "profile": "desktop 1440 light",
+   "browser": "webkit",
+   "browser_version": "26.6",
+   "passkey": "software-passkey",
+   "v1_calls": 79,
+   "v1_statuses": {
+    "200": 77,
+    "201": 2
+   },
+   "started_at": "2026-11-19T09:12:45.424Z",
+   "finished_at": "2026-11-19T09:14:11.580Z",
+   "ok": true,
+   "failures": [],
+   "claude": {
+    "calls": [
+     {
+      "tab": "main",
+      "kind": "reader",
+      "role": "classify",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 86,
+      "latency_ms": 1785,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "main",
+      "kind": "reader",
+      "role": "read",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 261,
+      "latency_ms": 2145,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "main",
+      "kind": "reader",
+      "role": "classify",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 87,
+      "latency_ms": 1209,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "main",
+      "kind": "reader",
+      "role": "read",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 168,
+      "latency_ms": 1927,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "main",
+      "kind": "reader",
+      "role": "review",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 149,
+      "latency_ms": 2071,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.check.ea2c5054c59c8e86",
+      "agent": "checker",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2h44td8k6pRqUQ9eKN",
+       "req_011ChC2hC9oMbiiR9gar1xYi"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 740,
+      "latency_ms": 3517,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1897,1620"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.code.AP-0002",
+      "agent": "treasury",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2h448nfeLv9eV2oGHM",
+       "req_011ChC2hCDmxW75wpaCp4Hkm"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 823,
+      "latency_ms": 3905,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1914,1991"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.pay.AP-0002",
+      "agent": "payer",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2hTwpbwgLJMHrUP2c3",
+       "req_011ChC2hbraY3we5GRzodGaS"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 632,
+      "latency_ms": 3737,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1900,1837"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.code.AP-0003",
+      "agent": "treasury",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2ibs6xrmau2v1WhMff",
+       "req_011ChC2ijKpZGEboJHWCA4zR"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 569,
+      "latency_ms": 3605,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1756,1849"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.check.8c731d34cd2f3486",
+      "agent": "checker",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2ibtqTmdRLHMp27ZrT",
+       "req_011ChC2ijJ5hb2d2zonn6f3e"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 511,
+      "latency_ms": 3609,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1747,1862"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.pay.AP-0003",
+      "agent": "payer",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2jBnnfJuPto532ra64",
+       "req_011ChC2jKFFmCgDww8iUKHBx"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 437,
+      "latency_ms": 3744,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1756,1988"
+     },
+     {
+      "tab": "cash",
+      "kind": "reader",
+      "role": "classify",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 86,
+      "latency_ms": 1348,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "cash",
+      "kind": "reader",
+      "role": "read",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 166,
+      "latency_ms": 2051,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "cash",
+      "kind": "agent",
+      "role": "ap.code.AP-0002",
+      "agent": "treasury",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2mYU3gX2M2cCGNDvHa",
+       "req_011ChC2mgBeFqMvSgTMpzS2s"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 558,
+      "latency_ms": 3610,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1809,1801"
+     },
+     {
+      "tab": "cash",
+      "kind": "agent",
+      "role": "ap.check.b6dbf32725d32855",
+      "agent": "checker",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2mYWX4kBdNcKMNQUBr",
+       "req_011ChC2mg7BTjr76rjiQ2CU5"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 484,
+      "latency_ms": 3634,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1796,1838"
+     }
+    ],
+    "entries": 15,
+    "api_requests": 23,
+    "with_request_id": 8,
+    "reader_calls_without_request_id": 7,
+    "request_ids": [
+     "req_011ChC2h44td8k6pRqUQ9eKN",
+     "req_011ChC2hC9oMbiiR9gar1xYi",
+     "req_011ChC2h448nfeLv9eV2oGHM",
+     "req_011ChC2hCDmxW75wpaCp4Hkm",
+     "req_011ChC2hTwpbwgLJMHrUP2c3",
+     "req_011ChC2hbraY3we5GRzodGaS",
+     "req_011ChC2ibs6xrmau2v1WhMff",
+     "req_011ChC2ijKpZGEboJHWCA4zR",
+     "req_011ChC2ibtqTmdRLHMp27ZrT",
+     "req_011ChC2ijJ5hb2d2zonn6f3e",
+     "req_011ChC2jBnnfJuPto532ra64",
+     "req_011ChC2jKFFmCgDww8iUKHBx",
+     "req_011ChC2mYU3gX2M2cCGNDvHa",
+     "req_011ChC2mgBeFqMvSgTMpzS2s",
+     "req_011ChC2mYWX4kBdNcKMNQUBr",
+     "req_011ChC2mg7BTjr76rjiQ2CU5"
+    ],
+    "cost_usd_micros": 5757,
+    "main_entries": 11,
+    "main_cost_usd_micros": 4463,
+    "page_said": "This run: 17 calls, $0.0045.",
+    "models": [
+     "claude-haiku-5-5"
+    ],
+    "fallbacks": []
+   },
+   "airwallex": [
+    {
+     "transfer_id": "b922d598-ddd5-4ffb-bb96-3f37f63762a3",
+     "amount": "EUR 120.00",
+     "airwallex_request_id": "c093aeda-ddc3-3207-0d86-35623c914ae2",
+     "approval_sha256": "c093aedaddc332070d8635623c914ae22a7db549ebcacb7fb6f586ff52d6a046",
+     "path": [
+      {
+       "status": "SCHEDULED",
+       "at": "2026-11-19T09:13:16.754Z"
+      },
+      {
+       "status": "PAID",
+       "at": "2026-11-19T09:13:20.168Z"
+      }
+     ],
+     "scheduled_to_paid_ms": 3414
+    },
+    {
+     "transfer_id": "4e19b64a-a99e-4391-8a6f-cdbbc60c443e",
+     "amount": "EUR 1850.00",
+     "airwallex_request_id": "b6b8c61e-f8e0-d040-6a4b-e8487e592349",
+     "approval_sha256": "b6b8c61ef8e0d0406a4be8487e592349e574a85a704bdb1b32c30ebe907d40b6",
+     "path": [
+      {
+       "status": "SCHEDULED",
+       "at": "2026-11-19T09:13:43.656Z"
+      },
+      {
+       "status": "PAID",
+       "at": "2026-11-19T09:13:46.863Z"
+      }
+     ],
+     "scheduled_to_paid_ms": 3207
+    }
+   ],
+   "approval": {
+    "approval_sha256": "b6b8c61ef8e0d0406a4be8487e592349e574a85a704bdb1b32c30ebe907d40b6",
+    "equals_transfer_metadata": true,
+    "approved": "2026-11-19T09:13:39.142Z"
+   },
+   "refusal": {
+    "outcome": "refused",
+    "signature": "This signature is over other terms than the ones on screen. Nothing was paid.",
+    "executor": "P-0002 is EXECUTED, not approved",
+    "changed": [
+     "amount"
+    ],
+    "signed_sha256": "b6b8c61ef8e0d0406a4be8487e592349e574a85a704bdb1b32c30ebe907d40b6",
+    "sent_sha256": "dae05fd7f22dda87e2f512798b3b216453054991ea9f690ed812aca3881bdf7f",
+    "transfers_before": 2,
+    "transfers_after": 2,
+    "page": "Blocked: nothing was paid."
+   },
+   "held": {
+    "invoice": {
+     "id": "AP-0002",
+     "invoice_no": "BTX-2026-24",
+     "total": "480.00",
+     "status": "ready"
+    },
+    "outcome": "hold",
+    "rule": "below_floor",
+    "why": "paying EUR 500.00 (the invoice plus a fee reserve of EUR 20.00) from the EUR balance would leave EUR 24950.00, below the EUR 25000.00 floor",
+    "short_by": "50.00",
+    "decided_by": "code",
+    "payout_events": []
+   },
+   "bundle": {
+    "downloaded": {
+     "outcome": "refused",
+     "verify_page": "Proof valid · payment refused every check passes (11 of 11)",
+     "repo_verifier": {
+      "ok": true,
+      "checks": 11,
+      "failed": []
+     }
+    },
+    "paid": {
+     "verify_page": "VALID every check passes (10 of 10)",
+     "repo_verifier": {
+      "ok": true,
+      "checks": 10,
+      "failed": []
+     }
+    }
+   },
+   "steps_ms": {
+    "start_ms": 7637,
+    "read_120_ms": 7757,
+    "autopay_ms": 9093,
+    "autopay_awx_paid_ms": 12497,
+    "read_1850_ms": 9347,
+    "sign_ms": 784,
+    "cfo_to_approved_ms": 9012,
+    "sign_to_pay_answer_ms": 5347,
+    "pay_ms": 4205,
+    "sign_to_paid_on_screen_ms": 7250,
+    "sign_to_awx_paid_ms": 8457,
+    "refusal_ms": 838,
+    "verify_ms": 159,
+    "hold_ms": 7380
+   },
+   "page_says": {
+    "sign_clicks": "Create your approval passkey | Approve & sign EUR 1,850.00 with Touch ID",
+    "refusal_head": "Blocked: nothing was paid.",
+    "done_line": "Done: EUR 1,850.00 read, checked, signed and paid, 19 s from upload to paid. Nothing real moved.",
+    "cost_line": "Claude cost of this invoice: USD 0.0019 (Claude Haiku 5.5), measured in this visit.",
+    "calls_line": "This run: 17 calls, $0.0045."
+   },
+   "console_errors": 0,
+   "outside_requests": 0
+  },
+  {
+   "set": "docs/runs/2026-11-19-webkit-try",
+   "run": 2,
+   "profile": "phone 390 dark",
+   "browser": "webkit",
+   "browser_version": "26.6",
+   "passkey": "software-passkey",
+   "v1_calls": 81,
+   "v1_statuses": {
+    "200": 79,
+    "201": 2
+   },
+   "started_at": "2026-11-19T09:14:20.551Z",
+   "finished_at": "2026-11-19T09:15:47.352Z",
+   "ok": true,
+   "failures": [],
+   "claude": {
+    "calls": [
+     {
+      "tab": "main",
+      "kind": "reader",
+      "role": "classify",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 86,
+      "latency_ms": 1294,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "main",
+      "kind": "reader",
+      "role": "read",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 166,
+      "latency_ms": 1842,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "main",
+      "kind": "reader",
+      "role": "classify",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 87,
+      "latency_ms": 1166,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "main",
+      "kind": "reader",
+      "role": "read",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 168,
+      "latency_ms": 1953,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "main",
+      "kind": "reader",
+      "role": "review",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 144,
+      "latency_ms": 1786,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.check.ea2c5054c59c8e86",
+      "agent": "checker",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2ogATMi8CmWSoNSZZY",
+       "req_011ChC2oo3CKmnPPUKU21zzd"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 460,
+      "latency_ms": 3096,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1620,1476"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.code.AP-0002",
+      "agent": "treasury",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2og9TupeKvrkxHkGkZ",
+       "req_011ChC2oojs5nczeS1sWsuP9"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 580,
+      "latency_ms": 3755,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1789,1966"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.pay.AP-0002",
+      "agent": "payer",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2p2JAQYFNUTLkpLf2Y",
+       "req_011ChC2p8tHtpVtWYDxwJcq6"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 423,
+      "latency_ms": 3459,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1565,1894"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.check.8c731d34cd2f3486",
+      "agent": "checker",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2q81VPH3LWm6x6672d",
+       "req_011ChC2qF39w8qJ4Lt6YfjtN"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 483,
+      "latency_ms": 3209,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1646,1563"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.code.AP-0003",
+      "agent": "treasury",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2q7z1SJPqDeEEQ6FZT",
+       "req_011ChC2qFafDVGSfsqGZQFCv"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 570,
+      "latency_ms": 3654,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1779,1875"
+     },
+     {
+      "tab": "main",
+      "kind": "agent",
+      "role": "ap.pay.AP-0003",
+      "agent": "payer",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2qfPse2vXqR9WKNRuS",
+       "req_011ChC2qngBJ8kymiqJuKaGv"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 432,
+      "latency_ms": 3610,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1714,1896"
+     },
+     {
+      "tab": "cash",
+      "kind": "reader",
+      "role": "classify",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 86,
+      "latency_ms": 1349,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "cash",
+      "kind": "reader",
+      "role": "read",
+      "agent": "reader",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [],
+      "turns": 1,
+      "cost_usd_micros": 166,
+      "latency_ms": 1961,
+      "latency_from": "claude.asking → claude.read event times",
+      "status": "done"
+     },
+     {
+      "tab": "cash",
+      "kind": "agent",
+      "role": "ap.check.b6dbf32725d32855",
+      "agent": "checker",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2tbtd3UdzZPGPYhxon",
+       "req_011ChC2tiyWPB3DjGuHUqEPB"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 471,
+      "latency_ms": 3239,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1663,1576"
+     },
+     {
+      "tab": "cash",
+      "kind": "agent",
+      "role": "ap.code.AP-0002",
+      "agent": "treasury",
+      "model": "claude-haiku-5-5",
+      "source": "claude",
+      "request_ids": [
+       "req_011ChC2tbwbZGrxZRpoViASq",
+       "req_011ChC2tjm8ezkNki6qRTnDQ"
+      ],
+      "turns": 2,
+      "cost_usd_micros": 563,
+      "latency_ms": 3527,
+      "latency_from": "agent.run latency_ms",
+      "status": "done",
+      "claude_ms": "1839,1688"
+     }
+    ],
+    "entries": 15,
+    "api_requests": 23,
+    "with_request_id": 8,
+    "reader_calls_without_request_id": 7,
+    "request_ids": [
+     "req_011ChC2ogATMi8CmWSoNSZZY",
+     "req_011ChC2oo3CKmnPPUKU21zzd",
+     "req_011ChC2og9TupeKvrkxHkGkZ",
+     "req_011ChC2oojs5nczeS1sWsuP9",
+     "req_011ChC2p2JAQYFNUTLkpLf2Y",
+     "req_011ChC2p8tHtpVtWYDxwJcq6",
+     "req_011ChC2q81VPH3LWm6x6672d",
+     "req_011ChC2qF39w8qJ4Lt6YfjtN",
+     "req_011ChC2q7z1SJPqDeEEQ6FZT",
+     "req_011ChC2qFafDVGSfsqGZQFCv",
+     "req_011ChC2qfPse2vXqR9WKNRuS",
+     "req_011ChC2qngBJ8kymiqJuKaGv",
+     "req_011ChC2tbtd3UdzZPGPYhxon",
+     "req_011ChC2tiyWPB3DjGuHUqEPB",
+     "req_011ChC2tbwbZGrxZRpoViASq",
+     "req_011ChC2tjm8ezkNki6qRTnDQ"
+    ],
+    "cost_usd_micros": 4885,
+    "main_entries": 11,
+    "main_cost_usd_micros": 3599,
+    "page_said": "This run: 17 calls, $0.0036.",
+    "models": [
+     "claude-haiku-5-5"
+    ],
+    "fallbacks": []
+   },
+   "airwallex": [
+    {
+     "transfer_id": "c85a09db-99bc-43bd-a6a5-3d12a7f53038",
+     "amount": "EUR 120.00",
+     "airwallex_request_id": "d72b0d3b-e864-4d9b-bbb5-b9b7da7b4819",
+     "approval_sha256": "d72b0d3be8644d9bbbb5b9b7da7b48198af4707df959643e9df1aa4996d52c2c",
+     "path": [
+      {
+       "status": "SCHEDULED",
+       "at": "2026-11-19T09:14:44.394Z"
+      },
+      {
+       "status": "PAID",
+       "at": "2026-11-19T09:14:47.183Z"
+      }
+     ],
+     "scheduled_to_paid_ms": 2789
+    },
+    {
+     "transfer_id": "f8e52a5f-fe83-4fb0-91fb-00eb6801a4f3",
+     "amount": "EUR 1850.00",
+     "airwallex_request_id": "4e75ec3c-d50a-b86f-2363-20019219042e",
+     "approval_sha256": "4e75ec3cd50ab86f236320019219042eeaf7f5068a8350933dcdec880905894f",
+     "path": [
+      {
+       "status": "SCHEDULED",
+       "at": "2026-11-19T09:15:12.702Z"
+      },
+      {
+       "status": "PAID",
+       "at": "2026-11-19T09:15:15.660Z"
+      }
+     ],
+     "scheduled_to_paid_ms": 2958
+    }
+   ],
+   "approval": {
+    "approval_sha256": "4e75ec3cd50ab86f236320019219042eeaf7f5068a8350933dcdec880905894f",
+    "equals_transfer_metadata": true,
+    "approved": "2026-11-19T09:15:08.290Z"
+   },
+   "refusal": {
+    "outcome": "refused",
+    "signature": "This signature is over other terms than the ones on screen. Nothing was paid.",
+    "executor": "P-0002 is EXECUTED, not approved",
+    "changed": [
+     "amount"
+    ],
+    "signed_sha256": "4e75ec3cd50ab86f236320019219042eeaf7f5068a8350933dcdec880905894f",
+    "sent_sha256": "962dad2175aba8bd0c09e2eaef1ddc1013ca0976950971f6f68f66a904551ddb",
+    "transfers_before": 2,
+    "transfers_after": 2,
+    "page": "Blocked: nothing was paid."
+   },
+   "held": {
+    "invoice": {
+     "id": "AP-0002",
+     "invoice_no": "BTX-2026-24",
+     "total": "480.00",
+     "status": "ready"
+    },
+    "outcome": "hold",
+    "rule": "below_floor",
+    "why": "paying EUR 500.00 (the invoice plus a fee reserve of EUR 20.00) from the EUR balance would leave EUR 24950.00, below the EUR 25000.00 floor",
+    "short_by": "50.00",
+    "decided_by": "code",
+    "payout_events": []
+   },
+   "bundle": {
+    "downloaded": {
+     "outcome": "refused",
+     "verify_page": "Proof valid · payment refused every check passes (11 of 11)",
+     "repo_verifier": {
+      "ok": true,
+      "checks": 11,
+      "failed": []
+     }
+    },
+    "paid": {
+     "verify_page": "VALID every check passes (10 of 10)",
+     "repo_verifier": {
+      "ok": true,
+      "checks": 10,
+      "failed": []
+     }
+    }
+   },
+   "steps_ms": {
+    "start_ms": 2980,
+    "read_120_ms": 7251,
+    "autopay_ms": 7363,
+    "autopay_awx_paid_ms": 10141,
+    "read_1850_ms": 8761,
+    "sign_ms": 897,
+    "cfo_to_approved_ms": 10651,
+    "sign_to_pay_answer_ms": 5368,
+    "pay_ms": 4090,
+    "sign_to_paid_on_screen_ms": 6690,
+    "sign_to_awx_paid_ms": 8232,
+    "refusal_ms": 1550,
+    "verify_ms": 206,
+    "hold_ms": 7900
+   },
+   "page_says": {
+    "sign_clicks": "Create your approval passkey | Approve & sign EUR 1,850.00 with Touch ID",
+    "refusal_head": "Blocked: nothing was paid.",
+    "done_line": "Done: EUR 1,850.00 read, checked, signed and paid, 19 s from upload to paid. Nothing real moved.",
+    "cost_line": "Claude cost of this invoice: USD 0.0019 (Claude Haiku 5.5), measured in this visit.",
+    "calls_line": "This run: 17 calls, $0.0036."
+   },
+   "console_errors": 0,
+   "outside_requests": 0
+  }
+ ]
+}

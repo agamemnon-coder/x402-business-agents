@@ -11,6 +11,18 @@ What the organisers answered in the hackathon Slack, in our own words, and the v
 | **Airwallex API coverage**: 56 endpoints the code calls; 45 in a committed sandbox run record, 3 named only by tests, 8 in the code only (19 Nov, `npm run airwallex:coverage`, offline) | [airwallex-api-coverage.md](airwallex-api-coverage.md) · [.json](airwallex-api-coverage.json) |
 | **Tamper matrix**: every signed field of the 6 receipts and proof bundles committed here changed by one step (a cent, a digit, a letter, a second); 894 changed copies, 894 refused, 0 accepted; all 6 originals verify (19 Nov, `npm run tamper-matrix`, offline) | [tamper-matrix.md](tamper-matrix.md) · [.json](tamper-matrix.json) |
 
+## Red team v2, chaos for money, fuzzing (local)
+
+Three evidence sets run on this computer only: no request reaches the live site, Airwallex, Alta or Anthropic. Each report lists every finding with its repro.
+
+| Set | Result | Report |
+|---|---|---|
+| Red team v2 on the public /try API (`npm run redteam:api`): cross-company access, signature replay, another world's passkey, terms tampering at every step, double pay, rate limits, the admin route, CSRF and origin, malformed bodies, prompt injection through the code reader, path traversal, open redirects, headers, over HTTP to the judge's server and an edge stand-in with the hosted limits | 128 attacks, 126 PASS, 2 FAIL: the judge's own 404 page and static files lack nosniff (judge server only); every attack on money stopped | [redteam-api.md](redteam-api.md) · [.json](redteam-api.json) |
+| Chaos for money movement (`npm run chaos:money`): the real executor, saga and Airwallex client against a stand-in with timeouts, 5xx, 429, answers lost after the work, process deaths, skewed clocks and webhook storms | 317 scenarios (300 randomized from seed 20261119, 17 hand-written), 0 invariants broken (never paid twice, never without a valid signature, the ledger balances, a known end or a person, webhooks move nothing); 4 of 4 planted canaries caught; one observation (an approved payment refused before it begins raises no alarm until it expires) | [chaos-money.md](chaos-money.md) · [.json](chaos-money.json) |
+| Fuzzing (`npm run fuzz`): the invoice reader, canonical terms and SHA-256 (NFC/NFD and numbers), the proof-bundle and receipt verifiers on the committed artifacts, webhook signatures, MCP input schemas | 17 properties, 275,756 runs, 13 held, 4 failed: letter-only invoice numbers "write your own" accepts are not read back; a bundle's decision and ledger entries can be edited and still verify; the bundle verifier throws on a base64url field of length 4n+1 | [fuzzing.md](fuzzing.md) · [.json](fuzzing.json) |
+
+Also here: [mutation testing](mutation-testing.md) ([.json](mutation-testing.json)), partial. These are bugs planted in the money-critical code to see whether the tests catch them. The proof-bundle verifier caught 15 of 51 before and 50 of 51 after the new tests. Four Stryker groups were measured before the new tests; the approval group is not finished (`npm run mutation`, offline).
+
 ## What the organisers answered
 
 The screenshots that were here were removed on 4 November 2026: they showed people's names and messages.

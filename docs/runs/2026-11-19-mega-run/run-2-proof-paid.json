@@ -1,0 +1,330 @@
+{
+ "format": "purser.proof-bundle/v1",
+ "note": "A /try test company: test money only, nothing real moved. Check this file on /verify or with npm run verify-bundle -- <file>.",
+ "made_at": "2026-11-19T08:26:45.899Z",
+ "proposal_id": "P-0002",
+ "terms": {
+  "schema": "kit11.approval-terms/v1",
+  "kind": "invoice_payment",
+  "proposal_id": "P-0002",
+  "expires_at": "2026-11-19T08:41:08Z",
+  "invoice_no": "BTX-2026-21 · Bergtex Textil GmbH",
+  "vendor": "Bergtex Textil GmbH",
+  "amount": "1850.00",
+  "currency": "EUR",
+  "fee_max": "20.00",
+  "beneficiary_id": "ben_2",
+  "beneficiary_name": "Bergtex Textil GmbH",
+  "iban_last4": "3000",
+  "bic": "COBADEFFXXX",
+  "method": "SWIFT",
+  "reference": "BTX-2026-21",
+  "reason": "goods_purchased",
+  "transfer_request_id": "c932c8f1-d48c-45a4-be72-7dbc9af64060",
+  "conversion": {
+   "request_id": "085e7832-6c73-4ed1-bdac-69e2949a4b09",
+   "quote_id": "21e59b14-c231-34c6-8b4a-eb3deb77d31b",
+   "client_rate": "1.110462",
+   "valid_to": "2026-11-19T08:41:38.000Z",
+   "buy_currency": "EUR",
+   "buy_amount": "503.40",
+   "sell_currency": "USD",
+   "sell_amount": "559.01"
+  },
+  "balances_before": {
+   "eur_available": "34866.60",
+   "usd_available": "25000.00"
+  },
+  "floors": {
+   "eur_floor": "25000.00",
+   "eur_obligations": "8500.00",
+   "usd_floor": "20000.00"
+  },
+  "after": {
+   "eur_free": "0.00",
+   "usd_available": "24440.99"
+  },
+  "evidence": [
+   {
+    "type": "invoice",
+    "ref": "BTX-2026-21 · Bergtex Textil GmbH",
+    "sha256": "4637de29b6768038f11e14880e539c85bc7b5becdc68f4f3381b57cfda198da2"
+   }
+  ],
+  "document_total_line": "Total due EUR 1,850.00",
+  "document_currency": "EUR",
+  "test_money": true,
+  "source": "payables_inbox"
+ },
+ "canonical": "{\"after\":{\"eur_free\":\"0.00\",\"usd_available\":\"24440.99\"},\"amount\":\"1850.00\",\"balances_before\":{\"eur_available\":\"34866.60\",\"usd_available\":\"25000.00\"},\"beneficiary_id\":\"ben_2\",\"beneficiary_name\":\"Bergtex Textil GmbH\",\"bic\":\"COBADEFFXXX\",\"conversion\":{\"buy_amount\":\"503.40\",\"buy_currency\":\"EUR\",\"client_rate\":\"1.110462\",\"quote_id\":\"21e59b14-c231-34c6-8b4a-eb3deb77d31b\",\"request_id\":\"085e7832-6c73-4ed1-bdac-69e2949a4b09\",\"sell_amount\":\"559.01\",\"sell_currency\":\"USD\",\"valid_to\":\"2026-11-19T08:41:38.000Z\"},\"currency\":\"EUR\",\"document_currency\":\"EUR\",\"document_total_line\":\"Total due EUR 1,850.00\",\"evidence\":[{\"ref\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"sha256\":\"4637de29b6768038f11e14880e539c85bc7b5becdc68f4f3381b57cfda198da2\",\"type\":\"invoice\"}],\"expires_at\":\"2026-11-19T08:41:08Z\",\"fee_max\":\"20.00\",\"floors\":{\"eur_floor\":\"25000.00\",\"eur_obligations\":\"8500.00\",\"usd_floor\":\"20000.00\"},\"iban_last4\":\"3000\",\"invoice_no\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"kind\":\"invoice_payment\",\"method\":\"SWIFT\",\"proposal_id\":\"P-0002\",\"reason\":\"goods_purchased\",\"reference\":\"BTX-2026-21\",\"schema\":\"kit11.approval-terms/v1\",\"source\":\"payables_inbox\",\"test_money\":true,\"transfer_request_id\":\"c932c8f1-d48c-45a4-be72-7dbc9af64060\",\"vendor\":\"Bergtex Textil GmbH\"}",
+ "terms_sha256": "80b25cf70a56dadec781737640f2aef28304656d1c03300a8a3103748bc2224f",
+ "rp_id": "kit11.max-31b.workers.dev",
+ "origin": "https://kit11.max-31b.workers.dev",
+ "assertion": {
+  "credential_id": "GanAScQd-xHIQGYpFaJvjmMm1eJ5Ry2IxSkjzKoZnBw",
+  "authenticatorData": "Z25uI6ub1RwUR-JksUdeKxBD5kUJLernzQx15CB8arIFAAAAAg",
+  "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiZ0xKYzl3cFcydDdIZ1hOMlFQS3U4b01FWlcwY0F6QUtpakVEZEl2Q0lrOCIsIm9yaWdpbiI6Imh0dHBzOi8va2l0MTEubWF4LTMxYi53b3JrZXJzLmRldiIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+  "signature": "MEUCIGR6y8xzEeDQeqchYOw5m5oddV82hYbTVOn1eOlIEytTAiEAr9_0gggEg3spih-m7sTKmPq2qHQHVm7OxduE9S9VvKI"
+ },
+ "public_key": {
+  "format": "cose",
+  "cose": "pQECAyYgASFYIIQSlHXNWGvi-ZkEtouFKW5LiPyp83QZaVsz0T_qKXgaIlggWk2JoFLcuohqDmxizid6iMuDztlnrRZr-GzrtYqwY4U",
+  "alg": -7
+ },
+ "decision": {
+  "outcome": "paid",
+  "signature": {
+   "verified": true,
+   "reason": "Your signature is over exactly these terms."
+  },
+  "executor": {
+   "accepted": true,
+   "said": null
+  },
+  "signed_sha256": "80b25cf70a56dadec781737640f2aef28304656d1c03300a8a3103748bc2224f",
+  "sent_sha256": "80b25cf70a56dadec781737640f2aef28304656d1c03300a8a3103748bc2224f",
+  "changed": [],
+  "transfers_before": 1,
+  "transfers_after": 2
+ },
+ "ledger": {
+  "entries": [
+   {
+    "entry_id": 8,
+    "posting_date": "2026-11-19",
+    "doc_date": "2026-11-19",
+    "description": "Convert USD to EUR",
+    "source_key": "fx|conv_5|1590|1201|USD",
+    "doc_ref": "conv_5",
+    "doc_sha256": null,
+    "created_by": "purser-feed",
+    "reverses": null,
+    "created_at": "2026-11-19T08:26:45.899Z",
+    "prev_hash": "bfb07b521f9167b9dbf85bbd05c89be52f862e05a4ecf67aca0ef0d12171b4cc",
+    "entry_hash": "e485456ce0eddaee05a187651ec140361f4bd81fe2e2ebc3a0e61f4d36fc42bf",
+    "lines": [
+     {
+      "line_no": 1,
+      "account": "1590",
+      "debit_cents": 55901,
+      "credit_cents": 0,
+      "currency": "USD",
+      "cost_centre": "CC300",
+      "vat_code": null,
+      "vat_cents": null,
+      "party": "Airwallex",
+      "due_date": null,
+      "doc_ref": null,
+      "memo": "currency conversion: own accounts"
+     },
+     {
+      "line_no": 2,
+      "account": "1201",
+      "debit_cents": 0,
+      "credit_cents": 55901,
+      "currency": "USD",
+      "cost_centre": null,
+      "vat_code": null,
+      "vat_cents": null,
+      "party": null,
+      "due_date": null,
+      "doc_ref": null,
+      "memo": null
+     }
+    ]
+   },
+   {
+    "entry_id": 9,
+    "posting_date": "2026-11-19",
+    "doc_date": "2026-11-19",
+    "description": "Convert USD to EUR",
+    "source_key": "fx|conv_5|1590|1200|EUR",
+    "doc_ref": "conv_5",
+    "doc_sha256": null,
+    "created_by": "purser-feed",
+    "reverses": null,
+    "created_at": "2026-11-19T08:26:45.899Z",
+    "prev_hash": "e485456ce0eddaee05a187651ec140361f4bd81fe2e2ebc3a0e61f4d36fc42bf",
+    "entry_hash": "36f3e37bcfdbceaeff92c39c256e0b80cf3ac5fedec6f7a67bfec9e12dd1709b",
+    "lines": [
+     {
+      "line_no": 1,
+      "account": "1200",
+      "debit_cents": 50340,
+      "credit_cents": 0,
+      "currency": "EUR",
+      "cost_centre": null,
+      "vat_code": null,
+      "vat_cents": null,
+      "party": null,
+      "due_date": null,
+      "doc_ref": null,
+      "memo": null
+     },
+     {
+      "line_no": 2,
+      "account": "1590",
+      "debit_cents": 0,
+      "credit_cents": 50340,
+      "currency": "EUR",
+      "cost_centre": "CC300",
+      "vat_code": null,
+      "vat_cents": null,
+      "party": "Airwallex",
+      "due_date": null,
+      "doc_ref": null,
+      "memo": "currency conversion: own accounts"
+     }
+    ]
+   },
+   {
+    "entry_id": 10,
+    "posting_date": "2026-11-19",
+    "doc_date": "2026-11-19",
+    "description": "Invoice BTX-2026-21 · Bergtex Textil GmbH",
+    "source_key": "transfer|c932c8f1-d48c-45a4-be72-7dbc9af64060|2100|1200|EUR",
+    "doc_ref": "tr_6",
+    "doc_sha256": null,
+    "created_by": "purser-feed",
+    "reverses": null,
+    "created_at": "2026-11-19T08:26:45.899Z",
+    "prev_hash": "36f3e37bcfdbceaeff92c39c256e0b80cf3ac5fedec6f7a67bfec9e12dd1709b",
+    "entry_hash": "1f07eff2335a19314f233996a1c2e6b3fc707693b92176521b73664f9a5c75a1",
+    "lines": [
+     {
+      "line_no": 1,
+      "account": "2100",
+      "debit_cents": 185000,
+      "credit_cents": 0,
+      "currency": "EUR",
+      "cost_centre": "CC300",
+      "vat_code": null,
+      "vat_cents": null,
+      "party": "Bergtex Textil GmbH",
+      "due_date": null,
+      "doc_ref": "BTX-2026-21 · Bergtex Textil GmbH",
+      "memo": "supplier invoice paid: settles the payable booked on receipt"
+     },
+     {
+      "line_no": 2,
+      "account": "1200",
+      "debit_cents": 0,
+      "credit_cents": 185000,
+      "currency": "EUR",
+      "cost_centre": null,
+      "vat_code": null,
+      "vat_cents": null,
+      "party": null,
+      "due_date": null,
+      "doc_ref": null,
+      "memo": null
+     }
+    ]
+   },
+   {
+    "entry_id": 11,
+    "posting_date": "2026-11-19",
+    "doc_date": "2026-11-19",
+    "description": "Transfer fee, invoice BTX-2026-21 · Bergtex Textil GmbH",
+    "source_key": "transfer|c932c8f1-d48c-45a4-be72-7dbc9af64060|6800|1200|EUR",
+    "doc_ref": "tr_6",
+    "doc_sha256": null,
+    "created_by": "purser-feed",
+    "reverses": null,
+    "created_at": "2026-11-19T08:26:45.899Z",
+    "prev_hash": "1f07eff2335a19314f233996a1c2e6b3fc707693b92176521b73664f9a5c75a1",
+    "entry_hash": "63fb89150c8859909c8e6bd378beaa0d757b66babee7b507c2d88e35af2404e6",
+    "lines": [
+     {
+      "line_no": 1,
+      "account": "6800",
+      "debit_cents": 1340,
+      "credit_cents": 0,
+      "currency": "EUR",
+      "cost_centre": "CC300",
+      "vat_code": null,
+      "vat_cents": null,
+      "party": "Airwallex",
+      "due_date": null,
+      "doc_ref": null,
+      "memo": "transfer fee"
+     },
+     {
+      "line_no": 2,
+      "account": "1200",
+      "debit_cents": 0,
+      "credit_cents": 1340,
+      "currency": "EUR",
+      "cost_centre": null,
+      "vat_code": null,
+      "vat_cents": null,
+      "party": null,
+      "due_date": null,
+      "doc_ref": null,
+      "memo": null
+     }
+    ]
+   },
+   {
+    "entry_id": 12,
+    "posting_date": "2026-11-09",
+    "doc_date": "2026-11-09",
+    "description": "Bergtex Textil GmbH invoice BTX-2026-21 (received)",
+    "source_key": "ap-accrual|AP-0003",
+    "doc_ref": "BTX-2026-21 · Bergtex Textil GmbH",
+    "doc_sha256": null,
+    "created_by": "purser-feed",
+    "reverses": null,
+    "created_at": "2026-11-19T08:26:45.899Z",
+    "prev_hash": "63fb89150c8859909c8e6bd378beaa0d757b66babee7b507c2d88e35af2404e6",
+    "entry_hash": "797bf010a8b4c85c2b91eb8799e673fd2b951634dc299ed534a74b0e14b17680",
+    "lines": [
+     {
+      "line_no": 1,
+      "account": "6200",
+      "debit_cents": 155462,
+      "credit_cents": 0,
+      "currency": "EUR",
+      "cost_centre": "CC300",
+      "vat_code": null,
+      "vat_cents": null,
+      "party": "Bergtex Textil GmbH",
+      "due_date": null,
+      "doc_ref": null,
+      "memo": "Bergtex Textil GmbH invoice BTX-2026-21"
+     },
+     {
+      "line_no": 2,
+      "account": "1515",
+      "debit_cents": 29538,
+      "credit_cents": 0,
+      "currency": "EUR",
+      "cost_centre": null,
+      "vat_code": null,
+      "vat_cents": null,
+      "party": "Bergtex Textil GmbH",
+      "due_date": null,
+      "doc_ref": null,
+      "memo": "Bergtex Textil GmbH invoice BTX-2026-21: foreign VAT to reclaim"
+     },
+     {
+      "line_no": 3,
+      "account": "2100",
+      "debit_cents": 0,
+      "credit_cents": 185000,
+      "currency": "EUR",
+      "cost_centre": null,
+      "vat_code": null,
+      "vat_cents": null,
+      "party": "Bergtex Textil GmbH",
+      "due_date": "2027-01-08",
+      "doc_ref": "BTX-2026-21 · Bergtex Textil GmbH",
+      "memo": "Bergtex Textil GmbH invoice BTX-2026-21"
+     }
+    ]
+   }
+  ],
+  "head": "797bf010a8b4c85c2b91eb8799e673fd2b951634dc299ed534a74b0e14b17680",
+  "count": 12
+ }
+}

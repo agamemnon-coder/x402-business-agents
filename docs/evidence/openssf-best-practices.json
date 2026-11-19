@@ -1,0 +1,10 @@
+{
+  "what": "The project's OpenSSF Best Practices badge, as the owner reported it on 19 Nov 2026; the live status is on the project page.",
+  "programme": "OpenSSF Best Practices",
+  "project": 16923,
+  "status": "passing",
+  "as_of": "2026-11-19",
+  "url": "https://www.bestpractices.dev/projects/16923",
+  "badge": "https://www.bestpractices.dev/projects/16923/badge",
+  "basis": "the project's own answers to the programme's criteria"
+}

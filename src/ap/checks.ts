@@ -108,9 +108,19 @@ export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContex
     clearedTwins: ctx.selfId ? (db.prepare("SELECT twin_id FROM ap_duplicate_clearances WHERE invoice_id = ?").all(ctx.selfId) as { twin_id: string }[]).map((x) => x.twin_id) : [],
     expected: expectedFor(r.vendor),
     today: ctx.now.toISOString().slice(0, 10),
+    // A person's release of what the screen flagged in its words, after reading it (src/ap/inbox.ts releaseFlaggedWords).
+    released: ctx.selfId ? releasedWords(db, ctx.selfId) : null,
     // The CFO's past decisions on this supplier and amount band, for the Checker agent (code's checks never read them).
     ...((): { precedents?: Precedent[] } => { const p = invoicePrecedents(db, ctx.selfId ?? null, r, ctx.now.toISOString()); return p.length ? { precedents: p } : {}; })(),
   };
+}
+
+/** The latest release of an invoice's flagged words by a person (the audit log's ap.words_released), or null. */
+export function releasedWords(db: DB, id: string): { by: string; note: string; at: string } | null {
+  const row = db.prepare("SELECT ts, payload_json FROM audit_log WHERE subject = ? AND event = 'ap.words_released' AND actor = 'human' ORDER BY seq DESC LIMIT 1").get(id) as { ts: string; payload_json: string } | undefined;
+  if (!row) return null;
+  const p = JSON.parse(row.payload_json) as { by?: unknown; note?: unknown };
+  return typeof p.by === "string" && typeof p.note === "string" ? { by: p.by, note: p.note, at: row.ts } : null;
 }
 
 export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext): { status: ApStatus; findings: Finding[] } {

@@ -1,0 +1,1557 @@
+{
+ "what": "Lighthouse and axe-core on the public site's main pages, read-only (scripts/site-quality.ts; docs/evidence/site-quality.md).",
+ "origin": "https://kit11.max-31b.workers.dev",
+ "measured_at": "2026-11-19T09:40:10.170Z",
+ "tools": {
+  "lighthouse": "13.6.0",
+  "@axe-core/playwright": "4.14.0",
+  "axe-core": "4.14.1"
+ },
+ "chromium": "/opt/pw-browsers/chromium-1243/chrome-linux64/chrome",
+ "lighthouse_runs_per_page": 3,
+ "lighthouse_errors": [
+  {
+   "path": "/try",
+   "preset": "desktop",
+   "run": 2,
+   "attempt": 1,
+   "error": "Command failed: /dev/shm/qtools/node_modules/.bin/lighthouse https://kit11.max-31b.workers.dev/try --output=json --output-path=/dev/shm/sq-out/lh-desktop-try-2.json --chrome-path=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome --chrome-flags=--headless --no-sandbox --only-categories=performance"
+  },
+  {
+   "path": "/proof",
+   "preset": "mobile",
+   "run": 2,
+   "attempt": 1,
+   "error": "Command failed: /dev/shm/qtools/node_modules/.bin/lighthouse https://kit11.max-31b.workers.dev/proof --output=json --output-path=/dev/shm/sq-out/lh-mobile-proof-2.json --chrome-path=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome --chrome-flags=--headless --no-sandbox --only-categories=performa"
+  },
+  {
+   "path": "/airwallex",
+   "preset": "mobile",
+   "run": 3,
+   "attempt": 1,
+   "error": "Command failed: /dev/shm/qtools/node_modules/.bin/lighthouse https://kit11.max-31b.workers.dev/airwallex --output=json --output-path=/dev/shm/sq-out/lh-mobile-airwallex-3.json --chrome-path=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome --chrome-flags=--headless --no-sandbox --only-categories="
+  }
+ ],
+ "lighthouse": [
+  {
+   "path": "/",
+   "preset": "mobile",
+   "median": {
+    "performance": 100,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 61,
+    "lcp_ms": 1220,
+    "cls": 0,
+    "tbt_ms": 20,
+    "fcp_ms": 1220,
+    "si_ms": 1614,
+    "ttfb_ms": 188,
+    "fetch_time": "2026-11-19T09:27:05.292Z",
+    "file": "/dev/shm/sq-out/lh-mobile-home-2.json",
+    "warnings": []
+   },
+   "runs": [
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 61,
+     "lcp_ms": 1160,
+     "cls": 0,
+     "tbt_ms": 32,
+     "fcp_ms": 1160,
+     "si_ms": 1398,
+     "ttfb_ms": 83,
+     "fetch_time": "2026-11-19T09:26:51.913Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 61,
+     "lcp_ms": 1220,
+     "cls": 0,
+     "tbt_ms": 20,
+     "fcp_ms": 1220,
+     "si_ms": 1614,
+     "ttfb_ms": 188,
+     "fetch_time": "2026-11-19T09:27:05.292Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 61,
+     "lcp_ms": 1091,
+     "cls": 0,
+     "tbt_ms": 51,
+     "fcp_ms": 1091,
+     "si_ms": 1246,
+     "ttfb_ms": 50,
+     "fetch_time": "2026-11-19T09:27:18.596Z",
+     "warnings": []
+    }
+   ],
+   "findings": [
+    {
+     "category": "performance",
+     "id": "cache-insight",
+     "title": "Use efficient cache lifetimes",
+     "score": 0.5,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/assets/inter.woff2",
+      "https://kit11.max-31b.workers.dev/assets/logo-airwallex.png",
+      "https://kit11.max-31b.workers.dev/assets/logo-claude-slate.svg",
+      "https://kit11.max-31b.workers.dev/assets/logo-alta.svg"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "image-delivery-insight",
+     "title": "Improve image delivery",
+     "score": 0.5,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "body > div.awx-row > a.awx-badge > img"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "network-dependency-tree-insight",
+     "title": "Network dependency tree",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "unminified-css",
+     "title": "Minify CSS",
+     "score": 0.5,
+     "display": "Est savings of 3 KiB",
+     "items": [
+      "@font-face { font-family: Inter; src: url(assets/inter.woff2) format(\"woff2\"); font-weight: 100 900; … } …"
+     ]
+    },
+    {
+     "category": "seo",
+     "id": "is-crawlable",
+     "title": "Page is blocked from indexing",
+     "score": 0,
+     "display": null,
+     "items": [
+      "x-robots-tag: noindex, nofollow"
+     ]
+    },
+    {
+     "category": "seo",
+     "id": "robots-txt",
+     "title": "robots.txt is not valid",
+     "score": 0,
+     "display": null,
+     "items": []
+    }
+   ]
+  },
+  {
+   "path": "/",
+   "preset": "desktop",
+   "median": {
+    "performance": 100,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 61,
+    "lcp_ms": 333,
+    "cls": 0,
+    "tbt_ms": 0,
+    "fcp_ms": 333,
+    "si_ms": 575,
+    "ttfb_ms": 69,
+    "fetch_time": "2026-11-19T09:27:45.595Z",
+    "file": "/dev/shm/sq-out/lh-desktop-home-2.json",
+    "warnings": []
+   },
+   "runs": [
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 61,
+     "lcp_ms": 285,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 285,
+     "si_ms": 608,
+     "ttfb_ms": 153,
+     "fetch_time": "2026-11-19T09:27:31.169Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 61,
+     "lcp_ms": 333,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 333,
+     "si_ms": 575,
+     "ttfb_ms": 69,
+     "fetch_time": "2026-11-19T09:27:45.595Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 61,
+     "lcp_ms": 315,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 315,
+     "si_ms": 643,
+     "ttfb_ms": 92,
+     "fetch_time": "2026-11-19T09:27:59.133Z",
+     "warnings": []
+    }
+   ],
+   "findings": [
+    {
+     "category": "performance",
+     "id": "cache-insight",
+     "title": "Use efficient cache lifetimes",
+     "score": 0.5,
+     "display": "Est savings of 36 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/assets/inter.woff2",
+      "https://kit11.max-31b.workers.dev/assets/logo-airwallex.png",
+      "https://kit11.max-31b.workers.dev/assets/logo-claude-slate.svg",
+      "https://kit11.max-31b.workers.dev/assets/logo-alta.svg",
+      "https://kit11.max-31b.workers.dev/awx-live/books.svg"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "image-delivery-insight",
+     "title": "Improve image delivery",
+     "score": 0.5,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "header.top > div.wrap > a.awx-badge > img"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "network-dependency-tree-insight",
+     "title": "Network dependency tree",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "unminified-css",
+     "title": "Minify CSS",
+     "score": 0.5,
+     "display": "Est savings of 3 KiB",
+     "items": [
+      "@font-face { font-family: Inter; src: url(assets/inter.woff2) format(\"woff2\"); font-weight: 100 900; … } …"
+     ]
+    },
+    {
+     "category": "seo",
+     "id": "is-crawlable",
+     "title": "Page is blocked from indexing",
+     "score": 0,
+     "display": null,
+     "items": [
+      "x-robots-tag: noindex, nofollow"
+     ]
+    },
+    {
+     "category": "seo",
+     "id": "robots-txt",
+     "title": "robots.txt is not valid",
+     "score": 0,
+     "display": null,
+     "items": []
+    }
+   ]
+  },
+  {
+   "path": "/try",
+   "preset": "mobile",
+   "median": {
+    "performance": 95,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 100,
+    "lcp_ms": 2130,
+    "cls": 0,
+    "tbt_ms": 196,
+    "fcp_ms": 1725,
+    "si_ms": 2508,
+    "ttfb_ms": 311,
+    "fetch_time": "2026-11-19T09:28:12.101Z",
+    "file": "/dev/shm/sq-out/lh-mobile-try-1.json",
+    "warnings": []
+   },
+   "runs": [
+    {
+     "performance": 95,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 100,
+     "lcp_ms": 2130,
+     "cls": 0,
+     "tbt_ms": 196,
+     "fcp_ms": 1725,
+     "si_ms": 2508,
+     "ttfb_ms": 311,
+     "fetch_time": "2026-11-19T09:28:12.101Z",
+     "warnings": []
+    },
+    {
+     "performance": 93,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 100,
+     "lcp_ms": 1882,
+     "cls": 0,
+     "tbt_ms": 221,
+     "fcp_ms": 1882,
+     "si_ms": 3623,
+     "ttfb_ms": 724,
+     "fetch_time": "2026-11-19T09:28:27.714Z",
+     "warnings": []
+    },
+    {
+     "performance": 97,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 100,
+     "lcp_ms": 1830,
+     "cls": 0,
+     "tbt_ms": 153,
+     "fcp_ms": 1733,
+     "si_ms": 2384,
+     "ttfb_ms": 202,
+     "fetch_time": "2026-11-19T09:28:43.909Z",
+     "warnings": []
+    }
+   ],
+   "findings": [
+    {
+     "category": "performance",
+     "id": "cache-insight",
+     "title": "Use efficient cache lifetimes",
+     "score": 0,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/assets/inter.woff2",
+      "https://kit11.max-31b.workers.dev/assets/logo-airwallex.png",
+      "https://kit11.max-31b.workers.dev/assets/logo-claude-slate.svg",
+      "https://kit11.max-31b.workers.dev/assets/logo-alta.svg"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "image-delivery-insight",
+     "title": "Improve image delivery",
+     "score": 0,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "body.pv-noneg > div.awx-row > a.awx-badge > img"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "lcp-discovery-insight",
+     "title": "LCP request discovery",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "network-dependency-tree-insight",
+     "title": "Network dependency tree",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "max-potential-fid",
+     "title": "Max Potential First Input Delay",
+     "score": 0.88,
+     "display": "140 ms",
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "unminified-css",
+     "title": "Minify CSS",
+     "score": 0.5,
+     "display": "Est savings of 10 KiB",
+     "items": [
+      "@font-face { font-family: Inter; src: url(/assets/inter.woff2) format(\"woff2\"); … } …"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "unminified-javascript",
+     "title": "Minify JavaScript",
+     "score": 0.5,
+     "display": "Est savings of 16 KiB",
+     "items": [
+      "inline: \nconst C={\"limitAmount\":\"500.00\",\"limit…"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "unused-css-rules",
+     "title": "Reduce unused CSS",
+     "score": 0.5,
+     "display": "Est savings of 39 KiB",
+     "items": [
+      "@font-face { font-family: Inter; src: url(/assets/inter.woff2) format(\"woff2\"); … } …"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "unused-javascript",
+     "title": "Reduce unused JavaScript",
+     "score": 0,
+     "display": "Est savings of 53 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/try"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "mainthread-work-breakdown",
+     "title": "Minimize main-thread work",
+     "score": 0,
+     "display": "3.6 s",
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "unsized-images",
+     "title": "Image elements do not have explicit `width` and `height`",
+     "score": 0.5,
+     "display": null,
+     "items": [
+      "article.pp-card > div.pp-top > span.hw-logo > img"
+     ]
+    }
+   ]
+  },
+  {
+   "path": "/try",
+   "preset": "desktop",
+   "median": {
+    "performance": 100,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 100,
+    "lcp_ms": 452,
+    "cls": 0,
+    "tbt_ms": 3,
+    "fcp_ms": 384,
+    "si_ms": 721,
+    "ttfb_ms": 259,
+    "fetch_time": "2026-11-19T09:32:41.239Z",
+    "file": "/dev/shm/sq-out/lh-desktop-try-1.json",
+    "warnings": []
+   },
+   "runs": [
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 100,
+     "lcp_ms": 452,
+     "cls": 0,
+     "tbt_ms": 3,
+     "fcp_ms": 384,
+     "si_ms": 721,
+     "ttfb_ms": 259,
+     "fetch_time": "2026-11-19T09:32:41.239Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 100,
+     "lcp_ms": 486,
+     "cls": 0,
+     "tbt_ms": 63,
+     "fcp_ms": 423,
+     "si_ms": 1114,
+     "ttfb_ms": 635,
+     "fetch_time": "2026-11-19T09:33:15.970Z",
+     "warnings": []
+    },
+    {
+     "performance": 81,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 100,
+     "lcp_ms": 470,
+     "cls": 0,
+     "tbt_ms": 427,
+     "fcp_ms": 400,
+     "si_ms": 920,
+     "ttfb_ms": 194,
+     "fetch_time": "2026-11-19T09:33:33.982Z",
+     "warnings": []
+    }
+   ],
+   "findings": [
+    {
+     "category": "performance",
+     "id": "cache-insight",
+     "title": "Use efficient cache lifetimes",
+     "score": 0,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/assets/inter.woff2",
+      "https://kit11.max-31b.workers.dev/assets/logo-airwallex.png",
+      "https://kit11.max-31b.workers.dev/assets/logo-claude-slate.svg",
+      "https://kit11.max-31b.workers.dev/assets/logo-alta.svg"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "image-delivery-insight",
+     "title": "Improve image delivery",
+     "score": 0,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "header.top > div.wrap > a.awx-badge > img"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "lcp-discovery-insight",
+     "title": "LCP request discovery",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "network-dependency-tree-insight",
+     "title": "Network dependency tree",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "unminified-css",
+     "title": "Minify CSS",
+     "score": 0.5,
+     "display": "Est savings of 10 KiB",
+     "items": [
+      "@font-face { font-family: Inter; src: url(/assets/inter.woff2) format(\"woff2\"); … } …"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "unminified-javascript",
+     "title": "Minify JavaScript",
+     "score": 0.5,
+     "display": "Est savings of 16 KiB",
+     "items": [
+      "inline: \nconst C={\"limitAmount\":\"500.00\",\"limit…"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "unused-css-rules",
+     "title": "Reduce unused CSS",
+     "score": 0.5,
+     "display": "Est savings of 39 KiB",
+     "items": [
+      "@font-face { font-family: Inter; src: url(/assets/inter.woff2) format(\"woff2\"); … } …"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "unused-javascript",
+     "title": "Reduce unused JavaScript",
+     "score": 0,
+     "display": "Est savings of 53 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/try"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "unsized-images",
+     "title": "Image elements do not have explicit `width` and `height`",
+     "score": 0.5,
+     "display": null,
+     "items": [
+      "article.pp-card > div.pp-top > span.hw-logo > img"
+     ]
+    }
+   ]
+  },
+  {
+   "path": "/proof",
+   "preset": "mobile",
+   "median": {
+    "performance": 92,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 66,
+    "lcp_ms": 1265,
+    "cls": 0,
+    "tbt_ms": 330,
+    "fcp_ms": 1265,
+    "si_ms": 1554,
+    "ttfb_ms": 64,
+    "fetch_time": "2026-11-19T09:34:24.242Z",
+    "file": "/dev/shm/sq-out/lh-mobile-proof-2.json",
+    "warnings": []
+   },
+   "runs": [
+    {
+     "performance": 91,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 1351,
+     "cls": 0,
+     "tbt_ms": 389,
+     "fcp_ms": 1351,
+     "si_ms": 1534,
+     "ttfb_ms": 57,
+     "fetch_time": "2026-11-19T09:33:50.401Z",
+     "warnings": []
+    },
+    {
+     "performance": 92,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 1265,
+     "cls": 0,
+     "tbt_ms": 330,
+     "fcp_ms": 1265,
+     "si_ms": 1554,
+     "ttfb_ms": 64,
+     "fetch_time": "2026-11-19T09:34:24.242Z",
+     "warnings": []
+    },
+    {
+     "performance": 99,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 1277,
+     "cls": 0,
+     "tbt_ms": 107,
+     "fcp_ms": 1277,
+     "si_ms": 1550,
+     "ttfb_ms": 60,
+     "fetch_time": "2026-11-19T09:34:38.728Z",
+     "warnings": []
+    }
+   ],
+   "findings": [
+    {
+     "category": "performance",
+     "id": "cache-insight",
+     "title": "Use efficient cache lifetimes",
+     "score": 0.5,
+     "display": "Est savings of 36 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/assets/inter.woff2",
+      "https://kit11.max-31b.workers.dev/assets/logo-airwallex.png",
+      "https://kit11.max-31b.workers.dev/assets/logo-claude-slate.svg",
+      "https://kit11.max-31b.workers.dev/assets/logo-alta.svg",
+      "https://kit11.max-31b.workers.dev/assets/vault-tree-light.svg"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "image-delivery-insight",
+     "title": "Improve image delivery",
+     "score": 0.5,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "body > div.awx-row > a.awx-badge > img"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "network-dependency-tree-insight",
+     "title": "Network dependency tree",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "max-potential-fid",
+     "title": "Max Potential First Input Delay",
+     "score": 0.42,
+     "display": "280 ms",
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "unminified-css",
+     "title": "Minify CSS",
+     "score": 0.5,
+     "display": "Est savings of 3 KiB",
+     "items": [
+      "@font-face { font-family: Inter; src: url(assets/inter.woff2) format(\"woff2\"); font-weight: 100 900; … } …"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "unused-css-rules",
+     "title": "Reduce unused CSS",
+     "score": 0.5,
+     "display": "Est savings of 11 KiB",
+     "items": [
+      "@font-face { font-family: Inter; src: url(assets/inter.woff2) format(\"woff2\"); font-weight: 100 900; … } …"
+     ]
+    },
+    {
+     "category": "seo",
+     "id": "is-crawlable",
+     "title": "Page is blocked from indexing",
+     "score": 0,
+     "display": null,
+     "items": [
+      "x-robots-tag: noindex, nofollow"
+     ]
+    }
+   ]
+  },
+  {
+   "path": "/proof",
+   "preset": "desktop",
+   "median": {
+    "performance": 100,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 66,
+    "lcp_ms": 532,
+    "cls": 0,
+    "tbt_ms": 0,
+    "fcp_ms": 532,
+    "si_ms": 666,
+    "ttfb_ms": 288,
+    "fetch_time": "2026-11-19T09:35:10.436Z",
+    "file": "/dev/shm/sq-out/lh-desktop-proof-2.json",
+    "warnings": []
+   },
+   "runs": [
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 330,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 330,
+     "si_ms": 509,
+     "ttfb_ms": 70,
+     "fetch_time": "2026-11-19T09:34:55.214Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 532,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 532,
+     "si_ms": 666,
+     "ttfb_ms": 288,
+     "fetch_time": "2026-11-19T09:35:10.436Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 355,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 355,
+     "si_ms": 542,
+     "ttfb_ms": 65,
+     "fetch_time": "2026-11-19T09:35:24.693Z",
+     "warnings": []
+    }
+   ],
+   "findings": [
+    {
+     "category": "performance",
+     "id": "cache-insight",
+     "title": "Use efficient cache lifetimes",
+     "score": 0.5,
+     "display": "Est savings of 36 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/assets/inter.woff2",
+      "https://kit11.max-31b.workers.dev/assets/logo-airwallex.png",
+      "https://kit11.max-31b.workers.dev/assets/logo-claude-slate.svg",
+      "https://kit11.max-31b.workers.dev/assets/logo-alta.svg",
+      "https://kit11.max-31b.workers.dev/assets/vault-tree-light.svg"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "image-delivery-insight",
+     "title": "Improve image delivery",
+     "score": 0.5,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "header.top > div.wrap > a.awx-badge > img"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "network-dependency-tree-insight",
+     "title": "Network dependency tree",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "unminified-css",
+     "title": "Minify CSS",
+     "score": 0.5,
+     "display": "Est savings of 3 KiB",
+     "items": [
+      "@font-face { font-family: Inter; src: url(assets/inter.woff2) format(\"woff2\"); font-weight: 100 900; … } …"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "unused-css-rules",
+     "title": "Reduce unused CSS",
+     "score": 0.5,
+     "display": "Est savings of 11 KiB",
+     "items": [
+      "@font-face { font-family: Inter; src: url(assets/inter.woff2) format(\"woff2\"); font-weight: 100 900; … } …"
+     ]
+    },
+    {
+     "category": "seo",
+     "id": "is-crawlable",
+     "title": "Page is blocked from indexing",
+     "score": 0,
+     "display": null,
+     "items": [
+      "x-robots-tag: noindex, nofollow"
+     ]
+    }
+   ]
+  },
+  {
+   "path": "/verify",
+   "preset": "mobile",
+   "median": {
+    "performance": 100,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 58,
+    "lcp_ms": 1055,
+    "cls": 0,
+    "tbt_ms": 0,
+    "fcp_ms": 1055,
+    "si_ms": 1317,
+    "ttfb_ms": 119,
+    "fetch_time": "2026-11-19T09:35:54.229Z",
+    "file": "/dev/shm/sq-out/lh-mobile-verify-2.json",
+    "warnings": []
+   },
+   "runs": [
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 58,
+     "lcp_ms": 1007,
+     "cls": 0,
+     "tbt_ms": 18,
+     "fcp_ms": 1007,
+     "si_ms": 1183,
+     "ttfb_ms": 85,
+     "fetch_time": "2026-11-19T09:35:39.739Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 58,
+     "lcp_ms": 1055,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 1055,
+     "si_ms": 1317,
+     "ttfb_ms": 119,
+     "fetch_time": "2026-11-19T09:35:54.229Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 58,
+     "lcp_ms": 1137,
+     "cls": 0,
+     "tbt_ms": 66,
+     "fcp_ms": 1137,
+     "si_ms": 1524,
+     "ttfb_ms": 121,
+     "fetch_time": "2026-11-19T09:36:07.397Z",
+     "warnings": []
+    }
+   ],
+   "findings": [
+    {
+     "category": "performance",
+     "id": "cache-insight",
+     "title": "Use efficient cache lifetimes",
+     "score": 0.5,
+     "display": "Est savings of 33 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/assets/inter.woff2",
+      "https://kit11.max-31b.workers.dev/assets/logo-airwallex.png"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "image-delivery-insight",
+     "title": "Improve image delivery",
+     "score": 0.5,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "body > div.awx-row > a.awx-badge > img"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "network-dependency-tree-insight",
+     "title": "Network dependency tree",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "seo",
+     "id": "is-crawlable",
+     "title": "Page is blocked from indexing",
+     "score": 0,
+     "display": null,
+     "items": [
+      "x-robots-tag: noindex, nofollow"
+     ]
+    },
+    {
+     "category": "seo",
+     "id": "robots-txt",
+     "title": "robots.txt is not valid",
+     "score": 0,
+     "display": null,
+     "items": []
+    }
+   ]
+  },
+  {
+   "path": "/verify",
+   "preset": "desktop",
+   "median": {
+    "performance": 100,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 58,
+    "lcp_ms": 285,
+    "cls": 0,
+    "tbt_ms": 0,
+    "fcp_ms": 285,
+    "si_ms": 502,
+    "ttfb_ms": 93,
+    "fetch_time": "2026-11-19T09:36:32.003Z",
+    "file": "/dev/shm/sq-out/lh-desktop-verify-2.json",
+    "warnings": []
+   },
+   "runs": [
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 58,
+     "lcp_ms": 296,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 296,
+     "si_ms": 514,
+     "ttfb_ms": 49,
+     "fetch_time": "2026-11-19T09:36:19.968Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 58,
+     "lcp_ms": 285,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 285,
+     "si_ms": 502,
+     "ttfb_ms": 93,
+     "fetch_time": "2026-11-19T09:36:32.003Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 58,
+     "lcp_ms": 288,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 288,
+     "si_ms": 484,
+     "ttfb_ms": 91,
+     "fetch_time": "2026-11-19T09:36:44.677Z",
+     "warnings": []
+    }
+   ],
+   "findings": [
+    {
+     "category": "performance",
+     "id": "cache-insight",
+     "title": "Use efficient cache lifetimes",
+     "score": 0.5,
+     "display": "Est savings of 33 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/assets/inter.woff2",
+      "https://kit11.max-31b.workers.dev/assets/logo-airwallex.png"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "image-delivery-insight",
+     "title": "Improve image delivery",
+     "score": 0.5,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "header.top > div.wrap > a.awx-badge > img"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "network-dependency-tree-insight",
+     "title": "Network dependency tree",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "seo",
+     "id": "is-crawlable",
+     "title": "Page is blocked from indexing",
+     "score": 0,
+     "display": null,
+     "items": [
+      "x-robots-tag: noindex, nofollow"
+     ]
+    },
+    {
+     "category": "seo",
+     "id": "robots-txt",
+     "title": "robots.txt is not valid",
+     "score": 0,
+     "display": null,
+     "items": []
+    }
+   ]
+  },
+  {
+   "path": "/airwallex",
+   "preset": "mobile",
+   "median": {
+    "performance": 100,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 66,
+    "lcp_ms": 1283,
+    "cls": 0,
+    "tbt_ms": 74,
+    "fcp_ms": 1283,
+    "si_ms": 1701,
+    "ttfb_ms": 151,
+    "fetch_time": "2026-11-19T09:37:19.906Z",
+    "file": "/dev/shm/sq-out/lh-mobile-airwallex-2.json",
+    "warnings": []
+   },
+   "runs": [
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 1169,
+     "cls": 0,
+     "tbt_ms": 5,
+     "fcp_ms": 1169,
+     "si_ms": 1488,
+     "ttfb_ms": 211,
+     "fetch_time": "2026-11-19T09:36:57.646Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 1283,
+     "cls": 0,
+     "tbt_ms": 74,
+     "fcp_ms": 1283,
+     "si_ms": 1701,
+     "ttfb_ms": 151,
+     "fetch_time": "2026-11-19T09:37:19.906Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 1080,
+     "cls": 0,
+     "tbt_ms": 10,
+     "fcp_ms": 1080,
+     "si_ms": 1306,
+     "ttfb_ms": 66,
+     "fetch_time": "2026-11-19T09:38:05.233Z",
+     "warnings": []
+    }
+   ],
+   "findings": [
+    {
+     "category": "performance",
+     "id": "cache-insight",
+     "title": "Use efficient cache lifetimes",
+     "score": 0.5,
+     "display": "Est savings of 33 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/assets/inter.woff2",
+      "https://kit11.max-31b.workers.dev/assets/logo-airwallex.png"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "image-delivery-insight",
+     "title": "Improve image delivery",
+     "score": 0.5,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "div.wrap > div.phd > span.logo > img"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "network-dependency-tree-insight",
+     "title": "Network dependency tree",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "max-potential-fid",
+     "title": "Max Potential First Input Delay",
+     "score": 0.37,
+     "display": "290 ms",
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "bf-cache",
+     "title": "Page prevented back/forward cache restoration",
+     "score": 0,
+     "display": "2 failure reasons",
+     "items": []
+    },
+    {
+     "category": "seo",
+     "id": "is-crawlable",
+     "title": "Page is blocked from indexing",
+     "score": 0,
+     "display": null,
+     "items": [
+      "x-robots-tag: noindex, nofollow"
+     ]
+    }
+   ]
+  },
+  {
+   "path": "/airwallex",
+   "preset": "desktop",
+   "median": {
+    "performance": 100,
+    "accessibility": 100,
+    "best_practices": 100,
+    "seo": 66,
+    "lcp_ms": 281,
+    "cls": 0,
+    "tbt_ms": 7,
+    "fcp_ms": 281,
+    "si_ms": 566,
+    "ttfb_ms": 93,
+    "fetch_time": "2026-11-19T09:38:48.148Z",
+    "file": "/dev/shm/sq-out/lh-desktop-airwallex-2.json",
+    "warnings": []
+   },
+   "runs": [
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 360,
+     "cls": 0,
+     "tbt_ms": 0,
+     "fcp_ms": 360,
+     "si_ms": 598,
+     "ttfb_ms": 56,
+     "fetch_time": "2026-11-19T09:38:26.907Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 281,
+     "cls": 0,
+     "tbt_ms": 7,
+     "fcp_ms": 281,
+     "si_ms": 566,
+     "ttfb_ms": 93,
+     "fetch_time": "2026-11-19T09:38:48.148Z",
+     "warnings": []
+    },
+    {
+     "performance": 100,
+     "accessibility": 100,
+     "best_practices": 100,
+     "seo": 66,
+     "lcp_ms": 403,
+     "cls": 0,
+     "tbt_ms": 1,
+     "fcp_ms": 403,
+     "si_ms": 687,
+     "ttfb_ms": 195,
+     "fetch_time": "2026-11-19T09:39:08.375Z",
+     "warnings": []
+    }
+   ],
+   "findings": [
+    {
+     "category": "performance",
+     "id": "cache-insight",
+     "title": "Use efficient cache lifetimes",
+     "score": 0.5,
+     "display": "Est savings of 33 KiB",
+     "items": [
+      "https://kit11.max-31b.workers.dev/assets/inter.woff2",
+      "https://kit11.max-31b.workers.dev/assets/logo-airwallex.png"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "image-delivery-insight",
+     "title": "Improve image delivery",
+     "score": 0.5,
+     "display": "Est savings of 35 KiB",
+     "items": [
+      "div.wrap > div.phd > span.logo > img"
+     ]
+    },
+    {
+     "category": "performance",
+     "id": "network-dependency-tree-insight",
+     "title": "Network dependency tree",
+     "score": 0,
+     "display": null,
+     "items": []
+    },
+    {
+     "category": "performance",
+     "id": "bf-cache",
+     "title": "Page prevented back/forward cache restoration",
+     "score": 0,
+     "display": "2 failure reasons",
+     "items": []
+    },
+    {
+     "category": "seo",
+     "id": "is-crawlable",
+     "title": "Page is blocked from indexing",
+     "score": 0,
+     "display": null,
+     "items": [
+      "x-robots-tag: noindex, nofollow"
+     ]
+    }
+   ]
+  }
+ ],
+ "axe": [
+  {
+   "path": "/",
+   "viewport": "390x844",
+   "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 1,
+    "minor": 0,
+    "rules": 1,
+    "nodes": 1
+   },
+   "violations": [
+    {
+     "id": "region",
+     "impact": "moderate",
+     "help": "All page content should be contained by landmarks",
+     "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/region?application=playwright",
+     "nodes": 1,
+     "targets": [
+      ".awx-row"
+     ]
+    }
+   ],
+   "passes": 35,
+   "incomplete": []
+  },
+  {
+   "path": "/",
+   "viewport": "1440x900",
+   "counts": {
+    "critical": 0,
+    "serious": 2,
+    "moderate": 0,
+    "minor": 0,
+    "rules": 1,
+    "nodes": 2
+   },
+   "violations": [
+    {
+     "id": "color-contrast",
+     "impact": "serious",
+     "help": "Elements must meet minimum color contrast ratio thresholds",
+     "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+     "nodes": 2,
+     "targets": [
+      ".hf-reader > b",
+      ".hf-reader > small"
+     ]
+    }
+   ],
+   "passes": 36,
+   "incomplete": []
+  },
+  {
+   "path": "/try",
+   "viewport": "390x844",
+   "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 1,
+    "minor": 0,
+    "rules": 1,
+    "nodes": 1
+   },
+   "violations": [
+    {
+     "id": "region",
+     "impact": "moderate",
+     "help": "All page content should be contained by landmarks",
+     "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/region?application=playwright",
+     "nodes": 1,
+     "targets": [
+      ".awx-row"
+     ]
+    }
+   ],
+   "passes": 39,
+   "incomplete": [
+    "color-contrast"
+   ]
+  },
+  {
+   "path": "/try",
+   "viewport": "1440x900",
+   "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0,
+    "rules": 0,
+    "nodes": 0
+   },
+   "violations": [],
+   "passes": 40,
+   "incomplete": [
+    "color-contrast"
+   ]
+  },
+  {
+   "path": "/proof",
+   "viewport": "390x844",
+   "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 1,
+    "minor": 0,
+    "rules": 1,
+    "nodes": 1
+   },
+   "violations": [
+    {
+     "id": "region",
+     "impact": "moderate",
+     "help": "All page content should be contained by landmarks",
+     "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/region?application=playwright",
+     "nodes": 1,
+     "targets": [
+      ".awx-row"
+     ]
+    }
+   ],
+   "passes": 36,
+   "incomplete": []
+  },
+  {
+   "path": "/proof",
+   "viewport": "1440x900",
+   "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0,
+    "rules": 0,
+    "nodes": 0
+   },
+   "violations": [],
+   "passes": 37,
+   "incomplete": []
+  },
+  {
+   "path": "/verify",
+   "viewport": "390x844",
+   "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 1,
+    "minor": 0,
+    "rules": 1,
+    "nodes": 1
+   },
+   "violations": [
+    {
+     "id": "region",
+     "impact": "moderate",
+     "help": "All page content should be contained by landmarks",
+     "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/region?application=playwright",
+     "nodes": 1,
+     "targets": [
+      ".awx-row"
+     ]
+    }
+   ],
+   "passes": 41,
+   "incomplete": []
+  },
+  {
+   "path": "/verify",
+   "viewport": "1440x900",
+   "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0,
+    "rules": 0,
+    "nodes": 0
+   },
+   "violations": [],
+   "passes": 42,
+   "incomplete": []
+  },
+  {
+   "path": "/airwallex",
+   "viewport": "390x844",
+   "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 1,
+    "minor": 0,
+    "rules": 1,
+    "nodes": 1
+   },
+   "violations": [
+    {
+     "id": "region",
+     "impact": "moderate",
+     "help": "All page content should be contained by landmarks",
+     "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/region?application=playwright",
+     "nodes": 1,
+     "targets": [
+      ".awx-row"
+     ]
+    }
+   ],
+   "passes": 41,
+   "incomplete": [
+    "color-contrast",
+    "label-content-name-mismatch"
+   ]
+  },
+  {
+   "path": "/airwallex",
+   "viewport": "1440x900",
+   "counts": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0,
+    "rules": 0,
+    "nodes": 0
+   },
+   "violations": [],
+   "passes": 42,
+   "incomplete": [
+    "color-contrast",
+    "label-content-name-mismatch"
+   ]
+  }
+ ]
+}

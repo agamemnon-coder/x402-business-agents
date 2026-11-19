@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
 import { PACK_LINK, PACK_NAME } from "../src/accounting/monthPack.js";
 import { CFO_VIEW_LINK, CFO_VIEW_URL, FILM_LINK, FILM_URL, PROOF_SENTENCES, SPLIT_LINE, TRAILER_URL } from "../src/config/brand.js";
 import { AWX_CONTROLS_ID, AWX_HASH_ID, awxCardId, cardControlRows, cardsReadback, hashTravel, transferReadback } from "../src/redesign/airwallexProof.js";
+import { evidenceWallHtml } from "../src/redesign/evidenceWall.js";
+import { evidenceMapHtml } from "../src/redesign/evidenceMap.js";
 import { GUARANTEES_ID, guaranteesHtml } from "../src/redesign/guarantees.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { proofLeads, reliabilityFix, RELIABILITY_CASE } from "../src/redesign/proofLead.js";
@@ -268,15 +270,18 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
   // ("just links, no more visuals"): five cards (the partner's colour and icon, one figure from its record, a short line,
   // its link), then the chain, the band, the offline check, the film links and the guarantees in sight; every live run
   // and all the rest in two folds.
-  it("has the heading, the lead, five fact cards, the chain, the band, the offline check, the film links and the guarantees, then the folds", () => {
+  // 19 Nov, second pass (the owner: "clearer and tighter, more visuals"): the evidence map, then the wall, replace the five
+  // fact cards and the chain (their facts are tiles of the wall); the band, the offline check, the film links and the
+  // guarantees follow, then the folds.
+  it("has the heading, the lead, the evidence map, the wall, the band, the offline check, the film links and the guarantees, then the folds", () => {
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
-    expect(main.replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <section class="pfacts"[\s\S]*?<\/section> <ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <p class="pwatch">[\s\S]*?<\/p> <section class="gtee"/);
+    expect(main.replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <figure class="emap"[\s\S]*?<\/figure> <section class="ewall"[\s\S]*?<\/section> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <p class="pwatch">[\s\S]*?<\/p> <section class="gtee"/);
+    expect(main).toContain(evidenceMapHtml());
+    expect(main).toContain(evidenceWallHtml());
     expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary><p class="ptnote">[^<]+<\/p><ul class="ptiles"/);
     expect(main).toMatch(/<\/section>\s*<\/details>\s*<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
-    const facts = /<section class="pfacts"[\s\S]*?<\/section>/.exec(main)![0];
-    expect([...facts.matchAll(/<li class="pf (awx|metal|claude|runs)"[^>]*><a href="[^"]+"[^>]*><span class="pf-ic"[^>]*><svg[\s\S]*?<\/svg><\/span><b class="pf-fig">[^<]+<\/b><span class="pf-t">[^<]+<\/span><span class="pf-l">/g)].map((m) => m[1])).toEqual(["awx", "awx", "metal", "claude", "runs"]);
-    expect(facts).not.toMatch(/\d+\/\d+/);
+    expect(main).not.toContain('<section class="pfacts"');
     expect(main.slice(0, main.indexOf('<details class="sumd"'))).not.toContain('<span class="pill run">');
   });
 
@@ -455,8 +460,12 @@ describe("/proof's words in sight", () => {
     // Visa judge, 14 Nov: the live vic-5 run in that list and one line on the Visa outcome to /visa: 837 as built.
     // 14 Nov: "Alta (formerly Metal)" at the first mention (Metal renamed itself): 841 as built.
     // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words): 917 as built.
+    // 19 Nov (the owner: "show all our data and proof, the stronger the technical case the better"): +214 for the
+    // evidence wall, five headings and 27 tiles, each a figure, a short line, what was simulated and its tag (1,131 as built).
+    // 19 Nov, second pass (the owner: "clearer and tighter"): the map (its words are in a drawing) and the compact wall
+    // replace the five facts and the chain, "Checked on every change" goes into the fold: 688 as built, back under 960.
     expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(960);
-    expect(visibleWords(html)).toBeLessThanOrEqual(1345); // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words). // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
+    expect(visibleWords(html)).toBeLessThanOrEqual(1800); // 19 Nov, evening: 1,756 as built with the groups "Attacked and broken on purpose" and "Quality and supply chain" (red team v2, chaos, fuzzing, eval v3, site quality, WebKit, assurance, supply chain: 8 more tiles, OpenSSF moved there) and the map's row of checks. 19 Nov, later: 1,642 as built with the soak, Alta series, anchor, Alta-payments, Visa and OpenSSF tiles (36 on /proof). 19 Nov, second pass (the owner: "clearer and tighter"): 1,559 as built, from 1,895 with the first wall; not back under 1,345: this count reads past the first closing tag of a fold with folds inside it (about 880 words of the closed "Every live run" and "All the proof" folds count as visible), and the 29 tiles' figures, labels and tags are in sight. The count outside every fold (above) is back under its old limit. // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words). // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
@@ -464,6 +473,10 @@ describe("/proof's words in sight", () => {
     // +28, 12 Nov wire-in: the Visa and T:0 cards (343 as built).
     // +10, 12 Nov: the rail cards' fold header, once per drawing (wide and tall); the cards themselves got shorter.
     // 14 Nov: "Alta (formerly Metal)" at the first mention (Metal renamed itself): 841 as built.
+    // 19 Nov (the owner: "show all our data and proof, the stronger the technical case the better"): +214 for the
+    // evidence wall, five headings and 27 tiles, each a figure, a short line, what was simulated and its tag (1,131 as built).
+    // 19 Nov, second pass (the owner: "clearer and tighter"): the map (its words are in a drawing) and the compact wall
+    // replace the five facts and the chain, "Checked on every change" goes into the fold: 688 as built, back under 960.
     expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(960); // 960 since 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words); 357 until the live runs came into sight (the owner, 13 Nov; 810 as built); 837 with vic-5 and the Visa line (14 Nov)
   });
 });

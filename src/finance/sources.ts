@@ -32,7 +32,8 @@ export function authorizationUsed(payer: string, nonce: string): Promise<boolean
 }
 
 export function reconcileSourcesFromEnv(db?: DB): ReconcileSources {
-  const cfg = fromEnv();
+  // Reads only: the read role's scoped key when set (AIRWALLEX_API_KEY_READ), else the general key.
+  const cfg = fromEnv(process.env, "read");
   const api = cfg ? new Airwallex(cfg) : null;
   const rest = api ? new AirwallexRest(api) : null;
   const issuing = issuingFromEnv(db);

@@ -18,6 +18,7 @@ import { fromCents, toCents } from "../lib/money.js";
 import { sameLedgerInvoice } from "../lib/invoiceKey.js";
 import { partyOf } from "../agents/euroBill.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
+import { hashFirst } from "../policy/hashFirst.js";
 import { authorize } from "../policy/principals.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
 import { exclusive, holdPayout, releasePayout } from "../policy/payoutLock.js";
@@ -41,6 +42,8 @@ const closedError = (t: SupplierPaymentTerms) => new Error(`the payout ${t.trans
 const floorError = (t: SupplierPaymentTerms) => new Error(`${t.currency} would now drop under its floor, commitments and payouts under way; a new proposal is needed`);
 
 export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: SandboxSim | null, proposalId: string, now = () => new Date()): Promise<{ conversionId: string | null; transfer: Transfer }> {
+  // Hash first (19 November): changed terms reach nothing outside Purser, not even the balance read below.
+  hashFirst(db, proposalId);
   const sha = (db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_sha256: string }).terms_sha256;
   const begun = (name: string) => !!db.prepare("SELECT 1 FROM money_steps WHERE action_id = ? AND step = ?").get(proposalId, name);
 

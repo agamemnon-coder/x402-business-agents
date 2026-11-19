@@ -346,8 +346,9 @@ describe("the admin route", () => {
 
   it("sets a switch within its ceiling and logs the change, never the token; refuses a value past it and an unknown key", async () => {
     const c = cloud();
-    await set(c, "cap_all_micros", 78_000_000);
-    const past = await admin(c, { op: "set", key: "cap_all_micros", value: 78_000_001 });
+    // 19 Nov 2026: the owner raised the all-time Claude ceiling from USD 78 to USD 100 (cloud/src/try/switches.ts).
+    await set(c, "cap_all_micros", 100_000_000);
+    const past = await admin(c, { op: "set", key: "cap_all_micros", value: 100_000_001 });
     expect(past.status).toBe(400);
     expect(past.json.message).toMatch(/ceiling/);
     for (const [key, value] of [["max_inflight", "21"], ["starts_per_day_jury", "501"], ["awx_calls_day", "1501"], ["starts", "yes"], ["cap_action_micros", "-1"], ["cap_action_micros", "1e5"]]) {
@@ -356,9 +357,9 @@ describe("the admin route", () => {
     const unknown = await admin(c, { op: "set", key: "free_money", value: "on" });
     expect(unknown.status).toBe(400);
     expect(unknown.json.message).toMatch(/not a switch/);
-    expect((await readSwitches(c.env.sql))).toEqual({ cap_all_micros: "78000000" });
+    expect((await readSwitches(c.env.sql))).toEqual({ cap_all_micros: "100000000" });
     const log = await c.env.sql.all<{ key: string; old: string | null; new: string }>("SELECT key, old, new FROM try_admin_log ORDER BY id");
-    expect(log).toEqual([{ key: "cap_all_micros", old: null, new: "78000000" }]);
+    expect(log).toEqual([{ key: "cap_all_micros", old: null, new: "100000000" }]);
     expect(JSON.stringify(log)).not.toContain(ADMIN_TOKEN);
   });
 

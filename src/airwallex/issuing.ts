@@ -281,9 +281,13 @@ export function issuingFor(api: Airwallex, db?: DB, env: Record<string, string |
 }
 
 /** The Issuing adapter when the sandbox keys are set; null otherwise, so callers stop instead of pretending. */
-export function issuingFromEnv(db?: DB, env: Record<string, string | undefined> = process.env): { rail: IssuingRail; sim: IssuingSim } | null {
-  const cfg = fromEnv(env);
+export function issuingFromEnv(db?: DB, env: Record<string, string | undefined> = process.env, fetchImpl?: typeof fetch): { rail: IssuingRail; sim: IssuingSim } | null {
+  // The issuing role's scoped key when set (src/airwallex/keyScopes.ts); the sandbox's charge simulation needs the
+  // Simulations scope, which is the payout role's, so it runs on that key. Unset, both use AIRWALLEX_API_KEY.
+  const cfg = fromEnv(env, "issuing");
   if (!cfg) return null;
-  const rest = issuingFor(new Airwallex(cfg), db, env);
-  return { rail: rest, sim: rest };
+  const rest = issuingFor(new Airwallex({ ...cfg, ...(fetchImpl ? { fetchImpl } : {}) }), db, env);
+  if (!cfg.role) return { rail: rest, sim: rest };
+  const simCfg = fromEnv(env, "payout");
+  return { rail: rest, sim: simCfg ? issuingFor(new Airwallex({ ...simCfg, ...(fetchImpl ? { fetchImpl } : {}) }), db, env) : rest };
 }

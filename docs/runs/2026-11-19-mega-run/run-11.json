@@ -1,0 +1,3923 @@
+{
+ "what": "One walk through the public /try on https://kit11.max-31b.workers.dev, recorded by scripts/try-live-record.ts (19 Nov 2026). A fresh /try test company each run; test money only; payouts to the Airwallex sandbox.",
+ "run": 11,
+ "profile": "desktop",
+ "viewport": {
+  "width": 1440,
+  "height": 900
+ },
+ "color_scheme": "light",
+ "browser": {
+  "name": "chromium",
+  "version": "153.0.8010.12"
+ },
+ "passkey": "cdp-virtual-authenticator",
+ "started_at": "2026-11-19T08:41:31.338Z",
+ "finished_at": "2026-11-19T08:42:39.378Z",
+ "ok": true,
+ "failures": [],
+ "steps_ms": {
+  "start_ms": 2445,
+  "read_120_ms": 6397,
+  "autopay_ms": 8462,
+  "autopay_awx_paid_ms": 11720,
+  "read_1850_ms": 7423,
+  "sign_ms": 522,
+  "cfo_to_approved_ms": 8290,
+  "sign_to_pay_answer_ms": 5165,
+  "pay_ms": 4249,
+  "sign_to_paid_on_screen_ms": 8495,
+  "sign_to_awx_paid_ms": 8495,
+  "refusal_ms": 689,
+  "verify_ms": 77,
+  "hold_ms": 7396
+ },
+ "page_says": {
+  "sign_clicks": "Create your approval passkey | Approve & sign EUR 1,850.00 with your passkey",
+  "refusal_head": "Blocked: nothing was paid.",
+  "done_line": "Done: EUR 1,850.00 read, checked, signed and paid, 16 s from upload to paid. Nothing real moved.",
+  "cost_line": "Claude cost of this invoice: USD 0.0019 (Claude Haiku 5.5), measured in this visit.",
+  "calls_line": "This run: 17 calls, $0.0036."
+ },
+ "site_build": {
+  "try_page_sha256": "9f9d7350b5579350bcbcead30505064855b0c8778ad5777d43b5affeb8131aec"
+ },
+ "bundle": {
+  "downloaded": {
+   "file": "run-11-proof-downloaded.json",
+   "outcome": "refused",
+   "proposal_id": "P-0002",
+   "terms_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d",
+   "verify_page": {
+    "verdict": "VALID every check passes (11 of 11)",
+    "checks_listed": 11
+   },
+   "repo_verifier": {
+    "ok": true,
+    "checks": 11,
+    "failed": []
+   }
+  },
+  "paid": {
+   "file": "run-11-proof-paid.json",
+   "verify_page_pasted": {
+    "verdict": "VALID every check passes (10 of 10)"
+   },
+   "repo_verifier": {
+    "ok": true,
+    "checks": 10,
+    "failed": []
+   }
+  }
+ },
+ "held": {
+  "invoice": {
+   "id": "AP-0002",
+   "invoice_no": "BTX-2026-24",
+   "total": "480.00",
+   "status": "ready"
+  },
+  "cash": {
+   "currency": "EUR",
+   "balance": "35000.00",
+   "committed": "9550.00",
+   "in_flight": "0.00",
+   "spoken_for": "9550.00",
+   "available": "25450.00",
+   "floor": "25000.00",
+   "amount": "480.00",
+   "fee_reserve": "20.00",
+   "need": "500.00",
+   "after": "24950.00",
+   "short_by": "50.00",
+   "due_date": "2027-01-15",
+   "days_to_due": 57,
+   "outcome": "hold",
+   "rule": "below_floor",
+   "why": "paying EUR 500.00 (the invoice plus a fee reserve of EUR 20.00) from the EUR balance would leave EUR 24950.00, below the EUR 25000.00 floor",
+   "decided_by": "code"
+  },
+  "panel_text": "INSIDE THE AGENT'S LIMIT · HELD BY PURSER'S CODE Held: paying it now would take EUR 50.00 below the cash floor. EUR balance (seeded test value) EUR 35,000.00 Spoken for (bills, payouts in flight) EUR 9,550.00 Available EUR 25,450.00 Cash floor EUR 25,000.00 This payment, with fee reserve EUR 500.00 Available after paying EUR 24,950.00 Due 15 Jan 2027, in 57 days No transfer was sent to Airwallex. The invoice stays open, not booked as paid. Decided by Purser's code, not the agent: an agent pays alone only while available EUR stays at or above the floor. What would make it payable More EUR above the floor, such as incoming payments. It is not due yet. Or the CFO approves it with a passkey. The agent cannot. Test money. This sample added EUR 1,050.00 of committed bills to your test company. Show the details",
+  "invoices_after": [
+   {
+    "invoice_no": "BTX-2026-17",
+    "status": "paid"
+   },
+   {
+    "invoice_no": "BTX-2026-24",
+    "status": "ready"
+   }
+  ],
+  "payout_events": []
+ },
+ "answers": [
+  {
+   "at": "2026-11-19T08:41:35.688Z",
+   "method": "POST",
+   "path": "/v1/try/start",
+   "status": 201,
+   "tab": "main",
+   "body": {
+    "tenant": "t_try_c19df7ad345558e0",
+    "expires_at": "2026-11-20T08:41:34.257Z",
+    "session_expires_at": "2026-11-19T08:56:34.257Z",
+    "company": {
+     "name": "North Sea Ropes (test)"
+    },
+    "pool": "public",
+    "mode": {
+     "claude": "live",
+     "agents": "live",
+     "rail_awx": "off"
+    }
+   }
+  },
+  {
+   "at": "2026-11-19T08:41:42.919Z",
+   "method": "POST",
+   "path": "/v1/engine/samples/within",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "kind": "invoice",
+    "sha256": "ea2c5054c59c8e86b1275521dfced77fc99f9b9721297d62175373670aab4a9a",
+    "invoice": {
+     "id": "AP-0002",
+     "status": "ready",
+     "status_words": "Ready to pay",
+     "payable": true,
+     "vendor": "Bergtex Textil GmbH",
+     "invoice_no": "BTX-2026-23",
+     "currency": "EUR",
+     "total": "120.00",
+     "due_date": "2027-01-08",
+     "read_by": "claude:claude-haiku-5-5",
+     "issue_date": "2026-11-09",
+     "paid_at": null,
+     "received_at": "2026-11-19T08:41:37.049Z",
+     "findings": [],
+     "checks_passed": [
+      "not_paid_before",
+      "bank_on_file",
+      "known_supplier"
+     ],
+     "doc_sha256": "ea2c5054c59c8e86b1275521dfced77fc99f9b9721297d62175373670aab4a9a",
+     "proposal": null,
+     "alone_limit": {
+      "currency": "EUR",
+      "amount": "500.00",
+      "within": true
+     }
+    },
+    "cash": {
+     "currency": "EUR",
+     "balance": "35000.00",
+     "committed": "8500.00",
+     "in_flight": "0.00",
+     "spoken_for": "8500.00",
+     "available": "26500.00",
+     "floor": "25000.00",
+     "amount": "120.00",
+     "fee_reserve": "20.00",
+     "need": "140.00",
+     "after": "26360.00",
+     "short_by": "0.00",
+     "due_date": "2027-01-08",
+     "days_to_due": 50,
+     "outcome": "pay",
+     "rule": null,
+     "why": "EUR 120.00 is within the EUR 500.00 the agent may pay alone, and every balance stays above its floor",
+     "decided_by": "code"
+    }
+   }
+  },
+  {
+   "at": "2026-11-19T08:41:51.441Z",
+   "method": "POST",
+   "path": "/v1/engine/invoices/AP-0002/pay",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "proposal": {
+     "id": "P-0001",
+     "kind": "invoice_payment",
+     "status": "EXECUTED",
+     "terms_sha256": "11641b70ca2507d05c203dcaccd460ef570d38f5d88f54d56637e62cd3b98cb1",
+     "facts": [
+      [
+       "Amount",
+       "EUR 120.00"
+      ],
+      [
+       "Payee",
+       "Bergtex Textil GmbH, IBAN …3000"
+      ],
+      [
+       "On the invoice",
+       "“Total due EUR 120.00”"
+      ],
+      [
+       "Reason",
+       "Goods purchased"
+      ],
+      [
+       "Invoice",
+       "BTX-2026-23 · Bergtex Textil GmbH, reference BTX-2026-23"
+      ],
+      [
+       "Method",
+       "SWIFT, BIC COBADEFFXXX"
+      ],
+      [
+       "Bank fee (stand-in bank, test money)",
+       "at most EUR 20.00, held back (the real fee is recorded)"
+      ],
+      [
+       "Conversion",
+       "none: paid from the EUR balance"
+      ]
+     ],
+     "warnings": []
+    },
+    "alone": {
+     "limit": "EUR 500.00",
+     "by": "agents",
+     "why": "within the EUR 500.00 the CFO lets the agent pay alone: the Checker agent decided pay and the Payer agent proposed it, and code's checks agree"
+    },
+    "settled": {
+     "invoice_status": "paid",
+     "transfer_status": "PAID",
+     "ledger_entries": 7,
+     "vault_added": [
+      "North Sea Ropes (test)/2026/2026-Q4/Purchase invoices/Bergtex Textil GmbH/2026-11-02 BTX-2026-17 EUR 1620.00.pdf",
+      "North Sea Ropes (test)/2026/2026-Q4/Purchase invoices/Bergtex Textil GmbH/2026-11-09 BTX-2026-23 EUR 120.00.pdf",
+      "North Sea Ropes (test)/2026/2026-Q4/Payments/2026-11-19 Bergtex Textil GmbH BTX-2026-23.pdf",
+      "North Sea Ropes (test)/2026/Leveranciers 2026-11-19.pdf"
+     ],
+     "fed": true,
+     "error": null
+    },
+    "airwallex_payout": {
+     "source": "airwallex-sandbox",
+     "transfer_id": "995e307b-eded-4c2d-bcf0-34d480ca1f8a",
+     "status": "SCHEDULED",
+     "amount": "120.00",
+     "currency": "EUR",
+     "request_id": "11641b70-ca25-07d0-5c20-3dcaccd460ef",
+     "terms_sha256": "11641b70ca2507d05c203dcaccd460ef570d38f5d88f54d56637e62cd3b98cb1"
+    }
+   }
+  },
+  {
+   "at": "2026-11-19T08:41:54.698Z",
+   "method": "POST",
+   "path": "/v1/engine/proposals/P-0001/payout/simulate",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "ok": true,
+    "note": {
+     "source": "airwallex-sandbox",
+     "transfer_id": "995e307b-eded-4c2d-bcf0-34d480ca1f8a",
+     "status": "PAID",
+     "amount": "120.00",
+     "currency": "EUR",
+     "request_id": "11641b70-ca25-07d0-5c20-3dcaccd460ef",
+     "terms_sha256": "11641b70ca2507d05c203dcaccd460ef570d38f5d88f54d56637e62cd3b98cb1"
+    }
+   }
+  },
+  {
+   "at": "2026-11-19T08:42:02.885Z",
+   "method": "POST",
+   "path": "/v1/engine/samples/clean",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "kind": "invoice",
+    "sha256": "8c731d34cd2f3486494e3d0f0d02f6670d1a76c99fc0b0855510a4830bf68632",
+    "invoice": {
+     "id": "AP-0003",
+     "status": "ready",
+     "status_words": "Ready to pay",
+     "payable": true,
+     "vendor": "Bergtex Textil GmbH",
+     "invoice_no": "BTX-2026-21",
+     "currency": "EUR",
+     "total": "1850.00",
+     "due_date": "2027-01-08",
+     "read_by": "claude:claude-haiku-5-5",
+     "issue_date": "2026-11-09",
+     "paid_at": null,
+     "received_at": "2026-11-19T08:41:56.050Z",
+     "findings": [
+      {
+       "level": "warn",
+       "code": "unusual_amount",
+       "message": "EUR 1850.00 is more than 2 times this supplier's usual EUR 870.00 (the median of 2 earlier invoices)"
+      }
+     ],
+     "checks_passed": [
+      "not_paid_before",
+      "bank_on_file",
+      "known_supplier"
+     ],
+     "doc_sha256": "8c731d34cd2f3486494e3d0f0d02f6670d1a76c99fc0b0855510a4830bf68632",
+     "proposal": null,
+     "alone_limit": {
+      "currency": "EUR",
+      "amount": "500.00",
+      "within": false
+     }
+    }
+   }
+  },
+  {
+   "at": "2026-11-19T08:42:09.125Z",
+   "method": "POST",
+   "path": "/v1/engine/invoices/AP-0003/pay",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "proposal": {
+     "id": "P-0002",
+     "kind": "invoice_payment",
+     "status": "PENDING_APPROVAL",
+     "terms_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d",
+     "facts": [
+      [
+       "Amount",
+       "EUR 1,850.00"
+      ],
+      [
+       "Payee",
+       "Bergtex Textil GmbH, IBAN …3000"
+      ],
+      [
+       "On the invoice",
+       "“Total due EUR 1,850.00”"
+      ],
+      [
+       "Reason",
+       "Goods purchased"
+      ],
+      [
+       "Invoice",
+       "BTX-2026-21 · Bergtex Textil GmbH, reference BTX-2026-21"
+      ],
+      [
+       "Method",
+       "SWIFT, BIC COBADEFFXXX"
+      ],
+      [
+       "Bank fee (stand-in bank, test money)",
+       "at most EUR 20.00, held back (the real fee is recorded)"
+      ],
+      [
+       "Conversion",
+       "USD 559.01 into EUR 503.40 at rate 1.11046"
+      ]
+     ],
+     "warnings": []
+    }
+   }
+  },
+  {
+   "at": "2026-11-19T08:42:11.300Z",
+   "method": "POST",
+   "path": "/v1/engine/proposals/P-0002/approve",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "status": "approved",
+    "message": "P-0002 approved with You (visitor) (passkey 4rAkMhcm)",
+    "settled": null,
+    "held": true
+   }
+  },
+  {
+   "at": "2026-11-19T08:42:15.944Z",
+   "method": "POST",
+   "path": "/v1/engine/proposals/P-0002/pay",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "outcome": "paid",
+    "layers": {
+     "signature": {
+      "verified": true,
+      "reason": "Your signature is over exactly these terms."
+     },
+     "executor": {
+      "accepted": true,
+      "said": null
+     }
+    },
+    "signed_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d",
+    "sent_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d",
+    "changed": [],
+    "transfers_before": 1,
+    "transfers_after": 2,
+    "settled": {
+     "invoice_status": "paid",
+     "transfer_status": "PAID",
+     "ledger_entries": 12,
+     "vault_added": [
+      "North Sea Ropes (test)/2026/2026-Q4/Purchase invoices/Bergtex Textil GmbH/2026-11-09 BTX-2026-21 EUR 1850.00.pdf",
+      "North Sea Ropes (test)/2026/2026-Q4/Payments/2026-11-19 Bergtex Textil GmbH BTX-2026-21.pdf",
+      "North Sea Ropes (test)/2026/Leveranciers 2026-11-19 (correctie).pdf"
+     ],
+     "fed": true,
+     "error": null
+    },
+    "proof": {
+     "format": "purser.proof-bundle/v1",
+     "note": "A /try test company: test money only, nothing real moved. Check this file on /verify or with npm run verify-bundle -- <file>.",
+     "made_at": "2026-11-19T08:42:12.085Z",
+     "proposal_id": "P-0002",
+     "terms": {
+      "schema": "kit11.approval-terms/v1",
+      "kind": "invoice_payment",
+      "proposal_id": "P-0002",
+      "expires_at": "2026-11-19T08:56:34Z",
+      "invoice_no": "BTX-2026-21 · Bergtex Textil GmbH",
+      "vendor": "Bergtex Textil GmbH",
+      "amount": "1850.00",
+      "currency": "EUR",
+      "fee_max": "20.00",
+      "beneficiary_id": "ben_2",
+      "beneficiary_name": "Bergtex Textil GmbH",
+      "iban_last4": "3000",
+      "bic": "COBADEFFXXX",
+      "method": "SWIFT",
+      "reference": "BTX-2026-21",
+      "reason": "goods_purchased",
+      "transfer_request_id": "beed41bd-58fd-4f0f-b6af-5ed42027bcea",
+      "conversion": {
+       "request_id": "84f29787-2ac3-46b9-b5bd-d07866758f33",
+       "quote_id": "224ac547-6b89-3057-b14b-523c103fa338",
+       "client_rate": "1.11046",
+       "valid_to": "2026-11-19T08:57:04.000Z",
+       "buy_currency": "EUR",
+       "buy_amount": "503.40",
+       "sell_currency": "USD",
+       "sell_amount": "559.01"
+      },
+      "balances_before": {
+       "eur_available": "34866.60",
+       "usd_available": "25000.00"
+      },
+      "floors": {
+       "eur_floor": "25000.00",
+       "eur_obligations": "8500.00",
+       "usd_floor": "20000.00"
+      },
+      "after": {
+       "eur_free": "0.00",
+       "usd_available": "24440.99"
+      },
+      "evidence": [
+       {
+        "type": "invoice",
+        "ref": "BTX-2026-21 · Bergtex Textil GmbH",
+        "sha256": "4637de29b6768038f11e14880e539c85bc7b5becdc68f4f3381b57cfda198da2"
+       }
+      ],
+      "document_total_line": "Total due EUR 1,850.00",
+      "document_currency": "EUR",
+      "test_money": true,
+      "source": "payables_inbox"
+     },
+     "canonical": "{\"after\":{\"eur_free\":\"0.00\",\"usd_available\":\"24440.99\"},\"amount\":\"1850.00\",\"balances_before\":{\"eur_available\":\"34866.60\",\"usd_available\":\"25000.00\"},\"beneficiary_id\":\"ben_2\",\"beneficiary_name\":\"Bergtex Textil GmbH\",\"bic\":\"COBADEFFXXX\",\"conversion\":{\"buy_amount\":\"503.40\",\"buy_currency\":\"EUR\",\"client_rate\":\"1.11046\",\"quote_id\":\"224ac547-6b89-3057-b14b-523c103fa338\",\"request_id\":\"84f29787-2ac3-46b9-b5bd-d07866758f33\",\"sell_amount\":\"559.01\",\"sell_currency\":\"USD\",\"valid_to\":\"2026-11-19T08:57:04.000Z\"},\"currency\":\"EUR\",\"document_currency\":\"EUR\",\"document_total_line\":\"Total due EUR 1,850.00\",\"evidence\":[{\"ref\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"sha256\":\"4637de29b6768038f11e14880e539c85bc7b5becdc68f4f3381b57cfda198da2\",\"type\":\"invoice\"}],\"expires_at\":\"2026-11-19T08:56:34Z\",\"fee_max\":\"20.00\",\"floors\":{\"eur_floor\":\"25000.00\",\"eur_obligations\":\"8500.00\",\"usd_floor\":\"20000.00\"},\"iban_last4\":\"3000\",\"invoice_no\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"kind\":\"invoice_payment\",\"method\":\"SWIFT\",\"proposal_id\":\"P-0002\",\"reason\":\"goods_purchased\",\"reference\":\"BTX-2026-21\",\"schema\":\"kit11.approval-terms/v1\",\"source\":\"payables_inbox\",\"test_money\":true,\"transfer_request_id\":\"beed41bd-58fd-4f0f-b6af-5ed42027bcea\",\"vendor\":\"Bergtex Textil GmbH\"}",
+     "terms_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d",
+     "rp_id": "kit11.max-31b.workers.dev",
+     "origin": "https://kit11.max-31b.workers.dev",
+     "assertion": {
+      "credential_id": "4rAkMhcmB-PN1jz3lj85DW38UEvhhPJXTrVgwZpNHjQ",
+      "authenticatorData": "Z25uI6ub1RwUR-JksUdeKxBD5kUJLernzQx15CB8arIFAAAAAg",
+      "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiMEVZLVhJd1BsRmhpdDhvQTlsNnphbHBzczdpX3JXdjBnVXltaHhTQzNWMCIsIm9yaWdpbiI6Imh0dHBzOi8va2l0MTEubWF4LTMxYi53b3JrZXJzLmRldiIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+      "signature": "MEQCIH6B9izpHmOwRmAbu7tpWFYgH8vJxPTh-81XEfdVqa97AiA630SdYX1sqpWHx6EBs4tgUhQEfnllIETNVa7lF3Fs7A"
+     },
+     "public_key": {
+      "format": "cose",
+      "cose": "pQECAyYgASFYIKBQRSl600A8EGdRFYYHhUal3uRyoda-LSVEvSmkmYItIlggM7b9fby0DtXlbxtLdiJjs6H74JoHblvBYgEnTTl-rFE",
+      "alg": -7
+     },
+     "decision": {
+      "outcome": "paid",
+      "signature": {
+       "verified": true,
+       "reason": "Your signature is over exactly these terms."
+      },
+      "executor": {
+       "accepted": true,
+       "said": null
+      },
+      "signed_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d",
+      "sent_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d",
+      "changed": [],
+      "transfers_before": 1,
+      "transfers_after": 2
+     },
+     "ledger": {
+      "entries": [
+       {
+        "entry_id": 8,
+        "posting_date": "2026-11-19",
+        "doc_date": "2026-11-19",
+        "description": "Convert USD to EUR",
+        "source_key": "fx|conv_5|1590|1201|USD",
+        "doc_ref": "conv_5",
+        "doc_sha256": null,
+        "created_by": "purser-feed",
+        "reverses": null,
+        "created_at": "2026-11-19T08:42:12.085Z",
+        "prev_hash": "b1b12a56d54fb0c8eb843ed5387b8349eba3dc99a1a14024c0c24a52b18dc520",
+        "entry_hash": "405f50a5851513d935713883b3c946ec041320dcc0859870e7a5c58d4b688bce",
+        "lines": [
+         {
+          "line_no": 1,
+          "account": "1590",
+          "debit_cents": 55901,
+          "credit_cents": 0,
+          "currency": "USD",
+          "cost_centre": "CC300",
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Airwallex",
+          "due_date": null,
+          "doc_ref": null,
+          "memo": "currency conversion: own accounts"
+         },
+         {
+          "line_no": 2,
+          "account": "1201",
+          "debit_cents": 0,
+          "credit_cents": 55901,
+          "currency": "USD",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": null,
+          "due_date": null,
+          "doc_ref": null,
+          "memo": null
+         }
+        ]
+       },
+       {
+        "entry_id": 9,
+        "posting_date": "2026-11-19",
+        "doc_date": "2026-11-19",
+        "description": "Convert USD to EUR",
+        "source_key": "fx|conv_5|1590|1200|EUR",
+        "doc_ref": "conv_5",
+        "doc_sha256": null,
+        "created_by": "purser-feed",
+        "reverses": null,
+        "created_at": "2026-11-19T08:42:12.085Z",
+        "prev_hash": "405f50a5851513d935713883b3c946ec041320dcc0859870e7a5c58d4b688bce",
+        "entry_hash": "f617cc317325069b90f16b3c38f1706d902244a5e31ef479ce9f89ad6b0a3610",
+        "lines": [
+         {
+          "line_no": 1,
+          "account": "1200",
+          "debit_cents": 50340,
+          "credit_cents": 0,
+          "currency": "EUR",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": null,
+          "due_date": null,
+          "doc_ref": null,
+          "memo": null
+         },
+         {
+          "line_no": 2,
+          "account": "1590",
+          "debit_cents": 0,
+          "credit_cents": 50340,
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Airwallex",
+          "due_date": null,
+          "doc_ref": null,
+          "memo": "currency conversion: own accounts"
+         }
+        ]
+       },
+       {
+        "entry_id": 10,
+        "posting_date": "2026-11-19",
+        "doc_date": "2026-11-19",
+        "description": "Invoice BTX-2026-21 · Bergtex Textil GmbH",
+        "source_key": "transfer|beed41bd-58fd-4f0f-b6af-5ed42027bcea|2100|1200|EUR",
+        "doc_ref": "tr_6",
+        "doc_sha256": null,
+        "created_by": "purser-feed",
+        "reverses": null,
+        "created_at": "2026-11-19T08:42:12.085Z",
+        "prev_hash": "f617cc317325069b90f16b3c38f1706d902244a5e31ef479ce9f89ad6b0a3610",
+        "entry_hash": "ee3aacceebdd20b3479c90a0eeac5bb23b86dbd2478e487a8344be945d7f5527",
+        "lines": [
+         {
+          "line_no": 1,
+          "account": "2100",
+          "debit_cents": 185000,
+          "credit_cents": 0,
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Bergtex Textil GmbH",
+          "due_date": null,
+          "doc_ref": "BTX-2026-21 · Bergtex Textil GmbH",
+          "memo": "supplier invoice paid: settles the payable booked on receipt"
+         },
+         {
+          "line_no": 2,
+          "account": "1200",
+          "debit_cents": 0,
+          "credit_cents": 185000,
+          "currency": "EUR",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": null,
+          "due_date": null,
+          "doc_ref": null,
+          "memo": null
+         }
+        ]
+       },
+       {
+        "entry_id": 11,
+        "posting_date": "2026-11-19",
+        "doc_date": "2026-11-19",
+        "description": "Transfer fee, invoice BTX-2026-21 · Bergtex Textil GmbH",
+        "source_key": "transfer|beed41bd-58fd-4f0f-b6af-5ed42027bcea|6800|1200|EUR",
+        "doc_ref": "tr_6",
+        "doc_sha256": null,
+        "created_by": "purser-feed",
+        "reverses": null,
+        "created_at": "2026-11-19T08:42:12.085Z",
+        "prev_hash": "ee3aacceebdd20b3479c90a0eeac5bb23b86dbd2478e487a8344be945d7f5527",
+        "entry_hash": "649fd2bd6d1200a8badcc2a0fddfb14d9ccfcce00384b879898e23dad2bc6671",
+        "lines": [
+         {
+          "line_no": 1,
+          "account": "6800",
+          "debit_cents": 1340,
+          "credit_cents": 0,
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Airwallex",
+          "due_date": null,
+          "doc_ref": null,
+          "memo": "transfer fee"
+         },
+         {
+          "line_no": 2,
+          "account": "1200",
+          "debit_cents": 0,
+          "credit_cents": 1340,
+          "currency": "EUR",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": null,
+          "due_date": null,
+          "doc_ref": null,
+          "memo": null
+         }
+        ]
+       },
+       {
+        "entry_id": 12,
+        "posting_date": "2026-11-09",
+        "doc_date": "2026-11-09",
+        "description": "Bergtex Textil GmbH invoice BTX-2026-21 (received)",
+        "source_key": "ap-accrual|AP-0003",
+        "doc_ref": "BTX-2026-21 · Bergtex Textil GmbH",
+        "doc_sha256": null,
+        "created_by": "purser-feed",
+        "reverses": null,
+        "created_at": "2026-11-19T08:42:12.085Z",
+        "prev_hash": "649fd2bd6d1200a8badcc2a0fddfb14d9ccfcce00384b879898e23dad2bc6671",
+        "entry_hash": "67376296ad3e548491ebfd413f4505b6d2574ce3fc243c21f6a7326a4c43ed96",
+        "lines": [
+         {
+          "line_no": 1,
+          "account": "6200",
+          "debit_cents": 155462,
+          "credit_cents": 0,
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Bergtex Textil GmbH",
+          "due_date": null,
+          "doc_ref": null,
+          "memo": "Bergtex Textil GmbH invoice BTX-2026-21"
+         },
+         {
+          "line_no": 2,
+          "account": "1515",
+          "debit_cents": 29538,
+          "credit_cents": 0,
+          "currency": "EUR",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Bergtex Textil GmbH",
+          "due_date": null,
+          "doc_ref": null,
+          "memo": "Bergtex Textil GmbH invoice BTX-2026-21: foreign VAT to reclaim"
+         },
+         {
+          "line_no": 3,
+          "account": "2100",
+          "debit_cents": 0,
+          "credit_cents": 185000,
+          "currency": "EUR",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Bergtex Textil GmbH",
+          "due_date": "2027-01-08",
+          "doc_ref": "BTX-2026-21 · Bergtex Textil GmbH",
+          "memo": "Bergtex Textil GmbH invoice BTX-2026-21"
+         }
+        ]
+       }
+      ],
+      "head": "67376296ad3e548491ebfd413f4505b6d2574ce3fc243c21f6a7326a4c43ed96",
+      "count": 12
+     }
+    },
+    "airwallex_payout": {
+     "source": "airwallex-sandbox",
+     "transfer_id": "b10ab176-bfc2-42ce-97ee-13ae4f0b68a1",
+     "status": "SCHEDULED",
+     "amount": "1850.00",
+     "currency": "EUR",
+     "request_id": "d0463e5c-8c0f-9458-62b7-ca00f65eb36a",
+     "terms_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d"
+    },
+    "sandbox_calls": 0,
+    "request_id": "req_tOo0J6WxGxRM"
+   }
+  },
+  {
+   "at": "2026-11-19T08:42:18.643Z",
+   "method": "POST",
+   "path": "/v1/engine/proposals/P-0002/payout/simulate",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "ok": true,
+    "note": {
+     "source": "airwallex-sandbox",
+     "transfer_id": "b10ab176-bfc2-42ce-97ee-13ae4f0b68a1",
+     "status": "PAID",
+     "amount": "1850.00",
+     "currency": "EUR",
+     "request_id": "d0463e5c-8c0f-9458-62b7-ca00f65eb36a",
+     "terms_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d"
+    }
+   }
+  },
+  {
+   "at": "2026-11-19T08:42:21.286Z",
+   "method": "POST",
+   "path": "/v1/engine/proposals/P-0002/pay",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "outcome": "refused",
+    "layers": {
+     "signature": {
+      "verified": false,
+      "reason": "This signature is over other terms than the ones on screen. Nothing was paid."
+     },
+     "executor": {
+      "accepted": false,
+      "said": "P-0002 is EXECUTED, not approved"
+     }
+    },
+    "signed_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d",
+    "sent_sha256": "b15028f8e05db7e5d7eac2d27e34764f567f2585e590963d194ee49effe56419",
+    "changed": [
+     "amount"
+    ],
+    "transfers_before": 2,
+    "transfers_after": 2,
+    "settled": null,
+    "proof": {
+     "format": "purser.proof-bundle/v1",
+     "note": "A /try test company: test money only, nothing real moved. Check this file on /verify or with npm run verify-bundle -- <file>.",
+     "made_at": "2026-11-19T08:42:21.011Z",
+     "proposal_id": "P-0002",
+     "terms": {
+      "schema": "kit11.approval-terms/v1",
+      "kind": "invoice_payment",
+      "proposal_id": "P-0002",
+      "expires_at": "2026-11-19T08:56:34Z",
+      "invoice_no": "BTX-2026-21 · Bergtex Textil GmbH",
+      "vendor": "Bergtex Textil GmbH",
+      "amount": "1850.00",
+      "currency": "EUR",
+      "fee_max": "20.00",
+      "beneficiary_id": "ben_2",
+      "beneficiary_name": "Bergtex Textil GmbH",
+      "iban_last4": "3000",
+      "bic": "COBADEFFXXX",
+      "method": "SWIFT",
+      "reference": "BTX-2026-21",
+      "reason": "goods_purchased",
+      "transfer_request_id": "beed41bd-58fd-4f0f-b6af-5ed42027bcea",
+      "conversion": {
+       "request_id": "84f29787-2ac3-46b9-b5bd-d07866758f33",
+       "quote_id": "224ac547-6b89-3057-b14b-523c103fa338",
+       "client_rate": "1.11046",
+       "valid_to": "2026-11-19T08:57:04.000Z",
+       "buy_currency": "EUR",
+       "buy_amount": "503.40",
+       "sell_currency": "USD",
+       "sell_amount": "559.01"
+      },
+      "balances_before": {
+       "eur_available": "34866.60",
+       "usd_available": "25000.00"
+      },
+      "floors": {
+       "eur_floor": "25000.00",
+       "eur_obligations": "8500.00",
+       "usd_floor": "20000.00"
+      },
+      "after": {
+       "eur_free": "0.00",
+       "usd_available": "24440.99"
+      },
+      "evidence": [
+       {
+        "type": "invoice",
+        "ref": "BTX-2026-21 · Bergtex Textil GmbH",
+        "sha256": "4637de29b6768038f11e14880e539c85bc7b5becdc68f4f3381b57cfda198da2"
+       }
+      ],
+      "document_total_line": "Total due EUR 1,850.00",
+      "document_currency": "EUR",
+      "test_money": true,
+      "source": "payables_inbox"
+     },
+     "canonical": "{\"after\":{\"eur_free\":\"0.00\",\"usd_available\":\"24440.99\"},\"amount\":\"1850.00\",\"balances_before\":{\"eur_available\":\"34866.60\",\"usd_available\":\"25000.00\"},\"beneficiary_id\":\"ben_2\",\"beneficiary_name\":\"Bergtex Textil GmbH\",\"bic\":\"COBADEFFXXX\",\"conversion\":{\"buy_amount\":\"503.40\",\"buy_currency\":\"EUR\",\"client_rate\":\"1.11046\",\"quote_id\":\"224ac547-6b89-3057-b14b-523c103fa338\",\"request_id\":\"84f29787-2ac3-46b9-b5bd-d07866758f33\",\"sell_amount\":\"559.01\",\"sell_currency\":\"USD\",\"valid_to\":\"2026-11-19T08:57:04.000Z\"},\"currency\":\"EUR\",\"document_currency\":\"EUR\",\"document_total_line\":\"Total due EUR 1,850.00\",\"evidence\":[{\"ref\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"sha256\":\"4637de29b6768038f11e14880e539c85bc7b5becdc68f4f3381b57cfda198da2\",\"type\":\"invoice\"}],\"expires_at\":\"2026-11-19T08:56:34Z\",\"fee_max\":\"20.00\",\"floors\":{\"eur_floor\":\"25000.00\",\"eur_obligations\":\"8500.00\",\"usd_floor\":\"20000.00\"},\"iban_last4\":\"3000\",\"invoice_no\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"kind\":\"invoice_payment\",\"method\":\"SWIFT\",\"proposal_id\":\"P-0002\",\"reason\":\"goods_purchased\",\"reference\":\"BTX-2026-21\",\"schema\":\"kit11.approval-terms/v1\",\"source\":\"payables_inbox\",\"test_money\":true,\"transfer_request_id\":\"beed41bd-58fd-4f0f-b6af-5ed42027bcea\",\"vendor\":\"Bergtex Textil GmbH\"}",
+     "terms_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d",
+     "rp_id": "kit11.max-31b.workers.dev",
+     "origin": "https://kit11.max-31b.workers.dev",
+     "assertion": {
+      "credential_id": "4rAkMhcmB-PN1jz3lj85DW38UEvhhPJXTrVgwZpNHjQ",
+      "authenticatorData": "Z25uI6ub1RwUR-JksUdeKxBD5kUJLernzQx15CB8arIFAAAAAg",
+      "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiMEVZLVhJd1BsRmhpdDhvQTlsNnphbHBzczdpX3JXdjBnVXltaHhTQzNWMCIsIm9yaWdpbiI6Imh0dHBzOi8va2l0MTEubWF4LTMxYi53b3JrZXJzLmRldiIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+      "signature": "MEQCIH6B9izpHmOwRmAbu7tpWFYgH8vJxPTh-81XEfdVqa97AiA630SdYX1sqpWHx6EBs4tgUhQEfnllIETNVa7lF3Fs7A"
+     },
+     "public_key": {
+      "format": "cose",
+      "cose": "pQECAyYgASFYIKBQRSl600A8EGdRFYYHhUal3uRyoda-LSVEvSmkmYItIlggM7b9fby0DtXlbxtLdiJjs6H74JoHblvBYgEnTTl-rFE",
+      "alg": -7
+     },
+     "decision": {
+      "outcome": "refused",
+      "signature": {
+       "verified": false,
+       "reason": "This signature is over other terms than the ones on screen. Nothing was paid."
+      },
+      "executor": {
+       "accepted": false,
+       "said": "P-0002 is EXECUTED, not approved"
+      },
+      "signed_sha256": "d0463e5c8c0f945862b7ca00f65eb36a5a6cb3b8bfad6bf4814ca6871482dd5d",
+      "sent_sha256": "b15028f8e05db7e5d7eac2d27e34764f567f2585e590963d194ee49effe56419",
+      "changed": [
+       "amount"
+      ],
+      "transfers_before": 2,
+      "transfers_after": 2
+     },
+     "asked": {
+      "terms": {
+       "schema": "kit11.approval-terms/v1",
+       "kind": "invoice_payment",
+       "proposal_id": "P-0002",
+       "expires_at": "2026-11-19T08:56:34Z",
+       "invoice_no": "BTX-2026-21 · Bergtex Textil GmbH",
+       "vendor": "Bergtex Textil GmbH",
+       "amount": "1850.01",
+       "currency": "EUR",
+       "fee_max": "20.00",
+       "beneficiary_id": "ben_2",
+       "beneficiary_name": "Bergtex Textil GmbH",
+       "iban_last4": "3000",
+       "bic": "COBADEFFXXX",
+       "method": "SWIFT",
+       "reference": "BTX-2026-21",
+       "reason": "goods_purchased",
+       "transfer_request_id": "beed41bd-58fd-4f0f-b6af-5ed42027bcea",
+       "conversion": {
+        "request_id": "84f29787-2ac3-46b9-b5bd-d07866758f33",
+        "quote_id": "224ac547-6b89-3057-b14b-523c103fa338",
+        "client_rate": "1.11046",
+        "valid_to": "2026-11-19T08:57:04.000Z",
+        "buy_currency": "EUR",
+        "buy_amount": "503.40",
+        "sell_currency": "USD",
+        "sell_amount": "559.01"
+       },
+       "balances_before": {
+        "eur_available": "34866.60",
+        "usd_available": "25000.00"
+       },
+       "floors": {
+        "eur_floor": "25000.00",
+        "eur_obligations": "8500.00",
+        "usd_floor": "20000.00"
+       },
+       "after": {
+        "eur_free": "0.00",
+        "usd_available": "24440.99"
+       },
+       "evidence": [
+        {
+         "type": "invoice",
+         "ref": "BTX-2026-21 · Bergtex Textil GmbH",
+         "sha256": "4637de29b6768038f11e14880e539c85bc7b5becdc68f4f3381b57cfda198da2"
+        }
+       ],
+       "document_total_line": "Total due EUR 1,850.00",
+       "document_currency": "EUR",
+       "test_money": true,
+       "source": "payables_inbox"
+      },
+      "canonical": "{\"after\":{\"eur_free\":\"0.00\",\"usd_available\":\"24440.99\"},\"amount\":\"1850.01\",\"balances_before\":{\"eur_available\":\"34866.60\",\"usd_available\":\"25000.00\"},\"beneficiary_id\":\"ben_2\",\"beneficiary_name\":\"Bergtex Textil GmbH\",\"bic\":\"COBADEFFXXX\",\"conversion\":{\"buy_amount\":\"503.40\",\"buy_currency\":\"EUR\",\"client_rate\":\"1.11046\",\"quote_id\":\"224ac547-6b89-3057-b14b-523c103fa338\",\"request_id\":\"84f29787-2ac3-46b9-b5bd-d07866758f33\",\"sell_amount\":\"559.01\",\"sell_currency\":\"USD\",\"valid_to\":\"2026-11-19T08:57:04.000Z\"},\"currency\":\"EUR\",\"document_currency\":\"EUR\",\"document_total_line\":\"Total due EUR 1,850.00\",\"evidence\":[{\"ref\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"sha256\":\"4637de29b6768038f11e14880e539c85bc7b5becdc68f4f3381b57cfda198da2\",\"type\":\"invoice\"}],\"expires_at\":\"2026-11-19T08:56:34Z\",\"fee_max\":\"20.00\",\"floors\":{\"eur_floor\":\"25000.00\",\"eur_obligations\":\"8500.00\",\"usd_floor\":\"20000.00\"},\"iban_last4\":\"3000\",\"invoice_no\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"kind\":\"invoice_payment\",\"method\":\"SWIFT\",\"proposal_id\":\"P-0002\",\"reason\":\"goods_purchased\",\"reference\":\"BTX-2026-21\",\"schema\":\"kit11.approval-terms/v1\",\"source\":\"payables_inbox\",\"test_money\":true,\"transfer_request_id\":\"beed41bd-58fd-4f0f-b6af-5ed42027bcea\",\"vendor\":\"Bergtex Textil GmbH\"}",
+      "sha256": "b15028f8e05db7e5d7eac2d27e34764f567f2585e590963d194ee49effe56419"
+     },
+     "ledger": {
+      "entries": [
+       {
+        "entry_id": 8,
+        "posting_date": "2026-11-19",
+        "doc_date": "2026-11-19",
+        "description": "Convert USD to EUR",
+        "source_key": "fx|conv_5|1590|1201|USD",
+        "doc_ref": "conv_5",
+        "doc_sha256": null,
+        "created_by": "purser-feed",
+        "reverses": null,
+        "created_at": "2026-11-19T08:42:12.085Z",
+        "prev_hash": "b1b12a56d54fb0c8eb843ed5387b8349eba3dc99a1a14024c0c24a52b18dc520",
+        "entry_hash": "405f50a5851513d935713883b3c946ec041320dcc0859870e7a5c58d4b688bce",
+        "lines": [
+         {
+          "line_no": 1,
+          "account": "1590",
+          "debit_cents": 55901,
+          "credit_cents": 0,
+          "currency": "USD",
+          "cost_centre": "CC300",
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Airwallex",
+          "due_date": null,
+          "doc_ref": null,
+          "memo": "currency conversion: own accounts"
+         },
+         {
+          "line_no": 2,
+          "account": "1201",
+          "debit_cents": 0,
+          "credit_cents": 55901,
+          "currency": "USD",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": null,
+          "due_date": null,
+          "doc_ref": null,
+          "memo": null
+         }
+        ]
+       },
+       {
+        "entry_id": 9,
+        "posting_date": "2026-11-19",
+        "doc_date": "2026-11-19",
+        "description": "Convert USD to EUR",
+        "source_key": "fx|conv_5|1590|1200|EUR",
+        "doc_ref": "conv_5",
+        "doc_sha256": null,
+        "created_by": "purser-feed",
+        "reverses": null,
+        "created_at": "2026-11-19T08:42:12.085Z",
+        "prev_hash": "405f50a5851513d935713883b3c946ec041320dcc0859870e7a5c58d4b688bce",
+        "entry_hash": "f617cc317325069b90f16b3c38f1706d902244a5e31ef479ce9f89ad6b0a3610",
+        "lines": [
+         {
+          "line_no": 1,
+          "account": "1200",
+          "debit_cents": 50340,
+          "credit_cents": 0,
+          "currency": "EUR",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": null,
+          "due_date": null,
+          "doc_ref": null,
+          "memo": null
+         },
+         {
+          "line_no": 2,
+          "account": "1590",
+          "debit_cents": 0,
+          "credit_cents": 50340,
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Airwallex",
+          "due_date": null,
+          "doc_ref": null,
+          "memo": "currency conversion: own accounts"
+         }
+        ]
+       },
+       {
+        "entry_id": 10,
+        "posting_date": "2026-11-19",
+        "doc_date": "2026-11-19",
+        "description": "Invoice BTX-2026-21 · Bergtex Textil GmbH",
+        "source_key": "transfer|beed41bd-58fd-4f0f-b6af-5ed42027bcea|2100|1200|EUR",
+        "doc_ref": "tr_6",
+        "doc_sha256": null,
+        "created_by": "purser-feed",
+        "reverses": null,
+        "created_at": "2026-11-19T08:42:12.085Z",
+        "prev_hash": "f617cc317325069b90f16b3c38f1706d902244a5e31ef479ce9f89ad6b0a3610",
+        "entry_hash": "ee3aacceebdd20b3479c90a0eeac5bb23b86dbd2478e487a8344be945d7f5527",
+        "lines": [
+         {
+          "line_no": 1,
+          "account": "2100",
+          "debit_cents": 185000,
+          "credit_cents": 0,
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Bergtex Textil GmbH",
+          "due_date": null,
+          "doc_ref": "BTX-2026-21 · Bergtex Textil GmbH",
+          "memo": "supplier invoice paid: settles the payable booked on receipt"
+         },
+         {
+          "line_no": 2,
+          "account": "1200",
+          "debit_cents": 0,
+          "credit_cents": 185000,
+          "currency": "EUR",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": null,
+          "due_date": null,
+          "doc_ref": null,
+          "memo": null
+         }
+        ]
+       },
+       {
+        "entry_id": 11,
+        "posting_date": "2026-11-19",
+        "doc_date": "2026-11-19",
+        "description": "Transfer fee, invoice BTX-2026-21 · Bergtex Textil GmbH",
+        "source_key": "transfer|beed41bd-58fd-4f0f-b6af-5ed42027bcea|6800|1200|EUR",
+        "doc_ref": "tr_6",
+        "doc_sha256": null,
+        "created_by": "purser-feed",
+        "reverses": null,
+        "created_at": "2026-11-19T08:42:12.085Z",
+        "prev_hash": "ee3aacceebdd20b3479c90a0eeac5bb23b86dbd2478e487a8344be945d7f5527",
+        "entry_hash": "649fd2bd6d1200a8badcc2a0fddfb14d9ccfcce00384b879898e23dad2bc6671",
+        "lines": [
+         {
+          "line_no": 1,
+          "account": "6800",
+          "debit_cents": 1340,
+          "credit_cents": 0,
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Airwallex",
+          "due_date": null,
+          "doc_ref": null,
+          "memo": "transfer fee"
+         },
+         {
+          "line_no": 2,
+          "account": "1200",
+          "debit_cents": 0,
+          "credit_cents": 1340,
+          "currency": "EUR",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": null,
+          "due_date": null,
+          "doc_ref": null,
+          "memo": null
+         }
+        ]
+       },
+       {
+        "entry_id": 12,
+        "posting_date": "2026-11-09",
+        "doc_date": "2026-11-09",
+        "description": "Bergtex Textil GmbH invoice BTX-2026-21 (received)",
+        "source_key": "ap-accrual|AP-0003",
+        "doc_ref": "BTX-2026-21 · Bergtex Textil GmbH",
+        "doc_sha256": null,
+        "created_by": "purser-feed",
+        "reverses": null,
+        "created_at": "2026-11-19T08:42:12.085Z",
+        "prev_hash": "649fd2bd6d1200a8badcc2a0fddfb14d9ccfcce00384b879898e23dad2bc6671",
+        "entry_hash": "67376296ad3e548491ebfd413f4505b6d2574ce3fc243c21f6a7326a4c43ed96",
+        "lines": [
+         {
+          "line_no": 1,
+          "account": "6200",
+          "debit_cents": 155462,
+          "credit_cents": 0,
+          "currency": "EUR",
+          "cost_centre": "CC300",
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Bergtex Textil GmbH",
+          "due_date": null,
+          "doc_ref": null,
+          "memo": "Bergtex Textil GmbH invoice BTX-2026-21"
+         },
+         {
+          "line_no": 2,
+          "account": "1515",
+          "debit_cents": 29538,
+          "credit_cents": 0,
+          "currency": "EUR",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Bergtex Textil GmbH",
+          "due_date": null,
+          "doc_ref": null,
+          "memo": "Bergtex Textil GmbH invoice BTX-2026-21: foreign VAT to reclaim"
+         },
+         {
+          "line_no": 3,
+          "account": "2100",
+          "debit_cents": 0,
+          "credit_cents": 185000,
+          "currency": "EUR",
+          "cost_centre": null,
+          "vat_code": null,
+          "vat_cents": null,
+          "party": "Bergtex Textil GmbH",
+          "due_date": "2027-01-08",
+          "doc_ref": "BTX-2026-21 · Bergtex Textil GmbH",
+          "memo": "Bergtex Textil GmbH invoice BTX-2026-21"
+         }
+        ]
+       }
+      ],
+      "head": "67376296ad3e548491ebfd413f4505b6d2574ce3fc243c21f6a7326a4c43ed96",
+      "count": 12
+     }
+    },
+    "sandbox_calls": 0,
+    "request_id": "req_4zlnyH7ElMcP"
+   }
+  },
+  {
+   "at": "2026-11-19T08:42:27.852Z",
+   "method": "POST",
+   "path": "/v1/try/start",
+   "status": 201,
+   "tab": "cash",
+   "body": {
+    "tenant": "t_try_ff0df26d16247985",
+    "expires_at": "2026-11-20T08:42:26.333Z",
+    "session_expires_at": "2026-11-19T08:57:26.333Z",
+    "company": {
+     "name": "Tulip Sailcloth (test)"
+    },
+    "pool": "public",
+    "mode": {
+     "claude": "live",
+     "agents": "live",
+     "rail_awx": "off"
+    }
+   }
+  },
+  {
+   "at": "2026-11-19T08:42:35.698Z",
+   "method": "POST",
+   "path": "/v1/engine/samples/cash",
+   "status": 200,
+   "tab": "cash",
+   "body": {
+    "kind": "invoice",
+    "sha256": "b6dbf32725d32855b9f067c8a133e1f82eb849de9dd5e7892ae7d3e3a0bf826a",
+    "invoice": {
+     "id": "AP-0002",
+     "status": "ready",
+     "status_words": "Ready to pay",
+     "payable": true,
+     "vendor": "Bergtex Textil GmbH",
+     "invoice_no": "BTX-2026-24",
+     "currency": "EUR",
+     "total": "480.00",
+     "due_date": "2027-01-15",
+     "read_by": "claude:claude-haiku-5-5",
+     "issue_date": "2026-11-12",
+     "paid_at": null,
+     "received_at": "2026-11-19T08:42:29.117Z",
+     "findings": [],
+     "checks_passed": [
+      "not_paid_before",
+      "bank_on_file",
+      "known_supplier"
+     ],
+     "doc_sha256": "b6dbf32725d32855b9f067c8a133e1f82eb849de9dd5e7892ae7d3e3a0bf826a",
+     "proposal": null,
+     "alone_limit": {
+      "currency": "EUR",
+      "amount": "500.00",
+      "within": true
+     }
+    },
+    "cash": {
+     "currency": "EUR",
+     "balance": "35000.00",
+     "committed": "9550.00",
+     "in_flight": "0.00",
+     "spoken_for": "9550.00",
+     "available": "25450.00",
+     "floor": "25000.00",
+     "amount": "480.00",
+     "fee_reserve": "20.00",
+     "need": "500.00",
+     "after": "24950.00",
+     "short_by": "50.00",
+     "due_date": "2027-01-15",
+     "days_to_due": 57,
+     "outcome": "hold",
+     "rule": "below_floor",
+     "why": "paying EUR 500.00 (the invoice plus a fee reserve of EUR 20.00) from the EUR balance would leave EUR 24950.00, below the EUR 25000.00 floor",
+     "decided_by": "code"
+    }
+   }
+  }
+ ],
+ "calls": [
+  {
+   "at": "2026-11-19T08:41:35.688Z",
+   "method": "POST",
+   "path": "/v1/try/start",
+   "status": 201,
+   "ms": 1562,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:36.047Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=0&limit=200",
+   "status": 200,
+   "ms": 369,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:36.050Z",
+   "method": "GET",
+   "path": "/v1/engine/samples",
+   "status": 200,
+   "ms": 377,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:36.185Z",
+   "method": "GET",
+   "path": "/v1/engine/suppliers",
+   "status": 200,
+   "ms": 498,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:36.226Z",
+   "method": "GET",
+   "path": "/v1/engine",
+   "status": 200,
+   "ms": 552,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:37.974Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=8&limit=200",
+   "status": 200,
+   "ms": 360,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:39.355Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=10&limit=200",
+   "status": 200,
+   "ms": 376,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:40.832Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=12&limit=200",
+   "status": 200,
+   "ms": 475,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:42.191Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=12&limit=200",
+   "status": 200,
+   "ms": 357,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:42.919Z",
+   "method": "POST",
+   "path": "/v1/engine/samples/within",
+   "status": 200,
+   "ms": 6305,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:44.333Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=24&limit=200",
+   "status": 200,
+   "ms": 412,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:51.441Z",
+   "method": "POST",
+   "path": "/v1/engine/invoices/AP-0002/pay",
+   "status": 200,
+   "ms": 8519,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:51.847Z",
+   "method": "GET",
+   "path": "/v1/payments?limit=200",
+   "status": 200,
+   "ms": 401,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:51.850Z",
+   "method": "GET",
+   "path": "/v1/engine/invoices",
+   "status": 200,
+   "ms": 405,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:52.284Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=31&limit=200",
+   "status": 200,
+   "ms": 824,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:52.284Z",
+   "method": "GET",
+   "path": "/v1/transactions?limit=200",
+   "status": 200,
+   "ms": 836,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:52.292Z",
+   "method": "GET",
+   "path": "/v1/ledger/entries?limit=200",
+   "status": 200,
+   "ms": 836,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:52.301Z",
+   "method": "GET",
+   "path": "/v1/engine/vault",
+   "status": 200,
+   "ms": 840,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:52.301Z",
+   "method": "GET",
+   "path": "/v1/engine/invoices",
+   "status": 200,
+   "ms": 845,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:52.800Z",
+   "method": "GET",
+   "path": "/v1/engine/vault/file?path=North%20Sea%20Ropes%20(test)%2F2026%2F2026-Q4%2FPurchase%20invoices%2FBergtex%20Textil%20GmbH%2F2026-11-09%20BTX-2026-23%20EUR%20120.00.pdf",
+   "status": 200,
+   "ms": 493,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:52.801Z",
+   "method": "GET",
+   "path": "/v1/engine/vault/file?path=North%20Sea%20Ropes%20(test)%2F2026%2F2026-Q4%2FPayments%2F2026-11-19%20Bergtex%20Textil%20GmbH%20BTX-2026-23.pdf",
+   "status": 200,
+   "ms": 495,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:54.698Z",
+   "method": "POST",
+   "path": "/v1/engine/proposals/P-0001/payout/simulate",
+   "status": 200,
+   "ms": 3231,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:55.124Z",
+   "method": "GET",
+   "path": "/v1/engine/suppliers",
+   "status": 200,
+   "ms": 376,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:55.141Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=52&limit=200",
+   "status": 200,
+   "ms": 387,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:55.142Z",
+   "method": "GET",
+   "path": "/v1/engine/samples",
+   "status": 200,
+   "ms": 388,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:57.032Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=53&limit=200",
+   "status": 200,
+   "ms": 398,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:58.401Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=55&limit=200",
+   "status": 200,
+   "ms": 368,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:41:59.834Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=57&limit=200",
+   "status": 200,
+   "ms": 428,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:01.249Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=69&limit=200",
+   "status": 200,
+   "ms": 412,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:02.646Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=76&limit=200",
+   "status": 200,
+   "ms": 395,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:02.885Z",
+   "method": "POST",
+   "path": "/v1/engine/samples/clean",
+   "status": 200,
+   "ms": 7252,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:04.463Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=76&limit=200",
+   "status": 200,
+   "ms": 417,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:05.019Z",
+   "method": "GET",
+   "path": "/v1/engine",
+   "status": 200,
+   "ms": 1973,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:06.027Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=79&limit=200",
+   "status": 200,
+   "ms": 561,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:07.422Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=81&limit=200",
+   "status": 200,
+   "ms": 393,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:08.759Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=86&limit=200",
+   "status": 200,
+   "ms": 335,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:09.125Z",
+   "method": "POST",
+   "path": "/v1/engine/invoices/AP-0003/pay",
+   "status": 200,
+   "ms": 6236,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:09.545Z",
+   "method": "GET",
+   "path": "/v1/engine/proposals/P-0002/terms",
+   "status": 200,
+   "ms": 402,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:09.919Z",
+   "method": "GET",
+   "path": "/v1/engine/suppliers",
+   "status": 200,
+   "ms": 387,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:10.224Z",
+   "method": "POST",
+   "path": "/v1/engine/passkey/start",
+   "status": 200,
+   "ms": 495,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:10.525Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=86&limit=200",
+   "status": 200,
+   "ms": 399,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:10.677Z",
+   "method": "POST",
+   "path": "/v1/engine/passkey/finish",
+   "status": 200,
+   "ms": 448,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:11.153Z",
+   "method": "GET",
+   "path": "/v1/engine",
+   "status": 200,
+   "ms": 473,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:11.300Z",
+   "method": "POST",
+   "path": "/v1/engine/proposals/P-0002/approve",
+   "status": 200,
+   "ms": 462,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:11.693Z",
+   "method": "GET",
+   "path": "/v1/engine/proposals/P-0002/terms",
+   "status": 200,
+   "ms": 391,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:13.024Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=93&limit=200",
+   "status": 200,
+   "ms": 329,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:14.388Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=105&limit=200",
+   "status": 200,
+   "ms": 361,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:15.730Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=106&limit=200",
+   "status": 200,
+   "ms": 340,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:15.944Z",
+   "method": "POST",
+   "path": "/v1/engine/proposals/P-0002/pay",
+   "status": 200,
+   "ms": 4249,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:16.321Z",
+   "method": "GET",
+   "path": "/v1/engine/invoices",
+   "status": 200,
+   "ms": 374,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:16.421Z",
+   "method": "GET",
+   "path": "/v1/payments?limit=200",
+   "status": 200,
+   "ms": 473,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:16.674Z",
+   "method": "GET",
+   "path": "/v1/engine/invoices",
+   "status": 200,
+   "ms": 728,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:16.697Z",
+   "method": "GET",
+   "path": "/v1/ledger/entries?limit=200",
+   "status": 200,
+   "ms": 751,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:16.734Z",
+   "method": "GET",
+   "path": "/v1/engine/vault",
+   "status": 200,
+   "ms": 787,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:17.243Z",
+   "method": "GET",
+   "path": "/v1/engine/vault/file?path=North%20Sea%20Ropes%20(test)%2F2026%2F2026-Q4%2FPayments%2F2026-11-19%20Bergtex%20Textil%20GmbH%20BTX-2026-21.pdf",
+   "status": 200,
+   "ms": 503,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:17.284Z",
+   "method": "GET",
+   "path": "/v1/engine/vault/file?path=North%20Sea%20Ropes%20(test)%2F2026%2F2026-Q4%2FPurchase%20invoices%2FBergtex%20Textil%20GmbH%2F2026-11-09%20BTX-2026-21%20EUR%201850.00.pdf",
+   "status": 200,
+   "ms": 546,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:18.643Z",
+   "method": "POST",
+   "path": "/v1/engine/proposals/P-0002/payout/simulate",
+   "status": 200,
+   "ms": 2686,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:18.890Z",
+   "method": "GET",
+   "path": "/v1/transactions?limit=200",
+   "status": 200,
+   "ms": 2940,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:20.592Z",
+   "method": "GET",
+   "path": "/v1/engine/proposals/P-0002/terms",
+   "status": 200,
+   "ms": 460,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:21.286Z",
+   "method": "POST",
+   "path": "/v1/engine/proposals/P-0002/pay",
+   "status": 200,
+   "ms": 620,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:21.799Z",
+   "method": "GET",
+   "path": "/v1/ledger/entries?limit=200",
+   "status": 200,
+   "ms": 429,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:21.821Z",
+   "method": "GET",
+   "path": "/v1/engine/invoices",
+   "status": 200,
+   "ms": 450,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:21.875Z",
+   "method": "GET",
+   "path": "/v1/engine",
+   "status": 200,
+   "ms": 504,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:23.404Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=0&limit=200",
+   "status": 200,
+   "ms": 361,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:24.372Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=109&limit=200",
+   "status": 200,
+   "ms": 365,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-19T08:42:27.852Z",
+   "method": "POST",
+   "path": "/v1/try/start",
+   "status": 201,
+   "ms": 1664,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:28.271Z",
+   "method": "GET",
+   "path": "/v1/engine/samples",
+   "status": 200,
+   "ms": 419,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:28.289Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=0&limit=200",
+   "status": 200,
+   "ms": 431,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:28.333Z",
+   "method": "GET",
+   "path": "/v1/engine",
+   "status": 200,
+   "ms": 479,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:28.605Z",
+   "method": "GET",
+   "path": "/v1/engine/suppliers",
+   "status": 200,
+   "ms": 742,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:30.145Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=8&limit=200",
+   "status": 200,
+   "ms": 365,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:31.578Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=12&limit=200",
+   "status": 200,
+   "ms": 429,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:32.962Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=14&limit=200",
+   "status": 200,
+   "ms": 378,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:34.372Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=14&limit=200",
+   "status": 200,
+   "ms": 410,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:35.698Z",
+   "method": "POST",
+   "path": "/v1/engine/samples/cash",
+   "status": 200,
+   "ms": 6920,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:35.998Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=26&limit=200",
+   "status": 200,
+   "ms": 622,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:37.398Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=33&limit=200",
+   "status": 200,
+   "ms": 394,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:37.911Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=0&limit=200",
+   "status": 200,
+   "ms": 378,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:38.901Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=33&limit=200",
+   "status": 200,
+   "ms": 389,
+   "tab": "cash"
+  },
+  {
+   "at": "2026-11-19T08:42:39.324Z",
+   "method": "GET",
+   "path": "/v1/engine/invoices",
+   "status": 200,
+   "ms": 410,
+   "tab": "cash"
+  }
+ ],
+ "console_errors": [],
+ "outside_requests": [],
+ "events": {
+  "main": [
+   {
+    "seq": 1,
+    "ts": "2026-11-19T08:41:35.103Z",
+    "actor": "system",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 2,
+    "ts": "2026-11-19T08:41:35.103Z",
+    "actor": "system",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 3,
+    "ts": "2026-11-19T08:41:35.103Z",
+    "actor": "awx-executor",
+    "event": "treasury.seeded",
+    "subject": "dep_1",
+    "fields": {
+     "amount": "25000.00",
+     "currency": "USD"
+    }
+   },
+   {
+    "seq": 4,
+    "ts": "2026-11-19T08:41:35.103Z",
+    "actor": "treasury",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 5,
+    "ts": "2026-11-19T08:41:35.103Z",
+    "actor": "treasury",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 6,
+    "ts": "2026-11-19T08:41:35.103Z",
+    "actor": "treasury",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 7,
+    "ts": "2026-11-19T08:41:35.103Z",
+    "actor": "system",
+    "event": "ap.received",
+    "subject": "AP-0001",
+    "fields": {
+     "status": "ready",
+     "read_by": "parser",
+     "amount": "1620.00",
+     "currency": "EUR",
+     "findings": ""
+    }
+   },
+   {
+    "seq": 8,
+    "ts": "2026-11-19T08:41:35.103Z",
+    "actor": "system",
+    "event": "ap.status",
+    "subject": "AP-0001",
+    "fields": {
+     "status": "paid",
+     "from": "ready"
+    }
+   },
+   {
+    "seq": 9,
+    "ts": "2026-11-19T08:41:37.064Z",
+    "actor": "treasury",
+    "event": "claude.asking",
+    "subject": "ap.read:ea2c5054c59c8e86",
+    "fields": {
+     "role": "read",
+     "model": "claude-haiku-5-5"
+    }
+   },
+   {
+    "seq": 10,
+    "ts": "2026-11-19T08:41:37.064Z",
+    "actor": "treasury",
+    "event": "claude.asking",
+    "subject": "ap.classify:ea2c5054c59c8e86",
+    "fields": {
+     "role": "classify",
+     "model": "claude-haiku-5-5"
+    }
+   },
+   {
+    "seq": 11,
+    "ts": "2026-11-19T08:41:38.350Z",
+    "actor": "treasury",
+    "event": "claude.read",
+    "subject": "ap.classify:ea2c5054c59c8e86",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "request_id": null,
+     "cost_usd_micros": 86
+    }
+   },
+   {
+    "seq": 12,
+    "ts": "2026-11-19T08:41:39.085Z",
+    "actor": "treasury",
+    "event": "claude.read",
+    "subject": "ap.read:ea2c5054c59c8e86",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "request_id": null,
+     "cost_usd_micros": 166
+    }
+   },
+   {
+    "seq": 13,
+    "ts": "2026-11-19T08:41:40.729Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.ea2c5054c59c8e86",
+    "fields": {
+     "agent": "checker",
+     "tool": "supplier_on_file",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJC9gvY4hk7gByo8tU",
+     "ms": 0,
+     "answer": "Bergtex Textil GmbH is on file as a supplier.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 14,
+    "ts": "2026-11-19T08:41:40.729Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.ea2c5054c59c8e86",
+    "fields": {
+     "agent": "checker",
+     "tool": "check_bank_details",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJC9gvY4hk7gByo8tU",
+     "ms": 0,
+     "answer": "The invoice asks to be paid to an IBAN ending 3000 (DE): the details are valid for a local payout in EUR to DE. It is the account on file for Bergtex Textil…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 15,
+    "ts": "2026-11-19T08:41:40.729Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.ea2c5054c59c8e86",
+    "fields": {
+     "agent": "checker",
+     "tool": "invoice_history",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJC9gvY4hk7gByo8tU",
+     "ms": 0,
+     "answer": "This supplier's other invoices in the inbox: AP-0001: invoice BTX-2026-17, EUR 1620.00, 2026-11-02, paid.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 16,
+    "ts": "2026-11-19T08:41:40.729Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.ea2c5054c59c8e86",
+    "fields": {
+     "agent": "checker",
+     "tool": "verify_totals",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJC9gvY4hk7gByo8tU",
+     "ms": 0,
+     "answer": "The subtotal EUR 100.84 plus tax EUR 19.16 is EUR 120.00: the total adds up.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 17,
+    "ts": "2026-11-19T08:41:40.729Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.ea2c5054c59c8e86",
+    "fields": {
+     "agent": "checker",
+     "tool": "policy_limits",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJC9gvY4hk7gByo8tU",
+     "ms": 0,
+     "answer": "You may pay an invoice alone up to EUR 500.00.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 18,
+    "ts": "2026-11-19T08:41:40.729Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.ea2c5054c59c8e86",
+    "fields": {
+     "agent": "checker",
+     "tool": "expected_amount",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJC9gvY4hk7gByo8tU",
+     "ms": 0,
+     "answer": "Purser has no contract or purchase order amount for this invoice.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 19,
+    "ts": "2026-11-19T08:41:40.802Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "invoice_lines",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJCARiLY58dYYUMCRZ",
+     "ms": 0,
+     "answer": "Invoice \"BTX-2026-23\", currency \"EUR\": net 100.84, VAT 19.16, total 120.00.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 20,
+    "ts": "2026-11-19T08:41:40.802Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "chart_of_accounts",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJCARiLY58dYYUMCRZ",
+     "ms": 0,
+     "answer": "Accounts that may take purchase lines:\n5000 Purchased stock data (warehouse API)\n6100 Software subscriptions (company cards)\n6150 Advertising (company cards)…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 21,
+    "ts": "2026-11-19T08:41:40.802Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "vat_codes",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJCARiLY58dYYUMCRZ",
+     "ms": 0,
+     "answer": "The invoice charges VAT 19.16 on a net of 100.84 (19.00% of the net).",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 22,
+    "ts": "2026-11-19T08:41:40.802Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "cost_centres",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJCARiLY58dYYUMCRZ",
+     "ms": 0,
+     "answer": "Cost centres:\nCC100 Sourcing agent (operations)\nCC200 Support agent (refunds and helpdesk software)\nCC300 Treasury agent (finance)\nCC400 Outside agents (agent…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 23,
+    "ts": "2026-11-19T08:41:40.802Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "coding_history",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJCARiLY58dYYUMCRZ",
+     "ms": 0,
+     "answer": "This supplier's earlier invoices as they were coded, newest first.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 24,
+    "ts": "2026-11-19T08:41:40.802Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "vat_regime",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJCARiLY58dYYUMCRZ",
+     "ms": 0,
+     "answer": "The supplier's country: not known (no VAT id on file).",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 25,
+    "ts": "2026-11-19T08:41:42.234Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.ea2c5054c59c8e86",
+    "fields": {
+     "agent": "checker",
+     "tool": "decide",
+     "turn": 2,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJK7tKZzZX4LmvpW5U",
+     "ms": 0,
+     "answer": "Recorded.",
+     "inputs": 3
+    }
+   },
+   {
+    "seq": 26,
+    "ts": "2026-11-19T08:41:42.234Z",
+    "actor": "checker",
+    "event": "agent.run",
+    "subject": "ap.check.ea2c5054c59c8e86",
+    "fields": {
+     "agent": "checker",
+     "model": "claude-haiku-5-5",
+     "status": "done",
+     "turns": 2,
+     "cost_usd_micros": 462,
+     "latency_ms": 3149,
+     "request_id": "req_011ChBzJK7tKZzZX4LmvpW5U",
+     "claude_ms": "1644,1505"
+    }
+   },
+   {
+    "seq": 27,
+    "ts": "2026-11-19T08:41:37.049Z",
+    "actor": "system",
+    "event": "ap.received",
+    "subject": "AP-0002",
+    "fields": {
+     "status": "ready",
+     "read_by": "claude:claude-haiku-5-5",
+     "amount": "120.00",
+     "currency": "EUR",
+     "findings": ""
+    }
+   },
+   {
+    "seq": 28,
+    "ts": "2026-11-19T08:41:37.049Z",
+    "actor": "checker",
+    "event": "ap.checker_decided",
+    "subject": "AP-0002",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "action": "pay",
+     "outcome": "pay",
+     "overridden": false,
+     "overridden_by": null,
+     "code_requires": "pay",
+     "codes": "",
+     "reason": "Bergtex Textil GmbH invoice BTX-2026-23 for EUR 120.00 is on file, its IBAN matches the account on file, subtotal plus VAT equals the total, and it is not a…",
+     "enforced": "EUR 120.00 is within the EUR 500.00 the agent may pay alone",
+     "request_id": "req_011ChBzJK7tKZzZX4LmvpW5U",
+     "concerns": 0,
+     "script_outcome": "pay"
+    }
+   },
+   {
+    "seq": 29,
+    "ts": "2026-11-19T08:41:42.595Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "code_invoice",
+     "turn": 2,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJKTyLBCE2iNabHmNi",
+     "ms": 0,
+     "answer": "Recorded.",
+     "inputs": 2
+    }
+   },
+   {
+    "seq": 30,
+    "ts": "2026-11-19T08:41:42.595Z",
+    "actor": "treasury",
+    "event": "agent.run",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "model": "claude-haiku-5-5",
+     "status": "done",
+     "turns": 2,
+     "cost_usd_micros": 567,
+     "latency_ms": 3510,
+     "request_id": "req_011ChBzJKTyLBCE2iNabHmNi",
+     "claude_ms": "1717,1793"
+    }
+   },
+   {
+    "seq": 31,
+    "ts": "2026-11-19T08:41:42.234Z",
+    "actor": "treasury",
+    "event": "ap.coded",
+    "subject": "AP-0002",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "status": "needs_review",
+     "lines": 1,
+     "account": "6200",
+     "uncoded_vat_pct": 19,
+     "cost_centre": "CC300",
+     "overridden_by": null,
+     "reason": "Bergtex invoice BTX-2026-23 charges 19% VAT (EUR 19.16) on EUR 100.84 net, and no purchase VAT code reproduces that rate, so the VAT is left null for a person…",
+     "request_id": "req_011ChBzJKTyLBCE2iNabHmNi"
+    }
+   },
+   {
+    "seq": 32,
+    "ts": "2026-11-19T08:41:45.038Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0002",
+    "fields": {
+     "agent": "payer",
+     "tool": "cash_position",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJWRH2QfD4Qxxs5ZaX",
+     "ms": 0,
+     "answer": "Balances: EUR 35000.00, EUR 8500.00 of it already spoken for (floor EUR 25000.00; EUR 1500.00 free above it).",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 33,
+    "ts": "2026-11-19T08:41:45.038Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0002",
+    "fields": {
+     "agent": "payer",
+     "tool": "supplier_rails",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJWRH2QfD4Qxxs5ZaX",
+     "ms": 0,
+     "answer": "Bergtex Textil GmbH is paid to the IBAN ending 3000.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 34,
+    "ts": "2026-11-19T08:41:45.038Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0002",
+    "fields": {
+     "agent": "payer",
+     "tool": "fx_quote",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJWRH2QfD4Qxxs5ZaX",
+     "ms": 0,
+     "answer": "No conversion is quoted: this invoice is paid from the EUR balance, or not at all.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 35,
+    "ts": "2026-11-19T08:41:45.038Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0002",
+    "fields": {
+     "agent": "payer",
+     "tool": "due_date",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJWRH2QfD4Qxxs5ZaX",
+     "ms": 0,
+     "answer": "Today is 2026-11-19.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 36,
+    "ts": "2026-11-19T08:41:45.038Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0002",
+    "fields": {
+     "agent": "payer",
+     "tool": "policy_limits",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJWRH2QfD4Qxxs5ZaX",
+     "ms": 0,
+     "answer": "You may pay an invoice alone up to EUR 500.00.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 37,
+    "ts": "2026-11-19T08:41:46.700Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0002",
+    "fields": {
+     "agent": "payer",
+     "tool": "propose_payment",
+     "turn": 2,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzJdccjd67cdXBw3Dqf",
+     "ms": 0,
+     "answer": "Recorded.",
+     "inputs": 4
+    }
+   },
+   {
+    "seq": 38,
+    "ts": "2026-11-19T08:41:46.700Z",
+    "actor": "payer",
+    "event": "agent.run",
+    "subject": "ap.pay.AP-0002",
+    "fields": {
+     "agent": "payer",
+     "model": "claude-haiku-5-5",
+     "status": "done",
+     "turns": 2,
+     "cost_usd_micros": 411,
+     "latency_ms": 3403,
+     "request_id": "req_011ChBzJdccjd67cdXBw3Dqf",
+     "claude_ms": "1741,1662"
+    }
+   },
+   {
+    "seq": 39,
+    "ts": "2026-11-19T08:41:43.297Z",
+    "actor": "payer",
+    "event": "ap.payer_proposed",
+    "subject": "AP-0002",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "rail": "bank_swift",
+     "pay_on": "2026-11-19",
+     "pay_currency": "EUR",
+     "outcome": "pay",
+     "overridden": false,
+     "overridden_by": null,
+     "reason": "Pay Bergtex Textil GmbH invoice BTX-2026-23 for EUR 120.00 by bank_swift from the EUR balance today, 2026-11-19, which is within your solo limit.",
+     "request_id": "req_011ChBzJdccjd67cdXBw3Dqf",
+     "enforced": "EUR 120.00 is within the EUR 500.00 the agent may pay alone, and every balance stays above its floor"
+    }
+   },
+   {
+    "seq": 40,
+    "ts": "2026-11-19T08:41:43.297Z",
+    "actor": "system",
+    "event": "policy.version",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 41,
+    "ts": "2026-11-19T08:41:43.297Z",
+    "actor": "treasury",
+    "event": "proposal.created",
+    "subject": "P-0001",
+    "fields": {
+     "kind": "invoice_payment"
+    }
+   },
+   {
+    "seq": 42,
+    "ts": "2026-11-19T08:41:43.297Z",
+    "actor": "system",
+    "event": "proposal.within_limit",
+    "subject": "P-0001",
+    "fields": {
+     "method": "policy",
+     "limit": "EUR 500.00"
+    }
+   },
+   {
+    "seq": 43,
+    "ts": "2026-11-19T08:41:43.297Z",
+    "actor": "treasury",
+    "event": "ap.status",
+    "subject": "AP-0002",
+    "fields": {
+     "status": "waiting_cfo",
+     "from": "ready",
+     "proposal_id": "P-0001"
+    }
+   },
+   {
+    "seq": 44,
+    "ts": "2026-11-19T08:41:46.742Z",
+    "actor": "system",
+    "event": "proposal.executing",
+    "subject": "P-0001",
+    "fields": {}
+   },
+   {
+    "seq": 45,
+    "ts": "2026-11-19T08:41:46.742Z",
+    "actor": "awx-executor",
+    "event": "transfer.created",
+    "subject": "tr_4",
+    "fields": {
+     "amount": "120.00",
+     "currency": "EUR",
+     "status": "PROCESSING",
+     "request_id": "7f12b0a3-2b52-424a-9357-c7d616b29784"
+    }
+   },
+   {
+    "seq": 46,
+    "ts": "2026-11-19T08:41:46.742Z",
+    "actor": "awx-executor",
+    "event": "transfer.status",
+    "subject": "tr_4",
+    "fields": {
+     "status": "SENT"
+    }
+   },
+   {
+    "seq": 47,
+    "ts": "2026-11-19T08:41:46.742Z",
+    "actor": "awx-executor",
+    "event": "transfer.status",
+    "subject": "tr_4",
+    "fields": {
+     "status": "PAID"
+    }
+   },
+   {
+    "seq": 48,
+    "ts": "2026-11-19T08:41:46.742Z",
+    "actor": "awx-executor",
+    "event": "transfer.fee",
+    "subject": "tr_4",
+    "fields": {
+     "amount": "13.40",
+     "currency": "EUR"
+    }
+   },
+   {
+    "seq": 49,
+    "ts": "2026-11-19T08:41:46.742Z",
+    "actor": "system",
+    "event": "proposal.executed",
+    "subject": "P-0001",
+    "fields": {
+     "status": "PAID"
+    }
+   },
+   {
+    "seq": 50,
+    "ts": "2026-11-19T08:41:46.742Z",
+    "actor": "awx-executor",
+    "event": "ap.status",
+    "subject": "AP-0002",
+    "fields": {
+     "status": "paid",
+     "from": "waiting_cfo"
+    }
+   },
+   {
+    "seq": 51,
+    "ts": "2026-11-19T08:41:46.742Z",
+    "actor": "system",
+    "event": "vault.filed",
+    "subject": "cloud",
+    "fields": {
+     "files": 4,
+     "corrections": 0
+    }
+   },
+   {
+    "seq": 52,
+    "ts": "2026-11-19T08:41:51.286Z",
+    "actor": "awx-executor",
+    "event": "airwallex.transfer",
+    "subject": "P-0001",
+    "fields": {
+     "transfer_id": "995e307b-eded-4c2d-bcf0-34d480ca1f8a",
+     "status": "SCHEDULED",
+     "amount": "120.00",
+     "currency": "EUR"
+    }
+   },
+   {
+    "seq": 53,
+    "ts": "2026-11-19T08:41:54.558Z",
+    "actor": "awx-executor",
+    "event": "airwallex.simulated",
+    "subject": "P-0001",
+    "fields": {
+     "transfer_id": "995e307b-eded-4c2d-bcf0-34d480ca1f8a",
+     "status": "PAID"
+    }
+   },
+   {
+    "seq": 54,
+    "ts": "2026-11-19T08:41:56.064Z",
+    "actor": "treasury",
+    "event": "claude.asking",
+    "subject": "ap.read:8c731d34cd2f3486",
+    "fields": {
+     "role": "read",
+     "model": "claude-haiku-5-5"
+    }
+   },
+   {
+    "seq": 55,
+    "ts": "2026-11-19T08:41:56.064Z",
+    "actor": "treasury",
+    "event": "claude.asking",
+    "subject": "ap.classify:8c731d34cd2f3486",
+    "fields": {
+     "role": "classify",
+     "model": "claude-haiku-5-5"
+    }
+   },
+   {
+    "seq": 56,
+    "ts": "2026-11-19T08:41:57.281Z",
+    "actor": "treasury",
+    "event": "claude.read",
+    "subject": "ap.classify:8c731d34cd2f3486",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "request_id": null,
+     "cost_usd_micros": 87
+    }
+   },
+   {
+    "seq": 57,
+    "ts": "2026-11-19T08:41:57.781Z",
+    "actor": "treasury",
+    "event": "claude.read",
+    "subject": "ap.read:8c731d34cd2f3486",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "request_id": null,
+     "cost_usd_micros": 168
+    }
+   },
+   {
+    "seq": 58,
+    "ts": "2026-11-19T08:41:59.242Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.8c731d34cd2f3486",
+    "fields": {
+     "agent": "checker",
+     "tool": "supplier_on_file",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa26wCX4S4oCT2Jjf",
+     "ms": 0,
+     "answer": "Bergtex Textil GmbH is on file as a supplier.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 59,
+    "ts": "2026-11-19T08:41:59.242Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.8c731d34cd2f3486",
+    "fields": {
+     "agent": "checker",
+     "tool": "check_bank_details",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa26wCX4S4oCT2Jjf",
+     "ms": 0,
+     "answer": "The invoice asks to be paid to an IBAN ending 3000 (DE): the details are valid for a local payout in EUR to DE. It is the account on file for Bergtex Textil…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 60,
+    "ts": "2026-11-19T08:41:59.242Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.8c731d34cd2f3486",
+    "fields": {
+     "agent": "checker",
+     "tool": "invoice_history",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa26wCX4S4oCT2Jjf",
+     "ms": 0,
+     "answer": "This supplier's other invoices in the inbox: AP-0001: invoice BTX-2026-17, EUR 1620.00, 2026-11-02, paid; AP-0002: invoice BTX-2026-23, EUR 120.00…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 61,
+    "ts": "2026-11-19T08:41:59.242Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.8c731d34cd2f3486",
+    "fields": {
+     "agent": "checker",
+     "tool": "verify_totals",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa26wCX4S4oCT2Jjf",
+     "ms": 0,
+     "answer": "The subtotal EUR 1554.62 plus tax EUR 295.38 is EUR 1850.00: the total adds up.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 62,
+    "ts": "2026-11-19T08:41:59.242Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.8c731d34cd2f3486",
+    "fields": {
+     "agent": "checker",
+     "tool": "policy_limits",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa26wCX4S4oCT2Jjf",
+     "ms": 0,
+     "answer": "You may pay an invoice alone up to EUR 500.00.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 63,
+    "ts": "2026-11-19T08:41:59.242Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.8c731d34cd2f3486",
+    "fields": {
+     "agent": "checker",
+     "tool": "expected_amount",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa26wCX4S4oCT2Jjf",
+     "ms": 0,
+     "answer": "Purser has no contract or purchase order amount for this invoice.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 64,
+    "ts": "2026-11-19T08:41:59.378Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0003",
+    "fields": {
+     "agent": "treasury",
+     "tool": "invoice_lines",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa1MhXnojgdRXf1fq",
+     "ms": 0,
+     "answer": "Invoice \"BTX-2026-21\", currency \"EUR\": net 1554.62, VAT 295.38, total 1850.00.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 65,
+    "ts": "2026-11-19T08:41:59.378Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0003",
+    "fields": {
+     "agent": "treasury",
+     "tool": "chart_of_accounts",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa1MhXnojgdRXf1fq",
+     "ms": 0,
+     "answer": "Accounts that may take purchase lines:\n5000 Purchased stock data (warehouse API)\n6100 Software subscriptions (company cards)\n6150 Advertising (company cards)…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 66,
+    "ts": "2026-11-19T08:41:59.378Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0003",
+    "fields": {
+     "agent": "treasury",
+     "tool": "vat_codes",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa1MhXnojgdRXf1fq",
+     "ms": 0,
+     "answer": "The invoice charges VAT 295.38 on a net of 1554.62 (19.00% of the net).",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 67,
+    "ts": "2026-11-19T08:41:59.378Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0003",
+    "fields": {
+     "agent": "treasury",
+     "tool": "cost_centres",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa1MhXnojgdRXf1fq",
+     "ms": 0,
+     "answer": "Cost centres:\nCC100 Sourcing agent (operations)\nCC200 Support agent (refunds and helpdesk software)\nCC300 Treasury agent (finance)\nCC400 Outside agents (agent…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 68,
+    "ts": "2026-11-19T08:41:59.378Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0003",
+    "fields": {
+     "agent": "treasury",
+     "tool": "coding_history",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa1MhXnojgdRXf1fq",
+     "ms": 0,
+     "answer": "This supplier's earlier invoices as they were coded, newest first.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 69,
+    "ts": "2026-11-19T08:41:59.378Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0003",
+    "fields": {
+     "agent": "treasury",
+     "tool": "vat_regime",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKa1MhXnojgdRXf1fq",
+     "ms": 0,
+     "answer": "The supplier's country: not known (no VAT id on file).",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 70,
+    "ts": "2026-11-19T08:42:00.711Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.8c731d34cd2f3486",
+    "fields": {
+     "agent": "checker",
+     "tool": "decide",
+     "turn": 2,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKgGdikB9U4ZhUsoNX",
+     "ms": 0,
+     "answer": "Recorded.",
+     "inputs": 3
+    }
+   },
+   {
+    "seq": 71,
+    "ts": "2026-11-19T08:42:00.711Z",
+    "actor": "checker",
+    "event": "agent.run",
+    "subject": "ap.check.8c731d34cd2f3486",
+    "fields": {
+     "agent": "checker",
+     "model": "claude-haiku-5-5",
+     "status": "done",
+     "turns": 2,
+     "cost_usd_micros": 487,
+     "latency_ms": 2930,
+     "request_id": "req_011ChBzKgGdikB9U4ZhUsoNX",
+     "claude_ms": "1461,1469"
+    }
+   },
+   {
+    "seq": 72,
+    "ts": "2026-11-19T08:41:56.050Z",
+    "actor": "system",
+    "event": "ap.received",
+    "subject": "AP-0003",
+    "fields": {
+     "status": "ready",
+     "read_by": "claude:claude-haiku-5-5",
+     "amount": "1850.00",
+     "currency": "EUR",
+     "findings": "unusual_amount"
+    }
+   },
+   {
+    "seq": 73,
+    "ts": "2026-11-19T08:41:56.050Z",
+    "actor": "checker",
+    "event": "ap.checker_decided",
+    "subject": "AP-0003",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "action": "ask_cfo",
+     "outcome": "ask_cfo",
+     "overridden": false,
+     "overridden_by": null,
+     "code_requires": "ask_cfo",
+     "code_rule": "above_alone_limit",
+     "codes": "unusual_amount",
+     "reason": "Bergtex Textil GmbH invoice BTX-2026-21 for EUR 1850.00 checks out: the IBAN matches the account on file, and subtotal plus VAT equals the total.",
+     "enforced": "EUR 1850.00 is above the EUR 500.00 the agent may pay alone, so the CFO decides",
+     "request_id": "req_011ChBzKgGdikB9U4ZhUsoNX",
+     "concerns": 1,
+     "script_outcome": "ask_cfo",
+     "script_overridden_by": "above_alone_limit"
+    }
+   },
+   {
+    "seq": 74,
+    "ts": "2026-11-19T08:42:00.711Z",
+    "actor": "treasury",
+    "event": "claude.asking",
+    "subject": "ap.review:AP-0003",
+    "fields": {
+     "role": "review",
+     "model": "claude-haiku-5-5"
+    }
+   },
+   {
+    "seq": 75,
+    "ts": "2026-11-19T08:42:01.009Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0003",
+    "fields": {
+     "agent": "treasury",
+     "tool": "code_invoice",
+     "turn": 2,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzKguLURd4gDquPvaXh",
+     "ms": 0,
+     "answer": "Recorded.",
+     "inputs": 2
+    }
+   },
+   {
+    "seq": 76,
+    "ts": "2026-11-19T08:42:01.009Z",
+    "actor": "treasury",
+    "event": "agent.run",
+    "subject": "ap.code.AP-0003",
+    "fields": {
+     "agent": "treasury",
+     "model": "claude-haiku-5-5",
+     "status": "done",
+     "turns": 2,
+     "cost_usd_micros": 571,
+     "latency_ms": 3228,
+     "request_id": "req_011ChBzKguLURd4gDquPvaXh",
+     "claude_ms": "1597,1631"
+    }
+   },
+   {
+    "seq": 77,
+    "ts": "2026-11-19T08:42:02.568Z",
+    "actor": "treasury",
+    "event": "claude.read",
+    "subject": "ap.review:AP-0003",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "request_id": null,
+     "cost_usd_micros": 145
+    }
+   },
+   {
+    "seq": 78,
+    "ts": "2026-11-19T08:41:56.050Z",
+    "actor": "treasury",
+    "event": "ap.review_note",
+    "subject": "AP-0003",
+    "fields": {
+     "status": "ready"
+    }
+   },
+   {
+    "seq": 79,
+    "ts": "2026-11-19T08:42:02.568Z",
+    "actor": "treasury",
+    "event": "ap.coded",
+    "subject": "AP-0003",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "status": "needs_review",
+     "lines": 1,
+     "account": "6200",
+     "uncoded_vat_pct": 19,
+     "cost_centre": "CC300",
+     "overridden_by": null,
+     "reason": "Linen fabric on invoice BTX-2026-21 is coded to account 6200 (Goods from the manufacturer), following this supplier's history, with the default cost centre…",
+     "request_id": "req_011ChBzKguLURd4gDquPvaXh"
+    }
+   },
+   {
+    "seq": 80,
+    "ts": "2026-11-19T08:42:04.770Z",
+    "actor": "treasury",
+    "event": "airwallex.quote",
+    "subject": "224ac547-6b89-3057-b14b-523c103fa338",
+    "fields": {
+     "quote_id": "224ac547-6b89-3057-b14b-523c103fa338",
+     "client_rate": "1.11046",
+     "valid_to": "2026-11-19T08:57:04.000Z"
+    }
+   },
+   {
+    "seq": 81,
+    "ts": "2026-11-19T08:42:03.442Z",
+    "actor": "treasury",
+    "event": "fx.rate_checked",
+    "subject": "BTX-2026-21 · Bergtex Textil GmbH",
+    "fields": {}
+   },
+   {
+    "seq": 82,
+    "ts": "2026-11-19T08:42:06.317Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0003",
+    "fields": {
+     "agent": "payer",
+     "tool": "cash_position",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzL62PHbbQ4bhchXE7j",
+     "ms": 0,
+     "answer": "Balances: USD 25000.00 (floor USD 20000.00; USD 5000.00 free above it); EUR 34866.60, EUR 8500.00 of it already spoken for (floor EUR 25000.00; EUR 1366.60…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 83,
+    "ts": "2026-11-19T08:42:06.317Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0003",
+    "fields": {
+     "agent": "payer",
+     "tool": "supplier_rails",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzL62PHbbQ4bhchXE7j",
+     "ms": 0,
+     "answer": "Bergtex Textil GmbH is paid to the IBAN ending 3000.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 84,
+    "ts": "2026-11-19T08:42:06.317Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0003",
+    "fields": {
+     "agent": "payer",
+     "tool": "fx_quote",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzL62PHbbQ4bhchXE7j",
+     "ms": 0,
+     "answer": "A locked quote: sell USD 559.01 to buy EUR 503.40 at 1.11046, valid until 2026-11-19T08:57:04.000Z. It holds only for a payment made by then: paying on a…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 85,
+    "ts": "2026-11-19T08:42:06.317Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0003",
+    "fields": {
+     "agent": "payer",
+     "tool": "due_date",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzL62PHbbQ4bhchXE7j",
+     "ms": 0,
+     "answer": "Today is 2026-11-19.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 86,
+    "ts": "2026-11-19T08:42:06.317Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0003",
+    "fields": {
+     "agent": "payer",
+     "tool": "policy_limits",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzL62PHbbQ4bhchXE7j",
+     "ms": 0,
+     "answer": "You may pay an invoice alone up to EUR 500.00.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 87,
+    "ts": "2026-11-19T08:42:08.902Z",
+    "actor": "payer",
+    "event": "agent.tool",
+    "subject": "ap.pay.AP-0003",
+    "fields": {
+     "agent": "payer",
+     "tool": "propose_payment",
+     "turn": 2,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzLCaYB5QdcAiPJWBAz",
+     "ms": 0,
+     "answer": "Recorded.",
+     "inputs": 4
+    }
+   },
+   {
+    "seq": 88,
+    "ts": "2026-11-19T08:42:08.902Z",
+    "actor": "payer",
+    "event": "agent.run",
+    "subject": "ap.pay.AP-0003",
+    "fields": {
+     "agent": "payer",
+     "model": "claude-haiku-5-5",
+     "status": "done",
+     "turns": 2,
+     "cost_usd_micros": 454,
+     "latency_ms": 4132,
+     "request_id": "req_011ChBzLCaYB5QdcAiPJWBAz",
+     "claude_ms": "1547,2585"
+    }
+   },
+   {
+    "seq": 89,
+    "ts": "2026-11-19T08:42:03.442Z",
+    "actor": "payer",
+    "event": "ap.payer_proposed",
+    "subject": "AP-0003",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "rail": "bank_swift",
+     "pay_on": "2026-11-19",
+     "pay_currency": "USD",
+     "outcome": "ask_cfo",
+     "overridden": false,
+     "overridden_by": "above_alone_limit",
+     "reason": "Pay EUR 1850.00 to Bergtex Textil GmbH by SWIFT today, selling USD 559.01 at the locked quote (valid until 2026-11-19), which keeps USD above its floor and…",
+     "request_id": "req_011ChBzLCaYB5QdcAiPJWBAz",
+     "enforced": "EUR 1850.00 is above the EUR 500.00 the agent may pay alone, so the CFO decides: the CFO signs these exact terms"
+    }
+   },
+   {
+    "seq": 90,
+    "ts": "2026-11-19T08:42:03.442Z",
+    "actor": "treasury",
+    "event": "proposal.created",
+    "subject": "P-0002",
+    "fields": {
+     "kind": "invoice_payment"
+    }
+   },
+   {
+    "seq": 91,
+    "ts": "2026-11-19T08:42:03.442Z",
+    "actor": "treasury",
+    "event": "ap.status",
+    "subject": "AP-0003",
+    "fields": {
+     "status": "waiting_cfo",
+     "from": "ready",
+     "proposal_id": "P-0002"
+    }
+   },
+   {
+    "seq": 92,
+    "ts": "2026-11-19T08:42:03.442Z",
+    "actor": "treasury",
+    "event": "ap.review_note",
+    "subject": "AP-0003",
+    "fields": {
+     "status": "waiting_cfo"
+    }
+   },
+   {
+    "seq": 93,
+    "ts": "2026-11-19T08:42:10.060Z",
+    "actor": "system",
+    "event": "passkey.enrolment_opened",
+    "subject": "E-2bec2332",
+    "fields": {}
+   },
+   {
+    "seq": 94,
+    "ts": "2026-11-19T08:42:10.509Z",
+    "actor": "system",
+    "event": "passkey.pending",
+    "subject": "4rAkMhcmB-PN1jz3lj85DW38UEvhhPJXTrVgwZpNHjQ",
+    "fields": {}
+   },
+   {
+    "seq": 95,
+    "ts": "2026-11-19T08:42:10.509Z",
+    "actor": "human",
+    "event": "passkey.enrolled",
+    "subject": "4rAkMhcmB-PN1jz3lj85DW38UEvhhPJXTrVgwZpNHjQ",
+    "fields": {}
+   },
+   {
+    "seq": 96,
+    "ts": "2026-11-19T08:42:11.096Z",
+    "actor": "human",
+    "event": "proposal.approved",
+    "subject": "P-0002",
+    "fields": {
+     "method": "passkey"
+    }
+   },
+   {
+    "seq": 97,
+    "ts": "2026-11-19T08:42:12.085Z",
+    "actor": "system",
+    "event": "proposal.executing",
+    "subject": "P-0002",
+    "fields": {}
+   },
+   {
+    "seq": 98,
+    "ts": "2026-11-19T08:42:12.085Z",
+    "actor": "awx-executor",
+    "event": "fx.converted",
+    "subject": "conv_5",
+    "fields": {
+     "amount": "503.40",
+     "currency": "EUR",
+     "request_id": "84f29787-2ac3-46b9-b5bd-d07866758f33"
+    }
+   },
+   {
+    "seq": 99,
+    "ts": "2026-11-19T08:42:12.085Z",
+    "actor": "awx-executor",
+    "event": "transfer.created",
+    "subject": "tr_6",
+    "fields": {
+     "amount": "1850.00",
+     "currency": "EUR",
+     "status": "PROCESSING",
+     "request_id": "beed41bd-58fd-4f0f-b6af-5ed42027bcea"
+    }
+   },
+   {
+    "seq": 100,
+    "ts": "2026-11-19T08:42:12.085Z",
+    "actor": "awx-executor",
+    "event": "transfer.status",
+    "subject": "tr_6",
+    "fields": {
+     "status": "SENT"
+    }
+   },
+   {
+    "seq": 101,
+    "ts": "2026-11-19T08:42:12.085Z",
+    "actor": "awx-executor",
+    "event": "transfer.status",
+    "subject": "tr_6",
+    "fields": {
+     "status": "PAID"
+    }
+   },
+   {
+    "seq": 102,
+    "ts": "2026-11-19T08:42:12.085Z",
+    "actor": "awx-executor",
+    "event": "transfer.fee",
+    "subject": "tr_6",
+    "fields": {
+     "amount": "13.40",
+     "currency": "EUR"
+    }
+   },
+   {
+    "seq": 103,
+    "ts": "2026-11-19T08:42:12.085Z",
+    "actor": "system",
+    "event": "proposal.executed",
+    "subject": "P-0002",
+    "fields": {
+     "status": "PAID"
+    }
+   },
+   {
+    "seq": 104,
+    "ts": "2026-11-19T08:42:12.085Z",
+    "actor": "awx-executor",
+    "event": "ap.status",
+    "subject": "AP-0003",
+    "fields": {
+     "status": "paid",
+     "from": "waiting_cfo"
+    }
+   },
+   {
+    "seq": 105,
+    "ts": "2026-11-19T08:42:12.085Z",
+    "actor": "system",
+    "event": "vault.filed",
+    "subject": "cloud",
+    "fields": {
+     "files": 3,
+     "corrections": 1
+    }
+   },
+   {
+    "seq": 106,
+    "ts": "2026-11-19T08:42:12.085Z",
+    "actor": "human",
+    "event": "try.pay",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 107,
+    "ts": "2026-11-19T08:42:15.675Z",
+    "actor": "awx-executor",
+    "event": "airwallex.transfer",
+    "subject": "P-0002",
+    "fields": {
+     "transfer_id": "b10ab176-bfc2-42ce-97ee-13ae4f0b68a1",
+     "status": "SCHEDULED",
+     "amount": "1850.00",
+     "currency": "EUR"
+    }
+   },
+   {
+    "seq": 108,
+    "ts": "2026-11-19T08:42:18.479Z",
+    "actor": "awx-executor",
+    "event": "airwallex.simulated",
+    "subject": "P-0002",
+    "fields": {
+     "transfer_id": "b10ab176-bfc2-42ce-97ee-13ae4f0b68a1",
+     "status": "PAID"
+    }
+   },
+   {
+    "seq": 109,
+    "ts": "2026-11-19T08:42:21.011Z",
+    "actor": "human",
+    "event": "try.pay",
+    "subject": null,
+    "fields": {}
+   }
+  ],
+  "cash": [
+   {
+    "seq": 1,
+    "ts": "2026-11-19T08:42:27.224Z",
+    "actor": "system",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 2,
+    "ts": "2026-11-19T08:42:27.224Z",
+    "actor": "system",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 3,
+    "ts": "2026-11-19T08:42:27.224Z",
+    "actor": "awx-executor",
+    "event": "treasury.seeded",
+    "subject": "dep_1",
+    "fields": {
+     "amount": "25000.00",
+     "currency": "USD"
+    }
+   },
+   {
+    "seq": 4,
+    "ts": "2026-11-19T08:42:27.224Z",
+    "actor": "treasury",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 5,
+    "ts": "2026-11-19T08:42:27.224Z",
+    "actor": "treasury",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 6,
+    "ts": "2026-11-19T08:42:27.224Z",
+    "actor": "treasury",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 7,
+    "ts": "2026-11-19T08:42:27.224Z",
+    "actor": "system",
+    "event": "ap.received",
+    "subject": "AP-0001",
+    "fields": {
+     "status": "ready",
+     "read_by": "parser",
+     "amount": "1620.00",
+     "currency": "EUR",
+     "findings": ""
+    }
+   },
+   {
+    "seq": 8,
+    "ts": "2026-11-19T08:42:27.224Z",
+    "actor": "system",
+    "event": "ap.status",
+    "subject": "AP-0001",
+    "fields": {
+     "status": "paid",
+     "from": "ready"
+    }
+   },
+   {
+    "seq": 9,
+    "ts": "2026-11-19T08:42:28.981Z",
+    "actor": "system",
+    "event": "treasury.commitment_added",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 10,
+    "ts": "2026-11-19T08:42:28.981Z",
+    "actor": "treasury",
+    "event": "setting.changed",
+    "subject": null,
+    "fields": {}
+   },
+   {
+    "seq": 11,
+    "ts": "2026-11-19T08:42:29.139Z",
+    "actor": "treasury",
+    "event": "claude.asking",
+    "subject": "ap.read:b6dbf32725d32855",
+    "fields": {
+     "role": "read",
+     "model": "claude-haiku-5-5"
+    }
+   },
+   {
+    "seq": 12,
+    "ts": "2026-11-19T08:42:29.139Z",
+    "actor": "treasury",
+    "event": "claude.asking",
+    "subject": "ap.classify:b6dbf32725d32855",
+    "fields": {
+     "role": "classify",
+     "model": "claude-haiku-5-5"
+    }
+   },
+   {
+    "seq": 13,
+    "ts": "2026-11-19T08:42:30.665Z",
+    "actor": "treasury",
+    "event": "claude.read",
+    "subject": "ap.classify:b6dbf32725d32855",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "request_id": null,
+     "cost_usd_micros": 86
+    }
+   },
+   {
+    "seq": 14,
+    "ts": "2026-11-19T08:42:31.211Z",
+    "actor": "treasury",
+    "event": "claude.read",
+    "subject": "ap.read:b6dbf32725d32855",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "request_id": null,
+     "cost_usd_micros": 166
+    }
+   },
+   {
+    "seq": 15,
+    "ts": "2026-11-19T08:42:32.847Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.b6dbf32725d32855",
+    "fields": {
+     "agent": "checker",
+     "tool": "supplier_on_file",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN35Lf4fbGEt1nkdZz",
+     "ms": 0,
+     "answer": "Bergtex Textil GmbH is on file as a supplier.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 16,
+    "ts": "2026-11-19T08:42:32.847Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.b6dbf32725d32855",
+    "fields": {
+     "agent": "checker",
+     "tool": "check_bank_details",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN35Lf4fbGEt1nkdZz",
+     "ms": 0,
+     "answer": "The invoice asks to be paid to an IBAN ending 3000 (DE): the details are valid for a local payout in EUR to DE. It is the account on file for Bergtex Textil…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 17,
+    "ts": "2026-11-19T08:42:32.847Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.b6dbf32725d32855",
+    "fields": {
+     "agent": "checker",
+     "tool": "invoice_history",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN35Lf4fbGEt1nkdZz",
+     "ms": 0,
+     "answer": "This supplier's other invoices in the inbox: AP-0001: invoice BTX-2026-17, EUR 1620.00, 2026-11-02, paid.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 18,
+    "ts": "2026-11-19T08:42:32.847Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.b6dbf32725d32855",
+    "fields": {
+     "agent": "checker",
+     "tool": "verify_totals",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN35Lf4fbGEt1nkdZz",
+     "ms": 0,
+     "answer": "The subtotal EUR 403.36 plus tax EUR 76.64 is EUR 480.00: the total adds up.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 19,
+    "ts": "2026-11-19T08:42:32.847Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.b6dbf32725d32855",
+    "fields": {
+     "agent": "checker",
+     "tool": "policy_limits",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN35Lf4fbGEt1nkdZz",
+     "ms": 0,
+     "answer": "You may pay an invoice alone up to EUR 500.00.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 20,
+    "ts": "2026-11-19T08:42:32.847Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.b6dbf32725d32855",
+    "fields": {
+     "agent": "checker",
+     "tool": "expected_amount",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN35Lf4fbGEt1nkdZz",
+     "ms": 0,
+     "answer": "Purser has no contract or purchase order amount for this invoice.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 21,
+    "ts": "2026-11-19T08:42:32.863Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "invoice_lines",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN32NM8WawgyaCEZ5c",
+     "ms": 0,
+     "answer": "Invoice \"BTX-2026-24\", currency \"EUR\": net 403.36, VAT 76.64, total 480.00.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 22,
+    "ts": "2026-11-19T08:42:32.863Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "chart_of_accounts",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN32NM8WawgyaCEZ5c",
+     "ms": 0,
+     "answer": "Accounts that may take purchase lines:\n5000 Purchased stock data (warehouse API)\n6100 Software subscriptions (company cards)\n6150 Advertising (company cards)…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 23,
+    "ts": "2026-11-19T08:42:32.863Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "vat_codes",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN32NM8WawgyaCEZ5c",
+     "ms": 0,
+     "answer": "The invoice charges VAT 76.64 on a net of 403.36 (19.00% of the net).",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 24,
+    "ts": "2026-11-19T08:42:32.863Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "cost_centres",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN32NM8WawgyaCEZ5c",
+     "ms": 0,
+     "answer": "Cost centres:\nCC100 Sourcing agent (operations)\nCC200 Support agent (refunds and helpdesk software)\nCC300 Treasury agent (finance)\nCC400 Outside agents (agent…",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 25,
+    "ts": "2026-11-19T08:42:32.863Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "coding_history",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN32NM8WawgyaCEZ5c",
+     "ms": 0,
+     "answer": "This supplier's earlier invoices as they were coded, newest first.",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 26,
+    "ts": "2026-11-19T08:42:32.863Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "vat_regime",
+     "turn": 1,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzN32NM8WawgyaCEZ5c",
+     "ms": 0,
+     "answer": "The supplier's country: not known (no VAT id on file).",
+     "inputs": 0
+    }
+   },
+   {
+    "seq": 27,
+    "ts": "2026-11-19T08:42:34.475Z",
+    "actor": "checker",
+    "event": "agent.tool",
+    "subject": "ap.check.b6dbf32725d32855",
+    "fields": {
+     "agent": "checker",
+     "tool": "decide",
+     "turn": 2,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzNA52uzr3xwQtsfWEP",
+     "ms": 0,
+     "answer": "Recorded.",
+     "inputs": 3
+    }
+   },
+   {
+    "seq": 28,
+    "ts": "2026-11-19T08:42:34.475Z",
+    "actor": "checker",
+    "event": "agent.run",
+    "subject": "ap.check.b6dbf32725d32855",
+    "fields": {
+     "agent": "checker",
+     "model": "claude-haiku-5-5",
+     "status": "done",
+     "turns": 2,
+     "cost_usd_micros": 461,
+     "latency_ms": 3264,
+     "request_id": "req_011ChBzNA52uzr3xwQtsfWEP",
+     "claude_ms": "1636,1628"
+    }
+   },
+   {
+    "seq": 29,
+    "ts": "2026-11-19T08:42:29.117Z",
+    "actor": "system",
+    "event": "ap.received",
+    "subject": "AP-0002",
+    "fields": {
+     "status": "ready",
+     "read_by": "claude:claude-haiku-5-5",
+     "amount": "480.00",
+     "currency": "EUR",
+     "findings": ""
+    }
+   },
+   {
+    "seq": 30,
+    "ts": "2026-11-19T08:42:29.117Z",
+    "actor": "checker",
+    "event": "ap.checker_decided",
+    "subject": "AP-0002",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "action": "pay",
+     "outcome": "pay",
+     "overridden": false,
+     "overridden_by": null,
+     "code_requires": "pay",
+     "codes": "",
+     "reason": "Bergtex Textil GmbH is on file, and its IBAN matches the account on file with valid bank details.",
+     "enforced": "EUR 480.00 is within the EUR 500.00 the agent may pay alone",
+     "request_id": "req_011ChBzNA52uzr3xwQtsfWEP",
+     "concerns": 0,
+     "script_outcome": "pay"
+    }
+   },
+   {
+    "seq": 31,
+    "ts": "2026-11-19T08:42:35.407Z",
+    "actor": "treasury",
+    "event": "agent.tool",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "tool": "code_invoice",
+     "turn": 2,
+     "model": "claude-haiku-5-5",
+     "request_id": "req_011ChBzNA7kWqjCNgRnS8G8u",
+     "ms": 0,
+     "answer": "Recorded.",
+     "inputs": 2
+    }
+   },
+   {
+    "seq": 32,
+    "ts": "2026-11-19T08:42:35.407Z",
+    "actor": "treasury",
+    "event": "agent.run",
+    "subject": "ap.code.AP-0002",
+    "fields": {
+     "agent": "treasury",
+     "model": "claude-haiku-5-5",
+     "status": "done",
+     "turns": 2,
+     "cost_usd_micros": 561,
+     "latency_ms": 4196,
+     "request_id": "req_011ChBzNA7kWqjCNgRnS8G8u",
+     "claude_ms": "1652,2544"
+    }
+   },
+   {
+    "seq": 33,
+    "ts": "2026-11-19T08:42:34.475Z",
+    "actor": "treasury",
+    "event": "ap.coded",
+    "subject": "AP-0002",
+    "fields": {
+     "source": "claude",
+     "model": "claude-haiku-5-5",
+     "status": "needs_review",
+     "lines": 1,
+     "account": "6200",
+     "uncoded_vat_pct": 19,
+     "cost_centre": "CC300",
+     "overridden_by": null,
+     "reason": "Bergtex invoice BTX-2026-24 charges 19% VAT (EUR 76.64) on EUR 403.36 net, which no purchase VAT code reproduces, so the VAT code is left for a person to set.",
+     "request_id": "req_011ChBzNA7kWqjCNgRnS8G8u"
+    }
+   }
+  ]
+ }
+}

@@ -19,11 +19,11 @@ export const AWX1_RECEIPT = "docs/runs/2026-11-07-awx-1/receipt-P-0002.json";
 export const MAIN_RUN_RECORD = "docs/demo/main-run.json";
 
 /** The endpoint families the page counts. */
-export const FAMILIES = ["transfers", "fx", "payment-intents", "cards", "balances", "beneficiaries", "auth", "other"] as const;
+export const FAMILIES = ["transfers", "fx", "payment-intents", "cards", "balances", "beneficiaries", "spend", "auth", "other"] as const;
 export type Family = (typeof FAMILIES)[number];
 export const FAMILY_LABEL: Record<Family, string> = {
   transfers: "transfers", fx: "FX quotes and conversions", "payment-intents": "payment intents", cards: "cards",
-  balances: "balances and transactions", beneficiaries: "beneficiaries", auth: "logins", other: "other",
+  balances: "balances and transactions", beneficiaries: "beneficiaries", spend: "Spend bills, vendors and files", auth: "logins", other: "other",
 };
 
 export interface TrailCall {
@@ -89,6 +89,7 @@ export function familyOf(path: string): Family {
   if (/^\/(issuing|simulation\/issuing)/.test(p)) return "cards";
   if (/^\/(balances|financial_transactions|deposits|global_accounts|simulation\/deposit)/.test(p)) return "balances";
   if (p.startsWith("/beneficiaries")) return "beneficiaries";
+  if (/^\/(spend\/|files\/upload|account$)/.test(p)) return "spend";
   return "other";
 }
 
@@ -129,6 +130,14 @@ const WORDS: Record<string, string> = {
   "GET /issuing/transactions/{id}": "Reads one card transaction",
   "GET /webhooks": "Checks the webhook subscription is there",
   "GET /pa/payment_intents/{id}": "Reads a Visa Intelligent Commerce PaymentIntent back",
+  "GET /account": "Reads the account's legal entity, which bills and vendors belong to",
+  "GET /spend/vendors": "Lists Spend vendors, to find the supplier's by its external_id",
+  "POST /spend/vendors/create": "Creates the supplier as a Spend vendor, once",
+  "POST /files/upload": "Uploads the invoice PDF as a Spend attachment (files.sandbox.airwallex.com)",
+  "GET /spend/bills": "Lists bills, to find one by its external_id before any create",
+  "POST /spend/bills/create": "Creates the paid invoice as a bill, external_id = the signed terms hash",
+  "GET /spend/bills/{id}": "Reads a bill back (external_id, amount, attachment, status)",
+  "POST /spend/bills/{id}/mark_as_paid": "Marks the bill paid once its transfer is PAID",
 };
 export const wordsFor = (method: string, path: string): string => WORDS[`${method} ${path.replace(API_BASE, "")}`] ?? `${method} ${path}`;
 
@@ -331,6 +340,37 @@ export function trailRuns(): TrailRun[] {
         how: "approval_sha256 against the terms hash the labelled virtual test passkey signed (the run's proposals)" };
     });
     runs.push({ key: "late-failure-1117", iso: str(calls[0]?.at)!, title: "A payout that does not stay paid: PAID, then FAILED by the sandbox's simulation", record: "docs/runs/2026-11-17-airwallex-late-failure.json", alsoReads: [], calls, checks });
+  }
+
+  // 19 Nov: each paid invoice as a bill in Airwallex Spend (npm run airwallex-bills). The record itemises its calls; the
+  // bill creates, read-backs and mark_as_paid are tagged in the order of its bills (one per invoice, in invoice order).
+  const bl = readJson("docs/runs/2026-11-19-airwallex-bills.json");
+  if (bl) {
+    const calls = lineCalls(bl), bills = arr(bl.bills).filter((b) => str(b.bill_id));
+    bills.forEach((b, i) => {
+      const c = b.created as J | null, p = b.paid as J | null;
+      tag(calls, "POST", "/spend/bills/create", i, `${str(b.invoice_no)}, ${str(c?.amount)}, ${str(c?.status)}`, str(b.bill_id));
+      tag(calls, "GET", "/spend/bills/{id}", 2 * i, `${str(c?.status)}; read back ${str(c?.read_back)}`, str(b.bill_id));
+      tag(calls, "POST", "/spend/bills/{id}/mark_as_paid", i, str(p?.status), str(b.bill_id));
+      tag(calls, "GET", "/spend/bills/{id}", 2 * i + 1, `${str(p?.status)}; read back ${str(p?.read_back)}`, str(b.bill_id));
+      tag(calls, "POST", "/files/upload", i, `${str(b.invoice_no)} PDF`, arr(c?.attachment_ids).map(String).join(", ") || null);
+    });
+    runs.push({ key: "bills-1119", iso: str(calls[0]?.at)!, title: "Paid invoices as bills in Airwallex Spend (accounts payable)", record: "docs/runs/2026-11-19-airwallex-bills.json", alsoReads: ["docs/runs/2026-11-19-airwallex-bills.md"], calls, checks: [] });
+  }
+
+  // 19 Nov soak (npm run airwallex:soak): 30 signed payments created, taken to PAID by the sandbox's simulation and read
+  // back, 6 with an FX conversion first; 5 one-cent changes refused before any create. The record itemises its calls;
+  // each create is tagged with its payment, in payment order, and each payment's read-back gives a hash check.
+  const sk = readJson("docs/runs/2026-11-19-airwallex-soak.json");
+  if (sk) {
+    const calls = lineCalls(sk), pays = arr(sk.payments);
+    pays.forEach((p, i) => tag(calls, "POST", "/transfers/create", i, `${str(p.invoice_no)}, ${str(p.currency)} ${str(p.amount)}, ${str(p.status_after_execute)}`, str(p.transfer_id)));
+    const checks: HashCheck[] = pays.filter((p) => str((p.readback as J | null)?.approval_sha256)).map((p) => {
+      const carried = str((p.readback as J).approval_sha256)!, signed = str(p.terms_sha256) ?? null;
+      return { kind: "transfer", label: `soak: transfer ${str(p.transfer_id)} (${str(p.proposal_id)}, ${str(p.invoice_no)})`, carried, signed, recomputed: null, match: !!signed && signed === carried,
+        how: "approval_sha256 read back from Airwallex against the terms hash the labelled virtual test passkey signed" };
+    });
+    runs.push({ key: "soak-1119", iso: str(calls[0]?.at)!, title: "Soak: 30 signed payments to PAID and read back, 6 with FX; 5 one-cent changes refused", record: "docs/runs/2026-11-19-airwallex-soak.json", alsoReads: ["docs/runs/2026-11-19-airwallex-soak.md"], calls, checks });
   }
 
   for (const r of runs) r.calls.sort(byTimeDesc);

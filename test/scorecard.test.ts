@@ -3,7 +3,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import {
-  aloneRow, centNaiveRow, centPurserRow, alwaysPay, centScore, CENT, naiveRow, numbersNotShown, purserRow, SCORECARD_CASES, scoreOutcome, scorecardLine, totals,
+  aloneRow, centNaiveRow, centPurserRow, alwaysPay, centScore, CENT, naiveRow, numbersNotShown, purserRow, SCORECARD_CASES, scoreOutcome, scorecardLine, scriptAtThisCommit, totals,
 } from "../src/evals/scorecard.js";
 
 const kase = (id: string) => SCORECARD_CASES.find((k) => k.id === id)!;
@@ -68,6 +68,17 @@ describe("the same wrong decision, with and without Purser", () => {
       expect(r.wrong_money, k.id).toBeNull();
       expect(r.paid_past_cfo, k.id).toBe(false);
     }
+  });
+
+  // 19 Nov: the worst-case test's script, run again offline on the code as it is now (the doc shows it beside the
+  // recorded run): the same 50 cases, one run, no Claude.
+  it("scriptAtThisCommit: the script's rows on today's code, every case and the cent once, nothing paid wrongly", async () => {
+    const rows = await scriptAtThisCommit();
+    expect(rows.map((r) => r.case).sort()).toEqual([...SCORECARD_CASES.map((k) => k.id), CENT.id].sort());
+    expect(rows.every((r) => r.arm === "purser_script" && r.run === 1)).toBe(true);
+    const t = totals(rows);
+    expect(t).toMatchObject({ wrong_payments: 0, paid_past_cfo: 0 });
+    expect(rows.find((r) => r.case === CENT.id)).toMatchObject({ outcome: "hold" });
   });
 
   it("above the limit: Claude alone pays it past the CFO, with Purser it goes to the CFO", async () => {
