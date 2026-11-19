@@ -210,8 +210,16 @@ function built(): WallTile[] {
   const AN = "docs/runs/2026-11-19-anchor.json";
   const an = json(AN) as { anchored_at?: string; height?: number; parts?: unknown[] } | null;
   if (an?.height) out.push({ key: "anchor", fig: String(an.height), label: "records sealed by one anchor transaction", note: `${an.parts?.length ?? 0} parts hashed into one head on Alta testnet, ${day(an.anchored_at!)}; npm run verify-anchor recomputes it.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-anchor.md"), rec: AN });
-  const loads = ["docs/runs/clearing-load-1.json", "docs/runs/clearing-load-2.json"].filter(has).map((f) => ({ f, r: json(f) as { attempted: number; paid: number; failed: number; ran_at: string } }));
-  if (loads.length) {
+  type Load = { attempted: number; paid: number; failed: number; ran_at: string; payers: number; resends_after_lost_answer?: number };
+  // The re-run of 19 Nov (docs/runs/2026-11-19-clearing-load.md), after one payment's retries moved into tested code
+  // (src/metal/loadPayment.ts): the tile shows it, dated; the two runs of 30 Oct stay in its note and its records.
+  const RERUN = "docs/runs/2026-11-19-clearing-load.json";
+  const loads = ["docs/runs/clearing-load-1.json", "docs/runs/clearing-load-2.json"].filter(has).map((f) => ({ f, r: json(f) as Load }));
+  const rerun = json(RERUN) as Load | null;
+  if (rerun?.attempted && loads.length) {
+    const resent = rerun.resends_after_lost_answer ?? 0;
+    out.push({ key: "clearing-load", fig: whole(rerun.paid, rerun.attempted), label: `payments through Alta's clearing, load test of ${day(rerun.ran_at)}`, note: `${rerun.payers} wallets at once${resent ? `; ${resent === 1 ? "one lost answer" : `${resent} lost answers`} resent, then paid` : ""}. Runs of ${day(loads[0]!.r.ran_at)}: ${loads.map((x) => whole(x.r.paid, x.r.attempted).toLowerCase()).join(", then ")}; the first lost ${fmt(loads[0]!.r.failed)} because the script did not resend.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-clearing-load.md"), rec: [RERUN, ...loads.map((x) => x.f)].join(" ") });
+  } else if (loads.length) {
     const tried = loads.reduce((a, x) => a + x.r.attempted, 0), paid = loads.reduce((a, x) => a + x.r.paid, 0);
     const lastRun = loads[loads.length - 1]!.r;
     out.push({ key: "clearing-load", fig: whole(paid, tried), label: "payments through Alta's clearing, load test", note: `${loads.length} runs, ${day(lastRun.ran_at)}; the last: ${whole(lastRun.paid, lastRun.attempted).toLowerCase()} paid.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-10-30-clearing-load.md"), rec: loads.map((x) => x.f).join(" ") });
