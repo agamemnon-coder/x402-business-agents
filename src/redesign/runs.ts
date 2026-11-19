@@ -368,7 +368,8 @@ function extraRuns(): RunRow[] {
       key: "alta-series-1", iso: recs[recs.length - 1]!.ran_at, date: day(recs[0]!.ran_at), kind: "testnet", partners: ["Alta"],
       name: "An agent's mandate on Alta: payments inside it, attempts outside it refused on chain",
       line: `${paid.length} payments inside the mandate (${total} test USD); ${refused.length} attempts outside it refused on chain: ${refused.map((x) => x.reason).join(", ")}.`,
-      rate: { done: refused.length, of: steps.filter((x) => x.kind === "over-mandate").length, what: "over-mandate attempts refused on chain" },
+      // A step planned as over the budget that the chain paid was within it (the plan's error; the run log says so).
+      rate: { done: refused.length, of: steps.filter((x) => x.kind === "over-mandate" && x.event !== "MandatePayment").length, what: "over-mandate attempts refused on chain" },
       title: "Alta series", rails: "Alta testnet (mandate payments)",
       what: `A fresh Alta account and an agent's mandate (cap ${recs[0]!.mandate.cap} a payment, budget ${recs[0]!.mandate.budget}, one payee) took ${paid.length} payments, each its own transaction; attempts over the cap, to another payee and past the budget were sent to the chain on purpose, and Alta's mandate refused each in a transaction of its own.`,
       checks: "Each refusal moved 0.00 for the payee and the account, as the record's balance deltas show; the first pass's plan was a cent over the budget, said in the run log.", money: "Testnet · test money",

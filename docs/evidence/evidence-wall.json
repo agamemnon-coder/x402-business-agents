@@ -98,9 +98,9 @@
         },
         {
           "key": "alta-series-refused",
-          "fig": "3 of 4",
+          "fig": "All 3",
           "label": "over-mandate attempts refused on chain",
-          "note": "OverPerPaymentCap, PayeeNotAllowed, OverBudget: each a transaction of its own, 0.00 moved; 19 Nov.",
+          "note": "OverPerPaymentCap, PayeeNotAllowed, OverBudget: each a transaction of its own, 0.00 moved; 19 Nov. One more step planned as over the budget was within it (the plan's error, said in the run log) and was paid.",
           "tag": "testnet",
           "tone": "metal",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-alta-series.md",

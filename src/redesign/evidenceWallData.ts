@@ -74,10 +74,14 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
   const AS = ["docs/runs/2026-11-19-alta-series.json", "docs/runs/2026-11-19-alta-series-finish.json"].filter(has);
   if (AS.length) {
     const steps = AS.flatMap((f) => ((json(f) as { steps?: { kind: string; outcome: string; event?: string; reason?: string; amount?: string }[] } | null)?.steps ?? []));
-    const paid = steps.filter((x) => x.event === "MandatePayment"), refused = steps.filter((x) => x.outcome === "refused on chain"), tried = steps.filter((x) => x.kind === "over-mandate");
+    // An "over-mandate" step the chain paid was planned wrong (the budget was not yet spent: the record marks it
+    // UNEXPECTED, the run log explains); it was inside the mandate, so it is not counted as an attempt outside it.
+    const paid = steps.filter((x) => x.event === "MandatePayment"), refused = steps.filter((x) => x.outcome === "refused on chain");
+    const misplanned = steps.filter((x) => x.kind === "over-mandate" && x.event === "MandatePayment");
+    const tried = steps.filter((x) => x.kind === "over-mandate" && x.event !== "MandatePayment");
     const total = (paid.reduce((n, x) => n + Math.round(Number(x.amount) * 100), 0) / 100).toFixed(2);
     const ran = (json(AS[0]!) as { ran_at?: string } | null)?.ran_at;
-    if (refused.length) out.push({ key: "alta-series-refused", fig: whole(refused.length, tried.length), label: "over-mandate attempts refused on chain", note: `${refused.map((x) => x.reason).join(", ")}: each a transaction of its own, 0.00 moved; ${ran ? day(ran) : ""}.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-series.md"), rec: AS.join(" ") });
+    if (refused.length) out.push({ key: "alta-series-refused", fig: whole(refused.length, tried.length), label: "over-mandate attempts refused on chain", note: `${refused.map((x) => x.reason).join(", ")}: each a transaction of its own, 0.00 moved; ${ran ? day(ran) : ""}.${misplanned.length ? ` One more step planned as over the budget was within it (the plan's error, said in the run log) and was paid.` : ""}`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-series.md"), rec: AS.join(" ") });
     if (paid.length) out.push({ key: "alta-series-paid", fig: String(paid.length), label: "payments inside an agent's mandate on Alta", note: `${total} test USD in all, each its own transaction; ${ran ? day(ran) : ""}.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-series.md"), rec: AS.join(" ") });
   }
   const LF = "docs/runs/2026-11-17-airwallex-late-failure.json";
