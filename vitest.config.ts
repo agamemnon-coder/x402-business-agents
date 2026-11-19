@@ -2,9 +2,40 @@
 // per area (money, policy, passkey, executors, relay, clearing and the others) and holds each area to its floor.
 // Since 19 November the measured scope is the whole product, not src/ alone; the numbers, before and after, are in
 // docs/evidence/coverage.md.
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { configDefaults, defineConfig } from "vitest/config";
 
+// The relay Worker's pages are baked in by npm run relay:build (worker/src/pages.gen.ts, git-ignored). Without a build,
+// the Worker's entry point (worker/src/index.ts) imports an empty set of pages here, which a test fills with only what it
+// routes (test/relay-worker-entry.test.ts); with a build, the built file is used as it is.
+const ROOT = import.meta.dirname;
+const PAGES_GEN = resolve(ROOT, "worker/src/pages.gen.ts");
+const NO_PAGES = "\0kit11:no-pages-gen";
+const pagesGen = {
+  name: "kit11-pages-gen",
+  resolveId(id: string, importer?: string) {
+    if (!/\/pages\.gen(\.js|\.ts)?$/.test(id) || existsSync(PAGES_GEN)) return null;
+    // Relative to the importer, or (a dynamic import of a computed path) relative to the root.
+    const abs = id.startsWith(".") && importer ? resolve(importer, "..", id) : id.startsWith(ROOT) ? id : resolve(ROOT, `.${id}`);
+    return abs.replace(/\.js$/, ".ts") === PAGES_GEN ? NO_PAGES : null;
+  },
+  load(id: string) {
+    return id === NO_PAGES ? "export const PAGES = { csp: {} };" : null;
+  },
+};
+
+// The engine's schema files are text modules in the Worker's bundle (cloud/wrangler.jsonc rules: "Text" for **/*.sql),
+// so the Durable Object's host (cloud/src/engine/hostWorker.ts) imports them as strings; here they are read the same way.
+const sqlText = {
+  name: "kit11-sql-text",
+  transform(code: string, id: string) {
+    return id.endsWith(".sql") ? { code: `export default ${JSON.stringify(code)};`, map: null } : null;
+  },
+};
+
 export default defineConfig({
+  plugins: [pagesGen, sqlText],
   test: {
     // Agent worktrees live under .claude/worktrees inside the checkout; their copies of the tests are not this tree's.
     exclude: [...configDefaults.exclude, ".claude/**"],
@@ -29,9 +60,9 @@ export default defineConfig({
       ],
       reporter: ["text-summary", "json-summary"],
       reportsDirectory: "coverage",
-      // A floor under the product's figure (19 November: 88.5% of statements, 77.7% of branches before the tests
-      // added that day), a few points below it so a run on a slower machine does not fail on noise.
-      thresholds: { statements: 85, branches: 75 },
+      // A floor under the product's figure (19 November, evening: 91.1% of statements, 80.6% of branches; 88.5% and
+      // 77.7% that morning), a few points below it so a run on a slower machine does not fail on noise.
+      thresholds: { statements: 88, branches: 78 },
     },
   },
 });
