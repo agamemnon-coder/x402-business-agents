@@ -277,6 +277,11 @@ describe("the approval passkey", () => {
     await run({ method: "POST", path: "/v1/engine/passkey/finish", body: { code: "c1", credential }, rows: { users, security_events: [done, halfIssued] }, engine: { passkeyFinish } as unknown as Partial<EngineApi> });
     expect(heardArgs[3]).toMatchObject({ recovered: { by: "recovery rk_1" } });
     heardArgs.splice(3, 1);
+    // A completed recovery that names no key matches only an issue that names none either: the admins are still named.
+    const issuedNoKey = { ...issued, detail_json: JSON.stringify({ requested_by: "ops-first", approved_by: "ops-second" }) };
+    await run({ method: "POST", path: "/v1/engine/passkey/finish", body: { code: "c1", credential }, rows: { users, security_events: [noKey, issuedNoKey] }, engine: { passkeyFinish } as unknown as Partial<EngineApi> });
+    expect(heardArgs[3]).toMatchObject({ recovered: { by: "recovery  (platform admins ops-first and ops-second)" } });
+    heardArgs.splice(3, 1);
     // Used already for a key.
     const used = { kind: "approval_key.added", actor: "u_cfo", at: "2026-11-19T11:00:00Z", detail_json: JSON.stringify({ how: "recovery" }) };
     await run({ method: "POST", path: "/v1/engine/passkey/finish", body: { code: "c1", credential }, rows: { users, security_events: [done, issued, used] }, engine: { passkeyFinish } as unknown as Partial<EngineApi> });
