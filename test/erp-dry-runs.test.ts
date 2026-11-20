@@ -4,7 +4,7 @@
 // call budget.
 import { describe, expect, it } from "vitest";
 import { dryRunConnector, liveConnector } from "../src/erp/registry.js";
-import type { ConnectorName } from "../src/erp/registry.js";
+import type { ConnectorName } from "../src/erp/connector.js";
 import { sampleInvoice, sampleJournal, samplePayment, sampleVendor } from "./fakes/erp.js";
 
 const refs = { vendor: () => "1001", invoice: () => "1002" };
