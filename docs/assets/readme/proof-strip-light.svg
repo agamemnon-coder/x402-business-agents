@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 156" width="960" height="156" role="img" aria-labelledby="t d">
 <title id="t">Purser: proof from the records</title>
-<desc id="d">From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 24 decisions, live. 9,385 tests passing; 189 checks passed, 0 failed; 37 of 39 attacks stopped, 2 caught after (the red team's first run, 30 Oct, test world). 0 attacks got through. Drawn from the records by scripts/readme-proof-strip.ts.</desc>
+<desc id="d">From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 111 decisions, live. 9,385 tests passing; 260 checks passed, 3 failed; 48 of 48 attacks stopped before money moved, 0 caught after (the red team's full re-run, 20 Nov, not held out, test world). 0 attacks got through. Drawn from the records by scripts/readme-proof-strip.ts.</desc>
 <style>
 text{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
 .in{animation:in .5s cubic-bezier(.2,.7,.3,1) both}@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -14,31 +14,31 @@ text{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helveti
 <text x="22" y="100" font-size="19" font-weight="650" letter-spacing="-0.2" fill="#1f2328">Purser</text>
 <text x="22" y="120" font-size="11.5" fill="#59636e">Proof from the records</text>
 <text x="22" y="136" font-size="11.5" font-weight="600" fill="#9a6700">Test money only</text></g>
-<g class="in" style="animation-delay:0.1s"><rect x="168.5" y="14.5" width="118.69" height="47" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
+<g class="in" style="animation-delay:0.1s"><rect x="168.5" y="14.5" width="117.22" height="47" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
 <circle cx="184" cy="32" r="4" fill="#1a7f37"/><text x="195" y="37" font-size="13.5" font-weight="600" fill="#1f2328">Airwallex</text>
 <text x="195" y="53" font-size="11.5" fill="#59636e">sandbox</text></g>
-<g class="in" style="animation-delay:0.18s"><rect x="296.19" y="14.5" width="200.55" height="47" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
-<circle cx="311.69" cy="32" r="4" fill="#1a7f37"/><text x="322.69" y="37" font-size="13.5" font-weight="600" fill="#1f2328">Alta (formerly Metal)</text>
-<text x="322.69" y="53" font-size="11.5" fill="#59636e">testnet</text></g>
-<g class="in" style="animation-delay:0.26s"><rect x="505.74" y="14.5" width="135.96" height="47" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
-<circle cx="521.24" cy="32" r="4" fill="#1a7f37"/><text x="532.24" y="37" font-size="13.5" font-weight="600" fill="#1f2328">Visa via Airi</text>
-<text x="532.24" y="53" font-size="11.5" fill="#59636e">sandbox</text></g>
-<g class="in" style="animation-delay:0.34s"><rect x="650.7" y="14.5" width="136.23" height="47" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
-<circle cx="666.2" cy="32" r="4" fill="#1a7f37"/><text x="677.2" y="37" font-size="13.5" font-weight="600" fill="#1f2328">T:0</text>
-<text x="677.2" y="53" font-size="11.5" fill="#59636e">sandbox ledger</text></g>
-<g class="in" style="animation-delay:0.42s"><rect x="795.93" y="14.5" width="149.57" height="47" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
-<circle cx="811.43" cy="32" r="4" fill="#1a7f37"/><text x="822.43" y="37" font-size="13.5" font-weight="600" fill="#1f2328">Claude</text>
-<text x="822.43" y="53" font-size="11.5" fill="#59636e">24 decisions, live</text></g>
+<g class="in" style="animation-delay:0.18s"><rect x="294.72" y="14.5" width="199.07" height="47" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
+<circle cx="310.22" cy="32" r="4" fill="#1a7f37"/><text x="321.22" y="37" font-size="13.5" font-weight="600" fill="#1f2328">Alta (formerly Metal)</text>
+<text x="321.22" y="53" font-size="11.5" fill="#59636e">testnet</text></g>
+<g class="in" style="animation-delay:0.26s"><rect x="502.79" y="14.5" width="134.49" height="47" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
+<circle cx="518.29" cy="32" r="4" fill="#1a7f37"/><text x="529.29" y="37" font-size="13.5" font-weight="600" fill="#1f2328">Visa via Airi</text>
+<text x="529.29" y="53" font-size="11.5" fill="#59636e">sandbox</text></g>
+<g class="in" style="animation-delay:0.34s"><rect x="646.28" y="14.5" width="134.76" height="47" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
+<circle cx="661.78" cy="32" r="4" fill="#1a7f37"/><text x="672.78" y="37" font-size="13.5" font-weight="600" fill="#1f2328">T:0</text>
+<text x="672.78" y="53" font-size="11.5" fill="#59636e">sandbox ledger</text></g>
+<g class="in" style="animation-delay:0.42s"><rect x="790.04" y="14.5" width="155.46" height="47" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
+<circle cx="805.54" cy="32" r="4" fill="#1a7f37"/><text x="816.54" y="37" font-size="13.5" font-weight="600" fill="#1f2328">Claude</text>
+<text x="816.54" y="53" font-size="11.5" fill="#59636e">111 decisions, live</text></g>
 <g class="in" style="animation-delay:0.5s"><rect x="168.5" y="72.5" width="253" height="69" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
 <text x="182" y="103" fill="#1f2328"><tspan font-size="25" font-weight="650" letter-spacing="-0.4">9,385</tspan><tspan dx="7" font-size="13" font-weight="600" fill="#59636e">tests passing</tspan></text>
 <text x="182" y="121" font-size="11.5" fill="#656d76">0 failed, 5 skipped · test-summary.json</text>
 <rect x="182" y="128" width="226" height="4" rx="2" fill="#dde3ea"/><g class="grow"><rect x="182" y="128" width="225.88" height="4" fill="#0969da"/><rect x="407.88" y="128" width="0.12" height="4" fill="#dde3ea"/></g></g>
 <g class="in" style="animation-delay:0.58s"><rect x="430.5" y="72.5" width="253" height="69" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
-<text x="444" y="103" fill="#1f2328"><tspan font-size="25" font-weight="650" letter-spacing="-0.4">189</tspan><tspan dx="7" font-size="13" font-weight="600" fill="#59636e">checks passed</tspan></text>
-<text x="444" y="121" font-size="11.5" fill="#656d76">0 failed, 3 could not run · verify-all</text>
-<rect x="444" y="128" width="226" height="4" rx="2" fill="#dde3ea"/><g class="grow"><rect x="444" y="128" width="222.47" height="4" fill="#0969da"/><rect x="666.47" y="128" width="3.53" height="4" fill="#dde3ea"/></g></g>
+<text x="444" y="103" fill="#1f2328"><tspan font-size="25" font-weight="650" letter-spacing="-0.4">260</tspan><tspan dx="7" font-size="13" font-weight="600" fill="#59636e">checks passed</tspan></text>
+<text x="444" y="121" font-size="11.5" fill="#656d76">3 failed, 3 could not run · verify-all</text>
+<rect x="444" y="128" width="226" height="4" rx="2" fill="#dde3ea"/><g class="grow"><rect x="444" y="128" width="223.42" height="4" fill="#0969da"/><rect x="667.42" y="128" width="2.58" height="4" fill="#dde3ea"/></g></g>
 <g class="in" style="animation-delay:0.66s"><rect x="692.5" y="72.5" width="253" height="69" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
-<text x="706" y="103" fill="#1f2328"><tspan font-size="25" font-weight="650" letter-spacing="-0.4">37 of 39</tspan><tspan dx="7" font-size="13" font-weight="600" fill="#59636e">attacks stopped</tspan></text>
-<text x="706" y="121" font-size="11.5" fill="#656d76">30 Oct run, test world · 2 caught after</text>
-<rect x="706" y="128" width="226" height="4" rx="2" fill="#dde3ea"/><g class="grow"><rect x="706" y="128" width="214.41" height="4" fill="#0969da"/><rect x="920.41" y="128" width="11.59" height="4" fill="#9a6700"/><rect x="932" y="128" width="0" height="4" fill="#dde3ea"/></g></g>
+<text x="706" y="103" fill="#1f2328"><tspan font-size="25" font-weight="650" letter-spacing="-0.4">48 of 48</tspan><tspan dx="7" font-size="13" font-weight="600" fill="#59636e">attacks stopped</tspan></text>
+<text x="706" y="121" font-size="11.5" fill="#656d76">20 Nov re-run, not held out · test world</text>
+<rect x="706" y="128" width="226" height="4" rx="2" fill="#dde3ea"/><g class="grow"><rect x="706" y="128" width="226" height="4" fill="#0969da"/><rect x="932" y="128" width="0" height="4" fill="#9a6700"/><rect x="932" y="128" width="0" height="4" fill="#dde3ea"/></g></g>
 </svg>
