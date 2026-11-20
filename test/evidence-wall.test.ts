@@ -338,6 +338,19 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(tile(w(), "eval-v8").note).toContain(`${v8.totals.purser_script.false_holds} false hold${v8.totals.purser_script.false_holds === 1 ? "" : "s"} of ${v8.totals.purser_script.clean_truths}`);
     expect(tile(w(), "eval-v8").note).toContain(`Fixed since, no longer held out: ${v8a.totals.purser_script.wrong_payments} wrong payments, ${v8a.totals.purser_script.false_holds} false holds`);
     expect(tile(w(), "eval-v8").note).not.toContain("Held out.");
+    // Evals v9 and v10 (20 Nov): /proof shows one eval tile, the newest held-out run (v10); v3 to v9 stay on the record.
+    type AdvCfo = Adv & { totals: { purser_script: { to_cfo_not_held: number; cfo_not_needed: number } } };
+    const v9 = json<AdvCfo>("docs/evals/adversarial-v9.json"), v9a = json<Adv>("docs/evals/adversarial-v9-after.json");
+    expect([v9.held_out, v9a.held_out]).toEqual([true, false]);
+    expect(tile(w(), "eval-v9").fig).toBe(`${v9.totals.purser_script.wrong_payments} vs ${v9.totals.no_rules.wrong_payments}`);
+    expect(tile(w(), "eval-v9").note).toContain(`Fixed since, no longer held out: ${v9a.totals.purser_script.wrong_payments} wrong payments, ${v9a.totals.purser_script.false_holds} false holds`);
+    const v10 = json<AdvCfo>("docs/evals/adversarial-v10.json"), v10a = json<Adv>("docs/evals/adversarial-v10-after.json");
+    expect([v10.held_out, v10a.held_out]).toEqual([true, false]);
+    expect(tile(w(), "eval-v10").fig).toBe(`${v10.totals.purser_script.wrong_payments} vs ${v10.totals.no_rules.wrong_payments}`);
+    expect(tile(w(), "eval-v10").note).toContain(`(commit ${v10.cases_commit})`);
+    expect(tile(w(), "eval-v10").note).toContain(`${v10.totals.purser_script.false_holds} false holds of ${v10.totals.purser_script.clean_truths}; ${v10.totals.purser_script.to_cfo_not_held} sent to the CFO that had to be held, ${v10.totals.purser_script.cfo_not_needed} that could have been paid alone`);
+    expect(tile(w(), "eval-v10").note).toContain(`Fixed since, no longer held out: ${v10a.totals.purser_script.wrong_payments} wrong payments, ${v10a.totals.purser_script.false_holds} false holds`);
+    expect(tiles(w()).filter((x) => /^eval-v\d+$/.test(x.key) && !x.offProof).map((x) => x.key)).toEqual(["eval-v10"]);
     const sq = json<{ lighthouse: { path: string; preset: string; median: { performance: number; accessibility: number } }[] }>("docs/evidence/site-quality.json").lighthouse;
     expect(tile(w(), "site-quality").fig).toBe(String(Math.min(...sq.map((x) => x.median.accessibility))));
     expect(tile(w(), "site-quality").note).toContain(`lowest performance ${Math.min(...sq.map((x) => x.median.performance))}`);

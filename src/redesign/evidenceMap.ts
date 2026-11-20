@@ -52,7 +52,7 @@ export function evidenceMap(w: EvidenceWall | null = committedWall()): EvidenceM
     node("c-redteam", "Red team", "the /try API, on this computer", "ev-attacked", "ok", badge(["redteam-api", "attacks held"])),
     node("c-chaos", "Chaos", "faults and crashes, money path", "ev-attacked", "ok", badge(["chaos-money", "invariants broken"])),
     node("c-fuzz", "Fuzzing", "properties at high run counts", "ev-attacked", "ok", badge(["fuzzing", "properties held"])),
-    node("c-eval", "Held-out eval", "100 invoices, written first", "ev-ai", "claude", badge(["eval-v3", "wrong payments"])),
+    node("c-eval", "Held-out eval", "129 invoices, written first", "ev-ai", "claude", badge(["eval-v10", "wrong payments"])),
     node("c-site", "The public site", "Lighthouse, axe, WebKit", "ev-quality", "ok", badge(["site-quality", "accessibility"], ["webkit-try", "WebKit walks passed"])),
   ].filter((n) => n.badge);
   return { main, rails, held, refused, checks };
