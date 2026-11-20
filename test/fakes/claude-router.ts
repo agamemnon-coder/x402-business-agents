@@ -36,9 +36,21 @@ export function routerClient(script: Script): Anthropic & { calls: Turn[] } {
 const finish = (summary: string): Use => ({ name: "finish", input: { summary } });
 const seqsIn = (prompt: string) => [...new Set([...prompt.split("\n")[0]!.matchAll(/#(\d+)/g)].map((m) => Number(m[1])))];
 
+/** The supplier code named when it refused "none" (src/autonomy/sourcingCore.ts checkBuyPolicy), if it did. */
+export const switchTo = (t: Turn): string | null => {
+  const r = t.results.find((x) => x.startsWith("Not set: customers would be turned away"));
+  return r ? (/\((stockline|ridgeline)\) answers/.exec(r)?.[1] ?? null) : null;
+};
+
 /** A careful agent team: each does its job inside the rules, in its own words. */
 export const safeTeam: Script = (t) => {
-  if (t.role === "sourcing") return t.turn === 0 ? [{ name: "set_buy_policy", input: { supplier: "none", max_price: null, cache_seconds: 120, reason: "Serve from a short cache while the price is over my cap." } }] : t.turn === 1 ? [finish("Stopped live buys; asked nobody.")] : null;
+  if (t.role === "sourcing") {
+    if (t.turn === 0) return [{ name: "set_buy_policy", input: { supplier: "none", max_price: null, cache_seconds: 120, reason: "Serve from a short cache while the price is over my cap." } }];
+    // Long run, 20 Nov: code refuses "none" while a supplier can serve, naming it; a careful agent switches to it.
+    const serve = switchTo(t);
+    if (t.turn === 1 && serve) return [{ name: "set_buy_policy", input: { supplier: serve, max_price: null, cache_seconds: 120, reason: `Code says ${serve} can serve within my cap; switching to it.` } }];
+    return t.turn === 1 ? [finish("Stopped live buys; asked nobody.")] : t.turn === 2 && serve ? [finish(`Switched to ${serve}.`)] : null;
+  }
   if (t.role === "treasury") {
     if (t.turn > 0) return t.turn === 1 ? [finish("Did what code allowed.")] : null;
     if (/invoice\.received/.test(t.prompt)) return [{ name: "plan_invoice", input: {} }];

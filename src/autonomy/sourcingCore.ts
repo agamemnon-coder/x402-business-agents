@@ -71,8 +71,14 @@ export type BuyPolicyInput = z.infer<typeof BUY_POLICY_INPUT>;
  * The suppliers the agent may buy from now: one of its suppliers here (its mandate pays them), answering code's price
  * check, at or under the mandate's cap, and leaving at least the goal margin at the sell price.
  */
-export const usableSuppliers = (suppliers: SupplierView[], capCents: number, sellCents: number): SupplierView[] =>
-  suppliers.filter((s) => s.available && s.price_cents <= capCents && sellCents - s.price_cents >= MIN_MARGIN_CENTS);
+export const usableSuppliers = (suppliers: SupplierView[], capCents: number, sellCents: number): SupplierView[] => {
+  const fresh = (s: SupplierView) => s.data_age_seconds <= MAX_CACHE_SECONDS;
+  const fits = suppliers.filter((s) => s.available && s.price_cents <= capCents && sellCents - s.price_cents >= MIN_MARGIN_CENTS);
+  // dry-125: while a supplier with fresh data answers but only over the cap, not buying is the agent's way to the CFO (its
+  // turned-away customers are Treasury's evidence for a higher cap): data older than code's cache limit does not count then.
+  const freshOverCap = suppliers.some((s) => s.available && fresh(s) && s.price_cents > capCents);
+  return freshOverCap ? fits.filter(fresh) : fits;
+};
 
 /** Why no supplier can be bought from now, one clause each (for the CFO's escalation). */
 export const unusableWords = (suppliers: SupplierView[], capCents: number, sellCents: number): string =>
