@@ -740,7 +740,9 @@ export const COMPANY = {
  */
 export const VERIFY_YOURSELF = { download: "Download the proof (JSON)", verify: "Verify this payment yourself", file: "purser-proof.json", cmd: "In a clone of the repo: npm run verify-bundle -- purser-proof.json" };
 
-export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/#/guest", repo: "https://github.com/agamemnon-coder/x402-business-agents",
+export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/#/guest",
+  // 21 Nov: the console's own set-up (#/start, cloud/src/console.ts startView), for a visitor with a starter key.
+  start: "https://purser-try.max-31b.workers.dev/#/start", repo: "https://github.com/agamemnon-coder/x402-business-agents",
   // 15 Nov: the agents' negotiation (cloud/src/try/negotiatePage.ts), a page of its own; same tab, so it finds this company.
   negotiate: { href: "/try/negotiate", label: "Watch agents negotiate" } };
 
