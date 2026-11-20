@@ -76,7 +76,7 @@ describe("README badges", () => {
     expect(lines[lines.indexOf(links) + 2]).toBe('<a href="https://youtu.be/gEUm8RlhZac"><img src="docs/assets/readme/demo-thumb.jpg" alt="Purser: the demo on YouTube (3:15)" width="100%"></a>');
     expect(readme).toContain("\n## Verify it yourself in 3 commands\n");
     expect(readme.indexOf(links)).toBeGreaterThan(readme.indexOf(badgeLine));
-    expect(readme).not.toContain("youtu.be/n3HLVGROJc4"); // 20 Nov (owner): only the demo
+    expect(readme.split("youtu.be/n3HLVGROJc4").length - 1).toBe(1); // 20 Nov (owner): one quiet line under the demo
     expect(readme).toContain("(https://kit11.max-31b.workers.dev/proof)");
     expect(readme).not.toContain("kCUsFHrxE-o");
   });

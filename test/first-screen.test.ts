@@ -151,9 +151,9 @@ describe("the first screen (section D, 6 Nov)", () => {
     // The rails that ran live, said once under the three proofs; the three commands shown once, in their own section.
     expect(lines.some((l) => l.startsWith("**Run live on test money** (Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude): the main run of 3 November"))).toBe(true);
     expect(README.split("npm run judge -- --check").length - 1).toBe(1);
-    // 20 Nov (owner): the demo is the one video the README links; the film and the trailer are no longer linked.
-    expect(README).not.toContain("youtu.be/PNLuqhRzVfE");
-    expect(README).not.toContain("youtu.be/n3HLVGROJc4");
+    // 20 Nov (owner): the demo is the video; the film and the trailer only as one quiet line under it.
+    expect(README).toContain("\nEarlier videos: [the film, under the hood (3:29)](https://youtu.be/PNLuqhRzVfE) · [the trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only\n");
+    expect(README.split("youtu.be/PNLuqhRzVfE").length - 1).toBe(1);
     expect(README).toContain("**[The demo (3:15)](https://youtu.be/gEUm8RlhZac)**");
     expect(README).not.toMatch(/5-minute walkthrough/);
     // 14 Nov (owner): the partners' logo row is back, the official files each on its own white tile, unaltered.

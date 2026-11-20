@@ -129,6 +129,8 @@ The full suite, `npm test` (about 8 to 9 min on a laptop): **8574 tests passing*
 
 **[The demo (3:15)](https://youtu.be/gEUm8RlhZac)**, the video in the submission (its thumbnail is at the top) · test money only
 
+Earlier videos: [the film, under the hood (3:29)](https://youtu.be/PNLuqhRzVfE) · [the trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only
+
 ## Airwallex at the centre
 
 **Built on Airwallex.** Purser calls Airwallex's API for a card per agent with the CFO's limits (Issuing), FX quotes inside the signed terms, transfers that carry the hash the CFO signed, the payee's bank check, Airwallex's own approval as a second lock, and signed webhooks (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).
