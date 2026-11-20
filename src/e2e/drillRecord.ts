@@ -51,7 +51,7 @@ export function drillRecord(o: {
   };
 }
 
-const cell = (v: unknown) => String(v ?? "–").replace(/\|/g, "\\|").replace(/\n/g, " ");
+const cell = (v: unknown) => String(v ?? "–").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
 const mark = (p: boolean | null) => (p === true ? "**pass**" : p === false ? "**FAIL**" : "not judged");
 const hhmmss = (iso: string) => (iso ? iso.slice(11, 23) : "–");
 
