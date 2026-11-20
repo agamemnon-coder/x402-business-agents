@@ -2,6 +2,7 @@
 // scripts/tryWalkNetwork.ts): their pure parts, with no network and no browser. The checks read from a walk's record,
 // the headroom from the owner's aggregates, the one screen, a concurrent run's figures, and the phone and network a
 // recorded walk can take.
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { headroom, healthOk, pageChecks, PAGES, render, walkChecks, type Ops, type WalkRecord } from "../scripts/smoke-judge.js";
 import { concurrencyOf, routeOf, type ConcRecord } from "../scripts/try-concurrent.js";
@@ -182,5 +183,32 @@ describe("a recorded walk's phone and network", () => {
       { profile: "phone-iphone", browser: "webkit" }, { profile: "phone-iphone", browser: "chromium" },
       { profile: "phone-iphone", browser: "chromium", network: "slow-4g" }, { profile: "phone-iphone", browser: "webkit" },
     ]);
+  });
+});
+
+/** The code of each page.evaluate / waitForFunction callback in a file: from the call's "(" to its matching ")". */
+function pageCode(src: string): string[] {
+  const out: string[] = [];
+  for (const m of src.matchAll(/\.(evaluate|waitForFunction)\(/g)) {
+    let depth = 0, i = m.index + m[0].length - 1;
+    for (; i < src.length; i++) { if (src[i] === "(") depth++; else if (src[i] === ")" && --depth === 0) break; }
+    out.push(src.slice(m.index, i + 1));
+  }
+  return out;
+}
+
+describe("the walk scripts' code that runs in the page", () => {
+  // Mega run walk 2 (19 Nov, docs/runs/2026-11-19-mega-run.md): a named helper inside page.evaluate became
+  // __name(helper, "helper") under tsx, and __name does not exist in the page: "ReferenceError: __name is not defined"
+  // stopped the walk after the proof download, the one walk of 58 that never reached the hold. No named function in there.
+  it.each(["scripts/try-live-record.ts", "scripts/smoke-judge.ts"])("%s names no function inside page code", (file) => {
+    const blocks = pageCode(readFileSync(file, "utf8"));
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const b of blocks) expect(b, b.slice(0, 120)).not.toMatch(/\bfunction\s+[A-Za-z_$]|\b(const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*(async\s*)?(\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>/);
+  });
+
+  it("finds the named helper that stopped walk 2", () => {
+    const [b] = pageCode('p.evaluate(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); await wait(1); })');
+    expect(b).toMatch(/\b(const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*(async\s*)?(\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>/);
   });
 });
