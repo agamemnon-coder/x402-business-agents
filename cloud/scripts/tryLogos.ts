@@ -75,7 +75,11 @@ const brandRows = BRANDS.map(([key, name, source, fill]) => {
   // The data URL carries the drawing only: the XML prolog, doctype, comments and the whitespace between tags are left
   // out (the shapes, colours and proportions are the file's), attributes are quoted with ' where the file has none, and only
   // the characters a URL needs escaped are escaped.
-  const compact = text.replace(/<\?xml[^>]*>|<!DOCTYPE[^>]*>|<!--[\s\S]*?-->/g, "").replace(/>\s+</g, "><").replace(/\s+/g, " ").trim().replace(/"/g, (q) => (text.includes("'") ? q : "'"));
+  // Stripped until nothing changes, so a comment or prolog that removing another one forms is stripped too (CodeQL).
+  let drawing = text;
+  for (let prev = ""; prev !== drawing; ) { prev = drawing; drawing = drawing.replace(/<\?xml[^>]*>|<!DOCTYPE[^>]*>|<!--[\s\S]*?-->/g, ""); }
+  if (/<!--|<\?xml|<!DOCTYPE/i.test(drawing)) throw new Error(`brandLogos: ${source} has a comment or prolog left after stripping`);
+  const compact = drawing.replace(/>\s+</g, "><").replace(/\s+/g, " ").trim().replace(/"/g, (q) => (text.includes("'") ? q : "'"));
   const uri = `data:image/svg+xml,${compact.replace(/[%#<>"\n]/g, (c) => encodeURIComponent(c))}`;
   return `  ${JSON.stringify(key)}: { name: ${JSON.stringify(name)}, sha256: ${JSON.stringify(sha.slice(0, 16))}, uri: ${JSON.stringify(uri)} },`;
 });
