@@ -342,8 +342,10 @@ export function checkCut(cut: Cut, o: { demoDay?: boolean } = {}): string[] {
     const r = p.row, need = needed(r);
     if (need > p.seconds) out.push(`${r.id}: needs ${need} s, has ${p.seconds}`);
     if (r.kind === "cam" && p.seconds > 20) out.push(`${r.id}: Max on camera longer than 20 s`);
-    for (const c of r.claims) if (!CLAIMS.some((x) => x.id === c)) out.push(`${r.id}: unknown claim ${c}`);
-    for (const c of r.claims) if (!claimHolds(c)) out.push(`${r.id}: claim ${c} does not hold in its record`);
+    // An unknown claim is reported once (claim() would throw on it), and its records are not read.
+    const known = r.claims.filter((c) => CLAIMS.some((x) => x.id === c));
+    for (const c of r.claims) if (!known.includes(c)) out.push(`${r.id}: unknown claim ${c}`);
+    for (const c of known) if (!claimHolds(c)) out.push(`${r.id}: claim ${c} does not hold in its record`);
     // PAID in the Airwallex sandbox is said with its simulated settlement (rule 2); a Metal testnet payment settles on chain.
     if (/\bPAID\b|\bpaid\b/.test(r.words + r.segs.map((g) => (typeof g.caption === "string" ? g.caption : "")).join(" ")) && r.kind === "vo" && r.claims.some((c) => AIRWALLEX_PAID.has(c)) && !/simulat/i.test(r.words + JSON.stringify(r.segs)) && !r.claims.includes("C10")) out.push(`${r.id}: PAID without "settlement simulated"`);
     for (const g of p.segs) {
@@ -352,7 +354,7 @@ export function checkCut(cut: Cut, o: { demoDay?: boolean } = {}): string[] {
       if (g.rec && !(g.rec in RECORDINGS_10)) out.push(`${r.id}: no recording ${g.rec}`);
     }
     // Every number said or shown is found in the records of the row's claims (or is a stated rounding of one).
-    const sources = r.claims.flatMap((c) => claim(c).sources).map(text).filter((x): x is string => x !== null).join("\n");
+    const sources = known.flatMap((c) => claim(c).sources).map(text).filter((x): x is string => x !== null).join("\n");
     const shown = r.segs.flatMap((g) => [...(typeof g.caption === "string" ? [g.caption] : (g.caption ?? []).map((c) => c.text)), ...(g.title ?? [])]);
     for (const [where, line] of [["said", r.words], ...shown.map((c) => ["shown", c] as const)] as const) {
       for (const n of numbers(line)) {
