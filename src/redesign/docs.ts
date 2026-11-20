@@ -186,7 +186,8 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     ${foldHtml("Other connections", [
       `Live: the MCP server, the read API and its OpenAPI (${code("/v1/openapi.read.json")}), signed webhooks for ${code("payment.paid")}, ${code("approval.needed")} and ${code("books.closed")}.`,
       "Format exports, not live integrations: Xero, QuickBooks Online and Exact Online CSV, Slack and Teams messages, an ISO payment message.",
-      `From the runner: Moneybird's API (run once in a sandbox) and Exact Online's API (built, not tested live). ${outLink(repoHref(CONNECTIONS_DOC), "Every connection, labelled")}`,
+      `From the runner: Moneybird's API (run once in a sandbox) and Exact Online's API (built, not tested live). ${outLink(repoHref(CONNECTIONS_DOC), "The webhooks and exports in detail")}`,
+      outLink(repoHref("docs/integrations/README.md"), "Connect Purser to anything: every connection, labelled, with a quickstart"),
     ])}</article>
   <article class="pc card fd wide" id="agent-api">${head("bot", "Outside-agent card API (local)")}
     <p class="promise">Outside agents work under the CFO's policy.</p>

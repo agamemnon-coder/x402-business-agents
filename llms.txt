@@ -180,6 +180,7 @@ The public /try, timed:
 - src/claude/reader.ts: Claude reading an invoice, each call logged with its model, cost and Anthropic's request id
 - src/redesign/evidenceWallData.ts, docs/evidence/evidence-wall.json: the evidence wall, computed from the records (npm run evidence:wall)
 - Connect any AI: Purser Cloud is a remote MCP server at https://purser-try.max-31b.workers.dev/mcp; the demo company's public, read-only token is purser-demo-read-only. Your AI reads and can propose a payment; it can never approve or pay: docs/connect-claude.md; every tool, its annotations, the error codes and the safety model: docs/mcp.md
+- Connect Purser to anything: every way in or out, each with its honest label (live, sandbox, testnet, format export, built and not tested live, planned), a quickstart and its guide: the payment rails, AI over MCP, the REST API and its OpenAPI, signed webhooks, no-code tools, accounting, Peppol, ISO 20022, Slack and Teams, the full export: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/integrations/README.md (the same list as JSON: GET /v1/connections on Purser Cloud)
 
 After the hackathon, the roadmap to real customer money (nothing on it is built yet): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/roadmap-v2.md
 

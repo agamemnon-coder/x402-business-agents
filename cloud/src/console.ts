@@ -21,6 +21,7 @@ import { NEGOTIATE_PATH, negotiatePageResponse } from "./try/negotiatePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { AWX_CSS, AWX_JS } from "./awxActUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
+import { CONNECTIONS_VIEW_JS } from "./connectionsView.js";
 import { t0CloseLine } from "./t0Close.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
@@ -1277,6 +1278,15 @@ async function securityCard(){
   return card;
 }
 
+// Connections (cloud/src/connectionsView.ts): every way in or out of Purser, from GET /v1/connections, each with its
+// label and its guide, then the hub and /connect-ai. For everyone who can open Settings; it shows no company's data.
+async function connectionsCard(){
+  const card=el('div','card panel connections');card.id='connections';
+  try{const cat=await api('/v1/connections');card.replaceChildren(...connectionsViewOf(cat,t,tk,el))}
+  catch(e){if(!(e instanceof Expired))card.replaceChildren(el('h2','',t('cs.cx.title')),note(e.message,'bad'))}
+  return card;
+}
+
 async function settingsView(){
   title(t('cs.nav.settings'));
   const m=await me();
@@ -1288,13 +1298,14 @@ async function settingsView(){
   if(owner){const c=langSel(langNames,m.tenant.language||'nl');c.onchange=async()=>{try{await api('/v1/company',{method:'POST',body:{language:c.value}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));if(!m.user||!m.user.language)useLanguage(c.value)}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_company')),c]))}
   if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'en')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
-  if(!owner){const cc=await claudeCard(m,false);view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})),cc);return}
+  if(!owner){const cc=await claudeCard(m,false);const cx=await connectionsCard();view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})),cc,cx);return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
   const alerts=m.kind==='session'?await alertsCard():null;
   const security=m.kind==='session'&&!m.demo?await securityCard():null;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,alerts,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  const cx=await connectionsCard();
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,alerts,claude,cx,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){
@@ -1723,7 +1734,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_VIEW_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">

@@ -994,7 +994,7 @@ paths:
       operationId: getV1Connections
       tags:
         - Company
-      summary: "Every connection Purser has to other systems, what each does and whether it is a live integration or a format export."
+      summary: "Every connection Purser has to other systems, what each does, its label (live, sandbox, testnet, format export, built and not tested live) and its guide; the payment rails, which move money only under the CFO's limits or Face ID, listed apart."
       security: []
       x-purser-needs: public
       responses:
