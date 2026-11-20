@@ -191,13 +191,20 @@ export const WHY_COMPANY: readonly { label: string; text: string; page: string }
  * /verify, the Airwallex metadata and the anchor. Linked from Home, Proof, /try and in llms.txt. /film is the earlier
  * animation.
  */
-export const FILM_URL = "https://youtu.be/PNLuqhRzVfE";
-export const FILM_LINK = "Watch the film";
+/** 20 Nov (owner): the demo (3:15, the video in the submission, shown to a full room in San Francisco) is the one video
+ * the site links; the film below and the trailer stay on YouTube but are no longer linked from the pages. */
+export const DEMO_URL = "https://youtu.be/gEUm8RlhZac";
+export const FILM_URL = DEMO_URL;
+export const FILM_LINK = "Watch the demo (3:15)";
+/** The film, "Purser, under the hood" (15 Nov, 3:29): no longer linked from the site (20 Nov). */
+export const UNDER_THE_HOOD_URL = "https://youtu.be/PNLuqhRzVfE";
 /** The walkthrough (film v10, YouTube, 13 Nov; AI voice and music: ElevenLabs): kept as the longer tour. */
 export const WALKTHROUGH_URL = "https://youtu.be/mp9fmOYfBWc";
 /** The trailer (14 Nov, Max: 1:30, 4K; AI voice and music: ElevenLabs): a second, shorter option beside the walkthrough. */
 export const TRAILER_URL = "https://youtu.be/n3HLVGROJc4";
 export const TRAILER_LINK = "Watch the trailer (1:30)";
+/** Where /try's quiet video link goes since 20 Nov: the demo. */
+export const TRY_VIDEO = { url: DEMO_URL, label: "Watch the demo (3:15)" } as const;
 /** The Kit 11 moments, in one line, after the three sentences. */
 export const KIT11_RUN_LINE = "The Kit 11 scenario, run live on 3 November.";
 /**

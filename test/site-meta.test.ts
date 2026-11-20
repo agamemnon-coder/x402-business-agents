@@ -131,8 +131,8 @@ describe("one tagline (Q8)", () => {
 describe("the film (Q3)", () => {
   it("/film says it is the earlier animation of 30 October, and points to the walkthrough (no duration since 14 Nov, owner)", () => {
     expect(pages.film).toContain("<title>Purser: the earlier animation (30 October)</title>");
-    expect(pages.film).toContain("The earlier animation of 30 October, not the film (youtu.be/PNLuqhRzVfE)");
-    expect(FILM_URL).toBe("https://youtu.be/PNLuqhRzVfE");
+    expect(pages.film).toContain("The earlier animation of 30 October, not the demo (youtu.be/gEUm8RlhZac)");
+    expect(FILM_URL).toBe("https://youtu.be/gEUm8RlhZac");
   });
 
   it("the replay and Proof link the film of the main run; Proof's archive names /film for what it is", () => {

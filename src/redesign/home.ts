@@ -194,7 +194,7 @@ export const START = "Try it in 2 minutes";
  */
 export const HOME_SUB = IDEA;
 /** The hero's secondary buttons: the film, then "Verify a payment yourself" (/verify, live since #364; opts.verifyUrl "" hides it). */
-export const FILM_BUTTON = "Watch the film";
+export const FILM_BUTTON = "Watch the demo";
 export const VERIFY_BUTTON = "Verify a payment yourself";
 export const VERIFY_URL = "/verify";
 /** The proof line's first words; its figures are Home's three measured ones (src/redesign/scale.ts homeScaleStats). */

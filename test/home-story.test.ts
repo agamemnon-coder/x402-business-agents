@@ -62,9 +62,9 @@ describe("Home, the enterprise pass", () => {
   // 13 Nov, evening (owner): the product tour is gone, so the hero is again the hands-on demo (primary). 15 Nov (clarity):
   // the film is the hero's second button; "Verify a payment yourself" joins it once the site serves /verify; the proof
   // button stays at the end, with Books.
-  it("has Try it in 2 minutes (primary) and Watch the film in the hero, the proof button with Books at the end", () => {
+  it("has Try it in 2 minutes (primary) and Watch the demo in the hero, the proof button with Books at the end", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
-    expect([START, FILM_BUTTON, PROOF_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the film", "See the proof"]);
+    expect([START, FILM_BUTTON, PROOF_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the demo", "See the proof"]);
     // 15 Nov: /verify is live (#364), so "Verify a payment yourself" is the hero's third button; "" hides it.
     // 15 Nov (Max): /try/negotiate's card under the features, its one button after the hero's.
     for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, FILM_BUTTON], ["/verify", VERIFY_BUTTON], [NEGOTIATE_URL, NEGOTIATE_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);

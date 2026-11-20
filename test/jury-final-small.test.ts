@@ -38,6 +38,6 @@ describe("/try's first screen", () => {
     expect(START.flow.map((f) => f.name)).toEqual(["Read", "Check", "You approve"]);
     expect(START.flow[2]!.line).toBe("With Face ID or a fingerprint.");
     // The trailer on YouTube, one quiet link beside the button (14 Nov, owner).
-    expect(START.trailer).toBe("Watch the 90 s trailer");
+    expect(START.trailer).toBe("Watch the 3-minute demo");
   });
 });
