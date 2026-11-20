@@ -8,11 +8,13 @@ import type { Sql } from "./store.js";
 import { TenantDb, WriteConflict, type Stmt } from "./tenant.js";
 
 /**
- * What a key may do. "propose" (19 Nov, integrations): file an invoice's payment for the CFO's approval and nothing
- * more, for an agent or an integration that should not hold "admin"; "admin" covers it. No scope approves: approving
- * takes a signed-in person's passkey over the exact terms (cloud/src/engine/routes.ts).
+ * What a caller may do. "propose" (19 Nov, integrations): file an invoice's payment for the CFO's approval and nothing
+ * more, for an agent or an integration that should not hold "admin"; "admin" covers it. "approve" (20 Nov, review
+ * finding 5): approve or reject payments with one's own approval passkey, enrol that passkey, and use the signing
+ * views; a signed-in person's only, never a key's (SCOPES below is what a key may hold). "admin" does not cover it:
+ * the role matrix is docs/security/roles.md.
  */
-export type Scope = "read" | "sync" | "admin" | "propose";
+export type Scope = "read" | "sync" | "admin" | "propose" | "approve";
 /**
  * A Claude connector token (cloud/src/claude/): an API key with the read scope that works at /mcp only. 'claude' reads;
  * 'claude-propose' also files an invoice's payment for the CFO's approval, which only the CFO's passkey (Face ID) can
@@ -25,6 +27,7 @@ export const DEMO_CONNECTOR_TOKEN = "purser-demo-read-only";
 export const DEMO_CONNECTOR_TENANT = "t_demo_company";
 export type Role = "owner" | "cfo" | "accountant" | "viewer";
 export const ROLES: Role[] = ["owner", "cfo", "accountant", "viewer"];
+/** The scopes an API key may hold: never "approve" (no key approves; a person's passkey does). */
 export const SCOPES: Scope[] = ["read", "sync", "admin", "propose"];
 /** Whether a caller's scopes cover one: "admin" covers "propose" (an owner may file what an integration may). */
 export const hasScope = (scopes: Set<Scope>, s: Scope): boolean => scopes.has(s) || (s === "propose" && scopes.has("admin"));
@@ -45,6 +48,11 @@ export interface Caller {
    * never admin, never a step-up's "fresh passkey", never an approval. Absent: the passkey.
    */
   via?: "oidc";
+  /**
+   * Why a signed-in person may approve (docs/security/roles.md): "cfo", or "owner_without_cfo" (an owner of a company
+   * that has no CFO who can sign in: the owner approves, and the console says so). Absent: they may not.
+   */
+  approves?: "cfo" | "owner_without_cfo";
 }
 
 export class AuthError extends Error {
@@ -160,10 +168,27 @@ export async function liveKey(sql: Sql, keyId: string, secret: string | null, no
   const tenant = await sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [row.tenant_id]);
   if (!tenant || tenant.closed_at) throw new AuthError(401, "this company's account is closed");
   await sql.run("UPDATE api_keys SET last_used_at = ? WHERE id = ?", [now.toISOString(), keyId]);
-  return { tenantId: row.tenant_id, kind: "key", principal: keyId, scopes: new Set(row.scopes.split(" ") as Scope[]), user: row.created_by_user, purpose: row.purpose };
+  // Only the scopes a key may hold: a row that says "approve" (written by hand, or by code before 20 Nov) never approves.
+  const scopes = row.scopes.split(" ").filter((x): x is Scope => (SCOPES as string[]).includes(x));
+  return { tenantId: row.tenant_id, kind: "key", principal: keyId, scopes: new Set(scopes), user: row.created_by_user, purpose: row.purpose };
 }
 
-const scopesOf = (role: Role): Set<Scope> => new Set<Scope>(role === "owner" ? ["read", "admin"] : ["read"]);
+/**
+ * A role's scopes (docs/security/roles.md, held to the code by test/cloud-roles.test.ts). The owner manages the company
+ * (admin); the CFO reads and approves (approve); an accountant and a viewer read. Separation of duties: an owner does
+ * not approve, except in a company with no CFO who can sign in (a non-erased cfo with a passkey), so a company of one
+ * owner keeps working; the console shows that note.
+ */
+export function scopesOf(role: Role, o: { companyHasCfo: boolean }): Set<Scope> {
+  if (role === "owner") return new Set<Scope>(o.companyHasCfo ? ["read", "admin"] : ["read", "admin", "approve"]);
+  if (role === "cfo") return new Set<Scope>(["read", "approve"]);
+  return new Set<Scope>(["read"]);
+}
+
+/** Whether the company has a CFO who can sign in: not erased, with at least one passkey. */
+export async function companyHasCfo(sql: Sql, tenantId: string): Promise<boolean> {
+  return !!(await sql.first("SELECT 1 AS x FROM users u JOIN credentials c ON c.tenant_id = u.tenant_id AND c.user_id = u.id WHERE u.tenant_id = ? AND u.role = 'cfo' AND u.erased_at IS NULL LIMIT 1", [tenantId]));
+}
 
 export async function sessionToken(secret: string, s: { tenantId: string; userId: string; role: Role; gen: number; via?: "oidc" }, now: Date): Promise<string> {
   const body = toB64u(new TextEncoder().encode(JSON.stringify({ t: s.tenantId, u: s.userId, r: s.role, g: s.gen, exp: now.getTime() + SESSION_TTL_MS, ...(s.via ? { m: s.via } : {}) })));
@@ -178,10 +203,14 @@ async function fromSession(sql: Sql, secret: string, token: string, now: Date): 
   const user = await sql.first<{ role: Role; erased_at: string | null; session_gen: number; closed_at: string | null }>(
     "SELECT u.role, u.erased_at, u.session_gen, t.closed_at FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.tenant_id = ? AND u.id = ?", [p.t, p.u]);
   if (!user || user.erased_at || user.closed_at || user.role !== p.r || user.session_gen !== p.g) throw new AuthError(401, "this sign-in is no longer valid");
-  // Signed in with Google, Microsoft or Apple: read only, whatever the role (cloud/src/oidc.ts).
+  // Signed in with Google, Microsoft or Apple: read only, whatever the role (cloud/src/oidc.ts): never admin, never
+  // approve (docs/security/roles.md), so no approves either.
   if (p.m === "oidc") return { tenantId: p.t, kind: "session", principal: p.u, scopes: new Set<Scope>(["read"]), role: p.r, user: p.u, via: "oidc" };
   if (p.m !== undefined) throw new AuthError(401, "bad session");
-  return { tenantId: p.t, kind: "session", principal: p.u, scopes: scopesOf(p.r), role: p.r, user: p.u };
+  const hasCfo = p.r === "owner" ? await companyHasCfo(sql, p.t) : false;
+  const scopes = scopesOf(p.r, { companyHasCfo: hasCfo });
+  const approves = !scopes.has("approve") ? undefined : p.r === "cfo" ? "cfo" as const : "owner_without_cfo" as const;
+  return { tenantId: p.t, kind: "session", principal: p.u, scopes, role: p.r, user: p.u, ...(approves ? { approves } : {}) };
 }
 
 /** A read-only session for a person who signed in with a linked identity (cloud/src/oidc.ts finishSignIn). */
@@ -231,6 +260,11 @@ export async function callerOf(sql: Sql, sessionSecret: string, authorization: s
 }
 
 export function need(c: Caller, scope: Scope): void {
+  if (scope === "approve" && !hasScope(c.scopes, scope)) {
+    throw new AuthError(403, c.kind === "key" ? "a key never approves: approving is a signed-in CFO's passkey over the exact terms"
+      : c.role === "owner" ? "this company has a CFO: the CFO approves payments, not an owner (separation of duties; docs/security/roles.md)"
+        : "only the CFO approves payments (or an owner, in a company with no CFO)");
+  }
   if (!hasScope(c.scopes, scope)) throw new AuthError(403, `this ${c.kind === "key" ? "key" : "sign-in"} may not ${scope === "read" ? "read" : scope === "sync" ? "push data" : scope === "propose" ? "propose payments" : "manage this company"}`);
 }
 

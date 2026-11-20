@@ -115,8 +115,11 @@ function awxSupplier(i,show){
 // Sign a proposal with the approval passkey (the same ceremony as the payment card), then answer what the engine says.
 async function awxSign(p){
   const eng=await engineStatus();
-  if(!eng||!eng.passkey)throw new Error(t('cs.eng.setup'));
-  const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}});
+  // The signer's own approval key (each approver has their own; only the CFO, or an owner of a company with no CFO, approves).
+  if(!(await me()).scopes.includes('approve'))throw new Error(t('cs.eng.cfo_approves'));
+  const mine=eng&&eng.my_passkey;
+  if(!mine)throw new Error(t('cs.eng.setup'));
+  const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(mine.credential_id)}],userVerification:'required',timeout:120000}});
   return engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}})}
 // On Invoices: Pay all ready (one batch, one signature) and Money in (a deposit on the bank's simulation). Owners only.
 function awxBar(o){

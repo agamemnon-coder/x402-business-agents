@@ -163,8 +163,12 @@ for (const { file } of D1 ? CONFIGS : []) describe(`the engine in a Durable Obje
     expect(start.json).toMatchObject({ rp: { id: RP, name: "Purser" }, user: { id: A.owner, name: "Owner", displayName: "Owner" }, exclude: [] });
     const done = await req("POST", "/v1/engine/passkey/finish", { key: A.session, body: { code: start.json.code, credential: phone.register({ challenge: start.json.challenge as string, origin: ORIGIN, rpId: RP }) } });
     expect(done.status, JSON.stringify(done.json)).toBe(200);
-    expect(done.json).toEqual({ credential_id: phone.credentialId });
-    expect((await req("GET", "/v1/engine", { key: A.session })).json.passkey).toEqual({ credential_id: phone.credentialId, label: "Owner" });
+    // The company's first approval key: nothing more is asked, and it does not cool off (review finding 2).
+    expect(done.json).toEqual({ credential_id: phone.credentialId, how: "first", cooling_until: null });
+    const st = (await req("GET", "/v1/engine", { key: A.session })).json;
+    expect(st.passkey).toEqual({ credential_id: phone.credentialId, label: "Owner" });
+    // Through the Durable Object too: whose key it is, and the caller's own.
+    expect(st.my_passkey).toEqual({ credential_id: phone.credentialId, label: "Owner", person: A.owner, how: "first", cooling_until: null });
   });
 
   it("refuses a signature over other terms: nothing is paid", async () => {

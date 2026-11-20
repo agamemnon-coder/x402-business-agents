@@ -5,8 +5,9 @@
 // (src/ap/pay.ts), a passkey signs the exact terms (src/passkey), the executor pays on the rails it is handed
 // (src/executors), then the payment is followed, booked (src/ledger/feed.ts) and archived (src/vault).
 //
-// What the host adds is small: one action at a time, the passkey's confirmation (a signed-in owner is the confirmation
-// a person gives on a runner), and what a page needs to show of an invoice, a proposal and the events.
+// What the host adds is small: one action at a time, the passkey's confirmation (a signed-in person is the confirmation
+// a person gives on a runner, for a company's first key; a later key needs an active key's endorsement, a second owner
+// or a recovery, then cools off: passkeyFinish), and what a page needs to show of an invoice, a proposal and the events.
 //
 // It has no payables folder: the ledger must have its own document store (src/ap/docStore.ts useDocStore) before a
 // host is made over it, so no file is ever written.
@@ -32,7 +33,7 @@ import { execute, type Rails } from "../executors/index.js";
 import { verifyLedger } from "../ledger/core.js";
 import { syncLedger } from "../ledger/feed.js";
 import { fromCents } from "../lib/money.js";
-import { confirmPasskey, activePasskey, openEnrolment, pendingPasskeys } from "../passkey/ledger.js";
+import { confirmPasskey, activePasskey, openEnrolment, passkeyById, pendingPasskeys } from "../passkey/ledger.js";
 import { processAssertion, processRegistration, type InboxItem } from "../passkey/process.js";
 import { finishSecurityKey, startSecurityKey } from "../passkey/securityKey.js";
 import { ensureSecondKeyTables, SECOND_KEY_KEYS, secondKeyMessage, secondKeyReasons } from "../policy/secondKey.js";
@@ -49,7 +50,7 @@ import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
 import { invoicePdf } from "./invoicePdf.js";
 import { BILL_TO_SAMPLE, CASH_COMMITTED, CASH_SAMPLE, CLEAN, CLEAN_SAMPLE, checkCompose, PAID_SAMPLE, SEEDED_SUPPLIERS, supplierKey, type ComposeInput, type InvoiceFields, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
 import { ibanSha } from "../agents/invoice.js";
-import { canonicalTerms, termsHash, type Terms } from "../lib/terms.js";
+import { canonicalTerms, sha256Hex, termsHash, type Terms } from "../lib/terms.js";
 import { proofBundle } from "./proofBundle.js";
 import type { ProofBundle } from "../proof/bundle.js";
 import { recordsPdf } from "./recordsPdf.js";
@@ -225,6 +226,31 @@ export interface VaultFile { path: string; kind: string; bytes: number; sha256: 
 const NO_FOLDER = "/purser-engine-has-no-folder";
 /** Whose each passkey is, by the id the caller (the cloud) gives its person; the host's own table, as feed.ts keeps one. */
 const PASSKEY_PEOPLE = "CREATE TABLE IF NOT EXISTS engine_passkey_people (credential_id TEXT PRIMARY KEY, person TEXT NOT NULL)";
+
+// The approval key's life (review finding 2, 20 Nov). The first key of a company is enrolled as before: the signed-in
+// person is the confirmation. A key added while one is active (another person's, or a replacement) needs more than a
+// sign-in: an active approval key's signature over the new key's id and public-key hash (the endorsement), or the
+// host's word that a second owner co-signed, or that the person's account was recovered by two platform admins. Such
+// a key then waits a cooling-off before it approves anything, so every owner hears of it and can stop it first.
+/** How each approval key was authorised and until when it may not approve; the host's own table, as PASSKEY_PEOPLE. */
+const PASSKEY_TRUST = "CREATE TABLE IF NOT EXISTS engine_passkey_trust (credential_id TEXT PRIMARY KEY, how TEXT NOT NULL, by TEXT, enrolled_at TEXT NOT NULL, cooling_until TEXT)";
+/** The default cooling-off of a key added by replacement, by endorsement or co-signature, or after a recovery. */
+export const APPROVAL_KEY_COOLING_OFF_MS = 72 * 3_600_000;
+export type KeyHow = "first" | "endorsed" | "cosigned" | "recovery";
+/** What an active key signs to vouch for a new one: the new key's id and the SHA-256 of its public key (SPKI), and nothing else. */
+export function endorsementHash(credentialId: string, spkiSha256: string): string {
+  return sha256Hex(`purser.approval-key.endorse/v1\n${credentialId}\n${spkiSha256}`);
+}
+/** The WebAuthn challenge of that endorsement (base64url of the hash's 32 bytes, as a proposal's challenge is). */
+export const endorsementChallenge = (credentialId: string, spkiSha256: string): string => challengeFor(endorsementHash(credentialId, spkiSha256));
+export const ENDORSEMENT_REQUIRED = "An approval key is already active in this company: a new one counts only when an active approval key signs for it, or a second owner confirms it with their passkey.";
+const HOW_WORDS: Record<KeyHow, string> = { first: "the company's first key", endorsed: "vouched for by an active key", cosigned: "confirmed by a second owner", recovery: "after an account recovery" };
+const credentialIdOf = (c: unknown): string | null => (c && typeof c === "object" && typeof (c as { id?: unknown }).id === "string" ? (c as { id: string }).id : null);
+
+/** The answer to a new approval key. */
+export type PasskeyFinished =
+  | { ok: true; credential_id: string; how: KeyHow; by: string | null; cooling_until: string | null }
+  | { ok: false; reason: string; code?: "endorsement_required" | "endorsement_refused"; endorse?: { credential_id: string; spki_sha256: string; challenge: string; keys: string[] } };
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e)).slice(0, 500);
 
 /** What the phone's approval page shows of these terms, in the company's language, and what it warns about. */
@@ -332,6 +358,8 @@ export class EngineHost {
 
   async status(): Promise<{
     mode: "test_money"; passkey: { credential_id: string; label: string } | null; balances: Record<string, string>; chains: { audit: boolean; ledger: boolean };
+    /** Every active approval key: whose (the host's id for the person), how it was authorised, and until when it cools off. */
+    passkeys: { credential_id: string; label: string; person: string | null; how: KeyHow; cooling_until: string | null }[];
     /** Who reads the next document: Claude (when the caps allow it), or the parser. */
     reader: "claude" | "parser";
     /** Who decides: the payables agents with Claude (when Claude may be asked), or code (task A6). */
@@ -347,9 +375,17 @@ export class EngineHost {
     const pk = activePasskey(db);
     const balances = await rails.rail.balances();
     const claude = this.deps.claude ? await this.deps.claude.status() : { on: false, cap_micros: null, spent_micros: null };
+    db.exec(PASSKEY_PEOPLE);
+    db.exec(PASSKEY_TRUST);
+    const now = this.now();
+    const keys = (db.prepare(`SELECT k.credential_id, k.label, p.person, t.how, t.cooling_until FROM passkeys k LEFT JOIN engine_passkey_people p ON p.credential_id = k.credential_id
+      LEFT JOIN engine_passkey_trust t ON t.credential_id = k.credential_id WHERE k.status = 'ACTIVE' ORDER BY k.enrolled_at, k.credential_id`).all() as
+      { credential_id: string; label: string; person: string | null; how: KeyHow | null; cooling_until: string | null }[])
+      .map((k) => ({ credential_id: k.credential_id, label: k.label, person: k.person, how: k.how ?? "first", cooling_until: k.cooling_until && Date.parse(k.cooling_until) > now.getTime() ? k.cooling_until : null }));
     return {
       mode: "test_money",
       passkey: pk ? { credential_id: pk.credential_id, label: pk.label } : null,
+      passkeys: keys,
       balances: Object.fromEntries(Object.entries(balances).map(([currency, b]) => [currency, fromCents(b?.availableCents ?? 0)])),
       chains: { audit: verifyAuditChain(db).ok, ledger: verifyLedger(db).ok },
       reader: claude.on ? "claude" : "parser", agents: claude.on && this.deps.claude?.agents ? "live" : "code", spent_micros: claude.spent_micros ?? claudeCost(db, 0), cap_micros: claude.cap_micros,
@@ -665,27 +701,92 @@ export class EngineHost {
 
   /**
    * The new passkey, verified against the window by the engine, then confirmed by the host itself: on a runner a
-   * person confirms the fingerprint the phone shows; here the caller is the signed-in owner, and that is the confirmation.
+   * person confirms the fingerprint the phone shows; here the caller is the signed-in person, and for the company's
+   * first key that is the confirmation. While another key is active, the new one also needs one of: `endorsement`, an
+   * active key's signature over endorsementChallenge(new id, its SPKI hash), verified here; `cosigned`, the host's word
+   * (it verified) that a second owner confirmed it with their passkey (`cosignRefused`: it refused one, which is audited
+   * and refused here too); `recovered`, the host's word that the person's
+   * account was recovered by two platform admins. Without one it stays pending (the window's ten minutes) and the
+   * answer names the challenge. Such a key may not approve for `coolingOffMs` (default 72 hours; 0: none).
    */
-  passkeyFinish(a: { code: string; credential: unknown; label: string; person?: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }> {
+  passkeyFinish(a: { code: string; credential: unknown; label: string; person?: string; endorsement?: unknown; cosigned?: { by: string }; cosignRefused?: string; recovered?: { by: string }; coolingOffMs?: number }): Promise<PasskeyFinished> {
     return this.act(async () => {
       const { db } = this.deps;
       const now = this.now();
       const item: InboxItem = { ticket: "engine", kind: "registration", proposal_id: null, body: JSON.stringify({ code: a.code, credential: a.credential }), received_at: now.toISOString() };
       const out = await processRegistration(db, item, { label: a.label }, now);
       if (out.status === "refused" || !out.credentialId) return { ok: false, reason: out.message };
+      db.exec(PASSKEY_TRUST);
+      let trust: { how: KeyHow; by: string | null; cooling_until: string | null } | null = this.trustOf(out.credentialId);
       if (out.status === "pending") {
-        const waiting = pendingPasskeys(db, now).find((p) => p.credential_id === out.credentialId);
+        const id = out.credentialId;
+        const waiting = pendingPasskeys(db, now).find((p) => p.credential_id === id);
         if (!waiting) return { ok: false, reason: "the enrolment window closed before the passkey was confirmed; start again" };
+        const others = (db.prepare("SELECT credential_id FROM passkeys WHERE status = 'ACTIVE' AND credential_id != ? ORDER BY enrolled_at, credential_id").all(id) as { credential_id: string }[]).map((r) => r.credential_id);
+        let how: KeyHow = "first";
+        let by: string | null = null;
+        if (others.length) {
+          const spki = (db.prepare("SELECT spki_sha256 FROM passkey_pending WHERE credential_id = ?").get(id) as { spki_sha256: string }).spki_sha256;
+          const granted = await this.keyGrant(a, id, spki, now);
+          if (!granted) {
+            audit(db, "system", "passkey.endorsement_required", id, { active_keys: others.length }, now);
+            return { ok: false, code: "endorsement_required", reason: ENDORSEMENT_REQUIRED, endorse: { credential_id: id, spki_sha256: spki, challenge: endorsementChallenge(id, spki), keys: others } };
+          }
+          if ("refused" in granted) {
+            audit(db, "system", "passkey.endorsement_refused", id, { reason: granted.refused }, now);
+            return { ok: false, code: "endorsement_refused", reason: `${granted.refused}. The new key was not enrolled.` };
+          }
+          ({ how, by } = granted);
+        }
         try { confirmPasskey(db, waiting.fingerprint, now); } catch (e) { return { ok: false, reason: message(e) }; }
+        const ms = how === "first" ? 0 : Number.isFinite(a.coolingOffMs) && a.coolingOffMs! >= 0 ? Math.floor(a.coolingOffMs!) : APPROVAL_KEY_COOLING_OFF_MS;
+        const cooling = ms > 0 ? new Date(now.getTime() + ms).toISOString() : null;
+        db.prepare("INSERT INTO engine_passkey_trust (credential_id, how, by, enrolled_at, cooling_until) VALUES (?, ?, ?, ?, ?) ON CONFLICT(credential_id) DO UPDATE SET how = excluded.how, by = excluded.by, enrolled_at = excluded.enrolled_at, cooling_until = excluded.cooling_until")
+          .run(id, how, by, now.toISOString(), cooling);
+        audit(db, "system", "passkey.key_authorised", id, { how, by, cooling_until: cooling, others_active: others.length }, now);
+        trust = { how, by, cooling_until: cooling };
       }
       // Whose passkey it is, by the caller's own id for the person: a name is free text and two people may share one.
       if (a.person !== undefined) {
         db.exec(PASSKEY_PEOPLE);
         db.prepare("INSERT INTO engine_passkey_people (credential_id, person) VALUES (?, ?) ON CONFLICT(credential_id) DO UPDATE SET person = excluded.person").run(out.credentialId, a.person);
       }
-      return { ok: true, credential_id: out.credentialId };
+      return { ok: true, credential_id: out.credentialId, how: trust?.how ?? "first", by: trust?.by ?? null, cooling_until: trust?.cooling_until ?? null };
     });
+  }
+
+  /** How a key was authorised and until when it may not approve (none recorded: a key from before, or the first). */
+  private trustOf(credentialId: string): { how: KeyHow; by: string | null; cooling_until: string | null } | null {
+    this.deps.db.exec(PASSKEY_TRUST);
+    return (this.deps.db.prepare("SELECT how, by, cooling_until FROM engine_passkey_trust WHERE credential_id = ?").get(credentialId) as { how: KeyHow; by: string | null; cooling_until: string | null } | undefined) ?? null;
+  }
+
+  /** The key's cooling-off, while it lasts. */
+  private coolingOf(credentialId: string, now: Date): { how: KeyHow; until: string; since: string } | null {
+    this.deps.db.exec(PASSKEY_TRUST);
+    const r = this.deps.db.prepare("SELECT how, cooling_until, enrolled_at FROM engine_passkey_trust WHERE credential_id = ?").get(credentialId) as { how: KeyHow; cooling_until: string | null; enrolled_at: string } | undefined;
+    return r?.cooling_until && Date.parse(r.cooling_until) > now.getTime() ? { how: r.how, until: r.cooling_until, since: r.enrolled_at } : null;
+  }
+
+  /** What authorises a key added while another is active: an endorsement (checked here), the host's co-signature or recovery; null: none was given. */
+  private async keyGrant(a: { endorsement?: unknown; cosigned?: { by: string }; cosignRefused?: string; recovered?: { by: string } }, newId: string, spki: string, now: Date): Promise<{ how: KeyHow; by: string } | { refused: string } | null> {
+    const { db } = this.deps;
+    // The host checked a second owner's co-signature and refused it: refused here too, so the audit log has it.
+    if (a.cosignRefused) return { refused: a.cosignRefused.replace(/\.$/, "").slice(0, 240) };
+    if (a.endorsement !== undefined) {
+      const id = credentialIdOf(a.endorsement);
+      const pk = id && id !== newId ? passkeyById(db, id) : null;
+      if (!pk || pk.status !== "ACTIVE") return { refused: "The key that signed for the new one is not an active approval key of this company" };
+      const cooling = this.coolingOf(pk.credential_id, now);
+      if (cooling) return { refused: `The key that signed for the new one is itself in its cooling-off until ${cooling.until}: it cannot vouch for another key yet` };
+      const v = await verifyApprovalSignature(a.endorsement as AuthenticationResponseJSON, endorsementHash(newId, spki), pk);
+      if (!v.ok) return { refused: "The signature for the new key does not verify: it must be an active approval key's signature over the new key's id and public-key hash" };
+      db.prepare("UPDATE passkeys SET counter = ? WHERE credential_id = ? AND counter <= ?").run(v.newCounter, pk.credential_id, v.newCounter);
+      return { how: "endorsed", by: pk.credential_id.slice(0, 8) };
+    }
+    if (a.cosigned?.by) return { how: "cosigned", by: a.cosigned.by.slice(0, 120) };
+    if (a.recovered?.by) return { how: "recovery", by: a.recovered.by.slice(0, 120) };
+    return null;
   }
 
   /**
@@ -714,7 +815,7 @@ export class EngineHost {
    * executor run, on the host's rails, and then the payment is followed, booked, archived and fed. An error of the
    * executor or of what follows comes back in settled.error; the approval stays.
    */
-  approve(a: { proposal_id: string; terms_sha256: string; credential: unknown; hold?: boolean }): Promise<{ status: string; message: string; settled: Settled | null; held?: true }> {
+  approve(a: { proposal_id: string; terms_sha256: string; credential: unknown; hold?: boolean }): Promise<{ status: string; message: string; settled: Settled | null; held?: true; code?: "cooling_off"; cooling_until?: string }> {
     return this.act(async () => {
       const { db } = this.deps;
       const now = this.now();
@@ -722,6 +823,20 @@ export class EngineHost {
       // money is at risk; but an approval sent with other terms is not the one the person saw, and is refused as such.
       const held = db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(a.proposal_id) as { terms_sha256: string } | undefined;
       if (held && held.terms_sha256 !== a.terms_sha256) return { status: "refused", message: REFUSED_TERMS_NOT_ON_SCREEN, settled: null };
+      // A key in its cooling-off (added by replacement, endorsement or co-signature, or after a recovery) approves
+      // nothing yet. Only a signature that verifies is written to the audit log: anyone may send a key's id.
+      const keyId = credentialIdOf(a.credential);
+      const cooling = keyId ? this.coolingOf(keyId, now) : null;
+      if (cooling && keyId) {
+        const pk = passkeyById(db, keyId);
+        let verified = false;
+        if (pk && pk.status === "ACTIVE" && held) {
+          try { verified = (await verifyApprovalSignature(a.credential as AuthenticationResponseJSON, held.terms_sha256, pk)).ok; } catch { verified = false; }
+        }
+        if (verified) audit(db, "system", "passkey.cooling_off_refused", a.proposal_id, { credential: keyId.slice(0, 8), how: cooling.how, until: cooling.until }, now);
+        return { status: "refused", code: "cooling_off", cooling_until: cooling.until, settled: null,
+          message: `This approval key was added on ${cooling.since.slice(0, 16).replace("T", " ")} UTC (${HOW_WORDS[cooling.how]}) and is in its cooling-off until ${cooling.until.slice(0, 16).replace("T", " ")} UTC: a new or recovered key may not approve before then, so every owner can stop it. Nothing was paid.` };
+      }
       // Only these three fields travel: the decision is always an approval (rejecting is not one of the host's actions).
       const item: InboxItem = { ticket: "engine", kind: "assertion", proposal_id: null, body: JSON.stringify({ proposal_id: a.proposal_id, terms_sha256: a.terms_sha256, credential: a.credential }), received_at: now.toISOString() };
       const out = await processAssertion(db, item, now);

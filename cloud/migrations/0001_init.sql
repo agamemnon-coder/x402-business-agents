@@ -582,3 +582,8 @@ CREATE TABLE IF NOT EXISTS oidc_states (
   browser_sha256 TEXT NOT NULL,
   expires_at INTEGER NOT NULL
 );
+
+-- Owner recovery takes two platform admins (20 Nov, review finding 2; cloud/src/recovery.ts;
+-- cloud/migrations/0010_recovery_requests.sql adds it to an older database): one named admin key asks, a different one
+-- approves, and only then is the recovery key issued. Admin key ids, an owner id and times; never a key or a secret.
+CREATE TABLE IF NOT EXISTS recovery_requests (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, owner_id TEXT NOT NULL, check_method TEXT NOT NULL, requested_by TEXT NOT NULL, requested_at TEXT NOT NULL, expires_at TEXT NOT NULL, approved_by TEXT, approved_at TEXT, recovery_key TEXT);

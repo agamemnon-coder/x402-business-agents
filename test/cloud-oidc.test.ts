@@ -182,6 +182,10 @@ describe("signing in with a linked account", () => {
     expect(res.json).toMatchObject({ role: "owner", user_id: a.owner, tenant: "company-a", read_only: true, expires_in: 900 });
     const s = res.json.session as string;
     expect((await c.req("GET", "/v1/me", { key: s })).json.scopes).toEqual(["read"]);
+    // This owner's company has no CFO, so the same owner signed in with the passkey approves (docs/security/roles.md);
+    // signed in with Google, never: no approve scope, no approves, no approval passkey (review finding 5).
+    expect((await c.req("GET", "/v1/me", { key: a.session })).json.approves).toBe("owner_without_cfo");
+    expect((await c.req("GET", "/v1/me", { key: s })).json).toMatchObject({ approves: null, signed_in_with: "oidc" });
     expect((await c.req("GET", "/v1/invoices", { key: s })).status).toBe(200);
     // Owner rights take the passkey: keys, people, webhooks, chat hooks, connections, the export, closing.
     expect((await c.req("POST", "/v1/keys", { key: s, body: { name: "x", scopes: ["read"] } })).status).toBe(403);

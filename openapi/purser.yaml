@@ -29,7 +29,7 @@ tags:
     description: "The hands-on demo's own routes (/try): a visitor's test company, for a day, test money."
   - name: Site
     description: Icons and pages.
-x-purser-safety: "A key reads (read) and files an invoice's payment for the CFO's approval (propose). No key approves: approving is a signed-in person's passkey over the exact terms (POST /v1/engine/proposals/{id}/approve refuses every key)."
+x-purser-safety: "A key reads (read) and files an invoice's payment for the CFO's approval (propose). No key approves: approving needs the approve scope, a signed-in CFO's (an owner's only in a company with no CFO), and their passkey over the exact terms (POST /v1/engine/proposals/{id}/approve refuses every key)."
 components:
   responses:
     BadRequest:
@@ -300,7 +300,7 @@ components:
     bearer:
       type: http
       scheme: bearer
-      description: "An API key (pck_...; scopes read, sync, admin, propose) or a passkey session (pcs....)"
+      description: "An API key (pck_...; scopes read, sync, admin, propose; never approve) or a passkey session (pcs....; its role's scopes: a CFO's carry approve, docs/security/roles.md)"
     platformAdmin:
       type: http
       scheme: bearer
@@ -1238,9 +1238,42 @@ paths:
       operationId: postV1AdminTenantsByIdRecovery
       tags:
         - Platform
-      summary: "An owner lost their passkey: after checking out of band who asks (checked_by says how), issue a one-time recovery key for that owner, good for one day and one passkey enrolment of that owner; redeemed, the owner's old passkeys and sessions end. One open recovery per company; the company's webhook and security events record it."
+      summary: "An owner lost their passkey. The first of two platform admins, after checking out of band who asks: { owner_id, check } (check: video_call, in_person or phone_callback). Answers 202 with the request (a day long, one open per owner); no key is issued until a second, different named admin key approves it. The legacy admin token takes no part. The company's webhook and security events record it."
       parameters:
         - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - platformAdmin: []
+      x-purser-needs: platform
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/admin/tenants/{id}/recovery/{request}/approve":
+    post:
+      operationId: postV1AdminTenantsByIdRecoveryByRequestApprove
+      tags:
+        - Platform
+      summary: "The second platform admin approves an owner's recovery request: a named admin key other than the one that asked, while the request is open. Only then is the one-time recovery key issued for that owner, good for one day and one passkey enrolment of that owner; redeemed, the owner's old passkeys and sessions end, and a new approval key they enrol cools off before it approves. One open recovery per company; the company's webhook and security events record both admins."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: request
           in: path
           required: true
           schema:
@@ -1673,7 +1706,7 @@ paths:
       operationId: getMe
       tags:
         - Access
-      summary: "Who is calling: the company, and the key's scopes or the person's role."
+      summary: "Who is calling: the company, and the key's scopes or the person's role; approves says why a person may approve (cfo, or owner_without_cfo: an owner of a company with no CFO), null when they may not."
       security:
         - bearer:
             - read
@@ -3130,8 +3163,8 @@ paths:
       summary: "Start the approval passkey of the signed-in person (a session only, never a key): the challenge and code of a short enrolment window, the relying party, the person, and the passkeys to exclude."
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       x-purser-step-up: "when the company asks again before sensitive changes: a session's passkey checked in the last five minutes"
       responses:
         "200":
@@ -3151,7 +3184,7 @@ paths:
       operationId: postV1EnginePasskeyFinish
       tags:
         - Engine (payments)
-      summary: "Finish the approval passkey (a session only): { code, credential } with the passkey the browser made for the challenge; it is labelled with the signed-in person's name. 409 with the engine's reason when it is refused."
+      summary: "Finish the approval passkey (a session only; the approve scope): { code, credential } with the passkey the browser made for the challenge; it is labelled with the signed-in person's name. Answers { credential_id, how, cooling_until }. The company's first key needs nothing more; while another approval key is active, the first answer is 409 endorsement_required with the challenge (endorse), and the same request again must carry endorsement (an active approval key's assertion over it) or cosign { credential_id, assertion } (another owner's passkey over it); a recovered owner's first new key needs neither. 403 endorsement_refused for a bad one. Such a key approves nothing before cooling_until (72 hours; 0 on a /try test company, said in cooling_note). 409 with the engine's reason when it is refused otherwise."
       requestBody:
         required: true
         content:
@@ -3168,14 +3201,47 @@ paths:
                   propertyNames:
                     type: string
                   additionalProperties: {}
+                endorsement:
+                  type: object
+                  propertyNames:
+                    type: string
+                  additionalProperties: {}
+                cosign:
+                  type: object
+                  properties:
+                    credential_id:
+                      type: string
+                      minLength: 8
+                      maxLength: 400
+                    assertion:
+                      type: object
+                      properties:
+                        authenticatorData:
+                          type: string
+                          maxLength: 4000
+                        clientDataJSON:
+                          type: string
+                          maxLength: 8000
+                        signature:
+                          type: string
+                          maxLength: 400
+                      required:
+                        - authenticatorData
+                        - clientDataJSON
+                        - signature
+                      additionalProperties: false
+                  required:
+                    - credential_id
+                    - assertion
+                  additionalProperties: false
               required:
                 - code
                 - credential
               additionalProperties: false
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       x-purser-step-up: "when the company asks again before sensitive changes: a session's passkey checked in the last five minutes"
       responses:
         "200":
@@ -3221,8 +3287,8 @@ paths:
       summary: "Start registering a security key for the signed-in person (a session only): the second key of high-risk payments (USB or NFC, such as a YubiKey), beside their approval passkey, which must exist. Answers the challenge, the user handle, the relying party and the credentials to exclude; the page asks with authenticatorAttachment cross-platform."
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       x-purser-step-up: "when the company asks again before sensitive changes: a session's passkey checked in the last five minutes"
       responses:
         "200":
@@ -3245,8 +3311,8 @@ paths:
       summary: "Finish registering the security key (a session only): { credential } as the browser made it; a credential the browser reports as a platform authenticator (Face ID, Touch ID) is refused, and so is one already registered."
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       x-purser-step-up: "when the company asks again before sensitive changes: a session's passkey checked in the last five minutes"
       responses:
         "200":
@@ -3266,7 +3332,7 @@ paths:
       operationId: postV1EngineProposalsByIdApprove
       tags:
         - Engine (payments)
-      summary: "Approve a proposal with the approval passkey (a session only): { terms_sha256, credential } with the passkey's signature over the proposal's challenge. Answers { status, message, settled }: only status approved pays (on the stand-in bank), and settled says paid, booked, archived and fed; a signature over other terms is refused and nothing runs."
+      summary: "Approve a proposal with the approval passkey (a session only; the approve scope: the CFO, or an owner of a company with no CFO): { terms_sha256, credential } with the passkey's signature over the proposal's challenge. Answers { status, message, settled }: only status approved pays (on the stand-in bank), and settled says paid, booked, archived and fed; a signature over other terms is refused and nothing runs. A key still in its cooling-off (new or recovered) is refused: 403 cooling_off with cooling_until, nothing paid, told to the owners."
       parameters:
         - name: id
           in: path
@@ -3294,8 +3360,8 @@ paths:
               additionalProperties: false
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       responses:
         "200":
           description: OK
@@ -3727,8 +3793,8 @@ paths:
             type: string
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       responses:
         "200":
           description: OK
@@ -3831,8 +3897,8 @@ paths:
             type: string
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       responses:
         "200":
           description: OK

@@ -228,7 +228,9 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
     expect(read("cloud/src/auth.ts")).toContain(`if (ownerPasskeys > 0 && !(caller.kind === "session" && caller.role === "owner")) throw new AuthError(403, "only a signed-in owner may enrol an owner's passkey");`);
     const cloud = flat("docs/cloud.md");
     expect(cloud).toContain("| POST /v1/users/{id}/enrolment | admin | Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one). |");
-    expect(cloud).toContain("| POST /v1/admin/tenants/{id}/recovery | platform admin | An owner lost their passkey: after checking out of band who asks (checked_by says how), issue a one-time recovery key for that owner");
+    // 20 Nov (review finding 2): two platform admins, one asks and a different one approves; the check is no free text.
+    expect(cloud).toContain("| POST /v1/admin/tenants/{id}/recovery | platform admin | The first of two platform admins: an owner lost their passkey. { owner_id, check }, where check is how the owner was checked out of band (video_call, in_person or phone_callback; no free text).");
+    expect(cloud).toContain("| POST /v1/admin/tenants/{id}/recovery/{request}/approve | platform admin | The second platform admin: a named admin key other than the one that asked approves the open request, and only then is the one-time recovery key issued for that owner");
     expect(cloud).toContain("Redeemed, it removes the owner's old passkeys, ends their sessions and is spent, in the same write as the new passkey.");
     // "Built, not live": the hosted preview is private and no customer uses it.
     // 12 Nov (jury check): one statement on Purser Cloud: the public test preview, then the console's private one.

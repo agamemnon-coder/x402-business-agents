@@ -257,6 +257,17 @@ Rate limits, where the docs say them (each asserted in the same test or the test
   mandates, the owner's issuer signs the replacement credential off chain at proposal time. It moves nothing until
   `mandate replace` binds it, and the CFO approves exactly that credential (its hash is in the terms). Recording
   Alta's refusal on chain now pays gas from a gas-only key that owns nothing (it used the owner key before).
+- **People in Purser Cloud** (20 November, review finding 5): the CFO approves (`read` + `approve`) and manages
+  nothing; an owner manages (`read` + `admin`) and approves only in a company that has no CFO who can sign in, where
+  the console says so; an accountant or viewer reads. No API key holds `approve`. The matrix of roles, scopes and
+  actions is [security/roles.md](security/roles.md), held to the code by `test/cloud-roles.test.ts`.
+- **The approval key's life in Purser Cloud** (20 November, review finding 2): a key added while one is active needs
+  an active approval key's signature over its id and public-key hash, or a second owner's passkey co-signature, or a
+  recovery by two platform admins; it then approves nothing for a cooling-off of 72 hours (configurable, never under 24
+  in the deployed Worker; 0 on /try's test companies, labelled). Refusals are in the security log and the engine's
+  audit log; every owner is told through the security events and the alert webhook. Owner recovery takes two named
+  admin keys, one to ask and a different one to approve (`test/cloud-key-life.test.ts`,
+  `test/cloud-recovery-two-admins.test.ts`, `test/engine-key-life.test.ts`).
 - **Models:** no key, URL, credential or tool. They read text and return typed data that code checks (the test sends
   fake secrets through the environment and asserts that none reaches a request).
 - **Airwallex:** use a *scoped* API key, not an admin key. Airwallex lets each key have Read or Write per resource;
@@ -293,7 +304,7 @@ Rate limits, where the docs say them (each asserted in the same test or the test
 2. **No deputy, no delegation:** neither is built. A second person can be enrolled beforehand; where four eyes does not apply either passkey approves, where it applies both must sign. Our runs had one person: the second signature came from a test passkey. (`src/policy/fourEyes.ts`; `npm run passkey -- add <name>`)
 3. **A lost phone:** the passkey is replaced, not recovered. The old one counts until the new one is confirmed, and is revoked then. (`src/passkey/ledger.ts`)
 4. **Who may enrol a new passkey, on the runner:** only the person at the runner, who opens a ten-minute window with a one-time code and confirms the new passkey's fingerprint. (`npm run relay -- --enrol --replace`, then `npm run passkey -- confirm`)
-5. **Who may enrol, in Purser Cloud (built, not live):** a signed-in owner or an API key with the admin scope starts a person's enrolment; an owner's passkey, once any owner has one, only a signed-in owner. An owner who lost the passkey gets a one-time recovery key from Purser's platform admin after an out-of-band check; using it removes the old passkeys and ends their sessions. (`docs/cloud.md`: `POST /v1/users/{id}/enrolment`, `POST /v1/admin/tenants/{id}/recovery`)
+5. **Who may enrol, in Purser Cloud (built, not live):** a signed-in owner or an API key with the admin scope starts a person's enrolment; an owner's passkey, once any owner has one, only a signed-in owner. An owner who lost the passkey gets a one-time recovery key only when two of Purser's platform admins agree after an out-of-band check (one asks, a different one approves; since 20 November); using it removes the old passkeys and ends their sessions. A new or recovered approval key needs an active key's signature or a second owner, then waits out a cooling-off before it approves. (`docs/cloud.md`: `POST /v1/users/{id}/enrolment`, `POST /v1/admin/tenants/{id}/recovery`; [security/roles.md](security/roles.md))
 
 ## Accepted risks and what is out of scope
 

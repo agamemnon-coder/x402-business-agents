@@ -4,7 +4,7 @@
 // sent to the company's webhook; a second recovery cannot be issued while one is open.
 import { describe, expect, it } from "vitest";
 import { softPasskey } from "../src/metal/softPasskey.js";
-import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
+import { issueRecovery, ORIGIN, RP, testCloud, twoRecoveryAdmins, type TestCloud } from "./support/cloud.js";
 
 const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
 type Pk = { pk: ReturnType<typeof softPasskey>; credential_id: string };
@@ -26,8 +26,8 @@ async function login(c: TestCloud, slug: string, p: Pk): Promise<{ status: numbe
     assertion: { authenticatorData: b64u(a.authenticatorData), clientDataJSON: b64u(a.clientDataJSON), signature: b64u(a.signature) } } });
   return { status: r.status, session: r.json.session as string };
 }
-const issue = (c: TestCloud, tenantId: string, owner: string, checked_by = "video call with the owner, ID checked against the contract") =>
-  c.req("POST", `/v1/admin/tenants/${tenantId}/recovery`, { key: ADMIN_TOKEN, body: { owner_id: owner, checked_by } });
+// Since 20 Nov an owner recovery takes two platform admins (test/cloud-recovery-two-admins.test.ts): one asks, another approves.
+const issue = (c: TestCloud, tenantId: string, owner: string) => issueRecovery(c, tenantId, owner);
 const startEnrol = (c: TestCloud, key: string, user: string) => c.req("POST", `/v1/users/${user}/enrolment`, { key });
 
 function hooks(c: TestCloud): string[] {
@@ -69,11 +69,15 @@ describe("owner recovery", () => {
       const ev = await c.req("GET", "/v1/security/events", { key: s.session });
       // The recovery's own events, beside the passkey and key changes every company's owners are told of (ASVS V2.2.3).
       const kinds = (ev.json.items as { kind: string }[]).map((x) => x.kind);
-      expect(kinds.filter((k) => k.startsWith("recovery."))).toEqual(["recovery.issued", "recovery.completed"]);
+      // Since 20 Nov a recovery is asked for by one platform admin and approved by another: both steps are recorded.
+      // (The request and the issue land at the same instant here, ordered by their random ids; the completion is a minute later.)
+      const rec = kinds.filter((k) => k.startsWith("recovery."));
+      expect([...rec].sort()).toEqual(["recovery.completed", "recovery.issued", "recovery.requested"]);
+      expect(rec.at(-1)).toBe("recovery.completed");
       // The new passkey and the recovery's end happen at the same instant, the last: listed by time, then by random id.
       const items = ev.json.items as { kind: string; at: string }[];
       expect(items.filter((x) => x.at === items.at(-1)!.at).map((x) => x.kind).sort()).toEqual(["passkey.enrolled", "recovery.completed"]);
-      expect(sent.filter((x) => x.startsWith("security.recovery"))).toEqual(["security.recovery_issued", "security.recovery_completed"]);
+      expect(sent.filter((x) => x.startsWith("security.recovery"))).toEqual(["security.recovery_requested", "security.recovery_issued", "security.recovery_completed"]);
       expect(sent).toContain("security.passkey.enrolled");
     } finally { c.close(); }
   });
@@ -83,8 +87,10 @@ describe("owner recovery", () => {
     try {
       const a = await c.tenant("acme");
       const b = await c.tenant("beta");
-      expect((await c.req("POST", `/v1/admin/tenants/${a.id}/recovery`, { key: ADMIN_TOKEN, body: { owner_id: a.owner } })).status).toBe(400);
-      expect((await c.req("POST", `/v1/admin/tenants/${a.id}/recovery`, { key: a.key, body: { owner_id: a.owner, checked_by: "x" } })).status).toBe(401);
+      const admins = await twoRecoveryAdmins(c);
+      (c as TestCloud & { _admins?: unknown })._admins = admins;
+      expect((await c.req("POST", `/v1/admin/tenants/${a.id}/recovery`, { key: admins.first, body: { owner_id: a.owner } })).status).toBe(400);
+      expect((await c.req("POST", `/v1/admin/tenants/${a.id}/recovery`, { key: a.key, body: { owner_id: a.owner, check: "video_call" } })).status).toBe(401);
       const cfo = await c.req("POST", "/v1/users", { key: a.session, body: { display_name: "CFO", role: "cfo" } });
       expect((await issue(c, a.id, (cfo.json.id as string))).status).toBe(409);
       expect((await issue(c, a.id, b.owner)).status).toBe(409);

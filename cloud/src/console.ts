@@ -448,7 +448,8 @@ async function api(path,o){
   const j=await r.json().catch(()=>({error:r.statusText}));
   // The server asks for the passkey again: one Face ID prompt, then the same request once more.
   if(r.status===403&&j.code==='step_up_required'&&!o.token&&!o.stepped&&S){await stepUp();return api(path,Object.assign({},o,{stepped:true}))}
-  if(!r.ok)throw new Error(j.error||r.statusText);
+  // The answer's code and body go with the error (a new approval key's endorsement asks for a second step).
+  if(!r.ok){const x=new Error(j.error||r.statusText);x.code=j.code;x.body=j;throw x}
   return j}
 // The passkey check before a sensitive setting (alert targets, keys, people, connector tokens): the person's own passkey
 // signs a fresh challenge; the step-up token lasts five minutes and works with this session only.
@@ -1006,18 +1007,42 @@ const credOf=(c,response)=>({id:c.id,rawId:b64u(c.rawId),type:c.type,response,cl
 const registrationOf=(c)=>{const r=c.response;return credOf(c,{clientDataJSON:b64u(r.clientDataJSON),attestationObject:b64u(r.attestationObject),transports:typeof r.getTransports==='function'?r.getTransports():[]})};
 const signedOf=(c)=>{const r=c.response;return credOf(c,{clientDataJSON:b64u(r.clientDataJSON),authenticatorData:b64u(r.authenticatorData),signature:b64u(r.signature),...(r.userHandle?{userHandle:b64u(r.userHandle)}:{})})};
 // The approval passkey of the signed-in person, made on this device for the engine's enrolment window; the engine checks it.
+// While another approval key is active (review finding 2), the new one counts only when an active approval key signs
+// for it (the engine names the challenge), or else when a second owner confirms it with their own passkey; it then waits
+// its cooling-off before it approves. Answers the engine's { how, cooling_until }.
 async function approvalPasskey(){
   const s=await engineCall('/v1/engine/passkey/start',{method:'POST'});
   const made=await navigator.credentials.create({publicKey:{rp:{id:s.rp.id,name:s.rp.name},user:{id:new TextEncoder().encode(s.user.id),name:s.user.name,displayName:s.user.displayName},challenge:fromB64u(s.challenge),
     pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
     authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}});
-  await engineCall('/v1/engine/passkey/finish',{method:'POST',body:{code:s.code,credential:registrationOf(made)}});
-  engineStale()}
+  const body={code:s.code,credential:registrationOf(made)};
+  let r;
+  try{r=await engineCall('/v1/engine/passkey/finish',{method:'POST',body})}
+  catch(e){
+    if(!e||e.code!=='endorsement_required'||!e.body||!e.body.endorse)throw e;
+    const en=e.body.endorse;
+    // First an active approval key (this person's old one, or another approver's, on this or a nearby device).
+    let c=null;
+    if(confirm(t('cs.eng.endorse_q'))){try{c=await navigator.credentials.get({publicKey:{challenge:fromB64u(en.challenge),rpId:CFG.rpId,allowCredentials:(en.keys||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),userVerification:'required',timeout:120000}})}catch(x){c=null}}
+    if(c)r=await engineCall('/v1/engine/passkey/finish',{method:'POST',body:Object.assign({},body,{endorsement:signedOf(c)})});
+    else{
+      // Else a second owner signs in-place with their own Purser passkey.
+      if(!confirm(t('cs.eng.cosign_q')))throw new Error(t('cs.eng.endorse_needed'));
+      const o=await navigator.credentials.get({publicKey:{challenge:fromB64u(en.challenge),rpId:CFG.rpId,userVerification:'required',timeout:120000}});
+      r=await engineCall('/v1/engine/passkey/finish',{method:'POST',body:Object.assign({},body,{cosign:{credential_id:b64u(o.rawId),assertion:assertionOf(o)}})});
+    }
+  }
+  engineStale();
+  return r||{}}
+// What the person is told once their new approval key is in: at once, or after its cooling-off (a /try test company: none, labelled).
+const keyNote=(r)=>r&&r.cooling_until?note(t('cs.eng.cooling',{when:stamp(r.cooling_until)}),'warn'):r&&r.cooling_note?note(r.cooling_note,'warn'):note(t('cs.eng.set_up'),'ok');
 // The engine's own view of the invoice (o.inv, from GET /v1/engine/invoices) decides what the card offers; o.write: an owner;
 // o.moved(): the read model is read again. Nothing shows as done before its answer is in: the one button is off and says
 // it is working while a request or a passkey prompt is open; a cancelled prompt leaves the card as it was.
 function payCard(o){
   const i=o.inv;let eng=o.eng;
+  // The approver's own key (GET /v1/engine my_passkey), not whoever set one up first: each approver signs with their own.
+  const myKey=()=>eng&&(eng.my_passkey||null);
   // A paid or rejected invoice has nothing to act on here.
   if(['paid','rejected'].includes(i.status))return null;
   const box=el('section','card panel pay');box.id='pay';
@@ -1033,22 +1058,26 @@ function payCard(o){
     fs.length>4?el('details','',[el('summary','',t('cs.eng.more_terms',{n:fs.length-4})),factsDl(fs.slice(4))]):null]};
   const print=(p)=>el('details','',[el('summary','',t('cs.eng.terms_fold')),dl([[t('cs.eng.terms_hash'),p.terms_sha256,'mono'],[t('cs.eng.proposal_id'),p.id,'mono']])]);
   function proposal(p){
-    if(!o.write||p.status!=='PENDING_APPROVAL'){draw([...terms(p),print(p)]);return}
+    // Who approves (docs/security/roles.md): the CFO; an owner only in a company with no CFO, and then the card says so.
+    if(!o.approve||p.status!=='PENDING_APPROVAL'){draw([...terms(p),p.status==='PENDING_APPROVAL'?note(t('cs.eng.cfo_approves')):null,print(p)]);return}
     if(!hasPasskeys()){draw([...terms(p),note(t('cs.no_passkeys'),'bad'),print(p)]);return}
+    const mine=myKey();
     // A high-risk payment (src/policy/secondKey.ts) whose Face ID is in: the security key is next.
     const keyNext=!!(p.second_key&&p.second_key.signed.passkey&&!p.second_key.signed.security_key);
-    const b=eng&&eng.passkey?(keyNext?btn(t('cs.eng.touch_key'),'primary','key-round'):btn(t('cs.eng.approve'),'primary','scan-face')):btn(t('cs.eng.setup'),'primary','key-round');
-    if(eng&&eng.passkey)act(b,()=>approve(p));
-    else act(b,async()=>{await approvalPasskey();eng=await engineStatus();proposal(p);said.replaceChildren(note(t('cs.eng.set_up'),'ok'))});
-    draw([...terms(p),el('p','fine',t('cs.eng.signs')),el('div','acts',[b]),eng&&eng.passkey?el('p','fine',t('cs.eng.holder',{name:eng.passkey.label})):null,said,print(p)])}
+    const b=mine?(keyNext?btn(t('cs.eng.touch_key'),'primary','key-round'):btn(t('cs.eng.approve'),'primary','scan-face')):btn(t('cs.eng.setup'),'primary','key-round');
+    if(mine)act(b,()=>approve(p));
+    else act(b,async()=>{const r=await approvalPasskey();eng=await engineStatus();proposal(p);said.replaceChildren(keyNote(r))});
+    draw([...terms(p),o.ownerApproves?note(t('cs.eng.owner_approves')):null,mine&&mine.cooling_until?note(t('cs.eng.cooling',{when:stamp(mine.cooling_until)}),'warn'):null,
+      el('p','fine',t('cs.eng.signs')),el('div','acts',[b]),mine?el('p','fine',t('cs.eng.holder',{name:mine.label})):null,said,print(p)])}
   async function approve(p){
     let c;
     // Face ID first; on a high-risk payment whose Face ID is in, the person's security key (USB or NFC) signs the same terms.
     const keyNext=!!(p.second_key&&p.second_key.signed.passkey&&!p.second_key.signed.security_key);
-    const allow=keyNext?p.second_key.security_keys.map((id)=>({type:'public-key',id:fromB64u(id)})):[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}];
+    const mine=myKey();
+    const allow=keyNext?p.second_key.security_keys.map((id)=>({type:'public-key',id:fromB64u(id)})):[{type:'public-key',id:fromB64u(mine.credential_id)}];
     if(keyNext&&!allow.length)throw new Error(t('cs.sec.no_key'));
     try{c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:allow,userVerification:'required',timeout:120000}})}
-    catch(e){if(e&&e.name==='NotAllowedError')throw new Error(t('cs.eng.cancelled')+' '+t('cs.eng.other_device',{name:eng.passkey.label}));throw e}
+    catch(e){if(e&&e.name==='NotAllowedError')throw new Error(t('cs.eng.cancelled')+' '+t('cs.eng.other_device',{name:mine.label}));throw e}
     const r=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
     // One key of a high-risk payment: the page says why and asks for the other one.
     if(r.status==='second_key'){const q=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id));proposal(q.proposal);said.replaceChildren(note(r.message,'warn'));return}
@@ -1258,6 +1287,20 @@ async function alertsCard(){
   return card;
 }
 
+// The signed-in approver's own security key (USB or NFC): the second key of high-risk payments. Its button and its status line.
+function securityKeyButton(){
+  const keyMsg=el('div','');keyMsg.setAttribute('role','status');
+  const add=btn(t('cs.sec.add_key'),'','key-round');add.id='add-key';
+  add.onclick=async()=>{add.disabled=true;keyMsg.replaceChildren(note(t('cs.sec.touch_new')));
+      try{const s=await engineCall('/v1/engine/security-key/start',{method:'POST'});
+        const made=await navigator.credentials.create({publicKey:{rp:{id:s.rp.id,name:s.rp.name},user:{id:new TextEncoder().encode(s.user.id),name:s.user.name,displayName:s.user.displayName},challenge:fromB64u(s.challenge),
+          pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
+          authenticatorSelection:{authenticatorAttachment:'cross-platform',userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}});
+        await engineCall('/v1/engine/security-key/finish',{method:'POST',body:{credential:registrationOf(made)}});keyMsg.replaceChildren(note(t('cs.sec.key_added'),'ok'))}
+      catch(e){if(!(e instanceof Expired))keyMsg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{add.disabled=false}};
+  return [add,keyMsg]}
+// The approver's security key on its own card: for a CFO, who has no settings of the company to manage.
+function securityKeyCard(){const [add,keyMsg]=securityKeyButton();return el('div','card panel security',[el('h2','',t('cs.sec.key_h')),el('p','',t('cs.sec.key_lede')),el('div','row2',[add]),keyMsg])}
 // Security (13 Nov): "Ask again before sensitive changes" (off by default; switching it asks for the passkey), and with
 // the engine, a security key as a second key and the CFO's rule for high-risk payments, a policy change signed with Face ID.
 async function securityCard(){
@@ -1271,15 +1314,9 @@ async function securityCard(){
     catch(e){box.checked=!want;if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}finally{box.disabled=false}};
   const kids=[el('h2','',t('cs.sec.title')),lab,el('p','sub',t('cs.sec.step_up_sub')),msg];
   if(CFG.engine){
-    const keyMsg=el('div','');keyMsg.setAttribute('role','status');
-    const add=btn(t('cs.sec.add_key'),'','key-round');add.id='add-key';
-    add.onclick=async()=>{add.disabled=true;keyMsg.replaceChildren(note(t('cs.sec.touch_new')));
-      try{const s=await engineCall('/v1/engine/security-key/start',{method:'POST'});
-        const made=await navigator.credentials.create({publicKey:{rp:{id:s.rp.id,name:s.rp.name},user:{id:new TextEncoder().encode(s.user.id),name:s.user.name,displayName:s.user.displayName},challenge:fromB64u(s.challenge),
-          pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
-          authenticatorSelection:{authenticatorAttachment:'cross-platform',userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}});
-        await engineCall('/v1/engine/security-key/finish',{method:'POST',body:{credential:registrationOf(made)}});keyMsg.replaceChildren(note(t('cs.sec.key_added'),'ok'))}
-      catch(e){if(!(e instanceof Expired))keyMsg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{add.disabled=false}};
+    // The security key is the approver's own second key: only who approves registers one (docs/security/roles.md).
+    const mayApprove=(await me()).scopes.includes('approve');
+    const [add,keyMsg]=securityKeyButton();
     // The CFO's rule: the triggers become one policy change, approved here with the CFO's Face ID; nothing changes before.
     const amount=el('input','field');amount.id='second-key-eur';amount.inputMode='decimal';amount.placeholder='10000.00';amount.maxLength=12;
     const trig=(id,key)=>{const b=el('input','');b.type='checkbox';b.id=id;const l=el('label','check',[b,' ',t(key)]);l.htmlFor=id;return [b,l]};
@@ -1288,14 +1325,16 @@ async function securityCard(){
     const save=btn(t('cs.sec.rule_save'),'primary','scan-face');save.id='second-key-save';
     save.onclick=async()=>{const v=amount.value.trim();if(v&&!/^\d{1,9}\.\d{2}$/.test(v)){ruleMsg.replaceChildren(note(t('cs.sec.amount_rule'),'bad'));return}
       save.disabled=true;
-      try{const eng=await engineStatus();if(!eng||!eng.passkey)throw new Error(t('cs.sec.passkey_first'));
+      try{const eng=await engineStatus();const mayApprove=(await me()).scopes.includes('approve');const mine=eng&&eng.my_passkey;if(!eng||(mayApprove&&!mine))throw new Error(t('cs.sec.passkey_first'));
         const changes=[{key:'approval.second_key_eur',to:v},{key:'approval.second_key_new_payee',to:np.checked?'on':'off'},{key:'approval.second_key_bank_changed',to:bc.checked?'on':'off'},{key:'approval.second_key_new_country',to:nc.checked?'on':'off'}];
         const r=await engineCall('/v1/engine/policy/second-key',{method:'POST',body:{changes}});const p=r.proposal;
-        const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}});
+        // An owner of a company with a CFO proposes; the CFO approves it (docs/security/roles.md).
+        if(!mayApprove){ruleMsg.replaceChildren(note(t('cs.sec.rule_waits_cfo'),'ok'));return}
+        const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(mine.credential_id)}],userVerification:'required',timeout:120000}});
         const a=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
         ruleMsg.replaceChildren(note(a.status==='approved'?t('cs.sec.rule_saved'):a.message,a.status==='approved'?'ok':'bad'))}
       catch(e){if(!(e instanceof Expired))ruleMsg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{save.disabled=false}};
-    kids.push(el('h2','sub-h',t('cs.sec.key_h')),el('p','',t('cs.sec.key_lede')),el('div','row2',[add]),keyMsg,
+    kids.push(...(mayApprove?[el('h2','sub-h',t('cs.sec.key_h')),el('p','',t('cs.sec.key_lede')),el('div','row2',[add]),keyMsg]:[]),
       el('h2','sub-h',t('cs.sec.rule_h')),el('p','',t('cs.sec.rule_lede')),el('div','form-row',[el('div','',[el('label','',t('cs.sec.t_amount')),amount])]),npl,bcl,ncl,el('div','row2',[save]),ruleMsg,note(t('cs.sec.tested')));
   }
   card.replaceChildren(...kids);
@@ -1378,7 +1417,7 @@ async function settingsView(){
   let fwd=null;if(m.inbox&&m.scopes.includes('admin')){try{const f=await api('/v1/mail/forwarding-confirmations');if(f.items.length)fwd=note(t('cs.inbox.gmail_code',{code:f.items[0].code,gmail:f.items[0].gmail}),'ok')}catch(e){if(e instanceof Expired)throw e}}
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),m.inbox?note(t('cs.inbox.forward')):null,fwd,langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
   const ids=m.kind==='session'&&!m.demo?await identitiesCard(m).catch(()=>null):null;
-  if(!owner){const cc=await claudeCard(m,false);const cx=await connectionsCard();view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})),ids,cc,cx);return}
+  if(!owner){const cc=await claudeCard(m,false);const cx=await connectionsCard();const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,cc,cx);return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
