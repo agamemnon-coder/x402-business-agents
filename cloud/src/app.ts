@@ -55,6 +55,7 @@ import { ALWAYS_STEP_UP_ROUTES, freshPasskey, requireStepUp, setStepUp, stepUpOn
 import { finishLink, finishSignIn, identitiesOf, isIdp, offered as idpsOffered, OidcRefused, startOidc, unlink, type IdpName, type OidcEnv } from "./oidc.js";
 import { pushBillsToXero } from "./books/xero.js";
 import { yourConnections } from "./yourConnections.js";
+import { forwardingConfirmations } from "./mail.js";
 import { ChatHookRefused, chatHooks, isChatProduct, postEvent, removeChatHook, setChatHook, SetChatHook, testChatHook, type ChatProduct } from "./chatHooks.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
 
@@ -696,6 +697,7 @@ export const ROUTES: Route[] = [
     return json(200, { applied });
   } },
   { method: "GET", path: "/v1/sync/state", summary: "Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds.", need: "sync", run: async (c) => json(200, await syncState(db(c))) },
+  { method: "GET", path: "/v1/mail/forwarding-confirmations", summary: "Gmail's forwarding confirmation codes that reached the company's Purser address in the last seven days (code and Gmail address only), for the owner who is setting up forwarding from Gmail.", need: "admin", run: async (c) => json(200, { items: await forwardingConfirmations(db(c), c.now) }) },
   { method: "GET", path: "/v1/mail", summary: "Inbound e-mail waiting for the runner; paginated (limit, cursor).", need: "sync", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "inbound_mail", "id", { status: "queued" }, c.url.searchParams, (r) => r)) },
   { method: "GET", path: "/v1/mail/{id}/raw", summary: "One inbound e-mail, raw (RFC 822).", need: "sync", run: async (c) => {
     const m = await db(c).one<{ blob_key: string }>("inbound_mail", { id: c.params[0]! });

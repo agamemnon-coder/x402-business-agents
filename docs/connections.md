@@ -1,23 +1,29 @@
 # Connections to other systems
 
-Every connection reads or exports. **None moves money, approves a payment, changes a limit or writes to the books:**
-every payment needs the CFO's Face ID in Purser Cloud. `GET /v1/connections` returns this list from the code
+Every connection reads, notifies or exports. **None moves money, approves a payment, changes a limit or writes to
+Purser's books;** an accounting system receives drafts or entries a person there checks. Every payment needs the CFO's
+Face ID in Purser Cloud. Each company connects its own systems in Settings ("Your connections"); what the platform sets
+up once is in [integrations/owner-setup.md](integrations/owner-setup.md). `GET /v1/connections` returns this list from the code
 (`cloud/src/connections.ts`), and `test/connections.test.ts` holds each label to what is built.
 
 Labels: **live** means it is built and runs in Purser Cloud; **format export** means Purser writes a file or message in
 another product's documented format, and a person or the team's own tooling takes it from there (there is no live
-connection to that product); **built, not tested live** means the code exists but has not run against the real service.
+connection to that product); **built, not tested live** means the code exists but has not run against the real service;
+**live (owner sets the URL)** means it is built and runs as soon as a company's owner pastes its own URL; Purser's
+tests use stand-ins, and "Send a test" in Settings is how an owner sees the first message arrive.
 
 | Connection | Label | Direction | Where |
 |---|---|---|---|
 | MCP server (Connect any AI) | live | read | `/mcp`, set up per client on `/connect-ai`; [connect-claude.md](connect-claude.md) |
 | Read API (REST) and its OpenAPI | live | read | `/v1/openapi.read.json` (the read API alone), `/v1/openapi.json` (everything) |
 | Webhooks: `payment.paid`, `approval.needed`, `books.closed` | live | notify | `POST /v1/webhook` (an owner sets the address) |
-| Slack and Microsoft Teams messages | format export | notify | below |
+| Slack and Microsoft Teams messages | live (owner sets the URL) | notify | `POST /v1/chat-hooks/{slack,teams}` (Settings, Slack and Teams); below |
 | Xero: bills and manual journals (CSV) | format export | export | `/v1/export/csv/xero/bills`, `/v1/export/csv/xero/journals` |
 | QuickBooks Online: bills (CSV) | format export | export | `/v1/export/csv/quickbooks/bills` |
 | Exact Online: Inkoopboekingen and Memoriaalboekingen (CSV) | format export | export | `/v1/export/csv/exact/bills`, `/v1/export/csv/exact/journals` |
-| Exact Online (REST API, from the runner) | built, not tested live | export | `src/erp/exact.ts` |
+| Exact Online (REST API, from the runner) | built, not tested live | export | each company connects in Settings (`/v1/connect/exact/start`); `src/erp/exact.ts` with `ERP_EXACT_OAUTH=on` |
+| Xero (API): draft bills | built, not tested live | export | each company connects in Settings (`/v1/connect/xero/start`), then `POST /v1/connect/xero/bills` |
+| QuickBooks Online (API): connect only | built, not tested live | export | `/v1/connect/quickbooks/start`; bills push planned: [quickbooks-plan.md](integrations/quickbooks-plan.md) |
 | Moneybird (API, from the runner) | built, run once in a sandbox | export | `src/erp/moneybird.ts`, [moneybird.md](moneybird.md) |
 | ISO 20022 pacs.008 | format export | export | `npm run iso20022` (`src/finance/iso20022.ts`) |
 | Full export (staged JSON) | live | export | `GET /v1/export`, `POST /v1/export/staged` |
@@ -47,11 +53,19 @@ carry ids, amounts and days, never a supplier's or a person's name.
             "approve_in": "https://purser-try.max-31b.workers.dev/#/invoices", "note": "Only the CFO approves, in Purser Cloud, with Face ID." } }
 ```
 
-## Slack and Microsoft Teams (format)
+## Slack and Microsoft Teams
 
-A team that wants every event in chat relays its webhook (after checking the signature)
-to a Slack incoming webhook or a Teams workflow, with the message `chatMessage(event, "slack" | "teams")` in
-`cloud/src/connections.ts` builds. The buttons only open Purser Cloud; there is nothing to approve in chat.
+Each company's owner pastes its own Slack incoming webhook URL (`https://hooks.slack.com/services/…`) or Teams Workflow
+URL (the Teams "Workflows" app, "Send webhook alerts to a channel":
+`https://….environment.api.powerplatform.com/powerautomate/automations/direct/workflows/…/triggers/manual/paths/invoke?…`)
+in Settings, Slack and Teams (`POST /v1/chat-hooks/{slack,teams}`, a signed-in owner). Purser then posts
+`approval.needed`, `payment.paid` and `books.closed` there in the formats below (`cloud/src/chatHooks.ts`), retried up
+to three times, at most 30 an hour, and switched off after 20 failed events in a row; "Send a test" posts one message
+and switches a hook back on. Only Slack's and Microsoft's documented hosts are accepted; Office 365 connector URLs
+(`webhook.office.com`) were retired by Microsoft in May 2026 and are refused. A message carries ids, amounts, days and
+Purser Cloud's own link; never an approve action, a secret or a bank detail. The URL is never shown again or exported.
+A team can still relay the signed webhook into chat itself with `chatMessage(event, "slack" | "teams")` in
+`cloud/src/connections.ts`. The buttons only open Purser Cloud; there is nothing to approve in chat.
 Approval alerts (docs/cloud.md, Approval alerts) post the same formats straight to a Slack or Teams incoming webhook an
 owner sets in Settings, Alerts, with the payee and why the payment waits added; built and tested with stand-ins, not
 yet sent live.

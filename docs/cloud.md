@@ -139,6 +139,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |
 | `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys. |
 | `GET /v1/sync/state` | sync | Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds. |
+| `GET /v1/mail/forwarding-confirmations` | admin | Gmail's forwarding confirmation codes that reached the company's address in the last seven days (code and Gmail address only), for setting up forwarding ([email-forwarding.md](integrations/email-forwarding.md)). |
 | `GET /v1/mail` | sync | Inbound e-mail waiting for the runner; paginated (limit, cursor). |
 | `GET /v1/mail/{id}/raw` | sync | One inbound e-mail, raw (RFC 822). |
 | `POST /v1/mail/{id}/done` | sync | The runner filed (done) or refused an inbound e-mail. |
