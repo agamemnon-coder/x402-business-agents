@@ -27,6 +27,8 @@ describe("the night red team's surfaces", () => {
     expect(await attackRelay({ method: "GET", path: "/api/snapshot" })).toMatchObject({ outcome: "blocked" });
     expect(await attackRelay({ method: "POST", path: "/api/runner/sync", body: "{}" })).toMatchObject({ outcome: "blocked" });
     expect((await attackRelay({ method: "GET", path: "/health" })).outcome).toBe("inconclusive");
+    // 20 Nov: an attempt on /api/ in another case or with escapes is judged as one (2 Nov: GET /API/Snapshot/ was not).
+    for (const path of ["/API/Snapshot/", "/%61pi/snapshot", "//api/snapshot"]) expect(await attackRelay({ method: "GET", path }), path).toMatchObject({ outcome: "blocked" });
   });
 
   it("Try: a PlayStation is not paid on the software card", async () => {

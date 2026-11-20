@@ -23,6 +23,7 @@ import { FakeReceivePolicy } from "./receivePolicy.js";
 import { openDisputeCase } from "../seller/desk.js";
 import { LAB_CUSTOMER, labChain, labOrder, labRefund, labSale } from "../seller/standIns.js";
 import { MORE_ATTACKS } from "./moreAttacks.js";
+import { REGRESSION_ATTACKS } from "./regressionAttacks.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { reserveSpend } from "../policy/holds.js";
 import { capRefusal, policyValue, rules } from "../policy/rules.js";
@@ -439,6 +440,10 @@ ATTACKS.push(
 
 // The second round (src/redteam/moreAttacks.ts), one for each threat model row that had none.
 ATTACKS.push(...MORE_ATTACKS);
+
+// 20 Nov: every earlier attempt a red-team record holds beyond these (src/redteam/regressionAttacks.ts): the documents
+// Claude wrote on 30 Oct, the bank notice of 31 Oct, the night batch's tests that were not blocked or inconclusive.
+ATTACKS.push(...REGRESSION_ATTACKS);
 
 /**
  * Attacks whose control finds them afterwards instead of stopping them before money moves. 19 Nov, fourth round:

@@ -15,7 +15,7 @@
 // for our merchant layer; Content-Digest (RFC 9530) binds the exact body bytes.
 //
 // Both sides import the same window and skew from here: a signature lives at most TAP_MAX_WINDOW_S, and the merchant
-// allows TAP_CLOCK_SKEW_S of clock difference either way.
+// allows TAP_CLOCK_SKEW_S of clock difference for a created time in the future, never past the signature's expires.
 
 import { createHash, createPrivateKey, createPublicKey, randomBytes, sign, verify, type KeyObject } from "node:crypto";
 
@@ -24,7 +24,7 @@ export const TAP_TAGS: readonly TapTag[] = ["agent-payer-auth", "agent-browser-a
 export const BODY_TAG = "purser-body";
 /** The spec's window: a signature lives at most 8 minutes. */
 export const TAP_MAX_WINDOW_S = 480;
-/** Clock difference allowed either way, on every check of created and expires; the signer's default life leaves room for it. */
+/** Clock difference allowed for a signer running ahead (created in the future); never past a signature's expires (20 Nov). */
 export const TAP_CLOCK_SKEW_S = 30;
 /** What the signer gives a signature by default: well inside the window. */
 export const TAP_DEFAULT_LIFE_S = 300;
@@ -261,12 +261,18 @@ export function parseContentDigest(header: string): Parsed<Buffer> {
   return d.length === 32 ? { ok: true, value: d } : { ok: false, reason: `Content-Digest sha-256 must be 32 bytes, got ${d.length}` };
 }
 
-/** Null when now is inside the signature's window (with the shared skew) and the window is at most 8 minutes. */
+/**
+ * Null when now is inside the signature's window and the window is at most 8 minutes. The skew covers a signer's clock
+ * running ahead (created up to `skew` seconds in the future); it never extends a signature past its own expires
+ * (night red team, 2 Nov, TAP TEST-02: a checkout created 301 s before with a 300 s life, checked 5 s later, expired
+ * 6 s before, was accepted inside the skew; 20 Nov: refused). A signer whose clock runs behind loses that much of its
+ * life, which the default life of 300 s leaves room for.
+ */
 export function windowProblem(created: number, expires: number, now: number, skew = TAP_CLOCK_SKEW_S): string | null {
   const w = expires - created;
   if (w <= 0) return `a window of ${w} s is empty`;
   if (w > TAP_MAX_WINDOW_S) return `a window of ${w} s is over ${TAP_MAX_WINDOW_S} s`;
   if (created > now + skew) return "created is in the future";
-  if (expires < now - skew) return "the signature has expired";
+  if (expires < now) return "the signature has expired";
   return null;
 }

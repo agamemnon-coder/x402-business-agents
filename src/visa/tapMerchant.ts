@@ -6,7 +6,8 @@
 //   2. POST to the configured checkout path (under /product/), no query string;
 //   3. both signatures parse strictly; Content-Digest holds exactly one sha-256, equal to the body's;
 //   4. signature 1's keyId equals signature 2's keyid (case-sensitive), and their nonces are equal;
-//   5. the tag is this checkout's (agent-payer-auth), both windows at most 480 s and now inside them (one shared skew);
+//   5. the tag is this checkout's (agent-payer-auth), both windows at most 480 s and now inside them (the skew for a
+//      created time in the future only; never past expires, 20 Nov);
 //   6. the key is in our own pinned tap_agents list (never Visa's registry): not revoked, before its end date, pinned
 //      for this merchant's configured public authority (not the Host header, which the proxy rewrites);
 //   7. signature 1 verifies over the base the proxy builds (that authority, the request target), signature 2 over its
