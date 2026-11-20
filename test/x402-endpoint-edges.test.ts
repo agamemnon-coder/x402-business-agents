@@ -41,7 +41,7 @@ describe("the x402 endpoint's edges", () => {
   it("settlement on: a facilitator that cannot verify, or refuses without a reason, spends the nonce and serves nothing", async () => {
     const db = new Database(":memory:");
     let verify: Facilitator["verify"] = async () => { throw new Error("fetch failed: ECONNREFUSED"); };
-    let settle: Facilitator["settle"] = async () => ({ success: false, transaction: "", network: NETWORK });
+    const settle: Facilitator["settle"] = async () => ({ success: false, transaction: "", network: NETWORK });
     const d = new X402Desk(sqlOver(db), { settle: "on", facilitator: async () => ({ verify: (p, r) => verify(p, r), settle: (p, r) => settle(p, r) }) });
     const a = await get(d, signed("nonce-verify-throws"));
     expect(a.status).toBe(402);

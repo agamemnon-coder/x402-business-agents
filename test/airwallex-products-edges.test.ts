@@ -154,7 +154,7 @@ describe("the two-locks tile and the Face ID fold", () => {
 });
 
 describe("the count of tiles in words", () => {
-  const t = (key: string): ProductTile => ({ key, name: key, value: "", what: "", why: "", id: "", idLabel: "", href: "", iso: "", files: [] });
+  const t = (key: string): ProductTile => ({ key: key as ProductTile["key"], name: key, value: "", what: "", why: "", id: "", idLabel: "", href: "", iso: "", files: [] });
   it("counts Airwallex's features and names Airi apart; past ten the count is a figure", () => {
     expect(tilesCountWords([t("a"), t("b")])).toBe("Two Airwallex features in use");
     expect(tilesCountWords([t("a"), t("airi")], true)).toBe("1 Airwallex features plus Airi (beta)");

@@ -23,7 +23,7 @@ const broken: [string, (x: SideRuns) => void, RegExp][] = [
   ["the second Airi run as a clean live run", (x) => { x.vic2.outside_calls!.airwallex = 1; }, /clean live run with 0 Airi and 0 Airwallex calls/],
   ["the second Airi run's checks all passing", (x) => { Object.values(x.vic2.checks!)[0]!.ok = false; }, /clean live run/],
   ["the second Airi run's step D refusal", (x) => { x.vic2.steps!.D!.end = "EXECUTED"; }, /refusal after the Face ID \(step D\)/],
-  ["the second Airi run's step D", (x) => { delete x.vic2.steps!.D; }, /step D/],
+  ["the second Airi run's step D", (x) => { delete (x.vic2.steps as Record<string, unknown>).D; }, /step D/],
   ["the recorded walk's passkey", (x) => { x.recording.passkey = "a person's Face ID"; }, /the passkey the walk used/],
   ["the recorded walk's refused cent", (x) => { x.recording.tamper = "Paid"; }, /refused cent on the recorded page/],
   ["the recorded walk's blocked trick", (x) => { x.recording.trick.blocked = "Paid anyway"; }, /blocked trick on the recorded page/],
