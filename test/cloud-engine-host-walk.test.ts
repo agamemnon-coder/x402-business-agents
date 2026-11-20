@@ -7,7 +7,7 @@
 // exports, and each refusal in the engine's own words.
 import Database from "better-sqlite3";
 import { readdirSync, readFileSync } from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { D1Like, R2Like } from "../cloud/src/store.js";
 import type { PayoutAnswerIn, SimulateIn } from "../cloud/src/engine/livePayout.js";
 import { SEEDED_SUPPLIERS } from "../src/engine/tryWorld.js";
@@ -50,6 +50,9 @@ function r2(): R2Like & { keys(): string[] } {
 }
 
 const TENANT = "t_try_walk0001";
+// The sample invoice is due 16 Nov 2026 and the engine reads the real date: the date is held at a day before it.
+beforeAll(() => { vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true }); vi.setSystemTime(new Date("2026-11-10T09:00:00Z")); });
+afterAll(() => { vi.useRealTimers(); });
 const RP = "cloud.test", ORIGIN = `https://${RP}`;
 const day = (o: number) => new Date(Date.now() + o * 86_400_000).toISOString().slice(0, 10);
 
