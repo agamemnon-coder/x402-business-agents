@@ -173,7 +173,7 @@ export async function testChatHook(env: ChatEnv, product: ChatProduct): Promise<
   const r = await db.one<Row>("chat_hooks", { id: product });
   if (!r) throw new ChatHookRefused(404, `no ${product === "slack" ? "Slack" : "Teams"} webhook is set`);
   if (!env.out) throw new ChatHookRefused(409, "this cloud sends no outbound requests");
-  const words = "Purser is connected to this channel. You will see approval.needed, payment.paid and books.closed here. Nothing posted here can approve a payment: only the CFO's passkey (Face ID), in Purser Cloud, can.";
+  const words = "Purser is connected to this channel. You will see here when an invoice waits for approval, when a payment is paid and when the books are closed. Nothing posted here can approve a payment: only the CFO's passkey (Face ID), in Purser Cloud, can.";
   const body = product === "slack"
     ? { text: words, blocks: [{ type: "section", text: { type: "mrkdwn", text: words } }, { type: "actions", elements: [{ type: "button", text: { type: "plain_text", text: "Open Purser Cloud" }, url: `${env.origin}/#/overview` }] }] }
     : { type: "message", attachments: [{ contentType: "application/vnd.microsoft.card.adaptive", content: { $schema: "http://adaptivecards.io/schemas/adaptive-card.json", type: "AdaptiveCard", version: "1.5",

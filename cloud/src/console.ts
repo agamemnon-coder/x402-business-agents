@@ -533,12 +533,12 @@ function signInView(){
   if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys'),'bad'))}
   // Sign in with a linked Google, Microsoft or Apple account (cloud/src/oidc.ts): read only; only the providers this
   // cloud has switched on. The browser secret stays in this tab until the provider sends the browser back.
-  const idps=el('div','idps');b.after(idps);
+  const idps=el('div','idps');
   api('/v1/auth/oidc',{token:'-'}).then((r)=>{for(const p of r.providers||[]){const ob=btn(t('cs.oidc.with.'+p),'ghost','log-out');ob.id='oidc-'+p;
     ob.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note(t('cs.slug_rule'),'bad'));return}
       ob.disabled=true;try{const o=await api('/v1/auth/oidc/'+p+'/start',{method:'POST',token:'-',body:{tenant:s}});oidcPending({purpose:'sign-in',provider:p,browser_secret:o.browser_secret,slug:s});try{localStorage.setItem('purser.cloud.slug',s)}catch(e){}location.assign(o.url)}
       catch(e){status.replaceChildren(note(e.message,'bad'));ob.disabled=false}};idps.append(ob)}
-    if(idps.children.length)idps.append(el('p','sub',t('cs.oidc.read_only')))},()=>{});
+    if(idps.children.length){idps.append(el('p','sub',t('cs.oidc.read_only')));b.after(idps)}},()=>{});
   b.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note(t('cs.slug_rule'),'bad'));return}
     b.disabled=true;try{await signIn(s,status);try{localStorage.setItem('purser.cloud.slug',s)}catch(e){}go('#/overview')}catch(e){if(!(e instanceof Expired))status.replaceChildren(note(e.name==='NotAllowedError'?t('cs.passkey_cancelled'):e.message,'bad'))}finally{b.disabled=false}};
   slug.onkeydown=(e)=>{if(e.key==='Enter')b.click()};
@@ -1351,7 +1351,7 @@ async function connectionsCard(){
 }
 
 // Slack and Teams (cloud/src/chatHooks.ts): the company's own incoming-webhook URL per product, pasted by an owner, and
-// a test post. Purser posts approval.needed, payment.paid and books.closed there; a message links here, never approves.
+// a test post. Purser posts its three business events there (cloud/src/connections.ts); a message links here, never approves.
 async function chatCard(){
   const card=el('div','card panel chat');card.id='chat';
   const rows=el('div','');const out=el('div','');
