@@ -122,8 +122,8 @@ describe("what Airwallex sends, read strictly", () => {
   const tx = { card_transaction_id: "tx_1", card_id: "c_1", transaction_currency: "EUR", status: "APPROVED", transaction_date: "2026-11-19T10:00:00Z" };
 
   it("an amount as a signed decimal string; a merchant missing is no merchant and no MCC", () => {
-    expect(toCardTransaction({ ...tx, transaction_amount: "-12.50" })).toMatchObject({ amountCents: 1250, merchant: "", mcc: null, type: "AUTHORIZATION", approved: true });
-    expect(toCardTransaction({ ...tx, transaction_amount: "7" })).toMatchObject({ amountCents: 700 });
+    expect(toCardTransaction({ ...tx, transaction_amount: "-12.50" as unknown as number })).toMatchObject({ amountCents: 1250, merchant: "", mcc: null, type: "AUTHORIZATION", approved: true });
+    expect(toCardTransaction({ ...tx, transaction_amount: "7" as unknown as number })).toMatchObject({ amountCents: 700 });
   });
 
   it("a date that is not a date is refused", () => {

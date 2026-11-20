@@ -13,7 +13,8 @@ import { openDb } from "../src/db/open.js";
 const api = (...answers: unknown[]) => {
   const calls: { path: string; query?: Record<string, string> }[] = [];
   let i = 0;
-  return { calls, call: async (_m: string, path: string, _b?: unknown, query?: Record<string, string>) => { calls.push({ path, query }); return answers[Math.min(i++, answers.length - 1)]; } };
+  const call = async <T>(_m: string, path: string, _b?: unknown, query?: Record<string, string>): Promise<T> => { calls.push({ path, query }); return answers[Math.min(i++, answers.length - 1)] as T; };
+  return { calls, call };
 };
 const W = { from: "2026-11-19T00:00:00Z", to: "2026-11-20T00:00:00Z" };
 
