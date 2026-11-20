@@ -23,7 +23,7 @@ Three evidence sets run on this computer only: no request reaches the live site,
 
 Since 19 November all three also run every night in CI with more runs and a new seed each night ([nightly-evidence.yml](../../.github/workflows/nightly-evidence.yml)): any broken invariant, failed property or failed attack fails the run, the reports are kept as artifacts, and nothing is committed; the reports here stay the dated, committed runs. The OWASP ZAP baseline scan of our two test sites (passive, weekly in CI): [dast-zap-2026-11-19.md](dast-zap-2026-11-19.md).
 
-Also here: [mutation testing](mutation-testing.md) ([.json](mutation-testing.json)), partial. These are bugs planted in the money-critical code to see whether the tests catch them. The proof-bundle verifier caught 15 of 51 before and 50 of 51 after the new tests. Four Stryker groups were measured before the new tests; the approval group is not finished (`npm run mutation`, offline).
+Also here: [mutation testing](mutation-testing.md) ([.json](mutation-testing.json)), partial. These are bugs planted in the money-critical code to see whether the tests catch them. The proof-bundle verifier caught 15 of 51 before and 50 of 51 after the new tests. On 20 November the Stryker groups were redefined to run every test file that imports each module; one group (hash first) was measured before and after its new tests, the rest are not finished (`npm run mutation`, offline).
 
 ## What the organisers answered
 
