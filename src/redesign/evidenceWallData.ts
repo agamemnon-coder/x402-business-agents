@@ -260,23 +260,25 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
     const p = v8.totals.purser_script, n = v8.totals.no_rules, a = v8a.totals.purser_script;
     out.push({ key: "eval-v8", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v8): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v8.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v8.md"), rec: V8 });
   }
-  // 19 Nov, fifth round: the newest red-team run is the re-run after agent cards were frozen by default (hidden-payment
-  // is now refused before money moves). The fourth round's re-run (rewrite-history stopped before money moves) and the
-  // first run of 30 Oct stay as recorded, named in the note and kept in the tile's records.
-  const RT = "docs/redteam/report.json", RT_RERUN4 = "docs/redteam/rerun-2026-11-19.json", RT_RERUN = "docs/redteam/rerun-2026-11-19b.json";
-  type RedTeam = { ran_at?: string; attempts?: number; blocked?: number; caught_after?: number; model?: string | null; results?: { id: string; caught?: string }[] };
-  const rt = json(RT) as RedTeam | null, rt4 = json(RT_RERUN4) as RedTeam | null, rr = json(RT_RERUN) as RedTeam | null;
+  // 20 Nov: the newest red-team run is the full suite's re-run: every scripted attack and every earlier attempt a
+  // red-team record holds (the documents Claude wrote on 30 Oct, the bank notice of 31 Oct, the night batch's tests that
+  // were not blocked or inconclusive), each an attack of its own (src/redteam/regressionAttacks.ts). The two re-runs of
+  // 19 Nov (fourth and fifth round) and the first run of 30 Oct stay as recorded, named in the note and the records.
+  const RT = "docs/redteam/report.json", RT_RERUN4 = "docs/redteam/rerun-2026-11-19.json", RT_RERUN5 = "docs/redteam/rerun-2026-11-19b.json", RT_RERUN = "docs/redteam/rerun-2026-11-20.json";
+  type RedTeam = { ran_at?: string; attempts?: number; blocked?: number; caught_after?: number; inconclusive?: number; not_blocked?: number; model?: string | null; results?: { id: string; caught?: string }[] };
+  const rt = json(RT) as RedTeam | null, rt4 = json(RT_RERUN4) as RedTeam | null, rt5 = json(RT_RERUN5) as RedTeam | null, rr = json(RT_RERUN) as RedTeam | null;
   if (rt?.attempts) {
     const before = (x: RedTeam) => (x.blocked ?? 0) - (x.caught_after ?? 0);
     const afterIds = (x: RedTeam) => (x.results ?? []).filter((r) => r.caught === "after").map((r) => r.id);
     const afterWords = (x: RedTeam) => `${x.caught_after ?? 0} found afterwards${afterIds(x).length ? ` (${afterIds(x).join(", ")})` : ""}`;
     const written = (rt.results ?? []).filter((r) => r.id === "document").length;
     const first = `First run, ${day(rt.ran_at!)}${rt.model && written ? `, with Claude writing ${written} of the documents` : ""}: ${whole(before(rt), rt.attempts).toLowerCase()}, ${rt.caught_after ?? 0} found afterwards.`;
-    const earlier = rt4?.attempts ? ` Earlier re-run, ${day(rt4.ran_at!)}: ${whole(before(rt4), rt4.attempts).toLowerCase()}, ${afterWords(rt4)}.` : "";
+    const r4 = rt4?.attempts ? ` Re-run, ${day(rt4.ran_at!)}, fourth round: ${whole(before(rt4), rt4.attempts).toLowerCase()}, ${afterWords(rt4)}.` : "";
+    const r5 = rt5?.attempts ? ` Re-run, ${day(rt5.ran_at!)}, after agent cards were frozen by default: ${whole(before(rt5), rt5.attempts).toLowerCase()}, ${afterWords(rt5)}.` : "";
     if (rr?.attempts) {
-      out.push({ key: "red-team", fig: whole(before(rr), rr.attempts), label: "red-team attacks stopped before money moved, re-run, not held out", note: `Newest re-run, ${day(rr.ran_at!)}, after agent cards were frozen by default: the scripted attacks${rr.model ? "" : ", no model"}; ${rr.caught_after ? `${afterWords(rr)}, not prevented` : "none left to be found only afterwards"}.${earlier} ${first}`, tag: "test", tone: "claude", href: blob(RT_RERUN), rec: [RT_RERUN, ...(rt4?.attempts ? [RT_RERUN4] : []), RT].join(" ") });
-    } else if (rt4?.attempts) {
-      out.push({ key: "red-team", fig: whole(before(rt4), rt4.attempts), label: "red-team attacks stopped before money moved, re-run, not held out", note: `Re-run of ${day(rt4.ran_at!)}, after the fixes: the scripted attacks${rt4.model ? "" : ", no model"}; the other ${afterWords(rt4)}, not prevented. ${first}`, tag: "test", tone: "claude", href: blob(RT_RERUN4), rec: `${RT_RERUN4} ${RT}` });
+      const extra = rr.attempts - (rt5?.attempts ?? 0);
+      const left = [rr.caught_after ? `${afterWords(rr)}, not prevented` : "none found only afterwards", `${rr.inconclusive ?? 0} inconclusive`, `${rr.not_blocked ?? 0} not blocked`].join(", ");
+      out.push({ key: "red-team", fig: whole(before(rr), rr.attempts), label: "red-team attacks stopped before money moved, full re-run, not held out", note: `Newest full run, ${day(rr.ran_at!)}, in a throwaway test world${rr.model ? "" : ", no model"}: the scripted attacks${rt5?.attempts && extra > 0 ? ` and ${extra} earlier attempts as attacks of their own (the documents Claude wrote on 30 Oct, the bank notice of 31 Oct, the night batch's tests of 2 Nov that code judged not blocked or inconclusive)` : ""}; ${left}.${r5}${r4} ${first}`, tag: "test", tone: "claude", href: blob(RT_RERUN), rec: [RT_RERUN, ...(rt5?.attempts ? [RT_RERUN5] : []), ...(rt4?.attempts ? [RT_RERUN4] : []), RT].join(" ") });
     } else out.push({ key: "red-team", fig: whole(before(rt), rt.attempts), label: "red-team attacks stopped before money moved", note: `The other ${rt.caught_after ?? 0} found afterwards, not prevented.`, tag: "test", tone: "claude", href: blob(RT), rec: RT });
   }
   // The hostile-model eval: the figure as CI checks it. The calls that stood are each the script's last call, a "pay" of

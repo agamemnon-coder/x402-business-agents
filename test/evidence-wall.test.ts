@@ -74,20 +74,26 @@ describe("the evidence wall's file", () => {
     // 19 Nov, fourth round: the newest red-team run (the scripted attacks re-run after the fixes), labelled as a re-run,
     // with the first run of 30 Oct in its note and its records.
     const rt = json<{ attempts: number; blocked: number; caught_after: number }>("docs/redteam/report.json");
-    // 19 Nov, fifth round: the newest is the re-run after agent cards were frozen by default (hidden-payment prevented);
-    // the fourth round's re-run and the first run stay as recorded, named in the note and linked from the records.
-    type Rr = { attempts: number; blocked: number; caught_after: number; rerun_of: string; commit: string; dirty: boolean };
-    const rr = json<Rr>("docs/redteam/rerun-2026-11-19b.json");
+    // 20 Nov: the newest is the full suite's re-run (every scripted attack and every earlier attempt of every red-team
+    // record, each an attack of its own); the two re-runs of 19 Nov and the first run stay as recorded, named in the
+    // note and linked from the records.
+    type Rr = { ran_at: string; attempts: number; blocked: number; caught_after: number; inconclusive: number; not_blocked: number; rerun_of: string; commit: string; dirty: boolean; model: string | null };
+    const rr = json<Rr>("docs/redteam/rerun-2026-11-20.json");
+    const r5 = json<Rr>("docs/redteam/rerun-2026-11-19b.json");
     const r4 = json<Rr>("docs/redteam/rerun-2026-11-19.json");
     expect(rr.rerun_of).toBe("docs/redteam/report.json");
     expect(rr.dirty).toBe(false);
+    expect(rr.blocked + rr.inconclusive + rr.not_blocked).toBe(rr.attempts);
     expect(tile(w, "red-team").fig).toBe(countOf(rr.blocked - rr.caught_after, rr.attempts));
-    expect(tile(w, "red-team").label).toMatch(/re-run, not held out$/);
-    expect(tile(w, "red-team").note).toMatch(/^Newest re-run, 19 Nov, after agent cards were frozen by default/);
-    expect(tile(w, "red-team").note).toContain(`Earlier re-run, 19 Nov: ${countOf(r4.blocked - r4.caught_after, r4.attempts).toLowerCase()}, ${r4.caught_after} found afterwards (hidden-payment)`);
+    expect(tile(w, "red-team").label).toBe("red-team attacks stopped before money moved, full re-run, not held out");
+    expect(tile(w, "red-team").note).toMatch(/^Newest full run, 20 Nov, in a throwaway test world, no model: the scripted attacks and \d+ earlier attempts as attacks of their own/);
+    expect(tile(w, "red-team").note).toContain(`and ${rr.attempts - r5.attempts} earlier attempts`);
+    expect(tile(w, "red-team").note).toContain(`; none found only afterwards, ${rr.inconclusive} inconclusive, ${rr.not_blocked} not blocked.`);
+    expect(tile(w, "red-team").note).toContain(`Re-run, 19 Nov, after agent cards were frozen by default: ${countOf(r5.blocked - r5.caught_after, r5.attempts).toLowerCase()}, ${r5.caught_after} found afterwards.`);
+    expect(tile(w, "red-team").note).toContain(`Re-run, 19 Nov, fourth round: ${countOf(r4.blocked - r4.caught_after, r4.attempts).toLowerCase()}, ${r4.caught_after} found afterwards (hidden-payment)`);
     expect(tile(w, "red-team").note).toContain(`${countOf(rt.blocked - rt.caught_after, rt.attempts).toLowerCase()}, ${rt.caught_after} found afterwards`);
-    expect(tile(w, "red-team").href).toMatch(/docs\/redteam\/rerun-2026-11-19b\.json$/);
-    expect(tile(w, "red-team").rec.split(" ")).toEqual(["docs/redteam/rerun-2026-11-19b.json", "docs/redteam/rerun-2026-11-19.json", "docs/redteam/report.json"]);
+    expect(tile(w, "red-team").href).toMatch(/docs\/redteam\/rerun-2026-11-20\.json$/);
+    expect(tile(w, "red-team").rec.split(" ")).toEqual(["docs/redteam/rerun-2026-11-20.json", "docs/redteam/rerun-2026-11-19b.json", "docs/redteam/rerun-2026-11-19.json", "docs/redteam/report.json"]);
     const bills = json<{ bills: { bill_id: string | null }[] }>("docs/runs/2026-11-19-airwallex-bills.json").bills.filter((b) => b.bill_id);
     expect(tile(w, "spend-bills").fig).toBe(countOf(bills.length, bills.length));
   });

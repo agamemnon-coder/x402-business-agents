@@ -6,7 +6,9 @@
 //   Claude's decisions the main run of 3 Nov (src/redesign/run.ts, as the stat strip reads it)
 //   tests passing      docs/assets/test-summary.json (the last full run, `npm run test-count`)
 //   verification       the latest docs/evidence/verification-*.json (`npm run verify-all`)
-//   red team           docs/redteam/report.json (30 Oct, a throwaway test world)
+//   red team           the newest full run of the red team, RED_TEAM_RECORD (20 Nov: a re-run, not held out, of every
+//                      attack and every earlier attempt of every red-team record, in a throwaway test world). Until
+//                      20 Nov the strip showed the first run, docs/redteam/report.json (30 Oct), kept as recorded.
 // Written by `npm run readme:strip`; test/readme-proof-strip.test.ts redraws both and compares.
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -16,6 +18,9 @@ import { loadRecord, split } from "../src/redesign/run.js";
 /** "30 Oct" from an ISO time: the day a record ran. */
 const dayOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
+/** The newest full run of the red team (`npm run redteam -- --no-model --out ...`): the strip's red-team figure. */
+export const RED_TEAM_RECORD = "docs/redteam/rerun-2026-11-20.json";
+
 export const STRIP_FILES = { light: "docs/assets/readme/proof-strip-light.svg", dark: "docs/assets/readme/proof-strip-dark.svg" } as const;
 type Theme = keyof typeof STRIP_FILES;
 const read = (p: string) => readFileSync(p, "utf8");
@@ -24,7 +29,7 @@ export interface StripFigures {
   decisions: number;
   tests: { passed: number; total: number; skipped: number; failed: number };
   verification: { file: string; passed: number; couldNotRun: number; failed: number };
-  redteam: { attempts: number; stopped: number; caughtAfter: number; through: number; inconclusive: number; day: string };
+  redteam: { file: string; rerun: boolean; attempts: number; stopped: number; caughtAfter: number; through: number; inconclusive: number; day: string };
 }
 
 /** The newest verification report in docs/evidence/ (by its date in the file name). */
@@ -40,13 +45,13 @@ export function stripFigures(): StripFigures {
   const v = JSON.parse(read(file)) as { summary: string };
   const m = /^(\d+) checks passed, (\d+) could not run here, (\d+) failed$/.exec(v.summary);
   if (!m) throw new Error(`${file}: unexpected summary "${v.summary}"`);
-  const r = JSON.parse(read("docs/redteam/report.json")) as { ran_at: string; attempts: number; blocked: number; caught_after: number; not_blocked: number; inconclusive: number };
+  const r = JSON.parse(read(RED_TEAM_RECORD)) as { ran_at: string; rerun_of?: string; attempts: number; blocked: number; caught_after: number; not_blocked: number; inconclusive: number };
   if (r.blocked + r.not_blocked + r.inconclusive !== r.attempts) throw new Error("the red team report's outcomes do not add up");
   return {
     decisions: split(loadRecord().record).byClaude,
     tests: { passed: t.passed, total: t.total, skipped: t.skipped, failed: t.failed },
     verification: { file, passed: Number(m[1]), couldNotRun: Number(m[2]), failed: Number(m[3]) },
-    redteam: { attempts: r.attempts, stopped: r.blocked - r.caught_after, caughtAfter: r.caught_after, through: r.not_blocked, inconclusive: r.inconclusive, day: dayOf(r.ran_at) },
+    redteam: { file: RED_TEAM_RECORD, rerun: !!r.rerun_of, attempts: r.attempts, stopped: r.blocked - r.caught_after, caughtAfter: r.caught_after, through: r.not_blocked, inconclusive: r.inconclusive, day: dayOf(r.ran_at) },
   };
 }
 
@@ -58,7 +63,7 @@ export function stripPartners(f = stripFigures()): [string, string][] {
 /** The strip's alt text in the README: the same words the picture shows. */
 export function stripAlt(f = stripFigures()): string {
   const p = stripPartners(f).map(([n, s]) => `${n} ${s}`).join("; ");
-  return `From the records, test money: ${p}. ${fmt(f.tests.passed)} tests passing; ${f.verification.passed} checks passed, ${f.verification.failed} failed; ${f.redteam.stopped} of ${f.redteam.attempts} attacks stopped, ${f.redteam.caughtAfter} caught after (the red team's first run, ${f.redteam.day}, test world).`;
+  return `From the records, test money: ${p}. ${fmt(f.tests.passed)} tests passing; ${f.verification.passed} checks passed, ${f.verification.failed} failed; ${f.redteam.stopped} of ${f.redteam.attempts} attacks stopped before money moved, ${f.redteam.caughtAfter} caught after (${f.redteam.rerun ? `the red team's full re-run, ${f.redteam.day}, not held out` : `the red team's run, ${f.redteam.day}`}, test world).`;
 }
 
 const SANS = `ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
@@ -110,7 +115,7 @@ export function proofStripSvg(theme: Theme, f = stripFigures()): string {
   const row2 = [
     fig(0, fmt(t.passed), "tests passing", `${t.failed} failed, ${t.skipped} skipped · test-summary.json`, [[t.passed, c.accent], [t.total - t.passed, c.track]]),
     fig(1, String(v.passed), "checks passed", `${v.failed} failed, ${v.couldNotRun} could not run · verify-all`, [[v.passed, c.accent], [v.couldNotRun, c.track]]),
-    fig(2, `${r.stopped} of ${r.attempts}`, "attacks stopped", `${r.day} run, test world · ${r.caughtAfter} caught after`, [[r.stopped, c.accent], [r.caughtAfter, c.warn], [r.through, c.track]]),
+    fig(2, `${r.stopped} of ${r.attempts}`, "attacks stopped", `${r.day} ${r.rerun ? "re-run, not held out" : "run"} · test world${r.caughtAfter ? ` · ${r.caughtAfter} caught after` : ""}`, [[r.stopped, c.accent], [r.caughtAfter, c.warn], [r.through, c.track]]),
   ].join("\n");
 
   // The brand: the site header's mark (docs/assets/brand/purser-mark.svg, drawn at 44 px), the name, what this is.
