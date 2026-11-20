@@ -89,7 +89,7 @@ Quality and supply chain:
 - 6 invariants, each mapped to code, tests and CI (re-checked; the assurance case; test/assurance.test.ts checks every file, function and CI job it names): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assurance.md
 - Silver OpenSSF Best Practices badge, project 16923 (external; from the project's own answers to the programme's criteria, as of 19 Nov; the live status is on the project page): https://www.bestpractices.dev/projects/16923
 - v1.2.0 release signed: SLSA provenance and SBOM attested (CI; 2 Sigstore-signed attestations on the source archive, read back from GitHub; check with gh attestation verify): https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.2.0
-- 6.5/10 OpenSSF Scorecard score, read from its public API (CI; Read from api.securityscorecards.dev on 2026-11-19; one maintainer keeps Code-Review and Contributors low, and a repository under 90 days old scores 0 on Maintained): https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents
+- 7.3/10 OpenSSF Scorecard score, read from its public API (CI; Read from api.securityscorecards.dev on 2026-11-20; one maintainer keeps Code-Review and Contributors low, and a repository under 90 days old scores 0 on Maintained): https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents
 
 The public /try, timed:
 - 24 of 25 /try walks: every site step passed (sandbox; 19 Nov, Chromium and Firefox, desktop, tablet and phone; 0 console errors. The recording script marked 21 of 25 all ok: the others stopped on its own bug or on /verify's new words; the run logs say which): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
