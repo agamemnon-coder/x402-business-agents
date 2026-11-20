@@ -1,11 +1,12 @@
 // The Airwallex API trail (src/airwallex/apiTrail.ts) read from records other than the committed ones, through a
 // stand-in for the file system: with no record at all there is no run and every count is zero; with records that leave
 // fields out, each row shows only what its record holds (no status, no id, no signed hash where none is recorded),
-// every hash check without a signed hash fails, and nothing is guessed. Also: a soak record that disappears between
+// every hash check without a signed hash fails, and nothing is guessed. The soak records (src/airwallex/soakRecords.ts):
+// one that created nothing or cannot be read is left out, no runs folder is no soak, and one that disappears between
 // listing and reading is left out. The committed records are test/airwallex-api-trail.test.ts's.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const fsState = vi.hoisted(() => ({ files: null as Map<string, unknown> | null, runs: null as string[] | null, reads: new Map<string, number>(), vanishAfter: new Map<string, number>() }));
+const fsState = vi.hoisted(() => ({ files: null as Map<string, unknown> | null, runs: null as string[] | Error | null, reads: new Map<string, number>(), vanishAfter: new Map<string, number>() }));
 
 vi.mock("node:fs", async (importOriginal) => {
   const real = await importOriginal<typeof import("node:fs")>();
@@ -24,6 +25,7 @@ vi.mock("node:fs", async (importOriginal) => {
       return (real.readFileSync as (...a: unknown[]) => unknown)(p, ...rest);
     }) as typeof real.readFileSync,
     readdirSync: ((p: unknown, ...rest: unknown[]) => {
+      if (fsState.runs instanceof Error && rel(p).startsWith("docs/runs")) throw fsState.runs;
       if (fsState.runs && rel(p).startsWith("docs/runs")) return fsState.runs;
       return (real.readdirSync as (...a: unknown[]) => unknown)(p, ...rest);
     }) as typeof real.readdirSync,
@@ -106,6 +108,23 @@ describe("records that leave fields out", () => {
     expect(checks.find((c) => c.label.startsWith("batch 1"))).toMatchObject({ label: "batch 1: INV-3 (request q3), no line", signed: null, match: false });
     expect(checks.find((c) => c.label.startsWith("late failure"))).toMatchObject({ label: "late failure: transfer tr_5 (?, INV-5)", signed: null, match: false });
     expect(apiTrail().checks.transfers).toEqual({ total: 3, match: 0 });
+  });
+});
+
+describe("the soak records themselves", () => {
+  it("a record that created nothing, or cannot be read, is left out; no runs folder is no soak; totals add up per endpoint", async () => {
+    const { soaks, soakTotals } = await import("../src/airwallex/soakRecords.js");
+    const summary = (created: number, by?: Record<string, number>) => ({ planned: 1, created, paid: created, readback_matches: created, conversions: { planned: 0, booked: 0, readback_matches: 0 }, latency_ms: { p50: 1 }, calls: { total: 2 },
+      negatives: { planned: 1, refused: 1, posts_in_window: 0, creates_in_window: 0, calls_in_window: 1, ...(by ? { by_endpoint_in_window: by } : {}) } });
+    fsState.runs = ["2026-11-18-airwallex-soak.json", "2026-11-19-airwallex-soak.json", "2026-11-20-airwallex-soak.json", "2026-11-21-airwallex-soak.json"];
+    fsState.files!.set("docs/runs/2026-11-18-airwallex-soak.json", { summary: summary(0) });
+    fsState.files!.set("docs/runs/2026-11-19-airwallex-soak.json", { summary: summary(2, { "GET /transfers": 1 }) });
+    fsState.files!.set("docs/runs/2026-11-20-airwallex-soak.json", { summary: summary(1) });
+    const all = soaks();
+    expect(all.map((s) => s.day)).toEqual(["2026-11-19", "2026-11-20"]);
+    expect(soakTotals(all)).toMatchObject({ soaks: 2, created: 3, negatives: { reads: { "GET /transfers": 1 } }, files: ["docs/runs/2026-11-19-airwallex-soak.json", "docs/runs/2026-11-19-airwallex-soak.md", "docs/runs/2026-11-20-airwallex-soak.json", "docs/runs/2026-11-20-airwallex-soak.md"] });
+    fsState.runs = Object.assign(new Error("ENOENT: docs/runs"), { code: "ENOENT" });
+    expect(soaks()).toEqual([]);
   });
 });
 
