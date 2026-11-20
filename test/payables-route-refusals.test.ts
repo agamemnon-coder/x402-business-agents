@@ -148,6 +148,11 @@ describe("payables routes: a credit note counts only once a person accepts it", 
     expect(ok.json).toMatchObject({ id: "AP-0002", credit_accepted_by: "Anna", payable: false });
     const audited = db.prepare("SELECT actor, subject FROM audit_log WHERE event = 'ap.credit_accepted'").all();
     expect(audited).toEqual([{ actor: "human", subject: "AP-0002" }]);
+    // Accepted once: a second acceptance changes nothing and is not audited again.
+    const again = await post("/api/payables/invoices/AP-0002/accept-credit", { by: "Bob", note: "checked it again myself" });
+    expect(again.status).toBe(200);
+    expect(again.json).toMatchObject({ credit_accepted_by: "Anna" });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'ap.credit_accepted'").get()).toEqual({ n: 1 });
   });
 
   it("refuses to accept a rejected credit note as a conflict", async () => {
