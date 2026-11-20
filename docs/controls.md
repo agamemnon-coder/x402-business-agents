@@ -86,8 +86,8 @@ Marks: ✅ yes, with the evidence named. 🟠 no, or only partly, with what is m
 | # | Control | How it works | Implemented | Tested | Deployed | Independently verified |
 |---|---|---|---|---|---|---|
 | I1 | Written incident procedures | The emergency stop, a fake invoice, an agent misbehaving, a leaked key (per key: who rotates, how), a runaway agent, an Airwallex or Alta outage | ✅ [runbook.md](runbook.md), [security/key-management.md](security/key-management.md) | n/a | ✅ written; the runbook marks each step exercised live, tested, or not yet exercised | 🟠 No |
-| I2 | Emergency stop | One Face ID refuses every agent payment before signing and freezes every card at Airwallex; lifting it is a proposal and Face ID | ✅ `src/policy/rules.ts`, `src/policy/cards.ts` | ✅ `test/freeze.test.ts` | 🟠 `CARD_INACTIVE` checked live on one card; **never pulled live end to end** (runs since only check that no stop is set: [2026-11-13-airwallex-switch-on.md](runs/2026-11-13-airwallex-switch-on.md)) | 🟠 No |
-| I3 | Automatic stop of a runaway agent | Velocity limits per agent and rail; a breach stops the agent and freezes its card; a Claude cost cap per agent | ✅ `src/policy/velocity.ts` | ✅ `test/velocity.test.ts`, `test/claude-cost.test.ts` | 🟠 **Not yet triggered live** ([runbook.md](runbook.md)) | 🟠 No |
+| I2 | Emergency stop | One Face ID refuses every agent payment before signing and freezes every card at Airwallex; lifting it is a proposal and Face ID | ✅ `src/policy/rules.ts`, `src/policy/cards.ts` | ✅ `test/freeze.test.ts` | ✅ Pulled live end to end in the Airwallex sandbox on 20 Nov (labelled virtual test passkey): every agent payment refused after ~0.1 s, all cards `INACTIVE` at Airwallex after ~3.4 s, every charge declined; a bug where lifting the stop re-thawed cards mid-purchase was found, fixed and re-run ([2026-11-20-stop-drill.md](runs/2026-11-20-stop-drill.md), `test/card-drill-fixes.test.ts`) | 🟠 No |
+| I3 | Automatic stop of a runaway agent | Velocity limits per agent and rail; a breach stops the agent and freezes its card; a Claude cost cap per agent | ✅ `src/policy/velocity.ts` | ✅ `test/velocity.test.ts`, `test/claude-cost.test.ts` | ✅ Triggered live in the Airwallex sandbox on 20 Nov: a 6th purchase in a minute stopped the agent 0.7 s later, its card read back `INACTIVE` and a charge was declined; lifting it worked only with the passkey ([2026-11-20-stop-drill.md](runs/2026-11-20-stop-drill.md)) | 🟠 No |
 | I4 | Pause one agent | `npm run pause`: Purser refuses it at once and revokes its mandate on chain; the alarm stands until the chain agrees | ✅ `src/policy/pause.ts`, `src/metal/pauseChain.ts` | ✅ `test/agent-pause.test.ts`, `test/pause-chain.test.ts` | 🟠 Not recorded in a live run | 🟠 No |
 
 ## Secrets management
@@ -117,7 +117,7 @@ or uptime monitor** · L5 no alerting on missed SLOs · L6 BLS signature not ver
 review or code-owner approval; the DCO check does not block; one maintainer, no second reviewer ·
 C4 money-code freeze by procedure only · B1 no live crash-recovery record · B2 restart plan not drilled · B3 runner
 backups local only, **no restore drill**, no point-in-time recovery; no restore route in the cloud · B4 **no KMS or
-HSM** · I2 emergency stop never pulled live · I3 velocity stop not triggered live · I4 pause not in a live record ·
+HSM** · I4 pause not in a live record ·
 S2 pre-commit scan by procedure · S3 most rotations not exercised · D3 no retention period or deletion procedure for
 the runner's ledger. Also open from the headers check of 2 November: the local approvals page's CSP allows
 `'unsafe-inline'` ([security.md](security.md#security-headers-and-rate-limits-checked-2-november)).
