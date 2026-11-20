@@ -22,7 +22,6 @@
 // fraud checks, not read as words. Every list here is of common words, not of attacks: they tell a language, nothing
 // more. Pure: no Node modules (the Worker runs it).
 
-import { fold } from "./multilingual.js";
 import { scriptOf, withoutTypography } from "./scripts.js";
 
 /** The shared scripts: written by languages the lists hold and by languages they do not. */
@@ -190,14 +189,32 @@ const UNREAD_WORDS: Readonly<Record<Shared, Readonly<Record<string, string>>>> =
     Uzbek: "iltimos toʻlang toʻlov bugun hozir darhol hisob yangi bizning sizning rahmat aytmang hech kimga koʻrsatmalar bermang tasdiq uchun bilan ichida",
     Turkmen: "haýyş tölän töleg häzir derrew hasap täze biziň siziň sag boluň aýtmaň görkezmeler tassyklama bilen",
     Kurdish: "kerema xwe bidin îro niha tavilê spas nebêjin kesî rêveber talîmat erêkirin ji ev ew roj",
-    Slovenian: "prosimo plačajte plačilo danes takoj račun hvala povejte nikomur navodila prezrite odobritev",
-    Croatian: "molimo platite plaćanje uplata danas odmah račun hvala nemojte recite nikome upute uputstva zanemarite odobrenje",
+    Slovenian: "prosimo plačajte plačilo danes takoj račun hvala povejte nikomur navodila prezrite odobritev naš naša vaš vaša bančni podatki spremenjen spremenili novi nova zahvaljujemo sodelovanje rok plačila dni direktor želi ostane med nami",
+    // Croatian, Bosnian and Serbian in Latin letters (the lists hold Serbian in Cyrillic only).
+    Croatian: "molimo platite plaćanje uplata danas odmah račun hvala nemojte recite nikome upute uputstva zanemarite odobrenje naš naša naši vaš vaša vaši bankovni podaci podatke promijenjen promijenjeni izmijenjen novi nove novu šaljemo zasebno ostaju nepromijenjeni sve ovo ova ovaj prethodne odobri provjere provere zahvaljujemo suradnji saradnji rok plaćanja dana traži plati ostane među nama izrađen elektronički valjan potpisa pečata temeljni kapital uplaćen cijelosti narudžba dio dostava hitna",
     Kinyarwanda: "nyamuneka mwishyure kwishyura munsi vuba konti nshya yacu yanyu murakoze ntimubwire umuyobozi amabwiriza kwemeza kandi iyi iminsi",
     Shona: "ndapota bhadharai mubhadharo nhasi izvozvi nekukurumidza akaundi bhangi itsva yedu yenyu maita basa musaudza munhu maneja mirairo mvumo uye kuti mazuva",
     Wolof: "fey fayu tey léegi bees sunu jërëjëf bul kenn njiit ndigal ngir",
     Lingala: "futa mbongo lelo sikoyo noki sika biso bino matondi koyebisa mokonzi malako ndingisa mpe oyo mikolo",
     Oromo: "maaloo kaffalaa kaffaltii amma battalumatti herrega baankii haaraa keenya keessan galatoomaa himinaa nama hogganaa qajeelfama mirkaneessa irraa keessa guyyaa",
     "Tok Pisin": "plis peim tede kwiktaim beng nupela bilong mipela yupela tenkyu tokim wanpela bosman dispela orait",
+    // 20 Nov (after the held-out eval v9, v9-inject-bislama): the English-based creoles of the Pacific, West Africa and
+    // the Caribbean, and languages of Central and Southern Africa and of the Philippines no list here held.
+    Bislama: "plis yu pem ol fasin bifo lukluk naoia nomo blong long wetem tedei hariap bos tokbaot mani akaon bang niufala tangkyu",
+    "Solomon Pijin": "plis iu pem olketa fastaem distaem nao blong iumi tenkiu bos mani akaon niu",
+    "Nigerian Pidgin": "abeg una dey wetin pay am sharp sharp oga make no tell anybody pikin don dem una wey",
+    Krio: "duya una pay tide naw bos nɔ tɛl ɛnibɔdi wi akawnt nyu tɛnki",
+    "Sranan Tongo": "grantangi pai tide wantron baas no taki nanga wi akronto nyun den",
+    Papiamento: "por fabor paga awe mesora no bisa ningun hende nos kuenta nobo danki tur instrukshon anterior aki",
+    Chamorro: "pot fabot apåsi pågo ti un sangåni håfa na taotao si yuos maåse kuenta nuebu",
+    Chichewa: "chonde lipirani lero nthawi yomweyo musauze aliyense akaunti yathu yasintha zatsopano zambiri dikirani zikomo malangizo onse invoyisi iyi mkulu wanu wanena kuti mulipire wothandizira musanyalanyaze ndipo",
+    Kirundi: "turabasavye murishe uyu munsi ubu ntimubwire konti yacu nshasha murakoze umukuru",
+    Tsonga: "hi kombela hakelani namuntlha sweswi mi nga byeli munhu akhawunti ya hina leyintshwa inkomu",
+    Venda: "ri humbela badelani namusi zwino ni songo vhudza muthu akhaunthu yashu ntswa ndo livhuwa",
+    Bemba: "napapata lipileni lelo nomba mwileeba umuntu akaunti yesu ipya natotela",
+    Ilocano: "pangngaasiyo bayadanyo ita nga aldaw dagus saanyo nga ibaga iti siasinoman baro nga account mi agyamanak",
+    Hiligaynon: "palihog bayari subong dayon indi pagsugiri bisan sin-o bag-o nga account namon salamat",
+    Waray: "alayon bayari yana dayon ayaw pagsumati bisan hin-o bag-o nga account namon salamat",
     Guarani: "pirapire koʼága pyaʼe pyahu aguyje emombeʼu avavépe mburuvicha",
     Occitan: "plai pagatz uèi sulpic novèl digatz degun ignoratz aqueste jorns",
     Corsican: "oghje avà subitu contu novu nostru vostru nimu istruzzioni ignurate appruvazione ghjorni",
@@ -242,8 +259,13 @@ const UNREAD_WORDS: Readonly<Record<Shared, Readonly<Record<string, string>>>> =
   },
 };
 
-/** A word as these lists compare it: folded as the lists fold text, without apostrophes or the ʻokina. */
-const asWord = (w: string) => fold(w).replace(/['’ʻʼ`]/g, "");
+/**
+ * A word as these lists compare it: lower case, NFKC, without typography, apostrophes, the ʻokina, Arabic harakat or
+ * Hebrew points, but with its letters' accents (20 Nov, after the held-out eval v9, v9-inject-bislama: with its accents
+ * folded away, Vietnamese "lòng" was English "long", and a Bislama order read as words of a language the lists hold).
+ * A word written without its accents is then a word of the lists only where they write it so.
+ */
+const asWord = (w: string) => withoutTypography(w).normalize("NFKC").toLowerCase().replace(/['’ʻʼ`]/g, "").replace(/[\u064B-\u065F\u0670\u0591-\u05C7]/g, "").normalize("NFC");
 /** Arabic and Ethiopic join little words to the next one ("والدفع", "የባንክ"): the word and the word without them. */
 const PREFIXES: Partial<Record<Shared, readonly string[]>> = { Arabic: ["وال", "بال", "لل", "ال", "و", "ب", "ل", "ف"], Ethiopic: ["የ", "በ", "ለ", "ከ"] };
 const variants = (w: string, s: Shared) => [w, ...(PREFIXES[s] ?? []).filter((p) => w.startsWith(p) && w.length > p.length + 1).map((p) => w.slice(p.length))];
@@ -304,15 +326,17 @@ export function unreadWhy(line: string, names: readonly string[] = []): string |
     // Letters only languages the lists do not hold write, in a word of two letters or more.
     const marker = LETTER_MARKERS.find((m) => m.script === s && raw.split(/[^\p{L}\p{M}ʻ·]+/u).some((w) => [...w].length >= 2 && m.letters.test(w)));
     if (marker && distinct.length >= 2 && !mostlyRead) return `a line in ${marker.lang}, a language Purser's checks hold no words of`;
-    // Common words of a language the lists do not hold.
+    // Common words of a language the lists do not hold, more of them than words of three letters or more of a language
+    // they hold (20 Nov, after the held-out eval v9, v9-inject-croatian: "za", "i" and "bez", Polish and Czech too,
+    // outnumbered the Croatian words of an order; the short words close languages share tell neither apart).
+    const longRead = readHits.filter((w) => [...w].length >= 3);
     let best: [string, number] | null = null;
     for (const [lang, set] of unread[s]) {
       const hits = distinct.filter((w) => variants(w, s).some((v) => set.has(v))).length;
-      if (hits >= 2 && hits > readHits.length && (!best || hits > best[1])) best = [lang, hits];
+      if (hits >= 2 && hits > longRead.length && (!best || hits > best[1])) best = [lang, hits];
     }
     if (best) return `a line in ${best[0]}, a language Purser's checks hold no words of`;
     // A sentence in words of no language the lists hold (what follows a label, when there is one).
-    const longRead = readHits.filter((w) => [...w].length >= 3);
     const body = t.trim().replace(LABEL, "");
     const bodyWords = asWord(body).split(/[^\p{L}\p{M}]+/u).filter((w) => wordScript(w) === s);
     if (new Set(bodyWords).size >= 4 && longRead.length === 0 && (SENTENCE_END.test(body) || (bodyWords.length >= 6 && !/\p{Nd}/u.test(body)))) {

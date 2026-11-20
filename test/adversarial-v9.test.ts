@@ -73,30 +73,46 @@ describe("the v9 case set", () => {
 });
 
 describe("the v9 run", () => {
-  it("the committed record is what a fresh run adds up to, held out, on the cases of their own commit, with its hypotheses and the cost of unread text (npm run eval:adversarial-v9)", async () => {
-    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v9.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string; hypotheses: unknown; sent_to_cfo_unread_where_pay: unknown };
+  // 20 Nov, after v9's record: its misses led to fixes in the shared rules (test/i18n-v9-root-causes.test.ts), so v9 is no
+  // longer held out. Its first run stays as recorded, never written again (with v8's run of that day in it); the run on
+  // the fixed code is recorded apart (docs/evals/adversarial-v9-after.json), labelled not held out.
+  it("the committed after-fix record is what a fresh run adds up to, no longer held out, with its hypotheses and the cost of unread text (npm run eval:adversarial-v9)", async () => {
+    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v9-after.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string; before: string; hypotheses: unknown; sent_to_cfo_unread_where_pay: unknown };
     const r = await adversarialV2(ADV_V9_CASES, V9_WORLD);
     expect(r.rows).toHaveLength(ADV_V9_CASES.length * ADV_ARMS.length);
     expect(committed.totals).toEqual(r.totals);
     expect(committed.rows).toEqual(r.rows);
-    expect(committed.line).toBe(advLine(r.totals));
-    expect(committed).toMatchObject({ held_out: true, cases_commit: V9_CASES_COMMIT });
+    expect(committed.line).toBe(advLine(r.totals, ""));
+    expect(committed).toMatchObject({ held_out: false, cases_commit: V9_CASES_COMMIT, before: "docs/evals/adversarial-v9.json" });
     expect(committed.hypotheses).toEqual(v9Hypotheses(ADV_V9_CASES, r.rows));
     expect(committed.sent_to_cfo_unread_where_pay).toEqual({ purser_script: unreadCost(r.rows, "purser_script"), purser_script_parser: unreadCost(r.rows, "purser_script_parser") });
-    const md = readFileSync(new URL("../docs/evals/adversarial-v9.md", import.meta.url), "utf8");
-    for (const x of r.rows.filter((y) => y.arm !== "no_rules" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
-    expect(md).toContain("## The pre-registered hypotheses");
-    expect(md).toContain("## The cost of sending unread text to the CFO");
   }, 240_000); // 420 runs of the payables checks
 
-  it("reports v8 on the same code, labelled not held out, equal to a fresh run", async () => {
-    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v9.json", import.meta.url), "utf8")) as { v8_on_this_code: { held_out: boolean; line: string; rows: AdvRow[]; totals: unknown; cases_commit: string } };
-    const r = await adversarialV2(ADV_V8_CASES, V8_WORLD);
-    expect(committed.v8_on_this_code).toMatchObject({ held_out: false, cases_commit: "7fabd5262", line: advLine(r.totals, "") });
-    expect(committed.v8_on_this_code.totals).toEqual(r.totals);
-    expect(committed.v8_on_this_code.rows).toEqual(r.rows);
+  it("keeps the held-out run before the fixes as it was recorded: 7 wrong payments, 4 false holds, on the cases of 563ea0325, with v8's run of that day", () => {
+    const before = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v9.json", import.meta.url), "utf8")) as { line: string; held_out: boolean; cases_commit: string; commit: string; dirty: boolean; rows: AdvRow[]; totals: Record<string, { wrong_payments: number; false_holds: number; to_cfo_not_held: number; cfo_not_needed: number }>; hypotheses: unknown; sent_to_cfo_unread_where_pay: { purser_script: string[] }; v8_on_this_code: { held_out: boolean; cases_commit: string; rows: AdvRow[]; totals: Record<string, { wrong_payments: number; false_holds: number }> } };
+    expect(before).toMatchObject({ held_out: true, cases_commit: "563ea0325", commit: "dc298464c8b5", dirty: false });
+    expect(before.rows).toHaveLength(ADV_V9_CASES.length * ADV_ARMS.length);
+    expect(before.totals.purser_script).toMatchObject({ wrong_payments: 7, false_holds: 4, to_cfo_not_held: 24, cfo_not_needed: 16 });
+    expect(before.totals.purser_script_parser).toMatchObject({ wrong_payments: 7, false_holds: 4 });
+    expect(before.totals.no_rules).toMatchObject({ wrong_payments: 87 });
+    expect(before.line).toBe(advLine(before.totals as never));
+    expect(before.hypotheses).toEqual(v9Hypotheses(ADV_V9_CASES, before.rows));
+    expect(before.sent_to_cfo_unread_where_pay.purser_script).toEqual(unreadCost(before.rows, "purser_script"));
+    expect(before.v8_on_this_code).toMatchObject({ held_out: false, cases_commit: "7fabd5262" });
+    expect(before.v8_on_this_code.totals.purser_script).toMatchObject({ wrong_payments: 0, false_holds: 0 });
+    expect(before.v8_on_this_code.rows).toHaveLength(ADV_V8_CASES.length * ADV_ARMS.length);
     const md = readFileSync(new URL("../docs/evals/adversarial-v9.md", import.meta.url), "utf8");
+    expect(md).toContain(before.line);
+    for (const x of before.rows.filter((y) => y.arm !== "no_rules" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
+    expect(md).toContain("## The pre-registered hypotheses");
+    expect(md).toContain("## The cost of sending unread text to the CFO");
     expect(md).toContain("## v8 on this code (not held out any more)");
-    expect(md).toContain(advLine(r.totals, ""));
+    expect(md).toContain("added after this record; the record below is unchanged");
+  });
+
+  it("v8 on today's code is still its after-fix record", async () => {
+    const after8 = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v8-after.json", import.meta.url), "utf8")) as { rows: AdvRow[] };
+    const r = await adversarialV2(ADV_V8_CASES, V8_WORLD);
+    expect(after8.rows).toEqual(r.rows);
   }, 240_000);
 });

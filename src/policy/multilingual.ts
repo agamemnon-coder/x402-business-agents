@@ -350,9 +350,50 @@ export function instructionInAnyLanguage(line: string): boolean {
 const APPROVED_BY_PERSON = /(approved|genehmigt|goedgekeurd|approuve|aprobad[oa]|approvat[oa]|aprovad[oa])\s+(by|von|door|par|por|da|pelo|pela)\b|approval (code|number|no)|审批人|核准人|批准号|批准文号|核准号|承認者|承認番号|승인자|승인\s*번호/u;
 /** A claim that the checks are done or not needed. */
 const VERIFIED_INVOICE = near(ALREADY_VERIFIED, PAY_OR_INVOICE, 40);
+
+/**
+ * The payer's own people who check a payment: your controller, your finance or accounts team, your management, your CFO,
+ * MD or board (20 Nov, after the held-out eval v9: "this item was reconciled by your controller last week", "Die Freigabe
+ * durch Ihre Geschäftsführung liegt bereits vor", "déjà été validée par votre direction financière" were paid: a
+ * supplier's document cannot know that the buyer's own checks are done). Not "your team" or "your purchasing": they check
+ * goods, which a supplier may well say they did.
+ */
+const PAYER_SIDE = anyOf([
+  "your controller", "your financial controller", "your finance", "your accounts", "your accounting", "your treasury", "your management", "your cfo", "your md$", "your ceo",
+  "your director", "your managing director", "your board", "your payables", "your ap team", "your accounts payable", "your head of finance", "your finance director",
+  "ihre geschaftsfuhrung", "ihrer geschaftsfuhrung", "ihre buchhaltung", "ihrer buchhaltung", "ihre finanzabteilung", "ihrer finanzabteilung", "ihr controller", "ihr controlling",
+  "ihres controllings", "ihre leitung", "ihrer leitung", "ihr cfo", "ihr finanzvorstand", "ihre kreditorenbuchhaltung",
+  "votre direction", "votre service financier", "votre service comptable", "votre comptabilite", "votre controleur", "votre controle de gestion", "votre daf", "votre directeur",
+  "vos services financiers", "votre responsable financier", "su direccion", "su departamento financiero", "su contabilidad", "su controller", "su director", "su gerencia",
+  "uw directie", "uw financiele afdeling", "uw boekhouding", "uw controller", "uw cfo", "uw crediteurenadministratie", "la vostra direzione", "la vostra amministrazione",
+  "la vostra contabilita", "il vostro controller", "il vostro cfo", "a sua direcao", "o seu departamento financeiro", "a sua contabilidade", "o seu controller",
+]);
+/** A check done on a payment: approved, signed off, cleared, reconciled, validated, verified, released, authorised. */
+const CHECK_DONE = anyOf([
+  "approved", "signed off", "signed-off", "sign-off", "cleared", "reconciled", "validated", "verified", "released", "authorised", "authorized", "okayed", "ok'd", "green-lit", "greenlit",
+  "rubber-stamped", "freigegeben", "freigabe", "genehmigt", "gepruft", "abgestimmt", "abgezeichnet", "valide", "approuve", "verifie", "controle", "vise", "autorise",
+  "aprobad", "validad", "verificad", "autorizad", "goedgekeurd", "gecontroleerd", "gefiatteerd", "akkoord gegeven", "approvat", "validat", "verificat", "autorizzat",
+  "aprovad", "conferid",
+]);
+const PAYER_SIDE_DONE = near(PAYER_SIDE, CHECK_DONE, 40);
+/** Without, in the languages of PAYER_SIDE and more. */
+const WITHOUT = anyOf(["without", "ohne", "sans", "sin$", "senza", "zonder", "sem$", "bez$", "без$", "tanpa", "nelkul", "χωρισ"]);
+/** A check of a payment, as a noun: a review, a check, an approval, a query, a sign-off. */
+const CHECK_NOUN = anyOf([
+  // Not "control" in English: "without temperature control" is a product.
+  "review", "check", "approval", "verification", "query", "queries", "question", "sign-off", "signoff", "pruf", "ruckfrage", "freigabe", "kontrolle", "genehmigung",
+  "controle", "validation", "approbation", "revision", "verificacion", "aprobacion", "controllo", "controlli", "controlo", "verific", "approvazion", "goedkeuring", "verificatie",
+  "revisao", "aprovacao", "weryfikacj", "kontrol", "проверк", "одобрени", "ελεγχ",
+]);
+/**
+ * Without a check, with up to two words between (20 Nov, after the held-out eval v9: "ohne weitere Rückfrage", "sans
+ * autre contrôle" were paid: the phrases above name only the check right after the word for without).
+ */
+const WITHOUT_ANY_CHECK = new RegExp(`(?:${WITHOUT.source})(?:\\s+[\\p{L}\\p{M}'-]+){0,2}?\\s+(?:${CHECK_NOUN.source})`, "u");
+
 export function approvalClaimInAnyLanguage(line: string): boolean {
   const f = fold(line);
-  return WITHOUT_CHECK.test(f) || ALREADY_APPROVED.test(f) || VERIFIED_INVOICE.test(f);
+  return WITHOUT_CHECK.test(f) || ALREADY_APPROVED.test(f) || VERIFIED_INVOICE.test(f) || PAYER_SIDE_DONE.test(f) || WITHOUT_ANY_CHECK.test(f);
 }
 
 // ── Bank details changed, pay elsewhere, get around the checks ──
@@ -678,6 +719,11 @@ const INFORMATION = anyOf([
   "ලැබුණු", "ගෙවූ", "ප්‍රාග්ධනය", "ໄດ້ຮັບແລ້ວ", "ຊຳລະແລ້ວ", "ທຶນຈົດທະບຽນ", "хүлээн авсан", "төлсөн", "дүрмийн сан", "လက်ခံရရှိ", "ပေးချေပြီး",
   "မတည်ငွေရင်း", "પ્રાપ્ત", "ચૂકવેલ", "મૂડી", "ലഭിച്ച", "അടച്ച", "മൂലധന", "అందుకున్న", "చెల్లించిన", "మూలధనం", "ಸ್ವೀಕರಿಸಿದ", "ಪಾವತಿಸಿದ", "ಬಂಡವಾಳ",
   "באקומען", "קאפיטאל", "wis ditampa", "wis dibayar",
+  // 20 Nov (after the held-out eval v9, v9-limit-jadran-share-capital and v9-limit-eryri-company-footer: "Temeljni kapital:
+  // 2.654,46 EUR" and "Cyfalaf cyfranddaliadau: €1,000.00" were held as second totals): a company's capital by the word
+  // most languages build it on, wherever it starts a word ("kapital", "kapitał", "kapitál", "capital", "capitale",
+  // "kapitaal"), and in Welsh, Swahili, Estonian, Finnish and Basque.
+  "kapital", "capital", "kapitaal", "cyfalaf", "mtaji", "osakapital", "aktsiakapital", "osakepaaoma", "kapitala",
 ]);
 /** Whether a line (or a clause of one) gives an amount for information only, in the languages the lists know. */
 export const isInformation = (line: string) => INFORMATION.test(fold(line));

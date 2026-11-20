@@ -152,7 +152,13 @@ const CURRENCY_WORDS: ReadonlySet<string> = new Set(["kr", "kn", "zł", "zl", "k
   // rupee in Sinhala, Tamil, Devanagari, Gujarati, Kannada, Telugu, Malayalam, Gurmukhi and Odia, the kyat, the kip, the
   // tögrög, the baht, the taka, the shekel.
   "රු", "රුපියල්", "ரூ", "ரூபா", "रु", "रू", "रुपैयाँ", "રૂ", "રૂપિયા", "ರೂ", "ರೂಪಾಯಿ", "రూ", "రూపాయి", "రూపాయలు", "രൂ", "രൂപ", "ਰੁ", "ਰੁਪਏ", "ଟଙ୍କା",
-  "ကျပ်", "ກີບ", "төгрөг", "төг", "บาท", "שקל", "שח"]);
+  "ကျပ်", "ກີບ", "төгрөг", "төг", "บาท", "שקל", "שח",
+  // 20 Nov (after the held-out eval v9, v9-cur-pamba-kes-reference: "(Kwa kumbukumbu: KSh 87,000.00)" under a EUR total was
+  // held as a second amount): the shilling, the naira, the cedi, the rand, the kwacha, the peso, the ringgit, the rufiyaa,
+  // the afghani, the tenge, the som, the manat and others as their countries write them.
+  "ksh", "kshs", "tsh", "tshs", "ush", "ushs", "shs", "shilingi", "shilling", "shillings", "naira", "cedi", "cedis", "rand", "kwacha", "dalasi", "leone", "leones", "birr", "nakfa",
+  "ariary", "peso", "pesos", "piso", "ringgit", "rm", "rupiah", "rufiyaa", "rf", "afghani", "afs", "тенге", "теңге", "тг", "tenge", "сом", "сўм", "manat", "dirham",
+  "dinar", "riyal", "rial", "lira", "денари", "kip", "kyat", "taka", "reais", "soles", "colón", "colones", "quetzal", "lempira", "córdoba", "guaraní"]);
 /** Words a total, subtotal or tax line may carry beside its label, amount and currency (compared in lower case). */
 const FILLER = new Set([
   "total", "due", "amount", "payable", "to", "pay", "now", "balance", "incl", "including", "inclusive", "excl", "excluding", "inkl", "exkl", "of", "on", "in",
