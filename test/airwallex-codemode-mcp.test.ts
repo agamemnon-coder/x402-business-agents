@@ -165,7 +165,7 @@ describe("/mcp/airwallex", () => {
     expect(r.isError).toBe(false);
     const res = r.data.results as Record<string, unknown>[];
     expect(res[0]).toMatchObject({ as: "bal", ok: true, count: 2, items: [{ currency: "EUR", available_amount: 1200.5 }, { currency: "USD", available_amount: 80 }] });
-    expect(res[1]).toMatchObject({ as: "paid", count: 2, sum: { field: "transfer_amount", group_by: "transfer_currency", totals: { EUR: 150.25 } } });
+    expect(res[1]).toMatchObject({ as: "paid", count: 2, sum: { field: "transfer_amount", group_by: "transfer_currency", totals: [{ group: "EUR", total: 150.25 }] } });
     expect(res[1]!.items).toBeUndefined();
     expect(res[2]).toMatchObject({ ok: true, data: { status: "PAID", "metadata.approval_sha256": "a".repeat(64) } });
     expect(res[3]).toMatchObject({ data: { currency_pair: "EURUSD", rate: 1.0877 } });
@@ -211,5 +211,25 @@ describe("/mcp/airwallex", () => {
       expect(r).toMatchObject({ isError: true, data: { error: "refused" } });
       expect((await call("search", { query: "balances" })).isError).toBe(false);
     } finally { c.env.awxGateway = keep; }
+  });
+});
+
+describe("data from Airwallex never reaches a prototype (CodeQL, 20 Nov)", () => {
+  it("groups by a value like __proto__ in a Map, and reads no inherited or prototype field", async () => {
+    const items = [
+      { transfer_currency: "__proto__", transfer_amount: 5, status: "PAID" },
+      { transfer_currency: "constructor", transfer_amount: 7, status: "PAID" },
+      { transfer_currency: "EUR", transfer_amount: 1, status: "PAID" },
+    ];
+    const port = { call: async () => ({ ok: true as const, status: 200, json: { items } }) };
+    const out = await runPlan(port, { calls: [
+      { as: "g", method: "GET", path: "/transfers", aggregate: { sum: "transfer_amount", group_by: "transfer_currency" } },
+      { as: "p", method: "GET", path: "/transfers", select: ["__proto__.polluted", "constructor", "status"] },
+    ] });
+    const g = out.results[0] as { sum: { totals: { group: string; total: number }[] } };
+    expect(g.sum.totals).toEqual([{ group: "__proto__", total: 5 }, { group: "constructor", total: 7 }, { group: "EUR", total: 1 }]);
+    const p = out.results[1] as { items: Record<string, unknown>[] };
+    expect(p.items[0]).toEqual({ status: "PAID" });
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 });

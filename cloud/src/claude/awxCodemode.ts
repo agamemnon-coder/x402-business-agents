@@ -41,7 +41,8 @@ export const AWX_CODEMODE_READS: readonly AwxReadOp[] = [
   { operationId: "getCard", path: "/issuing/cards/{id}", query: [] },
 ];
 
-const patternOf = (path: string) => new RegExp(`^${path.replace(/\{id\}/g, UUID).replace(/\//g, "\\/")}$`);
+/** The allow-list's path as an anchored pattern: every regex character in it escaped, then {id} as a UUID. */
+const patternOf = (path: string) => new RegExp(`^${path.replace(/[.*+?^$()|[\]\\/]/g, "\\$&").replace(/\{id\}/g, UUID)}$`);
 const QUERY_VALUE = /^[A-Za-z0-9:+._-]{1,64}$/;
 
 export class AwxReadRefused extends Error {
@@ -74,7 +75,7 @@ export function checkRead(r: AwxRead, base: string = GATEWAY_SANDBOX_BASE): { op
   if (url.origin !== baseUrl.origin || url.pathname !== baseUrl.pathname + path) throw new AwxReadRefused("the path leaves the sandbox API");
   const op = AWX_CODEMODE_READS.find((o) => patternOf(o.path).test(path));
   if (!op) throw new AwxReadRefused(`GET ${path.replace(/[A-Za-z0-9_-]{20,}/g, "{id}")} is not on the read allow-list; search shows the operations there are`);
-  const query: Record<string, string> = {};
+  const query: Record<string, string> = Object.create(null) as Record<string, string>;
   for (const [k, v] of Object.entries(r.query ?? {})) {
     if (!op.query.includes(k)) throw new AwxReadRefused(`${op.operationId} takes no query key ${k.slice(0, 40)}`);
     const s = typeof v === "number" && Number.isFinite(v) ? String(v) : v;
@@ -133,8 +134,10 @@ export interface PlanCall {
 }
 export interface Plan { calls: PlanCall[] }
 
-const get = (o: unknown, path: string): unknown => path.split(".").reduce<unknown>((v, k) => (v && typeof v === "object" ? (v as J)[k] : undefined), o);
-const pick = (o: unknown, fields: string[]): J => Object.fromEntries(fields.map((f) => [f, get(o, f) ?? null]));
+/** A field by dotted path, own properties only: "__proto__", "constructor" and "prototype" read nothing. */
+const UNSAFE_KEY = new Set(["__proto__", "constructor", "prototype"]);
+const get = (o: unknown, path: string): unknown => path.split(".").reduce<unknown>((v, k) => (v && typeof v === "object" && !UNSAFE_KEY.has(k) && Object.prototype.hasOwnProperty.call(v, k) ? (v as J)[k] : undefined), o);
+const pick = (o: unknown, fields: string[]): J => Object.fromEntries(fields.filter((f) => !f.split(".").some((k) => UNSAFE_KEY.has(k))).map((f) => [f, get(o, f) ?? null]));
 const itemsOf = (json: unknown): unknown[] | null => (Array.isArray(json) ? json : json && typeof json === "object" && Array.isArray((json as J).items) ? (json as J).items as unknown[] : null);
 const round = (n: number) => Math.round(n * 1e8) / 1e8;
 
@@ -160,14 +163,16 @@ export async function runPlan(port: AwxReadPort | null, plan: Plan): Promise<{ r
     const out: J = { as, operationId: op.operationId, ok: true, count: rows.length };
     if (a.json && typeof a.json === "object" && !Array.isArray(a.json) && typeof (a.json as J).has_more === "boolean") out.has_more = (a.json as J).has_more;
     if (c.aggregate?.sum) {
-      const sums: Record<string, number> = {};
+      // Group keys come from the API's data, so they are kept in a Map, never written as object properties (no
+      // "__proto__" or "constructor" key can reach a prototype), and handed back as an array of [group, total] pairs.
+      const sums = new Map<string, number>();
       for (const r of rows) {
         const v = Number(get(r, c.aggregate.sum));
         if (!Number.isFinite(v)) continue;
         const g = c.aggregate.group_by ? String(get(r, c.aggregate.group_by) ?? "(none)") : "all";
-        sums[g] = round((sums[g] ?? 0) + v);
+        sums.set(g, round((sums.get(g) ?? 0) + v));
       }
-      out.sum = { field: c.aggregate.sum, ...(c.aggregate.group_by ? { group_by: c.aggregate.group_by } : {}), totals: sums };
+      out.sum = { field: c.aggregate.sum, ...(c.aggregate.group_by ? { group_by: c.aggregate.group_by } : {}), totals: [...sums.entries()].map(([group, total]) => ({ group, total })) };
     }
     const limit = Math.min(Math.max(1, Math.trunc(c.limit ?? 50)), MAX_ITEMS);
     if (!c.aggregate || c.limit !== undefined || c.select?.length) out.items = rows.slice(0, limit).map((r) => (c.select?.length ? pick(r, c.select) : r));
