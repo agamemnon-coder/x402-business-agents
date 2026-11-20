@@ -83,6 +83,7 @@
     "airwallex:deep": "tsx src/cli/airwallexDeep.ts",
     "airwallex:card-drill": "tsx src/cli/airwallexCardDrill.ts",
     "airwallex:stop-drill": "tsx src/cli/airwallexStopDrill.ts",
+    "audit:checkpoint-drill": "tsx src/cli/auditCheckpointDrill.ts",
     "airwallex:replay": "tsx src/cli/airwallexReplay.ts",
     "tamper-matrix": "tsx src/cli/tamperMatrix.ts",
     "mutation": "tsx scripts/mutation.ts",

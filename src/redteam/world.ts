@@ -37,10 +37,14 @@ export interface World {
   cfoApproval: (id: string, hash: string) => InboxItem;
 }
 
-export async function redTeamWorld(start = new Date("2026-11-03T10:00:00Z")): Promise<World> {
+/**
+ * `dbFile` puts the world's ledger in a file instead of memory, and `label` names the CFO's passkey (the checkpoint
+ * drill, 20 Nov: a ledger file on disk, as a runner has, with a labelled virtual test passkey).
+ */
+export async function redTeamWorld(start = new Date("2026-11-03T10:00:00Z"), o: { dbFile?: string; label?: string } = {}): Promise<World> {
   let t = start.getTime();
   const now = () => new Date(t);
-  const db = openDb(":memory:");
+  const db = openDb(o.dbFile ?? ":memory:");
   const issuing = new FakeIssuing();
   issuing.clock = () => t;
   let tickets = 0;
@@ -52,7 +56,7 @@ export async function redTeamWorld(start = new Date("2026-11-03T10:00:00Z")): Pr
   // The CFO enrols a passkey, and confirms its fingerprint on the runner.
   const cfo = new FakeAuthenticator();
   const { window, code } = openEnrolment(db, { rpId: RP, origin: ORIGIN }, now());
-  const reg = await processRegistration(db, item("registration", { code, credential: cfo.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP }) }), { label: "max" }, now());
+  const reg = await processRegistration(db, item("registration", { code, credential: cfo.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP }) }), { label: o.label ?? "max" }, now());
   if (reg.status !== "pending") throw new Error(`the red team's world could not enrol the CFO: ${reg.message}`);
   confirmPasskey(db, fingerprintOf(cfo.spkiSha256), now());
 
