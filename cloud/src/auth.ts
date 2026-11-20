@@ -40,6 +40,8 @@ export interface Caller {
   user: string | null;
   /** 'first-owner': a new company's starter key, good only for the first owner's passkey (red team round 5). */
   purpose?: string | null;
+  /** A key's expiry (ISO), for its renewal notice (./keyExpiry.ts; ASVS V2.3.3). */
+  expiresAt?: string | null;
 }
 
 export class AuthError extends Error {
@@ -155,7 +157,7 @@ export async function liveKey(sql: Sql, keyId: string, secret: string | null, no
   const tenant = await sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [row.tenant_id]);
   if (!tenant || tenant.closed_at) throw new AuthError(401, "this company's account is closed");
   await sql.run("UPDATE api_keys SET last_used_at = ? WHERE id = ?", [now.toISOString(), keyId]);
-  return { tenantId: row.tenant_id, kind: "key", principal: keyId, scopes: new Set(row.scopes.split(" ") as Scope[]), user: row.created_by_user, purpose: row.purpose };
+  return { tenantId: row.tenant_id, kind: "key", principal: keyId, scopes: new Set(row.scopes.split(" ") as Scope[]), user: row.created_by_user, purpose: row.purpose, expiresAt: row.expires_at };
 }
 
 const scopesOf = (role: Role): Set<Scope> => new Set<Scope>(role === "owner" ? ["read", "admin"] : ["read"]);

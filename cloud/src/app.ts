@@ -3,6 +3,7 @@
 // TenantDb; a route never names a tenant itself.
 
 import { withBaseline } from "./baseHeaders.js";
+import { KEY_RENEWAL_HEADER, renewalNotice } from "./keyExpiry.js";
 import { z } from "zod";
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
 import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
@@ -764,6 +765,9 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const audit: Audit = {};
   // The baseline security headers each answer lacks (./baseHeaders.ts): one place for the API, redirects and files.
   const res = withBaseline(await route(req, env, audit));
+  // A key in its last 14 days says so on each answer, with what to do (./keyExpiry.ts; ASVS V2.3.3).
+  const renewal = renewalNotice(audit.keyExpiresAt, (env.now ?? (() => new Date()))());
+  if (renewal) res.headers.set(KEY_RENEWAL_HEADER, renewal);
   const path = new URL(req.url).pathname;
   const pattern = path.startsWith("/v1/") || isClaudePath(path) || isDiscoveryPath(path) ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
   // The hands-on deployment's own figures for the owner's page (cloud/src/try/metrics.ts): counts and buckets only.
@@ -851,6 +855,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
       }
       audit.tenant = caller.tenantId;
       audit.actor = caller.principal;
+      if (caller.kind === "key") audit.keyExpiresAt = caller.expiresAt ?? null;
       // A visitor's test company calls only the hands-on demo's routes, while it lives (cloud/src/try/gate.ts).
       const tryCaller = isTryTenant(caller.tenantId);
       if (tryCaller) {

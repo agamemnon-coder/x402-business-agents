@@ -5,6 +5,7 @@ import { ensureSchema, handle, type CloudEnv } from "./app.js";
 import { receiveEmail, type InboundEmail } from "./mail.js";
 import { purgeExpired } from "./privacy.js";
 import { sweepExports } from "./exports.js";
+import { warnExpiringKeys } from "./keyExpiry.js";
 import { pruneSecurityLog } from "./securityLog.js";
 import { d1Sql, r2Blobs, type D1Like, type R2Like } from "./store.js";
 import { sqlBlobs } from "./blobsSql.js";
@@ -185,6 +186,8 @@ export default {
     await edge("autopilot_prune_failed", () => pruneAutopilot(env.sql, new Date()));
     // The security log keeps a year (./securityLog.ts); its trigger refuses to delete anything younger.
     await edge("security_log_prune_failed", () => pruneSecurityLog(env.sql, new Date()));
+    // Keys 14 and 3 days from expiry: their company's owners are told, once each (./keyExpiry.ts; ASVS V2.3.3).
+    await edge("key_expiry_warn_failed", () => warnExpiringKeys(env.sql, new Date(), env.outbound, env.retryDelayMs));
     if (env.engine && b.INBOX_QUEUE) await edge("inbox_requeue_failed", () => requeueWaitingMail(env.sql, b.INBOX_QUEUE!, new Date()));
     if (env.edge?.stats) {
       await edge("stats_write_failed", () => writeCounts(env.sql, new Date(), b.DB));

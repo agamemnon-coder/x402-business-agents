@@ -37,6 +37,9 @@
   // pdf.js for the console's invoice view, served through the Worker (run_worker_first: every request meets the Worker's
   // own headers and only /assets/pdfjs.mjs is ever read from here). npm run cloud:pdfjs fills cloud/public before a deploy.
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+  // Workers Logs (ASVS V1.7.2): every log line, the request lines and the security.* events among them, leaves the
+  // isolate for Cloudflare's log store, every request kept; queried in the dashboard (test/workers-observability.test.ts).
+  "observability": { "enabled": true, "head_sampling_rate": 1, "logs": { "enabled": true, "invocation_logs": true } },
   // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows; then the
   // nightly autopilot (cloud/src/edge/autopilot.ts: each company's engine synced, its digest written; never a payment).
   "triggers": { "crons": ["17 3 * * *"] }
