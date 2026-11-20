@@ -148,7 +148,7 @@ jobs:
     permissions:
       actions: read # the generator reads this workflow run to detect the GitHub Actions environment
       id-token: write # it signs the provenance through its own OIDC identity (Sigstore)
-      contents: read # it keeps the provenance as a workflow artifact; the publish job attaches it
+      contents: write # the generator's upload job asks for it when the workflow starts (a run without it fails to start, v1.3.2 on 20 Nov); with upload-assets false it uploads nothing, and the publish job attaches the provenance
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.release.outputs.hashes }}
