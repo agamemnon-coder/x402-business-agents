@@ -5,6 +5,7 @@ import Database from "better-sqlite3";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import worker, { alertsOf, connectOf, type Bindings } from "../cloud/src/worker.js";
 import type { D1Like } from "../cloud/src/store.js";
+import { RECOVERY_REQUESTS_SCHEMA } from "../cloud/src/recovery.js";
 
 type V = string | number | null;
 /** D1's interface over better-sqlite3: bind, all, first, run, a batch in one transaction, exec. */
@@ -158,9 +159,14 @@ describe("the daily job", () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     await worker.fetch(new Request("https://cloud.test/v1/health"), b);
     b.DB.db.prepare("INSERT INTO exports (tenant_id, id, status, created_at, expires_at, created_by, parts_json, bytes) VALUES ('t_acme01', 'x1', 'ready', '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z', 'u', '[]', 0)").run();
+    // An owner recovery request that expired unapproved long ago (docs/privacy/retention.md: it goes a day after).
+    b.DB.db.exec(RECOVERY_REQUESTS_SCHEMA);
+    b.DB.db.prepare("INSERT INTO recovery_requests (id, tenant_id, owner_id, check_method, requested_by, requested_at, expires_at) VALUES ('rr_1', 't_acme01', 'u_1', 'video_call', 'ops-first', '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z')").run();
     await worker.scheduled({}, b);
     // A staged export past its day has lost its parts: the sweep ran.
     expect(b.DB.db.prepare("SELECT status FROM exports").get()).toEqual({ status: "expired" });
+    // The expired recovery request is gone: the recovery prune ran.
+    expect(b.DB.db.prepare("SELECT COUNT(*) AS n FROM recovery_requests").get()).toEqual({ n: 0 });
     // The counters' prune now fails (its table is gone); the job still finishes and says which step failed.
     b.DB.db.exec("DROP TABLE daily_counts; CREATE VIEW daily_counts AS SELECT 'x' AS day, 'y' AS metric, 1 AS n");
     await expect(worker.scheduled({}, b)).resolves.toBeUndefined();

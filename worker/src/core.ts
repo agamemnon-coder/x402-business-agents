@@ -59,6 +59,8 @@ export interface Pages {
   security?: string;
   /** /docs, "Docs and API", under "More" too (src/redesign/docs.ts), no script; absent in a bundle built before it. */
   docs?: string;
+  /** /privacy, under "More" too (src/redesign/privacy.ts), no script; absent in a bundle built before it. */
+  privacy?: string;
   /** /status, under "More" too (src/redesign/status.ts): its one script reads this Worker's own /health; absent in a bundle built before it. */
   status?: string;
   /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger. */
@@ -107,7 +109,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; awxCalls?: string; claude?: string; security?: string; docs?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; verify?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; awxCalls?: string; claude?: string; security?: string; docs?: string; privacy?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; verify?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -230,6 +232,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/claude" && pages.claude && pages.csp.claude) return page(pages.claude, pages.csp.claude);
   if (path === "/security" && pages.security && pages.csp.security) return page(pages.security, pages.csp.security);
   if (path === "/docs" && pages.docs && pages.csp.docs) return page(pages.docs, pages.csp.docs);
+  if (path === "/privacy" && pages.privacy && pages.csp.privacy) return page(pages.privacy, pages.csp.privacy);
   if (path === "/status" && pages.status && pages.csp.status) return page(pages.status, pages.csp.status);
   if (path === "/t0" && pages.t0 && pages.csp.t0) return page(pages.t0, pages.csp.t0);
   if (path === "/books" && pages.books && pages.csp.books) return page(pages.books, pages.csp.books);

@@ -56,6 +56,7 @@ export const SECURITY_ROUTES: Record<string, SecurityKind> = {
   "POST /v1/connect/{provider}/finish": "access.change",
   "DELETE /v1/connect/{provider}": "access.change",
   "POST /v1/close": "access.change",
+  "POST /v1/offboarding": "access.change",
   "DELETE /v1/sessions/{id}": "access.change",
   "POST /v1/webhook": "policy.change",
   "DELETE /v1/webhook": "policy.change",
