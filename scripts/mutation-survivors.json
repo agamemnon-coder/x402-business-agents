@@ -1,0 +1,54 @@
+{
+  "src/policy/hashFirst.ts:20:18|StringLiteral|``": {
+    "class": "uncovered",
+    "why": "signedHashRefusal was never asked about a proposal that does not exist; test/mutation-kills-hashfirst.test.ts"
+  },
+  "src/policy/hashFirst.ts:22:47|StringLiteral|``": {
+    "class": "uncovered",
+    "why": "no test read the 'has no approval' answer; test/mutation-kills-hashfirst.test.ts"
+  },
+  "src/policy/hashFirst.ts:39:27|StringLiteral|``": {
+    "class": "uncovered",
+    "why": "hashFirst was never run on a proposal that does not exist; test/mutation-kills-hashfirst.test.ts"
+  },
+  "src/policy/hashFirst.ts:20:7|ConditionalExpression|false": {
+    "class": "uncovered",
+    "why": "as above: a missing proposal then reads as 'has no approval'; the test pins the exact answer"
+  },
+  "src/policy/hashFirst.ts:22:7|ConditionalExpression|false": {
+    "class": "uncovered",
+    "why": "no approval on record then throws a TypeError instead of answering; test/mutation-kills-hashfirst.test.ts"
+  },
+  "src/policy/hashFirst.ts:22:7|LogicalOperator|!a && a.decision !== \"APPROVED\"": {
+    "class": "uncovered",
+    "why": "as above"
+  },
+  "src/policy/hashFirst.ts:26:11|BlockStatement|{}": {
+    "class": "equivalent",
+    "why": "the empty catch leaves recomputed undefined, which matches no hash, so unreadable terms are refused either way"
+  },
+  "src/policy/hashFirst.ts:51:38|StringLiteral|\"\"": {
+    "class": "uncovered",
+    "why": "no test read the refusal's audit row (actor system); test/mutation-kills-hashfirst.test.ts"
+  },
+  "src/policy/hashFirst.ts:51:78|ObjectLiteral|{}": {
+    "class": "uncovered",
+    "why": "no test read the refusal's audit payload; test/mutation-kills-hashfirst.test.ts"
+  },
+  "src/policy/hashFirst.ts:51:88|MethodExpression|unsigned": {
+    "class": "uncovered",
+    "why": "no refusal over 400 characters was recorded; the test uses a 422-character proposal id"
+  },
+  "src/policy/hashFirst.ts:51:116|StringLiteral|\"\"": {
+    "class": "uncovered",
+    "why": "no test read 'at: before any outside call'; test/mutation-kills-hashfirst.test.ts"
+  },
+  "src/policy/hashFirst.ts:29:10|ConditionalExpression|true": {
+    "class": "equivalent",
+    "why": "recomputed is null only after the catch, and null never equals a stored hash, so dropping the null test refuses the same proposals"
+  },
+  "src/policy/hashFirst.ts:41:73|ConditionalExpression|true": {
+    "class": "unreachable",
+    "why": "would let a proposal in the resuming set run in any status; resumeInterrupted (src/policy/saga.ts) only ever adds EXECUTING actions to that set, and beginExecution checks the status again"
+  }
+}
