@@ -38,7 +38,8 @@ describe("README badges", () => {
     expect(badgeLine).toContain("query=%24.passed&label=tests%2C%20last%20full%20run&suffix=%20passing");
     const cov = JSON.parse(readFileSync(new URL("../docs/evidence/coverage.json", import.meta.url), "utf8")) as { run: { commit: string; result: { passed: number; failed: number; skipped: number } } };
     const r = cov.run.result;
-    expect(readme).toContain(`The coverage badge is from a separate, earlier coverage run on commit \`${cov.run.commit}\` (${r.passed.toLocaleString("en-GB")} passed, ${r.failed} failed on the measuring machine only, ${r.skipped} skipped: [coverage.md](docs/evidence/coverage.md))`);
+    expect(readme).toContain(`The coverage badge is from a separate, earlier coverage run on commit \`${cov.run.commit}\` (${r.passed.toLocaleString("en-GB")} passed, ${r.failed} failed`);
+    expect(readme).toContain(`, ${r.skipped} skipped: [coverage.md](docs/evidence/coverage.md))`);
     // REUSE: reuse lint runs in CI (job reuse) over REUSE.toml.
     expect(lines[at + 1]).toContain("(REUSE.toml)");
     expect(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")).toMatch(/\n {2}reuse:\n[\s\S]*?uses: fsfe\/reuse-action@[0-9a-f]{40}/);

@@ -66,7 +66,10 @@ describe("shields endpoint badges from the records", () => {
     expect(c.label).toBe(`coverage, run on ${run.commit}`);
     // docs/claims.md's Coverage row says the same run, with the record's figures.
     const r = run.result;
-    expect(read("docs/claims.md")).toContain(`| Coverage (the README's coverage badge) | ${pct("statements")}% of statements and ${pct("branches")}% of branches of the product, from one coverage run on commit \`${run.commit}\`: ${r.passed.toLocaleString("en-GB")} passed, ${r.failed} failed (local only, \`test/cloud-engine-bundle.test.ts\`), ${r.skipped} skipped, in ${r.files} files`);
+    expect(read("docs/claims.md")).toContain(`| Coverage (the README's coverage badge) | ${pct("statements")}% of statements and ${pct("branches")}% of branches of the product, from one coverage run on commit \`${run.commit}\`: ${r.passed.toLocaleString("en-GB")} passed, ${r.failed} failed (`);
+    // The failures are named in the record's run.failure and in the row itself (20 Nov: a stale page record at that commit and two
+    // timeouts on the loaded machine), then the skipped tests and files.
+    expect(read("docs/claims.md")).toMatch(new RegExp(`\\| Coverage \\(the README's coverage badge\\) \\|[^\\n]*\\), ${r.skipped} skipped, in ${r.files} files`));
     expect(c.message).toBe(`${pct("statements")}% statements · ${pct("branches")}% branches`);
     expect(c.color).toBe(Number(pct("statements")) >= 90 && cov.branches.covered / cov.branches.total >= 0.8 ? "brightgreen" : "green");
   });
