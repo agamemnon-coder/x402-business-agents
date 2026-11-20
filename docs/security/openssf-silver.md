@@ -268,7 +268,7 @@ https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/
 
 #### `test_statement_coverage80` (MUST): **Met**
 
-The FLOSS suite (vitest with V8 coverage, run in CI on every push and pull request) covers 91.7% of statements (64,948 of 70,834) and 81.4% of branches of the product: every TypeScript file under src/, cloud/src/ and worker/src/, files no test loads included, without the command-line entry points (src/cli, thin wrappers and live-run recorders started as separate processes) and generated files; measured on 19 November 2026 and held by a floor of 89% in https://github.com/agamemnon-coder/x402-business-agents/blob/main/vitest.config.ts. Stated plainly: with the CLI entry points included the figure is 79.8% (65,468 of 82,054). Scope, both figures, per area and the reasons: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md
+The FLOSS suite (vitest with V8 coverage, run in CI on every push and pull request) covers 92.0% of statements (65,458 of 71,122) and 81.9% of branches of the product: every TypeScript file under src/, cloud/src/ and worker/src/, files no test loads included, without the command-line entry points (src/cli, thin wrappers and live-run recorders started as separate processes) and generated files; measured on 20 November 2026 and held by a floor of 90% in https://github.com/agamemnon-coder/x402-business-agents/blob/main/vitest.config.ts. Stated plainly: with the CLI entry points included the figure is 80.1% (65,978 of 82,369). Scope, both figures, per area and the reasons: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md
 
 #### `test_policy_mandated` (MUST): **Met**
 

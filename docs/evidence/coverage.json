@@ -1,5 +1,5 @@
 {
- "measured_on": "2026-11-19",
+ "measured_on": "2026-11-20",
  "tool": "vitest 5.1.0 with @vitest/coverage-v8 (V8's own coverage, mapped to statements and branches)",
  "command": "npm run test:coverage (vitest run --coverage, then tsx test/coverage-areas.ts)",
  "measured_scope": {
@@ -15,26 +15,13 @@
   ]
  },
  "tests": {
-  "before": "8,338 tests passed, 1 failed, 5 skipped (761 files: 757 passed, 1 failed, 3 skipped)",
-  "after": "8,534 tests passed, 2 failed, 5 skipped (781 files: 777 passed, 1 failed, 3 skipped)"
+  "before": "8,534 tests passed, 2 failed, 5 skipped (781 files: 777 passed, 1 failed, 3 skipped)",
+  "after": "8,659 tests passed, 1 failed, 5 skipped (791 files: 787 passed, 1 failed, 3 skipped)"
  },
  "scopes": {
   "product": {
    "label": "The product (the measured scope): src, cloud/src and worker/src, without the CLI entry points and generated files",
    "before": {
-    "files": 809,
-    "statements": {
-     "covered": 63436,
-     "total": 69654,
-     "pct": 91.07
-    },
-    "branches": {
-     "covered": 47285,
-     "total": 58685,
-     "pct": 80.57
-    }
-   },
-   "after": {
     "files": 828,
     "statements": {
      "covered": 64948,
@@ -46,24 +33,24 @@
      "total": 59703,
      "pct": 81.42
     }
+   },
+   "after": {
+    "files": 830,
+    "statements": {
+     "covered": 65458,
+     "total": 71122,
+     "pct": 92.04
+    },
+    "branches": {
+     "covered": 49091,
+     "total": 59929,
+     "pct": 81.92
+    }
    }
   },
   "everything": {
    "label": "Everything under src, cloud/src and worker/src, the CLI entry points included",
    "before": {
-    "files": 974,
-    "statements": {
-     "covered": 63956,
-     "total": 80786,
-     "pct": 79.17
-    },
-    "branches": {
-     "covered": 47585,
-     "total": 65701,
-     "pct": 72.43
-    }
-   },
-   "after": {
     "files": 995,
     "statements": {
      "covered": 65468,
@@ -75,24 +62,24 @@
      "total": 66774,
      "pct": 73.25
     }
+   },
+   "after": {
+    "files": 998,
+    "statements": {
+     "covered": 65978,
+     "total": 82369,
+     "pct": 80.1
+    },
+    "branches": {
+     "covered": 49391,
+     "total": 67016,
+     "pct": 73.7
+    }
    }
   },
   "src": {
    "label": "src/ only (CI's scope until 19 November)",
    "before": {
-    "files": 839,
-    "statements": {
-     "covered": 54223,
-     "total": 70370,
-     "pct": 77.05
-    },
-    "branches": {
-     "covered": 40081,
-     "total": 56931,
-     "pct": 70.4
-    }
-   },
-   "after": {
     "files": 854,
     "statements": {
      "covered": 55276,
@@ -104,24 +91,24 @@
      "total": 57535,
      "pct": 71.27
     }
+   },
+   "after": {
+    "files": 857,
+    "statements": {
+     "covered": 55786,
+     "total": 71458,
+     "pct": 78.07
+    },
+    "branches": {
+     "covered": 41486,
+     "total": 57777,
+     "pct": 71.8
+    }
    }
   },
   "cloud_src": {
    "label": "cloud/src (Purser Cloud)",
    "before": {
-    "files": 112,
-    "statements": {
-     "covered": 6647,
-     "total": 7151,
-     "pct": 92.95
-    },
-    "branches": {
-     "covered": 4881,
-     "total": 5824,
-     "pct": 83.81
-    }
-   },
-   "after": {
     "files": 116,
     "statements": {
      "covered": 6880,
@@ -133,21 +120,34 @@
      "total": 6066,
      "pct": 83.89
     }
+   },
+   "after": {
+    "files": 116,
+    "statements": {
+     "covered": 6880,
+     "total": 7400,
+     "pct": 92.97
+    },
+    "branches": {
+     "covered": 5088,
+     "total": 6066,
+     "pct": 83.88
+    }
    }
   },
   "worker_src": {
    "label": "worker/src (the relay Worker)",
    "before": {
-    "files": 23,
+    "files": 25,
     "statements": {
-     "covered": 3086,
-     "total": 3265,
-     "pct": 94.52
+     "covered": 3312,
+     "total": 3511,
+     "pct": 94.33
     },
     "branches": {
-     "covered": 2623,
-     "total": 2946,
-     "pct": 89.04
+     "covered": 2817,
+     "total": 3173,
+     "pct": 88.78
     }
    },
    "after": {
@@ -167,19 +167,6 @@
   "cli": {
    "label": "src/cli (left out: the entry points)",
    "before": {
-    "files": 165,
-    "statements": {
-     "covered": 520,
-     "total": 11132,
-     "pct": 4.67
-    },
-    "branches": {
-     "covered": 300,
-     "total": 7016,
-     "pct": 4.28
-    }
-   },
-   "after": {
     "files": 167,
     "statements": {
      "covered": 520,
@@ -190,6 +177,19 @@
      "covered": 300,
      "total": 7071,
      "pct": 4.24
+    }
+   },
+   "after": {
+    "files": 168,
+    "statements": {
+     "covered": 520,
+     "total": 11247,
+     "pct": 4.62
+    },
+    "branches": {
+     "covered": 300,
+     "total": 7087,
+     "pct": 4.23
     }
    }
   }
@@ -221,14 +221,14 @@
    "after": {
     "files": 16,
     "statements": {
-     "covered": 1435,
+     "covered": 1480,
      "total": 1529,
-     "pct": 93.85
+     "pct": 96.8
     },
     "branches": {
-     "covered": 1145,
+     "covered": 1228,
      "total": 1362,
-     "pct": 84.07
+     "pct": 90.16
     }
    }
   },
@@ -237,19 +237,6 @@
     "src/policy/"
    ],
    "before": {
-    "files": 35,
-    "statements": {
-     "covered": 2141,
-     "total": 2231,
-     "pct": 95.97
-    },
-    "branches": {
-     "covered": 1922,
-     "total": 2096,
-     "pct": 91.7
-    }
-   },
-   "after": {
     "files": 38,
     "statements": {
      "covered": 2380,
@@ -260,6 +247,19 @@
      "covered": 2099,
      "total": 2281,
      "pct": 92.02
+    }
+   },
+   "after": {
+    "files": 38,
+    "statements": {
+     "covered": 2473,
+     "total": 2575,
+     "pct": 96.04
+    },
+    "branches": {
+     "covered": 2162,
+     "total": 2352,
+     "pct": 91.92
     }
    }
   },
@@ -272,7 +272,7 @@
     "statements": {
      "covered": 470,
      "total": 500,
-     "pct": 94
+     "pct": 94.0
     },
     "branches": {
      "covered": 315,
@@ -331,16 +331,16 @@
     "worker/src/"
    ],
    "before": {
-    "files": 30,
+    "files": 32,
     "statements": {
-     "covered": 3369,
-     "total": 3563,
-     "pct": 94.56
+     "covered": 3609,
+     "total": 3823,
+     "pct": 94.4
     },
     "branches": {
-     "covered": 2821,
-     "total": 3182,
-     "pct": 88.65
+     "covered": 3018,
+     "total": 3413,
+     "pct": 88.43
     }
    },
    "after": {
@@ -364,14 +364,14 @@
    "before": {
     "files": 7,
     "statements": {
-     "covered": 1004,
+     "covered": 1023,
      "total": 1066,
-     "pct": 94.18
+     "pct": 95.97
     },
     "branches": {
-     "covered": 681,
+     "covered": 756,
      "total": 923,
-     "pct": 73.78
+     "pct": 81.91
     }
    },
    "after": {
@@ -394,19 +394,6 @@
     "src/anchor/"
    ],
    "before": {
-    "files": 6,
-    "statements": {
-     "covered": 384,
-     "total": 390,
-     "pct": 98.46
-    },
-    "branches": {
-     "covered": 285,
-     "total": 307,
-     "pct": 92.83
-    }
-   },
-   "after": {
     "files": 7,
     "statements": {
      "covered": 401,
@@ -417,6 +404,19 @@
      "covered": 297,
      "total": 319,
      "pct": 93.1
+    }
+   },
+   "after": {
+    "files": 7,
+    "statements": {
+     "covered": 407,
+     "total": 414,
+     "pct": 98.31
+    },
+    "branches": {
+     "covered": 301,
+     "total": 325,
+     "pct": 92.62
     }
    }
   },
@@ -458,19 +458,6 @@
    "before": {
     "files": 31,
     "statements": {
-     "covered": 2058,
-     "total": 2259,
-     "pct": 91.1
-    },
-    "branches": {
-     "covered": 1686,
-     "total": 2079,
-     "pct": 81.1
-    }
-   },
-   "after": {
-    "files": 31,
-    "statements": {
      "covered": 2056,
      "total": 2259,
      "pct": 91.01
@@ -480,6 +467,19 @@
      "total": 2079,
      "pct": 80.9
     }
+   },
+   "after": {
+    "files": 31,
+    "statements": {
+     "covered": 2055,
+     "total": 2259,
+     "pct": 90.97
+    },
+    "branches": {
+     "covered": 1681,
+     "total": 2079,
+     "pct": 80.86
+    }
    }
   },
   "alta (metal)": {
@@ -487,16 +487,16 @@
     "src/metal/"
    ],
    "before": {
-    "files": 31,
+    "files": 32,
     "statements": {
-     "covered": 2218,
-     "total": 2480,
-     "pct": 89.44
+     "covered": 2242,
+     "total": 2506,
+     "pct": 89.47
     },
     "branches": {
-     "covered": 1556,
-     "total": 1940,
-     "pct": 80.21
+     "covered": 1578,
+     "total": 1964,
+     "pct": 80.35
     }
    },
    "after": {
@@ -518,16 +518,6 @@
   "src/approve/client.ts": {
    "before": {
     "statements": [
-     512,
-     1329
-    ],
-    "branches": [
-     670,
-     1313
-    ]
-   },
-   "after": {
-    "statements": [
      577,
      1332
     ],
@@ -535,115 +525,147 @@
      752,
      1317
     ]
-   }
-  },
-  "src/evals/adversarialV2.ts": {
-   "before": {
+   },
+   "after": {
     "statements": [
-     88,
-     168
+     580,
+     1332
     ],
     "branches": [
-     59,
-     159
+     762,
+     1317
+    ]
+   }
+  },
+  "src/film/capture.ts": {
+   "before": {
+    "statements": [
+     101,
+     197
+    ],
+    "branches": [
+     43,
+     96
     ]
    },
    "after": {
     "statements": [
-     167,
-     168
+     141,
+     197
     ],
     "branches": [
-     147,
-     159
+     60,
+     96
     ]
    }
   },
-  "src/chaos/report.ts": {
+  "src/redesign/run.ts": {
    "before": {
     "statements": [
-     2,
-     80
+     569,
+     635
+    ],
+    "branches": [
+     592,
+     909
+    ]
+   },
+   "after": {
+    "statements": [
+     591,
+     635
+    ],
+    "branches": [
+     685,
+     909
+    ]
+   }
+  },
+  "src/redesign/proof.ts": {
+   "before": {
+    "statements": [
+     235,
+     293
+    ],
+    "branches": [
+     190,
+     334
+    ]
+   },
+   "after": {
+    "statements": [
+     266,
+     293
+    ],
+    "branches": [
+     239,
+     334
+    ]
+   }
+  },
+  "src/demo/runTrace.ts": {
+   "before": {
+    "statements": [
+     6,
+     60
     ],
     "branches": [
      0,
-     39
+     28
     ]
    },
    "after": {
     "statements": [
-     80,
-     80
+     60,
+     60
     ],
     "branches": [
-     35,
-     39
+     26,
+     28
     ]
    }
   },
-  "src/e2e/airwallexSoakRecord.ts": {
+  "src/servers/dashboard.ts": {
    "before": {
     "statements": [
-     0,
-     78
-    ],
-    "branches": [
-     0,
-     80
-    ]
-   },
-   "after": {
-    "statements": [
-     78,
-     78
-    ],
-    "branches": [
-     80,
-     80
-    ]
-   }
-  },
-  "src/fuzz/run.ts": {
-   "before": {
-    "statements": [
-     22,
-     101
-    ],
-    "branches": [
-     13,
-     97
-    ]
-   },
-   "after": {
-    "statements": [
-     92,
-     101
-    ],
-    "branches": [
-     84,
-     97
-    ]
-   }
-  },
-  "src/proof/awxDeepLive.ts": {
-   "before": {
-    "statements": [
-     281,
-     309
-    ],
-    "branches": [
-     186,
-     323
-    ]
-   },
-   "after": {
-    "statements": [
-     300,
-     309
-    ],
-    "branches": [
      263,
-     323
+     317
+    ],
+    "branches": [
+     41,
+     71
+    ]
+   },
+   "after": {
+    "statements": [
+     299,
+     317
+    ],
+    "branches": [
+     47,
+     71
+    ]
+   }
+  },
+  "src/finance/dataQa.ts": {
+   "before": {
+    "statements": [
+     267,
+     315
+    ],
+    "branches": [
+     193,
+     305
+    ]
+   },
+   "after": {
+    "statements": [
+     312,
+     315
+    ],
+    "branches": [
+     276,
+     305
     ]
    }
   }
@@ -651,17 +673,10 @@
  "largest_gaps_after": [
   {
    "file": "src/approve/client.ts",
-   "uncovered_statements": 755,
+   "uncovered_statements": 752,
    "statements": 1332,
-   "uncovered_branches": 565,
+   "uncovered_branches": 555,
    "branches": 1317
-  },
-  {
-   "file": "src/film/capture.ts",
-   "uncovered_statements": 96,
-   "statements": 197,
-   "uncovered_branches": 53,
-   "branches": 96
   },
   {
    "file": "src/airi/vic3.ts",
@@ -678,13 +693,6 @@
    "branches": 250
   },
   {
-   "file": "src/redesign/run.ts",
-   "uncovered_statements": 66,
-   "statements": 635,
-   "uncovered_branches": 317,
-   "branches": 909
-  },
-  {
    "file": "worker/src/trySign.ts",
    "uncovered_statements": 65,
    "statements": 1047,
@@ -692,32 +700,11 @@
    "branches": 884
   },
   {
-   "file": "src/redesign/proof.ts",
-   "uncovered_statements": 58,
-   "statements": 293,
-   "uncovered_branches": 144,
-   "branches": 334
-  },
-  {
-   "file": "src/demo/runTrace.ts",
-   "uncovered_statements": 54,
-   "statements": 60,
-   "uncovered_branches": 28,
-   "branches": 28
-  },
-  {
-   "file": "src/servers/dashboard.ts",
-   "uncovered_statements": 54,
-   "statements": 317,
-   "uncovered_branches": 30,
-   "branches": 71
-  },
-  {
-   "file": "src/finance/dataQa.ts",
-   "uncovered_statements": 48,
-   "statements": 315,
-   "uncovered_branches": 112,
-   "branches": 305
+   "file": "src/film/capture.ts",
+   "uncovered_statements": 56,
+   "statements": 197,
+   "uncovered_branches": 36,
+   "branches": 96
   },
   {
    "file": "src/airwallex/routedRail.ts",
@@ -732,6 +719,13 @@
    "statements": 102,
    "uncovered_branches": 27,
    "branches": 67
+  },
+  {
+   "file": "src/redesign/run.ts",
+   "uncovered_statements": 44,
+   "statements": 635,
+   "uncovered_branches": 224,
+   "branches": 909
   },
   {
    "file": "src/world/runtime.ts",
@@ -753,7 +747,35 @@
    "statements": 128,
    "uncovered_branches": 47,
    "branches": 85
+  },
+  {
+   "file": "src/metal/hold.ts",
+   "uncovered_statements": 42,
+   "statements": 71,
+   "uncovered_branches": 17,
+   "branches": 30
+  },
+  {
+   "file": "cloud/src/engine/hostWorker.ts",
+   "uncovered_statements": 41,
+   "statements": 117,
+   "uncovered_branches": 24,
+   "branches": 70
+  },
+  {
+   "file": "src/awx/live.ts",
+   "uncovered_statements": 41,
+   "statements": 60,
+   "uncovered_branches": 32,
+   "branches": 52
+  },
+  {
+   "file": "src/ops/runnerLock.ts",
+   "uncovered_statements": 41,
+   "statements": 127,
+   "uncovered_branches": 32,
+   "branches": 98
   }
  ],
- "scope_note": "Before is the previous record (the evening of 19 November, commit 5488248a5: 809 files, 69,654 statements). Since then 49 commits reached the branch this round started from (the integration branch): 49 product files changed, 20 of them new, and the product grew to 828 files and 70,834 statements; after measures the product as it is now, every file in it included. After is one run over every file under src, cloud/src and worker/src, src/cli included; the product's figure is that run without src/cli and generated files, as vitest.config.ts measures it. files_before_after: before is the previous record's figure where it lists the file, else (src/proof/awxDeepLive.ts) a run of the tests that import the file, before this round's test was added."
+ "scope_note": "Before is the previous record (the late evening of 19 November, commit 98ea941ab: 828 files, 70,834 statements). Since then 26 commits reached the branch this round started from (main, c5b893ecf): 21 product files changed, 2 of them new, and the product grew to 830 files and 71,122 statements; after measures the product as it is now, every file in it included. After is one run over every file under src, cloud/src and worker/src, src/cli included; the product's figure is that run without src/cli and generated files, as vitest.config.ts measures it. files_before_after: before is the previous record's largest_gaps_after for each file this round tested (each is listed there)."
 }
