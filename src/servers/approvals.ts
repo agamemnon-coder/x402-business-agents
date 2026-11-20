@@ -7,7 +7,8 @@ import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import type { DB } from "../db/open.js";
 import { PREFIX_LENGTH, termsHash, type Terms } from "../lib/terms.js";
-import { decide, expireDue, type ProposalRow } from "../policy/approvals.js";
+import { closeBlocked, decide, expireDue, type ProposalRow } from "../policy/approvals.js";
+import { BLOCKED_STATUS, blockedApprovals, isBlocked, type Blocked } from "../policy/blocked.js";
 
 export interface ApprovalsOptions {
   approver: string;
@@ -72,7 +73,7 @@ function table(entries: [string, unknown][]): string {
   return `<table class="terms"><tbody>${rows}</tbody></table>`;
 }
 
-function renderProposal(p: Row, csrf: string): string {
+function renderProposal(p: Row, csrf: string, blocked?: Blocked): string {
   let termsHtml: string;
   let changed: boolean;
   try {
@@ -86,13 +87,15 @@ function renderProposal(p: Row, csrf: string): string {
   }
   const pending = p.status === "PENDING_APPROVAL";
   const head = p.terms_sha256.slice(0, PREFIX_LENGTH);
+  const status = blocked ? BLOCKED_STATUS : p.status;
   return `
 <article class="card ${pending ? "pending" : ""}" id="${esc(p.proposal_id)}">
   <header>
     <h2>${esc(p.proposal_id)} <span class="kind">${esc(p.kind)}</span></h2>
-    <span class="status status-${esc(p.status)}">${esc(p.status)}</span>
+    <span class="status status-${esc(status)}">${esc(status)}</span>
   </header>
   <p>Expires <time data-expires="${esc(p.expires_at)}">${esc(p.expires_at)}</time> <span class="countdown" data-countdown="${esc(p.expires_at)}"></span></p>
+  ${blocked ? `<p class="alarm" role="alert">Approved, but its execution was refused at ${esc(blocked.last)}: ${esc(blocked.reason)}. Nothing was paid and it is not tried again by itself. Close it below, or it closes when it expires; other terms need a new proposal and a new approval.</p>` : ""}
   ${changed ? `<p class="alarm" role="alert">Terms changed: the stored terms no longer hash to the recorded sha256. Do not approve.</p>` : ""}
   <h3>Exact terms</h3>
   ${termsHtml}
@@ -110,6 +113,13 @@ function renderProposal(p: Row, csrf: string): string {
       <button type="submit" name="decision" value="approve" class="approve">Approve and run</button>
       <button type="submit" name="decision" value="reject" class="reject">Reject</button>
     </div>
+  </form>` : ""}
+  ${blocked ? `
+  <form method="post" action="/proposals/${encodeURIComponent(p.proposal_id)}/decision" autocomplete="off">
+    <input type="hidden" name="csrf" value="${esc(csrf)}">
+    <label>First ${PREFIX_LENGTH} hex characters of the sha256 above
+      <input name="prefix" required minlength="${PREFIX_LENGTH}" maxlength="${PREFIX_LENGTH}" pattern="[0-9a-fA-F]{${PREFIX_LENGTH}}" inputmode="text" spellcheck="false" autocapitalize="off"></label>
+    <div class="buttons"><button type="submit" name="decision" value="reject" class="reject">Close it: pay nothing</button></div>
   </form>` : ""}
 </article>`;
 }
@@ -134,7 +144,7 @@ a { color: var(--accent); }
 .status { font-weight:700; padding:.1rem .6rem; border:1px solid var(--line); border-radius:1rem; font-size:.95rem; }
 .status-PENDING_APPROVAL { border-color: var(--accent); color: var(--accent); }
 .status-EXECUTED { background:var(--ok-bg); color:var(--ok-fg); }
-.status-REJECTED, .status-FAILED, .status-EXPIRED, .status-NEEDS_REAPPROVAL { background:var(--bad-bg); color:var(--bad-fg); }
+.status-REJECTED, .status-FAILED, .status-EXPIRED, .status-NEEDS_REAPPROVAL, .status-BLOCKED_NEEDS_REVIEW { background:var(--bad-bg); color:var(--bad-fg); }
 table.terms { border-collapse: collapse; width:100%; margin:.1rem 0; }
 table.terms th, table.terms td { border:1px solid var(--line); padding:.3rem .6rem; text-align:left; vertical-align:top; overflow-wrap:anywhere; }
 table.terms th { width: 14rem; font-weight:600; background: color-mix(in srgb, var(--line) 25%, transparent); }
@@ -176,7 +186,11 @@ const COUNTDOWN_JS = `
 function renderPage(db: DB, csrf: string, flash?: { kind: "ok" | "err"; text: string }): string {
   expireDue(db);
   const pending = db.prepare("SELECT * FROM proposals WHERE status = 'PENDING_APPROVAL' ORDER BY created_at, proposal_id").all() as Row[];
-  const others = db.prepare("SELECT * FROM proposals WHERE status != 'PENDING_APPROVAL' ORDER BY created_at DESC, proposal_id DESC LIMIT 10").all() as Row[];
+  // Outside audit 2.1: approved payments refused before they began, first, so they are never lost among the closed.
+  const blocked = blockedApprovals(db);
+  const others = (db.prepare("SELECT * FROM proposals WHERE status != 'PENDING_APPROVAL' ORDER BY created_at DESC, proposal_id DESC LIMIT 10").all() as Row[])
+    .filter((p) => !blocked.some((b) => b.proposal_id === p.proposal_id));
+  const stuck = blocked.map((b) => db.prepare("SELECT * FROM proposals WHERE proposal_id = ?").get(b.proposal_id) as Row);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -192,6 +206,8 @@ function renderPage(db: DB, csrf: string, flash?: { kind: "ok" | "err"; text: st
   ${flash ? `<p class="flash ${flash.kind}" role="${flash.kind === "err" ? "alert" : "status"}">${esc(flash.text)}</p>` : ""}
   <h2>Waiting for approval (${pending.length})</h2>
   ${pending.length ? pending.map((p) => renderProposal(p, csrf)).join("") : `<p class="muted">Nothing waits for approval.</p>`}
+  ${blocked.length ? `<h2>Approved, blocked at execution (${blocked.length})</h2>
+  ${stuck.map((p, i) => renderProposal(p, csrf, blocked[i])).join("")}` : ""}
   <h2>Recent decided or closed (latest 10)</h2>
   ${others.length ? others.map((p) => renderProposal(p, csrf)).join("") : `<p class="muted">Nothing yet.</p>`}
 </main>
@@ -278,6 +294,18 @@ export function approvalsApp(db: DB, opts: ApprovalsOptions) {
       return;
     }
     const wanted = decision === "approve" ? "APPROVED" : "REJECTED";
+    // An approved payment blocked at execution is closed, not rejected (it was decided once): it pays nothing.
+    if (wanted === "REJECTED" && isBlocked(db, id)) {
+      try {
+        closeBlocked(db, id, prefix, opts.approver);
+      } catch (e) {
+        const message = (e as Error).message;
+        fail(statusFor(message), message);
+        return;
+      }
+      res.redirect(303, `/?msg=${encodeURIComponent(`${id} closed; nothing was paid`)}`);
+      return;
+    }
     let result;
     try {
       result = decide(db, { proposalId: id, decision: wanted, typedPrefix: prefix, approver: opts.approver, method: "web", note: note?.trim() || undefined });

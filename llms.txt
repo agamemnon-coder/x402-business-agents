@@ -74,7 +74,7 @@ AI under control:
 
 Attacked and broken on purpose:
 - All 128 attacks on the /try API held (test world; 0 errors. Servers on this computer, no live site; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/redteam-api.md
-- 0 money invariants broken in 317 chaos scenarios (test world; 5 invariants held, never paid twice and never unsigned among them; 77 process deaths, 492 faults from a simulated Airwallex in the test; all 4 planted bugs caught. In process, test money): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/chaos-money.md
+- 0 money invariants broken in 317 chaos scenarios (test world; 5 invariants held, never paid twice and never unsigned among them; 77 process deaths, 490 faults from a simulated Airwallex in the test; all 4 planted bugs caught. In process, test money): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/chaos-money.md
 - All 17 fuzzed properties held (test world; 315,300 runs with fast-check, in process): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/fuzzing.md
 
 Built to last:

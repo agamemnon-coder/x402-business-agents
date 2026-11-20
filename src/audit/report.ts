@@ -7,6 +7,7 @@ import PDFDocument from "pdfkit";
 import { finalityView, NOT_CHECKED } from "../metal/finality.js";
 import type { DB } from "../db/open.js";
 import { verifyAuditChain, type AuditRowStored, type ChainCheck } from "./log.js";
+import { BLOCKED_STATUS, blockedApprovals } from "../policy/blocked.js";
 import { approverName, describe, kindTitle, modelName, parseReview, refundsUnder, REFUSAL_EVENTS, REFUSAL_WHAT, summarize } from "../dashboard/snapshot.js";
 
 export interface ReportDecision {
@@ -132,6 +133,7 @@ export function buildAuditReport(db: DB, now = new Date(), label = "ledger"): Au
 
   type PRow = { proposal_id: string; kind: string; terms_json: string; terms_sha256: string; created_by: string; evidence_json: string | null; explanation: string | null; status: string; created_at: string };
   const proposals = db.prepare("SELECT * FROM proposals ORDER BY created_at, proposal_id").all() as PRow[];
+  const blocked = new Map(blockedApprovals(db, now).map((b) => [b.proposal_id, b]));
   const decisions = proposals.map((p): ReportDecision => {
     let evidence: { sha256?: string }[] = [];
     try {
@@ -146,12 +148,14 @@ export function buildAuditReport(db: DB, now = new Date(), label = "ledger"): Au
       { decision: "APPROVED" | "REJECTED"; approver: string; method: string; created_at: string } | undefined;
     const executed = lastOf("proposal.executed", p.proposal_id);
     const failed = lastOf("proposal.failed", p.proposal_id) ?? lastOf("proposal.needs_reapproval", p.proposal_id);
+    // Outside audit 2.1: approved, then refused by its executor before it began; shown as such, with the reason.
+    const b = p.status === "APPROVED" ? blocked.get(p.proposal_id) : undefined;
     return {
       proposal_id: p.proposal_id, kind: p.kind, title: kindTitle(p.kind), proposed_by: p.created_by, proposed_at: p.created_at,
       what: summarize(p.kind, p.terms_json), rule: ruleOf(p.kind, p.terms_json), models: [...new Set(models)], advice,
-      status: p.status, decision: a?.decision ?? null, decided_by: a ? approverName(a.approver, a.method) : null, method: a?.method ?? null,
+      status: b ? BLOCKED_STATUS : p.status, decision: a?.decision ?? null, decided_by: a ? approverName(a.approver, a.method) : null, method: a?.method ?? null,
       decided_at: a?.created_at ?? null, terms_sha256: p.terms_sha256,
-      outcome: outcomeOf(p.status, executed && payload(executed), failed && str(payload(failed).error)),
+      outcome: b ? `approved, blocked at execution since ${b.since}: ${b.reason}; nothing was paid` : outcomeOf(p.status, executed && payload(executed), failed && str(payload(failed).error)),
     };
   });
 

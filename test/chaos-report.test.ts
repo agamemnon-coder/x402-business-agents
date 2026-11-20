@@ -16,7 +16,7 @@ function result(id: string, o: Partial<ScenarioResult> & { i4: string; broken?: 
   const invariants = inv(o.i4, o.broken);
   return {
     id, title: o.title ?? `scenario ${id}`, seed: o.seed ?? 7, ok: invariants.every((i) => i.ok), invariants,
-    silentApprovals: o.silentApprovals ?? [], outcome: o.outcome ?? [`${id} life 1`],
+    silentApprovals: o.silentApprovals ?? [], blockedShown: o.blockedShown ?? [], outcome: o.outcome ?? [`${id} life 1`],
     calls: o.calls ?? 10, faults: o.faults ?? 2, faultKinds: o.faultKinds ?? { lost_answer: 1, http500: 1 }, crashes: o.crashes ?? 1,
     hooks: o.hooks ?? { delivered: 4, forged: 1, ignored: 1 }, scenario: scenario(id, o.title ?? `scenario ${id}`, o.seed ?? 7),
   };
@@ -112,6 +112,20 @@ describe("the chaos report in Markdown", () => {
     expect(md).toContain("No invariant was broken in any scenario.");
     expect(md).not.toContain("Observation: an approved payment refused");
     expect(md).toContain("| `R001` | 2 | 1 | held | EXECUTED+FAILED |");
+  });
+
+  it("counts approvals refused before they began that were shown, and says why, with no silent-approval section (outside audit 2.1)", () => {
+    const H17 = result("H17", { i4: "P-1 EXECUTED; P-2 EXPIRED", blockedShown: ["P-2"], outcome: ["approved, refused before it began, shown: P-2 BLOCKED_NEEDS_REVIEW (approved_blocked)", "life 1: EUR would now drop under its floor"] });
+    const R9 = result("R009", { i4: "P-1 EXPIRED", blockedShown: ["P-1"], outcome: ["(calm) terms do not match the approved hash"] });
+    const r = chaosReport(1, [R1, R9], [H17], [], "2026-11-20");
+    expect(r.totals).toMatchObject({ blocked_shown: 2, silent_approvals: 0 });
+    expect(r.scenarios.find((s) => s.id === "R009")).toMatchObject({ blocked_shown: ["P-1"], outcome: ["(calm) terms do not match the approved hash"] });
+    expect(r.scenarios.find((s) => s.id === "R001")).not.toHaveProperty("blocked_shown");
+    const md = chaosMarkdown(r, [H17]);
+    expect(md).toContain("was shown (an execution.blocked row with the reason and time, BLOCKED_NEEDS_REVIEW, the approved_blocked alarm on /health): 2; where it sat APPROVED with no alarm naming it: 0.");
+    expect(md).toContain("### Approved payments refused before they began are shown (outside audit 2.1)");
+    expect(md).toContain("Why they were refused: the EUR floor 1, terms changed after the approval 1. Seen in: H17, R009.");
+    expect(md).not.toContain("Observation: an approved payment refused");
   });
 
   it("marks a broken hand-written scenario in its table", () => {

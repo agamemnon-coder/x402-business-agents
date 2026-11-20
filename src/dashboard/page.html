@@ -898,7 +898,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var cnt = document.getElementById("pending-count");
     cnt.textContent = String(live.length); cnt.className = "pill" + (live.length ? " wait" : "");
     var nodes = [];
-    if (!live.length) nodes.push(el("div", "empty", [icon("circle-check"), "Nothing waits for you. The agents are inside their limits."]));
+    if (!live.length && !(d.blocked || []).length) nodes.push(el("div", "empty", [icon("circle-check"), "Nothing waits for you. The agents are inside their limits."]));
     live.forEach(function (p) {
       var advisedNo = !!(p.review && p.review.recommendation === "reject");
       var exp = txt("span", "exp num", countdown(p.expires_at)); exp.setAttribute("data-expires", p.expires_at);
@@ -911,9 +911,17 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         el("div", "row", [review, exp]),
       ]));
     });
+    // Approved, then refused before it began (the EUR floor, a hold): nothing was paid, it waits for you until it expires.
+    (d.blocked || []).forEach(function (b) {
+      nodes.push(el("div", "ask advise-reject", [
+        el("div", "what", [icon("shield-alert"), "Approved, blocked at execution · " + b.proposal_id]),
+        txt("div", "title", plain(b.reason)),
+        txt("p", "review", "Refused " + hm(b.last) + ". Nothing was paid and it is not retried; it stays blocked until " + day(b.expires_at) + " " + hm(b.expires_at) + ". Other terms need a new proposal and your Face ID."),
+      ]));
+    });
     if (d.decisions.length) {
       nodes.push(el("div", "closed", [txt("h3", "", "Recently decided")].concat(d.decisions.slice(0, 4).map(function (x) {
-        var tone = x.status === "EXECUTED" ? "ok" : x.status === "REJECTED" || x.status === "FAILED" ? "bad" : "";
+        var tone = x.status === "EXECUTED" ? "ok" : x.status === "REJECTED" || x.status === "FAILED" || x.status === "BLOCKED_NEEDS_REVIEW" ? "bad" : "";
         return el("div", "d", [txt("span", "", x.title), x.by ? txt("span", "by", x.by) : null, txt("span", "pill " + tone, x.status.charAt(0) + x.status.slice(1).toLowerCase().replace(/_/g, " "))]);
       }))));
     }

@@ -1,8 +1,12 @@
 // Money actions as an explicit state machine with a step log (backend review B2).
 //
 //   proposed → approved → executing (step n) → settled | failed | cancelled
+//                 ↓ refused before it began (the EUR floor, a hold, changed terms: execution.blocked)
+//              blocked → cancelled (it expires, or a person closes it: NEEDS_REAPPROVAL)
 //
-// The first part is the proposal's own lifecycle (src/policy/approvals.ts). While it executes, each outside call is a
+// The first part is the proposal's own lifecycle (src/policy/approvals.ts). Blocked is derived, not stored: the
+// proposal stays APPROVED, with an execution.blocked row (src/policy/blocked.ts, outside audit 2.1); it is shown as
+// BLOCKED_NEEDS_REVIEW, raises approved_blocked on /health, and a restart does not run it again. While it executes, each outside call is a
 // step in money_steps: STARTED with its idempotency key before the call, DONE with the answer after it (an outbox).
 // When the process dies, `resumeInterrupted` on the next start finds every action still EXECUTING and runs its
 // executor again; the executor skips DONE steps and resolves a STARTED one by its key at the outside service (a
@@ -12,8 +16,9 @@ import { originJson } from "../provenance/origin.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { resuming } from "./approvals.js";
+import { BLOCKED_STATUS, blockedApprovals } from "./blocked.js";
 
-export type MoneyState = "proposed" | "approved" | "executing" | "settled" | "failed" | "cancelled";
+export type MoneyState = "proposed" | "approved" | "blocked" | "executing" | "settled" | "failed" | "cancelled";
 
 /**
  * A point where a test may stop the process (chaos tests only; in a live run nothing is set and this does nothing).
@@ -63,11 +68,11 @@ const STATE: Record<string, MoneyState> = {
 };
 
 /** Where a money action stands: its state, and while it executes the step it is on. */
-export function moneyActionState(db: DB, proposalId: string): { state: MoneyState; step: { n: number; name: string; status: string } | null; steps: { n: number; name: string; status: string }[] } {
+export function moneyActionState(db: DB, proposalId: string, now = new Date()): { state: MoneyState; step: { n: number; name: string; status: string } | null; steps: { n: number; name: string; status: string }[] } {
   const p = db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string } | undefined;
   if (!p) throw new Error(`no proposal ${proposalId}`);
   const steps = (db.prepare("SELECT n, step AS name, status FROM money_steps WHERE action_id = ? ORDER BY n, step").all(proposalId) as { n: number; name: string; status: string }[]);
-  const state = STATE[p.status] ?? "failed";
+  const state = p.status === "APPROVED" && blockedApprovals(db, now).some((b) => b.proposal_id === proposalId) ? "blocked" : STATE[p.status] ?? "failed";
   const open = steps.find((s) => s.status === "STARTED") ?? steps.at(-1) ?? null;
   return { state, step: state === "executing" ? open : null, steps };
 }
@@ -94,7 +99,15 @@ export async function resumeInterrupted(db: DB, run: (db: DB, proposalId: string
   // Approved, but the process died before the executor began (dry-6: killed right after the CFO's Face ID). Its
   // executor starts it as usual, with every check it makes (hash, approval, expiry, quote): a late one runs nothing.
   const approved = (db.prepare("SELECT proposal_id FROM proposals WHERE status = 'APPROVED' ORDER BY proposal_id").all() as { proposal_id: string }[]).map((r) => r.proposal_id);
+  // Outside audit 2.1: one its executor already refused (execution.blocked: the EUR floor, a hold, changed terms) is not
+  // tried again at each start; it stays blocked, on the dashboard and in /health, until it expires or a person closes it.
+  const blocked = new Map(blockedApprovals(db, now).map((b) => [b.proposal_id, b]));
   for (const id of approved) {
+    const b = blocked.get(id);
+    if (b) {
+      out.push({ id, outcome: `${BLOCKED_STATUS}: ${b.reason} (since ${b.since}); not tried again, a person decides` });
+      continue;
+    }
     audit(db, "system", "proposal.resumed", id, { after: "a restart; approved, but its execution had not begun" }, now);
     try {
       await run(db, id);

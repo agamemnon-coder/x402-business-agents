@@ -39,6 +39,7 @@ import { recoverHolds } from "../policy/holds.js";
 import { followPayouts } from "../payouts/follow.js";
 import { health } from "../ops/health.js";
 import { chaos, resumeInterrupted } from "../policy/saga.js";
+import { BLOCKED_ALERT, BLOCKED_EVENT, BLOCKED_STATUS, blockedApprovals } from "../policy/blocked.js";
 import { FakeAuthenticator } from "../redteam/authenticator.js";
 import { FAULTS, StandInAirwallex, type Fault } from "./standInAirwallex.js";
 
@@ -97,8 +98,10 @@ export interface Scenario {
 export interface Invariant { id: "I1" | "I2" | "I3" | "I4" | "I5"; ok: boolean; detail: string }
 export interface ScenarioResult {
   id: string; title: string; seed: number; ok: boolean; invariants: Invariant[];
-  /** Proposals that sat APPROVED, refused before they began, with no alarm (until their expiry). */
+  /** Proposals that sat APPROVED, refused before they began, with no alarm naming them (a broken I4 since 20 Nov). */
   silentApprovals: string[];
+  /** Proposals approved, refused before they began, and shown: an execution.blocked row and a /health alarm naming them. */
+  blockedShown: string[];
   outcome: string[]; calls: number; faults: number; faultKinds: Record<string, number>; crashes: number; hooks: { delivered: number; forged: number; ignored: number };
   scenario: Scenario;
 }
@@ -266,11 +269,18 @@ export async function runScenario(sc: Scenario, onEnd?: (db: DB) => void): Promi
   }
   await awx.settleAll();
   await followPayouts(db, tail, runnerNow());
-  // What sits APPROVED now, refused before it began, with nothing on /health or in the alarm rows: kept as an
-  // observation (it becomes EXPIRED at the next start after its expiry, below), never as a pass.
-  const silent = (db.prepare("SELECT proposal_id FROM proposals WHERE status = 'APPROVED'").all() as { proposal_id: string }[]).map((x) => x.proposal_id)
-    .filter((id) => !health(db, runnerNow()).alerts.some((a) => MONEY_ALERTS.includes(a.code)) && !db.prepare(`SELECT 1 FROM audit_log WHERE subject = ? AND event IN (${TO_A_PERSON.map(() => "?").join(",")})`).get(id, ...TO_A_PERSON));
+  // What sits APPROVED now, refused before it began: each must be visible to a person (outside audit 2.1), a /health
+  // alarm that names it or an alarm row for it. One that is not is silent, and breaks I4 (below).
+  const alertsNow = health(db, runnerNow()).alerts.filter((a) => MONEY_ALERTS.includes(a.code));
+  const names = (id: string) => (a: { words: string }) => new RegExp(`\\b${id}\\b`).test(a.words);
+  const named = (id: string) => alertsNow.some(names(id));
+  // Its own execution.blocked row is not enough: while it waits, an alarm must name it.
+  const rowsForAPerson = TO_A_PERSON.filter((e) => e !== BLOCKED_EVENT);
+  const approvedNow = (db.prepare("SELECT proposal_id FROM proposals WHERE status = 'APPROVED'").all() as { proposal_id: string }[]).map((x) => x.proposal_id);
+  const silent = approvedNow.filter((id) => !named(id) && !db.prepare(`SELECT 1 FROM audit_log WHERE subject = ? AND event IN (${rowsForAPerson.map(() => "?").join(",")})`).get(id, ...rowsForAPerson));
+  const blockedShown = approvedNow.filter((id) => named(id) && blockedApprovals(db, runnerNow()).some((b) => b.proposal_id === id));
   if (silent.length) outcome.push(`approved, refused before it began, no alarm: ${silent.join(", ")}`);
+  if (blockedShown.length) outcome.push(`approved, refused before it began, shown: ${blockedShown.map((id) => `${id} ${BLOCKED_STATUS} (${alertsNow.filter(names(id)).map((a) => a.code).join(", ")})`).join("; ")}`);
   // The next day: the runner starts again (as it does after a deploy or a reboot) and follows its payouts once more.
   elapsed += 24 * 3_600_000;
   recoverHolds(db, runnerNow());
@@ -285,9 +295,9 @@ export async function runScenario(sc: Scenario, onEnd?: (db: DB) => void): Promi
   const before = moneyRows(db);
   const hooks = webhookStorm(db, awx, r, sc, runnerNow);
   const after = moneyRows(db);
-  const invariants = await check(db, awx, proposals, sc, before === after, hooks, runnerNow);
+  const invariants = await check(db, awx, proposals, sc, before === after, hooks, runnerNow, silent);
   const result: ScenarioResult = {
-    id: sc.id, title: sc.title, seed: sc.seed, ok: invariants.every((i) => i.ok), invariants, silentApprovals: silent, outcome, calls: awx.log.length,
+    id: sc.id, title: sc.title, seed: sc.seed, ok: invariants.every((i) => i.ok), invariants, silentApprovals: silent, blockedShown, outcome, calls: awx.log.length,
     faults: awx.log.filter((l) => l.fault).length, faultKinds: awx.log.reduce<Record<string, number>>((m, l) => (l.fault ? { ...m, [l.fault]: (m[l.fault] ?? 0) + 1 } : m), {}), crashes, hooks, scenario: sc,
   };
   onEnd?.(db);
@@ -358,12 +368,12 @@ function webhookStorm(db: DB, awx: StandInAirwallex, r: () => number, sc: Scenar
 }
 
 /** The /health alerts that tell a person a payment needs them (src/ops/health.ts). */
-const MONEY_ALERTS = ["action_stuck", "airwallex_disagrees", "reconciliation_difference", "hold_stale", "approved_terms_changed"];
+const MONEY_ALERTS = ["action_stuck", "airwallex_disagrees", "reconciliation_difference", "hold_stale", "approved_terms_changed", BLOCKED_ALERT];
 const LIVE = (s: string) => !["CANCELLED", "FAILED", "REFUNDED", "RETURNED"].includes(s);
 /** Rows a person is shown (an alarm on the dashboard or in /health): the payment went to a person. */
-const TO_A_PERSON = ["transfer.left_open", "transfer.ambiguous", "transfer.payee_unconfirmed", "transfer.row_conflict", "reconcile.difference", "transfer.retry_stopped", "transfer.awaiting_airwallex_approval", "transfer.fee_over_ceiling"];
+const TO_A_PERSON = ["transfer.left_open", "transfer.ambiguous", "transfer.payee_unconfirmed", "transfer.row_conflict", "reconcile.difference", "transfer.retry_stopped", "transfer.awaiting_airwallex_approval", "transfer.fee_over_ceiling", BLOCKED_EVENT];
 
-async function check(db: DB, awx: StandInAirwallex, proposals: string[], sc: Scenario, hooksMovedNothing: boolean, hooks: { delivered: number; forged: number; ignored: number }, now: () => Date): Promise<Invariant[]> {
+async function check(db: DB, awx: StandInAirwallex, proposals: string[], sc: Scenario, hooksMovedNothing: boolean, hooks: { delivered: number; forged: number; ignored: number }, now: () => Date, silent: string[] = []): Promise<Invariant[]> {
   const props = db.prepare("SELECT proposal_id, status, terms_sha256, terms_json FROM proposals WHERE kind = 'invoice_payment'").all() as { proposal_id: string; status: string; terms_sha256: string; terms_json: string }[];
   const approved = new Map((db.prepare("SELECT proposal_id, approved_sha256, method FROM approvals WHERE decision = 'APPROVED'").all() as { proposal_id: string; approved_sha256: string; method: string }[]).map((a) => [a.proposal_id, a]));
   const live = awx.transfers.filter((t) => LIVE(t.status));
@@ -440,7 +450,10 @@ async function check(db: DB, awx: StandInAirwallex, proposals: string[], sc: Sce
     if (!person) unknown++;
     states.push(`conversion ${c.conversionId} (${(c.buyAmountCents / 100).toFixed(2)} EUR for ${p?.proposal_id ?? "no proposal"}) done at Airwallex, not in the ledger${person ? " → a person" : " → UNKNOWN: no alarm"}`);
   }
-  out.push({ id: "I4", ok: unknown === 0, detail: states.join("; ") || "no proposal was made" });
+  // Outside audit 2.1: an approved payment refused before it began, with no alarm naming it while it sat APPROVED, is
+  // not "with a person" even though it ends EXPIRED: it breaks I4.
+  if (silent.length) states.push(`approved and refused before it began with NO ALARM while it waited: ${silent.join(", ")}`);
+  out.push({ id: "I4", ok: unknown === 0 && silent.length === 0, detail: states.join("; ") || "no proposal was made" });
 
   // I5: webhooks move nothing; forged ones are ignored.
   out.push({ id: "I5", ok: hooksMovedNothing && hooks.ignored >= hooks.forged, detail: `${hooks.delivered} delivered (${hooks.forged} forged): ${hooks.ignored} ignored as unsigned or malformed; proposals, payout rows and approvals ${hooksMovedNothing ? "unchanged" : "CHANGED"}` });
