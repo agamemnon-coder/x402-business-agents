@@ -18,6 +18,7 @@ import { withinRate } from "./auth.js";
 import { chatMessage, type BusinessEvent } from "./connections.js";
 import { randomToken, sha256Hex } from "./crypto.js";
 import { logEvent } from "./log.js";
+import { egressAllowed } from "./egress.js";
 import { hookUrl, MonitorRefused, notify, type Outbound } from "./monitor.js";
 import type { Sql } from "./store.js";
 import { TenantDb, WriteConflict } from "./tenant.js";
@@ -261,6 +262,8 @@ export function chatNotifier(to: "slack" | "teams", out: Outbound): Notifier {
   return {
     channel: to,
     async send(url, alert) {
+      // A target stored before the allow rule, or written past it, is never called (./egress.ts; ASVS V12.6.1).
+      if (!egressAllowed(url)) return { ok: false, status: 0, retryable: false };
       const r = await statusOf(out(url, { method: "POST", redirect: "manual", ...timeout(), headers: { "content-type": "application/json" }, body: JSON.stringify(chatMessage(alertEvent(alert), to)) }));
       const ok = r.status >= 200 && r.status < 300;
       return { ok, status: r.status, retryable: !ok && retryableStatus(r.status) };
