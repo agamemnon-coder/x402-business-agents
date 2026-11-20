@@ -3,7 +3,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { partnerTiles } from "../src/redesign/proofRuns.js";
-import { agentRun, split } from "../src/redesign/run.js";
+import { agentRun, longRun, split } from "../src/redesign/run.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const README = read("README.md");
@@ -55,6 +55,7 @@ describe("the README's At a glance", () => {
     // Sandbox or Testnet for a partner (LIVE until 17 Nov): at least one live run of that partner in the run records (the tiles on /proof count them).
     for (const n of ["Airwallex", "Alta", "Visa via Airi", "T:0"]) expect({ n, runs: (live[n] ?? 0) > 0 }).toEqual({ n, runs: true });
     for (const s of ["Airwallex sandbox", "Alta (formerly Metal) testnet", "Visa via Airi sandbox", "T:0 sandbox ledger"]) expect(row).toContain(s);
-    expect(row).toContain(`Claude ${split(agentRun().record).byClaude} decisions, live`);
+    // 20 Nov: the long run's count (as /proof's Claude tile), the main run's while the long run's record is missing.
+    expect(row).toContain(`Claude ${longRun()?.byClaude ?? split(agentRun().record).byClaude} decisions, live`);
   });
 });

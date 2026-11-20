@@ -20,7 +20,7 @@ export interface SoakRecord {
   started_at: string; ended_at: string;
   budget: { approved: number | null; used: number };
   summary: SoakSummary;
-  payments: { invoice_no: string; transfer_id: string | null; proposal_id?: string; terms_sha256?: string; currency?: string; amount?: string; status_after_execute?: string; readback?: { approval_sha256?: string } | null }[];
+  payments: { invoice_no: string; transfer_id: string | null; proposal_id?: string; terms_sha256?: string; currency?: string; amount?: string; status_after_execute?: string; readback?: { approval_sha256?: string; match?: { approval_sha256?: boolean } } | null }[];
 }
 export interface Soak { file: string; log: string; day: string; rec: SoakRecord }
 
@@ -56,4 +56,15 @@ export function soakTotals(all: readonly Soak[] = soaks()) {
     /** The records and their run logs, for data-rec. */
     files: all.flatMap((s) => [s.file, s.log]),
   };
+}
+
+/**
+ * The signed hashes the soaks read back (20 Nov, /proof's approval-hash tile): each payment created at Airwallex, and of
+ * those, each whose transfer, read back, carries in metadata.approval_sha256 exactly the hash of the terms signed for it
+ * (the record's terms_sha256), with the soak's own comparison saying so too.
+ */
+export function soakHashReadbacks(all: readonly Soak[] = soaks()): { created: number; matched: number; files: string[] } {
+  const pays = all.flatMap((s) => s.rec.payments.filter((p) => p.transfer_id));
+  const matched = pays.filter((p) => !!p.terms_sha256 && p.readback?.approval_sha256 === p.terms_sha256 && p.readback.match?.approval_sha256 === true).length;
+  return { created: pays.length, matched, files: all.flatMap((s) => [s.file, s.log]) };
 }

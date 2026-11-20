@@ -99,9 +99,14 @@ export interface LongRun {
   byClaude: number; decisions: number; fallbacks: number; calls: number; callsWithoutId: number; costMicros: number;
   agents: { agent: string; decisions: number; by_claude: number }[];
 }
+/** The long run's record itself (its Alta payments and its refusal on chain, read as the main run's are), or null. */
+export function longRunRecord(): RunRecord | null {
+  return existsSync(new URL(`../../${LONG_RUN_FILE}`, import.meta.url)) ? readJson<RunRecord>(LONG_RUN_FILE) : null;
+}
 export function longRun(): LongRun | null {
-  if (!existsSync(new URL(`../../${LONG_RUN_FILE}`, import.meta.url))) return null;
-  const r = readJson<RunRecord>(LONG_RUN_FILE), st = r.snapshot.agent_stats, sp = split(r);
+  const r = longRunRecord();
+  if (!r) return null;
+  const st = r.snapshot.agent_stats, sp = split(r);
   return {
     file: LONG_RUN_FILE, log: LONG_RUN_LOG, recordedAt: r.recorded_at, run: r.run,
     byClaude: sp.byClaude, decisions: sp.decisions, fallbacks: sp.fallbacks,

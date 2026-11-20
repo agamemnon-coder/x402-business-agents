@@ -109,6 +109,30 @@ describe("the evidence wall's file", () => {
     expect(tile(w, "claude-main").note).toContain("virtual test passkeys, test money");
     expect(tile(w, "claude-main").note).toContain(`The main run of 3 Nov: ${sumOf(main, (a) => a.by_claude)}.`);
     expect(tile(w, "claude-main").rec.split(" ")).toEqual(["docs/demo/long-run.json", "docs/runs/2026-11-20-long-run.md", "docs/demo/main-run.json"]);
+    // 20 Nov: the Alta tiles read the long run's record as the main run's are read; the main run's figures in the notes.
+    type Ev = { event: string; payload: { seq?: number; tx?: string; metal_reason?: string } };
+    type Fl = { kind: string; refused?: boolean; count?: number };
+    const lrec = json<{ snapshot: { flows: Fl[] }; ledger: { events: Ev[] } }>("docs/demo/long-run.json");
+    const onChain = lrec.ledger.events.find((e) => e.event === "upstream.refused_on_chain")!;
+    expect(onChain.payload.metal_reason).toMatch(/^mandate_cap_exceeded/);
+    expect(tile(w, "alta-refusal")).toMatchObject({ fig: `#${onChain.payload.seq}`, href: `https://testnet.metalntwx.com/tx/${onChain.payload.tx}` });
+    expect(tile(w, "alta-refusal").note).toContain("the 20 Nov long run, a test world. The main run of 3 Nov: #24.");
+    const paid = (k: string) => lrec.snapshot.flows.filter((f) => !f.refused && f.kind === k).reduce((n, f) => n + (f.count ?? 1), 0);
+    expect(tile(w, "alta-payments").fig).toBe(String(paid("sale") + paid("upstream") + paid("refund") + paid("sweep")));
+    expect(tile(w, "alta-payments").note).toMatch(/^The 20 Nov long run, a test world: .* The main run of 3 Nov: 86\.$/);
+    expect(tile(w, "alta-payments").rec.split(" ")).toEqual(["docs/demo/long-run.json", "docs/runs/2026-11-20-long-run.md", "docs/demo/main-run.json"]);
+    // 20 Nov: the signed hashes every soak read back from Airwallex, each equal to the signed terms' hash.
+    type Pay = { transfer_id: string | null; terms_sha256: string; readback: { approval_sha256: string; match: { approval_sha256: boolean } } | null };
+    const pays = files.flatMap((f) => json<{ payments: Pay[] }>(f).payments.filter((p) => p.transfer_id));
+    const same = pays.filter((p) => p.readback?.approval_sha256 === p.terms_sha256 && p.readback.match.approval_sha256).length;
+    expect(tile(w, "approval-hash").fig).toBe(countOf(same, pays.length));
+    expect(tile(w, "approval-hash").fig).toBe("All 60");
+    expect(tile(w, "approval-hash").rec.split(" ").slice(0, 4)).toEqual(files.flatMap((f) => [f, f.replace(/\.json$/, ".md")]));
+    // 20 Nov: the newest verify-all report, its failures said.
+    const vfile = readdirSync(new URL("../docs/evidence/", import.meta.url)).filter((n) => /^verification-\d{4}-\d{2}-\d{2}\.json$/.test(n)).sort().at(-1)!;
+    const vr = json<{ counts: { passed: number; failed: number } }>(`docs/evidence/${vfile}`);
+    expect(tile(w, "verify-all")).toMatchObject({ fig: String(vr.counts.passed), label: `checks passed by verify-all, ${vr.counts.failed} failed`, rec: `docs/evidence/${vfile}` });
+    if (vr.counts.failed) expect(tile(w, "verify-all").note).toMatch(/ Failed: | Each failure is in the report\./);
   });
 
   it("says what was simulated: every PAID at the sandbox is the sandbox's simulation, and a test world is labelled", () => {

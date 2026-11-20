@@ -3,17 +3,19 @@
 // prefers-reduced-motion; no script, no external link, no web font, so GitHub shows it in an <img>. Partner names are
 // text, no logos. Every figure is read here from its record:
 //   partners' status   a live run of each in the run records (the tiles on /proof count them; test/readme-glance.test.ts)
-//   Claude's decisions the main run of 3 Nov (src/redesign/run.ts, as the stat strip reads it)
+//   Claude's decisions the long run of 20 Nov (src/redesign/run.ts longRun(), as /proof's Claude tile reads it; the
+//                      main run of 3 Nov, 24, until 20 Nov and when the long run's record is missing)
 //   tests passing      docs/assets/test-summary.json (the last full run, `npm run test-count`)
-//   verification       the latest docs/evidence/verification-*.json (`npm run verify-all`)
+//   verification       the latest docs/evidence/verification-*.json (`npm run verify-all`; 20 Nov since 20 Nov)
 //   red team           the newest full run of the red team, RED_TEAM_RECORD (20 Nov: a re-run, not held out, of every
 //                      attack and every earlier attempt of every red-team record, in a throwaway test world). Until
 //                      20 Nov the strip showed the first run, docs/redteam/report.json (30 Oct), kept as recorded.
 // Written by `npm run readme:strip`; test/readme-proof-strip.test.ts redraws both and compares.
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { loadRecord, split } from "../src/redesign/run.js";
+import { readFileSync, writeFileSync } from "node:fs";
+import { loadRecord, longRun, split } from "../src/redesign/run.js";
+import { latestVerificationReport } from "../src/redesign/proofRuns.js";
 
 /** "30 Oct" from an ISO time: the day a record ran. */
 const dayOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
@@ -34,9 +36,9 @@ export interface StripFigures {
 
 /** The newest verification report in docs/evidence/ (by its date in the file name). */
 export function latestVerification(): string {
-  const files = readdirSync("docs/evidence").filter((f) => /^verification-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort();
-  if (!files.length) throw new Error("no docs/evidence/verification-*.json");
-  return `docs/evidence/${files[files.length - 1]!}`;
+  const file = latestVerificationReport();
+  if (!file) throw new Error("no docs/evidence/verification-*.json");
+  return file;
 }
 
 export function stripFigures(): StripFigures {
@@ -48,7 +50,7 @@ export function stripFigures(): StripFigures {
   const r = JSON.parse(read(RED_TEAM_RECORD)) as { ran_at: string; rerun_of?: string; attempts: number; blocked: number; caught_after: number; not_blocked: number; inconclusive: number };
   if (r.blocked + r.not_blocked + r.inconclusive !== r.attempts) throw new Error("the red team report's outcomes do not add up");
   return {
-    decisions: split(loadRecord().record).byClaude,
+    decisions: longRun()?.byClaude ?? split(loadRecord().record).byClaude,
     tests: { passed: t.passed, total: t.total, skipped: t.skipped, failed: t.failed },
     verification: { file, passed: Number(m[1]), couldNotRun: Number(m[2]), failed: Number(m[3]) },
     redteam: { file: RED_TEAM_RECORD, rerun: !!r.rerun_of, attempts: r.attempts, stopped: r.blocked - r.caught_after, caughtAfter: r.caught_after, through: r.not_blocked, inconclusive: r.inconclusive, day: dayOf(r.ran_at) },

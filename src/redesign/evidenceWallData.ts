@@ -5,17 +5,18 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { liveTryRecords, liveTryTotals, type LiveTryRecord } from "./liveTry.js";
-import { REPO_BLOB } from "./metalStory.js";
-import { agentRun, longRun, payments } from "./run.js";
+import { metalStory, REPO_BLOB } from "./metalStory.js";
+import { agentRun, LONG_RUN_FILE, LONG_RUN_LOG, longRun, longRunRecord, payments } from "./run.js";
 import { METAL_TX_LIST } from "./partners.js";
 import { proofFacts } from "./proof.js";
+import { latestVerificationReport } from "./proofRuns.js";
 import { centHolds, centRecord } from "./cardCent.js";
 import { ownersRun, ownersSteps } from "./metalOnchain.js";
 import { VIC3_RUN_FILE, vic3Run, vic3Summary } from "./vic3Run.js";
 import { WORST_CASE, WORST_CASE_DOC, worstOf } from "../evals/worstCase.js";
 import { CI_RUNS_URL, ciJobs } from "./ciChecks.js";
 import { NOT_IN_BAND } from "./scale.js";
-import { soakTotals, soaks } from "../airwallex/soakRecords.js";
+import { soakHashReadbacks, soakTotals, soaks } from "../airwallex/soakRecords.js";
 import type { EvidenceWall, WallGroup, WallTile } from "./evidenceWall.js";
 import { verifyInclusion, type ProofStep } from "../anchor/merkle.js";
 
@@ -68,13 +69,24 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
   }
   const facts = proofFacts(agentRun());
   const hash = facts.find((f) => f.key === "awx" && f.icon === "lock");
-  if (hash) out.push({ key: "approval-hash", fig: hash.fig, label: "signed hash in Airwallex's transfer record", note: "Its approval_sha256 is the hash of the terms the CFO signed.", tag: "sandbox", tone: "awx", href: hash.href, rec: hash.rec ?? "" });
+  // 20 Nov (owner: one hash looked thin): every signed hash the soaks read back from Airwallex's transfer, counted over
+  // all soak records; the main run's single hash (its own readback record) stays in the note and the records.
+  const sh = soakHashReadbacks(skAll);
+  if (sh.created) {
+    out.push({ key: "approval-hash", fig: whole(sh.matched, sh.created), label: "signed hashes in Airwallex's transfer records", note: `Each transfer's approval_sha256, read back from Airwallex, is the hash of the terms signed for it (a virtual test passkey); ${skAll.length === 1 ? "the soak of" : `${skAll.length} soaks,`} ${joinDays(skAll.map((x) => day(x.rec.started_at)))}.${hash ? ` The main run's, signed by the CFO: ${hash.fig}` : ""}`, tag: "sandbox", tone: "awx", href: blob(skAll.at(-1)!.log), rec: [...sh.files, ...(hash?.rec ? [hash.rec] : [])].join(" ") });
+  } else if (hash) out.push({ key: "approval-hash", fig: hash.fig, label: "signed hash in Airwallex's transfer record", note: "Its approval_sha256 is the hash of the terms the CFO signed.", tag: "sandbox", tone: "awx", href: hash.href, rec: hash.rec ?? "" });
   const held = facts.find((f) => f.key === "awx" && f.icon === "landmark");
   if (held) out.push({ key: "two-locks", fig: held.fig, label: "held by Airwallex until a person approved", note: `${held.text.replace(/\.$/, "")}; a test passkey signed in Purser, settlement simulated.`, tag: "sandbox", tone: "awx", href: held.href, rec: held.rec ?? "" });
-  const alta = facts.find((f) => f.key === "metal");
-  if (alta) out.push({ key: "alta-refusal", fig: alta.fig, label: "refused on chain by Alta, over the mandate", note: `On Alta's testnet explorer; the main run, ${day(agentRun().record.recorded_at)}.`, tag: "testnet", tone: "metal", href: alta.href, rec: alta.rec ?? "" });
-  const pay = payments(agentRun().record);
-  if (pay.sums && pay.onChain) out.push({ key: "alta-payments", fig: String(pay.onChain), label: "payments on Alta, each its own transaction", note: `The main run, ${day(agentRun().record.recorded_at)}: every one inside the agents' mandates; each linked to Alta's testnet explorer.`, tag: "testnet", tone: "metal", href: blob(METAL_TX_LIST), rec: agentRun().file });
+  // 20 Nov (owner: the main run's figures are the oldest): the long run of 20 Nov, the main run's world and order and an
+  // hour more (./run.ts longRun), read as the main run's are, under its own day and name; the main run's stay in the
+  // notes and the records. Without the long run's record, the main run's as before.
+  const alta = facts.find((f) => f.key === "metal"), main = agentRun(), mainDay = day(main.record.recorded_at);
+  const long = longRunRecord(), lm = long ? metalStory(long) : null, lp = long ? payments(long) : null;
+  const mainPay = payments(main.record);
+  if (long && lm?.refusal?.proof.href && lm.refusal.code === "mandate_cap_exceeded") out.push({ key: "alta-refusal", fig: `#${lm.refusal.seq}`, label: "refused on chain by Alta, over the mandate", note: `On Alta's testnet explorer; the ${day(long.recorded_at)} long run, a test world.${alta ? ` The main run of ${mainDay}: ${alta.fig}.` : ""}`, tag: "testnet", tone: "metal", href: lm.refusal.proof.href, rec: [LONG_RUN_FILE, LONG_RUN_LOG, ...(alta?.rec ? [alta.rec] : [])].join(" ") });
+  else if (alta) out.push({ key: "alta-refusal", fig: alta.fig, label: "refused on chain by Alta, over the mandate", note: `On Alta's testnet explorer; the main run, ${mainDay}.`, tag: "testnet", tone: "metal", href: alta.href, rec: alta.rec ?? "" });
+  if (long && lp?.sums && lp.onChain && lm?.payments.account.href) out.push({ key: "alta-payments", fig: String(lp.onChain), label: "payments on Alta, each its own transaction", note: `The ${day(long.recorded_at)} long run, a test world: ${lp.metalParts}, every one inside the agents' mandates; the account on Alta's testnet explorer.${mainPay.sums && mainPay.onChain ? ` The main run of ${mainDay}: ${mainPay.onChain}.` : ""}`, tag: "testnet", tone: "metal", href: lm.payments.account.href, rec: [LONG_RUN_FILE, LONG_RUN_LOG, ...(mainPay.sums && mainPay.onChain ? [main.file] : [])].join(" ") });
+  else if (mainPay.sums && mainPay.onChain) out.push({ key: "alta-payments", fig: String(mainPay.onChain), label: "payments on Alta, each its own transaction", note: `The main run, ${mainDay}: every one inside the agents' mandates; each linked to Alta's testnet explorer.`, tag: "testnet", tone: "metal", href: blob(METAL_TX_LIST), rec: main.file });
   const v = vic3Run();
   if (v) {
     const s = vic3Summary(v), fid = s.paidFaceId[0]?.request;
@@ -304,9 +316,17 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
 
 function built(): WallTile[] {
   const out: WallTile[] = [];
-  const VR = "docs/evidence/verification-2026-11-15.json";
-  const vr = json(VR) as { counts?: { passed: number; could_not_run_here: number; failed: number }; transactions?: { read_from_chain: number; found: number }; started_at?: string } | null;
-  if (vr?.counts) out.push({ key: "verify-all", fig: String(vr.counts.passed), label: `checks passed by verify-all, ${vr.counts.failed} failed`, note: `${vr.transactions?.found ?? 0} Alta transactions read from the chain${vr.started_at ? `; ${day(vr.started_at)}` : ""}.`, tag: "check", tone: "ok", href: blob("docs/evidence/verification-2026-11-15.md"), rec: VR });
+  // The newest verify-all report (20 Nov: a run of its own day, the 15 Nov report kept as written). Its failures are
+  // said: when each is a count on the deployed /proof below the records' (the site not yet redeployed), in those words.
+  const VR = latestVerificationReport();
+  type VFail = { group: string; what: string; seen: string };
+  const vr = VR ? (json(VR) as { counts?: { passed: number; could_not_run_here: number; failed: number }; failures?: VFail[]; transactions?: { read_from_chain: number; found: number }; started_at?: string } | null) : null;
+  if (VR && vr?.counts) {
+    const fails = vr.failures ?? [];
+    const behind = (f: VFail) => { const m = /^page (\d+), record (\d+)$/.exec(f.seen); return f.group === "figures on the pages" && /^\/proof: /.test(f.what) && !!m && Number(m[1]) < Number(m[2]); };
+    const why = !fails.length ? "" : fails.every(behind) ? ` Failed: ${fails.map((f) => f.what.replace(/^\/proof: /, "")).join(", ")}, each lower on the deployed /proof than in the records.` : " Each failure is in the report.";
+    out.push({ key: "verify-all", fig: String(vr.counts.passed), label: `checks passed by verify-all, ${vr.counts.failed} failed`, note: `${vr.transactions?.found ?? 0} Alta transactions read from the chain${vr.started_at ? `; ${day(vr.started_at)}` : ""}.${why}`, tag: "check", tone: "ok", href: blob(VR.replace(/\.json$/, ".md")), rec: VR });
+  }
   const AN = "docs/runs/2026-11-19-anchor.json";
   const an = json(AN) as { anchored_at?: string; height?: number; parts?: unknown[] } | null;
   if (an?.height) out.push({ key: "anchor", fig: String(an.height), label: "records sealed by one anchor transaction", note: `${an.parts?.length ?? 0} parts hashed into one head on Alta testnet, ${day(an.anchored_at!)}; npm run verify-anchor recomputes it.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-anchor.md"), rec: AN });

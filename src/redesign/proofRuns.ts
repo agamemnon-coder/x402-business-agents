@@ -7,7 +7,7 @@
 //   3. The receipt anyone can check offline: `npm run verify-approval` (package.json), the owner's real passkey approval.
 // No figure is typed here; no "n of n" fraction is shown.
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { REPO_BLOB } from "./metalStory.js";
 import { isLive, liveRuns, partnerNamesOf, type RunId, type RunRow } from "./runs.js";
 import { esc, icon } from "./ui.js";
@@ -177,6 +177,20 @@ export function verifyCalloutHtml(): string {
 
 /** The verification report of 15 Nov (npm run verify-all): its count, read from the committed report, never typed. */
 export const VERIFICATION_REPORT = "docs/evidence/verification-2026-11-15";
+/**
+ * The newest verification report (npm run verify-all writes docs/evidence/verification-<day>.json, one per day it ran),
+ * by the date in its name: what /proof's verify-all tile and the README's proof strip show. Null when there is none.
+ */
+export function latestVerificationReport(): string | null {
+  let names: string[];
+  try { names = readdirSync(new URL("docs/evidence/", ROOT)); } catch { return null; }
+  const NAME = /^verification-(\d{4})-(\d{2})-(\d{2})\.json$/;
+  const last = names.filter((f) => NAME.test(f)).sort().at(-1);
+  if (!last) return null;
+  // Rebuilt from the date's digits, so only digits from the listing reach a page (as src/airwallex/soakRecords.ts does).
+  const [y, m, d] = NAME.exec(last)!.slice(1).map(Number) as [number, number, number];
+  return `docs/evidence/verification-${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}.json`;
+}
 export function verifiedLive(): { passed: number; failed: number } | null {
   try {
     const r = JSON.parse(readFileSync(new URL(`${VERIFICATION_REPORT}.json`, ROOT), "utf8")) as { counts?: { passed?: unknown; failed?: unknown } };
