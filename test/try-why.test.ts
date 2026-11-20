@@ -38,7 +38,7 @@ describe("one place maps every finding code to plain words", () => {
   for (const code of Object.keys(WHY.codes)) {
     it(`${code}: its headline first, its rule, the engine's sentence as the evidence when there is no side by side`, () => {
       const level = code === "possible_fraud" || code === "duplicate" || code === "sum_mismatch" || code === "iban_invalid" || code === "bank_details_invalid" || code === "payee_blocked" || code === "checker_reject" ? "block"
-        : code === "new_supplier" ? "wait" : ["unusual_amount", "overdue", "bank_change_language", "pressure_language", "instructions_in_document", "possible_split", "payment_not_planned", PAY_LATER].includes(code) ? "warn" : "review";
+        : code === "new_supplier" ? "wait" : ["unusual_amount", "overdue", "bank_change_language", "pressure_language", "instructions_in_document", "possible_split", "text_not_read", "payment_not_planned", PAY_LATER].includes(code) ? "warn" : "review";
       const w = kit.whyOf(WHY, inv([{ level, code, message: `the engine's own words for ${code}` }]), fmt)!;
       const c = WHY.codes[code]!;
       expect(w.code).toBe(code);

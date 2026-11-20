@@ -155,6 +155,9 @@ export function toLatinVariants(text: string): string[] {
 /** Latin letters that no mark makes, as an ASCII system spells them (Icelandic þ and ð, Danish ø, German ß, Polish ł, Turkish ı …). */
 const ASCII_SPELLING: Readonly<Record<string, string>> = {
   þ: "th", ð: "d", æ: "ae", ø: "o", œ: "oe", ß: "ss", ł: "l", đ: "d", ħ: "h", ı: "i", ŀ: "l", ŋ: "ng", ĸ: "k", ŧ: "t", ſ: "s", ƒ: "f",
+  // 20 Nov (after the held-out eval v10, v10-look-kano-ascii-k: "Kamfanin Saka na Kano Ltd" for "Kamfanin Saƙa na Kano Ltd"
+  // on file was held as a lookalike): the hooked and open letters of African and other Latin alphabets, as ASCII writes them.
+  ɓ: "b", ɗ: "d", ƙ: "k", ƴ: "y", ɖ: "d", ɛ: "e", ɔ: "o", ɣ: "g", ʋ: "v", ɲ: "ny", ə: "e", ɨ: "i", ʉ: "u", ɑ: "a", ʊ: "u", ɩ: "i",
 };
 /**
  * A Latin name as an ASCII system writes it (20 Nov, after the held-out eval v8, v8-look-thors-ascii: "Thorsdottir

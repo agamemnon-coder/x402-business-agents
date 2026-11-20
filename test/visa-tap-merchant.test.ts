@@ -70,6 +70,10 @@ describe("red team: the merchant refuses", () => {
   });
   it("an expired request, and one from the future", () => {
     expect(check(received(headersFor()), NOW + 300 + TAP_CLOCK_SKEW_S + 1)).toMatchObject(refused(/expired/));
+    // Night red team, 2 Nov (TAP TEST-02): created 301 s before with a 300 s life, so expired a second before it was
+    // signed, checked 5 s later. Accepted inside the skew until 20 Nov; the skew now never runs past expires.
+    expect(check(received(headersFor({ created: NOW - 301, unchecked: true })), NOW + 5)).toMatchObject(refused(/expired/));
+    expect(check(received(headersFor({ created: NOW - 295 })), NOW + 5).ok).toBe(true);
     expect(check(received(headersFor({ created: NOW + 600 })))).toMatchObject(refused(/future/));
   });
   it("a window over 8 minutes (which the proxy itself lets through)", () => {
@@ -182,13 +186,16 @@ describe("the nonce", () => {
     expect(check(received(headersFor({ nonce })), later)).toMatchObject(refused(/expired/));
   });
   // Review, 2 November: the retention must cover the latest moment a replay could still be inside its window.
-  it("is kept long enough: accepted at t (created t+30, expires t+510), a replay at t+540 is refused", () => {
+  // 20 Nov: the skew never runs past expires, so the latest such moment is the signature's own expires (t+510 here); a
+  // second later it is refused as expired, whatever the nonce store holds.
+  it("is kept long enough: accepted at t (created t+30, expires t+510), a replay at t+510 is refused", () => {
     const t = NOW;
     const nonce = "edge-nonce-0000000000001";
     expect(check(received(headersFor({ nonce, created: t + TAP_CLOCK_SKEW_S, expiresIn: 480 })), t).ok).toBe(true);
-    // Another accepted request at t+540 runs the purge first.
-    expect(check(received(headersFor({ created: t + 540 })), t + 540).ok).toBe(true);
-    expect(check(received(headersFor({ nonce, created: t + TAP_CLOCK_SKEW_S, expiresIn: 480 })), t + 540)).toMatchObject(refused(/replay/));
+    // Another accepted request at t+510 runs the purge first.
+    expect(check(received(headersFor({ created: t + 510 })), t + 510).ok).toBe(true);
+    expect(check(received(headersFor({ nonce, created: t + TAP_CLOCK_SKEW_S, expiresIn: 480 })), t + 510)).toMatchObject(refused(/replay/));
+    expect(check(received(headersFor({ nonce, created: t + TAP_CLOCK_SKEW_S, expiresIn: 480 })), t + 511)).toMatchObject(refused(/expired/));
   });
   it("is kept for the merchant's own skew when it is configured larger", () => {
     const wide = tapMerchantConfig({ authority: AUTHORITY, checkoutPath: CHECKOUT, skew: 120 });
@@ -196,8 +203,8 @@ describe("the nonce", () => {
     const nonce = "wide-skew-nonce-00000001";
     const replayed = () => received(headersFor({ nonce, created: t + 100, expiresIn: 480 }));
     expect(verifyTapCheckout(db, replayed(), wide, t).ok).toBe(true);
-    expect(verifyTapCheckout(db, received(headersFor({ created: t + 650 })), wide, t + 650).ok).toBe(true);
-    expect(verifyTapCheckout(db, replayed(), wide, t + 650)).toMatchObject(refused(/replay/));
+    expect(verifyTapCheckout(db, received(headersFor({ created: t + 580 })), wide, t + 580).ok).toBe(true);
+    expect(verifyTapCheckout(db, replayed(), wide, t + 580)).toMatchObject(refused(/replay/));
   });
 });
 

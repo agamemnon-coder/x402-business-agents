@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "label": "coverage, run on 33fdb0211",
-  "message": "92.2% statements · 82.2% branches",
+  "label": "coverage, run on 7d42f9209",
+  "message": "95.1% statements · 86.0% branches",
   "color": "brightgreen",
   "record": "docs/evidence/coverage.json"
 }

@@ -29,7 +29,7 @@ import { sendMessage } from "./bus.js";
 import { replaceHoldFact } from "../policy/replaceHold.js";
 import type { AgentProfile } from "./runtime.js";
 import type { AgentTool } from "../agents/loop.js";
-import { BUY_POLICY_DESCRIPTION, BUY_POLICY_INPUT, checkBuyPolicy, MARKET_DESCRIPTION, sourcingFallback, policyFrom, policyWords, sourcingBrief, SOURCING_DISPLAY, SOURCING_GOAL, SOURCING_RULES, type BuyPolicyInput, type SupplierView } from "./sourcingCore.js";
+import { BUY_POLICY_DESCRIPTION, BUY_POLICY_INPUT, checkBuyPolicy, MARKET_DESCRIPTION, sourcingFallback, policyFrom, policyWords, sourcingBrief, SOURCING_DISPLAY, SOURCING_GOAL, SOURCING_RULES, unusableWords, type BuyPolicyInput, type SupplierView } from "./sourcingCore.js";
 
 export type { SupplierView } from "./sourcingCore.js";
 
@@ -229,7 +229,13 @@ export function sourcingProfile(world: SourcingWorld, tickMs = 10 * 60_000): Age
           setSetting(db, "sourcing", "sourcing.buy_policy", JSON.stringify(next));
           // D24: who set the policy (the agent's Claude run), so every purchase under it can name that decision.
           audit(db, "sourcing", "sourcing.policy_set", "buy_policy", { ...next, ...(noCache ? { cache_refused: p.cache_seconds } : {}), origin: (currentOrigin() as never) ?? null });
-          return { text: `Buy policy set: ${policyWords(next)}.${noCache ? ` Not the ${p.cache_seconds} s cache: this world serves no cached stock check, every query buys upstream once.` : ""}` };
+          const cacheWords = noCache ? ` Not the ${p.cache_seconds} s cache: this world serves no cached stock check, every query buys upstream once.` : "";
+          if (next.supplier !== "none") return { text: `Buy policy set: ${policyWords(next)}.${cacheWords}` };
+          // The long run of 20 November: never a silent stop. "none" stands only when no supplier can serve (code's check
+          // above); it goes before the CFO (the health alert sourcing_not_buying) for as long as it stands.
+          const why = unusableWords(sup, m.capCents, world.sellCents());
+          audit(db, "sourcing", "sourcing.stopped_buying", "buy_policy", { why, reason: next.reason ?? null, origin: (currentOrigin() as never) ?? null });
+          return { text: `Buy policy set: ${policyWords(next)}.${cacheWords} No supplier your mandate pays can serve now (${why}), so code put this before the CFO: customers are turned away, and not charged, until you buy again. Ask the Treasury agent for a higher cap where a supplier is only over it.` };
         },
       },
     ];

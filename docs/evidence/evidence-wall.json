@@ -48,13 +48,13 @@
         },
         {
           "key": "approval-hash",
-          "fig": "797d4483…",
-          "label": "signed hash in Airwallex's transfer record",
-          "note": "Its approval_sha256 is the hash of the terms the CFO signed.",
+          "fig": "All 60",
+          "label": "signed hashes in Airwallex's transfer records",
+          "note": "Each transfer's approval_sha256, read back from Airwallex, is the hash of the terms signed for it (a virtual test passkey); 2 soaks, 19 and 20 Nov. The main run's, signed by the CFO: 797d4483…",
           "tag": "sandbox",
           "tone": "awx",
-          "href": "airwallex#awx-hash",
-          "rec": "docs/runs/airwallex-transfer-approval-2026-11-06.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md docs/runs/airwallex-transfer-approval-2026-11-06.json"
         },
         {
           "key": "two-locks",
@@ -68,23 +68,23 @@
         },
         {
           "key": "alta-refusal",
-          "fig": "#24",
+          "fig": "#18",
           "label": "refused on chain by Alta, over the mandate",
-          "note": "On Alta's testnet explorer; the main run, 3 Nov.",
+          "note": "On Alta's testnet explorer; the 20 Nov long run, a test world. The main run of 3 Nov: #24.",
           "tag": "testnet",
           "tone": "metal",
-          "href": "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871",
-          "rec": "docs/demo/main-run.json"
+          "href": "https://testnet.metalntwx.com/tx/0x1c6cb0c0caa04e9e0518dd64cf894c3a1463e8c81d6265e13eae6cb596374f70",
+          "rec": "docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json"
         },
         {
           "key": "alta-payments",
-          "fig": "86",
+          "fig": "204",
           "label": "payments on Alta, each its own transaction",
-          "note": "The main run, 3 Nov: every one inside the agents' mandates; each linked to Alta's testnet explorer.",
+          "note": "The 20 Nov long run, a test world: 100 sales + 100 supplier purchases + 3 refunds + 1 sweep, every one inside the agents' mandates; the account on Alta's testnet explorer. The main run of 3 Nov: 86.",
           "tag": "testnet",
           "tone": "metal",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-03-main-run-metal-transactions.md",
-          "rec": "docs/demo/main-run.json"
+          "href": "https://testnet.metalntwx.com/address/0x77dee09962Dea010D8559C880d3970E7EaB6A313",
+          "rec": "docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json"
         },
         {
           "key": "visa-airi",
@@ -305,13 +305,13 @@
       "tiles": [
         {
           "key": "claude-main",
-          "fig": "24",
-          "label": "decisions by Claude in the main run",
-          "note": "Decisions by Claude in the main run, 0 fallbacks; code enforces the limits.",
+          "fig": "111",
+          "label": "decisions by Claude in the 20 Nov long run",
+          "note": "0 fallbacks; 197 Claude calls, each with its Anthropic request id. A test world: virtual test passkeys, test money. The main run of 3 Nov: 24.",
           "tag": "sandbox",
           "tone": "claude",
-          "href": "claude",
-          "rec": "docs/demo/main-run.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-long-run.md",
+          "rec": "docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json"
         },
         {
           "key": "worst-case",
@@ -324,6 +324,7 @@
           "rec": "docs/evals/worst-case-summary.json"
         },
         {
+          "offProof": true,
           "key": "eval-v3",
           "fig": "11 vs 74",
           "label": "wrong payments on 100 held-out invoices: Purser vs no rules",
@@ -334,6 +335,7 @@
           "rec": "docs/evals/adversarial-v3.json docs/evals/adversarial-v3-rerun-2026-11-19.json docs/evals/adversarial-v3-after.json"
         },
         {
+          "offProof": true,
           "key": "eval-v4",
           "fig": "11 vs 72",
           "label": "wrong payments on 100 held-out invoices (eval v4): Purser vs no rules",
@@ -377,6 +379,7 @@
           "rec": "docs/evals/adversarial-v7.json"
         },
         {
+          "offProof": true,
           "key": "eval-v8",
           "fig": "20 vs 79",
           "label": "wrong payments on 140 held-out invoices (eval v8): Purser vs no rules",
@@ -387,14 +390,35 @@
           "rec": "docs/evals/adversarial-v8.json"
         },
         {
-          "key": "red-team",
-          "fig": "All 35",
-          "label": "red-team attacks stopped before money moved, re-run, not held out",
-          "note": "Newest re-run, 19 Nov, after agent cards were frozen by default: the scripted attacks, no model; none left to be found only afterwards. Earlier re-run, 19 Nov: 34 of 35, 1 found afterwards (hidden-payment). First run, 30 Oct, with Claude writing 4 of the documents: 37 of 39, 2 found afterwards.",
+          "offProof": true,
+          "key": "eval-v9",
+          "fig": "7 vs 87",
+          "label": "wrong payments on 140 held-out invoices (eval v9): Purser vs no rules",
+          "note": "Cases committed with their pre-registration before the run (commit 563ea0325); a script always says pay. 4 false holds of 65; 16 sent to the CFO that could have been paid alone. Fixed since, no longer held out: 0 wrong payments, 0 false holds. Offline.",
           "tag": "test",
           "tone": "claude",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/rerun-2026-11-19b.json",
-          "rec": "docs/redteam/rerun-2026-11-19b.json docs/redteam/rerun-2026-11-19.json docs/redteam/report.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v9.md",
+          "rec": "docs/evals/adversarial-v9.json"
+        },
+        {
+          "key": "eval-v10",
+          "fig": "15 vs 84",
+          "label": "wrong payments on 129 held-out invoices (eval v10): Purser vs no rules",
+          "note": "Cases committed with their pre-registration before the run (commit d6e000e1a); a script always says pay. 7 false holds of 57; 19 sent to the CFO that had to be held, 12 that could have been paid alone. Fixed since, no longer held out: 0 wrong payments, 0 false holds. Offline.",
+          "tag": "test",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v10.md",
+          "rec": "docs/evals/adversarial-v10.json docs/evals/adversarial-v10-after.json"
+        },
+        {
+          "key": "red-team",
+          "fig": "All 48",
+          "label": "red-team attacks stopped before money moved, full re-run, not held out",
+          "note": "Newest full run, 20 Nov, in a throwaway test world, no model: the scripted attacks and 13 earlier attempts as attacks of their own (the documents Claude wrote on 30 Oct, the bank notice of 31 Oct, the night batch's tests of 2 Nov that code judged not blocked or inconclusive); none found only afterwards, 0 inconclusive, 0 not blocked. Re-run, 19 Nov, after agent cards were frozen by default: all 35, 0 found afterwards. Re-run, 19 Nov, fourth round: 34 of 35, 1 found afterwards (hidden-payment). First run, 30 Oct, with Claude writing 4 of the documents: 37 of 39, 2 found afterwards.",
+          "tag": "test",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/rerun-2026-11-20.json",
+          "rec": "docs/redteam/rerun-2026-11-20.json docs/redteam/rerun-2026-11-19b.json docs/redteam/rerun-2026-11-19.json docs/redteam/report.json"
         },
         {
           "key": "hostile-model",
@@ -470,13 +494,13 @@
       "tiles": [
         {
           "key": "verify-all",
-          "fig": "189",
+          "fig": "262",
           "label": "checks passed by verify-all, 0 failed",
-          "note": "129 Alta transactions read from the chain; 15 Nov.",
+          "note": "138 Alta transactions read from the chain; 20 Nov.",
           "tag": "check",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md",
-          "rec": "docs/evidence/verification-2026-11-15.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-20.md",
+          "rec": "docs/evidence/verification-2026-11-20.json"
         },
         {
           "key": "anchor",

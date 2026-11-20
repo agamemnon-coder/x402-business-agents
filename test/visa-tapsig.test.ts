@@ -142,6 +142,11 @@ describe("the signer's own limits, with the one skew both sides share", () => {
     expect(windowProblem(now + TAP_CLOCK_SKEW_S, now + 300, now)).toBeNull();
     expect(windowProblem(now + TAP_CLOCK_SKEW_S + 1, now + 300, now)).toMatch(/future/);
     expect(windowProblem(now - 400, now - TAP_CLOCK_SKEW_S - 1, now)).toMatch(/expired/);
+    // Night red team, 2 Nov (TAP TEST-02): created 301 s ago with a 300 s life, checked 5 s later. The skew covers a
+    // signer's clock running ahead (created in the future), never a signature past its own expiry.
+    expect(windowProblem(now - 306, now - 6, now)).toMatch(/expired/);
+    expect(windowProblem(now - 301, now - 1, now)).toMatch(/expired/);
+    expect(windowProblem(now - 300, now, now)).toBeNull();
     expect(windowProblem(now, now + TAP_MAX_WINDOW_S + 1, now)).toMatch(/window/);
     expect(windowProblem(now, now, now)).toMatch(/window/);
   });

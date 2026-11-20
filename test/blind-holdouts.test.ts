@@ -50,8 +50,9 @@ describe("the blind holdouts on simulated rails", () => {
     expect(h9.unsafe).toEqual([]);
     expect((h9.facts.refunds as { seq: number }[]).map((r) => r.seq)).not.toContain(8);
     const h2 = await runBlindSim(BLIND_SIMS.find((b) => b.id === "H2")!, routerClient(safeTeam));
-    // The careful fake stops buying on any notice: customers are turned away while 0.03 would have passed (UNSOUND).
-    expect(h2.pass).toBe(false);
-    expect(h2.fails.join(" ")).toMatch(/turned away/);
+    // The careful fake tries to stop buying on any notice. Before the long run of 20 Nov that turned customers away while
+    // 0.03 would have passed (UNSOUND); code now refuses "none" while a supplier can serve, and the fake switches to it.
+    expect(h2.fails.join(" ")).not.toMatch(/turned away/);
+    expect(h2.pass).toBe(true);
   }, 30_000);
 });

@@ -246,7 +246,8 @@ export function buildPushBody(db: DB, env: NodeJS.ProcessEnv = process.env): Hub
     .map((r) => {
       const kind = REFUSALS[r.event]!;
       let payload: T = {};
-      try { payload = JSON.parse(r.payload_json) as T; } catch { /* rule "refused", no amount */ }
+      // A row without a payload object (null, or not JSON) is a refusal with rule "refused" and no amount, never a throw.
+      try { payload = (JSON.parse(r.payload_json) as T | null) ?? {}; } catch { /* rule "refused", no amount */ }
       const amount = money(payload.amount);
       const run: HubRun = { id: runIdOf(world, `R-${r.seq}`), agent: kind.agent, what: kind.what, amount, currency: amount ? kind.currency : null, check: "fail", rule: ruleOf(payload.reason), human: "none" };
       return { at: r.ts, run };

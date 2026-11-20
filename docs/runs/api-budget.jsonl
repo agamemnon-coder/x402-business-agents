@@ -904,3 +904,6 @@
 {"block":"ap-agents","usd_micros":13984,"what":"ap-agent-evals payer rt-payee-orders opus","at":"2026-11-20T09:51:05.653Z"}
 {"block":"ap-agents","usd_micros":14108,"what":"ap-agent-evals payer rt-late-approved opus","at":"2026-11-20T09:51:10.468Z"}
 {"block":"ap-agents","usd_micros":17600,"what":"ap-agent-evals payer rt-floor-waived opus","at":"2026-11-20T09:51:17.030Z"}
+{"block":"soak","usd_micros":946944,"what":"long run long-3 (docs/runs/2026-11-20-long-run.md), 3 agents live, 111 decisions; from the ledger's agent.run (887521) and claude.read (59423) rows","at":"2026-11-20T17:11:03.619Z"}
+{"block":"soak","usd_micros":23015,"what":"long run attempt long-1, stopped (passkeys unsealed); from the ledger's agent.run rows","at":"2026-11-20T15:49:26.000Z"}
+{"block":"soak","usd_micros":12119,"what":"long run attempt long-2, stopped (enrolment page timed out); from the ledger's agent.run rows","at":"2026-11-20T15:53:37.000Z"}

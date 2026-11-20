@@ -78,6 +78,10 @@ const LEGAL_FORMS: readonly string[][] = [
   ["sa"], ["sas"], ["sasu"], ["sarl"], ["eurl"], ["sl"], ["slu"], ["spa"], ["sapa"], ["snc"], ["lda"],
   // Nordic, Polish, Czech, Slovak, Hungarian, Baltic
   ["ab"], ["as"], ["a", "s"], ["asa"], ["aps"], ["oy"], ["oyj"], ["ou"], ["hf"], ["sp", "z", "oo"], ["spzoo"], ["sp", "j"], ["sp", "k"], ["sro"], ["s", "r", "o"], ["kft"], ["zrt"], ["nyrt"], ["uab"], ["sia"],
+  // 20 Nov (after the held-out eval v10, v10-name-uewersauer-sarl and v10-name-iliria-form-first: "S.à r.l." on file against
+  // a bank's "SARL", "sh.p.k." against "SHPK"): Luxembourg's and Switzerland's S.à r.l. as its dots and spaces leave it,
+  // Albania's and Kosovo's sh.p.k. and sh.a., South Africa's (Edms) Bpk and (Pty) Ltd.
+  ["sa", "rl"], ["s", "a", "r", "l"], ["shpk"], ["sha"], ["edms", "bpk"], ["bpk"], ["pty", "ltd"],
   // "& Co.", "and Co."
   ["&"], ["and"],
 ];
@@ -119,6 +123,12 @@ const COMPANY_WORDS: ReadonlySet<string> = new Set([
   "shpk", "tov", "prat", "ooo", "zao", "oao", "pao", "xxk", "hhk", "jv", "fze", "fzco", "fzc", "fzllc", "wll", "spc", "saog", "psc", "pjsc", "plc", "gk", "yk", "pty",
   "industries", "industry", "industrial", "trading", "traders", "enterprises", "enterprise", "group", "holdings", "holding", "manufacturing", "mills", "works", "exports", "imports",
   "international", "intl", "services", "solutions", "logistics", "textile", "textiles", "partners", "associates", "firm", "agency", "cooperative", "coop",
+  // 20 Nov (after the held-out eval v10, v10-name-kashgar-latin-holder: "QESHQER REXTCHILIK SHIRKITI", the Uyghur company's
+  // own name in the Uyghur Latin script, was held as a person's name): the word "company", "firm", "factory" or "industry"
+  // as the languages suppliers write in romanise it, and the Southern African and Albanian forms.
+  "shirkiti", "shirket", "shirkat", "sirket", "sharikat", "sherkat", "shirkadda", "shirkad", "kampuni", "kamfanin", "kamfani", "kompania", "kompaniya", "kompanija",
+  "kompani", "kumpanya", "kampani", "perusahaan", "syarikat", "empresa", "impresa", "entreprise", "compagnie", "compania", "companhia", "gesellschaft", "firma", "bedrijf",
+  "fabrik", "fabriek", "fabrika", "fabryka", "factory", "udyog", "udyoga", "karkhana", "bpk", "edms", "sha",
 ]);
 /** Legal forms written in other scripts, and as banks write them in katakana, as they read after NFKC and in lower case. */
 const COMPANY_MARKS = [
@@ -135,6 +145,8 @@ const COMPANY_MARKS = [
   "کمپنی", "لمیٹڈ", "پرائیویٹ", "සමාගම", "(පුද්)", "පුද්ගලික", "ලිමිටඩ්", "ကုမ္ပဏီ", "လီမိတက်", "ບໍລິສັດ", "ຈຳກັດ", "ххк", "компани",
   "કંપની", "લિમિટેડ", "પ્રાઇવેટ", "ಕಂಪನಿ", "ಲಿಮಿಟೆಡ್", "ಪ್ರೈವೇಟ್", "കമ്പനി", "ലിമിറ്റഡ്", "പ്രൈവറ്റ്", "కంపెనీ", "లిమిటెడ్", "ప్రైవేట్", "ਕੰਪਨੀ", "ਲਿਮਿਟੇਡ",
   "тзов", "прат", "фоп", "товариство", "компанія", "компания", "фирма", "ჯგუფი",
+  // 20 Nov (after the held-out eval v10): "company" in Uyghur, Sorani and Marathi letters.
+  "شىركىتى", "شىركەت", "کۆمپانیا", "प्रायव्हेट", "कंपनी", "उद्योग",
 ];
 /** An abbreviation inside a word: letters with dots or slashes between them ("ኃ/የተ/የግ/ማ", "ឯ.ក", "s.r.o.", "ذ.م.م"), as legal forms are written. */
 const ABBREVIATED_FORM = /(?:^|\s)[\p{L}\p{M}]{1,4}[./](?:[\p{L}\p{M}]{1,4}[./]?)+(?=\s|$)/u;
@@ -199,7 +211,8 @@ export function sameName(a: string, b: string): boolean {
  * (PT, CV), Ukrainian and Russian (ТОВ, ТзОВ, ПрАТ, ООО) companies write them (19 Nov, after eval v7: "TOV LVIVSKA
  * TKANYNA" for "ТОВ «Львівська Тканина»"; legalName dropped legal forms only at the end).
  */
-const LEADING_FORMS: ReadonlySet<string> = new Set(["uab", "ab", "mb", "sia", "as", "ou", "pt", "cv", "tov", "tzov", "prat", "ooo", "oao", "zao", "pao", "fop", "тов", "тзов", "прат", "ооо", "оао", "зао", "пао", "фоп"]);
+const LEADING_FORMS: ReadonlySet<string> = new Set(["uab", "ab", "mb", "sia", "as", "ou", "pt", "cv", "tov", "tzov", "prat", "ooo", "oao", "zao", "pao", "fop", "тов", "тзов", "прат", "ооо", "оао", "зао", "пао", "фоп",
+  "shpk", "sha"]);
 const leadingForm = (name: string) => { const t = rawTokens(name); return t.length > 1 && LEADING_FORMS.has(t[0]!); };
 /** A name without a legal form at its start (the words after it, as written). */
 const withoutLeadingForm = (name: string) => {
@@ -211,7 +224,11 @@ const withoutLeadingForm = (name: string) => {
 /** Legal forms of Greek, Bulgarian, Russian, Ukrainian and Serbian companies, as they read in Latin letters (Α.Ε., ЕООД, ООО, ТОВ, Д.О.О.). */
 // 20 Nov (after eval v8): and Mongolian ХХК (a limited company) as toLatin writes it ("hhk"). Not "XXK" in Latin letters
 // that copy the Cyrillic ones' shapes: that is a lookalike, not a romanisation (v8-look-khukh-latin-x is held).
-const ROMANISED_FORMS: ReadonlySet<string> = new Set(["ae", "epe", "ike", "oe", "ee", "eood", "ood", "ead", "ad", "et", "kd", "sd", "ooo", "oao", "zao", "pao", "ao", "tov", "pp", "doo", "hhk"]);
+// 20 Nov (after the held-out eval v9, v9-name-alatau-romanised: "Алатау Тоқыма ЖШС" was held against its bank's
+// "ALATAU TOKYMA LLP"): the forms of Kazakhstan (ЖШС, ТОО, ЖАҚ), Kyrgyzstan (ОсОО), Uzbekistan (МЧЖ), Tajikistan (ҶДММ)
+// and Belarus (ТАА, ААТ) as their letters romanise.
+const ROMANISED_FORMS: ReadonlySet<string> = new Set(["ae", "epe", "ike", "oe", "ee", "eood", "ood", "ead", "ad", "et", "kd", "sd", "ooo", "oao", "zao", "pao", "ao", "tov", "pp", "doo", "hhk",
+  "zhshs", "too", "zhak", "osoo", "mchzh", "jdmm", "chdmm", "taa", "aat", "prat", "tdv"]);
 /** A name in Latin letters as romanFold reduces it, its legal form at the end dropped, with no spaces. */
 export function romanKey(name: string): string {
   return romanKeyOf(toLatin(name));
@@ -376,7 +393,9 @@ const UNCHANGED_OR_NEGATED = new RegExp(`${UNCHANGED_ANY.source}|${CHANGE_NEGATE
  * "Urgent courier delivery", a confidentiality footer and a supplier's own final notice). Shown to the person who
  * verifies; on their own they hold nothing.
  */
-const PRESSURE = /\burgent(ly)?\b|\bimmediately\b|\b(pay|paid|payment|wire|wired|transfer|settle|send|remit)\b[^.\n]{0,30}\btoday\b|\btoday\b[^.\n]{0,15}\b(at the latest|without fail)\b|avoid (an? )?(interruption|suspension|penalt)|final notice|letzte mahnung|laatste aanmaning|\bsofort\b|\bonmiddellijk\b/i;
+// 20 Nov (after the held-out eval v9, v9-pressure-english-close-of-play: "Your MD has asked that this goes out before close of
+// play — no need to loop anyone else in." was paid): the deadlines of office English, and the managing director as "MD".
+const PRESSURE = /\burgent(ly)?\b|\bimmediately\b|\b(close of (play|business)|end of (the )?(day|business)|cob|eod|asap|as soon as possible|right away|straight away|without delay)\b|\b(pay|paid|payment|wire|wired|transfer|settle|send|remit)\b[^.\n]{0,30}\btoday\b|\btoday\b[^.\n]{0,15}\b(at the latest|without fail)\b|avoid (an? )?(interruption|suspension|penalt)|final notice|letzte mahnung|laatste aanmaning|\bsofort\b|\bonmiddellijk\b/i;
 /**
  * A request to get around the people and the numbers that check a payment (19 Nov, adversarial eval v3): secrecy from
  * them, a channel other than the numbers on file, approval claimed from outside the process, the process skipped.
@@ -386,6 +405,9 @@ const BYPASS = new RegExp([
   // Secrecy: "keep this between us", "no need to loop in your controller", "do not phone Bergtex about it".
   "\\bkeep (this|it|the (payment|transfer|matter|invoice))\\b[^.\\n]{0,25}\\b(between us|confidential|secret|quiet|private|to yourself|discreet)",
   "\\b(no need to|don'?t|do not|please do not|without|never)\\s+(loop(ing)? in|involv\\w*|inform\\w*|tell\\w*|copy\\w*|cc|check\\w* with|call\\w*|phon\\w*|ring\\w*|contact\\w*|verify\\w*|discuss\\w*|mention\\w*)\\b",
+  // 20 Nov (after eval v9): someone looped in, told or copied with words between ("loop anyone else in", "let anyone else know").
+  "\\b(no need to|don'?t|do not|please do not|without|never)\\s+(loop(ing)?|let(ting)?|keep(ing)?)\\s+(\\w+\\s+){0,3}(in|know|posted|informed)\\b",
+  "\\b(no need to|don'?t|do not|please do not|without|never)\\s+(\\w+\\s+)?(involv|inform|tell|copy|cc|loop|alert|notify|bother)\\w*\\s+(anyone|anybody|others|other people|the rest|your (team|colleagues|finance|controller|cfo|boss|manager))\\b",
   "\\bno (phone )?calls\\b|\\b(nicht|niemals) (an)?rufen\\b|\\brufen sie (uns )?nicht an\\b|\\bniet (bellen|contacteren)\\b|\\bbel (ons )?niet\\b|\\bne (pas )?(appeler|contacter|t(é|e)l(é|e)phoner)\\b|\\bno (llame|contacte)\\b",
   // Only another channel: "reply only to this e-mail", "kontaktieren Sie ausschließlich …@gmail.com".
   "\\b(only|exclusively|solely|ausschlie(ß|ss)lich|nur noch|nur per|uitsluitend|alleen( nog)?|(ú|u)nicamente|seulement|uniquement|soltanto|apenas|somente)\\b[^.\\n]{0,40}\\b(e-?mail|mail|address|adresse|adres|contact|kontakt|whatsapp|telegram|phone|telefon|number|nummer)\\b",
@@ -397,10 +419,10 @@ const BYPASS = new RegExp([
   "\\b(new|neue[nrs]?|nieuwe?|nouvel(le)?|nuev[oa])\\b[^\\n]{0,80}@(gmail|googlemail|yahoo|hotmail|outlook|live|gmx|web|icloud|aol|proton(mail)?|yandex|mail)\\.",
   // The process skipped, or approval claimed from outside it: "skip your normal process", "your board approved this".
   "\\b(skip|bypass|circumvent|outside|avoid)\\b[^.\\n]{0,20}\\b(process|procedure|workflow|controls?|channels?)\\b",
-  "\\b(board|ceo|chief executive|managing director|director|owner|chairman|gesch(ä|ae)ftsf(ü|ue)hr\\w*|vorstand|directeur|directie|bestuur|your cfo|the cfo)\\b[^.\\n]{0,25}\\b(approved|has approved|agreed|signed off|is aware|knows|needs|wants|requires|asks|asked|requests|authori[sz]ed|genehmigt|freigegeben|goedgekeurd|vraagt|wil|eist|bittet|verlangt|w(ü|ue)nscht|demande|exige|pide|chiede)\\b",
+  "\\b(board|ceo|chief executive|managing director|director|owner|chairman|gesch(ä|ae)ftsf(ü|ue)hr\\w*|vorstand|directeur|directie|bestuur|your cfo|the cfo|(your|the|our) md|general manager|managing partner|head of finance)\\b[^.\\n]{0,25}\\b(approved|has approved|agreed|signed off|is aware|knows|needs|wants|requires|asks|asked|requests|authori[sz]ed|genehmigt|freigegeben|goedgekeurd|vraagt|wil|eist|bittet|verlangt|w(ü|ue)nscht|demande|exige|pide|chiede)\\b",
 ].join("|"), "i");
 /** Someone above the payer: speed on their word in one line is the shape of CEO fraud ("URGENT: the CEO asks ... today"). */
-const AUTHORITY = /\b(ceo|chief executive|managing director|director|directeur|directie|gesch(ä|ae)ftsf(ü|ue)hr\w*|vorstand|board|chairman|owner|pr(é|e)sident|your cfo|the cfo)\b/i;
+const AUTHORITY = /\b(ceo|chief executive|managing director|director|directeur|directie|gesch(ä|ae)ftsf(ü|ue)hr\w*|vorstand|board|chairman|owner|pr(é|e)sident|your cfo|the cfo|(your|the|our) md|general manager|managing partner|head of finance)\b/i;
 
 /** How close a name must be to count as a lookalike: two edits for names of eight letters or more, one below. */
 function lookalikeOf(vendor: string, all: Beneficiary[]): { b: Beneficiary; how: string } | null {

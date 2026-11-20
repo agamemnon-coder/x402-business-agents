@@ -29,7 +29,7 @@ import { invoiceAlreadyHandled } from "../agents/euroBill.js";
 import { invoiceFacts, plannedInvoiceOf, plannedMatch, vouchedInvoiceNo } from "./invoiceFacts.js";
 import { MAX_CACHE_SECONDS, SUPPLIERS, TURNED_AWAY_MIN, TURNED_AWAY_WINDOW_MS } from "../config/suppliers.js";
 import { receivablesView } from "../agents/receivables.js";
-import { netEarnings } from "../agents/sweep.js";
+import { netEarnings, sweepWindow } from "../agents/sweep.js";
 import { decisionOf, decisionSummary, finished, legacyDecision } from "../agents/disputeDecision.js";
 import { asOpened, codeMayCarryOut, disputeDecided, escalateDispute, escalatedAt, escalatedUndecided, liveDisputeId, openedDisputes, unreadableOpened, type OpenedDispute } from "../agents/disputeSource.js";
 import type { AgentProfile } from "./runtime.js";
@@ -61,7 +61,15 @@ export function runFlow(script: string, args: string[] = []): { ok: boolean; tex
   return { ok: r.status === 0, text: lines.slice(-12).join("\n").slice(0, 1500) };
 }
 
-const latestRefusal = (db: DB) => db.prepare("SELECT id, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'mandate_cap_exceeded%' ORDER BY id DESC LIMIT 1").get() as { id: number; refusal_reason: string } | undefined;
+/**
+ * When the Sourcing mandate was last replaced on chain (a change the CFO approved), or "" when it never was. The long run
+ * of 20 November: purchase #18 was refused over the 0.03 cap at 16:00, P-0002 replaced the mandate with a 0.04 cap at
+ * 16:02, and for the rest of the run Treasury still read "an agent is blocked by its mandate (mandate_cap_exceeded)"
+ * from that refusal. Evidence recorded under a mandate that has since been replaced was read against the old mandate:
+ * it is superseded, and only a refusal (or a customer turned away) under the mandate bound now counts.
+ */
+export const sourcingMandateSince = (db: DB): string => (db.prepare("SELECT ts FROM audit_log WHERE event = 'mandate.replaced' AND subject = 'sourcing' ORDER BY seq DESC LIMIT 1").get() as { ts: string } | undefined)?.ts ?? "";
+const latestRefusal = (db: DB, since: string) => db.prepare("SELECT id, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'mandate_cap_exceeded%' AND created_at > ? ORDER BY id DESC LIMIT 1").get(since) as { id: number; refusal_reason: string } | undefined;
 
 
 /**
@@ -70,12 +78,15 @@ const latestRefusal = (db: DB) => db.prepare("SELECT id, refusal_reason FROM ups
  * 15 minutes while, by code's reading, no supplier sells data fresh enough (no older than the cache limit) at or under
  * its cap. In dry-125 the agent stopped buying when the price rose instead of trying and being refused, so the first
  * form never appeared and the shop turned everyone away. The newer of the two wins. The evidence only lets Treasury
- * design options; the CFO decides. A mandate that cannot be read proves nothing (undefined).
+ * design options; the CFO decides. A mandate that cannot be read proves nothing (undefined). Either form recorded before
+ * the Sourcing mandate was last replaced is superseded by that change (sourcingMandateSince).
  */
 export async function blockedByMandate(db: DB, now = new Date(), capCents?: number): Promise<Blocked | undefined> {
-  const refused = latestRefusal(db);
+  const since = sourcingMandateSince(db);
+  const refused = latestRefusal(db, since);
+  const windowStart = new Date(now.getTime() - TURNED_AWAY_WINDOW_MS).toISOString();
   const away = db.prepare("SELECT id, created_at, refusal_reason FROM upstream_purchases WHERE outcome = 'REFUSED' AND refusal_reason LIKE 'buy_policy:%' AND created_at > ? ORDER BY id")
-    .all(new Date(now.getTime() - TURNED_AWAY_WINDOW_MS).toISOString()) as { id: number; created_at: string; refusal_reason: string }[];
+    .all(since > windowStart ? since : windowStart) as { id: number; created_at: string; refusal_reason: string }[];
   const last = away.at(-1);
   if (away.length < TURNED_AWAY_MIN || !last || (refused && refused.id > last.id)) return refused;
   let cap = capCents;
@@ -122,6 +133,11 @@ export function stoppedReplaceFacts(db: DB): string[] {
   if (!open.length) lines.push("No mandate replace waits for the CFO now: if an agent is still blocked by its mandate, a new rebalance (design_rebalance) is needed; code plans it from the spend as it is now.");
   return lines;
 }
+
+const hhmmss = (iso: string) => iso.slice(11, 19);
+/** The half-hour sweep rule in words: which sweep holds the next one back, and from when sweep_earnings is allowed again. */
+export const sweepWindowWords = (w: NonNullable<ReturnType<typeof sweepWindow>>) =>
+  `code allows one sweep per half hour, and ${w.paymentId} (${w.outcome.toLowerCase()}) started at ${hhmmss(w.at)} UTC, so sweep_earnings is refused until ${hhmmss(w.nextAt)} UTC. Trying before then is refused the same way: leave the earnings where they are and sweep at a check after ${hhmmss(w.nextAt)} UTC.`;
 
 const waiting = (db: DB, kind: string) => db.prepare("SELECT proposal_id FROM proposals WHERE kind = ? AND status = 'PENDING_APPROVAL' AND expires_at > ?").all(kind, new Date().toISOString()) as { proposal_id: string }[];
 const lastFrom = (db: DB, from: string) => (db.prepare("SELECT text FROM agent_messages WHERE from_agent = ? AND to_agent = 'treasury' ORDER BY id DESC LIMIT 1").get(from) as { text: string } | undefined)?.text;
@@ -201,6 +217,8 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
       await supplierLine(db, sell),
       r ? `Code's evidence that an agent is blocked by its mandate: ${r.refusal_reason}.` : "No agent is blocked by its mandate (no refusal over a cap, no customers turned away for lack of fresh data within the cap).",
       (() => { const e = netEarnings(db); return `Net earnings on the business account, not yet swept to Airwallex: ${fromCents(Math.max(0, e.netCents))} (sales ${fromCents(e.revenueCents)}, upstream ${fromCents(e.upstreamCents)}, refunds ${fromCents(e.refundsCents)}, swept ${fromCents(e.sweptCents)}).`; })(),
+      // The long run of 20 November: the half-hour rule as a fact, with when it lifts, so the agent does not try inside it.
+      ...(((w) => (w ? [`Code's sweep rule: ${sweepWindowWords(w)}`] : []))(sweepWindow(db))),
       (() => { const v = receivablesView(db); const last = v.receipts.slice(0, 3); return last.length ? `At Airwallex, the latest customer payments: ${last.map((x) => `${x.amount} ${x.currency} (${x.outcome.toLowerCase()}${x.invoice_no ? `, ${x.invoice_no}` : ""})`).join("; ")}; open invoices: ${v.open.map((o) => `${o.invoice_no} ${o.paid}/${o.amount} ${o.currency}`).join("; ") || "none"}; waiting for the CFO in suspense: ${v.escalated}.` : "No customer payments at Airwallex yet."; })(),
       pend.length ? `Waiting for the CFO: ${pend.map((p) => `${p.proposal_id} (${p.kind})`).join(", ")}.` : "Nothing waits for the CFO.",
       // dry-179: the hold as a fact, so the agent does not try sweep_earnings into it.
@@ -250,7 +268,10 @@ export function treasuryProfile(tickMs = 30 * 60_000, deps: FlowDeps = { runFlow
         name: "sweep_earnings", description: "Sweeps the net earnings from the business account (Metal) to the sweep wallet and books them at Airwallex, after finality. Code plans the amount; it keeps what the other mandates may still spend.",
         input: z.strictObject({ reason: z.string().describe("Why sweep now") }),
         run: async () => {
-          if (swept || db.prepare("SELECT 1 FROM sweeps WHERE created_at > ?").get(new Date(Date.now() - 30 * 60_000).toISOString())) return { text: "Not again: a sweep ran in the last half hour.", blocked: "already swept" };
+          if (swept) return { text: "Not again: you already started a sweep in this wake.", blocked: "already swept" };
+          // Code's half-hour rule, unchanged; the refusal now says which sweep holds it and from when the next is allowed.
+          const held0 = sweepWindow(db);
+          if (held0) return { text: `Not again: ${sweepWindowWords(held0)}`, blocked: "already swept" };
           const e = netEarnings(db);
           if (e.netCents <= 0) return { text: `Not swept: net earnings are ${fromCents(Math.max(0, e.netCents))}; nothing to move.`, blocked: "nothing to sweep" };
           // dry-179: a sweep moves the treasury mandate's spend, which an open replace carries as it was proposed.

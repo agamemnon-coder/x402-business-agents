@@ -74,22 +74,65 @@ describe("the evidence wall's file", () => {
     // 19 Nov, fourth round: the newest red-team run (the scripted attacks re-run after the fixes), labelled as a re-run,
     // with the first run of 30 Oct in its note and its records.
     const rt = json<{ attempts: number; blocked: number; caught_after: number }>("docs/redteam/report.json");
-    // 19 Nov, fifth round: the newest is the re-run after agent cards were frozen by default (hidden-payment prevented);
-    // the fourth round's re-run and the first run stay as recorded, named in the note and linked from the records.
-    type Rr = { attempts: number; blocked: number; caught_after: number; rerun_of: string; commit: string; dirty: boolean };
-    const rr = json<Rr>("docs/redteam/rerun-2026-11-19b.json");
+    // 20 Nov: the newest is the full suite's re-run (every scripted attack and every earlier attempt of every red-team
+    // record, each an attack of its own); the two re-runs of 19 Nov and the first run stay as recorded, named in the
+    // note and linked from the records.
+    type Rr = { ran_at: string; attempts: number; blocked: number; caught_after: number; inconclusive: number; not_blocked: number; rerun_of: string; commit: string; dirty: boolean; model: string | null };
+    const rr = json<Rr>("docs/redteam/rerun-2026-11-20.json");
+    const r5 = json<Rr>("docs/redteam/rerun-2026-11-19b.json");
     const r4 = json<Rr>("docs/redteam/rerun-2026-11-19.json");
     expect(rr.rerun_of).toBe("docs/redteam/report.json");
     expect(rr.dirty).toBe(false);
+    expect(rr.blocked + rr.inconclusive + rr.not_blocked).toBe(rr.attempts);
     expect(tile(w, "red-team").fig).toBe(countOf(rr.blocked - rr.caught_after, rr.attempts));
-    expect(tile(w, "red-team").label).toMatch(/re-run, not held out$/);
-    expect(tile(w, "red-team").note).toMatch(/^Newest re-run, 19 Nov, after agent cards were frozen by default/);
-    expect(tile(w, "red-team").note).toContain(`Earlier re-run, 19 Nov: ${countOf(r4.blocked - r4.caught_after, r4.attempts).toLowerCase()}, ${r4.caught_after} found afterwards (hidden-payment)`);
+    expect(tile(w, "red-team").label).toBe("red-team attacks stopped before money moved, full re-run, not held out");
+    expect(tile(w, "red-team").note).toMatch(/^Newest full run, 20 Nov, in a throwaway test world, no model: the scripted attacks and \d+ earlier attempts as attacks of their own/);
+    expect(tile(w, "red-team").note).toContain(`and ${rr.attempts - r5.attempts} earlier attempts`);
+    expect(tile(w, "red-team").note).toContain(`; none found only afterwards, ${rr.inconclusive} inconclusive, ${rr.not_blocked} not blocked.`);
+    expect(tile(w, "red-team").note).toContain(`Re-run, 19 Nov, after agent cards were frozen by default: ${countOf(r5.blocked - r5.caught_after, r5.attempts).toLowerCase()}, ${r5.caught_after} found afterwards.`);
+    expect(tile(w, "red-team").note).toContain(`Re-run, 19 Nov, fourth round: ${countOf(r4.blocked - r4.caught_after, r4.attempts).toLowerCase()}, ${r4.caught_after} found afterwards (hidden-payment)`);
     expect(tile(w, "red-team").note).toContain(`${countOf(rt.blocked - rt.caught_after, rt.attempts).toLowerCase()}, ${rt.caught_after} found afterwards`);
-    expect(tile(w, "red-team").href).toMatch(/docs\/redteam\/rerun-2026-11-19b\.json$/);
-    expect(tile(w, "red-team").rec.split(" ")).toEqual(["docs/redteam/rerun-2026-11-19b.json", "docs/redteam/rerun-2026-11-19.json", "docs/redteam/report.json"]);
+    expect(tile(w, "red-team").href).toMatch(/docs\/redteam\/rerun-2026-11-20\.json$/);
+    expect(tile(w, "red-team").rec.split(" ")).toEqual(["docs/redteam/rerun-2026-11-20.json", "docs/redteam/rerun-2026-11-19b.json", "docs/redteam/rerun-2026-11-19.json", "docs/redteam/report.json"]);
     const bills = json<{ bills: { bill_id: string | null }[] }>("docs/runs/2026-11-19-airwallex-bills.json").bills.filter((b) => b.bill_id);
     expect(tile(w, "spend-bills").fig).toBe(countOf(bills.length, bills.length));
+    // 20 Nov (owner: the main run's 24 looked low): Claude's tile is the long run of 20 Nov, its figure the record's own
+    // sum of by_claude over the agents, labelled with the run's day and name; the main run's 24 stays, in the note.
+    type St = { agent_stats: { decisions: number; by_claude: number; fallback: number; claude_calls: number; calls_without_request_id: number }[] };
+    const lr = json<{ recorded_at: string; snapshot: St }>("docs/demo/long-run.json"), ls = lr.snapshot.agent_stats;
+    const main = json<{ snapshot: St }>("docs/demo/main-run.json").snapshot.agent_stats;
+    const sumOf = (s: St["agent_stats"], f: (a: St["agent_stats"][number]) => number) => s.reduce((n, a) => n + f(a), 0);
+    expect(tile(w, "claude-main").fig).toBe(String(sumOf(ls, (a) => a.by_claude)));
+    expect(Number(tile(w, "claude-main").fig)).toBeGreaterThan(sumOf(main, (a) => a.by_claude));
+    expect(tile(w, "claude-main").label).toBe(`decisions by Claude in the ${new Date(lr.recorded_at).getUTCDate()} Nov long run`);
+    expect(tile(w, "claude-main").note).toMatch(new RegExp(`^${sumOf(ls, (a) => a.fallback)} fallbacks?; ${sumOf(ls, (a) => a.claude_calls)} Claude calls, `));
+    expect(tile(w, "claude-main").note).toContain("virtual test passkeys, test money");
+    expect(tile(w, "claude-main").note).toContain(`The main run of 3 Nov: ${sumOf(main, (a) => a.by_claude)}.`);
+    expect(tile(w, "claude-main").rec.split(" ")).toEqual(["docs/demo/long-run.json", "docs/runs/2026-11-20-long-run.md", "docs/demo/main-run.json"]);
+    // 20 Nov: the Alta tiles read the long run's record as the main run's are read; the main run's figures in the notes.
+    type Ev = { event: string; payload: { seq?: number; tx?: string; metal_reason?: string } };
+    type Fl = { kind: string; refused?: boolean; count?: number };
+    const lrec = json<{ snapshot: { flows: Fl[] }; ledger: { events: Ev[] } }>("docs/demo/long-run.json");
+    const onChain = lrec.ledger.events.find((e) => e.event === "upstream.refused_on_chain")!;
+    expect(onChain.payload.metal_reason).toMatch(/^mandate_cap_exceeded/);
+    expect(tile(w, "alta-refusal")).toMatchObject({ fig: `#${onChain.payload.seq}`, href: `https://testnet.metalntwx.com/tx/${onChain.payload.tx}` });
+    expect(tile(w, "alta-refusal").note).toContain("the 20 Nov long run, a test world. The main run of 3 Nov: #24.");
+    const paid = (k: string) => lrec.snapshot.flows.filter((f) => !f.refused && f.kind === k).reduce((n, f) => n + (f.count ?? 1), 0);
+    expect(tile(w, "alta-payments").fig).toBe(String(paid("sale") + paid("upstream") + paid("refund") + paid("sweep")));
+    expect(tile(w, "alta-payments").note).toMatch(/^The 20 Nov long run, a test world: .* The main run of 3 Nov: 86\.$/);
+    expect(tile(w, "alta-payments").rec.split(" ")).toEqual(["docs/demo/long-run.json", "docs/runs/2026-11-20-long-run.md", "docs/demo/main-run.json"]);
+    // 20 Nov: the signed hashes every soak read back from Airwallex, each equal to the signed terms' hash.
+    type Pay = { transfer_id: string | null; terms_sha256: string; readback: { approval_sha256: string; match: { approval_sha256: boolean } } | null };
+    const pays = files.flatMap((f) => json<{ payments: Pay[] }>(f).payments.filter((p) => p.transfer_id));
+    const same = pays.filter((p) => p.readback?.approval_sha256 === p.terms_sha256 && p.readback.match.approval_sha256).length;
+    expect(tile(w, "approval-hash").fig).toBe(countOf(same, pays.length));
+    expect(tile(w, "approval-hash").fig).toBe("All 60");
+    expect(tile(w, "approval-hash").rec.split(" ").slice(0, 4)).toEqual(files.flatMap((f) => [f, f.replace(/\.json$/, ".md")]));
+    // 20 Nov: the newest verify-all report, its failures said.
+    const vfile = readdirSync(new URL("../docs/evidence/", import.meta.url)).filter((n) => /^verification-\d{4}-\d{2}-\d{2}\.json$/.test(n)).sort().at(-1)!;
+    const vr = json<{ counts: { passed: number; failed: number } }>(`docs/evidence/${vfile}`);
+    expect(tile(w, "verify-all")).toMatchObject({ fig: String(vr.counts.passed), label: `checks passed by verify-all, ${vr.counts.failed} failed`, rec: `docs/evidence/${vfile}` });
+    if (vr.counts.failed) expect(tile(w, "verify-all").note).toMatch(/ Failed: | Each failure is in the report\./);
   });
 
   it("says what was simulated: every PAID at the sandbox is the sandbox's simulation, and a test world is labelled", () => {
@@ -295,6 +338,19 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(tile(w(), "eval-v8").note).toContain(`${v8.totals.purser_script.false_holds} false hold${v8.totals.purser_script.false_holds === 1 ? "" : "s"} of ${v8.totals.purser_script.clean_truths}`);
     expect(tile(w(), "eval-v8").note).toContain(`Fixed since, no longer held out: ${v8a.totals.purser_script.wrong_payments} wrong payments, ${v8a.totals.purser_script.false_holds} false holds`);
     expect(tile(w(), "eval-v8").note).not.toContain("Held out.");
+    // Evals v9 and v10 (20 Nov): /proof shows one eval tile, the newest held-out run (v10); v3 to v9 stay on the record.
+    type AdvCfo = Adv & { totals: { purser_script: { to_cfo_not_held: number; cfo_not_needed: number } } };
+    const v9 = json<AdvCfo>("docs/evals/adversarial-v9.json"), v9a = json<Adv>("docs/evals/adversarial-v9-after.json");
+    expect([v9.held_out, v9a.held_out]).toEqual([true, false]);
+    expect(tile(w(), "eval-v9").fig).toBe(`${v9.totals.purser_script.wrong_payments} vs ${v9.totals.no_rules.wrong_payments}`);
+    expect(tile(w(), "eval-v9").note).toContain(`Fixed since, no longer held out: ${v9a.totals.purser_script.wrong_payments} wrong payments, ${v9a.totals.purser_script.false_holds} false holds`);
+    const v10 = json<AdvCfo>("docs/evals/adversarial-v10.json"), v10a = json<Adv>("docs/evals/adversarial-v10-after.json");
+    expect([v10.held_out, v10a.held_out]).toEqual([true, false]);
+    expect(tile(w(), "eval-v10").fig).toBe(`${v10.totals.purser_script.wrong_payments} vs ${v10.totals.no_rules.wrong_payments}`);
+    expect(tile(w(), "eval-v10").note).toContain(`(commit ${v10.cases_commit})`);
+    expect(tile(w(), "eval-v10").note).toContain(`${v10.totals.purser_script.false_holds} false holds of ${v10.totals.purser_script.clean_truths}; ${v10.totals.purser_script.to_cfo_not_held} sent to the CFO that had to be held, ${v10.totals.purser_script.cfo_not_needed} that could have been paid alone`);
+    expect(tile(w(), "eval-v10").note).toContain(`Fixed since, no longer held out: ${v10a.totals.purser_script.wrong_payments} wrong payments, ${v10a.totals.purser_script.false_holds} false holds`);
+    expect(tiles(w()).filter((x) => /^eval-v\d+$/.test(x.key) && !x.offProof).map((x) => x.key)).toEqual(["eval-v10"]);
     const sq = json<{ lighthouse: { path: string; preset: string; median: { performance: number; accessibility: number } }[] }>("docs/evidence/site-quality.json").lighthouse;
     expect(tile(w(), "site-quality").fig).toBe(String(Math.min(...sq.map((x) => x.median.accessibility))));
     expect(tile(w(), "site-quality").note).toContain(`lowest performance ${Math.min(...sq.map((x) => x.median.performance))}`);

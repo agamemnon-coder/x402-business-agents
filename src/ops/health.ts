@@ -33,6 +33,18 @@ export const RECONCILE_STALE_AFTER_MS = 3 * RECONCILE_EVERY_MS;
 const has = (db: DB, table: string) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
 const n = (db: DB, sql: string, ...a: unknown[]) => (db.prepare(sql).get(...a) as { n: number | null }).n ?? 0;
 
+/** The Sourcing agent's own "none" buy policy, when it stands, with code's reason from when it was set; else null. */
+function notBuyingSince(db: DB): { since: string; why: string } | null {
+  if (!has(db, "settings") || !has(db, "audit_log")) return null;
+  const s = db.prepare("SELECT value, updated_at FROM settings WHERE key = 'sourcing.buy_policy'").get() as { value: string; updated_at: string } | undefined;
+  let p: { supplier?: string; set_by?: string } = {};
+  try { p = s ? JSON.parse(s.value) as typeof p : {}; } catch { return null; }
+  if (!s || p.supplier !== "none" || p.set_by !== "sourcing") return null;
+  const e = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'sourcing.stopped_buying' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
+  const why = e ? String((JSON.parse(e.payload_json) as { why?: unknown }).why ?? "") : "";
+  return { since: s.updated_at, why: why || "code recorded no reason" };
+}
+
 export function health(db: DB, now = new Date()): Health {
   const alerts: Alert[] = [];
 
@@ -61,6 +73,11 @@ export function health(db: DB, now = new Date()): Health {
 
   const stopped = db.prepare("SELECT key, updated_at FROM settings WHERE key LIKE 'stop.%' AND value = 'on' ORDER BY key").all() as { key: string; updated_at: string }[];
   for (const s of stopped) alerts.push({ code: "velocity_stop", severity: "warning", since: s.updated_at, words: `The ${s.key.slice(5)} agent hit a speed limit and was stopped; the CFO lifts it with Face ID.` });
+  // The long run of 20 November: the Sourcing agent stopped buying and customers were turned away with nobody told. It
+  // may set "none" only when no supplier its mandate pays can serve (src/autonomy/sourcingCore.ts checkBuyPolicy); while
+  // that policy stands it is before the CFO here, with code's reason.
+  const notBuying = notBuyingSince(db);
+  if (notBuying) alerts.push({ code: "sourcing_not_buying", severity: "warning", since: notBuying.since, words: `The Sourcing agent stopped buying stock checks: no supplier its mandate pays could serve (${notBuying.why}). Customers are turned away, and not charged, until it buys again. A supplier only over the cap needs a higher cap (the Treasury agent proposes one for your Face ID); a new supplier needs a new mandate.` });
 
   const rec = lastReconciliation(db);
   if (rec && rec.differences > 0) alerts.push({ code: "reconciliation_difference", severity: "critical", since: rec.at, words: `The last reconciliation found ${rec.differences} difference(s) between the ledger and the outside services.` });

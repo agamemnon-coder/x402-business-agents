@@ -7,6 +7,7 @@
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sqlOver } from "../src/relay/local.js";
+import { viewKey } from "../src/relay/config.js";
 
 vi.mock("cloudflare:workers", () => ({
   DurableObject: class { constructor(protected ctx: unknown, protected env: unknown) {} },
@@ -304,5 +305,53 @@ describe("inside one instance, the desk for the path", () => {
     expect(insp.status).toBe(503);
     expect(await insp.json()).toEqual({ error: "this bundle carries no recorded read" });
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("inside one instance, the desks made with keys and switches on", () => {
+  type Obj = InstanceType<Entry["RelayObject"]> & { statusRun(): Promise<{ checks: number; passed: number }>; statusSummary(): Promise<unknown> };
+  const object = (over: Record<string, unknown> = {}, ns = namespace()) => {
+    const ctx = { storage: { sql: sqlOver(new Database(":memory:")) } };
+    return { ns, obj: new RelayObject(ctx, env(ns, over)) as Obj };
+  };
+
+  it("the status instance runs one round of the hourly checks over the Worker's own fetch, then summarises them", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("<html>ok</html>", { status: 200, headers: { "content-type": "text/html" } }));
+    const { obj } = object();
+    const run = await obj.statusRun();
+    expect(run.checks).toBeGreaterThan(0);
+    expect(fetchSpy).toHaveBeenCalledTimes(run.checks);
+    expect(JSON.stringify(await obj.statusSummary())).toContain("kit11");
+  });
+
+  it("with a sandbox key, the FX quote and the payout ask Airwallex (no network here: unavailable), each through its own client", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("no network in tests"));
+    const { obj } = object({ AIRWALLEX_CLIENT_ID: "id", AIRWALLEX_API_KEY: "key" });
+    expect(await obj.awxFxQuote({ company: "c1", buyCurrency: "EUR", sellCurrency: "USD", buyAmount: "100.00" })).toMatchObject({ ok: false, reason: "unavailable" });
+    // The payout without its own key falls back to the Worker's sandbox key: the balance read is tried, and fails.
+    expect(await obj.awxPayoutCreate({ company: "c1", terms_sha256: "a".repeat(64), amount: "10.00", currency: "EUR", reference: "INV-1" })).toEqual({ ok: false, reason: "unavailable" });
+    expect(await obj.awxPayoutSimulate({ company: "c1", terms_sha256: "a".repeat(64) })).toEqual({ ok: false, reason: "no_transfer" });
+    const hosts = fetchSpy.mock.calls.map(([u]) => new URL(String(u)).host);
+    expect(new Set(hosts)).toEqual(new Set(["api.sandbox.airwallex.com"]));
+  });
+
+  it("the try-sign instance with a sandbox key and the talk switch on still answers its paths", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("no network in tests"));
+    const { obj } = object({ AIRWALLEX_CLIENT_ID: "id", AIRWALLEX_API_KEY: "key", TRY_TALK: "on" });
+    const res = await obj.fetch(go("/api/try-sign/no-such-step", { method: "POST", body: "{}", headers: { "content-type": "application/json", origin: BASE } }));
+    expect(res.status).toBe(404);
+    expect(await (await obj.fetch(go(LIVE_AGENTS_PATH))).json()).toEqual({ usd: 0, budget_usd: 50 });
+  });
+
+  it("the relay instance with push keys and its own alarm rules serves the push key, behind the viewer link", async () => {
+    const { obj } = object({ VAPID_PUBLIC_KEY: " BPublicKey ", VAPID_PRIVATE_KEY: "priv", VAPID_SUBJECT: "mailto:ops@example.test", SECURITY_ALARMS: "auth.failure:3" });
+    expect((await obj.fetch(go("/api/push/key"))).status).toBe(401);
+    const key = await obj.fetch(go("/api/push/key", { headers: { "x-kit11-view": viewKey("t".repeat(64)) } }));
+    expect(await key.json()).toEqual({ public_key: "BPublicKey" });
+  });
+
+  it("AwxRead's events say 'no answer' when the relay instance does not answer", async () => {
+    const ns = namespace({ fetch: async () => new Response("", { status: 503 }) });
+    expect(await new AwxRead({}, env(ns)).events()).toEqual({ error: "no answer" });
   });
 });

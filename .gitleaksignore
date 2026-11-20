@@ -458,3 +458,13 @@ fef40703d6013ebd630bf8ddd0cb4b0739eede83:test/airwallex-codemode-mcp.test.ts:jwt
 # src/cli/auditCheckpointDrill.ts (20 Nov): the drill deletes these environment variables by name before it runs
 # (KIT11_ANTHROPIC_API_KEY and others), so it can never call out; a list of names, no key.
 1d94bae3c66bd3e0d83e18e36baf1462a2152b14:src/cli/auditCheckpointDrill.ts:generic-api-key:14
+# test/cloud-engine-routes-unit.test.ts (20 Nov): a made-up security-key credential id ("0123456789abcdef") returned by
+# a stand-in engine; not a key.
+e721873c24f885224057b0d95ccfed3c6748dc43:test/cloud-engine-routes-unit.test.ts:generic-api-key:306
+# src/evals/adversarialV9.ts (20 Nov): the eval's case ids (e.g. "v9-pressure-fehi-secret"), named for the attack each
+# case tries; no key.
+ca9962ef43659ec812621d8036576d56afcca83d:src/evals/adversarialV9.ts:generic-api-key:67
+ca9962ef43659ec812621d8036576d56afcca83d:src/evals/adversarialV9.ts:generic-api-key:72
+# test/cloud-awx-codemode-edges.test.ts (20 Nov): a stub JWT ({"alg":"HS256"}, {"sub":"stub"}, signature
+# "stub-signature") for the stand-in Airwallex login; not a real token.
+7cc3cf80129be894fb065f1e75d49d6ea382a7e2:test/cloud-awx-codemode-edges.test.ts:jwt:12

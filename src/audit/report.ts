@@ -155,7 +155,7 @@ export function buildAuditReport(db: DB, now = new Date(), label = "ledger"): Au
       what: summarize(p.kind, p.terms_json), rule: ruleOf(p.kind, p.terms_json), models: [...new Set(models)], advice,
       status: b ? BLOCKED_STATUS : p.status, decision: a?.decision ?? null, decided_by: a ? approverName(a.approver, a.method) : null, method: a?.method ?? null,
       decided_at: a?.created_at ?? null, terms_sha256: p.terms_sha256,
-      outcome: b ? `approved, blocked at execution since ${b.since}: ${b.reason}; nothing was paid` : outcomeOf(p.status, executed && payload(executed), failed && str(payload(failed).error)),
+      outcome: b ? `approved, blocked at execution since ${b.since}: ${b.reason}; nothing was paid` : outcomeOf(p.status, executed && payload(executed), (failed && str(payload(failed).error)) || undefined),
     };
   });
 

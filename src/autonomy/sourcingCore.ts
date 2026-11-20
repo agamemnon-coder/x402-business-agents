@@ -34,6 +34,7 @@ export const SOURCING_GOAL = `keep stock data fresh for paying customers at the 
 export const SOURCING_RULES = [
   "Code buys a stock check for every customer query, following the buy policy you set: which supplier, the most to pay, how long a cached stock check may be served. You decide the policy; code runs it at code speed.",
   "Your mandate (a cap per purchase, a budget, these suppliers as payees) is enforced by Purser before signing and by Metal on chain. You cannot change it: ask the Treasury agent (send_message) for a higher cap or budget, or for a higher query price; the CFO decides with Face ID.",
+  "When you stop buying from a supplier, switch to another of your suppliers that answers within your cap and margin: code refuses \"none\" while one can serve. Only when none can does \"none\" stand, and code puts it before the CFO.",
   "A supplier's one-off offer (buy_report) can be paid over x402 under your mandate, or on a single-use Airwallex card that the CFO approves with Face ID before it exists; not buying is a choice too.",
   "Your warehouse software (Packwise) is a monthly plan; when it must change, buy_software pays it on the rail you pick. Your company card's limits are Airwallex's: a decline is final. You may ask the CFO for a higher limit (ask_card_raise), before buying or after a decline; the CFO decides with Face ID.",
 ].join("\n");
@@ -66,9 +67,37 @@ export const BUY_POLICY_INPUT = z.strictObject({
 });
 export type BuyPolicyInput = z.infer<typeof BUY_POLICY_INPUT>;
 
+/**
+ * The suppliers the agent may buy from now: one of its suppliers here (its mandate pays them), answering code's price
+ * check, at or under the mandate's cap, and leaving at least the goal margin at the sell price.
+ */
+export const usableSuppliers = (suppliers: SupplierView[], capCents: number, sellCents: number): SupplierView[] => {
+  const fresh = (s: SupplierView) => s.data_age_seconds <= MAX_CACHE_SECONDS;
+  const fits = suppliers.filter((s) => s.available && s.price_cents <= capCents && sellCents - s.price_cents >= MIN_MARGIN_CENTS);
+  // dry-125: while a supplier with fresh data answers but only over the cap, not buying is the agent's way to the CFO (its
+  // turned-away customers are Treasury's evidence for a higher cap): data older than code's cache limit does not count then.
+  const freshOverCap = suppliers.some((s) => s.available && fresh(s) && s.price_cents > capCents);
+  return freshOverCap ? fits.filter(fresh) : fits;
+};
+
+/** Why no supplier can be bought from now, one clause each (for the CFO's escalation). */
+export const unusableWords = (suppliers: SupplierView[], capCents: number, sellCents: number): string =>
+  suppliers.length ? suppliers.map((s) => `${s.name} ${!s.available ? `not reachable${s.why ? ` (${s.why})` : ""}` : s.price_cents > capCents ? `${fromCents(s.price_cents)}, over the ${fromCents(capCents)} cap` : `${fromCents(s.price_cents)}, under ${fromCents(MIN_MARGIN_CENTS)} margin at ${fromCents(sellCents)}`}`).join("; ") : "no supplier in this world";
+
 /** Code's check of a buy policy the agent wants: null when it may be set, else why not (the tool's answer). */
 export function checkBuyPolicy(p: BuyPolicyInput, suppliers: SupplierView[], capCents: number, sellCents: number): { text: string; blocked: string } | null {
-  if (p.supplier === "none") return null;
+  // The long run of 20 November: after a notice that Stockline was insolvent the agent set "none" while Ridgeline Data
+  // answered within its cap and margin (and Stockline still did), and every customer was turned away to the end of the
+  // run. Not buying is no longer a choice while a supplier its mandate pays can serve: it switches instead. With none,
+  // "none" may be set, and the runtime puts it before the CFO (src/autonomy/sourcingProfile.ts).
+  if (p.supplier === "none") {
+    const fit = usableSuppliers(suppliers, capCents, sellCents);
+    if (!fit.length) return null;
+    return {
+      text: `Not set: customers would be turned away while ${fit.map((s) => `${s.name} (${s.id}) answers at ${fromCents(s.price_cents)}, data ${s.data_age_seconds < 60 ? `${s.data_age_seconds} s` : `${Math.round(s.data_age_seconds / 60)} min`} old`).join(", and ")}, within your mandate's ${fromCents(capCents)} cap with at least ${fromCents(MIN_MARGIN_CENTS)} margin. Buy from ${fit.length > 1 ? "one of them" : "it"} instead: to stop buying from one supplier, switch to another your mandate pays. If you have a reason not to buy from any of them, tell the Treasury agent (send_message); the CFO decides.`,
+      blocked: "a supplier can serve",
+    };
+  }
   const s = suppliers.find((x) => x.id === p.supplier);
   if (!s) return { text: `Not set: ${SUPPLIERS[p.supplier].name} is not one of your suppliers here.`, blocked: "supplier" };
   const limit = p.max_price ? toCents(p.max_price) : capCents;

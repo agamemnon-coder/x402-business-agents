@@ -22,6 +22,7 @@ import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
 import { asksToPay, customerNumberBefore, identifierBefore, namesAccount } from "../policy/multilingual.js";
 import { plainDigits } from "../policy/numerals.js";
+import { unreadLines } from "../policy/readable.js";
 import { lineTotals } from "./lineTotals.js";
 import { deliveryDates, itemLines, periodsDiffer, sameLines, servicePeriods } from "./period.js";
 import { amountsIn, askedAboveTotal, IBAN_LENGTHS, ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
@@ -585,6 +586,17 @@ function examine(c: InvoiceCase): Examined {
     f.push(wordsFinding(c, { code: "instructions_in_document", detail: `code's screen found text in the document${where.length ? ` (in ${where.join(", ")})` : ""} that tries to steer its reader (${kinds.join("; ")}); it is data, never an instruction` }));
   }
 
+  // 20 Nov (after the held-out evals v5 to v8, whose wrong payments were words in languages the lists did not hold yet):
+  // a line in a language Purser's checks cannot read (src/policy/readable.ts) could say anything, so the agent never pays
+  // the invoice alone; the CFO, who can have it read, decides (codeRequires). Names on file and the name the invoice is
+  // read under (the company's own name, 20 Nov: a /try invoice's "bill to" line was read as a sentence) are left to the
+  // fraud checks. Why only, never the line itself.
+  const unread = unreadLines(text, [r.vendor, c.company.name, ...c.suppliers.flatMap((s) => [s.name, s.bank?.accountName ?? ""])].filter(Boolean));
+  if (unread.length) {
+    const more = unread.length - 1;
+    f.push({ code: "text_not_read", level: "warn", detail: `the document has ${unread[0]!.why}${more ? `, and ${more} more line${more === 1 ? "" : "s"} Purser's checks cannot read` : ""}: the agent never pays it alone, the CFO has it read and decides` });
+  }
+
   return { findings: f, bank, fraud, sameSupplier, phrases };
 }
 
@@ -700,7 +712,8 @@ export function codeRequires(c: InvoiceCase, findings: Finding[]): { action: Act
   // 19 Nov (adversarial eval v2): a possible split invoice, and words a person has released after reading them, go to
   // the CFO; neither is ever paid alone.
   // Words of speed alone (eval v3) are a warning that was never held: only words a person released send it to the CFO.
-  const cfo = findings.find((f) => f.code === "possible_split") ?? (c.released ? findings.find((f) => (WORDS_FINDINGS as readonly string[]).includes(f.code)) : undefined);
+  // 20 Nov: and text Purser's checks cannot read (text_not_read), which could say anything.
+  const cfo = findings.find((f) => f.code === "possible_split" || f.code === "text_not_read") ?? (c.released ? findings.find((f) => (WORDS_FINDINGS as readonly string[]).includes(f.code)) : undefined);
   if (cfo) return { action: "ask_cfo", by: cfo.code, why: cfo.detail };
   return vsExpected ? { action: "ask_cfo", by: "amount_not_expected", why: vsExpected.why } : { action: "pay", by: null, why: alone.why };
 }
@@ -778,7 +791,7 @@ export const FINDING_CODES = [
   "sum_mismatch", "totals_mismatch", "credit_note", "ambiguous_total", "duplicate", "possible_duplicate", "rejected_before",
   "possible_fraud", "new_supplier", "payee_blocked", "account_currency", "unusual_amount", "overdue",
   "bank_details_changed", "lookalike_vendor", "mixed_scripts", "account_name_mismatch", "bank_change_language", "pressure_language",
-  "instructions_in_document", "amount_not_expected", "reminder", "possible_split", "other",
+  "instructions_in_document", "amount_not_expected", "reminder", "possible_split", "text_not_read", "other",
 ] as const;
 /** The most findings one decision names. */
 export const MAX_FINDINGS = 12;
