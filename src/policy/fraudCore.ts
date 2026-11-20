@@ -3,7 +3,7 @@
 // IBAN (Node's crypto in fraud.ts, WebCrypto in the Worker).
 
 import { BANK_CHANGE_ANY, BANK_DETAILS_CHANGED_ANY, BANK_UNCHANGED_ANY, bypassInAnyLanguage, CHANGE_NEGATED_ANY, fold, MESSENGER, PAY_ANY, PAY_OR_DETAILS_ANY, walletIn } from "./multilingual.js";
-import { canonicalName, mixedScriptWord, romanFold, scriptsIn, toLatin, toLatinVariants, transliterable, withoutTypography } from "./scripts.js";
+import { asciiSpelling, canonicalName, mixedScriptWord, plainAscii, romanFold, scriptsIn, toLatin, toLatinVariants, transliterable, withoutTypography } from "./scripts.js";
 
 export type FraudCode =
   | "bank_details_changed" | "lookalike_vendor" | "mixed_scripts" | "account_name_mismatch" | "unknown_vendor"
@@ -209,7 +209,9 @@ const withoutLeadingForm = (name: string) => {
 };
 
 /** Legal forms of Greek, Bulgarian, Russian, Ukrainian and Serbian companies, as they read in Latin letters (Α.Ε., ЕООД, ООО, ТОВ, Д.О.О.). */
-const ROMANISED_FORMS: ReadonlySet<string> = new Set(["ae", "epe", "ike", "oe", "ee", "eood", "ood", "ead", "ad", "et", "kd", "sd", "ooo", "oao", "zao", "pao", "ao", "tov", "pp", "doo"]);
+// 20 Nov (after eval v8): and Mongolian ХХК (a limited company) as toLatin writes it ("hhk"). Not "XXK" in Latin letters
+// that copy the Cyrillic ones' shapes: that is a lookalike, not a romanisation (v8-look-khukh-latin-x is held).
+const ROMANISED_FORMS: ReadonlySet<string> = new Set(["ae", "epe", "ike", "oe", "ee", "eood", "ood", "ead", "ad", "et", "kd", "sd", "ooo", "oao", "zao", "pao", "ao", "tov", "pp", "doo", "hhk"]);
 /** A name in Latin letters as romanFold reduces it, its legal form at the end dropped, with no spaces. */
 export function romanKey(name: string): string {
   return romanKeyOf(toLatin(name));
@@ -256,6 +258,19 @@ export function truncates(short: string, full: string): boolean {
   const last = s.length - 1;
   if (!s.slice(0, last).every((x, i) => x === f[i])) return false;
   return (s[last] !== f[last] && f[last]!.startsWith(s[last]!)) || (s[last] === f[last] && s.length < f.length);
+}
+
+/**
+ * Whether a name written in plain ASCII is the name on file as an ASCII system writes it (20 Nov, after the held-out eval
+ * v8, v8-look-thors-ascii: "Thorsdottir Ullarvorur ehf." for "Þórsdóttir Ullarvörur ehf." was held as a lookalike): the
+ * name on file with its accents dropped and the letters no mark makes spelled out (þ as th, ð as d, ø as o, ß as ss, ł as
+ * l, ı as i: asciiSpelling), then compared as sameName compares. One way only: the name on file has those letters and the
+ * name written is plain ASCII. A name that uses such a letter to look like a plain name on file ("Bılgın" for "Bilgin")
+ * is the other way round, and stays a lookalike. A name is never matched on this alone where money moves: the account
+ * must still be the one on file (assessAgainst compares it).
+ */
+export function asciiSpellingOf(written: string, onFile: string): boolean {
+  return plainAscii(written) && !plainAscii(onFile) && nameKey(written) === nameKey(asciiSpelling(onFile));
 }
 
 /** A trade name after the holder ("Cascade Webbing Inc. dba Cascade Straps", "t/a", "trading as"): the holder before it. */
@@ -423,7 +438,9 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   const matched = all.find((b) => b.name === inv.vendor) ?? all.find((b) => canonicalName(b.name) === canon)
     ?? (mixed ? undefined : all.find((b) => sameScripts(b.name, inv.vendor) && skeleton(b.name) === skeleton(inv.vendor))
       ?? all.find((b) => sameScripts(b.name, inv.vendor) && sameName(b.name, inv.vendor))
-      ?? all.find((b) => sameRomanised(b.name, inv.vendor)));
+      ?? all.find((b) => sameRomanised(b.name, inv.vendor))
+      // 20 Nov (after eval v8): the name on file as an ASCII system writes it.
+      ?? all.find((b) => asciiSpellingOf(inv.vendor, b.name)));
 
   if (mixed) {
     signals.push({ code: "mixed_scripts", blocks: true, detail: `the vendor name "${inv.vendor}" contains letters from a non-Latin alphabet` });
@@ -455,7 +472,7 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   if (holder && holderMixed && !mixed) {
     signals.push({ code: "mixed_scripts", blocks: true, detail: `the account holder "${holder}" contains letters from a non-Latin alphabet` });
   }
-  if (holder && !holderMixed && !sameName(holder, expectedHolder)
+  if (holder && !holderMixed && !sameName(holder, expectedHolder) && !asciiSpellingOf(holder, expectedHolder)
     && !(atAccountOnFile && (abbreviates(holder, expectedHolder) || truncates(holder, expectedHolder) || tradeNameOf(holder, expectedHolder)))) {
     // 19 Nov (after eval v5): at the account on file, a holder in another alphabet than the name on file that has no
     // standard romanisation to compare it by (a Thai, Hebrew or Korean name on file, the holder in Latin letters as banks

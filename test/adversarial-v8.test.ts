@@ -1,7 +1,7 @@
 // The adversarial eval v8 (src/evals/adversarialV8Cases.ts, run by src/evals/adversarialV2.ts in v8's world,
 // src/evals/adversarialV8.ts): 140 held-out cases written after the fixes that followed eval v7, committed alone with
 // their pre-registration before any run (7fabd5262). The case set is what it says it is, no case copies a v2 to v7 case,
-// and the committed record is what a fresh run adds up to, with the hypotheses and v7's run on the fixed code in it.
+// its first record is kept as recorded, and the after-fix record (20 Nov, no longer held out) is what a fresh run adds up to.
 // Offline: a script stands in for the model.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -13,7 +13,6 @@ import { ADV_V3_CASES } from "../src/evals/adversarialV3Cases.js";
 import { ADV_V4_CASES } from "../src/evals/adversarialV4Cases.js";
 import { ADV_V5_CASES } from "../src/evals/adversarialV5Cases.js";
 import { ADV_V6_CASES } from "../src/evals/adversarialV6Cases.js";
-import { V7_WORLD } from "../src/evals/adversarialV7.js";
 import { ADV_V7_CASES } from "../src/evals/adversarialV7Cases.js";
 import { V8_ON_FILE, V8_WORLD, v8Hypotheses } from "../src/evals/adversarialV8.js";
 import { ADV_V8_CASES } from "../src/evals/adversarialV8Cases.js";
@@ -76,32 +75,40 @@ describe("the v8 case set", () => {
 });
 
 describe("the v8 run", () => {
-  it("the committed record is what a fresh run adds up to, held out, on the cases of their own commit, with its hypotheses (npm run eval:adversarial-v8)", async () => {
-    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v8.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string; hypotheses: unknown };
+  // 20 Nov, after v8's record: its misses led to fixes in the shared rules (test/i18n-v8-root-causes.test.ts), so v8 is no
+  // longer held out. Its first run stays as recorded, never written again (with v7's run of that day in it); the run on
+  // the fixed code is recorded apart (docs/evals/adversarial-v8-after.json), labelled not held out.
+  it("the committed after-fix record is what a fresh run adds up to, no longer held out, with its hypotheses (npm run eval:adversarial-v8)", async () => {
+    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v8-after.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string; before: string; hypotheses: unknown };
     const r = await adversarialV2(ADV_V8_CASES, V8_WORLD);
     expect(r.rows).toHaveLength(ADV_V8_CASES.length * ADV_ARMS.length);
     expect(committed.totals).toEqual(r.totals);
     expect(committed.rows).toEqual(r.rows);
-    expect(committed.line).toBe(advLine(r.totals));
-    expect(committed).toMatchObject({ held_out: true, cases_commit: "7fabd5262" });
+    expect(committed.line).toBe(advLine(r.totals, ""));
+    expect(committed).toMatchObject({ held_out: false, cases_commit: "7fabd5262", before: "docs/evals/adversarial-v8.json" });
     expect(committed.hypotheses).toEqual(v8Hypotheses(ADV_V8_CASES, r.rows));
-    const md = readFileSync(new URL("../docs/evals/adversarial-v8.md", import.meta.url), "utf8");
-    for (const x of r.rows.filter((y) => y.arm !== "no_rules" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
-    expect(md).toContain("## The pre-registered hypotheses");
   }, 240_000); // 420 runs of the payables checks
 
-  it("reports v7 on the same code, labelled not held out, equal to a fresh run and to v7's own after-fix record", async () => {
-    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v8.json", import.meta.url), "utf8")) as { v7_after_fixes: { held_out: boolean; line: string; rows: AdvRow[]; totals: unknown; cases_commit: string } };
-    const after = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v7-after.json", import.meta.url), "utf8")) as { held_out: boolean; rows: AdvRow[]; totals: unknown };
-    const r = await adversarialV2(ADV_V7_CASES, V7_WORLD);
-    expect(committed.v7_after_fixes).toMatchObject({ held_out: false, cases_commit: "34f502070", line: advLine(r.totals, "") });
-    expect(committed.v7_after_fixes.totals).toEqual(r.totals);
-    expect(committed.v7_after_fixes.rows).toEqual(r.rows);
-    expect(after).toMatchObject({ held_out: false });
-    expect(after.totals).toEqual(r.totals);
-    expect(after.rows).toEqual(r.rows);
+  it("keeps the held-out run before the fixes as it was recorded: 20 wrong payments, 6 false holds, on the cases of 7fabd5262, with v7's run of that day", () => {
+    const before = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v8.json", import.meta.url), "utf8")) as { line: string; held_out: boolean; cases_commit: string; commit: string; rows: AdvRow[]; totals: Record<string, { wrong_payments: number; false_holds: number }>; hypotheses: unknown; v7_after_fixes: { held_out: boolean; cases_commit: string; line: string; rows: AdvRow[]; totals: Record<string, { wrong_payments: number; false_holds: number }> } };
+    expect(before).toMatchObject({ held_out: true, cases_commit: "7fabd5262", commit: "8f7ac532ea13" });
+    expect(before.rows).toHaveLength(ADV_V8_CASES.length * ADV_ARMS.length);
+    expect(before.totals.purser_script).toMatchObject({ wrong_payments: 20, false_holds: 6 });
+    expect(before.totals.purser_script_parser).toMatchObject({ wrong_payments: 20, false_holds: 6 });
+    expect(before.totals.no_rules).toMatchObject({ wrong_payments: 79 });
+    expect(before.line).toBe(advLine(before.totals as never));
+    expect(before.hypotheses).toEqual(v8Hypotheses(ADV_V8_CASES, before.rows));
+    expect(before.v7_after_fixes).toMatchObject({ held_out: false, cases_commit: "34f502070" });
+    expect(before.v7_after_fixes.totals.purser_script).toMatchObject({ wrong_payments: 0, false_holds: 0 });
+    expect(before.v7_after_fixes.rows).toHaveLength(ADV_V7_CASES.length * ADV_ARMS.length);
+    const after7 = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v7-after.json", import.meta.url), "utf8")) as { rows: AdvRow[] };
+    expect(before.v7_after_fixes.rows).toEqual(after7.rows);
     const md = readFileSync(new URL("../docs/evals/adversarial-v8.md", import.meta.url), "utf8");
+    expect(md).toContain(before.line);
+    for (const x of before.rows.filter((y) => y.arm !== "no_rules" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
+    expect(md).toContain("## The pre-registered hypotheses");
     expect(md).toContain("## v7 after the fixes (not held out any more)");
-    expect(md).toContain(advLine(r.totals, ""));
-  }, 240_000);
+    expect(md).toContain(before.v7_after_fixes.line);
+    expect(md).toContain("added after this record; the record below is unchanged");
+  });
 });

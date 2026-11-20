@@ -65,7 +65,24 @@ export function mixedScriptWord(name: string): string | undefined {
  * script's spelling puts them is the injection screen's question (src/policy/injection.ts), not this one's.
  */
 export function withoutTypography(text: string): string {
-  return text.replace(/[\p{Cf}\u0640]/gu, "");
+  return oneEncoding(text).replace(/[\p{Cf}\u0640]/gu, "");
+}
+
+/** Malayalam's chillu letters, by the consonant they were written with before Unicode 5.1 (consonant, virama, zero-width joiner). */
+const CHILLU: Readonly<Record<string, string>> = { "\u0d23": "\u0d7a", "\u0d28": "\u0d7b", "\u0d30": "\u0d7c", "\u0d32": "\u0d7d", "\u0d33": "\u0d7e", "\u0d15": "\u0d7f", "\u0d2e": "\u0d54", "\u0d2f": "\u0d55", "\u0d34": "\u0d56" };
+/** Yiddish's ligatures, which Unicode gives no decomposition: the two letters they are written with too. */
+const YIDDISH_PAIRS: Readonly<Record<string, string>> = { "\u05f0": "\u05d5\u05d5", "\u05f1": "\u05d5\u05d9", "\u05f2": "\u05d9\u05d9" };
+/**
+ * A text with each letter that Unicode encodes two ways, and no normalisation unifies, in one of them (20 Nov, after the
+ * held-out eval v8, docs/evals/adversarial-v8.md: a Malayalam name written with its chillu letter as consonant, virama
+ * and zero-width joiner, as text was encoded before Unicode 5.1, was held as a lookalike of the same name written with
+ * the chillu letter of today; the joiner was dropped as typography and the virama left a letter that differs). Malayalam's
+ * chillu letters as the one character of Unicode 5.1, and Yiddish's ligatures ("\u05f0", "\u05f1", "\u05f2") as the letter pairs
+ * Yiddish is also written with. For comparing and matching only.
+ */
+export function oneEncoding(text: string): string {
+  return text.replace(/([\u0d15\u0d23\u0d28\u0d2e\u0d2f\u0d30\u0d32\u0d33\u0d34])\u0d4d\u200d/gu, (_, c: string) => CHILLU[c]!)
+    .replace(/[\u05f0-\u05f2]/gu, (ch) => YIDDISH_PAIRS[ch]!);
 }
 
 /** The name as written, for an exact comparison: NFKC, without invisible format characters or tatweel, spacing collapsed. */
@@ -95,6 +112,11 @@ const CYRILLIC: Readonly<Record<string, string>> = {
   а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p",
   р: "r", с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sht", ъ: "a", ь: "y", ю: "yu", я: "ya",
   ё: "yo", ы: "y", э: "e", є: "ye", і: "i", ї: "yi", ґ: "g", ђ: "dj", ј: "j", љ: "lj", њ: "nj", ћ: "c", џ: "dz", ѓ: "gj", ќ: "kj", ѕ: "dz", ў: "u",
+  // 20 Nov (after the held-out eval v8, v8-name-khukh-romanised-holder: "KHUKH TENGER NOOLUUR LLC", a bank's romanisation of
+  // "Хөх Тэнгэр Ноолуур ХХК", was held as another holder, because the Mongolian letters ө and ү were in no table and stayed
+  // Cyrillic). The letters of the other Cyrillic alphabets, as their national romanisations write them without marks:
+  // Mongolian (ө, ү), Kazakh and Kyrgyz (ә, ғ, қ, ң, ұ, һ), Tajik (ӣ, ӯ, ҳ, ҷ), Tatar and Bashkir (җ, ҙ, ҫ, ҡ, ҕ).
+  ө: "o", ү: "u", ә: "a", ғ: "g", қ: "k", ң: "n", ұ: "u", һ: "h", ӣ: "i", ӯ: "u", ҳ: "h", ҷ: "j", җ: "zh", ҙ: "z", ҫ: "s", ҡ: "k", ҕ: "g",
 };
 
 /** A text with its Greek and Cyrillic letters written in Latin ones (lower case); other letters are left as they are. */
@@ -124,8 +146,27 @@ export function toLatin(text: string): string {
 export function toLatinVariants(text: string): string[] {
   const low = text.normalize("NFKC").toLowerCase();
   const east = low.replace(/[ьъ]/gu, "").replace(/щ/gu, "shch").replace(/ё/gu, "е");
-  return [...new Set([toLatin(text), toLatin(east), toLatin(east.replace(/г/gu, "h"))])];
+  const out = [toLatin(text), toLatin(east), toLatin(east.replace(/г/gu, "h"))];
+  // 20 Nov (after eval v8): Mongolian, Kazakh and Kyrgyz banks write ө and ү, and ұ, all as "u" ("Хөх" as "KHUKH").
+  if (/[өүұ]/u.test(low)) out.push(toLatin(low.replace(/[өүұ]/gu, "у")));
+  return [...new Set(out)];
 }
+
+/** Latin letters that no mark makes, as an ASCII system spells them (Icelandic þ and ð, Danish ø, German ß, Polish ł, Turkish ı …). */
+const ASCII_SPELLING: Readonly<Record<string, string>> = {
+  þ: "th", ð: "d", æ: "ae", ø: "o", œ: "oe", ß: "ss", ł: "l", đ: "d", ħ: "h", ı: "i", ŀ: "l", ŋ: "ng", ĸ: "k", ŧ: "t", ſ: "s", ƒ: "f",
+};
+/**
+ * A Latin name as an ASCII system writes it (20 Nov, after the held-out eval v8, v8-look-thors-ascii: "Thorsdottir
+ * Ullarvorur ehf." for "Þórsdóttir Ullarvörur ehf." on file was held as a lookalike, because þ, a letter no mark makes,
+ * was dropped from the name, not written "th"): accents dropped, and the letters no mark makes as their usual spelling.
+ * Lower case. Used only to compare a name written in plain ASCII with the name on file, never to show one.
+ */
+export function asciiSpelling(text: string): string {
+  return [...text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()].map((ch) => ASCII_SPELLING[ch] ?? ch).join("");
+}
+/** Whether a text is plain ASCII. */
+export const plainAscii = (text: string) => /^[\x20-\x7E]*$/.test(text.trim());
 
 /**
  * A Latin spelling reduced to what the usual romanisations of one Greek or Cyrillic name share (ELOT, ISO 9, BGN, the

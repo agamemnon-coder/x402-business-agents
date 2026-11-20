@@ -4,7 +4,7 @@
 // and only a person's passkey or typed hash approves.
 
 import { CONFUSABLES } from "./fraudCore.js";
-import { approvalClaimInAnyLanguage, instructionInAnyLanguage } from "./multilingual.js";
+import { approvalClaimInAnyLanguage, headedToAi, instructionInAnyLanguage } from "./multilingual.js";
 import { withoutTypography } from "./scripts.js";
 
 export type InjectionKind = "hidden_characters" | "instruction" | "approval_claim";
@@ -32,13 +32,17 @@ const TAG_RUN = /[\u{E0000}-\u{E007F}]+/gu;
  */
 const BRAHMIC = new Set(["Devanagari", "Bengali", "Gurmukhi", "Gujarati", "Oriya", "Tamil", "Telugu", "Kannada", "Malayalam", "Sinhala", "Myanmar", "Khmer", "Tibetan"]);
 const JOINING_SCRIPTS = ["Arabic", "Syriac", "Nko", "Mongolian", ...BRAHMIC];
+// 20 Nov (after eval v8): this and SCRIPT_ZWSP, the two costliest patterns to build (a set of letters per script), are
+// built the first time a line is screened, not when the module loads: the kit11 Worker's start stays within Cloudflare's
+// CPU limit for a start.
+let scriptJoiner: RegExp | undefined, scriptZwsp: RegExp | undefined;
 /** A joiner or non-joiner between two letters (or a letter's marks) of one such script. */
-const SCRIPT_JOINER = new RegExp(JOINING_SCRIPTS.map((sc) => {
+const SCRIPT_JOINER = () => (scriptJoiner ??= new RegExp(JOINING_SCRIPTS.map((sc) => {
   const letter = `[[\\p{L}\\p{M}]&&\\p{Script_Extensions=${sc}}]`;
   // A Brahmic script also ends a word with one after the virama (Malayalam's chillu letters, "ന്\u200D").
   const mark = `[\\p{M}&&\\p{Script_Extensions=${sc}}]`;
   return `(?<=${letter})[\u200C\u200D](?=${letter})${BRAHMIC.has(sc) ? `|(?<=${mark})[\u200C\u200D](?![\\p{L}\\p{M}\\p{N}])` : ""}`;
-}).join("|"), "gv");
+}).join("|"), "gv"));
 /**
  * A line without the joiners its own script's spelling needs (19 Nov, after the held-out eval v6, v6-clean-ege-persian-zwnj:
  * a Persian thank-you spelled with the non-joiner Persian needs was held as hidden characters). Anywhere else (between
@@ -52,10 +56,10 @@ const SCRIPT_JOINER = new RegExp(JOINING_SCRIPTS.map((sc) => {
  */
 const NO_SPACE_SCRIPTS = ["Thai", "Lao", "Khmer", "Myanmar", "Tibetan", "Javanese", "Balinese", "Sundanese", "Tai_Tham", "New_Tai_Lue", "Han", "Hiragana", "Katakana"];
 /** A zero-width space between two characters (letters, marks, digits or punctuation) of one such script. */
-const SCRIPT_ZWSP = new RegExp(NO_SPACE_SCRIPTS.map((sc) => {
+const SCRIPT_ZWSP = () => (scriptZwsp ??= new RegExp(NO_SPACE_SCRIPTS.map((sc) => {
   const ch = `[[\\p{L}\\p{M}\\p{N}\\p{P}]&&\\p{Script_Extensions=${sc}}]`;
   return `(?<=${ch})\u200B(?=${ch})`;
-}).join("|"), "gv");
+}).join("|"), "gv"));
 /** Letters of the scripts written right to left. */
 const RTL_LETTER = /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Samaritan}\p{Script=Mandaic}\p{Script=Adlam}]/u;
 /**
@@ -67,7 +71,7 @@ const BIDI_MARK = /(?<![\p{Script=Latin}\p{Nd}])[\u200E\u200F\u061C]|[\u200E\u20
 /** A soft hyphen between two digits: no language hyphenates a number, so it only splits an account or an amount. */
 const SPLIT_NUMBER = /\p{Nd}\u00AD+(?=\p{Nd})/u;
 const withoutScriptJoiners = (line: string) => {
-  const own = line.replace(SCRIPT_JOINER, "").replace(SCRIPT_ZWSP, "");
+  const own = line.replace(SCRIPT_JOINER(), "").replace(SCRIPT_ZWSP(), "");
   // The marks themselves are no letters of the line (the Arabic letter mark is in the Arabic script).
   return RTL_LETTER.test(line.replace(/\p{Cf}/gu, "")) ? own.replace(BIDI_MARK, "") : own;
 };
@@ -138,6 +142,15 @@ const APPROVED_ROMANCE = /(^|[^\p{L}])(ya|j(á|a)|gi(à|a))\s+(est(á|a)\s+)?(ap
 // Past the approval or the checks (16 Nov: "without approval", "skip the CFO", "don't ask the CFO", "ignore limit").
 const APPROVAL_CLAIM = /\b(al|reeds|bereits|schon|d(é|e)j(à|a)) (goedgekeurd|freigegeben|genehmigt|approuv(é|e)e?s?)\b|\bsla\b[^.\n]{0,25}\b(controle|goedkeuring|verificatie|check)\b[^.\n]{0,10}\bover\b|\b(pr(ü|ue)fung|freigabe|kontrolle|genehmigung)\b[^.\n]{0,15}\b(entf(ä|ae)llt|(ü|ue)berspringen|nicht (n(ö|oe)tig|erforderlich))\b|\bohne r(ü|ue)ckfrage\b|\bapproved\b[^.\n]{0,20}\bpay (it )?(now|immediately|at once|right away)\b|\b(do not|don'?t|never|no need to) escalate\b|\b(is|was|been|mark(ed)? (it )?as|auto(matically)?)[ -]approved\b|\bapprove (this|it|the payment|automatically|immediately|now|without)\b|\bpre-?approved\b|\bpre-?(verified|checked|cleared|validated)\b|\balready (been )?(verified|checked|validated|cleared)\b|\bno (further |more |additional )?(checks?|verification|review|approvals?) (is |are )?(needed|required|necessary)\b|\balready approved\b|\bapproval (is )?(not|no longer) (needed|required)\b|\bskip (the )?(approval|verification|check|review)\b|\bno (approval|verification) (is )?(needed|required)\b|\b(without|no need for|skip(ping)?|don'?t (ask|wait for|need|involve)|do not (ask|wait for|need|involve)|ignore|bypass)\b[^.\n]{0,25}\b(approvals?|cfo|sign(ing|ature|-?off)?|checks?|checking|verification|review|passkeys?|face ?id|controls?|limits?)\b/i;
 
+/**
+ * What a document says about itself: that it is valid, or was issued or generated, without a signature or a stamp (19
+ * Nov, after the held-out eval v8, v8-inject-english-without-signature: "This invoice was generated electronically and is
+ * valid without a signature", the usual line of an electronic invoice, was held as a claim that the payment needs no
+ * sign-off). It says nothing of the payer's approval; taken out of the line before the claims below are looked for, so
+ * the rest of the line is still read ("valid without a signature, pay without approval" is held).
+ */
+const DOCUMENT_VALIDITY = /\b(valid|issued|generated|created|produced|printed|sent|legally binding|binding)\b[^.\n]{0,30}\bwithout (a |any )?(handwritten |physical |wet |manual )?(signatures?|stamps?|seals?)\b|\b(does not|doesn'?t|do not|don'?t) (need|require) (a |any )?(handwritten |physical |wet )?(signatures?|stamps?|seals?) to be valid\b/gi;
+
 /** A line for people: a run of tag characters as the text it spells, any other hidden character as [U+XXXX]. */
 const show = (line: string) => line
   .replace(TAG_RUN, (run) => `[hidden text: ${[...run].map((ch) => ch.codePointAt(0)! - 0xe0000).filter((c) => c >= 0x20 && c < 0x7f).map((c) => String.fromCharCode(c)).join("")}]`)
@@ -168,13 +181,17 @@ const kindOf = (line: string): InjectionKind | null => {
   const seen = withoutTypography(line);
   for (const v of new Set([line, seen, foldForScreen(seen), ...quoted(seen)])) {
     if (INSTRUCTION.some((re) => re.test(v))) return "instruction";
-    if (APPROVAL_CLAIM.test(v) || APPROVED_ROMANCE.test(v)) return "approval_claim";
+    const claims = v.replace(DOCUMENT_VALIDITY, " ");
+    if (APPROVAL_CLAIM.test(claims) || APPROVED_ROMANCE.test(claims)) return "approval_claim";
   }
   // 19 Nov, after the held-out eval v5 (docs/evals/adversarial-v5.md: orders in Chinese, Japanese and Arabic were paid,
   // because every list above is written in Latin letters with ASCII word boundaries): the same concepts in the other
   // languages and scripts suppliers write in (src/policy/multilingual.ts).
   if (instructionInAnyLanguage(seen)) return "instruction";
   if (approvalClaimInAnyLanguage(seen)) return "approval_claim";
+  // 20 Nov (after the held-out eval v8): a line headed by a label that names an AI, in any language (headedToAi), when
+  // nothing above has named what it asks.
+  if (headedToAi(seen)) return "instruction";
   return null;
 };
 
