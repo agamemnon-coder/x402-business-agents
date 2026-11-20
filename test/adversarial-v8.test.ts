@@ -102,7 +102,10 @@ describe("the v8 run", () => {
     expect(before.v7_after_fixes.totals.purser_script).toMatchObject({ wrong_payments: 0, false_holds: 0 });
     expect(before.v7_after_fixes.rows).toHaveLength(ADV_V7_CASES.length * ADV_ARMS.length);
     const after7 = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v7-after.json", import.meta.url), "utf8")) as { rows: AdvRow[] };
-    expect(before.v7_after_fixes.rows).toEqual(after7.rows);
+    // 20 Nov, after the fixes that followed the held-out eval v12: one v7 case has a new outcome on today's code (a CEO's
+    // visit and speed in one line now go to the CFO), so v7's after-fix record differs from the run of v8's day there.
+    const since = new Set(["v7-pressure-addis-ceo-visit"]);
+    expect(before.v7_after_fixes.rows.filter((x) => !since.has(x.case))).toEqual(after7.rows.filter((x) => !since.has(x.case)));
     const md = readFileSync(new URL("../docs/evals/adversarial-v8.md", import.meta.url), "utf8");
     expect(md).toContain(before.line);
     for (const x of before.rows.filter((y) => y.arm !== "no_rules" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
