@@ -5,7 +5,7 @@
 // approval, enrolment and policy pages, /try/sign's test worlds, the installed app, every JSON, script, stylesheet,
 // font and image, the redirects and the 404. test/site-index.test.ts holds both lists.
 
-import { SITE_URL } from "../ui/meta.js";
+import { SITE_URL } from "../ui/siteUrl.js";
 
 /** The Kit 11 agents, each with a public page at /agents/<id> (src/redesign/agents.ts). */
 export const AGENT_PAGE_IDS = ["sourcing", "support", "treasury"] as const;

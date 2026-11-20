@@ -7,9 +7,10 @@
 import { formerlyMetal } from "./formerly.js";
 import { CORE_SENTENCE, HERO } from "../config/brand.js";
 import { ICON_VERSION } from "./brand/mark.js";
+import { SITE_URL } from "./siteUrl.js";
 
-/** The hosted site. */
-export const SITE_URL = "https://kit11.max-31b.workers.dev";
+/** The hosted site (src/ui/siteUrl.ts, a module without imports for the site's Worker). */
+export { SITE_URL };
 /**
  * The link preview's image, absolute: 1200×630, the same file as docs/assets/social-preview.png (`npm run visuals`,
  * src/visuals/svg.ts socialSvg). Since 13 Nov (the owner: the dark square with a tiny line read poorly in chats) the one
