@@ -31,4 +31,8 @@ jobs:
       - name: Threat model present
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
-        run: CHANGED_FILES="$RUNNER_TEMP/files.txt" npx --yes tsx@4.23.15 scripts/pr-threat-model.ts
+        # The pull request that adds the gate finds no script on its base yet; it says so and passes. From the next one on,
+        # the base always holds the script, and only the base's copy ever runs.
+        run: |
+          if [ ! -f scripts/pr-threat-model.ts ]; then echo "::notice::The base has no scripts/pr-threat-model.ts yet (the pull request that adds the gate); nothing to check."; exit 0; fi
+          CHANGED_FILES="$RUNNER_TEMP/files.txt" npx --yes tsx@4.23.15 scripts/pr-threat-model.ts
