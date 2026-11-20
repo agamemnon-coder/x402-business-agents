@@ -76,5 +76,5 @@ describe("the recorded case's evidence report (/metal/report)", () => {
     expect(METAL_REPORT_CSP).toMatch(/^default-src 'none'; style-src 'sha256-/);
     expect(METAL_REPORT_CSP).not.toMatch(/script-src/);
     expect(METAL_PAGE).not.toContain("__METAL_JSON__");
-  });
+  }, 30_000); // a cold import of the dashboard module can pass 5 s on a loaded CI runner (20 Nov)
 });

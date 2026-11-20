@@ -124,7 +124,7 @@ describe("the shown numbers are identical in all places", () => {
     expect(html.indexOf('id="cfo-expo"') - html.indexOf('id="cfo-line"')).toBeGreaterThan(0);
     expect(html.indexOf('id="cfo-expo"')).toBeLessThan(html.indexOf('id="recbanner"'));
     expect(html).toContain('document.getElementById("cfo-expo").hidden = false;');
-  });
+  }, 30_000); // a cold import of the dashboard module can pass 5 s on a loaded CI runner (20 Nov)
   it("the same numbers from the starting policy and from the main run's", () => {
     const p = startPolicy();
     expect(exposureWords(exposureOf(p), p, recordedRate(record)).headline).toBe(fromRecord().headline);
