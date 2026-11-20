@@ -19,6 +19,9 @@
   // The hands-on demo on this address (/try, src/tryEngine.ts): purser-try (cloud/wrangler.try.jsonc) answers it. Deploy
   // purser-try first: a deploy that binds a Worker that does not exist fails.
   "services": [{ "binding": "TRY_ENGINE", "service": "purser-try" }],
+  // The Airwallex gateway's own cap (worker/src/awxGateway.ts, 20 Nov): 120 calls a minute to the sandbox for Purser
+  // Cloud's actions and the read-only Code Mode MCP together, on top of Purser Cloud's caps per token.
+  "ratelimits": [{ "name": "AWX_GATEWAY_LIMIT", "namespace_id": "4402", "simple": { "limit": 120, "period": 60 } }],
   // Workers Logs (ASVS V1.7.2): every log line, the request lines and the security.* events among them, leaves the
   // isolate for Cloudflare's log store, every request kept; queried in the dashboard (test/workers-observability.test.ts).
   "observability": { "enabled": true, "head_sampling_rate": 1, "logs": { "enabled": true, "invocation_logs": true } },

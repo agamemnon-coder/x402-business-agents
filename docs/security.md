@@ -263,9 +263,11 @@ What it does not cover, said plainly:
 
 The outside audit's finding 1.4: the audit log is hash-chained, but its anchors are unsigned, so whoever can write the
 SQLite file can append rows after the last published anchor, or rewrite the chain and recompute every hash. The chain's
-own check (`npm run verify`, the gate before a payment) cannot see either: what is left verifies. **Built and tested
-locally; not deployed, and no run record shows it on a live runner. The key is a file on the runner, not in a KMS or
-an HSM.**
+own check (`npm run verify`, the gate before a payment) cannot see either: what is left verifies. **Exercised on 20
+November on a runner's ledger file, through the runner's own code ([checkpoint drill](runs/2026-11-20-checkpoint-drill.md):
+56 of 56 steps; six attacks each refused before a payment, a loosening policy change and a key enrolment, and found by
+`npm run verify-audit`). No standing runner has it switched on yet, and Purser Cloud's hosted engine (Durable Objects)
+does not run it. The key is a file on the runner, not in a KMS or an HSM.**
 
 - **A checkpoint** is one JSON line: its own number `n`, the rows it covers (`entries`), the head hash (`row_hash` of
   the last of them), the time, the key id and public key, and the id of the checkpoint before (`prev`), signed with
@@ -471,8 +473,9 @@ Rate limits, where the docs say them (each asserted in the same test or the test
   anchor, including a passkey row, and `verify` still passes. Anchors in committed run records and audit reports
   limit this to rows after the last published anchor. Since 20 November (outside audit 1.4) a runner with a
   checkpoint key configured signs a checkpoint after every money action and on a schedule, and refuses a payment, a
-  loosening policy change or a key enrolment on a ledger that does not match the latest one (above). That is built and
-  tested locally only, not deployed; the key is a file on the runner (no KMS or HSM); a non-money row forged between
+  loosening policy change or a key enrolment on a ledger that does not match the latest one (above). That is tested and
+  exercised in a drill on a runner's ledger file ([record](runs/2026-11-20-checkpoint-drill.md)), not switched on on a
+  standing runner, and not run by Purser Cloud's hosted engine; the key is a file on the runner (no KMS or HSM); a non-money row forged between
   two checkpoints is still signed by the next one; and the published anchors themselves are still unsigned.
 - **Whoever can write the ledger file gets past Purser's own layers.** Until 20 November the executor trusted its
   own database: an approval written straight into it, with terms and hashes that agree, was run. Now the executor

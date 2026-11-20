@@ -13,7 +13,7 @@ describe("README badges", () => {
     // 17 Nov, later (owner: "keep all the badges, tidy and grouped"): three rows under one style (flat-square, one
     // label colour); then the strip. 19 Nov 2026 (owner, OpenSSF gold): each row named by a bold label: build and
     // quality (CI, CodeQL, tests, coverage, licence), security and supply chain (OpenSSF Best Practices, OpenSSF
-    // Scorecard, REUSE, Sigstore-signed releases, the TLA+ model, the Dafny proofs), and the product and its partners as they ran. No SLSA
+    // REUSE, Sigstore-signed releases, the TLA+ model, the Dafny proofs), and the product and its partners as they ran. No SLSA
     // level badge: the release provenance comes from actions/attest, not the SLSA generator (docs/security/openssf-gold.md).
     const lines = readme.split("\n");
     const at = lines.indexOf(badgeLine);
@@ -21,11 +21,11 @@ describe("README badges", () => {
     expect(badgeLine.startsWith("**Build & quality**<br>[![CI]")).toBe(true);
     expect(names(badgeLine)).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "Coverage: from docs/badges/coverage.json", "License: MIT"]);
     expect(lines[at + 1]!.startsWith("**Security & supply chain**<br>[![OpenSSF Best Practices]")).toBe(true);
-    expect(names(lines[at + 1]!)).toEqual(["OpenSSF Best Practices", "OpenSSF Scorecard", "REUSE 3.3: compliant", "Releases: Sigstore-signed", "TLA+ model: 1,102,845 states, 0 errors", "Dafny: verified"]);
+    expect(names(lines[at + 1]!)).toEqual(["OpenSSF Best Practices", "REUSE 3.3: compliant", "Releases: Sigstore-signed", "TLA+ model: 1,102,845 states, 0 errors", "Dafny: verified"]);
     expect(lines[at + 2]!.startsWith("**Product & partners**<br>[![Airwallex: sandbox]")).toBe(true);
     expect(names(lines[at + 2]!)).toEqual(["Airwallex: sandbox", "Alta (formerly Metal): testnet", "Visa VIC via Airi: sandbox", "T:0: sandbox ledger", "Claude: 24 decisions", "worst-case AI, offline eval: 0 wrong payments", "MCP server: read, propose only", "Test money only"]);
     expect(badgeLine.endsWith("<br>") && lines[at + 1]!.endsWith("<br>")).toBe(true);
-    expect(lines[at + 1]).toContain("[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)&nbsp;[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/agamemnon-coder/x402-business-agents/badge)](https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents)");
+    expect(lines[at + 1]).toContain("[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)");
     expect(badgeLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
     expect(readme).not.toMatch(/\[!\[SLSA/);
     for (const l of lines.slice(at, at + 3)) for (const u of l.matchAll(/img\.shields\.io\/[^)]+/g)) expect(u[0]).toContain("style=flat-square");

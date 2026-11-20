@@ -307,9 +307,7 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(t.rec).toBe("docs/evidence/release-v1.2.0.json");
     const rec = JSON.parse(readFileSync(new URL("../docs/evidence/release-v1.2.0.json", import.meta.url), "utf8")) as { attestations: { predicateType: string }[] };
     expect(rec.attestations.map((a) => a.predicateType)).toEqual(["https://slsa.dev/provenance/v1", "https://cyclonedx.org/bom"]);
-    const sc = tile(w(), "scorecard");
-    const score = (JSON.parse(readFileSync(new URL("../docs/evidence/scorecard.json", import.meta.url), "utf8")) as { score: number }).score;
-    expect(sc.fig).toBe(`${score}/10`);
+    expect(tiles(w()).some((x) => x.key === "scorecard")).toBe(false); // 20 Nov (owner): the Scorecard score is no longer shown
     expect(tile(w(), "openssf").tag).toBe("external");
   });
 });

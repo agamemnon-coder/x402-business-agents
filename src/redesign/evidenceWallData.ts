@@ -382,13 +382,11 @@ function quality(): WallTile[] {
   const OS = "docs/evidence/openssf-best-practices.json";
   const os = json(OS) as { programme?: string; project?: number; status?: string; as_of?: string; url?: string; basis?: string } | null;
   if (os?.status && os.url) out.push({ key: "openssf", fig: os.status[0]!.toUpperCase() + os.status.slice(1), label: `${os.programme} badge, project ${os.project}`, note: `From ${os.basis}, as of ${day(`${os.as_of}T12:00:00Z`)}; the live status is on the project page.`, tag: "external", tone: "ok", href: os.url, rec: OS });
-  // Supply chain, as run (19 Nov): the v1.2.0 release's Sigstore-signed attestations and the OpenSSF Scorecard score,
-  // each read from its committed record (docs/evidence/release-v1.2.0.json, docs/evidence/scorecard.json).
-  const RV = "docs/evidence/release-v1.2.0.json", SCR = "docs/evidence/scorecard.json";
+  // Supply chain, as run (19 Nov): the v1.2.0 release's Sigstore-signed attestations, read from their committed record
+  // (docs/evidence/release-v1.2.0.json). The OpenSSF Scorecard score is no longer shown (owner, 20 Nov).
+  const RV = "docs/evidence/release-v1.2.0.json";
   const rv = json(RV) as { attestations?: unknown[]; release?: string } | null;
   if (rv?.attestations?.length && rv.release) out.push({ key: "supply-chain", fig: "v1.2.0", label: "release signed: SLSA provenance and SBOM attested", note: `${rv.attestations.length} Sigstore-signed attestations on the source archive, read back from GitHub; check with gh attestation verify.`, tag: "ci", tone: "ok", href: rv.release, rec: RV });
-  const sc = json(SCR) as { score?: number; read_on?: string } | null;
-  if (typeof sc?.score === "number") out.push({ key: "scorecard", fig: `${sc.score}/10`, label: "OpenSSF Scorecard score, read from its public API", note: `Read from api.securityscorecards.dev on ${sc.read_on}; one maintainer keeps Code-Review and Contributors low, and a repository under 90 days old scores 0 on Maintained.`, tag: "ci", tone: "", href: "https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents", rec: SCR });
   return out;
 }
 

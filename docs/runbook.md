@@ -121,7 +121,7 @@ exercised live.
 | The Airwallex API key | `.env` | Make a new scoped key in Airwallex ([airwallex.md](airwallex.md#the-scoped-key)), put it in `.env`, `npm run health`, delete the old key in Airwallex | Not yet exercised |
 | The Airwallex webhook signing secret | Keys dir, the Worker's secrets | `npm run cards -- webhook --replace` (new subscription first, secret to relay and runner, then the old one deleted) | Exercised live (30 October) |
 | The compliance key (send policy) | Keys dir; in production a signer of its own | Cancel every unused decision (`cancel`, signed by the old key), then deploy a new contract with the new key and move the funds by policy | Cancel exercised live; rotation not yet exercised |
-| The audit checkpoint key (20 November) | Keys dir, named by `PURSER_CHECKPOINT_KEY_FILE`; never the ledger | `npm run verify-audit -- rotate --new-key <file>` ("The audit log does not match its checkpoint", below) | Tested (`test/audit-checkpoints.test.ts`); not deployed |
+| The audit checkpoint key (20 November) | Keys dir, named by `PURSER_CHECKPOINT_KEY_FILE`; never the ledger | `npm run verify-audit -- rotate --new-key <file>` ("The audit log does not match its checkpoint", below) | Tested (`test/audit-checkpoints.test.ts`); exercised in the checkpoint drill ([20 Nov](runs/2026-11-20-checkpoint-drill.md)), rotation not drilled; not on a standing runner |
 | The Metal RPC credential | `.env` | Make a new one in the Metal console, put it in `.env`, restart | Not yet exercised |
 
 Never put a key in chat, a log, an issue or git. The secret scan runs before every commit, and gitleaks runs in CI on
@@ -130,8 +130,12 @@ the whole history.
 ### The audit log does not match its checkpoint (added 20 November)
 
 Signed audit checkpoints (outside audit 1.4, [security.md](security.md#signed-audit-checkpoints-20-november-outside-audit-14)).
-**Tested** against the attacks in `test/audit-checkpoints.test.ts`; **not yet exercised** on a live runner, and not
-deployed: no runner has `PURSER_CHECKPOINT_KEY_FILE` set yet.
+**Tested** against the attacks in `test/audit-checkpoints.test.ts`, and **exercised** on 20 November on a runner's
+ledger file with a key made by `keygen` below (`npm run audit:checkpoint-drill`,
+[record](runs/2026-11-20-checkpoint-drill.md): the runner's flows with the gate on, then six attacks, each refused
+before a payment, a loosening policy change and a key enrolment, with the critical alarm, and found by
+`npm run verify-audit`). No standing runner has `PURSER_CHECKPOINT_KEY_FILE` set yet; Purser Cloud's hosted engine
+(Durable Objects) does not run checkpoints.
 
 **Switching it on** (operator, runner stopped):
 

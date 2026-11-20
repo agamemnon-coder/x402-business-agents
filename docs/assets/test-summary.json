@@ -1,11 +1,11 @@
 {
-  "total": 8850,
-  "passed": 8845,
+  "total": 9390,
+  "passed": 9385,
   "failed": 0,
   "skipped": 5,
-  "files": 814,
-  "commit": "1ef28d9fa",
+  "files": 869,
+  "commit": "10b78a0d7",
   "scope": "the full suite: every test file vitest.config.ts includes, without coverage; not the coverage run, which is recorded separately in docs/evidence/coverage.json",
-  "command": "npx vitest run --reporter=json --outputFile.json=<file>, then npm run readme-draft -- --tests <file> and npm run test-count",
-  "environment": "not recorded: this summary was written before it recorded the machine the run was on"
+  "command": "npx vitest run --testTimeout=20000 --reporter=json --outputFile.json=<file>, then npm run readme-draft -- --tests <file> and npm run test-count",
+  "environment": "Linux 6.18.44-fc-v726 x64, 4 CPUs, Node v22.22.0"
 }

@@ -19,6 +19,12 @@ export interface GatewayEnv {
   AWX_ACT_API_KEY?: string;
   /** "on": writes, simulations and money calls are allowed (reads always are, with a key). Off when missing. */
   AWX_GATEWAY_WRITE?: string;
+  /**
+   * The gateway's own cap per minute (20 Nov): a Workers rate limiting binding (worker/wrangler.jsonc, 120 calls a
+   * minute for all callers together), asked before every call. A refusal, or a limiter that fails, answers 429 and
+   * nothing is sent. Purser Cloud's caps per token stay in front of it.
+   */
+  AWX_GATEWAY_LIMIT?: { limit(o: { key: string }): Promise<{ success: boolean }> };
 }
 
 const TIMEOUT_MS = 20_000;
@@ -63,6 +69,10 @@ export class AwxGatewayDesk {
     const checked = gatewayCheck(r);
     if ("refused" in checked) return { ok: false, status: 400, code: "gateway_refused", trace_id: null, refused: checked.refused };
     if (checked.rule.kind !== "read" && this.env.AWX_GATEWAY_WRITE !== "on") return { ok: false, status: 403, code: "gateway_writes_off", trace_id: null, refused: "writes are switched off at the gateway (AWX_GATEWAY_WRITE)" };
+    if (this.env.AWX_GATEWAY_LIMIT) {
+      const under = await this.env.AWX_GATEWAY_LIMIT.limit({ key: "awx-gateway" }).then((o) => o.success, () => false);
+      if (!under) return { ok: false, status: 429, code: "gateway_rate_limited", trace_id: null, refused: "the gateway's cap per minute is reached (AWX_GATEWAY_LIMIT)" };
+    }
     const k = this.key();
     if (!k) return { ok: false, status: 503, code: "gateway_no_key", trace_id: null, refused: "the gateway holds no sandbox key" };
     const url = new URL(GATEWAY_SANDBOX_BASE + r.path);
