@@ -37,19 +37,35 @@ const SPACED = /[\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}\p{Script=Ar
 const WORDISH = "[\\p{Script=Latin}\\p{Script=Greek}\\p{Script=Cyrillic}\\p{Script=Armenian}\\p{Script=Georgian}\\p{N}]";
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** One stem as a pattern: a word start (and end, if short) where its alphabet puts spaces between words. */
-function stem(term: string): string {
+function stem(term: string): { pre: string; body: string; post: string } {
   const whole = term.endsWith("$");
   const starts = term.startsWith("^");
   const t = fold(term.slice(starts ? 1 : 0, whole ? -1 : undefined));
   const body = esc(t).replace(/ /g, "\\s+");
   // 19 Nov: a short word of a script with spaces but attached letters (Hebrew "מיד", immediately, is inside "המידע" and
   // "תמיד") is written "^…$": a whole word in any script.
-  if (!SPACED.test(t)) return starts || whole ? `${starts ? "(?<![\\p{L}\\p{M}])" : ""}${body}${whole ? "(?![\\p{L}\\p{M}])" : ""}` : body;
+  if (!SPACED.test(t)) return { pre: starts ? "(?<![\\p{L}\\p{M}])" : "", body, post: whole ? "(?![\\p{L}\\p{M}])" : "" };
   const short = whole || [...t.replace(/[^\p{L}]/gu, "")].length <= 3;
-  return `(?<!${WORDISH})${body}${short ? `(?!${WORDISH})` : ""}`;
+  return { pre: `(?<!${WORDISH})`, body, post: short ? `(?!${WORDISH})` : "" };
 }
-/** A pattern of any of the stems, over folded text. */
-export const anyOf = (terms: readonly string[]): RegExp => new RegExp(`(?:${terms.map(stem).join("|")})`, "u");
+/**
+ * A pattern of any of the stems, over folded text. Stems with the same word-boundary checks share one copy of them
+ * (19 Nov, night: one lookbehind per stem made the kit11 Worker's start exceed Cloudflare's CPU limit); a line matches
+ * exactly when one of the stems, with its own checks, does.
+ */
+export const anyOf = (terms: readonly string[]): RegExp => {
+  const groups = new Map<string, string[]>();
+  for (const { pre, body, post } of terms.map(stem)) {
+    const key = `${pre}\u0000${post}`;
+    const list = groups.get(key);
+    if (list) list.push(body); else groups.set(key, [body]);
+  }
+  const parts = [...groups].map(([key, bodies]) => {
+    const [pre, post] = key.split("\u0000");
+    return `${pre}(?:${bodies.join("|")})${post}`;
+  });
+  return new RegExp(`(?:${parts.join("|")})`, "u");
+};
 /** Two concepts within `gap` characters of each other in a folded line, in either order. */
 export const near = (a: RegExp, b: RegExp, gap: number) => new RegExp(`(?:${a.source})[^\\n]{0,${gap}}(?:${b.source})|(?:${b.source})[^\\n]{0,${gap}}(?:${a.source})`, "u");
 
