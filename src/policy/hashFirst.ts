@@ -10,6 +10,7 @@ import { termsHash, type Terms } from "../lib/terms.js";
 import { audit } from "../audit/log.js";
 import { REFUSED_UNSIGNED, resuming, unsignedRefusal } from "./approvals.js";
 import { approvalSignatureRefusal } from "./signedApproval.js";
+import { recordBlocked } from "./blocked.js";
 
 /**
  * Why the stored terms of `proposalId` are not the terms that were approved, or null when they are: an approval on
@@ -41,7 +42,11 @@ export function hashFirst(db: DB, proposalId: string): void {
   const runnable = p.status === "APPROVED" || p.status === "FAILED" || (p.status === "EXECUTING" && resuming.has(proposalId));
   if (!runnable) throw new Error(`${proposalId} is ${p.status}, not approved`);
   const why = signedHashRefusal(db, proposalId);
-  if (why) throw new Error(why);
+  // Outside audit 2.1: an APPROVED proposal refused here is recorded as blocked at execution (src/policy/blocked.ts).
+  if (why) {
+    recordBlocked(db, proposalId, why);
+    throw new Error(why);
+  }
   // 20 Nov (security review, finding 1): and the stored signatures behind the approval verify over these exact terms,
   // so an approval row nobody signed never reaches Airwallex or the chain either. A restart's resume was checked when it
   // began. The refusal is recorded, as the execution guard records it.
@@ -49,6 +54,7 @@ export function hashFirst(db: DB, proposalId: string): void {
   const unsigned = approvalSignatureRefusal(db, proposalId);
   if (unsigned) {
     db.transaction(() => { audit(db, "system", REFUSED_UNSIGNED, proposalId, { reason: unsigned.slice(0, 400), at: "before any outside call" }); }).immediate();
+    recordBlocked(db, proposalId, unsignedRefusal(unsigned));
     throw new Error(unsignedRefusal(unsigned));
   }
 }

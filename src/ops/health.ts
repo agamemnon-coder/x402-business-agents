@@ -11,6 +11,7 @@ import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/dispu
 import { codeMayCarryOut, escalatedUndecided } from "../agents/disputeSource.js";
 import { failureAlerts, failureCounts } from "../passkey/failures.js";
 import { termsHash, type Terms } from "../lib/terms.js";
+import { BLOCKED_ALERT, blockedApprovals } from "../policy/blocked.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -70,8 +71,15 @@ export function health(db: DB, now = new Date()): Health {
   // Chaos for money movement (19 Nov, H11): an approved payment whose stored terms no longer hash to what the passkey
   // signed is refused by its executor at every start, so nothing is paid; this tells a person at once, instead of it
   // waiting silently, APPROVED, until it expires.
-  for (const t of tamperedApprovals(db)) {
+  const tampered = tamperedApprovals(db);
+  for (const t of tampered) {
     alerts.push({ code: "approved_terms_changed", severity: "critical", since: t.since, words: `${t.proposal_id} was approved with a passkey, but its stored terms no longer match the signed hash: it will not be paid. Check who changed them; a new proposal needs a new approval.` });
+  }
+  // Outside audit 2.1 (chaos H17, 49 scenarios): an approved payment its executor refused before it began (the EUR
+  // floor, a hold, a changed payee) is recorded (execution.blocked) and stands here until it expires or a person closes
+  // it; a restart does not try it again. One with changed terms is already above, critical, and not repeated.
+  for (const b of blockedApprovals(db, now).filter((x) => !tampered.some((t) => t.proposal_id === x.proposal_id))) {
+    alerts.push({ code: BLOCKED_ALERT, severity: b.severity, since: b.since, words: `${b.proposal_id} was approved, but its execution was refused at ${b.last} (${b.check}): ${b.reason}. Nothing was paid and it is not tried again by itself; it stays blocked until ${b.expires_at}, or close it (npm run approve -- ${b.proposal_id} <hash prefix> --reject). Paying it on other terms needs a new proposal and a new approval.` });
   }
   // dry-179 review: a mandate replace that failed after a step of it ran leaves the mandates half replaced. Its guard
   // never closes it (src/executors/mandateReplace.ts) and the spending hold lifts at its expiry, so a person looks.
@@ -102,6 +110,7 @@ export function health(db: DB, now = new Date()): Health {
   const metrics: Record<string, number> = {
     approvals_waiting: n(db, "SELECT COUNT(*) AS n FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?", now.toISOString()),
     actions_executing: n(db, "SELECT COUNT(*) AS n FROM proposals WHERE status = 'EXECUTING'"),
+    approvals_blocked: blockedApprovals(db, now).length,
     holds_open: holdsOpen.n,
     holds_open_cents: holdsOpen.cents,
     agents_stopped: stopped.length,

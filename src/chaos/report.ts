@@ -10,17 +10,19 @@ export interface ChaosReport {
     scenarios: number; randomized: number; hand_written: number; passed: number; failed: number;
     calls: number; faults: number; crashes: number; webhooks: number; forged_webhooks: number;
     faults_by_kind: Record<string, number>; end_states: Record<string, number>; to_a_person: number; silent_approvals: number;
+    /** Scenarios with an approved payment refused before it began, recorded and shown (execution.blocked, /health). */
+    blocked_shown?: number;
   };
   invariants: Record<string, { held: number; broken: number; what: string }>;
   canaries: { id: string; title: string; caught: boolean; by: string[] }[];
-  scenarios: { id: string; title: string; seed: number; params: Record<string, unknown>; ok: boolean; calls: number; faults: number; crashes: number; end: string; broken: { id: string; detail: string }[]; outcome?: string[]; silent_approvals?: string[] }[];
+  scenarios: { id: string; title: string; seed: number; params: Record<string, unknown>; ok: boolean; calls: number; faults: number; crashes: number; end: string; broken: { id: string; detail: string }[]; outcome?: string[]; silent_approvals?: string[]; blocked_shown?: string[] }[];
 }
 
 export const INVARIANT_WORDS: Record<string, string> = {
   I1: "never paid twice: at most one live transfer and one conversion per approval at Airwallex, no request_id twice",
   I2: "never paid without a valid signature: every transfer is to passkey-approved terms, for the approved amount, and the stored signatures re-verify offline",
   I3: "the ledger balances: the audit chain and the general ledger verify, Airwallex's EUR is conserved, every executed payment's payout row says what Airwallex says",
-  I4: "every payment ends in a known state, or goes to a person (an alarm row or a /health alert)",
+  I4: "every payment ends in a known state, or goes to a person (an alarm row or a /health alert); an approved payment refused before it began is named by an alarm while it waits",
   I5: "webhooks move nothing: duplicated, out-of-order and forged events change no proposal, payout row or approval; forged ones are ignored",
 };
 
@@ -46,14 +48,16 @@ export function chaosReport(seed: number, random: ScenarioResult[], hand: Scenar
       faults_by_kind: byKind, end_states: states,
       to_a_person: all.filter((r) => /→ a person/.test(r.invariants.find((i) => i.id === "I4")?.detail ?? "")).length,
       silent_approvals: all.filter((r) => r.silentApprovals.length).length,
+      blocked_shown: all.filter((r) => r.blockedShown.length).length,
     },
     invariants,
     canaries: canaries.map((c) => ({ id: c.id, title: c.title, caught: !c.ok, by: c.invariants.filter((i) => !i.ok).map((i) => i.id) })),
     scenarios: all.map((r) => ({
       id: r.id, title: r.title, seed: r.seed, params: (({ id: _i, title: _t, seed: _s, ...rest }) => rest)(r.scenario) as Record<string, unknown>, ok: r.ok, calls: r.calls, faults: r.faults, crashes: r.crashes, end: end(r),
       broken: r.invariants.filter((i) => !i.ok).map((i) => ({ id: i.id, detail: i.detail })),
-      ...(r.id.startsWith("H") || !r.ok || r.silentApprovals.length ? { outcome: r.outcome } : {}),
+      ...(r.id.startsWith("H") || !r.ok || r.silentApprovals.length || r.blockedShown.length ? { outcome: r.outcome } : {}),
       ...(r.silentApprovals.length ? { silent_approvals: r.silentApprovals } : {}),
+      ...(r.blockedShown.length ? { blocked_shown: r.blockedShown } : {}),
     })),
   };
 }
@@ -81,7 +85,7 @@ export function chaosMarkdown(r: ChaosReport, hand: ScenarioResult[]): string {
     `- Webhooks delivered: ${t.webhooks}, of which forged: ${t.forged_webhooks}.`,
     `- How the payments ended: ${Object.entries(t.end_states).map(([k, n]) => `${k} ${n}`).join(", ")}.`,
     `- Scenarios where a payment went to a person (an alarm row or a /health alert) instead of a final state: ${t.to_a_person}.`,
-    `- Scenarios where an approved payment was refused before it began and sat APPROVED with no alarm until its expiry: ${t.silent_approvals} (see the findings).`,
+    `- Scenarios where an approved payment was refused before it began and was shown (an execution.blocked row with the reason and time, BLOCKED_NEEDS_REVIEW, the approved_blocked alarm on /health): ${t.blocked_shown ?? 0}; where it sat APPROVED with no alarm naming it: ${t.silent_approvals}.`,
     "",
     "## The invariants have teeth (canaries)",
     "",
@@ -106,6 +110,15 @@ export function chaosMarkdown(r: ChaosReport, hand: ScenarioResult[]): string {
   };
   const reasons: Record<string, number> = {};
   for (const s of silent) reasons[why(s)] = (reasons[why(s)] ?? 0) + 1;
+  const shown = r.scenarios.filter((s) => s.blocked_shown?.length);
+  if (shown.length && !silent.length) {
+    const said = (s: (typeof shown)[number]) => /floor/.test((s.outcome ?? []).join(" ")) ? "the EUR floor" : /do not match the approved hash/.test((s.outcome ?? []).join(" ")) ? "terms changed after the approval" : "another refusal";
+    const byWhy: Record<string, number> = {};
+    for (const s of shown) byWhy[said(s)] = (byWhy[said(s)] ?? 0) + 1;
+    lines.push("### Approved payments refused before they began are shown (outside audit 2.1)", "",
+      `In ${shown.length} scenario(s) an approved proposal was refused by its executor before anything was sent. Each was recorded (\`execution.blocked\`, with the reason and the time), shown as BLOCKED_NEEDS_REVIEW, and named by an alarm on /health while it waited (\`approved_blocked\`, or \`approved_terms_changed\` when its terms were changed); a restart did not try it again, and it closes when it expires. Nothing was paid (I1, I2 held). Why they were refused: ${Object.entries(byWhy).map(([k, n]) => `${k} ${n}`).join(", ")}. Seen in: ${shown.map((s) => s.id).join(", ")}.`,
+      "", "Repro: `npm run chaos:money -- --only H17` (two approvals, the second refused at the EUR floor) and `--only H11` (terms edited after the approval).", "");
+  }
   if (silent.length) {
     lines.push("### Observation: an approved payment refused before it begins raises no alarm until it expires", "",
       `In ${silent.length} scenario(s) an approved proposal was refused by the executor before anything was sent (the terms in the ledger no longer hash to the approved hash, or the EUR floor would be broken once another payment went out) and stayed APPROVED, with no alarm row and nothing on /health, retried and refused at each start until its expiry made it EXPIRED. Nothing was paid (I1, I2 held). A person is not told while it lasts: \`resumeInterrupted\` (src/policy/saga.ts) keeps the refusal in its return value only. The same EUR floor refusal, met after execution began, fails the proposal instead (FAILED, on the dashboard). Why they were refused: ${Object.entries(reasons).map(([k, n]) => `${k} ${n}`).join(", ")}. Seen in: ${silent.map((s) => s.id).join(", ")}.`,

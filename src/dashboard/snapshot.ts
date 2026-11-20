@@ -31,6 +31,7 @@ import { CLAIM_WORDS, type DisputeClaim } from "../seller/disputeDesk.js";
 import { eurInFlightCents, mandateAvailability } from "../policy/available.js";
 import { heldCents } from "../policy/holds.js";
 import { health, type Health } from "../ops/health.js";
+import { blockedApprovals, shownStatus, type Blocked } from "../policy/blocked.js";
 import { railsView, type RailsView } from "./rails.js";
 import { towerView, type Tower } from "./tower.js";
 import { signerLabel } from "../ops/reliability.js";
@@ -181,6 +182,8 @@ export interface Snapshot {
     };
   };
   pending: Pending[];
+  /** Outside audit 2.1: approved payments refused by their executor before they began, waiting for a person (src/policy/blocked.ts). */
+  blocked?: Blocked[];
   decisions: Decision[];
   refusals: Refusal[];
   feed: FeedItem[];
@@ -867,6 +870,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       return out(`${s} needs a new approval: ${str(p.error)}`, "refusal");
     // dry-179: an agent's tool that would spend from a mandate a replace is about to change waits for it.
     case "spend.held": return out(`${capFirst(agentWho(s))}'s ${str(p.path) === "sweep_earnings" ? "sweep" : str(p.path) === "settle_dispute" ? "dispute settlement (its refunds)" : str(p.path)} waits: ${refusalWords(str(p.reason))}`, "refusal");
+    case "execution.blocked": return out(`${s} was approved, but its execution was refused before it began: ${str(p.reason)}. Nothing was paid; it waits for you until it expires`, "refusal");
     case "proposal.superseded": return out(`${s} closed: another option (${str(p.by)}) was approved`);
     case "proposal.expired": return out(`${s} expired: its terms can no longer be approved or run`, "refusal");
     case "approval.too_late": return out(`${str(p.approver) || "A person"} approved ${s} after it expired; nothing ran`, "refusal");
@@ -1178,6 +1182,7 @@ export const REFUSAL_EVENTS = new Set([
   "sweep.held", "invoice.escalated", "dispute.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
   "transfer.refused", "transfer.retry_stopped", "transfer.row_conflict", "transfer.found_after_close", "transfer.payee_unconfirmed", "transfer.left_open",
   "card.charge_declined", "card.charge_reversed", "sale.prepaid_undelivered", "velocity.tripped", "reconcile.difference",
+  "execution.blocked",
 ]);
 
 export const REFUSAL_WHAT: Record<string, string> = {
@@ -1212,6 +1217,7 @@ export const REFUSAL_WHAT: Record<string, string> = {
   "card.charge_declined": "Card purchase declined by Airwallex",
   "card.charge_reversed": "Card purchase reversed",
   "sale.prepaid_undelivered": "Prepaid sale owed",
+  "execution.blocked": "Approved, blocked at execution",
 };
 
 const AGENT_OF: Record<string, string> = {
@@ -1255,7 +1261,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
   const lastChange = new Map<string, string>();
   for (const r of rows) if (r.event.startsWith("proposal.") || r.event === "approval.too_late") if (r.subject) lastChange.set(r.subject, r.ts);
   const decisions: Decision[] = (db.prepare("SELECT * FROM proposals WHERE status != 'PENDING_APPROVAL' ORDER BY created_at DESC, proposal_id DESC LIMIT 6").all() as PRow[])
-    .map((p) => ({ proposal_id: p.proposal_id, title: kindTitle(p.kind), status: p.status, by: approvers.get(p.proposal_id) ?? null, at: lastChange.get(p.proposal_id) ?? p.created_at }));
+    .map((p) => ({ proposal_id: p.proposal_id, title: kindTitle(p.kind), status: shownStatus(db, p, now), by: approvers.get(p.proposal_id) ?? null, at: lastChange.get(p.proposal_id) ?? p.created_at }));
 
   // Airwallex can report one card authorisation under two ids; once merged, it is listed once.
   const merged = new Set(rows.filter((r) => r.event === "card.duplicate_merged").map((r) => r.subject));
@@ -1281,6 +1287,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
     flows: flowEvents(db),
     treasury: treasury(db),
     pending,
+    blocked: blockedApprovals(db, now),
     decisions,
     refusals,
     feed,

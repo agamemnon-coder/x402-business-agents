@@ -424,7 +424,7 @@
           "key": "chaos-money",
           "fig": "0",
           "label": "money invariants broken in 317 chaos scenarios",
-          "note": "5 invariants held, never paid twice and never unsigned among them; 77 process deaths, 492 faults from a simulated Airwallex in the test; all 4 planted bugs caught. In process, test money.",
+          "note": "5 invariants held, never paid twice and never unsigned among them; 77 process deaths, 490 faults from a simulated Airwallex in the test; all 4 planted bugs caught. In process, test money.",
           "tag": "test",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/chaos-money.md",
