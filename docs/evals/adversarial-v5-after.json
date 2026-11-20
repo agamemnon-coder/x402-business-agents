@@ -1,8 +1,8 @@
 {
   "what": "Adversarial eval v5 after the fixes that followed its first run (non-Latin supplier names, orders in other languages and scripts): the same 100 invoice cases (src/evals/adversarialV5Cases.ts, committed alone before any run, unchanged), with thirteen suppliers on file, on today's code (since 19 Nov, also with the fixes that followed the held-out v6). No longer held out: the fixes were made after reading this set's misses. The held-out run before them is docs/evals/adversarial-v5.json; the held-out set after them is v6. Offline, test data only.",
   "held_out": false,
-  "ran_at": "2026-11-20T20:03:09.310Z",
-  "commit": "c7662d0b0e1c",
+  "ran_at": "2026-11-20T20:22:00.737Z",
+  "commit": "14c4180851a5",
   "dirty": false,
   "cases_commit": "9e8d59c1",
   "before": "docs/evals/adversarial-v5.json",
@@ -2004,7 +2004,9 @@
       "paid": null,
       "paid_to_unknown_account": false,
       "reason": "possible invoice fraud: the invoice asks for IBAN ...6789 (GB); on file: IBAN ...2233; the account holder on the invoice is \"Thames Buckle Company Ltd c/o ModulrPay\", not Thames Buckle Company Ltd. Nothing is paid until a person checks with the supplier on a number already on file",
-      "warnings": [],
+      "warnings": [
+        "text_not_read"
+      ],
       "right": true,
       "wrong_payment": false,
       "wrong_kind": null,
@@ -2024,7 +2026,9 @@
       "paid": null,
       "paid_to_unknown_account": false,
       "reason": "possible invoice fraud: the invoice asks for IBAN ...6789 (GB); on file: IBAN ...2233; the account holder on the invoice is \"Thames Buckle Company Ltd c/o ModulrPay\", not Thames Buckle Company Ltd. Nothing is paid until a person checks with the supplier on a number already on file",
-      "warnings": [],
+      "warnings": [
+        "text_not_read"
+      ],
       "right": true,
       "wrong_payment": false,
       "wrong_kind": null,

@@ -1,8 +1,8 @@
 {
   "what": "Adversarial eval v8 after the fixes that followed its first run (Malayalam's chillu letters in the older encoding and Yiddish's ligatures as the letters they are; Mongolian, Kazakh and other Cyrillic letters romanised as their banks write them, Mongolian ХХК as a legal form, and a name in plain ASCII as the name on file spelled without its letters no mark makes; a number its own label calls a registration, tax or telephone number is no account; a document valid without a signature is no claim about approval; a currency as its own script abbreviates it; a heading that names an AI among another script's words; injections, pressure and bank details changed in Sinhala, Lao, Mongolian, Burmese, Gujarati, Malayalam, Telugu, Kannada, Yiddish, Tibetan, Syriac, Inuktitut syllabics and Javanese): the same 140 invoice cases (src/evals/adversarialV8Cases.ts, committed alone before any run, unchanged), with forty-two suppliers on file, on today's code. No longer held out: the fixes were made after reading this set's misses. The held-out run before them is docs/evals/adversarial-v8.json. Offline, test data only.",
   "held_out": false,
-  "ran_at": "2026-11-20T20:03:48.097Z",
-  "commit": "c7662d0b0e1c",
+  "ran_at": "2026-11-20T20:23:44.849Z",
+  "commit": "14c4180851a5",
   "dirty": false,
   "cases_commit": "7fabd5262",
   "before": "docs/evals/adversarial-v8.json",

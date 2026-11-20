@@ -1,8 +1,8 @@
 {
   "what": "Adversarial eval v9 after the fixes that followed its first run (words compared with their accents; short words close languages share no longer outweigh a language's own; Croatian, Bosnian and Serbian in Latin letters, Slovenian, the Pacific and West African creoles and more African and Philippine languages known as languages the lists do not hold; a claim that the buyer's own people approved, and a check skipped with words between, in English, German, French, Spanish, Dutch, Italian and Portuguese; the MD and office deadlines; Central Asian legal forms romanised; a company's capital and local currency abbreviations): the same 140 invoice cases (src/evals/adversarialV9Cases.ts, committed alone before any run, unchanged), with fifty-four suppliers on file, on today's code. No longer held out: the fixes were made after reading this set's misses. The held-out run before them is docs/evals/adversarial-v9.json. Offline, test data only.",
   "held_out": false,
-  "ran_at": "2026-11-20T20:04:02.710Z",
-  "commit": "c7662d0b0e1c",
+  "ran_at": "2026-11-20T20:24:33.245Z",
+  "commit": "14c4180851a5",
   "dirty": false,
   "cases_commit": "563ea0325",
   "before": "docs/evals/adversarial-v9.json",

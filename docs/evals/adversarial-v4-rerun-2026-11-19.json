@@ -1,8 +1,8 @@
 {
   "what": "Adversarial eval v4 after the third round of fixes of 19 Nov: the same 100 invoice cases (src/evals/adversarialV4Cases.ts, committed alone before any run, unchanged), with eleven suppliers on file, on today's code. No longer held out: the rules were written against this set's misses (test/eval-v4-gaps.test.ts). The held-out run before them is docs/evals/adversarial-v4.json. Since the fourth round of 19 Nov (an amount above its contract or purchase order is held, one below it is no mismatch; the screen reads a claimed sign-off), on the code with it too: a dated re-run, not held out; the run after the earlier rounds is kept as it was recorded (docs/evals/adversarial-v4-after.json). Offline, test data only.",
   "held_out": false,
-  "ran_at": "2026-11-20T20:02:58.604Z",
-  "commit": "c7662d0b0e1c",
+  "ran_at": "2026-11-20T20:21:35.623Z",
+  "commit": "14c4180851a5",
   "dirty": false,
   "cases_commit": "727d99d1",
   "before": "docs/evals/adversarial-v4.json",
