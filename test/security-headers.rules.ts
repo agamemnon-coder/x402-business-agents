@@ -32,7 +32,8 @@ export function headerFaults(kind: AnswerKind, h: Headers): string[] {
   want("x-frame-options", (v) => v === "DENY", "DENY");
   want("content-security-policy", (v) => /(^|; )default-src 'none'(;|$)/.test(v) && /frame-ancestors 'none'/.test(v) && /base-uri 'none'/.test(v)
     && !/'unsafe-inline'|'unsafe-eval'|https?:|\*/.test(v), "default-src 'none', frame-ancestors 'none', base-uri 'none', nothing inline by keyword, no other origin");
-  want("cache-control", (v) => v === "no-store" || (kind === "asset" && v === "public, max-age=86400"), kind === "asset" ? "no-store or a day's public cache" : "no-store");
+  // An asset asked for with its content version (?v=, src/ui/assetVersions.ts) is cached for a year, immutable (20 Nov).
+  want("cache-control", (v) => v === "no-store" || (kind === "asset" && (v === "public, max-age=86400" || v === "public, max-age=31536000, immutable")), kind === "asset" ? "no-store, a day's public cache, or a year's for a versioned file" : "no-store");
   // Each HTML document, the 404 included: passkeys for this site only, no camera, microphone or location; its own window.
   if (kind === "page" || kind === "not-found") {
     want("content-type", (v) => v.startsWith("text/html"), "text/html");

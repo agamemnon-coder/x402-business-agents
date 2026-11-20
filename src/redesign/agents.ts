@@ -144,7 +144,7 @@ ${v.payments.length ? `<ul class="pays">${shownPays.map(pay).join("")}</ul>${mor
     source: "Source: docs/demo/main-run.json and docs/demo/main-run-trace.json (the main run, 3 Nov).",
   });
   // Served one level down (/agents/<id>): the page's own relative links and assets made absolute.
-  return html.replace(/(href|src)="(?!https?:|#|\/|data:)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
+  return html.replace(/(href|src)="(?!https?:|#|\/|data:|mailto:)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
 }
 
 export function agentPages(): Record<string, string> {

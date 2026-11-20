@@ -93,7 +93,8 @@ export const DOWNLOADS: Record<string, { type: string; body: Buffer }> = (() => 
 })();
 /** The sponsors' official logos (src/ui/logos/README.md), served as /assets/<name> for the landing's "Built on". */
 export const LOGOS: Record<string, { type: string; body: Buffer }> = {
-  "logo-airwallex.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/airwallex.png", import.meta.url)) },
+  // Site audit, 19 Nov: the official wordmark scaled to 306 x 42 (3x the badge), resized only; the original stays in src/ui/logos/.
+  "logo-airwallex.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/airwallex-306x42.png", import.meta.url)) },
   "logo-metal.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/logos/metal.svg", import.meta.url)) },
   "logo-claude.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/claude.png", import.meta.url)) },
   // Claude's own variant for light grounds (Anthropic press kit, docs/assets/logos/SOURCES.md): Home's white tiles.
@@ -330,7 +331,7 @@ export const RUNS_CSP = styleAndScriptCsp(RUNS_PAGE);
 export const AGENT_PAGES: Record<string, string> = agentPages();
 export const AGENT_CSPS: Record<string, string> = Object.fromEntries(Object.entries(AGENT_PAGES).map(([id, html]) => [id, styleOnlyCsp(html)]));
 /** The clean 404, for any address that is not a page; its links and assets absolute, since it answers at any depth. */
-export const NOT_FOUND_PAGE = notFoundPage().replace(/(href|src)="(?!https?:|#|\/)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
+export const NOT_FOUND_PAGE = notFoundPage().replace(/(href|src)="(?!https?:|#|\/|mailto:)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
 export const NOT_FOUND_CSP = styleOnlyCsp(NOT_FOUND_PAGE);
 /** The public pages of the redesign (src/redesign/): Home, Watch and Proof, from the recorded agent run. */
 export const HOME_PAGE = homePage();

@@ -42,6 +42,7 @@ import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { WORST_CASE_CSS, worstCaseCardHtml } from "./worstCaseCard.js";
 import { EVIDENCE_WALL_CSS, PROOF_INDEX_DOC, evidenceWallHtml } from "./evidenceWall.js";
 import { evidenceMapCss, evidenceMapHtml } from "./evidenceMap.js";
+import { ASSET_VERSIONS, versioned, type VersionedAsset } from "../ui/assetVersions.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
 /** "3 Nov": a record's day, as the run's label writes it. */
@@ -215,7 +216,8 @@ const fact = (v: string, l: string) => `<span class="fact"><b>${esc(v)}</b> ${es
  * the official files in src/ui/logos, unchanged, served as /assets/logo-*; on a white chip (Claude's white letters on a
  * dark one), the name in alt. A mark names a service Purser uses, never an endorsement.
  */
-const mark = (file: string, name: string, w: number, dark = false) => `<span class="logo${dark ? " dark" : ""}"><img src="assets/${file}" alt="${name}" width="${w}" height="15"></span>`;
+// A file with a content version (src/ui/assetVersions.ts) is linked with it, so the Worker may cache it for a year.
+const mark = (file: string, name: string, w: number, dark = false) => `<span class="logo${dark ? " dark" : ""}"><img src="assets/${file in ASSET_VERSIONS ? versioned(file as VersionedAsset) : file}" alt="${name}" width="${w}" height="15"></span>`;
 /** /proof's partner cards (owner, 12 Nov: "each partner card with its logo"): the same marks, beside the name (alt empty: the name is the heading). T:0 has no logo file: its name alone. */
 const CARD_MARK: Record<string, string> = {
   airwallex: mark("logo-airwallex.png", "", 109), visa: `<span class="logo tname">Visa</span>`, metal: mark("logo-alta.svg", "", 29), claude: mark("logo-claude-slate.svg", "", 69),

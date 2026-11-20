@@ -49,7 +49,7 @@ export const STAGE_RECORDED = {
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
-const CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff2)")}
+const CSS = `${TOKENS.replace("url(assets/inter.woff2", "url(/assets/inter.woff2")}
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 400 18px/1.45 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }

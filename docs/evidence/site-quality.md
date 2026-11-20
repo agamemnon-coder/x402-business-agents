@@ -10,6 +10,11 @@ Total Blocking Time. CLS 0 everywhere. SEO is 58 to 66 on the 4 pages served wit
 (set on purpose since 29 Oct), 100 on `/try`. axe: **0 critical**; **1 serious rule (color-contrast, 2 elements) on `/`
 at 1440 px, measured mid-animation and gone at rest**; 1 moderate rule (`region`, 1 element) on every page at 390 px.
 
+**Note, 20 November 2026.** By the owner's choice, `noindex, nofollow` was removed from the public pages (finding 7):
+they are now sent without `x-robots-tag`, each with its canonical address, and listed in `/sitemap.xml` and
+`/robots.txt` ([`src/lib/siteIndex.ts`](../../src/lib/siteIndex.ts)); the private and per-visitor pages, the JSON and
+the assets keep it. The figures on this page were measured before that change and are left as measured.
+
 ## Lighthouse
 
 Lighthouse 13.6.0, Chromium 153 (HeadlessChrome/153.0.0.0, Playwright's build 1243), `--headless --no-sandbox`, the

@@ -175,7 +175,8 @@ describe("the first screen (section D, 6 Nov)", () => {
     // (clarity): the idea in one sentence, a proof line (what it runs on and three measured figures), Try it in 2
     // minutes, then the film; "See the proof" stays at the end of Home.
     expect([START, FILM_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the demo"]);
-    expect(t.startsWith(`${HERO} ${HOME_SUB} Built on Airwallex · test money · `)).toBe(true);
+    // Site audit, 20 Nov (6.3): "test money" moved from the proof line to the sandbox line under the buttons (REASSURE).
+    expect(t.startsWith(`${HERO} ${HOME_SUB} Built on Airwallex · `)).toBe(true);
     expect(t).toContain(` ${START} ${FILM_BUTTON} ${VERIFY_BUTTON} ${REASSURE.sign}`);
     expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost film"', 'class="btn big ghost"']);
     // Every Try call to action opens the hands-on demo (TRY_URL), with /try/sign in the bundle or not.

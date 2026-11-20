@@ -45,10 +45,13 @@ describe("GET /try", () => {
     expect(scriptBlocks(page)).toHaveLength(1); // the release's page (?v=1); /try adds the product frame
     expect(page).toContain(`<script type="module" nonce="${n}">`);
     expect(page).toContain(`<style nonce="${n}">`);
-    // The same headers as the console's page, the policy's nonce aside.
+    // The same headers as the console's page, the policy's nonce aside, and /try's canonical address (20 Nov: the
+    // public pages are indexable; src/lib/siteIndex.ts).
     const cons = await c.fetch(`${ORIGIN}/`);
-    const rest = (r: Response) => Object.fromEntries([...r.headers].filter(([k]) => k !== "content-security-policy"));
+    const rest = (r: Response) => Object.fromEntries([...r.headers].filter(([k]) => k !== "content-security-policy" && k !== "link"));
     expect(rest(a)).toEqual(rest(cons));
+    expect(a.headers.get("link")).toBe('<https://kit11.max-31b.workers.dev/try>; rel="canonical"');
+    expect(cons.headers.get("link")).toBeNull();
   });
 
   it("loads from a cloud with an engine, and the session the page holds reads that engine", async () => {

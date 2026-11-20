@@ -184,7 +184,8 @@ describe("the site after v4", () => {
     expect(nf.headers.get("content-security-policy")).toBe(pages.csp.notFound);
     // The 404 answers at any depth, so its links and assets are absolute.
     expect(pages.notFound).toMatch(/href="\/home"/);
-    expect(pages.notFound).not.toMatch(/(href|src)="(?!https?:|#|\/)/);
+    // A mailto: link (the footer's contact line, 20 Nov) leaves the site, so it stays as it is.
+    expect(pages.notFound).not.toMatch(/(href|src)="(?!https?:|#|\/|mailto:)/);
   });
 
   it("sends a path pasted with the sentence's full stop or comma to the same path without it (jury review, 7 Nov, #18)", () => {

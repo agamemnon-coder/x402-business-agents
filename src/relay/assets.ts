@@ -171,8 +171,22 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     css,
     font: FONT.toString("base64"),
     images,
+    versions: assetVersions(FONT, images),
     app: appFiles(css, images),
     csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, awxCalls: AWX_CALLS_CSP, claude: CLAUDE_CSP, security: SECURITY_CSP, docs: DOCS_CSP, status: STATUS_CSP, t0: T0_CSP, books: BOOKS_CSP, home: home.csp, watch: FILM_WATCH_CSP, replay: WATCH_CSP, proof: PROOF_CSP, verify: VERIFY_BUNDLE_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP } : {}), approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
+  };
+}
+
+/**
+ * The content version of the font and of each image, by the path the Worker serves it at: the first 12 hex digits of the
+ * SHA-256 of its bytes (the same rule as src/ui/assetVersions.ts, whose constants the pages link with). The Worker
+ * caches "<path>?v=<version>" for a year (site audit, 19 Nov, finding 6).
+ */
+export function assetVersions(font: Buffer, images: Record<string, { data: string }>): Record<string, string> {
+  const v = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex").slice(0, 12);
+  return {
+    "/assets/inter.woff2": v(font),
+    ...Object.fromEntries(Object.entries(images).map(([name, img]) => [`/assets/${name}`, v(Buffer.from(img.data, "base64"))])),
   };
 }
 

@@ -168,7 +168,7 @@ describe("/proof as served: each card shows its strongest claim as its one link 
       // 12 Nov (owner): each card's partner mark beside its name (alt empty: the name is the heading).
       // 14 Nov (owner): Alta's wordmark (logo-alta.svg) and Claude's press-kit SVG (logo-claude-slate.svg).
       const file = { airwallex: "airwallex\\.png", metal: "alta\\.svg", claude: "claude-slate\\.svg" }[id];
-      expect(card).toMatch(new RegExp(`^<article class="pcard card" id="${id}" data-rec="[^"]+"><div class="ph">(<span class="logo( dark)?"><img src="assets/logo-${file}" alt="" width="\\d+" height="15"></span>)?<h3>${name}</h3></div>`));
+      expect(card).toMatch(new RegExp(`^<article class="pcard card" id="${id}" data-rec="[^"]+"><div class="ph">(<span class="logo( dark)?"><img src="assets/logo-${file}(\\?v=[0-9a-f]{12})?" alt="" width="\\d+" height="15"></span>)?<h3>${name}</h3></div>`));
       const sight = first.slice(0, first.indexOf('<details class="fold">'));
       expect(decode(sight)).toBe(`<ul class="lead"><li><a class="c" href="${lead0.href}"${out ? ' target="_blank" rel="noopener"' : ""}>${lead0.text}${out ? " ↗" : ""}</a></li></ul>`);
       expect(card.replace(/<span class="logo( dark)?"><img [^>]*><\/span>/, "")).not.toMatch(/<img /);

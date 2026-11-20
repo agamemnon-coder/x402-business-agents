@@ -6,12 +6,13 @@
 import { formerlyMetal } from "../ui/formerly.js";
 import { MOTION_CSS, SITE_MOTION_CSS } from "../ui/motion.js";
 import { ICONS, type Icon } from "../ui/icons.js";
-import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
+import { CONTACT_EMAIL, CONTACT_LINE, NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
 import { TAGLINE_LINE, previewTags } from "../ui/meta.js";
 import { MORE_CSS, footerLinks, menuItemOf, moreHtml, type PageKey } from "../ui/more.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 import { ICON_VERSION } from "../ui/brand/mark.js";
-import { AIRWALLEX_LOGO_PATH, BUILT_ON_CSS, builtOnBadge } from "../ui/builtOn.js";
+import { versioned } from "../ui/assetVersions.js";
+import { AIRWALLEX_LOGO_SRC, BUILT_ON_ALT, BUILT_ON_CSS, BUILT_ON_LABEL, builtOnBadge } from "../ui/builtOn.js";
 
 const EXTRA: Record<string, Icon> = {
   copy: [["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }], ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }]],
@@ -63,7 +64,7 @@ export type Tab = "home" | "watch" | "try" | "proof";
 const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
 
 /** The design tokens, light and dark: the same on every page. */
-export const TOKENS = `@font-face { font-family: Inter; src: url(assets/inter.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
+export const TOKENS = `@font-face { font-family: Inter; src: url(assets/${versioned("inter.woff2")}) format("woff2"); font-weight: 100 900; font-display: swap; }
 :root {
   --bg: #f7f8fa; --surface: #ffffff; --sunken: #f1f3f7; --border: #e3e6ec; --text: #0b1220; --muted: #586174; --faint: #646d7e;
   --accent: #4f46e5; --accent-soft: #eef0ff; --ok: #0b7d43; --ok-soft: #e6f6ee; --bad: #c5363c; --bad-soft: #fdecec; --on-bad: #ffffff;
@@ -247,6 +248,9 @@ footer.foot .builton li { white-space: nowrap; display: inline-flex; align-items
 /* The dot after an item, not before the next (jury, 13 Nov): a wrapped line starts with a name, never with "·". */
 footer.foot .builton li:not(:first-child):not(:last-child)::after { content: "·"; margin-left: 8px; color: var(--faint); }
 footer.foot .builton b { color: var(--text); font-weight: 650; }
+/* The pilot and partnership address (the owner, 20 Nov): its own line, the footer's last. */
+footer.foot .fcontact { flex-basis: 100%; margin: 0; }
+footer.foot .fcontact a { color: var(--muted); display: inline-flex; align-items: center; min-height: 44px; }
 @media (max-width: 520px) { footer.foot .builton { flex-direction: column; align-items: flex-start; } footer.foot .builton li { white-space: normal; min-height: 36px; } footer.foot .builton li:not(:first-child):not(:last-child)::after { content: none; } }
 details.real .pop { margin: 0 0 10px; max-width: 640px; padding: 16px 18px; font-size: 15px; color: var(--text); }
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
@@ -268,6 +272,9 @@ export const HEADLINE = TAGLINE_LINE;
  */
 export interface HeaderLinks { base: string; here: Readonly<Record<string, string>> }
 
+/** The phone's "Built on Airwallex" line is a landmark of its own (an <aside>): its name. */
+export const AWX_ROW_LABEL = `${BUILT_ON_LABEL} ${BUILT_ON_ALT}`;
+
 /** The header: the four tabs, then "More". `current` is the page's own key; menuItemOf (src/ui/more.ts) says which item it marks. */
 export function header(current: PageKey | null, links?: HeaderLinks): string {
   const item = menuItemOf(current);
@@ -277,10 +284,14 @@ export function header(current: PageKey | null, links?: HeaderLinks): string {
   // the header (the header's five items already fill a 360 px line), not sticky.
   // The logo from the page's own origin, wherever the header is served: the site and Purser Cloud's hosts both serve it
   // (cloud/src/console.ts). From the site's address it made a Cloud page's load wait on another host (17 Nov).
-  const awx = (cls: string) => builtOnBadge({ href: to("airwallex", "airwallex"), cls, src: AIRWALLEX_LOGO_PATH });
+  // The file's address carries its content version (src/ui/assetVersions.ts), so the Worker may cache it for a year.
+  const awx = (cls: string) => builtOnBadge({ href: to("airwallex", "airwallex"), cls, src: AIRWALLEX_LOGO_SRC });
+  // Site audit (19 Nov, docs/evidence/site-quality.md finding 2): the phone's badge line sat outside every landmark
+  // (axe "region"). It is a labelled landmark of its own, an <aside> (a block, as the <div> was): it looks the same and
+  // does not join the sticky header.
   return `<header class="top"><div class="wrap"><a class="brand" href="${to("brand", "home")}" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>${awx("awx-h")}
 <nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${to(k, href)}"${k === item ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current, links && ((l) => to(l.key, l.href)))}</nav></div></header>
-<div class="awx-row">${awx("awx-m")}</div>`;
+<aside class="awx-row" aria-label="${AWX_ROW_LABEL}">${awx("awx-m")}</aside>`;
 }
 
 /** What is real in the main run, the run the public pages play: test money, sandbox, what is simulated, the world set-up, the second approver. */
@@ -307,7 +318,8 @@ export function footer(source: string, real: string[] = MAIN_RUN_REAL, links: [s
   return `<footer class="foot"><div class="wrap"><details class="real" id="real"><summary class="pill">${icon("info", 15)} What's real?</summary><div class="pop card"><ul>
 ${real.map((line) => `<li>${esc(line)}</li>`).join("\n")}
 <li>${esc(MARKS_NOTE)}</li>
-<li>${esc(source)}</li></ul></div></details>${builtOn}<span>Built for the Airwallex Agentic Banking Hackathon</span>${footerLinks().map((l) => `<a class="flink" href="${l.href}">${l.label}</a>`).join("")}${links.map(([href, label]) => `<a class="flink" href="${esc(href)}">${esc(label)}</a>`).join("")}</div></footer>`;
+<li>${esc(source)}</li></ul></div></details>${builtOn}<span>Built for the Airwallex Agentic Banking Hackathon</span>${footerLinks().map((l) => `<a class="flink" href="${l.href}">${l.label}</a>`).join("")}${links.map(([href, label]) => `<a class="flink" href="${esc(href)}">${esc(label)}</a>`).join("")}
+<p class="fcontact">${esc(CONTACT_LINE)} <a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a></p></div></footer>`;
 }
 
 /** Each agent's avatar: an icon for its job (Sourcing buys, Support answers, Treasury holds the money). */

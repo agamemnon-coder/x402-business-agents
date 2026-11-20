@@ -18,6 +18,10 @@ partner gave permission; that permission is not itself recorded here). List of w
 
 The Anthropic press kit carries no written usage rules. The Airwallex, Visa and Cloudflare files come in no light version, so all logos sit on white tiles in both themes.
 
+Scaled copy, 20 Nov 2026 (site audit, docs/evidence/site-quality.md finding 4): the pages are served
+`src/ui/logos/airwallex-306x42.png`, the Airwallex file above scaled to 306 × 42 (resized only: not redrawn, recoloured
+or cropped; how, and its SHA-256, in src/ui/logos/README.md). `src/ui/logos/airwallex.png` stays byte for byte.
+
 ## Left out, named in text only
 
 | Partner | Why |

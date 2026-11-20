@@ -31,7 +31,8 @@ const NOTE_CSS = ".judge-offline{box-sizing:border-box;margin:12px auto 0;max-wi
  */
 export const OFFLINE_WORDS: readonly (readonly [hosted: string, offline: string])[] = [
   ["Claude reads and checks every supplier invoice.", "Claude reads and checks every supplier invoice (in this offline copy, code reads it)."],
-  ["real engine · test money · Airwallex sandbox · deleted after 24 hours", "real engine · test money · simulated bank · offline copy, nothing leaves this computer"],
+  // Site audit, 20 Nov: the start's fine line opens with the sandbox disclosure (cloud/src/try/presentMode.ts V2_COPY).
+  ["Sandbox demo: test money, no real settlement · Purser's real engine · deleted after 24 hours", "Offline copy: test money, simulated bank, no real settlement · Purser's real engine · nothing leaves this computer"],
   ["Test money only · Airwallex sandbox", "Test money only · simulated bank (offline)"],
   ["Claude reads the PDF; code checks what it read.", "In this offline copy code reads the PDF (no Claude call) and checks what it read."],
   ["'Claude reads the PDF'", "'code reads the PDF (offline: no Claude)'"],
