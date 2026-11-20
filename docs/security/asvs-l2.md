@@ -1,6 +1,6 @@
 # OWASP ASVS 4.0.3, Level 2: a self-assessment of Purser
 
-**A self-assessment, not a certification and not an audit.** Nobody independent has verified Purser against the ASVS. It was written on 19 November 2026 by Claude (an AI model) for the maintainer, by reading this repository's code, configuration, tests and records at commit `b8fdfa1b6114` (branch `data-asvs`), with no penetration test, no TLS scan and no test against the deployed sites made for it. Updated the same day, by Claude again, on branch `asvs-fix` after the first fixes: each row that changed to Pass names where it is enforced and the test that holds it; the code is not deployed by this update. Each verdict cites where it can be checked. It is strict: where a requirement is met only in part, or only by the platform without a check recorded here, it is a **Fail**, with a fix plan. Purser moves test money only (the Airwallex sandbox, Alta testnet).
+**A self-assessment, not a certification and not an audit.** Nobody independent has verified Purser against the ASVS. It was written on 19 November 2026 by Claude (an AI model) for the maintainer, by reading this repository's code, configuration, tests and records at commit `b8fdfa1b6114` (branch `data-asvs`), with no penetration test, no TLS scan and no test against the deployed sites made for it. Updated the same day, by Claude again, on branch `asvs-fix` after the first fixes: each row that changed to Pass names where it is enforced and the test that holds it; the code is not deployed by this update. Updated again on 20 November 2026, by Claude, on branch `asvs2`: six more rows changed to Pass, each with the code and the test that fails without it (listed under "Fixed since"); not deployed either. Each verdict cites where it can be checked. It is strict: where a requirement is met only in part, or only by the platform without a check recorded here, it is a **Fail**, with a fix plan. Purser moves test money only (the Airwallex sandbox, Alta testnet).
 
 Standard: [OWASP Application Security Verification Standard 4.0.3](https://github.com/OWASP/ASVS/tree/v4.0.3/4.0) (October 2021), every requirement marked for Level 2 in its official CSV (`4.0/docs_en/OWASP Application Security Verification Standard 4.0.3-en.csv`): 259 requirements, V1 to V14. Requirement texts are OWASP's (CC BY-SA 3.0) and are not copied here: each row gives the id and a short name in our words; read the full text in the standard.
 
@@ -10,34 +10,34 @@ Scope: the two deployed Cloudflare Workers (the site, `kit11`, in `worker/`, and
 
 | Chapter | Pass | Fail | N/A | Level 2 requirements |
 |---|---|---|---|---|
-| V1 Architecture, design and threat modelling | 26 | 10 | 2 | 38 |
-| V2 Authentication | 14 | 4 | 35 | 53 |
+| V1 Architecture, design and threat modelling | 29 | 7 | 2 | 38 |
+| V2 Authentication | 15 | 3 | 35 | 53 |
 | V3 Session management | 16 | 1 | 1 | 18 |
 | V4 Access control | 8 | 1 | 0 | 9 |
 | V5 Validation, sanitization and encoding | 27 | 0 | 3 | 30 |
 | V6 Stored cryptography | 7 | 5 | 1 | 13 |
 | V7 Error handling and logging | 12 | 0 | 0 | 12 |
-| V8 Data protection | 12 | 3 | 0 | 15 |
+| V8 Data protection | 13 | 2 | 0 | 15 |
 | V9 Communication | 4 | 3 | 0 | 7 |
 | V10 Malicious code | 4 | 0 | 1 | 5 |
 | V11 Business logic | 7 | 1 | 0 | 8 |
-| V12 Files and resources | 12 | 3 | 0 | 15 |
+| V12 Files and resources | 13 | 2 | 0 | 15 |
 | V13 API and web service | 9 | 1 | 3 | 13 |
 | V14 Configuration | 20 | 2 | 1 | 23 |
-| **Total** | **178** | **34** | **47** | **259** |
+| **Total** | **184** | **28** | **47** | **259** |
 
-Of the 212 requirements that apply, 178 pass and 34 fail (163 and 49 at the first assessment; the 15 closed since are listed under "Fixed since"). Most N/A are authentication mechanisms Purser does not have (passwords, one-time passwords, out-of-band codes, lookup secrets), plus GraphQL, SOAP and LDAP.
+Of the 212 requirements that apply, 184 pass and 28 fail (163 and 49 at the first assessment; the 21 closed since are listed under "Fixed since"). Most N/A are authentication mechanisms Purser does not have (passwords, one-time passwords, out-of-band codes, lookup secrets), plus GraphQL, SOAP and LDAP.
 
 ## The failures and the plan
 
 Grouped by what would fix them, most important first for a deployment with real customer data. Each group names the requirements it closes.
 
-- **Security event logging and alerting** (V1.7.2, V2.5.5, V8.3.5): Ship the Workers' logs to a store (Workers Logs or Logpush) with alerting; tell the person whose passkey changed, not only the owners; an access event for bulk reads of personal data (people, payees), not only exports.
-- **Platform admin and authentication strength** (V1.2.3, V1.2.4, V2.5.4, V4.3.1, V2.10.1, V2.3.3, V3.3.4): Delete the legacy shared admin token once `ADMIN_KEYS` is set (owner action), then put the platform admin behind passkeys; step-up on by default and required for admin-scope keys' sensitive routes; verify WebAuthn with a maintained library or get the verifier reviewed; short-lived, runner-bound credentials for services; warn before keys expire; a list of active sessions.
+- **Security event logging and alerting** (V2.5.5): tell the person whose passkey changed, not only the owners.
+- **Platform admin and authentication strength** (V1.2.3, V1.2.4, V2.5.4, V4.3.1, V2.10.1, V3.3.4): Delete the legacy shared admin token once `ADMIN_KEYS` is set (owner action), then put the platform admin behind passkeys; step-up on by default and required for admin-scope keys' sensitive routes; verify WebAuthn with a maintained library or get the verifier reviewed; short-lived, runner-bound credentials for services; a list of active sessions.
 - **Edge protection and TLS** (V9.1.2, V9.1.3, V9.2.4, V11.1.4): A custom domain with minimum TLS 1.2, a recorded TLS scan (testssl.sh) and OCSP stapling checked; Cloudflare rate-limiting rules (a WAF) and Turnstile on public starts.
 - **Data at rest and secrets** (V6.1.1, V6.1.3, V1.6.1, V1.6.2, V6.4.1, V6.4.2, V1.8.2, V6.2.4): Encrypt the runner's SQLite ledger (SQLCipher or an encrypted volume) and record a check of D1 and R2 encryption; keep the runner's keys in the OS keychain or a secret manager; a KMS for the platform signing key; a written key-management policy and a data classification with protection levels; an algorithm field in signed records.
-- **API hygiene** (V12.1.3, V12.6.1, V13.3.1, V12.4.2): a storage quota per company; an allow list or egress proxy for user-set URLs; XSD validation for incoming XML (in the Access Point, or a vetted validator: none runs in a Worker without a large dependency); antivirus scanning of uploads.
-- **Process and deployment** (V1.14.4, V14.1.1, V1.10.1, V1.1.2, V1.1.3, V14.2.2, V8.3.3): A deploy workflow that checks the deployed site's headers and configuration; a branch ruleset with linked issues; a threat-model step and security acceptance criteria in the PR and issue templates; remove the demo's samples from a production deployment; a privacy notice and terms before real data.
+- **API hygiene** (V12.6.1, V13.3.1, V12.4.2): an allow list or egress proxy for user-set URLs; XSD validation for incoming XML (in the Access Point, or a vetted validator: none runs in a Worker without a large dependency); antivirus scanning of uploads.
+- **Process and deployment** (V1.14.4, V14.1.1, V1.10.1, V14.2.2, V8.3.3): A deploy workflow that checks the deployed site's headers and configuration; a branch ruleset with linked issues (and the threat-model check among its required checks); remove the demo's samples from a production deployment; a privacy notice and terms before real data.
 - **Accepted risk** (V8.3.6): Overwriting secrets in memory is not reliably possible in a garbage-collected JavaScript runtime; secrets stay in isolates that are not shared.
 
 ### Fixed since the first assessment
@@ -48,13 +48,19 @@ Fifteen requirements closed on branch `asvs-fix` (not deployed by this change), 
 - **API hygiene** (V13.1.5, V13.2.5, V14.4.2, V8.3.1, V13.1.3): 415 unless JSON, JSON answers as attachments (`test/cloud-content-type.test.ts`, `test/relay-security-log.test.ts`); staged-export links good once, their signature in a header for programs (`cloud/src/exports.ts`, `test/cloud-export-links.test.ts`).
 - **Browser storage and cookies** (V8.2.2, V8.2.3, V3.4.4): the Airwallex overview in sessionStorage, removed at sign-out (`test/cloud-console-storage.test.ts`); the relay's cookie `__Host-kit11_session` with `Path=/` (`test/relay-security-log.test.ts`).
 
+Six more closed on branch `asvs2` (not deployed by this change), each with its test:
+
+- **Logging and auditing** (V1.7.2, V8.3.5): Workers Logs on for the three Workers (`test/workers-observability.test.ts`); each read of personal or financial data a `data.access` event in the security log (`test/cloud-asvs-controls.test.ts`).
+- **Keys and files** (V2.3.3, V12.1.3): a key's renewal instructions on each call in its last 14 days and to the owners 14 and 3 days before (`cloud/src/keyExpiry.ts`); a storage quota per company for uploads (`cloud/src/storageQuota.ts`). `test/cloud-asvs-controls.test.ts`.
+- **Process** (V1.1.2, V1.1.3): a threat model required in every pull request and checked by a workflow; security constraints a required field of the feature request form (`test/threat-model-gate.test.ts`).
+
 Also done, without closing a requirement on its own: the platform admin as named, scoped, expiring keys (`ADMIN_KEYS`, `cloud/src/adminKeys.ts`, `test/cloud-admin-keys.test.ts`; towards V2.5.4 and V4.3.1).
 
 **Owner actions** (never done by an agent; no value goes in a file, a chat or a commit), in `docs/runbook.md`:
 
 1. Make a platform admin key per person and allow it: `npm run cloud:admin-key -- --id <holder>-<quarter> --scopes tenants,recovery,read,try --days 30`, then `npx wrangler secret put ADMIN_KEYS -c cloud/wrangler.try.jsonc` (and `-c cloud/wrangler.jsonc` for the product cloud).
 2. Then retire the shared token: `npx wrangler secret delete ADMIN_TOKEN_SHA256 -c cloud/wrangler.try.jsonc` (and `-c cloud/wrangler.jsonc`).
-3. Apply the new D1 migrations before or with the deploy (the Worker also makes the tables on first use): `npx wrangler d1 migrations apply purser-try --remote -c cloud/wrangler.try.jsonc` (and `purser-cloud -c cloud/wrangler.jsonc`), which adds `0006_security_log.sql` and `0007_export_links.sql`.
+3. Apply the new D1 migrations before or with the deploy (the Worker also makes the tables on first use): `npx wrangler d1 migrations apply purser-try --remote -c cloud/wrangler.try.jsonc` (and `purser-cloud -c cloud/wrangler.jsonc`), which adds `0006_security_log.sql`, `0007_export_links.sql` and `0008_storage_quota.sql`.
 4. Point an uptime monitor at `GET /v1/health` and the site's `/health`, alerting when `security.alarms_24h` is above 0 (V8.1.4, V11.1.8 rely on someone being told).
 
 ## V1 Architecture, design and threat modelling
@@ -62,8 +68,8 @@ Also done, without closing a requirement on its own: the platform admin as named
 | Requirement | Short name | Verdict | Evidence or reason |
 |---|---|---|---|
 | V1.1.1 | Secure development lifecycle | Pass | SSDF map with gaps named: `docs/security/SECURITY-MAPPING.md`; CI gates (Semgrep, gitleaks, OSV, CodeQL, formal model): `.github/workflows/ci.yml`; red-team rounds recorded in `docs/redteam/`. |
-| V1.1.2 | Threat modelling for every design change | **Fail** | A STRIDE model exists (`docs/security.md`, `docs/zero-trust.md`) and red-team rounds follow big changes, but there is no threat-model step per change or sprint. Fix: a threat-model section in the PR template, required by CODEOWNERS for `cloud/src/auth.ts`, `src/policy/`, `worker/src/`. |
-| V1.1.3 | Security constraints in user stories | **Fail** | No user stories with security constraints are kept; requirements live in `docs/security/requirements.md`. Fix: add security acceptance criteria to issue and PR templates. |
+| V1.1.2 | Threat modelling for every design change | Pass | Every pull request's description has a `## Threat model` section (`.github/pull_request_template.md`), and `.github/workflows/threat-model.yml` fails a pull request whose section is missing or empty, or says "None" while it changes security-sensitive code (`scripts/pr-threat-model.ts` `SENSITIVE_PATHS`: `cloud/src/auth.ts`, `src/policy/`, `worker/src/`, the wrangler configs, the workflows, ...); the script runs from the base branch and reads the description only through the environment. `test/threat-model-gate.test.ts`. The STRIDE model stays in `docs/security.md`, `docs/zero-trust.md`. The check blocks a merge once it is in the `main` ruleset's required checks (owner action, as V1.10.1); until then a pull request without a threat model shows a failed check. |
+| V1.1.3 | Security constraints in user stories | Pass | A feature request is an issue form (`.github/ISSUE_TEMPLATE/feature_request.yml`) written as a user story whose "Security constraints (who must not be able to do what)" field is required, beside "What must stay true"; blank issues are off (`.github/ISSUE_TEMPLATE/config.yml`), so no feature is filed without them. `test/threat-model-gate.test.ts`. Requirements stay in `docs/security/requirements.md`. |
 | V1.1.4 | Trust boundaries, components, data flows documented | Pass | `docs/security.md` (trust boundaries), `docs/architecture.md`, `docs/zero-trust.md`. |
 | V1.1.5 | High-level architecture and remote services analysed | Pass | `docs/architecture.md`, `docs/security.md` (limits on every external call: Airwallex, Alta RPC, Anthropic, Cloudflare). |
 | V1.1.6 | Centralised, reusable security controls | Pass | One route table with a required scope per route and one auth function (`cloud/src/app.ts` ROUTES, `cloud/src/auth.ts` `callerOf`), one tenant-scoped data layer (`cloud/src/tenant.ts`), one baseline header function (`cloud/src/baseHeaders.ts`), one injection screen (`src/policy/injection.ts`). |
@@ -84,7 +90,7 @@ Also done, without closing a requirement on its own: the platform admin as named
 | V1.6.3 | Keys replaceable, with a process | Pass | Every API key revocable and expiring (`DELETE /v1/keys/{id}`, `KEY_MAX_DAYS`, `cloud/src/auth.ts`); Worker secrets replaced with `wrangler secret put`; leaked key steps in `docs/runbook.md`. Sealed OAuth tokens carry a version for re-sealing (`cloud/src/sealed.ts`). |
 | V1.6.4 | Client-side secrets not trusted | Pass | No secret in a page protects anything: sessions are server-checked HMAC tokens (`cloud/src/auth.ts`), the CFO's approval is a passkey signature over the terms hash checked server side (`src/policy/approvals.ts`). |
 | V1.7.1 | Common logging format | Pass | Purser Cloud: one JSON object per line with `ts`, `level`, `event` (`cloud/src/log.ts`); the runner's audit log is one hash-chained table (`src/audit/log.ts`). |
-| V1.7.2 | Logs sent to a remote system for analysis | **Fail** | Security events are now kept in an append-only table (`security_log` in D1, `cloud/src/securityLog.ts`; `sec_log` in the relay's Durable Object, `worker/src/core.ts`) and each is a log line, but the Workers' logs are not shipped to a log store or SIEM (no `observability` or Logpush in `cloud/wrangler*.jsonc`, `worker/wrangler.jsonc`), and the runner's audit log stays on its machine. Fix: Workers Logs or Logpush to a store with alerting. |
+| V1.7.2 | Logs sent to a remote system for analysis | Pass | Workers Logs is on for all three Workers, every request kept (`observability` with `head_sampling_rate: 1` and invocation logs: `cloud/wrangler.jsonc:42`, `cloud/wrangler.try.jsonc:73`, `worker/wrangler.jsonc:24`; `test/workers-observability.test.ts`): each log line, the request lines and the `security.*` events among them, leaves the isolate for Cloudflare's log store, where it is queried. Detection and alerting: the append-only security logs (`security_log` in D1, `cloud/src/securityLog.ts`; `sec_log` in the relay, `worker/src/core.ts`) raise alarms counted on `/v1/health` and `/health` for an uptime monitor (owner action 4). The runner's audit rows reach the cloud with its sync push (`POST /v1/sync`, `audit_rows`). Takes effect at the next deploy. |
 | V1.8.1 | Sensitive data identified and classified | Pass | `docs/security.md` (What we protect), `docs/cloud.md` (Privacy and retention), `cloud/src/log.ts` (fields treated as secret or personal). |
 | V1.8.2 | Protection requirements per level | **Fail** | The assets are listed but there are no protection levels with their requirements (encryption, integrity, retention, access, logging) per level. Fix: a classification table in `docs/security/`. |
 | V1.9.1 | Communications between components encrypted | Pass | HTTPS to every outside service; Worker to Worker over service bindings inside Cloudflare (`docs/security.md`, Limits on every external call). |
@@ -121,7 +127,7 @@ Also done, without closing a requirement on its own: the platform admin as named
 | V2.2.3 | Secure notifications after authenticator changes | Pass | A passkey or key added or removed is a security event the owners read (`GET /v1/security/events`) and is sent to the company's alert webhook (`tellOwners`, `cloud/src/securityAudit.ts`); `test/cloud-security-log.test.ts` ("a key made and revoked", "a passkey enrolled"). |
 | V2.3.1 | Initial activation codes random and short-lived | Pass | Enrolment and invite secrets are 32 random bytes, stored as SHA-256, single use, 30 minutes (`cloud/src/auth.ts` `ENROLMENT_TTL_MS`, `startEnrolment`); `test/cloud-console-invites.test.ts`. |
 | V2.3.2 | User-provided authenticators (FIDO) supported | Pass | Sign-in is a passkey (FIDO2/WebAuthn); several per person (`cloud/src/auth.ts` `enrolPasskey`); `test/cloud-auth.test.ts`. |
-| V2.3.3 | Renewal instructions before time-bound authenticators expire | **Fail** | API keys expire (90 days by default, at most a year) but nothing warns before they do. Fix: an alert to the owners 14 and 3 days before a key's expiry. |
+| V2.3.3 | Renewal instructions before time-bound authenticators expire | Pass | Every call an API key makes in its last 14 days carries a `purser-key-renewal` header with its expiry, the days left and what to do (`cloud/src/keyExpiry.ts` `renewalNotice`, set in `cloud/src/app.ts:773`); and 14 and 3 days before, the company's owners are told once each, a `key.expiring` security event in the console and an event to the alert webhook (`warnExpiringKeys`, run by the scheduled job, `cloud/src/worker.ts:190`). `test/cloud-asvs-controls.test.ts` ("renewal instructions"). Sessions last 15 minutes and are renewed by signing in. |
 | V2.4.1 | Credential Storage | N/A | No passwords anywhere: people sign in with a passkey (WebAuthn), programs with scoped keys (`cloud/src/auth.ts`). |
 | V2.4.2 | Credential Storage | N/A | No passwords anywhere: people sign in with a passkey (WebAuthn), programs with scoped keys (`cloud/src/auth.ts`). |
 | V2.4.3 | Credential Storage | N/A | No passwords anywhere: people sign in with a passkey (WebAuthn), programs with scoped keys (`cloud/src/auth.ts`). |
@@ -280,7 +286,7 @@ Also done, without closing a requirement on its own: the platform admin as named
 | V8.3.2 | Users can export and remove their data | Pass | `GET /v1/export`, staged export, `POST /v1/users/{id}/erase`, `POST /v1/close` (`cloud/src/privacy.ts`); `test/cloud-export-staging.test.ts`, `test/cloud-retention.test.ts`. |
 | V8.3.3 | Clear privacy language and consent | **Fail** | No privacy notice or terms exist yet (`docs/go-live.md`: "Legal: terms, privacy notice, data processing agreement: Open"). Fix: draft them before real customer data. |
 | V8.3.4 | Sensitive data identified with a policy | Pass | `docs/cloud.md` (Privacy and retention), `docs/security.md` (What we protect). |
-| V8.3.5 | Access to sensitive data audited | **Fail** | Exports and each downloaded part are security events; reading invoices, payments and the books through the API is not audited per access. Fix: an access event for exports of personal data and bulk reads. |
+| V8.3.5 | Access to sensitive data audited | Pass | Each successful read of personal or financial data (people, passkeys, suppliers, invoices and their documents, payments, transactions, the ledger, reports, the books, documents, mail, the engine's invoices, suppliers, archive and exports, and each Claude connector call at `/mcp`) is a `data.access` event in the append-only security log: who (key or person id), which route, the status, the address cut to its network; never what was read (`cloud/src/securityAudit.ts:70-77` `SECURITY_ROUTES`; kind in `src/lib/securityEvents.ts`). Exports stay `data.export`. `test/cloud-asvs-controls.test.ts` ("reads of personal and financial data"), which also holds every audited route to one the API serves. |
 | V8.3.6 | Sensitive data overwritten in memory | **Fail** | Not done, and not reliably possible in a garbage-collected JavaScript runtime. Accepted risk; secrets stay in isolates that are not shared. |
 | V8.3.7 | Encryption with confidentiality and integrity | Pass | What is encrypted by Purser (partner OAuth tokens) uses AES-GCM with associated data (`cloud/src/sealed.ts`). |
 | V8.3.8 | Retention and deletion on schedule | Pass | A closed company is purged seven years after its last record, staged exports after a day, challenges and rate windows by the scheduled job (`cloud/src/privacy.ts` `purgeExpired`, `cloud/src/worker.ts`); `test/cloud-retention.test.ts`. |
@@ -326,7 +332,7 @@ Also done, without closing a requirement on its own: the platform admin as named
 |---|---|---|---|
 | V12.1.1 | Large files refused | Pass | 15 MB per document (`MAX_DOCUMENT_BYTES`, `src/ap/inbox.ts`), 8 MB per Peppol XML (`src/ap/peppol.ts`), push and mail caps (`docs/cloud.md`). |
 | V12.1.2 | Compressed files checked against uncompressed size | Pass | A PDF's compressed streams are inflated against a 64 MB budget before the PDF library sees them (`src/ap/pdfText.ts`); no archive formats are accepted. |
-| V12.1.3 | File quota per user | **Fail** | Inbound mail has a daily quota per company (500 messages, 500 MB); uploads through the API have a size cap but no count or storage quota per company. Fix: a storage quota per company. |
+| V12.1.3 | File quota per user | Pass | Files uploaded through the API count toward a storage quota per company, 2 GiB and 20,000 files by default (`cloud/src/storageQuota.ts`): the runner's pushed documents (`cloud/src/sync.ts:252`, `cloud/src/app.ts:584`) and uploads to the company's engine (`cloud/src/engine/routes.ts:125`) reserve their bytes and file in one statement that adds only within the quota; past it the upload is refused with 413 and stores nothing, and a duplicate or a refused file gives its room back (migration `cloud/migrations/0008_storage_quota.sql`). Inbound mail keeps its daily quota per company (500 messages, 500 MB). `test/cloud-asvs-controls.test.ts` ("a storage quota"). |
 | V12.2.1 | File type from content | Pass | PDF by its header, images by their header, XML by its parse (`src/ap/pdfText.ts` `isPdf`, `src/ap/scan.ts` `imageInfo`, `src/ap/peppol.ts`). |
 | V12.3.1 | Filenames not used by filesystems | Pass | Files are stored under their SHA-256; the given name is metadata only (`src/ap/inbox.ts`). |
 | V12.3.2 | Filenames cannot touch local files | Pass | As V12.3.1: the stored name is the SHA-256, never the given name (`src/ap/inbox.ts`). |
