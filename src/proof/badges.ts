@@ -76,8 +76,12 @@ export const BUILD: Record<BadgeName, (r: Json) => Omit<EndpointBadge, "schemaVe
     return { label: "Dafny", message: `${verified} verified, ${errors} errors`, color: errors === 0 && verified > 0 ? "brightgreen" : "red" };
   },
   // The product's measured scope (docs/evidence/coverage.md), from the counts, not the record's rounded pct. Bright green
-  // only at OpenSSF gold's bar (90% of statements and 80% of branches), which the product does not reach today.
+  // only at OpenSSF gold's bar (90% of statements and 80% of branches), which the product does not reach today. The label
+  // names the commit of the coverage run (`run.commit`), a separate run from the full-suite count in
+  // docs/assets/test-summary.json, so the badge never reads as that run's.
   "coverage": (r) => {
+    const commit = (r.run as Json | undefined)?.commit;
+    if (typeof commit !== "string" || !/^[0-9a-f]{7,40}$/.test(commit)) throw new Error("coverage: no run commit");
     const scopes = r.scopes as Record<string, { after?: Record<string, { covered?: unknown; total?: unknown }> }> | undefined;
     const after = scopes?.product?.after;
     if (!after) throw new Error("coverage: no product scope");
@@ -87,7 +91,7 @@ export const BUILD: Record<BadgeName, (r: Json) => Omit<EndpointBadge, "schemaVe
       return (covered / total) * 100;
     };
     const s = ratio("statements"), b = ratio("branches");
-    return { label: "coverage", message: `${s.toFixed(1)}% statements · ${b.toFixed(1)}% branches`, color: s >= 90 && b >= 80 ? "brightgreen" : s >= 80 ? "green" : s >= 60 ? "yellow" : "red" };
+    return { label: `coverage, run on ${commit}`, message: `${s.toFixed(1)}% statements · ${b.toFixed(1)}% branches`, color: s >= 90 && b >= 80 ? "brightgreen" : s >= 80 ? "green" : s >= 60 ? "yellow" : "red" };
   },
   "mutation": (r) => {
     const score = r.score;

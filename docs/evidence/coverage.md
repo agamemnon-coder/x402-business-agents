@@ -6,6 +6,16 @@ Measured on 20 November 2026 (the previous records: 19 November) for the OpenSSF
 
 **The product now: 92.0% of statements (65,458 of 71,122) and 81.9% of branches (49,091 of 59,929), in 830 files.**
 
+**Which run these figures are from.** One coverage run on commit `8d50fc19c` (the third round's tests; this record was
+committed on top of it in `53183c8e5`, which changes no code or test): `npx vitest run --coverage
+--coverage.reportOnFailure` with a 90-second test timeout, on a Linux machine with four cores shared with other jobs
+and `node_modules` linked from outside the checkout, not CI. Its result: 8,659 tests passed, 1 failed (the local-only
+failure under [Limits](#limits-of-these-figures)) and 5 skipped, in 791 files. It is **not** the run behind the
+suite's count: that is a separate, later full run without coverage, on commit `1ef28d9fa` (8,845 passed, 0 failed, 5
+skipped, in 814 files; [test-summary.json](../assets/test-summary.json)). No script in the repository writes this
+record from a coverage report, so it was not rebuilt after that count; it stays the record of this earlier run, and
+the coverage badge names its commit. The same facts, as data: `run` in [coverage.json](coverage.json).
+
 ## How it was measured
 
 - **Tool:** vitest 5.1.0 with `@vitest/coverage-v8` (V8's own coverage, mapped to statements and branches), the

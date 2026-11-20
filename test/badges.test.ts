@@ -60,7 +60,13 @@ describe("shields endpoint badges from the records", () => {
     // gold's bar of 90% statements and 80% branches, which the record does not reach.
     const cov = json<{ scopes: { product: { after: Record<"statements" | "branches", { covered: number; total: number }> } } }>("docs/evidence/coverage.json").scopes.product.after;
     const pct = (k: "statements" | "branches") => ((cov[k].covered / cov[k].total) * 100).toFixed(1);
-    const c = json<{ message: string; color: string }>("docs/badges/coverage.json");
+    const c = json<{ label: string; message: string; color: string }>("docs/badges/coverage.json");
+    // The label names the coverage run's commit: a separate run from the full-suite count (docs/assets/test-summary.json).
+    const run = json<{ run: { commit: string; result: { passed: number; failed: number; skipped: number; files: number } } }>("docs/evidence/coverage.json").run;
+    expect(c.label).toBe(`coverage, run on ${run.commit}`);
+    // docs/claims.md's Coverage row says the same run, with the record's figures.
+    const r = run.result;
+    expect(read("docs/claims.md")).toContain(`| Coverage (the README's coverage badge) | ${pct("statements")}% of statements and ${pct("branches")}% of branches of the product, from one coverage run on commit \`${run.commit}\`: ${r.passed.toLocaleString("en-GB")} passed, ${r.failed} failed (local only, \`test/cloud-engine-bundle.test.ts\`), ${r.skipped} skipped, in ${r.files} files`);
     expect(c.message).toBe(`${pct("statements")}% statements · ${pct("branches")}% branches`);
     expect(c.color).toBe(Number(pct("statements")) >= 90 && cov.branches.covered / cov.branches.total >= 0.8 ? "brightgreen" : "green");
   });
@@ -75,8 +81,11 @@ describe("shields endpoint badges from the records", () => {
     expect(BUILD.chaos({ totals: { scenarios: 3 }, invariants: { I1: { broken: 1 }, I2: { broken: 0 } } })).toEqual({ label: "chaos invariants broken", message: "1 in 3 scenarios", color: "red" });
     expect(() => BUILD.fuzz({ totals: { runs: 5 } })).toThrow(/not a count/);
     expect(() => BUILD["airwallex-endpoints"]({})).toThrow(/no totals/);
-    expect(BUILD.coverage({ scopes: { product: { after: { statements: { covered: 90, total: 100 }, branches: { covered: 80, total: 100 } } } } })).toEqual({ label: "coverage", message: "90.0% statements · 80.0% branches", color: "brightgreen" });
-    expect(() => BUILD.coverage({ scopes: { product: { after: { statements: { covered: 5, total: 4 }, branches: { covered: 1, total: 2 } } } } })).toThrow(/not a share/);
-    expect(() => BUILD.coverage({ scopes: {} })).toThrow(/no product scope/);
+    const run = { commit: "8d50fc19c" };
+    expect(BUILD.coverage({ run, scopes: { product: { after: { statements: { covered: 90, total: 100 }, branches: { covered: 80, total: 100 } } } } })).toEqual({ label: "coverage, run on 8d50fc19c", message: "90.0% statements · 80.0% branches", color: "brightgreen" });
+    expect(() => BUILD.coverage({ run, scopes: { product: { after: { statements: { covered: 5, total: 4 }, branches: { covered: 1, total: 2 } } } } })).toThrow(/not a share/);
+    expect(() => BUILD.coverage({ run, scopes: {} })).toThrow(/no product scope/);
+    // A coverage figure without the commit of its run makes no badge: it could be read as the full suite's.
+    expect(() => BUILD.coverage({ scopes: { product: { after: { statements: { covered: 90, total: 100 }, branches: { covered: 80, total: 100 } } } } })).toThrow(/no run commit/);
   });
 });

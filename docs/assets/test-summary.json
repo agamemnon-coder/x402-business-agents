@@ -4,5 +4,8 @@
   "failed": 0,
   "skipped": 5,
   "files": 814,
-  "commit": "1ef28d9fa"
+  "commit": "1ef28d9fa",
+  "scope": "the full suite: every test file vitest.config.ts includes, without coverage; not the coverage run, which is recorded separately in docs/evidence/coverage.json",
+  "command": "npx vitest run --reporter=json --outputFile.json=<file>, then npm run readme-draft -- --tests <file> and npm run test-count",
+  "environment": "not recorded: this summary was written before it recorded the machine the run was on"
 }

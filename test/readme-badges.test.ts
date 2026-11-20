@@ -33,6 +33,12 @@ describe("README badges", () => {
     // Coverage: a shields endpoint badge read from the committed JSON (src/proof/badges.ts, test/badges.test.ts).
     expect(badgeLine).toContain("(https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fbadges%2Fcoverage.json&style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)");
     expect(existsSync(new URL("../docs/badges/coverage.json", import.meta.url))).toBe(true);
+    // Each badge says which run it is from (audit, 20 Nov): the tests badge the last full run (test-summary.json), the
+    // coverage badge its own, separate coverage run, whose commit and counts the README names from that record.
+    expect(badgeLine).toContain("query=%24.passed&label=tests%2C%20last%20full%20run&suffix=%20passing");
+    const cov = JSON.parse(readFileSync(new URL("../docs/evidence/coverage.json", import.meta.url), "utf8")) as { run: { commit: string; result: { passed: number; failed: number; skipped: number } } };
+    const r = cov.run.result;
+    expect(readme).toContain(`The coverage badge is from a separate, earlier coverage run on commit \`${cov.run.commit}\` (${r.passed.toLocaleString("en-GB")} passed, ${r.failed} failed on the measuring machine only, ${r.skipped} skipped: [coverage.md](docs/evidence/coverage.md))`);
     // REUSE: reuse lint runs in CI (job reuse) over REUSE.toml.
     expect(lines[at + 1]).toContain("(REUSE.toml)");
     expect(readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8")).toMatch(/\n {2}reuse:\n[\s\S]*?uses: fsfe\/reuse-action@[0-9a-f]{40}/);
