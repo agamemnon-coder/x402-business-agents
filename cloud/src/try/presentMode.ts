@@ -240,7 +240,12 @@ export const PRESENT_OUTCOME = {
   time: "From start to paid",
   steps: "Steps the engine recorded",
   claude: "of them by Claude (it reads the invoices when the switch is on)",
-  paid: "Paid on the simulated bank",
+  /**
+   * 20 Nov 2026: what paid, as the pay answer says (src/try/partners.ts, the pay line): the simulated bank always; the
+   * Airwallex sandbox as well only when the answer's airwallex_payout says it made a transfer (the switch awx_payout).
+   */
+  paid: "Paid on the simulated bank (test money)",
+  paidAwx: "Paid on the simulated bank, then once on the Airwallex sandbox (test money)",
   refused: "One cent changed after signing",
   refusedYes: "Refused by both layers: the signature and the payment check. Nothing moved.",
   refusedPart: "Refused. Nothing moved.",
@@ -1115,9 +1120,9 @@ __SHARED__
 // again in the same pool (retakes do not run into the public pool's per-address limit).
 const POOLTAG=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.hash);try{if(m)sessionStorage.setItem('purser.present.pool',m[0]);return m?m[0]:sessionStorage.getItem('purser.present.pool')||''}catch(e){return m?m[0]:''}})();
 // The run's own numbers, from the answers this page gets.
-const RUN={startAt:null,paidAt:null,seqs:new Set(),claude:new Set(),paid:null,refused:null};
-try{const o=JSON.parse(sessionStorage.getItem('purser.present')||'null');if(o&&typeof o==='object'){RUN.startAt=o.startAt??null;RUN.paidAt=o.paidAt??null;RUN.paid=o.paid??null;RUN.refused=o.refused??null;for(const s of o.seqs||[])RUN.seqs.add(s);for(const s of o.claude||[])RUN.claude.add(s)}}catch(e){}
-const keep=()=>{try{sessionStorage.setItem('purser.present',JSON.stringify({startAt:RUN.startAt,paidAt:RUN.paidAt,paid:RUN.paid,refused:RUN.refused,seqs:[...RUN.seqs],claude:[...RUN.claude]}))}catch(e){}};
+const RUN={startAt:null,paidAt:null,seqs:new Set(),claude:new Set(),paid:null,awx:false,refused:null};
+try{const o=JSON.parse(sessionStorage.getItem('purser.present')||'null');if(o&&typeof o==='object'){RUN.startAt=o.startAt??null;RUN.paidAt=o.paidAt??null;RUN.paid=o.paid??null;RUN.awx=o.awx===true;RUN.refused=o.refused??null;for(const s of o.seqs||[])RUN.seqs.add(s);for(const s of o.claude||[])RUN.claude.add(s)}}catch(e){}
+const keep=()=>{try{sessionStorage.setItem('purser.present',JSON.stringify({startAt:RUN.startAt,paidAt:RUN.paidAt,paid:RUN.paid,awx:RUN.awx,refused:RUN.refused,seqs:[...RUN.seqs],claude:[...RUN.claude]}))}catch(e){}};
 const AMT=/^\d{1,9}\.\d{2}$/,CUR=/^[A-Z]{3}$/;
 const money=(a,c)=>{const [w,d]=a.split('.');return c+' '+w.replace(/\B(?=(\d{3})+$)/g,',')+'.'+d};
 const real=window.fetch.bind(window);
@@ -1132,12 +1137,12 @@ window.fetch=async(input,init)=>{
       const at=Date.now();
       res.clone().json().then((j)=>{
         if(!j||typeof j!=='object')return;
-        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear();keepCalls();forgetRead()}
+        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.awx=false;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear();keepCalls();forgetRead()}
         else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);takeCall(e,f);noteEvent(e);}}}
         else{
           let sent=null;try{sent=JSON.parse(String(init&&init.body||'null'))}catch(e){}
           const t=sent&&sent.terms||{};
-          if(j.outcome==='paid'&&!RUN.paidAt){RUN.paidAt=at;RUN.paid=AMT.test(String(t.amount))&&CUR.test(String(t.currency))?money(String(t.amount),String(t.currency)):''}
+          if(j.outcome==='paid'&&!RUN.paidAt){RUN.paidAt=at;RUN.paid=AMT.test(String(t.amount))&&CUR.test(String(t.currency))?money(String(t.amount),String(t.currency)):'';const ap=j.airwallex_payout;RUN.awx=!!(ap&&typeof ap==='object'&&ap.source==='airwallex-sandbox')}
           if(j.outcome==='refused'&&Array.isArray(j.changed)&&j.changed.length){const L=j.layers||{};RUN.refused={both:!!(L.signature&&L.signature.verified===false&&L.executor&&L.executor.accepted===false),changed:j.changed.filter((k)=>/^[a-z_0-9]{1,32}$/.test(k))}}
         }
         keep();drawOutcome();drawUse();
@@ -1165,7 +1170,7 @@ function drawOutcome(){
   const r=RUN.refused;
   const figs=mk('ul','pv-figs',[
     fig(RUN.startAt&&RUN.paidAt?secs(RUN.paidAt-RUN.startAt):null,O.time),
-    fig(RUN.paid?RUN.paid:null,O.paid),
+    fig(RUN.paid?RUN.paid:null,RUN.awx?O.paidAwx:O.paid),
     fig(RUN.seqs.size?String(RUN.seqs.size):null,RUN.seqs.size?O.steps+' · '+RUN.claude.size+' '+O.claude:O.steps),
     fig(r?(r.both?O.refusedYes:O.refusedPart):null,O.refused,r?'ok':null),
   ]);

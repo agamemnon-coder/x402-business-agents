@@ -3166,8 +3166,8 @@
     },
     {
       "id": "audit-anchors-not-signed",
-      "what": "Someone who can write the ledger file can append forged rows after the last published anchor, and the chain still verifies.",
-      "stillHolds": "Anchors printed in run records and audit reports limit this to rows after the last published anchor.",
+      "what": "Someone who can write the ledger file can append forged rows after the last published anchor, and the chain still verifies: the published anchors are unsigned. Since 20 November, with PURSER_CHECKPOINT_KEY_FILE set, Ed25519-signed checkpoints pin the log, but that is built and tested locally, not deployed; the key is a file on the runner (no KMS or HSM); and a non-money row forged between two checkpoints is signed by the next one.",
+      "stillHolds": "Anchors printed in run records and audit reports limit this to rows after the last published anchor. With the checkpoint key configured, a checkpoint is written to an append-only file after every money row (with a signed intent) and on a schedule, and checked before every payment, loosening policy change and key enrolment; a mismatch refuses them with the critical /health alarm audit_checkpoint_mismatch (src/audit/checkpointer.ts; npm run verify-audit).",
       "source": "docs/security.md, accepted risks"
     },
     {
@@ -3209,6 +3209,6 @@
   ],
   "generated": {
     "date": "2026-11-20",
-    "commit": "f667d16c6 with uncommitted changes"
+    "commit": "f90d66c3b with uncommitted changes"
   }
 }
