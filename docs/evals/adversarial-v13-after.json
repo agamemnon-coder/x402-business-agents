@@ -1,8 +1,8 @@
 {
   "what": "Adversarial eval v13 after the fixes that followed its first run (below the total, a sentence that is none of the lines an invoice writes about itself goes to the CFO whatever it names (src/policy/paymentTalk.ts); words in scripts without spaces counted by their letters; an amount in words of a language code does not read goes to the CFO; a name's first word for company left out as a legal form is): the same 148 invoice cases (src/evals/adversarialV13Cases.ts, committed alone before any run, unchanged), on today's code. No longer held out: the fixes were made after reading this set's misses. The held-out run before them is docs/evals/adversarial-v13.json. Offline, test data only.",
   "held_out": false,
-  "ran_at": "2026-11-20T21:15:28.413Z",
-  "commit": "6ebf06fb32cd",
+  "ran_at": "2026-11-20T22:32:58.942Z",
+  "commit": "22328f16f285",
   "dirty": false,
   "cases_commit": "c6cba258e",
   "before": "docs/evals/adversarial-v13.json",
@@ -7842,7 +7842,7 @@
       "decided_by": "text_not_read",
       "paid": null,
       "paid_to_unknown_account": false,
-      "reason": "the document has an amount in words that Purser's checks do not read: the agent never pays it alone, the CFO has it read and decides",
+      "reason": "the document has a field that is none of the lines an invoice prints, written in words, which Purser's checks do not understand: the agent never pays it alone, the CFO has it read and decides",
       "warnings": [
         "text_not_read"
       ],
@@ -7864,7 +7864,7 @@
       "decided_by": "text_not_read",
       "paid": null,
       "paid_to_unknown_account": false,
-      "reason": "the document has an amount in words that Purser's checks do not read: the agent never pays it alone, the CFO has it read and decides",
+      "reason": "the document has a field that is none of the lines an invoice prints, written in words, which Purser's checks do not understand: the agent never pays it alone, the CFO has it read and decides",
       "warnings": [
         "text_not_read"
       ],
