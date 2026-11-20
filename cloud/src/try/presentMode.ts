@@ -852,7 +852,8 @@ body.pv-shell #main .btn.fin-proof { min-height: 32px; padding: 0 10px; gap: 5px
 .fin-eb { margin: 0 0 4px; font: 700 12px/1.2 Inter, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .fin-total { min-height: 32px; margin: 0; font: 760 26px/1.22 Inter, system-ui, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .fin-total .bad { color: var(--bad); }
-.fin-total > span { white-space: nowrap; }
+.fin-total > span { display: inline-block; white-space: nowrap; } /* each figure whole, the refused one on its own line on a phone */
+.fin-total > .sep { margin: 0 .3em; }
 .fin-total .sep { color: var(--faint); }
 .fin-total .sk-line { display: block; width: 70%; height: 28px; border-radius: 8px; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
 .fin-sub { margin: 4px 0 14px; color: var(--muted); font-size: 14px; line-height: 1.45; }

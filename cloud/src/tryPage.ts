@@ -2091,7 +2091,7 @@ function finishV2(box,P){
     if(ref&&!refShown)refRow();
     const sums=(o)=>Object.keys(o).sort().map((c)=>cash(c,B.fromCents(o[c]))).join(' + ');
     const pt=sums(paid),rt=sums(refused);
-    total.replaceChildren(pt?el('span','ok',fill(F.totalPaid,{money:pt})):el('span','',F.nonePaid),...(rt?[el('span','sep',' · '),el('span','bad',fill(F.totalRefused,{money:rt}))]:[]));
+    total.replaceChildren(pt?el('span','ok',fill(F.totalPaid,{money:pt})):el('span','',F.nonePaid),...(rt?[el('span','sep','·'),el('span','bad',fill(F.totalRefused,{money:rt}))]:[]));
   });
 }
 // The time from upload to paid, as people say it: 42 s, 1 min 42 s.

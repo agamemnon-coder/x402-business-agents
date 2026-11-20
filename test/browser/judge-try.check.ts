@@ -133,7 +133,7 @@ try {
     ok(/^Paid with your passkey .*BTX-2026-21.*EUR 1,850\.00 Proof file/.test(rows[1] ?? ""), `the finish: EUR 1,850.00 signed with the passkey, with its proof file (${rows[1]})`);
     ok(/^Refused: one cent changed .*amount changed.*No transfer was made\. EUR 1,850\.01 Proof file/.test(rows[2] ?? ""), `the finish: EUR 1,850.01 refused, no transfer, with its proof file (${rows[2]})`);
     ok(!rows.some((r) => /BTX-2026-17/.test(r)), "the finish: no row for the seeded original paid before the company started");
-    ok((await page.locator(".fin-total").innerText()).replace(/\s+/g, " ") === "EUR 1,970.00 paid · EUR 1,850.01 refused", `the finish: the totals (${await page.locator(".fin-total").innerText()})`);
+    ok(/^EUR 1,970\.00 paid\s*·\s*EUR 1,850\.01 refused$/.test((await page.locator(".fin-total").innerText()).trim()), `the finish: the totals (${await page.locator(".fin-total").innerText()})`);
     const go = page.locator(".fin-cloud a.fin-go");
     ok(await go.isVisible() && await go.getAttribute("href") === FINISH_LINKS.cloud && await go.getAttribute("target") === "_blank", "the finish: \"Open Purser Cloud\" opens its demo company (#/guest) in a new tab");
     ok(await page.locator(".fin-cloud a.fin-own").getAttribute("href") === FINISH_LINKS.start, "the finish: a starter key's set-up is the console's own #/start");
