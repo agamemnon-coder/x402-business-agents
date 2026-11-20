@@ -9,6 +9,17 @@ import { FakeAuthenticator } from "../redteam/authenticator.js";
 import { send, shiftableClock, type Answer, type EdgeServer } from "./net.js";
 import { api, Visitor, type Target } from "./visitor.js";
 
+// The per-minute limits count per clock minute (cloud/src/auth.ts: withinRate, failedAuthBlocked). An attack on one of
+// them starts at the top of a minute, so all its requests fall in one window: run at 23:37:59.7 on 20 Nov, 650 reads
+// straddled two windows and none was turned away (CI, #464). The clock is shifted, not waited for.
+async function inOneMinute<T>(run: () => Promise<T>): Promise<T> {
+  const clock = shiftableClock();
+  try {
+    clock.advance(60_000 - (Date.now() % 60_000) + 50);
+    return await run();
+  } finally { clock.reset(); }
+}
+
 export type Verdict = "PASS" | "FAIL" | "ERROR";
 export interface AttackResult { id: string; group: string; title: string; target: string; expected: string; actual: string; verdict: Verdict; repro: string }
 
@@ -451,19 +462,19 @@ export async function runAttacks(ctx: Ctx): Promise<AttackResult[]> {
       for (let i = 0; i < 35; i++) s.push((await V.pay(a.p.id, { ...a.terms, amount: `${1000 + i}.00` }, a.approval)).status);
       return [s.slice(0, 30).every((x) => x === 200) && s.slice(30).every((x) => x === 429), `${s.slice(0, 30).every((x) => x === 200) ? "30 × 200" : s.slice(0, 30).join(",")}, then ${s.slice(30).join(",")}`];
     });
-    await attack(G, "rate-renewals", "40 session renewals of one company in a minute (30 allowed)", "edge", "the 31st and later answer 429", "40 × POST /v1/try/session with the right visitor token", async () => {
+    await attack(G, "rate-renewals", "40 session renewals of one company in a minute (30 allowed)", "edge", "the 31st and later answer 429", "40 × POST /v1/try/session with the right visitor token", () => inOneMinute(async () => {
       const V = await Visitor.start(edge, edgeFrom());
       const s: number[] = [];
       for (let i = 0; i < 40; i++) s.push((await api(edge, "POST", "/v1/try/session", { json: { tenant_id: V.tenant, visitor_token: V.visitorToken }, ...(V.from ? { from: V.from } : {}) })).status);
       return [s.slice(0, 30).every((x) => x === 200) && s.slice(30).every((x) => x === 429), `${s.filter((x) => x === 200).length} × 200, then ${s.slice(30).join(",")}`];
-    });
-    await attack(G, "rate-forged-tokens", "30 forged bearer tokens from one address in a minute (20 failed allowed)", "edge", "turned away with 429 after 20 failures", "30 × GET /v1/engine/invoices with Bearer pcs.<junk>", async () => {
+    }));
+    await attack(G, "rate-forged-tokens", "30 forged bearer tokens from one address in a minute (20 failed allowed)", "edge", "turned away with 429 after 20 failures", "30 × GET /v1/engine/invoices with Bearer pcs.<junk>", () => inOneMinute(async () => {
       const at = edgeFrom();
       const s: number[] = [];
       for (let i = 0; i < 30; i++) s.push((await api(edge, "GET", "/v1/engine/invoices", { key: `pcs.${Buffer.from(`{"t":"t_try_${i}"}`).toString("base64url")}.AAAA`, ...(at ? { from: at } : {}) })).status);
       return [s.slice(0, 20).every((x) => x === 401) && s.slice(20).every((x) => x === 429), `${s.filter((x) => x === 401).length} × 401, then ${s.slice(20).join(",")}`];
-    });
-    await attack(G, "rate-requests-per-session", "650 reads in a minute with one session (600 allowed)", "edge", "429 after 600", "650 × GET /v1/engine/invoices", async () => {
+    }));
+    await attack(G, "rate-requests-per-session", "650 reads in a minute with one session (600 allowed)", "edge", "429 after 600", "650 × GET /v1/engine/invoices", () => inOneMinute(async () => {
       const V = await Visitor.start(edge, edgeFrom());
       let ok = 0, limited = 0, other = 0;
       for (let i = 0; i < 65; i++) {
@@ -471,7 +482,7 @@ export async function runAttacks(ctx: Ctx): Promise<AttackResult[]> {
         for (const r of batch) if (r.status === 200) ok++; else if (r.status === 429) limited++; else other++;
       }
       return [ok === 600 && limited === 50 && other === 0, `${ok} × 200, ${limited} × 429, ${other} other`];
-    });
+    }));
   }
 
   // ── The admin route ───────────────────────────────────────────────────────────────────────────────────────────
