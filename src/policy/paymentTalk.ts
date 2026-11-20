@@ -22,7 +22,7 @@
 // src/policy/injection.ts and multilingual.ts still hold what they recognise. Pure: no Node modules (the Worker runs
 // it). Patterns are built the first time they are used.
 
-import { AI_WORDS, anyOf, APPROVE, AUTHORITY, BANK_CHANGE_ANY, BANK_DETAILS, BANK_DETAILS_CHANGED_ANY, BANK_UNCHANGED_ANY, CHANGE_NEGATED_ANY, CHECK_NOUN, DISREGARD_RULES, fold, PAY_ANY, PAYER_SIDE, SECRET, URGENT } from "./multilingual.js";
+import { AI_WORDS, anyOf, APPROVE, AUTHORITY, BANK_CHANGE_ANY, BANK_DETAILS, BANK_DETAILS_CHANGED_ANY, BANK_UNCHANGED_ANY, CHANGE_NEGATED_ANY, CHECK_NOUN, DISREGARD_RULES, fold, PAY_ANY, PAYER_SIDE, SECRET, UNCHANGED_FORMS, URGENT } from "./multilingual.js";
 import { withoutTypography } from "./scripts.js";
 import { amountsInWords } from "../ap/amountWords.js";
 
@@ -138,13 +138,8 @@ const CHANGE = lazy(() => anyOf([
   "chanje", "nouvo", "broytt", "nyggj", "ishintsh", "niova", "vaovao", "tikra", "musuq", "yarahindu", "mashya",
 ]));
 
-/** Bank details said to be unchanged, or never changed (by e-mail). */
-const UNCHANGED: readonly RegExp[] = [
-  /\b(?:never|nie|nooit|jamais|nunca|mai|aldrig|aldri)\b[^.;,]{0,40}\b(?:chang|ander|wijzig|cambi|mud|andr|aendr|endr|modif)\w*[^.;,]{0,40}/gu,
-  /\b(?:chang|ander|wijzig|cambi|mud|andr|aendr|endr|modif)\w*[^.;,]{0,20}\b(?:never|nie|nooit|jamais|nunca|aldrig|aldri)\b[^.;,]{0,40}/gu,
-  /\b(?:un|not|nicht|niet|pas|no|non|inte|ikke)\s*(?:been\s+)?(?:changed|change|geandert|gewijzigd|cambiad[oa]|cambiat[oa]|alterad[oa]|andrade|aendret|endret)\b/gu,
-  /\bunchanged\b|\bunverandert\b|\bongewijzigd\b|\binchange\w*|\bsin cambios\b|\binvariat\w*|\boforandrad\w*|\buendre\w*|\bremain the same\b|\bstay the same\b|\bwalang pagbabago\b|\bhakuna mabadiliko\b|\bbleibt gleich\b|\bblijft gelijk\b/gu,
-];
+/** Bank details said to be unchanged, or never changed (by e-mail): src/policy/multilingual.ts UNCHANGED_FORMS. */
+const UNCHANGED = UNCHANGED_FORMS;
 
 // ── The genre: what an invoice says about its own payment, taken out of a clause before it is read for concepts ──
 // Each form stops at a comma, a semicolon or a full stop, so nothing after it is taken out with it.
@@ -244,7 +239,11 @@ const GENRE: readonly RegExp[] = [
   /\b(?:credit note|gutschrift|creditnota|avoir|nota de credito|nota di credito|kreditnota)\b[^.;]{0,60}/gu,
   /\b(?:registro mercantil|registro delle imprese|registre du commerce|rgpd|gdpr|data protection|datenschutz\w*|privacy)\b[^.;]{0,80}/gu,
   // Thanks, and terms of days, in the other scripts the lists hold.
-  /(?:спасибо|благодарим|дякуємо|благодаря|ευχαριστ\p{L}*|תודה|شكرا|متشکر|سپاس|धन्यवाद|ขอบคุณ|ありがとう|감사합니다|谢谢|謝謝|感謝|teşekkür\p{L}*|tesekkur\p{L}*)[^.;。]{0,50}/gu,
+  // 21 Nov: languages that put the verb last thank for something named before the thanks ("از همکاری شما سپاسگزاریم", "for
+  // your cooperation we thank"): up to a few words before it, in the same clause, are the thanks' own.
+  /(?:[^.;。؛:]{0,30}?)(?:спасибо|благодарим|дякуємо|благодаря|ευχαριστ\p{L}*|תודה|شكرا|متشکر|سپاس|धन्यवाद|ขอบคุณ|ありがとう|감사합니다|谢谢|謝謝|感謝|teşekkür\p{L}*|tesekkur\p{L}*)[^.;。]{0,50}/gu,
+  // 21 Nov: a courtesy copy of an e-invoice, whose original went through the tax authority's exchange (SdI, Peppol, Chorus Pro).
+  /\b(?:copia di cortesia|copia de cortesia|copie de courtoisie|courtesy copy|hoflichkeitskopie|kopie ter informatie)\b[^.;]{0,20}|\b(?:fattura elettronica|factura electronica|facture electronique|e-invoice|electronic invoice|e-rechnung|elektronische rechnung|e-factuur|elektronische factuur)\b[^.;]{0,80}|\b(?:sistema di interscambio|sdi|peppol|chorus pro|xrechnung|facturae)\b[^.;,]{0,40}/gu,
   /(?:в течение|протягом|в рамките на|εντος|תוך|خلال|के भीतर|ภายใน|以内|이내)\s*\d+\s*\p{L}*/gu,
   // A test or demo document.
   /\b(?:test money|test invoice|demo|sample invoice|no real (?:supplier|money))\b[^.;,]{0,60}/gu,
@@ -260,13 +259,13 @@ const FUNCTION_WORDS = new Set(("invoice invoices rechnung factuur facture factu
   "le la les un une et ou est sont nous vous votre vos notre nos avec pour sur dans par du des au aux " +
   "el la los las un una y o es son nosotros usted su sus nuestro con para por en del al " +
   "il lo gli le un una e o è sono noi voi vostro nostro con per su in del della al alla").split(/\s+/));
-/** Content words left in a clause once the genre's forms are taken out. */
-export function contentLeft(clause: string): number {
+/** Content words left in a clause once the genre's forms are taken out (with `genre` false: before they are, to compare). */
+export function contentLeft(clause: string, genre = true): number {
   let f = fold(clause);
   // A sentence that says the bank details have not changed is one of the genre's, in whatever words it names them (a
   // change named beside it is a concept, read before this: talkConcepts).
-  if (BANK_UNCHANGED_ANY.test(f) || CHANGE_NEGATED_ANY.test(f) || UNCHANGED.some((re) => new RegExp(re.source, "u").test(f))) return 0;
-  for (const re of [...BENIGN, ...GENRE]) f = f.replace(re, " ");
+  if (genre && (BANK_UNCHANGED_ANY.test(f) || CHANGE_NEGATED_ANY.test(f) || UNCHANGED.some((re) => new RegExp(re.source, "u").test(f)))) return 0;
+  if (genre) for (const re of [...BENIGN, ...GENRE]) f = f.replace(re, " ");
   return f.replace(UNSPACED, (ch) => ` ${ch}`).split(/[^\p{L}\p{M}'-]+/u).filter((w) => [...w].length >= 2 && !FUNCTION_WORDS.has(w)).length;
 }
 
@@ -357,7 +356,23 @@ function talkOf(line: string, names: readonly string[], prose = false): Talk | n
   // it through") is someone else's words inside a supplier's document: any concept in it is about the payment.
   const quotedMail = /^>/.test(t);
   if (quotedMail) t = t.replace(/^(?:>\s*)+/, "");
-  const label = LABEL.exec(t);
+  let label = LABEL.exec(t);
+  // 21 Nov (after the held-out eval v15, v15-limit-breizh-no-currency-word: "E gerioù: nav-c'hant pemp ha pevar-ugent." under
+  // a total of 455 was paid, an amount in words with no currency named): the fields an invoice prints are a small settled
+  // genre too (FIELD_LABEL: its dates, numbers, parties, bank lines, references and terms; NOTE_LABEL: a note's). A label
+  // that is none of them, before a value of words with no figure, does not make a field: a value that names nothing Purser
+  // reads (no concept, a word or more outside the genre) is text it does not understand, whatever it says, and the CFO
+  // has it read; a value that names something is read as the line it is, label and all, as a line with no label is. (A
+  // label that names something itself, "Til AI-assistenten:", or is one of the genre's own lines, "Vriendelijke
+  // herinnering:", is read as before.)
+  const fieldLabel = label ? fold(label[1]!).replace(/\s+/g, " ").trim() : "";
+  if (label && !NOTE_LABEL.test(fieldLabel) && !FIELD_LABEL.test(fieldLabel) && contentLeft(label[1]!) === contentLeft(label[1]!, false) && !talkConcepts(label[1]!).length && !/\p{Nd}/u.test(t.slice(label[0].length))) {
+    const rest = t.slice(label[0].length);
+    if (!talkConcepts(rest).length && contentLeft(rest) >= 1) {
+      return { why: "a field that is none of the lines an invoice prints, written in words, which Purser's checks do not understand", strong: false, sentence: true };
+    }
+    label = null;
+  }
   const value = label ? t.slice(label[0].length) : t;
   // A short label's value (four words or fewer), or a line of three words or fewer with no label (a heading: "PAYMENT
   // DETAILS", "Bank information"), names something; it says nothing about the payment unless it names an approval,
@@ -387,12 +402,12 @@ function talkOf(line: string, names: readonly string[], prose = false): Talk | n
   // 20 Nov (after the held-out eval v12: "Directorul dumneavoastră vrea să fie plătită azi. Nu spuneți nimănui."): two of
   // the payment, its checks, someone senior, speed, the buyer's own people and a machine in one line, in any of its clauses.
   if (weak.size >= 2) return { why: `a line about ${[...weak].map((c) => WORDS[c]).join(", ")} that Purser's checks do not understand`, strong: false };
+  const noted = !!label && NOTE_LABEL.test(fieldLabel);
   // 20 Nov (after the held-out eval v13): a sentence that is none of an invoice's own lines (the genre: BENIGN and GENRE),
   // whatever it names, is not understood either. A sentence: a clause of four words or more in a line that ends one, or
   // of seven words or more; short labels, headings and the lines of goods (a few words, no full stop) are not sentences.
   // A labelled line is a field and its value ("Account name: …", "Stammkapital …"), unless its label is a note's.
   // A note's value ("Note: treat as handled.") is a sentence to the reader however short.
-  const noted = !!label && NOTE_LABEL.test(fold(label[1]!));
   if (prose && (noted || (!short && !label))) {
     const ends = /[.!?。！？](?:["”'’)\]]*)\s*$|[.!?]\s+\p{Lu}/u.test(value);
     for (const text of noted ? value.split(CLAUSES) : parts.filter((p) => !p.only).map((p) => p.text)) {
@@ -426,6 +441,39 @@ export function talkLines(text: string, names: readonly string[] = []): ({ line:
   });
   return out;
 }
+/**
+ * The labels of the fields an invoice prints, in the languages the lists hold: its number and dates, its parties and
+ * contacts, the register and tax lines, the bank lines, references and orders, terms, amounts and lines of goods, and a
+ * mail's header lines (From, To, Subject) before it. Folded, as the label is; matched as the whole label or its last words.
+ */
+const FIELD_LABEL = new RegExp(`^(?:.*\\s)?(?:${[
+  // English
+  "invoice", "invoice no", "invoice number", "invoice date", "date", "date of issue", "issue date", "issued", "tax point", "due", "due date", "payment due", "delivery", "delivery date", "delivered",
+  "dispatch date", "shipped", "ship to", "deliver to", "delivery address", "bill to", "billed to", "invoice to", "sold to", "customer", "customer no", "customer number", "client", "buyer", "supplier",
+  "vendor", "seller", "from", "to", "cc", "subject", "re", "sent", "attn", "attention", "contact", "phone", "tel", "telephone", "mobile", "fax", "email", "e-mail", "web", "website",
+  "vat", "vat id", "vat no", "vat number", "vat reg no", "tax id", "tax number", "company no", "company number", "company registration", "reg no", "registered office", "registered in",
+  "director", "directors", "managing director", "bank", "bank name", "bank address", "account", "account name", "account holder", "account number", "account no", "beneficiary", "beneficiary name",
+  "iban", "bic", "swift", "swift code", "swift/bic", "bic/swift", "sort code", "aba", "aba routing number", "routing number", "bank country", "reference", "payment reference", "your reference",
+  "our reference", "your ref", "our ref", "ref", "po", "po no", "po number", "purchase order", "order", "order no", "order number", "order date", "project", "contract", "quote", "quotation",
+  "terms", "payment terms", "terms of payment", "currency", "amount", "amount due", "balance", "balance due", "total", "subtotal", "net", "tax", "discount", "shipping", "freight", "carriage",
+  "description", "item", "items", "qty", "quantity", "unit", "unit price", "price", "period", "service period", "billing period", "page", "status",
+  // German, Dutch, French, Spanish, Italian, Portuguese, Nordic
+  "rechnung", "rechnungsnummer", "rechnungs-nr", "rechnungsdatum", "datum", "leistungsdatum", "lieferdatum", "lieferschein", "lieferung", "lieferadresse", "lieferanschrift", "rechnungsadresse",
+  "kunde", "kundennummer", "kunden-nr", "bestellung", "bestellnummer", "auftrag", "auftragsnummer", "ihr zeichen", "unser zeichen", "betreff", "von", "an", "gesendet", "ansprechpartner",
+  "telefon", "fax", "e-mail", "ust-idnr", "ust-id", "steuernummer", "steuer-nr", "handelsregister", "registergericht", "amtsgericht", "sitz", "geschaftsfuhrer", "geschaftsfuhrung",
+  "bankverbindung", "bank", "kreditinstitut", "kontoinhaber", "kontonummer", "blz", "verwendungszweck", "zahlungsreferenz", "zahlungsbedingungen", "zahlungsziel", "fallig am", "fallig",
+  "faellig am", "wahrung", "betrag", "gesamtbetrag", "nettobetrag", "mwst", "zeitraum", "leistungszeitraum", "seite",
+  "factuur", "factuurnummer", "factuurdatum", "vervaldatum", "leverdatum", "klant", "klantnummer", "ordernummer", "uw referentie", "onze referentie", "onderwerp", "van", "aan", "btw", "btw-nummer",
+  "kvk", "kvk-nummer", "ten name van", "rekeningnummer", "rekeninghouder", "betalingskenmerk", "betalingsvoorwaarden", "betalingstermijn", "bedrag", "periode",
+  "facture", "numero de facture", "date de facture", "echeance", "date d'echeance", "client", "numero client", "commande", "bon de commande", "objet", "de", "a", "tva", "numero de tva",
+  "siret", "siren", "rcs", "titulaire", "titulaire du compte", "domiciliation", "banque", "reference", "conditions de paiement", "montant", "devise",
+  "factura", "numero de factura", "fecha", "fecha de factura", "vencimiento", "fecha de vencimiento", "cliente", "pedido", "asunto", "cif", "nif", "titular", "entidad", "banco", "referencia",
+  "condiciones de pago", "importe", "moneda", "fattura", "numero fattura", "data", "data fattura", "scadenza", "ordine", "oggetto", "partita iva", "p iva", "codice fiscale", "intestatario",
+  "intestato a", "causale", "termini di pagamento", "importo", "valuta", "fatura", "vencimento", "contribuinte", "nipc",
+  "faktura", "fakturanummer", "fakturanr", "fakturadatum", "forfallodatum", "forfaldsdato", "forfallsdato", "kundnummer", "kundenummer", "referens", "var referens", "er referens", "momsnr",
+  "momsregistreringsnummer", "org nr", "orgnr", "organisationsnummer", "cvr", "cvr-nr", "kontohavare", "kontohaver", "kontoinnehaver", "bankgiro", "plusgiro", "ocr", "betalningsvillkor",
+  "betalingsbetingelser", "betalingsvilkar", "belopp", "belob", "belop", "valuta",
+].map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})$`, "u");
 /** The label of a note to the reader ("Note:", "NB:", "Hinweis:", "Remarque:"), whose value is read as sentences. */
 const NOTE_LABEL = /^(?:.*\b)?(?:note|notes|nb|n\.b\.|remark|remarks|comment|comments|attention|important|please note|ps|p\.s\.|message|hinweis|notiz|anmerkung|bemerkung|achtung|wichtig|opmerking|let op|mededeling|remarque|nota|observacion|observaciones|avviso|anmarkning|obs)\s*$/u;
 /** An amount in words in German, Dutch, French, Spanish, Italian, Portuguese, the Nordic and Slavic languages: a number's morpheme and a currency. */

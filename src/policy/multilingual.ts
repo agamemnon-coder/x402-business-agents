@@ -544,6 +544,18 @@ export const CHANGED = anyOf([
   "మార్పు", "కొత్త", "నవీకరించ", "ಬದಲಾ", "ಬದಲಿಸ", "ಹೊಸ", "ನವೀಕರಿಸ", "געענדערט", "געביטן", "נייע", "נייער", "נייעם", "דערהיינטיקט", "བསྒྱུར", "གསར་པ",
   "ganti", "diganti", "owah", "anyar",
 ]);
+/**
+ * Bank details said to be unchanged, or never changed (by e-mail), over folded text: one definition for the screen that
+ * holds a change of bank (src/policy/fraudCore.ts) and the reading of payment talk (src/policy/paymentTalk.ts). 21 Nov
+ * (after the held-out eval v15, v15-bec-hearadh-moved-same-bank: "We have moved to a new mill; our bank details stay the
+ * same." was held as a change of bank): the two had their own lists, and the screen's did not hold "stay the same".
+ */
+export const UNCHANGED_FORMS: readonly RegExp[] = [
+  /\b(?:never|nie|nooit|jamais|nunca|mai|aldrig|aldri)\b[^.;,]{0,40}\b(?:chang|ander|wijzig|cambi|mud|andr|aendr|endr|modif)\w*[^.;,]{0,40}/gu,
+  /\b(?:chang|ander|wijzig|cambi|mud|andr|aendr|endr|modif)\w*[^.;,]{0,20}\b(?:never|nie|nooit|jamais|nunca|aldrig|aldri)\b[^.;,]{0,40}/gu,
+  /\b(?:un|not|nicht|niet|pas|no|non|inte|ikke)\s*(?:been\s+)?(?:changed|change|geandert|gewijzigd|cambiad[oa]|cambiat[oa]|alterad[oa]|andrade|aendret|endret)\b/gu,
+  /\bunchanged\b|\bunverandert\b|\bongewijzigd\b|\binchange\w*|\bsin cambios\b|\binvariat\w*|\boforandrad\w*|\buendre\w*|\bremain the same\b|\bstay the same\b|\bwalang pagbabago\b|\bhakuna mabadiliko\b|\bbleibt gleich\b|\bblijft gelijk\b/gu,
+];
 /** Bank details near a word of change, in either order: an announcement of other bank details. */
 export const BANK_DETAILS_CHANGED_ANY = near(BANK_DETAILS, CHANGED, 40);
 /** A negation, before the verb it negates. */
