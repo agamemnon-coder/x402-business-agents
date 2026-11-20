@@ -228,13 +228,16 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   // Eval v8 (19 Nov): 140 held-out invoices written after the fixes that followed v7 (suppliers named in Sinhala, Lao,
   // Mongolian Cyrillic, Burmese, Gujarati, Malayalam, Telugu, Yiddish, Lithuanian, Icelandic, Latvian and Kannada;
   // injections and pressure in those languages and in Tibetan, Syriac, Inuktitut and Javanese; hard negatives against the
-  // new rules), committed alone with their pre-registration before the run (src/cli/adversarialV8.ts). Held out: no rule
-  // was written against its misses.
-  const V8 = "docs/evals/adversarial-v8.json";
+  // new rules), committed alone with their pre-registration before the run. Its run is kept as recorded; beside it, since
+  // 20 Nov, the run after the fixes that followed it (letters encoded two ways, names as banks spell them, a number's own
+  // label, AI headings in any language, thirteen more languages), so no longer held out (src/cli/adversarialV8.ts). It
+  // stays on /proof: no held-out set has run after those fixes yet.
+  const V8 = "docs/evals/adversarial-v8.json", V8_AFTER = "docs/evals/adversarial-v8-after.json";
   const v8 = json(V8) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
-  if (v8?.held_out && v8.totals?.purser_script && v8.totals.no_rules) {
-    const p = v8.totals.purser_script, n = v8.totals.no_rules;
-    out.push({ key: "eval-v8", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v8): Purser vs no rules`, note: `Cases committed with their pre-registration (commit ${v8.cases_commit}), after the fixes for v7's misses; a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Held out. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v8.md"), rec: V8 });
+  const v8a = json(V8_AFTER) as { held_out?: boolean; totals?: AdvTotals } | null;
+  if (v8?.held_out && v8.totals?.purser_script && v8.totals.no_rules && v8a && !v8a.held_out && v8a.totals?.purser_script) {
+    const p = v8.totals.purser_script, n = v8.totals.no_rules, a = v8a.totals.purser_script;
+    out.push({ key: "eval-v8", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v8): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v8.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v8.md"), rec: V8 });
   }
   // 19 Nov, fifth round: the newest red-team run is the re-run after agent cards were frozen by default (hidden-payment
   // is now refused before money moves). The fourth round's re-run (rewrite-history stopped before money moves) and the
