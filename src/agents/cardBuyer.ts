@@ -34,6 +34,8 @@ export async function buyPlan(db: DB, sim: IssuingSim, planId: string, now = new
   const record = () => ingestCardTransaction(db, t, "simulation", now, purpose);
   if (o.chargeOrigin) withOrigin(o.chargeOrigin(t), record);
   else record();
+  // T:0 at every payment (T0_PAYMENTS=on, src/accounting/t0Payments.ts): a settled charge is booked at once; never waited on.
+  if (t.approved) void import("../accounting/t0Sink.js").then((m) => m.t0SinkFor(db).afterMoney(), () => undefined);
   return t;
 }
 

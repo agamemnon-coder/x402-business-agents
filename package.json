@@ -228,6 +228,7 @@
     "awx-depth": "tsx src/cli/awxDepth.ts",
     "awx-switch-on": "tsx src/cli/awxSwitchOn.ts",
     "tokenize": "tsx src/cli/tokenize.ts",
+    "partner-rails": "tsx src/cli/partnerRails.ts",
     "contracts:tokenize": "tsx src/tokenize/compile.ts",
     "scorecard": "tsx src/cli/scorecard.ts",
     "voice-takes": "tsx src/cli/voiceTakes.ts"

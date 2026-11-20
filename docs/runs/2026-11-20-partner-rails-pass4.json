@@ -1,0 +1,553 @@
+{
+  "run": "2026-11-20-partner-rails",
+  "mode": "live",
+  "started_at": "2026-11-20T20:12:05.373Z",
+  "finished_at": "2026-11-20T20:12:57.091Z",
+  "code": "c184c474c819",
+  "labels": {
+    "test_money": true,
+    "airwallex": "Airwallex sandbox (api.sandbox.airwallex.com): test money; card charges are the sandbox's simulation endpoint (no merchant charged anything); the transfer is settled by the sandbox's simulation (SENT, then PAID)",
+    "alta": "Alta (formerly Metal) testnet, chain id 63825: test USD (*USDZ)",
+    "t0": "T:0's shared sandbox entity (\"T:0 Sandbox\", USD), through its customer API: other teams' entries are in it too",
+    "token": "A Purser token per agent, bound to a mandate from the CFO's policy and to the agent's own Airwallex Issuing card (a Visa card, sandbox). Not a Visa network token: no Visa Token Service or Airi credential was made in this run"
+  },
+  "tokens": [
+    {
+      "agent": "sourcing",
+      "token_id": "tok_2ea528d4d1a0b1c6",
+      "token_last4": "a5f4",
+      "card_last4": "6051",
+      "card_status_at_airwallex": "INACTIVE",
+      "mandate": {
+        "v": 1,
+        "agent": "sourcing",
+        "card_id": "29c779e4-907b-43e5-b420-2f5cffc1ac58",
+        "card_last4": "6051",
+        "currency": "EUR",
+        "per_purchase_cents": 3000,
+        "monthly_cents": 10000,
+        "mccs": [
+          "5734"
+        ],
+        "issued_at": "2026-11-20T20:12:09.535Z",
+        "expires_at": "2026-12-20T20:12:09.535Z",
+        "source": "the CFO's policy for the sourcing agent (card.sourcing.per_tx, card.sourcing.monthly) and its card's merchant categories"
+      },
+      "mandate_sha256": "a8123cfef4d1ad84a150568cb923a58cfa0dedf515bb680f3c395bbacacf92ca",
+      "status_at_end": "active"
+    },
+    {
+      "agent": "support",
+      "token_id": "tok_8942ca90401117ac",
+      "token_last4": "09cd",
+      "card_last4": "2361",
+      "card_status_at_airwallex": "INACTIVE",
+      "mandate": {
+        "v": 1,
+        "agent": "support",
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_last4": "2361",
+        "currency": "EUR",
+        "per_purchase_cents": 6000,
+        "monthly_cents": 15000,
+        "mccs": [
+          "7372"
+        ],
+        "issued_at": "2026-11-20T20:12:09.862Z",
+        "expires_at": "2026-12-20T20:12:09.862Z",
+        "source": "the CFO's policy for the support agent (card.support.per_tx, card.support.monthly) and its card's merchant categories"
+      },
+      "mandate_sha256": "3260fef1886fd53d9cc9c09c870b0e370120c3c47a929648c5dd399c2505ce21",
+      "status_at_end": "revoked"
+    }
+  ],
+  "payments": [
+    {
+      "key": "a",
+      "what": "the sourcing agent's token pays Packwise EUR 1.00 (warehouse software, MCC 5734)",
+      "token_id": "tok_2ea528d4d1a0b1c6",
+      "airwallex_status": "PENDING",
+      "card_last4": "6051",
+      "terms_what": "the token's mandate (SHA-256)",
+      "rail": "airwallex_card",
+      "rail_ref": "4e159958-ce89-4679-9932-cb4fc7d81317",
+      "amount": "1.00",
+      "currency": "EUR",
+      "agent": "sourcing",
+      "terms_sha256": "a8123cfef4d1ad84a150568cb923a58cfa0dedf515bb680f3c395bbacacf92ca",
+      "counterparty": "Packwise",
+      "description": "Packwise: warehouse software, paid with the sourcing agent's token tok_2ea528d4d1a0b1c6",
+      "gl_account": "6100",
+      "cost_centre": "CC100",
+      "settled_at": "2026-11-20T20:12:15.806Z",
+      "t0": {
+        "status": "booked",
+        "t0_id": "je_prod_rjZtbnBZeIeNu2R7",
+        "je_number": "PURPAY-74866f6c523bbefcedfad99b",
+        "booked_at": "2026-11-20T20:12:17.132Z",
+        "ms_after_settled": 1326,
+        "t0_account": "63410",
+        "functional": {
+          "currency": "USD",
+          "amount": "1.09",
+          "rate": 1.085655
+        }
+      }
+    },
+    {
+      "key": "b",
+      "what": "the support agent's token pays Replyhub EUR 1.25 (helpdesk software, MCC 7372)",
+      "token_id": "tok_8942ca90401117ac",
+      "airwallex_status": "PENDING",
+      "card_last4": "2361",
+      "terms_what": "the token's mandate (SHA-256)",
+      "rail": "airwallex_card",
+      "rail_ref": "bb9e8654-36a0-408d-bd2c-a7d80dc870ab",
+      "amount": "1.25",
+      "currency": "EUR",
+      "agent": "support",
+      "terms_sha256": "3260fef1886fd53d9cc9c09c870b0e370120c3c47a929648c5dd399c2505ce21",
+      "counterparty": "Replyhub",
+      "description": "Replyhub: helpdesk software, paid with the support agent's token tok_8942ca90401117ac",
+      "gl_account": "6100",
+      "cost_centre": "CC200",
+      "settled_at": "2026-11-20T20:12:23.209Z",
+      "t0": {
+        "status": "booked",
+        "t0_id": "je_prod_WnY9zvYGzQqzzQ4G",
+        "je_number": "PURPAY-5be0c382ec9206da444fad9c",
+        "booked_at": "2026-11-20T20:12:24.098Z",
+        "ms_after_settled": 889,
+        "t0_account": "63410",
+        "functional": {
+          "currency": "USD",
+          "amount": "1.36",
+          "rate": 1.085655
+        }
+      }
+    },
+    {
+      "key": "c",
+      "what": "the Payer agent pays Stockline Data GmbH EUR 1.00 by Airwallex transfer, within the CFO's limit to pay alone",
+      "request_id": "0cd7e050-6a73-438d-3b02-4f39a28a897b",
+      "terms": {
+        "kind": "invoice_payment",
+        "payee": "Stockline Data GmbH",
+        "beneficiary_id": "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb",
+        "invoice": "SLL-T0-1121",
+        "amount": "1.00",
+        "currency": "EUR",
+        "rail": "airwallex_transfer",
+        "authority": "the Payer agent within the CFO's limit to pay alone (EUR 500.00, src/config/policy.ts TRY_ALONE_LIMIT)",
+        "run": "2026-11-20-partner-rails started 2026-11-20T20:12:05.373Z"
+      },
+      "terms_what": "the payment's terms (SHA-256 of their canonical JSON), also in the transfer's metadata.approval_sha256",
+      "rail": "airwallex_transfer",
+      "rail_ref": "0ac5b1df-b5b7-4e96-a071-5d656b231735",
+      "amount": "1.00",
+      "currency": "EUR",
+      "agent": "payer",
+      "terms_sha256": "0cd7e0506a73438d3b024f39a28a897bbe19d87d5b71835909bd6d0485cb5466",
+      "counterparty": "Stockline Data GmbH",
+      "description": "Stockline Data GmbH invoice SLL-T0-1121, paid by the Payer agent within the CFO's limit to pay alone",
+      "gl_account": "5000",
+      "cost_centre": "CC300",
+      "settled_at": "2026-11-20T20:12:26.871Z",
+      "t0": {
+        "status": "booked",
+        "t0_id": "je_prod_LOW977v7AqUH9SbB",
+        "je_number": "PURPAY-1c67b211698d7626f1c12ea0",
+        "booked_at": "2026-11-20T20:12:27.861Z",
+        "ms_after_settled": 990,
+        "t0_account": "51200",
+        "functional": {
+          "currency": "USD",
+          "amount": "1.09",
+          "rate": 1.085655
+        }
+      }
+    },
+    {
+      "key": "d",
+      "what": "the sourcing agent pays Stockline 0.05 test USD on Alta testnet under its own mandate",
+      "mandate_reference": "0x6c372cb4ae4bae8e8951db9fa3408c237da85f6682a235dea6ff8a763a27aac2",
+      "account": "0xEeb5dECaEc54D37154236F215abe99470E8A6dF7",
+      "payee": "0xC389bC4619f7C63AC82806E54310E6DD0956A288",
+      "block": 37329302,
+      "explorer": "https://testnet.metalntwx.com/tx/0x66cd1f4249d4055343e168535db969d3eedcee1a8ab734a00ec2b5d006473966",
+      "terms_what": "SHA-256 of the signed mandate credential (its terms); Alta's own mandate reference beside it",
+      "rail": "metal",
+      "rail_ref": "0x66cd1f4249d4055343e168535db969d3eedcee1a8ab734a00ec2b5d006473966",
+      "amount": "0.05",
+      "currency": "USDZ",
+      "agent": "sourcing",
+      "terms_sha256": "bbb9b43e10ee9544160b217c196eecc11d44d0834eab8c40cf4157be42d79a92",
+      "counterparty": "Stockline (test payee)",
+      "description": "Stock check from Stockline, paid by the sourcing agent under its Alta mandate 0x6c372cb4ae4bae8e8951db9fa3408c237da85f6682a235dea6ff8a763a27aac2",
+      "gl_account": "5000",
+      "cost_centre": "CC100",
+      "settled_at": "2026-11-20T20:12:46.503Z",
+      "t0": {
+        "status": "found in T:0",
+        "t0_id": "je_prod_1UL89I7V9TyCb1IT",
+        "je_number": "PURPAY-b72a855d598a1dce230a1d61",
+        "booked_at": "2026-11-20T20:12:47.399Z",
+        "ms_after_settled": 896,
+        "t0_account": "51200",
+        "functional": {
+          "currency": "USD",
+          "amount": "0.05",
+          "rate": 1
+        }
+      }
+    }
+  ],
+  "refusals": [
+    {
+      "key": "e",
+      "what": "the support agent's token, EUR 60.01: over its EUR 60.00 a purchase",
+      "by": "purser",
+      "expected": "OVER_PER_PURCHASE",
+      "code": "OVER_PER_PURCHASE",
+      "detail": "EUR 60.01: at most EUR 60.00 a purchase",
+      "airwallex_calls": 0,
+      "ok": true
+    },
+    {
+      "key": "f",
+      "what": "the support agent's token at a warehouse-software merchant (MCC 5734): not its category",
+      "by": "purser",
+      "expected": "MCC_NOT_ALLOWED",
+      "code": "MCC_NOT_ALLOWED",
+      "detail": "merchant category 5734: the mandate allows 7372",
+      "airwallex_calls": 0,
+      "ok": true
+    },
+    {
+      "key": "g",
+      "what": "the support agent's token after the agent was revoked, EUR 1.25 within the old mandate",
+      "by": "purser",
+      "expected": "TOKEN_REVOKED",
+      "code": "TOKEN_REVOKED",
+      "detail": "revoked at 2026-11-20T20:12:47.662Z: the agent was revoked: partner-rails run: the agent's machine reported lost",
+      "airwallex_calls": 0,
+      "ok": true
+    },
+    {
+      "key": "h",
+      "what": "the support agent's card number charged directly, without the token (EUR 1.25): the card is frozen at Airwallex",
+      "by": "airwallex",
+      "expected": "CARD_INACTIVE",
+      "code": "CARD_INACTIVE",
+      "detail": "Airwallex FAILED CARD_INACTIVE (3895f72a-cdfe-4ad9-921a-2b833f6a7ada)",
+      "airwallex_calls": 1,
+      "ok": true
+    }
+  ],
+  "revoke": {
+    "agent": "support",
+    "at": "2026-11-20T20:12:47.662Z",
+    "how": "revokePrincipal (src/policy/principals.ts): the agent's identity revoked, and its tokens with it in the same call",
+    "token_id": "tok_8942ca90401117ac",
+    "token_status": "revoked",
+    "revoked_at": "2026-11-20T20:12:47.662Z",
+    "card_status_at_airwallex": "INACTIVE"
+  },
+  "reconcile": {
+    "at": "2026-11-20T20:12:57.089Z",
+    "ok": true,
+    "rows": [
+      {
+        "payment_id": "partner-rails-a-4e159958-ce89-4679-9932-cb4fc7d81317",
+        "rail": "airwallex_card",
+        "rail_ref": "4e159958-ce89-4679-9932-cb4fc7d81317",
+        "je_number": "PURPAY-74866f6c523bbefcedfad99b",
+        "t0_id": "je_prod_rjZtbnBZeIeNu2R7",
+        "ok": true,
+        "checks": [
+          {
+            "name": "t0_entry_read_back",
+            "ok": true,
+            "detail": "T:0 je_prod_rjZtbnBZeIeNu2R7 PURPAY-74866f6c523bbefcedfad99b"
+          },
+          {
+            "name": "t0_balanced",
+            "ok": true,
+            "detail": "debit 109, credit 109 atoms"
+          },
+          {
+            "name": "t0_amount_is_payment",
+            "ok": true,
+            "detail": "T:0 EUR 1.00, payment EUR 1.00"
+          },
+          {
+            "name": "t0_memo_names_payment",
+            "ok": true,
+            "detail": "the memo carries the payment id, its agent and its terms hash"
+          },
+          {
+            "name": "rail_read_back",
+            "ok": true,
+            "detail": "Visa card on Airwallex Issuing (sandbox) 4e159958-ce89-4679-9932-cb4fc7d81317: PENDING"
+          },
+          {
+            "name": "rail_settled",
+            "ok": true,
+            "detail": "status PENDING"
+          },
+          {
+            "name": "rail_amount_is_t0",
+            "ok": true,
+            "detail": "rail EUR 1.00, T:0 EUR 1.00"
+          }
+        ],
+        "t0": {
+          "found": true,
+          "status": "editable",
+          "amount": "1.00",
+          "currency": "EUR"
+        },
+        "rail_read": {
+          "status": "PENDING",
+          "settled": true,
+          "amount": "1.00",
+          "currency": "EUR",
+          "ref": "4e159958-ce89-4679-9932-cb4fc7d81317",
+          "at": "2026-11-20T20:12:11.208Z"
+        }
+      },
+      {
+        "payment_id": "partner-rails-b-bb9e8654-36a0-408d-bd2c-a7d80dc870ab",
+        "rail": "airwallex_card",
+        "rail_ref": "bb9e8654-36a0-408d-bd2c-a7d80dc870ab",
+        "je_number": "PURPAY-5be0c382ec9206da444fad9c",
+        "t0_id": "je_prod_WnY9zvYGzQqzzQ4G",
+        "ok": true,
+        "checks": [
+          {
+            "name": "t0_entry_read_back",
+            "ok": true,
+            "detail": "T:0 je_prod_WnY9zvYGzQqzzQ4G PURPAY-5be0c382ec9206da444fad9c"
+          },
+          {
+            "name": "t0_balanced",
+            "ok": true,
+            "detail": "debit 136, credit 136 atoms"
+          },
+          {
+            "name": "t0_amount_is_payment",
+            "ok": true,
+            "detail": "T:0 EUR 1.25, payment EUR 1.25"
+          },
+          {
+            "name": "t0_memo_names_payment",
+            "ok": true,
+            "detail": "the memo carries the payment id, its agent and its terms hash"
+          },
+          {
+            "name": "rail_read_back",
+            "ok": true,
+            "detail": "Visa card on Airwallex Issuing (sandbox) bb9e8654-36a0-408d-bd2c-a7d80dc870ab: PENDING"
+          },
+          {
+            "name": "rail_settled",
+            "ok": true,
+            "detail": "status PENDING"
+          },
+          {
+            "name": "rail_amount_is_t0",
+            "ok": true,
+            "detail": "rail EUR 1.25, T:0 EUR 1.25"
+          }
+        ],
+        "t0": {
+          "found": true,
+          "status": "editable",
+          "amount": "1.25",
+          "currency": "EUR"
+        },
+        "rail_read": {
+          "status": "PENDING",
+          "settled": true,
+          "amount": "1.25",
+          "currency": "EUR",
+          "ref": "bb9e8654-36a0-408d-bd2c-a7d80dc870ab",
+          "at": "2026-11-20T20:12:18.918Z"
+        }
+      },
+      {
+        "payment_id": "partner-rails-c-0ac5b1df-b5b7-4e96-a071-5d656b231735",
+        "rail": "airwallex_transfer",
+        "rail_ref": "0ac5b1df-b5b7-4e96-a071-5d656b231735",
+        "je_number": "PURPAY-1c67b211698d7626f1c12ea0",
+        "t0_id": "je_prod_LOW977v7AqUH9SbB",
+        "ok": true,
+        "checks": [
+          {
+            "name": "t0_entry_read_back",
+            "ok": true,
+            "detail": "T:0 je_prod_LOW977v7AqUH9SbB PURPAY-1c67b211698d7626f1c12ea0"
+          },
+          {
+            "name": "t0_balanced",
+            "ok": true,
+            "detail": "debit 109, credit 109 atoms"
+          },
+          {
+            "name": "t0_amount_is_payment",
+            "ok": true,
+            "detail": "T:0 EUR 1.00, payment EUR 1.00"
+          },
+          {
+            "name": "t0_memo_names_payment",
+            "ok": true,
+            "detail": "the memo carries the payment id, its agent and its terms hash"
+          },
+          {
+            "name": "rail_read_back",
+            "ok": true,
+            "detail": "Airwallex transfer (sandbox) 0ac5b1df-b5b7-4e96-a071-5d656b231735: PAID"
+          },
+          {
+            "name": "rail_settled",
+            "ok": true,
+            "detail": "status PAID"
+          },
+          {
+            "name": "rail_amount_is_t0",
+            "ok": true,
+            "detail": "rail EUR 1.00, T:0 EUR 1.00"
+          }
+        ],
+        "t0": {
+          "found": true,
+          "status": "editable",
+          "amount": "1.00",
+          "currency": "EUR"
+        },
+        "rail_read": {
+          "status": "PAID",
+          "settled": true,
+          "amount": "1.00",
+          "currency": "EUR",
+          "ref": "0ac5b1df-b5b7-4e96-a071-5d656b231735"
+        }
+      },
+      {
+        "payment_id": "partner-rails-d-0x66cd1f4249d40553",
+        "rail": "metal",
+        "rail_ref": "0x66cd1f4249d4055343e168535db969d3eedcee1a8ab734a00ec2b5d006473966",
+        "je_number": "PURPAY-b72a855d598a1dce230a1d61",
+        "t0_id": "je_prod_1UL89I7V9TyCb1IT",
+        "ok": true,
+        "checks": [
+          {
+            "name": "t0_entry_read_back",
+            "ok": true,
+            "detail": "T:0 je_prod_1UL89I7V9TyCb1IT PURPAY-b72a855d598a1dce230a1d61"
+          },
+          {
+            "name": "t0_balanced",
+            "ok": true,
+            "detail": "debit 5, credit 5 atoms"
+          },
+          {
+            "name": "t0_amount_is_payment",
+            "ok": true,
+            "detail": "T:0 USD 0.05, payment USDZ 0.05"
+          },
+          {
+            "name": "t0_memo_names_payment",
+            "ok": true,
+            "detail": "the memo carries the payment id, its agent and its terms hash"
+          },
+          {
+            "name": "rail_read_back",
+            "ok": true,
+            "detail": "Alta transfer (testnet) 0x66cd1f4249d4055343e168535db969d3eedcee1a8ab734a00ec2b5d006473966: success, block 37329302"
+          },
+          {
+            "name": "rail_settled",
+            "ok": true,
+            "detail": "status success, block 37329302"
+          },
+          {
+            "name": "rail_amount_is_t0",
+            "ok": true,
+            "detail": "rail USDZ 0.05, T:0 USD 0.05"
+          }
+        ],
+        "t0": {
+          "found": true,
+          "status": "editable",
+          "amount": "0.05",
+          "currency": "USD"
+        },
+        "rail_read": {
+          "status": "success, block 37329302",
+          "settled": true,
+          "amount": "0.05",
+          "currency": "USDZ",
+          "ref": "0x66cd1f4249d4055343e168535db969d3eedcee1a8ab734a00ec2b5d006473966"
+        }
+      }
+    ]
+  },
+  "calls": {
+    "airwallex": 23,
+    "t0": 15,
+    "alta_txs": 2
+  },
+  "checks": [
+    {
+      "key": "a_card_refrozen",
+      "ok": true,
+      "detail": "the sourcing agent's card after the purchase: INACTIVE"
+    },
+    {
+      "key": "b_card_refrozen",
+      "ok": true,
+      "detail": "the support agent's card after the purchase: INACTIVE"
+    },
+    {
+      "key": "d_payee_received",
+      "ok": false,
+      "detail": "the test payee's balance moved by 0.00"
+    },
+    {
+      "key": "c_metadata_terms_hash",
+      "ok": true,
+      "detail": "the transfer's metadata.approval_sha256 at Airwallex is the terms hash T:0 holds"
+    },
+    {
+      "key": "every_payment_booked_in_t0",
+      "ok": true,
+      "detail": "4 of 4 payments booked in T:0"
+    },
+    {
+      "key": "refused_outside_mandate_0_calls",
+      "ok": true,
+      "detail": "over the limit, another category, and after the revoke: refused by Purser with 0 Airwallex calls"
+    },
+    {
+      "key": "leaked_card_declined",
+      "ok": true,
+      "detail": "the card number without the token: CARD_INACTIVE"
+    },
+    {
+      "key": "revoke_revoked_token",
+      "ok": true,
+      "detail": "the support agent's token is revoked after the agent was revoked"
+    },
+    {
+      "key": "reconcile_ok",
+      "ok": true,
+      "detail": "T:0 against the rails: 4 of 4 agree"
+    }
+  ],
+  "notes": [
+    "Three earlier passes the same evening, each with its own record beside this one (2026-11-20-partner-rails-pass1/2/3.json). Pass 1 (20:09 UTC) made the same four payments, booked each in T:0 (je_prod_7fKlf0yRwDEyD5Pa, je_prod_hHZTsSOo4zZa31Y0, je_prod_ooFq5BjpOst2hAOj, je_prod_1UL89I7V9TyCb1IT), refused the same misuses and reconciled, but timed each booking from before the T:0 call, not after T:0's answer. Pass 2 booked its two card payments (je_prod_1UvG58AZh2tl28ob, je_prod_pY5WM9wYSztUs4YR) and stopped when Airwallex refused the transfer as a duplicate request_id (the same terms as pass 1: nothing paid twice). Pass 3 booked its two card payments (je_prod_5mdfU6jvatSJ4pc8, je_prod_cNtHvaCfpabiiis3) and stopped when the sandbox did not answer the simulation's move of transfer 7cbc1f80-193",
+    "EUR to USD for T:0's functional currency: 1.085655 (the Airwallex sandbox's client rate, GET /fx/rates/current, 2026-11-20T20:12:07+0000); each entry keeps the EUR amount beside it.",
+    "Test money for this world's owner: 0.60 *USDZ from the 20 Nov refusals world's owner (https://testnet.metalntwx.com/tx/0x487ec5bb9a1a9a1981bde206b77562991481aec112ab86cd2c2c772d2df94dc6)."
+  ]
+}

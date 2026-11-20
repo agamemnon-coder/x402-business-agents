@@ -70,6 +70,10 @@ export class FakeT0 {
     if (method === "GET" && url.pathname === "/v1/gl-accounts") return this.glAccounts(q);
     if (method === "POST" && url.pathname === "/v1/journal-entries") return this.post(headers, body);
     if (method === "GET" && url.pathname === "/v1/journal-entries") return this.list(q);
+    if (method === "GET" && url.pathname.startsWith("/v1/journal-entries/")) {
+      const e = this.entries.find((x) => x.id === decodeURIComponent(url.pathname.slice("/v1/journal-entries/".length)));
+      return e ? json(200, this.view(e)) : this.error(404, "CAPI13", "Not found");
+    }
     if (method === "GET" && url.pathname === "/v1/reports/profit-loss") return this.report(q, "pl");
     if (method === "GET" && url.pathname === "/v1/reports/balance-sheet") return this.report(q, "bs");
     return this.error(404, "CAPI13", "Not found");
