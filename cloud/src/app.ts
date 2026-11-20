@@ -13,6 +13,7 @@ import { registerCsv } from "../../src/money/registerShape.js";
 import { SCHEMA } from "./schema.js";
 import type { Blobs, Sql } from "./store.js";
 import { applySync, SyncBatch, SyncRefused, syncState } from "./sync.js";
+import { QuotaExceeded, reserveStorage, type StorageQuota } from "./storageQuota.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
@@ -96,6 +97,8 @@ export interface CloudEnv {
   waitUntil?: (p: Promise<unknown>) => void;
   /** Requests per minute per key or session; per address on the sign-in routes; failed authentications per address. */
   rate?: { perMinute: number; signInPerMinute: number; failedAuthPerMinute?: number };
+  /** Files uploaded through the API per company (./storageQuota.ts; default 2 GiB and 20,000 files). */
+  storageQuota?: StorageQuota;
   /** A staged export's rows per part (default 2000) and its size limit in bytes (default 512 MB). */
   exportPartRows?: number;
   exportMaxBytes?: number;
@@ -576,7 +579,9 @@ export const ROUTES: Route[] = [
     // and books.closed (cloud/src/connections.ts), once, for a change this push made.
     const before = await statusesBefore(db(c), b);
     const head = (await syncState(db(c))).ledger.entry_id;
-    const applied = await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal });
+    // The new files count toward the company's storage quota (./storageQuota.ts; ASVS V12.1.3).
+    const applied = await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal },
+      (bytes, files) => reserveStorage(c.env.sql, c.caller!.tenantId, bytes, files, c.now, c.env.storageQuota));
     // approval.needed also tells the people the company chose (Settings, Alerts) that a payment waits for the CFO's Face
     // ID; its webhook delivery is one of those channels (cloud/src/alerts.ts). An alert never approves anything.
     // The alerts go out after the answer where the Worker allows it: each delivery's row makes it idempotent either way.
@@ -913,6 +918,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
     }
     if (e instanceof BadRequest) return err(400, e.message);
     if (e instanceof UnsupportedMediaType) return err(415, e.message);
+    if (e instanceof QuotaExceeded) return err(413, e.message);
     if (e instanceof PrivacyRefused) return err(409, e.message);
     if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);

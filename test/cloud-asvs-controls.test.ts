@@ -1,11 +1,15 @@
 // ASVS 4.0.3 Level 2 controls added on branch asvs2 (docs/security/asvs-l2.md):
 // - V2.3.3: a key's renewal instructions before it expires: on every call it makes in its last 14 days (a header), and
 //   to the company's owners 14 and 3 days before (a security event and the alert webhook), once each (cloud/src/keyExpiry.ts).
+// - V12.1.3: a storage quota per company for uploaded files (cloud/src/storageQuota.ts).
 // - V8.3.5: each read of personal or financial data is a data.access event in the security log: who, which route, from
 //   which network; never the data (cloud/src/securityAudit.ts SENSITIVE_READS).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 import { KEY_RENEWAL_HEADER, warnExpiringKeys } from "../cloud/src/keyExpiry.js";
+import { STORAGE_QUOTA_SCHEMA } from "../cloud/src/storageQuota.js";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 let c: TestCloud;
 let t: TestTenant;
@@ -89,4 +93,53 @@ describe("the audited reads name real routes", () => {
     expect(audited.length).toBeGreaterThan(20);
     expect(audited.filter((r) => !served.has(r))).toEqual([]);
   });
+});
+
+describe("a storage quota per company for uploaded files (V12.1.3)", () => {
+  const doc = (n: number, size = 1000) => {
+    const bytes = Buffer.alloc(size, n);
+    return { sha256: createHash("sha256").update(bytes).digest("hex"), filename: `doc-${n}.pdf`, mime: "application/pdf", base64: bytes.toString("base64") };
+  };
+  const push = (documents: ReturnType<typeof doc>[], key = t.key) => c.req("POST", "/v1/sync", { key, body: { documents } });
+
+  it("the runner's pushed documents count toward it; past it the push is refused with 413 and stores nothing", async () => {
+    c.env.storageQuota = { bytes: 10_000, files: 3 };
+    expect((await push([doc(1), doc(2)])).status).toBe(200);
+    expect((await push([doc(1), doc(2)])).status).toBe(200); // the same files again take no more room
+    const full = await push([doc(3), doc(4)]);
+    expect(full.status).toBe(413);
+    expect(full.json.error).toMatch(/storage is full/);
+    expect(await c.env.sql.all("SELECT sha256 FROM documents WHERE tenant_id = ?", [t.id])).toHaveLength(2);
+    expect((await push([doc(3)])).status).toBe(200); // the third fits
+    expect((await push([doc(5, 100)])).status).toBe(413); // a fourth file does not, however small
+  });
+
+  it("counts bytes as well as files, per company", async () => {
+    c.env.storageQuota = { bytes: 2500, files: 100 };
+    expect((await push([doc(1), doc(2)])).status).toBe(200);
+    expect((await push([doc(3)])).status).toBe(413);
+    const other = await c.tenant("other");
+    expect((await push([doc(3)], other.key)).status).toBe(200);
+  });
+
+  it("the table the module makes is the D1 migration's", () => {
+    const sql = readFileSync("cloud/migrations/0008_storage_quota.sql", "utf8").split("\n").filter((l) => l.startsWith("CREATE")).map((l) => l.replace(/;$/, ""));
+    expect(sql).toEqual([STORAGE_QUOTA_SCHEMA]);
+  });
+});
+
+describe("the engine's uploads count toward the same quota (V12.1.3)", () => {
+  it("a file over the quota is refused before the engine sees it; one the engine refuses gives its room back", async () => {
+    const e = testCloud({ engine: true });
+    try {
+      const a = await e.tenant("alpha");
+      e.env.storageQuota = { bytes: 100, files: 5 };
+      const big = await e.req("POST", "/v1/engine/documents", { key: a.key, body: { filename: "big.pdf", mime: "application/pdf", base64: Buffer.alloc(1000, 0x25).toString("base64") } });
+      expect(big.status).toBe(413);
+      e.env.storageQuota = { bytes: 10_000, files: 5 };
+      const words = await e.req("POST", "/v1/engine/documents", { key: a.key, body: { filename: "notes.txt", base64: Buffer.from("just some words").toString("base64") } });
+      expect(words.status).toBe(400);
+      expect(await e.env.sql.first("SELECT bytes, files FROM storage_use WHERE tenant_id = ?", [a.id])).toEqual({ bytes: 0, files: 0 });
+    } finally { e.close(); }
+  }, 60_000);
 });
