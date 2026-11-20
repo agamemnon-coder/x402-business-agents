@@ -117,6 +117,17 @@
           "rec": "docs/runs/2026-11-19-alta-series.json docs/runs/2026-11-19-alta-series-finish.json"
         },
         {
+          "offProof": true,
+          "key": "alta-refusals",
+          "fig": "All 4",
+          "label": "mandate refusals on chain: over the count, revoked, not started, expired",
+          "note": "OverOccurrences, Revoked, OutsideRecurrence, Expired: each a transaction of its own, 0.00 moved; 20 Nov. A payment signed by another key was stopped by the CLI before sending, not by the chain.",
+          "tag": "testnet",
+          "tone": "metal",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-alta-refusals.md",
+          "rec": "docs/runs/2026-11-20-alta-refusals.json"
+        },
+        {
           "key": "alta-merkle",
           "fig": "All 33",
           "label": "signed Airwallex payments in one Alta transaction, each with a proof",
@@ -233,6 +244,17 @@
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
           "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md"
+        },
+        {
+          "offProof": true,
+          "key": "awx-replay",
+          "fig": "All 9",
+          "label": "repeated creates under one request_id refused by Airwallex",
+          "note": "Transfers, a conversion and a batch: all 5 left with one object under their request_id; 20 Nov. Two of the answer codes were new to Purser's rail; fixed the same day.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-replay.md",
+          "rec": "docs/runs/2026-11-20-airwallex-replay.json"
         },
         {
           "key": "card-cent",

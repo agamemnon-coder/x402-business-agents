@@ -239,7 +239,7 @@ export const FEATURES_HEAD = "Agents do the work. The CFO keeps the say.";
 /** What Claude adds, from the worst-case run (docs/worst-case-ai.md, "What code alone sends to the CFO"). */
 // Jury, 17 Nov: one plain before/after, from the same record (docs/evals/scorecard-2026-11-15.json: the seven cases the
 // script arm sent to the CFO, each held by the Purser arm with Claude reading, in both runs).
-export const CLAUDE_ADDS = "Offline eval: code alone sent seven invoices to the CFO that had to be held; with Claude, Purser held all seven.";
+export const CLAUDE_ADDS = "Offline eval: code alone sent seven invoices to the CFO it should have held; with Claude, Purser held all seven.";
 /** Four features, one line each; each says only what the runs and the code show (see /proof). */
 export const FEATURES = [
   // Jury panel, 15 Nov: the hero already says a changed cent breaks the signature; this card keeps the terms.

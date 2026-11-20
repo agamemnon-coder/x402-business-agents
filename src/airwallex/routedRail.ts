@@ -55,15 +55,23 @@ export const ACT_CURRENCIES: ReadonlySet<string> = new Set(["EUR", "USD", "GBP"]
 /** The simulated bank's own ids (ben_1, tr_2, q_3 …); anything else was made at Airwallex. */
 const SIM_ID = /^[a-z]+_\d+$/;
 
-/** Airwallex's answer that this request_id already made something: money may have moved, so it is not a refusal. */
-const DUPLICATE_CODES: ReadonlySet<string> = new Set(["duplicate_request_id", "request_id_duplicate", "duplicate_request"]);
+/**
+ * Airwallex's answer that this request_id already made something: money may have moved, so it is not a refusal. Seen
+ * live on 20 Nov (docs/runs/2026-11-20-airwallex-replay.md): transfers/create answers duplicate_request_id and
+ * batch_transfers/create batch_request_id_duplicate; the other two are kept from before.
+ */
+const DUPLICATE_CODES: ReadonlySet<string> = new Set(["duplicate_request_id", "request_id_duplicate", "duplicate_request", "batch_request_id_duplicate"]);
 
 /**
  * An Airwallex refusal that moved nothing (4xx), as opposed to a lost answer. A duplicate request_id is not one: the
- * first send went through (security sweep, 15 Nov), so its amount stays spoken for under the caps.
+ * first send went through (security sweep, 15 Nov), so its amount stays spoken for under the caps. Nor is a conversion
+ * create answered invalid_argument: on 20 Nov the sandbox answered a repeated conversion under one request_id with
+ * exactly that, not a duplicate code (docs/runs/2026-11-20-airwallex-replay.md), so it cannot be told from a first send
+ * that went through.
  */
 export const refusedOutright = (e: unknown): boolean =>
-  e instanceof AirwallexError && e.status >= 400 && e.status < 500 && !(e.code && DUPLICATE_CODES.has(e.code));
+  e instanceof AirwallexError && e.status >= 400 && e.status < 500 && !(e.code && DUPLICATE_CODES.has(e.code))
+  && !(e.code === "invalid_argument" && e.path.endsWith("/fx/conversions/create"));
 
 /** Words for an Airwallex-side failure: its code or reason, never Airwallex's own message (it can name a payee). */
 export function failureWords(e: unknown): string {

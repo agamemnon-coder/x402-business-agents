@@ -93,6 +93,14 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
     if (refused.length) out.push({ key: "alta-series-refused", fig: whole(refused.length, tried.length), label: "over-mandate attempts refused on chain", note: `${refused.map((x) => x.reason).join(", ")}: each a transaction of its own, 0.00 moved; ${ran ? day(ran) : ""}.${misplanned.length ? ` One more step planned as over the budget was within it (the plan's error, said in the run log) and was paid.` : ""}`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-series.md"), rec: AS.join(" ") });
     if (paid.length) out.push({ key: "alta-series-paid", fig: String(paid.length), label: "payments inside an agent's mandate on Alta", note: `${total} test USD in all, each its own transaction; ${ran ? day(ran) : ""}.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-series.md"), rec: AS.join(" ") });
   }
+  // 20 Nov: the refusals the 19 Nov series did not send (src/cli/altaRefusals.ts). Off /proof (its words are at their
+  // budget); in the wall file, the Alta page's strip and llms.txt.
+  const AR = "docs/runs/2026-11-20-alta-refusals.json";
+  const ar = json(AR) as { ran_at?: string; summary?: { refusals_sent: number; refused_on_chain: number; refused_before_sending: number; reasons: string[]; unexpected: number } } | null;
+  if (ar?.summary?.refusals_sent && !ar.summary.unexpected) {
+    const m = ar.summary;
+    out.push({ offProof: true, key: "alta-refusals", fig: whole(m.refused_on_chain, m.refusals_sent), label: "mandate refusals on chain: over the count, revoked, not started, expired", note: `${m.reasons.join(", ")}: each a transaction of its own, 0.00 moved${ar.ran_at ? `; ${day(ar.ran_at)}` : ""}.${m.refused_before_sending ? " A payment signed by another key was stopped by the CLI before sending, not by the chain." : ""}`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-20-alta-refusals.md"), rec: AR });
+  }
   // 19 Nov: the day's signed Airwallex payments as one Merkle tree, its root in one Alta transaction (src/anchor/merkle.ts).
   const AM = "docs/runs/2026-11-19-alta-merkle.json";
   const am = json(AM) as { leaves?: number; root?: string; anchored_at?: string; read_back?: { matches: boolean }; payments?: { approval_sha256: string; proof: ProofStep[]; airwallex_sha256_matches: boolean }[] } | null;
@@ -137,6 +145,13 @@ function forged(w: ReturnType<typeof walks>): WallTile[] {
   if (skn.negatives.planned) {
     const n = skn.negatives, reads = Object.entries(n.reads).map(([e, c]) => `${c} ${e}`).join(", ");
     out.push({ key: "soak-negatives", fig: whole(n.refused, n.planned), label: "one-cent changes refused before any create", note: `${n.posts} money-moving calls (${n.creates} creates); ${n.calls} ${n.calls === 1 ? "read" : "reads"} in the refusal windows${reads ? ` (${reads})` : ""}. Soaks, ${joinDays(sknAll.map((x) => day(x.rec.started_at)))}.`, tag: "sandbox", tone: "ok", href: blob(sknAll.at(-1)!.log), rec: skn.files.join(" ") });
+  }
+  // 20 Nov: the same create sent again under one request_id (src/proof/awxReplay.ts). Off /proof, as above.
+  const RP = "docs/runs/2026-11-20-airwallex-replay.json";
+  const rp = json(RP) as { ran_at?: string; errors?: string[]; summary?: { cases: number; one_object: number; repeats_sent: number; repeats_refused: number } } | null;
+  if (rp?.summary?.repeats_sent && !rp.errors?.length) {
+    const m = rp.summary;
+    out.push({ offProof: true, key: "awx-replay", fig: whole(m.repeats_refused, m.repeats_sent), label: "repeated creates under one request_id refused by Airwallex", note: `Transfers, a conversion and a batch: ${whole(m.one_object, m.cases).toLowerCase()} left with one object under their request_id${rp.ran_at ? `; ${day(rp.ran_at)}` : ""}. Two of the answer codes were new to Purser's rail; fixed the same day.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-20-airwallex-replay.md"), rec: RP });
   }
   const cent = centRecord();
   if (cent && centHolds(cent.rec)) {

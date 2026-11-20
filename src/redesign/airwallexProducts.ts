@@ -428,7 +428,7 @@ export function payeeCheckTile(r: { checks: { match: string; proceed: number; ch
   const ok = r.checks.filter((c) => c.proceed).length, refused = r.checks.length - ok;
   return {
     key: "payee-check", name: "Payee check", value: `${refused} of ${r.checks.length}`,
-    what: "checks stopped before the CFO is asked.", why: "The payee's bank checks the name.",
+    what: "mismatched names stopped before the CFO is asked.", why: "The payee's bank checks the name.",
     id: PAYEE_CHECK_FILE.replace(/^docs\/runs\/|\.json$/g, ""), idLabel: "Run record", href: `${REPO_BLOB}${PAYEE_CHECK_FILE.replace(/\.json$/, ".md")}`, iso: r.checks[0]!.checked_at, files: [PAYEE_CHECK_FILE, PAYEE_CHECK_FILE.replace(/\.json$/, ".md")],
   };
 }

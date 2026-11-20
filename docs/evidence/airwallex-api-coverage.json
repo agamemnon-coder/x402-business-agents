@@ -153,10 +153,12 @@
         "docs/runs/2026-11-19-airwallex-deep-3.json",
         "docs/runs/2026-11-19-airwallex-deep.json",
         "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-replay.json",
+        "docs/runs/2026-11-20-airwallex-soak.json",
         "docs/runs/airwallex-vic-payment-intents-2026-11-12.json"
       ],
-      "firstTest": "test/agent-cards.test.ts:16",
-      "testFiles": 13
+      "firstTest": "test/agent-cards-refusals.test.ts:14",
+      "testFiles": 15
     },
     {
       "endpoint": "GET /balances/current",
@@ -186,10 +188,11 @@
         "docs/runs/2026-11-13-airwallex-switch-on.json",
         "docs/runs/2026-11-17-airwallex-late-failure.json",
         "docs/runs/2026-11-19-airwallex-bills.json",
-        "docs/runs/2026-11-19-airwallex-soak.json"
+        "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-client.test.ts:29",
-      "testFiles": 8
+      "testFiles": 10
     },
     {
       "endpoint": "GET /balances/history",
@@ -209,8 +212,8 @@
         "docs/runs/2026-11-19-airwallex-deep-3.json",
         "docs/runs/2026-11-19-airwallex-deep.json"
       ],
-      "firstTest": "test/airwallex-deep.test.ts:37",
-      "testFiles": 1
+      "firstTest": "test/airwallex-deep-paths.test.ts:122",
+      "testFiles": 2
     },
     {
       "endpoint": "GET /batch_transfers",
@@ -226,7 +229,8 @@
         "record": "docs/runs/2026-11-19-airwallex-coverage.json"
       },
       "liveRecords": [
-        "docs/runs/2026-11-19-airwallex-coverage.json"
+        "docs/runs/2026-11-19-airwallex-coverage.json",
+        "docs/runs/2026-11-20-airwallex-replay.json"
       ],
       "firstTest": "test/airwallex-coverage-live.test.ts:27",
       "testFiles": 2
@@ -285,7 +289,8 @@
         "record": "docs/runs/2026-11-19-airwallex-coverage.json"
       },
       "liveRecords": [
-        "docs/runs/2026-11-19-airwallex-coverage.json"
+        "docs/runs/2026-11-19-airwallex-coverage.json",
+        "docs/runs/2026-11-20-airwallex-replay.json"
       ],
       "firstTest": "test/airwallex-coverage-live.test.ts:27",
       "testFiles": 1
@@ -370,7 +375,8 @@
         "docs/runs/2026-11-12-airwallex-batch-transfer-2.json",
         "docs/runs/2026-11-12-airwallex-batch-transfer.json",
         "docs/runs/2026-11-13-airwallex-switch-on.json",
-        "docs/runs/2026-11-19-airwallex-coverage.json"
+        "docs/runs/2026-11-19-airwallex-coverage.json",
+        "docs/runs/2026-11-20-airwallex-replay.json"
       ],
       "firstTest": "test/airwallex-coverage-live.test.ts:27",
       "testFiles": 1
@@ -394,7 +400,9 @@
         "docs/demo/airwallex-run.json",
         "docs/runs/2026-11-10-platform-e2e/calls-earlier-attempts.jsonl",
         "docs/runs/2026-11-10-platform-e2e/calls.jsonl",
-        "docs/runs/2026-11-19-airwallex-soak.json"
+        "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-replay.json",
+        "docs/runs/2026-11-20-airwallex-soak.json"
       ],
       "firstTest": null,
       "testFiles": 0
@@ -606,7 +614,9 @@
       },
       "liveRecords": [
         "docs/demo/airwallex-run.json",
-        "docs/runs/2026-11-19-airwallex-soak.json"
+        "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-replay.json",
+        "docs/runs/2026-11-20-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-lookups.test.ts:37",
       "testFiles": 1
@@ -638,7 +648,7 @@
       "status": "LIVE",
       "sites": [
         "src/airwallex/adapter.ts:201",
-        "src/airwallex/apiTrail.ts:242"
+        "src/airwallex/apiTrail.ts:243"
       ],
       "firstLive": {
         "date": "2026-11-07",
@@ -647,7 +657,9 @@
       },
       "liveRecords": [
         "docs/demo/airwallex-run.json",
-        "docs/runs/2026-11-19-airwallex-soak.json"
+        "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-replay.json",
+        "docs/runs/2026-11-20-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-client.test.ts:76",
       "testFiles": 3
@@ -678,7 +690,7 @@
       "status": "LIVE",
       "sites": [
         "src/airwallex/adapter.ts:190",
-        "src/airwallex/apiTrail.ts:241",
+        "src/airwallex/apiTrail.ts:242",
         "worker/src/fxQuote.ts:133"
       ],
       "firstLive": {
@@ -688,7 +700,9 @@
       },
       "liveRecords": [
         "docs/demo/airwallex-run.json",
-        "docs/runs/2026-11-19-airwallex-soak.json"
+        "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-replay.json",
+        "docs/runs/2026-11-20-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-adapter.test.ts:53",
       "testFiles": 4
@@ -711,7 +725,8 @@
         "docs/demo/airwallex-run.json",
         "docs/runs/2026-11-10-platform-e2e/calls-earlier-attempts.jsonl",
         "docs/runs/2026-11-10-platform-e2e/calls.jsonl",
-        "docs/runs/2026-11-19-airwallex-soak.json"
+        "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-adapter.test.ts:33",
       "testFiles": 3
@@ -739,7 +754,7 @@
         "docs/runs/2026-11-19-airwallex-deep.json"
       ],
       "firstTest": "test/airwallex-coverage-live.test.ts:29",
-      "testFiles": 2
+      "testFiles": 3
     },
     {
       "endpoint": "GET /global_accounts/{id}",
@@ -776,8 +791,8 @@
       "liveRecords": [
         "docs/runs/2026-11-19-airwallex-deep.json"
       ],
-      "firstTest": null,
-      "testFiles": 0
+      "firstTest": "test/airwallex-deep-paths.test.ts:122",
+      "testFiles": 1
     },
     {
       "endpoint": "GET /global_accounts/{id}/transactions",
@@ -875,7 +890,7 @@
       "path": "/issuing/cardholders",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/issuing.ts:175",
+        "src/airwallex/issuing.ts:178",
         "worker/src/awxCards.ts:176"
       ],
       "firstLive": {
@@ -895,7 +910,7 @@
       "path": "/issuing/cardholders/create",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/issuing.ts:185",
+        "src/airwallex/issuing.ts:188",
         "worker/src/awxCards.ts:181"
       ],
       "firstLive": {
@@ -907,7 +922,7 @@
         "docs/runs/2026-11-19-airwallex-coverage.json"
       ],
       "firstTest": "test/airwallex-coverage-live.test.ts:29",
-      "testFiles": 2
+      "testFiles": 3
     },
     {
       "endpoint": "GET /issuing/cards",
@@ -915,7 +930,7 @@
       "path": "/issuing/cards",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/issuing.ts:197",
+        "src/airwallex/issuing.ts:200",
         "src/proof/awxDeepLive.ts:263",
         "worker/src/awxCards.ts:133",
         "worker/src/awxCards.ts:142"
@@ -932,7 +947,7 @@
         "docs/runs/airwallex-cards-2026-11-06.json"
       ],
       "firstTest": "test/agent-cards.test.ts:21",
-      "testFiles": 3
+      "testFiles": 4
     },
     {
       "endpoint": "GET /issuing/cards/{id}",
@@ -940,7 +955,7 @@
       "path": "/issuing/cards/{id}",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/issuing.ts:224",
+        "src/airwallex/issuing.ts:227",
         "src/cli/visaTapLive.ts:43",
         "src/proof/awxDeepLive.ts:269",
         "worker/src/awxCards.ts:109",
@@ -984,9 +999,9 @@
       "path": "/issuing/cards/{id}/update",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/issuing.ts:230",
-        "src/airwallex/issuing.ts:240",
-        "src/airwallex/issuing.ts:249",
+        "src/airwallex/issuing.ts:233",
+        "src/airwallex/issuing.ts:243",
+        "src/airwallex/issuing.ts:252",
         "worker/src/awxCards.ts:209",
         "worker/src/awxCards.ts:217",
         "worker/src/awxCards.ts:223"
@@ -1008,8 +1023,8 @@
       "path": "/issuing/cards/create",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/apiTrail.ts:243",
-        "src/airwallex/issuing.ts:207",
+        "src/airwallex/apiTrail.ts:244",
+        "src/airwallex/issuing.ts:210",
         "worker/src/awxCards.ts:193"
       ],
       "firstLive": {
@@ -1021,7 +1036,7 @@
         "docs/demo/airwallex-run.json"
       ],
       "firstTest": "test/agent-cards.test.ts:23",
-      "testFiles": 6
+      "testFiles": 7
     },
     {
       "endpoint": "GET /issuing/transactions",
@@ -1029,7 +1044,7 @@
       "path": "/issuing/transactions",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/issuing.ts:259",
+        "src/airwallex/issuing.ts:262",
         "src/cli/awxReadback.ts:40",
         "src/finance/dataQa.ts:263",
         "src/proof/awxCoverageLive.ts:234",
@@ -1078,7 +1093,7 @@
         "src/airi/hostedCheckout.ts:228",
         "src/airi/termsMetadata.ts:44",
         "src/airwallex/acceptance.ts:76",
-        "src/airwallex/apiTrail.ts:260",
+        "src/airwallex/apiTrail.ts:261",
         "src/cli/vicReadback.ts:54"
       ],
       "firstLive": {
@@ -1189,8 +1204,8 @@
       "liveRecords": [
         "docs/runs/2026-11-19-airwallex-deep.json"
       ],
-      "firstTest": "test/airwallex-deep.test.ts:117",
-      "testFiles": 1
+      "firstTest": "test/airwallex-deep-paths.test.ts:85",
+      "testFiles": 2
     },
     {
       "endpoint": "POST /simulation/accounts/{id}/update_status",
@@ -1240,7 +1255,7 @@
       "path": "/simulation/issuing/create",
       "status": "LIVE",
       "sites": [
-        "src/airwallex/issuing.ts:267",
+        "src/airwallex/issuing.ts:270",
         "worker/src/awxCards.ts:229"
       ],
       "firstLive": {
@@ -1274,7 +1289,9 @@
         "docs/runs/2026-11-10-platform-e2e/calls.jsonl",
         "docs/runs/2026-11-17-airwallex-late-failure.json",
         "docs/runs/2026-11-19-airwallex-bills.json",
-        "docs/runs/2026-11-19-airwallex-soak.json"
+        "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-replay.json",
+        "docs/runs/2026-11-20-airwallex-soak.json"
       ],
       "firstTest": "test/airwallex-dossier.test.ts:196",
       "testFiles": 2
@@ -1376,7 +1393,9 @@
       },
       "liveRecords": [
         "docs/demo/airwallex-run.json",
-        "docs/runs/2026-11-19-airwallex-soak.json"
+        "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-replay.json",
+        "docs/runs/2026-11-20-airwallex-soak.json"
       ],
       "firstTest": "test/cloud-awx-act.test.ts:37",
       "testFiles": 2
@@ -1411,11 +1430,13 @@
         "docs/runs/2026-11-19-airwallex-deep-3.json",
         "docs/runs/2026-11-19-airwallex-deep.json",
         "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-replay.json",
+        "docs/runs/2026-11-20-airwallex-soak.json",
         "docs/runs/airwallex-readback.json",
         "docs/runs/airwallex-transfer-approval-2026-11-06.json"
       ],
-      "firstTest": "test/awx-live.test.ts:383",
-      "testFiles": 4
+      "firstTest": "test/airwallex-deep-paths.test.ts:53",
+      "testFiles": 7
     },
     {
       "endpoint": "POST /transfers/{id}/cancel",
@@ -1433,8 +1454,8 @@
       "liveRecords": [
         "docs/runs/2026-11-19-airwallex-deep-3.json"
       ],
-      "firstTest": "test/airwallex-deep.test.ts:230",
-      "testFiles": 1
+      "firstTest": "test/airwallex-deep-paths.test.ts:53",
+      "testFiles": 2
     },
     {
       "endpoint": "POST /transfers/create",
@@ -1444,7 +1465,7 @@
       "sites": [
         "src/airwallex/adapter.ts:260",
         "src/airwallex/adapter.ts:353",
-        "src/airwallex/apiTrail.ts:239",
+        "src/airwallex/apiTrail.ts:240",
         "src/airwallex/transferRevoke.ts:41",
         "worker/src/awxPayout.ts:127"
       ],
@@ -1461,10 +1482,12 @@
         "docs/runs/2026-11-19-airwallex-bills.json",
         "docs/runs/2026-11-19-airwallex-deep-3.json",
         "docs/runs/2026-11-19-airwallex-deep.json",
-        "docs/runs/2026-11-19-airwallex-soak.json"
+        "docs/runs/2026-11-19-airwallex-soak.json",
+        "docs/runs/2026-11-20-airwallex-replay.json",
+        "docs/runs/2026-11-20-airwallex-soak.json"
       ],
       "firstTest": "test/agent-cards.test.ts:31",
-      "testFiles": 9
+      "testFiles": 11
     },
     {
       "endpoint": "POST /transfers/validate",
@@ -1483,8 +1506,8 @@
         "docs/runs/2026-11-19-airwallex-deep-3.json",
         "docs/runs/2026-11-19-airwallex-deep.json"
       ],
-      "firstTest": "test/airwallex-deep.test.ts:163",
-      "testFiles": 1
+      "firstTest": "test/airwallex-deep-paths.test.ts:76",
+      "testFiles": 2
     },
     {
       "endpoint": "GET /webhooks",
@@ -1550,7 +1573,7 @@
     "live": 71,
     "testedOnly": 1,
     "codeOnly": 0,
-    "liveAndTested": 43,
+    "liveAndTested": 44,
     "callSites": 159,
     "dynamicSites": 6
   },
@@ -1650,8 +1673,8 @@
     }
   ],
   "scanned": {
-    "sourceFiles": 980,
-    "testFiles": 774,
-    "records": 326
+    "sourceFiles": 1064,
+    "testFiles": 908,
+    "records": 430
   }
 }
