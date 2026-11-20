@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-20",
+  "method": "APPROXIMATION: characters of the JSON tool list / 4 (no ANTHROPIC_API_KEY was set, so Anthropic's count_tokens was not called)",
+  "endpoints": 10,
+  "per_endpoint_tools": {
+    "tools": 10,
+    "tokens": 1255,
+    "chars": 5018,
+    "avg_tokens_per_tool": 126
+  },
+  "code_mode_tools": {
+    "tools": 2,
+    "tokens": 564,
+    "chars": 2256
+  },
+  "saving_tokens": 691,
+  "saving_percent": 55.1,
+  "notes": [
+    "Only the tool definitions are counted (what sits in the context on every turn). Code Mode then spends tokens per task: a search call and its spec fragments, and the execute plan and its selected result.",
+    "The two-tool list is fixed in size; the per-endpoint list grows with each endpoint, so the saving grows with the number of endpoints. This server has only 10 read endpoints, so the saving here is small.",
+    "Cloudflare's figure of about 1,000 tokens for Code Mode is about their own API (2,500+ endpoints), not this one."
+  ]
+}

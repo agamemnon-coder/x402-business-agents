@@ -1,0 +1,136 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Airwallex sandbox, read-only subset (Purser Code Mode MCP)",
+    "version": "2026-11-20",
+    "description": "The only Airwallex calls Purser's /mcp/airwallex server can make: GET reads of the Airwallex SANDBOX (test money). Written by hand for Purser from Airwallex's public API reference; not Airwallex's own document. Every path is relative to the server URL. No write, no money movement, no card number (/issuing/cards/{id}/details is not here)."
+  },
+  "servers": [{ "url": "https://api.sandbox.airwallex.com/api/v1", "description": "Airwallex sandbox (test money only). Purser adds the authentication; callers never see it." }],
+  "paths": {
+    "/balances/current": {
+      "get": {
+        "operationId": "getCurrentBalances",
+        "tags": ["balances"],
+        "summary": "Current balance per currency (available, pending, reserved, total).",
+        "responses": { "200": { "description": "An array of balances", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Balance" } } } } } }
+      }
+    },
+    "/global_accounts": {
+      "get": {
+        "operationId": "listGlobalAccounts",
+        "tags": ["account details"],
+        "summary": "The account's global accounts (receiving account details: name, currency, country, institution, IBAN or account number).",
+        "parameters": [{ "$ref": "#/components/parameters/page_num" }, { "$ref": "#/components/parameters/page_size" }],
+        "responses": { "200": { "description": "A page of global accounts", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Page" } } } } }
+      }
+    },
+    "/financial_transactions": {
+      "get": {
+        "operationId": "listFinancialTransactions",
+        "tags": ["financial transactions"],
+        "summary": "Ledger entries of the account (payouts, conversions, deposits, fees) in a time window.",
+        "parameters": [
+          { "name": "from_created_at", "in": "query", "schema": { "type": "string", "format": "date-time" }, "description": "Start of the window, ISO 8601" },
+          { "name": "to_created_at", "in": "query", "schema": { "type": "string", "format": "date-time" }, "description": "End of the window, ISO 8601" },
+          { "name": "currency", "in": "query", "schema": { "type": "string", "pattern": "^[A-Z]{3}$" } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["PENDING", "SETTLED"] } },
+          { "name": "source_id", "in": "query", "schema": { "type": "string" }, "description": "The transfer, conversion or deposit id behind the entry" },
+          { "$ref": "#/components/parameters/page_num" }, { "$ref": "#/components/parameters/page_size" }
+        ],
+        "responses": { "200": { "description": "A page of financial transactions (id, source_id, source_type, transaction_type, currency, amount, fee, net, status, created_at, settled_at)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Page" } } } } }
+      }
+    },
+    "/fx/rates/current": {
+      "get": {
+        "operationId": "getCurrentFxRate",
+        "tags": ["fx"],
+        "summary": "The current indicative FX rate for a currency pair (no quote is locked, nothing is converted).",
+        "parameters": [
+          { "name": "buy_currency", "in": "query", "required": true, "schema": { "type": "string", "pattern": "^[A-Z]{3}$" } },
+          { "name": "sell_currency", "in": "query", "required": true, "schema": { "type": "string", "pattern": "^[A-Z]{3}$" } }
+        ],
+        "responses": { "200": { "description": "currency_pair, rate, buy_currency, sell_currency, rate_details", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/fx/conversions": {
+      "get": {
+        "operationId": "listConversions",
+        "tags": ["fx"],
+        "summary": "Past FX conversions (read only).",
+        "parameters": [
+          { "name": "request_id", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "from_created_at", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "to_created_at", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "$ref": "#/components/parameters/page_num" }, { "$ref": "#/components/parameters/page_size" }
+        ],
+        "responses": { "200": { "description": "A page of conversions", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Page" } } } } }
+      }
+    },
+    "/transfers": {
+      "get": {
+        "operationId": "listTransfers",
+        "tags": ["transfers"],
+        "summary": "Payouts (transfers) made from the account, newest first (read only).",
+        "parameters": [
+          { "name": "request_id", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "from_created_at", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "to_created_at", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "$ref": "#/components/parameters/page_num" }, { "$ref": "#/components/parameters/page_size" }
+        ],
+        "responses": { "200": { "description": "A page of transfers (id, status, transfer_amount, transfer_currency, source_amount, source_currency, beneficiary, reference, metadata, created_at)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Page" } } } } }
+      }
+    },
+    "/transfers/{id}": {
+      "get": {
+        "operationId": "getTransfer",
+        "tags": ["transfers"],
+        "summary": "One transfer by its id, with its status and metadata (Purser's approval_sha256 for payouts the CFO approved).",
+        "parameters": [{ "$ref": "#/components/parameters/id" }],
+        "responses": { "200": { "description": "One transfer", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/beneficiaries": {
+      "get": {
+        "operationId": "listBeneficiaries",
+        "tags": ["beneficiaries"],
+        "summary": "Saved payees (beneficiaries) of the account (read only).",
+        "parameters": [{ "$ref": "#/components/parameters/page_num" }, { "$ref": "#/components/parameters/page_size" }],
+        "responses": { "200": { "description": "A page of beneficiaries", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Page" } } } } }
+      }
+    },
+    "/issuing/cards": {
+      "get": {
+        "operationId": "listCards",
+        "tags": ["cards"],
+        "summary": "Issued cards (status, nickname, last four digits; never the card number or CVV).",
+        "parameters": [
+          { "name": "card_status", "in": "query", "schema": { "type": "string" } },
+          { "$ref": "#/components/parameters/page_num" }, { "$ref": "#/components/parameters/page_size" }
+        ],
+        "responses": { "200": { "description": "A page of cards", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Page" } } } } }
+      }
+    },
+    "/issuing/cards/{id}": {
+      "get": {
+        "operationId": "getCard",
+        "tags": ["cards"],
+        "summary": "One card by its id, with its spending limits (not /details: never the card number).",
+        "parameters": [{ "$ref": "#/components/parameters/id" }],
+        "responses": { "200": { "description": "One card", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "id": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" }, "description": "The object's UUID" },
+      "page_num": { "name": "page_num", "in": "query", "schema": { "type": "integer", "minimum": 0 } },
+      "page_size": { "name": "page_size", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 1000 } }
+    },
+    "schemas": {
+      "Balance": { "type": "object", "properties": { "currency": { "type": "string" }, "available_amount": { "type": "number" }, "pending_amount": { "type": "number" }, "reserved_amount": { "type": "number" }, "total_amount": { "type": "number" } } },
+      "Page": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "object" } }, "has_more": { "type": "boolean" } } }
+    }
+  }
+}
