@@ -10,6 +10,7 @@ import { pausesNotRevoked } from "../policy/pause.js";
 import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/disputeDecision.js";
 import { codeMayCarryOut, escalatedUndecided } from "../agents/disputeSource.js";
 import { failureAlerts, failureCounts } from "../passkey/failures.js";
+import { unsealedPasskeys } from "../passkey/seal.js";
 import { termsHash, type Terms } from "../lib/terms.js";
 
 import type { Alert, Health } from "./publicHealth.js";
@@ -98,6 +99,10 @@ export function health(db: DB, now = new Date()): Health {
   // trying signatures or codes, so a person looks.
   const pkFail = has(db, "passkey_failures") ? failureCounts(db, now) : { lastHour: 0, last24h: 0, byCode: {} };
   if (has(db, "passkey_failures")) alerts.push(...failureAlerts(db, now));
+  // A passkey row the enrolment ceremony did not seal (outside audit, finding 1.3): it approves nothing, and someone
+  // wrote it into the ledger, or it predates the seal (npm run passkey -- seal, after comparing its fingerprint).
+  const unsealed = has(db, "passkeys") ? unsealedPasskeys(db) : [];
+  if (unsealed.length) alerts.push({ code: "passkey_unsealed", severity: "critical", since: null, words: `${unsealed.length} active passkey(s) (${unsealed.map((k) => `${k.label}, ${k.credential_id.slice(0, 8)}`).join("; ")}) carry no enrolment seal from this runner, so they approve nothing. If one was enrolled before the seal existed, compare its fingerprint with the phone and run npm run passkey -- seal; otherwise someone wrote it into the ledger: pull the emergency stop and run npm run verify.` });
 
   const metrics: Record<string, number> = {
     approvals_waiting: n(db, "SELECT COUNT(*) AS n FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?", now.toISOString()),

@@ -23,6 +23,7 @@ import { recoverRecordPulls } from "../agents/sourcing.js";
 import { resumeInterrupted } from "../policy/saga.js";
 import { health, RECONCILE_EVERY_MS } from "../ops/health.js";
 import { openEnrolment } from "../passkey/ledger.js";
+import { loadRunnerSealKey } from "../passkey/sealKeyFile.js";
 import { enrolLink, relayConfig, viewerLink, type RelayConfig, mfaOn } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
 import { RelayRunner } from "../relay/runner.js";
@@ -62,6 +63,8 @@ if (!process.env.KIT11_DB) {
 const group = await asWorldGroup();
 const db = openDb();
 holdRunnerLock(db, db.name, "relay", group, osProcesses);
+// The enrolment seal key, from outside the ledger (src/passkey/sealKeyFile.ts): only sealed passkeys decide anything.
+loadRunnerSealKey();
 
 const args = process.argv.slice(2);
 const once = args.includes("--once");

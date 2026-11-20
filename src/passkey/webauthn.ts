@@ -11,6 +11,7 @@ import type { DB } from "../db/open.js";
 import { rejectionSha256 } from "../lib/terms.js";
 import { passkeyById, type EnrolmentWindow, type PasskeyRow } from "./ledger.js";
 import { assertionSha256, challengeFor } from "./storedSignature.js";
+import { sealRefusal } from "./seal.js";
 import { policyApprovalCheck, POLICY_METHOD, sourceWords } from "../policy/signedApproval.js";
 
 /** ES256 (every phone passkey) and RS256 (some Windows Hello keys). */
@@ -110,6 +111,8 @@ export async function reverifyPasskeyApprovals(db: DB): Promise<Check[]> {
     const problem = async (s: (typeof stored)[number]): Promise<string | { label: string; id: string }> => {
       const pk = passkeyById(db, s.credential_id);
       if (!pk) return `signed by an unknown passkey ${s.credential_id.slice(0, 8)}`;
+      const unsealed = sealRefusal(db, pk);
+      if (unsealed) return `signed by passkey ${s.credential_id.slice(0, 8)}, but ${unsealed}`;
       if (s.terms_sha256 !== a.approved_sha256) return "the signed hash is not the approved hash";
       if (Date.parse(pk.enrolled_at) > Date.parse(s.verified_at)) return "signed before the passkey was enrolled";
       const response = JSON.parse(s.assertion_json) as AuthenticationResponseJSON;

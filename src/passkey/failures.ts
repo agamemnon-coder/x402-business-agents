@@ -9,7 +9,7 @@ import type { Alert } from "../ops/publicHealth.js";
 export const FAILURE_CODES = [
   // approvals, rejections and phone policy changes
   "malformed", "unknown_proposal", "not_pending", "terms_tampered", "other_option_approved", "unknown_passkey",
-  "revoked_passkey", "bad_signature", "verify_error", "owner_signing_off", "wrong_account", "not_owner", "store_error",
+  "revoked_passkey", "unsealed_passkey", "bad_signature", "verify_error", "owner_signing_off", "wrong_account", "not_owner", "store_error",
   "terms_hash_mismatch", "policy_invalid", "policy_exists", "policy_loosens",
   // enrolment
   "no_enrol_window", "wrong_enrol_code", "enrol_verify_failed", "enrol_credential_mismatch", "enrol_store_error",

@@ -9,6 +9,7 @@ import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
 import { approveRecovery, namedAdmin, RecoveryRefused, RECOVERY_CHECKS, requestRecovery } from "./recovery.js";
 import { AuthError, callerOf, oidcSession, isConnector, endSessions, enrolPasskey, failedAuthBlocked, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
+import { tellEveryOwner } from "./ownerNotice.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
 import { registerCsv } from "../../src/money/registerShape.js";
 import { SCHEMA } from "./schema.js";
@@ -297,15 +298,8 @@ const NEW_SLUG = SLUG.refine((v) => !RESERVED_SLUGS.has(v), "this address is res
  * in the console (GET /v1/security/events) and an event to the company's alert webhook. Telling never fails the request.
  */
 async function tellOwners(c: Ctx, kind: string, detail: Record<string, string | null>): Promise<void> {
-  try {
-    const t = db(c);
-    const iso = c.now.toISOString();
-    await t.apply([t.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: iso, kind, actor: c.caller!.principal, detail_json: JSON.stringify(detail) })]);
-    const data = Object.fromEntries(Object.entries({ ...detail, by_person: c.caller!.principal, at: iso }).map(([k, v]) => [k, v ?? ""]));
-    await notify(c.env.sql, c.caller!.tenantId, `security.${kind.replace(/\./g, "_")}`, data, c.now, c.env.outbound, c.env.retryDelayMs);
-  } catch (e) {
-    logEvent("error", "security_tell_owners_failed", { kind, error: e instanceof Error ? e.message.slice(0, 200) : "unknown" }, c.now);
-  }
+  // Every owner, not only whoever made the change (outside audit, finding 1.3): ./ownerNotice.ts.
+  await tellEveryOwner(c.env, c.caller!.tenantId, { kind, actor: c.caller!.principal, detail, hook: `security.${kind.replace(/\./g, "_")}` }, c.now);
 }
 
 export const ROUTES: Route[] = [
@@ -496,9 +490,9 @@ export const ROUTES: Route[] = [
     const owner = await t.one<{ role: Role; erased_at: string | null }>("users", { id: b.owner_id });
     if (!owner || owner.erased_at || owner.role !== "owner") return err(409, "a recovery is for an existing owner of this company");
     const r = await requestRecovery(c.env.sql, { tenantId, ownerId: b.owner_id, check: b.check, by, now: c.now });
-    const iso = c.now.toISOString();
-    await t.apply([t.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: iso, kind: "recovery.requested", actor: `platform:${by}`, detail_json: JSON.stringify({ owner: b.owner_id, request: r.id, check: b.check, requested_by: by, expires_at: r.expires_at }) })]);
-    await notify(c.env.sql, tenantId, "security.recovery_requested", { owner: b.owner_id, request: r.id, requested_by: by, expires_at: r.expires_at }, c.now, c.env.outbound, c.env.retryDelayMs);
+    // Every owner hears of it, the owner being recovered and the others (./ownerNotice.ts).
+    await tellEveryOwner(c.env, tenantId, { kind: "recovery.requested", actor: `platform:${by}`, hook: "security.recovery_requested",
+      detail: { owner: b.owner_id, request: r.id, check: b.check, requested_by: by, expires_at: r.expires_at } }, c.now);
     return json(202, { request_id: r.id, status: "awaiting_second_admin", owner_id: b.owner_id, check: b.check, requested_by: by, expires_at: r.expires_at, note: "no recovery key yet: a second, different platform admin approves with POST /v1/admin/tenants/{id}/recovery/{request}/approve" });
   } },
   { method: "POST", path: "/v1/admin/tenants/{id}/recovery/{request}/approve", summary: "The second platform admin approves an owner's recovery request: a named admin key other than the one that asked, while the request is open. Only then is the one-time recovery key issued for that owner, good for one day and one passkey enrolment of that owner; redeemed, the owner's old passkeys and sessions end, and a new approval key they enrol cools off before it approves. One open recovery per company; the company's webhook and security events record both admins.", need: "platform", run: async (c) => {
@@ -512,7 +506,6 @@ export const ROUTES: Route[] = [
     const owner = await t.one<{ role: Role; erased_at: string | null }>("users", { id: req.owner_id });
     if (!owner || owner.erased_at || owner.role !== "owner") { await req.release(); return err(409, "a recovery is for an existing owner of this company"); }
     const iso = c.now.toISOString();
-    const eventId = `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`;
     let key: { id: string; key: string; expires_at: string };
     try {
       // Checked when it commits: no other recovery key of the company is open (two at once could not be told apart).
@@ -524,8 +517,8 @@ export const ROUTES: Route[] = [
       throw e;
     }
     await req.issued(key.id);
-    await t.apply([t.insert("security_events", { id: eventId, at: iso, kind: "recovery.issued", actor: `platform:${by}`, detail_json: JSON.stringify({ owner: req.owner_id, recovery_key: key.id, request: c.params[1]!, check: req.check, requested_by: req.requested_by, approved_by: by, expires_at: key.expires_at }) })]);
-    await notify(c.env.sql, tenantId, "security.recovery_issued", { owner: req.owner_id, recovery_key: key.id, requested_by: req.requested_by, approved_by: by, expires_at: key.expires_at }, c.now, c.env.outbound, c.env.retryDelayMs);
+    await tellEveryOwner(c.env, tenantId, { kind: "recovery.issued", actor: `platform:${by}`, hook: "security.recovery_issued",
+      detail: { owner: req.owner_id, recovery_key: key.id, request: c.params[1]!, check: req.check, requested_by: req.requested_by, approved_by: by, expires_at: key.expires_at } }, c.now);
     return json(201, { recovery_key: key.key, key_id: key.id, owner_id: req.owner_id, requested_by: req.requested_by, approved_by: by, expires_at: key.expires_at, note: "shown once; good for one day and one passkey enrolment of this owner; give it to the owner over the channel that was checked" });
   } },
 
@@ -557,7 +550,8 @@ export const ROUTES: Route[] = [
     c.audit.detail = { enrolment_id: b.enrolment_id.slice(0, 20), credential_id: b.credential_id.slice(0, 12) };
     const r = await enrolPasskey(c.env.sql, { tenantId: t.id, enrolmentId: b.enrolment_id, token: b.token, credentialId: b.credential_id, x: b.x, y: b.y, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now });
     c.audit.actor = r.user_id;
-    if (r.recovery) await notify(c.env.sql, t.id, "security.recovery_completed", { owner: r.user_id }, c.now, c.env.outbound, c.env.retryDelayMs);
+    // The recovery.completed event is written with the enrolment itself (./auth.ts); every owner is told of it here.
+    if (r.recovery) await tellEveryOwner(c.env, t.id, { kind: "recovery.completed", actor: r.user_id, hook: "security.recovery_completed", detail: { owner: r.user_id }, event: false }, c.now);
     return json(201, r);
   } },
   { method: "POST", path: "/v1/auth/invite", summary: "What an invite is for, from its secret: the company's address and name and the person; nothing is used up.", need: "public", run: async (c) => {
@@ -859,8 +853,13 @@ export const ROUTES: Route[] = [
     const out = already ? null : await eraseUser(c.env.sql, c.caller!.tenantId, id, c.caller!.principal, c.now);
     // The company's engine knows the passkey a person enrolled by their id (cloud/src/engine/routes.ts): it goes too.
     let engineFailed = false;
+    // Its sign-in passkeys and API keys went with the erasure: every owner is told (./ownerNotice.ts).
+    if (out && (out.credentials_removed || out.keys_revoked)) await tellOwners(c, "passkey.removed", { person: id, reason: "erased", passkeys: String(out.credentials_removed), keys: String(out.keys_revoked) });
     if (c.env.engine) {
-      try { await c.env.engine(c.caller!.tenantId).forgetPasskey(id); } catch (e) {
+      try {
+        const gone = await c.env.engine(c.caller!.tenantId).forgetPasskey(id);
+        if (gone.revoked) await tellOwners(c, "approval_key.removed", { person: id, reason: "erased", revoked: String(gone.revoked) });
+      } catch (e) {
         engineFailed = true;
         logEvent("error", "erase_engine_failed", { error: e instanceof Error ? e.message : String(e) }, c.now);
       }

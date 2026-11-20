@@ -213,6 +213,8 @@ CREATE TABLE IF NOT EXISTS passkeys (
 );
 -- One active passkey per person (label); more than one person may approve (E1, four eyes).
 CREATE UNIQUE INDEX IF NOT EXISTS one_active_passkey_per_person ON passkeys(label) WHERE status = 'ACTIVE';
+-- The enrolment seal of each passkey the ceremony pinned (src/passkey/seal.ts): an HMAC with a key outside this file.
+CREATE TABLE IF NOT EXISTS passkey_seals (credential_id TEXT PRIMARY KEY, seal TEXT NOT NULL, sealed_at TEXT NOT NULL);
 
 -- A short window in which one passkey may be enrolled with a one-time code. Only the code's hash is kept.
 CREATE TABLE IF NOT EXISTS passkey_enrolments (

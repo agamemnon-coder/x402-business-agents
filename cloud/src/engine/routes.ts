@@ -248,7 +248,10 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
         }
         return err(409, out.reason);
       }
-      if (out.how !== "first") await tell("approval_key.added", { person: user, how: out.how, by: out.by, cooling_until: out.cooling_until, credential: out.credential_id.slice(0, 12) });
+      // Every new approval key, the company's first included, and the key it replaced, are told to every owner (outside
+      // audit, finding 1.3; ../ownerNotice.ts), not only to whoever enrolled it.
+      await tell("approval_key.added", { person: user, how: out.how, by: out.by, cooling_until: out.cooling_until, credential: out.credential_id.slice(0, 12) });
+      if (out.replaced) await tell("approval_key.replaced", { person: user, how: out.how, credential: out.credential_id.slice(0, 12), replaced: out.replaced.slice(0, 12), cooling_until: out.cooling_until });
       return json(200, { credential_id: out.credential_id, how: out.how, cooling_until: out.cooling_until, ...(out.how !== "first" && ms === 0 ? { cooling_note: TRY_COOLING_NOTE } : {}) });
     }) },
     { method: "POST", path: "/v1/engine/policy/second-key", summary: "Propose the CFO's rule for high-risk payments (off by default): { changes: [{ key, to }] } of approval.second_key_eur (an amount or \"\"), approval.second_key_new_payee, approval.second_key_bank_changed, approval.second_key_new_country (on or off). Answers { proposal }, a policy change the CFO approves with Face ID (POST /v1/engine/proposals/{id}/approve); nothing changes before that.", need: "admin", run: on(async (c, e) => {
@@ -267,6 +270,7 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       const user = signedIn(c);
       const b = await kit.body(c, z.object({ credential: Credential }).strict(), 64_000);
       const out = await e.securityKeyFinish({ label: await displayName(c, user), credential: b.credential });
+      if (out.ok) await kit.tellOwners?.(c, "security_key.added", { person: user, credential: out.credential_id.slice(0, 12) });
       return out.ok ? json(200, { credential_id: out.credential_id }) : err(409, out.reason);
     }) },
     { method: "POST", path: "/v1/engine/proposals/{id}/approve", summary: "Approve a proposal with the approval passkey (a session only; the approve scope: the CFO, or an owner of a company with no CFO): { terms_sha256, credential } with the passkey's signature over the proposal's challenge. Answers { status, message, settled }: only status approved pays (on the stand-in bank), and settled says paid, booked, archived and fed; a signature over other terms is refused and nothing runs. A key still in its cooling-off (new or recovered) is refused: 403 cooling_off with cooling_until, nothing paid, told to the owners.", need: "approve", run: on(async (c, e) => {

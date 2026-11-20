@@ -12,14 +12,11 @@
 //   never what was read.
 import { keyIdOf } from "./auth.js";
 import type { CloudEnv } from "./app.js";
-import { logEvent } from "./log.js";
-import { notify } from "./monitor.js";
-import { randomToken } from "./crypto.js";
+import { tellEveryOwner } from "./ownerNotice.js";
 import { recordSecurityEvent } from "./securityLog.js";
-import { TenantDb } from "./tenant.js";
 import { alarmRules, type SecurityKind } from "../../src/lib/securityEvents.js";
 
-type CloudEnvLike = Pick<CloudEnv, "sql" | "outbound" | "retryDelayMs" | "waitUntil" | "securityAlarms">;
+type CloudEnvLike = Pick<CloudEnv, "sql" | "outbound" | "retryDelayMs" | "waitUntil" | "securityAlarms"> & { alerts?: CloudEnv["alerts"] };
 
 /** What a request found out on its way, for its security event: the caller, the platform admin key, and what a route adds. */
 export interface Audit {
@@ -83,6 +80,8 @@ const PASSKEY_ROUTES = new Set(["POST /v1/auth/login", "POST /v1/auth/enrol", "P
 const WEBHOOK_ROUTES = new Set(["POST /v1/airwallex/webhook", "POST /v1/connect/airwallex/webhook"]);
 /** Told to the company's owners (ASVS V2.2.3, V2.5.5): a passkey or a key added or taken away. */
 const TOLD_TO_OWNERS = new Set<SecurityKind>(["passkey.enrolled", "passkey.removed", "key.created", "key.revoked"]);
+/** Routes that tell every owner themselves, with what changed (cloud/src/engine/routes.ts): not told twice here. */
+const TELLS_ITSELF = new Set(["POST /v1/engine/passkey/finish", "POST /v1/engine/security-key/finish"]);
 
 /** What kind of token a request carried (never the token): for an auth failure. */
 function tokenKind(authorization: string | null): string {
@@ -119,20 +118,16 @@ export async function auditRequest(env: CloudEnvLike, req: Request, res: Respons
   const event = { kind, tenant: audit.tenant ?? null, actor, ip: req.headers.get("cf-connecting-ip"), route: `${req.method} ${pattern}`, status: res.status, detail };
   const work = (async () => {
     await recordSecurityEvent(env.sql, event, now, alarmRules(env.securityAlarms));
-    if (TOLD_TO_OWNERS.has(kind) && audit.tenant) await tellOwners(env, audit.tenant, kind, actor, pattern, now);
+    if (TOLD_TO_OWNERS.has(kind) && audit.tenant && !TELLS_ITSELF.has(`${req.method} ${pattern}`)) await tellOwners(env, audit.tenant, kind, actor, pattern, audit.detail, now);
   })();
   if (env.waitUntil) env.waitUntil(work); else await work;
 }
 
-/** A passkey or key change, told to the company's owners: a security event in the console and the alert webhook if set. */
-async function tellOwners(env: CloudEnvLike, tenantId: string, kind: SecurityKind, actor: string | null, pattern: string, now: Date): Promise<void> {
-  try {
-    const iso = now.toISOString();
-    const t = new TenantDb(env.sql, tenantId);
-    await t.apply([t.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: iso, kind, actor: actor ?? "unknown", detail_json: JSON.stringify({ route: pattern }) })]);
-    await notify(env.sql, tenantId, `security.${kind}`, { by: actor ?? "unknown", route: pattern, at: iso }, now, env.outbound, env.retryDelayMs);
-  } catch (e) {
-    // The security log has the event already; only telling the owners failed.
-    logEvent("error", "security_tell_owners_failed", { kind, error: e instanceof Error ? e.message.slice(0, 200) : "unknown" }, now);
-  }
+/**
+ * A passkey or key change, told to every owner of the company (./ownerNotice.ts): a security event in the console, the
+ * alert webhook if set, and an e-mail to each owner with an address when the alert e-mail provider is set.
+ */
+async function tellOwners(env: CloudEnvLike, tenantId: string, kind: SecurityKind, actor: string | null, pattern: string, detail: Record<string, unknown> | undefined, now: Date): Promise<void> {
+  const ids = Object.fromEntries(["credential_id", "key_id", "enrolment_id"].filter((k) => typeof detail?.[k] === "string").map((k) => [k, String(detail![k]).slice(0, 20)]));
+  await tellEveryOwner(env, tenantId, { kind, actor: actor ?? "unknown", detail: { route: pattern, ...ids }, hook: `security.${kind}` }, now);
 }

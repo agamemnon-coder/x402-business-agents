@@ -116,14 +116,15 @@ describe("the site after v4", () => {
     const bad = [/warehouse software/i, /stand-in/i, /\bdry-1\d*/i, /Dev test/i, /Recorded 30 October/i, /read, plan and advise/i, /\bfather\b/i, /four eyes.{0,80}\b(optional|off)\b/i, /\b(optional|off)\b.{0,80}four eyes/i, /\b0 unsafe\b/i, /confirmed (that )?TAP counts/i,
       // The old absolute claims (jury review, 4 Nov): the core sentence says who holds which limit instead.
       /every limit/i, /can['’]t break/i];
-    // The phone's script, stylesheet and font are not pages (the phone pages themselves are checked).
+    // The phone's script, stylesheet and font are not pages (the phone pages themselves are checked); since the outside
+    // audit (finding 1.5) the script sits inline in the phone pages, and is left out of them here the same way.
     const all = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && !["client", "css", "font"].includes(e[0]));
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "security", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["docs", "status"]));
     // 12 Nov (jury panel): /claude's hostile-model eval line says "0 unsafe" as CI computed it (docs/evals/ap-hostile.json).
     // Since 13 Nov the same record's figures are a proof tile on /claude (hostileTileLabel, src/redesign/claudePage.ts).
     const hostile = hostileClaimText(), tile = claudeEvidence().hostile ? hostileTileLabel(claudeEvidence().hostile!) : "\u0000";
-    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html).replace(hostile || "\u0000", " ").replace(tile, " "))?.[0] ?? null }).toEqual({ name, found: null });
+    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html.split(pages.client).join(" ")).replace(hostile || "\u0000", " ").replace(tile, " "))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
   it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Security, Docs, then Airwallex, Alta, Visa, Claude, T:0", () => {

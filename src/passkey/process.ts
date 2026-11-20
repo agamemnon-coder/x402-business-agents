@@ -15,6 +15,7 @@ import { canonicalTerms, rejectionSha256, termsHash, type Terms } from "../lib/t
 import { checkChanges, type PolicyChangeTerms } from "../executors/policyChange.js";
 import { approvedAlternative, createProposal, decide, expireDue, type ProposalRow } from "../policy/approvals.js";
 import { codeSha256, openWindow, passkeyById, pendPasskey } from "./ledger.js";
+import { sealRefusal } from "./seal.js";
 import { assertionSha256, verifyApprovalSignature, verifyEnrolmentResponse } from "./webauthn.js";
 import { securityKeyById } from "./securityKey.js";
 import { ensureSecondKeyTables, factorsOf, secondKeyMessage, secondKeyReasons } from "../policy/secondKey.js";
@@ -131,6 +132,9 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   const pk = asPasskey ?? sk;
   if (!pk) return refuse("unknown_passkey", p.proposal_id, "this passkey is not enrolled");
   if (pk.status !== "ACTIVE") return refuse("revoked_passkey", p.proposal_id, "this passkey was revoked");
+  // A passkey row the enrolment ceremony did not seal (written straight into the ledger) decides nothing (finding 1.3).
+  const unsealed = asPasskey ? sealRefusal(db, asPasskey) : null;
+  if (unsealed) return refuse("unsealed_passkey", p.proposal_id, unsealed);
   if (sk && p.kind === OWNERS_EXECUTE) return refuse("not_owner", p.proposal_id, "a security key does not sign on chain");
   // Block 1: an owners_execute approval signs the account's Execute digest (checked against the terms), and only an
   // owner of that account counts; every other proposal signs its terms hash.
@@ -209,6 +213,8 @@ async function processRejection(db: DB, item: InboxItem, p: ProposalRow, respons
   const pk = passkeyById(db, response.id);
   if (!pk) return refuse("unknown_passkey", "this passkey is not enrolled");
   if (pk.status !== "ACTIVE") return refuse("revoked_passkey", "this passkey was revoked");
+  const unsealed = sealRefusal(db, pk);
+  if (unsealed) return refuse("unsealed_passkey", unsealed);
   const signed = rejectionSha256(p.terms_sha256);
   const v = await verifyApprovalSignature(response, signed, pk);
   if (!v.ok) return refuse("bad_signature", v.reason);
@@ -244,6 +250,8 @@ async function processLineRemoval(db: DB, item: InboxItem, p: ProposalRow, line:
   const pk = passkeyById(db, response.id);
   if (!pk) return refuse("unknown_passkey", "this passkey is not enrolled");
   if (pk.status !== "ACTIVE") return refuse("revoked_passkey", "this passkey was revoked");
+  const unsealed = sealRefusal(db, pk);
+  if (unsealed) return refuse("unsealed_passkey", unsealed);
   let signed: string;
   try {
     signed = batchRemovalSha256(p.terms_sha256, line);
@@ -306,6 +314,8 @@ export async function processPolicyRequest(db: DB, item: InboxItem, now = new Da
   }
   const pk = passkeyById(db, response.id);
   if (!pk || pk.status !== "ACTIVE") return refuse("unknown_passkey", "this passkey is not the enrolled one");
+  const unsealed = sealRefusal(db, pk);
+  if (unsealed) return refuse("unsealed_passkey", unsealed);
   const v = await verifyApprovalSignature(response, body.terms_sha256, pk);
   if (!v.ok) return refuse("bad_signature", v.reason);
   createProposal(db, { terms, createdBy: "human" }, now);
