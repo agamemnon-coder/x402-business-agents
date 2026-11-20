@@ -12,7 +12,12 @@
 // What is kept: the engine's own events (GET /v1/engine/events, read to the end after each part), the answers of the
 // pay, approve, payout and sample routes, every /v1 call's method, path, status and time, and the times between clicks
 // and what the page shows. Never kept: the session, the visitor token, any header. Nothing here reads a key.
-//   npx tsx scripts/try-live-record.ts <run number> <desktop|phone|tablet|tablet-dark> <out dir>
+//   npx tsx scripts/try-live-record.ts <run number> <desktop|phone|phone-iphone|tablet|tablet-dark> <out dir>
+// phone-iphone (20 Nov, before judging): Playwright's "iPhone 15" (393 x 659, its Safari user agent, touch, 3x), light.
+// NETWORK=slow-4g (20 Nov), Chromium only: every page of the walk on DevTools' "Slow 4G" through the DevTools Protocol
+// (Network.emulateNetworkConditions: 562.5 ms round trip, 1.6 Mbit/s down, 750 kbit/s up), set before each page
+// loads and written in the record as `network`. WebKit and Firefox have no such switch in Playwright: asked there, the
+// walk refuses to start rather than run unthrottled under that name.
 // BROWSER=firefox (or webkit) walks it in that browser instead: Playwright has no virtual authenticator there, so the
 // repository's software passkey (test/browser/support/softPasskey.ts, TEST ONLY: a real ES256 key in the page, whose
 // signatures the server verifies as it does a phone's) is injected before the pages load. NSSDB=<dir>, with Firefox: a
@@ -29,21 +34,24 @@ import type { Browser, BrowserContext, BrowserContextOptions, Page, Response } f
 import { verifyProofBundle } from "../src/proof/bundle.js";
 import { browserName, contextOptions, FIREFOX_PREFS, hasVirtualAuthenticator, launchBrowser } from "../test/browser/support/browser.js";
 import { SOFT_PASSKEY } from "../test/browser/support/softPasskey.js";
+import { IPHONE, networkProfile, throttle } from "./tryWalkNetwork.js";
 
 const BASE = "https://kit11.max-31b.workers.dev";
 const HOST = new URL(BASE).hostname;
 const [runArg, profileArg, outArg] = process.argv.slice(2);
 const run = Number(runArg);
-const PROFILE_NAMES = ["desktop", "phone", "tablet", "tablet-dark"] as const;
+const PROFILE_NAMES = ["desktop", "phone", "phone-iphone", "tablet", "tablet-dark"] as const;
 const profile = (PROFILE_NAMES as readonly string[]).includes(profileArg ?? "") ? (profileArg as (typeof PROFILE_NAMES)[number]) : "desktop";
-if (!Number.isInteger(run) || run < 1 || !outArg) throw new Error("usage: try-live-record.ts <run> <desktop|phone|tablet|tablet-dark> <out dir>");
+if (!Number.isInteger(run) || run < 1 || !outArg) throw new Error("usage: try-live-record.ts <run> <desktop|phone|phone-iphone|tablet|tablet-dark> <out dir>");
 const BROWSER = browserName();
+const NETWORK = networkProfile(process.env.NETWORK, BROWSER);
 const passkey = hasVirtualAuthenticator(BROWSER) ? "cdp-virtual-authenticator" : "software-passkey";
 const out = outArg;
 mkdirSync(out, { recursive: true });
 const PROFILES = {
   desktop: { viewport: { width: 1440, height: 900 }, colorScheme: "light" as const },
   phone: { viewport: { width: 390, height: 844 }, colorScheme: "dark" as const, isMobile: true, hasTouch: true, deviceScaleFactor: 3 },
+  "phone-iphone": { ...IPHONE, colorScheme: "light" as const },
   tablet: { viewport: { width: 768, height: 1024 }, colorScheme: "light" as const, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
   "tablet-dark": { viewport: { width: 768, height: 1024 }, colorScheme: "dark" as const, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
 };
@@ -165,6 +173,7 @@ try {
   const page = await ctx.newPage();
   mainPage = page;
   watch(page, "main");
+  await throttle(ctx, page, NETWORK);
   if (passkey === "cdp-virtual-authenticator") {
     const cdp = await ctx.newCDPSession(page);
     await cdp.send("WebAuthn.enable");
@@ -286,6 +295,7 @@ try {
   mainEvents = await events(page);
   const v = await ctx.newPage();
   watch(v, "verify");
+  await throttle(ctx, v, NETWORK);
   await v.goto(`${BASE}/verify`, { waitUntil: "load" });
   t = clock();
   await v.locator("#v-file").setInputFiles(file);
@@ -318,6 +328,7 @@ try {
   // 6. The EUR 480.00 invoice inside the limit that code's cash check holds, in a test company of its own.
   const p2 = await ctx.newPage();
   watch(p2, "cash");
+  await throttle(ctx, p2, NETWORK);
   if (passkey === "cdp-virtual-authenticator") await (await ctx.newCDPSession(p2)).send("WebAuthn.enable");
   await p2.goto(`${BASE}/try`, { waitUntil: "load" });
   const st2 = answer(p2, /^\/v1\/try\/start$/);
@@ -367,7 +378,7 @@ ok(errors.length === 0, `no console or page error${errors.length ? `: ${errors.s
 const record = {
   what: "One walk through the public /try on https://kit11.max-31b.workers.dev, recorded by scripts/try-live-record.ts (19 Nov 2026). A fresh /try test company each run; test money only; payouts to the Airwallex sandbox.",
   run, profile, viewport: PROFILES[profile].viewport, color_scheme: PROFILES[profile].colorScheme,
-  browser: { name: BROWSER, version: browserVersion }, passkey,
+  browser: { name: BROWSER, version: browserVersion }, passkey, ...(NETWORK ? { network: NETWORK } : {}),
   started_at, finished_at: new Date().toISOString(), ok: failures.length === 0, failures,
   steps_ms: steps, page_says, site_build, bundle, held,
   answers: kept, calls, console_errors: errors, outside_requests: [...new Set(outside)],
