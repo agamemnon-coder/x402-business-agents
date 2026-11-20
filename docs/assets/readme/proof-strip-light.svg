@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 156" width="960" height="156" role="img" aria-labelledby="t d">
 <title id="t">Purser: proof from the records</title>
-<desc id="d">From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 24 decisions, live. 8,845 tests passing; 189 checks passed, 0 failed; 37 of 39 attacks stopped, 2 caught after (test world). 0 attacks got through. Drawn from the records by scripts/readme-proof-strip.ts.</desc>
+<desc id="d">From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 24 decisions, live. 8,845 tests passing; 189 checks passed, 0 failed; 37 of 39 attacks stopped, 2 caught after (the red team's first run, 30 Oct, test world). 0 attacks got through. Drawn from the records by scripts/readme-proof-strip.ts.</desc>
 <style>
 text{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
 .in{animation:in .5s cubic-bezier(.2,.7,.3,1) both}@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -39,6 +39,6 @@ text{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helveti
 <rect x="444" y="128" width="226" height="4" rx="2" fill="#dde3ea"/><g class="grow"><rect x="444" y="128" width="222.47" height="4" fill="#0969da"/><rect x="666.47" y="128" width="3.53" height="4" fill="#dde3ea"/></g></g>
 <g class="in" style="animation-delay:0.66s"><rect x="692.5" y="72.5" width="253" height="69" rx="9" fill="#f6f8fa" stroke="#d1d9e0"/>
 <text x="706" y="103" fill="#1f2328"><tspan font-size="25" font-weight="650" letter-spacing="-0.4">37 of 39</tspan><tspan dx="7" font-size="13" font-weight="600" fill="#59636e">attacks stopped</tspan></text>
-<text x="706" y="121" font-size="11.5" fill="#656d76">red team, test world · 2 caught after</text>
+<text x="706" y="121" font-size="11.5" fill="#656d76">30 Oct run, test world · 2 caught after</text>
 <rect x="706" y="128" width="226" height="4" rx="2" fill="#dde3ea"/><g class="grow"><rect x="706" y="128" width="214.41" height="4" fill="#0969da"/><rect x="920.41" y="128" width="11.59" height="4" fill="#9a6700"/><rect x="932" y="128" width="0" height="4" fill="#dde3ea"/></g></g>
 </svg>

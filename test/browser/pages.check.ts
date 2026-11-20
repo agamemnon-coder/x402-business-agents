@@ -524,8 +524,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // and opened by their summary or a link to one of them; 44 px tap targets and a short page on a phone.
       // The frame around the entries at 390 px with the live runs' fold open (jury pass, 13 Nov): the heading, the four
       // cards, the fold's line, the strip, the line, "Face ID to paid", the filters, the closed groups and the last links.
-      // 1,263 px as built; the margin leaves room for one more line of filters.
-      const FRAME_390 = 1300;
+      // 1,263 px as built; the margin leaves room for one more line of filters. 20 Nov: 1,304 px with 36 live runs (the
+      // space between entries is not taken away, so each run added grows the frame by a few px); 1,340 leaves room.
+      const FRAME_390 = 1340;
       if (path === "/runs" && (w === 390 || w === 1440)) {
         // Since the jury pass (13 Nov) the live runs are in the one fold under the four cards: a reader opens it first,
         // and the checks below are of the list as it then shows (the cards count in the frame).

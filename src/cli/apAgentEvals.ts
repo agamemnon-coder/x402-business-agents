@@ -101,9 +101,15 @@ outer: for (const name of names) {
 const key = (r: EvalRow) => `${r.agent}|${r.case}|${r.model}`;
 const now = new Set(fresh.map(key));
 const known = new Set([...IDS.checker.map((id) => `checker|${id}`), ...IDS.payer.map((id) => `payer|${id}`)]);
-const rows = [...(old?.rows ?? []).filter((r) => !now.has(key(r)) && known.has(`${r.agent}|${r.case}`)), ...fresh];
+// --out FILE: this run alone, written there beside the committed record, which is kept as it was recorded (20 Nov:
+// docs/evals/ap-agents-rerun-2026-11-20.json, every case on all three models on that day's code); no Markdown is written.
+const outArg = opt("--out");
+const rows = outArg ? fresh : [...(old?.rows ?? []).filter((r) => !now.has(key(r)) && known.has(`${r.agent}|${r.case}`)), ...fresh];
 const rec = buildRecord(rows, IDS, stamp, hostile);
-write(rec);
+if (outArg) {
+  const what = `The payables agents' evals, re-run on ${stamp.slice(0, 10)} with real models on that day's code (commit ${commit}${dirty ? ", with uncommitted changes" : ""}); docs/evals/ap-agents.json is kept as it was recorded. Test data only; real Claude calls, their cost in docs/runs/api-budget.jsonl.`;
+  writeFileSync(resolve(ROOT, outArg), `${JSON.stringify({ what, command: `npm run ap-agent-evals -- ${args.join(" ")}`, spent_usd: spent / 1e6, max_usd: maxUsd, stopped, ...rec }, null, 2)}\n`);
+} else write(rec);
 console.log(`\nspent ${(spent / 1e6).toFixed(4)} USD of ${maxUsd} USD${stopped ? `; ${stopped}` : ""}`);
 for (const a of ["checker", "payer"] as const) {
   for (const [m, r] of Object.entries(rec.models[a])) {

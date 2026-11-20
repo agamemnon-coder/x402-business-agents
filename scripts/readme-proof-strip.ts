@@ -13,6 +13,9 @@ import { pathToFileURL } from "node:url";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { loadRecord, split } from "../src/redesign/run.js";
 
+/** "30 Oct" from an ISO time: the day a record ran. */
+const dayOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+
 export const STRIP_FILES = { light: "docs/assets/readme/proof-strip-light.svg", dark: "docs/assets/readme/proof-strip-dark.svg" } as const;
 type Theme = keyof typeof STRIP_FILES;
 const read = (p: string) => readFileSync(p, "utf8");
@@ -21,7 +24,7 @@ export interface StripFigures {
   decisions: number;
   tests: { passed: number; total: number; skipped: number; failed: number };
   verification: { file: string; passed: number; couldNotRun: number; failed: number };
-  redteam: { attempts: number; stopped: number; caughtAfter: number; through: number; inconclusive: number };
+  redteam: { attempts: number; stopped: number; caughtAfter: number; through: number; inconclusive: number; day: string };
 }
 
 /** The newest verification report in docs/evidence/ (by its date in the file name). */
@@ -37,13 +40,13 @@ export function stripFigures(): StripFigures {
   const v = JSON.parse(read(file)) as { summary: string };
   const m = /^(\d+) checks passed, (\d+) could not run here, (\d+) failed$/.exec(v.summary);
   if (!m) throw new Error(`${file}: unexpected summary "${v.summary}"`);
-  const r = JSON.parse(read("docs/redteam/report.json")) as { attempts: number; blocked: number; caught_after: number; not_blocked: number; inconclusive: number };
+  const r = JSON.parse(read("docs/redteam/report.json")) as { ran_at: string; attempts: number; blocked: number; caught_after: number; not_blocked: number; inconclusive: number };
   if (r.blocked + r.not_blocked + r.inconclusive !== r.attempts) throw new Error("the red team report's outcomes do not add up");
   return {
     decisions: split(loadRecord().record).byClaude,
     tests: { passed: t.passed, total: t.total, skipped: t.skipped, failed: t.failed },
     verification: { file, passed: Number(m[1]), couldNotRun: Number(m[2]), failed: Number(m[3]) },
-    redteam: { attempts: r.attempts, stopped: r.blocked - r.caught_after, caughtAfter: r.caught_after, through: r.not_blocked, inconclusive: r.inconclusive },
+    redteam: { attempts: r.attempts, stopped: r.blocked - r.caught_after, caughtAfter: r.caught_after, through: r.not_blocked, inconclusive: r.inconclusive, day: dayOf(r.ran_at) },
   };
 }
 
@@ -55,7 +58,7 @@ export function stripPartners(f = stripFigures()): [string, string][] {
 /** The strip's alt text in the README: the same words the picture shows. */
 export function stripAlt(f = stripFigures()): string {
   const p = stripPartners(f).map(([n, s]) => `${n} ${s}`).join("; ");
-  return `From the records, test money: ${p}. ${fmt(f.tests.passed)} tests passing; ${f.verification.passed} checks passed, ${f.verification.failed} failed; ${f.redteam.stopped} of ${f.redteam.attempts} attacks stopped, ${f.redteam.caughtAfter} caught after (test world).`;
+  return `From the records, test money: ${p}. ${fmt(f.tests.passed)} tests passing; ${f.verification.passed} checks passed, ${f.verification.failed} failed; ${f.redteam.stopped} of ${f.redteam.attempts} attacks stopped, ${f.redteam.caughtAfter} caught after (the red team's first run, ${f.redteam.day}, test world).`;
 }
 
 const SANS = `ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
@@ -107,7 +110,7 @@ export function proofStripSvg(theme: Theme, f = stripFigures()): string {
   const row2 = [
     fig(0, fmt(t.passed), "tests passing", `${t.failed} failed, ${t.skipped} skipped · test-summary.json`, [[t.passed, c.accent], [t.total - t.passed, c.track]]),
     fig(1, String(v.passed), "checks passed", `${v.failed} failed, ${v.couldNotRun} could not run · verify-all`, [[v.passed, c.accent], [v.couldNotRun, c.track]]),
-    fig(2, `${r.stopped} of ${r.attempts}`, "attacks stopped", `red team, test world · ${r.caughtAfter} caught after`, [[r.stopped, c.accent], [r.caughtAfter, c.warn], [r.through, c.track]]),
+    fig(2, `${r.stopped} of ${r.attempts}`, "attacks stopped", `${r.day} run, test world · ${r.caughtAfter} caught after`, [[r.stopped, c.accent], [r.caughtAfter, c.warn], [r.through, c.track]]),
   ].join("\n");
 
   // The brand: the site header's mark (docs/assets/brand/purser-mark.svg, drawn at 44 px), the name, what this is.

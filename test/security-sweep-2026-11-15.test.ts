@@ -38,6 +38,12 @@ describe("S1: a payout answered with duplicate_request_id stays counted under th
     }
     expect(refusedOutright(new AirwallexError(500, undefined, {}, "/transfers/create"))).toBe(false);
   });
+
+  it("20 Nov, the sandbox's own answers to a repeat (docs/runs/2026-11-20-airwallex-replay.md) are not refusals", () => {
+    expect(refusedOutright(new AirwallexError(400, "batch_request_id_duplicate", {}, "/batch_transfers/create"))).toBe(false);
+    expect(refusedOutright(new AirwallexError(400, "invalid_argument", {}, "/fx/conversions/create"))).toBe(false);
+    expect(refusedOutright(new AirwallexError(400, "invalid_argument", {}, "/transfers/create"))).toBe(true);
+  });
 });
 
 describe("S2: the card gate accepts every two-decimal EUR limit", () => {

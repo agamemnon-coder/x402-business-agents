@@ -39,7 +39,7 @@
 
 **What stood at the submission:** the tag `v1.0-submission` (8 Nov), Purser's entry to the Airwallex Agentic Banking Hackathon (entered for the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award), holds the Kit 11 main run of 3 Nov and /try/sign; the payables inbox (`src/ap/`), Purser Cloud and today's /try came after, with run records dated 10 to 17 Nov ([CHANGELOG.md](CHANGELOG.md), [v1.1 notes](docs/releases/v1.1-submission.md)).
 
-<a href="https://kit11.max-31b.workers.dev/proof"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/proof-strip-dark.svg"><img src="docs/assets/readme/proof-strip-light.svg" alt="From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 24 decisions, live. 8,845 tests passing; 189 checks passed, 0 failed; 37 of 39 attacks stopped, 2 caught after (test world)." width="100%"></picture></a>
+<a href="https://kit11.max-31b.workers.dev/proof"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/proof-strip-dark.svg"><img src="docs/assets/readme/proof-strip-light.svg" alt="From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 24 decisions, live. 8,845 tests passing; 189 checks passed, 0 failed; 37 of 39 attacks stopped, 2 caught after (the red team's first run, 30 Oct, test world)." width="100%"></picture></a>
 
 </div>
 
