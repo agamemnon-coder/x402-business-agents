@@ -155,6 +155,8 @@ export function checkPayingAccount(db: DB, t: PlatformTerms, rail: { payingAccou
     if (!Number.isInteger(bps) || bps < 1 || bps > FEE_BPS_CAP) throw new Error(`the Purser fee in the terms (${String(fee.bps)} basis points) is above the cap of ${FEE_BPS_CAP}; nothing is paid`);
     if (fee.to_account !== bound.fee_account) throw new Error(`the Purser fee in the terms goes to ${String(fee.to_account)}, not to Purser's platform account in the binding; nothing is paid`);
     const amount = typeof t.amount === "string" && /^\d+\.\d{2}$/.test(t.amount) ? toCents(t.amount) : NaN;
-    if (fee.currency !== t.currency || fee.amount !== fromCents(platformFeeCents(amount, bps))) throw new Error("the Purser fee in the terms is not its share of the amount; nothing is paid");
+    // An amount that is not a plain two-decimal string has no share (20 Nov: it reached fromCents as NaN and the refusal
+    // read "not a non-negative integer cent amount: NaN" instead of this reason; test/airwallex-binding-checks.test.ts).
+    if (fee.currency !== t.currency || !Number.isFinite(amount) || fee.amount !== fromCents(platformFeeCents(amount, bps))) throw new Error("the Purser fee in the terms is not its share of the amount; nothing is paid");
   }
 }
