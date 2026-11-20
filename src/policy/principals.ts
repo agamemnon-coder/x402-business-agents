@@ -5,6 +5,7 @@
 // that may not pay), so revoking one agent stops that agent and nothing else.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { checkpointRefusal } from "../audit/checkpointer.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
@@ -111,6 +112,9 @@ export function rotatePrincipalKey(db: DB, id: string, by: string, now = new Dat
   const p = principal(db, id, now);
   if (!p) throw new Error(`${id} is not an agent with an identity`);
   if (p.status !== "ACTIVE") throw new Error(`${id} is revoked; a revoked identity gets no new key`);
+  // Outside audit 1.4: no key is issued on a ledger that does not match its latest signed checkpoint.
+  const unanchored = checkpointRefusal(db, "key enrolment", now);
+  if (unanchored) throw new Error(unanchored);
   const key = `pk_${randomBytes(24).toString("base64url")}`;
   const version = p.key_version + 1;
   db.prepare("UPDATE principals SET key_sha256 = ?, key_version = ?, updated_at = ? WHERE principal_id = ?").run(sha(key), version, now.toISOString(), id);

@@ -22,6 +22,7 @@ import { recoverHolds } from "../policy/holds.js";
 import { recoverRecordPulls } from "../agents/sourcing.js";
 import { resumeInterrupted } from "../policy/saga.js";
 import { health, RECONCILE_EVERY_MS } from "../ops/health.js";
+import { checkpointStatus, checkpointTick } from "../audit/checkpointer.js";
 import { openEnrolment } from "../passkey/ledger.js";
 import { loadRunnerSealKey } from "../passkey/sealKeyFile.js";
 import { enrolLink, relayConfig, viewerLink, type RelayConfig, mfaOn } from "../relay/config.js";
@@ -87,6 +88,8 @@ console.log(`relay    ${cfg.url}/  (approvals ${cfg.url}/approve/<id>; ledger ${
 const signer = displayKey(keyPath("relay-display-key.pem"));
 console.log(`viewer   ${viewerLink(cfg, signer.publicSpki)}  (open once on each device: it unlocks the dashboard and pins this runner's key; it approves nothing${mfaOn() ? "; with MFA on it reads only and expires after next week: the CFO's actions need a passkey sign-in" : ""})`);
 console.log(`key      ${displayKeyFingerprint(signer.publicSpki)}  (this runner's key; each run has its own, and a phone that knew another asks once before it uses this one)`);
+// Outside audit 1.4: signed audit checkpoints (src/audit/checkpointer.ts), on when PURSER_CHECKPOINT_KEY_FILE is set.
+console.log(`audit    checkpoints ${checkpointStatus(db)}`);
 // D20: under MFA the viewer link changes every Monday; print the new one, so devices can renew without a restart.
 if (mfaOn()) {
   let shown = viewerLink(cfg, signer.publicSpki);
@@ -360,8 +363,20 @@ function t0Tick(): void {
   void t0SinkFor(db, { log: (line) => console.log(`${stamp()} ${line}`) }).afterMoney();
 }
 
+// The scheduled audit checkpoint (outside audit 1.4): every PURSER_CHECKPOINT_EVERY_MS, besides the one after each
+// money action. A refusal (the ledger no longer matches) is logged; /health already carries the alarm.
+function auditCheckpointTick(): void {
+  try {
+    const r = checkpointTick(db);
+    if (r && !r.ok) console.error(`${stamp()} ALARM    audit checkpoint not written: ${redactSecrets(r.reason).slice(0, 300)}`);
+  } catch (e) {
+    console.error(`${stamp()} ALARM    audit checkpoint failed: ${redactSecrets((e as Error).message).slice(0, 300)}`);
+  }
+}
+
 let lastError = "";
 while (!stopping) {
+  auditCheckpointTick();
   alarmsTick();
   await cardsTick();
   await quarantineTick();

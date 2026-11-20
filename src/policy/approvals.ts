@@ -5,6 +5,8 @@ import { approvalHashOf } from "../metal/ownersExecute.js";
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit, type Actor } from "../audit/log.js";
 import { auditChainRefusal } from "../audit/intact.js";
+import { checkpointRefusal } from "../audit/checkpointer.js";
+import { loosens } from "./loosens.js";
 import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { fourEyes } from "./fourEyes.js";
@@ -355,6 +357,20 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     recordBlocked(db, proposalId, tampered, now);
     throw new Error(`${proposalId}: ${tampered}`);
   }
+  // Outside audit 1.4: with a checkpoint key configured, the ledger must also match its latest signed checkpoint
+  // (src/audit/checkpointer.ts). A policy change that only tightens (the emergency stop, a pause, a lower limit) still
+  // runs in an incident; one that loosens anything is checked, its chain included. Checked outside a transaction, so
+  // another process can finish the checkpoint of a payment it has just made. A restart's resume is not checked again.
+  const unanchored = (() => {
+    const p = get(db, proposalId);
+    if (p.status === "EXECUTING" && resuming.has(proposalId)) return null;
+    const t = JSON.parse(p.terms_json) as { kind?: unknown; changes?: unknown };
+    if (t.kind !== "policy_change") return checkpointRefusal(db, "payment", now);
+    const changes = Array.isArray(t.changes) ? (t.changes as { key?: unknown; from?: unknown; to?: unknown }[]) : [];
+    const looser = changes.some((c) => loosens({ key: String(c?.key ?? ""), from: String(c?.from ?? ""), to: String(c?.to ?? "") }));
+    return looser ? checkpointRefusal(db, "policy change", now) : null;
+  })();
+  if (unanchored) throw new Error(`${proposalId}: ${unanchored}`);
   // The hub gate (src/hub/gate.ts), an extra gate on top of every check below, never instead of one; off unless
   // HUB_DECISIONS_ENABLED. Its refusal is committed on its own, so the record survives the error thrown here. A
   // restart's resume is not a new execution: it was gated when it began.
