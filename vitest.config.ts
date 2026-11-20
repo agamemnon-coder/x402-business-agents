@@ -60,10 +60,11 @@ export default defineConfig({
       ],
       reporter: ["text-summary", "json-summary"],
       reportsDirectory: "coverage",
-      // A floor under the product's figure (20 November: 92.0% of statements, 81.9% of branches; 91.7% and 81.4% late on
-      // 19 November, 91.1% and 80.6% earlier that evening, 88.5% and 77.7% that morning), two points below it, rounded
-      // down, so a run on a slower machine does not fail on noise.
-      thresholds: { statements: 90, branches: 79 },
+      // A floor under the product's figure (20 November: 92.0% of statements, 81.9% of branches, measured again that day on
+      // f667d16c6 before the fourth round's tests, with 10 tests timing out on a loaded machine; 91.7% and 81.4% late on
+      // 19 November, 91.1% and 80.6% earlier that evening, 88.5% and 77.7% that morning), one point below it, rounded
+      // down. The fourth round's tests only add to it.
+      thresholds: { statements: 91, branches: 80 },
     },
   },
 });

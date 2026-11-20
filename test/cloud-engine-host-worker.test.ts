@@ -146,3 +146,32 @@ describe("a /try company's engine with the Airwallex binding", () => {
     expect(asked).toHaveLength(1);
   });
 });
+
+describe("the relying party a passkey is made for", () => {
+  const enrolmentRp = (w: ReturnType<typeof world>) => w.storage.sql.exec("SELECT rp_id, origin FROM passkey_enrolments WHERE status = 'OPEN'").toArray()[0];
+
+  it("is the object's own, or one of the cloud's known hosts at its own https origin; never one the page names freely", async () => {
+    const w = world({ id: "t_acme01", name: "Acme BV", language: "en" });
+    const { api } = await openHost(w.ctx, { ...ENV, DB: d1(w.cloud) }, "t_acme01");
+
+    await api.passkeyStart(undefined);
+    expect(enrolmentRp(w)).toEqual({ rp_id: "cloud.test", origin: "https://cloud.test" });
+    // A known host at its own origin is taken (the cloud serves the engine on more than one address).
+    await api.passkeyStart({ rpId: "purser-try.max-31b.workers.dev", origin: "https://purser-try.max-31b.workers.dev" });
+    expect(enrolmentRp(w)).toEqual({ rp_id: "purser-try.max-31b.workers.dev", origin: "https://purser-try.max-31b.workers.dev" });
+    // Anything else, the object's own instead: another host, or a known host at another origin.
+    for (const rp of [{ rpId: "evil.example", origin: "https://evil.example" }, { rpId: "purser-try.max-31b.workers.dev", origin: "https://evil.example" }, { rpId: "cloud.test", origin: "http://cloud.test" }]) {
+      await api.passkeyStart(rp);
+      expect(enrolmentRp(w)).toEqual({ rp_id: "cloud.test", origin: "https://cloud.test" });
+    }
+  });
+
+  it("a security key needs the person's passkey first, whichever relying party is asked for", async () => {
+    const w = world({ id: "t_acme01", name: "Acme BV", language: "en" });
+    const { api } = await openHost(w.ctx, { ...ENV, DB: d1(w.cloud) }, "t_acme01");
+    for (const rp of [undefined, { rpId: "evil.example", origin: "https://evil.example" }]) {
+      expect(await api.securityKeyStart({ label: "Max", rp })).toEqual({ ok: false, reason: "add your passkey (Face ID) first: a security key is your second key" });
+    }
+    expect(w.storage.sql.exec("SELECT COUNT(*) AS n FROM security_key_windows").toArray()[0]).toEqual({ n: 0 });
+  });
+});
