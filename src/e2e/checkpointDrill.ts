@@ -7,7 +7,7 @@
 // What is simulated is labelled in the record (CHECKPOINT_DRILL_SIMULATED): the passkey is a virtual test passkey, the
 // card rail is the in-memory Issuing double, and nothing reaches Airwallex, Alta or a phone. Test money only: no money
 // moves anywhere. The key is made by `npm run verify-audit -- keygen` in a temporary directory outside the repository,
-// and only its public key and key id are recorded.
+// and only its key id is recorded.
 import { spawnSync } from "node:child_process";
 import { generateKeyPairSync } from "node:crypto";
 import { appendFileSync, copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -38,14 +38,14 @@ export const CHECKPOINT_DRILL_SIMULATED = [
   "The agents' card payments go through the runner's own path (buyPlan, payWithCard: chargeUnderHold, reserveSpend, ingestCardTransaction) against the in-memory Issuing double (src/redteam/issuing.ts), not Airwallex: nothing reached Airwallex, Alta or a phone, and no money, test money included, moved.",
   "The approved payment is a refund batch whose execution is begun (beginExecution, the gate before any rail call); no rail is called after it.",
   "The attacks are made on copies of the ledger file and its checkpoint file, by plain SQL and file writes past Purser's code (src/redteam/checkpointAttacks.ts), as someone with write access to both would.",
-  "The checkpoint key is a fresh Ed25519 key made by npm run verify-audit -- keygen in a temporary directory outside the repository, deleted at the end; only its public key and key id are in this record.",
+  "The checkpoint key is a fresh Ed25519 key made by npm run verify-audit -- keygen in a temporary directory outside the repository, deleted at the end with the drill's ledger files; only its key id is in this record.",
 ];
 
 export interface DrillStep { id: string; what: string; pass: boolean; detail: string; ms?: number }
 export interface Timing { n: number; median_ms: number; max_ms: number }
 export interface CheckpointDrillResult {
   started_at: string; ended_at: string;
-  key: { key_id: string; public_key: string };
+  key: { key_id: string };
   ledger: { rows: number; money_rows: number; checkpoints: number; intents: number; ledger_bytes: number; checkpoint_file_bytes: number };
   timings: { check_before_payment: Timing; checkpoint_write: Timing; reserve_spend: Timing };
   steps: DrillStep[];
@@ -67,12 +67,12 @@ function verifyAudit(env: Record<string, string>): { status: number | null; out:
   return { status: r.status, out: `${r.stdout}${r.stderr}`.trim() };
 }
 
-function keygen(out: string): { key_id: string; public_key: string } {
+function keygen(out: string): { key_id: string } {
   const r = spawnSync(process.execPath, ["--import", "tsx", resolve(repo, "src/cli/verifyAudit.ts"), "keygen", "--out", out], { encoding: "utf8", cwd: repo, timeout: 120_000 });
   const pub = /^public +(\S+)$/m.exec(r.stdout)?.[1];
   const id = /^key id +(\S+)$/m.exec(r.stdout)?.[1];
   if (r.status !== 0 || !pub || !id) throw new Error(`keygen failed (exit ${r.status})`);
-  return { key_id: id, public_key: pub };
+  return { key_id: id };
 }
 
 const money = (db: DB) => (db.prepare("SELECT event FROM audit_log").all() as { event: string }[]).filter((r) => MONEY_EVENTS.has(r.event)).length;
