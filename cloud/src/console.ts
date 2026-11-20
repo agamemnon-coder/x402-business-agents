@@ -23,6 +23,7 @@ import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { AWX_CSS, AWX_JS } from "./awxActUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
 import { CONNECTIONS_VIEW_JS } from "./connectionsView.js";
+import { OFFBOARDING_VIEW_JS } from "./offboardingView.js";
 import { t0CloseLine } from "./t0Close.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
@@ -37,6 +38,9 @@ const EXTRA_CSS = `
 .idps { display: grid; gap: 8px; margin-top: 10px; }
 ul.plain { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Close and offboard (cloud/src/offboardingView.ts): its last button names the company, so it wraps on a phone. */
+.offboarding .btn { height: auto; min-height: 40px; padding: 9px 16px; line-height: 1.3; white-space: normal; text-align: left; max-width: 100%; }
+.offboarding p { overflow-wrap: anywhere; }
 /* 12 Nov: the site's header (cloud/src/siteHeader.ts) on top; the console's own bar under it, one thin row: its pages,
    the company, sign-out and test money. Its tabs look as the kit's nav.tabs did (src/ui/payablesKit.ts), under their
    own class so neither style reaches the other's. */
@@ -462,7 +466,8 @@ async function stepUp(){
   const r=await api('/v1/auth/step-up',{method:'POST',stepped:true,body:{challenge_id:ch.challenge_id,credential_id:b64u(cred.rawId),assertion:assertionOf(cred)}});
   S.up={token:r.step_up,exp:Date.now()+r.expires_in*1000-5000};save(S);
 }
-async function download(path,name){const r=await api(path,{raw:true});const url=URL.createObjectURL(await r.blob());const a=el('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000)}
+function saveFile(blob,name){const url=URL.createObjectURL(blob);const a=el('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000)}
+async function download(path,name){const r=await api(path,{raw:true});saveFile(await r.blob(),name)}
 const go=(h)=>{if(location.hash===h)route();else location.hash=h};
 
 function shell(){
@@ -1415,6 +1420,42 @@ async function sessionsCard(){
     card.replaceChildren(el('h2','',t('cs.ses.title')),el('p','sub',t('cs.ses.lede')),list,msg)}
   await draw();return card}
 
+// Close and offboard (cloud/src/offboardingView.ts): the steps POST /v1/offboarding asks for, an owner's passkey session only.
+// The export: POST /v1/export/staged, then its manifest and every part by their signed links (this origin, no key),
+// each part checked against the SHA-256 the manifest gives, saved to this device as one file. Fetching the manifest is
+// what the API records as the download. A company has one open export a day: when one is open already, the API's
+// refusal names it, and its state (GET /v1/export/staged/{id}) gives a fresh link to download it again.
+const thisOrigin=(u)=>{const x=new URL(u,location.href);return x.pathname+x.search};
+const hexOf=(buf)=>Array.from(new Uint8Array(buf),(b)=>b.toString(16).padStart(2,'0')).join('');
+async function signedGet(u){const r=await fetch(thisOrigin(u));const bytes=await r.arrayBuffer();
+  if(!r.ok){let j={};try{j=JSON.parse(new TextDecoder().decode(bytes))}catch(e){}throw new Error(j.error||r.statusText)}return bytes}
+async function exportForOffboarding(){
+  let x,reused=false;
+  try{x=await api('/v1/export/staged',{method:'POST'})}
+  catch(e){const open=e&&e.code==='conflict'&&/\((x_[A-Za-z0-9]+):/.exec(e.message||'');if(!open)throw e;
+    x=await api('/v1/export/staged/'+encodeURIComponent(open[1]));if(x.status!=='ready'||!x.manifest_url)throw e;reused=true}
+  const mbytes=await signedGet(x.manifest_url);const manifest=JSON.parse(new TextDecoder().decode(mbytes));
+  const parts={};
+  for(const p of manifest.parts||[]){const name=p.table+'-'+p.n;const b=await signedGet(p.url);
+    if(hexOf(await crypto.subtle.digest('SHA-256',b))!==p.sha256)throw new Error(t('cs.off.part_bad',{part:name}));
+    parts[name]=JSON.parse(new TextDecoder().decode(b))}
+  for(const p of manifest.parts||[]){delete p.url;delete p.link}
+  saveFile(new Blob([JSON.stringify({format:manifest.format,export_id:x.id,manifest,parts})],{type:'application/json'}),'purser-export-'+x.id+'.json');
+  return {id:x.id,parts:(manifest.parts||[]).length,bytes:x.bytes,expires_at:x.expires_at,reused}}
+const OFF_ACTS={
+  exportNow:exportForOffboarding,
+  // Always a fresh check here (the route asks whatever the company's setting): the step-up token lasts five minutes.
+  passkey:async()=>{await stepUp();return {until:new Date(S.up.exp).toISOString()}},
+  offboard:(confirm,exportId)=>api('/v1/offboarding',{method:'POST',body:{confirm,export_id:exportId}}),
+  quiet:(e)=>e instanceof Expired,
+  // Offboarding ended every session, this one too: the page forgets it and shows the result signed out.
+  signedOut:()=>{forget();S=null;ME=null;shell()},
+};
+function offboardingCard(m){
+  const kids=offboardingViewOf(m,t,el,btn,OFF_ACTS,{stamp,day});
+  if(!kids)return null;
+  const card=el('div','card panel offboarding');card.id='offboarding';card.replaceChildren(...kids);return card}
+
 async function settingsView(){
   title(t('cs.nav.settings'));
   const m=await me();
@@ -1440,7 +1481,7 @@ async function settingsView(){
   const yours=!m.demo?await yourConnectionsCard().catch(()=>null):null;
   const cx=await connectionsCard();
   // "Your connections" (this company's own, each connected or not) on top, the catalogue of every connection below it.
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),yours,cx,company,security,sessions,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),yours,cx,company,security,sessions,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard,...[offboardingCard(m)].filter(Boolean));
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){
@@ -1872,7 +1913,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_VIEW_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">

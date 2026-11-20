@@ -52,6 +52,13 @@ whatever the company's step-up setting. A key cannot, and neither can a CFO, an 
 within its day, naming that export and typing the company's address to confirm. Without a downloaded, open export it is
 refused.
 
+**In the console.** Settings, *Close and offboard the company*, shown only to an owner signed in with their passkey
+([cloud/src/offboardingView.ts](../../cloud/src/offboardingView.ts)), walks through the same steps in this order:
+download the export (the console makes the staged export, fetches its manifest and every part by their signed links,
+checks each part's SHA-256 and saves them as one file), type the company's address, check with the passkey (a step-up,
+always), then offboard. It adds no rule of its own: what it sends is the API's request, and a refusal is shown as the API
+words it. The same request works without the console.
+
 **What happens, in one transaction:**
 
 1. The account closes: every key is revoked, every session ends, the connected accounts' tokens are deleted, and the
@@ -95,12 +102,14 @@ and keeps the books. The last owner cannot be erased; the company is offboarded 
 - `try_feedback` (the hands-on demo's optional note, up to 200 characters, no address) has no automatic deletion. A
   12-month rule and a daily prune would fit.
 - The period Cloudflare's Workers Logs keep request lines is the account plan's; the owner should check it.
-- The console has no offboarding screen yet; offboarding is an API call.
 - Data processing agreements and transfer mechanisms for the subprocessors
   ([data-inventory.md](data-inventory.md#subprocessors-the-code-calls)) are for the owner and the adviser.
 
 ## Tests
 
+- [test/console-offboarding.test.ts](../../test/console-offboarding.test.ts): the console's screen shows only to an owner's
+  passkey session, opens its steps in the API's order, shows the API's refusal as it comes, and downloads the export
+  against the API.
 - [test/cloud-offboarding.test.ts](../../test/cloud-offboarding.test.ts): only a signed-in owner with a fresh passkey
   offboards, and only after a downloaded export; offboarding one company leaves another's rows and R2 objects exactly
   as they were; the bookkeeping and its documents are kept byte for byte and both hash chains still verify; the purge
