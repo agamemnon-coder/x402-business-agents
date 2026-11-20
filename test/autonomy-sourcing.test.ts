@@ -54,9 +54,15 @@ describe("the autonomous Sourcing agent", () => {
     expect(buyPolicy(db2).set_by).toBeUndefined();
   });
 
-  it("may choose not to buy at all, or to serve from the cache", async () => {
+  it("may choose not to buy at all, or to serve from the cache, only when no supplier can serve within its cap (long run, 20 Nov)", async () => {
     const db = openDb(":memory:");
-    await wake(db, sourcingProfile(world()), { client: fake([[policy("none", null, 300)], [finish]]), now: T0, force: true });
+    // Ridgeline Data answers at 0.03, within the 0.03 cap with a 0.02 margin: not buying is refused; it switches instead.
+    const w = await wake(db, sourcingProfile(world()), { client: fake([[policy("none", null, 300)], [finish]]), now: T0, force: true });
+    expect(w!.run!.calls[0]).toMatchObject({ blocked: "a supplier can serve" });
+    expect(buyPolicy(db).set_by).toBeUndefined();
+    // Ridgeline Data not answering and Stockline over the cap: it may stop (and code puts that before the CFO).
+    const down: SourcingWorld = { ...world(), suppliers: async () => (await world().suppliers()).map((s) => (s.id === "ridgeline" ? { ...s, available: false, why: "answered HTTP 503" } : s)) };
+    await wake(db, sourcingProfile(down), { client: fake([[policy("none", null, 300)], [finish]]), now: T0, force: true });
     expect(buyPolicy(db)).toMatchObject({ supplier: "none", cache_seconds: 300 });
   });
 

@@ -78,6 +78,46 @@ export async function planSweep(db: DB, business: Address, reads: SweepReads = l
   return { amountCents: amount, businessBeforeCents: before, businessAfterCents: before - amount, committedCents: committed, treasuryRemainingCents: treasuryRemaining };
 }
 
+/** Code's rule for the Treasury agent's sweep_earnings: at most one sweep (any outcome) per half hour. */
+export const SWEEP_EVERY_MS = 30 * 60_000;
+
+/**
+ * The half-hour rule, with its reason: the sweep that holds the next one back and when the next is allowed; null when a
+ * sweep may run now. The long run of 20 November: the tool only said "a sweep ran in the last half hour", so Treasury
+ * tried again at every check inside the window (16:16 to 16:29 after the 16:00 sweep), each refused the same way.
+ */
+export function sweepWindow(db: DB, now = new Date()): { paymentId: string; outcome: string; at: string; nextAt: string } | null {
+  const last = db.prepare("SELECT payment_id, outcome, created_at FROM sweeps WHERE created_at > ? ORDER BY created_at DESC, rowid DESC LIMIT 1")
+    .get(new Date(now.getTime() - SWEEP_EVERY_MS).toISOString()) as { payment_id: string; outcome: string; created_at: string } | undefined;
+  if (!last) return null;
+  return { paymentId: last.payment_id, outcome: last.outcome, at: last.created_at, nextAt: new Date(Date.parse(last.created_at) + SWEEP_EVERY_MS).toISOString() };
+}
+
+/**
+ * What `npm run s3` does next with the sweeps the ledger holds. A sweep started and not paid is finished under the same
+ * payment id and amount (never a new one); a paid one gets its finality and credit lock; a locked credit not yet booked at
+ * Airwallex is booked. The long run of 20 November: once sweep-20261120-1 was final and booked, every later
+ * `s3 --sweep-only` (the Treasury agent's sweep_earnings) only reported "already final" and swept nothing, so 0.71 of net
+ * earnings stayed on the business account to the end of the run. With `sweepOnly`, a sweep finished end to end no longer
+ * stands in for a new one: the earnings since are planned as a new sweep (its own id, every check of planSweep and
+ * executeSweep). The full scenario (an invoice after the sweep) keeps using the sweep it already made, as before.
+ */
+export type SweepStep =
+  | { kind: "new" }
+  | { kind: "resume"; paymentId: string; amountCents: number }
+  | { kind: "finalize"; paymentId: string; amountCents: number; tx: string | null }
+  | { kind: "book"; paymentId: string; eventKey: string };
+export function nextSweepStep(db: DB, o: { sweepOnly: boolean }): SweepStep {
+  const last = db.prepare("SELECT payment_id, amount_cents, outcome, tx_hash, event_key FROM sweeps WHERE outcome != 'REFUSED' ORDER BY created_at DESC, rowid DESC LIMIT 1").get() as
+    { payment_id: string; amount_cents: number; outcome: string; tx_hash: string | null; event_key: string | null } | undefined;
+  if (!last) return { kind: "new" };
+  if (last.outcome !== "PAID") return { kind: "resume", paymentId: last.payment_id, amountCents: last.amount_cents };
+  if (!last.event_key) return { kind: "finalize", paymentId: last.payment_id, amountCents: last.amount_cents, tx: last.tx_hash };
+  const booked = !!(db.prepare("SELECT awx_deposit_id FROM chain_credits WHERE event_key = ?").get(last.event_key) as { awx_deposit_id: string | null } | undefined)?.awx_deposit_id;
+  if (booked && o.sweepOnly) return { kind: "new" };
+  return { kind: "book", paymentId: last.payment_id, eventKey: last.event_key };
+}
+
 export function nextSweepId(db: DB, now = new Date()): string {
   const day = now.toISOString().slice(0, 10).replace(/-/g, "");
   const n = (db.prepare("SELECT COUNT(*) AS n FROM sweeps WHERE payment_id LIKE ?").get(`sweep-${day}-%`) as { n: number }).n;
