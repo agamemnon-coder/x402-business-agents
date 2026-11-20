@@ -31,10 +31,13 @@ export function soaks(): Soak[] {
   let names: string[];
   try { names = readdirSync(new URL("docs/runs/", ROOT)); } catch { return []; }
   return names.filter((n) => SOAK_NAME.test(n)).sort().flatMap((n) => {
-    const file = `docs/runs/${n}`;
+    // The path is rebuilt from the date's three numbers, so only digits from the listing ever reach a page (CodeQL).
+    const [y, m, d] = SOAK_NAME.exec(n)![1]!.split("-").map(Number) as [number, number, number];
+    const day = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const file = `docs/runs/${day}-airwallex-soak.json`;
     try {
       const rec = JSON.parse(readFileSync(new URL(file, ROOT), "utf8")) as SoakRecord;
-      return rec.summary?.created ? [{ file, log: file.replace(/\.json$/, ".md"), day: SOAK_NAME.exec(n)![1]!, rec }] : [];
+      return rec.summary?.created ? [{ file, log: file.replace(/\.json$/, ".md"), day, rec }] : [];
     } catch { return []; }
   });
 }

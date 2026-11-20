@@ -47,7 +47,7 @@ export interface IndexRow { where: string; value: string; shown: string; records
 
 /** The figure's place on the page: the ids of the elements around it, or "top" before any. */
 const placeOf = (f: Figure) => f.where.split(">").filter(Boolean).slice(-2).join(" › ") || "top";
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\s+/g, " ").trim();
+const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\s+/g, " ").trim();
 const short = (s: string, n = 110) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 /** One row per figure as the page shows it (a figure said twice in one place, from the same records, is one row). */

@@ -19,7 +19,9 @@ export function threatModelProblems(body: string, files: string[]): string[] {
   const text = body.replace(/\r\n/g, "\n");
   const m = /^## Threat model[ \t]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(text);
   if (!m) return ['the description has no "## Threat model" section (.github/pull_request_template.md)'];
-  const said = m[1]!.replace(/<!--[\s\S]*?-->/g, "").trim();
+  let said = m[1]!;
+  for (let prev = ""; prev !== said; ) { prev = said; said = said.replace(/<!--[\s\S]*?-->/g, ""); }
+  said = said.replace(/<!--[\s\S]*$/, "").trim(); // an unclosed comment hides the rest, as it does on GitHub
   if (said.length < 4) return ['the "## Threat model" section is empty: say what this change could let someone do, and what stops it, or "None: <why>"'];
   const touched = files.filter(sensitive);
   if (/^none\b/i.test(said) && touched.length) return [`this change touches security-sensitive code (${touched.slice(0, 5).join(", ")}), so its threat model cannot be "None"`];
