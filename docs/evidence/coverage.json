@@ -2,6 +2,22 @@
  "measured_on": "2026-11-20",
  "tool": "vitest 5.1.0 with @vitest/coverage-v8 (V8's own coverage, mapped to statements and branches)",
  "command": "npm run test:coverage (vitest run --coverage, then tsx test/coverage-areas.ts)",
+ "run": {
+  "what": "The coverage run behind every \"after\" figure in this record. It is not the full-suite count: that is a separate, later run, recorded in docs/assets/test-summary.json (8,845 passed, 0 failed, on commit 1ef28d9fa).",
+  "scope": "the coverage run: every test file vitest.config.ts includes, run once with V8 coverage over src/, cloud/src/ and worker/src/",
+  "commit": "8d50fc19c",
+  "commit_note": "the third round's tests (8d50fc19c); this record and vitest.config.ts's new floor were committed on top of it in 53183c8e5, which changes no product code and no test",
+  "command": "npx vitest run --coverage --coverage.reportOnFailure, with a 90-second test timeout: npm run test:coverage's vitest step plus the option that writes the report after a failed test. These options are what the record's commit message and coverage.md name; the full command line was not kept.",
+  "environment": "a Linux machine with four cores shared with other jobs, node_modules linked from outside the checkout (not CI)",
+  "result": {
+   "passed": 8659,
+   "failed": 1,
+   "skipped": 5,
+   "files": 791
+  },
+  "failure": "test/cloud-engine-bundle.test.ts, \"loads the engine in one place only\": it bundles the Worker, and with node_modules linked from outside the checkout it counted viem's own dynamic imports as the repository's. A local artefact of the measuring machine; it touches no measured code and passes in CI (coverage.md, Limits of these figures).",
+  "regenerated": "no: there is no script in the repository that writes this record from a coverage report, so it was not rebuilt after the full-suite count of 1ef28d9fa; it stays the record of this earlier run, labelled as such wherever its figures are shown"
+ },
  "measured_scope": {
   "include": [
    "src/**/*.ts",

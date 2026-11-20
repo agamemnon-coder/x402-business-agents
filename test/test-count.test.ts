@@ -2,7 +2,7 @@
 // report. The site's stats band reads it (src/redesign/scale.ts); the README's line and badge, docs/claims.md's Tests row
 // and docs/submission/demo-day.md are written from it by `npm run test-count` (scripts/test-count.ts).
 import { describe, expect, it } from "vitest";
-import { apply, read, readmeLine, summary } from "../scripts/test-count.js";
+import { RUN_SCOPE, apply, described, read, readmeLine, summary } from "../scripts/test-count.js";
 import { scaleFigures, scaleStats } from "../src/redesign/scale.js";
 
 describe("the test count, from one file", () => {
@@ -12,6 +12,14 @@ describe("the test count, from one file", () => {
     expect(s.failed).toBe(0);
     expect(s.passed + s.skipped).toBe(s.total);
     expect(s.commit).toMatch(/^[0-9a-f]{7,40}$/);
+  });
+
+  it("says what it is a run of: the full suite (not the coverage run), the command and the machine, written by npm run test-count", () => {
+    expect(described(s)).toEqual(s);
+    expect(s.scope).toBe(RUN_SCOPE);
+    expect(s.scope).toContain("not the coverage run");
+    expect(s.command).toContain("npx vitest run");
+    expect(s.environment?.length).toBeGreaterThan(0);
   });
 
   it("is the number the README, the claims and the Demo Day pack show, written by npm run test-count", () => {
