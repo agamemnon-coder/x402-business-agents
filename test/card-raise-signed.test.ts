@@ -102,7 +102,11 @@ describe("a card's limit goes up only on a verified passkey signature over the n
     // An approval row with no stored signature, then one whose stored signature is the CFO's over other terms.
     db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES (?, 'APPROVED', ?, 'max (passkey)', 'passkey', '', ?)").run(p.proposal_id, p.terms_sha256, now.toISOString());
     db.prepare("UPDATE proposals SET status = 'APPROVED' WHERE proposal_id = ?").run(p.proposal_id);
-    executePolicyChange(db, p.proposal_id, now);
+    // Since 20 November the policy change itself does not run on it (the execution guard re-verifies the signature).
+    expect(() => executePolicyChange(db, p.proposal_id, now)).toThrow(/^execution_refused_unsigned: .*no passkey signature is stored/);
+    // Applied anyway, as decision code forced past that guard would: the card sync still refuses the raise.
+    db.prepare("UPDATE proposals SET status = 'EXECUTING' WHERE proposal_id = ?").run(p.proposal_id);
+    applyPolicyChanges(db, p.proposal_id, JSON.parse(p.terms_json) as PolicyChangeTerms, now);
     await syncCardsAfterPolicy(db, p.proposal_id, awx, now);
     expect(sourcing(awx, db)).toMatchObject({ perTxCents: 3000 });
     expect(await cardRaiseRefusal(db, "sourcing", "per_tx", 100_000)).toMatch(/no passkey signature that verifies/);

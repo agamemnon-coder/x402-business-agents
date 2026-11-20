@@ -15,6 +15,8 @@ import { hubGateRefusal } from "../hub/gate.js";
 import { hubDecisionsEnabled } from "../hub/config.js";
 import { BATCH_KIND, BATCHABLE, openBatchOf, verifyBatch } from "./batchLines.js";
 import { aloneDecision } from "./withinLimit.js";
+import { aloneLimitInForce, sourceWords } from "./aloneLimit.js";
+import { ALONE_KINDS, approvalSignatureRefusal, POLICY_METHOD, WITHIN_LIMIT } from "./signedApproval.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
@@ -231,12 +233,11 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
   }).immediate();
 }
 
-/** The kinds an agent may pay alone within the CFO's limit: a supplier invoice's payment, nothing else. */
-const ALONE_KINDS = new Set(["invoice_payment", "supplier_payment"]);
-/** The audit row of a payment approved by code within the CFO's limit to pay alone (no person signed it). */
-export const WITHIN_LIMIT = "proposal.within_limit";
-/** The approval method of such a payment: the CFO's policy, applied by code (approvals.method). */
-export const POLICY_METHOD = "policy";
+// ALONE_KINDS: the kinds an agent may pay alone within the CFO's limit (a supplier invoice's payment, nothing else).
+// WITHIN_LIMIT: the audit row of a payment approved by code within that limit (no person signed it). POLICY_METHOD: the
+// approval method of such a payment, the CFO's policy applied by code (approvals.method). All three live beside the check
+// that execution makes of such an approval (src/policy/signedApproval.ts).
+export { POLICY_METHOD, WITHIN_LIMIT };
 
 /**
  * A supplier invoice's payment approved by code, without a person, because its exact terms are within the CFO's limit
@@ -262,6 +263,11 @@ export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { 
     if (BATCHABLE.has(p.kind) && openBatchOf(db, p.proposal_id)) return no(`${p.proposal_id} is in a batch: the CFO signs the batch`);
     if (expireIfDue(db, p, now)) return no(`${p.proposal_id} expired at ${p.expires_at}`);
     const { amount, currency } = terms;
+    // Only the limit in force counts (finding 7, 20 Nov): one the CFO signed with the passkey, or a test company's
+    // labelled default (src/policy/aloneLimit.ts); a limit handed in that is not that one approves nothing.
+    const inForce = aloneLimitInForce(db);
+    if (!inForce) return no("no limit to pay alone is in force (none signed by the CFO with the passkey, and no labelled system default)");
+    if (inForce.currency !== args.limit.currency || inForce.amount !== args.limit.amount) return no(`the limit given (${args.limit.currency} ${args.limit.amount}) is not the one in force (${inForce.currency} ${inForce.amount})`);
     // Integer cents only (src/policy/withinLimit.ts, proven in formal/dafny/Limit.dfy).
     const decision = aloneDecision(amount, currency, args.limit);
     if (decision === "no_limit") return no("no limit to pay alone is set");
@@ -282,6 +288,8 @@ export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { 
       terms_sha256: p.terms_sha256, approver, method: POLICY_METHOD, agent: args.agent, rule: args.rule.slice(0, 600),
       // Within the limit, the amount is a string and the currency is the limit's own (aloneDecision).
       amount: String(amount), currency: args.limit.currency, limit: `${args.limit.currency} ${args.limit.amount}`, policy_version: policy.version,
+      // Where the limit comes from, in words: signed by the CFO (and which policy change), or a labelled system default.
+      limit_source: sourceWords(inForce.source),
     }, now);
     return { ok: true };
   }).immediate();
@@ -355,7 +363,7 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     return why;
   }).immediate();
   if (hubRefused) throw new Error(hubRefused);
-  return db.transaction((): T => {
+  const run = db.transaction((): { terms: T } | { unsigned: string } => {
     const p = get(db, proposalId);
     // A restart resumes an action a crash left EXECUTING: same hash checks and preconditions, no new transition.
     const resume = p.status === "EXECUTING" && resuming.has(proposalId);
@@ -367,17 +375,33 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     if (!approval || approval.decision !== "APPROVED") throw new Error(`${proposalId} has no approval`);
     if (recomputed !== p.terms_sha256 || recomputed !== approval.approved_sha256) throw new Error(`${proposalId}: terms do not match the approved hash ${approval.approved_sha256}`);
     if (!resume) {
+      // 20 Nov (security review, finding 1): the approval row is not enough, since it lives in the same database as the
+      // terms. The stored passkey signatures behind it must verify, here, over these exact terms (or, for a payment code
+      // approved within the limit to pay alone, its record and the limit it stood on: src/policy/signedApproval.ts). The
+      // refusal is recorded and committed, as a ledger-tamper refusal is, and nothing moves to EXECUTING.
+      const unsigned = approvalSignatureRefusal(db, proposalId);
+      if (unsigned) {
+        audit(db, "system", REFUSED_UNSIGNED, proposalId, { reason: unsigned.slice(0, 400), terms_sha256: recomputed }, now);
+        return { unsigned };
+      }
       // Again inside the write lock, so nothing can change between the gate and the transition.
       const why = hubGateRefusal(db, p, now);
       if (why) throw new Error(why);
     }
     preconditions(terms);
-    if (resume) return terms;
+    if (resume) return { terms };
     transition(db, proposalId, p.status, "EXECUTING");
     audit(db, "system", "proposal.executing", proposalId, { terms_sha256: recomputed }, now);
-    return terms;
+    return { terms };
   }).immediate();
+  if ("unsigned" in run) throw new Error(unsignedRefusal(run.unsigned));
+  return run.terms;
 }
+
+/** The audit row of an execution refused because no verifying signature stands behind its approval (finding 1). */
+export const REFUSED_UNSIGNED = "execution.refused_unsigned";
+/** The error the execution guard throws for it. */
+export const unsignedRefusal = (reason: string) => `execution_refused_unsigned: ${reason}; no money moves on it`;
 
 /** When a proposal runs out: the expiry in its terms (the one the hash covers), or the column's when that is earlier or the terms cannot be read. */
 function signedExpiry(p: Pick<ProposalRow, "terms_json" | "expires_at">): string {

@@ -15,13 +15,13 @@ import { ICC_PURCHASE_KIND } from "../src/icc/instruction.js";
 import { ICC_MERCHANTS } from "../src/icc/policy.js";
 import { executeIccPurchase, iccPurchases, iccTerms, requestIccPurchase, type IccPurchaseRequest } from "../src/icc/purchase.js";
 import { termsHash } from "../src/lib/terms.js";
-import { decide } from "../src/policy/approvals.js";
 import { rules } from "../src/policy/rules.js";
 import { MONEY_EVENTS } from "../src/provenance/origin.js";
 import { RAIL_LABELS } from "../src/money/registerShape.js";
 import { makeIccTestKeys, writeIccKeyFiles, type IccTestKeys } from "./support/iccKeys.js";
 import { IccStandIn } from "./support/iccStandIn.js";
 import { fileURLToPath } from "node:url";
+import { approveSigned } from "./support/signedApproval.js";
 
 const T0 = new Date();
 /** A made-up instrument identifier of the documented length (32). Not a card number and not a real ID. */
@@ -46,7 +46,7 @@ function approvedProposal(db: DB): string {
   const sha = termsHash(terms);
   db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES (?, ?, ?, ?, 'sourcing', 'PENDING_APPROVAL', ?, ?)")
     .run("P-0001", ICC_PURCHASE_KIND, JSON.stringify(terms), sha, expires, T0.toISOString());
-  decide(db, { proposalId: "P-0001", decision: "APPROVED", typedPrefix: sha.slice(0, 8), approver: "cfo", method: "passkey", signedSha256: sha, passkey: { credentialId: "test-cred", assertionSha256: "0".repeat(64) } }, T0);
+  approveSigned(db, "P-0001", T0);
   return "P-0001";
 }
 const tables = (db: DB) => (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all() as { name: string }[]).map((t) => t.name);

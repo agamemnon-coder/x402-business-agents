@@ -14,7 +14,7 @@ import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
 import { FEE_BPS_CAP, platformFeeOn } from "../airwallex/platform.js";
 
 export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | "approval.second_key_eur" | "approval.second_key_new_payee" | "approval.second_key_bank_changed" | "approval.second_key_new_country" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
-  | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps";
+  | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps" | "ap.alone_eur";
 
 export interface Rule {
   key: PolicyKey;
@@ -121,9 +121,19 @@ export const PLATFORM_FEE_RULE: Rule = {
   choices: ["0", "5", "10", "15", "20", "25", "30", "40", "50", "60", "75", "90", String(FEE_BPS_CAP)], fallback: "0", agent: "treasury",
 };
 
+/**
+ * The limit an agent may pay a supplier invoice alone up to (security review, 20 November, finding 7): CFO policy like
+ * the rest, so it counts only when a policy change the CFO signed with the passkey set it (src/policy/aloneLimit.ts);
+ * empty: none, and the CFO signs every invoice. Raising it loosens the policy (src/policy/loosens.ts).
+ */
+export const ALONE_RULE: Rule = {
+  key: "ap.alone_eur", label: "An agent may pay a supplier invoice alone up to this", unit: "EUR", kind: "optional_money", min: 1, max: MAX_FLOOR, fallback: "", agent: "treasury",
+};
+
 /** The rule for a key: a payout rule for any payable currency (shown or not yet), else one from the policy. */
 export function ruleFor(db: DB, key: string): Rule | undefined {
   if (key === "platform.fee_bps") return PLATFORM_FEE_RULE;
+  if (key === ALONE_RULE.key) return ALONE_RULE;
   return payoutRule(key) ?? rules(db).find((r) => r.key === key);
 }
 
@@ -150,7 +160,9 @@ export function rules(db: DB): Rule[] {
   const airi = airiRailOn() || db.prepare("SELECT 1 FROM settings WHERE key LIKE 'approval.airi_%' OR key LIKE 'airi.merchant.%'").get() ? airiRuleDefs() as Rule[] : [];
   // Purser's fee (platform.fee_bps): only with AIRWALLEX_PLATFORM_FEE=on, or once the CFO has set it.
   const platform = platformFeeOn() || db.prepare("SELECT 1 FROM settings WHERE key = 'platform.fee_bps'").get() ? [PLATFORM_FEE_RULE] : [];
-  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform];
+  // The limit to pay alone (ap.alone_eur): shown once it is set (a test company's default, or one the CFO signed).
+  const alone = db.prepare("SELECT 1 FROM settings WHERE key = 'ap.alone_eur'").get() ? [ALONE_RULE] : [];
+  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform, ...alone];
 }
 
 /**

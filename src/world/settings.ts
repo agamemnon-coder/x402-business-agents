@@ -1,5 +1,6 @@
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
+import { aloneLimitInForce } from "../policy/aloneLimit.js";
 
 import { WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
@@ -28,13 +29,14 @@ export function fxMarkupLimitBps(db: DB): number {
 }
 
 /**
- * The CFO's limit an agent may pay a supplier invoice alone up to: the company's own setting ap.alone_eur when one is
- * set (a plain amount in EUR above zero, written by a test company's seed: TRY_ALONE_LIMIT), else none, and the CFO signs
- * every invoice. No agent tool or policy change writes it.
+ * The CFO's limit an agent may pay a supplier invoice alone up to (a plain amount in EUR above zero), only while it is in
+ * force (src/policy/aloneLimit.ts, security review of 20 November): set by a policy change the CFO signed with the
+ * passkey, or a /try test company's default, labelled as one (TRY_ALONE_LIMIT). A setting written any other way counts
+ * for nothing: then there is none, and the CFO signs every invoice. No agent tool writes it.
  */
 export function aloneLimit(db: DB): { currency: "EUR"; amount: string } | null {
-  const v = getSetting(db, "ap.alone_eur", "");
-  return /^\d{1,9}\.\d{2}$/.test(v) && Number(v) > 0 ? { currency: "EUR", amount: v } : null;
+  const r = aloneLimitInForce(db);
+  return r ? { currency: "EUR", amount: r.amount } : null;
 }
 
 /**
