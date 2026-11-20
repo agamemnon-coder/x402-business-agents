@@ -104,6 +104,8 @@ async function seedEdge(): Promise<void> {
   const audit = (ts: string, actor: string, event: string, subject: string | null, payload: Json | string) => insert("audit_rows", {
     tenant_id: EDGE, seq: ++seq, ts, actor, event, subject, payload_json: typeof payload === "string" ? payload : JSON.stringify(payload), prev_hash: "0".repeat(64), row_hash: (seq.toString(16)).padStart(64, "0"),
   });
+  // An older policy version recorded without its fields, then the one in force.
+  await audit("2026-10-01T00:00:00Z", "human", "policy.version", null, {});
   await audit("2026-11-01T00:00:00Z", "human", "policy.version", null, { version: 2, sha256: "b".repeat(64), changed: "limits" });
   await audit("2026-11-01T00:01:00Z", "treasury", "card.issued", "buyer", { agent: "buyer", currency: "EUR", limits: "50.00 / 500.00", last4: "4242" });
   await audit("2026-11-01T00:02:00Z", "treasury", "card.issued", null, { limits: "1 / 2" });
@@ -111,6 +113,9 @@ async function seedEdge(): Promise<void> {
   await audit("2026-11-01T00:04:00Z", "human", "card.limit_changed", "nobody", { agent: "nobody", per_purchase: "9.00" });
   await audit("2026-11-01T00:05:00Z", "human", "setting.changed", "fx_floor", { after: "1000" });
   await audit("2026-11-01T00:06:00Z", "human", "setting.changed", "bank_name", { after: "Test Bank" });
+  // A card issued with one limit and no currency or last digits; a setting cleared.
+  await audit("2026-11-01T00:07:00Z", "treasury", "card.issued", "solo", { limits: "40.00" });
+  await audit("2026-11-01T00:08:00Z", "treasury", "setting.changed", "note", {});
   await audit("2026-11-02T00:00:00Z", "payer", "proposal.created", "P-0009", { kind: "payee_add", terms_sha256: "c".repeat(64) });
   await audit("2026-11-02T00:01:00Z", "payer", "proposal.created", "P-0010", "not json");
   await audit("2026-11-02T00:02:00Z", "payer", "proposal.created", "P-0011", { kind: "card_limit" });
@@ -132,6 +137,13 @@ async function seedEdge(): Promise<void> {
   await audit("2026-11-05T09:00:01Z", "buyer", "claude.fallback", null, {});
   await audit("2026-11-05T09:00:02Z", "treasury", "ap.duplicate_document", null, { filename: "copy.pdf" });
   await insert("ledger_entries", { tenant_id: EDGE, entry_id: 1, posting_date: "2026-11-04", doc_date: "2026-11-04", description: "Payment F-2", entry_json: "{}", prev_hash: "0".repeat(64), entry_hash: "e".repeat(64) });
+  // Open items: a receivable due next week and one in week three, a payable due in week two, one in USD.
+  await insert("ledger_entries", { tenant_id: EDGE, entry_id: 2, posting_date: "2026-11-15", doc_date: "2026-11-15", description: "Open items", entry_json: "{}", prev_hash: "e".repeat(64), entry_hash: "f".repeat(64) });
+  const line = (n: number, account: string, currency: string, debit: number, credit: number, party: string, doc: string, due: string) => insert("ledger_lines", { tenant_id: EDGE, entry_id: 2, line_no: n, posting_date: "2026-11-15", account, currency, debit_cents: debit, credit_cents: credit, party, doc_ref: doc, due_date: due });
+  await line(1, "1300", "EUR", 20_000, 0, "A Customer", "S-1", "2026-11-24");
+  await line(2, "1300", "EUR", 3_000, 0, "B Customer", "S-2", "2026-12-08");
+  await line(3, "2100", "EUR", 0, 5_000, "Bare Supplier", "B-1", "2026-12-01");
+  await line(4, "2100", "USD", 0, 7_000, "US Supplier", "U-1", "2026-11-30");
 }
 
 beforeAll(async () => {
@@ -466,8 +478,9 @@ describe("the reading tools on a company of plain rows", () => {
   it("cfo_policy: the version in force, the cards with a raise the CFO approved, the settings in words and the decisions", async () => {
     const r = await tool(edge(), "cfo_policy");
     const s = r.structuredContent as { agent_cards: { agent: string; per_purchase: string; per_month: string; currency: string }[]; settings: { setting: string; value: string; by: string }[]; decisions: Json };
-    expect(s.agent_cards).toEqual([expect.objectContaining({ agent: "buyer", per_purchase: "75.00", per_month: "500.00", currency: "EUR" })]);
-    expect(s.settings.map((x) => [x.setting, x.value])).toEqual([["fx_floor", "1000"], ["bank_name", "Test Bank"]]);
+    expect(s.agent_cards).toEqual([expect.objectContaining({ agent: "buyer", per_purchase: "75.00", per_month: "500.00", currency: "EUR" }), expect.objectContaining({ agent: "solo", per_purchase: "40.00", per_month: "", currency: "EUR", last4: "" })]);
+    expect(s.settings.map((x) => [x.setting, x.value])).toEqual([["fx_floor", "1000"], ["bank_name", "Test Bank"], ["note", ""]]);
+    expect((r.structuredContent as { policy_history: { version: number; sha256: string }[] }).policy_history[0]).toMatchObject({ version: 0, sha256: "" });
     expect(s.decisions).toEqual({ approved: 1, rejected: 1, expired: 0 });
     expect(text(r)).toMatch(/Policy version 2 since 1 Nov 2026 \(bbbbbbbbbbbb…\)\./);
     expect(text(r)).toMatch(/- fx floor: 1,000\.00/);
@@ -557,6 +570,11 @@ describe("the reading tools on a company of plain rows, counted", () => {
     // 121.00 + 0.50 fee, 10.00, 5.00 (its USD fee left out), and the malformed amount as 0.
     expect(s.money_out).toBe("136.50");
     expect(s.since).toBe("2026-11-04T09:00:00Z");
+    // The open items in EUR by due day: 200.00 in within the first week, 50.00 out in the second, 30.00 in the third; USD left out.
+    const proj = (r.structuredContent as { open: { receivables: string; payables: string }; projection: { expected_in: string; due_out: string }[] });
+    expect(proj.open).toEqual({ receivables: "230.00", payables: "50.00" });
+    expect(proj.projection.map((w) => [w.expected_in, w.due_out])).toEqual([["200.00", "0.00"], ["0.00", "50.00"], ["30.00", "0.00"], ["0.00", "0.00"]]);
+    expect(text(await tool(edge(), "books_report", { report: "payables" }))).toMatch(/2 open payables at 20 Nov 2026\.\n- U-1 · USD 70\.00 · due 30 Nov 2026 · not due\n- B-1 · EUR 50\.00 · due 1 Dec 2026 · not due/);
     const e = (await tool(empty(), "cash_position")).structuredContent as { currency: string; since: string | null; movements: number };
     expect(e).toMatchObject({ currency: "EUR", since: null, movements: 0 });
   });
