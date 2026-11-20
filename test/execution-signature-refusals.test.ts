@@ -11,6 +11,7 @@ import { TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { confirmPasskey, fingerprintOf, openEnrolment } from "../src/passkey/ledger.js";
 import { processAssertion, processRegistration, type InboxItem } from "../src/passkey/process.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
+import { sealPasskey, type SealedFields } from "../src/passkey/seal.js";
 import { ALONE_KEY, SYSTEM_DEFAULT, aloneLimitInForce, aloneLimitRecord, setSystemDefaultAloneLimit } from "../src/policy/aloneLimit.js";
 import { approveWithinLimit, createProposal, decide, nextProposalId } from "../src/policy/approvals.js";
 import { approvalSignatureRefusal, policyApprovalCheck } from "../src/policy/signedApproval.js";
@@ -165,6 +166,8 @@ describe("a passkey approval's stored signatures", () => {
   it("refuses one dated before its key was enrolled", async () => {
     const { db, p } = await approved();
     db.prepare("UPDATE passkeys SET enrolled_at = '2026-11-20T10:30:00.000Z'").run();
+    // Sealed again for the new date (as a genuine later enrolment would be), so the date check is the one that refuses.
+    for (const row of db.prepare("SELECT credential_id, public_key, rp_id, origin, label, enrolled_at FROM passkeys").all() as SealedFields[]) sealPasskey(db, row);
     expect(approvalSignatureRefusal(db, p.id)).toMatch(/signed before the key was enrolled\)$/);
   });
 
