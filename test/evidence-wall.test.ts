@@ -281,13 +281,14 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect(tile(w(), "eval-v7").note).toContain(`${v7.totals.purser_script.false_holds} false hold${v7.totals.purser_script.false_holds === 1 ? "" : "s"} of ${v7.totals.purser_script.clean_truths}`);
     expect(tile(w(), "eval-v7").note).toContain(`Fixed since, no longer held out: ${v7a.totals.purser_script.wrong_payments} wrong payments, ${v7a.totals.purser_script.false_holds} false holds`);
     expect(tile(w(), "eval-v7").note).not.toContain("Held out.");
-    // Eval v8: held out, its one run as recorded.
-    const v8 = json<Adv>("docs/evals/adversarial-v8.json");
-    expect(v8.held_out).toBe(true);
+    // Eval v8: its held-out run as recorded, and beside it the figures after the fixes written against its misses (20 Nov).
+    const v8 = json<Adv>("docs/evals/adversarial-v8.json"), v8a = json<Adv>("docs/evals/adversarial-v8-after.json");
+    expect([v8.held_out, v8a.held_out]).toEqual([true, false]);
     expect(tile(w(), "eval-v8").fig).toBe(`${v8.totals.purser_script.wrong_payments} vs ${v8.totals.no_rules.wrong_payments}`);
     expect(tile(w(), "eval-v8").note).toContain(`(commit ${v8.cases_commit})`);
     expect(tile(w(), "eval-v8").note).toContain(`${v8.totals.purser_script.false_holds} false hold${v8.totals.purser_script.false_holds === 1 ? "" : "s"} of ${v8.totals.purser_script.clean_truths}`);
-    expect(tile(w(), "eval-v8").note).toContain("Held out.");
+    expect(tile(w(), "eval-v8").note).toContain(`Fixed since, no longer held out: ${v8a.totals.purser_script.wrong_payments} wrong payments, ${v8a.totals.purser_script.false_holds} false holds`);
+    expect(tile(w(), "eval-v8").note).not.toContain("Held out.");
     const sq = json<{ lighthouse: { path: string; preset: string; median: { performance: number; accessibility: number } }[] }>("docs/evidence/site-quality.json").lighthouse;
     expect(tile(w(), "site-quality").fig).toBe(String(Math.min(...sq.map((x) => x.median.accessibility))));
     expect(tile(w(), "site-quality").note).toContain(`lowest performance ${Math.min(...sq.map((x) => x.median.performance))}`);

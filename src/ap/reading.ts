@@ -9,6 +9,7 @@ import { z } from "zod";
 import { skeleton } from "../policy/fraudCore.js";
 import { asksToPay, isInformation } from "../policy/multilingual.js";
 import { plainDigits, plainNumerals } from "../policy/numerals.js";
+import { oneEncoding } from "../policy/scripts.js";
 
 export interface ApReading {
   vendor: string;
@@ -145,7 +146,13 @@ export function amountsOn(line: string): Found[] {
 export const KNOWN_CODES = new Set(["EUR", "GBP", "USD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "HKD", "SGD", "AUD", "CAD", "JPY", "CNY", "NZD", "TRY", "HUF", "RON", "BGN"]);
 const SYMBOLS: Readonly<Record<string, string>> = { "€": "EUR", "£": "GBP", $: "USD" };
 /** Currencies written as words or abbreviations, which a label's words must never be taken for. */
-const CURRENCY_WORDS: ReadonlySet<string> = new Set(["kr", "kn", "zł", "zl", "kč", "kc", "ft", "lei", "lev", "leva", "lv", "лв", "тл", "грн", "₾", "֏", "руб", "р", "ден", "дин", "din", "fr", "sfr", "chf", "rs", "rp", "tl", "eur", "usd", "gbp", "euro", "euros", "dollar", "dollars", "pound", "pounds", "yen", "yuan", "won", "baht", "taka", "টাকা", "রুপি", "ரூபாய்", "रुपये", "रुपया", "ريال", "درهم", "دينار", "روپے", "ብር", "រៀល", "ლარი", "դրամ", "гривень", "гривня", "рублей", "крон", "kronor", "kroner", "krónur", "lari", "dram", "birr", "riel"]);
+const CURRENCY_WORDS: ReadonlySet<string> = new Set(["kr", "kn", "zł", "zl", "kč", "kc", "ft", "lei", "lev", "leva", "lv", "лв", "тл", "грн", "₾", "֏", "руб", "р", "ден", "дин", "din", "fr", "sfr", "chf", "rs", "rp", "tl", "eur", "usd", "gbp", "euro", "euros", "dollar", "dollars", "pound", "pounds", "yen", "yuan", "won", "baht", "taka", "টাকা", "রুপি", "ரூபாய்", "रुपये", "रुपया", "ريال", "درهم", "دينار", "روپے", "ብር", "រៀល", "ლარი", "դրամ", "гривень", "гривня", "рублей", "крон", "kronor", "kroner", "krónur", "lari", "dram", "birr", "riel",
+  // 20 Nov (after the held-out eval v8, v8-cur-lanka-lkr-reference: "(≈ රු. 245,000.00, for reference)" under a EUR total was
+  // held as a second amount in the invoice's currency): currencies as their own scripts abbreviate and name them: the
+  // rupee in Sinhala, Tamil, Devanagari, Gujarati, Kannada, Telugu, Malayalam, Gurmukhi and Odia, the kyat, the kip, the
+  // tögrög, the baht, the taka, the shekel.
+  "රු", "රුපියල්", "ரூ", "ரூபா", "रु", "रू", "रुपैयाँ", "રૂ", "રૂપિયા", "ರೂ", "ರೂಪಾಯಿ", "రూ", "రూపాయి", "రూపాయలు", "രൂ", "രൂപ", "ਰੁ", "ਰੁਪਏ", "ଟଙ୍କା",
+  "ကျပ်", "ກີບ", "төгрөг", "төг", "บาท", "שקל", "שח"]);
 /** Words a total, subtotal or tax line may carry beside its label, amount and currency (compared in lower case). */
 const FILLER = new Set([
   "total", "due", "amount", "payable", "to", "pay", "now", "balance", "incl", "including", "inclusive", "excl", "excluding", "inkl", "exkl", "of", "on", "in",
@@ -483,7 +490,10 @@ export function parseApFallback(text: string): ApReading {
  * team round 3: a right-to-left override in a supplier's name reached the vault, the ERP and the approval card).
  */
 export function cleanText(s: string, max = 120): string {
-  return (s ?? "").replace(/[\p{Cc}\p{Cf}]/gu, "").replace(/\s+/g, " ").trim().slice(0, max).trim();
+  // 20 Nov (after the held-out eval v8, v8-look-kochi-old-chillu, with the parser's fields): a letter written the way text
+  // was encoded before Unicode 5.1 (a Malayalam chillu as consonant, virama and zero-width joiner) is kept as that letter,
+  // not cut to a consonant and virama by taking the joiner out (src/policy/scripts.ts oneEncoding).
+  return oneEncoding(s ?? "").replace(/[\p{Cc}\p{Cf}]/gu, "").replace(/\s+/g, " ").trim().slice(0, max).trim();
 }
 
 /** Whether a supplier's name is written in the document (letters and digits as a reader sees them, lookalikes folded). */
@@ -529,7 +539,9 @@ export function askedAboveTotal(text: string, total: string, currency: string): 
   const from = at ? ls.indexOf(at.line) : ls.findIndex((l) => amountsOn(l).some((a) => a.amount === total));
   for (const [i, l] of ls.entries()) {
     if (labelled(l)) continue;
-    for (const clause of l.split(/\.(?!\d)|[;!?。।።៕\n]/u)) {
+    // 20 Nov (after eval v8): a currency's abbreviation keeps its amount ("රු. 245,000.00", "Rs. 40,100.00"): its dot is no
+    // clause's end.
+    for (const clause of withCurrencyDots(l).split(/\.(?!\d)|[;!?。।።៕\n]/u)) {
       const named = lineCurrency(clause.replace(/\d[\d.,'\s]*\d/g, " ")).known;
       if (named.length && !named.includes(currency)) continue;
       const above = amountsOn(clause).find((a) => toCentsPlain(a.amount) > most);
@@ -543,6 +555,8 @@ export function askedAboveTotal(text: string, total: string, currency: string): 
   }
   return null;
 }
+/** A line with the dot after a currency's abbreviation, before its amount, written as a space ("රු. 245,000.00" as "රු 245,000.00"). */
+const withCurrencyDots = (line: string) => line.replace(/([\p{L}\p{M}]+)\.(?=\s*\p{Nd})/gu, (all, w: string) => (CURRENCY_WORDS.has(w.toLowerCase()) ? `${w} ` : all));
 /** ISO 4217 codes of the currencies in use, beyond those code pays (KNOWN_CODES). */
 const ISO_CODES = new Set(`AED AFN ALL AMD ANG AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF BMD BND BOB BRL BSD BTN BWP BYN BZD CAD CDF CHF CLP CNY COP CRC CUP CVE CZK DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP GEL GHS GIP GMD GNF GTQ GYD HKD HNL HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY KES KGS KHR KMF KPW KRW KWD KYD KZT LAK LBP LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR MWK MXN MYR MZN NAD NGN NIO NOK NPR NZD OMR PAB PEN PGK PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SOS SRD SSP STN SVC SYP SZL THB TJS TMT TND TOP TRY TTD TWD TZS UAH UGX USD UYU UZS VES VND VUV WST XAF XCD XOF XPF YER ZAR ZMW ZWL`.split(" "));
 /** Whether a clause names a currency other than the invoice's: a symbol, an ISO code or a currency's word or abbreviation. */

@@ -20,7 +20,7 @@ import { assessAgainst, sameName, type Beneficiary, type FraudFinding, type Frau
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
 import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
-import { asksToPay, customerNumberBefore, namesAccount } from "../policy/multilingual.js";
+import { asksToPay, customerNumberBefore, identifierBefore, namesAccount } from "../policy/multilingual.js";
 import { plainDigits } from "../policy/numerals.js";
 import { lineTotals } from "./lineTotals.js";
 import { deliveryDates, itemLines, periodsDiffer, sameLines, servicePeriods } from "./period.js";
@@ -211,6 +211,9 @@ function accountNumbersIn(text: string): string[] {
       if (/^\d{4}-\d{2}-\d{2}$|^\d{2}\.\d{2}\.\d{4}$/.test(m[0])) continue;
       // 19 Nov (after eval v7): the customer's own number with the supplier, quoted when paying, is no account to pay into.
       if (customerNumberBefore(line.slice(0, m.index).split(/[.;!?。।]\s/u).at(-1) ?? "")) continue;
+      // 20 Nov (after the held-out eval v8, v8-bec-shwe-registration-number): nor is a number its own label calls something
+      // else, a company's registration, tax, telephone or order number, with no account named between the label and it.
+      if (identifierBefore(line.slice(0, m.index))) continue;
       out.push(m[0].replace(/\D/g, ""));
     }
   }
