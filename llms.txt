@@ -29,7 +29,7 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Alta testnet
 Written by npm run evidence:wall from the committed records; the same figures, each linked to its record, are on https://kit11.max-31b.workers.dev/proof#evidence. Test money only; what was simulated is said on each line.
 
 Live on the rails:
-- All 50 Airwallex transfers PAID from the public /try (sandbox; 25 walks as a visitor, 19 Nov; PAID by the sandbox's simulation): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- All 116 Airwallex transfers PAID from the public /try (sandbox; 58 walks as a visitor, 19 Nov; PAID by the sandbox's simulation): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
 - All 3 paid invoices made bills in Airwallex Spend (sandbox; the signed hash as external_id, read back exactly; transfers PAID by the sandbox's simulation, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-bills.md
 - All 30 soak payments PAID, signed hash read back (sandbox; each read back from Airwallex as signed: hash, amount, payee, reference; PAID by the sandbox's simulation, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md
 - All 6 FX conversions booked and read back (sandbox; In the soak, each before the payment it funded, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md
@@ -49,9 +49,9 @@ Live on the rails:
 
 Cannot be forged:
 - All 894 tampered proof copies refused (test world; every signed value of 6 proofs changed; the originals verify. Offline): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/tamper-matrix.md
-- All 25 one-cent changes refused after approval (sandbox; the public /try, 19 Nov; a virtual test passkey signed): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
-- All 25 approvals whose hash Airwallex carries (sandbox; the public /try, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
-- All 48 proof files VALID, browser and offline (sandbox; downloaded from /try; npm run verify-bundle agrees): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- All 58 one-cent changes refused after approval (sandbox; the public /try, 19 Nov; a virtual test passkey signed): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- All 58 approvals whose hash Airwallex carries (sandbox; the public /try, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- All 114 proof files VALID, browser and offline (sandbox; downloaded from /try; npm run verify-bundle agrees): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
 - All 5 one-cent changes refused before any create (sandbox; 0 money-moving calls (0 creates); each refusal still read the balance once (5 GET /balances/current). Soak, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md
 - EUR 30.01 one cent over an agent's limit: declined (sandbox; simulated card charges, 15 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/airwallex-card-cent-2026-11-15.json
 - 4 Visa attempts refused by Purser, before Airi (sandbox; 0 calls to Airi or Airwallex for any of them; 2 a credential presented again or for another amount. A test card, 14 Nov): https://kit11.max-31b.workers.dev/visa
@@ -69,8 +69,8 @@ AI under control:
 - 20 vs 79 wrong payments on 140 held-out invoices (eval v8): Purser vs no rules (test world; cases committed with their pre-registration before the run (commit 7fabd5262); a script always says pay. 6 false holds of 74. Fixed since, no longer held out: 0 wrong payments, 0 false holds. Offline): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v8.md
 - All 35 red-team attacks stopped before money moved, re-run, not held out (test world; Newest re-run, 19 Nov, after agent cards were frozen by default: the scripted attacks, no model; none left to be found only afterwards. Earlier re-run, 19 Nov: 34 of 35, 1 found afterwards (hidden-payment). First run, 30 Oct, with Claude writing 4 of the documents: 37 of 39, 2 found afterwards): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/rerun-2026-11-19b.json
 - 370 of 380 hostile tool calls stopped by code (test world; the other 10 stood within the rules, by the ledger: each the last pay of an invoice whose right outcome is pay, within the limit. Sent to the CFO where a person had to look: 5; 0 after the 19 Nov fixes, re-run, not held out): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/ap-hostile.json
-- 0 fallbacks in 360 Claude calls on /try (sandbox; 388 Anthropic request ids; claude-haiku-5-5. 168 reader calls were logged with no request id: those walks ran before the fix of 19 Nov was deployed): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
-- 24 of 25 invoices held by code's cash check (sandbox; inside the agent's limit; no payout. One walk stopped before this step): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- 0 fallbacks in 855 Claude calls on /try (sandbox; 1153 Anthropic request ids; claude-haiku-5-5. 168 reader calls were logged with no request id: those walks ran before the fix of 19 Nov was deployed): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- 57 of 58 invoices held by code's cash check (sandbox; inside the agent's limit; no payout. One walk stopped before this step): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
 
 Attacked and broken on purpose:
 - All 128 attacks on the /try API held (test world; 0 errors. Servers on this computer, no live site; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/redteam-api.md
@@ -92,12 +92,12 @@ Quality and supply chain:
 - 7.3/10 OpenSSF Scorecard score, read from its public API (CI; Read from api.securityscorecards.dev on 2026-11-20; one maintainer keeps Code-Review and Contributors low, and a repository under 90 days old scores 0 on Maintained): https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents
 
 The public /try, timed:
-- 24 of 25 /try walks: every site step passed (sandbox; 19 Nov, Chromium and Firefox, desktop, tablet and phone; 0 console errors. The recording script marked 21 of 25 all ok: the others stopped on its own bug or on /verify's new words; the run logs say which): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
-- 6.6 s passkey to paid, on screen (sandbox; median of 25, p95 8.2 s): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
-- 11.0 s agent pays alone, to Airwallex PAID (sandbox; median of 25, p95 13.7 s; PAID by the sandbox's simulation): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
-- 0.70 s one-cent change to refusal (sandbox; median of 25, p95 0.77 s): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
-- 0.09 s proof file to verdict on /verify (sandbox; median of 24, p95 0.29 s): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
-- USD 0.0047 Claude cost per /try journey (sandbox; list price; USD 0.1179 for 25): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- 57 of 58 /try walks: every site step passed (sandbox; 19 Nov, Chromium and Firefox, desktop, tablet and phone; 0 console errors. The recording script marked 54 of 58 all ok: the others stopped on its own bug or on /verify's new words; the run logs say which): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- 6.3 s passkey to paid, on screen (sandbox; median of 58, p95 8.2 s): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- 10.2 s agent pays alone, to Airwallex PAID (sandbox; median of 58, p95 13.6 s; PAID by the sandbox's simulation): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- 0.68 s one-cent change to refusal (sandbox; median of 58, p95 0.90 s): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- 0.12 s proof file to verdict on /verify (sandbox; median of 57, p95 0.41 s): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
+- USD 0.0048 Claude cost per /try journey (sandbox; list price; USD 0.2811 for 58): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
 
 ## Start here
 
