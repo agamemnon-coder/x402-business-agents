@@ -480,7 +480,7 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
   });
 
   it("keeps every label of what is simulated", () => {
-    const fold = text(/<details class="fold"><summary>What is simulated<\/summary>[\s\S]*?<\/details>/.exec(awx)![0]);
+    const fold = text(/<details class="fold"(?: data-rec="[^"]*")?><summary>What is simulated<\/summary>[\s\S]*?<\/details>/.exec(awx)![0]);
     for (const want of ["The Airwallex sandbox, with test money only.", "Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API", "simulated sandbox deposit", "Card charges at merchants are simulated by the sandbox",
       "verification simulated", "labelled test passkey", "not Face ID", "Payment acceptance: Airwallex's sandbox test card and a test customer."]) expect({ want, has: fold.includes(want) }).toEqual({ want, has: true });
   });
