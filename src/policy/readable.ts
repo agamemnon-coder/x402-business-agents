@@ -171,6 +171,18 @@ const UNREAD_WORDS: Readonly<Record<Shared, Readonly<Record<string, string>>>> =
     Basque: "mesedez ordaindu ordainketa gaur orain berehala kontua bankua berria gure zure eskerrik asko esan inori zuzendaria argibideak jarraibideak baimen eta dira bat egun barru honako hau hori",
     Catalan: "amb els aquesta aquest aquests pagament pagueu avui immediatament nostre nostra vostre vostra gràcies moltes digueu ningú instruccions ignoreu aprovació termini",
     Galician: "grazas nosa noso vosa voso unha xa hoxe dende ningún digades instrucións sen aprobación",
+    Asturian: "nuesa nuesu vuesa vuesu camudó camudar esperái güei ensin toles inora instrucciones anteriores pal d'ia equí tamién y nun ye tán facer facturación cuenta bancaria datos",
+    Aragonese: "nuestra nuestro vuestra o os dende güei agora sin bels instruccions anteriors pagaz ista factura",
+    Ladino: "kuento kuenta instruksiones de antes i agora ayudante tomes faktura muestra muevos pagar presto kada ke",
+    Sardinian: "pro piaghere paga oe immediadamente sena contu nou nostru bostru gràtzias istrutziones totu",
+    Friulian: "par plasê paie vuê subit cence cont gnûf nestri vuestri graciis istruzions dutis",
+    Scots: "tae dinnae cannae winnae ony auld richt noo yer heid wants peyed pey sowl ken aye wee efter gie gien oot fae aw thir thon bairn the day",
+    "Low German": "för vergeet olen anwiesungen betahl betahlen disse reken foorts vun dat wat wi ji uns jo nich nix mien dien hüüt geld rekenen",
+    Kapampangan: "king deng ing ngene milabas turu mu ye pansinan kaku keka atin ala bayaran nu ika ku sabi bisa",
+    Limburgish: "veur dich mich gouw rekening betaole vandaag neet ós uch bedankt",
+    // 20 Nov (after the held-out eval v10, v10-inject-greenlandic: one Spanish "una" among its words kept a Greenlandic
+    // order from counting as a sentence of no language the lists hold).
+    Greenlandic: "ikiortimut ilitsersuutit siusinnerusut tamaasa sianigiunnaakkit akiligassarlu akiligassaq akiliuk erniinnaq qujanaq aningaasat ullumi maanna naatsorsuut kontomut aallartitsisoq",
     Welsh: "gwelwch dda talu taliad heddiw nawr unwaith cyfrif newydd eich diolch peidiwch dweud wrth neb cyfarwyddwr cyfarwyddiadau anwybyddu caniatâd gyda mae ydy hwn hon dyddiau yr yn ac",
     Irish: "thoil íoc íocaíocht inniu anois láithreach cuntas bhur raibh maith agat inis duine stiúrthóir treoracha neamhaird cead agus leis seo laethanta",
     "Scottish Gaelic": "pàigh pàigheadh diugh nis bhad cunntas tapadh leat innis stiùiriche stiùiridhean chead agus tha seo",
@@ -181,9 +193,12 @@ const UNREAD_WORDS: Readonly<Record<Shared, Readonly<Record<string, string>>>> =
     Esperanto: "bonvolu pagu hodiaŭ tuj nia dankon diru ajn direktoro instrukciojn ignoru aprobo kaj estas kun tiu tagoj",
     Quechua: "hina kaspa qullqi kunan chaylla musuq ñuqayku qamkuna sulpayki willaychu pimanpas kamachikuykuna kay chay punchaw",
     "Haitian Creole": "tanpri peye peman jodi kounye touswit nouvo mèsi pèsonn direktè enstriksyon inyore apwobasyon ak nan pou jou",
-    Afrikaans: "asseblief vandag onmiddellik nuwe julle dankie moenie vertel direkteur instruksies ignoreer vir hierdie dae",
+    // 20 Nov (after the held-out eval v10: bank details changed in Afrikaans and Luxembourgish, and orders in Scots,
+    // Asturian, Low German and Kapampangan, were read as the languages next to them): more of the words that tell a
+    // language from its neighbour, and the neighbours of English, Spanish, Dutch and German the lists do not hold.
+    Afrikaans: "asseblief vandag onmiddellik nuwe julle dankie moenie vertel direkteur instruksies ignoreer vir hierdie dae bankbesonderhede besonderhede verander volg nie baie jy u dit is ons gaan sal kan moet word was het asb faktuur rekening betaling betaal saldo vorige saam uitstaande",
     Faroese: "vinarliga gjaldið beinanvegin konta nýggj okkara tykkara sigið nøkrum stjóri góðkenning fyri hesin hetta",
-    Luxembourgish: "gelift bezuelt bezuelen elo neit eis ären sot kengem näischt direkter instruktiounen ignoréiert ass vun fir mat dës dësen deeg bannent",
+    Luxembourgish: "gelift bezuelt bezuelen elo neit eis ären sot kengem näischt direkter instruktiounen ignoréiert ass vun fir mat dës dësen deeg bannent huet geännert nei donnéeë kommen bréif bankverbindung rechnung äre patron wëll datt dat haut nach gëtt et ouni kontroll fréier all ze a mir dir",
     Frisian: "asjebleaft betelje hjoed fuortendaliks rekken nij tankewol sizze gjinien ynstruksjes negearje goedkarring fan foar mei",
     Azerbaijani: "zəhmət olmasa ödəyin ödəniş dərhal təşəkkür edirik deməyin heç kimə təlimatlar nəzərə almayın təsdiq üçün ərzində",
     Uzbek: "iltimos toʻlang toʻlov bugun hozir darhol hisob yangi bizning sizning rahmat aytmang hech kimga koʻrsatmalar bermang tasdiq uchun bilan ichida",

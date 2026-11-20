@@ -78,6 +78,10 @@ const LEGAL_FORMS: readonly string[][] = [
   ["sa"], ["sas"], ["sasu"], ["sarl"], ["eurl"], ["sl"], ["slu"], ["spa"], ["sapa"], ["snc"], ["lda"],
   // Nordic, Polish, Czech, Slovak, Hungarian, Baltic
   ["ab"], ["as"], ["a", "s"], ["asa"], ["aps"], ["oy"], ["oyj"], ["ou"], ["hf"], ["sp", "z", "oo"], ["spzoo"], ["sp", "j"], ["sp", "k"], ["sro"], ["s", "r", "o"], ["kft"], ["zrt"], ["nyrt"], ["uab"], ["sia"],
+  // 20 Nov (after the held-out eval v10, v10-name-uewersauer-sarl and v10-name-iliria-form-first: "S.à r.l." on file against
+  // a bank's "SARL", "sh.p.k." against "SHPK"): Luxembourg's and Switzerland's S.à r.l. as its dots and spaces leave it,
+  // Albania's and Kosovo's sh.p.k. and sh.a., South Africa's (Edms) Bpk and (Pty) Ltd.
+  ["sa", "rl"], ["s", "a", "r", "l"], ["shpk"], ["sha"], ["edms", "bpk"], ["bpk"], ["pty", "ltd"],
   // "& Co.", "and Co."
   ["&"], ["and"],
 ];
@@ -119,6 +123,12 @@ const COMPANY_WORDS: ReadonlySet<string> = new Set([
   "shpk", "tov", "prat", "ooo", "zao", "oao", "pao", "xxk", "hhk", "jv", "fze", "fzco", "fzc", "fzllc", "wll", "spc", "saog", "psc", "pjsc", "plc", "gk", "yk", "pty",
   "industries", "industry", "industrial", "trading", "traders", "enterprises", "enterprise", "group", "holdings", "holding", "manufacturing", "mills", "works", "exports", "imports",
   "international", "intl", "services", "solutions", "logistics", "textile", "textiles", "partners", "associates", "firm", "agency", "cooperative", "coop",
+  // 20 Nov (after the held-out eval v10, v10-name-kashgar-latin-holder: "QESHQER REXTCHILIK SHIRKITI", the Uyghur company's
+  // own name in the Uyghur Latin script, was held as a person's name): the word "company", "firm", "factory" or "industry"
+  // as the languages suppliers write in romanise it, and the Southern African and Albanian forms.
+  "shirkiti", "shirket", "shirkat", "sirket", "sharikat", "sherkat", "shirkadda", "shirkad", "kampuni", "kamfanin", "kamfani", "kompania", "kompaniya", "kompanija",
+  "kompani", "kumpanya", "kampani", "perusahaan", "syarikat", "empresa", "impresa", "entreprise", "compagnie", "compania", "companhia", "gesellschaft", "firma", "bedrijf",
+  "fabrik", "fabriek", "fabrika", "fabryka", "factory", "udyog", "udyoga", "karkhana", "bpk", "edms", "sha",
 ]);
 /** Legal forms written in other scripts, and as banks write them in katakana, as they read after NFKC and in lower case. */
 const COMPANY_MARKS = [
@@ -135,6 +145,8 @@ const COMPANY_MARKS = [
   "کمپنی", "لمیٹڈ", "پرائیویٹ", "සමාගම", "(පුද්)", "පුද්ගලික", "ලිමිටඩ්", "ကုမ္ပဏီ", "လီမိတက်", "ບໍລິສັດ", "ຈຳກັດ", "ххк", "компани",
   "કંપની", "લિમિટેડ", "પ્રાઇવેટ", "ಕಂಪನಿ", "ಲಿಮಿಟೆಡ್", "ಪ್ರೈವೇಟ್", "കമ്പനി", "ലിമിറ്റഡ്", "പ്രൈവറ്റ്", "కంపెనీ", "లిమిటెడ్", "ప్రైవేట్", "ਕੰਪਨੀ", "ਲਿਮਿਟੇਡ",
   "тзов", "прат", "фоп", "товариство", "компанія", "компания", "фирма", "ჯგუფი",
+  // 20 Nov (after the held-out eval v10): "company" in Uyghur, Sorani and Marathi letters.
+  "شىركىتى", "شىركەت", "کۆمپانیا", "प्रायव्हेट", "कंपनी", "उद्योग",
 ];
 /** An abbreviation inside a word: letters with dots or slashes between them ("ኃ/የተ/የግ/ማ", "ឯ.ក", "s.r.o.", "ذ.م.م"), as legal forms are written. */
 const ABBREVIATED_FORM = /(?:^|\s)[\p{L}\p{M}]{1,4}[./](?:[\p{L}\p{M}]{1,4}[./]?)+(?=\s|$)/u;
@@ -199,7 +211,8 @@ export function sameName(a: string, b: string): boolean {
  * (PT, CV), Ukrainian and Russian (ТОВ, ТзОВ, ПрАТ, ООО) companies write them (19 Nov, after eval v7: "TOV LVIVSKA
  * TKANYNA" for "ТОВ «Львівська Тканина»"; legalName dropped legal forms only at the end).
  */
-const LEADING_FORMS: ReadonlySet<string> = new Set(["uab", "ab", "mb", "sia", "as", "ou", "pt", "cv", "tov", "tzov", "prat", "ooo", "oao", "zao", "pao", "fop", "тов", "тзов", "прат", "ооо", "оао", "зао", "пао", "фоп"]);
+const LEADING_FORMS: ReadonlySet<string> = new Set(["uab", "ab", "mb", "sia", "as", "ou", "pt", "cv", "tov", "tzov", "prat", "ooo", "oao", "zao", "pao", "fop", "тов", "тзов", "прат", "ооо", "оао", "зао", "пао", "фоп",
+  "shpk", "sha"]);
 const leadingForm = (name: string) => { const t = rawTokens(name); return t.length > 1 && LEADING_FORMS.has(t[0]!); };
 /** A name without a legal form at its start (the words after it, as written). */
 const withoutLeadingForm = (name: string) => {

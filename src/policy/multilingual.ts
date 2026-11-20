@@ -367,6 +367,11 @@ const PAYER_SIDE = anyOf([
   "vos services financiers", "votre responsable financier", "su direccion", "su departamento financiero", "su contabilidad", "su controller", "su director", "su gerencia",
   "uw directie", "uw financiele afdeling", "uw boekhouding", "uw controller", "uw cfo", "uw crediteurenadministratie", "la vostra direzione", "la vostra amministrazione",
   "la vostra contabilita", "il vostro controller", "il vostro cfo", "a sua direcao", "o seu departamento financeiro", "a sua contabilidade", "o seu controller",
+  // 20 Nov (after the held-out eval v10: "Your ERP already shows a three-way match", "Treasury on your side has
+  // whitelisted us"): the buyer's own systems and records, and anyone "on your side".
+  "your erp", "your system", "your systems", "your records", "your books", "your ledger", "your workflow", "your ap system", "your approval", "on your side", "on your end",
+  "your end", "ihr erp", "ihr system", "ihrem system", "votre erp", "votre systeme", "su erp", "su sistema", "uw erp", "uw systeem", "il vostro erp", "il vostro sistema",
+  "la vostra amministrazione",
 ]);
 /** A check done on a payment: approved, signed off, cleared, reconciled, validated, verified, released, authorised. */
 const CHECK_DONE = anyOf([
@@ -374,13 +379,19 @@ const CHECK_DONE = anyOf([
   "rubber-stamped", "freigegeben", "freigabe", "genehmigt", "gepruft", "abgestimmt", "abgezeichnet", "valide", "approuve", "verifie", "controle", "vise", "autorise",
   "aprobad", "validad", "verificad", "autorizad", "goedgekeurd", "gecontroleerd", "gefiatteerd", "akkoord gegeven", "approvat", "validat", "verificat", "autorizzat",
   "aprovad", "conferid",
+  // 20 Nov (after the held-out eval v10): matched, whitelisted, and the words for a go-ahead ("visto bueno", "l'ok", "via
+  // libera", "afgetekend", "abgesegnet", "grünes Licht").
+  "match", "matched", "three-way match", "whitelisted", "whitelist", "allowlisted", "allow-listed", "trusted payee", "pre-cleared", "precleared", "visto bueno", "l'ok", "l' ok",
+  "via libera", "luz verde", "feu vert", "grunes licht", "groen licht", "afgetekend", "geaccordeerd", "abgesegnet", "ok gegeben", "dado el ok", "dato il via",
 ]);
 const PAYER_SIDE_DONE = near(PAYER_SIDE, CHECK_DONE, 40);
 /** Without, in the languages of PAYER_SIDE and more. */
 const WITHOUT = anyOf(["without", "ohne", "sans", "sin$", "senza", "zonder", "sem$", "bez$", "без$", "tanpa", "nelkul", "χωρισ"]);
 /** A check of a payment, as a noun: a review, a check, an approval, a query, a sign-off. */
 const CHECK_NOUN = anyOf([
-  // Not "control" in English: "without temperature control" is a product.
+  // Not "control" in English: "without temperature control" is a product. 20 Nov (after eval v10, v10-inject-italian-dato-ok:
+  // "senza ulteriori passaggi"): a step or formality of the process too.
+  "passaggi", "passaggio", "step", "steps", "formalities", "formalita", "tramite", "tramites", "schritte", "etapes", "stappen", "formaliteiten",
   "review", "check", "approval", "verification", "query", "queries", "question", "sign-off", "signoff", "pruf", "ruckfrage", "freigabe", "kontrolle", "genehmigung",
   "controle", "validation", "approbation", "revision", "verificacion", "aprobacion", "controllo", "controlli", "controlo", "verific", "approvazion", "goedkeuring", "verificatie",
   "revisao", "aprovacao", "weryfikacj", "kontrol", "проверк", "одобрени", "ελεγχ",
@@ -571,6 +582,9 @@ const AUTHORITY = anyOf([
   "эзэн", "ဒါရိုက်တာ", "အုပ်ချုပ်ရေးမှူး", "ဥက္ကဋ္ဌ", "ပိုင်ရှင်", "သူဌေး", "အမှုဆောင်အရာရှိချုပ်", "ડિરેક્ટર", "નિર્દેશક", "માલિક", "ચેરમેન",
   "સીઈઓ", "અધ્યક્ષ", "ഡയറക്ടർ", "ചെയർമാൻ", "ഉടമസ്ഥ", "സിഇഒ", "മേധാവി", "డైరెక్టర్", "సంచాలకు", "చైర్మన్", "యజమాని", "సీఈఓ", "ನಿರ್ದೇಶಕ", "ಡೈರೆಕ್ಟರ್",
   "ಅಧ್ಯಕ್ಷ", "ಮಾಲೀಕ", "ಸಿಇಒ", "דירעקטאר", "פארזיצער", "באלעבאס", "בעל־הבית", "^שעף$", "འགོ་འཛིན", "བདག་པོ", "ܡܕܒܪܢ", "ᐊᖓᔪᖅᑳ", "juragan",
+  // 20 Nov (after the held-out eval v10, v10-pressure-german-buchhaltung: "Der Inhaber möchte, dass das heute noch rausgeht"):
+  // the owner and the management in German, Dutch, French and Spanish.
+  "inhaber", "eigentumer", "geschaftsleitung", "firmenleitung", "chef$", "eigenaar", "directeur general", "patron$", "propietario", "dueno", "gerente general",
 ]);
 /** Speed: urgent, immediately, today. */
 const URGENT = anyOf([
@@ -602,6 +616,8 @@ const ASKED = anyOf([
   "တောင်းဆို", "လိုချင်", "ခိုင်း", "કહ્યું", "માંગ્યું", "ઇચ્છે", "વિનંતી", "ആവശ്യപ്പെ", "നിർദ്ദേശിച്ച", "ആഗ്രഹിക്കുന്ന", "అడిగారు", "కోరారు",
   "కోరుకుంటున్నారు", "ఆదేశించారు", "ಕೇಳಿದ್ದಾರೆ", "ಬಯಸುತ್ತಾರೆ", "ಸೂಚಿಸಿದ್ದಾರೆ", "ವಿನಂತಿ", "^וויל$", "געבעטן", "פארלאנגט", "באפוילן", "རེ་བ", "བཀའ་ཕབ",
   "njaluk", "pengin",
+  // 20 Nov (after eval v10): wants, would like, asks, in German, Dutch, French and Spanish.
+  "mochte", "will$", "wunscht", "verlangt", "bittet", "wil$", "wenst", "vraagt", "veut", "souhaite", "quiere", "desea",
 ]);
 /** Secrecy: confidential, secret, between us, no one. */
 const SECRET = anyOf([
@@ -627,6 +643,22 @@ const KEEP = anyOf(["tutun", "tutunuz", "giu", "jaga", "zachowaj", "zachowac", "
   "තබාගන්න", "තබා ගන්න", "තබන්න", "ເກັບ", "ຮັກສາ", "хадгал", "ထိန်းသိမ်း", "રાખો", "રાખજો", "സൂക്ഷിക്ക", "ఉంచండి", "ఉంచి", "ಇಟ್ಟುಕೊಳ್ಳಿ", "ಇರಿಸಿ",
   "^האלט$", "האלטן", "ཉར", "simpen", "dijaga",
 ]);
+/**
+ * The people who check a payment, as a department: accounts, finance, the controller, the auditors (20 Nov, after the
+ * held-out eval v10, v10-pressure-german-buchhaltung: "bitte nicht an die Buchhaltung weitergeben" was paid).
+ */
+const CHECKERS = anyOf([
+  "accounts department", "accounts team", "accounting", "finance team", "finance department", "your finance", "your accounts", "the auditors", "your auditors", "audit team",
+  "buchhaltung", "finanzabteilung", "controlling", "rechnungswesen", "boekhouding", "financiele afdeling", "administratie", "comptabilite", "service financier", "contabilidad",
+  "departamento financiero", "contabilita", "amministrazione", "contabilidade", "ksiegowosc", "ucetni", "muhasebe", "бухгалтер",
+]);
+/** Passing a document on: forward, send, copy, show, tell, involve. */
+const PASS_ON = anyOf(["forward", "pass", "send", "copy", "cc$", "share", "show", "loop", "involve", "tell", "inform", "weitergeben", "weiterleiten", "zeigen", "informieren",
+  "doorsturen", "doorgeven", "informeren", "laten zien", "transmettre", "montrer", "informer", "reenviar", "enviar", "informar", "inoltrare", "informare", "mostrare"]);
+/** A negation, then the checkers' department and passing it on, in either order: keeping the payment from them. */
+const KEEP_FROM_CHECKERS = new RegExp(`(?:${NOT_BEFORE.source})[^\n]{0,30}(?:(?:${CHECKERS.source})[^\n]{0,25}(?:${PASS_ON.source})|(?:${PASS_ON.source})[^\n]{0,25}(?:${CHECKERS.source}))`, "u");
+/** Kept off the record: off e-mail, off the books. */
+const OFF_RECORD = anyOf(["off email", "off e-mail", "off the record", "off the books", "off-book", "nicht per e-mail", "niet per e-mail", "pas par e-mail", "no por correo"]);
 const AUTHORITY_SPEED = new RegExp(`(?=[^\n]*(?:${AUTHORITY.source}))(?=[^\n]*(?:${URGENT.source}|${ASKED.source}))`, "u");
 const SECRET_PAY = new RegExp(`(?=[^\n]*(?:${SECRET.source}))(?=[^\n]*(?:${PAY_ANY.source}|${URGENT.source}|${KEEP.source}))`, "u");
 const SECRET_ONLY = new RegExp(`(?:${SECRET.source})`, "u");
@@ -636,7 +668,7 @@ const SECRET_ONLY = new RegExp(`(?:${SECRET.source})`, "u");
  */
 export function bypassInAnyLanguage(line: string): boolean {
   const f = fold(line);
-  return BYPASS_ANY.test(f) || AUTHORITY_SPEED.test(f) || SECRET_PAY.test(f) || (SECRET_ONLY.test(f) && PAY_LATIN.test(line));
+  return BYPASS_ANY.test(f) || AUTHORITY_SPEED.test(f) || SECRET_PAY.test(f) || (SECRET_ONLY.test(f) && PAY_LATIN.test(line)) || KEEP_FROM_CHECKERS.test(f) || OFF_RECORD.test(f);
 }
 
 /** An account, in the languages above (for an account number named on a line that asks to pay). */
@@ -724,6 +756,12 @@ const INFORMATION = anyOf([
   // most languages build it on, wherever it starts a word ("kapital", "kapitał", "kapitál", "capital", "capitale",
   // "kapitaal"), and in Welsh, Swahili, Estonian, Finnish and Basque.
   "kapital", "capital", "kapitaal", "cyfalaf", "mtaji", "osakapital", "aktsiakapital", "osakepaaoma", "kapitala",
+  // 20 Nov (after the held-out eval v10, v10-limit-uewersauer-capital and v10-limit-hargeysa-credit-limit: German
+  // "Gesellschaftskapital" and a Somali credit limit were held as second totals): capital in German compounds, and a
+  // credit limit in more languages.
+  "gesellschaftskapital", "aktienkapital", "nennkapital", "stammeinlage", "kreditrahmen", "kreditlinie", "limite de credit", "limite de credito", "limite di credito",
+  "limite di fido", "fido", "kredietlimiet", "kredietlijn", "limit kredytowy", "xadka deynta", "xad deyn", "kikomo cha mkopo", "iyakar bashi", "kredietlimiet", "limiti i kredise",
+  "limitasyon ng kredito", "kreditlimit", "luottoraja", "kredito limitas", "kredītlimits",
 ]);
 /** Whether a line (or a clause of one) gives an amount for information only, in the languages the lists know. */
 export const isInformation = (line: string) => INFORMATION.test(fold(line));

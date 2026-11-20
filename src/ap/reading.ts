@@ -178,7 +178,12 @@ function lineCurrency(rest: string): { known: string[]; unknown: boolean } {
   const colon = rest.search(/[:：]/);
   if (colon > 0 && !/\d/.test(rest.slice(0, colon))) {
     const words = rest.slice(0, colon).split(/[^\p{L}\p{M}\p{Sc}]+/u).filter(Boolean);
-    if (words.every((w) => [...w].length >= 3 && !/\p{Sc}/u.test(w) && !/^[A-Z]{3}$/.test(w) && !CURRENCY_WORDS.has(w.toLowerCase()))) rest = rest.slice(colon + 1);
+    // 20 Nov (after the held-out eval v10, v10-limit-uewersauer-label: "Total ze bezuelen: 940,00 EUR" was read as no
+    // currency): the little words of a label ("ze", "zu", "za", "à", "de", "te") are the label's too, when the label has a
+    // word of three letters or more and they are written in lower case, as no currency code is.
+    const label = (w: string) => [...w].length >= 3 && !/\p{Sc}/u.test(w) && !/^[A-Z]{3}$/.test(w) && !CURRENCY_WORDS.has(w.toLowerCase());
+    const little = (w: string) => [...w].length <= 2 && /^\p{Ll}+$/u.test(w) && !CURRENCY_WORDS.has(w);
+    if (words.some(label) && words.every((w) => label(w) || little(w))) rest = rest.slice(colon + 1);
   }
   const s = rest.replace(/US\$/g, " USD ").replace(/\d+/g, " ");
   for (const tok of s.split(/[^\p{L}\p{Sc}]+/u).filter(Boolean)) {
