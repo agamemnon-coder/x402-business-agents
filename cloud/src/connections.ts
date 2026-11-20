@@ -92,10 +92,10 @@ const cents = (c: number) => (c / 100).toFixed(2);
 export const CSV_FORMATS = { xero: ["bills", "journals"], quickbooks: ["bills"], exact: ["bills", "journals"] } as const;
 export type CsvFormat = keyof typeof CSV_FORMATS;
 
-interface Bill { id: string; vendor: string; invoice_no: string; issue_date?: string; due_date: string; currency: string; subtotal?: string; tax?: string; total: string; gl_account?: string; doc_kind?: string; status: string }
+export interface Bill { id: string; vendor: string; invoice_no: string; issue_date?: string; due_date: string; currency: string; subtotal?: string; tax?: string; total: string; gl_account?: string; doc_kind?: string; status: string }
 
 /** Supplier invoices (not credit notes, not rejected), issued between two days, oldest first. */
-async function bills(db: TenantDb, from: string | null, to: string | null): Promise<Bill[]> {
+export async function bills(db: TenantDb, from: string | null, to: string | null): Promise<Bill[]> {
   const rows = await db.select<{ id: string; body_json: string; status: string }>("invoices", {}, { order: ["id"] });
   return rows.map((r) => ({ ...(JSON.parse(r.body_json) as Bill), id: r.id, status: r.status }))
     .filter((b) => b.doc_kind !== "credit_note" && !["rejected", "blocked"].includes(b.status))
@@ -145,25 +145,84 @@ export async function journalsCsv(db: TenantDb, format: "xero" | "exact", from: 
   return csv(["Dagboek: Code", "Boekjaar", "Periode", "Boekstuknummer", "Valuta", "Wisselkoers", "Boekingsdatum", "Grootboekrekening", "Omschrijving", "Onze ref.", "Bedrag", "Aantal", "BTW-code", "BTW-percentage", "BTW-bedrag", "Opmerkingen", "Project", "Kostenplaats: Code", "Kostenplaats: Omschrijving", "Kostendrager: Code", "Kostendrager: Omschrijving", "Code", "Naam"], rows);
 }
 
-export interface Connection { name: string; kind: "live" | "format export" | "built, not tested live" | "built, run once in a sandbox"; direction: "read" | "export" | "notify"; where: string; what: string }
+/**
+ * The labels, honest and never upgraded (docs/integrations/README.md uses the same words, and test/connections-hub.test.ts
+ * holds the two together): live (built and running), sandbox or testnet (live calls, test money, not production), format
+ * export (a file or message in another product's documented format; no live connection to that product), built and not
+ * tested live (the code exists and is tested against stand-ins), built and run once in a sandbox. Something planned is
+ * not in this catalogue: the hub says "planned".
+ */
+export type ConnectionKind = "live" | "sandbox" | "testnet" | "format export" | "built, not tested live" | "built, run once in a sandbox";
+/** The hub's groups, in its order. */
+export const CONNECTION_GROUPS = ["rails", "ai", "api", "no-code", "accounting", "more"] as const;
+export type ConnectionGroup = (typeof CONNECTION_GROUPS)[number];
+export interface Connection {
+  name: string; kind: ConnectionKind; direction: "read" | "export" | "notify"; group: ConnectionGroup; where: string; what: string;
+  /** Its detailed guide in the repository, as a link (REPO_BLOB + a path test/connections-hub.test.ts finds on disk). */
+  doc: string;
+}
+/** A connection that moves money: only within the limits the CFO signed, or after the CFO's Face ID on the exact terms. */
+export interface MoneyConnection extends Omit<Connection, "direction"> { direction: "pay" }
 
-/** Every connection Purser has to other systems, labelled honestly: live, a format export, or built and not yet tried live. */
-export function connectionsCatalogue(origin: string): { rule: string; connections: Connection[] } {
+/** Where the guides live: the repository on GitHub. */
+export const REPO_BLOB = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/";
+/** The hub: every way in or out of Purser, each labelled, with a quickstart (docs/integrations/README.md). */
+export const HUB_DOC = "docs/integrations/README.md";
+const doc = (path: string) => `${REPO_BLOB}${path}`;
+
+export interface ConnectionsCatalogue {
+  rule: string; connections: Connection[];
+  money_rule: string; money: MoneyConnection[];
+  /** The hub (every connection with a quickstart) and the cloud's per-client setup page for AI over MCP. */
+  hub: string; connect_ai: string;
+}
+
+/** Every connection Purser has to other systems, labelled honestly; built per request from constants (no work at load). */
+export function connectionsCatalogue(origin: string): ConnectionsCatalogue {
+  const client = (name: string, kind: ConnectionKind, anchor: string, what: string): Connection => ({ name, kind, direction: "read", group: "ai", where: `${origin}/connect-ai`, what, doc: doc(`docs/connect-claude.md#${anchor}`) });
   return {
-    rule: "Every connection reads or exports. None moves money, approves a payment, changes a limit or writes to the books: every payment needs the CFO's Face ID in Purser Cloud.",
+    rule: "Every connection reads, notifies or exports. None moves money, approves a payment, changes a limit or writes to Purser's books; an accounting system receives drafts or entries a person there checks. Every payment needs the CFO's Face ID in Purser Cloud.",
     connections: [
-      { name: "MCP server (Connect any AI)", kind: "live", direction: "read", where: `${origin}/mcp`, what: "Claude, ChatGPT, Cursor, VS Code, Gemini CLI, Windsurf and any MCP client read the books: 14 read tools, resources, prompts. OAuth 2.1 or a connector token." },
-      { name: "Read API (REST) and its OpenAPI", kind: "live", direction: "read", where: `${origin}/v1/openapi.read.json`, what: "Invoices, documents, suppliers, payments, the transactions register, the ledger and its reports, for a read-scoped key." },
-      { name: "Webhooks", kind: "live", direction: "notify", where: `${origin}/v1/webhook`, what: `Signed POSTs (x-purser-signature: t=<seconds>,v1=<HMAC-SHA256 of t.body>) for ${BUSINESS_EVENTS.join(", ")}, the runner's alerts and security events.` },
-      { name: "Slack and Microsoft Teams messages", kind: "format export", direction: "notify", where: "docs/connections.md", what: "Each webhook event as a Slack Block Kit or Teams Adaptive Card message, for a team that relays the webhook into chat." },
-      { name: "Approval alerts (e-mail, Slack, Teams)", kind: "built, not tested live", direction: "notify", where: `${origin}/v1/alerts`, what: "When a payment waits for the CFO's Face ID: the amount, the payee, why and a link to Purser Cloud, by e-mail (Resend) or a Slack or Teams incoming webhook an owner sets. Nothing in an alert approves. Tested with stand-ins; not yet sent live." },
-      { name: "Xero", kind: "format export", direction: "export", where: `${origin}/v1/export/csv/xero/bills`, what: "Bills and manual journals as CSV in Xero's import columns." },
-      { name: "QuickBooks Online", kind: "format export", direction: "export", where: `${origin}/v1/export/csv/quickbooks/bills`, what: "Bills as CSV with QuickBooks' required import columns." },
-      { name: "Exact Online (CSV)", kind: "format export", direction: "export", where: `${origin}/v1/export/csv/exact/bills`, what: "Purchase entries (Inkoopboekingen) and journals (Memoriaalboekingen) as CSV in Exact's import template columns." },
-      { name: "Exact Online (API)", kind: "built, not tested live", direction: "export", where: "src/erp/exact.ts (the runner)", what: "The runner's connector posts purchase invoices and journals through Exact's REST API; not yet run against a live Exact administration." },
-      { name: "Moneybird (API)", kind: "built, run once in a sandbox", direction: "export", where: "src/erp/moneybird.ts (the runner); docs/moneybird.md", what: "The runner's connector posts purchase invoices and journal documents through Moneybird's API; run live once in a sandbox administration. Moneybird has no CSV import for these, so there is no Moneybird CSV." },
-      { name: "ISO 20022 pacs.008", kind: "format export", direction: "export", where: "npm run iso20022 (src/finance/iso20022.ts)", what: "One paid invoice as a pacs.008.001.08 message, validated against the official schema; pacs.008-shaped, not a message a bank sent." },
-      { name: "Full export", kind: "live", direction: "export", where: `${origin}/v1/export`, what: "Every record of the company as staged JSON parts with signed links, for an owner." },
+      { name: "T:0 (outside ledger)", kind: "sandbox", direction: "export", group: "rails", where: "npm run t0 (src/accounting/t0.ts, the runner)", what: "Purser's journal entries posted to T:0's shared sandbox entity and read back, account by account. A ledger: it moves no money.", doc: doc("docs/t0.md") },
+      { name: "MCP server (Connect any AI)", kind: "live", direction: "read", group: "ai", where: `${origin}/mcp`, what: "Claude, ChatGPT, Cursor, VS Code, Gemini CLI, Windsurf and any MCP client read the books: 14 read tools, resources, prompts. OAuth 2.1 or a connector token.", doc: doc("docs/connect-any-ai.md") },
+      client("Claude", "live", "claude", "claude.ai, the Claude apps and Claude Code, as a custom connector. Added by the owner in the Claude iOS app on 13 Nov."),
+      client("ChatGPT", "built, not tested live", "chatgpt", "A custom MCP server with OAuth (Client ID Metadata Document). Set up from OpenAI's documentation; not yet tried live."),
+      client("Cursor", "built, not tested live", "cursor", "mcp.json or the Add to Cursor link on /connect-ai. From Cursor's documentation; not yet tried live."),
+      client("VS Code", "built, not tested live", "vs-code-github-copilot-agent-mode", "GitHub Copilot agent mode: the Add to VS Code link on /connect-ai or MCP: Add Server. From VS Code's documentation; not yet tried live."),
+      client("Gemini CLI", "built, not tested live", "gemini-cli", "gemini mcp add --transport http. From the Gemini CLI documentation; not yet tried live."),
+      client("Windsurf", "built, not tested live", "windsurf-now-devin-desktop", "serverUrl and headers in its MCP config. From Devin's documentation; not yet tried live."),
+      { name: "Read API (REST) and its OpenAPI", kind: "live", direction: "read", group: "api", where: `${origin}/v1/openapi.read.json`, what: "Invoices, documents, suppliers, payments, the transactions register, the ledger and its reports, for a read-scoped key.", doc: doc("docs/connections.md#the-read-apis-openapi") },
+      { name: "Webhooks", kind: "live", direction: "notify", group: "api", where: `${origin}/v1/webhook`, what: `Signed POSTs (x-purser-signature: t=<seconds>,v1=<HMAC-SHA256 of t.body>) for three business events (${BUSINESS_EVENTS.join(", ")}), the runner's alerts and security events.`, doc: doc("docs/connections.md#webhooks") },
+      { name: "TypeScript and Python SDKs", kind: "built, not tested live", direction: "read", group: "api", where: "sdk/typescript, sdk/python", what: "Clients for the API with no approve method, tested against Purser Cloud in-process.", doc: doc("docs/integrations/README.md#typescript-sdk") },
+      { name: "A2A Agent Card", kind: "built, not tested live", direction: "read", group: "api", where: `${origin}/.well-known/agent.json`, what: "Purser's skills in the Agent2Agent card format, for discovery; each skill reads or proposes.", doc: doc("docs/integrations/README.md#a2a-agent-card") },
+      { name: "Zapier and Make (HTTP modules)", kind: "built, not tested live", direction: "read", group: "no-code", where: "docs/integrations/no-code.md", what: "Recipes on the plain HTTP modules and the signed webhook, written from the OpenAPI document; the requests are tested in-process, not run in Zapier or Make.", doc: doc("docs/integrations/no-code.md") },
+      { name: "n8n node", kind: "built, not tested live", direction: "read", group: "no-code", where: "integrations/n8n", what: "A community node with no approve operation; not yet built or published to npm.", doc: doc("integrations/n8n/README.md") },
+      { name: "Xero", kind: "format export", direction: "export", group: "accounting", where: `${origin}/v1/export/csv/xero/bills`, what: "Bills and manual journals as CSV in Xero's import columns.", doc: doc("docs/connections.md#accounting-exports-format-exports") },
+      { name: "Xero (API)", kind: "built, not tested live", direction: "export", group: "accounting", where: "src/workplace/xero.ts (the runner)", what: "Contacts and manual journals through Xero's API, tested against a mock; needs the owner's OAuth app.", doc: doc("docs/integrations/workplace.md") },
+      { name: "QuickBooks Online", kind: "format export", direction: "export", group: "accounting", where: `${origin}/v1/export/csv/quickbooks/bills`, what: "Bills as CSV with QuickBooks' required import columns.", doc: doc("docs/connections.md#accounting-exports-format-exports") },
+      { name: "Exact Online (CSV)", kind: "format export", direction: "export", group: "accounting", where: `${origin}/v1/export/csv/exact/bills`, what: "Purchase entries (Inkoopboekingen) and journals (Memoriaalboekingen) as CSV in Exact's import template columns.", doc: doc("docs/connections.md#accounting-exports-format-exports") },
+      { name: "Exact Online (API)", kind: "built, not tested live", direction: "export", group: "accounting", where: `${origin}/v1/connect/exact/start; src/erp/exact.ts (the runner)`, what: "Each company's owner connects its own Exact Online administration in Settings (\"Connect Exact Online\"; tokens sealed per company); the runner's connector (ERP_EXACT_OAUTH=on) then posts purchase invoices and journals through Exact's REST API with that company's token. Not yet run against a live Exact administration.", doc: doc("docs/erp.md#exact-online") },
+      { name: "Xero bills (connected in Purser Cloud)", kind: "built, not tested live", direction: "export", group: "accounting", where: `${origin}/v1/connect/xero/start, ${origin}/v1/connect/xero/bills`, what: "Each company's owner connects its own Xero organisation in Settings (\"Connect Xero\"; OAuth2 with PKCE, tokens sealed per company, refreshed, disconnect at any time) and sends its supplier invoices there as DRAFT bills. Purser never authorises or pays a bill in Xero. Tested with a stand-in shaped like Xero's documentation; not yet run against a Xero demo company.", doc: doc("docs/integrations/owner-setup.md#16-xero") },
+      { name: "QuickBooks Online (API)", kind: "built, not tested live", direction: "export", group: "accounting", where: `${origin}/v1/connect/quickbooks/start`, what: "The connect flow only: each company's owner connects its own QuickBooks Online company (OAuth2, tokens sealed per company, refreshed, disconnect). Sending bills is planned; until then the QuickBooks CSV export. Not yet run against an Intuit sandbox company.", doc: doc("docs/integrations/quickbooks-plan.md") },
+      { name: "Moneybird (API)", kind: "built, run once in a sandbox", direction: "export", group: "accounting", where: "src/erp/moneybird.ts (the runner); docs/moneybird.md", what: "The runner's connector posts purchase invoices and journal documents through Moneybird's API; run live once in a sandbox administration. Moneybird has no CSV import for these, so there is no Moneybird CSV.", doc: doc("docs/moneybird.md") },
+      { name: "Business Central and Odoo (API)", kind: "built, not tested live", direction: "export", group: "accounting", where: "src/erp/businessCentral.ts, src/erp/odoo.ts (the runner)", what: "The runner's connectors for Microsoft Dynamics 365 Business Central and Odoo 17 and 18; not yet run against a live system.", doc: doc("docs/erp.md") },
+      { name: "Peppol invoices (UBL, BIS Billing 3.0)", kind: "built, not tested live", direction: "read", group: "more", where: "src/ap/peppol.ts (the payables inbox)", what: "A Peppol invoice or credit note read from its UBL and checked like a PDF; tested on handcrafted files and the official examples, never received over the Peppol network.", doc: doc("docs/integrations/peppol.md") },
+      { name: "ISO 20022 pacs.008", kind: "format export", direction: "export", group: "more", where: "npm run iso20022 (src/finance/iso20022.ts)", what: "One paid invoice as a pacs.008.001.08 message, validated against the official schema; pacs.008-shaped, not a message a bank sent.", doc: doc("docs/connections.md#accounting-exports-format-exports") },
+      { name: "Slack and Microsoft Teams messages", kind: "built, not tested live", direction: "notify", group: "more", where: `${origin}/v1/chat-hooks`, what: `Each company's owner pastes its own Slack incoming webhook or Teams Workflow webhook URL (Settings, Slack and Teams); Purser posts its three business events (${BUSINESS_EVENTS.join(", ")}) there as Slack Block Kit or a Teams Adaptive Card, retried, capped per hour and switched off after 20 failures in a row. "Send a test" posts one message. A message links to Purser Cloud and never approves. Tested with stand-ins; no real channel has received a post yet.`, doc: doc("docs/connections.md#slack-and-microsoft-teams") },
+      { name: "Invoices by e-mail (forwarded from Gmail or Outlook)", kind: "built, not tested live", direction: "read", group: "more", where: "<company>@<mail domain> (Settings, Company, Inbox)", what: "Each company forwards its supplier invoices from Gmail, Google Workspace, Outlook or Microsoft 365 to its own Purser address; Gmail's forwarding confirmation code shows in Settings. No mail domain is routed yet, and no SPF/DKIM/DMARC result is read.", doc: doc("docs/integrations/email-forwarding.md") },
+      { name: "Sign in with Google, Microsoft and Apple", kind: "built, not tested live", direction: "read", group: "more", where: `${origin}/v1/auth/oidc`, what: "Each person links their own Google, Microsoft or Apple account while signed in with their passkey, then signs in with it to read only. Settings and approving still take the passkey. Tested against a stand-in provider.", doc: doc("docs/integrations/owner-setup.md#12-sign-in-with-google") },
+      { name: "Approval alerts (e-mail, Slack, Teams)", kind: "built, not tested live", direction: "notify", group: "more", where: `${origin}/v1/alerts`, what: "When a payment waits for the CFO's Face ID: the amount, the payee, why and a link to Purser Cloud, by e-mail (Resend) or a Slack or Teams incoming webhook an owner sets. Nothing in an alert approves. Tested with stand-ins; not yet sent live.", doc: doc("docs/cloud.md#approval-alerts") },
+      { name: "Google Workspace and Microsoft 365", kind: "built, not tested live", direction: "read", group: "more", where: "src/workplace (the runner)", what: "Invoices in from Gmail, Drive, Outlook and OneDrive, a Sheets export and sign-in with Google as a viewer; tested against mocks, needs the owner's OAuth apps.", doc: doc("docs/integrations/workplace.md") },
+      { name: "Full export", kind: "live", direction: "export", group: "more", where: `${origin}/v1/export`, what: "Every record of the company as staged JSON parts with signed links, for an owner.", doc: doc("docs/connections.md") },
     ],
+    money_rule: "Money moves only on these, and only within the limits the CFO signed or after the CFO's Face ID on the exact terms. Test money only: sandboxes and a testnet.",
+    money: [
+      { name: "Airwallex", kind: "sandbox", direction: "pay", group: "rails", where: "src/airwallex (the runner; /try on the demo)", what: "Agent cards with the CFO's limits, FX quotes inside the signed terms, transfers that carry the hash the CFO signed, the payee's name check, Airwallex's approval as a second lock.", doc: doc("docs/airwallex.md") },
+      { name: "Alta (formerly Metal)", kind: "testnet", direction: "pay", group: "rails", where: "src/metal (the runner)", what: "A mandate per agent on chain, x402 payments, limits changed only by two passkeys, the audit log's head anchored on chain.", doc: doc("docs/metal-award.md") },
+      { name: "Visa via Airwallex Airi", kind: "sandbox", direction: "pay", group: "rails", where: "src/airi (the runner)", what: "Visa Intelligent Commerce through Airwallex's Airi: a credential Purser binds to one purchase, a test card; above the limit only after the CFO's Face ID.", doc: doc("docs/visa-award.md") },
+      { name: "Agent API on the runner (local MCP)", kind: "sandbox", direction: "pay", group: "ai", where: "npm run -s mcp (stdio, the runner)", what: "An outside agent asks for a company card, pays with it and asks for a higher limit, under the CFO's policy; each card and each raise approved with Face ID. Run on the Airwallex sandbox on 29 Oct.", doc: doc("docs/agent-api.md") },
+    ],
+    hub: doc(HUB_DOC),
+    connect_ai: `${origin}/connect-ai`,
   };
 }

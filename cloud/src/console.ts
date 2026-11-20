@@ -21,6 +21,7 @@ import { NEGOTIATE_PATH, negotiatePageResponse } from "./try/negotiatePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { AWX_CSS, AWX_JS } from "./awxActUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
+import { CONNECTIONS_VIEW_JS } from "./connectionsView.js";
 import { t0CloseLine } from "./t0Close.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
@@ -32,6 +33,7 @@ const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevr
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
+.idps { display: grid; gap: 8px; margin-top: 10px; }
 ul.plain { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /* 12 Nov: the site's header (cloud/src/siteHeader.ts) on top; the console's own bar under it, one thin row: its pages,
@@ -432,7 +434,7 @@ const forget=()=>{try{sessionStorage.removeItem(KEY);sessionStorage.removeItem(A
 // An older page kept that read in localStorage, past sign-out: it is removed.
 const dropOldCopies=()=>{try{localStorage.removeItem(AWL_OV_KEY)}catch(e){}};
 dropOldCopies();
-let S=load();let ME=null;let notice=null;let connNote=null;
+let S=load();let ME=null;let notice=null;let connNote=null;let idNote=null;
 
 class Expired extends Error{}
 async function api(path,o){
@@ -446,7 +448,8 @@ async function api(path,o){
   const j=await r.json().catch(()=>({error:r.statusText}));
   // The server asks for the passkey again: one Face ID prompt, then the same request once more.
   if(r.status===403&&j.code==='step_up_required'&&!o.token&&!o.stepped&&S){await stepUp();return api(path,Object.assign({},o,{stepped:true}))}
-  if(!r.ok)throw new Error(j.error||r.statusText);
+  // The answer's code and body go with the error (a new approval key's endorsement asks for a second step).
+  if(!r.ok){const x=new Error(j.error||r.statusText);x.code=j.code;x.body=j;throw x}
   return j}
 // The passkey check before a sensitive setting (alert targets, keys, people, connector tokens): the person's own passkey
 // signs a fresh challenge; the step-up token lasts five minutes and works with this session only.
@@ -494,6 +497,21 @@ async function signIn(slug,status){
   const r=await api('/v1/auth/login',{method:'POST',token:'-',body:{tenant:slug,challenge_id:ch.challenge_id,credential_id:b64u(cred.rawId),assertion:assertionOf(cred)}});
   S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:slug};save(S);ME=null;
 }
+// An OpenID Connect start waiting for the provider to send the browser back: in this tab only, ten minutes at most.
+const OIDC_KEY='purser.oidc';
+function oidcPending(o){try{if(o)sessionStorage.setItem(OIDC_KEY,JSON.stringify(Object.assign({at:Date.now()},o)));else{const v=JSON.parse(sessionStorage.getItem(OIDC_KEY)||'null');sessionStorage.removeItem(OIDC_KEY);return v&&Date.now()-v.at<600000?v:null}}catch(e){return null}}
+// Back from Google, Microsoft or Apple (GET or POST /v1/auth/oidc/{provider}/callback put the code in this fragment):
+// a sign-in gets a read-only session; a link is finished by the signed-in person who started it.
+async function oidcBack(q){
+  const p=q.get('provider');const pend=oidcPending();
+  history.replaceState(null,'',S?'#/settings':'#/sign-in');
+  if(!pend||pend.provider!==p){notice=t('cs.oidc.lost');return go(S?'#/settings':'#/sign-in')}
+  if(q.get('error')||!q.get('code')){if(pend.purpose==='link'){idNote=[t('cs.oidc.declined'),'bad'];return go('#/settings')}notice=t('cs.oidc.declined');return go('#/sign-in')}
+  const body={code:q.get('code'),state:q.get('state'),browser_secret:pend.browser_secret};
+  if(pend.purpose==='link'){if(!S)return go('#/sign-in');try{await api('/v1/me/identities/'+p+'/finish',{method:'POST',body});idNote=[t('cs.oidc.linked'),'ok']}catch(e){if(e instanceof Expired)return;idNote=[e.message,'bad']}return go('#/settings')}
+  try{const r=await api('/v1/auth/oidc/'+p+'/finish',{method:'POST',token:'-',body});S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:r.tenant||pend.slug,via:'oidc'};save(S);ME=null;go('#/overview')}
+  catch(e){notice=e.message;go('#/sign-in')}
+}
 function signInView(){
   title(t('cs.sign_in'));
   const slug=el('input','field');slug.id='slug';slug.autocomplete='organization';slug.placeholder='your-company';slug.spellcheck=false;
@@ -513,6 +531,14 @@ function signInView(){
   card.append(el('div','guest',[el('div','or',[el('span','',t('cs.guest.or'))]),gb,el('p','gsub',t('cs.guest.sub')),gs]));
   if(notice){status.append(note(notice,'bad'));notice=null}
   if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys'),'bad'))}
+  // Sign in with a linked Google, Microsoft or Apple account (cloud/src/oidc.ts): read only; only the providers this
+  // cloud has switched on. The browser secret stays in this tab until the provider sends the browser back.
+  const idps=el('div','idps');
+  api('/v1/auth/oidc',{token:'-'}).then((r)=>{for(const p of r.providers||[]){const ob=btn(t('cs.oidc.with.'+p),'ghost','log-out');ob.id='oidc-'+p;
+    ob.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note(t('cs.slug_rule'),'bad'));return}
+      ob.disabled=true;try{const o=await api('/v1/auth/oidc/'+p+'/start',{method:'POST',token:'-',body:{tenant:s}});oidcPending({purpose:'sign-in',provider:p,browser_secret:o.browser_secret,slug:s});try{localStorage.setItem('purser.cloud.slug',s)}catch(e){}location.assign(o.url)}
+      catch(e){status.replaceChildren(note(e.message,'bad'));ob.disabled=false}};idps.append(ob)}
+    if(idps.children.length){idps.append(el('p','sub',t('cs.oidc.read_only')));b.after(idps)}},()=>{});
   b.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note(t('cs.slug_rule'),'bad'));return}
     b.disabled=true;try{await signIn(s,status);try{localStorage.setItem('purser.cloud.slug',s)}catch(e){}go('#/overview')}catch(e){if(!(e instanceof Expired))status.replaceChildren(note(e.name==='NotAllowedError'?t('cs.passkey_cancelled'):e.message,'bad'))}finally{b.disabled=false}};
   slug.onkeydown=(e)=>{if(e.key==='Enter')b.click()};
@@ -981,18 +1007,42 @@ const credOf=(c,response)=>({id:c.id,rawId:b64u(c.rawId),type:c.type,response,cl
 const registrationOf=(c)=>{const r=c.response;return credOf(c,{clientDataJSON:b64u(r.clientDataJSON),attestationObject:b64u(r.attestationObject),transports:typeof r.getTransports==='function'?r.getTransports():[]})};
 const signedOf=(c)=>{const r=c.response;return credOf(c,{clientDataJSON:b64u(r.clientDataJSON),authenticatorData:b64u(r.authenticatorData),signature:b64u(r.signature),...(r.userHandle?{userHandle:b64u(r.userHandle)}:{})})};
 // The approval passkey of the signed-in person, made on this device for the engine's enrolment window; the engine checks it.
+// While another approval key is active (review finding 2), the new one counts only when an active approval key signs
+// for it (the engine names the challenge), or else when a second owner confirms it with their own passkey; it then waits
+// its cooling-off before it approves. Answers the engine's { how, cooling_until }.
 async function approvalPasskey(){
   const s=await engineCall('/v1/engine/passkey/start',{method:'POST'});
   const made=await navigator.credentials.create({publicKey:{rp:{id:s.rp.id,name:s.rp.name},user:{id:new TextEncoder().encode(s.user.id),name:s.user.name,displayName:s.user.displayName},challenge:fromB64u(s.challenge),
     pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
     authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}});
-  await engineCall('/v1/engine/passkey/finish',{method:'POST',body:{code:s.code,credential:registrationOf(made)}});
-  engineStale()}
+  const body={code:s.code,credential:registrationOf(made)};
+  let r;
+  try{r=await engineCall('/v1/engine/passkey/finish',{method:'POST',body})}
+  catch(e){
+    if(!e||e.code!=='endorsement_required'||!e.body||!e.body.endorse)throw e;
+    const en=e.body.endorse;
+    // First an active approval key (this person's old one, or another approver's, on this or a nearby device).
+    let c=null;
+    if(confirm(t('cs.eng.endorse_q'))){try{c=await navigator.credentials.get({publicKey:{challenge:fromB64u(en.challenge),rpId:CFG.rpId,allowCredentials:(en.keys||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),userVerification:'required',timeout:120000}})}catch(x){c=null}}
+    if(c)r=await engineCall('/v1/engine/passkey/finish',{method:'POST',body:Object.assign({},body,{endorsement:signedOf(c)})});
+    else{
+      // Else a second owner signs in-place with their own Purser passkey.
+      if(!confirm(t('cs.eng.cosign_q')))throw new Error(t('cs.eng.endorse_needed'));
+      const o=await navigator.credentials.get({publicKey:{challenge:fromB64u(en.challenge),rpId:CFG.rpId,userVerification:'required',timeout:120000}});
+      r=await engineCall('/v1/engine/passkey/finish',{method:'POST',body:Object.assign({},body,{cosign:{credential_id:b64u(o.rawId),assertion:assertionOf(o)}})});
+    }
+  }
+  engineStale();
+  return r||{}}
+// What the person is told once their new approval key is in: at once, or after its cooling-off (a /try test company: none, labelled).
+const keyNote=(r)=>r&&r.cooling_until?note(t('cs.eng.cooling',{when:stamp(r.cooling_until)}),'warn'):r&&r.cooling_note?note(r.cooling_note,'warn'):note(t('cs.eng.set_up'),'ok');
 // The engine's own view of the invoice (o.inv, from GET /v1/engine/invoices) decides what the card offers; o.write: an owner;
 // o.moved(): the read model is read again. Nothing shows as done before its answer is in: the one button is off and says
 // it is working while a request or a passkey prompt is open; a cancelled prompt leaves the card as it was.
 function payCard(o){
   const i=o.inv;let eng=o.eng;
+  // The approver's own key (GET /v1/engine my_passkey), not whoever set one up first: each approver signs with their own.
+  const myKey=()=>eng&&(eng.my_passkey||null);
   // A paid or rejected invoice has nothing to act on here.
   if(['paid','rejected'].includes(i.status))return null;
   const box=el('section','card panel pay');box.id='pay';
@@ -1008,22 +1058,26 @@ function payCard(o){
     fs.length>4?el('details','',[el('summary','',t('cs.eng.more_terms',{n:fs.length-4})),factsDl(fs.slice(4))]):null]};
   const print=(p)=>el('details','',[el('summary','',t('cs.eng.terms_fold')),dl([[t('cs.eng.terms_hash'),p.terms_sha256,'mono'],[t('cs.eng.proposal_id'),p.id,'mono']])]);
   function proposal(p){
-    if(!o.write||p.status!=='PENDING_APPROVAL'){draw([...terms(p),print(p)]);return}
+    // Who approves (docs/security/roles.md): the CFO; an owner only in a company with no CFO, and then the card says so.
+    if(!o.approve||p.status!=='PENDING_APPROVAL'){draw([...terms(p),p.status==='PENDING_APPROVAL'?note(t('cs.eng.cfo_approves')):null,print(p)]);return}
     if(!hasPasskeys()){draw([...terms(p),note(t('cs.no_passkeys'),'bad'),print(p)]);return}
+    const mine=myKey();
     // A high-risk payment (src/policy/secondKey.ts) whose Face ID is in: the security key is next.
     const keyNext=!!(p.second_key&&p.second_key.signed.passkey&&!p.second_key.signed.security_key);
-    const b=eng&&eng.passkey?(keyNext?btn(t('cs.eng.touch_key'),'primary','key-round'):btn(t('cs.eng.approve'),'primary','scan-face')):btn(t('cs.eng.setup'),'primary','key-round');
-    if(eng&&eng.passkey)act(b,()=>approve(p));
-    else act(b,async()=>{await approvalPasskey();eng=await engineStatus();proposal(p);said.replaceChildren(note(t('cs.eng.set_up'),'ok'))});
-    draw([...terms(p),el('p','fine',t('cs.eng.signs')),el('div','acts',[b]),eng&&eng.passkey?el('p','fine',t('cs.eng.holder',{name:eng.passkey.label})):null,said,print(p)])}
+    const b=mine?(keyNext?btn(t('cs.eng.touch_key'),'primary','key-round'):btn(t('cs.eng.approve'),'primary','scan-face')):btn(t('cs.eng.setup'),'primary','key-round');
+    if(mine)act(b,()=>approve(p));
+    else act(b,async()=>{const r=await approvalPasskey();eng=await engineStatus();proposal(p);said.replaceChildren(keyNote(r))});
+    draw([...terms(p),o.ownerApproves?note(t('cs.eng.owner_approves')):null,mine&&mine.cooling_until?note(t('cs.eng.cooling',{when:stamp(mine.cooling_until)}),'warn'):null,
+      el('p','fine',t('cs.eng.signs')),el('div','acts',[b]),mine?el('p','fine',t('cs.eng.holder',{name:mine.label})):null,said,print(p)])}
   async function approve(p){
     let c;
     // Face ID first; on a high-risk payment whose Face ID is in, the person's security key (USB or NFC) signs the same terms.
     const keyNext=!!(p.second_key&&p.second_key.signed.passkey&&!p.second_key.signed.security_key);
-    const allow=keyNext?p.second_key.security_keys.map((id)=>({type:'public-key',id:fromB64u(id)})):[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}];
+    const mine=myKey();
+    const allow=keyNext?p.second_key.security_keys.map((id)=>({type:'public-key',id:fromB64u(id)})):[{type:'public-key',id:fromB64u(mine.credential_id)}];
     if(keyNext&&!allow.length)throw new Error(t('cs.sec.no_key'));
     try{c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:allow,userVerification:'required',timeout:120000}})}
-    catch(e){if(e&&e.name==='NotAllowedError')throw new Error(t('cs.eng.cancelled')+' '+t('cs.eng.other_device',{name:eng.passkey.label}));throw e}
+    catch(e){if(e&&e.name==='NotAllowedError')throw new Error(t('cs.eng.cancelled')+' '+t('cs.eng.other_device',{name:mine.label}));throw e}
     const r=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
     // One key of a high-risk payment: the page says why and asks for the other one.
     if(r.status==='second_key'){const q=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id));proposal(q.proposal);said.replaceChildren(note(r.message,'warn'));return}
@@ -1233,6 +1287,20 @@ async function alertsCard(){
   return card;
 }
 
+// The signed-in approver's own security key (USB or NFC): the second key of high-risk payments. Its button and its status line.
+function securityKeyButton(){
+  const keyMsg=el('div','');keyMsg.setAttribute('role','status');
+  const add=btn(t('cs.sec.add_key'),'','key-round');add.id='add-key';
+  add.onclick=async()=>{add.disabled=true;keyMsg.replaceChildren(note(t('cs.sec.touch_new')));
+      try{const s=await engineCall('/v1/engine/security-key/start',{method:'POST'});
+        const made=await navigator.credentials.create({publicKey:{rp:{id:s.rp.id,name:s.rp.name},user:{id:new TextEncoder().encode(s.user.id),name:s.user.name,displayName:s.user.displayName},challenge:fromB64u(s.challenge),
+          pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
+          authenticatorSelection:{authenticatorAttachment:'cross-platform',userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}});
+        await engineCall('/v1/engine/security-key/finish',{method:'POST',body:{credential:registrationOf(made)}});keyMsg.replaceChildren(note(t('cs.sec.key_added'),'ok'))}
+      catch(e){if(!(e instanceof Expired))keyMsg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{add.disabled=false}};
+  return [add,keyMsg]}
+// The approver's security key on its own card: for a CFO, who has no settings of the company to manage.
+function securityKeyCard(){const [add,keyMsg]=securityKeyButton();return el('div','card panel security',[el('h2','',t('cs.sec.key_h')),el('p','',t('cs.sec.key_lede')),el('div','row2',[add]),keyMsg])}
 // Security (13 Nov): "Ask again before sensitive changes" (off by default; switching it asks for the passkey), and with
 // the engine, a security key as a second key and the CFO's rule for high-risk payments, a policy change signed with Face ID.
 async function securityCard(){
@@ -1246,15 +1314,9 @@ async function securityCard(){
     catch(e){box.checked=!want;if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}finally{box.disabled=false}};
   const kids=[el('h2','',t('cs.sec.title')),lab,el('p','sub',t('cs.sec.step_up_sub')),msg];
   if(CFG.engine){
-    const keyMsg=el('div','');keyMsg.setAttribute('role','status');
-    const add=btn(t('cs.sec.add_key'),'','key-round');add.id='add-key';
-    add.onclick=async()=>{add.disabled=true;keyMsg.replaceChildren(note(t('cs.sec.touch_new')));
-      try{const s=await engineCall('/v1/engine/security-key/start',{method:'POST'});
-        const made=await navigator.credentials.create({publicKey:{rp:{id:s.rp.id,name:s.rp.name},user:{id:new TextEncoder().encode(s.user.id),name:s.user.name,displayName:s.user.displayName},challenge:fromB64u(s.challenge),
-          pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
-          authenticatorSelection:{authenticatorAttachment:'cross-platform',userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}});
-        await engineCall('/v1/engine/security-key/finish',{method:'POST',body:{credential:registrationOf(made)}});keyMsg.replaceChildren(note(t('cs.sec.key_added'),'ok'))}
-      catch(e){if(!(e instanceof Expired))keyMsg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{add.disabled=false}};
+    // The security key is the approver's own second key: only who approves registers one (docs/security/roles.md).
+    const mayApprove=(await me()).scopes.includes('approve');
+    const [add,keyMsg]=securityKeyButton();
     // The CFO's rule: the triggers become one policy change, approved here with the CFO's Face ID; nothing changes before.
     const amount=el('input','field');amount.id='second-key-eur';amount.inputMode='decimal';amount.placeholder='10000.00';amount.maxLength=12;
     const trig=(id,key)=>{const b=el('input','');b.type='checkbox';b.id=id;const l=el('label','check',[b,' ',t(key)]);l.htmlFor=id;return [b,l]};
@@ -1263,19 +1325,94 @@ async function securityCard(){
     const save=btn(t('cs.sec.rule_save'),'primary','scan-face');save.id='second-key-save';
     save.onclick=async()=>{const v=amount.value.trim();if(v&&!/^\d{1,9}\.\d{2}$/.test(v)){ruleMsg.replaceChildren(note(t('cs.sec.amount_rule'),'bad'));return}
       save.disabled=true;
-      try{const eng=await engineStatus();if(!eng||!eng.passkey)throw new Error(t('cs.sec.passkey_first'));
+      try{const eng=await engineStatus();const mayApprove=(await me()).scopes.includes('approve');const mine=eng&&eng.my_passkey;if(!eng||(mayApprove&&!mine))throw new Error(t('cs.sec.passkey_first'));
         const changes=[{key:'approval.second_key_eur',to:v},{key:'approval.second_key_new_payee',to:np.checked?'on':'off'},{key:'approval.second_key_bank_changed',to:bc.checked?'on':'off'},{key:'approval.second_key_new_country',to:nc.checked?'on':'off'}];
         const r=await engineCall('/v1/engine/policy/second-key',{method:'POST',body:{changes}});const p=r.proposal;
-        const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}});
+        // An owner of a company with a CFO proposes; the CFO approves it (docs/security/roles.md).
+        if(!mayApprove){ruleMsg.replaceChildren(note(t('cs.sec.rule_waits_cfo'),'ok'));return}
+        const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(mine.credential_id)}],userVerification:'required',timeout:120000}});
         const a=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
         ruleMsg.replaceChildren(note(a.status==='approved'?t('cs.sec.rule_saved'):a.message,a.status==='approved'?'ok':'bad'))}
       catch(e){if(!(e instanceof Expired))ruleMsg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{save.disabled=false}};
-    kids.push(el('h2','sub-h',t('cs.sec.key_h')),el('p','',t('cs.sec.key_lede')),el('div','row2',[add]),keyMsg,
+    kids.push(...(mayApprove?[el('h2','sub-h',t('cs.sec.key_h')),el('p','',t('cs.sec.key_lede')),el('div','row2',[add]),keyMsg]:[]),
       el('h2','sub-h',t('cs.sec.rule_h')),el('p','',t('cs.sec.rule_lede')),el('div','form-row',[el('div','',[el('label','',t('cs.sec.t_amount')),amount])]),npl,bcl,ncl,el('div','row2',[save]),ruleMsg,note(t('cs.sec.tested')));
   }
   card.replaceChildren(...kids);
   return card;
 }
+
+// Connections (cloud/src/connectionsView.ts): every way in or out of Purser, from GET /v1/connections, each with its
+// label and its guide, then the hub and /connect-ai. For everyone who can open Settings; it shows no company's data.
+async function connectionsCard(){
+  const card=el('div','card panel connections');card.id='connections';
+  try{const cat=await api('/v1/connections');card.replaceChildren(...connectionsViewOf(cat,t,tk,el))}
+  catch(e){if(!(e instanceof Expired))card.replaceChildren(el('h2','',t('cs.cx.title')),note(e.message,'bad'))}
+  return card;
+}
+
+// Slack and Teams (cloud/src/chatHooks.ts): the company's own incoming-webhook URL per product, pasted by an owner, and
+// a test post. Purser posts its three business events there (cloud/src/connections.ts); a message links here, never approves.
+async function chatCard(){
+  const card=el('div','card panel chat');card.id='chat';
+  const rows=el('div','');const out=el('div','');
+  async function draw(){
+    const r=await api('/v1/chat-hooks');
+    const kids=[];
+    for(const p of ['slack','teams']){const h=r.hooks[p];
+      const val=el('input','field');val.id='chat-'+p;val.type='url';val.maxLength=500;val.autocomplete='off';val.placeholder=t('cs.chat.ph.'+p);
+      const save=btn(h?t('cs.chat.replace'):t('cs.chat.save'),'primary','scan-face');
+      save.onclick=async()=>{if(!val.value.trim())return;save.disabled=true;try{await api('/v1/chat-hooks/'+p,{method:'POST',body:{url:val.value.trim()}});out.replaceChildren(note(t('cs.chat.saved'),'ok'));await draw()}catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'))}finally{save.disabled=false}};
+      const line=[el('span','pill'+(h?(h.status==='on'?' ok':' warn'):''),h?tk('cs.chat.st.'+h.status,h.status):t('cs.chat.st.none')),' ',el('b','',t('cs.chat.name.'+p)),h?el('span','mono',' · '+h.host):null];
+      const acts=[];
+      if(h){const test=btn(t('cs.chat.test'),'','zap');test.onclick=async()=>{test.disabled=true;try{const o=await api('/v1/chat-hooks/'+p+'/test',{method:'POST'});out.replaceChildren(note(o.delivered?t('cs.chat.test_ok'):t('cs.chat.test_failed',{status:o.status}),o.delivered?'ok':'bad'));await draw()}catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'))}finally{test.disabled=false}};
+        const rm=btn(t('cs.remove'),'danger','x');rm.onclick=async()=>{rm.disabled=true;try{await api('/v1/chat-hooks/'+p,{method:'DELETE'});out.replaceChildren();await draw()}catch(e){if(!(e instanceof Expired)){rm.disabled=false;out.replaceChildren(note(e.message,'bad'))}}};acts.push(test,rm)}
+      kids.push(el('p','',line),el('div','form-row',[el('div','',[el('label','',t('cs.chat.url')),val]),el('div','',[save]),...acts.map(a=>el('div','',[a]))]));
+    }
+    rows.replaceChildren(...kids);
+  }
+  card.replaceChildren(el('h2','',t('cs.chat.title')),el('p','',t('cs.chat.lede')),rows,out,note(t('cs.chat.keeps')));
+  try{await draw()}catch(e){if(!(e instanceof Expired))rows.replaceChildren(note(e.message,'bad'))}
+  return card;
+}
+
+// Sign-in accounts (cloud/src/oidc.ts): the signed-in person links their own Google, Microsoft or Apple account (a fresh
+// passkey check), or unlinks it. A linked account signs them in to read only; settings and approving need the passkey.
+async function identitiesCard(m){
+  const r=await api('/v1/me/identities');
+  if(!r.offered.length&&!r.linked.length)return null;
+  const card=el('div','card panel');card.id='identities';const out=el('div','');const kids=[el('h2','',t('cs.oidc.title')),el('p','',t('cs.oidc.lede'))];
+  for(const p of r.offered){const l=r.linked.find(x=>x.provider===p);
+    const line=[el('span','pill'+(l?' ok':''),l?t('cs.oidc.st.linked'):t('cs.oidc.st.not_linked')),' ',el('b','',t('cs.oidc.name.'+p)),l&&l.email?el('span','mono',' · '+l.email):null];
+    let act;
+    if(l){act=btn(t('cs.oidc.unlink'),'danger','x');act.onclick=async()=>{act.disabled=true;try{await api('/v1/me/identities/'+p,{method:'DELETE'});go('#/settings');route()}catch(e){if(!(e instanceof Expired)){out.replaceChildren(note(e.message,'bad'));act.disabled=false}}}}
+    else{act=btn(t('cs.oidc.link'),'primary','scan-face');act.disabled=m.signed_in_with==='oidc';act.onclick=async()=>{act.disabled=true;try{const o=await api('/v1/me/identities/'+p+'/start',{method:'POST'});oidcPending({purpose:'link',provider:p,browser_secret:o.browser_secret});location.assign(o.url)}catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'));act.disabled=false}}}
+    kids.push(el('div','row2',[el('p','',line),act]))}
+  if(m.signed_in_with==='oidc')kids.push(note(t('cs.oidc.signed_in_read_only')));
+  if(idNote){out.replaceChildren(note(idNote[0],idNote[1]));idNote=null}
+  card.replaceChildren(...kids,out);return card;
+}
+
+// Your connections (GET /v1/connections/mine): every way this company is connected, each connected, not connected
+// (switched on here, in Settings) or not available yet (the platform has not configured it).
+async function yourConnectionsCard(){
+  const r=await api('/v1/connections/mine');
+  const tone={connected:' ok',not_connected:'',not_available:' warn'};
+  const ul=el('ul','plain',r.items.map(x=>el('li','',[el('span','pill'+(tone[x.status]||''),t('cs.yours.st.'+x.status)),' ',el('b','',x.name),x.detail?el('span','sub',' · '+x.detail):null])));
+  const card=el('div','card panel');card.id='your-connections';
+  card.replaceChildren(el('h2','',t('cs.yours.title')),el('p','',t('cs.yours.lede')),ul,note(r.rule));
+  return card;
+}
+// Where the person is signed in (ASVS V3.3.4; cloud/src/sessions.ts): each passkey or Google, Microsoft or Apple
+// session, ended one by one.
+async function sessionsCard(){
+  const card=el('div','card panel');card.id='sessions';const msg=el('div','');msg.setAttribute('role','status');
+  async function draw(){
+    const r=await api('/v1/sessions');const list=el('ul','plain');
+    for(const s of r.items){const end=btn(t('cs.ses.end'),'');end.disabled=!!s.current;
+      end.onclick=async()=>{end.disabled=true;try{await api('/v1/sessions/'+encodeURIComponent(s.id),{method:'DELETE'});await draw();msg.replaceChildren(note(t('cs.ses.ended'),'ok'))}catch(e){end.disabled=false;if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}};
+      list.append(el('li','',[el('span','',(s.current?t('cs.ses.this')+' · ':'')+s.user_agent+' · '+s.ip+' · '+s.created_at.slice(0,16).replace('T',' ')),' ',end]))}
+    card.replaceChildren(el('h2','',t('cs.ses.title')),el('p','sub',t('cs.ses.lede')),list,msg)}
+  await draw();return card}
 
 async function settingsView(){
   title(t('cs.nav.settings'));
@@ -1287,14 +1424,22 @@ async function settingsView(){
   const langBox=el('div','form-row');const langMsg=el('div','');
   if(owner){const c=langSel(langNames,m.tenant.language||'nl');c.onchange=async()=>{try{await api('/v1/company',{method:'POST',body:{language:c.value}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));if(!m.user||!m.user.language)useLanguage(c.value)}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_company')),c]))}
   if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'en')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
-  const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
-  if(!owner){const cc=await claudeCard(m,false);view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})),cc);return}
+  // Gmail's forwarding confirmation code, when one reached the company's address (docs/integrations/email-forwarding.md).
+  let fwd=null;if(m.inbox&&m.scopes.includes('admin')){try{const f=await api('/v1/mail/forwarding-confirmations');if(f.items.length)fwd=note(t('cs.inbox.gmail_code',{code:f.items[0].code,gmail:f.items[0].gmail}),'ok')}catch(e){if(e instanceof Expired)throw e}}
+  const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),m.inbox?note(t('cs.inbox.forward')):null,fwd,langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
+  const ids=m.kind==='session'&&!m.demo?await identitiesCard(m).catch(()=>null):null;
+  const sessions=m.kind==='session'&&!m.demo?await sessionsCard().catch(()=>null):null;
+  if(!owner){const cc=await claudeCard(m,false);const cx=await connectionsCard();const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(head(t('cs.nav.settings')),company,sessions,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,cc,cx);return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
   const alerts=m.kind==='session'?await alertsCard():null;
+  const chat=m.kind==='session'?await chatCard():null;
   const security=m.kind==='session'&&!m.demo?await securityCard():null;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,alerts,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  const yours=!m.demo?await yourConnectionsCard().catch(()=>null):null;
+  const cx=await connectionsCard();
+  // "Your connections" (this company's own, each connected or not) on top, the catalogue of every connection below it.
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),yours,cx,company,security,sessions,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){
@@ -1307,6 +1452,8 @@ async function settingsView(){
       if(x.account)rows.push([t('cs.awx.account'),x.account,'mono']);
       if(x.connected_at&&x.status==='connected')rows.push([t('cs.awx.since'),stamp(x.connected_at)]);
       kids.push(el('h2','sub-h',tk('cs.conn.name.'+x.provider,x.provider)),dl(rows));
+      // Xero: the company's supplier invoices as draft bills in its own organisation; a person approves them in Xero.
+      if(x.status==='connected'&&x.provider==='xero'){const px=btn(t('cs.conn.xero_push'),'primary','arrow-up-right');px.onclick=async()=>{px.disabled=true;try{const o=await api('/v1/connect/xero/bills',{method:'POST',body:{}});msg.replaceChildren(note(t('cs.conn.xero_pushed',{n:o.pushed.length,already:o.already,failed:o.failed.length,remaining:o.remaining}),o.failed.length?'bad':'ok'),...o.failed.slice(0,5).map(f=>note(f.invoice_id+': '+f.reason,'bad')))}catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}finally{px.disabled=false}};kids.push(el('div','row2',[px]),note(t('cs.conn.xero_drafts')))}
       if(x.status==='connected'){const d=btn(t('cs.conn.disconnect'),'','x');d.onclick=async()=>{d.disabled=true;try{const o=await api('/v1/connect/'+x.provider,{method:'DELETE'});await drawConn();if(o.note)conn.append(note(o.note))}catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'));d.disabled=false}};kids.push(el('div','row2',[d]))}
       else{const g=btn(tk('cs.conn.connect.'+x.provider,x.provider),'primary','shield-check');g.onclick=async()=>{g.disabled=true;try{const o=await api('/v1/connect/'+x.provider+'/start',{method:'POST'});location.assign(o.url)}catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'));g.disabled=false}};kids.push(el('div','row2',[g]))}
     }
@@ -1473,6 +1620,7 @@ async function route(){
   const open={'/sign-in':signInView,'/start':startView,'/platform':platformView};
   try{
     if(path==='/enrol')return enrolView(q);
+    if(path==='/oidc')return oidcBack(q);
     if(open[path])return open[path]();
     // Try as guest from a link (the hands-on demo's last step, 13 Nov): the demo company opens read only, as the sign-in's
     // button does; a session already open is kept.
@@ -1483,10 +1631,10 @@ async function route(){
     if(path==='/'||path==='')return go('#/overview');
     // Back from Airwallex's or Moneybird's consent screen (GET /v1/connect/{provider}/callback put the code here, in the
     // fragment, which no server sees): the signed-in owner who started it finishes the connection.
-    if(path==='/connect'){const p=q.get('provider');if(p!=='airwallex'&&p!=='moneybird')return go('#/settings');
+    if(path==='/connect'){const p=q.get('provider');if(!['airwallex','moneybird','xero','quickbooks','exact'].includes(p))return go('#/settings');
       if(q.get('error')||!q.get('code')){connNote=[t('cs.conn.declined'),'bad'];return go('#/settings')}
       history.replaceState(null,'','#/settings');
-      try{await api('/v1/connect/'+p+'/finish',{method:'POST',body:{code:q.get('code'),state:q.get('state')}});connNote=[t('cs.conn.done'),'ok']}catch(e){if(e instanceof Expired)return;connNote=[e.message,'bad']}
+      try{await api('/v1/connect/'+p+'/finish',{method:'POST',body:Object.assign({code:q.get('code'),state:q.get('state')},q.get('realm_id')?{realm_id:q.get('realm_id')}:{})});connNote=[t('cs.conn.done'),'ok']}catch(e){if(e instanceof Expired)return;connNote=[e.message,'bad']}
       return route()}
     // Jury review, 13 Nov: a skeleton of the page while it loads, not a blank "Loading …" (still said to a screen reader).
     view().replaceChildren(el('div','skel',[el('span','vh',t('loading')),el('i','sk-h'),el('i','sk-l'),el('div','sk-cards',[el('i',''),el('i',''),el('i','')]),el('i','sk-b')]));
@@ -1723,7 +1871,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_VIEW_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">

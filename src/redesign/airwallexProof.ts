@@ -12,7 +12,7 @@ import { cents } from "../airwallex/adapter.js";
 import { CARD_ACTIVE_DAYS, MCC_WORDS } from "../config/policy.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { cardControls } from "../policy/cards.js";
-import { cardRaiseOf, type RunRecord } from "./run.js";
+import { AGENT_RUN_FILE, cardRaiseOf, type RunRecord } from "./run.js";
 import { countOf, esc, icon } from "./ui.js";
 
 const RUNS = new URL("../../docs/runs/", import.meta.url);
@@ -162,10 +162,11 @@ details#controls { scroll-margin-top: 80px; }
 /** The hash block's anchor, on /airwallex and on /proof: Proof's Airwallex card links its hash claim here. */
 export const AWX_HASH_ID = "awx-hash";
 /** The hash block: the hash the CFO signed, the one Airwallex returns, and whether they match (computed). */
-export function hashBlockHtml(h: HashTravel | null): string {
+export function hashBlockHtml(h: HashTravel | null, runFile = AGENT_RUN_FILE): string {
   if (!h) return "";
   const by = h.method === "passkey" ? "Face ID" : h.method;
-  return `<div class="card" id="${AWX_HASH_ID}"><h3>${icon("file-check", 18)}${esc(HASH_TRAVELS)}</h3>
+  // Its records (data-rec): the signed hash from the run's ledger (proposal.approved), the carried one from the read-back.
+  return `<div class="card" id="${AWX_HASH_ID}" data-rec="${esc(`${runFile} ${h.file}`)}"><h3>${icon("file-check", 18)}${esc(HASH_TRAVELS)}</h3>
 <div class="awh"><b>${esc(`The CFO signed, with ${by} (main run ${h.proposalId}, ${day(h.signedAt)}, ${h.signedAt.slice(11, 16)} UTC)`)}</b><code>${esc(h.signed)}</code></div>
 <div class="awh"><b>${esc(`Airwallex returns, in transfer ${h.transferId.slice(0, 8)}…'s metadata.approval_sha256`)}</b><code>${esc(h.carried ?? "none")}</code></div>
 ${badge(h.match, "Match: the same hash", "No match")}
@@ -189,14 +190,15 @@ export const AWX_CONTROLS_ID = "controls";
 export const awxCardId = (agent: string) => `card-${agent.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`;
 
 /** Proof's short version of the card controls: one line per card, all five controls, matched or not. */
-export function controlsShortHtml(rows: CardControlRow[], readAt: string, file: string): string {
+export function controlsShortHtml(rows: CardControlRow[], readAt: string, file: string, runFile = AGENT_RUN_FILE): string {
   if (!rows.length) return "";
   const items = rows.map((r) => {
     const v = (rule: string) => r.checks.find((c) => c.rule === rule)!;
     const line = `${r.name} ····${r.last4}: ${v("Most per purchase").policy} per purchase, ${v("Most per month").policy} a month, ${v("Merchant categories").policy}, ${v("Currency").policy}, until ${v("End date").airwallex}`;
     return `<li class="${r.match ? "" : "no"}">${esc(line)}<br>${badge(r.match, "Airwallex matches the CFO policy", "Airwallex differs from the CFO policy")}</li>`;
   });
-  return `<div class="card" id="awx-cards"><h3>${icon("credit-card", 18)}${esc("Card controls Airwallex enforces, written from the CFO policy")}</h3>
+  // Its records (data-rec): the run's cards and limits (snapshot.cards), Airwallex's controls from the read-back.
+  return `<div class="card" id="awx-cards" data-rec="${esc(`${runFile} ${file}`)}"><h3>${icon("credit-card", 18)}${esc("Card controls Airwallex enforces, written from the CFO policy")}</h3>
 <p>${esc("Limit per purchase and per month, merchant categories, currency and end date, as Airwallex returns each agent's card.")}</p>
 ${cardsMatchBadge(rows, readAt)}
 <details class="fold"><summary>${esc("Show each card")}</summary><ul class="awc">${items.join("")}</ul></details>
@@ -205,7 +207,7 @@ ${cardsMatchBadge(rows, readAt)}
 }
 
 /** /airwallex's version: one line for all the cards, then (folded) per card each CFO policy rule beside the control Airwallex returns. */
-export function controlsSideBySideHtml(rows: CardControlRow[], readAt: string, file: string): string {
+export function controlsSideBySideHtml(rows: CardControlRow[], readAt: string, file: string, runFile = AGENT_RUN_FILE): string {
   if (!rows.length) return "";
   const cardHtml = (r: CardControlRow) => `<div class="awcard" id="${awxCardId(r.agent)}"><h4>${icon("credit-card", 18)}${esc(`${r.name} ····${r.last4}`)}${badge(r.match, "matches", "differs")}</h4>
 <div class="awhead"><span>${esc("Rule")}</span><span>${esc("CFO policy")}</span><span>${esc("Airwallex card control")}</span></div>
@@ -213,7 +215,7 @@ ${r.checks.map((c) => `<div class="awrow"><span class="k ${c.ok ? "ok" : "no"}">
 <small>${esc(`Card id …${r.idTail} · ${r.status} · created by "${r.createdBy}"`)}</small></div>`;
   // Max, 6 Nov: one line on the page; each card's side by side in a collapsed fold, as Proof folds its lists. The fold is
   // #controls and each card #card-<agent>: a link to either opens the fold (OPEN_TARGET_JS, src/redesign/ui.ts).
-  return `<div class="card">${cardsMatchBadge(rows, readAt)}
+  return `<div class="card" data-rec="${esc(`${runFile} ${file}`)}">${cardsMatchBadge(rows, readAt)}
 <details class="fold" id="${AWX_CONTROLS_ID}"><summary>${esc("Show each card: the CFO policy beside the Airwallex card control")}</summary>
 <p>${esc("Purser writes each card's controls from the CFO policy; Airwallex declines anything outside them, whatever the agent does.")}</p>
 <div class="awcards">${rows.map(cardHtml).join("")}</div>

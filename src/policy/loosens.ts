@@ -20,6 +20,8 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   if (c.key === "approval.second_key_eur") return from !== null && (to === null || to > from);
   if (c.key.startsWith("approval.second_key_")) return c.from === "on" && c.to !== "on";
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
+  // The limit an agent may pay alone up to: set where there was none, or raised, loosens; lowered or removed tightens.
+  if (c.key === "ap.alone_eur") return to !== null && (from === null || to > from);
   if (c.key.endsWith("_floor") || c.key.startsWith("floor.")) return from !== null && (to === null || to < from);
   // Supplier payouts: less held back for the fee loosens; any other funding currency is a change for Face ID.
   if (c.key.startsWith("fee_reserve.")) return from !== null && (to === null || to < from);

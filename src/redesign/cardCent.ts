@@ -52,7 +52,7 @@ export function centHtml(r: { file: string; rec: CentRecord } | null): string {
   const ok = centHolds(r.rec);
   const time = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 19)} UTC`;
   const items = r.rec.attempts.map((a) => `<li class="${a.approved ? "" : "no"}">${esc(`${eur(a.amount_cents)}: ${word(a)}`)}<br><small>${esc(`id ${a.id ?? "none given"} · ${time(a.at)}`)}</small></li>`).join("");
-  return `<div class="card" id="${CENT_ID}"><h3>${icon("credit-card", 18)}${esc(`One cent over the limit, on the ${r.rec.agent} agent's card ····${r.rec.card.last4 ?? "?"}`)}</h3>
+  return `<div class="card" id="${CENT_ID}" data-rec="${esc(r.file)}"><h3>${icon("credit-card", 18)}${esc(`One cent over the limit, on the ${r.rec.agent} agent's card ····${r.rec.card.last4 ?? "?"}`)}</h3>
 <p>${esc(`Its limit is ${eur(r.rec.card.per_tx_cents)} a purchase. Two test purchases at the Airwallex sandbox: exactly the limit, then one cent more.`)}</p>
 <span class="awm ${ok ? "ok" : "bad"}">${icon(ok ? "circle-check" : "octagon-x", 16)}${esc(line)}</span>
 <ul class="awc">${items}</ul>

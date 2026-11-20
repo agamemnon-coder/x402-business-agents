@@ -185,7 +185,7 @@ function balances(e: LedgerEntryIn): boolean {
  * So of two racing pushes the second to commit fails as a whole (nothing of it is written), its caller gets a 409 and
  * sends it again; a push whose key was revoked while it ran writes nothing either.
  */
-export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, now: Date, who: { kind: "key" | "session"; principal: string } = { kind: "key", principal: "" }): Promise<SyncResult> {
+export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, now: Date, who: { kind: "key" | "session"; principal: string } = { kind: "key", principal: "" }, reserve?: (bytes: number, files: number) => Promise<() => Promise<void>>): Promise<SyncResult> {
   const iso = now.toISOString();
   // The guard goes first: if the key is gone by commit time, nothing after it is written.
   const out: Stmt[] = who.principal ? [db.pushGuard(`p_${iso}_${randomToken(6)}`, who, iso)] : [];
@@ -248,12 +248,15 @@ export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, no
   // Every check passed: the bytes first (a row never points at bytes that are not there), then the rows in one
   // transaction; if that fails, the bytes stored for this push are removed again.
   const stored: { key: string; sha: string }[] = [];
+  // The new files' room in the company's storage quota, taken before a byte is stored and given back if nothing is.
+  const release = reserve && toStore.length ? await reserve(toStore.reduce((n, b) => n + b.bytes.length, 0), toStore.length) : null;
   try {
     for (const b of toStore) { await blobs.put(b.key, b.bytes, b.meta); stored.push({ key: b.key, sha: b.key.slice(b.key.lastIndexOf("/") + 1) }); }
     await db.apply(out);
   } catch (e) {
     // Bytes a concurrent push has meanwhile committed a row for (same content, same key) are kept.
     for (const s of stored) if (!(await db.one("documents", { sha256: s.sha }).catch(() => null))) await blobs.delete(s.key).catch(() => undefined);
+    if (release) await release().catch(() => undefined);
     if (e instanceof WriteConflict) {
       if (/push_log\.by_key/.test(e.detail)) throw new SyncRefused(409, "the key this push came with was revoked or expired while this push ran; nothing of it was written");
       throw new SyncRefused(409, "another push for this company landed at the same time; nothing of this one was written: send it again (what already arrived counts as unchanged)");

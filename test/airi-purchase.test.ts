@@ -8,8 +8,9 @@ import { AIRI_TEXT_MAX, mandateCreateArgs, type AiriMandate, type AiriMandateReq
 import { AIRI_HARD_CAP_CENTS, type AiriPolicy } from "../src/airi/policy.js";
 import { AIRI_PURCHASE_KIND, READ_BACK_TRIES, TMP_PREFIX, decideAiriPurchase, executeAiriPurchase, mandateDescription, mandateTag, recoverAiriPurchases, requestAiriPurchase, type AiriDeps, type AiriPurchaseRequest, type AiriTerms } from "../src/airi/purchase.js";
 import { STAND_IN_LABEL, StandInAiriClient, StandInCheckout, type StandInScript } from "../src/airi/standIn.js";
-import { decide, resuming } from "../src/policy/approvals.js";
+import { resuming } from "../src/policy/approvals.js";
 import { startStep } from "../src/policy/saga.js";
+import { approveSigned } from "./support/signedApproval.js";
 
 const T0 = new Date("2026-11-07T10:00:00Z");
 const URL0 = "https://kit11.max-31b.workers.dev/";
@@ -54,7 +55,7 @@ const row = (db: DB, id: string) => db.prepare("SELECT * FROM airi_purchases WHE
 const proposal = (db: DB, id: string) => db.prepare("SELECT * FROM proposals WHERE proposal_id = ?").get(id) as { proposal_id: string; kind: string; terms_json: string; terms_sha256: string; status: string };
 const approve = (db: DB, id: string) => {
   const p = proposal(db, id);
-  decide(db, { proposalId: id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver: "cfo", method: "passkey", signedSha256: p.terms_sha256, passkey: { credentialId: "test-cred", assertionSha256: "0".repeat(64) } }, T0);
+  approveSigned(db, p.proposal_id, T0);
 };
 const fresh = () => { const db = openDb(":memory:"); seed(db); return db; };
 

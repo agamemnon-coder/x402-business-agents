@@ -26,10 +26,10 @@ import { ENDORSE_NOTE, LOGO, earlierLine, fold, partnerProof } from "./proof.js"
 import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { centHtml, centRecord, LIVE_CARDS_JS, liveCardsHtml } from "./cardCent.js";
-import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
+import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_LOG, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
 import { VISA_HERO_CSS, visaFlowHtml, visaHashHtml, visaOutcomesHtml } from "./visaHero.js";
-import { VIC3_RUN_FILE, VIC_LATER_FILES, vic3Lead, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
+import { VIC3_RUN_FILE, VIC3_RUN_LOG, VIC_LATER_FILES, vic3Lead, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
 import { COUNT_JS, STATS_CSS } from "./stats.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles, tilesCountWords } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
@@ -39,8 +39,8 @@ import { VIC_FACTS_CSS, VIC_FACTS_ID, vicAttemptsHtml, vicCompare, vicCompareHtm
 import { VIC_FLOW_CSS, VIC_FLOW_ID, vicFlowBlock } from "./vicFlow.js";
 import { VIC_NETWORK_CSS, vicNetworkBlock, vicNetworkRecord } from "./vicNetwork.js";
 import { VIC_RULES_CSS, vicRulesBlock } from "./vicRules.js";
-import { VISA_ASKS_ID, VISA_MEETS_ID, VISA_RUNS3_ID, VISA_STORY_CSS, VISA_TAP_SECTION_HEADING, visaAsksHtml, visaMeetsHtml, visaNotYetHtml, visaReuseHtml, visaTapSectionHtml, visaThreeRunsHtml } from "./visaStory.js";
-import { VISA_CARD_SCENE_CSS, VISA_CARD_SCENE_JS, cardSceneData, visaCardSceneHtml } from "./visaCardScene.js";
+import { VISA_ASKS_ID, VISA_MEETS_ID, VISA_PLAN_FILE, VISA_RUNS3_ID, VISA_STORY_CSS, VISA_TAP_SECTION_HEADING, visaAsksHtml, visaMeetsHtml, visaNotYetHtml, visaReuseHtml, visaTapSectionHtml, visaThreeRunsHtml } from "./visaStory.js";
+import { GUARD_FILE, GUARD_TEST, VISA_CARD_SCENE_CSS, VISA_CARD_SCENE_JS, cardSceneData, visaCardSceneHtml } from "./visaCardScene.js";
 import { VISA_OVERVIEW_CSS, VISA_OVERVIEW_ID, VISA_SUMMARY_HEADING, VISA_TAP_ID, tapCardHtml, visaOverviewBlock } from "./visaOverview.js";
 import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.js";
 import { METAL_ONCHAIN_CSS, faceIdOnChainSection } from "./metalOnchain.js";
@@ -50,7 +50,7 @@ import { CLAUDE_CSS, claudeMain } from "./claudePage.js";
 import { BOOKS_CSS, BOOKS_JS, MONEYBIRD_RECORD, RUN_FILE, booksBody, booksData } from "./booksPage.js";
 import { T0_CLOSE_JS, t0RunData } from "./t0CloseTile.js";
 import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_READBACK_RECORD, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
-import { OPEN_TARGET_JS, esc, icon, page, pageTitle, setBuiltOn, TRY_URL } from "./ui.js";
+import { OPEN_TARGET_JS, esc, icon, page, pageTitle, setBuiltOn, TRY_URL, withRec } from "./ui.js";
 import { EVIDENCE_WALL_CSS, evidenceLeadHtml, evidenceStripHtml, notLiveLine } from "./evidenceWall.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
@@ -283,8 +283,8 @@ export function assertVicFirst(html: string): void {
   if (/<title>([^<]*)<\/title>/.exec(html)?.[1] !== esc(pageTitle(VISA_TITLE))) fail("the title does not name Visa Intelligent Commerce via Airwallex Airi");
   const main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? fail("no <main>");
   if (/<h[1-6]\b[^>]*>[\s\S]*?<\/h[1-6]>/.exec(main)?.[0] !== `<h1>${esc(VISA_H1)}</h1>`) fail("the page's first heading is not the VIC heading");
-  const tapOpen = `<section class="card vs vs-tap" id="${VISA_TAP_ID}">`;
-  const tapAt = main.indexOf(tapOpen);
+  // The section's opening tag, with its records (data-rec) after its id.
+  const tapAt = main.search(new RegExp(`<section class="card vs vs-tap" id="${VISA_TAP_ID}"(?: data-rec="[^"]*")?>`));
   if (tapAt < 0) fail("there is no open TAP section");
   const before = main.slice(0, tapAt);
   // The TAP section sits in no fold: every <details> opened before it is closed before it.
@@ -333,6 +333,10 @@ function visaTapFold(run: AgentRun): string {
   <p class="src">${esc(`Source: ${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`)}</p></details>`;
 }
 
+/** The code that sets the numbers of the CFO's Airi rules and of the card data's handling (cited as their record). */
+const VIC_RULES_CODE = ["src/airi/policy.ts", "src/airi/purchase.ts"] as const;
+const CARD_DATA_CODE = ["src/airi/cardData.ts"] as const;
+
 export function visaPage(run: AgentRun = agentRun()): string {
   const rec = airiRun();
   // Intelligent Commerce Connect (12 Nov): the status line until an ICC run record exists under docs/runs; then, in its
@@ -357,42 +361,46 @@ export function visaPage(run: AgentRun = agentRun()): string {
   const asker = airiAsker(rec);
   // The latest live run leads (12 Nov, vic-3): the record's own numbers and ids; the first run (7 Nov) follows.
   const vic3 = vic3Run();
-  const more = [vicAttemptsHtml(rec), vicNetworkBlock(rec), vicRulesBlock(rec, vic2Run()), cardDataHtml()].join("");
+  // Every block names its records (data-rec, withRec): the run records it reads, and for the policy's numbers the code
+  // that sets them (the CFO's Airi limits, the card data's handling), as docs/claims.md cites code for a rule.
+  const net = vicNetworkRecord()?.file, tapFile = tapRun()?.file;
+  const more = [withRec(vicAttemptsHtml(rec), [AIRI_RUN_FILE, AIRI_RUN_LOG]), withRec(vicNetworkBlock(rec), [net, AIRI_RUN_FILE]),
+    withRec(vicRulesBlock(rec, vic2Run()), [...VIC_RULES_CODE, AIRI_RUN_FILE, VIC2_RUN_FILE]), withRec(cardDataHtml(), CARD_DATA_CODE)].join("");
   // Jury pass, 13 Nov: the latest run as it ended for each purchase ("1 paid after Face ID, 3 refused by Purser, 1 not
   // tapped: nothing charged"), four cards, the two lines that say what the entry is, then every detail in one fold; the
   // TAP work, outside the entry, last inside it (its own closed fold), so it is never on the first screen at any width.
   const body = `<main class="pp"><div class="wrap">
-  <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
+  <div class="phd">${LOGO.visa}<span class="pill run" data-rec="${esc([AIRI_RUN_FILE, ...(vic3 ? [VIC3_RUN_FILE] : [])].join(" "))}">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
   <p class="vlimits" data-rec="${VIC3_RUN_FILE}">${esc(visaLimitsLine(vic3 as never))}</p>
-  ${proofFirstHtml(visaFirstFacts(vic3 as never, VIC3_RUN_FILE, `#${VISA_REUSE_ID}`))}
+  ${withRec(proofFirstHtml(visaFirstFacts(vic3 as never, VIC3_RUN_FILE, `#${VISA_REUSE_ID}`)), [VIC3_RUN_FILE])}
   ${evidenceStripHtml("visa", { note: "Visa is named in text only; no endorsement." })}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
-  ${visaCardSceneHtml()}
+  ${withRec(visaCardSceneHtml(), [VIC3_RUN_FILE, AIRI_RUN_FILE, GUARD_FILE, GUARD_TEST])}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   <details class="sumd" id="visa-asks-fold"><summary>${esc("What Visa Intelligent Commerce asks for, and how Purser meets it")}</summary>
-  ${visaAsksHtml()}
-  ${visaMeetsHtml()}
-  ${visaReuseHtml()}
-  ${vic3 ? visaFlowHtml(vic3) : ""}
-  ${visaThreeRunsHtml()}
+  ${withRec(visaAsksHtml(), [VISA_PLAN_FILE])}
+  ${withRec(visaMeetsHtml(), [VIC3_RUN_FILE, VIC3_RUN_LOG, ...VIC_RULES_CODE])}
+  ${withRec(visaReuseHtml(), [...VIC_LATER_FILES])}
+  ${vic3 ? withRec(visaFlowHtml(vic3), [VIC3_RUN_FILE]) : ""}
+  ${withRec(visaThreeRunsHtml(), [AIRI_RUN_FILE, ...VIC_LATER_FILES])}
   </details>
   <details class="sumd" id="visa-details"><summary>${esc("All the details: the runs, the flow, every id")}</summary>
   ${vic3 ? `<p class="vintro">${esc(VISA_LEAD)}</p>
-  ${visaOutcomesHtml(vic3, visaRunsLine())}
-  ${visaHashHtml(vic3)}` : ""}
+  ${withRec(visaOutcomesHtml(vic3, visaRunsLine()), [VIC3_RUN_FILE, AIRI_RUN_FILE, ...VIC_LATER_FILES])}
+  ${withRec(visaHashHtml(vic3), [VIC3_RUN_FILE])}` : ""}
   ${vic3 ? `<div class="awrb">${vic3RunHtml(vic3, { first: dayShort(rec.started_at), summarised: true })}</div>` : ""}
-  ${vicFlowBlock(rec, { h: "h2" })}
-  ${vicFactsHtml(vicFacts(rec))}
-  ${vicCompareHtml(vicCompare(rec, vicNetworkRecord()))}
-  ${vic3 ? `<details class="fold" id="${VISA_FIRST_RUN_ID}"><summary>${esc(`The first live run (${dayShort(rec.started_at)}): every purchase, check and id`)}</summary>
-  ${visaOverviewBlock(rec)}
-  <div class="awrb">${airiRunBlock(rec, { h: "h2" })}</div></details>` : `${visaOverviewBlock(rec)}
+  ${withRec(vicFlowBlock(rec, { h: "h2" }), [AIRI_RUN_FILE, AIRI_RUN_LOG])}
+  ${withRec(vicFactsHtml(vicFacts(rec)), [AIRI_RUN_FILE, AIRI_RUN_LOG])}
+  ${withRec(vicCompareHtml(vicCompare(rec, vicNetworkRecord())), [AIRI_RUN_FILE, net])}
+  ${vic3 ? `<details class="fold" id="${VISA_FIRST_RUN_ID}" data-rec="${esc([AIRI_RUN_FILE, AIRI_RUN_LOG].join(" "))}"><summary>${esc(`The first live run (${dayShort(rec.started_at)}): every purchase, check and id`)}</summary>
+  ${withRec(visaOverviewBlock(rec), [AIRI_RUN_FILE, AIRI_RUN_LOG])}
+  <div class="awrb">${airiRunBlock(rec, { h: "h2" })}</div></details>` : `${withRec(visaOverviewBlock(rec), [AIRI_RUN_FILE, AIRI_RUN_LOG])}
   <div class="awrb">${airiRunBlock(rec, { h: "h2" })}</div>`}
   <div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div>
   ${more ? `<div class="awrb"><div class="card" id="${VISA_MORE_ID}">${more}</div></div>` : ""}
   <a class="open" href="proof#${AIRI_RUN_ID}">All the proof ${icon("arrow-right", 15)}</a>
   </details>
-  ${visaTapSectionHtml(VISA_TAP_ID, `${evidenceStripHtml("tap")}<div class="folds card">${visaTapFold(run)}</div>`)}
+  ${withRec(visaTapSectionHtml(VISA_TAP_ID, `${evidenceStripHtml("tap")}<div class="folds card">${visaTapFold(run)}</div>`), [tapFile, run.file])}
   ${visaNotYetHtml()}
 </div></main>`;
   // The card scene's buttons run Purser's credential check in the browser on the recorded purchase (its data block).

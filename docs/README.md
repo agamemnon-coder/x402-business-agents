@@ -6,8 +6,8 @@ Every Purser document, grouped by what you need it for; test money only througho
 
 | At a glance | Record |
 |---|---|
-| **8,574 tests passing**, 0 failed, in the last full run | [assets/test-summary.json](assets/test-summary.json) |
-| **33 live runs**, the last on 19 Nov 2026 | [runs/README.md](runs/README.md) |
+| **8,845 tests passing**, 0 failed, in the last full run | [assets/test-summary.json](assets/test-summary.json) |
+| **34 live runs**, the last on 19 Nov 2026 | [runs/README.md](runs/README.md) |
 | **189 checks passed**, 3 could not run here, 0 failed | [evidence/verification-2026-11-15.md](evidence/verification-2026-11-15.md) |
 | **37 of 39** red-team attacks stopped, 2 caught afterwards (a test world) | [redteam/report.json](redteam/report.json) |
 
@@ -71,10 +71,11 @@ and file names from before keep "Metal". Back to the [README](../README.md); eve
 
 ### Connect your AI and other systems
 
+- [integrations/README.md](integrations/README.md): **Connect Purser to anything**: every way in or out (payment rails, AI over MCP, the API and webhooks, no-code tools, accounting, Peppol, chat), each with its honest label, a quickstart and its guide; the details for no-code tools, Peppol and the workplace tools are [integrations/no-code.md](integrations/no-code.md), [integrations/peppol.md](integrations/peppol.md) and [integrations/workplace.md](integrations/workplace.md).
 - [mcp.md](mcp.md): **the MCP server reference**: connect Claude Code, Claude Desktop or any MCP client; every tool with its annotations; the resources, prompts and error codes; the safety model (read and propose only); how a proposal reaches the CFO.
 - [connect-claude.md](connect-claude.md): every client's steps (Claude, ChatGPT, Cursor, VS Code, Gemini CLI, Windsurf), OAuth and token security; the short version is [connect-any-ai.md](connect-any-ai.md).
 - [agent-api.md](agent-api.md): outside agents on the runner (the agent API, a separate MCP server for an agent's own company card) and the ERP export.
-- [connections.md](connections.md): every connection to another system, each labelled live or format export.
+- [connections.md](connections.md): the webhooks, the chat formats and the accounting exports in detail, each labelled live or format export.
 
 ### Purser Cloud, payables and the books (built after the kit)
 

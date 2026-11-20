@@ -8,9 +8,9 @@
       "tiles": [
         {
           "key": "try-transfers",
-          "fig": "All 50",
+          "fig": "All 116",
           "label": "Airwallex transfers PAID from the public /try",
-          "note": "25 walks as a visitor, 19 Nov; PAID by the sandbox's simulation.",
+          "note": "58 walks as a visitor, 19 Nov; PAID by the sandbox's simulation.",
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
@@ -28,23 +28,23 @@
         },
         {
           "key": "soak-paid",
-          "fig": "All 30",
+          "fig": "All 60",
           "label": "soak payments PAID, signed hash read back",
-          "note": "Each read back from Airwallex as signed: hash, amount, payee, reference; PAID by the sandbox's simulation, 19 Nov.",
+          "note": "Each read back from Airwallex as signed: hash, amount, payee, reference; PAID by the sandbox's simulation; 2 soaks, 19 and 20 Nov.",
           "tag": "sandbox",
           "tone": "awx",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md",
-          "rec": "docs/runs/2026-11-19-airwallex-soak.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md"
         },
         {
           "key": "soak-fx",
-          "fig": "All 6",
+          "fig": "All 12",
           "label": "FX conversions booked and read back",
-          "note": "In the soak, each before the payment it funded, 19 Nov.",
+          "note": "In the soaks of 19 and 20 Nov, each before the payment it funded.",
           "tag": "sandbox",
           "tone": "awx",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md",
-          "rec": "docs/runs/2026-11-19-airwallex-soak.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md"
         },
         {
           "key": "approval-hash",
@@ -150,7 +150,7 @@
           "key": "awx-statement",
           "fig": "All 42",
           "label": "soak payouts and FX legs on Airwallex's statement, to the cent",
-          "note": "Balance history; all 92 links add up; 19 Nov.",
+          "note": "Balance history of the 19 Nov soak; all 92 links add up; 19 Nov.",
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md",
@@ -196,7 +196,7 @@
         },
         {
           "key": "try-cent",
-          "fig": "All 25",
+          "fig": "All 58",
           "label": "one-cent changes refused after approval",
           "note": "The public /try, 19 Nov; a virtual test passkey signed.",
           "tag": "sandbox",
@@ -206,7 +206,7 @@
         },
         {
           "key": "try-hash",
-          "fig": "All 25",
+          "fig": "All 58",
           "label": "approvals whose hash Airwallex carries",
           "note": "The public /try, 19 Nov.",
           "tag": "sandbox",
@@ -216,7 +216,7 @@
         },
         {
           "key": "try-proofs",
-          "fig": "All 48",
+          "fig": "All 114",
           "label": "proof files VALID, browser and offline",
           "note": "Downloaded from /try; npm run verify-bundle agrees.",
           "tag": "sandbox",
@@ -226,13 +226,13 @@
         },
         {
           "key": "soak-negatives",
-          "fig": "All 5",
+          "fig": "All 10",
           "label": "one-cent changes refused before any create",
-          "note": "0 money-moving calls (0 creates); each refusal still read the balance once (5 GET /balances/current). Soak, 19 Nov.",
+          "note": "0 money-moving calls (0 creates); 5 reads in the refusal windows (5 GET /balances/current). Soaks, 19 and 20 Nov.",
           "tag": "sandbox",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md",
-          "rec": "docs/runs/2026-11-19-airwallex-soak.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md"
         },
         {
           "key": "card-cent",
@@ -358,7 +358,7 @@
           "key": "eval-v8",
           "fig": "20 vs 79",
           "label": "wrong payments on 140 held-out invoices (eval v8): Purser vs no rules",
-          "note": "Cases committed with their pre-registration (commit 7fabd5262), after the fixes for v7's misses; a script always says pay. 6 false holds of 74. Held out. Offline.",
+          "note": "Cases committed with their pre-registration before the run (commit 7fabd5262); a script always says pay. 6 false holds of 74. Fixed since, no longer held out: 0 wrong payments, 0 false holds. Offline.",
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v8.md",
@@ -387,8 +387,8 @@
         {
           "key": "try-claude",
           "fig": "0",
-          "label": "fallbacks in 360 Claude calls on /try",
-          "note": "388 Anthropic request ids; claude-haiku-5-5. 168 reader calls were logged with no request id: those walks ran before the fix of 19 Nov was deployed.",
+          "label": "fallbacks in 855 Claude calls on /try",
+          "note": "1153 Anthropic request ids; claude-haiku-5-5. 168 reader calls were logged with no request id: those walks ran before the fix of 19 Nov was deployed.",
           "tag": "sandbox",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
@@ -396,7 +396,7 @@
         },
         {
           "key": "try-held",
-          "fig": "24 of 25",
+          "fig": "57 of 58",
           "label": "invoices held by code's cash check",
           "note": "Inside the agent's limit; no payout. One walk stopped before this step.",
           "tag": "sandbox",
@@ -560,9 +560,9 @@
       "tiles": [
         {
           "key": "try-journeys",
-          "fig": "24 of 25",
+          "fig": "57 of 58",
           "label": "/try walks: every site step passed",
-          "note": "19 Nov, Chromium and Firefox, desktop, tablet and phone; 0 console errors. The recording script marked 21 of 25 all ok: the others stopped on its own bug or on /verify's new words; the run logs say which.",
+          "note": "19 Nov, Chromium and Firefox, desktop, tablet and phone; 0 console errors. The recording script marked 54 of 58 all ok: the others stopped on its own bug or on /verify's new words; the run logs say which.",
           "tag": "sandbox",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
@@ -570,9 +570,9 @@
         },
         {
           "key": "try-sign-paid",
-          "fig": "6.6 s",
+          "fig": "6.3 s",
           "label": "passkey to paid, on screen",
-          "note": "Median of 25, p95 8.2 s.",
+          "note": "Median of 58, p95 8.2 s.",
           "tag": "sandbox",
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
@@ -580,9 +580,9 @@
         },
         {
           "key": "try-autopay",
-          "fig": "11.0 s",
+          "fig": "10.2 s",
           "label": "agent pays alone, to Airwallex PAID",
-          "note": "Median of 25, p95 13.7 s; PAID by the sandbox's simulation.",
+          "note": "Median of 58, p95 13.6 s; PAID by the sandbox's simulation.",
           "tag": "sandbox",
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
@@ -590,9 +590,9 @@
         },
         {
           "key": "try-refusal",
-          "fig": "0.70 s",
+          "fig": "0.68 s",
           "label": "one-cent change to refusal",
-          "note": "Median of 25, p95 0.77 s.",
+          "note": "Median of 58, p95 0.90 s.",
           "tag": "sandbox",
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
@@ -600,9 +600,9 @@
         },
         {
           "key": "try-verify",
-          "fig": "0.09 s",
+          "fig": "0.12 s",
           "label": "proof file to verdict on /verify",
-          "note": "Median of 24, p95 0.29 s.",
+          "note": "Median of 57, p95 0.41 s.",
           "tag": "sandbox",
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
@@ -610,9 +610,9 @@
         },
         {
           "key": "try-cost",
-          "fig": "USD 0.0047",
+          "fig": "USD 0.0048",
           "label": "Claude cost per /try journey",
-          "note": "List price; USD 0.1179 for 25.",
+          "note": "List price; USD 0.2811 for 58.",
           "tag": "sandbox",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",

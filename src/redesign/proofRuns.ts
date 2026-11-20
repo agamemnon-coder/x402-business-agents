@@ -100,7 +100,7 @@ export function proofRuns(rows: RunRow[] = liveRuns()): { group: ProofGroup; run
 }
 
 // ── 2a. The strip: one tile per partner (Max, 14 Nov: "more visuals and polish") ───────────────────────────────────
-export interface PartnerTile { name: string; runs: number; latest: RunRow; badge: string; href: string }
+export interface PartnerTile { name: string; runs: number; latest: RunRow; badge: string; href: string; /** The runs the tile counts. */ rows: RunRow[] }
 /** The partners the strip shows, each with the runs it took part in: the run's own partner chips (src/redesign/runs.ts),
  *  Moneybird by its name in the run's words (it has no chip). Visa is Visa via Airwallex's Airi on this page. */
 // The review of 14 Nov: the badge is the partner's own rail (a sandbox, or Alta's testnet), never the run's mix; each tile
@@ -120,10 +120,13 @@ export const groupId = (g: ProofGroup) => `pg-${g.toLowerCase().replace(/[^a-z0-
 export function partnerTiles(groups = proofRuns()): PartnerTile[] {
   return STRIP.map((p) => {
     const mine = (groups.find((g) => g.group === p.group)?.runs ?? []).filter(p.has).sort((a, b) => b.iso.localeCompare(a.iso));
-    return mine.length ? { name: p.label ?? p.name, runs: mine.length, latest: mine[0]!, badge: `Live · ${p.rail}`, href: `#${groupId(p.group)}` } : null;
+    return mine.length ? { name: p.label ?? p.name, runs: mine.length, latest: mine[0]!, badge: `Live · ${p.rail}`, href: `#${groupId(p.group)}`, rows: mine } : null;
   }).filter((t): t is PartnerTile => !!t);
 }
 /** The strip, with one line saying how it counts: `runs`, the site's one live-run count (src/redesign/runs.ts). */
+/** The records a set of runs names (each row's files, as repository paths): what a count of those runs is read from. */
+export const recordsOf = (rows: readonly RunRow[]) => [...new Set(rows.flatMap((r) => r.files.map((f) => siteHref(f.href)).filter((h) => h.startsWith(REPO_BLOB)).map((h) => h.slice(REPO_BLOB.length))))].join(" ");
+
 export function partnerStripHtml(tiles = partnerTiles(), runs?: number, listed = proofRuns().reduce((n, g) => n + g.runs.length, 0)): string {
   if (!tiles.length) return "";
   // One source (judge scan, 14 Nov): the tiles and the timeline count the same rows; the TAP run is told on /visa only.
@@ -132,7 +135,8 @@ export function partnerStripHtml(tiles = partnerTiles(), runs?: number, listed =
   // Live measurement, 15 Nov: one plain line ("25 live runs: 23 by partner in the tiles, the main run, and 1 on /visa").
   const parts = [`${byPartner} by partner in the tiles`, ...(other > 0 ? [other === 1 ? "the main run" : `${other} more`] : []), ...(runs !== undefined && runs > listed ? [`${runs - listed} on /visa`] : [])];
   const note = runs === undefined ? "" : `${runs} live runs: ${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0]}.`;
-  return `${note ? `<p class="ptnote">${esc(note)}</p>` : ""}<ul class="ptiles" aria-label="${esc("Live runs by partner")}">${tiles.map((t) => `<li><a href="${esc(t.href)}"><span class="pt-n">${esc(t.name)}</span><b class="pt-c">${t.runs}</b><small>${esc(`live ${t.runs === 1 ? "run" : "runs"} · latest ${dayOf(t.latest.iso)}`)}</small><span class="chip live">${esc(t.badge)}</span></a></li>`).join("")}</ul>`;
+  // The note counts every run on /runs (liveRuns), the tiles their partner's runs: each names the runs' records (data-rec).
+  return `${note ? `<p class="ptnote" data-rec="${esc(recordsOf(liveRuns().filter(isLive)))}">${esc(note)}</p>` : ""}<ul class="ptiles" aria-label="${esc("Live runs by partner")}">${tiles.map((t) => `<li data-rec="${esc(recordsOf(t.rows))}"><a href="${esc(t.href)}"><span class="pt-n">${esc(t.name)}</span><b class="pt-c">${t.runs}</b><small>${esc(`live ${t.runs === 1 ? "run" : "runs"} · latest ${dayOf(t.latest.iso)}`)}</small><span class="chip live">${esc(t.badge)}</span></a></li>`).join("")}</ul>`;
 }
 
 /** A long id, short in sight: its start and end; the whole id on hover and in the copy button. */

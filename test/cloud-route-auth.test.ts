@@ -10,7 +10,7 @@ import { ROUTES } from "../cloud/src/app.js";
 import { ALWAYS_STEP_UP_ROUTES, SESSION_ONLY_ROUTES, STEP_UP_ROUTES } from "../cloud/src/stepUp.js";
 import { testCloud, type TestCloud } from "./support/cloud.js";
 
-const NEEDS = new Set(["public", "platform", "read", "sync", "admin", "propose"]);
+const NEEDS = new Set(["public", "platform", "read", "sync", "admin", "propose", "approve"]);
 
 /** The public routes and why each needs no key or session: it is the sign-in itself, checks its own signature, or holds nothing of a company. */
 const PUBLIC: Record<string, string> = {
@@ -26,6 +26,11 @@ const PUBLIC: Record<string, string> = {
   "POST /v1/auth/enrol": "a passkey enrolment: its single-use secret is the credential",
   "POST /v1/auth/invite": "an invite's secret is the credential",
   "POST /v1/auth/guest": "the demo company's read-only guest session: made-up data",
+  "GET /v1/auth/oidc": "which sign-in providers are on: no company's data",
+  "POST /v1/auth/oidc/{provider}/start": "a sign-in's first step (rate limited per address); it signs in only an account a person linked while signed in with their passkey",
+  "GET /v1/auth/oidc/{provider}/callback": "the provider's redirect: stores nothing, forwards the code to the console's fragment",
+  "POST /v1/auth/oidc/apple/callback": "Apple's form_post redirect: stores nothing, forwards the code to the console's fragment",
+  "POST /v1/auth/oidc/{provider}/finish": "a sign-in (rate limited per address): the state, its browser secret and the provider's checked ID token are the credential; the session reads only",
   "GET /v1/export/download/{id}/{part}": "a 15-minute signed link is the credential",
   "GET /v1/stats": "the cloud's own counters: no company's id or amount",
   "GET /v1/cards/edge/latest": "the newest one-cent-over test at the Airwallex sandbox: test money, a card's last four digits and Airwallex's answers; no company's id or data",
@@ -61,7 +66,7 @@ beforeEach(() => { c = testCloud(); });
 afterEach(() => c.close());
 
 describe("every API route states its auth requirement", () => {
-  it("names one of public, platform, read, sync, admin or propose, and no route is listed twice", () => {
+  it("names one of public, platform, read, sync, admin, propose or approve, and no route is listed twice", () => {
     const bad = ROUTES.filter((r) => !NEEDS.has(String((r as { need?: unknown }).need))).map(key);
     expect(bad).toEqual([]);
     expect(new Set(ROUTES.map(key)).size).toBe(ROUTES.length);
@@ -92,11 +97,11 @@ describe("every API route states its auth requirement", () => {
 });
 
 describe("sensitive settings are step-up routes", () => {
-  it("lists only routes that exist and need admin", () => {
+  it("lists only routes that exist and need admin (or approve: the approver's own passkey and security key, docs/security/roles.md)", () => {
     const table = new Map(ROUTES.map((r) => [key(r), r]));
     for (const k of STEP_UP_ROUTES) {
       expect(table.has(k), k).toBe(true);
-      expect(table.get(k)!.need, k).toBe("admin");
+      expect(k.startsWith("POST /v1/engine/passkey/") || k.startsWith("POST /v1/engine/security-key/") ? "approve" : "admin", k).toBe(table.get(k)!.need);
     }
     for (const k of ALWAYS_STEP_UP_ROUTES) expect(table.get(k)?.need, k).toBe("admin");
     for (const k of SESSION_ONLY_ROUTES) expect(STEP_UP_ROUTES.has(k) || ALWAYS_STEP_UP_ROUTES.has(k), k).toBe(true);

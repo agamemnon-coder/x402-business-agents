@@ -21,6 +21,7 @@ export const SECURITY_KINDS = [
   "policy.change", // a security setting, webhook, alert target or approval rule changed
   "access.change", // a person added or erased, an enrolment started, an outside account connected or disconnected
   "data.export", // a bulk read of the company's data: an export, a CSV, a staged export's part
+  "data.access", // a read of personal or financial data (people, suppliers, invoices, payments, the books, documents, mail)
   "webhook.signature_failure", // an inbound webhook whose signature did not check
   "tamper.alarm", // a record that changed after it was signed or pushed, or a runner reporting tampered terms
   "alarm.raised", // a threshold below was crossed in its window

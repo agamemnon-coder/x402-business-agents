@@ -13,7 +13,7 @@ const rec = JSON.parse(RAW) as Awx1Record;
 const pages = buildPages() as unknown as Record<string, string>;
 const text = (html: string) => html.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 /** The block on a page: in full on /airwallex (its steps in a fold), short on /proof (a link to them). */
-const block = (html: string) => (html === pages.proof ? /<div class="card" id="awx-1">[\s\S]*?<\/a><\/div>/ : /<div class="card" id="awx-1">[\s\S]*?<\/details><\/div>/).exec(html)?.[0] ?? "";
+const block = (html: string) => (html === pages.proof ? /<div class="card" id="awx-1"[^>]*>[\s\S]*?<\/a><\/div>/ : /<div class="card" id="awx-1"[^>]*>[\s\S]*?<\/details><\/div>/).exec(html)?.[0] ?? "";
 
 describe("awx-1 on the site", () => {
   it("reads the committed live record", () => {

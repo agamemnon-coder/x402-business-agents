@@ -53,7 +53,8 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
       expect((html.match(/<span class="v">/g) ?? []).length).toBe(1);
       // The figure reads the tile's value; since 12 Nov its number may count up (a data-count span, src/redesign/stats.ts).
       const v = /<span class="v">((?:<span[^>]*>[^<]*<\/span>|[^<])*)<\/span>/.exec(html)?.[1] ?? "";
-      expect(v.replace(/<[^>]+>/g, "")).toBe(t.value);
+      let plain = v; for (let prev = ""; prev !== plain; ) { prev = plain; plain = plain.replace(/<[^>]+>/g, ""); }
+      expect(plain).toBe(t.value);
       expect(html).toMatch(/<code[^>]*>[^<]+<\/code>/);
       expect(t.id.startsWith(shortId(t.id).replace(/…$/, ""))).toBe(true);
       expect(tt).toContain(shortId(t.id));
@@ -480,7 +481,7 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
   });
 
   it("keeps every label of what is simulated", () => {
-    const fold = text(/<details class="fold"><summary>What is simulated<\/summary>[\s\S]*?<\/details>/.exec(awx)![0]);
+    const fold = text(/<details class="fold"(?: data-rec="[^"]*")?><summary>What is simulated<\/summary>[\s\S]*?<\/details>/.exec(awx)![0]);
     for (const want of ["The Airwallex sandbox, with test money only.", "Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API", "simulated sandbox deposit", "Card charges at merchants are simulated by the sandbox",
       "verification simulated", "labelled test passkey", "not Face ID", "Payment acceptance: Airwallex's sandbox test card and a test customer."]) expect({ want, has: fold.includes(want) }).toEqual({ want, has: true });
   });

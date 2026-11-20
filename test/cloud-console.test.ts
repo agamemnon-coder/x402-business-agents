@@ -203,7 +203,8 @@ describe("the console of a cloud with an engine", () => {
     expect(js).toMatch(/navigator\.credentials\.create\(\{publicKey:\{rp:\{id:s\.rp\.id,name:s\.rp\.name\},user:\{id:new TextEncoder\(\)\.encode\(s\.user\.id\)/);
     expect(js).toContain("attestation:'none'");
     expect(js).toContain("excludeCredentials:(s.exclude||[]).map(");
-    expect(js).toContain("allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}]");
+    // The approver's own key (GET /v1/engine my_passkey): each approver signs with their own (docs/security/roles.md).
+    expect(js).toContain("allowCredentials:[{type:'public-key',id:fromB64u(mine.credential_id)}]");
     expect(js.match(/userVerification:'required'/g)!.length).toBeGreaterThanOrEqual(4);
     // What the passkey signed is sent as @simplewebauthn/server reads it.
     expect(js).toContain("clientExtensionResults:c.getClientExtensionResults()");

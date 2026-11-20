@@ -1,0 +1,38 @@
+# The threat-model gate (ASVS 4.0.3 V1.1.2; scripts/pr-threat-model.ts): every pull request's description has a filled
+# "## Threat model" section, and one that changes security-sensitive code cannot say "None". The description and the
+# file names are untrusted: they reach the script only through an environment variable and a file, never through ${{ }}
+# in a shell line. The script is the base branch's, not the pull request's (it is checked out from the base).
+name: threat-model
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+permissions: {}
+jobs:
+  threat-model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Changed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' > "$RUNNER_TEMP/files.txt"
+      - name: Threat model present
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        # The pull request that adds the gate finds no script on its base yet; it says so and passes. From the next one on,
+        # the base always holds the script, and only the base's copy ever runs.
+        run: |
+          if [ ! -f scripts/pr-threat-model.ts ]; then echo "::notice::The base has no scripts/pr-threat-model.ts yet (the pull request that adds the gate); nothing to check."; exit 0; fi
+          CHANGED_FILES="$RUNNER_TEMP/files.txt" npx --yes tsx@4.23.15 scripts/pr-threat-model.ts

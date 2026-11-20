@@ -15,7 +15,7 @@
 import { randomToken, sameString, sha256Hex } from "./crypto.js";
 import { logEvent } from "./log.js";
 
-/** tenants: make a company. recovery: issue an owner's recovery key. read: the operator's read-only views. try: the hands-on deployment's controls. */
+/** tenants: make a company. recovery: ask for, or approve, an owner's recovery (two different keys: cloud/src/recovery.ts). read: the operator's read-only views. try: the hands-on deployment's controls. */
 export const ADMIN_SCOPES = ["tenants", "recovery", "read", "try"] as const;
 export type AdminScope = (typeof ADMIN_SCOPES)[number];
 export const ADMIN_KEY_MAX_DAYS = 90;
@@ -24,6 +24,7 @@ export const ADMIN_KEY_MAX_DAYS = 90;
 export const ADMIN_ROUTE_SCOPES: Record<string, AdminScope> = {
   "POST /v1/admin/tenants": "tenants",
   "POST /v1/admin/tenants/{id}/recovery": "recovery",
+  "POST /v1/admin/tenants/{id}/recovery/{request}/approve": "recovery",
   "GET /v1/admin/companies": "read",
   "GET /v1/admin/security-log": "read",
   "POST /v1/try/ops": "read",

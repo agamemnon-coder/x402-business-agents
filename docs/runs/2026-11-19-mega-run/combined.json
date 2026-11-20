@@ -1,34 +1,35 @@
 {
- "what": "The runs of docs/runs/2026-11-19-live-try and docs/runs/2026-11-19-mega-run summed together (25), computed by scripts/try-live-summary.ts; each run's own figures are in its folder's summary.json.",
+ "what": "The runs of docs/runs/2026-11-19-live-try and docs/runs/2026-11-19-mega-run summed together (58), computed by scripts/try-live-summary.ts; each run's own figures are in its folder's summary.json.",
  "sets": [
   "docs/runs/2026-11-19-live-try",
   "docs/runs/2026-11-19-mega-run"
  ],
  "aggregate": {
-  "runs": 25,
-  "ok": 21,
-  "desktop": 12,
-  "phone": 11,
-  "tablet": 2,
+  "runs": 58,
+  "ok": 54,
+  "desktop": 26,
+  "phone": 26,
+  "tablet": 6,
   "by_profile": {
-   "chromium desktop 1440 light": 11,
-   "chromium phone 390 dark": 10,
-   "chromium tablet 768 light": 1,
-   "firefox desktop 1440 light": 1,
-   "chromium tablet-dark 768 dark": 1,
-   "firefox phone 390 dark": 1
+   "chromium desktop 1440 light": 23,
+   "chromium phone 390 dark": 23,
+   "chromium tablet 768 light": 3,
+   "firefox desktop 1440 light": 3,
+   "chromium tablet-dark 768 dark": 3,
+   "firefox phone 390 dark": 3
   },
   "by_browser": {
    "chromium": 8,
-   "chromium 153.0.8010.12": 15,
-   "firefox 155.0": 2
+   "chromium 153.0.8010.12": 44,
+   "firefox 155.0": 6
   },
   "ok_by_profile": {
-   "chromium desktop 1440 light": 10,
-   "chromium phone 390 dark": 8,
-   "chromium tablet 768 light": 1,
-   "firefox desktop 1440 light": 1,
-   "chromium tablet-dark 768 dark": 1
+   "chromium desktop 1440 light": 22,
+   "chromium phone 390 dark": 21,
+   "chromium tablet 768 light": 3,
+   "firefox desktop 1440 light": 3,
+   "chromium tablet-dark 768 dark": 3,
+   "firefox phone 390 dark": 2
   },
   "failed_runs": [
    {
@@ -60,53 +61,53 @@
     ]
    }
   ],
-  "v1_calls": 1938,
+  "v1_calls": 4526,
   "v1_statuses": {
-   "200": 1880,
-   "201": 49,
+   "200": 4402,
+   "201": 115,
    "429": 9
   },
   "first_start": "2026-11-19T06:58:47.731Z",
-  "last_finish": "2026-11-19T08:53:11.012Z",
+  "last_finish": "2026-11-20T04:51:58.782Z",
   "steps": {
    "start_ms": {
-    "n": 25,
-    "p50": 2876,
-    "p90": 5083,
-    "p95": 5357,
-    "min": 2418,
+    "n": 58,
+    "p50": 2451,
+    "p90": 4006,
+    "p95": 5083,
+    "min": 1774,
     "max": 5877
    },
    "read_120_ms": {
-    "n": 25,
-    "p50": 6486,
-    "p90": 7027,
-    "p95": 7050,
+    "n": 58,
+    "p50": 6434,
+    "p90": 6991,
+    "p95": 7027,
     "min": 5486,
     "max": 7392
    },
    "autopay_ms": {
-    "n": 25,
-    "p50": 7919,
-    "p90": 9534,
-    "p95": 10356,
-    "min": 6992,
+    "n": 58,
+    "p50": 7437,
+    "p90": 8632,
+    "p95": 9534,
+    "min": 6011,
     "max": 12534
    },
    "autopay_awx_paid_ms": {
-    "n": 25,
-    "p50": 10963,
-    "p90": 13174,
-    "p95": 13718,
-    "min": 9705,
+    "n": 58,
+    "p50": 10235,
+    "p90": 12782,
+    "p95": 13574,
+    "min": 8674,
     "max": 15353
    },
    "read_1850_ms": {
-    "n": 25,
-    "p50": 8388,
-    "p90": 9919,
-    "p95": 9959,
-    "min": 7423,
+    "n": 58,
+    "p50": 8021,
+    "p90": 8742,
+    "p95": 9919,
+    "min": 7236,
     "max": 10529
    },
    "to_sign_sheet_ms": {
@@ -118,94 +119,94 @@
     "max": 7740
    },
    "sign_ms": {
-    "n": 25,
-    "p50": 537,
-    "p90": 734,
-    "p95": 744,
-    "min": 477,
-    "max": 827
+    "n": 58,
+    "p50": 502,
+    "p90": 672,
+    "p95": 827,
+    "min": 427,
+    "max": 2388
    },
    "sign_to_pay_answer_ms": {
-    "n": 25,
-    "p50": 4882,
-    "p90": 5366,
-    "p95": 5420,
-    "min": 4269,
-    "max": 5591
+    "n": 58,
+    "p50": 4616,
+    "p90": 5322,
+    "p95": 5591,
+    "min": 3681,
+    "max": 7181
    },
    "pay_ms": {
-    "n": 24,
-    "p50": 3900,
-    "p90": 4409,
-    "p95": 4459,
-    "min": 3304,
+    "n": 57,
+    "p50": 3650,
+    "p90": 4249,
+    "p95": 4409,
+    "min": 2880,
     "max": 4483
    },
    "sign_to_paid_on_screen_ms": {
-    "n": 25,
-    "p50": 6649,
-    "p90": 7231,
+    "n": 58,
+    "p50": 6299,
+    "p90": 7183,
     "p95": 8214,
-    "min": 5646,
-    "max": 8495
+    "min": 5041,
+    "max": 8560
    },
    "sign_to_awx_paid_ms": {
-    "n": 25,
-    "p50": 7744,
+    "n": 58,
+    "p50": 7422,
     "p90": 8214,
-    "p95": 8469,
-    "min": 7017,
-    "max": 8495
+    "p95": 8495,
+    "min": 6283,
+    "max": 10433
    },
    "refusal_ms": {
-    "n": 25,
-    "p50": 696,
-    "p90": 751,
-    "p95": 771,
-    "min": 573,
-    "max": 784
+    "n": 58,
+    "p50": 677,
+    "p90": 821,
+    "p95": 901,
+    "min": 552,
+    "max": 1709
    },
    "verify_ms": {
-    "n": 24,
-    "p50": 94,
-    "p90": 224,
-    "p95": 295,
+    "n": 57,
+    "p50": 116,
+    "p90": 240,
+    "p95": 414,
     "min": 50,
-    "max": 416
+    "max": 806
    },
    "hold_ms": {
-    "n": 24,
-    "p50": 6468,
-    "p90": 6975,
+    "n": 57,
+    "p50": 6398,
+    "p90": 6928,
     "p95": 6978,
-    "min": 5932,
-    "max": 7396
+    "min": 5800,
+    "max": 9244
    },
    "cfo_to_approved_ms": {
-    "n": 23,
-    "p50": 7811,
-    "p90": 9815,
+    "n": 56,
+    "p50": 7470,
+    "p90": 9142,
     "p95": 9849,
-    "min": 7055,
+    "min": 6313,
     "max": 10356
    }
   },
   "claude": {
-   "entries": 360,
-   "api_requests": 556,
-   "distinct_request_ids": 388,
+   "entries": 855,
+   "api_requests": 1321,
+   "distinct_request_ids": 1153,
    "reader_calls_without_request_id": 168,
-   "cost_usd_micros": 117938,
+   "cost_usd_micros": 281144,
    "cost_usd_micros_per_run": {
-    "n": 25,
-    "p50": 4871,
+    "n": 58,
+    "p50": 4870,
     "p90": 5194,
-    "p95": 5200,
+    "p95": 5213,
     "min": 0,
-    "max": 5210
+    "max": 5672
    },
    "entries_per_run": {
-    "n": 25,
+    "n": 58,
     "p50": 15,
     "p90": 15,
     "p95": 15,
@@ -218,81 +219,81 @@
    "fallbacks": 0,
    "latency_ms": {
     "reader:classify": {
-     "n": 72,
-     "p50": 1330,
-     "p90": 1508,
-     "p95": 1591,
-     "min": 1160,
+     "n": 171,
+     "p50": 1327,
+     "p90": 1497,
+     "p95": 1557,
+     "min": 1036,
      "max": 1761
     },
     "reader:read": {
-     "n": 72,
-     "p50": 1849,
-     "p90": 2074,
-     "p95": 2163,
-     "min": 1616,
+     "n": 171,
+     "p50": 1821,
+     "p90": 2018,
+     "p95": 2072,
+     "min": 1594,
      "max": 2290
     },
     "reader:review": {
-     "n": 24,
-     "p50": 1895,
-     "p90": 2075,
+     "n": 57,
+     "p50": 1894,
+     "p90": 2056,
      "p95": 2106,
      "min": 1630,
      "max": 2158
     },
     "agent:treasury": {
-     "n": 72,
-     "p50": 3463,
-     "p90": 3851,
-     "p95": 3970,
-     "min": 2814,
-     "max": 4305
+     "n": 171,
+     "p50": 3380,
+     "p90": 3718,
+     "p95": 3889,
+     "min": 2494,
+     "max": 6335
     },
     "agent:checker": {
-     "n": 72,
-     "p50": 3344,
-     "p90": 3851,
-     "p95": 4021,
+     "n": 171,
+     "p50": 3424,
+     "p90": 3850,
+     "p95": 3987,
      "min": 2545,
      "max": 5548
     },
     "agent:payer": {
-     "n": 48,
-     "p50": 3602,
-     "p90": 4190,
-     "p95": 5681,
+     "n": 114,
+     "p50": 3438,
+     "p90": 4171,
+     "p95": 5178,
      "min": 2728,
      "max": 6299
     }
    }
   },
   "airwallex": {
-   "transfers": 50,
-   "paid": 50,
-   "distinct_transfer_ids": 50,
+   "transfers": 116,
+   "paid": 116,
+   "distinct_transfer_ids": 116,
    "scheduled_to_paid_ms": {
-    "n": 48,
-    "p50": 2804,
-    "p90": 3418,
-    "p95": 3644,
-    "min": 2543,
-    "max": 4495
+    "n": 114,
+    "p50": 2794,
+    "p90": 3335,
+    "p95": 3647,
+    "min": 2532,
+    "max": 5326
    }
   },
-  "approvals_matching_transfer": 25,
-  "refused": 25,
-  "held": 24,
-  "bundles_valid_on_verify": 24,
-  "paid_bundles_valid_on_verify": 24,
-  "bundles_valid_repo_verifier": 24,
-  "paid_bundles_valid_repo_verifier": 24,
+  "approvals_matching_transfer": 58,
+  "refused": 58,
+  "held": 57,
+  "bundles_valid_on_verify": 57,
+  "paid_bundles_valid_on_verify": 57,
+  "bundles_valid_repo_verifier": 57,
+  "paid_bundles_valid_repo_verifier": 57,
   "ok_but_verify_wording": [
    15,
    16,
    17
   ],
-  "every_site_step_passed": 24,
+  "every_site_step_passed": 57,
   "console_errors": 0,
   "outside_requests": 0
  }

@@ -407,6 +407,9 @@ export const ADV_TABLE: readonly { label: string; record: string; held: string }
   // out. v8 was written after them and committed with its pre-registration before the run.
   { label: "[v7](evals/adversarial-v7.md), after the fixes that followed it (reported in [v8](evals/adversarial-v8.md))", record: "docs/evals/adversarial-v7-after.json", held: "no: the fixes that followed it were written against its misses" },
   { label: "[v8](evals/adversarial-v8.md), after the fixes that followed v7", record: "docs/evals/adversarial-v8.json", held: "yes" },
+  // 20 Nov, after v8: fixes were written against v8's misses (test/i18n-v8-root-causes.test.ts); v8 is no longer held
+  // out. No held-out set has run after them yet.
+  { label: "[v8](evals/adversarial-v8.md), after the fixes that followed it (dated note in [v8](evals/adversarial-v8.md))", record: "docs/evals/adversarial-v8-after.json", held: "no: the fixes that followed it were written against its misses" },
 ];
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];

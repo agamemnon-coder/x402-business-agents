@@ -71,11 +71,11 @@ export function vic2RunHtml(rec: Vic2Record | null, o: { short?: boolean; fold?:
   if (!rec) return "";
   const checks = Object.entries(rec.checks);
   const ok = checks.filter(([, c]) => c.ok).length;
-  const h = `<div class="card airi" id="${VIC2_RUN_ID}"><h3 class="airi-h">${icon("shield-check", 18)}${esc(`${VIC2_HEADING} (${day(rec.started_at)})`)}</h3>
+  const h = `<div class="card airi" id="${VIC2_RUN_ID}" data-rec="${VIC2_RUN_FILE} ${VIC2_RUN_LOG}"><h3 class="airi-h">${icon("shield-check", 18)}${esc(`${VIC2_HEADING} (${day(rec.started_at)})`)}</h3>
 <p class="airi-label">${esc(VIC2_LABEL)}</p>`;
   const link = `<a class="awm ok" href="${esc(checksUrl)}" target="_blank" rel="noopener">${icon("circle-check", 16)}${esc(ok === checks.length ? "Every check passes" : "The checks, not every one passes")} ↗</a>`;
   // The text budgets of /airwallex and /proof (test/site-v4.test.ts) leave room for the heading and the checks only; the rest is a link away.
-  if (o.short) return `<div class="card airi" id="${VIC2_RUN_ID}"><h3 class="airi-h">${icon("shield-check", 18)}${esc(`${VIC2_HEADING} (${day(rec.started_at)})`)}</h3>\n${link}\n<a class="open" href="visa#${VIC2_RUN_ID}">${esc("Details")} ${icon("arrow-right", 14)}</a></div>`;
+  if (o.short) return `<div class="card airi" id="${VIC2_RUN_ID}" data-rec="${VIC2_RUN_FILE} ${VIC2_RUN_LOG}"><h3 class="airi-h">${icon("shield-check", 18)}${esc(`${VIC2_HEADING} (${day(rec.started_at)})`)}</h3>\n${link}\n<a class="open" href="visa#${VIC2_RUN_ID}">${esc("Details")} ${icon("arrow-right", 14)}</a></div>`;
   const out = `<ul class="airi-out">${vic2Lines(rec).map((l) => `<li class="${l.ok ? "ok" : "no"}"><span class="awm ${l.ok ? "ok" : "bad"}">${esc(l.badge)}</span> ${esc(l.text)}</li>`).join("")}</ul>`;
   const log = `<a class="pf" href="${esc(`${REPO_BLOB}${VIC2_RUN_LOG}`)}" target="_blank" rel="noopener">${esc("run log")} ↗</a>`;
   if (o.fold === false) return `${h}\n${out}\n${link}\n<p class="src">${log}</p></div>`;

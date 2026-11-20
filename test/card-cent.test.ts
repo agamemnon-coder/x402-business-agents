@@ -287,7 +287,7 @@ describe("the recorded one-cent-over run (docs/runs/airwallex-card-cent-<date>.j
   it("is on /airwallex and /proof with its line, both ids and the signer", () => {
     const pages = buildPages();
     for (const html of [pages.airwallex!, proofPage()]) {
-      const block = html.match(/<div class="card" id="awx-cent">[\s\S]*?<\/div>/)?.[0] ?? "";
+      const block = html.match(/<div class="card" id="awx-cent"[^>]*>[\s\S]*?<\/div>/)?.[0] ?? "";
       expect(block).toContain(centLine(r!.rec)!);
       for (const a of r!.rec.attempts) expect(block).toContain(a.id!);
       expect(block).toContain(`Signed by ${r!.rec.signed_by!.name}, the company's owner`);

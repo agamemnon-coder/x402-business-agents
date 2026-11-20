@@ -3,15 +3,19 @@
 // TenantDb; a route never names a tenant itself.
 
 import { withBaseline } from "./baseHeaders.js";
+import { KEY_RENEWAL_HEADER, renewalNotice } from "./keyExpiry.js";
 import { z } from "zod";
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
-import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
+import { approveRecovery, namedAdmin, RecoveryRefused, RECOVERY_CHECKS, requestRecovery } from "./recovery.js";
+import { AuthError, callerOf, oidcSession, isConnector, endSessions, enrolPasskey, failedAuthBlocked, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
 import { registerCsv } from "../../src/money/registerShape.js";
 import { SCHEMA } from "./schema.js";
 import type { Blobs, Sql } from "./store.js";
 import { applySync, SyncBatch, SyncRefused, syncState } from "./sync.js";
+import { QuotaExceeded, reserveStorage, type StorageQuota } from "./storageQuota.js";
+import { endSession, listSessions } from "./sessions.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
@@ -51,7 +55,12 @@ import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
 import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, latestEdgeRun, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
-import { ALWAYS_STEP_UP_ROUTES, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
+import { ALWAYS_STEP_UP_ROUTES, freshPasskey, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
+import { finishLink, finishSignIn, identitiesOf, isIdp, offered as idpsOffered, OidcRefused, startOidc, unlink, type IdpName, type OidcEnv } from "./oidc.js";
+import { pushBillsToXero } from "./books/xero.js";
+import { yourConnections } from "./yourConnections.js";
+import { forwardingConfirmations } from "./mail.js";
+import { ChatHookRefused, chatHooks, isChatProduct, postEvent, removeChatHook, setChatHook, SetChatHook, testChatHook, type ChatProduct } from "./chatHooks.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
 
 export interface CloudEnv {
@@ -79,6 +88,8 @@ export interface CloudEnv {
   asset?: (path: string) => Promise<Response | null>;
   /** The deployed version (a Worker var), shown by /v1/health; "dev" when unset. */
   version?: string;
+  /** The commit and build time the deploy stamped in (GIT_SHA, BUILT_AT; scripts/deploy.ts), shown by /v1/health. */
+  build?: { sha: string | null; built_at: string | null };
   /** How alert webhooks are sent (the Worker's fetch); absent: none are sent. Tests pass a fake. */
   outbound?: Outbound;
   /** The pause before a webhook's second and third attempt, times the attempt (default 500 ms). */
@@ -95,6 +106,8 @@ export interface CloudEnv {
   waitUntil?: (p: Promise<unknown>) => void;
   /** Requests per minute per key or session; per address on the sign-in routes; failed authentications per address. */
   rate?: { perMinute: number; signInPerMinute: number; failedAuthPerMinute?: number };
+  /** Files uploaded through the API per company (./storageQuota.ts; default 2 GiB and 20,000 files). */
+  storageQuota?: StorageQuota;
   /** A staged export's rows per part (default 2000) and its size limit in bytes (default 512 MB). */
   exportPartRows?: number;
   exportMaxBytes?: number;
@@ -113,6 +126,14 @@ export interface CloudEnv {
    * local runs an engine in this process. Test money only. Absent (the default): the /v1/engine routes answer 404.
    */
   engine?: (tenantId: string) => EngineApi;
+  /**
+   * How long a new or recovered approval key waits before it approves (review finding 2; cloud/src/engine/routes.ts
+   * coolingOffMs): the Worker var APPROVAL_KEY_COOLING_HOURS, 72 by default. In production (the deployed Worker) never
+   * under 24; a test company of /try waits 0, labelled.
+   */
+  approvalKeyCoolingHours?: number;
+  /** The deployed Worker (cloud/src/worker.ts): the cooling-off's floor of 24 hours holds. Absent (tests, local runs): it does not. */
+  production?: boolean;
   /** Whether the daily counters behind GET /v1/stats are on (cloud/src/edge/stats.ts). Absent: /v1/stats answers 404. */
   edge?: { stats?: boolean };
   /**
@@ -140,6 +161,11 @@ export interface CloudEnv {
    * Worker var. Unset: the defaults.
    */
   securityAlarms?: string;
+  /**
+   * Sign in with Google, Microsoft or Apple (cloud/src/oidc.ts): the OpenID Connect clients the platform registered.
+   * Absent, or a provider missing: its routes answer 404 and the console shows no button for it.
+   */
+  oidc?: OidcEnv;
 }
 
 /** audit: what the request found out about its caller, for its security event (./securityAudit.ts); a route may add to it. */
@@ -219,18 +245,42 @@ function connectOf(c: Ctx): ConnectEnv {
   if (!c.env.connect) throw new ConnectRefused(404, "connecting accounts by OAuth is not switched on");
   return c.env.connect;
 }
+function chatProductOf(c: Ctx): ChatProduct {
+  const p = c.params[0]!;
+  if (!isChatProduct(p)) throw new ChatHookRefused(404, "no such chat product (slack or teams)");
+  return p;
+}
+/** The OpenID Connect provider in the path (google, microsoft or apple), or 404. */
+function idpOf(c: Ctx, fixed?: IdpName): IdpName {
+  const p = fixed ?? c.params[0]!;
+  if (!isIdp(p)) throw new OidcRefused(404, "no such sign-in provider (google, microsoft or apple)");
+  return p;
+}
+const OidcFinish = z.object({ code: z.string().min(1).max(2048).regex(/^[A-Za-z0-9._~*!-]+$/), state: z.string().min(16).max(200).regex(/^[A-Za-z0-9_-]+$/), browser_secret: z.string().min(16).max(200).regex(/^[A-Za-z0-9_-]+$/) }).strict();
+/** The provider's answer, forwarded to the console's fragment (no server sees it there): the code and state, or an error. */
+function oidcBack(c: Ctx, provider: IdpName, q: URLSearchParams, status = 302): Response {
+  const keep = (v: string | null) => (v && /^[A-Za-z0-9._~*!-]{1,2048}$/.test(v) ? v : "");
+  const out = new URLSearchParams({ provider });
+  const code = keep(q.get("code")), state = keep(q.get("state")), error = keep(q.get("error"));
+  if (code && state) { out.set("code", code); out.set("state", state); } else out.set("error", error || "invalid_request");
+  return new Response(null, { status, headers: { location: `${c.env.origin}/#/oidc?${out.toString()}`, "cache-control": "no-store", "referrer-policy": "no-referrer" } });
+}
+/** A signed-in person (not a key): their own sign-in identities. */
+function personOnly(c: Ctx): void {
+  if (c.caller!.kind !== "session" || !c.caller!.user || isDemoTenant(c.caller!.tenantId)) throw new AuthError(403, "only a signed-in person links their own sign-in accounts");
+}
 function providerOf(c: Ctx): OAuthProviderName {
   const p = c.params[0]!;
-  if (!isProvider(p)) throw new ConnectRefused(404, "no such provider (airwallex or moneybird)");
+  if (!isProvider(p)) throw new ConnectRefused(404, "no such provider (airwallex, moneybird, xero, quickbooks or exact)");
   return p;
 }
 /** A signed-in owner, for connecting or disconnecting an account (never a key: a key cannot consent for the company). */
 function ownerSession(c: Ctx): void {
-  if (c.caller!.kind !== "session" || c.caller!.role !== "owner") throw new AuthError(403, "only a signed-in owner connects or disconnects the company's accounts");
+  if (c.caller!.kind !== "session" || c.caller!.role !== "owner" || c.caller!.via) throw new AuthError(403, "only a signed-in owner connects or disconnects the company's accounts");
 }
 /** A signed-in owner only: not a key, not another role. */
 function ownerOnly(c: Ctx): void {
-  if (c.caller!.kind !== "session" || c.caller!.role !== "owner") throw new AuthError(403, "only a signed-in owner opens or verifies the company's Airwallex account");
+  if (c.caller!.kind !== "session" || c.caller!.role !== "owner" || c.caller!.via) throw new AuthError(403, "only a signed-in owner opens or verifies the company's Airwallex account");
 }
 
 const SLUG = z.string().regex(/^[a-z0-9][a-z0-9-]{1,40}$/, "a slug is lowercase letters, digits and dashes");
@@ -242,13 +292,30 @@ export const RESERVED_SLUGS = new Set([DEMO_SLUG, "postmaster", "hostmaster", "w
   "mailer-daemon", "security", "ssl-admin", "info", "support", "www", "mail", "dmarc", "dmarc-reports", "bounce", "bounces", "purser", "api", "console"]);
 const NEW_SLUG = SLUG.refine((v) => !RESERVED_SLUGS.has(v), "this address is reserved");
 
+/**
+ * A change to the company's approval keys, or a refusal of one (review finding 2), told to every owner: a security event
+ * in the console (GET /v1/security/events) and an event to the company's alert webhook. Telling never fails the request.
+ */
+async function tellOwners(c: Ctx, kind: string, detail: Record<string, string | null>): Promise<void> {
+  try {
+    const t = db(c);
+    const iso = c.now.toISOString();
+    await t.apply([t.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: iso, kind, actor: c.caller!.principal, detail_json: JSON.stringify(detail) })]);
+    const data = Object.fromEntries(Object.entries({ ...detail, by_person: c.caller!.principal, at: iso }).map(([k, v]) => [k, v ?? ""]));
+    await notify(c.env.sql, c.caller!.tenantId, `security.${kind.replace(/\./g, "_")}`, data, c.now, c.env.outbound, c.env.retryDelayMs);
+  } catch (e) {
+    logEvent("error", "security_tell_owners_failed", { kind, error: e instanceof Error ? e.message.slice(0, 200) : "unknown" }, c.now);
+  }
+}
+
 export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/health", summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all, and the security alarms raised in the last 24 hours per rule (security.alarms_24h; no company's data); 503 when something is down.", need: "public", run: async (c) => {
     const h = await cloudHealth(c.env.sql, c.env.blobs, c.env.version ?? "dev");
     // The security log's alarms of the last 24 hours (./securityLog.ts): counts per rule, no company, no address.
     let security: Record<string, unknown> = { alarms_24h: null };
     try { const a = await securityAlarms(c.env.sql, c.now); security = { alarms_24h: a.last_24h, rules: a.rules }; } catch { /* the database is down: d1 says so */ }
-    return json(h.status, { ...h.body, security });
+    // Which commit runs here and when it was built (scripts/deploy.ts stamps them; ASVS V1.14.4).
+    return json(h.status, { ...h.body, build: { sha: c.env.build?.sha ?? null, built_at: c.env.build?.built_at ?? null }, security });
   } },
   { method: "GET", path: "/v1/status", summary: "Where the company stands, for its owners: the last push from the runner, the mail queue, today's mail quota, the runner's alert codes and the webhook (never its secret).", need: "admin", run: async (c) => json(200, await companyStatus(c.env.sql, c.caller!.tenantId, c.now)) },
   { method: "POST", path: "/v1/health/report", summary: "The runner reports its health: alert codes and severities (their words are dropped). Alerts raised or cleared since the last report go to the company's webhook.", need: "sync", run: async (c) => {
@@ -278,6 +345,14 @@ export const ROUTES: Route[] = [
     return json(201, await addTarget(c.env.sql, c.caller!.tenantId, b, c.caller!.principal, c.now));
   } },
   { method: "DELETE", path: "/v1/alerts/targets/{id}", summary: "Remove an alert target (a signed-in owner after a fresh passkey check).", need: "admin", run: async (c) => json(200, await removeTarget(c.env.sql, c.caller!.tenantId, c.params[0]!, c.caller!.principal, c.now)) },
+  { method: "GET", path: "/v1/chat-hooks", summary: "Slack and Teams (Settings): whether the company's Slack and Teams incoming webhooks are set (their host only, never the URL), and each one's delivery state. Purser posts approval.needed, payment.paid and books.closed there; a message only tells and links to Purser Cloud, it never approves.", need: "admin", run: async (c) => json(200, await chatHooks(c.env.sql, c.caller!.tenantId)) },
+  { method: "POST", path: "/v1/chat-hooks/{product}", summary: "Set the company's Slack (product slack: https://hooks.slack.com/services/...) or Teams (product teams: a Teams Workflow's webhook URL) incoming webhook: { url }. A signed-in owner (a fresh passkey check when the company asks for one); never a key. Answers the host only.", need: "admin", run: async (c) => {
+    const b = await body(c, SetChatHook, 2_000);
+    return json(200, await setChatHook(c.env.sql, c.caller!.tenantId, chatProductOf(c), b.url, c.caller!.principal, c.now));
+  } },
+  { method: "DELETE", path: "/v1/chat-hooks/{product}", summary: "Remove the company's Slack or Teams webhook (a signed-in owner).", need: "admin", run: async (c) => json(200, await removeChatHook(c.env.sql, c.caller!.tenantId, chatProductOf(c), c.caller!.principal, c.now)) },
+  { method: "POST", path: "/v1/chat-hooks/{product}/test", summary: "Post one test message to the company's Slack or Teams webhook now, so the owner sees it arrive: { delivered, status } (the status Slack or Teams answered; 0 when nothing answered). A working test switches a hook that was off back on.", need: "admin", run: async (c) =>
+    json(200, await testChatHook({ sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin }, chatProductOf(c))) },
   { method: "GET", path: "/v1/airwallex/account", summary: "The company's Airwallex account opened through Purser as a platform: its id and onboarding status (created, pending, action_required, active, refused, dormant, closed); whether the cloud offers it at all.", need: "admin", run: async (c) =>
     json(200, { switched_on: Boolean(c.env.awxPlatform), account: c.env.awxPlatform ? await accountOf(c.env.sql, c.caller!.tenantId) : null }) },
   { method: "POST", path: "/v1/airwallex/account", summary: "Open the company's Airwallex account through Purser (a signed-in owner, who agreed to Airwallex's terms first). One per company.", need: "admin", run: async (c) => {
@@ -328,13 +403,16 @@ export const ROUTES: Route[] = [
     const out = new URLSearchParams({ provider });
     const code = keep(q.get("code")), state = keep(q.get("state")), error = keep(q.get("error"));
     if (code && state) { out.set("code", code); out.set("state", state); } else out.set("error", error || "invalid_request");
+    // QuickBooks names the company the owner connected on the redirect (realmId).
+    const realm = q.get("realmId");
+    if (code && realm && /^\d{1,20}$/.test(realm)) out.set("realm_id", realm);
     return new Response(null, { status: 302, headers: { location: `${c.env.origin}/#/connect?${out.toString()}`, "cache-control": "no-store", "referrer-policy": "no-referrer" } });
   } },
   { method: "POST", path: "/v1/connect/{provider}/finish", summary: "Finish connecting: the signed-in owner who started it sends the code and state back; Purser exchanges the code with the provider and keeps the tokens sealed for this company only.", need: "admin", run: async (c) => {
     const env = connectOf(c);
     ownerSession(c);
-    const b = await body(c, z.object({ code: z.string().min(1).max(512).regex(/^[A-Za-z0-9._~-]+$/), state: z.string().min(16).max(512).regex(/^[A-Za-z0-9._~-]+$/) }).strict(), 4_000);
-    return json(201, { connection: await finishConnect(c.env.sql, c.caller!.tenantId, c.caller!.principal, providerOf(c), env, b, c.now) });
+    const b = await body(c, z.object({ code: z.string().min(1).max(512).regex(/^[A-Za-z0-9._~-]+$/), state: z.string().min(16).max(512).regex(/^[A-Za-z0-9._~-]+$/), realm_id: z.string().regex(/^\d{1,20}$/).optional() }).strict(), 4_000);
+    return json(201, { connection: await finishConnect(c.env.sql, c.caller!.tenantId, c.caller!.principal, providerOf(c), env, { code: b.code, state: b.state, ...(b.realm_id ? { realmId: b.realm_id } : {}) }, c.now) });
   } },
   { method: "GET", path: "/v1/connect/{provider}/token", summary: "For the company's own runner (a sync key): a short-lived access token for the company's connected account, refreshed when needed. Every call for this company then uses it; it is never for another company.", need: "sync", run: async (c) => {
     const env = connectOf(c);
@@ -344,6 +422,13 @@ export const ROUTES: Route[] = [
     const env = connectOf(c);
     ownerSession(c);
     return json(200, await disconnect(c.env.sql, c.caller!.tenantId, providerOf(c), env, c.now));
+  } },
+  { method: "POST", path: "/v1/connect/xero/bills", summary: "Send the company's supplier invoices that its connected Xero organisation does not hold yet to Xero as DRAFT bills (a signed-in owner): { from?, to? } (issue days). Each invoice goes once; at most 25 a push. Purser never authorises, pays or marks a bill paid in Xero: a person approves each draft there. Answers { pushed, already, failed, remaining }.", need: "admin", run: async (c) => {
+    const env = connectOf(c);
+    ownerSession(c);
+    const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional();
+    const b = await body(c, z.object({ from: day, to: day }).strict(), 1_000);
+    return json(200, await pushBillsToXero(c.env.sql, env, { tenantId: c.caller!.tenantId, by: c.caller!.principal, from: b.from ?? null, to: b.to ?? null, now: c.now }));
   } },
   { method: "POST", path: "/v1/connect/airwallex/webhook", summary: "Airwallex's partner_connection.disconnected webhook (signed: x-timestamp, x-signature): the connections of the accounts it names end.", need: "public", run: async (c) => {
     const env = connectOf(c);
@@ -370,7 +455,9 @@ export const ROUTES: Route[] = [
     const text = kind === "bills" ? await billsCsv(db(c), format as CsvFormat, from, to) : await journalsCsv(db(c), format as "xero" | "exact", from, to);
     return new Response(text, { status: 200, headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="purser-${kind}-${format}.csv"`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   } },
-  { method: "GET", path: "/v1/connections", summary: "Every connection Purser has to other systems, what each does and whether it is a live integration or a format export.", need: "public", run: async (c) => json(200, connectionsCatalogue(c.env.origin)) },
+  { method: "GET", path: "/v1/connections/mine", summary: "Your connections: every way this company is connected (API keys, MCP, the signed webhook, Slack, Teams, approval alerts, the e-mail inbox, Airwallex, Moneybird, Xero, QuickBooks Online, Exact Online, and the signed-in person's Google, Microsoft and Apple sign-in), each connected, not_connected (the company switches it on itself in Settings) or not_available (the platform has not configured it). Never a secret.", need: "admin", run: async (c) =>
+    json(200, await yourConnections(c.env.sql, { tenantId: c.caller!.tenantId, userId: c.caller!.user, now: c.now, connect: c.env.connect, oidc: c.env.oidc, mailDomain: c.env.mailDomain })) },
+  { method: "GET", path: "/v1/connections", summary: "Every connection Purser has to other systems, what each does, its label (live, sandbox, testnet, format export, built and not tested live) and its guide; the payment rails, which move money only under the CFO's limits or Face ID, listed apart.", need: "public", run: async (c) => json(200, connectionsCatalogue(c.env.origin)) },
 
   { method: "GET", path: "/v1/admin/companies", summary: "The companies on this cloud for the platform operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (never a key or an account number).", need: "platform", run: async (c) => json(200, await platformCompanies(c.env.sql)) },
   { method: "GET", path: "/v1/admin/security-log", summary: "The cloud's security event log for the platform operator, newest first (kind, since, limit up to 500): sign-ins and their failures, refusals, rate-limit hits, the admin's actions, key, passkey and policy changes, webhook signature failures, tamper alarms and the alarms they raised. Ids and networks only; never a secret.", need: "platform", run: async (c) => {
@@ -398,8 +485,9 @@ export const ROUTES: Route[] = [
     return json(201, { tenant: { id, slug: b.slug, name: b.name }, owner: { id: ownerId }, api_key: key.key, expires_at: key.expires_at, note: "the starter key is shown once and makes the first owner's passkey only; it stops working once that passkey exists" });
   } },
 
-  { method: "POST", path: "/v1/admin/tenants/{id}/recovery", summary: "An owner lost their passkey: after checking out of band who asks (checked_by says how), issue a one-time recovery key for that owner, good for one day and one passkey enrolment of that owner; redeemed, the owner's old passkeys and sessions end. One open recovery per company; the company's webhook and security events record it.", need: "platform", run: async (c) => {
-    const b = await body(c, z.object({ owner_id: z.string().min(1).max(80), checked_by: z.string().min(3).max(200) }).strict());
+  { method: "POST", path: "/v1/admin/tenants/{id}/recovery", summary: "An owner lost their passkey. The first of two platform admins, after checking out of band who asks: { owner_id, check } (check: video_call, in_person or phone_callback). Answers 202 with the request (a day long, one open per owner); no key is issued until a second, different named admin key approves it. The legacy admin token takes no part. The company's webhook and security events record it.", need: "platform", run: async (c) => {
+    const b = await body(c, z.object({ owner_id: z.string().min(1).max(80), check: z.enum(RECOVERY_CHECKS) }).strict());
+    const by = namedAdmin(c.audit.admin);
     const tenantId = c.params[0]!;
     if (!/^t_[A-Za-z0-9_-]{6,64}$/.test(tenantId)) return notFound("company");
     const tenant = await c.env.sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [tenantId]);
@@ -407,20 +495,38 @@ export const ROUTES: Route[] = [
     const t = new TenantDb(c.env.sql, tenantId);
     const owner = await t.one<{ role: Role; erased_at: string | null }>("users", { id: b.owner_id });
     if (!owner || owner.erased_at || owner.role !== "owner") return err(409, "a recovery is for an existing owner of this company");
+    const r = await requestRecovery(c.env.sql, { tenantId, ownerId: b.owner_id, check: b.check, by, now: c.now });
+    const iso = c.now.toISOString();
+    await t.apply([t.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: iso, kind: "recovery.requested", actor: `platform:${by}`, detail_json: JSON.stringify({ owner: b.owner_id, request: r.id, check: b.check, requested_by: by, expires_at: r.expires_at }) })]);
+    await notify(c.env.sql, tenantId, "security.recovery_requested", { owner: b.owner_id, request: r.id, requested_by: by, expires_at: r.expires_at }, c.now, c.env.outbound, c.env.retryDelayMs);
+    return json(202, { request_id: r.id, status: "awaiting_second_admin", owner_id: b.owner_id, check: b.check, requested_by: by, expires_at: r.expires_at, note: "no recovery key yet: a second, different platform admin approves with POST /v1/admin/tenants/{id}/recovery/{request}/approve" });
+  } },
+  { method: "POST", path: "/v1/admin/tenants/{id}/recovery/{request}/approve", summary: "The second platform admin approves an owner's recovery request: a named admin key other than the one that asked, while the request is open. Only then is the one-time recovery key issued for that owner, good for one day and one passkey enrolment of that owner; redeemed, the owner's old passkeys and sessions end, and a new approval key they enrol cools off before it approves. One open recovery per company; the company's webhook and security events record both admins.", need: "platform", run: async (c) => {
+    const by = namedAdmin(c.audit.admin);
+    const tenantId = c.params[0]!;
+    if (!/^t_[A-Za-z0-9_-]{6,64}$/.test(tenantId)) return notFound("company");
+    const tenant = await c.env.sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [tenantId]);
+    if (!tenant || tenant.closed_at) return notFound("company");
+    const req = await approveRecovery(c.env.sql, { tenantId, id: c.params[1]!, by, now: c.now });
+    const t = new TenantDb(c.env.sql, tenantId);
+    const owner = await t.one<{ role: Role; erased_at: string | null }>("users", { id: req.owner_id });
+    if (!owner || owner.erased_at || owner.role !== "owner") { await req.release(); return err(409, "a recovery is for an existing owner of this company"); }
     const iso = c.now.toISOString();
     const eventId = `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`;
     let key: { id: string; key: string; expires_at: string };
     try {
       // Checked when it commits: no other recovery key of the company is open (two at once could not be told apart).
-      key = await firstApiKey(t, { name: "owner recovery (one passkey enrolment)", scopes: ["read", "admin"], createdBy: "platform", createdByUser: b.owner_id,
+      key = await firstApiKey(t, { name: "owner recovery (one passkey enrolment)", scopes: ["read", "admin"], createdBy: "platform", createdByUser: req.owner_id,
         expiresInDays: RECOVERY_KEY_DAYS, purpose: "recovery", before: [t.noOpenRecoveryGuard(iso)], now: c.now });
     } catch (e) {
+      await req.release();
       if (e instanceof WriteConflict) return err(409, "a recovery is already open for this company; let it expire or revoke it first");
       throw e;
     }
-    await t.apply([t.insert("security_events", { id: eventId, at: iso, kind: "recovery.issued", actor: "platform", detail_json: JSON.stringify({ owner: b.owner_id, recovery_key: key.id, checked_by: b.checked_by, expires_at: key.expires_at }) })]);
-    await notify(c.env.sql, tenantId, "security.recovery_issued", { owner: b.owner_id, recovery_key: key.id, expires_at: key.expires_at }, c.now, c.env.outbound, c.env.retryDelayMs);
-    return json(201, { recovery_key: key.key, key_id: key.id, owner_id: b.owner_id, expires_at: key.expires_at, note: "shown once; good for one day and one passkey enrolment of this owner; give it to the owner over the channel you checked" });
+    await req.issued(key.id);
+    await t.apply([t.insert("security_events", { id: eventId, at: iso, kind: "recovery.issued", actor: `platform:${by}`, detail_json: JSON.stringify({ owner: req.owner_id, recovery_key: key.id, request: c.params[1]!, check: req.check, requested_by: req.requested_by, approved_by: by, expires_at: key.expires_at }) })]);
+    await notify(c.env.sql, tenantId, "security.recovery_issued", { owner: req.owner_id, recovery_key: key.id, requested_by: req.requested_by, approved_by: by, expires_at: key.expires_at }, c.now, c.env.outbound, c.env.retryDelayMs);
+    return json(201, { recovery_key: key.key, key_id: key.id, owner_id: req.owner_id, requested_by: req.requested_by, approved_by: by, expires_at: key.expires_at, note: "shown once; good for one day and one passkey enrolment of this owner; give it to the owner over the channel that was checked" });
   } },
 
   { method: "POST", path: "/v1/auth/challenge", summary: "Start a passkey sign-in: a one-time challenge for the company.", need: "public", run: async (c) => {
@@ -436,7 +542,8 @@ export const ROUTES: Route[] = [
     if (!t || t.closed_at) return notFound("company");
     c.audit.tenant = t.id;
     c.audit.detail = { credential_id: b.credential_id.slice(0, 12) };
-    const s = await passkeyLogin(c.env.sql, { tenantId: t.id, challengeId: b.challenge_id, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, secret: c.env.sessionSecret, now: c.now });
+    const s = await passkeyLogin(c.env.sql, { tenantId: t.id, challengeId: b.challenge_id, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, secret: c.env.sessionSecret, now: c.now,
+      client: { userAgent: c.req.headers.get("user-agent"), ip: c.req.headers.get("cf-connecting-ip") } });
     c.audit.actor = s.user_id;
     return json(200, { session: s.token, role: s.role, user_id: s.user_id, expires_in: 900 });
   } },
@@ -460,6 +567,53 @@ export const ROUTES: Route[] = [
   { method: "POST", path: "/v1/auth/guest", summary: "Try as guest: a read-only session (viewer, 15 minutes) for the demo company, made from demo data (no real money, no real company); no passkey, no e-mail.", need: "public", run: async (c) => {
     return json(200, await guestSession(c.env.sql, c.env.blobs, c.env.sessionSecret, c.now));
   } },
+  { method: "GET", path: "/v1/auth/oidc", summary: "Which sign-in providers this cloud offers besides the passkey (google, microsoft, apple), for the sign-in page. A person links one to their own membership first (Settings, while signed in with the passkey); a sign-in with it reads only.", need: "public", run: async (c) =>
+    json(200, { providers: idpsOffered(c.env.oidc), read_only: true, note: "Signing in with Google, Microsoft or Apple reads only. Settings and approving money need your passkey." }) },
+  { method: "POST", path: "/v1/auth/oidc/{provider}/start", summary: "Start signing in to a company with a linked Google, Microsoft or Apple account: { tenant }. Answers the provider's URL (state, nonce, PKCE where documented) and a browser secret the page keeps until it finishes.", need: "public", run: async (c) => {
+    const b = await body(c, z.object({ tenant: SLUG }).strict(), 1_000);
+    const t = await c.env.sql.first<{ id: string; closed_at: string | null }>("SELECT id, closed_at FROM tenants WHERE slug = ?", [b.tenant]);
+    if (!t || t.closed_at || isDemoTenant(t.id)) return notFound("company");
+    return json(200, await startOidc(c.env.sql, c.env.oidc, { provider: idpOf(c), purpose: "sign-in", tenantId: t.id, userId: null, origin: c.env.origin, now: c.now }));
+  } },
+  { method: "GET", path: "/v1/auth/oidc/{provider}/callback", summary: "Where Google or Microsoft sends the browser back: forwards the code and state to the console (in the address's fragment, which no server sees), where the page that started it finishes. Stores nothing.", need: "public", run: async (c) =>
+    oidcBack(c, idpOf(c), c.url.searchParams) },
+  { method: "POST", path: "/v1/auth/oidc/apple/callback", summary: "Where Apple posts the browser back (response_mode form_post): forwards the code and state to the console's fragment, as the GET callback does. Stores nothing; the ID token Apple posts along is not used (the code is exchanged and its token checked).", need: "public", run: async (c) => {
+    idpOf(c, "apple");
+    const text = await readCapped(c.req, 16_000);
+    return oidcBack(c, "apple", new URLSearchParams(text), 303);
+  } },
+  { method: "POST", path: "/v1/auth/oidc/{provider}/finish", summary: "Finish signing in with a linked account: { code, state, browser_secret }. Answers a 15-minute read-only session (read_only: true) for the person the account is linked to; 401 when it is linked to no one in that company.", need: "public", run: async (c) => {
+    const b = await body(c, OidcFinish, 4_000);
+    const r = await finishSignIn(c.env.sql, c.env.oidc, { provider: idpOf(c), code: b.code, state: b.state, browserSecret: b.browser_secret, origin: c.env.origin, now: c.now });
+    c.audit.tenant = r.tenantId;
+    c.audit.actor = r.userId;
+    const s = await oidcSession(c.env.sql, c.env.sessionSecret, r.tenantId, r.userId, c.now, { userAgent: c.req.headers.get("user-agent"), ip: c.req.headers.get("cf-connecting-ip") });
+    const slug = await c.env.sql.first<{ slug: string }>("SELECT slug FROM tenants WHERE id = ?", [r.tenantId]);
+    return json(200, { session: s.token, role: s.role, user_id: s.user_id, tenant: slug?.slug ?? null, expires_in: 900, read_only: true });
+  } },
+  { method: "GET", path: "/v1/me/identities", summary: "The signed-in person's own linked sign-in accounts (Google, Microsoft, Apple: provider, verified e-mail if the provider gave one, when linked) and which providers this cloud offers.", need: "read", run: async (c) => {
+    personOnly(c);
+    return json(200, await identitiesOf(c.env.sql, c.env.oidc, c.caller!.tenantId, c.caller!.user!));
+  } },
+  { method: "POST", path: "/v1/me/identities/{provider}/start", summary: "Link your own Google, Microsoft or Apple account to your membership: signed in with your passkey, checked again in the last five minutes (step-up). Answers the provider's URL and a browser secret. The link then signs you in to read only.", need: "read", run: async (c) => {
+    personOnly(c);
+    if (c.caller!.via) throw new AuthError(403, "link an account while signed in with your passkey");
+    if (!(await freshPasskey(c.env.sessionSecret, c.req, c.caller!, c.now))) throw new StepUpRequired();
+    return json(200, await startOidc(c.env.sql, c.env.oidc, { provider: idpOf(c), purpose: "link", tenantId: c.caller!.tenantId, userId: c.caller!.user!, origin: c.env.origin, now: c.now }));
+  } },
+  { method: "POST", path: "/v1/me/identities/{provider}/finish", summary: "Finish linking: { code, state, browser_secret } from the page that started it, for the signed-in person who started it.", need: "read", run: async (c) => {
+    personOnly(c);
+    if (c.caller!.via) throw new AuthError(403, "link an account while signed in with your passkey");
+    const b = await body(c, OidcFinish, 4_000);
+    return json(201, await finishLink(c.env.sql, c.env.oidc, { provider: idpOf(c), code: b.code, state: b.state, browserSecret: b.browser_secret, origin: c.env.origin, tenantId: c.caller!.tenantId, userId: c.caller!.user!, now: c.now }));
+  } },
+  { method: "DELETE", path: "/v1/me/identities/{provider}", summary: "Unlink your own Google, Microsoft or Apple account: it signs you in no more.", need: "read", run: async (c) => {
+    personOnly(c);
+    const p = c.params[0]!;
+    if (!isIdp(p)) return notFound("such provider");
+    return json(200, await unlink(c.env.sql, c.caller!.tenantId, c.caller!.user!, p, c.now));
+  } },
+
   { method: "POST", path: "/v1/auth/step-up/start", summary: "Start a fresh passkey check for sensitive settings (a signed-in person only): a one-time challenge for five minutes.", need: "read", run: async (c) => {
     if (c.caller!.kind !== "session") return err(403, "a step-up is a signed-in person's passkey check; a key has none");
     return json(200, await newChallenge(c.env.sql, c.caller!.tenantId, c.now, "step-up"));
@@ -479,7 +633,18 @@ export const ROUTES: Route[] = [
     return json(200, { signed_out: true });
   } },
 
-  { method: "GET", path: "/v1/me", summary: "Who is calling: the company, and the key's scopes or the person's role.", need: "read", run: async (c) => {
+  // The signed-in person's active sessions, to see and end one by one (./sessions.ts; ASVS V3.3.4).
+  { method: "GET", path: "/v1/sessions", summary: "The signed-in person's active sessions: when each began, until when, the browser and the network it signed in from; the current one marked. Never a token.", need: "read", run: async (c) => {
+    if (c.caller!.kind !== "session") return err(403, "sessions are a signed-in person's; a key has none");
+    return json(200, { items: await listSessions(c.env.sql, c.caller!.tenantId, c.caller!.principal, c.now, c.caller!.sessionId ?? null) });
+  } },
+  { method: "DELETE", path: "/v1/sessions/{id}", summary: "End one of the signed-in person's sessions: its token stops at once; the others keep working.", need: "read", run: async (c) => {
+    if (c.caller!.kind !== "session") return err(403, "sessions are a signed-in person's; a key has none");
+    if (!(await endSession(c.env.sql, c.caller!.tenantId, c.caller!.principal, c.params[0]!, c.now))) return notFound("session");
+    c.audit.detail = { session_id: c.params[0]!.slice(0, 40) };
+    return json(200, { ended: true });
+  } },
+  { method: "GET", path: "/v1/me", summary: "Who is calling: the company, and the key's scopes or the person's role; approves says why a person may approve (cfo, or owner_without_cfo: an owner of a company with no CFO), null when they may not.", need: "read", run: async (c) => {
     const t = await c.env.sql.first<{ slug: string; name: string; language: string }>("SELECT slug, name, language FROM tenants WHERE id = ?", [c.caller!.tenantId]);
     // For the console: the person behind the call, whether an owner has a passkey yet (a new company's first run), and
     // the company's inbox address once mail is routed here.
@@ -491,6 +656,10 @@ export const ROUTES: Route[] = [
     // The company's Airwallex account opened through Purser, for the pages' header (its id is no secret; never a key).
     const awx = await c.env.sql.first<{ account_id: string | null; status: string }>("SELECT account_id, status FROM awx_accounts WHERE tenant_id = ? AND id = 'main'", [c.caller!.tenantId]);
     return json(200, { tenant: { id: c.caller!.tenantId, ...t, language: companyLanguage }, kind: c.caller!.kind, principal: c.caller!.principal, scopes: [...c.caller!.scopes], role: c.caller!.role ?? null,
+      // How a session signed in: the passkey, or a linked Google, Microsoft or Apple account (read only).
+      ...(c.caller!.kind === "session" ? { signed_in_with: c.caller!.via ?? "passkey" } : {}),
+      // Why this person may approve (docs/security/roles.md): "cfo", or "owner_without_cfo" (the console's note); null: they may not.
+      approves: c.caller!.approves ?? null,
       user: c.caller!.user ? { id: c.caller!.user, display_name: person?.display_name ?? null, role: person?.role ?? null, language: person?.language ?? null } : null,
       language: person?.language === "en" || person?.language === "nl" ? person.language : companyLanguage,
       owner_has_passkey: ownerPasskey, airwallex: awx ? { account_id: awx.account_id, status: awx.status } : null, inbox: c.env.mailDomain && t && !isDemoTenant(c.caller!.tenantId) ? `${t.slug}@${c.env.mailDomain}` : null,
@@ -575,12 +744,18 @@ export const ROUTES: Route[] = [
     // and books.closed (cloud/src/connections.ts), once, for a change this push made.
     const before = await statusesBefore(db(c), b);
     const head = (await syncState(db(c))).ledger.entry_id;
-    const applied = await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal });
+    // The new files count toward the company's storage quota (./storageQuota.ts; ASVS V12.1.3).
+    const applied = await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal },
+      (bytes, files) => reserveStorage(c.env.sql, c.caller!.tenantId, bytes, files, c.now, c.env.storageQuota));
     // approval.needed also tells the people the company chose (Settings, Alerts) that a payment waits for the CFO's Face
     // ID; its webhook delivery is one of those channels (cloud/src/alerts.ts). An alert never approves anything.
     // The alerts go out after the answer where the Worker allows it: each delivery's row makes it idempotent either way.
     const alerts: Promise<unknown>[] = [];
+    const hasChat = (await db(c).count("chat_hooks", { disabled_at: null })) > 0;
+    const chat = { sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin };
     for (const e of await eventsOf(db(c), b, before, head, c.env.origin)) {
+      // The company's Slack and Teams channels hear every business event (cloud/src/chatHooks.ts), after the answer too.
+      if (hasChat) alerts.push(postEvent(chat, e).catch((x: unknown) => logEvent("warn", "chat_hook.dispatch_failed", { tenant: c.caller!.tenantId, error: x instanceof Error ? x.message.slice(0, 200) : "unknown" })));
       if (e.type === "approval.needed") alerts.push(dispatchApprovalAlert({ sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, providers: c.env.alerts, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin }, e.data)
         .catch((x: unknown) => logEvent("warn", "alert.dispatch_failed", { tenant: c.caller!.tenantId, error: x instanceof Error ? x.message.slice(0, 200) : "unknown" })));
       else await notify(c.env.sql, c.caller!.tenantId, e.type, e.data, c.now, c.env.outbound, c.env.retryDelayMs);
@@ -590,6 +765,7 @@ export const ROUTES: Route[] = [
     return json(200, { applied });
   } },
   { method: "GET", path: "/v1/sync/state", summary: "Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds.", need: "sync", run: async (c) => json(200, await syncState(db(c))) },
+  { method: "GET", path: "/v1/mail/forwarding-confirmations", summary: "Gmail's forwarding confirmation codes that reached the company's Purser address in the last seven days (code and Gmail address only), for the owner who is setting up forwarding from Gmail.", need: "admin", run: async (c) => json(200, { items: await forwardingConfirmations(db(c), c.now) }) },
   { method: "GET", path: "/v1/mail", summary: "Inbound e-mail waiting for the runner; paginated (limit, cursor).", need: "sync", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "inbound_mail", "id", { status: "queued" }, c.url.searchParams, (r) => r)) },
   { method: "GET", path: "/v1/mail/{id}/raw", summary: "One inbound e-mail, raw (RFC 822).", need: "sync", run: async (c) => {
     const m = await db(c).one<{ blob_key: string }>("inbound_mail", { id: c.params[0]! });
@@ -714,7 +890,7 @@ export const ROUTES: Route[] = [
   { method: "POST", path: "/v1/close", summary: "Close the company's account: access ends; records are kept until the retention day, then purged.", need: "admin", run: async (c) => json(200, await closeTenant(c.env.sql, c.caller!.tenantId, c.now)) },
 
   // The company's engine (cloud/src/engine/routes.ts): one block, the caller's own company only, 404 while no engine is wired.
-  ...engineRoutes<Ctx>({ json, err, body, approved: (c, out) => stageApproved(c.env.sql, c.caller!.tenantId, out, c.now) }),
+  ...engineRoutes<Ctx>({ json, err, body, approved: (c, out) => stageApproved(c.env.sql, c.caller!.tenantId, out, c.now), tellOwners }),
   ...edgeRoutes<Ctx>({ json, err }),
 
   // The hands-on demo's engine routes (cloud/src/try/engineRoutes.ts): one block, the caller's own company only.
@@ -764,6 +940,9 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const audit: Audit = {};
   // The baseline security headers each answer lacks (./baseHeaders.ts): one place for the API, redirects and files.
   const res = withBaseline(await route(req, env, audit));
+  // A key in its last 14 days says so on each answer, with what to do (./keyExpiry.ts; ASVS V2.3.3).
+  const renewal = renewalNotice(audit.keyExpiresAt, (env.now ?? (() => new Date()))());
+  if (renewal) res.headers.set(KEY_RENEWAL_HEADER, renewal);
   const path = new URL(req.url).pathname;
   const pattern = path.startsWith("/v1/") || isClaudePath(path) || isDiscoveryPath(path) ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
   // The hands-on deployment's own figures for the owner's page (cloud/src/try/metrics.ts): counts and buckets only.
@@ -800,7 +979,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
       // /mcp takes a bearer token only (no cookie rides along), so Claude's own web origins may call it too.
       // The consent page's answer arrives through the client's redirects (often Origin: null, in an app's own browser):
       // its form's own signed, single-use token holds it instead (cloud/src/claude/oauth.ts consentToken).
-      const anyOrigin = url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === "/oauth/authorize" || (url.pathname === "/mcp" && CLAUDE_ORIGINS.has(from ?? ""));
+      const anyOrigin = url.pathname === "/v1/auth/oidc/apple/callback" || url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === "/oauth/authorize" || (url.pathname === "/mcp" && CLAUDE_ORIGINS.has(from ?? ""));
       if (from !== null && from !== env.origin && !anyOrigin) return err(403, "this request came from another site");
       // The hands-on demo's start and renewal are a browser's only: they must say they come from this site (the admin's
       // controls are a program's, with the platform token, and are not held to it).
@@ -851,6 +1030,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
       }
       audit.tenant = caller.tenantId;
       audit.actor = caller.principal;
+      if (caller.kind === "key") audit.keyExpiresAt = caller.expiresAt ?? null;
       // A visitor's test company calls only the hands-on demo's routes, while it lives (cloud/src/try/gate.ts).
       const tryCaller = isTryTenant(caller.tenantId);
       if (tryCaller) {
@@ -902,16 +1082,20 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
     }
     if (e instanceof StepUpRequired) return json(403, { error: e.message, code: e.code });
     if (e instanceof AlertRefused) return err(e.status, e.message);
+    if (e instanceof ChatHookRefused) return err(e.status, e.message);
+    if (e instanceof OidcRefused) return err(e.status, e.message);
     if (e instanceof SyncRefused) {
       if (e.tamper) audit.tamper = true;
       return err(e.status, e.message);
     }
     if (e instanceof BadRequest) return err(400, e.message);
     if (e instanceof UnsupportedMediaType) return err(415, e.message);
+    if (e instanceof QuotaExceeded) return err(413, e.message);
     if (e instanceof PrivacyRefused) return err(409, e.message);
     if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);
     if (e instanceof PlatformRefused) return err(e.status, e.message);
+    if (e instanceof RecoveryRefused) return err(e.status, e.message);
     if (e instanceof TryRefused) return tryError(json, e.status, e.code, e.message);
     if (e instanceof SwitchRefused) return tryError(json, 400, "bad_request", e.message);
     if (e instanceof ConnectRefused) return err(e.status, e.message);
@@ -965,8 +1149,8 @@ export function openApi(origin: string, o: { readOnly?: boolean } = {}): Record<
       : { title: "Purser Cloud API", version: "1.0.0", description: "Everything a company's finance runs on, in one place: invoices, documents, suppliers, payments, the ledger and its reports. Test money only until a company goes live." },
     servers: [{ url: origin }],
     ...(o.readOnly ? {} : { tags: Object.entries(TAG_DESCRIPTIONS).map(([name, description]) => ({ name, description })) }),
-    "x-purser-safety": "A key reads (read) and files an invoice's payment for the CFO's approval (propose). No key approves: approving is a signed-in person's passkey over the exact terms (POST /v1/engine/proposals/{id}/approve refuses every key).",
-    components: { responses: Object.fromEntries(Object.entries(ERRORS).map(([name, [, description]]) => [name, ERROR(description)])), schemas: { ...API_SCHEMAS, Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: [...Object.values(CODES), "step_up_required"], description: "Stable, for a program" } } } }, securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...; scopes read, sync, admin, propose) or a passkey session (pcs....)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
+    "x-purser-safety": "A key reads (read) and files an invoice's payment for the CFO's approval (propose). No key approves: approving needs the approve scope, a signed-in CFO's (an owner's only in a company with no CFO), and their passkey over the exact terms (POST /v1/engine/proposals/{id}/approve refuses every key).",
+    components: { responses: Object.fromEntries(Object.entries(ERRORS).map(([name, [, description]]) => [name, ERROR(description)])), schemas: { ...API_SCHEMAS, Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: [...Object.values(CODES), "step_up_required"], description: "Stable, for a program" } } } }, securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...; scopes read, sync, admin, propose; never approve) or a passkey session (pcs....; its role's scopes: a CFO's carry approve, docs/security/roles.md)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
     paths,
   };
 }

@@ -19,6 +19,9 @@
   // The hands-on demo on this address (/try, src/tryEngine.ts): purser-try (cloud/wrangler.try.jsonc) answers it. Deploy
   // purser-try first: a deploy that binds a Worker that does not exist fails.
   "services": [{ "binding": "TRY_ENGINE", "service": "purser-try" }],
+  // Workers Logs (ASVS V1.7.2): every log line, the request lines and the security.* events among them, leaves the
+  // isolate for Cloudflare's log store, every request kept; queried in the dashboard (test/workers-observability.test.ts).
+  "observability": { "enabled": true, "head_sampling_rate": 1, "logs": { "enabled": true, "invocation_logs": true } },
   // Hourly, at minute 41: the synthetic checks behind /status and /status.json (worker/src/statusDesk.ts), stored in the
   // "status" instance of RELAY. Nothing runs until the first deploy with this trigger: /status says no check has run yet.
   "triggers": { "crons": ["41 * * * *"] }

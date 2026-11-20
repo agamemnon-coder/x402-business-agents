@@ -14,9 +14,9 @@
 
 <a href="https://youtu.be/gEUm8RlhZac"><img src="docs/assets/readme/demo-thumb.jpg" alt="Purser: the demo on YouTube (3:15)" width="100%"></a>
 
-<a href="https://kit11.max-31b.workers.dev/proof#evidence"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/evidence-map-dark.svg"><img src="docs/assets/readme/evidence-map-light.svg" alt="Animated money path: Invoice in (24 of 25 /try walks passed); Claude reads (24 decisions · 0 fallbacks); Purser's rules (0 vs 35 wrong payments); Passkey signs (All 894 forgeries refused); Alta (#24 refused on chain); Airwallex (All 50 PAID · 71 endpoints live); Visa via Airi (EUR 45.00 after Face ID); Proof bundle (All 48 proofs VALID); Anyone verifies (189 checks passed). Refused: All 25 one-cent changes refused. Held: 24 of 25 held at the cash floor. Attacked and checked on purpose: Red team (All 128 attacks held); Chaos (0 invariants broken); Fuzzing (All 17 properties held); Held-out eval (11 vs 74 wrong payments); The public site (100 accessibility · Both WebKit walks passed). Test money." width="100%"></picture></a>
+<a href="https://kit11.max-31b.workers.dev/proof#evidence"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/evidence-map-dark.svg"><img src="docs/assets/readme/evidence-map-light.svg" alt="Animated money path: Invoice in (57 of 58 /try walks passed); Claude reads (24 decisions · 0 fallbacks); Purser's rules (0 vs 35 wrong payments); Passkey signs (All 894 forgeries refused); Alta (#24 refused on chain); Airwallex (All 116 PAID · 71 endpoints live); Visa via Airi (EUR 45.00 after Face ID); Proof bundle (All 114 proofs VALID); Anyone verifies (189 checks passed). Refused: All 58 one-cent changes refused. Held: 57 of 58 held at the cash floor. Attacked and checked on purpose: Red team (All 128 attacks held); Chaos (0 invariants broken); Fuzzing (All 17 properties held); Held-out eval (11 vs 74 wrong payments); The public site (100 accessibility · Both WebKit walks passed). Test money." width="100%"></picture></a>
 
-**Evidence wall, from the records:** All 30 soak payments read back · All 50 /try payouts PAID · All 894 forged copies refused · 71 Airwallex endpoints live · [every figure, with its record](https://kit11.max-31b.workers.dev/proof#evidence)
+**Evidence wall, from the records:** All 60 soak payments read back · All 116 /try payouts PAID · All 894 forged copies refused · 71 Airwallex endpoints live · [every figure, with its record](https://kit11.max-31b.workers.dev/proof#evidence) · [the index of /proof's figures](docs/evidence/proof-index.md)
 
 **What it is:** the control layer between a company's AI agents and its money on Airwallex and Alta (formerly Metal): one engine runs agents that pay supplier invoices and agents that buy and sell data over x402, hence the repository's name, x402-business-agents, after Starter Kit 11 ("x402 Business Agents"), the hackathon brief it was built for.
 
@@ -39,7 +39,7 @@
 
 **What stood at the submission:** the tag `v1.0-submission` (8 Nov), Purser's entry to the Airwallex Agentic Banking Hackathon (entered for the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award), holds the Kit 11 main run of 3 Nov and /try/sign; the payables inbox (`src/ap/`), Purser Cloud and today's /try came after, with run records dated 10 to 17 Nov ([CHANGELOG.md](CHANGELOG.md), [v1.1 notes](docs/releases/v1.1-submission.md)).
 
-<a href="https://kit11.max-31b.workers.dev/proof"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/proof-strip-dark.svg"><img src="docs/assets/readme/proof-strip-light.svg" alt="From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 24 decisions, live. 8,574 tests passing; 189 checks passed, 0 failed; 37 of 39 attacks stopped, 2 caught after (test world)." width="100%"></picture></a>
+<a href="https://kit11.max-31b.workers.dev/proof"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/proof-strip-dark.svg"><img src="docs/assets/readme/proof-strip-light.svg" alt="From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 24 decisions, live. 8,845 tests passing; 189 checks passed, 0 failed; 37 of 39 attacks stopped, 2 caught after (test world)." width="100%"></picture></a>
 
 </div>
 
@@ -54,7 +54,7 @@
 
 ## At a glance
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/stats-dark.svg"><img src="docs/assets/readme/stats-light.svg" alt="Four figures from the records: 8,574 tests passing in the last full run (docs/assets/test-summary.json); 24 Claude decisions and 86 Alta payments in the main run of 3 November; 0 wrong payments in the worst-case AI test" width="100%"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/stats-dark.svg"><img src="docs/assets/readme/stats-light.svg" alt="Four figures from the records: 8,845 tests passing in the last full run (docs/assets/test-summary.json); 24 Claude decisions and 86 Alta payments in the main run of 3 November; 0 wrong payments in the worst-case AI test" width="100%"></picture>
 
 - **The agent trace, live:** on [/try](https://kit11.max-31b.workers.dev/try), each Claude call, its lookups and its decision, as the engine recorded them ([record](docs/evidence/try-agentic-2026-11-15/README.md)).
 - **Agents negotiate:** on [/try](https://kit11.max-31b.workers.dev/try) (the Clean invoice) and [/try/negotiate](https://kit11.max-31b.workers.dev/try/negotiate), two Claude agents agree a deal; code holds the limits, you sign it ([the rails](src/negotiate/rails.ts)).
@@ -108,7 +108,7 @@ Does not prove: who holds the key, or that it was Face ID (no attestation is che
 `npm run verify-receipt -- receipt.json`
 checks any receipt of the same format. `npm run airwallex-trail` lists the Airwallex sandbox API calls in the run records it reads and re-checks, offline, that each transfer carries the hash the passkey signed (exit 1 on any mismatch; the same list is on [/airwallex/calls](https://kit11.max-31b.workers.dev/airwallex/calls)). Pay on [/try](https://kit11.max-31b.workers.dev/try), download the proof (JSON), and check it on [/verify](https://kit11.max-31b.workers.dev/verify) in your browser, or with `npm run verify-bundle -- purser-proof.json`: the same checks, the same code, no server ([samples](docs/proof/)).
 
-The full suite, `npm test` (about 8 to 9 min on a laptop): **8574 tests passing**, 5 skipped, in 784 files (the last full run, on commit `044d6a049`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
+The full suite, `npm test` (about 8 to 9 min on a laptop): **8845 tests passing**, 5 skipped, in 814 files (the last full run, on commit `1ef28d9fa`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
 
 `npm run test-count` writes that count from the last full run; `npm run test:coverage` measures coverage per area. CI runs these checks on every push, with CodeQL and gitleaks; the CI badge at the top shows the result of the latest run on main.
 
@@ -285,7 +285,7 @@ Not validated with customers yet: 2 finance conversations (a CFO and a bank fina
 
 1. **Pay an invoice yourself:** [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try). A test company of your own; Claude reads a sample invoice, you approve the exact terms with your own passkey, it is paid on a simulated bank and booked. Change what you signed: refused.
 2. **Look around a company:** [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/), then *Try as guest*: the demo company's dashboard and books, read-only, made-up data, test money.
-3. **Ask your own AI:** add the remote MCP server `https://purser-try.max-31b.workers.dev/mcp` and choose the demo company (public token `purser-demo-read-only`): ask "what's waiting for the CFO?". It reads; it cannot approve or pay ([Connect any AI](#more)).
+3. **Ask your own AI:** add the remote MCP server `https://purser-try.max-31b.workers.dev/mcp` and choose the demo company (public token `purser-demo-read-only`): ask "what's waiting for the CFO?". It reads; it cannot approve or pay ([Connect any AI](#more)). Everything else Purser connects to, each labelled: [Connect Purser to anything](docs/integrations/README.md).
 
 ## More
 
@@ -298,6 +298,7 @@ Not validated with customers yet: 2 finance conversations (a CFO and a bank fina
 | How it works in 5 files | The five files that make a payment safe, and the policy's worst case | [docs/how-it-works.md](docs/how-it-works.md) |
 | Proof in numbers | The charts, drawn from the run records | [docs/charts.md](docs/charts.md) |
 | Connect any AI | Connect Claude or any MCP client to the demo company's books: it reads and proposes, never approves or pays | [docs/mcp.md](docs/mcp.md) · [docs/connect-any-ai.md](docs/connect-any-ai.md) |
+| Connect to anything | Every way in or out, each with its honest label and a quickstart: payment rails, AI over MCP, the API and webhooks, no-code tools, accounting, Peppol, chat | [docs/integrations/README.md](docs/integrations/README.md) |
 | Built after the kit | What was built after the kit (test environment, test money) | [docs/built-after-the-kit.md](docs/built-after-the-kit.md) |
 | Who does what | Who built what, and what each partner runs | [docs/who-does-what.md](docs/who-does-what.md) |
 | What's live, what's simulated | Every run, live or simulated, with its record (one column per rail in [Built with](#built-with)) | [docs/in-depth.md](docs/in-depth.md#whats-live-whats-simulated-run-by-run) |

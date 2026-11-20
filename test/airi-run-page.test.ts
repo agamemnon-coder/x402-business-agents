@@ -19,7 +19,7 @@ const LOG = readFileSync(AIRI_RUN_LOG, "utf8");
 const pages = buildPages() as unknown as Record<string, string>;
 const text = (html: string) => html.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 /** The block on a page: in full on /airwallex and /visa (its ids in a fold), short on /proof (a link to them). */
-const block = (html: string) => (html === pages.proof ? /<div class="card airi" id="airi-run">[\s\S]*?<\/a><\/div>/ : /<div class="card airi" id="airi-run">[\s\S]*?<\/details><\/div>/).exec(html)?.[0] ?? "";
+const block = (html: string) => (html === pages.proof ? /<div class="card airi" id="airi-run"[^>]*>[\s\S]*?<\/a><\/div>/ : /<div class="card airi" id="airi-run"[^>]*>[\s\S]*?<\/details><\/div>/).exec(html)?.[0] ?? "";
 /** The block without its fold: what a visitor reads before opening anything. */
 const inSight = (html: string) => text(block(html).replace(/<details[\s\S]*?<\/details>/, " "));
 const PAGES = ["airwallex", "visa", "proof"] as const;

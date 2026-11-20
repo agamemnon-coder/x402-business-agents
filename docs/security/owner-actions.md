@@ -157,3 +157,21 @@ elke merge. Daarna:
 
 Laat `tap-interop` buiten de verplichte checks: die draait alleen als bepaalde paden veranderen, en een verplichte check
 die niet draait houdt de pull request vast.
+
+## A second platform admin key, for owner recoveries (20 November)
+
+An owner recovery in Purser Cloud now takes two platform admins: one named admin key asks, a different one approves
+(`cloud/src/recovery.ts`, [roles.md](roles.md)). Until a second key with the `recovery` scope exists, no recovery can
+be issued at all. On the second person's own computer:
+
+```bash
+npm run cloud:admin-key -- --id <second-holder>-<quarter> --scopes recovery --days 90
+```
+
+The key is printed once, to that terminal; the holder keeps it in their password manager. Add the printed entry (no
+secret in it) to `ADMIN_KEYS` beside the first one and set the secret again
+(`npx wrangler secret put ADMIN_KEYS -c cloud/wrangler.jsonc`, and `-c cloud/wrangler.try.jsonc`). The legacy
+`ADMIN_TOKEN_SHA256` takes no part in a recovery.
+
+Optionally set the Worker var `APPROVAL_KEY_COOLING_HOURS` (default 72; the deployed Worker never takes less than 24)
+for how long a new or recovered approval key waits before it approves.

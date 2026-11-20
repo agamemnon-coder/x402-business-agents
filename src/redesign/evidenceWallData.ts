@@ -15,6 +15,7 @@ import { VIC3_RUN_FILE, vic3Run, vic3Summary } from "./vic3Run.js";
 import { WORST_CASE, WORST_CASE_DOC, worstOf } from "../evals/worstCase.js";
 import { CI_RUNS_URL, ciJobs } from "./ciChecks.js";
 import { NOT_IN_BAND } from "./scale.js";
+import { soakTotals, soaks } from "../airwallex/soakRecords.js";
 import type { EvidenceWall, WallGroup, WallTile } from "./evidenceWall.js";
 import { verifyInclusion, type ProofStep } from "../anchor/merkle.js";
 
@@ -25,6 +26,12 @@ const json = (p: string): J | null => { try { return JSON.parse(readFileSync(new
 const blob = (p: string) => `${REPO_BLOB}${p}`;
 const fmt = (n: number) => n.toLocaleString("en-GB");
 const secs = (ms: number | null) => (ms === null ? "" : `${(ms / 1000).toFixed(ms < 1000 ? 2 : 1)} s`);
+/** "19 and 20 Nov", "19 Nov": the days of several records, in order. */
+const joinDays = (days: readonly string[]) => {
+  const and = (xs: readonly string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}` : xs[0] ?? "");
+  const mon = days.map((d) => d.split(" ")[1]);
+  return days.length > 1 && mon.every((m) => m === mon[0]) ? `${and(days.map((d) => d.split(" ")[0]!))} ${mon[0]}` : and(days);
+};
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 
 /** The recorded /try walks, all series together (src/redesign/liveTry.ts), and the link each figure takes. */
@@ -52,12 +59,12 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
     const paid = bills.filter((b) => b.paid?.status === "PAID" && b.external_id_matches_signed).length;
     out.push({ key: "spend-bills", fig: whole(paid, bills.length), label: "paid invoices made bills in Airwallex Spend", note: `The signed hash as external_id, read back exactly; transfers PAID by the sandbox's simulation, ${day(bl!.audit![0]!.ts)}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-bills.md"), rec: BL });
   }
-  const SK = "docs/runs/2026-11-19-airwallex-soak.json";
-  const sk = json(SK) as { started_at?: string; summary?: { created: number; paid: number; readback_matches: number; conversions: { planned: number; booked: number; readback_matches: number } } } | null;
-  if (sk?.summary?.created) {
-    const m = sk.summary;
-    out.push({ key: "soak-paid", fig: whole(m.readback_matches, m.created), label: "soak payments PAID, signed hash read back", note: `Each read back from Airwallex as signed: hash, amount, payee, reference; PAID by the sandbox's simulation, ${day(sk.started_at!)}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-soak.md"), rec: SK });
-    if (m.conversions.planned) out.push({ key: "soak-fx", fig: whole(m.conversions.readback_matches, m.conversions.planned), label: "FX conversions booked and read back", note: `In the soak, each before the payment it funded, ${day(sk.started_at!)}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-soak.md"), rec: SK });
+  // The soaks (19 and 20 Nov so far): each figure the sum of the same field in every soak record, all of them in data-rec.
+  const sk = soakTotals(), skAll = soaks();
+  if (sk.created) {
+    const days = skAll.map((x) => day(x.rec.started_at)), on = joinDays(days), last = skAll.at(-1)!;
+    out.push({ key: "soak-paid", fig: whole(sk.readbackMatches, sk.created), label: "soak payments PAID, signed hash read back", note: `Each read back from Airwallex as signed: hash, amount, payee, reference; PAID by the sandbox's simulation; ${skAll.length === 1 ? "the soak of" : `${skAll.length} soaks,`} ${on}.`, tag: "sandbox", tone: "awx", href: blob(last.log), rec: sk.files.join(" ") });
+    if (sk.fx.planned) out.push({ key: "soak-fx", fig: whole(sk.fx.readbackMatches, sk.fx.planned), label: "FX conversions booked and read back", note: `In the ${skAll.length === 1 ? "soak" : "soaks"} of ${on}, each before the payment it funded.`, tag: "sandbox", tone: "awx", href: blob(last.log), rec: sk.files.join(" ") });
   }
   const facts = proofFacts(agentRun());
   const hash = facts.find((f) => f.key === "awx" && f.icon === "lock");
@@ -103,11 +110,11 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
   // Airwallex, deeper (19 Nov; src/proof/awxDeepLive.ts): the wallet statement, the seller side, a payment withdrawn.
   // The last two are off /proof (its words in sight are at their budget, test/proof-first.test.ts): for the Airwallex
   // partner page's strip, and in the wall file, the README and llms.txt.
-  type Deep = { ran_at?: string; facts?: { statement?: { checked: number; agree: number; lines: number; continuity: { links: number; breaks: unknown[] } } | null; receivable?: { invoice: { invoice_no: string; amount_cents: number; currency: string }; matched: { outcome: string } | null; link: { active_after: boolean | null } | null } | null; revoke?: { before: string | null; after: string | null; validated: boolean } | null } };
+  type Deep = { ran_at?: string; facts?: { statement?: { window?: { from: string; to: string }; checked: number; agree: number; lines: number; continuity: { links: number; breaks: unknown[] } } | null; receivable?: { invoice: { invoice_no: string; amount_cents: number; currency: string }; matched: { outcome: string } | null; link: { active_after: boolean | null } | null } | null; revoke?: { before: string | null; after: string | null; validated: boolean } | null } };
   const DEEP = ["docs/runs/2026-11-19-airwallex-deep.json", "docs/runs/2026-11-19-airwallex-deep-3.json"] as const;
   const d1 = json(DEEP[0]) as Deep | null, d3 = json(DEEP[1]) as Deep | null;
   const st = d3?.facts?.statement;
-  if (st?.checked) out.push({ key: "awx-statement", fig: whole(st.agree, st.checked), label: "soak payouts and FX legs on Airwallex's statement, to the cent", note: `Balance history; ${whole(st.continuity.links - st.continuity.breaks.length, st.continuity.links).toLowerCase()} links add up${d3?.ran_at ? `; ${day(d3.ran_at)}` : ""}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-deep-3.md"), rec: DEEP[1] });
+  if (st?.checked) out.push({ key: "awx-statement", fig: whole(st.agree, st.checked), label: "soak payouts and FX legs on Airwallex's statement, to the cent", note: `Balance history${st.window?.from ? ` of the ${day(st.window.from.replace(/\+0000$/, "Z"))} soak` : ""}; ${whole(st.continuity.links - st.continuity.breaks.length, st.continuity.links).toLowerCase()} links add up${d3?.ran_at ? `; ${day(d3.ran_at)}` : ""}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-deep-3.md"), rec: DEEP[1] });
   const rv = d1?.facts?.receivable;
   if (rv?.matched?.outcome === "MATCHED" && rv.link?.active_after === false) out.push({ offProof: true, key: "awx-receivable", fig: `${rv.invoice.currency} ${(rv.invoice.amount_cents / 100).toFixed(2)}`, label: "invoice matched from a Global Account's statement; its payment link switched off", note: `Bank transfer by the sandbox's simulation${d1?.ran_at ? `, ${day(d1.ran_at)}` : ""}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-deep.md"), rec: DEEP[0] });
   const rk = d3?.facts?.revoke;
@@ -125,12 +132,11 @@ function forged(w: ReturnType<typeof walks>): WallTile[] {
     out.push({ key: "try-hash", fig: whole(w.t.approvalsMatching, w.t.runs), label: "approvals whose hash Airwallex carries", note: `The public /try, ${w.when}.`, tag: "sandbox", tone: "awx", href: w.href, rec: w.rec });
     if (w.t.proofs) out.push({ key: "try-proofs", fig: whole(w.t.proofsValid, w.t.proofs), label: "proof files VALID, browser and offline", note: "Downloaded from /try; npm run verify-bundle agrees.", tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
   }
-  const SK = "docs/runs/2026-11-19-airwallex-soak.json";
-  const skn = (json(SK) as { started_at?: string; summary?: { negatives?: { planned: number; refused: number; posts_in_window: number; creates_in_window: number; calls_in_window: number; by_endpoint_in_window?: Record<string, number> } } } | null);
-  const neg = skn?.summary?.negatives;
-  if (neg?.planned) {
-    const reads = Object.entries(neg.by_endpoint_in_window ?? {}).map(([e, c]) => `${c} ${e}`).join(", ");
-    out.push({ key: "soak-negatives", fig: whole(neg.refused, neg.planned), label: "one-cent changes refused before any create", note: `${neg.posts_in_window} money-moving calls (${neg.creates_in_window} creates); each refusal still read the balance once (${reads || `${neg.calls_in_window} calls`}). Soak, ${day(skn!.started_at!)}.`, tag: "sandbox", tone: "ok", href: blob("docs/runs/2026-11-19-airwallex-soak.md"), rec: SK });
+  // The soaks' one-cent changes, summed over every soak record (the calls in each refusal's window, as each record counts them).
+  const skn = soakTotals(), sknAll = soaks();
+  if (skn.negatives.planned) {
+    const n = skn.negatives, reads = Object.entries(n.reads).map(([e, c]) => `${c} ${e}`).join(", ");
+    out.push({ key: "soak-negatives", fig: whole(n.refused, n.planned), label: "one-cent changes refused before any create", note: `${n.posts} money-moving calls (${n.creates} creates); ${n.calls} ${n.calls === 1 ? "read" : "reads"} in the refusal windows${reads ? ` (${reads})` : ""}. Soaks, ${joinDays(sknAll.map((x) => day(x.rec.started_at)))}.`, tag: "sandbox", tone: "ok", href: blob(sknAll.at(-1)!.log), rec: skn.files.join(" ") });
   }
   const cent = centRecord();
   if (cent && centHolds(cent.rec)) {
@@ -228,13 +234,16 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   // Eval v8 (19 Nov): 140 held-out invoices written after the fixes that followed v7 (suppliers named in Sinhala, Lao,
   // Mongolian Cyrillic, Burmese, Gujarati, Malayalam, Telugu, Yiddish, Lithuanian, Icelandic, Latvian and Kannada;
   // injections and pressure in those languages and in Tibetan, Syriac, Inuktitut and Javanese; hard negatives against the
-  // new rules), committed alone with their pre-registration before the run (src/cli/adversarialV8.ts). Held out: no rule
-  // was written against its misses.
-  const V8 = "docs/evals/adversarial-v8.json";
+  // new rules), committed alone with their pre-registration before the run. Its run is kept as recorded; beside it, since
+  // 20 Nov, the run after the fixes that followed it (letters encoded two ways, names as banks spell them, a number's own
+  // label, AI headings in any language, thirteen more languages), so no longer held out (src/cli/adversarialV8.ts). It
+  // stays on /proof: no held-out set has run after those fixes yet.
+  const V8 = "docs/evals/adversarial-v8.json", V8_AFTER = "docs/evals/adversarial-v8-after.json";
   const v8 = json(V8) as { held_out?: boolean; cases_commit?: string; totals?: AdvTotals } | null;
-  if (v8?.held_out && v8.totals?.purser_script && v8.totals.no_rules) {
-    const p = v8.totals.purser_script, n = v8.totals.no_rules;
-    out.push({ key: "eval-v8", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v8): Purser vs no rules`, note: `Cases committed with their pre-registration (commit ${v8.cases_commit}), after the fixes for v7's misses; a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Held out. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v8.md"), rec: V8 });
+  const v8a = json(V8_AFTER) as { held_out?: boolean; totals?: AdvTotals } | null;
+  if (v8?.held_out && v8.totals?.purser_script && v8.totals.no_rules && v8a && !v8a.held_out && v8a.totals?.purser_script) {
+    const p = v8.totals.purser_script, n = v8.totals.no_rules, a = v8a.totals.purser_script;
+    out.push({ key: "eval-v8", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v8): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v8.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}. Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v8.md"), rec: V8 });
   }
   // 19 Nov, fifth round: the newest red-team run is the re-run after agent cards were frozen by default (hidden-payment
   // is now refused before money moves). The fourth round's re-run (rewrite-history stopped before money moves) and the

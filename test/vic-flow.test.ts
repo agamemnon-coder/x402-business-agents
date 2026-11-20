@@ -38,7 +38,7 @@ describe("the VIC flow on /visa", () => {
     const fold = '<details class="sumd" id="visa-details">';
     // Since the redesign (13 Nov) the latest run's flow, outcomes and hash lead; its cards open the fold, before the drawing.
     expect(visa.indexOf(fold)).toBeGreaterThan(visa.indexOf('id="visa-flow"'));
-    const before = visa.slice(visa.indexOf(fold) + fold.length, visa.indexOf('<section class="card vicflow"')).replace(/<summary>[^<]*<\/summary>/, "").replace(/<ul class="sumc"[\s\S]*?<\/ul>/, "").replace(/<div class="awrb"><div class="card airi" id="vic3-run">[\s\S]*?<\/details>[\s\S]*?<\/div><\/div>/, "");
+    const before = visa.slice(visa.indexOf(fold) + fold.length, visa.indexOf('<section class="card vicflow"')).replace(/<summary>[^<]*<\/summary>/, "").replace(/<ul class="sumc"[\s\S]*?<\/ul>/, "").replace(/<div class="awrb"><div class="card airi" id="vic3-run"[^>]*>[\s\S]*?<\/details>[\s\S]*?<\/div><\/div>/, "");
     // Visa judge, 14 Nov: the fold opens with the latest run's outcome strip and hash (moved from the top), then the drawing.
     expect(before.replace(/<section class="vh-out card"[\s\S]*?<\/section>/, "").replace(/<section class="vh-hash card"[\s\S]*?<\/section>/, "")).not.toMatch(/<section|class="card|<details/);
     // Not on the other pages: /proof links to it.
@@ -98,7 +98,9 @@ describe("the VIC flow on /visa", () => {
     expect(() => vicFlow({ ...rec, purchases: rec.purchases.map((p) => p.step === "C" ? { ...p, by: "airi" } : p) })).toThrow(/refused by Purser/);
     expect(() => vicFlow({ ...rec, test_card: false })).toThrow(/test card/);
     // Read again from the record: the same flow the page shows.
-    expect(flow).toBe(vicFlowHtml(vicFlow(rec), { h: "h2" }));
+    // On /visa the drawing names its records (data-rec); otherwise it is the module's own.
+    expect(flow).toMatch(/^<section class="card vicflow" [^>]* data-rec="docs\/demo\/airi-run\.json docs\/runs\/2026-11-07-vic-1\.md">/);
+    expect(flow.replace(/ data-rec="[^"]*"/, "")).toBe(vicFlowHtml(vicFlow(rec), { h: "h2" }));
     expect(vicFlowHtml(vicFlow(rec))).toContain('<h3 id="vic-flow-h">');
   });
 

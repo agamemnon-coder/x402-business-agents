@@ -11,7 +11,19 @@
 // - Moneybird: https://developer.moneybird.com/authentication (authorize, token, revoke at moneybird.com/oauth/*; scopes;
 //   access tokens "do not expire" for now; no PKCE is documented, so none is sent).
 
-export type OAuthProviderName = "airwallex" | "moneybird";
+// - Xero (developer.xero.com, "OAuth 2.0 auth flow", "Scopes", read 20 Nov 2026): authorize login.xero.com, token and
+//   revocation identity.xero.com, the client's id and secret as HTTP Basic, PKCE (S256); access token 30 minutes,
+//   refresh token 60 days and rotated on every refresh; apps made after 2 March 2026 take granular scopes
+//   (accounting.invoices, accounting.contacts) plus offline_access for a refresh token.
+// - QuickBooks Online (developer.intuit.com, "OAuth 2.0", read 20 Nov 2026): authorize appcenter.intuit.com, token
+//   oauth.platform.intuit.com, revoke developer.api.intuit.com (JSON body), HTTP Basic; scope
+//   com.intuit.quickbooks.accounting; the company (realmId) comes back on the redirect; no PKCE is documented.
+// - Exact Online (support.exactonline.com, "Step 3. Get and use access tokens"): authorize and token on
+//   start.exactonline.nl/api/oauth2; access token 600 s, refreshed only in its last 30 s; no scopes, no PKCE.
+
+export type OAuthProviderName = "airwallex" | "moneybird" | "xero" | "quickbooks" | "exact";
+/** The accounting systems a company connects itself (cloud/src/connect.ts keeps them in books_connections). */
+export const BOOKS_PROVIDERS = ["xero", "quickbooks", "exact"] as const;
 
 export interface OAuthProvider {
   name: OAuthProviderName;
@@ -25,6 +37,12 @@ export interface OAuthProvider {
   scopes: readonly string[];
   /** Airwallex answers which account the token is for (account_id); Moneybird does not. */
   accountField: "account_id" | null;
+  /** How Purser's client id and secret go to the token endpoint: in the form (default) or as HTTP Basic (Xero, Intuit). */
+  clientAuth?: "body" | "basic";
+  /** Revocation takes a JSON body { token } (Intuit) instead of a form. */
+  revokeJson?: boolean;
+  /** Refresh when the access token has less than this left (default 60 s; Exact refuses a refresh before its last 30 s). */
+  freshMs?: number;
 }
 
 /**
@@ -57,9 +75,40 @@ export const OAUTH_PROVIDERS: Record<OAuthProviderName, OAuthProvider> = {
     scopes: MONEYBIRD_SCOPES,
     accountField: null,
   },
+  xero: {
+    name: "xero",
+    authorizeUrl: "https://login.xero.com/identity/connect/authorize",
+    tokenUrl: "https://identity.xero.com/connect/token",
+    revokeUrl: "https://identity.xero.com/connect/revocation",
+    pkce: true,
+    scopes: ["offline_access", "accounting.invoices", "accounting.contacts"],
+    accountField: null,
+    clientAuth: "basic",
+  },
+  quickbooks: {
+    name: "quickbooks",
+    authorizeUrl: "https://appcenter.intuit.com/connect/oauth2",
+    tokenUrl: "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+    revokeUrl: "https://developer.api.intuit.com/v2/oauth2/tokens/revoke",
+    pkce: false,
+    scopes: ["com.intuit.quickbooks.accounting"],
+    accountField: null,
+    clientAuth: "basic",
+    revokeJson: true,
+  },
+  exact: {
+    name: "exact",
+    authorizeUrl: "https://start.exactonline.nl/api/oauth2/auth",
+    tokenUrl: "https://start.exactonline.nl/api/oauth2/token",
+    revokeUrl: null,
+    pkce: false,
+    scopes: [],
+    accountField: null,
+    freshMs: 25_000,
+  },
 };
 
-export const isProvider = (s: string): s is OAuthProviderName => s === "airwallex" || s === "moneybird";
+export const isProvider = (s: string): s is OAuthProviderName => Object.prototype.hasOwnProperty.call(OAUTH_PROVIDERS, s);
 
 /** Purser's registered application at the provider (client id and secret are the owner's to register; never in git). */
 export interface OAuthClient {
@@ -119,22 +168,25 @@ export async function challengeOf(verifier: string): Promise<string> {
 /** The URL the owner's browser goes to: the provider's own sign-in and consent screen. */
 export function authorizeUrl(p: OAuthProvider, c: Pick<OAuthClient, "clientId" | "redirectUri">, o: { state: string; challenge?: string }): string {
   if (p.pkce && !o.challenge) throw new Error(`${p.name} takes PKCE; no code challenge was given`);
-  const q = new URLSearchParams({ response_type: "code", client_id: c.clientId, redirect_uri: c.redirectUri, scope: p.scopes.join(" "), state: o.state });
+  const q = new URLSearchParams({ response_type: "code", client_id: c.clientId, redirect_uri: c.redirectUri, ...(p.scopes.length ? { scope: p.scopes.join(" ") } : {}), state: o.state });
   if (p.pkce) { q.set("code_challenge", o.challenge!); q.set("code_challenge_method", "S256"); }
   return `${p.authorizeUrl}?${q.toString()}`;
 }
 
 const CODE = /^[a-z_]{1,40}$/;
+/** RFC 6749 section 2.3.1: HTTP Basic with the form-encoded client id and secret. */
+const basicAuth = (c: OAuthClient) => `Basic ${btoa(`${encodeURIComponent(c.clientId)}:${encodeURIComponent(c.clientSecret)}`)}`;
 /** A token request that has not answered in this time is abandoned (below Purser Cloud's 30 s refresh lock). */
 export const TOKEN_TIMEOUT_MS = 20_000;
 
 async function tokenCall(f: typeof fetch, p: OAuthProvider, c: OAuthClient, form: Record<string, string>, where: string): Promise<TokenSet> {
   let res: Response;
   try {
+    const basic = p.clientAuth === "basic";
     res = await f(p.tokenUrl, {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
-      body: new URLSearchParams({ client_id: c.clientId, client_secret: c.clientSecret, ...form }).toString(),
+      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json", ...(basic ? { authorization: basicAuth(c) } : {}) },
+      body: new URLSearchParams(basic ? form : { client_id: c.clientId, client_secret: c.clientSecret, ...form }).toString(),
       signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
     });
   } catch {
@@ -176,10 +228,11 @@ export function refreshTokens(f: typeof fetch, p: OAuthProvider, c: OAuthClient,
 /** RFC 7009 revocation where the provider documents it (Moneybird: one call ends both tokens). False when none exists. */
 export async function revokeToken(f: typeof fetch, p: OAuthProvider, c: OAuthClient, token: string): Promise<boolean> {
   if (!p.revokeUrl) return false;
+  const basic = p.clientAuth === "basic";
   const res = await f(p.revokeUrl, {
     method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
-    body: new URLSearchParams({ client_id: c.clientId, client_secret: c.clientSecret, token }).toString(),
+    headers: { "content-type": p.revokeJson ? "application/json" : "application/x-www-form-urlencoded", accept: "application/json", ...(basic ? { authorization: basicAuth(c) } : {}) },
+    body: p.revokeJson ? JSON.stringify({ token }) : new URLSearchParams(basic ? { token } : { client_id: c.clientId, client_secret: c.clientSecret, token }).toString(),
   });
   if (!res.ok) throw new OAuthRefused(res.status, "", `${p.name} revoke`);
   return true;

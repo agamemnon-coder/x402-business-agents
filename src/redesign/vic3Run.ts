@@ -152,7 +152,7 @@ export function vic3RunHtml(r: Vic3Record | null = vic3Run(), o: { first?: strin
     ...(noTap ? [{ n: noTap, label: "not confirmed in Airi: nothing charged", icon: "clock", tone: "bad" as const }] : []),
     ...(lead ? [{ n: equal, suf: " of 2", label: "hash matched at Airi and Airwallex", icon: "file-check", tone: "ok" as const }] : []),
   ];
-  return `<div class="card airi" id="${VIC3_RUN_ID}"><h2>${esc(`Latest live run, ${s.date}`)}</h2>
+  return `<div class="card airi" id="${VIC3_RUN_ID}" data-rec="${VIC3_RUN_FILE} ${VIC3_RUN_LOG}"><h2>${esc(`Latest live run, ${s.date}`)}</h2>
 ${o.summarised ? "" : `<p class="vlead">${esc(vic3Lead(r))}</p>
 ${statsHtml(stats)}`}
 ${chosen.length ? `<p class="airi-finding">${esc(`Claude picked the Airi rail for each purchase it was asked about (${chosen.join(", ")}); Purser's code enforced the limit.`)}</p>` : ""}

@@ -179,11 +179,17 @@ describe("the read API's OpenAPI, and the catalogue of connections", () => {
     expect((await c.req("GET", "/v1/invoices", { key: tenant.key })).status).toBe(200);
   });
 
-  it("labels each connection live, a format export, or built and not tested live; none moves money", async () => {
-    const cat = (await c.req("GET", "/v1/connections")).json as ReturnType<typeof connectionsCatalogue>;
+  it("labels each connection live, a format export, or built and not tested live; none moves money; the rails that do are listed apart", async () => {
+    const cat = (await c.req("GET", "/v1/connections")).json as unknown as ReturnType<typeof connectionsCatalogue>;
     expect(cat.rule).toMatch(/None moves money.*Face ID/);
     const by = Object.fromEntries(cat.connections.map((x) => [x.name, x.kind]));
-    expect(by).toMatchObject({ "MCP server (Connect any AI)": "live", Webhooks: "live", Xero: "format export", "QuickBooks Online": "format export", "Exact Online (CSV)": "format export", "Slack and Microsoft Teams messages": "format export", "Exact Online (API)": "built, not tested live", "ISO 20022 pacs.008": "format export" });
+    expect(by).toMatchObject({ "MCP server (Connect any AI)": "live", Webhooks: "live", Xero: "format export", "QuickBooks Online": "format export", "Exact Online (CSV)": "format export", "Slack and Microsoft Teams messages": "built, not tested live", "Exact Online (API)": "built, not tested live", "Xero bills (connected in Purser Cloud)": "built, not tested live", "QuickBooks Online (API)": "built, not tested live", "ISO 20022 pacs.008": "format export" });
     expect(cat.connections.every((x) => ["read", "export", "notify"].includes(x.direction))).toBe(true);
+    // 20 Nov (the hub): what moves money is listed apart, each on test money, under the CFO's limits or Face ID.
+    expect(cat.money_rule).toMatch(/limits the CFO signed.*Face ID.*Test money only/);
+    expect(Object.fromEntries(cat.money.map((x) => [x.name, x.kind]))).toEqual({ Airwallex: "sandbox", "Alta (formerly Metal)": "testnet", "Visa via Airwallex Airi": "sandbox", "Agent API on the runner (local MCP)": "sandbox" });
+    expect(cat.money.every((x) => x.direction === "pay")).toBe(true);
+    expect(cat.hub).toMatch(/\/blob\/main\/docs\/integrations\/README\.md$/);
+    expect(cat.connect_ai).toBe(`${ORIGIN}/connect-ai`);
   });
 });

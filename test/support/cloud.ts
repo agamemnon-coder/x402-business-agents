@@ -113,3 +113,58 @@ export function testCloud(opts: { rate?: CloudEnv["rate"]; engine?: boolean; try
     close() { sql.close(); rmSync(dir, { recursive: true, force: true }); },
   };
 }
+
+/** A person signed in to the company: added by an owner's session with this role, their passkey enrolled, signed in. */
+export interface TestPerson { id: string; session: string; passkey: { pk: ReturnType<typeof softPasskey>; credential_id: string } }
+
+/** The assertion of a cloud sign-in passkey over a challenge, as the console sends it. */
+export function cloudAssertion(p: { pk: ReturnType<typeof softPasskey> }, challenge: string): { authenticatorData: string; clientDataJSON: string; signature: string } {
+  const a = p.pk.assert("0x00", { challenge, origin: ORIGIN, rpId: RP });
+  return { authenticatorData: b64u(a.authenticatorData), clientDataJSON: b64u(a.clientDataJSON), signature: b64u(a.signature) };
+}
+
+/** Adds a person (owner, cfo, accountant or viewer) to a company with an owner's session; they enrol a passkey and sign in. */
+export async function addPerson(c: TestCloud, slug: string, ownerSession: string, role: "owner" | "cfo" | "accountant" | "viewer", name = role.toUpperCase()): Promise<TestPerson> {
+  const u = await c.req("POST", "/v1/users", { key: ownerSession, body: { display_name: name, role } });
+  if (u.status !== 201) throw new Error(`add ${role}: ${JSON.stringify(u.json)}`);
+  const id = u.json.id as string;
+  const e = await c.req("POST", `/v1/users/${id}/enrolment`, { key: ownerSession });
+  if (e.status !== 201) throw new Error(`enrolment: ${JSON.stringify(e.json)}`);
+  const pk = softPasskey();
+  const credential_id = b64u(crypto.getRandomValues(new Uint8Array(16)));
+  const x = Buffer.from(pk.key.qx.slice(2), "hex").toString("base64url");
+  const y = Buffer.from(pk.key.qy.slice(2), "hex").toString("base64url");
+  const en = await c.req("POST", "/v1/auth/enrol", { body: { tenant: slug, enrolment_id: e.json.enrolment_id, token: e.json.token, credential_id, x, y, assertion: cloudAssertion({ pk }, e.json.token as string) } });
+  if (en.status !== 201) throw new Error(`enrol: ${JSON.stringify(en.json)}`);
+  const session = await signIn(c, slug, { pk, credential_id });
+  return { id, session, passkey: { pk, credential_id } };
+}
+
+/** A fresh session with a person's cloud passkey. */
+export async function signIn(c: TestCloud, slug: string, p: { pk: ReturnType<typeof softPasskey>; credential_id: string }): Promise<string> {
+  const ch = await c.req("POST", "/v1/auth/challenge", { body: { tenant: slug } });
+  const s = await c.req("POST", "/v1/auth/login", { body: { tenant: slug, challenge_id: ch.json.challenge_id, credential_id: p.credential_id, assertion: cloudAssertion(p, ch.json.challenge as string) } });
+  if (s.status !== 200) throw new Error(`sign-in: ${JSON.stringify(s.json)}`);
+  return s.json.session as string;
+}
+
+/**
+ * Two named platform admin keys with the recovery scope (an owner recovery takes two: the one who asks and another who
+ * approves), set as the cloud's ADMIN_KEYS. Each key is returned once, as npm run cloud:admin-key shows it.
+ */
+export async function twoRecoveryAdmins(c: TestCloud): Promise<{ first: string; second: string }> {
+  const { newAdminKey } = await import("../../cloud/src/adminKeys.js");
+  const a = await newAdminKey({ id: "ops-first", scopes: ["recovery", "tenants", "read"], days: 90, now: c.clock.now });
+  const b = await newAdminKey({ id: "ops-second", scopes: ["recovery"], days: 90, now: c.clock.now });
+  c.env.adminKeys = [c.env.adminKeys, a.entry, b.entry].filter(Boolean).join(",");
+  return { first: a.key, second: b.key };
+}
+
+/** An owner recovery as two platform admins make it: the first asks, the second approves; the answer issues the key. */
+export async function issueRecovery(c: TestCloud, tenantId: string, owner: string, check = "video_call"): Promise<{ status: number; json: Record<string, unknown> & { error?: string } }> {
+  const admins = /ops-first/.test(c.env.adminKeys ?? "") ? (c as TestCloud & { _admins?: { first: string; second: string } })._admins! : await twoRecoveryAdmins(c);
+  (c as TestCloud & { _admins?: { first: string; second: string } })._admins = admins;
+  const asked = await c.req("POST", `/v1/admin/tenants/${tenantId}/recovery`, { key: admins.first, body: { owner_id: owner, check } });
+  if (asked.status !== 202) return asked;
+  return c.req("POST", `/v1/admin/tenants/${tenantId}/recovery/${asked.json.request_id as string}/approve`, { key: admins.second });
+}

@@ -31,7 +31,9 @@ const isLiveTry = (s: unknown): s is { aggregate: J; runs: J[] } =>
  * run on /runs (src/redesign/runs.ts) and counted here like any run. The one folder still left out is
  * docs/runs/2026-11-19-webkit-try/, the same walk in WebKit with the software passkey
  * (docs/runs/2026-11-19-webkit-try.md): a browser-compatibility check, not a run of record. src/cli/verifyAll.ts
- * recounts the band with the same list, and /runs (liveTryRecords below) shows no row for them.
+ * recounts the band with the same list, and /runs (liveTryRecords below) shows no row for them. 20 Nov: the second
+ * Airwallex soak (docs/runs/2026-11-20-airwallex-soak.json and .md) is counted from the start, like the first: a row on
+ * /runs, its calls in the API trail, its figures summed with the first on the evidence wall (src/airwallex/soakRecords.ts).
  */
 export const NOT_IN_BAND: readonly string[] = ["docs/runs/2026-11-19-webkit-try"];
 

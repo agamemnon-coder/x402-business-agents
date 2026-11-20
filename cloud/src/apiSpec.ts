@@ -98,7 +98,7 @@ export function tagOf(path: string, need: string): string {
   if (need === "platform" || path.startsWith("/v1/admin/")) return "Platform";
   if (path.startsWith("/v1/try")) return "Hands-on demo";
   if (path.startsWith("/v1/engine")) return "Engine (payments)";
-  if (path.startsWith("/v1/auth/") || path.startsWith("/v1/keys") || path.startsWith("/v1/users") || path.startsWith("/v1/security") || path === "/v1/me" || path === "/v1/me/language") return "Access";
+  if (path.startsWith("/v1/auth/") || path.startsWith("/v1/keys") || path.startsWith("/v1/users") || path.startsWith("/v1/security") || path === "/v1/me" || path.startsWith("/v1/me/")) return "Access";
   if (path === "/mcp" || path.startsWith("/oauth/") || path.startsWith("/.well-known/oauth") || path.startsWith("/v1/claude") || path === "/connect-ai") return "AI agents (MCP, OAuth)";
   if (path.startsWith("/.well-known/agent") || path === "/openapi.json" || path === "/api" || path.startsWith("/v1/openapi")) return "Discovery";
   if (!path.startsWith("/v1/")) return "Site";

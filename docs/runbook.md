@@ -378,13 +378,15 @@ their downloads), `GET /v1/status` (last runner push, mail queue, quota use, ale
 
 The platform admin is no longer one shared token (ASVS V2.5.4; `cloud/src/adminKeys.ts`). Each person who operates the
 cloud holds their own key, named after them, with only the scopes they need (`tenants`: make a company; `recovery`:
-issue an owner's recovery key; `read`: the operator's read-only views; `try`: the hands-on deployment's controls), and
+ask for or approve an owner's recovery, which takes two different keys; `read`: the operator's read-only views; `try`: the hands-on deployment's controls), and
 it stops on its last day (90 days at most). The Worker keeps only each key's SHA-256; every use and every refusal is in
 the security log under `platform:<id>`.
 
 1. **Make a key** (on the holder's own computer; the key is printed once, to that terminal):
    `npm run cloud:admin-key -- --id <holder>-<quarter> --scopes tenants,recovery,read,try --days 30`.
    The holder keeps the key in their password manager. Never paste a key into chat, a ticket, a doc or a commit.
+   An owner recovery takes **two** keys with the `recovery` scope, held by two different people: make the second one
+   for the second person, on their own computer (`--id <second holder>-<quarter> --scopes recovery`).
 2. **Allow it:** add the printed entry (`id:sha256:scopes:last-day`, no secret in it) to the other entries, one per
    line, and set them: `npx wrangler secret put ADMIN_KEYS -c cloud/wrangler.try.jsonc` (and `-c cloud/wrangler.jsonc`
    for the product cloud). Check it: `GET /v1/admin/companies` with `Authorization: Bearer <key>` answers 200, and
@@ -414,21 +416,29 @@ passkey on the runner.
 
 ### Owner recovery: the only owner lost their passkey
 
-Tested: `test/cloud-recovery.test.ts` (the full flow, reuse, expiry, another company, a non-owner, a racing sign-in).
+Tested: `test/cloud-recovery.test.ts` (the full flow, reuse, expiry, another company, a non-owner, a racing sign-in) and
+`test/cloud-recovery-two-admins.test.ts` (two different named admin keys, the legacy token refused).
 
 1. **Check who is asking, out of band**, before anything else: a video call with the owner, their ID against the
    contract or the Chamber of Commerce extract, a call back on the number on file. Never on the strength of an e-mail.
-2. **Issue the recovery key** (platform admin):
-   `POST /v1/admin/tenants/{tenant id}/recovery` with `{"owner_id": "...", "checked_by": "how you checked"}` and the
-   admin token as bearer. It returns a one-time key that holds for 24 hours and can do one thing: start that owner's
-   passkey enrolment. A second recovery for the company is refused while one is open. The company's webhook gets
-   `security.recovery_issued`, and the security events record who checked and how.
+2. **Ask for the recovery** (the first platform admin, with their own named admin key; since 20 November):
+   `POST /v1/admin/tenants/{tenant id}/recovery` with `{"owner_id": "...", "check": "video_call"}` (or `in_person`,
+   `phone_callback`; no free text) and the admin key as bearer. No key is issued yet: it answers 202 with a
+   `request_id`, open for a day. The company's webhook gets `security.recovery_requested`.
+   **A second, different admin approves it**, with their own named admin key, after checking the request:
+   `POST /v1/admin/tenants/{tenant id}/recovery/{request_id}/approve`. Only now is the one-time key returned; it holds
+   for 24 hours and can do one thing: start that owner's passkey enrolment. The same key cannot ask and approve, and the
+   legacy admin token takes no part. A second recovery for the company is refused while one is open. The webhook gets
+   `security.recovery_issued`, and the security events record both admins and how the owner was checked.
 3. **Give the key to the owner** over a different channel than the one they asked on. They start the enrolment with it
    (`POST /v1/users/{their id}/enrolment`) and enrol a new passkey from the link.
 4. **When the new passkey lands**, in the same write: the owner's old passkeys are removed, their sessions end, and the
    recovery key is spent (`security.recovery_completed` goes to the webhook). Until then the old passkey still works,
    so an unfinished recovery changes nothing.
-5. **If the owner finds the old passkey after all:** they revoke the recovery key from a signed-in session
+5. **The owner's approval key:** a recovered owner may enrol one new approval key without an active key's
+   signature; it approves nothing for 72 hours (the cooling-off), and every owner is told. If that was not the owner,
+   remove the person or the key before it ends (docs/security/roles.md).
+6. **If the owner finds the old passkey after all:** they revoke the recovery key from a signed-in session
    (`DELETE /v1/keys/{key_id}`); the enrolment it started dies with it.
 
 ### Runaway mail
@@ -452,6 +462,24 @@ A company's webhook is used against someone else, or its receiver is down.
 - **The platform admin, when the owners do not act:**
   `npx wrangler d1 execute purser-cloud --remote -c cloud/wrangler.jsonc --command "UPDATE webhooks SET disabled_at = '<now>' WHERE tenant_id = '<id>'"`.
   Tell the owners why. Not yet exercised.
+
+### Deploy (added 20 November)
+
+One command, run by the owner on their own computer with their wrangler login (no secret in the script, in CI or in
+its output): `npm run deploy` (`scripts/deploy.ts`; ASVS V1.14.4, V14.1.1).
+
+1. It refuses a tree with uncommitted changes, or a commit that is not on `origin/main` (it fetches `origin` first):
+   only merged code goes live.
+2. It copies pdf.js into `cloud/public`, deploys purser-try (`cloud/wrangler.try.jsonc`), then kit11 (`npm run
+   relay:deploy`), each with `--var GIT_SHA:<short sha> --var BUILT_AT:<build time>`. Apply new D1 migrations first
+   (`npx wrangler d1 migrations apply purser-try --remote -c cloud/wrangler.try.jsonc`).
+3. It reads purser-try's `/v1/health` and kit11's `/health` until each reports that commit in `build.sha` (a minute at
+   most) and checks the baseline security headers; anything else exits non-zero, and the old version is still
+   Cloudflare's previous deployment (`npx wrangler rollback -c <config>`).
+
+`npm run deploy -- --check-only` runs step 3 alone: which commit is live, and whether it is the one checked out.
+It deploys the hands-on deployment and the site only; the product cloud (`cloud/wrangler.jsonc`) keeps its own steps (above, Purser Cloud).
+Tested: `test/deploy-traceable.test.ts` (the refusals, the stamp, the post-deploy check, both health answers).
 
 ### Restore
 

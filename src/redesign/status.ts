@@ -17,7 +17,7 @@ import { CHECKS_END, CHECKS_START } from "../ops/syntheticChecks.js";
 import { SITE_URL } from "../ui/meta.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { outLink, productPage, repoHref, siteLink } from "./productPage.js";
-import { RUNS_TITLE, RUNS_URL, liveRuns, type RunRow } from "./runs.js";
+import { RUNS_TITLE, RUNS_URL, liveRuns, recordPaths, type RunRow } from "./runs.js";
 import { esc, icon } from "./ui.js";
 
 export type StatusMode = "hosted" | "offline";
@@ -141,11 +141,14 @@ const line = (label: string, id: string, rowId = "") => `<div${rowId ? ` id="${r
  * from its own store when it serves the page (worker/src/index.ts); as built, and in any copy without the Worker, it
  * says there are no results here. Never a number the page did not get from the checks.
  */
+/** The checks' numbers are live, not a committed record (owner, 20 Nov: every figure says where it can be checked): the link says so. */
+export const CHECKS_LINK = "Live numbers: /status.json";
+
 function checksCard(mode: StatusMode): string {
   const inner = mode === "hosted"
     ? `<p>No check results in this copy: the hosted site fills this in from its hourly checks.</p>`
     : `<p>No hourly checks in this offline copy.</p>`;
-  const link = mode === "hosted" ? siteLink("status.json", "The raw numbers: /status.json") : outLink(`${SITE_URL}/status`, "The hosted status page");
+  const link = mode === "hosted" ? siteLink("status.json", CHECKS_LINK) : outLink(`${SITE_URL}/status`, "The hosted status page");
   return `<article class="pc card" id="checks"><h2><span class="ic">${icon("clock", 19)}</span>Hourly checks of the public addresses</h2>
     ${CHECKS_START}${inner}${CHECKS_END}
     <div class="links">${link}</div></article>`;
@@ -164,7 +167,7 @@ export function statusPage(mode: StatusMode = "hosted"): string {
   const body = `<div class="cols c2">
   ${now}
   <article class="pc card" id="runs"><h2><span class="ic">${icon("calendar-range", 19)}</span>Latest live runs${pill === null ? "" : `<span class="pill">${esc(pill)}</span>`}</h2>
-    <ul class="pl">${runs.map((r, i) => `${groups && (i === 0 || rows[i]!.money !== rows[i - 1]!.money) ? `<li class="grp">${esc(rows[i]!.money)}</li>` : ""}<li><time datetime="${esc(r.iso)}">${esc(r.day)}</time> <a class="pf" href="${esc(r.href)}" target="_blank" rel="noopener" title="${esc(r.title)}">${esc(r.short)} ↗</a></li>`).join("")}</ul>
+    <ul class="pl">${runs.map((r, i) => `${groups && (i === 0 || rows[i]!.money !== rows[i - 1]!.money) ? `<li class="grp">${esc(rows[i]!.money)}</li>` : ""}<li data-rec="${esc(recordPaths(rows[i]!))}"><time datetime="${esc(r.iso)}">${esc(r.day)}</time> <a class="pf" href="${esc(r.href)}" target="_blank" rel="noopener" title="${esc(r.title)}">${esc(r.short)} ↗</a></li>`).join("")}</ul>
     <div class="links">${siteLink(RUNS_URL, RUNS_TITLE)}</div></article>
 </div>
 ${checksCard(mode)}`;

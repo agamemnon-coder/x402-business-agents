@@ -29,7 +29,7 @@ tags:
     description: "The hands-on demo's own routes (/try): a visitor's test company, for a day, test money."
   - name: Site
     description: Icons and pages.
-x-purser-safety: "A key reads (read) and files an invoice's payment for the CFO's approval (propose). No key approves: approving is a signed-in person's passkey over the exact terms (POST /v1/engine/proposals/{id}/approve refuses every key)."
+x-purser-safety: "A key reads (read) and files an invoice's payment for the CFO's approval (propose). No key approves: approving needs the approve scope, a signed-in CFO's (an owner's only in a company with no CFO), and their passkey over the exact terms (POST /v1/engine/proposals/{id}/approve refuses every key)."
 components:
   responses:
     BadRequest:
@@ -300,7 +300,7 @@ components:
     bearer:
       type: http
       scheme: bearer
-      description: "An API key (pck_...; scopes read, sync, admin, propose) or a passkey session (pcs....)"
+      description: "An API key (pck_...; scopes read, sync, admin, propose; never approve) or a passkey session (pcs....; its role's scopes: a CFO's carry approve, docs/security/roles.md)"
     platformAdmin:
       type: http
       scheme: bearer
@@ -574,6 +574,117 @@ paths:
             - admin
       x-purser-needs: admin
       x-purser-step-up: "a signed-in owner; when the company asks again before sensitive changes, passkey checked in the last five minutes"
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/chat-hooks":
+    get:
+      operationId: getV1ChatHooks
+      tags:
+        - Company
+      summary: "Slack and Teams (Settings): whether the company's Slack and Teams incoming webhooks are set (their host only, never the URL), and each one's delivery state. Purser posts approval.needed, payment.paid and books.closed there; a message only tells and links to Purser Cloud, it never approves."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/chat-hooks/{product}":
+    post:
+      operationId: postV1ChatHooksByProduct
+      tags:
+        - Company
+      summary: "Set the company's Slack (product slack: https://hooks.slack.com/services/...) or Teams (product teams: a Teams Workflow's webhook URL) incoming webhook: { url }. A signed-in owner (a fresh passkey check when the company asks for one); never a key. Answers the host only."
+      parameters:
+        - name: product
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      x-purser-step-up: "a signed-in owner; when the company asks again before sensitive changes, passkey checked in the last five minutes"
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    delete:
+      operationId: deleteV1ChatHooksByProduct
+      tags:
+        - Company
+      summary: "Remove the company's Slack or Teams webhook (a signed-in owner)."
+      parameters:
+        - name: product
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      x-purser-step-up: "a signed-in owner; when the company asks again before sensitive changes, passkey checked in the last five minutes"
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/chat-hooks/{product}/test":
+    post:
+      operationId: postV1ChatHooksByProductTest
+      tags:
+        - Company
+      summary: "Post one test message to the company's Slack or Teams webhook now, so the owner sees it arrive: { delivered, status } (the status Slack or Teams answered; 0 when nothing answered). A working test switches a hook that was off back on."
+      parameters:
+        - name: product
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
       responses:
         "200":
           description: OK
@@ -892,6 +1003,29 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/connect/xero/bills":
+    post:
+      operationId: postV1ConnectXeroBills
+      tags:
+        - Company
+      summary: "Send the company's supplier invoices that its connected Xero organisation does not hold yet to Xero as DRAFT bills (a signed-in owner): { from?, to? } (issue days). Each invoice goes once; at most 25 a push. Purser never authorises, pays or marks a bill paid in Xero: a person approves each draft there. Answers { pushed, already, failed, remaining }."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/connect/airwallex/webhook":
     post:
       operationId: postV1ConnectAirwallexWebhook
@@ -989,12 +1123,35 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/connections/mine":
+    get:
+      operationId: getV1ConnectionsMine
+      tags:
+        - Company
+      summary: "Your connections: every way this company is connected (API keys, MCP, the signed webhook, Slack, Teams, approval alerts, the e-mail inbox, Airwallex, Moneybird, Xero, QuickBooks Online, Exact Online, and the signed-in person's Google, Microsoft and Apple sign-in), each connected, not_connected (the company switches it on itself in Settings) or not_available (the platform has not configured it). Never a secret."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/connections":
     get:
       operationId: getV1Connections
       tags:
         - Company
-      summary: "Every connection Purser has to other systems, what each does and whether it is a live integration or a format export."
+      summary: "Every connection Purser has to other systems, what each does, its label (live, sandbox, testnet, format export, built and not tested live) and its guide; the payment rails, which move money only under the CFO's limits or Face ID, listed apart."
       security: []
       x-purser-needs: public
       responses:
@@ -1081,9 +1238,42 @@ paths:
       operationId: postV1AdminTenantsByIdRecovery
       tags:
         - Platform
-      summary: "An owner lost their passkey: after checking out of band who asks (checked_by says how), issue a one-time recovery key for that owner, good for one day and one passkey enrolment of that owner; redeemed, the owner's old passkeys and sessions end. One open recovery per company; the company's webhook and security events record it."
+      summary: "An owner lost their passkey. The first of two platform admins, after checking out of band who asks: { owner_id, check } (check: video_call, in_person or phone_callback). Answers 202 with the request (a day long, one open per owner); no key is issued until a second, different named admin key approves it. The legacy admin token takes no part. The company's webhook and security events record it."
       parameters:
         - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - platformAdmin: []
+      x-purser-needs: platform
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/admin/tenants/{id}/recovery/{request}/approve":
+    post:
+      operationId: postV1AdminTenantsByIdRecoveryByRequestApprove
+      tags:
+        - Platform
+      summary: "The second platform admin approves an owner's recovery request: a named admin key other than the one that asked, while the request is open. Only then is the one-time recovery key issued for that owner, good for one day and one passkey enrolment of that owner; redeemed, the owner's old passkeys and sessions end, and a new approval key they enrol cools off before it approves. One open recovery per company; the company's webhook and security events record both admins."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: request
           in: path
           required: true
           schema:
@@ -1209,6 +1399,239 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc":
+    get:
+      operationId: getV1AuthOidc
+      tags:
+        - Access
+      summary: "Which sign-in providers this cloud offers besides the passkey (google, microsoft, apple), for the sign-in page. A person links one to their own membership first (Settings, while signed in with the passkey); a sign-in with it reads only."
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/{provider}/start":
+    post:
+      operationId: postV1AuthOidcByProviderStart
+      tags:
+        - Access
+      summary: "Start signing in to a company with a linked Google, Microsoft or Apple account: { tenant }. Answers the provider's URL (state, nonce, PKCE where documented) and a browser secret the page keeps until it finishes."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/{provider}/callback":
+    get:
+      operationId: getV1AuthOidcByProviderCallback
+      tags:
+        - Access
+      summary: "Where Google or Microsoft sends the browser back: forwards the code and state to the console (in the address's fragment, which no server sees), where the page that started it finishes. Stores nothing."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/apple/callback":
+    post:
+      operationId: postV1AuthOidcAppleCallback
+      tags:
+        - Access
+      summary: "Where Apple posts the browser back (response_mode form_post): forwards the code and state to the console's fragment, as the GET callback does. Stores nothing; the ID token Apple posts along is not used (the code is exchanged and its token checked)."
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/{provider}/finish":
+    post:
+      operationId: postV1AuthOidcByProviderFinish
+      tags:
+        - Access
+      summary: "Finish signing in with a linked account: { code, state, browser_secret }. Answers a 15-minute read-only session (read_only: true) for the person the account is linked to; 401 when it is linked to no one in that company."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities":
+    get:
+      operationId: getV1MeIdentities
+      tags:
+        - Access
+      summary: "The signed-in person's own linked sign-in accounts (Google, Microsoft, Apple: provider, verified e-mail if the provider gave one, when linked) and which providers this cloud offers."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities/{provider}/start":
+    post:
+      operationId: postV1MeIdentitiesByProviderStart
+      tags:
+        - Access
+      summary: "Link your own Google, Microsoft or Apple account to your membership: signed in with your passkey, checked again in the last five minutes (step-up). Answers the provider's URL and a browser secret. The link then signs you in to read only."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities/{provider}/finish":
+    post:
+      operationId: postV1MeIdentitiesByProviderFinish
+      tags:
+        - Access
+      summary: "Finish linking: { code, state, browser_secret } from the page that started it, for the signed-in person who started it."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities/{provider}":
+    delete:
+      operationId: deleteV1MeIdentitiesByProvider
+      tags:
+        - Access
+      summary: "Unlink your own Google, Microsoft or Apple account: it signs you in no more."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/auth/step-up/start":
     post:
       operationId: postV1AuthStepUpStart
@@ -1278,12 +1701,64 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/sessions":
+    get:
+      operationId: getV1Sessions
+      tags:
+        - Company
+      summary: "The signed-in person's active sessions: when each began, until when, the browser and the network it signed in from; the current one marked. Never a token."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/sessions/{id}":
+    delete:
+      operationId: deleteV1SessionsById
+      tags:
+        - Company
+      summary: "End one of the signed-in person's sessions: its token stops at once; the others keep working."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/me":
     get:
       operationId: getMe
       tags:
         - Access
-      summary: "Who is calling: the company, and the key's scopes or the person's role."
+      summary: "Who is calling: the company, and the key's scopes or the person's role; approves says why a person may approve (cfo, or owner_without_cfo: an owner of a company with no CFO), null when they may not."
       security:
         - bearer:
             - read
@@ -2035,6 +2510,29 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/mail/forwarding-confirmations":
+    get:
+      operationId: getV1MailForwardingConfirmations
+      tags:
+        - Company
+      summary: "Gmail's forwarding confirmation codes that reached the company's Purser address in the last seven days (code and Gmail address only), for the owner who is setting up forwarding from Gmail."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/mail":
     get:
       operationId: getV1Mail
@@ -2717,8 +3215,8 @@ paths:
       summary: "Start the approval passkey of the signed-in person (a session only, never a key): the challenge and code of a short enrolment window, the relying party, the person, and the passkeys to exclude."
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       x-purser-step-up: "when the company asks again before sensitive changes: a session's passkey checked in the last five minutes"
       responses:
         "200":
@@ -2738,7 +3236,7 @@ paths:
       operationId: postV1EnginePasskeyFinish
       tags:
         - Engine (payments)
-      summary: "Finish the approval passkey (a session only): { code, credential } with the passkey the browser made for the challenge; it is labelled with the signed-in person's name. 409 with the engine's reason when it is refused."
+      summary: "Finish the approval passkey (a session only; the approve scope): { code, credential } with the passkey the browser made for the challenge; it is labelled with the signed-in person's name. Answers { credential_id, how, cooling_until }. The company's first key needs nothing more; while another approval key is active, the first answer is 409 endorsement_required with the challenge (endorse), and the same request again must carry endorsement (an active approval key's assertion over it) or cosign { credential_id, assertion } (another owner's passkey over it); a recovered owner's first new key needs neither. 403 endorsement_refused for a bad one. Such a key approves nothing before cooling_until (72 hours; 0 on a /try test company, said in cooling_note). 409 with the engine's reason when it is refused otherwise."
       requestBody:
         required: true
         content:
@@ -2755,14 +3253,47 @@ paths:
                   propertyNames:
                     type: string
                   additionalProperties: {}
+                endorsement:
+                  type: object
+                  propertyNames:
+                    type: string
+                  additionalProperties: {}
+                cosign:
+                  type: object
+                  properties:
+                    credential_id:
+                      type: string
+                      minLength: 8
+                      maxLength: 400
+                    assertion:
+                      type: object
+                      properties:
+                        authenticatorData:
+                          type: string
+                          maxLength: 4000
+                        clientDataJSON:
+                          type: string
+                          maxLength: 8000
+                        signature:
+                          type: string
+                          maxLength: 400
+                      required:
+                        - authenticatorData
+                        - clientDataJSON
+                        - signature
+                      additionalProperties: false
+                  required:
+                    - credential_id
+                    - assertion
+                  additionalProperties: false
               required:
                 - code
                 - credential
               additionalProperties: false
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       x-purser-step-up: "when the company asks again before sensitive changes: a session's passkey checked in the last five minutes"
       responses:
         "200":
@@ -2808,8 +3339,8 @@ paths:
       summary: "Start registering a security key for the signed-in person (a session only): the second key of high-risk payments (USB or NFC, such as a YubiKey), beside their approval passkey, which must exist. Answers the challenge, the user handle, the relying party and the credentials to exclude; the page asks with authenticatorAttachment cross-platform."
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       x-purser-step-up: "when the company asks again before sensitive changes: a session's passkey checked in the last five minutes"
       responses:
         "200":
@@ -2832,8 +3363,8 @@ paths:
       summary: "Finish registering the security key (a session only): { credential } as the browser made it; a credential the browser reports as a platform authenticator (Face ID, Touch ID) is refused, and so is one already registered."
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       x-purser-step-up: "when the company asks again before sensitive changes: a session's passkey checked in the last five minutes"
       responses:
         "200":
@@ -2853,7 +3384,7 @@ paths:
       operationId: postV1EngineProposalsByIdApprove
       tags:
         - Engine (payments)
-      summary: "Approve a proposal with the approval passkey (a session only): { terms_sha256, credential } with the passkey's signature over the proposal's challenge. Answers { status, message, settled }: only status approved pays (on the stand-in bank), and settled says paid, booked, archived and fed; a signature over other terms is refused and nothing runs."
+      summary: "Approve a proposal with the approval passkey (a session only; the approve scope: the CFO, or an owner of a company with no CFO): { terms_sha256, credential } with the passkey's signature over the proposal's challenge. Answers { status, message, settled }: only status approved pays (on the stand-in bank), and settled says paid, booked, archived and fed; a signature over other terms is refused and nothing runs. A key still in its cooling-off (new or recovered) is refused: 403 cooling_off with cooling_until, nothing paid, told to the owners."
       parameters:
         - name: id
           in: path
@@ -2881,8 +3412,8 @@ paths:
               additionalProperties: false
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       responses:
         "200":
           description: OK
@@ -3314,8 +3845,8 @@ paths:
             type: string
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       responses:
         "200":
           description: OK
@@ -3418,8 +3949,8 @@ paths:
             type: string
       security:
         - bearer:
-            - admin
-      x-purser-needs: admin
+            - approve
+      x-purser-needs: approve
       responses:
         "200":
           description: OK

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "label": "coverage",
-  "message": "91.7% statements · 81.4% branches",
+  "message": "92.0% statements · 81.9% branches",
   "color": "brightgreen",
   "record": "docs/evidence/coverage.json"
 }

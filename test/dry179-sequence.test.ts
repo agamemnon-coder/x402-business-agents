@@ -63,8 +63,8 @@ vi.mock("../src/metal/mandate.js", () => {
 const { executeMandateReplace } = await import("../src/executors/mandateReplace.js");
 const { openDb } = await import("../src/db/open.js");
 const { audit } = await import("../src/audit/log.js");
-const { createProposal, decide } = await import("../src/policy/approvals.js");
-const { approvalHashOf } = await import("../src/metal/ownersExecute.js");
+const { createProposal } = await import("../src/policy/approvals.js");
+const { approveSigned } = await import("./support/signedApproval.js");
 const { TERMS_SCHEMA } = await import("../src/lib/terms.js");
 const { executeSweep } = await import("../src/agents/sweep.js");
 const { replaceHoldRefusal } = await import("../src/policy/replaceHold.js");
@@ -127,8 +127,7 @@ function propose2(id: string, steps: unknown[]): string {
 }
 /** One person's Face ID (a passkey signing the approval hash). */
 function approveBy(p: { id: string; sha: string }, person: string) {
-  const row = db.prepare("SELECT kind, terms_json, terms_sha256 FROM proposals WHERE proposal_id = ?").get(p.id) as { kind: string; terms_json: string; terms_sha256: string };
-  return decide(db, { proposalId: p.id, decision: "APPROVED", typedPrefix: p.sha.slice(0, 8), approver: `${person} (passkey ${person.slice(-4)})`, method: "passkey", signedSha256: approvalHashOf(row), passkey: { credentialId: `cred-${person}`, assertionSha256: `a-${person}` } });
+  return approveSigned(db, p.id, new Date(), person, `${person} (passkey ${person.slice(-4)})`);
 }
 /** The sweep's pull: sending it moves the treasury mandate's spend on chain, as it did in dry-179. */
 function sweepPull(sent: string[]): Puller {

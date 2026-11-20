@@ -554,3 +554,21 @@ ${script}
 </body>
 </html>`);
 }
+
+/**
+ * A block with its records (data-rec, the convention of docs/claims.md): the files its figures are read from, set on the
+ * block's first element (no wrapper, so no layout changes). A block whose first element names its records already, or
+ * an empty block, is returned as it is. test/proof-trace.test.ts holds every figure on /proof to such a record.
+ */
+export function withRec(html: string, files: readonly (string | null | undefined)[]): string {
+  const recs = [...new Set(files.filter((f): f is string => !!f))];
+  const a = html.indexOf("<");
+  if (a < 0 || !recs.length) return html;
+  let b = a + 1, q = "";
+  for (; b < html.length; b++) { const c = html[b]!; if (q) { if (c === q) q = ""; } else if (c === '"' || c === "'") q = c; else if (c === ">") break; }
+  const tag = html.slice(a, b);
+  if (b >= html.length || tag.includes(" data-rec=")) return html;
+  const at = tag.endsWith("/") ? b - 1 : b;
+  return `${html.slice(0, at)} data-rec="${esc(recs.join(" "))}"${html.slice(at)}`;
+}
+

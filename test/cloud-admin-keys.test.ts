@@ -57,7 +57,7 @@ describe("the platform routes with ADMIN_KEYS", () => {
   it("a key without the scope: 403 and access.denied (read cannot make a company or issue a recovery)", async () => {
     const [k] = await withKeys({ id: "viewer", scopes: ["read"] });
     expect((await newCompany(k!)).status).toBe(403);
-    expect((await c.req("POST", "/v1/admin/tenants/t_xxxxxxxxxxxx/recovery", { key: k!, body: { owner_id: "u_x", checked_by: "a call" } })).status).toBe(403);
+    expect((await c.req("POST", "/v1/admin/tenants/t_xxxxxxxxxxxx/recovery", { key: k!, body: { owner_id: "u_x", check: "video_call" } })).status).toBe(403);
     expect((await c.req("POST", "/v1/try/admin", { key: k!, body: { op: "get" } })).status).toBe(403);
     expect((await log("access.denied")).map((r) => r.actor)).toEqual(["platform:viewer", "platform:viewer", "platform:viewer"]);
   });
