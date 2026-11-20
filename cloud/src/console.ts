@@ -1471,7 +1471,7 @@ async function settingsView(){
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),m.inbox?note(t('cs.inbox.forward')):null,fwd,langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
   const ids=m.kind==='session'&&!m.demo?await identitiesCard(m).catch(()=>null):null;
   const sessions=m.kind==='session'&&!m.demo?await sessionsCard().catch(()=>null):null;
-  if(!owner){const cc=await claudeCard(m,false);const cx=await connectionsCard();const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(head(t('cs.nav.settings')),company,sessions,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,cc,cx);return}
+  if(!owner){const cc=await claudeCard(m,false);const cx=await connectionsCard();const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(...[head(t('cs.nav.settings')),company,sessions,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,cc,cx].filter(Boolean));return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
@@ -1481,7 +1481,7 @@ async function settingsView(){
   const yours=!m.demo?await yourConnectionsCard().catch(()=>null):null;
   const cx=await connectionsCard();
   // "Your connections" (this company's own, each connected or not) on top, the catalogue of every connection below it.
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),yours,cx,company,security,sessions,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard,...[offboardingCard(m)].filter(Boolean));
+  view().replaceChildren(...[head(t('cs.nav.settings'),t('cs.settings_lede')),yours,cx,company,security,sessions,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard,offboardingCard(m)].filter(Boolean));
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){
