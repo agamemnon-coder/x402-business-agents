@@ -17,7 +17,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40 # 20 Nov: the full suite (8,574 tests, 784 files) ran up to the 25-minute cap and was cancelled at it
     steps:
       - name: Harden the runner (audit outbound calls)
         uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
