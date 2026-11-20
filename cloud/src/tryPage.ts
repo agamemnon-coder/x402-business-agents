@@ -61,7 +61,7 @@ export const PROOF_URL = new URL("/proof", RUNS_URL).href;
 /** "Verify this payment yourself" (15 Nov): the site's /verify, which checks the proof file in the visitor's browser. */
 export const VERIFY_URL = new URL("/verify", RUNS_URL).href;
 
-const CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff2)")}
+const CSS = `${TOKENS.replace("url(assets/inter.woff2", "url(/assets/inter.woff2")}
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: 84px; } /* 14 Nov: a focus that scrolls keeps its control clear of the sticky nav */
 body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
@@ -2128,6 +2128,12 @@ const PAGE_HEADERS = {
   "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY",
 };
+/**
+ * /try is one page wherever it is served (the site passes it on; purser-try serves it too) and whatever its query (?v=1,
+ * ?present=1): its canonical address is the site's /try (the owner, 20 Nov: the public pages are indexable).
+ */
+export const TRY_CANONICAL_LINK = `<${SITE_ORIGIN}/try>; rel="canonical"`;
+
 
 /** GET /try: the page under the console's policy, with a fresh nonce. */
 export function tryPageResponse(_req: Request, url: URL, env: CloudEnv): Response {
@@ -2137,5 +2143,5 @@ export function tryPageResponse(_req: Request, url: URL, env: CloudEnv): Respons
   // (and ?tour=1).
   const q = url.searchParams;
   const mode = q.get("present") === "1" ? "present" as const : q.get("v") === "1" || q.get("tour") === "1" ? null : "public" as const;
-  return new Response(tryPage(n, { origin: env.origin, rpId: env.rpId }, mode ? presentExtra(mode) : undefined, mode ? (V2_COPY as unknown as Record<string, Record<string, unknown>>) : undefined), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
+  return new Response(tryPage(n, { origin: env.origin, rpId: env.rpId }, mode ? presentExtra(mode) : undefined, mode ? (V2_COPY as unknown as Record<string, Record<string, unknown>>) : undefined), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n), link: TRY_CANONICAL_LINK } });
 }

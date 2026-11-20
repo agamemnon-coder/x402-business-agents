@@ -175,8 +175,9 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     expect(html).toMatch(new RegExp(`<body>\\n<div class="testband" role="note"><div class="row"><span class="tl">.*${TRY_SIGN_LABEL}</span>`));
     expect(TRY_SIGN_LABEL).toBe("Test world · test passkey · nothing real moves");
     // Links and assets absolute, so they work one level down.
-    expect(html).not.toMatch(/(?:src|href)="(?!\/|#|https?:)/);
-    expect(html).toContain("url(/assets/inter.woff2)");
+    expect(html).not.toMatch(/(?:src|href)="(?!\/|#|https?:|mailto:)/);
+    // The font's address carries its content version since the site audit of 19 Nov (src/ui/assetVersions.ts).
+    expect(html).toMatch(/url\(\/assets\/inter\.woff2\?v=[0-9a-f]{12}\)/);
     // The landing's button, only in this bundle.
     // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
     expect(on.home).toContain('href="/try"');

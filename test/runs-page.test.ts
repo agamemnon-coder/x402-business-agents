@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from "../src/config/brand.js";
 import { altaLabel } from "../src/ui/formerly.js";
 // /runs and /agents/<id> (competitor gap list, 10 Nov): every live run in one list with its ids, checks and records,
 // and one page per Kit 11 agent, every figure read from the records. docs/runs/README.md is the same list, generated.
@@ -167,6 +168,8 @@ describe("/runs", () => {
       expect(hrefs.length).toBeGreaterThan(20);
       for (const href of hrefs) {
         if (href.startsWith("#")) continue;
+        // The footer's pilot and partnership address (the owner, 20 Nov).
+        if (href === `mailto:${CONTACT_EMAIL}`) continue;
         if (/^https:\/\//.test(href)) {
           if (href.startsWith(REPO_BLOB)) expect(existsSync(href.slice(REPO_BLOB.length).replace(/#.*$/, "")), href).toBe(true);
           continue;
@@ -719,7 +722,7 @@ describe("/agents/<id>", () => {
   it("links and assets work one level down", () => {
     for (const id of AGENT_IDS) {
       const html = pages.agents![id]!.page;
-      expect(html).not.toMatch(/(href|src)="(?!https?:|#|\/|data:)/);
+      expect(html).not.toMatch(/(href|src)="(?!https?:|#|\/|data:|mailto:)/);
       expect(html).not.toMatch(/url\(assets\//);
     }
   });

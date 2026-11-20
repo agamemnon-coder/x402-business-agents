@@ -18,6 +18,7 @@ import { CSP, DEMO_CSP, FILM_CSP, LAB_CSP, LIVE_CSP, METAL_CSP, METAL_REPORT_CSP
 import { SYSTEM_HEALTH_CSP } from "../src/dashboard/health.js";
 import { TERMS_SCHEMA, type Terms } from "../src/lib/terms.js";
 import { notFoundResponse, pageResponse, Relay, viewKeyForWeek, type Sql } from "../worker/src/core.js";
+import { isIndexable } from "../src/lib/siteIndex.js";
 import { TRY_MODEL_PER_MINUTE, TRY_PER_DAY, TRY_PER_MINUTE, TryDesk } from "../worker/src/try.js";
 import { trySignNotFound } from "../worker/src/trySign.js";
 import { HEADER_PATHS, headerFaults, type AnswerKind } from "./security-headers.rules.js";
@@ -58,7 +59,8 @@ describe("relay Worker: security headers on every answer", () => {
       expectStrictCsp(res.headers.get("content-security-policy")!, path);
       expect(res.headers.get("cross-origin-opener-policy"), path).toBe("same-origin");
       expect(res.headers.get("permissions-policy"), path).toMatch(/publickey-credentials-get=\(self\).*camera=\(\)/);
-      expect(res.headers.get("x-robots-tag"), path).toBe("noindex, nofollow");
+      // The owner, 20 Nov: the public pages may be indexed (src/lib/siteIndex.ts, test/site-index.test.ts); the rest not.
+      expect(res.headers.get("x-robots-tag"), path).toBe(isIndexable(path) ? null : "noindex, nofollow");
     }
   });
 

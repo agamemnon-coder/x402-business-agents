@@ -93,5 +93,5 @@ export function awxCallsPage(t: Trail = apiTrail()): string {
   const html = page({ title: "Airwallex API calls", description: `Every Airwallex sandbox API call in Purser's recorded runs: ${t.calls} calls, ${transferLine(t)}.`, tab: "airwallex", css: AWX_CALLS_CSS, body: awxCallsBody(t),
     source: `Source: the run records in docs/runs (*airwallex*, airwallex-*.json, 2026-11-07-awx-1/) and docs/demo/airwallex-run.json, read by src/airwallex/apiTrail.ts.` });
   // Served one level down (/airwallex/calls): the page's own relative links and assets made absolute.
-  return html.replace(/(href|src)="(?!https?:|#|\/|data:)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
+  return html.replace(/(href|src)="(?!https?:|#|\/|data:|mailto:)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
 }

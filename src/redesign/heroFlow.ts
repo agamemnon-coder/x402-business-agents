@@ -86,6 +86,14 @@ const AT: Record<string, number> = {
 // Which step label is lit, from-to.
 const LIT: [number, number][] = [[0, 12], [12, 36], [36, 48], [48, 70], [70, 96]];
 const key = (s: string) => s.replace(/[^a-z0-9]/g, "");
+/**
+ * Site audit (19 Nov, docs/evidence/site-quality.md finding 1): axe met the reader chip's words mid-fade, drawn below
+ * 4.5:1 while their opacity rose. Each piece is now revealed by a wipe (clip-path) as it slides in, never by opacity:
+ * whatever part of a word is drawn is drawn in its own colours, so the text meets WCAG AA in every frame. Under
+ * reduced motion nothing animates and the final frame stands (the animations sit in prefers-reduced-motion: no-preference).
+ */
+export const HIDDEN = "inset(0 0 100% 0)";
+export const SHOWN = "inset(0 0 0 0)";
 
 export const HERO_FLOW_CSS = `
 .hf { margin: 0; }
@@ -126,7 +134,7 @@ ${Object.entries(AT).map(([sel]) => `  .hf .${sel} { animation: hf-${key(sel)} $
   .hf .hf-ring-fg { animation: hf-ring ${LOOP}s ease-in-out infinite; }
 ${LIT.map((_, i) => `  .hf .hf-s${i} { animation: hf-lit${i} ${LOOP}s linear infinite; }`).join("\n")}
 }
-${Object.entries(AT).map(([sel, at]) => `@keyframes hf-${key(sel)} { 0%, ${at}% { opacity: 0; transform: translateY(8px); } ${at + 4}%, 94% { opacity: 1; transform: none; } 99%, 100% { opacity: 0; transform: none; } }`).join("\n")}
+${Object.entries(AT).map(([sel, at]) => `@keyframes hf-${key(sel)} { 0%, ${at}% { clip-path: ${HIDDEN}; transform: translateY(8px); } ${at + 4}%, 94% { clip-path: ${SHOWN}; transform: none; } 99%, 100% { clip-path: ${HIDDEN}; transform: none; } }`).join("\n")}
 @keyframes hf-ring { 0%, 50% { stroke-dashoffset: 132; } 60%, 94% { stroke-dashoffset: 0; } 99%, 100% { stroke-dashoffset: 132; } }
 ${LIT.map(([a, b], i) => `@keyframes hf-lit${i} { 0%, ${Math.max(0, a - 0.5)}% { color: var(--faint); border-color: var(--border); } ${a}%, ${b - 0.5}% { color: var(--accent); border-color: var(--accent); } ${b}%, 100% { color: var(--faint); border-color: var(--border); } }`).join("\n")}
 /* Review, 13 Nov: on a phone the card stacks, and its later parts waited invisible for their turn, leaving a large empty

@@ -8,7 +8,7 @@ import { START_LOGOS } from "../cloud/src/try/run.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
-import { AIRWALLEX_LOGO_PATH, BUILT_ON_CSS, LOGO_HEIGHT, builtOnBadge } from "../src/ui/builtOn.js";
+import { AIRWALLEX_LOGO_FILE, AIRWALLEX_LOGO_PATH, AIRWALLEX_LOGO_SRC, BUILT_ON_CSS, LOGO_HEIGHT, builtOnBadge } from "../src/ui/builtOn.js";
 import { HEADER_CSS, header } from "../src/redesign/ui.js";
 import { tryPage } from "../cloud/src/tryPage.js";
 import { consoleCsp, consolePage } from "../cloud/src/console.js";
@@ -23,12 +23,13 @@ const n = "bm9uY2U=";
 const cloudTry = tryPage(n, { origin: "https://x.test", rpId: "x.test" });
 const cloudConsole = consolePage(n, { origin: "https://x.test", rpId: "x.test", mailDomain: "x.test" });
 const badges = (html: string) => [...html.matchAll(/<a class="awx-badge[^"]*"[\s\S]*?<\/a>/g)].map((m) => m[0]);
-const headerOf = (html: string) => /<header class="top">[\s\S]*?<\/header>\n<div class="awx-row">[\s\S]*?<\/div>/.exec(html)?.[0] ?? "";
+// The phone's line is a labelled landmark of its own since the site audit of 19 Nov (axe "region"): an <aside>.
+const headerOf = (html: string) => /<header class="top">[\s\S]*?<\/header>\n<aside class="awx-row" aria-label="Built on Airwallex">[\s\S]*?<\/aside>/.exec(html)?.[0] ?? "";
 
 describe("the Built on Airwallex badge", () => {
   it("is one component: the words, the official logo at a fixed height below Purser's 30 px mark, no endorsement words", () => {
     const b = builtOnBadge({ href: "airwallex" });
-    expect(b).toBe(`<a class="awx-badge" href="airwallex" title="Built on Airwallex"><span class="awx-l">Built on</span><img src="${AIRWALLEX_LOGO_PATH}" alt="Airwallex" width="102" height="14"></a>`);
+    expect(b).toBe(`<a class="awx-badge" href="airwallex" title="Built on Airwallex"><span class="awx-l">Built on</span><img src="${AIRWALLEX_LOGO_SRC}" alt="Airwallex" width="102" height="14"></a>`);
     expect(LOGO_HEIGHT).toBeLessThan(30);
     expect(b).not.toMatch(/partner|endorse|certified|official|approved|powered/i);
     // The same look in light and dark: a white pill (the file is a dark wordmark with no light version), never a filter.
@@ -44,7 +45,7 @@ describe("the Built on Airwallex badge", () => {
       expect({ name, inHeader: badges(h).length }).toEqual({ name, inHeader: 2 });
       for (const b of badges(h)) expect(b).toContain('href="airwallex"');
       expect(h).toMatch(/<span class="nm">Purser<\/span><\/a><a class="awx-badge awx-h"/);
-      expect(h).toContain('<div class="awx-row"><a class="awx-badge awx-m"');
+      expect(h).toContain('<aside class="awx-row" aria-label="Built on Airwallex"><a class="awx-badge awx-m"');
     }
   });
 
@@ -55,7 +56,7 @@ describe("the Built on Airwallex badge", () => {
       for (const b of badges(h)) {
         expect(b).toContain(`href="${SITE_ORIGIN}/airwallex"`);
         // Relative: from the site's address it made /try's load wait on another host (CI timeouts, 17 Nov).
-        expect(b).toContain(`src="${AIRWALLEX_LOGO_PATH}"`);
+        expect(b).toContain(`src="${AIRWALLEX_LOGO_SRC}"`);
       }
     }
     expect(cloudConsole).toMatch(/<p class="foot-awx wrap"><a class="awx-badge" href="https:\/\/kit11\.max-31b\.workers\.dev\/airwallex"/);
@@ -68,10 +69,12 @@ describe("the Built on Airwallex badge", () => {
     // The cloud's pages may load images from the site, for this logo; nothing else in the policy moved.
     expect(consoleCsp("N")).toContain(`img-src 'self' data: blob: ${SITE_ORIGIN};`);
     // The header is the site's own function, so every page draws it alike.
-    expect(header("try", { base: SITE_ORIGIN, here: { try: "/try" } })).toContain(`src="${AIRWALLEX_LOGO_PATH}"`);
+    expect(header("try", { base: SITE_ORIGIN, here: { try: "/try" } })).toContain(`src="${AIRWALLEX_LOGO_SRC}"`);
   });
 
-  it("shows the logo file the site serves, byte for byte (src/ui/logos/airwallex.png, docs/assets/logos/SOURCES.md)", () => {
+  // Site audit, 19 Nov (finding 4): the site serves the official file scaled to 306 x 42 (src/ui/logos/README.md); the
+  // official file stays byte for byte.
+  it("keeps the official file byte for byte (src/ui/logos/airwallex.png, docs/assets/logos/SOURCES.md) and serves its scaled copy", () => {
     const file = readFileSync(new URL("../src/ui/logos/airwallex.png", import.meta.url));
     const sources = readFileSync(new URL("../docs/assets/logos/SOURCES.md", import.meta.url), "utf8");
     expect(sources).toContain("`58f3984f584548271144122c7d139e9a6a8a1ad37d683263e74104ac65cd390e`");
@@ -79,6 +82,7 @@ describe("the Built on Airwallex badge", () => {
     const res = pageResponse(new Request(`https://x.test${AIRWALLEX_LOGO_PATH}`), pages as Pages);
     expect(res?.status).toBe(200);
     expect(res?.headers.get("content-type")).toBe("image/png");
+    expect(Buffer.from(Buffer.from(pages.images["logo-airwallex.png"]!.data, "base64")).equals(readFileSync(AIRWALLEX_LOGO_FILE))).toBe(true);
   });
 
   it("leaves the others on the \"Works with\" line: Airwallex is the platform", () => {

@@ -36,3 +36,16 @@ shown.
 
 No fill in the file (the site colours it with CSS): it draws black, on the neutral light tile. Details:
 docs/evidence/logo-permissions.md.
+
+## Airwallex, scaled copy, 20 November 2026
+
+The site audit of 19 Nov (docs/evidence/site-quality.md, finding 4) found the 2435 × 334 wordmark (36,172 bytes) shown
+at 102 × 14 px. The pages are now served a copy of the same artwork scaled to 3× that size; `airwallex.png` itself stays
+here byte for byte. Resized only: not redrawn, not recoloured, not cropped, proportions kept.
+
+| File | Made from | How | SHA-256 |
+|---|---|---|---|
+| airwallex-306x42.png | airwallex.png (`58f3984f…cd390e`) | ImageMagick 6.9.12: `convert airwallex.png -filter Lanczos -resize 306x42 -strip airwallex-306x42.png` (8,956 bytes, RGBA) | `8ff76b83dde9eeb49ef9e1602fa1547f21775233eccceda43541562355432817` |
+
+Served as `/assets/logo-airwallex.png` (src/servers/dashboard.ts LOGOS) and, as a data URL, in Purser Cloud
+(`npm run cloud:logos` writes cloud/src/awxLogo.gen.ts from it).
