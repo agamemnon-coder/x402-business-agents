@@ -233,6 +233,13 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
     auditAdopted(db, t, made, sha);
     return made;
   }
+  // A later run's resend (a re-run or a resume, nothing found under the request_id): money leaves now, so the EUR floor
+  // is checked again on a fresh balance first, as a supplier payment's re-run does; the precondition skipped it because
+  // the payout step had begun (outside audit 2.4, 20 November). Refused, the row stays SUBMITTING, its euros under way.
+  if (existing) {
+    const why = await floorReason(db, rail, t);
+    if (why) throw new Error(why);
+  }
   if (!existing) {
     // Written before the call: the partial unique index allows one live payout per invoice. Its hold goes in the same
     // transaction, under the payout lock: from now on the SUBMITTING row counts it.

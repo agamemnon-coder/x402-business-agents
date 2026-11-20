@@ -512,6 +512,9 @@ describe("contract: SWIFT payout errors through the invoice payment", () => {
     }
     expect(awx.transfers).toHaveLength(1); // Airwallex made it; the ledger has only its SUBMITTING row
     awx.listLag = 1; // the look-up misses it
+    // Since 20 November a re-run's resend checks the EUR floor on a fresh balance first (test/execution-floors.test.ts);
+    // the balance already has the hidden transfer taken out, so EUR is topped up for the resend to reach Airwallex here.
+    awx.bal.EUR.availableCents += 1_000_000;
     awx.fail.createTransfer = awxError(400, "balance_insufficient", "/transfers/create"); // and the resend is refused
     await expect(executeInvoicePayment(db, awx, awx, out.proposal.proposal_id)).rejects.toMatchObject({ code: "balance_insufficient" });
     expect(awx.transfers).toHaveLength(1);

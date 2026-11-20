@@ -6,6 +6,8 @@
 // (test/try-fx.test.ts also reads this file for any other Airwallex path). No transfer, no conversion, no payment.
 // The key and the bearer token stay in this module: never in an answer, an error message or a log line. The token is
 // kept in memory until shortly before it expires.
+// The login carries the pinned x-api-version (src/airwallex/apiVersion.ts); the quote, an FX call, carries none (kit, K8-api).
+import { apiVersionHeader } from "../../src/airwallex/apiVersion.js";
 
 /**
  * The sandbox host: Airwallex's test environment, the one host the repo's adapter uses (src/airwallex/client.ts,
@@ -90,7 +92,7 @@ export class SandboxQuotes implements FxSource {
     const url = allowedUrl(method, `https://${AWX_SANDBOX_HOST}${path}`);
     let res: Response;
     try {
-      res = await this.fetchImpl(url.toString(), { method, headers: { ...headers, "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(this.timeoutMs) });
+      res = await this.fetchImpl(url.toString(), { method, headers: { ...headers, "content-type": "application/json", ...apiVersionHeader(path) }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(this.timeoutMs) });
     } catch {
       throw new QuoteUnavailable("the Airwallex sandbox did not answer");
     }

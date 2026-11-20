@@ -18,6 +18,7 @@
 // AWX_PAYOUT_MAX_CENTS, EUR only, and never more than the sandbox's available EUR balance. The same signed terms asked
 // again answer the stored transfer: never a second one.
 import type { Sql } from "./core.js";
+import { apiVersionHeader } from "../../src/airwallex/apiVersion.js";
 
 export const AWX_PAYOUT_HOST = "api.sandbox.airwallex.com";
 /** Every call this module may make, method and path (a transfer id is one path segment of letters, digits and hyphens). */
@@ -91,7 +92,7 @@ export class SandboxPayouts implements PayoutRail {
     const url = payoutUrl(method, `https://${AWX_PAYOUT_HOST}${path}`);
     let res: Response;
     try {
-      res = await this.fetchImpl(url.toString(), { method, headers: { ...headers, "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(TIMEOUT_MS) });
+      res = await this.fetchImpl(url.toString(), { method, headers: { ...headers, "content-type": "application/json", ...apiVersionHeader(path) }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(TIMEOUT_MS) });
     } catch {
       throw new PayoutFailed(method === "POST" && path.endsWith("/transfers/create") ? "ambiguous" : "unavailable", "the Airwallex sandbox did not answer");
     }

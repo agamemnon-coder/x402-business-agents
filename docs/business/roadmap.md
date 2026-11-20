@@ -11,7 +11,7 @@ Back to the [business case index](README.md).
 | When | What | Where it stands today |
 |---|---|---|
 | Next | **Test the demand hypothesis** with finance teams before building more | Not started |
-| Next | **Production Airwallex:** a production account, a scoped key with an IP allowlist, the API version pinned | Sandbox only; scoped key not recorded, no IP allowlist, API version not pinned ([controls.md](../controls.md#not-in-place-summary)) |
+| Next | **Production Airwallex:** a production account, a scoped key with an IP allowlist, the API version pinned | Sandbox only; scoped key not recorded, no IP allowlist, API version pinned on 20 November but not yet re-run live ([controls.md](../controls.md#not-in-place-summary)) |
 | Next | **A real second human approver** for four eyes, with their own passkey | Four eyes is built; in the demo the second approver is a labelled test passkey, and four eyes is off on the business account ([cfo-policy.md](../cfo-policy.md#four-eyes-two-people-above-a-threshold)) |
 | Next | **ERP and accounting integration:** post each approved payment, with its approval hash, to the customer's books | A GL export exists ([airwallex.md](../airwallex.md)); the main run's books (95 journal entries) are posted to T:0's shared sandbox and match ([run log](../runs/2026-11-10-t0-journal-sandbox.md)) |
 | Later | **Visa Intelligent Commerce in production** | Run in test on 7 November: Visa Intelligent Commerce via Airwallex's Airi, sandbox and test card, 5 of 5 checks ([docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md)). Production needs access from Visa and Airwallex ([plans/visa-tap-vic.md](../plans/visa-tap-vic.md)) |

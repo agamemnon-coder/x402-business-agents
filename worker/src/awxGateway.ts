@@ -7,6 +7,7 @@
 // Two locks on this side: without the key nothing is called, and anything but a read needs AWX_GATEWAY_WRITE=on (a
 // plain var, off by default). Purser Cloud has its own switch and caps in front of this one (cloud/src/engine/awxAct.ts).
 import { GATEWAY_SANDBOX_BASE, gatewayCheck, type GatewayAnswer, type GatewayRequest } from "../../src/airwallex/gatewayRules.js";
+import { apiVersionHeader } from "../../src/airwallex/apiVersion.js";
 
 export interface GatewayEnv {
   /**
@@ -49,7 +50,7 @@ export class AwxGatewayDesk {
     if (this.token && this.token.until - TOKEN_EARLY_MS > this.now()) return this.token.value;
     this.token = null;
     const res = await this.fetchImpl(`${GATEWAY_SANDBOX_BASE}/authentication/login`, {
-      method: "POST", headers: { "x-client-id": k.id, "x-api-key": k.key, "content-type": "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS),
+      method: "POST", headers: { "x-client-id": k.id, "x-api-key": k.key, "content-type": "application/json", ...apiVersionHeader("/authentication/login") }, signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const j = (await res.json().catch(() => null)) as { token?: unknown } | null;
     if (!res.ok || typeof j?.token !== "string") return null;
@@ -73,7 +74,7 @@ export class AwxGatewayDesk {
       let res: Response;
       try {
         res = await this.fetchImpl(url.toString(), {
-          method: r.method, headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          method: r.method, headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...apiVersionHeader(r.path) },
           body: r.body === undefined ? undefined : JSON.stringify(r.body), signal: AbortSignal.timeout(TIMEOUT_MS),
         });
       } catch {
