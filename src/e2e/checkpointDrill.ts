@@ -45,7 +45,7 @@ export interface DrillStep { id: string; what: string; pass: boolean; detail: st
 export interface Timing { n: number; median_ms: number; max_ms: number }
 export interface CheckpointDrillResult {
   started_at: string; ended_at: string;
-  key: { key_id: string };
+  signer: { id: string };
   ledger: { rows: number; money_rows: number; checkpoints: number; intents: number; ledger_bytes: number; checkpoint_file_bytes: number };
   timings: { check_before_payment: Timing; checkpoint_write: Timing; reserve_spend: Timing };
   steps: DrillStep[];
@@ -67,12 +67,12 @@ function verifyAudit(env: Record<string, string>): { status: number | null; out:
   return { status: r.status, out: `${r.stdout}${r.stderr}`.trim() };
 }
 
-function keygen(out: string): { key_id: string } {
+function keygen(out: string): { id: string } {
   const r = spawnSync(process.execPath, ["--import", "tsx", resolve(repo, "src/cli/verifyAudit.ts"), "keygen", "--out", out], { encoding: "utf8", cwd: repo, timeout: 120_000 });
   const pub = /^public +(\S+)$/m.exec(r.stdout)?.[1];
   const id = /^key id +(\S+)$/m.exec(r.stdout)?.[1];
   if (r.status !== 0 || !pub || !id) throw new Error(`keygen failed (exit ${r.status})`);
-  return { key_id: id };
+  return { id };
 }
 
 const money = (db: DB) => (db.prepare("SELECT event FROM audit_log").all() as { event: string }[]).filter((r) => MONEY_EVENTS.has(r.event)).length;
@@ -95,7 +95,7 @@ export async function runCheckpointDrill(o: { log?: (l: string) => void; keep?: 
     const keyFile = join(dir, "audit-checkpoint.pem");
     const key = keygen(keyFile);
     const mode = statSync(keyFile).mode & 0o777;
-    step("key.made", "an Ed25519 key made by npm run verify-audit -- keygen, outside the repository", mode === 0o600, `key id ${key.key_id}, file mode ${mode.toString(8)}`);
+    step("key.made", "an Ed25519 key made by npm run verify-audit -- keygen, outside the repository", mode === 0o600, `key id ${key.id}, file mode ${mode.toString(8)}`);
     for (const k of Object.values(CHECKPOINT_ENV)) delete process.env[k];
     const ledgerFile = join(dir, "ledger.sqlite");
     const cpFile = join(dir, "ledger.checkpoints.jsonl");
@@ -220,7 +220,7 @@ export async function runCheckpointDrill(o: { log?: (l: string) => void; keep?: 
       step(`attack.${a.id}.verify_audit`, `${a.what}: npm run verify-audit`, v.status === 1 && findings.length > 0, `exit ${v.status}; ${findings.join(", ") || "no finding"}`);
     }
     const ended = new Date();
-    return { started_at: started.toISOString(), ended_at: ended.toISOString(), key, ledger, timings: { check_before_payment: timing(checks), checkpoint_write: timing(writes), reserve_spend: timing(spends) }, steps };
+    return { started_at: started.toISOString(), ended_at: ended.toISOString(), signer: key, ledger, timings: { check_before_payment: timing(checks), checkpoint_write: timing(writes), reserve_spend: timing(spends) }, steps };
   } finally {
     for (const [k, v] of Object.entries(saved)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
     resetCheckpointMemory();
@@ -252,7 +252,7 @@ export function renderCheckpointDrill(rec: CheckpointDrillRecord): string {
     "",
     "## In short",
     "",
-    `- The runner's ledger: ${rec.ledger.rows} audit rows (${rec.ledger.money_rows} money rows), ${rec.ledger.checkpoints} signed checkpoints and ${rec.ledger.intents} signed intents, key id \`${rec.key.key_id}\`.`,
+    `- The runner's ledger: ${rec.ledger.rows} audit rows (${rec.ledger.money_rows} money rows), ${rec.ledger.checkpoints} signed checkpoints and ${rec.ledger.intents} signed intents, key id \`${rec.signer.id}\`.`,
     `- The check before a payment (the ledger against its latest checkpoint): ${ms(rec.timings.check_before_payment)}.`,
     `- A checkpoint written (checked, signed, appended with fsync): ${ms(rec.timings.checkpoint_write)}.`,
     `- An agent's whole spend reservation with the gate on (reserveSpend: the check, the hold and its audit row): ${ms(rec.timings.reserve_spend)}.`,
