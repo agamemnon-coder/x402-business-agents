@@ -11,8 +11,8 @@ import { committedWall, type EvidenceWall, type WallTile } from "./evidenceWall.
 import { esc } from "./ui.js";
 
 export const MAP_ID = "evidence-map";
-// It names Alta as "Alta (formerly Metal)": the page's first mention in text (src/ui/formerly.ts).
-export const MAP_CAPTION = "How a payment is checked, each step with its evidence, on Airwallex, Alta (formerly Metal) and Visa via Airi. Tap a step for its figures. Test money; sandbox PAID is simulated.";
+// It names Alta plainly: formerlyMetal (src/ui/formerly.ts) writes "(formerly Metal)" at the page's first mention, wherever that falls.
+export const MAP_CAPTION = "How a payment is checked, each step with its evidence, on Airwallex, Alta and Visa via Airi. Tap a step for its figures. Test money; sandbox PAID is simulated.";
 
 type Tone = "" | "awx" | "metal" | "visa" | "claude" | "ok";
 /** One step of the path: its words, the wall group it links to, its badge (null when a figure is missing). */

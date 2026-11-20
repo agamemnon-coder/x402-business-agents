@@ -36,7 +36,7 @@ export const QUESTIONS: readonly Question[] = [
     answer: "Yes, in their sandboxes and on Alta's testnet, with test money: each figure has its day and its record. A sandbox PAID is the sandbox's simulation.",
     blocks: [
       { id: "pl-airwallex", title: "Airwallex", keys: ["soak-paid", "soak-fx", "try-transfers", "spend-bills", "approval-hash", "two-locks", "awx-statement", "late-failure", "awx-endpoints"] },
-      { id: "pl-alta", title: "Alta (formerly Metal)", keys: ["alta-payments", "alta-series-paid", "alta-merkle", "clearing-load"] },
+      { id: "pl-alta", title: "Alta", keys: ["alta-payments", "alta-series-paid", "alta-merkle", "clearing-load"] },
       { id: "pl-visa", title: "Visa via Airwallex's Airi", keys: ["visa-airi"] },
       { id: "pl-t0", title: "T:0", keys: ["t0-readback"] },
     ],
