@@ -1,7 +1,7 @@
 // T:0 at every payment (src/accounting/t0Payments.ts): one T:0 entry per settled payment, booked once, with its GL
 // account, cost centre, agent and terms hash; then T:0 and the rail read back and set against each other. Every call
 // goes to the in-memory T:0 (src/redteam/t0.ts); no network.
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { T0Client, t0AccountType } from "../src/accounting/t0.js";
 import { bookPayment, bookSettledPayments, bookedPayments, paymentContext, paymentEntry, paymentProblem, reconcileBookings, type RailReading, type SettledPayment } from "../src/accounting/t0Payments.js";
 import { t0SinkOnce } from "../src/accounting/t0Sink.js";
@@ -126,5 +126,15 @@ describe("the runner's hook (T0_PAYMENTS=on)", () => {
     expect(r).toEqual({ ran: true, ok: true, posted: 2, skipped: 0, mode: "payments" });
     expect(fake.entries.every((e) => e.je_number.startsWith("PURPAY-"))).toBe(true);
     expect(lines.join("\n")).toContain("payment tx-card-1 booked in T:0 at once: je_1");
+  });
+});
+
+describe("bookedPayments' order", () => {
+  it("keeps the order payments were booked in when two land in the same millisecond", async () => {
+    vi.useFakeTimers({ now: new Date("2026-11-21T10:00:00.000Z"), toFake: ["Date"] });
+    try {
+      await bookSettledPayments(db, client, rate, { payments: [card(), alta()] });
+      expect(bookedPayments(db).map((b) => b.payment_id)).toEqual(["tx-card-1", "tx-alta-1"]);
+    } finally { vi.useRealTimers(); }
   });
 });

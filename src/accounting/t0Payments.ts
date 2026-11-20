@@ -192,7 +192,8 @@ const TABLE = "CREATE TABLE IF NOT EXISTS t0_payment_bookings (payment_id TEXT P
 
 export function bookedPayments(db: DB): T0Booking[] {
   db.exec(TABLE);
-  return (db.prepare("SELECT booking_json FROM t0_payment_bookings ORDER BY booked_at, payment_id").all() as { booking_json: string }[]).map((r) => JSON.parse(r.booking_json) as T0Booking);
+  // In the order booked: by time, then by insertion (two bookings in the same millisecond keep the order they were made in).
+  return (db.prepare("SELECT booking_json FROM t0_payment_bookings ORDER BY booked_at, rowid").all() as { booking_json: string }[]).map((r) => JSON.parse(r.booking_json) as T0Booking);
 }
 
 function bookedOne(db: DB, paymentId: string): T0Booking | null {
