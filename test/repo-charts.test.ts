@@ -63,8 +63,9 @@ describe("the changelog", () => {
 
   it("gives the release notes the same counts, total and per group", () => {
     const md = readFileSync(join(ROOT, "CHANGELOG.md"), "utf8");
-    const notes = readFileSync(join(ROOT, "docs/releases/v1.3.0.md"), "utf8"); // the latest release notes, against the changelog since the tag before
-    expect(notes).toContain(`${/, (\d+) in all/.exec(md)![1]} pull requests merged into main`);
+    const notes = readFileSync(join(ROOT, "docs/releases/v1.3.2.md"), "utf8"); // the latest release notes, against the changelog since the tag before
+    const total = /, (\d+) in all/.exec(md)![1]!;
+    expect(notes).toContain(`${total} pull request${total === "1" ? "" : "s"} merged into main`);
     for (const [, group, body] of md.matchAll(/^## (.+)\n\n([\s\S]*?)(?=\n## |$(?![\s\S]))/gm)) {
       const n = (body!.match(/^- /gm) ?? []).length;
       expect({ group, line: new RegExp(`^- ${group!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: ${n}\\b`, "m").test(notes) }).toEqual({ group, line: true });
