@@ -1,5 +1,8 @@
 // A company connects accounts it already has to Purser by OAuth (docs/real-customers.md): its existing Airwallex account
-// ("Connect your Airwallex account") and its Moneybird administration (its books). Purser Cloud runs the authorization
+// ("Connect your Airwallex account") and its Moneybird administration (its books); and, self-service per company (20 Nov,
+// docs/integrations/owner-setup.md), its Xero organisation, its QuickBooks Online company and its Exact Online
+// administration. Purser registers one OAuth app at each provider, once; each company's owner then connects the
+// company's own account with one click and can disconnect and connect again. Purser Cloud runs the authorization
 // code flow (state, and PKCE where the provider documents it), exchanges the code server side, keeps the tokens sealed
 // per company (cloud/src/sealed.ts), refreshes them one at a time, and hands only a short-lived access token to the
 // company's own runner, which then makes every call for that company with that token. Disconnecting removes the tokens
@@ -9,7 +12,8 @@
 // per provider the owner registered); no token is ever logged, returned to a person, exported or restored.
 
 import { ACCOUNT_ID } from "../../src/airwallex/platform.js";
-import { authorizeUrl, exchangeCode, newPkce, OAUTH_PROVIDERS, OAuthRefused, randomState, refreshTokens, revokeToken, type OAuthClient, type OAuthProviderName, type TokenSet } from "../../src/lib/oauth.js";
+import { xeroTenantOf } from "./books/xero.js";
+import { authorizeUrl, BOOKS_PROVIDERS, exchangeCode, newPkce, OAUTH_PROVIDERS, OAuthRefused, randomState, refreshTokens, revokeToken, type OAuthClient, type OAuthProviderName, type TokenSet } from "../../src/lib/oauth.js";
 import { sha256Hex } from "./crypto.js";
 import { logEvent } from "./log.js";
 import { aadOf, seal, SealError, sealKey, unseal as unsealRaw } from "./sealed.js";
@@ -75,12 +79,21 @@ async function unseal(key: CryptoKey, sealed: string, aad: string): Promise<stri
   }
 }
 
+/**
+ * Where a provider's connection is kept: the accounting systems (Xero, QuickBooks Online, Exact Online) in
+ * books_connections, Airwallex and Moneybird in oauth_connections (whose provider check names only those two). Both
+ * tables have the same columns; the name is one of these two constants, never anything a request sent.
+ */
+const tableOf = (provider: OAuthProviderName): "books_connections" | "oauth_connections" => ((BOOKS_PROVIDERS as readonly string[]).includes(provider) ? "books_connections" : "oauth_connections");
+/** Every provider a company may connect, in the order Settings shows them. */
+export const CONNECT_PROVIDERS: OAuthProviderName[] = ["airwallex", "moneybird", "xero", "quickbooks", "exact"];
+
 const rowOf = (sql: Sql, tenantId: string, provider: OAuthProviderName) =>
-  sql.first<Row>("SELECT * FROM oauth_connections WHERE tenant_id = ? AND provider = ?", [tenantId, provider]);
+  sql.first<Row>(`SELECT * FROM ${tableOf(provider)} WHERE tenant_id = ? AND provider = ?`, [tenantId, provider]);
 
 export async function connections(sql: Sql, tenantId: string, env: ConnectEnv | undefined): Promise<{ switched_on: boolean; connections: ConnectionView[] }> {
   const out: ConnectionView[] = [];
-  for (const provider of ["airwallex", "moneybird"] as const) {
+  for (const provider of CONNECT_PROVIDERS) {
     const r = env ? await rowOf(sql, tenantId, provider) : null;
     out.push({
       provider, offered: Boolean(env?.clients[provider]), status: r ? r.status : "not_connected", account: r?.account_ref ?? null, scope: r?.scope || null,
@@ -115,7 +128,7 @@ export async function startConnect(sql: Sql, tenantId: string, userId: string, p
  * and is spent before anything else (a second use finds nothing). The code is exchanged server side; the tokens are
  * sealed for this company. An Airwallex account already connected to another company is refused.
  */
-export async function finishConnect(sql: Sql, tenantId: string, userId: string, provider: OAuthProviderName, env: ConnectEnv, a: { code: string; state: string }, now: Date): Promise<ConnectionView> {
+export async function finishConnect(sql: Sql, tenantId: string, userId: string, provider: OAuthProviderName, env: ConnectEnv, a: { code: string; state: string; realmId?: string }, now: Date): Promise<ConnectionView> {
   const client = clientOf(env, provider);
   const p = OAUTH_PROVIDERS[provider];
   const key = await sealKey(env.tokenKey);
@@ -143,11 +156,21 @@ export async function finishConnect(sql: Sql, tenantId: string, userId: string, 
     const opened = await sql.first<{ tenant_id: string }>("SELECT tenant_id FROM awx_accounts WHERE account_id = ? AND tenant_id <> ?", [account, tenantId]);
     if (opened) throw new ConnectRefused(409, "this Airwallex account belongs to another company in Purser; nothing is stored");
   }
+  // Xero: the organisation this consent connected (GET api.xero.com/connections). QuickBooks: the company (realmId) the
+  // redirect named. Every later call for this company goes to that organisation only.
+  if (provider === "xero") {
+    account = await xeroTenantOf(env.fetch, t.accessToken);
+    if (!account) throw new ConnectRefused(502, "Xero did not say which organisation was connected; nothing is stored");
+  }
+  if (provider === "quickbooks") {
+    if (!a.realmId || !/^\d{1,20}$/.test(a.realmId)) throw new ConnectRefused(400, "QuickBooks did not say which company was connected (realmId); nothing is stored");
+    account = a.realmId;
+  }
   const iso = now.toISOString();
   const access = await seal(key, t.accessToken, aadOf(tenantId, provider, "access"));
   const refresh = t.refreshToken ? await seal(key, t.refreshToken, aadOf(tenantId, provider, "refresh")) : null;
   try {
-    await sql.run(`INSERT INTO oauth_connections (tenant_id, provider, status, account_ref, scope, access_sealed, access_expires_at, refresh_sealed, refresh_expires_at, refreshing_until, connected_by, connected_at, updated_at, ended_reason)
+    await sql.run(`INSERT INTO ${tableOf(provider)} (tenant_id, provider, status, account_ref, scope, access_sealed, access_expires_at, refresh_sealed, refresh_expires_at, refreshing_until, connected_by, connected_at, updated_at, ended_reason)
       VALUES (?, ?, 'connected', ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, NULL)
       ON CONFLICT (tenant_id, provider) DO UPDATE SET status = 'connected', account_ref = excluded.account_ref, scope = excluded.scope, access_sealed = excluded.access_sealed,
         access_expires_at = excluded.access_expires_at, refresh_sealed = excluded.refresh_sealed, refresh_expires_at = excluded.refresh_expires_at, refreshing_until = 0,
@@ -162,7 +185,7 @@ export async function finishConnect(sql: Sql, tenantId: string, userId: string, 
 }
 
 async function endConnection(sql: Sql, tenantId: string, provider: OAuthProviderName, reason: "owner" | "refused" | "provider", now: Date): Promise<void> {
-  await sql.run("UPDATE oauth_connections SET status = 'disconnected', access_sealed = NULL, access_expires_at = NULL, refresh_sealed = NULL, refresh_expires_at = NULL, refreshing_until = 0, updated_at = ?, ended_reason = ? WHERE tenant_id = ? AND provider = ?",
+  await sql.run(`UPDATE ${tableOf(provider)} SET status = 'disconnected', access_sealed = NULL, access_expires_at = NULL, refresh_sealed = NULL, refresh_expires_at = NULL, refreshing_until = 0, updated_at = ?, ended_reason = ? WHERE tenant_id = ? AND provider = ?`,
     [now.toISOString(), reason, tenantId, provider]);
 }
 
@@ -178,17 +201,17 @@ export async function accessToken(sql: Sql, tenantId: string, provider: OAuthPro
   const key = await sealKey(env.tokenKey);
   const r = await rowOf(sql, tenantId, provider);
   if (!r || r.status !== "connected" || !r.access_sealed) throw new ConnectRefused(404, `${provider} is not connected for this company; an owner connects it in Settings`);
-  if (r.access_expires_at === null || r.access_expires_at - now.getTime() > FRESH_MS) {
+  if (r.access_expires_at === null || r.access_expires_at - now.getTime() > (OAUTH_PROVIDERS[provider].freshMs ?? FRESH_MS)) {
     return { access_token: await unseal(key, r.access_sealed, aadOf(tenantId, provider, "access")), expires_at: r.access_expires_at ? new Date(r.access_expires_at).toISOString() : null, account: r.account_ref };
   }
   if (!r.refresh_sealed) throw new ConnectRefused(409, `the ${provider} access token ran out and there is no refresh token; an owner connects it again`);
   // The lock is this request's own value: only the request holding it may write the refreshed pair or release it, so a
   // refresh that outlived its lock (or a disconnect and reconnect meanwhile) can never write over newer tokens.
   const mine = now.getTime() + REFRESH_LOCK_MS;
-  const lock = await sql.run("UPDATE oauth_connections SET refreshing_until = ? WHERE tenant_id = ? AND provider = ? AND status = 'connected' AND refreshing_until < ? AND updated_at = ?",
+  const lock = await sql.run(`UPDATE ${tableOf(provider)} SET refreshing_until = ? WHERE tenant_id = ? AND provider = ? AND status = 'connected' AND refreshing_until < ? AND updated_at = ?`,
     [mine, tenantId, provider, now.getTime(), r.updated_at]);
   if (lock.changes !== 1) throw new ConnectRefused(409, "another request is refreshing this company's token right now; try again in a few seconds");
-  const release = () => sql.run("UPDATE oauth_connections SET refreshing_until = 0 WHERE tenant_id = ? AND provider = ? AND refreshing_until = ?", [tenantId, provider, mine]);
+  const release = () => sql.run(`UPDATE ${tableOf(provider)} SET refreshing_until = 0 WHERE tenant_id = ? AND provider = ? AND refreshing_until = ?`, [tenantId, provider, mine]);
   let t: TokenSet;
   try {
     const refresh = await unseal(key, r.refresh_sealed, aadOf(tenantId, provider, "refresh"));
@@ -217,7 +240,7 @@ export async function accessToken(sql: Sql, tenantId: string, provider: OAuthPro
     throw new ConnectRefused(409, "Airwallex answered the refresh for another account than the one connected; the connection is ended, connect again");
   }
   const iso = now.toISOString();
-  const saved = await sql.run("UPDATE oauth_connections SET access_sealed = ?, access_expires_at = ?, refresh_sealed = ?, refresh_expires_at = ?, scope = ?, refreshing_until = 0, updated_at = ? WHERE tenant_id = ? AND provider = ? AND status = 'connected' AND refreshing_until = ?",
+  const saved = await sql.run(`UPDATE ${tableOf(provider)} SET access_sealed = ?, access_expires_at = ?, refresh_sealed = ?, refresh_expires_at = ?, scope = ?, refreshing_until = 0, updated_at = ? WHERE tenant_id = ? AND provider = ? AND status = 'connected' AND refreshing_until = ?`,
     [await seal(key, t.accessToken, aadOf(tenantId, provider, "access")), t.expiresIn ? now.getTime() + t.expiresIn * 1000 : null,
       t.refreshToken ? await seal(key, t.refreshToken, aadOf(tenantId, provider, "refresh")) : r.refresh_sealed,
       t.refreshExpiresIn ? now.getTime() + t.refreshExpiresIn * 1000 : r.refresh_expires_at, t.scope || r.scope, iso, tenantId, provider, mine]);
@@ -252,9 +275,12 @@ export async function disconnect(sql: Sql, tenantId: string, provider: OAuthProv
   }
   await endConnection(sql, tenantId, provider, "owner", now);
   logEvent("info", "oauth_disconnected", { tenant: tenantId, provider, revoked }, now);
+  const names: Record<OAuthProviderName, string> = { airwallex: "Airwallex", moneybird: "Moneybird", xero: "Xero", quickbooks: "QuickBooks", exact: "Exact Online" };
   const note = provider === "airwallex"
     ? "Purser no longer holds a token for this account. Also remove Purser under connected apps in Airwallex's own settings: Airwallex documents no way for an app to end the connection itself."
-    : revoked ? null : "Purser no longer holds a token, but Moneybird did not confirm the revocation; you can also remove Purser in Moneybird's settings.";
+    : provider === "exact"
+      ? "Purser no longer holds a token. Exact Online documents no revocation for apps: also remove Purser under the app centre's authorised apps in Exact Online."
+      : revoked ? null : `Purser no longer holds a token, but ${names[provider]} did not confirm the revocation; you can also remove Purser in ${names[provider]}'s settings.`;
   return { disconnected: true, revoked_at_provider: revoked, note };
 }
 

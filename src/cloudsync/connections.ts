@@ -18,6 +18,8 @@ type Env = Record<string, string | undefined>;
 
 export const airwallexOAuthOn = (env: Env = process.env) => env.AIRWALLEX_OAUTH === "on";
 export const moneybirdOAuthOn = (env: Env = process.env) => env.ERP_MONEYBIRD_OAUTH === "on";
+/** ERP_EXACT_OAUTH=on: the Exact Online connector uses the token the company's owner connected in Purser Cloud. */
+export const exactOAuthOn = (env: Env = process.env) => env.ERP_EXACT_OAUTH === "on";
 
 /** A refused token request: the cloud's sentence (it never holds a token) and its status. */
 export class ConnectionUnavailable extends Error {

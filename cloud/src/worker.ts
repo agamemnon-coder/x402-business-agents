@@ -72,6 +72,13 @@ export interface Bindings {
   AIRWALLEX_PARTNER_WEBHOOK_SECRET?: string;
   MONEYBIRD_OAUTH_CLIENT_ID?: string;
   MONEYBIRD_OAUTH_CLIENT_SECRET?: string;
+  /** The accounting systems each company connects itself (Settings, "Connect Xero" and so on): the app the platform registered once at each. */
+  XERO_OAUTH_CLIENT_ID?: string;
+  XERO_OAUTH_CLIENT_SECRET?: string;
+  QUICKBOOKS_OAUTH_CLIENT_ID?: string;
+  QUICKBOOKS_OAUTH_CLIENT_SECRET?: string;
+  EXACT_OAUTH_CLIENT_ID?: string;
+  EXACT_OAUTH_CLIENT_SECRET?: string;
   /**
    * Approval alerts (cloud/src/alerts.ts). WhatsApp through Twilio: the account SID and auth token (secrets) and the
    * WhatsApp sender (the sandbox's number in a demo). E-mail through Resend: its API key (a secret) and the From address.
@@ -123,7 +130,10 @@ export function connectOf(b: Bindings): ConnectEnv | undefined {
   const client = (provider: string, id?: string, secret?: string) => (id && secret ? { clientId: id, clientSecret: secret, redirectUri: `${b.ORIGIN.replace(/\/$/, "")}/v1/connect/${provider}/callback` } : undefined);
   const airwallex = client("airwallex", b.AIRWALLEX_OAUTH_CLIENT_ID, b.AIRWALLEX_OAUTH_CLIENT_SECRET);
   const moneybird = client("moneybird", b.MONEYBIRD_OAUTH_CLIENT_ID, b.MONEYBIRD_OAUTH_CLIENT_SECRET);
-  return { tokenKey: b.OAUTH_TOKEN_KEY, fetch: (i, init) => fetch(i, init), clients: { ...(airwallex ? { airwallex } : {}), ...(moneybird ? { moneybird } : {}) },
+  const xero = client("xero", b.XERO_OAUTH_CLIENT_ID, b.XERO_OAUTH_CLIENT_SECRET);
+  const quickbooks = client("quickbooks", b.QUICKBOOKS_OAUTH_CLIENT_ID, b.QUICKBOOKS_OAUTH_CLIENT_SECRET);
+  const exact = client("exact", b.EXACT_OAUTH_CLIENT_ID, b.EXACT_OAUTH_CLIENT_SECRET);
+  return { tokenKey: b.OAUTH_TOKEN_KEY, fetch: (i, init) => fetch(i, init), clients: { ...(airwallex ? { airwallex } : {}), ...(moneybird ? { moneybird } : {}), ...(xero ? { xero } : {}), ...(quickbooks ? { quickbooks } : {}), ...(exact ? { exact } : {}) },
     ...(b.AIRWALLEX_PARTNER_WEBHOOK_SECRET ? { airwallexWebhookSecret: b.AIRWALLEX_PARTNER_WEBHOOK_SECRET } : {}) };
 }
 

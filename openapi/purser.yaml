@@ -1003,6 +1003,29 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/connect/xero/bills":
+    post:
+      operationId: postV1ConnectXeroBills
+      tags:
+        - Company
+      summary: "Send the company's supplier invoices that its connected Xero organisation does not hold yet to Xero as DRAFT bills (a signed-in owner): { from?, to? } (issue days). Each invoice goes once; at most 25 a push. Purser never authorises, pays or marks a bill paid in Xero: a person approves each draft there. Answers { pushed, already, failed, remaining }."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/connect/airwallex/webhook":
     post:
       operationId: postV1ConnectAirwallexWebhook
@@ -1087,6 +1110,29 @@ paths:
         - bearer:
             - read
       x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/connections/mine":
+    get:
+      operationId: getV1ConnectionsMine
+      tags:
+        - Company
+      summary: "Your connections: every way this company is connected (API keys, MCP, the signed webhook, Slack, Teams, approval alerts, the e-mail inbox, Airwallex, Moneybird, Xero, QuickBooks Online, Exact Online, and the signed-in person's Google, Microsoft and Apple sign-in), each connected, not_connected (the company switches it on itself in Settings) or not_available (the platform has not configured it). Never a secret."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
       responses:
         "200":
           description: OK

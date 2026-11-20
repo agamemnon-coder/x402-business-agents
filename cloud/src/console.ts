@@ -1343,6 +1343,17 @@ async function identitiesCard(m){
   card.replaceChildren(...kids,out);return card;
 }
 
+// Your connections (GET /v1/connections/mine): every way this company is connected, each connected, not connected
+// (switched on here, in Settings) or not available yet (the platform has not configured it).
+async function yourConnectionsCard(){
+  const r=await api('/v1/connections/mine');
+  const tone={connected:' ok',not_connected:'',not_available:' warn'};
+  const ul=el('ul','plain',r.items.map(x=>el('li','',[el('span','pill'+(tone[x.status]||''),t('cs.yours.st.'+x.status)),' ',el('b','',x.name),x.detail?el('span','sub',' · '+x.detail):null])));
+  const card=el('div','card panel');card.id='your-connections';
+  card.replaceChildren(el('h2','',t('cs.yours.title')),el('p','',t('cs.yours.lede')),ul,note(r.rule));
+  return card;
+}
+
 async function settingsView(){
   title(t('cs.nav.settings'));
   const m=await me();
@@ -1362,7 +1373,8 @@ async function settingsView(){
   const alerts=m.kind==='session'?await alertsCard():null;
   const chat=m.kind==='session'?await chatCard():null;
   const security=m.kind==='session'&&!m.demo?await securityCard():null;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  const yours=!m.demo?await yourConnectionsCard().catch(()=>null):null;
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,yours,security,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){
@@ -1375,6 +1387,8 @@ async function settingsView(){
       if(x.account)rows.push([t('cs.awx.account'),x.account,'mono']);
       if(x.connected_at&&x.status==='connected')rows.push([t('cs.awx.since'),stamp(x.connected_at)]);
       kids.push(el('h2','sub-h',tk('cs.conn.name.'+x.provider,x.provider)),dl(rows));
+      // Xero: the company's supplier invoices as draft bills in its own organisation; a person approves them in Xero.
+      if(x.status==='connected'&&x.provider==='xero'){const px=btn(t('cs.conn.xero_push'),'primary','arrow-up-right');px.onclick=async()=>{px.disabled=true;try{const o=await api('/v1/connect/xero/bills',{method:'POST',body:{}});msg.replaceChildren(note(t('cs.conn.xero_pushed',{n:o.pushed.length,already:o.already,failed:o.failed.length,remaining:o.remaining}),o.failed.length?'bad':'ok'),...o.failed.slice(0,5).map(f=>note(f.invoice_id+': '+f.reason,'bad')))}catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}finally{px.disabled=false}};kids.push(el('div','row2',[px]),note(t('cs.conn.xero_drafts')))}
       if(x.status==='connected'){const d=btn(t('cs.conn.disconnect'),'','x');d.onclick=async()=>{d.disabled=true;try{const o=await api('/v1/connect/'+x.provider,{method:'DELETE'});await drawConn();if(o.note)conn.append(note(o.note))}catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'));d.disabled=false}};kids.push(el('div','row2',[d]))}
       else{const g=btn(tk('cs.conn.connect.'+x.provider,x.provider),'primary','shield-check');g.onclick=async()=>{g.disabled=true;try{const o=await api('/v1/connect/'+x.provider+'/start',{method:'POST'});location.assign(o.url)}catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'));g.disabled=false}};kids.push(el('div','row2',[g]))}
     }
@@ -1552,10 +1566,10 @@ async function route(){
     if(path==='/'||path==='')return go('#/overview');
     // Back from Airwallex's or Moneybird's consent screen (GET /v1/connect/{provider}/callback put the code here, in the
     // fragment, which no server sees): the signed-in owner who started it finishes the connection.
-    if(path==='/connect'){const p=q.get('provider');if(p!=='airwallex'&&p!=='moneybird')return go('#/settings');
+    if(path==='/connect'){const p=q.get('provider');if(!['airwallex','moneybird','xero','quickbooks','exact'].includes(p))return go('#/settings');
       if(q.get('error')||!q.get('code')){connNote=[t('cs.conn.declined'),'bad'];return go('#/settings')}
       history.replaceState(null,'','#/settings');
-      try{await api('/v1/connect/'+p+'/finish',{method:'POST',body:{code:q.get('code'),state:q.get('state')}});connNote=[t('cs.conn.done'),'ok']}catch(e){if(e instanceof Expired)return;connNote=[e.message,'bad']}
+      try{await api('/v1/connect/'+p+'/finish',{method:'POST',body:Object.assign({code:q.get('code'),state:q.get('state')},q.get('realm_id')?{realm_id:q.get('realm_id')}:{})});connNote=[t('cs.conn.done'),'ok']}catch(e){if(e instanceof Expired)return;connNote=[e.message,'bad']}
       return route()}
     // Jury review, 13 Nov: a skeleton of the page while it loads, not a blank "Loading …" (still said to a screen reader).
     view().replaceChildren(el('div','skel',[el('span','vh',t('loading')),el('i','sk-h'),el('i','sk-l'),el('div','sk-cards',[el('i',''),el('i',''),el('i','')]),el('i','sk-b')]));

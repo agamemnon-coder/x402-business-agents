@@ -92,10 +92,10 @@ const cents = (c: number) => (c / 100).toFixed(2);
 export const CSV_FORMATS = { xero: ["bills", "journals"], quickbooks: ["bills"], exact: ["bills", "journals"] } as const;
 export type CsvFormat = keyof typeof CSV_FORMATS;
 
-interface Bill { id: string; vendor: string; invoice_no: string; issue_date?: string; due_date: string; currency: string; subtotal?: string; tax?: string; total: string; gl_account?: string; doc_kind?: string; status: string }
+export interface Bill { id: string; vendor: string; invoice_no: string; issue_date?: string; due_date: string; currency: string; subtotal?: string; tax?: string; total: string; gl_account?: string; doc_kind?: string; status: string }
 
 /** Supplier invoices (not credit notes, not rejected), issued between two days, oldest first. */
-async function bills(db: TenantDb, from: string | null, to: string | null): Promise<Bill[]> {
+export async function bills(db: TenantDb, from: string | null, to: string | null): Promise<Bill[]> {
   const rows = await db.select<{ id: string; body_json: string; status: string }>("invoices", {}, { order: ["id"] });
   return rows.map((r) => ({ ...(JSON.parse(r.body_json) as Bill), id: r.id, status: r.status }))
     .filter((b) => b.doc_kind !== "credit_note" && !["rejected", "blocked"].includes(b.status))
@@ -150,7 +150,7 @@ export interface Connection { name: string; kind: "live" | "live (owner sets the
 /** Every connection Purser has to other systems, labelled honestly: live, a format export, or built and not yet tried live. */
 export function connectionsCatalogue(origin: string): { rule: string; connections: Connection[] } {
   return {
-    rule: "Every connection reads or exports. None moves money, approves a payment, changes a limit or writes to the books: every payment needs the CFO's Face ID in Purser Cloud.",
+    rule: "Every connection reads, notifies or exports. None moves money, approves a payment, changes a limit or writes to Purser's books; an accounting system receives drafts or entries a person there checks. Every payment needs the CFO's Face ID in Purser Cloud.",
     connections: [
       { name: "MCP server (Connect any AI)", kind: "live", direction: "read", where: `${origin}/mcp`, what: "Claude, ChatGPT, Cursor, VS Code, Gemini CLI, Windsurf and any MCP client read the books: 14 read tools, resources, prompts. OAuth 2.1 or a connector token." },
       { name: "Read API (REST) and its OpenAPI", kind: "live", direction: "read", where: `${origin}/v1/openapi.read.json`, what: "Invoices, documents, suppliers, payments, the transactions register, the ledger and its reports, for a read-scoped key." },
@@ -160,7 +160,9 @@ export function connectionsCatalogue(origin: string): { rule: string; connection
       { name: "Xero", kind: "format export", direction: "export", where: `${origin}/v1/export/csv/xero/bills`, what: "Bills and manual journals as CSV in Xero's import columns." },
       { name: "QuickBooks Online", kind: "format export", direction: "export", where: `${origin}/v1/export/csv/quickbooks/bills`, what: "Bills as CSV with QuickBooks' required import columns." },
       { name: "Exact Online (CSV)", kind: "format export", direction: "export", where: `${origin}/v1/export/csv/exact/bills`, what: "Purchase entries (Inkoopboekingen) and journals (Memoriaalboekingen) as CSV in Exact's import template columns." },
-      { name: "Exact Online (API)", kind: "built, not tested live", direction: "export", where: "src/erp/exact.ts (the runner)", what: "The runner's connector posts purchase invoices and journals through Exact's REST API; not yet run against a live Exact administration." },
+      { name: "Exact Online (API)", kind: "built, not tested live", direction: "export", where: `${origin}/v1/connect/exact/start; src/erp/exact.ts (the runner)`, what: "Each company's owner connects its own Exact Online administration in Settings (\"Connect Exact Online\"; tokens sealed per company); the runner's connector (ERP_EXACT_OAUTH=on) then posts purchase invoices and journals through Exact's REST API with that company's token. Not yet run against a live Exact administration." },
+      { name: "Xero (API)", kind: "built, not tested live", direction: "export", where: `${origin}/v1/connect/xero/start, ${origin}/v1/connect/xero/bills`, what: "Each company's owner connects its own Xero organisation in Settings (\"Connect Xero\"; OAuth2 with PKCE, tokens sealed per company, refreshed, disconnect at any time) and sends its supplier invoices there as DRAFT bills. Purser never authorises or pays a bill in Xero. Tested with a stand-in shaped like Xero's documentation; not yet run against a Xero demo company." },
+      { name: "QuickBooks Online (API)", kind: "built, not tested live", direction: "export", where: `${origin}/v1/connect/quickbooks/start`, what: "The connect flow only: each company's owner connects its own QuickBooks Online company (OAuth2, tokens sealed per company, refreshed, disconnect). Sending bills is planned (docs/integrations/quickbooks-plan.md); until then the QuickBooks CSV export above. Not yet run against an Intuit sandbox company." },
       { name: "Moneybird (API)", kind: "built, run once in a sandbox", direction: "export", where: "src/erp/moneybird.ts (the runner); docs/moneybird.md", what: "The runner's connector posts purchase invoices and journal documents through Moneybird's API; run live once in a sandbox administration. Moneybird has no CSV import for these, so there is no Moneybird CSV." },
       { name: "ISO 20022 pacs.008", kind: "format export", direction: "export", where: "npm run iso20022 (src/finance/iso20022.ts)", what: "One paid invoice as a pacs.008.001.08 message, validated against the official schema; pacs.008-shaped, not a message a bank sent." },
       { name: "Full export", kind: "live", direction: "export", where: `${origin}/v1/export`, what: "Every record of the company as staged JSON parts with signed links, for an owner." },

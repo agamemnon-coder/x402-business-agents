@@ -53,6 +53,8 @@ import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
 import { ALWAYS_STEP_UP_ROUTES, freshPasskey, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
 import { finishLink, finishSignIn, identitiesOf, isIdp, offered as idpsOffered, OidcRefused, startOidc, unlink, type IdpName, type OidcEnv } from "./oidc.js";
+import { pushBillsToXero } from "./books/xero.js";
+import { yourConnections } from "./yourConnections.js";
 import { ChatHookRefused, chatHooks, isChatProduct, postEvent, removeChatHook, setChatHook, SetChatHook, testChatHook, type ChatProduct } from "./chatHooks.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
 
@@ -252,7 +254,7 @@ function personOnly(c: Ctx): void {
 }
 function providerOf(c: Ctx): OAuthProviderName {
   const p = c.params[0]!;
-  if (!isProvider(p)) throw new ConnectRefused(404, "no such provider (airwallex or moneybird)");
+  if (!isProvider(p)) throw new ConnectRefused(404, "no such provider (airwallex, moneybird, xero, quickbooks or exact)");
   return p;
 }
 /** A signed-in owner, for connecting or disconnecting an account (never a key: a key cannot consent for the company). */
@@ -367,13 +369,16 @@ export const ROUTES: Route[] = [
     const out = new URLSearchParams({ provider });
     const code = keep(q.get("code")), state = keep(q.get("state")), error = keep(q.get("error"));
     if (code && state) { out.set("code", code); out.set("state", state); } else out.set("error", error || "invalid_request");
+    // QuickBooks names the company the owner connected on the redirect (realmId).
+    const realm = q.get("realmId");
+    if (code && realm && /^\d{1,20}$/.test(realm)) out.set("realm_id", realm);
     return new Response(null, { status: 302, headers: { location: `${c.env.origin}/#/connect?${out.toString()}`, "cache-control": "no-store", "referrer-policy": "no-referrer" } });
   } },
   { method: "POST", path: "/v1/connect/{provider}/finish", summary: "Finish connecting: the signed-in owner who started it sends the code and state back; Purser exchanges the code with the provider and keeps the tokens sealed for this company only.", need: "admin", run: async (c) => {
     const env = connectOf(c);
     ownerSession(c);
-    const b = await body(c, z.object({ code: z.string().min(1).max(512).regex(/^[A-Za-z0-9._~-]+$/), state: z.string().min(16).max(512).regex(/^[A-Za-z0-9._~-]+$/) }).strict(), 4_000);
-    return json(201, { connection: await finishConnect(c.env.sql, c.caller!.tenantId, c.caller!.principal, providerOf(c), env, b, c.now) });
+    const b = await body(c, z.object({ code: z.string().min(1).max(512).regex(/^[A-Za-z0-9._~-]+$/), state: z.string().min(16).max(512).regex(/^[A-Za-z0-9._~-]+$/), realm_id: z.string().regex(/^\d{1,20}$/).optional() }).strict(), 4_000);
+    return json(201, { connection: await finishConnect(c.env.sql, c.caller!.tenantId, c.caller!.principal, providerOf(c), env, { code: b.code, state: b.state, ...(b.realm_id ? { realmId: b.realm_id } : {}) }, c.now) });
   } },
   { method: "GET", path: "/v1/connect/{provider}/token", summary: "For the company's own runner (a sync key): a short-lived access token for the company's connected account, refreshed when needed. Every call for this company then uses it; it is never for another company.", need: "sync", run: async (c) => {
     const env = connectOf(c);
@@ -383,6 +388,13 @@ export const ROUTES: Route[] = [
     const env = connectOf(c);
     ownerSession(c);
     return json(200, await disconnect(c.env.sql, c.caller!.tenantId, providerOf(c), env, c.now));
+  } },
+  { method: "POST", path: "/v1/connect/xero/bills", summary: "Send the company's supplier invoices that its connected Xero organisation does not hold yet to Xero as DRAFT bills (a signed-in owner): { from?, to? } (issue days). Each invoice goes once; at most 25 a push. Purser never authorises, pays or marks a bill paid in Xero: a person approves each draft there. Answers { pushed, already, failed, remaining }.", need: "admin", run: async (c) => {
+    const env = connectOf(c);
+    ownerSession(c);
+    const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional();
+    const b = await body(c, z.object({ from: day, to: day }).strict(), 1_000);
+    return json(200, await pushBillsToXero(c.env.sql, env, { tenantId: c.caller!.tenantId, by: c.caller!.principal, from: b.from ?? null, to: b.to ?? null, now: c.now }));
   } },
   { method: "POST", path: "/v1/connect/airwallex/webhook", summary: "Airwallex's partner_connection.disconnected webhook (signed: x-timestamp, x-signature): the connections of the accounts it names end.", need: "public", run: async (c) => {
     const env = connectOf(c);
@@ -409,6 +421,8 @@ export const ROUTES: Route[] = [
     const text = kind === "bills" ? await billsCsv(db(c), format as CsvFormat, from, to) : await journalsCsv(db(c), format as "xero" | "exact", from, to);
     return new Response(text, { status: 200, headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="purser-${kind}-${format}.csv"`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   } },
+  { method: "GET", path: "/v1/connections/mine", summary: "Your connections: every way this company is connected (API keys, MCP, the signed webhook, Slack, Teams, approval alerts, the e-mail inbox, Airwallex, Moneybird, Xero, QuickBooks Online, Exact Online, and the signed-in person's Google, Microsoft and Apple sign-in), each connected, not_connected (the company switches it on itself in Settings) or not_available (the platform has not configured it). Never a secret.", need: "admin", run: async (c) =>
+    json(200, await yourConnections(c.env.sql, { tenantId: c.caller!.tenantId, userId: c.caller!.user, now: c.now, connect: c.env.connect, oidc: c.env.oidc, mailDomain: c.env.mailDomain })) },
   { method: "GET", path: "/v1/connections", summary: "Every connection Purser has to other systems, what each does and whether it is a live integration or a format export.", need: "public", run: async (c) => json(200, connectionsCatalogue(c.env.origin)) },
 
   { method: "GET", path: "/v1/admin/companies", summary: "The companies on this cloud for the platform operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (never a key or an account number).", need: "platform", run: async (c) => json(200, await platformCompanies(c.env.sql)) },

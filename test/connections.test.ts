@@ -183,7 +183,7 @@ describe("the read API's OpenAPI, and the catalogue of connections", () => {
     const cat = (await c.req("GET", "/v1/connections")).json as ReturnType<typeof connectionsCatalogue>;
     expect(cat.rule).toMatch(/None moves money.*Face ID/);
     const by = Object.fromEntries(cat.connections.map((x) => [x.name, x.kind]));
-    expect(by).toMatchObject({ "MCP server (Connect any AI)": "live", Webhooks: "live", Xero: "format export", "QuickBooks Online": "format export", "Exact Online (CSV)": "format export", "Slack and Microsoft Teams messages": "format export", "Exact Online (API)": "built, not tested live", "ISO 20022 pacs.008": "format export" });
+    expect(by).toMatchObject({ "MCP server (Connect any AI)": "live", Webhooks: "live", Xero: "format export", "QuickBooks Online": "format export", "Exact Online (CSV)": "format export", "Slack and Microsoft Teams messages": "live (owner sets the URL)", "Exact Online (API)": "built, not tested live", "Xero (API)": "built, not tested live", "QuickBooks Online (API)": "built, not tested live", "ISO 20022 pacs.008": "format export" });
     expect(cat.connections.every((x) => ["read", "export", "notify"].includes(x.direction))).toBe(true);
   });
 });
