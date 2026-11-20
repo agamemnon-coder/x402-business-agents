@@ -38,9 +38,9 @@ describe("Claude's access for a company's engine", () => {
     const sql = sqliteSql(":memory:");
     await ensureSchema(sql);
     const withKey = claudeAccess({ engineClaude: "on", key: "stand-in-not-a-key", sql, tenantId: "t_a" })!;
-    expect(withKey.agents(actionBudget(1_000))).not.toBeNull();
+    expect(withKey.agents!(actionBudget(1_000))).not.toBeNull();
     const without = claudeAccess({ engineClaude: "on", key: undefined, sql, tenantId: "t_a" })!;
-    expect(without.agents(actionBudget(1_000))).toBeNull();
+    expect(without.agents!(actionBudget(1_000))).toBeNull();
     sql.close();
   });
 
@@ -79,7 +79,7 @@ describe("the archive over a document store", () => {
   it("creates a file once, a PDF unless told otherwise; a second create of the same path is refused; a missing file reads as nothing", async () => {
     const s = store();
     const v = blobVault(s, "t_archive01");
-    const bytes = new TextEncoder().encode("%PDF-1.4 x");
+    const bytes = Buffer.from("%PDF-1.4 x");
     await v.create("2026/a.pdf", bytes, sha(bytes));
     expect(s.meta.get("t/t_archive01/vault/2026/a.pdf")).toEqual({ sha256: sha(bytes), mime: "application/pdf" });
     await expect(v.create("2026/a.pdf", bytes, sha(bytes))).rejects.toThrow("2026/a.pdf is already in the vault");

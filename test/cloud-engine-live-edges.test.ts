@@ -159,8 +159,10 @@ function quotingBank() {
     createQuote: async (a: Q & { validity: string }) => { fell.push("createQuote"); return { quoteId: "recorded-1", buyCurrency: a.buyCurrency, sellCurrency: a.sellCurrency, buyAmountCents: a.buyAmountCents, sellAmountCents: 1100, clientRate: "1.10", validFrom: "2026-11-10T00:00:00Z", validTo: "2026-11-10T00:15:00Z" }; },
     createQuoteAny: async (a: Q & { validity: string }) => { fell.push("createQuoteAny"); return { quoteId: "recorded-2", buyCurrency: a.buyCurrency, sellCurrency: a.sellCurrency, buyAmountCents: a.buyAmountCents, sellAmountCents: 1100, clientRate: "1.10", validFrom: "2026-11-10T00:00:00Z", validTo: "2026-11-10T00:15:00Z" }; },
   };
-  return { bank, fell };
+  return { bank: bank as unknown as QuotingBankWithMore, fell };
 }
+/** The bank liveFxRail takes, with the stand-in's own members beside its quote calls. */
+type QuotingBankWithMore = Parameters<typeof liveFxRail>[0] & { label: string; whoAmI(): string };
 const ASK: Q = { buyCurrency: "EUR", sellCurrency: "USD", buyAmountCents: 1000 };
 const goodAnswer = (now: number): LiveFxAnswer => ({ ok: true, market_rate: "1.1000", quote: { quote_id: "cc8fb106-29bb-3cce-b011-5fd0b4685617", buy_currency: "EUR", sell_currency: "USD", buy_amount: "10.00", sell_amount: "11.05", client_rate: "1.1050", valid_to_at: new Date(now + 15 * 60_000).toISOString() } });
 
