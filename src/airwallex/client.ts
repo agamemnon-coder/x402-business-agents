@@ -1,12 +1,14 @@
 // Airwallex sandbox REST client. It is the only code that holds the client id, API key and bearer token.
 // Calls run one at a time, at most 5 per second, with backoff on 429 (and, for reads, on 502/503/504). Money-moving creates always
 // carry a caller-chosen request_id, so a retry after a timeout cannot create a second payment.
+// Every call except an FX call pins the API version (x-api-version, src/airwallex/apiVersion.ts: why that version).
 
 import { redactSecrets } from "../lib/redact.js";
 import { AirwallexBudgetSpent, budgetFromEnv } from "./callBudget.js";
 import { ACCOUNT_ID } from "./platform.js";
 import { airwallexOAuthConfig, airwallexOAuthOn, cloudTargetFromEnv } from "../cloudsync/connections.js";
 import { assertRoleKeys, checkScope, ROLE_ENV, type AirwallexRole } from "./keyScopes.js";
+import { apiVersionHeader } from "./apiVersion.js";
 
 export const SANDBOX_BASE = "https://api.sandbox.airwallex.com/api/v1";
 /** Airwallex's Files service lives on its own host (Upload a file: files.sandbox.airwallex.com), with the same token. */
@@ -187,7 +189,7 @@ export class Airwallex {
     if (!this.cfg.clientId || !this.cfg.apiKey) throw new Error("no Airwallex API key to log in with");
     const res = await this.fetch(`${this.base}/authentication/login`, {
       method: "POST",
-      headers: { "x-client-id": this.cfg.clientId, "x-api-key": this.cfg.apiKey, "content-type": "application/json" },
+      headers: { "x-client-id": this.cfg.clientId, "x-api-key": this.cfg.apiKey, "content-type": "application/json", ...apiVersionHeader("/authentication/login") },
       signal: AbortSignal.timeout(this.timeoutMs),
     });
     const body = (await res.json().catch(() => ({}))) as { token?: string; code?: string };
@@ -230,7 +232,7 @@ export class Airwallex {
         try {
           res = await this.fetch(url, {
             method,
-            headers: { authorization: `Bearer ${token}`, ...(jsonBody ? { "content-type": "application/json" } : {}), ...(this.cfg.onBehalfOf ? { "x-on-behalf-of": this.cfg.onBehalfOf } : {}) },
+            headers: { authorization: `Bearer ${token}`, ...(jsonBody ? { "content-type": "application/json" } : {}), ...(this.cfg.onBehalfOf ? { "x-on-behalf-of": this.cfg.onBehalfOf } : {}), ...apiVersionHeader(path) },
             body,
             signal: AbortSignal.timeout(this.timeoutMs),
           });
