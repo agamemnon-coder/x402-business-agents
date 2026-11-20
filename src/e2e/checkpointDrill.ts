@@ -266,7 +266,7 @@ export function renderCheckpointDrill(rec: CheckpointDrillRecord): string {
     "",
     "| Step | What | Result | Detail |",
     "|---|---|---|---|",
-    ...rec.steps.map((s) => `| \`${s.id}\` | ${s.what} | ${s.pass ? "pass" : "**FAIL**"} | ${s.detail.replace(/\|/g, "\\|")}${s.ms === undefined ? "" : ` (${s.ms} ms)`} |`),
+    ...rec.steps.map((s) => `| \`${s.id}\` | ${s.what} | ${s.pass ? "pass" : "**FAIL**"} | ${s.detail.replace(/\\/g, "\\\\").replace(/\|/g, "\\|")}${s.ms === undefined ? "" : ` (${s.ms} ms)`} |`),
     "",
     "## Not shown here",
     "",
