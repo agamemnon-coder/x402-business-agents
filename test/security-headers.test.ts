@@ -77,8 +77,8 @@ describe("relay Worker: security headers on every answer", () => {
     for (const path of ["/assets/approve.js", "/assets/approve.css", "/assets/inter.woff2", "/assets/logo-metal.svg"]) expectCommon(page(path), path);
   });
 
-  it("the phone pages run only the Worker's own script, inline nothing", () => {
-    for (const path of ["/approve/P-0001", "/enrol", "/policy"]) expect(page(path).headers.get("content-security-policy")).toMatch(/script-src 'self'.*style-src 'self'/);
+  it("the phone pages run only their own published script: one inline script and stylesheet, each allowed by its hash (finding 1.5)", () => {
+    for (const path of ["/approve/P-0001", "/enrol", "/policy"]) expect(page(path).headers.get("content-security-policy")).toMatch(/script-src 'sha256-[A-Za-z0-9+/]+=*'; style-src 'sha256-[A-Za-z0-9+/]+=*';/);
   });
 
   it("JSON answers: refusals, 404, 405, /health and the passkey sign-in all carry HSTS (HF2)", async () => {

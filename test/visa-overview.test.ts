@@ -206,13 +206,16 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
     expect(VISA_ICC_LINE).toBe("We have requested Visa Intelligent Commerce Connect access; it is not used here.");
     expect(text(unfolded(main))).toContain(VISA_ICC_LINE);
     expect(text(html).split("Intelligent Commerce Connect")).toHaveLength(2);
-    for (const [name, page] of Object.entries(buildPages() as unknown as Record<string, unknown>)) {
+    const built = buildPages();
+    const client = built.client;
+    for (const [name, page] of Object.entries(built as unknown as Record<string, unknown>)) {
       // The phone's approval script ("client", src/approve/client.ts) carries the sentence the CFO signs for an ICC
       // proposal (src/icc/purchase.ts); it shows only for such a proposal, which needs KIT11_ICC_RAIL=on (12 Nov).
       if (typeof page !== "string" || name === "visa" || name === "client") continue;
       // The partner pages' "Built on" strip (owner, 12 Nov; test/t0-page.test.ts) ends with its one ICC note, the same
       // state in short ("access requested, not used in this entry"): left out here, and nothing else may name ICC.
-      expect({ name, icc: /Intelligent Commerce Connect|\bICC\b/.test(page.replace(esc(ICC_LINE), " ")) }).toEqual({ name, icc: false });
+      // Since the outside audit (finding 1.5) that script sits inline in the phone pages: left out of them the same way.
+      expect({ name, icc: /Intelligent Commerce Connect|\bICC\b/.test(page.split(client).join(" ").replace(esc(ICC_LINE), " ")) }).toEqual({ name, icc: false });
     }
     expect(readFileSync(new URL("../README.md", import.meta.url), "utf8")).not.toMatch(/Intelligent Commerce Connect|\bICC\b/);
   });

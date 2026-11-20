@@ -123,9 +123,9 @@ than the limits allow).
 | 13 | Relay or Cloudflare account that changes *data* | Change what the phone shows (terms, names, policy) or replay an older state | T | The runner signs those plus the ledger counter (ES256); the phone checks them against the runner key it pinned from the viewer link (out of band; a later link with a new run's key replaces it only on the person's press, after both fingerprints are shown and only when that key signed what the relay sends; a key no link offered is refused) and refuses an older counter. **This does not hold against a relay that serves a different *script*: see below** | `test/relay-sign.test.ts`, `test/approve-client.test.ts`, `test/approve-runner-key.test.ts`, browser check |
 | 13b | Someone who saw the enrolment code, or a relay at enrolment time | Enrol their own passkey | S, E | A new passkey counts only after the person on the runner confirms its 64-bit fingerprint; the first passkey in a window wins and a second closes the window with an alarm; a replaced passkey stays active until then; the relay gets only an HMAC of the code. **Enrolment trusts the page at that moment**: a relay serving a malicious script could show its own key's fingerprint. What limits it: enrol right after a deploy from this repo, with two-factor login on the Cloudflare account; a passkey is bound to the relay's address, so it cannot be enrolled anywhere safer for this address | `test/passkey.test.ts` |
 | 14 | Stolen phone | Approve as the CFO | S | The passkey needs Face ID (user verification is required and checked); revocation means re-enrolment | `src/passkey/webauthn.ts` |
-| 15 | Insider with database access | Edit or truncate the log | T, R | The database refuses updates and deletes; the hash chain detects edits; an anchor printed in the audit report detects truncation or a full rehash. An approval written straight into the database no longer runs (20 November): before money moves the executor re-verifies the stored passkey signatures behind it over the exact terms, and refuses an approval row alone, recording why (`execution.refused_unsigned`). The audit chain is still unkeyed and not compared with a published anchor before a payment, and whoever writes the file can enrol a passkey of their own in it and sign with that (accepted risks, below) | `test/audit.test.ts`, `test/audit-report.test.ts`, `npm run verify-log`, `test/execution-signature.test.ts`, `test/zero-trust.test.ts` |
+| 15 | Insider with database access | Edit or truncate the log | T, R | The database refuses updates and deletes; the hash chain detects edits; an anchor printed in the audit report detects truncation or a full rehash. An approval written straight into the database no longer runs (20 November): before money moves the executor re-verifies the stored passkey signatures behind it over the exact terms, and refuses an approval row alone, recording why (`execution.refused_unsigned`). A passkey written into the file signs nothing (outside audit, 20 November): only one the enrolment ceremony sealed, with a key outside the ledger, counts. The audit chain is still unkeyed and not compared with a published anchor before a payment (accepted risks, below) | `test/audit.test.ts`, `test/audit-report.test.ts`, `npm run verify-log`, `test/execution-signature.test.ts`, `test/passkey-seal.test.ts`, `test/zero-trust.test.ts` |
 | 16 | Leaked secret | A key in git or in a model's context | I | No key ever goes to a model (tested); every commit is scanned for the real values; gitleaks scans the pushed commits and the whole history in CI | `test/adversarial.test.ts`, `.github/workflows/ci.yml` |
-| 17 | An agent (or a model steering it) that overspends on its card | Buy past the CFO's limit | E | The limit is set on the card at Airwallex (synced from the policy and read back), so Airwallex itself declines; a raise is a policy change approved with Face ID, and since 19 November it reaches the card only when a stored passkey signature over the exact new limit verifies where the card is synced, so Purser's own decision code alone, or a policy row written into the database alone, no longer raises it (each refusal is logged as `card.raise_refused`); lowering stays free, and the phone can only lower a card limit. Still open ([zero-trust.md](zero-trust.md)): whoever writes the database file and enrols a passkey of their own in it, before any passkey is enrolled whoever writes an approval row, and anyone with the company's Airwallex web app or an Issuing API key can raise it; then only the card's merchant categories, fixed at issue, still hold. The agent never sees the card number or CVV | `src/policy/cards.ts`, `src/policy/cardRaise.ts`, `test/cards.test.ts`, `test/card-raise-signed.test.ts` |
+| 17 | An agent (or a model steering it) that overspends on its card | Buy past the CFO's limit | E | The limit is set on the card at Airwallex (synced from the policy and read back), so Airwallex itself declines; a raise is a policy change approved with Face ID, and since 19 November it reaches the card only when a stored passkey signature over the exact new limit verifies where the card is synced, so Purser's own decision code alone, or a policy row written into the database alone, no longer raises it (each refusal is logged as `card.raise_refused`); lowering stays free, and the phone can only lower a card limit. Still open ([zero-trust.md](zero-trust.md)): before any passkey is enrolled (or once every passkey row is deleted from the file) whoever writes an approval row, and anyone with the company's Airwallex web app or an Issuing API key can raise it; then only the card's merchant categories, fixed at issue, still hold. The agent never sees the card number or CVV | `src/policy/cards.ts`, `src/policy/cardRaise.ts`, `test/cards.test.ts`, `test/card-raise-signed.test.ts` |
 | 18 | Anyone who can reach the webhook URL, or a relay that forges events | Fake a card transaction on the dashboard | S, T | The relay accepts an event only with Airwallex's HMAC-SHA256 over `x-timestamp` + raw body and a timestamp within 5 minutes; the runner checks the signature again with its own copy of the secret; an event only records what Airwallex decided and moves no money; each transaction is recorded once by its Airwallex id, and the poll reads the same transactions from Airwallex directly | `worker/src/core.ts`, `src/policy/cardHooks.ts`, `test/relay-hooks.test.ts` |
 | 19 | Anyone who sees an agent misbehave, or a breach in progress | Keep spending while people investigate | E | The emergency stop: one Face ID refuses every agent payment before signing, refuses an approved payout that is started afterwards, and freezes every card at Airwallex; Purser's own code refuses a card purchase too, also in the moments before the freeze has reached the card (12 November); lifting it needs a proposal and Face ID. The stop works through Purser's code and the rails: it does not hold a card or on-chain payment once both of those have failed | `src/policy/rules.ts` (`frozen`), `src/policy/holds.ts`, `src/policy/cards.ts`, `test/freeze.test.ts`, `test/zero-trust.test.ts` |
 | 20 | A fraudster who changes a supplier's bank details (email, invoice, a planted document) | Divert the next payment | S, T | The fraud check blocks a changed IBAN; a change counts only after a request, a person's out-of-band verification (agents cannot record it) and the CFO's approval, which shows the full new IBAN | `src/policy/payeeChange.ts`, `test/payee-change.test.ts` |
@@ -189,8 +189,29 @@ An independent review found two weaknesses on the money path. Both are fixed, ea
   own signature re-verified. `npm run verify` accepts such an approval on the same terms, names the source on its
   line, and fails one without them. Proof: `test/alone-limit-signed.test.ts`.
 
-What this does not close is in the accepted risks: the database file is still one place, so whoever writes it can enrol
-a passkey of their own there.
+What this did not close then, a passkey written into the database file, the outside audit closed (below).
+
+### Outside audit: page integrity and credential changes (20 November)
+
+- **Finding 1.5, the approval page.** The approval, enrolment and policy pages are each one document: script and
+  stylesheet inline, under a CSP that allows exactly those two by SHA-256 (no `'self'`, no `'unsafe-inline'`), so the
+  served HTML is all that runs (`src/approve/integrity.ts`). `npm run approval-page-record` publishes each page's hash
+  and CSP in [evidence/approval-page.json](evidence/approval-page.json), with Purser Cloud's console (nonces and the
+  deployment's addresses set aside); each phone page shows its build id. `npm run verify-approval-page -- <url>`
+  fetches a live page from any machine and compares. The test fails when the record and the code differ. A lying page
+  still cannot get a payment run on other terms: the runner and the engine verify the signature over their own
+  canonical terms. Proof: `test/approval-page-integrity.test.ts`, `test/browser/approve-design.check.ts`.
+- **Finding 1.3, a passkey written into the database.** Before, it was enrolled. Now the enrolment ceremony seals each
+  passkey: an HMAC of its id, public key, RP id, origin, person and enrolment time, with a key outside the ledger
+  (`PURSER_ENROLMENT_SEAL_KEY`, or `passkey-seal.key` in the keys directory; `src/passkey/seal.ts`). The intake of a
+  signature, the execution guard, a card raise, an endorsement of a new key and `npm run verify` refuse a passkey
+  without a valid seal; health raises `passkey_unsealed` (critical). A passkey enrolled before the seal is sealed with
+  `npm run passkey -- seal <fingerprint>`, on the runner. Proof: `test/passkey-seal.test.ts`.
+- **Finding 1.3, telling every owner.** In Purser Cloud each passkey, approval key or security key added, replaced or
+  removed, and each step of an owner recovery, is a security event naming the owners told, an event to the alert
+  webhook, and an e-mail to every owner with an address when the e-mail provider is set (`cloud/src/ownerNotice.ts`).
+  A person and passkey written into D1 can sign in but approve nothing: an approval key of their own needs an active
+  key or a second owner, every owner is told at once, and it cools off 72 hours. Proof: `test/cloud-owner-notice.test.ts`.
 
 ### Agent cards frozen by default (19 November, fifth round)
 
@@ -370,19 +391,25 @@ Rate limits, where the docs say them (each asserted in the same test or the test
   can prove from the call. **Before real funds** the owner
   signing needs a page the relay cannot serve (a native app, or a separate origin the relay does not control), or an
   on-chain delay or guardian on the account; until then the passkey account stays small and labelled as a demo.
+  Since 20 November (outside audit) the page's hash is published and `npm run verify-approval-page` checks the live
+  page from outside. That shows a swapped script to anyone who checks; it cannot see a script served only to the
+  CFO's phone, and the build id the page shows is the page's own claim. The phone does not check its own page.
 - **Audit anchors are not signed.** Someone who can write the SQLite file can append forged rows after the last
   anchor, including a passkey row, and `verify` still passes. Anchors in committed run records and audit reports
   limit this to rows after the last published anchor.
 - **Whoever can write the ledger file gets past Purser's own layers.** Until 20 November the executor trusted its
   own database: an approval written straight into it, with terms and hashes that agree, was run. Now the executor
   re-verifies the stored passkey signatures behind every approval before money moves, so an approval row alone is
-  refused (`execution.refused_unsigned`). It is still the same database: whoever writes the file can also write a
-  passkey of its own into it and sign with that, append audit rows (the chain is unkeyed, and a payment does not
-  compare it with a published anchor), and change the policy rows that say how many people must sign. What still
-  holds: Airwallex's own approval of transfers holds the payout once the company has switched it on (it is optional;
-  the attack `database-approval-forged` in `test/zero-trust.test.ts`), and the planted passkey is in the passkeys
-  table and the audit log for `npm run verify` to show. With that approval switched off, nothing stops this payout
-  before it is sent.
+  refused (`execution.refused_unsigned`). Since the outside audit (20 November) a passkey written into the file signs
+  nothing either: it lacks the enrolment seal, whose key the ledger does not hold. It is still the same database:
+  whoever writes the file can append audit rows (the chain is unkeyed, and a payment does not compare it with a
+  published anchor), change the policy rows that say how many people must sign, and delete every passkey row so that
+  approval falls back to a typed hash prefix. Whoever also holds the seal key (the runner host) is out of scope.
+  Purser Cloud's engine has no seal key yet: its approval keys rest on its Durable Object's storage, which only the
+  engine's code writes, and a key with no recorded cooling-off counts as the company's first. What still holds:
+  Airwallex's own approval of transfers holds the payout once the company has switched it on (it is optional; the
+  attack `database-approval-forged` in `test/zero-trust.test.ts`). With that approval switched off, nothing stops a
+  typed-prefix payout after every passkey row was deleted.
 - **Four eyes counts passkeys, not people.** It counts passkeys enrolled under two names and cannot know that two
   names are two human beings. A second name can only be added through an enrolment opened and confirmed on the
   runner, and the enrolment is in the audit log; the phone and the relay cannot add one.

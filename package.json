@@ -64,6 +64,8 @@
     "audit:export": "tsx src/cli/auditExport.ts",
     "audit:report": "tsx src/cli/auditReport.ts",
     "verify-log": "tsx src/cli/verifyLog.ts",
+    "verify-approval-page": "tsx src/cli/verifyApprovalPage.ts",
+    "approval-page-record": "tsx src/cli/approvalPageRecord.ts",
     "airwallex-trail": "tsx src/cli/airwallexTrail.ts",
     "verify-receipt": "tsx src/cli/verifyReceipt.ts",
     "verify-bundle": "tsx src/cli/verifyBundle.ts",

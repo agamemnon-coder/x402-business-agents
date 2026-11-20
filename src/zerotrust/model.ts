@@ -466,11 +466,11 @@ export const ATTACKS: readonly Attack[] = [
   },
   {
     id: "database-approval-forged",
-    description: "An approval is written straight into the database, with terms and hashes that agree, and the payout is run; refused that way, the attacker also writes a passkey of its own into the database and signs with it.",
+    description: "An approval is written straight into the database, with terms and hashes that agree, and the payout is run; refused that way, the attacker writes a passkey of its own into the database and signs with it; refused that way too, it deletes every passkey row and writes a typed-prefix approval.",
     breach: ["database"], target: "bank_payout",
     action: "Pay EUR 9,850.00 to a new account on an approval the CFO never signed.",
     bypasses: ["L1", "L2", "L3", "L4"], stoppedBy: "L5",
-    note: "An approval row alone no longer runs (20 November): the executor re-verifies the stored passkey signature over the exact terms and refuses before any call to Airwallex (execution.refused_unsigned). A passkey of the attacker's own, written into the same file, still passes Purser.",
+    note: "An approval row alone no longer runs (20 November): the executor re-verifies the stored passkey signature over the exact terms and refuses before any call to Airwallex (execution.refused_unsigned). A passkey of the attacker's own written into the same file is refused too since the outside audit (no enrolment seal). With every passkey row deleted, a typed-prefix approval still passes Purser.",
     needs: "Airwallex's approval workflow is switched on for transfers made over the API",
     evidence: EVIDENCE.transferApproval,
   },
@@ -798,7 +798,7 @@ export const LIMITS: readonly Limit[] = [
   {
     id: "relay-serves-another-script",
     what: "A relay or Cloudflare account that serves a different script to the phone can show one waiting proposal and ask the CFO's passkey to sign another.",
-    stillHolds: "The runner runs only waiting proposals' exact terms, with payees from the allowlist and amounts built by code; the phone can only tighten the policy; four eyes and the rails' own controls still apply; every approval is in the audit log. Not for the passkey-owned demo account, with passkey owners on (KIT11_PASSKEY_OWNERS=on): there a lying script can collect both people's signatures for its own transfer of that account's balance, and the runner never sees it. That account holds at most 1.00 test USD.",
+    stillHolds: "The runner runs only waiting proposals' exact terms, with payees from the allowlist and amounts built by code; the phone can only tighten the policy; four eyes and the rails' own controls still apply; every approval is in the audit log. Since the outside audit the page's hash is published and npm run verify-approval-page compares the live page with it, which shows a swapped script to anyone who checks but cannot see one served only to the phone. Not for the passkey-owned demo account, with passkey owners on (KIT11_PASSKEY_OWNERS=on): there a lying script can collect both people's signatures for its own transfer of that account's balance, and the runner never sees it. That account holds at most 1.00 test USD.",
     source: "docs/security.md, accepted risks",
   },
   {
@@ -815,8 +815,8 @@ export const LIMITS: readonly Limit[] = [
   },
   {
     id: "ledger-file-written",
-    what: "Whoever can write the ledger file gets past Purser's own layers. Since 20 November an approval row alone is not enough (the executor re-verifies the stored passkey signatures over the exact terms, and refuses with execution.refused_unsigned), but whoever writes the file can also write a passkey of its own into it, sign with that, and lower the policy that says how many people must sign.",
-    stillHolds: "Airwallex's own approval of transfers holds the payout once the company has switched it on (the attack database-approval-forged), and the passkey written into the file is in the passkeys table and the audit log for verify to show. With that approval switched off, nothing stops this payout before it is sent.",
+    what: "Whoever can write the ledger file gets past Purser's own layers. Since 20 November an approval row alone is not enough (the executor re-verifies the stored passkey signatures over the exact terms, and refuses with execution.refused_unsigned), and since the outside audit a passkey written into the file signs nothing either (it lacks the enrolment seal, a MAC with a key the ledger does not hold). Whoever writes the file can still lower the policy that says how many people must sign, and, by deleting every passkey row, fall back to approval by typed hash prefix.",
+    stillHolds: "Airwallex's own approval of transfers holds the payout once the company has switched it on (the attack database-approval-forged); a passkey written into the file is refused at intake and at execution, raises the critical passkey_unsealed alarm and fails verify. With Airwallex's approval switched off, a typed-prefix approval after every passkey row was deleted is not stopped before it is sent.",
     source: "docs/security.md, accepted risks",
   },
   {
@@ -839,7 +839,7 @@ export const LIMITS: readonly Limit[] = [
   },
   {
     id: "card-limit-set-by-purser",
-    what: "A card's limit at Airwallex goes up only on a verified passkey signature over the new limit, checked where Purser syncs the card (since 19 November). Whoever writes the database file can still enrol a passkey of their own in it and sign a raise with that; before any passkey is enrolled (local development), the approval on record is all that is checked; and anyone with the company's Airwallex web app or an Issuing API key can change the limit at Airwallex directly. A charge at a merchant inside the card's categories then goes through, with the optional controls on too.",
+    what: "A card's limit at Airwallex goes up only on a verified passkey signature over the new limit, checked where Purser syncs the card (since 19 November). A passkey written into the database file signs no raise (no enrolment seal, since the outside audit); before any passkey is enrolled (local development, or a file whose passkey rows were deleted), the approval on record is all that is checked; and anyone with the company's Airwallex web app or an Issuing API key can change the limit at Airwallex directly. A charge at a merchant inside the card's categories then goes through, with the optional controls on too.",
     stillHolds: "Purser's own decision code alone, or a policy row written alone, no longer raises it. The merchant categories, fixed when each card is issued, still refuse every other merchant; every raise, and every refused one (card.raise_refused), is in the audit log, and the limit in what Airwallex holds for the card; the CFO's pause or the emergency stop freezes the card at Airwallex.",
     source: "src/policy/cardRaise.ts; src/policy/cards.ts, syncOne; test/card-raise-signed.test.ts; test/zero-trust.test.ts, the card's limit goes up only as signed",
   },
