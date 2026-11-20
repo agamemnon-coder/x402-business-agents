@@ -25,8 +25,10 @@ Read these five first, in this order:
 
 **Where the numbers come from.** The figures above are read from their records by a test, so they cannot drift: the
 test count from [assets/test-summary.json](assets/test-summary.json) (written by `npm run test-count`), the live runs
-from [runs/README.md](runs/README.md), the checks from [evidence/verification-2026-11-15.md](evidence/verification-2026-11-15.md)
-and the red team from [redteam/report.json](redteam/report.json). Every other headline figure is on the evidence wall,
+from [runs/README.md](runs/README.md), the checks from the newest verification report,
+[evidence/verification-2026-11-20.md](evidence/verification-2026-11-20.md), and the red team from its newest full re-run,
+[redteam/rerun-2026-11-20.md](redteam/rerun-2026-11-20.md) (the first run, of 30 Oct, is
+[redteam/report.json](redteam/report.json)). Every other headline figure is on the evidence wall,
 [evidence/evidence-wall.json](evidence/evidence-wall.json) (written by `npm run evidence:wall`, shown on
 [/proof](https://kit11.max-31b.workers.dev/proof#evidence)), and every claim with its source is in [claims.md](claims.md).
 A document that needs a figure points to one of these instead of typing it again.
