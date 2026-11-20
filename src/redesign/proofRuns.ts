@@ -175,8 +175,6 @@ export function verifyCalloutHtml(): string {
 <p class="vbundle"><a href="verify">${esc("Verify a /try payment yourself")}</a>${esc(": drop its proof file and your browser checks the signature, with no server call. No file yet? ")}<a href="${proofSamplePath("paid").slice(1)}" download="${PROOF_SAMPLES.paid}">${esc("A paid sample")}</a>${esc(" · ")}<a href="${proofSamplePath("refused").slice(1)}" download="${PROOF_SAMPLES.refused}">${esc("the refused sample")}</a></p>${verifiedLiveHtml()}</div></aside>`;
 }
 
-/** The verification report of 15 Nov (npm run verify-all): its count, read from the committed report, never typed. */
-export const VERIFICATION_REPORT = "docs/evidence/verification-2026-11-15";
 /**
  * The newest verification report (npm run verify-all writes docs/evidence/verification-<day>.json, one per day it ran),
  * by the date in its name: what /proof's verify-all tile and the README's proof strip show. Null when there is none.
@@ -191,17 +189,24 @@ export function latestVerificationReport(): string | null {
   const [y, m, d] = NAME.exec(last)!.slice(1).map(Number) as [number, number, number];
   return `docs/evidence/verification-${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}.json`;
 }
-export function verifiedLive(): { passed: number; failed: number } | null {
+/**
+ * The newest verification report's counts, its file (without .json) and its day ("20 Nov", from the file's name). Jury
+ * pass, 20 Nov: /proof's line read the 15 Nov report (189 checks) while the wall's tile read the newest (262).
+ */
+export function verifiedLive(file: string | null = latestVerificationReport()): { passed: number; failed: number; report: string; day: string } | null {
+  const date = file ? /(\d{4})-(\d{2})-(\d{2})\.json$/.exec(file) : null;
+  if (!file || !date) return null;
   try {
-    const r = JSON.parse(readFileSync(new URL(`${VERIFICATION_REPORT}.json`, ROOT), "utf8")) as { counts?: { passed?: unknown; failed?: unknown } };
+    const r = JSON.parse(readFileSync(new URL(file, ROOT), "utf8")) as { counts?: { passed?: unknown; failed?: unknown } };
     const passed = r.counts?.passed, failed = r.counts?.failed;
-    return typeof passed === "number" && typeof failed === "number" ? { passed, failed } : null;
+    const day = new Date(Date.UTC(Number(date[1]), Number(date[2]) - 1, Number(date[3]))).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+    return typeof passed === "number" && typeof failed === "number" ? { passed, failed, report: file.replace(/\.json$/, ""), day } : null;
   } catch { return null; }
 }
-/** One line by the evidence links; none when the report is missing or a check failed. */
+/** One line by the evidence links, from the newest report; none when there is no report or a check failed. */
 export function verifiedLiveHtml(v = verifiedLive()): string {
   if (!v || v.failed > 0 || !pkgScripts["verify-all"]) return "";
-  return `<p class="vall" data-rec="${esc(`${VERIFICATION_REPORT}.json`)}">${a(`${REPO_BLOB}${VERIFICATION_REPORT}.md`, `Verified live on 15 Nov: ${v.passed.toLocaleString("en-GB")} checks passed`)}${esc(" (how to re-run: ")}<code>npm run verify-all</code>${esc(")")}</p>`;
+  return `<p class="vall" data-rec="${esc(`${v.report}.json`)}">${a(`${REPO_BLOB}${v.report}.md`, `Verified live on ${v.day}: ${v.passed.toLocaleString("en-GB")} checks passed`)}${esc(" (how to re-run: ")}<code>npm run verify-all</code>${esc(")")}</p>`;
 }
 
 /** The chain's own rules, shared with /docs' diagram (14 Nov). */

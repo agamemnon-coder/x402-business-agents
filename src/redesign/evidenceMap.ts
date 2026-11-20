@@ -32,16 +32,23 @@ export function evidenceMap(w: EvidenceWall | null = committedWall()): EvidenceM
     return got.length ? got.join(" · ") : null;
   };
   const node = (id: string, title: string, sub: string, group: string, tone: Tone, b: string | null): MapNode => ({ id, title, sub, group, tone, badge: b });
+  // Jury pass, 20 Nov: a figure from the long run says so ("#18 refused on chain, 20 Nov run"), so it is not read against the main
+  // run's figures beside it (#24, 24 decisions, 86 payments). The day is the tile's own words.
+  const run = (k: string) => {
+    const t = tiles.get(k);
+    const day = t ? /\b(\d{1,2} [A-Z][a-z]{2}) long run\b/.exec(`${t.label} ${t.note}`)?.[1] : undefined;
+    return day ? `, ${day} run` : "";
+  };
   const main = [
     node("invoice", "Invoice in", "a PDF in the inbox", "ev-scale", "", badge(["try-journeys", "/try walks passed"])),
-    node("claude", "Claude reads", "Haiku; each call's request id", "ev-ai", "claude", badge(["claude-main", "decisions"], ["try-claude", "fallbacks"])),
+    node("claude", "Claude reads", "Haiku; each call's request id", "ev-ai", "claude", badge(["claude-main", `decisions${run("claude-main")}`], ["try-claude", "fallbacks"])),
     node("rules", "Purser's rules", "limit, bank details, duplicates, cash floor", "ev-ai", "ok", badge(["worst-case", "wrong payments"])),
     node("passkey", "Passkey signs", "SHA-256 of the exact terms", "ev-forged", "ok", badge(["tamper-matrix", "forgeries refused"])),
     node("bundle", "Proof bundle", "the signed terms and receipts", "ev-forged", "ok", badge(["try-proofs", "proofs VALID"])),
     node("verify", "Anyone verifies", "offline: /verify or npm run verify-bundle", "ev-built", "ok", badge(["verify-all", "checks passed"])),
   ];
   const rails = [
-    node("alta", "Alta", "on-chain mandate", "ev-rails", "metal", badge(["alta-refusal", "refused on chain"])),
+    node("alta", "Alta", "on-chain mandate", "ev-rails", "metal", badge(["alta-refusal", `refused on chain${run("alta-refusal")}`])),
     node("airwallex", "Airwallex", "transfer with the hash, Spend Bills, cards", "ev-rails", "awx", badge(["try-transfers", "PAID"], ["awx-endpoints", "endpoints live"])),
     node("visa", "Visa via Airi", "test card", "ev-rails", "visa", badge(["visa-airi", "after Face ID"])),
   ];

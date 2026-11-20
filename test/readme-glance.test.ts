@@ -2,7 +2,7 @@
 // it is read here from that record, so the README cannot drift from what ran.
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { partnerTiles } from "../src/redesign/proofRuns.js";
+import { latestVerificationReport, partnerTiles } from "../src/redesign/proofRuns.js";
 import { agentRun, longRun, split } from "../src/redesign/run.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -40,11 +40,15 @@ describe("the README's At a glance", () => {
   });
 
   // The final audit (15 Nov): /proof's band and /airwallex/calls count the calls differently, so the README names no count.
-  it("names no Airwallex call count, links every call, and quotes the verification report's summary", () => {
+  // Jury pass, 20 Nov: the newest report, dated, as the proof strip and the evidence map show it (it said 15 Nov's 189
+  // checks under a strip that says 262).
+  it("names no Airwallex call count, links every call, and quotes the newest verification report's summary, dated", () => {
     expect(lines[4]).toContain("**The Airwallex sandbox calls in the run records**, listed with what came back and its record: [/airwallex/calls]");
     expect(GLANCE).not.toMatch(/\b(?:150|154)\b/);
-    const v = JSON.parse(read("docs/evidence/verification-2026-11-15.json")) as { summary: string };
-    expect(lines[5]).toContain(`the live report: ${v.summary} (`);
+    const file = latestVerificationReport()!;
+    const v = JSON.parse(read(file)) as { summary: string; started_at: string };
+    const day = new Date(v.started_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+    expect(lines[5]).toContain(`the newest live report, ${day}: ${v.summary} ([report](${file.replace(/\.json$/, ".md")}))`);
   });
 
   // 17 Nov (owner): the partners' status badges became cells of the proof strip (scripts/readme-proof-strip.ts); its alt
