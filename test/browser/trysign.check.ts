@@ -50,6 +50,7 @@ const advisor = new StandInAdvisor();
 const { parseInvoiceFallback } = await import("../../src/claude/invoiceReading.js");
 const readerStandIn = async (doc: string) => ({ value: parseInvoiceFallback(doc), requestId: "req_standin_reader", costUsd: 0, model: "stand-in", ms: 300 });
 const { LOCK_CHANNELS, mainRunWorst, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { DESIGN_PARTNER_LABEL, DESIGN_PARTNER_URL } = await import("../../src/config/brand.js");
 const { ALONE_PER_DAY, PAID_ALONE, defaultPolicy, exposurePolicyOfWorld, threeLocks } = await import("../../src/try/policy.js");
 // 1.1: the worst case, read from the policy code (src/policy/exposure.ts) with the main run's recorded rate.
 const { exposureOf, exposureWords } = await import("../../src/policy/exposure.js");
@@ -825,9 +826,13 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const did = `${W.done.lead} ${[W.done.items.signed, W.done.items.cheat, W.done.items.trick, W.done.items.rule, W.done.items.alone].join(" · ")}.`;
   check((await page.locator("#d-head").innerText()).trim() === W.done.head && (await page.locator("#scr-7 .lead1").innerText()).trim() === did && JSON.stringify(await dots(page)) === '["done","done","done","done","done","done"]',
     `${tag}: the closing card: "${did} ${W.done.head}"`);
-  const ends = await page.locator("#t-end a").evaluateAll((as: Element[]) => as.map((a) => ({ text: (a.textContent ?? "").trim(), href: a.getAttribute("href") }))) as { text: string; href: string }[];
+  // The three ways on are the card's buttons (a[data-end]); the design-partner link (src/config/brand.ts) sits under them.
+  const ends = await page.locator("#t-end a[data-end]").evaluateAll((as: Element[]) => as.map((a) => ({ text: (a.textContent ?? "").trim(), href: a.getAttribute("href") }))) as { text: string; href: string }[];
   check(JSON.stringify(ends) === JSON.stringify(TRY_SIGN_END.map((e) => ({ text: e.label, href: e.href }))),
     `${tag}: three ways on: ${ends.map((e) => `"${e.text}" (${e.href})`).join(", ")}`);
+  const partner = await page.locator("#t-end p.partner a").evaluateAll((as: Element[]) => as.map((a) => ({ text: (a.textContent ?? "").trim(), href: a.getAttribute("href") }))) as { text: string; href: string }[];
+  check(JSON.stringify(partner) === JSON.stringify(DESIGN_PARTNER_URL ? [{ text: `${DESIGN_PARTNER_LABEL} →`, href: DESIGN_PARTNER_URL }] : []),
+    `${tag}: under them, the design-partner link: ${partner.map((e) => `"${e.text}" (${e.href})`).join(", ") || "none"}`);
   check(await page.locator("#scr-7 .btn.primary").count() === 1 && await page.locator("#scr-7 .ends .btn").count() === 2, `${tag}: the closing card: one main button, two more buttons`);
   if (!args.live) {
     const proof = await (await fetch(`${local.url}/proof`)).text();
