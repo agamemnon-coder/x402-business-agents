@@ -112,12 +112,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          # With immutable releases on, a published release can take no more files, so the release is made as a draft
+          # here and published by the last job, after the SLSA provenance is on it (v1.3.0 and v1.3.1 lost files to
+          # this on 20 Nov). A release published by hand first cannot be completed: say so instead of failing later.
           if gh release view "$TAG" > /dev/null 2>&1; then
+            if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" != "true" ]; then
+              echo "::error::Release $TAG is already published and may be immutable; push a tag without publishing it by hand (docs/releasing.md)."
+              exit 1
+            fi
             gh release upload "$TAG" dist/* --clobber
           else
             # The release notes are docs/releases/<tag>.md when the release pull request wrote them (docs/releasing.md).
             if [ -f "docs/releases/$TAG.md" ]; then notes=(--notes-file "docs/releases/$TAG.md"); else notes=(--generate-notes); fi
-            gh release create "$TAG" dist/* --verify-tag --title "Purser $TAG" "${notes[@]}"
+            gh release create "$TAG" dist/* --draft --verify-tag --title "Purser $TAG" "${notes[@]}"
           fi
           {
             echo "Release $TAG (commit $TAG_COMMIT). Verify a download:"
@@ -128,7 +135,7 @@ jobs:
 
   # SLSA Build Level 3 provenance from the SLSA project's generic generator, a reusable workflow that runs in its own
   # jobs, isolated from the build above: it signs (Sigstore, its own OIDC identity) provenance for the release job's
-  # tarball and bill of materials and uploads it to the tag's release, which the release job has created by then. It
+  # tarball and bill of materials and keeps it as a workflow artifact for the publish job below. It
   # needs no checkout and no steps of ours, so there is nothing here for Harden-Runner to wrap.
   #
   # The one `uses:` in .github/workflows/ that is not pinned to a full commit SHA, on purpose (the owner's decision,
@@ -141,11 +148,36 @@ jobs:
     permissions:
       actions: read # the generator reads this workflow run to detect the GitHub Actions environment
       id-token: write # it signs the provenance through its own OIDC identity (Sigstore)
-      contents: write # it uploads the provenance to the tag's release
+      contents: read # it keeps the provenance as a workflow artifact; the publish job attaches it
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.release.outputs.hashes }}
-      upload-assets: true
-      # The release job's tag, also for workflow_dispatch runs, where github.ref is not the tag.
-      upload-tag-name: ${{ needs.release.outputs.tag }}
+      upload-assets: false
       provenance-name: x402-business-agents-${{ needs.release.outputs.tag }}.slsa3.intoto.jsonl
+
+  # Attaches the SLSA provenance to the draft release and only then publishes it, so the immutable release holds every
+  # file from the start.
+  publish:
+    needs: [release, slsa-provenance]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # it uploads the provenance and publishes the draft release
+    steps:
+      - name: Harden the runner (audit outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - name: Download the SLSA provenance
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ${{ needs.slsa-provenance.outputs.provenance-name }}
+          path: provenance
+      - name: Attach it and publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          gh release upload "$TAG" provenance/* --clobber
+          gh release edit "$TAG" --draft=false --latest
