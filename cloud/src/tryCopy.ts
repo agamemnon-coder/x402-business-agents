@@ -384,6 +384,7 @@ export const WHY = {
     pressure_language: { head: "Flagged: the invoice pushes for speed or around the checks.", rule: "Speed alone is shown. Secrecy, another channel or approval claimed from outside hold it for a person; once released, the CFO signs it." },
     instructions_in_document: { head: "Held: a line in this invoice tries to instruct the AI.", rule: "Documents are data: a person reads such a line first; once released, the CFO signs it." },
     possible_split: { head: "Flagged: this may be one order split in parts, so the CFO decides.", rule: `One supplier's invoices within ${SPLIT_DAYS} days, each under the limit, are added up: past the limit, the CFO decides.` },
+    text_not_read: { head: "Flagged: a line is in a language Purser's checks cannot read, so the CFO decides.", rule: "Purser never pays alone an invoice with a line it cannot read: that line could say anything. The CFO has it read and signs." },
     missing_fields: { head: "Held: something on the invoice could not be read.", rule: "An invoice is paid only when every field it needs is read." },
     no_text: { head: "Held: no text could be read.", rule: "A document Purser cannot read goes to a person." },
     ambiguous_total: { head: "Held: the total is not clear.", rule: "When the page shows more than one total, a person decides." },
