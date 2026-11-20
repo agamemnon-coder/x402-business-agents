@@ -9,7 +9,7 @@ live.** None of them has been run against a real Google, Microsoft, Apple or Xer
 live are under each integration.
 
 Other ways to connect to Purser (OpenAPI, the SDKs, A2A, n8n, Slack and Teams approval notices) are on
-[Connect to Purser](README.md); MCP and Claude are on [docs/mcp.md](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/mcp.md) and [connect-claude.md](../connect-claude.md).
+[Connect Purser to anything](README.md), every connection with its label; MCP and Claude are on [docs/mcp.md](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/mcp.md) and [connect-claude.md](../connect-claude.md).
 
 ## The safety boundary
 

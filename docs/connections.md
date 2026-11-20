@@ -1,8 +1,11 @@
 # Connections to other systems
 
-Every connection reads or exports. **None moves money, approves a payment, changes a limit or writes to the books:**
-every payment needs the CFO's Face ID in Purser Cloud. `GET /v1/connections` returns this list from the code
-(`cloud/src/connections.ts`), and `test/connections.test.ts` holds each label to what is built.
+Every connection on this page reads or exports. **None moves money, approves a payment, changes a limit or writes to
+the books:** every payment needs the CFO's Face ID in Purser Cloud. `GET /v1/connections` returns these from the code
+(`cloud/src/connections.ts`), with the payment rails listed apart, and `test/connections.test.ts` holds each label to
+what is built. Every connection, the payment rails and each AI client included, with a quickstart each:
+[Connect Purser to anything](integrations/README.md). This page holds the details of the webhooks, the chat formats and
+the accounting exports.
 
 Labels: **live** means it is built and runs in Purser Cloud; **format export** means Purser writes a file or message in
 another product's documented format, and a person or the team's own tooling takes it from there (there is no live

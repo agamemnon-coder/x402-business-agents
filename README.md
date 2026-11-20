@@ -285,7 +285,7 @@ Not validated with customers yet: 2 finance conversations (a CFO and a bank fina
 
 1. **Pay an invoice yourself:** [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try). A test company of your own; Claude reads a sample invoice, you approve the exact terms with your own passkey, it is paid on a simulated bank and booked. Change what you signed: refused.
 2. **Look around a company:** [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/), then *Try as guest*: the demo company's dashboard and books, read-only, made-up data, test money.
-3. **Ask your own AI:** add the remote MCP server `https://purser-try.max-31b.workers.dev/mcp` and choose the demo company (public token `purser-demo-read-only`): ask "what's waiting for the CFO?". It reads; it cannot approve or pay ([Connect any AI](#more)).
+3. **Ask your own AI:** add the remote MCP server `https://purser-try.max-31b.workers.dev/mcp` and choose the demo company (public token `purser-demo-read-only`): ask "what's waiting for the CFO?". It reads; it cannot approve or pay ([Connect any AI](#more)). Everything else Purser connects to, each labelled: [Connect Purser to anything](docs/integrations/README.md).
 
 ## More
 
@@ -298,6 +298,7 @@ Not validated with customers yet: 2 finance conversations (a CFO and a bank fina
 | How it works in 5 files | The five files that make a payment safe, and the policy's worst case | [docs/how-it-works.md](docs/how-it-works.md) |
 | Proof in numbers | The charts, drawn from the run records | [docs/charts.md](docs/charts.md) |
 | Connect any AI | Connect Claude or any MCP client to the demo company's books: it reads and proposes, never approves or pays | [docs/mcp.md](docs/mcp.md) · [docs/connect-any-ai.md](docs/connect-any-ai.md) |
+| Connect to anything | Every way in or out, each with its honest label and a quickstart: payment rails, AI over MCP, the API and webhooks, no-code tools, accounting, Peppol, chat | [docs/integrations/README.md](docs/integrations/README.md) |
 | Built after the kit | What was built after the kit (test environment, test money) | [docs/built-after-the-kit.md](docs/built-after-the-kit.md) |
 | Who does what | Who built what, and what each partner runs | [docs/who-does-what.md](docs/who-does-what.md) |
 | What's live, what's simulated | Every run, live or simulated, with its record (one column per rail in [Built with](#built-with)) | [docs/in-depth.md](docs/in-depth.md#whats-live-whats-simulated-run-by-run) |

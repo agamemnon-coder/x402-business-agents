@@ -82,7 +82,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/connect/airwallex/webhook` | anyone | Airwallex's `partner_connection.disconnected`, signed (`x-timestamp`, `x-signature`; the scheme is unconfirmed for partner webhooks): the connections of the accounts it names end. |
 | `GET /v1/openapi.json` | anyone | This API, as OpenAPI 3.1. |
 | `GET /v1/openapi.read.json` | anyone | The read API alone (every GET a read-scoped key may call), as OpenAPI 3.1. |
-| `GET /v1/connections` | anyone | Every connection Purser has to other systems, each labelled live, format export or built and not tested live ([connections.md](connections.md)). |
+| `GET /v1/connections` | anyone | Every connection Purser has to other systems, each labelled live, sandbox, testnet, format export or built and not tested live, with its guide; the payment rails listed apart ([integrations/README.md](integrations/README.md), [connections.md](connections.md)). The console shows it under Settings, Connections. |
 | `GET /v1/admin/companies` | platform admin | The companies on this cloud for the operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (no key, no account number). The console shows it at `#/platform`. |
 | `GET /v1/admin/security-log` | platform admin | The cloud's security event log, newest first (`kind`, `since`, `limit` up to 500): sign-ins and their failures, refusals (403), rate-limit hits (429), the admin's own actions, key, passkey, people and policy changes, exports, webhook signature failures, tamper alarms and the alarms they raised. Ids and networks (an address cut to /24 or /48) only, never a secret. Append-only in the database (`cloud/src/securityLog.ts`). |
 | `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the starter key once (a week, the first owner's passkey only). |
@@ -293,7 +293,9 @@ The same Worker serves the company's console at `/` (`cloud/src/console.ts`): si
 the overview (inbox address, what is open, due, overdue, waiting and blocked, and what waits for the CFO), invoices and
 each invoice (what Purser read, the checks, the timeline, the document), the transactions register with its filters and
 CSV, the books (VAT overview per quarter, the journal) and, for owners, settings: people and their single-use passkey
-links, API keys, and the export of everything. A new company's first run takes the starter key Purser hands over, makes
+links, API keys, and the export of everything; and, for everyone who can open Settings, Connections: every way in or
+out of Purser from `GET /v1/connections`, each with its label and its guide, and links to `/connect-ai` and
+[Connect Purser to anything](integrations/README.md). A new company's first run takes the starter key Purser hands over, makes
 the owner's passkey, shows the inbox address and makes the runner's sync key with the one command to run; the starter
 key can then be revoked from the same screen. The console reads and manages; it never pays: payments are approved on
 the CFO's phone with Face ID, through the runner.

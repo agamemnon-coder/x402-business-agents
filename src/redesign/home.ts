@@ -25,6 +25,9 @@ import { booksData } from "./booksPage.js";
 import { SITE_URL } from "../ui/meta.js";
 import { NEGOTIATE_URL } from "../ui/more.js";
 
+/** The hub of every connection Purser has, each labelled, with a quickstart (docs/integrations/README.md); in Home's footer. */
+export const CONNECT_HUB_DOC = "docs/integrations/README.md", CONNECT_HUB_LABEL = "Connect to anything";
+
 const CSS = `/* Home, enterprise pass (the owner, 12 Nov): an 8 px grid, 1120 px wide, neutral greys and one accent. */
 main.ent .wrap { max-width: 1120px; }
 main.ent section { padding: 96px 0; border-top: 1px solid var(--border); }
@@ -476,7 +479,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   return page({
     // Final jury, 13 Nov: / and /home serve this page; /home is its one canonical address.
     title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS + AWX_HOME_BADGE_CSS + NEGOTIATE_CSS, body, js: JS + COUNT_JS, stage: false,
-    links: [],
+    // 20 Nov (the owner: "Purser connects to everything and everyone, findable"): the hub of every connection, in the footer.
+    links: [[`${REPO_BLOB}${CONNECT_HUB_DOC}`, CONNECT_HUB_LABEL]],
     real,
     source: `Source: a /try run of its sample invoice, ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
   });
