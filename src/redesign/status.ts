@@ -141,17 +141,16 @@ const line = (label: string, id: string, rowId = "") => `<div${rowId ? ` id="${r
  * from its own store when it serves the page (worker/src/index.ts); as built, and in any copy without the Worker, it
  * says there are no results here. Never a number the page did not get from the checks.
  */
-/** The checks' numbers are live, not a committed record (owner, 20 Nov: every figure says where it can be checked). */
-export const CHECKS_NOT_A_RECORD = "Read live from the site's own hourly checks, not from a committed record; /status.json gives the same numbers.";
+/** The checks' numbers are live, not a committed record (owner, 20 Nov: every figure says where it can be checked): the link says so. */
+export const CHECKS_LINK = "Live numbers: /status.json";
 
 function checksCard(mode: StatusMode): string {
   const inner = mode === "hosted"
     ? `<p>No check results in this copy: the hosted site fills this in from its hourly checks.</p>`
     : `<p>No hourly checks in this offline copy.</p>`;
-  const link = mode === "hosted" ? siteLink("status.json", "The raw numbers: /status.json") : outLink(`${SITE_URL}/status`, "The hosted status page");
+  const link = mode === "hosted" ? siteLink("status.json", CHECKS_LINK) : outLink(`${SITE_URL}/status`, "The hosted status page");
   return `<article class="pc card" id="checks"><h2><span class="ic">${icon("clock", 19)}</span>Hourly checks of the public addresses</h2>
     ${CHECKS_START}${inner}${CHECKS_END}
-    ${mode === "hosted" ? `<p class="muted">${esc(CHECKS_NOT_A_RECORD)}</p>` : ""}
     <div class="links">${link}</div></article>`;
 }
 
