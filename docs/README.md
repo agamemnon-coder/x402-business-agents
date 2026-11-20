@@ -6,7 +6,7 @@ Every Purser document, grouped by what you need it for; test money only througho
 
 | At a glance | Record |
 |---|---|
-| **9,385 tests passing**, 0 failed, in the last full run of the suite, on commit `10b78a0d7` (coverage is a separate run: [evidence/coverage.md](evidence/coverage.md)) | [assets/test-summary.json](assets/test-summary.json) |
+| **10,239 tests passing**, 0 failed, in the last full run of the suite, on commit `c9cce6545` (coverage is a separate run: [evidence/coverage.md](evidence/coverage.md)) | [assets/test-summary.json](assets/test-summary.json) |
 | **36 live runs**, the last on 20 Nov 2026 | [runs/README.md](runs/README.md) |
 | **262 checks passed**, 3 could not run here, 0 failed | [evidence/verification-2026-11-20.md](evidence/verification-2026-11-20.md) |
 | **48 of 48** red-team attacks stopped, 0 caught afterwards (full re-run of 20 Nov, a test world, not held out) | [redteam/rerun-2026-11-20.md](redteam/rerun-2026-11-20.md) |
