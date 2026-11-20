@@ -502,7 +502,9 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
       // can be any count (87 in eval v9): a figure of another record, labelled as such, not a count of the main run's
       // payments. That section is left out here; every other part of the page is held to the one set.
       const ai = /<section class="ewall pq" id="q-ai"[\s\S]*?<\/section>/;
-      const main = words(/<main[\s\S]*<\/main>/.exec(html)![0].replace(ai, ""));
+      const main = words(/<main[\s\S]*<\/main>/.exec(html)![0].replace(ai, ""))
+        // 21 Nov: the refusal chart names the newest held-out round's count, labelled with its eval ("82 of 124 held-out invoices, eval v14").
+        .replace(/\b\d+ of \d+ held-out invoices/g, "");
       expect({ name, other: main.match(/(?<![\d.#])\b(87|82)\b(?![.\d])/g) ?? [] }).toEqual({ name, other: [] });
     }
   });
