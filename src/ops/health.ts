@@ -11,6 +11,7 @@ import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/dispu
 import { codeMayCarryOut, escalatedUndecided } from "../agents/disputeSource.js";
 import { failureAlerts, failureCounts } from "../passkey/failures.js";
 import { termsHash, type Terms } from "../lib/terms.js";
+import { checkpointAlerts } from "../audit/checkpointer.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -93,6 +94,10 @@ export function health(db: DB, now = new Date()): Health {
   const DAY = new Date(now.getTime() - 24 * 60 * 60_000).toISOString();
   const odd = has(db, "airwallex_events") ? (db.prepare("SELECT COUNT(*) AS n, MIN(received_at) AS since FROM airwallex_events WHERE agrees = 0 AND received_at > ?").get(DAY) as { n: number; since: string | null }) : { n: 0, since: null };
   if (odd.n > 0) alerts.push({ code: "airwallex_disagrees", severity: "critical", since: odd.since, words: `${odd.n} Airwallex webhook(s) in the last day report something the ledger cannot explain; check them on the dashboard.` });
+
+  // Outside audit 1.4: with a checkpoint key configured, the audit log against its latest signed checkpoint
+  // (src/audit/checkpointer.ts), and any sensitive operation refused for it in the last day.
+  if (has(db, "audit_log")) alerts.push(...checkpointAlerts(db, now));
 
   // Refused passkey submissions (src/passkey/failures.ts): counted, never logged; a burst in the last hour is someone
   // trying signatures or codes, so a person looks.

@@ -5,6 +5,7 @@
 import { createHash, createPublicKey, randomBytes, randomInt, type webcrypto } from "node:crypto";
 type JsonWebKey = webcrypto.JsonWebKey;
 import { isoCBOR } from "@simplewebauthn/server/helpers";
+import { checkpointRefusal } from "../audit/checkpointer.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
@@ -221,6 +222,10 @@ export function confirmPasskey(db: DB, fingerprint: string, now = new Date()): s
 
 /** Pins a verified passkey: revokes the previous one, uses up the window, all in one transaction. */
 export function recordPasskey(db: DB, p: NewPasskey, now = new Date(), confirmation: { fingerprint: string; confirmed_on: "runner" } | null = null): void {
+  // Outside audit 1.4: no key is enrolled on a ledger that does not match its latest signed checkpoint (when a
+  // checkpoint key is configured; src/audit/checkpointer.ts).
+  const unanchored = checkpointRefusal(db, "key enrolment", now);
+  if (unanchored) throw new Error(unanchored);
   db.transaction(() => {
     const w = db.prepare("SELECT * FROM passkey_enrolments WHERE window_id = ?").get(p.window.window_id) as EnrolmentWindow | undefined;
     if (!w || w.status !== "OPEN" || Date.parse(w.expires_at) <= now.getTime()) throw new Error(`enrolment window ${p.window.window_id} is not open`);

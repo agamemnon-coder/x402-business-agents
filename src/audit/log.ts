@@ -6,6 +6,7 @@ import type { DB } from "../db/open.js";
 import { redactJson, redactSecrets } from "../lib/redact.js";
 import { sha256Hex } from "../lib/terms.js";
 import { MONEY_EVENTS, currentOrigin, parseOrigin } from "../provenance/origin.js";
+import { afterAuditAppend, beforeAuditCommit } from "./checkpointer.js";
 
 export type Actor =
   | "system" | "claude" | "sourcing" | "support" | "treasury" | "customer"
@@ -59,9 +60,15 @@ export function audit(db: DB, actor: Actor, event: string, subject: string | nul
     db.prepare(
       "INSERT INTO audit_log (seq, ts, actor, event, subject, payload_json, prev_hash, row_hash) VALUES (@seq, @ts, @actor, @event, @subject, @payload_json, @prev_hash, @row_hash)",
     ).run(full);
+    // Outside audit 1.4: with a checkpoint key configured, a money row's signed intent goes out before it is committed
+    // (src/audit/checkpointer.ts); with none, this does nothing.
+    beforeAuditCommit(db, full);
     return full;
   });
-  return append.immediate();
+  const row = append.immediate();
+  // ...and a signed checkpoint follows it once it is committed.
+  afterAuditAppend(db, row);
+  return row;
 }
 
 export type ChainCheck = { ok: true; rows: number; head: string } | { ok: false; seq: number; reason: string };

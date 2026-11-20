@@ -72,6 +72,7 @@
     "verify-approval": "tsx src/cli/verifyReceipt.ts docs/runs/2026-11-07-awx-1/receipt-P-0002.json",
     "anchor": "tsx src/cli/anchor.ts",
     "verify-anchor": "tsx src/cli/verifyAnchor.ts",
+    "verify-audit": "tsx src/cli/verifyAudit.ts",
     "approvals:merkle": "tsx src/cli/approvalMerkle.ts",
     "verify-all": "tsx src/cli/verifyAll.ts",
     "airwallex:coverage": "tsx src/cli/airwallexCoverage.ts",
