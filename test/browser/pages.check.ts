@@ -1111,11 +1111,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // ("just links, no more visuals"): the facts as cards, then the payment-check chain, the numbers band, the offline
       // check, the film links and the guarantees in sight; every live run and all the rest in two folds closed on load.
       // 19 Nov, second pass (the owner: "clearer and tighter, more visuals"): the evidence map and the wall lead the page.
-      if (first.order !== "h1 p.plead figure.emap section.ewall ul.scale aside.pverify p.pwatch section.gtee details.sumd" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the five fact cards, the chain, the band, the offline check, the film links, the guarantees and the folds (every live run, ${PROOF_RUN_ROWS}, in the first), closed on load (${JSON.stringify(first)})`);
+      // 21 Nov (the owner: "organise it; an animated architecture"): the heading, the lead, the architecture, the questions,
+      // the film link, the five sections (every live run in the third), the business and the archive, the utility links.
+      if (first.order !== "h1 p.plead figure.parch nav.pq-nav p.pwatch div.pqs details.deep details.deep nav.util" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the architecture, the questions, the film link, the five sections (every live run, ${PROOF_RUN_ROWS}, in the third), the closed lines and the utility links, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
-        // The evidence map starts on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
-        const map = await page.evaluate(`(() => { const e = document.querySelector("main figure.emap"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
-        if (map < 0 || map >= 440) fail(`/proof ${tag}: the evidence map starts at ${map} px, not on the first screen`);
+        // The architecture starts on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
+        const map = await page.evaluate(`(() => { const e = document.querySelector("main figure.parch"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
+        if (map < 0 || map >= 440) fail(`/proof ${tag}: the architecture starts at ${map} px, not on the first screen`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 6) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
@@ -1189,6 +1191,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (await page.locator('footer a.flink[href="visa"]').count()) fail(`/proof ${tag}: a footer link to /visa ("Extra, not an award entry")`);
       // The four tiles under the run's label, Airwallex's among them; the stops' parts sum to their figure. Read once they
       // have counted up: in view, then the count-up's time.
+      // Since 21 Nov the main run's tiles are its history, in the live section's history fold, labelled with its day.
+      await page.evaluate(() => { const d = document.getElementById("q-live-history") as HTMLDetailsElement | null; if (d) d.open = true; });
       await page.locator(".nums").scrollIntoViewIfNeeded();
       await page.waitForTimeout(2000);
       const tiles = (await page.evaluate(`[...document.querySelectorAll(".nums a.num")].map((a) => ({ cls: a.className, v: a.querySelector(".v").textContent, parts: [...a.querySelectorAll(".parts b")].map((b) => Number(b.textContent)) }))`)) as { cls: string; v: string; parts: number[] }[];
@@ -1263,7 +1267,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForTimeout(250);
       if ((await landed("archive")).closed || !(await page.locator('#archive a[href="replay"]', { hasText: "Replay of the main run, 3 Nov" }).isVisible())) fail(`/proof#archive ${tag}: the archive does not open with the replay of the main run first`);
       await page.goto(`${base}/proof`, { waitUntil: "load" });
-      await page.locator("main details#details > summary").click();
+      // Since 21 Nov the main run's tiles are in "Is it live on the partners?"'s history; its stops in the first question's.
+      await page.locator("main details#q-live-history > summary").click();
       await page.locator(".nums a.num.stop").click();
       await page.waitForTimeout(250);
       const s = await landed("stops");

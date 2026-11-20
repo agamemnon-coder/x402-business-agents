@@ -18,16 +18,16 @@ export const WALL_TITLE = "The evidence wall";
 const ROOT = new URL("../../", import.meta.url);
 
 /** What a tile's figure is: live at a partner's sandbox, live on Alta's testnet, a test world (no partner), a re-check of the records, CI, an outside programme, or the public site measured read-only. */
-export type WallTag = "sandbox" | "testnet" | "test" | "check" | "ci" | "external" | "site";
+export type WallTag = "sandbox" | "testnet" | "test" | "check" | "ci" | "external" | "site" | "measured";
 // 19 Nov, second pass (the owner: "clearer and tighter"): one word a tag; the wall's lead says sandbox and testnet are live.
-export const TAG_WORDS: Record<WallTag, string> = { sandbox: "Sandbox", testnet: "Testnet", test: "Test world", check: "Re-checked", ci: "CI", external: "External", site: "Public site" };
+export const TAG_WORDS: Record<WallTag, string> = { sandbox: "Sandbox", testnet: "Testnet", test: "Test world", check: "Re-checked", ci: "CI", external: "External", site: "Public site", measured: "Measured" };
 /** The wall's legend, in sight above the tiles: what the tags mean, and what was simulated everywhere. */
 export const WALL_LEGEND = "Sandbox and testnet: live runs, test money; a sandbox PAID is simulated. Test world: offline evals and attacks on this computer. Tap a tile for its record.";
 /** The groups' names in the wall's sticky nav. */
 export const WALL_NAV: Record<string, string> = { "ev-rails": "Live on the rails", "ev-forged": "Cannot be forged", "ev-ai": "AI under control", "ev-attacked": "Attacked on purpose", "ev-built": "Built to last", "ev-quality": "Quality", "ev-scale": "/try timed" };
 /** The partner whose colour the tile carries, if one. */
 export type WallTone = "awx" | "metal" | "claude" | "ok" | "";
-export interface WallTile { key: string; fig: string; label: string; note: string; tag: WallTag; tone: WallTone; href: string; rec: string; /** Not on /proof (a partner page's strip shows it). */ offProof?: boolean }
+export interface WallTile { key: string; fig: string; label: string; note: string; tag: WallTag; tone: WallTone; href: string; rec: string; /** Not on /proof (a partner page's strip shows it). */ offProof?: boolean; /** The day of the newest record the tile names (src/proof/recordDate.ts), or null when none says one (a figure recomputed from the records at each build). */ asOf?: string | null }
 /** The tiles /proof's wall shows. */
 export const onProof = (w: EvidenceWall): EvidenceWall => ({ ...w, groups: w.groups.map((g) => ({ ...g, tiles: g.tiles.filter((t) => !t.offProof) })).filter((g) => g.tiles.length) });
 export interface WallGroup { id: string; title: string; tiles: WallTile[] }
@@ -124,11 +124,11 @@ export function evidenceWallHtml(all: EvidenceWall | null = committedWall()): st
  * the wall's group on /proof, and any line the page owes beside them (on /airwallex, the one endpoint not live and why).
  */
 export const PARTNER_STRIPS: Record<"airwallex" | "alta" | "visa" | "tap", { title: string; group: string; keys: string[]; legend: string }> = {
-  airwallex: { title: "Live on Airwallex", group: "ev-rails", keys: ["soak-paid", "try-transfers", "spend-bills", "soak-fx", "awx-endpoints", "late-failure"], legend: "Airwallex sandbox, test money; a sandbox PAID is the sandbox's simulation. Each tile opens its record." },
-  alta: { title: "Live on Alta", group: "ev-rails", keys: ["alta-series-paid", "alta-series-refused", "alta-refusal", "alta-payments", "passkeys-onchain", "clearing-load"], legend: "Alta testnet, test money. Each tile opens its record." },
-  visa: { title: "Visa via Airwallex's Airi, as recorded", group: "ev-rails", keys: ["visa-airi", "visa-refused"], legend: "Airwallex sandbox, Airi's test card, test money. Each tile opens its record." },
+  airwallex: { title: "Live on Airwallex", group: "pl-airwallex", keys: ["soak-paid", "try-transfers", "spend-bills", "soak-fx", "awx-endpoints", "late-failure"], legend: "Airwallex sandbox, test money; a sandbox PAID is the sandbox's simulation. Each tile opens its record." },
+  alta: { title: "Live on Alta", group: "pl-alta", keys: ["alta-series-paid", "alta-series-refused", "alta-refusal", "alta-payments", "passkeys-onchain", "clearing-load"], legend: "Alta testnet, test money. Each tile opens its record." },
+  visa: { title: "Visa via Airwallex's Airi, as recorded", group: "pl-visa", keys: ["visa-airi", "visa-refused"], legend: "Airwallex sandbox, Airi's test card, test money. Each tile opens its record." },
   // /visa keeps TAP outside the VIC entry, in its own section (assertVicFirst): this strip sits inside that section.
-  tap: { title: "Re-run on 19 Nov", group: "ev-forged", keys: ["tap-interop"], legend: "Run on our machine against Visa's public reference; nothing bought, no money moved." },
+  tap: { title: "Re-run on 19 Nov", group: "q-limits", keys: ["tap-interop"], legend: "Run on our machine against Visa's public reference; nothing bought, no money moved." },
 };
 
 export function evidenceStripHtml(partner: keyof typeof PARTNER_STRIPS, o: { note?: string } = {}, w: EvidenceWall | null = committedWall()): string {

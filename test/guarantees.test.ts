@@ -4,7 +4,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { GUARANTEES, GUARANTEES_ID, guaranteesHtml } from "../src/redesign/guarantees.js";
-import { evidenceWallHtml } from "../src/redesign/evidenceWall.js";
 import { pageResponse } from "../worker/src/core.js";
 
 const root = (p: string) => new URL(`../${p}`, import.meta.url);
@@ -32,21 +31,19 @@ describe("What Purser guarantees", () => {
   });
 
   // Jury pass, 13 Nov: the four summary cards come first; the guarantees open the one details fold under them.
-  // Jury, 13 Nov (second round): the first screen was too thin; the guarantees are in sight again, under the four cards.
-  // The owner, 13 Nov ("the proof is what we need"): the lead line, the proof chain, the band, the offline check and every
-  // live run come first; the guarantees follow, in sight, above the fold with the partners and the numbers.
-  // Jury panel, 15 Nov: the five facts lead. Max, the same day ("just links, no more visuals"): the facts as cards, then
-  // the chain, the band, the offline check, the film links and the guarantees, all in sight; the folds after them.
-  // 19 Nov, second pass (the owner): the evidence map and the wall lead; the band, the offline check and the film links
-  // follow, then the guarantees in sight, then the folds.
-  it("is in sight under the map, the wall, the band, the offline check and the film links, above the folds", () => {
+  // 21 Nov (the owner: /proof by the questions a judge asks): the guarantees are in sight in the first question's section,
+  // "Does money only move within limits?", after its figures and its charts and before its folds, above the partners.
+  it("is in sight in the first question's section, after its figures and charts, before its folds and above the partners", () => {
     const proof = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).proof!;
     expect(proof).toContain(guaranteesHtml());
-    const between = proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim();
-    expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<figure class="emap"[\s\S]*?<\/figure>\s*<section class="ewall"[\s\S]*?<\/section>\s*<ul class="scale"[\s\S]*?<\/ul>\s*<aside class="pverify"[\s\S]*?<\/aside>\s*<p class="pwatch">[\s\S]*?<\/p>$/);
-    expect(between).toContain(evidenceWallHtml());
-    const after = proof.slice(proof.indexOf(guaranteesHtml()) + guaranteesHtml().length).trim();
-    expect(after).toMatch(/^<details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary>/);
+    const at = proof.indexOf(guaranteesHtml()), sec = proof.indexOf('<section class="ewall pq" id="q-limits"'), next = proof.indexOf('<section class="ewall pq" id="q-ai"');
+    expect(sec).toBeGreaterThan(proof.indexOf("<h1>Proof</h1>"));
+    expect([sec < at, at < next]).toEqual([true, true]);
+    const before = proof.slice(sec, at), after = proof.slice(at + guaranteesHtml().length, next);
+    expect(before).toContain('<ul class="ew-ts">');
+    expect(before).toContain('<figure class="pchart"');
+    expect(before).not.toContain("<details class=\"sumd");
+    expect(after.trim()).toMatch(/^<details class="sumd pq-fold/);
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
   });
 

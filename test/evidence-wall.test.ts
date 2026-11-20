@@ -9,6 +9,7 @@ import { evidenceWall, evidenceWallFile, wallWalks } from "../src/redesign/evide
 import { liveTryRecords, liveTryTotals, nearestRank, type LiveTryRecord } from "../src/redesign/liveTry.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { proofPage } from "../src/redesign/proof.js";
+import { tileHtml } from "../src/redesign/proofQuestions.js";
 import { README_MAP_FILES, evidenceMapSvgFile, readmeMapLine } from "../src/redesign/evidenceMap.js";
 import { countOf } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -187,16 +188,25 @@ describe("the /try walks, added up over every recorded series", () => {
 });
 
 describe("/proof renders the wall", () => {
-  it("as the file says, every tile a link, with no inline script, style or handler", () => {
+  // 21 Nov (the owner: /proof by the questions a judge asks): the wall's tiles are spread over the question sections
+  // (src/redesign/proofQuestions.ts), each tile once, as the file says, with its day; evidenceWallHtml stays the wall as
+  // one block (llms.txt and the partner pages read the same file).
+  it("as the file says, every tile a link once, with its day, with no inline script, style or handler", () => {
     const w = committedWall()!;
-    const html = evidenceWallHtml(w);
-    expect(proofPage()).toContain(html);
+    const page = proofPage(), main = /<main[\s\S]*<\/main>/.exec(page)![0];
     const shown = (tiles(w) as WallTile[]).filter((t) => !t.offProof);
-    for (const t of shown) expect(html).toContain(`data-wall="${t.key}"`);
-    expect((html.match(/<li class="ew-t/g) ?? []).length).toBe(shown.length);
-    // A tile kept off /proof (TAP: told on /visa only) is not on the page.
-    for (const t of (tiles(w) as WallTile[]).filter((x) => x.offProof)) expect(html).not.toContain(`data-wall="${t.key}"`);
-    expect(html).not.toMatch(/<script|style=|\son[a-z]+=/i);
+    for (const t of shown) {
+      expect(main, t.key).toContain(tileHtml(t));
+      expect(main.split(`<li class="ew-t${t.tone ? ` ${t.tone}` : ""}" data-wall="${t.key}"`).length - 1, t.key).toBe(1);
+    }
+    expect((main.match(/<li class="ew-t/g) ?? []).length).toBe(shown.length);
+    // A tile kept off /proof is not a tile there; TAP (told on /visa only) is not on the page at all.
+    for (const t of (tiles(w) as WallTile[]).filter((x) => x.offProof)) expect(main).not.toContain(`data-wall="${t.key}"`);
+    expect(main).not.toContain("tap-interop");
+    // Each tile's day is the newest of its records (src/proof/recordDate.ts), or "as built" when no record says one.
+    for (const t of shown) expect(t.asOf === null || /^\d{4}-\d{2}-\d{2}$/.test(t.asOf ?? ""), t.key).toBe(true);
+    expect(main).not.toMatch(/<script|style=|\son[a-z]+=/i);
+    expect(evidenceWallHtml(w)).not.toMatch(/<script|style=|\son[a-z]+=/i);
     expect(EVIDENCE_WALL_CSS).toContain("@media (max-width: 420px)");
   });
 });
@@ -235,6 +245,8 @@ describe("the README's wall line and the partner pages' strips", () => {
       const html = evidenceStripHtml(p, {}, w);
       for (const k of PARTNER_STRIPS[p].keys) expect(html, `${p} ${k}`).toContain(`data-wall="${k}"`);
       expect(html).toContain(`href="proof#${PARTNER_STRIPS[p].group}"`);
+      // The group is a section or block of /proof (21 Nov: the questions' sections), so the link lands.
+      expect(proofPage().split(` id="${PARTNER_STRIPS[p].group}"`).length - 1, p).toBe(1);
       expect(html).toMatch(/test money|no money moved/);
       expect(html).not.toMatch(/<script|style=|\son[a-z]+=|endorsed by|partnered with/i);
     }

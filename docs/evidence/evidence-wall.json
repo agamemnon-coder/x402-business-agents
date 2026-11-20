@@ -14,7 +14,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "spend-bills",
@@ -24,7 +25,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-bills.md",
-          "rec": "docs/runs/2026-11-19-airwallex-bills.json"
+          "rec": "docs/runs/2026-11-19-airwallex-bills.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "soak-paid",
@@ -34,7 +36,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
-          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md"
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md",
+          "asOf": "2026-11-20"
         },
         {
           "key": "soak-fx",
@@ -44,7 +47,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
-          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md"
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md",
+          "asOf": "2026-11-20"
         },
         {
           "key": "approval-hash",
@@ -54,7 +58,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
-          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md docs/runs/airwallex-transfer-approval-2026-11-06.json"
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md docs/runs/airwallex-transfer-approval-2026-11-06.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "two-locks",
@@ -64,7 +69,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-airwallex-two-locks-paid.md",
-          "rec": "docs/runs/2026-11-12-airwallex-two-locks-paid.md"
+          "rec": "docs/runs/2026-11-12-airwallex-two-locks-paid.md",
+          "asOf": "2026-11-12"
         },
         {
           "key": "alta-refusal",
@@ -74,7 +80,8 @@
           "tag": "testnet",
           "tone": "metal",
           "href": "https://testnet.metalntwx.com/tx/0x1c6cb0c0caa04e9e0518dd64cf894c3a1463e8c81d6265e13eae6cb596374f70",
-          "rec": "docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json"
+          "rec": "docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "alta-payments",
@@ -84,7 +91,8 @@
           "tag": "testnet",
           "tone": "metal",
           "href": "https://testnet.metalntwx.com/address/0x77dee09962Dea010D8559C880d3970E7EaB6A313",
-          "rec": "docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json"
+          "rec": "docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "visa-airi",
@@ -94,7 +102,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "visa",
-          "rec": "docs/runs/2026-11-14-vic-5.json"
+          "rec": "docs/runs/2026-11-14-vic-5.json",
+          "asOf": "2026-11-14"
         },
         {
           "key": "alta-series-refused",
@@ -104,7 +113,8 @@
           "tag": "testnet",
           "tone": "metal",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-alta-series.md",
-          "rec": "docs/runs/2026-11-19-alta-series.json docs/runs/2026-11-19-alta-series-finish.json"
+          "rec": "docs/runs/2026-11-19-alta-series.json docs/runs/2026-11-19-alta-series-finish.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "alta-series-paid",
@@ -114,7 +124,8 @@
           "tag": "testnet",
           "tone": "metal",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-alta-series.md",
-          "rec": "docs/runs/2026-11-19-alta-series.json docs/runs/2026-11-19-alta-series-finish.json"
+          "rec": "docs/runs/2026-11-19-alta-series.json docs/runs/2026-11-19-alta-series-finish.json",
+          "asOf": "2026-11-19"
         },
         {
           "offProof": true,
@@ -125,7 +136,8 @@
           "tag": "testnet",
           "tone": "metal",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-alta-refusals.md",
-          "rec": "docs/runs/2026-11-20-alta-refusals.json"
+          "rec": "docs/runs/2026-11-20-alta-refusals.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "alta-merkle",
@@ -135,7 +147,8 @@
           "tag": "testnet",
           "tone": "metal",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-alta-merkle.md",
-          "rec": "docs/runs/2026-11-19-alta-merkle.json"
+          "rec": "docs/runs/2026-11-19-alta-merkle.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "late-failure",
@@ -145,7 +158,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-17-airwallex-late-failure.json",
-          "rec": "docs/runs/2026-11-17-airwallex-late-failure.json"
+          "rec": "docs/runs/2026-11-17-airwallex-late-failure.json",
+          "asOf": "2026-11-17"
         },
         {
           "key": "awx-endpoints",
@@ -155,7 +169,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/airwallex-api-coverage.md",
-          "rec": "docs/evidence/airwallex-api-coverage.json"
+          "rec": "docs/evidence/airwallex-api-coverage.json",
+          "asOf": null
         },
         {
           "key": "awx-statement",
@@ -165,7 +180,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md",
-          "rec": "docs/runs/2026-11-19-airwallex-deep-3.json"
+          "rec": "docs/runs/2026-11-19-airwallex-deep-3.json",
+          "asOf": "2026-11-19"
         },
         {
           "offProof": true,
@@ -176,7 +192,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep.md",
-          "rec": "docs/runs/2026-11-19-airwallex-deep.json"
+          "rec": "docs/runs/2026-11-19-airwallex-deep.json",
+          "asOf": "2026-11-19"
         },
         {
           "offProof": true,
@@ -187,7 +204,19 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md",
-          "rec": "docs/runs/2026-11-19-airwallex-deep-3.json"
+          "rec": "docs/runs/2026-11-19-airwallex-deep-3.json",
+          "asOf": "2026-11-19"
+        },
+        {
+          "key": "t0-readback",
+          "fig": "All 95",
+          "label": "Purser's journal entries read back from T:0, every account to the cent",
+          "note": "T:0's shared sandbox entity, test data: posted 10 Nov, read back 14 Nov, read only. A later read of T:0's reports, 19 Nov, was refused by T:0 (HTTP 401); nothing read.",
+          "tag": "sandbox",
+          "tone": "",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-14-t0-readback.md",
+          "rec": "docs/runs/2026-11-14-t0-readback.json docs/runs/2026-11-14-t0-readback.md docs/runs/2026-11-10-t0-journal-sandbox.md docs/runs/2026-11-19-t0-reports.json",
+          "asOf": "2026-11-14"
         }
       ]
     },
@@ -203,7 +232,8 @@
           "tag": "test",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/tamper-matrix.md",
-          "rec": "docs/evidence/tamper-matrix.json"
+          "rec": "docs/evidence/tamper-matrix.json",
+          "asOf": null
         },
         {
           "key": "try-cent",
@@ -213,7 +243,8 @@
           "tag": "sandbox",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "try-hash",
@@ -223,7 +254,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "try-proofs",
@@ -233,7 +265,8 @@
           "tag": "sandbox",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "soak-negatives",
@@ -243,7 +276,8 @@
           "tag": "sandbox",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
-          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md"
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md",
+          "asOf": "2026-11-20"
         },
         {
           "offProof": true,
@@ -254,7 +288,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-replay.md",
-          "rec": "docs/runs/2026-11-20-airwallex-replay.json"
+          "rec": "docs/runs/2026-11-20-airwallex-replay.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "card-cent",
@@ -264,7 +299,8 @@
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/airwallex-card-cent-2026-11-15.json",
-          "rec": "docs/runs/airwallex-card-cent-2026-11-15.json"
+          "rec": "docs/runs/airwallex-card-cent-2026-11-15.json",
+          "asOf": "2026-11-15"
         },
         {
           "key": "visa-refused",
@@ -274,7 +310,8 @@
           "tag": "sandbox",
           "tone": "ok",
           "href": "visa",
-          "rec": "docs/runs/2026-11-14-vic-5.json"
+          "rec": "docs/runs/2026-11-14-vic-5.json",
+          "asOf": "2026-11-14"
         },
         {
           "key": "tap-interop",
@@ -285,7 +322,8 @@
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-visa-tap-interop.md",
           "rec": "docs/runs/2026-11-19-visa-tap-interop.md",
-          "offProof": true
+          "offProof": true,
+          "asOf": "2026-11-19"
         },
         {
           "key": "passkeys-onchain",
@@ -295,7 +333,8 @@
           "tag": "testnet",
           "tone": "metal",
           "href": "alta#faceid-onchain",
-          "rec": "docs/runs/2026-11-12-faceid-onchain.json"
+          "rec": "docs/runs/2026-11-12-faceid-onchain.json",
+          "asOf": "2026-11-12"
         }
       ]
     },
@@ -311,7 +350,8 @@
           "tag": "sandbox",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-long-run.md",
-          "rec": "docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json"
+          "rec": "docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "worst-case",
@@ -321,7 +361,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/worst-case-ai.md",
-          "rec": "docs/evals/worst-case-summary.json"
+          "rec": "docs/evals/worst-case-summary.json",
+          "asOf": "2026-11-15"
         },
         {
           "offProof": true,
@@ -332,7 +373,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v3.md",
-          "rec": "docs/evals/adversarial-v3.json docs/evals/adversarial-v3-rerun-2026-11-19.json docs/evals/adversarial-v3-after.json"
+          "rec": "docs/evals/adversarial-v3.json docs/evals/adversarial-v3-rerun-2026-11-19.json docs/evals/adversarial-v3-after.json",
+          "asOf": "2026-11-19"
         },
         {
           "offProof": true,
@@ -343,7 +385,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v4.md",
-          "rec": "docs/evals/adversarial-v4.json docs/evals/adversarial-v4-after.json docs/evals/adversarial-v4-rerun-2026-11-19.json"
+          "rec": "docs/evals/adversarial-v4.json docs/evals/adversarial-v4-after.json docs/evals/adversarial-v4-rerun-2026-11-19.json",
+          "asOf": "2026-11-19"
         },
         {
           "offProof": true,
@@ -354,7 +397,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v5.md",
-          "rec": "docs/evals/adversarial-v5.json"
+          "rec": "docs/evals/adversarial-v5.json",
+          "asOf": "2026-11-19"
         },
         {
           "offProof": true,
@@ -365,7 +409,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v6.md",
-          "rec": "docs/evals/adversarial-v6.json"
+          "rec": "docs/evals/adversarial-v6.json",
+          "asOf": "2026-11-19"
         },
         {
           "offProof": true,
@@ -376,7 +421,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v7.md",
-          "rec": "docs/evals/adversarial-v7.json"
+          "rec": "docs/evals/adversarial-v7.json",
+          "asOf": "2026-11-19"
         },
         {
           "offProof": true,
@@ -387,7 +433,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v8.md",
-          "rec": "docs/evals/adversarial-v8.json"
+          "rec": "docs/evals/adversarial-v8.json",
+          "asOf": "2026-11-19"
         },
         {
           "offProof": true,
@@ -398,7 +445,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v9.md",
-          "rec": "docs/evals/adversarial-v9.json"
+          "rec": "docs/evals/adversarial-v9.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "eval-v10",
@@ -408,7 +456,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v10.md",
-          "rec": "docs/evals/adversarial-v10.json docs/evals/adversarial-v10-after.json"
+          "rec": "docs/evals/adversarial-v10.json docs/evals/adversarial-v10-after.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "red-team",
@@ -418,7 +467,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/rerun-2026-11-20.json",
-          "rec": "docs/redteam/rerun-2026-11-20.json docs/redteam/rerun-2026-11-19b.json docs/redteam/rerun-2026-11-19.json docs/redteam/report.json"
+          "rec": "docs/redteam/rerun-2026-11-20.json docs/redteam/rerun-2026-11-19b.json docs/redteam/rerun-2026-11-19.json docs/redteam/report.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "hostile-model",
@@ -428,7 +478,8 @@
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/ap-hostile.json",
-          "rec": "docs/evals/ap-hostile.json docs/evals/ap-hostile-rerun-2026-11-19.json"
+          "rec": "docs/evals/ap-hostile.json docs/evals/ap-hostile-rerun-2026-11-19.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "try-claude",
@@ -438,7 +489,8 @@
           "tag": "sandbox",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "try-held",
@@ -448,7 +500,8 @@
           "tag": "sandbox",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         }
       ]
     },
@@ -464,7 +517,8 @@
           "tag": "test",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/redteam-api.md",
-          "rec": "docs/evidence/redteam-api.json"
+          "rec": "docs/evidence/redteam-api.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "chaos-money",
@@ -474,7 +528,8 @@
           "tag": "test",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/chaos-money.md",
-          "rec": "docs/evidence/chaos-money.json"
+          "rec": "docs/evidence/chaos-money.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "fuzzing",
@@ -484,7 +539,8 @@
           "tag": "test",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/fuzzing.md",
-          "rec": "docs/evidence/fuzzing.json"
+          "rec": "docs/evidence/fuzzing.json",
+          "asOf": "2026-11-19"
         }
       ]
     },
@@ -500,7 +556,8 @@
           "tag": "check",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-20.md",
-          "rec": "docs/evidence/verification-2026-11-20.json"
+          "rec": "docs/evidence/verification-2026-11-20.json",
+          "asOf": "2026-11-20"
         },
         {
           "key": "anchor",
@@ -510,7 +567,8 @@
           "tag": "testnet",
           "tone": "metal",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-anchor.md",
-          "rec": "docs/runs/2026-11-19-anchor.json"
+          "rec": "docs/runs/2026-11-19-anchor.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "clearing-load",
@@ -520,7 +578,8 @@
           "tag": "testnet",
           "tone": "metal",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-clearing-load.md",
-          "rec": "docs/runs/2026-11-19-clearing-load.json docs/runs/clearing-load-1.json docs/runs/clearing-load-2.json"
+          "rec": "docs/runs/2026-11-19-clearing-load.json docs/runs/clearing-load-1.json docs/runs/clearing-load-2.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "ci",
@@ -530,7 +589,8 @@
           "tag": "ci",
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain",
-          "rec": ".github/workflows/ci.yml"
+          "rec": ".github/workflows/ci.yml",
+          "asOf": null
         }
       ]
     },
@@ -546,7 +606,8 @@
           "tag": "site",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/site-quality.md",
-          "rec": "docs/evidence/site-quality.json"
+          "rec": "docs/evidence/site-quality.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "webkit-try",
@@ -556,7 +617,8 @@
           "tag": "sandbox",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-webkit-try.md",
-          "rec": "docs/runs/2026-11-19-webkit-try/summary.json"
+          "rec": "docs/runs/2026-11-19-webkit-try/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "assurance",
@@ -566,7 +628,8 @@
           "tag": "check",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assurance.md",
-          "rec": "docs/assurance.md"
+          "rec": "docs/assurance.md",
+          "asOf": "2026-11-19"
         },
         {
           "key": "openssf",
@@ -576,7 +639,8 @@
           "tag": "external",
           "tone": "ok",
           "href": "https://www.bestpractices.dev/projects/16923",
-          "rec": "docs/evidence/openssf-best-practices.json"
+          "rec": "docs/evidence/openssf-best-practices.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "supply-chain",
@@ -586,7 +650,41 @@
           "tag": "ci",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.2.0",
-          "rec": "docs/evidence/release-v1.2.0.json"
+          "rec": "docs/evidence/release-v1.2.0.json",
+          "asOf": null
+        },
+        {
+          "key": "coverage",
+          "fig": "95.05%",
+          "label": "of the product's statements covered by tests; branches 86.02%",
+          "note": "V8 coverage over src, cloud/src and worker/src, 20 Nov. The previous coverage run: 92.21% of statements, 82.21% of branches.",
+          "tag": "measured",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md",
+          "rec": "docs/evidence/coverage.json",
+          "asOf": "2026-11-20"
+        },
+        {
+          "key": "formal-dafny",
+          "fig": "172",
+          "label": "Dafny proof obligations verified, 0 errors",
+          "note": "59 lemmas in 7 files about the code that guards money: the signed terms' bytes, cents and amounts; 19 Nov. npm run formal:dafny runs them again.",
+          "tag": "check",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/formal-proofs.md",
+          "rec": "docs/evidence/formal-proofs.json",
+          "asOf": "2026-11-19"
+        },
+        {
+          "key": "formal-tla",
+          "fig": "1,102,845",
+          "label": "states of the payment model checked by TLC: no error",
+          "note": "A TLA+ model of paying an invoice over Airwallex, every state within its bound: never paid twice, never unsigned among its invariants; all 3 planted bugs caught. The model, not the code. npm run formal runs it again.",
+          "tag": "check",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/formal-model.md",
+          "rec": "docs/evidence/formal-model.md",
+          "asOf": "2026-11-19"
         }
       ]
     },
@@ -602,7 +700,8 @@
           "tag": "sandbox",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "try-sign-paid",
@@ -612,7 +711,8 @@
           "tag": "sandbox",
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "try-autopay",
@@ -622,7 +722,8 @@
           "tag": "sandbox",
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "try-refusal",
@@ -632,7 +733,8 @@
           "tag": "sandbox",
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "try-verify",
@@ -642,7 +744,8 @@
           "tag": "sandbox",
           "tone": "",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         },
         {
           "key": "try-cost",
@@ -652,7 +755,8 @@
           "tag": "sandbox",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
-          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json"
+          "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json",
+          "asOf": "2026-11-19"
         }
       ]
     }

@@ -498,7 +498,11 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
     expect(words(proofPage())).toContain(pay.onChainLine);
     expect(words(PAGES.metal!)).toContain(pay.line);
     for (const [name, html] of [["home", homePage()], ["proof", proofPage()], ["metal", PAGES.metal!]] as const) {
-      const main = words(/<main[\s\S]*<\/main>/.exec(html)![0]);
+      // 21 Nov: /proof's "Is the AI controlled?" section has the held-out eval rounds, whose wrong payments without rules
+      // can be any count (87 in eval v9): a figure of another record, labelled as such, not a count of the main run's
+      // payments. That section is left out here; every other part of the page is held to the one set.
+      const ai = /<section class="ewall pq" id="q-ai"[\s\S]*?<\/section>/;
+      const main = words(/<main[\s\S]*<\/main>/.exec(html)![0].replace(ai, ""));
       expect({ name, other: main.match(/(?<![\d.#])\b(87|82)\b(?![.\d])/g) ?? [] }).toEqual({ name, other: [] });
     }
   });

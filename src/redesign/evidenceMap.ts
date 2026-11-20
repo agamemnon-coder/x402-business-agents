@@ -55,11 +55,13 @@ export function evidenceMap(w: EvidenceWall | null = committedWall()): EvidenceM
   const held = fig("try-held") ? node("held", "Held", "", "ev-ai", "", badge(["try-held", "held at the cash floor"])) : null;
   const refused = fig("try-cent") ? node("refused", "Refused", "", "ev-forged", "", badge(["try-cent", "one-cent changes refused"])) : null;
   // The row under the path: only a check whose figure is on the wall.
+  const evalTile = [...tiles.values()].filter((t) => /^eval-v\d+$/.test(t.key) && !t.offProof).sort((a, b) => Number(b.key.slice(6)) - Number(a.key.slice(6)))[0];
   const checks = [
     node("c-redteam", "Red team", "the /try API, on this computer", "ev-attacked", "ok", badge(["redteam-api", "attacks held"])),
     node("c-chaos", "Chaos", "faults and crashes, money path", "ev-attacked", "ok", badge(["chaos-money", "invariants broken"])),
     node("c-fuzz", "Fuzzing", "properties at high run counts", "ev-attacked", "ok", badge(["fuzzing", "properties held"])),
-    node("c-eval", "Held-out eval", "129 invoices, written first", "ev-ai", "claude", badge(["eval-v10", "wrong payments"])),
+    // The newest held-out round on /proof, whichever it is (21 Nov: no version or count typed here); its invoices from its label.
+    node("c-eval", "Held-out eval", `${/on (\d+) held-out invoices/.exec(evalTile?.label ?? "")?.[1] ?? "new"} invoices, written first`, "ev-ai", "claude", evalTile ? badge([evalTile.key, "wrong payments"]) : null),
     node("c-site", "The public site", "Lighthouse, axe, WebKit", "ev-quality", "ok", badge(["site-quality", "accessibility"], ["webkit-try", "WebKit walks passed"])),
   ].filter((n) => n.badge);
   return { main, rails, held, refused, checks };

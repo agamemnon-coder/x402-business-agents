@@ -175,27 +175,35 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // Airwallex, Alta, Claude (Visa TAP is on /visa; its footer link left Proof on 12 Nov).
     // 12 Nov (wire-in, owner): five partner cards, Airwallex, Visa, Alta, T:0, Claude.
     if ((await page.locator(".pcard").count()) !== 5) fail(`/proof ${tag}: not five partner cards`);
-    // The jury pass (13 Nov): four cards directly under the heading, on the first screen, then the seven guarantees (in
-    // sight again since the jury's second round), then one closed fold; with it open, each partner card with one claim to tap in sight; four tiles; every closed
-    // line inside still closed; the utility links last.
-    // Since the owner's word (13 Nov) the scale band sits between the heading and the four cards.
-    // The owner, 13 Nov ("the proof is what we need"): the lead line and the proof chain under the heading, on the first
-    // screen; then the band, the offline check and every live run, by partner; the details fold closed.
-    const sum = (await page.evaluate(`(() => { const h1 = document.querySelector("main h1"), c = document.querySelector("main ol.pchain"), d = document.querySelector("main details.sumd"), r = document.getElementById("live-runs"); return { first: !!h1 && !!h1.nextElementSibling && h1.nextElementSibling.matches("p.plead") && h1.nextElementSibling.nextElementSibling === c, n: c ? c.children.length : 0, top: c ? Math.round(c.getBoundingClientRect().top + scrollY) : -1, rows: r ? r.querySelectorAll("li[id^=run-]").length : 0, closed: !!d && !d.open }; })()`)) as { first: boolean; n: number; top: number; rows: number; closed: boolean };
-    if (!sum.first || sum.n !== 4 || sum.top < 0 || sum.top >= h || sum.rows < 10 || !sum.closed) fail(`/proof ${tag}: not the lead and the four-step proof chain under the heading on the first screen, the live runs below, with the details fold closed (${JSON.stringify(sum)})`);
+    // 21 Nov (the owner: "/proof is loose numbers; organise it, visuals and an animated architecture"): the heading, the
+    // lead and the architecture on the first screen, every part of it a link to a section on the page; then the five
+    // questions in order, the first with the seven guarantees in sight; every closed line closed on load; the utility
+    // links last. (Before: the four-step proof chain and the guarantees above one details fold, 13 Nov.)
+    const sum = (await page.evaluate(`(() => {
+      const h1 = document.querySelector("main h1"), lead = h1 && h1.nextElementSibling, arch = document.getElementById("architecture");
+      const svg = arch ? [...arch.querySelectorAll("svg")].find((s) => s.getBoundingClientRect().height > 0) : null;
+      const parts = svg ? [...svg.querySelectorAll("a")].map((a) => a.getAttribute("href") || "") : [];
+      const qs = [...document.querySelectorAll("main section.pq")].map((s) => s.id);
+      const g = document.getElementById("guarantees"), q1 = document.getElementById("q-limits");
+      return { first: !!lead && lead.matches("p.plead") && lead.nextElementSibling === arch, top: arch ? Math.round(arch.getBoundingClientRect().top + scrollY) : -1,
+        parts: parts.length, land: parts.every((h) => h.startsWith("#") && !!document.getElementById(h.slice(1))), qs: qs.join(","),
+        promises: g ? g.querySelectorAll("li .by").length : 0, inQ1: !!g && !!q1 && q1.contains(g) && !g.closest("details"),
+        rows: (document.getElementById("live-runs") || document).querySelectorAll("li[id^=run-]").length,
+        closed: [...document.querySelectorAll("main details")].every((d) => !d.open) };
+    })()`)) as { first: boolean; top: number; parts: number; land: boolean; qs: string; promises: number; inQ1: boolean; rows: number; closed: boolean };
+    if (!sum.first || sum.top < 0 || sum.top >= h || sum.parts < 10 || !sum.land) fail(`/proof ${tag}: not the lead and the architecture under the heading on the first screen, each part a link that lands (${JSON.stringify(sum)})`);
+    if (sum.qs !== "q-limits,q-ai,q-live,q-built,q-verify" || sum.rows < 10 || !sum.closed) fail(`/proof ${tag}: not the five questions in order, the live runs listed and every fold closed on load (${JSON.stringify(sum)})`);
+    if (!sum.inQ1 || sum.promises !== 7) fail(`/proof ${tag}: the seven guarantees are not in sight in the first question's section (${sum.promises} promises)`);
     await page.locator("main details#details > summary").click();
     const order = (await page.evaluate(`(() => {
-      const d = document.querySelector("main details.sumd"), g = document.getElementById("guarantees"), u = document.querySelector("main .util"), c = document.getElementById("live-runs");
+      const u = document.querySelector("main .util");
       const shown = (e) => e.getBoundingClientRect().height > 0 && e.checkVisibility();
       return {
-        // The guarantees in sight under the live runs (the owner, 13 Nov), the fold right after them.
-        first: !!c && !!d && c.nextElementSibling === g && g.nextElementSibling === d && !d.contains(g), top: 0, promises: g ? g.querySelectorAll("li .by").length : 0,
         claims: [...document.querySelectorAll(".pcard > ul.lead a.c")].filter(shown).length, tiles: document.querySelectorAll(".nums a.num").length,
         closed: [...document.querySelectorAll("main details.deep")].filter((d) => !d.open).length, last: !!u && !u.nextElementSibling && u.querySelectorAll("a").length,
       };
-    })()`)) as { first: boolean; top: number; promises: number; claims: number; tiles: number; closed: number; last: number | false };
-    if (!order.first || order.promises !== 7) fail(`/proof ${tag}: the seven guarantees are not in sight between the live runs and the details fold (${order.promises} promises)`);
-    if (order.claims !== 5 || order.tiles !== 4 || order.closed !== 5 || order.last !== 4) fail(`/proof ${tag}: not five claims in sight (one per partner card), four tiles, five closed lines and four utility links last (${JSON.stringify(order)})`);
+    })()`)) as { claims: number; tiles: number; closed: number; last: number | false };
+    if (order.claims !== 5 || order.tiles !== 4 || order.closed !== 6 || order.last !== 4) fail(`/proof ${tag}: with the partners open, not five claims in sight (one per partner card), the main run's four tiles, six closed lines and four utility links last (${JSON.stringify(order)})`);
     await page.screenshot({ path: join(shots, `proof-${tag}.png`) });
     // Every fold of the page; "More" in the menu stays closed, as a reader leaves it.
     await page.evaluate(() => document.querySelectorAll("details:not(.pmore)").forEach((d) => { (d as HTMLDetailsElement).open = true; }));

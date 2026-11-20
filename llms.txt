@@ -57,6 +57,7 @@ Live on the rails:
 - All 42 soak payouts and FX legs on Airwallex's statement, to the cent (sandbox; Balance history of the 19 Nov soak; all 92 links add up; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md
 - EUR 312.50 invoice matched from a Global Account's statement; its payment link switched off (sandbox; Bank transfer by the sandbox's simulation, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep.md
 - EUR 1.00 scheduled payment cancelled at Airwallex before its day (sandbox; Terms checked by Airwallex first; no passkey; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md
+- All 95 Purser's journal entries read back from T:0, every account to the cent (sandbox; T:0's shared sandbox entity, test data: posted 10 Nov, read back 14 Nov, read only. A later read of T:0's reports, 19 Nov, was refused by T:0 (HTTP 401); nothing read): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-14-t0-readback.md
 
 Cannot be forged:
 - All 894 tampered proof copies refused (test world; every signed value of 6 proofs changed; the originals verify. Offline): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/tamper-matrix.md
@@ -103,6 +104,9 @@ Quality and supply chain:
 - 6 invariants, each mapped to code, tests and CI (re-checked; the assurance case; test/assurance.test.ts checks every file, function and CI job it names): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assurance.md
 - Silver OpenSSF Best Practices badge, project 16923 (external; from the project's own answers to the programme's criteria, as of 19 Nov; the live status is on the project page): https://www.bestpractices.dev/projects/16923
 - v1.2.0 release signed: SLSA provenance and SBOM attested (CI; 2 Sigstore-signed attestations on the source archive, read back from GitHub; check with gh attestation verify): https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.2.0
+- 95.05% of the product's statements covered by tests; branches 86.02% (measured; V8 coverage over src, cloud/src and worker/src, 20 Nov. The previous coverage run: 92.21% of statements, 82.21% of branches): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/coverage.md
+- 172 Dafny proof obligations verified, 0 errors (re-checked; 59 lemmas in 7 files about the code that guards money: the signed terms' bytes, cents and amounts; 19 Nov. npm run formal:dafny runs them again): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/formal-proofs.md
+- 1,102,845 states of the payment model checked by TLC: no error (re-checked; a TLA+ model of paying an invoice over Airwallex, every state within its bound: never paid twice, never unsigned among its invariants; all 3 planted bugs caught. The model, not the code. npm run formal runs it again): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/formal-model.md
 
 The public /try, timed:
 - 57 of 58 /try walks: every site step passed (sandbox; 19 Nov, Chromium and Firefox, desktop, tablet and phone; 0 console errors. The recording script marked 54 of 58 all ok: the others stopped on its own bug or on /verify's new words; the run logs say which): https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs
