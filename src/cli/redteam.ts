@@ -19,6 +19,7 @@ import { evalCommit } from "../evals/commit.js";
 const MODEL = "claude-opus-5-5";
 const results: AttackResult[] = [];
 let summary = "no model: KIT11_ANTHROPIC_API_KEY is not set";
+let modelSummary = false;
 
 /** The invoice layout the intake reads (fixtures/bergtex-invoice-BTX-2026-11.txt), given to the attacker. */
 const INVOICE_LAYOUT = readFileSync(new URL("../../fixtures/bergtex-invoice-BTX-2026-11.txt", import.meta.url), "utf8");
@@ -37,6 +38,8 @@ const record = (r: AttackResult) => {
 const argv = process.argv.slice(2);
 const outArg = argv.includes("--out") ? argv[argv.indexOf("--out") + 1] : undefined;
 const apiKey = argv.includes("--no-model") ? undefined : process.env.KIT11_ANTHROPIC_API_KEY;
+// Said as it is: with --no-model the key may well be set (20 Nov: the first re-run said "not set" when it was).
+if (argv.includes("--no-model")) summary = "no model: run with --no-model, every attack in order with its own fixed input";
 if (!apiKey) {
   console.log(`${argv.includes("--no-model") ? "--no-model" : "No KIT11_ANTHROPIC_API_KEY"}: running every attack in order, with no model.\n`);
   for (const a of ATTACKS) record(await runAttack(await redTeamWorld(), a));
@@ -88,6 +91,7 @@ if (!apiKey) {
     console.log(`\nThe red team's own summary (${MODEL}):\n${redactSecrets(last).slice(0, 3000)}`);
   }
   summary = refused ? "the model declined; the attacks ran without it" : redactSecrets(last).slice(0, 3000);
+  modelSummary = !refused;
 }
 
 // Inconclusive attempts never count as blocked: they are reported apart, and they fail the run like a breach does.
@@ -98,7 +102,7 @@ const caughtAfter = results.filter((r) => r.outcome === "blocked" && r.caught ==
 // How to read "blocked": the attack failed. Most were stopped before anything moved; the ones marked caught "after"
 // were found afterwards (by the reconciliation or npm run verify), not prevented. The model's summary uses "blocked" for both.
 const after = results.filter((r) => r.outcome === "blocked" && r.caught === "after").map((r) => r.id);
-const reading = `"blocked" means the attack failed: ${blocked - after.length} were stopped before anything moved${after.length ? `, ${after.length} were found afterwards, not prevented (${after.join(", ")})` : ""}. The summary is the attacking model's own text and uses "blocked" for both.`;
+const reading = `"blocked" means the attack failed: ${blocked - after.length} were stopped before anything moved${after.length ? `, ${after.length} were found afterwards, not prevented (${after.join(", ")})` : ""}.${modelSummary ? ' The summary is the attacking model\'s own text and uses "blocked" for both.' : ""}`;
 const rerun = outArg ? { rerun_of: "docs/redteam/report.json", ...evalCommit([outArg]), command: `npm run redteam -- ${argv.join(" ")}` } : {};
 const report = { ran_at: new Date().toISOString(), ...rerun, model: apiKey && !summary.startsWith("the model declined") ? MODEL : null, reading, summary, attempts: results.length, blocked, caught_after: caughtAfter, inconclusive, not_blocked: notBlocked, results };
 const root = resolve(import.meta.dirname, "../..");
