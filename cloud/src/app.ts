@@ -3,6 +3,7 @@
 // TenantDb; a route never names a tenant itself.
 
 import { withBaseline } from "./baseHeaders.js";
+import { KEY_RENEWAL_HEADER, renewalNotice } from "./keyExpiry.js";
 import { z } from "zod";
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
 import { approveRecovery, namedAdmin, RecoveryRefused, RECOVERY_CHECKS, requestRecovery } from "./recovery.js";
@@ -13,6 +14,8 @@ import { registerCsv } from "../../src/money/registerShape.js";
 import { SCHEMA } from "./schema.js";
 import type { Blobs, Sql } from "./store.js";
 import { applySync, SyncBatch, SyncRefused, syncState } from "./sync.js";
+import { QuotaExceeded, reserveStorage, type StorageQuota } from "./storageQuota.js";
+import { endSession, listSessions } from "./sessions.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
@@ -85,6 +88,8 @@ export interface CloudEnv {
   asset?: (path: string) => Promise<Response | null>;
   /** The deployed version (a Worker var), shown by /v1/health; "dev" when unset. */
   version?: string;
+  /** The commit and build time the deploy stamped in (GIT_SHA, BUILT_AT; scripts/deploy.ts), shown by /v1/health. */
+  build?: { sha: string | null; built_at: string | null };
   /** How alert webhooks are sent (the Worker's fetch); absent: none are sent. Tests pass a fake. */
   outbound?: Outbound;
   /** The pause before a webhook's second and third attempt, times the attempt (default 500 ms). */
@@ -101,6 +106,8 @@ export interface CloudEnv {
   waitUntil?: (p: Promise<unknown>) => void;
   /** Requests per minute per key or session; per address on the sign-in routes; failed authentications per address. */
   rate?: { perMinute: number; signInPerMinute: number; failedAuthPerMinute?: number };
+  /** Files uploaded through the API per company (./storageQuota.ts; default 2 GiB and 20,000 files). */
+  storageQuota?: StorageQuota;
   /** A staged export's rows per part (default 2000) and its size limit in bytes (default 512 MB). */
   exportPartRows?: number;
   exportMaxBytes?: number;
@@ -307,7 +314,8 @@ export const ROUTES: Route[] = [
     // The security log's alarms of the last 24 hours (./securityLog.ts): counts per rule, no company, no address.
     let security: Record<string, unknown> = { alarms_24h: null };
     try { const a = await securityAlarms(c.env.sql, c.now); security = { alarms_24h: a.last_24h, rules: a.rules }; } catch { /* the database is down: d1 says so */ }
-    return json(h.status, { ...h.body, security });
+    // Which commit runs here and when it was built (scripts/deploy.ts stamps them; ASVS V1.14.4).
+    return json(h.status, { ...h.body, build: { sha: c.env.build?.sha ?? null, built_at: c.env.build?.built_at ?? null }, security });
   } },
   { method: "GET", path: "/v1/status", summary: "Where the company stands, for its owners: the last push from the runner, the mail queue, today's mail quota, the runner's alert codes and the webhook (never its secret).", need: "admin", run: async (c) => json(200, await companyStatus(c.env.sql, c.caller!.tenantId, c.now)) },
   { method: "POST", path: "/v1/health/report", summary: "The runner reports its health: alert codes and severities (their words are dropped). Alerts raised or cleared since the last report go to the company's webhook.", need: "sync", run: async (c) => {
@@ -534,7 +542,8 @@ export const ROUTES: Route[] = [
     if (!t || t.closed_at) return notFound("company");
     c.audit.tenant = t.id;
     c.audit.detail = { credential_id: b.credential_id.slice(0, 12) };
-    const s = await passkeyLogin(c.env.sql, { tenantId: t.id, challengeId: b.challenge_id, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, secret: c.env.sessionSecret, now: c.now });
+    const s = await passkeyLogin(c.env.sql, { tenantId: t.id, challengeId: b.challenge_id, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, secret: c.env.sessionSecret, now: c.now,
+      client: { userAgent: c.req.headers.get("user-agent"), ip: c.req.headers.get("cf-connecting-ip") } });
     c.audit.actor = s.user_id;
     return json(200, { session: s.token, role: s.role, user_id: s.user_id, expires_in: 900 });
   } },
@@ -578,7 +587,7 @@ export const ROUTES: Route[] = [
     const r = await finishSignIn(c.env.sql, c.env.oidc, { provider: idpOf(c), code: b.code, state: b.state, browserSecret: b.browser_secret, origin: c.env.origin, now: c.now });
     c.audit.tenant = r.tenantId;
     c.audit.actor = r.userId;
-    const s = await oidcSession(c.env.sql, c.env.sessionSecret, r.tenantId, r.userId, c.now);
+    const s = await oidcSession(c.env.sql, c.env.sessionSecret, r.tenantId, r.userId, c.now, { userAgent: c.req.headers.get("user-agent"), ip: c.req.headers.get("cf-connecting-ip") });
     const slug = await c.env.sql.first<{ slug: string }>("SELECT slug FROM tenants WHERE id = ?", [r.tenantId]);
     return json(200, { session: s.token, role: s.role, user_id: s.user_id, tenant: slug?.slug ?? null, expires_in: 900, read_only: true });
   } },
@@ -624,6 +633,17 @@ export const ROUTES: Route[] = [
     return json(200, { signed_out: true });
   } },
 
+  // The signed-in person's active sessions, to see and end one by one (./sessions.ts; ASVS V3.3.4).
+  { method: "GET", path: "/v1/sessions", summary: "The signed-in person's active sessions: when each began, until when, the browser and the network it signed in from; the current one marked. Never a token.", need: "read", run: async (c) => {
+    if (c.caller!.kind !== "session") return err(403, "sessions are a signed-in person's; a key has none");
+    return json(200, { items: await listSessions(c.env.sql, c.caller!.tenantId, c.caller!.principal, c.now, c.caller!.sessionId ?? null) });
+  } },
+  { method: "DELETE", path: "/v1/sessions/{id}", summary: "End one of the signed-in person's sessions: its token stops at once; the others keep working.", need: "read", run: async (c) => {
+    if (c.caller!.kind !== "session") return err(403, "sessions are a signed-in person's; a key has none");
+    if (!(await endSession(c.env.sql, c.caller!.tenantId, c.caller!.principal, c.params[0]!, c.now))) return notFound("session");
+    c.audit.detail = { session_id: c.params[0]!.slice(0, 40) };
+    return json(200, { ended: true });
+  } },
   { method: "GET", path: "/v1/me", summary: "Who is calling: the company, and the key's scopes or the person's role; approves says why a person may approve (cfo, or owner_without_cfo: an owner of a company with no CFO), null when they may not.", need: "read", run: async (c) => {
     const t = await c.env.sql.first<{ slug: string; name: string; language: string }>("SELECT slug, name, language FROM tenants WHERE id = ?", [c.caller!.tenantId]);
     // For the console: the person behind the call, whether an owner has a passkey yet (a new company's first run), and
@@ -724,7 +744,9 @@ export const ROUTES: Route[] = [
     // and books.closed (cloud/src/connections.ts), once, for a change this push made.
     const before = await statusesBefore(db(c), b);
     const head = (await syncState(db(c))).ledger.entry_id;
-    const applied = await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal });
+    // The new files count toward the company's storage quota (./storageQuota.ts; ASVS V12.1.3).
+    const applied = await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal },
+      (bytes, files) => reserveStorage(c.env.sql, c.caller!.tenantId, bytes, files, c.now, c.env.storageQuota));
     // approval.needed also tells the people the company chose (Settings, Alerts) that a payment waits for the CFO's Face
     // ID; its webhook delivery is one of those channels (cloud/src/alerts.ts). An alert never approves anything.
     // The alerts go out after the answer where the Worker allows it: each delivery's row makes it idempotent either way.
@@ -918,6 +940,9 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const audit: Audit = {};
   // The baseline security headers each answer lacks (./baseHeaders.ts): one place for the API, redirects and files.
   const res = withBaseline(await route(req, env, audit));
+  // A key in its last 14 days says so on each answer, with what to do (./keyExpiry.ts; ASVS V2.3.3).
+  const renewal = renewalNotice(audit.keyExpiresAt, (env.now ?? (() => new Date()))());
+  if (renewal) res.headers.set(KEY_RENEWAL_HEADER, renewal);
   const path = new URL(req.url).pathname;
   const pattern = path.startsWith("/v1/") || isClaudePath(path) || isDiscoveryPath(path) ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
   // The hands-on deployment's own figures for the owner's page (cloud/src/try/metrics.ts): counts and buckets only.
@@ -1005,6 +1030,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
       }
       audit.tenant = caller.tenantId;
       audit.actor = caller.principal;
+      if (caller.kind === "key") audit.keyExpiresAt = caller.expiresAt ?? null;
       // A visitor's test company calls only the hands-on demo's routes, while it lives (cloud/src/try/gate.ts).
       const tryCaller = isTryTenant(caller.tenantId);
       if (tryCaller) {
@@ -1064,6 +1090,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
     }
     if (e instanceof BadRequest) return err(400, e.message);
     if (e instanceof UnsupportedMediaType) return err(415, e.message);
+    if (e instanceof QuotaExceeded) return err(413, e.message);
     if (e instanceof PrivacyRefused) return err(409, e.message);
     if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);

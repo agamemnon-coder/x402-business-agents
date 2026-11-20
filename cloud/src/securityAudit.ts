@@ -8,6 +8,8 @@
 // - The successes that change who can do what (sign-ins, passkeys, keys, people, settings) and bulk reads (exports):
 //   their own kinds below. Passkey and key changes are also told to the company's owners: a security event they read in
 //   the console (GET /v1/security/events) and an event to the company's alert webhook when one is set.
+// - Each read of personal or financial data (ASVS V8.3.5): data.access, with who, which route and from which network;
+//   never what was read.
 import { keyIdOf } from "./auth.js";
 import type { CloudEnv } from "./app.js";
 import { logEvent } from "./log.js";
@@ -30,6 +32,8 @@ export interface Audit {
   detail?: Record<string, unknown>;
   /** A tamper alarm: a pushed record that changed or a broken chain, or the runner newly reporting tampered terms. */
   tamper?: boolean;
+  /** The calling key's expiry, for its renewal header (./keyExpiry.ts). */
+  keyExpiresAt?: string | null;
 }
 
 /** Successful requests that are security events, by "METHOD pattern". */
@@ -52,6 +56,7 @@ export const SECURITY_ROUTES: Record<string, SecurityKind> = {
   "POST /v1/connect/{provider}/finish": "access.change",
   "DELETE /v1/connect/{provider}": "access.change",
   "POST /v1/close": "access.change",
+  "DELETE /v1/sessions/{id}": "access.change",
   "POST /v1/webhook": "policy.change",
   "DELETE /v1/webhook": "policy.change",
   "POST /v1/security/settings": "policy.change",
@@ -63,6 +68,14 @@ export const SECURITY_ROUTES: Record<string, SecurityKind> = {
   "POST /v1/export/staged": "data.export",
   "GET /v1/export/csv/{format}/{kind}": "data.export",
   "GET /v1/export/download/{id}/{part}": "data.export",
+  ...Object.fromEntries([
+    "/v1/users", "/v1/users/{id}/passkeys", "/v1/vendors", "/v1/invoices", "/v1/invoices/{id}", "/v1/invoices/{id}/document", "/v1/payments",
+    "/v1/transactions", "/v1/transactions/{id}", "/v1/transactions/export.csv", "/v1/ledger/entries", "/v1/reports/{name}",
+    "/v1/books/bookings", "/v1/books/invoices/{id}/journal", "/v1/documents/{sha256}", "/v1/mail", "/v1/mail/{id}/raw",
+    "/v1/engine/invoices", "/v1/engine/suppliers", "/v1/engine/vault", "/v1/engine/vault/file", "/v1/engine/export", "/v1/engine/export.pdf",
+  ].map((p) => [`GET ${p}`, "data.access" as const])),
+  // A Claude connector's tools read the same records (cloud/src/claude/).
+  "POST /mcp": "data.access",
 };
 
 /** Routes whose 401 is a passkey that did not verify, and inbound webhooks whose 401 is a bad signature. */

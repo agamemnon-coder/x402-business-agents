@@ -5,6 +5,8 @@ import { ensureSchema, handle, type CloudEnv } from "./app.js";
 import { receiveEmail, type InboundEmail } from "./mail.js";
 import { purgeExpired } from "./privacy.js";
 import { sweepExports } from "./exports.js";
+import { warnExpiringKeys } from "./keyExpiry.js";
+import { pruneSessions } from "./sessions.js";
 import { pruneSecurityLog } from "./securityLog.js";
 import { d1Sql, r2Blobs, type D1Like, type R2Like } from "./store.js";
 import { sqlBlobs } from "./blobsSql.js";
@@ -39,6 +41,9 @@ export interface Bindings {
   SECURITY_ALARMS?: string;
   /** The deployed version, shown by /v1/health (a var set at deploy, e.g. the commit). */
   VERSION?: string;
+  /** The commit (short sha) and build time scripts/deploy.ts stamps in as vars: never secrets. */
+  GIT_SHA?: string;
+  BUILT_AT?: string;
   /** Workers static assets (cloud/public, filled by npm run cloud:pdfjs): pdf.js for the console's invoice view. */
   ASSETS?: { fetch(req: Request): Promise<Response> };
   /** The company engines' Durable Object (cloud/src/engine/object.ts), and the switch that turns the /v1/engine routes on: "test_money". */
@@ -162,7 +167,7 @@ function envOf(b: Bindings): CloudEnv {
   const connect = connectOf(b);
   const oidc = oidcOf(b);
   return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", ...(b.ADMIN_KEYS ? { adminKeys: b.ADMIN_KEYS } : {}), rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "", ...(b.SECURITY_ALARMS ? { securityAlarms: b.SECURITY_ALARMS } : {}),
-    version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
+    version: b.GIT_SHA ?? b.VERSION ?? "dev", build: { sha: b.GIT_SHA ?? null, built_at: b.BUILT_AT ?? null }, outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}), ...(b.TURNSTILE_SECRET ? { turnstileSecret: b.TURNSTILE_SECRET, siteverify: (url: string, init: RequestInit) => fetch(url, init) } : {}) } } : {}) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE && b.HANDS_ON === "on" ? { negotiateClaude: negotiateClaudeOf(sql, b.ENGINE_CLAUDE, b.KIT11_ANTHROPIC_API_KEY) } : {}),
@@ -228,6 +233,10 @@ export default {
     await edge("autopilot_prune_failed", () => pruneAutopilot(env.sql, new Date()));
     // The security log keeps a year (./securityLog.ts); its trigger refuses to delete anything younger.
     await edge("security_log_prune_failed", () => pruneSecurityLog(env.sql, new Date()));
+    // Keys 14 and 3 days from expiry: their company's owners are told, once each (./keyExpiry.ts; ASVS V2.3.3).
+    // Session rows a day past their expiry (./sessions.ts).
+    await edge("sessions_prune_failed", () => pruneSessions(env.sql, new Date()));
+    await edge("key_expiry_warn_failed", () => warnExpiringKeys(env.sql, new Date(), env.outbound, env.retryDelayMs));
     if (env.engine && b.INBOX_QUEUE) await edge("inbox_requeue_failed", () => requeueWaitingMail(env.sql, b.INBOX_QUEUE!, new Date()));
     if (env.edge?.stats) {
       await edge("stats_write_failed", () => writeCounts(env.sql, new Date(), b.DB));

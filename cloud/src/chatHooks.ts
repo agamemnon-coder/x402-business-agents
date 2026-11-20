@@ -27,6 +27,7 @@ import { withinRate } from "./auth.js";
 import { chatMessage, type BusinessEvent } from "./connections.js";
 import { randomToken } from "./crypto.js";
 import { logEvent } from "./log.js";
+import { egressAllowed } from "./egress.js";
 import { HOOK_ATTEMPTS, HOOK_EVENTS_PER_HOUR, HOOK_OFF_AFTER, hookUrl, MonitorRefused, type Outbound } from "./monitor.js";
 import type { Sql } from "./store.js";
 import { TenantDb } from "./tenant.js";
@@ -121,6 +122,9 @@ export function chatSafe(e: BusinessEvent, origin: string): BusinessEvent {
 const timeout = (): { signal?: AbortSignal } => (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? { signal: AbortSignal.timeout(8000) } : {});
 
 async function post(out: Outbound, url: string, body: unknown, retryDelayMs: number): Promise<number> {
+  // Checked again before each post: a URL stored before the allow rule, or written past it, is never called
+  // (../egress.ts; ASVS V12.6.1), on top of the exact Slack and Teams shapes it was set with.
+  if (!egressAllowed(url)) return 0;
   let status = 0;
   for (let attempt = 1; attempt <= HOOK_ATTEMPTS; attempt++) {
     try { status = (await out(url, { method: "POST", redirect: "manual", ...timeout(), headers: { "content-type": "application/json", "user-agent": "PurserCloud-Chat/1" }, body: JSON.stringify(body) })).status; } catch { status = 0; }

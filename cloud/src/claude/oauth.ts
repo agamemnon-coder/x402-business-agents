@@ -16,6 +16,7 @@
 // in Purser Cloud ends the connection at once. The consent page asks for a connector token made in Purser Cloud
 // (Settings, Connect your AI), so whoever connects Claude already holds the company's own consent for it.
 
+import { egressAllowed } from "../egress.js";
 import { accessToken, ACCESS_TOKEN_TTL_MS, AuthError, callerOf, DEMO_CONNECTOR_TOKEN, isConnector } from "../auth.js";
 import { hmacB64u, randomToken, sha256Hex, signedPayload, toB64u } from "../crypto.js";
 import type { Sql } from "../store.js";
@@ -77,7 +78,7 @@ export function isCimdId(id: string): boolean {
   if (!id.startsWith("https://") || id.length > 500) return false;
   try {
     const u = new URL(id);
-    return u.protocol === "https:" && u.pathname.length > 1 && !u.hash && !u.username && !u.password && !u.port && /[a-z]/i.test(u.hostname.split(".").at(-1) ?? "") && u.hostname.includes(".") && u.hostname !== "localhost";
+    return u.protocol === "https:" && u.pathname.length > 1 && !u.hash && !u.username && !u.password && !u.port && /[a-z]/i.test(u.hostname.split(".").at(-1) ?? "") && u.hostname.includes(".") && u.hostname !== "localhost" && egressAllowed(id);
   } catch { return false; }
 }
 

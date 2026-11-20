@@ -1402,6 +1402,17 @@ async function yourConnectionsCard(){
   card.replaceChildren(el('h2','',t('cs.yours.title')),el('p','',t('cs.yours.lede')),ul,note(r.rule));
   return card;
 }
+// Where the person is signed in (ASVS V3.3.4; cloud/src/sessions.ts): each passkey or Google, Microsoft or Apple
+// session, ended one by one.
+async function sessionsCard(){
+  const card=el('div','card panel');card.id='sessions';const msg=el('div','');msg.setAttribute('role','status');
+  async function draw(){
+    const r=await api('/v1/sessions');const list=el('ul','plain');
+    for(const s of r.items){const end=btn(t('cs.ses.end'),'');end.disabled=!!s.current;
+      end.onclick=async()=>{end.disabled=true;try{await api('/v1/sessions/'+encodeURIComponent(s.id),{method:'DELETE'});await draw();msg.replaceChildren(note(t('cs.ses.ended'),'ok'))}catch(e){end.disabled=false;if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}};
+      list.append(el('li','',[el('span','',(s.current?t('cs.ses.this')+' · ':'')+s.user_agent+' · '+s.ip+' · '+s.created_at.slice(0,16).replace('T',' ')),' ',end]))}
+    card.replaceChildren(el('h2','',t('cs.ses.title')),el('p','sub',t('cs.ses.lede')),list,msg)}
+  await draw();return card}
 
 async function settingsView(){
   title(t('cs.nav.settings'));
@@ -1417,7 +1428,8 @@ async function settingsView(){
   let fwd=null;if(m.inbox&&m.scopes.includes('admin')){try{const f=await api('/v1/mail/forwarding-confirmations');if(f.items.length)fwd=note(t('cs.inbox.gmail_code',{code:f.items[0].code,gmail:f.items[0].gmail}),'ok')}catch(e){if(e instanceof Expired)throw e}}
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),m.inbox?note(t('cs.inbox.forward')):null,fwd,langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
   const ids=m.kind==='session'&&!m.demo?await identitiesCard(m).catch(()=>null):null;
-  if(!owner){const cc=await claudeCard(m,false);const cx=await connectionsCard();const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,cc,cx);return}
+  const sessions=m.kind==='session'&&!m.demo?await sessionsCard().catch(()=>null):null;
+  if(!owner){const cc=await claudeCard(m,false);const cx=await connectionsCard();const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(head(t('cs.nav.settings')),company,sessions,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,cc,cx);return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
@@ -1427,7 +1439,7 @@ async function settingsView(){
   const yours=!m.demo?await yourConnectionsCard().catch(()=>null):null;
   const cx=await connectionsCard();
   // "Your connections" (this company's own, each connected or not) on top, the catalogue of every connection below it.
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),yours,cx,company,security,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),yours,cx,company,security,sessions,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){

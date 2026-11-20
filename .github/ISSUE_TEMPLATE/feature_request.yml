@@ -1,0 +1,35 @@
+# A feature request as a user story with its security constraints (ASVS 4.0.3 V1.1.3): the form cannot be sent without
+# them, and blank issues are off (config.yml), so every feature names who must not be able to do what.
+name: Feature request
+description: An idea for Purser
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem it solves
+      description: Who, and what goes wrong today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: "As a <role>, I want <what>, so that <why>."
+    validations:
+      required: true
+  - type: textarea
+    id: security_constraints
+    attributes:
+      label: Security constraints (who must not be able to do what)
+      description: "For example: a viewer can read the invoices but cannot propose a payment; one company never sees another's. Which data it touches, who may see or change it, and what must be logged."
+    validations:
+      required: true
+  - type: textarea
+    id: invariants
+    attributes:
+      label: What must stay true
+      description: Every payment beyond the CFO's limits still needs the CFO's passkey; no model approves.
+      value: Every payment beyond the CFO's limits still needs the CFO's passkey; no model approves.
+    validations:
+      required: true

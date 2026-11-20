@@ -197,6 +197,20 @@ describe("signing in with a linked account", () => {
     expect((await c.req("POST", "/v1/me/identities/microsoft/start", { key: s })).status).toBe(403);
   });
 
+  it("is a listed session the person sees and ends like a passkey's, and stays read only (ASVS V3.3.4)", async () => {
+    await link(a, "google", "g-owner-1");
+    const { res } = await signIn("company-a", "google", "g-owner-1");
+    const oidc = res.json.session as string;
+    const items = (await c.req("GET", "/v1/sessions", { key: a.session })).json.items as { id: string; current: boolean }[];
+    const mine = (await c.req("GET", "/v1/sessions", { key: oidc })).json.items as { id: string; current: boolean }[];
+    const it2 = mine.find((i) => i.current)!;
+    expect(items.some((i) => i.id === it2.id)).toBe(true);
+    expect((await c.req("POST", "/v1/keys", { key: oidc, body: { name: "x", scopes: ["read"] } })).status).toBe(403);
+    expect((await c.req("DELETE", `/v1/sessions/${it2.id}`, { key: a.session })).status).toBe(200);
+    expect((await c.req("GET", "/v1/me", { key: oidc })).status).toBe(401);
+    expect((await c.req("GET", "/v1/me", { key: a.session })).status).toBe(200);
+  });
+
   it("signs in with Microsoft (organizations) and Apple (form_post, ES256 client secret) too", async () => {
     await link(a, "microsoft", "ms-owner-1");
     await link(a, "apple", "apple-owner-1");

@@ -455,7 +455,7 @@ export class Relay {
    * push: Web Push to the CFO's phone (./webPush.ts), when the Worker has its VAPID secrets: the public key, and a sender
    * that holds the private key (the relay never does). Absent, the push routes answer 404 and nothing is sent.
    */
-  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean; liveRun?: boolean; liveAgents?: () => Promise<{ usd: number; budget_usd: number } | null>; securityAlarms?: string; push?: { publicKey: string; send: PushSend } }) {
+  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean; liveRun?: boolean; liveAgents?: () => Promise<{ usd: number; budget_usd: number } | null>; securityAlarms?: string; push?: { publicKey: string; send: PushSend }; build?: { sha: string | null; built_at: string | null } }) {
     this.now = opts.now ?? (() => new Date());
     this.alarmRules = alarmRules(opts.securityAlarms);
     this.sql.exec("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
@@ -698,7 +698,9 @@ export class Relay {
       // Section 6 (Max, 7 Nov): today's spend on /try/sign's live agents, against its daily budget, on /health.
       const live = path === "/health" ? await this.liveAgentsToday() : null;
       // The security log's alarms of the last 24 hours (counts per rule, no address): an uptime monitor can watch it.
-      return json(h.status, { ...h.body, ...(live ? { live_agents_today: live } : {}), security: this.securityAlarms() });
+      // Which commit runs here and when it was built (scripts/deploy.ts stamps them; ASVS V1.14.4).
+      const build = { sha: this.opts.build?.sha ?? null, built_at: this.opts.build?.built_at ?? null };
+      return json(h.status, { ...h.body, ...(live ? { live_agents_today: live } : {}), build, security: this.securityAlarms() });
     }
     // The live Airwallex events feed: public, read-only, four fields of each verified webhook (./awxEvents.ts).
     if (path === AWX_EVENTS_PATH) {

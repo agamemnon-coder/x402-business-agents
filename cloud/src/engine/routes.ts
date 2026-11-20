@@ -15,11 +15,13 @@ import { verifyAssertion } from "../../../worker/src/webauthn.js";
 import { AuthError, type Caller } from "../auth.js";
 import { BadRequest } from "../read.js";
 import type { TenantDb } from "../tenant.js";
+import type { Sql } from "../store.js";
+import { reserveStorage, type StorageQuota } from "../storageQuota.js";
 import { SlowDown, type EngineApi } from "./api.js";
 
 /** What a handler needs of the request's context (cloud/src/app.ts Ctx is one). */
 export interface EngineCtx {
-  env: { engine?: (tenantId: string) => EngineApi; rpId: string; origin: string; approvalKeyCoolingHours?: number; production?: boolean };
+  env: { engine?: (tenantId: string) => EngineApi; rpId: string; origin: string; approvalKeyCoolingHours?: number; production?: boolean; sql?: Sql; storageQuota?: StorageQuota };
   req: Request;
   url: URL;
   params: string[];
@@ -186,9 +188,14 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
     { method: "POST", path: "/v1/engine/documents", summary: "Upload a supplier invoice to the engine: { filename (1 to 200 characters), mime?, base64 }, at most 15 MB once decoded. It is filed, read and checked; answers { kind, sha256, invoice }. The same file again answers kind duplicate_document.", need: "admin", run: on(async (c, e) => {
       const b = await kit.body(c, Upload, UPLOAD_BODY_MAX_BYTES);
       const bytes = documentBytes(b.base64);
+      // The file counts toward the company's storage quota (../storageQuota.ts; ASVS V12.1.3); a duplicate or a refusal gives it back.
+      const release = c.env.sql ? await reserveStorage(c.env.sql, c.caller!.tenantId, bytes.length, 1, new Date(), c.env.storageQuota) : null;
       try {
-        return json(200, await e.upload({ bytes, filename: b.filename, ...(b.mime ? { mime: b.mime } : {}) }));
+        const r = await e.upload({ bytes, filename: b.filename, ...(b.mime ? { mime: b.mime } : {}) });
+        if (release && r.kind === "duplicate_document") await release();
+        return json(200, r);
       } catch (x) {
+        if (release) await release().catch(() => undefined);
         // What the inbox refuses (not a PDF, a photo or an e-mail; too large) is said in its own words; anything else is an internal error.
         const said = x instanceof Error ? x.message : String(x);
         if (/nothing was filed$/.test(said)) throw new BadRequest(said.slice(0, 500));

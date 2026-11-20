@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { withinRate } from "./auth.js";
 import { randomToken } from "./crypto.js";
+import { egressAllowed, egressProblem } from "./egress.js";
 import { logEvent } from "./log.js";
 import { MAIL_QUOTA } from "./mail.js";
 import type { Blobs, Sql } from "./store.js";
@@ -85,6 +86,9 @@ export function hookUrl(raw: string): string {
   if (/^[\d.]+$/.test(host) || host.startsWith("[") || host.includes(":")) throw new MonitorRefused("the webhook must name a host, not an address");
   if (!host.includes(".") || /(^|\.)(localhost|local|internal|intranet|home|lan|corp|localdomain)$/.test(host)) throw new MonitorRefused("the webhook must be a public host name");
   if (raw.length > 500) throw new MonitorRefused("the webhook URL is too long");
+  // The allow rule for every address Purser calls on a company's behalf (./egress.ts; ASVS V12.6.1).
+  const problem = egressProblem(u.toString());
+  if (problem) throw new MonitorRefused(problem);
   return u.toString();
 }
 
@@ -127,6 +131,11 @@ async function deliver(sql: Sql, tenantId: string, event: { type: string; alert?
   const db = new TenantDb(sql, tenantId);
   const h = await db.one<{ url: string; secret: string; consecutive_failures: number; disabled_at: string | null }>("webhooks", { id: "main" });
   if (!h || h.disabled_at || !out) return false;
+  // Checked again before each call: an address stored before the rule, or written past it, is never called (./egress.ts).
+  if (!egressAllowed(h.url)) {
+    logEvent("warn", "webhook.refused_address", { tenant: tenantId, type: event.type });
+    return false;
+  }
   if (!(await withinRate(sql, `hook:${tenantId}`, now, { windowSec: 3600, max: HOOK_EVENTS_PER_HOUR }))) {
     logEvent("warn", "webhook.capped", { tenant: tenantId, type: event.type });
     return false;

@@ -391,7 +391,7 @@ describe("/status against the local relay (src/relay/local.ts): the quiet state 
   it("quiet: no runner has synced, which is the normal state and no error", async () => {
     const h = await health();
     expect(h.status).toBe(200);
-    expect(await h.json()).toEqual({ status: "recorded_demo", words: "Recorded demo · the live runner runs during live runs", runner: "off", alerts: [], checked_at: null, last_sync: null, security: { alarms_24h: 0, rules: {} } });
+    expect(await h.json()).toEqual({ status: "recorded_demo", words: "Recorded demo · the live runner runs during live runs", runner: "off", alerts: [], checked_at: null, last_sync: null, build: { sha: null, built_at: null }, security: { alarms_24h: 0, rules: {} } });
     expect(await shown(html, health)).toEqual({ tone: "quiet", head: "No live run in progress", site: "Up", runner: "Off between runs", sync: "None on record", alarms: "No report on record", agents: null, good: ["st-site"], bad: [] });
   });
 

@@ -24,6 +24,7 @@
 // Off unless the cloud has a client for the provider (OIDC_GOOGLE_*, OIDC_MICROSOFT_*, OIDC_APPLE_*; cloud/src/worker.ts).
 
 import { fromB64, randomToken, sha256Hex, toB64u } from "./crypto.js";
+import { egressAllowed } from "./egress.js";
 import { logEvent } from "./log.js";
 import type { Sql } from "./store.js";
 import { TenantDb } from "./tenant.js";
@@ -62,7 +63,7 @@ interface Idp {
   issuerOk(iss: string, claims: Record<string, unknown>): boolean;
 }
 
-function idpOf(name: IdpName, c: IdpClient): Idp {
+export function idpOf(name: IdpName, c: IdpClient): Idp {
   if (name === "google") return {
     authorize: "https://accounts.google.com/o/oauth2/v2/auth", token: "https://oauth2.googleapis.com/token", jwks: "https://www.googleapis.com/oauth2/v3/certs",
     scope: "openid email", pkce: true, formPost: false, issuerOk: (iss) => iss === "https://accounts.google.com" || iss === "accounts.google.com",
@@ -134,6 +135,8 @@ async function keysOf(f: typeof fetch, url: string, kid: string, now: number): P
   const held = jwksCache.get(url);
   if (held && now - held.at < 3_600_000 && (held.keys.some((k) => k.kid === kid) || now - held.at < 60_000)) return held.keys;
   let res: Response;
+  // The providers' endpoints are fixed in this file; the allow rule holds them anyway (./egress.ts; ASVS V12.6.1).
+  if (!egressAllowed(url)) throw new OidcRefused(502, "the provider's signing keys are at an address Purser does not call");
   try { res = await f(url, { method: "GET", headers: { accept: "application/json" }, signal: AbortSignal.timeout(10_000) }); } catch { throw new OidcRefused(502, "the provider's signing keys could not be read; try again"); }
   if (!res.ok) throw new OidcRefused(502, "the provider's signing keys could not be read; try again");
   const j = (await res.json().catch(() => ({}))) as { keys?: unknown };
@@ -196,6 +199,7 @@ async function idTokenFor(env: OidcEnv, provider: IdpName, client: IdpClient, co
   const form = new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUriOf(origin, provider), client_id: client.clientId, client_secret: secret });
   if (verifier) form.set("code_verifier", verifier);
   let res: Response;
+  if (!egressAllowed(idp.token)) throw new OidcRefused(502, "the provider's token endpoint is at an address Purser does not call");
   try {
     res = await env.fetch(idp.token, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" }, body: form.toString(), signal: AbortSignal.timeout(15_000) });
   } catch { throw new OidcRefused(502, `${provider} did not answer; try again`); }

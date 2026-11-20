@@ -97,10 +97,10 @@ describe("monitoring (B7)", () => {
     await relay.fetch(new Request("https://kit11.example/api/runner/sync", { method: "POST", headers: { authorization: `Bearer ${"t".repeat(64)}`, "content-type": "application/json" }, body: JSON.stringify({ state_hash: stateHash(state), state, acks: [] }) }));
     const get = async () => { const r = await relay.fetch(new Request("https://kit11.example/health")); return { status: r.status, body: await r.json() as Record<string, unknown> }; };
     // Beside the alarm codes, the relay's security alarms of the last 24 hours (counts only; worker/src/core.ts).
-    expect(await get()).toEqual({ status: 200, body: { status: "ok", runner: "up", alerts: [], checked_at: now.toISOString(), security: { alarms_24h: 0, rules: {} } } });
+    expect(await get()).toEqual({ status: 200, body: { status: "ok", runner: "up", alerts: [], checked_at: now.toISOString(), build: { sha: null, built_at: null }, security: { alarms_24h: 0, rules: {} } } });
     clock = min(3);
     expect(await get()).toMatchObject({ status: 503, body: { runner: "down", alerts: ["runner_down"] } });
-    expect(Object.keys((await get()).body).sort()).toEqual(["alerts", "checked_at", "runner", "security", "status"]);
+    expect(Object.keys((await get()).body).sort()).toEqual(["alerts", "build", "checked_at", "runner", "security", "status"]);
   });
 });
 
@@ -144,9 +144,9 @@ describe("/health between live runs and during one", () => {
     const r = relayAt();
     // Never synced: a calm /health, and /health/live does not call it ok.
     expect(await r.get("/health")).toMatchObject({ status: 200, body: { status: "recorded_demo", words: RECORDED_DEMO_WORDS, runner: "off" } });
-    expect(await r.get("/health/live")).toEqual({ status: 503, body: { status: "alert", runner: "unknown", alerts: [], checked_at: null, security: { alarms_24h: 0, rules: {} } } });
+    expect(await r.get("/health/live")).toEqual({ status: 503, body: { status: "alert", runner: "unknown", alerts: [], checked_at: null, build: { sha: null, built_at: null }, security: { alarms_24h: 0, rules: {} } } });
     await r.sync(openDb(":memory:"));
-    for (const path of ["/health", "/health/live"]) expect(await r.get(path)).toEqual({ status: 200, body: { status: "ok", runner: "up", alerts: [], checked_at: now.toISOString(), security: { alarms_24h: 0, rules: {} } } });
+    for (const path of ["/health", "/health/live"]) expect(await r.get(path)).toEqual({ status: 200, body: { status: "ok", runner: "up", alerts: [], checked_at: now.toISOString(), build: { sha: null, built_at: null }, security: { alarms_24h: 0, rules: {} } } });
     // The runner stops during a live run: both raise runner_down.
     r.clock.at = min(3);
     for (const path of ["/health", "/health/live"]) expect(await r.get(path)).toMatchObject({ status: 503, body: { status: "alert", runner: "down", alerts: ["runner_down"] } });
@@ -154,7 +154,7 @@ describe("/health between live runs and during one", () => {
     expect((await r.get("/health")).status).toBe(503);
     // Past 30 minutes no live run is expected: /health is calm and says so; /health/live keeps the alarm.
     r.clock.at = min(31);
-    expect(await r.get("/health")).toEqual({ status: 200, body: { status: "recorded_demo", words: RECORDED_DEMO_WORDS, runner: "off", alerts: [], checked_at: now.toISOString(), last_sync: now.toISOString(), security: { alarms_24h: 0, rules: {} } } });
+    expect(await r.get("/health")).toEqual({ status: 200, body: { status: "recorded_demo", words: RECORDED_DEMO_WORDS, runner: "off", alerts: [], checked_at: now.toISOString(), last_sync: now.toISOString(), build: { sha: null, built_at: null }, security: { alarms_24h: 0, rules: {} } } });
     expect(await r.get("/health/live")).toMatchObject({ status: 503, body: { status: "alert", runner: "down", alerts: ["runner_down"] } });
     // A declared live run keeps /health the alarm however long the runner is silent.
     const declared = relayAt({ liveRun: true });

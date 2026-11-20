@@ -587,3 +587,12 @@ CREATE TABLE IF NOT EXISTS oidc_states (
 -- cloud/migrations/0010_recovery_requests.sql adds it to an older database): one named admin key asks, a different one
 -- approves, and only then is the recovery key issued. Admin key ids, an owner id and times; never a key or a secret.
 CREATE TABLE IF NOT EXISTS recovery_requests (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, owner_id TEXT NOT NULL, check_method TEXT NOT NULL, requested_by TEXT NOT NULL, requested_at TEXT NOT NULL, expires_at TEXT NOT NULL, approved_by TEXT, approved_at TEXT, recovery_key TEXT);
+
+-- The storage quota per company for files uploaded through the API (cloud/src/storageQuota.ts; ASVS V12.1.3;
+-- cloud/migrations/0008_storage_quota.sql adds it to an older database): bytes and files, counts only.
+CREATE TABLE IF NOT EXISTS storage_use (tenant_id TEXT PRIMARY KEY, bytes INTEGER NOT NULL, files INTEGER NOT NULL, updated_at TEXT NOT NULL);
+
+-- A person's active sessions, passkey and Google, Microsoft or Apple sign-ins (cloud/src/sessions.ts; ASVS V3.3.4;
+-- cloud/migrations/0011_sessions.sql adds them to an older database): never a token.
+CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, user_id TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, user_agent TEXT NOT NULL, ip TEXT NOT NULL, ended_at TEXT);
+CREATE INDEX IF NOT EXISTS sessions_by_user ON sessions (tenant_id, user_id, expires_at);
