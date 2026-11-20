@@ -431,11 +431,16 @@ describe("the tab's look: the official logo, the Overview card", () => {
   it("puts the live card on the Overview, labelled apart from the demo month, and the logo in the console's script", async () => {
     const { consolePage } = await import("../cloud/src/console.js");
     const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
-    expect(html).toContain("nx,awlOverview(),dash]");
+    expect(html).toContain("nx,!items.length&&!m.demo?startCard(m):null,awlOverview(),dash]");
     expect(html).toContain("const AWL_LOGO=\"data:image/png;base64,");
     expect(html).not.toContain("__AWL_LOGO__");
     const { MESSAGES } = await import("../src/ui/i18n.js");
     expect(MESSAGES.en["cs.awl.ov_sub"]).toMatch(/Airwallex sandbox: test money.*demo company's simulated month/);
+    // 21 Nov: a company of its own reads that the card is the sandbox account behind the runs, not its own, and the pill
+    // says "unavailable" when the sandbox did not answer.
+    expect(MESSAGES.en["cs.awl.ov_sub_co"]).toMatch(/not your company's account/);
+    expect(html).toContain("t(ME&&ME.demo?'cs.awl.ov_sub':'cs.awl.ov_sub_co')");
+    expect(html).toContain("pill.replaceChildren(el('i',''),t('cs.awl.pill_down'))");
   });
 });
 

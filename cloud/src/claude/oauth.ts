@@ -239,7 +239,7 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
 <div class="or">or</div>
 <form method="post" action="/oauth/authorize">${hidden}<button class="demo" type="submit" name="act" value="demo"><span>Use the demo company</span><small>Read only, made-up data. No token needed.</small></button></form>
 <form method="post" action="/oauth/authorize">${hidden}<button class="plain" type="submit" name="act" value="deny">Cancel</button></form>
-<p class="small">Make a token in Purser Cloud: Settings, Connect your AI. Only an owner can make one.</p>
+<p class="small">Make a token in Purser Cloud: Connections, Connect your AI. Only an owner can make one.</p>
 </div></main></body></html>`;
   const formTo = new URL(ask.redirect_uri).origin;
   return new Response(html, {
@@ -276,7 +276,7 @@ export async function consent(sql: Sql, secret: string, origin: string, form: UR
     } catch (e) {
       if (!(e instanceof AuthError)) throw e;
     }
-    if (!ok) return { page: await consentPage(secret, ask, client, origin, now, "That is not a live Claude connector token. Make one in Purser Cloud (Settings, Connect your AI); an ordinary API key is not one.") };
+    if (!ok) return { page: await consentPage(secret, ask, client, origin, now, "That is not a live Claude connector token. Make one in Purser Cloud (Connections, Connect your AI); an ordinary API key is not one.") };
     tenant = ok.tenantId; keyId = ok.principal;
   }
   const code = randomToken(32);

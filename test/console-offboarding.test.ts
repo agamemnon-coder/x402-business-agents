@@ -178,7 +178,7 @@ describe("in the console", () => {
 
   it("carries the view, puts the card on an owner's Settings only, and calls the API's own routes", () => {
     expect(html).toContain(OFFBOARDING_VIEW_JS.trim());
-    const settings = script.slice(script.indexOf("async function settingsView(){"), script.indexOf("async function drawConn(){"));
+    const settings = script.slice(script.indexOf("async function settingsView(q){"), script.indexOf("// --- Connections (21 Nov)"));
     const ownerOnly = settings.indexOf("if(!owner){");
     expect(ownerOnly).toBeGreaterThan(0);
     expect(settings.indexOf("offboardingCard(m)")).toBeGreaterThan(settings.indexOf("return}", ownerOnly));

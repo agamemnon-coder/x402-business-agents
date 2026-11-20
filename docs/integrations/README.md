@@ -2,7 +2,7 @@
 
 Every way into Purser and out of it, on one page: the payment rails, AI agents over MCP, the API and its webhooks,
 no-code tools, accounting packages, Peppol, ISO 20022, chat and the full export. Each has its honest label, a quickstart
-of a line or two and a link to its guide. Purser Cloud shows the same list (Settings, Connections), read from
+of a line or two and a link to its guide. Purser Cloud shows the same list (its Connections page), read from
 `GET /v1/connections` (`cloud/src/connections.ts`), and `test/connections-hub.test.ts` holds this page to it.
 
 **The rule behind all of them.** An agent or an integration may **read** and **propose**. Only the CFO's **passkey**
@@ -19,7 +19,7 @@ format, and a person or the team's own tooling takes it from there; there is no 
 service. **built, run once in a sandbox**: as it says. **planned**: not built yet; the guide says what it needs. No
 label here is stronger than its record.
 
-**Setting it up.** Each company connects its own systems in Purser Cloud, Settings ("Your connections" shows what is
+**Setting it up.** Each company connects its own systems in Purser Cloud, Connections (each card shows what is
 connected, not connected, or not available yet). What the platform registers once (OAuth apps, redirect URIs, secrets,
 costs, reviews): [owner-setup.md](owner-setup.md). Invoices by e-mail from Gmail or Outlook:
 [email-forwarding.md](email-forwarding.md). QuickBooks bills, planned: [quickbooks-plan.md](quickbooks-plan.md).
@@ -45,13 +45,14 @@ its `/connect-ai` page.
 
 | Connection | Label | Quickstart | Guide |
 |---|---|---|---|
-| MCP server (Connect any AI) | live | Add `https://<your-purser-cloud>/mcp` to any client that speaks MCP over HTTP; sign in with a connector token (Settings, Connect your AI) or the demo company's `purser-demo-read-only`. | [connect-any-ai.md](../connect-any-ai.md) |
+| MCP server (Connect any AI) | live | Add `https://<your-purser-cloud>/mcp` to any client that speaks MCP over HTTP; sign in with a connector token (Connections, Connect your AI) or the demo company's `purser-demo-read-only`. | [connect-any-ai.md](../connect-any-ai.md) |
 | Claude | live | claude.ai or the Claude apps: Settings, Connectors, *Add custom connector*, paste the `/mcp` address. Claude Code: `claude mcp add --transport http purser <address>/mcp`. | [connect-claude.md](../connect-claude.md#claude) |
 | ChatGPT | built, not tested live | Apps, **+**, *Add custom MCP server*, URL `<address>/mcp`, authentication OAuth. | [connect-claude.md](../connect-claude.md#chatgpt) |
 | Cursor | built, not tested live | The *Add to Cursor* link on `/connect-ai`, or `.cursor/mcp.json`. | [connect-claude.md](../connect-claude.md#cursor) |
 | VS Code | built, not tested live | The *Add to VS Code* link on `/connect-ai`, or *MCP: Add Server*, *HTTP*. | [connect-claude.md](../connect-claude.md#vs-code-github-copilot-agent-mode) |
 | Gemini CLI | built, not tested live | `gemini mcp add --transport http purser <address>/mcp` | [connect-claude.md](../connect-claude.md#gemini-cli) |
 | Windsurf | built, not tested live | `serverUrl` and `headers` in its `mcp_config.json`. | [connect-claude.md](../connect-claude.md#windsurf-now-devin-desktop) |
+| Airwallex sandbox, read only (Code Mode MCP) | built, not tested live | The same connector token at `https://<your-purser-cloud>/mcp/airwallex`: two tools, `search` and `execute`, GET reads of the Airwallex sandbox only. Tested against a stand-in gateway; no live read on record yet. | [codemode.md](../codemode.md) |
 | Agent API on the runner (local MCP) | sandbox | `npm run -s mcp` on stdio, with `KIT11_AGENT` naming the outside agent; it asks for a company card, and each card and each raise waits for the CFO's Face ID. | [agent-api.md](../agent-api.md) |
 
 ## The API and webhooks
@@ -81,9 +82,9 @@ or Make app.
 | Xero (API) | built, not tested live | With the owner's Xero OAuth app: `npx tsx src/cli/workplace.ts xero-tenants`, then `books xero --dry-run`. | [workplace.md](workplace.md) |
 | QuickBooks Online | format export | `GET /v1/export/csv/quickbooks/bills`; QuickBooks maps the columns at import. No journals yet. | [connections.md](../connections.md#accounting-exports-format-exports) |
 | Exact Online (CSV) | format export | `GET /v1/export/csv/exact/bills` or `/journals`: Exact's own import templates. | [connections.md](../connections.md#accounting-exports-format-exports) |
-| Xero bills (connected in Purser Cloud) | built, not tested live | Each company: Settings, **Connect Xero**, pick its organisation; then **Send bills to Xero (drafts)**. Drafts only, never authorised or paid in Xero. | [owner-setup.md](owner-setup.md#16-xero) |
-| QuickBooks Online (API) | built, not tested live | Each company: Settings, **Connect QuickBooks**. Connect flow only; sending bills is planned. | [quickbooks-plan.md](quickbooks-plan.md) |
-| Exact Online (API) | built, not tested live | Each company: Settings, **Connect Exact Online**; its runner sets `ERP_EXACT_OAUTH=on`. `npm run erp -- sync --connector exact --dry-run` shows the requests and sends nothing. | [erp.md](../erp.md#exact-online), [owner-setup.md](owner-setup.md#18-exact-online) |
+| Xero bills (connected in Purser Cloud) | built, not tested live | Each company: Connections, **Connect Xero**, pick its organisation; then **Send bills to Xero (drafts)**. Drafts only, never authorised or paid in Xero. | [owner-setup.md](owner-setup.md#16-xero) |
+| QuickBooks Online (API) | built, not tested live | Each company: Connections, **Connect QuickBooks**. Connect flow only; sending bills is planned. | [quickbooks-plan.md](quickbooks-plan.md) |
+| Exact Online (API) | built, not tested live | Each company: Connections, **Connect Exact Online**; its runner sets `ERP_EXACT_OAUTH=on`. `npm run erp -- sync --connector exact --dry-run` shows the requests and sends nothing. | [erp.md](../erp.md#exact-online), [owner-setup.md](owner-setup.md#18-exact-online) |
 | Moneybird (API) | built, run once in a sandbox | `npm run erp -- sync --connector moneybird --dry-run`, then `--live` with the runner's Moneybird token. | [moneybird.md](../moneybird.md) |
 | Business Central and Odoo (API) | built, not tested live | `npm run erp -- sync --connector bc --dry-run` (or `--connector odoo`). | [erp.md](../erp.md) |
 
@@ -94,10 +95,10 @@ or Make app.
 | Peppol invoices (UBL, BIS Billing 3.0) | built, not tested live | `npm run peppol:check -- <file.xml>` reads a file and names each rule broken; `npm run payables -- add <file.xml>` files it in the payables inbox, checked like a PDF. | [peppol.md](peppol.md) |
 | Peppol network (an Access Point) | planned | Receiving over the network needs a certified Access Point, the owner's choice and registration; nothing is wired yet. | [peppol.md](peppol.md#receiving-over-peppol-the-owners-step) |
 | ISO 20022 pacs.008 | format export | `npm run iso20022` writes a pacs.008.001.08 message for one paid invoice, validated against the official schema. | [connections.md](../connections.md#accounting-exports-format-exports) |
-| Slack and Microsoft Teams messages | built, not tested live | Each company: Settings, **Slack and Teams**, paste its own Slack incoming webhook or Teams Workflow URL, **Send a test**. `approval.needed`, `payment.paid` and `books.closed` then post there; no real channel has received one yet. | [connections.md](../connections.md#slack-and-microsoft-teams) |
+| Slack and Microsoft Teams messages | built, not tested live | Each company: Connections, **Slack and Teams**, paste its own Slack incoming webhook or Teams Workflow URL, **Send a test**. `approval.needed`, `payment.paid` and `books.closed` then post there; no real channel has received one yet. | [connections.md](../connections.md#slack-and-microsoft-teams) |
 | Invoices by e-mail (forwarded from Gmail or Outlook) | built, not tested live | Forward supplier invoices to the company's Purser address (Settings, Company, Inbox); Gmail's confirmation code shows in Settings. No mail domain is routed yet. | [email-forwarding.md](email-forwarding.md) |
 | Sign in with Google, Microsoft and Apple | built, not tested live | Each person: Settings, **Sign-in accounts**, **Link (Face ID)**; then "Sign in with …" on the sign-in page, read only. | [owner-setup.md](owner-setup.md#12-sign-in-with-google) |
-| Approval alerts (e-mail, Slack, Teams) | built, not tested live | Purser Cloud: Settings, Alerts. A single runner: `PURSER_SLACK_WEBHOOK_URL` or `PURSER_TEAMS_WEBHOOK_URL`, then `npm run notify:approvals`. | [cloud.md](../cloud.md#approval-alerts), [below](#slack-and-microsoft-teams-approval-notifications) |
+| Approval alerts (e-mail, WhatsApp, Slack, Teams) | built, not tested live | Purser Cloud: Connections, Alerts. A single runner: `PURSER_SLACK_WEBHOOK_URL` or `PURSER_TEAMS_WEBHOOK_URL`, then `npm run notify:approvals`. | [cloud.md](../cloud.md#approval-alerts), [below](#slack-and-microsoft-teams-approval-notifications) |
 | Google Workspace and Microsoft 365 | built, not tested live | With the owner's OAuth apps: `npx tsx src/cli/workplace.ts poll gmail` (or `drive`, `outlook`, `onedrive`) files invoices through the inbox. | [workplace.md](workplace.md) |
 | Full export | live | `GET /v1/export` as an owner: every record as staged JSON parts with signed links. | [connections.md](../connections.md) |
 
@@ -115,7 +116,7 @@ Four things are enough for anything not listed above.
    HMAC-SHA256 under your webhook's secret over `` `${t}.${raw body}` ``, compare it with `v1` in constant time, and
    refuse a `t` older than a few minutes. Then read the invoice or proposal again with your key before acting: an
    event is a nudge, never the truth.
-4. **The MCP endpoint.** `https://<host>/mcp` for an AI client, with a connector token (Settings, Connect your AI) or
+4. **The MCP endpoint.** `https://<host>/mcp` for an AI client, with a connector token (Connections, Connect your AI) or
    OAuth 2.1. A connector token works at `/mcp` only.
 
 ## Keys and scopes
@@ -140,7 +141,7 @@ yet.
 
 ```
 URL:    https://<your-purser-cloud>/mcp
-Auth:   Authorization: Bearer <connector token>   (Settings, Connect Claude; "may propose" to file payments)
+Auth:   Authorization: Bearer <connector token>   (Connections, Connect your AI; "may propose" to file payments)
 Try it: the demo company's public read-only token, purser-demo-read-only
 ```
 
@@ -242,8 +243,8 @@ The message reads "Payment P-0009 needs your signature: EUR 1,309.00, payee Berg
 link, to the invoice's page in Purser Cloud, where the CFO signs in with their passkey and signs
 (`src/integrations/approvalChat.ts`, `scripts/approval-chat.ts`).
 
-Purser Cloud also sends the same kind of alert per company (Settings, Alerts: Slack, Teams, e-mail, WhatsApp), and posts
-every business event to a company's own Slack or Teams channel (Settings, Slack and Teams; built, not tested live). There an
+Purser Cloud also sends the same kind of alert per company (Connections, Alerts: Slack, Teams, e-mail, WhatsApp), and posts
+every business event to a company's own Slack or Teams channel (Connections, Slack and Teams; built, not tested live). There an
 owner adds each target, and the API never shows a target back. Use that one on a multi-company cloud. The environment-configured notifier is for a
 single company's runner or deployment.
 

@@ -75,14 +75,16 @@ describe("GET /v1/integrations", () => {
   });
 });
 
-describe("the Koppelingen card", () => {
-  it("is on the settings page, reads /v1/integrations and has its words in Dutch and English", () => {
+describe("the Moneybird card (Connections, 21 Nov; was Settings, Koppelingen)", () => {
+  it("is on the Connections page, reads /v1/integrations and has its words in Dutch and English", () => {
     const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" });
     expect(html).toContain("/v1/integrations");
     for (const k of ["cs.int.title", "cs.int.lede", "cs.int.moneybird", "cs.int.status.not_connected", "cs.int.status.connected", "cs.int.status.attention", "cs.int.last_sync", "cs.int.sent", "cs.int.failed", "cs.int.to_check", "cs.int.how"] as const) {
       expect(MESSAGES.nl[k], k).toBeTruthy();
       expect(MESSAGES.en[k], k).toBeTruthy();
     }
-    expect(MESSAGES.nl["cs.int.title"]).toBe("Koppelingen");
+    expect(MESSAGES.nl["cs.int.title"]).toBe("Moneybird op je runner");
+    const page = html.slice(html.indexOf("async function connectionsView(q){"), html.indexOf("// --- The router"));
+    expect(page).toContain("api('/v1/integrations')");
   });
 });

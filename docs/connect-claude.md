@@ -20,7 +20,7 @@ MCP SDK's own client).
 
 ## Three steps
 
-1. **Make a connector token.** In Purser Cloud go to Settings, Connect your AI. Name the token. Tick *may propose
+1. **Make a connector token.** In Purser Cloud go to Connections, Connect your AI. Name the token. Tick *may propose
    payments* only if your AI should file payments for approval. Click *Make a token* and copy it: it is shown once.
    Only an owner, signed in with a passkey, can make or revoke a token.
    To try first, use the demo company's public token instead: **`purser-demo-read-only`** (read only, made-up data).
@@ -167,7 +167,7 @@ demo company's public token. `PURSER_MCP_URL` points it at another Purser Cloud.
 
 - **Hashed at rest, shown once.** A connector token is an API key with the read scope and a connector purpose. Purser
   keeps only the SHA-256 of its secret. It expires after 90 days unless made with fewer, at most a year.
-- **Revocable.** Revoke a token in Settings, Connect your AI, and the connection with it ends at once. That includes
+- **Revocable.** Revoke a token in Connections, Connect your AI, and the connection with it ends at once. That includes
   every OAuth access token issued for it, because an access token names the token it was issued for and is checked
   against it on every request.
 - **Narrow.** A connector token works at `/mcp` only, and `/mcp` takes nothing else. An admin key, a sync key or a

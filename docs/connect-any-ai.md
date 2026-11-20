@@ -4,7 +4,7 @@ Moved from the [README](../README.md) on 15 November, to keep it short.
 
 Use your own AI assistant with a Purser company: Claude (claude.ai, the Claude apps, Claude Code), ChatGPT, Cursor, VS Code's agent mode, Gemini CLI, Windsurf, or any client that speaks MCP to a remote server. It reads the books and can propose an invoice's payment; **it can never approve or pay**: every payment still needs the CFO's passkey over the exact terms.
 
-1. In Purser Cloud, Settings, Connect your AI: make a connector token (only an owner signed in with a passkey can).
+1. In Purser Cloud, Connections, Connect your AI: make a connector token (only an owner signed in with a passkey can).
 2. In your AI, add the remote MCP server `https://purser-try.max-31b.workers.dev/mcp` (in Claude Code: `/plugin marketplace add agamemnon-coder/x402-business-agents` and `/plugin install purser@purser`).
 3. Sign in with your token, or choose the demo company: its public, read-only token is `purser-demo-read-only` (made-up data from a simulated month, test money; it can propose nothing).
 

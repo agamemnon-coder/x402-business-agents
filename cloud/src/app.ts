@@ -371,7 +371,7 @@ export const ROUTES: Route[] = [
   { method: "POST", path: "/v1/airwallex/onboarding-link", summary: "Airwallex's hosted onboarding link for the company's checks, made for the signed-in owner and short-lived; never stored.", need: "admin", run: async (c) => {
     const p = platformOf(c);
     ownerOnly(c);
-    return json(200, { url: await onboardingLink(c.env.sql, c.caller!.tenantId, p, c.caller!.principal, `${c.env.origin}/#/settings`) });
+    return json(200, { url: await onboardingLink(c.env.sql, c.caller!.tenantId, p, c.caller!.principal, `${c.env.origin}/#/connections`) });
   } },
   { method: "POST", path: "/v1/airwallex/webhook", summary: "Airwallex's account.* webhooks (signed: x-timestamp, x-signature): the onboarding status of an account opened through Purser.", need: "public", run: async (c) => {
     const p = platformOf(c);
@@ -1073,7 +1073,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
       }
       // A Claude connector token works at /mcp (and /mcp/airwallex) only, and those take only connector tokens (cloud/src/claude/routes.ts).
       if (isConnector(caller.purpose) !== isMcpPath(hit.r.path)) {
-        return err(403, isConnector(caller.purpose) ? "a Claude connector token works at /mcp only" : "/mcp takes a Claude connector token (made in Purser Cloud: Settings, Connect Claude)");
+        return err(403, isConnector(caller.purpose) ? "a Claude connector token works at /mcp only" : "/mcp takes a Claude connector token (made in Purser Cloud: Connections, Connect your AI)");
       }
       if (caller.purpose === "first-owner") {
         const ok = (req.method === "GET" && hit.r.path === "/v1/me") || (req.method === "POST" && hit.r.path === "/v1/company")

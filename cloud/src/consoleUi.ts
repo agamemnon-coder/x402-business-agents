@@ -34,11 +34,11 @@ async function overviewView(){
   const first=wait[0];
   nx.append(el('span','nic',ic(faceid?'scan-face':todo?'triangle-alert':'circle-check')),el('div','nb',[el('span','nl',t('cs.next.label')),el('b','',faceid?t(faceid===1?'cs.next.faceid_1':'cs.next.faceid_n',{n:faceid}):todo?t(todo===1?'cs.next.todo_1':'cs.next.todo_n',{n:todo}):t('cs.next.done')),
     el('span','ns',faceid?t('cs.next.faceid_go'):todo?t('cs.next.todo_go'):t('cs.next.done_sub'))]),
-    first?el('div','nw',faceid>1?[el('span','nv',t('cs.ov.n_suppliers',{n:new Set(wait.map((i)=>i.vendor)).size})),el('b','num',byCur(waitAmt).map(([c,v])=>cur(c)+' '+cents(v)).join(' · '))]:[el('span','nv',first.vendor||''),el('b','num',ma(first.currency,first.total))]):null,faceid||todo?el('span','ngo',[faceid?t('cs.ov.review'):t('cs.ov.go_open'),ic('chevron-right')]):null);
+    ...[first?el('div','nw',faceid>1?[el('span','nv',t('cs.ov.n_suppliers',{n:new Set(wait.map((i)=>i.vendor)).size})),el('b','num',byCur(waitAmt).map(([c,v])=>cur(c)+' '+cents(v)).join(' · '))]:[el('span','nv',first.vendor||''),el('b','num',ma(first.currency,first.total))]):null,faceid||todo?el('span','ngo',[faceid?t('cs.ov.review'):t('cs.ov.go_open'),ic('chevron-right')]):null].filter(Boolean));
   // Four figures: cash, what is open to pay, what waits for the CFO's Face ID, what is blocked.
   const open=byCur(x.open_net_cents),over=byCur(x.overdue_cents),waitAmt={};for(const i of wait)waitAmt[i.currency]=(waitAmt[i.currency]||0)+toCents(i.total);
   const fig=(label,icon,value,sub,tone)=>{const v=el('b','num');if(value instanceof Node)v.append(value);else v.textContent=value;return el('div','card kpi rise'+(tone?' '+tone:''),[el('span','kl',[ic(icon),label]),v,sub?el('span','ks',sub):null])};
-  const cash=D&&D.money?fig(t('cs.ov.cash'),'wallet',amt(D,toCents(D.money.net)),t('cs.dash.net_sub',{date:dday(D.since)}),toCents(D.money.net)>=0?'pos':'neg'):null;
+  const cash=D&&D.money?fig(t('cs.ov.cash'),'wallet',amt(D,toCents(D.money.net)),D.since?t('cs.dash.net_sub',{date:dday(D.since)}):t('cs.dash.net_none'),toCents(D.money.net)>=0?'pos':'neg'):null;
   const k=el('div','kpis',[cash,
     fig(t('cs.ov.payables'),'receipt',open.length?cur(open[0][0])+' '+cents(open[0][1]):t('cs.nothing_open'),over.length?t('cs.ov.overdue',{amount:over.map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):t('cs.ov.none_overdue'),over.length?'neg':''),
     fig(t('cs.ov.faceid'),'scan-face',String(x.waiting.for_cfo),byCur(waitAmt).length?byCur(waitAmt).map(([c,v])=>cur(c)+' '+cents(v)).join(' · '):t('cs.ov.nothing_waits'),x.waiting.for_cfo?'wait':''),
@@ -51,7 +51,7 @@ async function overviewView(){
   const due=el('section','card dcard rise due',[el('div','dh',[el('h2','',t('cs.due.title'))]),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title')):el('p','lede',t('cs.due.none')),
     Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);
   const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
-  const dash=el('div','dash',[k]);const nodes=[head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),nx,awlOverview(),dash];
+  const dash=el('div','dash',[k]);const nodes=[head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),nx,!items.length&&!m.demo?startCard(m):null,awlOverview(),dash].filter(Boolean);
   if(D&&D.cash&&D.cash.length){
     const wide=innerWidth>=980,full=view().clientWidth||960;const cashW=Math.round(wide?full*0.64-40:full-40),weekW=Math.round(wide?full*0.5-44:full-40);
     const sub=D.agents.by_fallback?t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback}):t('cs.dash.decisions_sub');
@@ -66,6 +66,17 @@ async function overviewView(){
   // Every card rises in on the next frame; with reduced motion the CSS shows all at once.
   requestAnimationFrame(()=>{for(const n of view().querySelectorAll('.rise'))n.classList.add('in')});
 }
+
+// A company with nothing in it yet (21 Nov, the walk as a new company: an empty overview said only "Nothing waits for
+// you"): four first steps, each a link to the page where it is done. Nothing here is ticked that the page cannot know.
+function startCard(m){
+  const owner=m.scopes.includes('admin');
+  const step=(n,icon,h,sub,href)=>{const a=el('a','st-step',[el('span','st-n',String(n)),el('span','st-ic',ic(icon)),el('span','st-b',[el('b','',h),el('span','sub',sub)]),ic('chevron-right')]);a.href=href;return a};
+  return el('section','card startc rise',[el('div','dh',[el('h2','',t('cs.start.h')),el('p','sub',t('cs.start.sub'))]),el('div','st-steps',[
+    step(1,'inbox',t('cs.start.invoices'),m.inbox?t('cs.start.invoices_sub')+' '+m.inbox:t('cs.start.invoices_sub'),'#/invoices'),
+    owner?step(2,'users',t('cs.start.cfo'),t('cs.start.cfo_sub'),'#/settings?at=people'):null,
+    step(owner?3:2,'bot',t('cs.start.ai'),t('cs.start.ai_sub'),'#/connections?at=claude'),
+    step(owner?4:3,'link-2',t('cs.start.cx'),t('cs.start.cx_sub'),'#/connections')].filter(Boolean))])}
 
 // --- Agents -------------------------------------------------------------------------------------------------------
 const OUTCOME={paid:['circle-check','ok'],declined:['ban','bad'],asked:['scan-face','wait'],note:['circle-dot','info']};
@@ -261,15 +272,15 @@ async function booksView(){
     if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td',''),el('td','')]));
     tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td','sh'),el('td','r'),el('td','r',owedOr(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td','sh'),el('td','r'),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td','sh'),el('td','r'),el('td','r',el('b','',owedOr(v.balance_5c_cents)))]));
     tbl.append(tb);
-    vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
-      v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'warn'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice'))));
+    vat.replaceChildren(...[el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
+      v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'warn'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice')))].filter(Boolean));
   }
   pick.onchange=()=>drawVat().catch(e=>{if(!(e instanceof Expired))vat.append(note(e.message,'bad'))});
   // Every entry (judge scan, 14 Nov: the first 30 by number left out the newest, though the balance sheet holds it), by
   // posting date, newest first; 30 in view, the rest one click away.
   const all=await everyPage('/v1/ledger/entries');const SHOWN=30;
   const drawJournal=(n)=>{const newest=byDateNewest(all);const more=newest.length>n?btn(t('cs.books.journal_all',{n:newest.length}),'linkbtn','chevron-down'):null;if(more)more.onclick=()=>drawJournal(newest.length);
-    journal.replaceChildren(el('h2','',t('cs.journal')),el('p','sub',t('cs.books.journal_sub2',{n:Math.min(n,newest.length),total:newest.length})),journalTable(newest.slice(0,n),t('cs.no_entries'),true),more,note(t('cs.journal_note')))};
+    journal.replaceChildren(...[el('h2','',t('cs.journal')),el('p','sub',t('cs.books.journal_sub2',{n:Math.min(n,newest.length),total:newest.length})),journalTable(newest.slice(0,n),t('cs.no_entries'),true),more,note(t('cs.journal_note'))].filter(Boolean))};
   drawJournal(SHOWN);drawAll=()=>drawJournal(all.length);
   view().dataset.print=[ME&&ME.tenant?ME.tenant.name:'',ME&&ME.demo?t('cs.demo.ribbon'):t('cs.foot')].filter(Boolean).join(' · ');
   await drawVat();

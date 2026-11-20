@@ -31,7 +31,7 @@ import { APP_ICON_LINKS, cloudAppResponse } from "./pwa.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
   "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy",
-  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down", "sparkles", "arrow-right", "zap"];
+  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down", "sparkles", "arrow-right", "zap", "info"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
@@ -374,12 +374,80 @@ ol.stepper li.done .n .ic { display: inline-flex; }
   .signed-out main { grid-column: 2; grid-row: 4; margin: 0; padding: 0 40px; }
   .signed-out .auth { max-width: 460px; }
   .signed-out .trust { grid-column: 2; grid-row: 5; margin: 0; padding: 18px 40px 0; }
+}
+/* 21 Nov: Settings and Connections stack many cards; each stood flush on the next with no space between. */
+#view > .panel + .panel, #view > .panel + .split2, #view > .split2 + .panel, #view > .note-info + .panel, #view > .panel + .cx-setup-h { margin-top: 16px; }
+#view > .head + .panel { margin-top: 4px; }
+@keyframes cxflash { from { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); } to { box-shadow: var(--shadow); } }
+.flash { animation: cxflash 1.6s ease-out; }
+@media (prefers-reduced-motion: reduce) { .flash { animation: none; outline: 2px solid var(--accent); outline-offset: 2px; } }
+/* Connections (cloud/src/connectionsView.ts): a summary, then one card per connection in a grid, grouped. */
+.cx-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px; margin: 14px 0 6px; }
+.cx-stat { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cx-stat b { font-size: 22px; letter-spacing: -.01em; line-height: 1.15; }
+.cx-stat span { color: var(--muted); font-size: 12.5px; line-height: 1.3; }
+.cx-stat.here { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
+.cx-stat.here b { color: var(--accent); }
+.cx-stat.ok b { color: var(--ok); } .cx-stat.tmoney b { color: var(--accent); } .cx-stat.warn b { color: var(--warn); } .cx-stat.plan b { color: var(--muted); }
+/* Nine tabs (21 Nov): on a laptop the company chip keeps its name and the Airwallex dot; the status words stay in its title. */
+@media (min-width: 901px) and (max-width: 1599px) { .co .aw .aww { display: none; } .co .aw { padding-left: 6px; } }
+.cx-links { margin: 10px 0 0; }
+.cx-jump { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.cx-jump button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 12px; padding: 5px 11px; text-align: left; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.cx-jump button:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); color: var(--accent); }
+.connections h2.sub-h, #view > .panel[id] { scroll-margin-top: 16px; }
+@media (min-width: 901px) { .connections h2.sub-h, #view > .panel[id] { scroll-margin-top: 124px; } }
+ul.cx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; margin-top: 4px; }
+ul.cx-grid > li.cx-card { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 14px 15px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); min-width: 0; }
+li.cx-card.on { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); box-shadow: inset 3px 0 0 var(--ok); }
+li.cx-card.planned { border-style: dashed; background: transparent; }
+.cx-top { display: flex; gap: 11px; align-items: flex-start; }
+.cx-mark { flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-weight: 750; font-size: 12.5px; letter-spacing: -.01em; background: var(--sunken); color: var(--text); border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.cx-mark.g-rails { background: var(--awx-soft); color: var(--awx); } .cx-mark.g-ai { background: var(--claude-soft); color: var(--claude); }
+.cx-mark.g-api, .cx-mark.g-no_code { background: var(--accent-soft); color: var(--accent); } .cx-mark.g-accounting { background: var(--ok-soft); color: var(--ok); }
+.cx-nm { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.cx-nm b { font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+.pill.tmoney { background: var(--accent-soft); color: var(--accent); } .pill.plan { background: transparent; border: 1px dashed var(--border); color: var(--muted); }
+.cx-what { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--text); }
+.cx-more { font-size: 13px; color: var(--muted); }
+.cx-more summary { cursor: pointer; color: var(--accent); font-weight: 600; width: max-content; }
+.cx-more p { margin: 6px 0 0; line-height: 1.45; }
+.cx-here { margin: 0; display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; flex-wrap: wrap; }
+.cx-here i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+.cx-here.connected { color: var(--ok); } .cx-here.connected i { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.cx-here.not_connected { color: var(--text); } .cx-here.not_connected i { background: var(--accent); }
+.cx-here.not_available { color: var(--muted); }
+.cx-needs { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+.cx-needs b { color: var(--text); font-weight: 650; }
+.cx-acts { margin-top: auto; padding-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13.5px; }
+.cx-acts .btn { height: 34px; padding: 0 13px; font-size: 13.5px; }
+.cx-setup-h { margin: 28px 0 10px; }
+.cx-setup-h h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: -.01em; }
+.cx-setup-h p { margin: 0; }
+a.cx-pointer { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--text); }
+a.cx-pointer > div { flex: 1; min-width: 0; } a.cx-pointer p { margin: 2px 0 0; }
+a.cx-pointer:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+/* Get started (a new company's overview): four steps, each a link. */
+.startc { padding: 18px 20px; margin-top: 16px; }
+.startc .dh h2 { margin: 0; font-size: 17px; } .startc .dh p { margin: 2px 0 0; }
+.st-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; margin-top: 14px; }
+a.st-step { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: var(--text); min-width: 0; }
+a.st-step:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); background: color-mix(in srgb, var(--accent-soft) 40%, transparent); }
+.st-n { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 750; background: var(--accent); color: #fff; }
+.st-ic { flex: none; color: var(--accent); display: inline-flex; }
+.st-b { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; } .st-b b { font-size: 14px; } .st-b .sub { font-size: 12.5px; line-height: 1.35; overflow-wrap: anywhere; }
+.awpill.down { background: var(--sunken); color: var(--muted); } .awpill.down i { background: var(--faint); } .awpill.down i::after { display: none; }
+.awov:has(.awpill.down) { border-color: var(--border); }
+@media (max-width: 640px) {
+  /* 21 Nov: nine pages (Connections has its own): three rows of three on a phone, each name whole. */
+  .appbar nav.apptabs { grid-template-columns: repeat(3, auto); }
+  ul.cx-grid > li.cx-card { padding: 13px; }
 }`;
 
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
 ${siteHeader(null)}
-<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/connections" data-tab="connections" data-t="cs.nav.connections">${tr("en", "cs.nav.connections")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="awx-app">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: AIRWALLEX_LOGO_SRC })}</span><span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
@@ -612,7 +680,7 @@ function startView(){
     const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):note(t('cs.inbox_later'));
     const make=btn(t('cs.make_runner_key'),'primary','key-round');
     const out=el('div','');
-    stageOf([note(t('cs.starter_gone'),'ok'),inbox,el('p','',[t('cs.connect_runner')]),make,out,
+    stageOf([note(t('cs.starter_gone'),'ok'),inbox,el('p','',[t('cs.connect_runner')]),make,out,el('p','sub',t('cs.runner_optional')),
       el('p','alt',[(()=>{const a=el('a','',t('cs.open_console'));a.href='#/overview';return a})()])]);
     make.onclick=async()=>{make.disabled=true;try{sync=await api('/v1/keys',{method:'POST',body:{name:t('cs.runner_key_name'),scopes:['sync'],expires_in_days:90}});
       out.replaceChildren(el('div','once',[el('b','',t('cs.shown_once')),t('cs.run_this'),
@@ -719,7 +787,7 @@ function invoiceRing(D){
 function spendBars(D){
   const max=Math.max(1,...D.spend.map(s=>toCents(s.amount)));
   return el('ul','sbars',D.spend.map((s,i)=>{const f=el('span','sf');f.style.width=Math.max(1.5,toCents(s.amount)/max*100).toFixed(1)+'%';
-    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t('cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null]),s.parts?el('span','ss sp',t('cs.dash.spend_parts',{inbox:s.parts.inbox.count,inbox_amt:amt(D,toCents(s.parts.inbox.amount)),outside:s.parts.outside.count,outside_amt:amt(D,toCents(s.parts.outside.amount)),fees:amt(D,toCents(s.parts.fees))})):null])}))}
+    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t(s.count===1?'cs.dash.n_payments_1':'cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null]),s.parts?el('span','ss sp',t('cs.dash.spend_parts',{inbox:s.parts.inbox.count,inbox_amt:amt(D,toCents(s.parts.inbox.amount)),outside:s.parts.outside.count,outside_amt:amt(D,toCents(s.parts.outside.amount)),fees:amt(D,toCents(s.parts.fees))})):null])}))}
 function feedList(D){
   return el('ol','feed',D.feed.map(f=>el('li','f-'+f.tone,[el('span','fd'),el('div','',[el('div','fw',[el('b','',f.who),el('time','',dday(f.at))]),el('p','',f.text)])])))}
 function dashBlock(D){
@@ -1230,7 +1298,9 @@ async function claudeCard(m,owner){
   const steps=el('ol','steps',[el('li','',t('cs.claude.step1')),el('li','',t('cs.claude.step2')),el('li','',t('cs.claude.step3'))]);
   const urlRow=el('div','once',[el('b','',t('cs.claude.url')),el('code','cmd',url),el('div','row2',[copyBtn(url)])]);
   const guide=el('a','',t('cs.claude.guide')+' ↗');guide.href='/connect-ai';guide.target='_blank';guide.rel='noopener';
-  const kids=[el('h2','',t('cs.claude.title')),el('p','',t('cs.claude.lede')),urlRow,steps,el('p','sub others',[t('cs.claude.others'),' ',guide])];
+  // The Airwallex sandbox as a second, read-only MCP server (docs/codemode.md): the same token; never the demo's.
+  const awxMcp=m.demo?null:el('p','sub others',[t('cs.claude.awx_mcp'),' ',el('code','mono',location.origin+'/mcp/airwallex')]);
+  const kids=[el('h2','',t('cs.claude.title')),el('p','',t('cs.claude.lede')),urlRow,steps,el('p','sub others',[t('cs.claude.others'),' ',guide]),awxMcp].filter(Boolean);
   if(m.demo){
     const tok='purser-demo-read-only';
     kids.push(note(t('cs.claude.demo')),el('div','once',[el('b','',t('cs.claude.demo_token')),el('code','cmd',tok),el('b','',t('cs.claude.code')),el('code','cmd',codeCmd(tok)),el('div','row2',[copyBtn(codeCmd(tok))])]));
@@ -1347,12 +1417,28 @@ async function securityCard(){
   return card;
 }
 
-// Connections (cloud/src/connectionsView.ts): every way in or out of Purser, from GET /v1/connections, each with its
-// label and its guide, then the hub and /connect-ai. For everyone who can open Settings; it shows no company's data.
-async function connectionsCard(){
-  const card=el('div','card panel connections');card.id='connections';
-  try{const cat=await api('/v1/connections');card.replaceChildren(...connectionsViewOf(cat,t,tk,el))}
-  catch(e){if(!(e instanceof Expired))card.replaceChildren(el('h2','',t('cs.cx.title')),note(e.message,'bad'))}
+// The signed webhook (GET, POST and DELETE /v1/webhook, cloud/src/monitor.ts): an owner's own https address. Purser
+// POSTs its business events and alerts there, signed (x-purser-signature); the secret is shown once. Only its host is
+// shown here. 21 Nov: "Your connections" listed it with no way to set it in the console.
+async function webhookCard(){
+  const card=el('div','card panel hook');card.id='webhook';const body=el('div','');const out=el('div','');out.setAttribute('role','status');
+  async function draw(){
+    const h=await api('/v1/webhook');
+    const url=el('input','field');url.type='url';url.maxLength=500;url.autocomplete='off';url.placeholder='https://…';url.id='hook-url';
+    const save=btn(h.url?t('cs.hook.replace'):t('cs.hook.save'),'primary','zap');save.id='hook-save';
+    save.onclick=async()=>{const v=url.value.trim();if(!v)return;save.disabled=true;
+      try{const r=await api('/v1/webhook',{method:'POST',body:{url:v}});await draw();out.replaceChildren(el('div','once',[el('b','',t('cs.shown_once')),' '+t('cs.hook.secret'),el('code','cmd',r.secret)]))}
+      catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'))}finally{save.disabled=false}};
+    let host='';try{host=h.url?new URL(h.url).host:''}catch(e){host=''}
+    const st=!h.url?['',t('cs.hook.st.none')]:h.disabled_at?['warn',t('cs.hook.st.off')]:['ok',t('cs.hook.st.on')];
+    const acts=[];
+    if(h.url){const rm=btn(t('cs.remove'),'danger','x');rm.onclick=async()=>{rm.disabled=true;try{await api('/v1/webhook',{method:'DELETE'});out.replaceChildren();await draw()}catch(e){if(!(e instanceof Expired)){rm.disabled=false;out.replaceChildren(note(e.message,'bad'))}}};acts.push(el('div','',[rm]))}
+    body.replaceChildren(el('p','',[el('span','pill'+(st[0]?' '+st[0]:''),st[1]),host?el('span','mono',' · '+host):null,h.last_status?el('span','sub',' · '+t('cs.hook.last',{status:String(h.last_status)})):null]),
+      el('div','form-row',[el('div','',[el('label','',t('cs.hook.url')),url]),el('div','',[save]),...acts]));
+    url.setAttribute('aria-label',t('cs.hook.url'));
+  }
+  card.replaceChildren(el('h2','',t('cs.hook.title')),el('p','',t('cs.hook.lede')),body,out,note(t('cs.hook.keeps')));
+  try{await draw()}catch(e){if(!(e instanceof Expired))body.replaceChildren(note(e.message,'bad'))}
   return card;
 }
 
@@ -1398,16 +1484,10 @@ async function identitiesCard(m){
   card.replaceChildren(...kids,out);return card;
 }
 
-// Your connections (GET /v1/connections/mine): every way this company is connected, each connected, not connected
-// (switched on here, in Settings) or not available yet (the platform has not configured it).
-async function yourConnectionsCard(){
-  const r=await api('/v1/connections/mine');
-  const tone={connected:' ok',not_connected:'',not_available:' warn'};
-  const ul=el('ul','plain',r.items.map(x=>el('li','',[el('span','pill'+(tone[x.status]||''),t('cs.yours.st.'+x.status)),' ',el('b','',x.name),x.detail?el('span','sub',' · '+x.detail):null])));
-  const card=el('div','card panel');card.id='your-connections';
-  card.replaceChildren(el('h2','',t('cs.yours.title')),el('p','',t('cs.yours.lede')),ul,note(r.rule));
-  return card;
-}
+// A user agent in words ("Chrome on macOS"); the raw string stays in the title. Unknown parts keep the raw string.
+function uaWords(u){u=String(u||'');const b=/Edg\//.test(u)?'Edge':/Firefox\//.test(u)?'Firefox':/(Chrome|CriOS)\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'';
+  const o=/iPhone|iPad/.test(u)?'iOS':/Android/.test(u)?'Android':/Mac OS X/.test(u)?'macOS':/Windows/.test(u)?'Windows':/Linux/.test(u)?'Linux':'';
+  return b&&o?t('cs.ses.on',{browser:b,os:o}):u.slice(0,80)}
 // Where the person is signed in (ASVS V3.3.4; cloud/src/sessions.ts): each passkey or Google, Microsoft or Apple
 // session, ended one by one.
 async function sessionsCard(){
@@ -1416,7 +1496,8 @@ async function sessionsCard(){
     const r=await api('/v1/sessions');const list=el('ul','plain');
     for(const s of r.items){const end=btn(t('cs.ses.end'),'');end.disabled=!!s.current;
       end.onclick=async()=>{end.disabled=true;try{await api('/v1/sessions/'+encodeURIComponent(s.id),{method:'DELETE'});await draw();msg.replaceChildren(note(t('cs.ses.ended'),'ok'))}catch(e){end.disabled=false;if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}};
-      list.append(el('li','',[el('span','',(s.current?t('cs.ses.this')+' · ':'')+s.user_agent+' · '+s.ip+' · '+s.created_at.slice(0,16).replace('T',' ')),' ',end]))}
+      const ua=el('span','',(s.current?t('cs.ses.this')+' · ':'')+uaWords(s.user_agent)+' · '+s.ip+' · '+s.created_at.slice(0,16).replace('T',' '));ua.title=String(s.user_agent||'');
+      list.append(el('li','',[ua,' ',end]))}
     card.replaceChildren(el('h2','',t('cs.ses.title')),el('p','sub',t('cs.ses.lede')),list,msg)}
   await draw();return card}
 
@@ -1456,7 +1537,7 @@ function offboardingCard(m){
   if(!kids)return null;
   const card=el('div','card panel offboarding');card.id='offboarding';card.replaceChildren(...kids);return card}
 
-async function settingsView(){
+async function settingsView(q){
   title(t('cs.nav.settings'));
   const m=await me();
   const owner=m.scopes.includes('admin');
@@ -1471,17 +1552,125 @@ async function settingsView(){
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),m.inbox?note(t('cs.inbox.forward')):null,fwd,langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
   const ids=m.kind==='session'&&!m.demo?await identitiesCard(m).catch(()=>null):null;
   const sessions=m.kind==='session'&&!m.demo?await sessionsCard().catch(()=>null):null;
-  if(!owner){const cc=await claudeCard(m,false);const cx=await connectionsCard();const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(...[head(t('cs.nav.settings')),company,sessions,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,cc,cx].filter(Boolean));return}
-  const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
-  const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
-  const claude=await claudeCard(m,true);
-  const alerts=m.kind==='session'?await alertsCard():null;
-  const chat=m.kind==='session'?await chatCard():null;
+  // 21 Nov: every connection (AI, chat, alerts, accounting, the catalogue) moved to its own page; Settings points there.
+  const toCx=el('a','card panel cx-pointer',[el('span','cx-mark ic-mark g-ai',[ic('link-2')]),el('div','',[el('b','',t('cs.cxp.pointer')),el('p','sub',t('cs.cxp.pointer_sub'))]),ic('chevron-right')]);toCx.href='#/connections';
+  if(!owner){const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(...[head(t('cs.nav.settings')),company,sessions,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,toCx].filter(Boolean));scrollToAt(q);return}
+  const people=el('div','card panel');people.id='people';const keys=el('div','card panel');keys.id='keys';const dataCard=el('div','card panel');dataCard.id='data';
   const security=m.kind==='session'&&!m.demo?await securityCard():null;
-  const yours=!m.demo?await yourConnectionsCard().catch(()=>null):null;
-  const cx=await connectionsCard();
-  // "Your connections" (this company's own, each connected or not) on top, the catalogue of every connection below it.
-  view().replaceChildren(...[head(t('cs.nav.settings'),t('cs.settings_lede')),yours,cx,company,security,sessions,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard,offboardingCard(m)].filter(Boolean));
+  view().replaceChildren(...[head(t('cs.nav.settings'),t('cs.settings_lede')),toCx,company,security,sessions,ids,el('div','split2',[people,keys]),dataCard,offboardingCard(m)].filter(Boolean));
+  // An invite: a one-time link to this console (the secret after the #, so opening it sends it to no server) and its
+  // QR code, for 30 minutes and one passkey. The owner passes it on; nothing is mailed.
+  const invites=el('div','');
+  async function invite(p){
+    const e=await api('/v1/users/'+encodeURIComponent(p.id)+'/enrolment',{method:'POST'});
+    const qr=el('img','qr');qr.alt=t('cs.qr_alt',{name:p.display_name});qr.width=180;qr.height=180;qr.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(e.qr_svg);
+    const link=el('code','cmd',e.link);link.id='invite-link';
+    const copy=btn(t('cs.copy_link'),'primary','copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(e.link);copy.replaceChildren(ic('circle-check'),t('cs.copied'))}catch(x){const r=document.createRange();r.selectNodeContents(link);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}};
+    invites.replaceChildren(el('div','once invite',[qr,el('div','',[el('b','',t('cs.invite_for',{name:p.display_name})),el('p','',t('cs.invite_until',{when:stamp(e.expires_at)})),link,el('div','row2',[copy])])]));
+    invites.scrollIntoView({block:'nearest'});
+  }
+  // A person's passkeys, each removable by an owner (red team round 5: a passkey planted with a leaked starter key was
+  // invisible). Removing one ends that person's sessions; the company's last owner passkey cannot go.
+  const keysOf=el('div','');keysOf.id='passkeys';
+  async function passkeys(p){
+    const r=await api('/v1/users/'+encodeURIComponent(p.id)+'/passkeys');
+    const list=el('ul','plain');
+    for(const k of r.items){const rm=btn(t('cs.remove'),'danger','x');
+      rm.onclick=async()=>{if(!confirm(t('cs.remove_passkey_q',{name:p.display_name})))return;rm.disabled=true;
+        try{await api('/v1/users/'+encodeURIComponent(p.id)+'/passkeys/'+encodeURIComponent(k.credential_id),{method:'DELETE'});await passkeys(p)}catch(e){if(!(e instanceof Expired)){rm.disabled=false;keysOf.append(note(e.message,'bad'))}}};
+      list.append(el('li','',[el('span','mono',k.credential_id.slice(0,10)+'…'),' '+t('cs.enrolled',{when:stamp(k.created_at)})+' ',rm]))}
+    keysOf.replaceChildren(el('div','once',[el('b','',t('cs.passkeys_of',{name:p.display_name})),r.items.length?list:el('p','',t('cs.no_passkey_yet'))]));
+    keysOf.scrollIntoView({block:'nearest'});
+  }
+  async function drawPeople(){
+    const u=await api('/v1/users?limit=200');
+    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.person')),el('th','',t('cs.role')),el('th','')])])]);const tb=el('tbody','');
+    for(const p of u.items){const acts=el('td','r acts');
+      if(!p.erased_at){const inv=btn(t('cs.invite'),'','key-round');inv.onclick=async()=>{inv.disabled=true;try{await invite(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{inv.disabled=false}};
+        const er=btn(t('cs.erase'),'danger','x');er.onclick=async()=>{const typed=prompt(t('cs.erase_prompt',{name:p.display_name}));if(typed===null)return;if(typed.trim()!==p.display_name){people.append(note(t('cs.name_mismatch'),'bad'));return}
+          try{await api('/v1/users/'+encodeURIComponent(p.id)+'/erase',{method:'POST'});await drawPeople()}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}};
+        const pks=btn(t('cs.passkeys'),'','scan-face');pks.onclick=async()=>{pks.disabled=true;try{await passkeys(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{pks.disabled=false}};
+        acts.append(inv,' ',pks,' ',er)}
+      tb.append(el('tr','',[el('td','pn',[p.erased_at?null:av(p.display_name),el('b','',p.erased_at?t('cs.erased'):p.display_name),p.email?el('span','sub',' '+p.email):null]),el('td','',[el('span','pill'+(p.role==='owner'?' warn':''),tk('cs.role.'+p.role,p.role))]),acts]))}
+    tbl.append(tb);
+    const name=el('input','field');name.placeholder=t('cs.name');const role=el('select','field');for(const r of ['cfo','accountant','viewer','owner']){const o=el('option','',tk('cs.role.'+r,r));o.value=r;role.append(o)}
+    const add=btn(t('cs.add_invite'),'primary');add.onclick=async()=>{const n=name.value.trim();if(!n)return;add.disabled=true;try{const u=await api('/v1/users',{method:'POST',body:{display_name:n,role:role.value}});await drawPeople();await invite({id:u.id,display_name:n})}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{add.disabled=false}};
+    people.replaceChildren(el('h2','',t('cs.people')),el('div','scroll',tbl),el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[el('label','',t('cs.role')),role]),el('div','',[add])]),
+      note(t('cs.people_note')),invites,keysOf);
+  }
+  async function drawKeys(){
+    const k=await api('/v1/keys?limit=200');
+    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.key')),el('th','',t('cs.may')),el('th','',t('cs.expires')),el('th','')])])]);const tb=el('tbody','');
+    for(const x of k.items.filter(y=>!/^claude/.test(y.purpose||''))){const live=!x.revoked_at&&x.expires_at>new Date().toISOString();const acts=el('td','r acts');
+      if(live){const rv=btn(t('cs.revoke'),'danger','x');rv.onclick=async()=>{if(!confirm(t('cs.revoke_confirm',{name:data('key',x.name)})))return;try{await api('/v1/keys/'+encodeURIComponent(x.id),{method:'DELETE'});await drawKeys()}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}};acts.append(rv)}
+      tb.append(el('tr','',[el('td','',[el('b','',data('key',x.name)),el('span','sub',' '+x.id)]),el('td','',String(x.scopes||'').split(/[ ,]+/).filter(Boolean).map(sc=>tk('cs.scope.'+sc,sc)).join(', ')),el('td','',live?day(x.expires_at):[el('span','pill bad',x.revoked_at?t('cs.revoked'):t('cs.expired'))]),acts]))}
+    tbl.append(tb);
+    const name=el('input','field');name.placeholder=t('cs.key_placeholder');const scope=el('select','field');for(const [v,l] of [['read',t('cs.scope.read')],['sync',t('cs.scope.sync')],['read sync',t('cs.scope.read_sync')],['read propose',t('cs.scope.read_propose')]]){const o=el('option','',l);o.value=v;scope.append(o)}
+    const days=el('input','field');days.type='number';days.min='1';days.max='365';days.value='90';
+    const out=el('div','');
+    const mk=btn(t('cs.make_key'),'primary','key-round');mk.onclick=async()=>{if(!name.value.trim())return;mk.disabled=true;try{const r=await api('/v1/keys',{method:'POST',body:{name:name.value.trim(),scopes:scope.value.split(' '),expires_in_days:Math.max(1,Math.min(365,Number(days.value)||90))}});
+        await drawKeys();keys.append(el('div','once',[el('b','',t('cs.shown_once')),t('cs.copy_now'),el('code','cmd',r.api_key)]))}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}finally{mk.disabled=false}};
+    keys.replaceChildren(el('h2','',t('cs.api_keys')),el('div','scroll',tbl),el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[el('label','',t('cs.may')),scope]),el('div','',[el('label','',t('cs.days')),days]),el('div','',[mk])]),out,
+      note(t('cs.keys_note')));
+  }
+  const exp=btn(t('cs.download_all'),'','download');exp.onclick=()=>download('/v1/export','purser-cloud-export.json').catch(e=>{if(!(e instanceof Expired))dataCard.append(note(e.message,'bad'))});
+  dataCard.replaceChildren(el('h2','',t('cs.your_data')),el('p','',t('cs.data_lede',{name:m.tenant.name})),exp);
+  await Promise.all([drawPeople(),drawKeys()]);
+  scrollToAt(q);
+}
+
+
+// --- Connections (21 Nov): its own page. The catalogue as cards (cloud/src/connectionsView.ts), each with where it
+// stands for this company and a button only where the console really connects it; below them the cards that do the
+// connecting: your AI (MCP), the signed webhook, Slack and Teams, approval alerts, accounts by OAuth (when the cloud
+// offers them), Moneybird on the runner, and the company's own Airwallex account (when the cloud offers it).
+const scrollToAt=(q)=>{const at=q&&q.get&&q.get('at');if(!at||!/^[a-z-]{1,30}$/.test(at))return;const n=document.getElementById(at);if(n){n.scrollIntoView({block:'start'});n.classList.add('flash');setTimeout(()=>n.classList.remove('flash'),1600)}};
+const jump=(id)=>{const n=document.getElementById(id);if(n&&!n.hidden){n.scrollIntoView({behavior:RM()?'auto':'smooth',block:'start'});n.classList.add('flash');setTimeout(()=>n.classList.remove('flash'),1600);return true}return false};
+async function connectionsView(q){
+  title(t('cs.nav.connections'));
+  const m=await me();
+  const owner=m.scopes.includes('admin');const session=m.kind==='session';
+  const mine=owner&&!m.demo?(await api('/v1/connections/mine').catch((e)=>{if(e instanceof Expired)throw e;return null})):null;
+  const offered=owner?(await api('/v1/connect').catch((e)=>{if(e instanceof Expired)throw e;return {switched_on:false,connections:[]}})):{switched_on:false,connections:[]};
+  const offers=(p)=>!!(offered.switched_on&&(offered.connections||[]).find((x)=>x.provider===p&&x.offered));
+  const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
+  const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
+  const claude=await claudeCard(m,owner);
+  const hook=owner&&session?await webhookCard():null;
+  const alerts=owner&&session?await alertsCard():null;
+  const chat=owner&&session?await chatCard():null;
+  // A card's button: only where this console really does it, for someone who may.
+  const go=(label,icon,fn,cls)=>{const b=btn(label,cls||'',icon);b.onclick=fn;return b};
+  const to=(id,label)=>go(label||t('cs.cx.set_up'),'arrow-right',()=>{if(!jump(id))location.hash='#/settings?at='+id});
+  const nav=(hash,label)=>{const a=el('a','btn',[label,' ',ic('arrow-right')]);a.href=hash;return a};
+  const csv=(f,k,label)=>go(label,'download',async(e)=>{const b=e.currentTarget;b.disabled=true;try{await download('/v1/export/csv/'+f+'/'+k,'purser-'+k+'-'+f+'.csv')}catch(x){if(!(x instanceof Expired))b.after(note(x.message,'bad'))}finally{b.disabled=false}});
+  const copyText=(text,label)=>go(label,'copy',async(e)=>{const b=e.currentTarget;try{await navigator.clipboard.writeText(text);b.replaceChildren(ic('circle-check'),t('cs.copied'))}catch(x){}});
+  const ACT={
+    airwallex:()=>offers('airwallex')&&owner?to('connect',t('cs.cx.connect')):nav('#/airwallex',t('cs.cx.see_awx')),
+    alta:()=>nav('#/tokenisation',t('cs.cx.see_alta')),'visa-airi':()=>nav('#/agents',t('cs.cx.see_visa')),t0:()=>nav('#/books',t('cs.cx.see_t0')),
+    mcp:()=>to('claude'),claude:()=>to('claude'),'awx-codemode':()=>to('claude'),
+    chatgpt:()=>null,cursor:()=>null,vscode:()=>null,gemini:()=>null,windsurf:()=>null,
+    rest:()=>owner&&session?to('keys',t('cs.cx.make_key')):null,sdks:()=>null,'zapier-make':()=>null,n8n:()=>null,
+    webhook:()=>hook?to('webhook'):null,
+    'xero-csv':()=>csv('xero','bills',t('cs.cx.csv')),'quickbooks-csv':()=>csv('quickbooks','bills',t('cs.cx.csv')),'exact-csv':()=>csv('exact','bills',t('cs.cx.csv')),
+    xero:()=>offers('xero')&&owner?to('connect',t('cs.cx.connect')):null,quickbooks:()=>offers('quickbooks')&&owner?to('connect',t('cs.cx.connect')):null,exact:()=>offers('exact')&&owner?to('connect',t('cs.cx.connect')):null,
+    moneybird:()=>owner?to(offers('moneybird')?'connect':'integrations',t('cs.cx.see_status')):null,
+    'slack-teams':()=>chat?to('chat'):null,alerts:()=>alerts?to('alerts'):null,
+    inbox:()=>m.inbox?copyText(m.inbox,t('cs.cx.copy_inbox')):null,
+    'sign-in':()=>session&&!m.demo&&mine&&mine.items.some((x)=>/^sign_in_/.test(x.id)&&x.status!=='not_available')?to('identities',t('cs.cx.link_account')):null,
+    export:()=>owner&&session?to('data',t('cs.cx.download')):null,
+  };
+  const cat=await api('/v1/connections');
+  const grid=el('div','card panel connections');grid.id='connections';
+  grid.replaceChildren(...connectionsViewOf(cat,t,tk,el,{mine:mine&&mine.items,icon:ic,action:(x)=>{const f=ACT[x.id];return f?f():null}}));
+  // A row of the groups, each a jump to its heading (a long page on a phone).
+  const heads=[...grid.querySelectorAll('h2.sub-h')];heads.forEach((h,k)=>{h.id='cx-g'+k});
+  const jumps=el('div','cx-jump',heads.map((h)=>{const b=el('button','',h.textContent);b.type='button';b.onclick=()=>h.scrollIntoView({behavior:RM()?'auto':'smooth',block:'start'});return b}));
+  const links=grid.querySelector('.cx-links');if(links)links.after(jumps);
+  const setupHead=el('div','cx-setup-h',[el('h2','',t('cs.cxp.setup')),el('p','sub',owner?t('cs.cxp.setup_sub'):t('cs.cxp.setup_sub_reader',{name:m.tenant.name}))]);
+  view().replaceChildren(...[head(t('cs.nav.connections'),t('cs.cxp.lede')),grid,setupHead,claude,hook,chat,alerts,conn,owner?ints:null,awx].filter(Boolean));
+  if(owner)await Promise.all([drawAwx().catch(e=>{if(!(e instanceof Expired)){awx.hidden=false;awx.replaceChildren(note(e.message,'bad'))}}),drawInts().catch(e=>{if(!(e instanceof Expired))ints.replaceChildren(el('h2','',t('cs.int.title')),note(e.message,'bad'))}),drawConn().catch(e=>{if(!(e instanceof Expired)){conn.hidden=false;conn.replaceChildren(note(e.message,'bad'))}})]);
+  scrollToAt(q);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){
@@ -1550,64 +1739,6 @@ async function settingsView(){
       el('div','form-row',[el('div','',[el('label','',t('cs.awx.business')),name]),el('div','',[el('label','',t('cs.awx.country')),country]),el('div','',[el('label','',t('cs.awx.email')),email])]),
       lab,el('div','row2',[open]),note(t('cs.awx.keeps')),msg);
   }
-  // An invite: a one-time link to this console (the secret after the #, so opening it sends it to no server) and its
-  // QR code, for 30 minutes and one passkey. The owner passes it on; nothing is mailed.
-  const invites=el('div','');
-  async function invite(p){
-    const e=await api('/v1/users/'+encodeURIComponent(p.id)+'/enrolment',{method:'POST'});
-    const qr=el('img','qr');qr.alt=t('cs.qr_alt',{name:p.display_name});qr.width=180;qr.height=180;qr.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(e.qr_svg);
-    const link=el('code','cmd',e.link);link.id='invite-link';
-    const copy=btn(t('cs.copy_link'),'primary','copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(e.link);copy.replaceChildren(ic('circle-check'),t('cs.copied'))}catch(x){const r=document.createRange();r.selectNodeContents(link);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}};
-    invites.replaceChildren(el('div','once invite',[qr,el('div','',[el('b','',t('cs.invite_for',{name:p.display_name})),el('p','',t('cs.invite_until',{when:stamp(e.expires_at)})),link,el('div','row2',[copy])])]));
-    invites.scrollIntoView({block:'nearest'});
-  }
-  // A person's passkeys, each removable by an owner (red team round 5: a passkey planted with a leaked starter key was
-  // invisible). Removing one ends that person's sessions; the company's last owner passkey cannot go.
-  const keysOf=el('div','');keysOf.id='passkeys';
-  async function passkeys(p){
-    const r=await api('/v1/users/'+encodeURIComponent(p.id)+'/passkeys');
-    const list=el('ul','plain');
-    for(const k of r.items){const rm=btn(t('cs.remove'),'danger','x');
-      rm.onclick=async()=>{if(!confirm(t('cs.remove_passkey_q',{name:p.display_name})))return;rm.disabled=true;
-        try{await api('/v1/users/'+encodeURIComponent(p.id)+'/passkeys/'+encodeURIComponent(k.credential_id),{method:'DELETE'});await passkeys(p)}catch(e){if(!(e instanceof Expired)){rm.disabled=false;keysOf.append(note(e.message,'bad'))}}};
-      list.append(el('li','',[el('span','mono',k.credential_id.slice(0,10)+'…'),' '+t('cs.enrolled',{when:stamp(k.created_at)})+' ',rm]))}
-    keysOf.replaceChildren(el('div','once',[el('b','',t('cs.passkeys_of',{name:p.display_name})),r.items.length?list:el('p','',t('cs.no_passkey_yet'))]));
-    keysOf.scrollIntoView({block:'nearest'});
-  }
-  async function drawPeople(){
-    const u=await api('/v1/users?limit=200');
-    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.person')),el('th','',t('cs.role')),el('th','')])])]);const tb=el('tbody','');
-    for(const p of u.items){const acts=el('td','r acts');
-      if(!p.erased_at){const inv=btn(t('cs.invite'),'','key-round');inv.onclick=async()=>{inv.disabled=true;try{await invite(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{inv.disabled=false}};
-        const er=btn(t('cs.erase'),'danger','x');er.onclick=async()=>{const typed=prompt(t('cs.erase_prompt',{name:p.display_name}));if(typed===null)return;if(typed.trim()!==p.display_name){people.append(note(t('cs.name_mismatch'),'bad'));return}
-          try{await api('/v1/users/'+encodeURIComponent(p.id)+'/erase',{method:'POST'});await drawPeople()}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}};
-        const pks=btn(t('cs.passkeys'),'','scan-face');pks.onclick=async()=>{pks.disabled=true;try{await passkeys(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{pks.disabled=false}};
-        acts.append(inv,' ',pks,' ',er)}
-      tb.append(el('tr','',[el('td','pn',[p.erased_at?null:av(p.display_name),el('b','',p.erased_at?t('cs.erased'):p.display_name),p.email?el('span','sub',' '+p.email):null]),el('td','',[el('span','pill'+(p.role==='owner'?' warn':''),tk('cs.role.'+p.role,p.role))]),acts]))}
-    tbl.append(tb);
-    const name=el('input','field');name.placeholder=t('cs.name');const role=el('select','field');for(const r of ['cfo','accountant','viewer','owner']){const o=el('option','',tk('cs.role.'+r,r));o.value=r;role.append(o)}
-    const add=btn(t('cs.add_invite'),'primary');add.onclick=async()=>{const n=name.value.trim();if(!n)return;add.disabled=true;try{const u=await api('/v1/users',{method:'POST',body:{display_name:n,role:role.value}});await drawPeople();await invite({id:u.id,display_name:n})}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{add.disabled=false}};
-    people.replaceChildren(el('h2','',t('cs.people')),el('div','scroll',tbl),el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[el('label','',t('cs.role')),role]),el('div','',[add])]),
-      note(t('cs.people_note')),invites,keysOf);
-  }
-  async function drawKeys(){
-    const k=await api('/v1/keys?limit=200');
-    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.key')),el('th','',t('cs.may')),el('th','',t('cs.expires')),el('th','')])])]);const tb=el('tbody','');
-    for(const x of k.items.filter(y=>!/^claude/.test(y.purpose||''))){const live=!x.revoked_at&&x.expires_at>new Date().toISOString();const acts=el('td','r acts');
-      if(live){const rv=btn(t('cs.revoke'),'danger','x');rv.onclick=async()=>{if(!confirm(t('cs.revoke_confirm',{name:data('key',x.name)})))return;try{await api('/v1/keys/'+encodeURIComponent(x.id),{method:'DELETE'});await drawKeys()}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}};acts.append(rv)}
-      tb.append(el('tr','',[el('td','',[el('b','',data('key',x.name)),el('span','sub',' '+x.id)]),el('td','',String(x.scopes||'').split(/[ ,]+/).filter(Boolean).map(sc=>tk('cs.scope.'+sc,sc)).join(', ')),el('td','',live?day(x.expires_at):[el('span','pill bad',x.revoked_at?t('cs.revoked'):t('cs.expired'))]),acts]))}
-    tbl.append(tb);
-    const name=el('input','field');name.placeholder=t('cs.key_placeholder');const scope=el('select','field');for(const [v,l] of [['read',t('cs.scope.read')],['sync',t('cs.scope.sync')],['read sync',t('cs.scope.read_sync')],['read propose',t('cs.scope.read_propose')]]){const o=el('option','',l);o.value=v;scope.append(o)}
-    const days=el('input','field');days.type='number';days.min='1';days.max='365';days.value='90';
-    const out=el('div','');
-    const mk=btn(t('cs.make_key'),'primary','key-round');mk.onclick=async()=>{if(!name.value.trim())return;mk.disabled=true;try{const r=await api('/v1/keys',{method:'POST',body:{name:name.value.trim(),scopes:scope.value.split(' '),expires_in_days:Math.max(1,Math.min(365,Number(days.value)||90))}});
-        await drawKeys();keys.append(el('div','once',[el('b','',t('cs.shown_once')),t('cs.copy_now'),el('code','cmd',r.api_key)]))}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}finally{mk.disabled=false}};
-    keys.replaceChildren(el('h2','',t('cs.api_keys')),el('div','scroll',tbl),el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[el('label','',t('cs.may')),scope]),el('div','',[el('label','',t('cs.days')),days]),el('div','',[mk])]),out,
-      note(t('cs.keys_note')));
-  }
-  const exp=btn(t('cs.download_all'),'','download');exp.onclick=()=>download('/v1/export','purser-cloud-export.json').catch(e=>{if(!(e instanceof Expired))dataCard.append(note(e.message,'bad'))});
-  dataCard.replaceChildren(el('h2','',t('cs.your_data')),el('p','',t('cs.data_lede',{name:m.tenant.name})),exp);
-  await Promise.all([drawPeople(),drawKeys(),drawAwx().catch(e=>{if(!(e instanceof Expired)){awx.hidden=false;awx.replaceChildren(note(e.message,'bad'))}}),drawInts().catch(e=>{if(!(e instanceof Expired))ints.replaceChildren(el('h2','',t('cs.int.title')),note(e.message,'bad'))}),drawConn().catch(e=>{if(!(e instanceof Expired)){conn.hidden=false;conn.replaceChildren(note(e.message,'bad'))}})]);
 }
 
 // --- The router ----------------------------------------------------------------------------------------------------
@@ -1668,14 +1799,14 @@ async function route(){
     // button does; a session already open is kept.
     if(path==='/guest'){if(S)return go(S.guest?GUEST_LANDING:'#/overview');view().replaceChildren(el('p','lede',t('cs.guest.opening')));return guestIn()}
     // A provider's code in the address is spent or useless without a session: it leaves the browser's history at once.
-    if(path==='/connect'&&!S){history.replaceState(null,'','#/settings');return go('#/sign-in')}
+    if(path==='/connect'&&!S){history.replaceState(null,'','#/connections');return go('#/sign-in')}
     if(!S)return go('#/sign-in');
     if(path==='/'||path==='')return go('#/overview');
     // Back from Airwallex's or Moneybird's consent screen (GET /v1/connect/{provider}/callback put the code here, in the
     // fragment, which no server sees): the signed-in owner who started it finishes the connection.
-    if(path==='/connect'){const p=q.get('provider');if(!['airwallex','moneybird','xero','quickbooks','exact'].includes(p))return go('#/settings');
-      if(q.get('error')||!q.get('code')){connNote=[t('cs.conn.declined'),'bad'];return go('#/settings')}
-      history.replaceState(null,'','#/settings');
+    if(path==='/connect'){const p=q.get('provider');if(!['airwallex','moneybird','xero','quickbooks','exact'].includes(p))return go('#/connections');
+      if(q.get('error')||!q.get('code')){connNote=[t('cs.conn.declined'),'bad'];return go('#/connections')}
+      history.replaceState(null,'','#/connections');
       try{await api('/v1/connect/'+p+'/finish',{method:'POST',body:Object.assign({code:q.get('code'),state:q.get('state')},q.get('realm_id')?{realm_id:q.get('realm_id')}:{})});connNote=[t('cs.conn.done'),'ok']}catch(e){if(e instanceof Expired)return;connNote=[e.message,'bad']}
       return route()}
     // Jury review, 13 Nov: a skeleton of the page while it loads, not a blank "Loading …" (still said to a screen reader).
@@ -1683,7 +1814,7 @@ async function route(){
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
     // 14 Nov: Invoices has its tab back (the invoices only); Books holds the ledger, the VAT overview and the exports.
-    const pages={'/overview':overviewView,'/agents':agentsView,'/invoices':invoicesView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/airwallex':airwallexView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
+    const pages={'/overview':overviewView,'/agents':agentsView,'/invoices':invoicesView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/airwallex':airwallexView,'/connections':connectionsView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
     if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
     await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}

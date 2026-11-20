@@ -95,7 +95,7 @@ ${show}
 <p class="lede">Your AI reads your books in Purser over MCP: invoices, payments, cash, VAT, what waits for approval and the CFO's policy.</p>
 <p class="rule"><b>Read only.</b> No AI can approve, pay, change a limit or write to the books. Every payment needs the CFO's Face ID in Purser Cloud.</p>
 <div class="facts"><div><b>Server</b><code>${esc(`${origin}/mcp`)}</code></div><div><b>Transport</b><span>Streamable HTTP (MCP 2026-07-28, and 2025-11-25 back to 2024-11-05)</span></div>
-<div><b>Sign-in</b><span>OAuth 2.1 with PKCE, or a bearer header with your connector token (Purser Cloud: Settings, Connect your AI).</span></div>
+<div><b>Sign-in</b><span>OAuth 2.1 with PKCE, or a bearer header with your connector token (Purser Cloud: Connections, Connect your AI).</span></div>
 <div><b>Demo token</b><span><code>${esc(DEMO_CONNECTOR_TOKEN)}</code> reads the demo company: made-up data, no real money.</span></div></div>
 ${radios}<nav class="tabs" aria-label="Clients">${labels}</nav><div class="panels">${panels}</div>
 <footer><a href="${esc(MCP_REFERENCE)}" rel="noopener">The MCP reference</a>: every tool, its annotations, the error codes and how a proposal reaches the CFO. Each tab follows that client's own documentation as read on 13 Nov 2026. Purser has been tried live in Claude's iOS app and with the MCP Inspector; the other clients are described from their docs.</footer>
