@@ -93,3 +93,30 @@ describe("an answer that is not a success", () => {
     expect(await desk([new Response("<html>", { status: 502 })]).call(read)).toEqual({ ok: false, status: 502, code: null, trace_id: null });
   });
 });
+
+describe("the gateway's own cap per minute (AWX_GATEWAY_LIMIT, 20 Nov)", () => {
+  it("refuses a call the limiter turns down with 429 before the sandbox is asked, and asks the limiter for every call", async () => {
+    const s = sandbox([Response.json({ ok: 1 })]);
+    const keys: string[] = [];
+    let left = 1;
+    const limiter = { limit: async ({ key }: { key: string }) => { keys.push(key); return { success: left-- > 0 }; } };
+    const desk = new AwxGatewayDesk({ ...KEY, AWX_GATEWAY_LIMIT: limiter }, { fetchImpl: s.fetchImpl });
+    expect(await desk.call(read)).toEqual({ ok: true, status: 200, json: { ok: 1 } });
+    expect(await desk.call(read)).toEqual({ ok: false, status: 429, code: "gateway_rate_limited", trace_id: null, refused: "the gateway's cap per minute is reached (AWX_GATEWAY_LIMIT)" });
+    expect(keys).toEqual(["awx-gateway", "awx-gateway"]);
+    expect(s.seen.filter((x) => !x.url.endsWith("/authentication/login"))).toHaveLength(1);
+  });
+
+  it("refuses a call when the limiter itself fails (closed, not open)", async () => {
+    const s = sandbox([]);
+    const limiter = { limit: async () => { throw new Error("down"); } };
+    expect(await new AwxGatewayDesk({ ...KEY, AWX_GATEWAY_LIMIT: limiter }, { fetchImpl: s.fetchImpl }).call(read)).toMatchObject({ status: 429, code: "gateway_rate_limited" });
+    expect(s.seen).toEqual([]);
+  });
+
+  it("is declared in kit11's wrangler config at 120 calls a minute", async () => {
+    const { readFileSync } = await import("node:fs");
+    const cfg = readFileSync(new URL("../worker/wrangler.jsonc", import.meta.url), "utf8");
+    expect(cfg).toMatch(/"ratelimits":\s*\[\{\s*"name":\s*"AWX_GATEWAY_LIMIT",\s*"namespace_id":\s*"\d+",\s*"simple":\s*\{\s*"limit":\s*120,\s*"period":\s*60\s*\}\s*\}\]/);
+  });
+});
