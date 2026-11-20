@@ -58,6 +58,8 @@ import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, isMcpPath, mcpChallenge } from "./claude/routes.js";
 import type { AwxReadPort } from "./claude/awxCodemode.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
+import { partnerRailsOf } from "./partnerRails.js";
+import { walletPassFor, walletPassLink, walletPassByLink, type PassConfig } from "./walletPassRoutes.js";
 import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, latestEdgeRun, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
 import { ALWAYS_STEP_UP_ROUTES, freshPasskey, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
@@ -182,6 +184,11 @@ export interface CloudEnv {
    * Absent, or a provider missing: its routes answer 404 and the console shows no button for it.
    */
   oidc?: OidcEnv;
+  /**
+   * Apple Wallet passes for the agents' cards (./walletPass.ts), only when the owner set every PASS_* secret and TEAM_ID.
+   * Absent: GET /v1/partner-rails says the pass is not available, the console shows no button, the pass routes answer 404.
+   */
+  walletPass?: PassConfig;
 }
 
 /** audit: what the request found out about its caller, for its security event (./securityAudit.ts); a route may add to it. */
@@ -241,6 +248,8 @@ async function body<T>(c: Ctx, schema: z.ZodType<T>, maxBytes = 1_000_000): Prom
 }
 
 const db = (c: Ctx) => c.db!;
+/** The clock itself, not the demo company's month end (c.now): a link's five minutes are real minutes for everyone. */
+const wallClock = (c: Ctx) => (c.env.now ?? (() => new Date()))();
 /** A new API key's request: its name, its scopes (read, sync, admin, propose) and its life in days. */
 const KeyBody = z.object({ name: z.string().min(1).max(80), scopes: z.array(z.enum(SCOPES as [Scope, ...Scope[]])).min(1), expires_in_days: z.number().int().min(1).max(KEY_MAX_DAYS).optional() }).strict();
 /** The request bodies the OpenAPI document shows, from the zod schemas the routes parse them with. */
@@ -725,6 +734,10 @@ export const ROUTES: Route[] = [
     try { return json(200, await signCardAction({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), id: c.params[0]!, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now })); }
     catch (e) { if (e instanceof CardRefused) return err(e.status, e.message); throw e; }
   } },
+  { method: "GET", path: "/v1/partner-rails", summary: "T:0 at every payment and the agents' payment tokens: each settled payment's T:0 entry (its T:0 id, GL account, cost centre, agent and terms hash), the reconcile check of T:0 against the rails, and each agent's token (its id and last four, never the token) with its mandate, status, uses and refusals. From the company's own records when it has them, else the recorded live sandbox run, labelled. Also whether Apple Wallet passes are configured.", need: "read", run: async (c) => json(200, await partnerRailsOf(db(c), { walletPass: !!c.env.walletPass })) },
+  { method: "GET", path: "/v1/agents/{id}/wallet-pass", summary: "The agent card as an Apple Wallet pass (application/vnd.apple.pkpass): the agent's name, its card's limits and last four, its status. Only when the owner configured passes (PASS_TYPE_ID, TEAM_ID and the signing certificate); 404 otherwise or for an agent without a card.", need: "read", run: async (c) => (await walletPassFor(c.env.walletPass, c.env.sql, c.caller!.tenantId, c.params[0]!, c.env.origin, wallClock(c))) ?? err(404, "no wallet pass for this agent") },
+  { method: "POST", path: "/v1/agents/{id}/wallet-pass/link", summary: "A link to the agent card's Apple Wallet pass that works for 5 minutes without a header (for Safari's Add to Apple Wallet). 404 when passes are not configured or the agent has no card.", need: "read", run: async (c) => { const r = await walletPassLink(c.env.walletPass, c.env.sql, c.env.sessionSecret, c.caller!.tenantId, c.params[0]!, c.env.origin, wallClock(c)); return r ? json(201, r) : err(404, "no wallet pass for this agent"); } },
+  { method: "GET", path: "/v1/wallet-pass/{link}", summary: "An agent card's Apple Wallet pass by the 5-minute link POST /v1/agents/{id}/wallet-pass/link made (signed; nothing else is needed). 404 when the link is wrong or past its time, or passes are not configured.", need: "public", run: async (c) => (await walletPassByLink(c.env.walletPass, c.env.sql, c.env.sessionSecret, c.params[0]!, c.env.origin, wallClock(c))) ?? err(404, "no such wallet pass link") },
   { method: "GET", path: "/v1/tokenisation", summary: "Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it.", need: "read", run: async () => json(200, tokenisation()) },
   { method: "GET", path: "/v1/airwallex-live/{view}", summary: "The live Airwallex tab, read-only, from the Airwallex sandbox (test money) through the site Worker's gateway: balances, accounts, financial, rates, transfers, beneficiaries, issuing, calls, events (the webhooks Airwallex sent the site, signature verified: type, object id and time only), or reconcile (Purser's ledger of the recorded awx-1 run against Airwallex's financial transactions). Each answer says when it was read, or why the sandbox is unavailable.", need: "read", run: async (c) => {
     const view = c.params[0]!;

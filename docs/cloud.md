@@ -131,6 +131,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
 | `GET /v1/agents` | read | The company's agents from its own records: job, Claude model as its runs recorded it, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only. |
+| `GET /v1/partner-rails` | read | T:0 at every payment (each settled payment's T:0 entry, GL account, cost centre, agent, terms hash; the reconcile check against the rails) and each agent's payment token (id and last four, mandate, status, uses, refusals); the company's own records, else the recorded sandbox run, labelled; whether Wallet passes are configured. |
+| `GET /v1/agents/{id}/wallet-pass` | read | The agent card as an Apple Wallet pass (.pkpass): name, limits, the card's last four, status. 404 unless the owner configured passes. |
+| `POST /v1/agents/{id}/wallet-pass/link` | read | A 5-minute link to that pass, for Safari's Add to Apple Wallet. |
+| `GET /v1/wallet-pass/{link}` | anyone | The pass by that link (a MAC over company, agent and expiry); 404 when wrong, expired or not configured. |
 | `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
 | `GET /v1/cards` | read | The agents' live Airwallex sandbox cards (test money): last four digits only, live status, limits against the CFO policy, newest authorizations with their ids; whether card actions are on (`awx_cards`) and today's caps. |
 | `GET /v1/cards/scope` | anyone | Whether the sandbox key may use Airwallex Issuing: `ok`, `forbidden`, `no_key`, `no_gateway` or `unavailable`, with why in fixed codes (`why`: the gateway's code or `rpc_failed`; `http_status`; Airwallex's `awx_code`). One read a minute at most, for everyone; no card data. |
@@ -771,3 +775,38 @@ policy's. The CFO freezes and unfreezes it, or sets it back to the policy, with 
 - **Payees who are people.** They are shown by initials only, in the read gateway and again in Purser Cloud (`src/airwallex/personName.ts`).
 
 ![The Support agent: its live card adopted from the sandbox, an older test card frozen](assets/cloud/cloud-agents-card-older-1440.png)
+
+## Each agent's payment token, and its Apple Wallet pass (20 Nov)
+
+- **A token per agent** (`src/policy/agentTokens.ts`). The agent pays with a Purser token (`ptok_…`), never with its
+  card's number. The token is bound to a mandate made from the CFO's policy for that agent: its own Airwallex Issuing card
+  (a Visa card, sandbox), its limits per purchase and per month, its merchant categories, euros only, 30 days at most.
+  The ledger keeps the token's SHA-256 only. A payment is checked against the mandate and the policy as it stands now
+  (the stricter wins) before any call to Airwallex; within it, the card's purchase window opens for that one charge.
+  Revoking the agent (`revokePrincipal`) revokes its tokens in the same call. The card itself stays frozen at Airwallex
+  outside Purser's windows, so its number alone is declined (`CARD_INACTIVE`). Not a Visa network token: no Visa Token
+  Service or Airi credential is made. Live run: [runs/2026-11-20-partner-rails.md](runs/2026-11-20-partner-rails.md).
+- **On the Agents tab** (`cloud/src/partnerView.ts`, `GET /v1/partner-rails`): each agent card shows its token (id and
+  last four), mandate, status, uses and refusals, and each payment's T:0 reference; the Books tab shows "Booked in T:0"
+  and the reconcile check. From the company's own records when its runner pushed them, else the recorded run, labelled.
+- **Apple Wallet pass** (`cloud/src/walletPass.ts`, `cloud/src/walletPassRoutes.ts`): the agent's name, limits, the card's
+  last four and status, signed with the company's Pass Type ID certificate (a detached PKCS#7 over manifest.json). Offered
+  only when all five Worker secrets are set: `PASS_TYPE_ID`, `TEAM_ID`, `PASS_CERT_PEM`, `PASS_KEY_PEM`,
+  `PASS_WWDR_PEM` (optional var `PASS_ORG_NAME`). Without them there is no button and the routes answer 404.
+
+### What Max does for the Wallet pass
+
+1. In the Apple Developer account: Certificates, Identifiers & Profiles > Identifiers > + > Pass Type IDs. Register one,
+   e.g. `pass.com.purser.agents`. That string is `PASS_TYPE_ID`.
+2. Identifiers > that Pass Type ID > Create Certificate. Make a CSR on a Mac (Keychain Access > Certificate Assistant >
+   Request a Certificate From a Certificate Authority, saved to disk), upload it, download `pass.cer`.
+3. The team id is under Membership details (10 characters). That is `TEAM_ID`.
+4. Apple's WWDR intermediate: download "Worldwide Developer Relations - G4" from apple.com/certificateauthority.
+5. Convert, on the Mac (no file goes in git):
+   `openssl x509 -inform der -in pass.cer -out pass.pem`;
+   export the key from Keychain Access as `pass.p12`, then
+   `openssl pkcs12 -in pass.p12 -nocerts -nodes -legacy | openssl pkcs8 -topk8 -nocrypt -out pass.key.pem`;
+   `openssl x509 -inform der -in AppleWWDRCAG4.cer -out wwdr.pem`.
+6. Set the secrets on the Worker: `wrangler secret put PASS_TYPE_ID`, `TEAM_ID`, `PASS_CERT_PEM` (paste pass.pem),
+   `PASS_KEY_PEM` (pass.key.pem), `PASS_WWDR_PEM` (wwdr.pem), then delete the local key files. On the next deploy the
+   Agents tab shows "Add to Apple Wallet" on each agent with a card.

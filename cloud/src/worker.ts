@@ -28,6 +28,7 @@ import { forRequest } from "./hostOrigin.js";
 import type { AwxReadBinding } from "./awxLive.js";
 import type { AwxReadPort } from "./claude/awxCodemode.js";
 import type { CardsPort } from "./agentCards.js";
+import { passConfigFrom } from "./walletPass.js";
 
 export interface Bindings {
   DB: D1Like;
@@ -117,6 +118,15 @@ export interface Bindings {
   OIDC_APPLE_KEY_ID?: string;
   OIDC_APPLE_PRIVATE_KEY?: string;
   /**
+   * Apple Wallet passes for the agents' cards (./walletPass.ts): the Pass Type ID, the Apple Developer team id, the Pass
+   * Type ID certificate and its private key (PEM), Apple's WWDR intermediate (PEM). Secrets; all five or no pass at all.
+   */
+  PASS_TYPE_ID?: string;
+  TEAM_ID?: string;
+  PASS_CERT_PEM?: string;
+  PASS_KEY_PEM?: string;
+  PASS_WWDR_PEM?: string;
+  /**
    * How many hours a new or recovered approval key waits before it approves (review finding 2): 72 when unset; this
    * deployed Worker never takes less than 24 (cloud/src/engine/routes.ts coolingOffMs). A /try test company waits 0.
    */
@@ -172,7 +182,8 @@ function envOf(b: Bindings): CloudEnv {
   const sql = d1Sql(b.DB);
   const connect = connectOf(b);
   const oidc = oidcOf(b);
-  return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", ...(b.ADMIN_KEYS ? { adminKeys: b.ADMIN_KEYS } : {}), rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "", ...(b.SECURITY_ALARMS ? { securityAlarms: b.SECURITY_ALARMS } : {}),
+  const walletPass = passConfigFrom(b);
+  return { ...(walletPass ? { walletPass } : {}), sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", ...(b.ADMIN_KEYS ? { adminKeys: b.ADMIN_KEYS } : {}), rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "", ...(b.SECURITY_ALARMS ? { securityAlarms: b.SECURITY_ALARMS } : {}),
     version: b.GIT_SHA ?? b.VERSION ?? "dev", build: { sha: b.GIT_SHA ?? null, built_at: b.BUILT_AT ?? null }, outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}), ...(b.TURNSTILE_SECRET ? { turnstileSecret: b.TURNSTILE_SECRET, siteverify: (url: string, init: RequestInit) => fetch(url, init) } : {}) } } : {}) } : {}),

@@ -77,6 +77,7 @@ Every secret the code reads. Crypto-period: the longest a value is used before i
 | `OIDC_GOOGLE_CLIENT_SECRET` | Sign in with Google: the OAuth client secret | Worker secret | maintainer | 1 year |
 | `OIDC_MICROSOFT_CLIENT_SECRET` | Sign in with Microsoft: the client secret | Worker secret | maintainer | at most 2 years (Microsoft's limit) |
 | `OIDC_APPLE_PRIVATE_KEY` | Sign in with Apple: the private key (.p8) that signs the client-secret JWT | Worker secret | maintainer | 1 year, by a new key at Apple |
+| `PASS_KEY_PEM` | Apple Wallet passes: the private key of the company's Pass Type ID certificate, which signs each agent card's pass (cloud/src/walletPass.ts); with `PASS_CERT_PEM`, `PASS_WWDR_PEM`, `PASS_TYPE_ID` and `TEAM_ID` (public) | Worker secret | maintainer | yearly, with the Pass Type ID certificate (Apple: one year) |
 | `OIDC_APPLE_KEY_ID` | Public: the id of that Apple key, named in the JWT's header | Worker secret or var | maintainer | with its private key |
 | `APPROVAL_KEY_COOLING_HOURS` | Not a secret: the cooling-off before a new approval key may approve (72 h by default) | Worker var | maintainer | not applicable |
 

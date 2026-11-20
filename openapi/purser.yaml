@@ -2285,6 +2285,114 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/partner-rails":
+    get:
+      operationId: getV1PartnerRails
+      tags:
+        - Company
+      summary: "T:0 at every payment and the agents' payment tokens: each settled payment's T:0 entry (its T:0 id, GL account, cost centre, agent and terms hash), the reconcile check of T:0 against the rails, and each agent's token (its id and last four, never the token) with its mandate, status, uses and refusals. From the company's own records when it has them, else the recorded live sandbox run, labelled. Also whether Apple Wallet passes are configured."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/agents/{id}/wallet-pass":
+    get:
+      operationId: getV1AgentsByIdWalletPass
+      tags:
+        - Company
+      summary: "The agent card as an Apple Wallet pass (application/vnd.apple.pkpass): the agent's name, its card's limits and last four, its status. Only when the owner configured passes (PASS_TYPE_ID, TEAM_ID and the signing certificate); 404 otherwise or for an agent without a card."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/agents/{id}/wallet-pass/link":
+    post:
+      operationId: postV1AgentsByIdWalletPassLink
+      tags:
+        - Company
+      summary: "A link to the agent card's Apple Wallet pass that works for 5 minutes without a header (for Safari's Add to Apple Wallet). 404 when passes are not configured or the agent has no card."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/wallet-pass/{link}":
+    get:
+      operationId: getV1WalletPassByLink
+      tags:
+        - Company
+      summary: "An agent card's Apple Wallet pass by the 5-minute link POST /v1/agents/{id}/wallet-pass/link made (signed; nothing else is needed). 404 when the link is wrong or past its time, or passes are not configured."
+      parameters:
+        - name: link
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/tokenisation":
     get:
       operationId: getV1Tokenisation

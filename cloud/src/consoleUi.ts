@@ -195,6 +195,7 @@ async function agentsView(){
   const cards=(r.agents||[]).map((a)=>agentCard(a,!!m.demo,CV&&(CV.agents||[]).find((x)=>x.agent===a.id),CV));
   // A company whose records name no agent yet, with live cards on: each Kit 11 agent with its live card panel only.
   if(!cards.length&&CV&&CV.agents&&CV.agents.length)for(const x of CV.agents)cards.push(el('section','card agent rise',[el('div','ah',[el('span','av',ic('bot')),el('div','',[el('h2','',x.name)])]),liveCardPanel(x,CV)]));
+  partnerAgents(cards,r.agents||[]).catch(()=>{}); // each card's payment token and Wallet pass (cloud/src/partnerView.ts)
   // The agents' real cards and Visa runs from the live sandbox runs (judge scan, 14 Nov: they sat on Tokenisation, and
   // their limits read as the demo cards' own). Each section says which run its figures come from.
   const live=tk0?sandboxSections(tk0):[];
@@ -242,6 +243,7 @@ async function booksView(){
   const charts=el('div','bcharts-slot',[el('div','dgrid g2 chskel',[el('i',''),el('i','')]),el('span','vh',t('loading'))]);charts.setAttribute('aria-busy','true');
   Promise.all([api('/v1/dashboard'),api('/v1/invoices?limit=200')]).then(([D,inv])=>{charts.replaceChildren(booksCharts(D,inv.items||[]));charts.removeAttribute('aria-busy');requestAnimationFrame(()=>{for(const n of charts.querySelectorAll('.rise'))n.classList.add('in')})},(e)=>{charts.removeAttribute('aria-busy');if(!(e instanceof Expired))charts.replaceChildren(note(e.message,'bad'))});
   view().replaceChildren(head(t('cs.nav.ledger'),ME&&ME.demo?t('cs.books.demo_lede2'):t('cs.books.lede2'),[pdfBtn,arch].filter(Boolean)),el('p','fine printhint',t('cs.books.pdf_hint')),charts,t0CloseCard(),el('div','split2 books2',[bal,vat]),journal,exportsCard());
+  partnerBooks(view()).catch(()=>{}); // "Booked in T:0" and its reconcile check (cloud/src/partnerView.ts)
   // The balance sheet from the ledger (GET /v1/reports/balance), one block per currency: what the company owns, owes
   // and is worth, and whether it balances. A block, not a table row, so nothing wraps on a phone (14 Nov).
   api('/v1/reports/balance').then((b)=>{const blocks=[];for(const [c,v] of Object.entries(b.by_currency||{})){
