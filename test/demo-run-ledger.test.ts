@@ -19,7 +19,7 @@ describe("the run's ledger for the pages", () => {
     audit(db, "system", "agent.run", "wake", { status: "done" }, T0);
     audit(db, "treasury", "sweep.paid", "sw-1", null, T0);
     audit(db, "awx-executor", "transfer.status", "tr_1", { status: "PAID", beneficiary_id: "ben_1", iban: "DE89370400440532013000" }, T0);
-    audit(db, "cfo", "proposal.approved", "P-0001", { approver: "Max (passkey AbCdEf123)", credential_id: "cred-xyz", mandate: { credential_hash: "0x11" } }, T0);
+    audit(db, "human", "proposal.approved", "P-0001", { approver: "Max (passkey AbCdEf123)", credential_id: "cred-xyz", mandate: { credential_hash: "0x11" } }, T0);
     const r = runLedger(db);
     expect(r.events.map((e) => e.event)).toEqual(["fx.converted", "sweep.paid", "transfer.status", "proposal.approved"]);
     expect(r.events[0]!.payload).toMatchObject({ sell: "USD 676.39", buy: "EUR 623.40" });
