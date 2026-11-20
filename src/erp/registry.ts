@@ -13,7 +13,7 @@ import type { VatCode } from "./model.js";
 import { OdooConnector, type OdooConfig } from "./odoo.js";
 import { jsonMap } from "./rest.js";
 import { encodeValue, type XmlValue } from "./xmlrpc.js";
-import { cloudTargetFromEnv, cloudTokens, moneybirdOAuthOn } from "../cloudsync/connections.js";
+import { cloudTargetFromEnv, cloudTokens, exactOAuthOn, moneybirdOAuthOn } from "../cloudsync/connections.js";
 
 type Env = Record<string, string | undefined>;
 
@@ -58,7 +58,10 @@ const FILLED_FROM_A_PULL: Partial<Record<ConnectorName, string[]>> = { moneybird
 export function missingSettings(name: ConnectorName, env: Env, forPull = false): string[] {
   const s = SETTINGS[name];
   const later = forPull ? FILLED_FROM_A_PULL[name] ?? [] : [];
-  return [...s.secrets, ...s.settings].filter((k) => !env[k] && !later.includes(k));
+  // Connected in Purser Cloud (ERP_EXACT_OAUTH=on): the cloud holds the token, so no Exact secret is set here; the
+  // runner needs the cloud's address and its sync key instead.
+  const secrets = name === "exact" && exactOAuthOn(env) ? ["PURSER_CLOUD_URL", "PURSER_CLOUD_KEY"] : s.secrets;
+  return [...secrets, ...s.settings].filter((k) => !env[k] && !later.includes(k));
 }
 
 const intMap = (m: Record<string, string>, name: string) => Object.fromEntries(Object.entries(m).map(([k, v]) => {
@@ -112,6 +115,13 @@ export function liveConnector(name: ConnectorName, env: Env, inner: Transport = 
   switch (name) {
     case "exact": {
       const cfg = exactFromEnv(env);
+      // ERP_EXACT_OAUTH=on: the company's owner connected Exact Online in Purser Cloud (Settings, "Connect Exact Online");
+      // the cloud holds the rotating refresh token sealed for this company and hands this runner short-lived access tokens.
+      if (exactOAuthOn(env)) {
+        const t = cloudTargetFromEnv(env);
+        if (!t) throw new ErpError("config", "ERP_EXACT_OAUTH=on needs PURSER_CLOUD_URL and PURSER_CLOUD_KEY (the company's sync key)");
+        return new ExactConnector(cfg, transport, cloudTokens(t, "exact"));
+      }
       const tokens = exactTokens({ baseUrl: cfg.baseUrl, clientId: env.ERP_EXACT_CLIENT_ID ?? "", clientSecret: env.ERP_EXACT_CLIENT_SECRET ?? "", store: fileTokenStore("data/erp/exact.token.json"), ...(env.ERP_EXACT_REFRESH_TOKEN ? { seedRefreshToken: env.ERP_EXACT_REFRESH_TOKEN } : {}), transport });
       return new ExactConnector(cfg, transport, tokens);
     }

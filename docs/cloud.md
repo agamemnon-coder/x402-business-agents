@@ -65,6 +65,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/alerts` | admin | Approval alerts: the targets (masked), which channels this cloud can send on, the latest deliveries and their status. |
 | `POST /v1/alerts/targets` | admin | Add an alert target `{ channel: email \| slack \| teams, target }`. A signed-in owner with a fresh passkey check (step-up); never a key. |
 | `DELETE /v1/alerts/targets/{id}` | admin | Remove an alert target (a signed-in owner, step-up). |
+| `GET /v1/chat-hooks` | admin | Slack and Teams: whether the company's own Slack incoming webhook and Teams Workflow webhook are set (host only, never the URL) and their delivery state. |
+| `POST /v1/chat-hooks/{product}` | admin | Set the company's `slack` or `teams` webhook URL `{ url }` (exact allow list; a signed-in owner, step-up; never a key). Purser posts `approval.needed`, `payment.paid` and `books.closed` there. |
+| `DELETE /v1/chat-hooks/{product}` | admin | Remove the company's Slack or Teams webhook (a signed-in owner, step-up). |
+| `POST /v1/chat-hooks/{product}/test` | admin | Post one test message to the company's Slack or Teams webhook: `{ delivered, status }`. |
 | `GET /v1/security/settings` | admin | The company's security settings: `step_up`, whether sensitive settings ask for the passkey again after five minutes ("Ask again before sensitive changes"; off by default). |
 | `POST /v1/security/settings` | admin | Switch it on or off: `{ step_up: boolean }`. A signed-in owner after a fresh passkey check, whatever the setting; never a key. A security event records each switch. |
 | `GET /v1/airwallex/account` | admin | The company's Airwallex account opened through Purser as a platform: its id and onboarding status; `switched_on: false` when the cloud does not offer it ([airwallex-platform.md](airwallex-platform.md)). |
@@ -74,7 +78,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/airwallex/webhook` | anyone | Airwallex's `account.*` webhooks, signed (`x-timestamp`, `x-signature`): the account's status follows them. |
 | `POST /v1/airwallex/account/refresh` | admin | Read the account's onboarding status from Airwallex now (a signed-in owner only), for a late or missed webhook; only the id and status are kept ([real-customers.md](real-customers.md)). |
 | `GET /v1/connect` | admin | The accounts the company connected by OAuth (Airwallex, Moneybird): status, the Airwallex account id, scopes, when; `switched_on: false` when the cloud does not offer it. Never a token ([real-customers.md](real-customers.md)). |
-| `POST /v1/connect/{provider}/start` | admin | Start connecting the company's own `airwallex` or `moneybird` account (a signed-in owner only): the provider's sign-in and consent URL, with `state` and, for Airwallex, PKCE. |
+| `POST /v1/connect/{provider}/start` | admin | Start connecting the company's own `airwallex`, `moneybird`, `xero`, `quickbooks` or `exact` account (a signed-in owner only): the provider's sign-in and consent URL, with `state` and, for Airwallex, PKCE. |
 | `GET /v1/connect/{provider}/callback` | anyone | Where the provider sends the browser back: forwards `code` and `state` to the console in the address's fragment; stores nothing. |
 | `POST /v1/connect/{provider}/finish` | admin | The owner who started it sends `code` and `state`; Purser exchanges the code server side and keeps the tokens sealed (AES-256-GCM) for this company only. |
 | `GET /v1/connect/{provider}/token` | sync | For the company's own runner: a short-lived access token for its connected account, refreshed one at a time when needed. A key gets only its own company's token. |
@@ -82,6 +86,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/connect/airwallex/webhook` | anyone | Airwallex's `partner_connection.disconnected`, signed (`x-timestamp`, `x-signature`; the scheme is unconfirmed for partner webhooks): the connections of the accounts it names end. |
 | `GET /v1/openapi.json` | anyone | This API, as OpenAPI 3.1. |
 | `GET /v1/openapi.read.json` | anyone | The read API alone (every GET a read-scoped key may call), as OpenAPI 3.1. |
+| `GET /v1/connections/mine` | admin | Your connections: each of the company's connections connected, not connected or not available on this cloud (never a secret). |
+| `POST /v1/connect/xero/bills` | admin | Send the company's supplier invoices to its own connected Xero organisation as DRAFT bills, once each, at most 25 a push `{ from?, to? }` (a signed-in owner). Never authorised or paid in Xero. |
 | `GET /v1/connections` | anyone | Every connection Purser has to other systems, each labelled live, sandbox, testnet, format export or built and not tested live, with its guide; the payment rails listed apart ([integrations/README.md](integrations/README.md), [connections.md](connections.md)). The console shows it under Settings, Connections. |
 | `GET /v1/admin/companies` | platform admin | The companies on this cloud for the operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (no key, no account number). The console shows it at `#/platform`. |
 | `GET /v1/admin/security-log` | platform admin | The cloud's security event log, newest first (`kind`, `since`, `limit` up to 500): sign-ins and their failures, refusals (403), rate-limit hits (429), the admin's own actions, key, passkey, people and policy changes, exports, webhook signature failures, tamper alarms and the alarms they raised. Ids and networks (an address cut to /24 or /48) only, never a secret. Append-only in the database (`cloud/src/securityLog.ts`). |
@@ -97,6 +103,15 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/auth/logout` | read | Sign out: every session of the signed-in person ends. |
 | `GET /v1/me` | read | Who is calling: the company, and the key's scopes or the person's role; the person behind the call, whether an owner has a passkey yet, and the company's inbox address once mail is routed (the console's first run uses these). |
 | `POST /v1/company` | admin | Change the company's display name (its address, the slug, stays) or the pages' language for everyone: `{ "name"?, "language"?: "nl" \| "en" }`. |
+| `GET /v1/auth/oidc` | anyone | Which sign-in providers this cloud offers besides the passkey (`google`, `microsoft`, `apple`); a sign-in with one reads only. |
+| `POST /v1/auth/oidc/{provider}/start` | anyone | Start signing in to a company `{ tenant }` with a linked Google, Microsoft or Apple account: the provider's URL (state, nonce, PKCE where documented) and a browser secret. |
+| `GET /v1/auth/oidc/{provider}/callback` | anyone | The provider's redirect: forwards the code and state to the console's fragment. Stores nothing. |
+| `POST /v1/auth/oidc/apple/callback` | anyone | Apple's `form_post` redirect: forwards the code and state to the console's fragment. Stores nothing. |
+| `POST /v1/auth/oidc/{provider}/finish` | anyone | Finish the sign-in `{ code, state, browser_secret }`: a 15-minute read-only session for the person the account is linked to. |
+| `GET /v1/me/identities` | read | The signed-in person's own linked sign-in accounts and the providers this cloud offers. Sessions only. |
+| `POST /v1/me/identities/{provider}/start` | read | Link your own Google, Microsoft or Apple account: signed in with your passkey, checked in the last five minutes. Sessions only. |
+| `POST /v1/me/identities/{provider}/finish` | read | Finish linking `{ code, state, browser_secret }`, for the person who started it. |
+| `DELETE /v1/me/identities/{provider}` | read | Unlink your own sign-in account. |
 | `POST /v1/me/language` | read | The signed-in person's own language for the pages: `{ "language": "nl" \| "en" \| null }` (null follows the company's). Sessions only. |
 | `GET /v1/invoices` | read | Supplier invoices; filter by status, due_from, due_to; paginated (limit, cursor). |
 | `GET /v1/invoices/{id}` | read | One invoice, with its earlier versions. |
@@ -124,6 +139,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |
 | `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys. |
 | `GET /v1/sync/state` | sync | Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds. |
+| `GET /v1/mail/forwarding-confirmations` | admin | Gmail's forwarding confirmation codes that reached the company's address in the last seven days (code and Gmail address only), for setting up forwarding ([email-forwarding.md](integrations/email-forwarding.md)). |
 | `GET /v1/mail` | sync | Inbound e-mail waiting for the runner; paginated (limit, cursor). |
 | `GET /v1/mail/{id}/raw` | sync | One inbound e-mail, raw (RFC 822). |
 | `POST /v1/mail/{id}/done` | sync | The runner filed (done) or refused an inbound e-mail. |

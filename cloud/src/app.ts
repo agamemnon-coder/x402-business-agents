@@ -5,7 +5,7 @@
 import { withBaseline } from "./baseHeaders.js";
 import { z } from "zod";
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
-import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
+import { AuthError, callerOf, oidcSession, isConnector, endSessions, enrolPasskey, failedAuthBlocked, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
 import { registerCsv } from "../../src/money/registerShape.js";
@@ -51,7 +51,12 @@ import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
 import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, latestEdgeRun, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
-import { ALWAYS_STEP_UP_ROUTES, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
+import { ALWAYS_STEP_UP_ROUTES, freshPasskey, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
+import { finishLink, finishSignIn, identitiesOf, isIdp, offered as idpsOffered, OidcRefused, startOidc, unlink, type IdpName, type OidcEnv } from "./oidc.js";
+import { pushBillsToXero } from "./books/xero.js";
+import { yourConnections } from "./yourConnections.js";
+import { forwardingConfirmations } from "./mail.js";
+import { ChatHookRefused, chatHooks, isChatProduct, postEvent, removeChatHook, setChatHook, SetChatHook, testChatHook, type ChatProduct } from "./chatHooks.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
 
 export interface CloudEnv {
@@ -140,6 +145,11 @@ export interface CloudEnv {
    * Worker var. Unset: the defaults.
    */
   securityAlarms?: string;
+  /**
+   * Sign in with Google, Microsoft or Apple (cloud/src/oidc.ts): the OpenID Connect clients the platform registered.
+   * Absent, or a provider missing: its routes answer 404 and the console shows no button for it.
+   */
+  oidc?: OidcEnv;
 }
 
 /** audit: what the request found out about its caller, for its security event (./securityAudit.ts); a route may add to it. */
@@ -219,18 +229,42 @@ function connectOf(c: Ctx): ConnectEnv {
   if (!c.env.connect) throw new ConnectRefused(404, "connecting accounts by OAuth is not switched on");
   return c.env.connect;
 }
+function chatProductOf(c: Ctx): ChatProduct {
+  const p = c.params[0]!;
+  if (!isChatProduct(p)) throw new ChatHookRefused(404, "no such chat product (slack or teams)");
+  return p;
+}
+/** The OpenID Connect provider in the path (google, microsoft or apple), or 404. */
+function idpOf(c: Ctx, fixed?: IdpName): IdpName {
+  const p = fixed ?? c.params[0]!;
+  if (!isIdp(p)) throw new OidcRefused(404, "no such sign-in provider (google, microsoft or apple)");
+  return p;
+}
+const OidcFinish = z.object({ code: z.string().min(1).max(2048).regex(/^[A-Za-z0-9._~*!-]+$/), state: z.string().min(16).max(200).regex(/^[A-Za-z0-9_-]+$/), browser_secret: z.string().min(16).max(200).regex(/^[A-Za-z0-9_-]+$/) }).strict();
+/** The provider's answer, forwarded to the console's fragment (no server sees it there): the code and state, or an error. */
+function oidcBack(c: Ctx, provider: IdpName, q: URLSearchParams, status = 302): Response {
+  const keep = (v: string | null) => (v && /^[A-Za-z0-9._~*!-]{1,2048}$/.test(v) ? v : "");
+  const out = new URLSearchParams({ provider });
+  const code = keep(q.get("code")), state = keep(q.get("state")), error = keep(q.get("error"));
+  if (code && state) { out.set("code", code); out.set("state", state); } else out.set("error", error || "invalid_request");
+  return new Response(null, { status, headers: { location: `${c.env.origin}/#/oidc?${out.toString()}`, "cache-control": "no-store", "referrer-policy": "no-referrer" } });
+}
+/** A signed-in person (not a key): their own sign-in identities. */
+function personOnly(c: Ctx): void {
+  if (c.caller!.kind !== "session" || !c.caller!.user || isDemoTenant(c.caller!.tenantId)) throw new AuthError(403, "only a signed-in person links their own sign-in accounts");
+}
 function providerOf(c: Ctx): OAuthProviderName {
   const p = c.params[0]!;
-  if (!isProvider(p)) throw new ConnectRefused(404, "no such provider (airwallex or moneybird)");
+  if (!isProvider(p)) throw new ConnectRefused(404, "no such provider (airwallex, moneybird, xero, quickbooks or exact)");
   return p;
 }
 /** A signed-in owner, for connecting or disconnecting an account (never a key: a key cannot consent for the company). */
 function ownerSession(c: Ctx): void {
-  if (c.caller!.kind !== "session" || c.caller!.role !== "owner") throw new AuthError(403, "only a signed-in owner connects or disconnects the company's accounts");
+  if (c.caller!.kind !== "session" || c.caller!.role !== "owner" || c.caller!.via) throw new AuthError(403, "only a signed-in owner connects or disconnects the company's accounts");
 }
 /** A signed-in owner only: not a key, not another role. */
 function ownerOnly(c: Ctx): void {
-  if (c.caller!.kind !== "session" || c.caller!.role !== "owner") throw new AuthError(403, "only a signed-in owner opens or verifies the company's Airwallex account");
+  if (c.caller!.kind !== "session" || c.caller!.role !== "owner" || c.caller!.via) throw new AuthError(403, "only a signed-in owner opens or verifies the company's Airwallex account");
 }
 
 const SLUG = z.string().regex(/^[a-z0-9][a-z0-9-]{1,40}$/, "a slug is lowercase letters, digits and dashes");
@@ -278,6 +312,14 @@ export const ROUTES: Route[] = [
     return json(201, await addTarget(c.env.sql, c.caller!.tenantId, b, c.caller!.principal, c.now));
   } },
   { method: "DELETE", path: "/v1/alerts/targets/{id}", summary: "Remove an alert target (a signed-in owner after a fresh passkey check).", need: "admin", run: async (c) => json(200, await removeTarget(c.env.sql, c.caller!.tenantId, c.params[0]!, c.caller!.principal, c.now)) },
+  { method: "GET", path: "/v1/chat-hooks", summary: "Slack and Teams (Settings): whether the company's Slack and Teams incoming webhooks are set (their host only, never the URL), and each one's delivery state. Purser posts approval.needed, payment.paid and books.closed there; a message only tells and links to Purser Cloud, it never approves.", need: "admin", run: async (c) => json(200, await chatHooks(c.env.sql, c.caller!.tenantId)) },
+  { method: "POST", path: "/v1/chat-hooks/{product}", summary: "Set the company's Slack (product slack: https://hooks.slack.com/services/...) or Teams (product teams: a Teams Workflow's webhook URL) incoming webhook: { url }. A signed-in owner (a fresh passkey check when the company asks for one); never a key. Answers the host only.", need: "admin", run: async (c) => {
+    const b = await body(c, SetChatHook, 2_000);
+    return json(200, await setChatHook(c.env.sql, c.caller!.tenantId, chatProductOf(c), b.url, c.caller!.principal, c.now));
+  } },
+  { method: "DELETE", path: "/v1/chat-hooks/{product}", summary: "Remove the company's Slack or Teams webhook (a signed-in owner).", need: "admin", run: async (c) => json(200, await removeChatHook(c.env.sql, c.caller!.tenantId, chatProductOf(c), c.caller!.principal, c.now)) },
+  { method: "POST", path: "/v1/chat-hooks/{product}/test", summary: "Post one test message to the company's Slack or Teams webhook now, so the owner sees it arrive: { delivered, status } (the status Slack or Teams answered; 0 when nothing answered). A working test switches a hook that was off back on.", need: "admin", run: async (c) =>
+    json(200, await testChatHook({ sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin }, chatProductOf(c))) },
   { method: "GET", path: "/v1/airwallex/account", summary: "The company's Airwallex account opened through Purser as a platform: its id and onboarding status (created, pending, action_required, active, refused, dormant, closed); whether the cloud offers it at all.", need: "admin", run: async (c) =>
     json(200, { switched_on: Boolean(c.env.awxPlatform), account: c.env.awxPlatform ? await accountOf(c.env.sql, c.caller!.tenantId) : null }) },
   { method: "POST", path: "/v1/airwallex/account", summary: "Open the company's Airwallex account through Purser (a signed-in owner, who agreed to Airwallex's terms first). One per company.", need: "admin", run: async (c) => {
@@ -328,13 +370,16 @@ export const ROUTES: Route[] = [
     const out = new URLSearchParams({ provider });
     const code = keep(q.get("code")), state = keep(q.get("state")), error = keep(q.get("error"));
     if (code && state) { out.set("code", code); out.set("state", state); } else out.set("error", error || "invalid_request");
+    // QuickBooks names the company the owner connected on the redirect (realmId).
+    const realm = q.get("realmId");
+    if (code && realm && /^\d{1,20}$/.test(realm)) out.set("realm_id", realm);
     return new Response(null, { status: 302, headers: { location: `${c.env.origin}/#/connect?${out.toString()}`, "cache-control": "no-store", "referrer-policy": "no-referrer" } });
   } },
   { method: "POST", path: "/v1/connect/{provider}/finish", summary: "Finish connecting: the signed-in owner who started it sends the code and state back; Purser exchanges the code with the provider and keeps the tokens sealed for this company only.", need: "admin", run: async (c) => {
     const env = connectOf(c);
     ownerSession(c);
-    const b = await body(c, z.object({ code: z.string().min(1).max(512).regex(/^[A-Za-z0-9._~-]+$/), state: z.string().min(16).max(512).regex(/^[A-Za-z0-9._~-]+$/) }).strict(), 4_000);
-    return json(201, { connection: await finishConnect(c.env.sql, c.caller!.tenantId, c.caller!.principal, providerOf(c), env, b, c.now) });
+    const b = await body(c, z.object({ code: z.string().min(1).max(512).regex(/^[A-Za-z0-9._~-]+$/), state: z.string().min(16).max(512).regex(/^[A-Za-z0-9._~-]+$/), realm_id: z.string().regex(/^\d{1,20}$/).optional() }).strict(), 4_000);
+    return json(201, { connection: await finishConnect(c.env.sql, c.caller!.tenantId, c.caller!.principal, providerOf(c), env, { code: b.code, state: b.state, ...(b.realm_id ? { realmId: b.realm_id } : {}) }, c.now) });
   } },
   { method: "GET", path: "/v1/connect/{provider}/token", summary: "For the company's own runner (a sync key): a short-lived access token for the company's connected account, refreshed when needed. Every call for this company then uses it; it is never for another company.", need: "sync", run: async (c) => {
     const env = connectOf(c);
@@ -344,6 +389,13 @@ export const ROUTES: Route[] = [
     const env = connectOf(c);
     ownerSession(c);
     return json(200, await disconnect(c.env.sql, c.caller!.tenantId, providerOf(c), env, c.now));
+  } },
+  { method: "POST", path: "/v1/connect/xero/bills", summary: "Send the company's supplier invoices that its connected Xero organisation does not hold yet to Xero as DRAFT bills (a signed-in owner): { from?, to? } (issue days). Each invoice goes once; at most 25 a push. Purser never authorises, pays or marks a bill paid in Xero: a person approves each draft there. Answers { pushed, already, failed, remaining }.", need: "admin", run: async (c) => {
+    const env = connectOf(c);
+    ownerSession(c);
+    const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional();
+    const b = await body(c, z.object({ from: day, to: day }).strict(), 1_000);
+    return json(200, await pushBillsToXero(c.env.sql, env, { tenantId: c.caller!.tenantId, by: c.caller!.principal, from: b.from ?? null, to: b.to ?? null, now: c.now }));
   } },
   { method: "POST", path: "/v1/connect/airwallex/webhook", summary: "Airwallex's partner_connection.disconnected webhook (signed: x-timestamp, x-signature): the connections of the accounts it names end.", need: "public", run: async (c) => {
     const env = connectOf(c);
@@ -370,6 +422,8 @@ export const ROUTES: Route[] = [
     const text = kind === "bills" ? await billsCsv(db(c), format as CsvFormat, from, to) : await journalsCsv(db(c), format as "xero" | "exact", from, to);
     return new Response(text, { status: 200, headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="purser-${kind}-${format}.csv"`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   } },
+  { method: "GET", path: "/v1/connections/mine", summary: "Your connections: every way this company is connected (API keys, MCP, the signed webhook, Slack, Teams, approval alerts, the e-mail inbox, Airwallex, Moneybird, Xero, QuickBooks Online, Exact Online, and the signed-in person's Google, Microsoft and Apple sign-in), each connected, not_connected (the company switches it on itself in Settings) or not_available (the platform has not configured it). Never a secret.", need: "admin", run: async (c) =>
+    json(200, await yourConnections(c.env.sql, { tenantId: c.caller!.tenantId, userId: c.caller!.user, now: c.now, connect: c.env.connect, oidc: c.env.oidc, mailDomain: c.env.mailDomain })) },
   { method: "GET", path: "/v1/connections", summary: "Every connection Purser has to other systems, what each does, its label (live, sandbox, testnet, format export, built and not tested live) and its guide; the payment rails, which move money only under the CFO's limits or Face ID, listed apart.", need: "public", run: async (c) => json(200, connectionsCatalogue(c.env.origin)) },
 
   { method: "GET", path: "/v1/admin/companies", summary: "The companies on this cloud for the platform operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (never a key or an account number).", need: "platform", run: async (c) => json(200, await platformCompanies(c.env.sql)) },
@@ -460,6 +514,53 @@ export const ROUTES: Route[] = [
   { method: "POST", path: "/v1/auth/guest", summary: "Try as guest: a read-only session (viewer, 15 minutes) for the demo company, made from demo data (no real money, no real company); no passkey, no e-mail.", need: "public", run: async (c) => {
     return json(200, await guestSession(c.env.sql, c.env.blobs, c.env.sessionSecret, c.now));
   } },
+  { method: "GET", path: "/v1/auth/oidc", summary: "Which sign-in providers this cloud offers besides the passkey (google, microsoft, apple), for the sign-in page. A person links one to their own membership first (Settings, while signed in with the passkey); a sign-in with it reads only.", need: "public", run: async (c) =>
+    json(200, { providers: idpsOffered(c.env.oidc), read_only: true, note: "Signing in with Google, Microsoft or Apple reads only. Settings and approving money need your passkey." }) },
+  { method: "POST", path: "/v1/auth/oidc/{provider}/start", summary: "Start signing in to a company with a linked Google, Microsoft or Apple account: { tenant }. Answers the provider's URL (state, nonce, PKCE where documented) and a browser secret the page keeps until it finishes.", need: "public", run: async (c) => {
+    const b = await body(c, z.object({ tenant: SLUG }).strict(), 1_000);
+    const t = await c.env.sql.first<{ id: string; closed_at: string | null }>("SELECT id, closed_at FROM tenants WHERE slug = ?", [b.tenant]);
+    if (!t || t.closed_at || isDemoTenant(t.id)) return notFound("company");
+    return json(200, await startOidc(c.env.sql, c.env.oidc, { provider: idpOf(c), purpose: "sign-in", tenantId: t.id, userId: null, origin: c.env.origin, now: c.now }));
+  } },
+  { method: "GET", path: "/v1/auth/oidc/{provider}/callback", summary: "Where Google or Microsoft sends the browser back: forwards the code and state to the console (in the address's fragment, which no server sees), where the page that started it finishes. Stores nothing.", need: "public", run: async (c) =>
+    oidcBack(c, idpOf(c), c.url.searchParams) },
+  { method: "POST", path: "/v1/auth/oidc/apple/callback", summary: "Where Apple posts the browser back (response_mode form_post): forwards the code and state to the console's fragment, as the GET callback does. Stores nothing; the ID token Apple posts along is not used (the code is exchanged and its token checked).", need: "public", run: async (c) => {
+    idpOf(c, "apple");
+    const text = await readCapped(c.req, 16_000);
+    return oidcBack(c, "apple", new URLSearchParams(text), 303);
+  } },
+  { method: "POST", path: "/v1/auth/oidc/{provider}/finish", summary: "Finish signing in with a linked account: { code, state, browser_secret }. Answers a 15-minute read-only session (read_only: true) for the person the account is linked to; 401 when it is linked to no one in that company.", need: "public", run: async (c) => {
+    const b = await body(c, OidcFinish, 4_000);
+    const r = await finishSignIn(c.env.sql, c.env.oidc, { provider: idpOf(c), code: b.code, state: b.state, browserSecret: b.browser_secret, origin: c.env.origin, now: c.now });
+    c.audit.tenant = r.tenantId;
+    c.audit.actor = r.userId;
+    const s = await oidcSession(c.env.sql, c.env.sessionSecret, r.tenantId, r.userId, c.now);
+    const slug = await c.env.sql.first<{ slug: string }>("SELECT slug FROM tenants WHERE id = ?", [r.tenantId]);
+    return json(200, { session: s.token, role: s.role, user_id: s.user_id, tenant: slug?.slug ?? null, expires_in: 900, read_only: true });
+  } },
+  { method: "GET", path: "/v1/me/identities", summary: "The signed-in person's own linked sign-in accounts (Google, Microsoft, Apple: provider, verified e-mail if the provider gave one, when linked) and which providers this cloud offers.", need: "read", run: async (c) => {
+    personOnly(c);
+    return json(200, await identitiesOf(c.env.sql, c.env.oidc, c.caller!.tenantId, c.caller!.user!));
+  } },
+  { method: "POST", path: "/v1/me/identities/{provider}/start", summary: "Link your own Google, Microsoft or Apple account to your membership: signed in with your passkey, checked again in the last five minutes (step-up). Answers the provider's URL and a browser secret. The link then signs you in to read only.", need: "read", run: async (c) => {
+    personOnly(c);
+    if (c.caller!.via) throw new AuthError(403, "link an account while signed in with your passkey");
+    if (!(await freshPasskey(c.env.sessionSecret, c.req, c.caller!, c.now))) throw new StepUpRequired();
+    return json(200, await startOidc(c.env.sql, c.env.oidc, { provider: idpOf(c), purpose: "link", tenantId: c.caller!.tenantId, userId: c.caller!.user!, origin: c.env.origin, now: c.now }));
+  } },
+  { method: "POST", path: "/v1/me/identities/{provider}/finish", summary: "Finish linking: { code, state, browser_secret } from the page that started it, for the signed-in person who started it.", need: "read", run: async (c) => {
+    personOnly(c);
+    if (c.caller!.via) throw new AuthError(403, "link an account while signed in with your passkey");
+    const b = await body(c, OidcFinish, 4_000);
+    return json(201, await finishLink(c.env.sql, c.env.oidc, { provider: idpOf(c), code: b.code, state: b.state, browserSecret: b.browser_secret, origin: c.env.origin, tenantId: c.caller!.tenantId, userId: c.caller!.user!, now: c.now }));
+  } },
+  { method: "DELETE", path: "/v1/me/identities/{provider}", summary: "Unlink your own Google, Microsoft or Apple account: it signs you in no more.", need: "read", run: async (c) => {
+    personOnly(c);
+    const p = c.params[0]!;
+    if (!isIdp(p)) return notFound("such provider");
+    return json(200, await unlink(c.env.sql, c.caller!.tenantId, c.caller!.user!, p, c.now));
+  } },
+
   { method: "POST", path: "/v1/auth/step-up/start", summary: "Start a fresh passkey check for sensitive settings (a signed-in person only): a one-time challenge for five minutes.", need: "read", run: async (c) => {
     if (c.caller!.kind !== "session") return err(403, "a step-up is a signed-in person's passkey check; a key has none");
     return json(200, await newChallenge(c.env.sql, c.caller!.tenantId, c.now, "step-up"));
@@ -491,6 +592,8 @@ export const ROUTES: Route[] = [
     // The company's Airwallex account opened through Purser, for the pages' header (its id is no secret; never a key).
     const awx = await c.env.sql.first<{ account_id: string | null; status: string }>("SELECT account_id, status FROM awx_accounts WHERE tenant_id = ? AND id = 'main'", [c.caller!.tenantId]);
     return json(200, { tenant: { id: c.caller!.tenantId, ...t, language: companyLanguage }, kind: c.caller!.kind, principal: c.caller!.principal, scopes: [...c.caller!.scopes], role: c.caller!.role ?? null,
+      // How a session signed in: the passkey, or a linked Google, Microsoft or Apple account (read only).
+      ...(c.caller!.kind === "session" ? { signed_in_with: c.caller!.via ?? "passkey" } : {}),
       user: c.caller!.user ? { id: c.caller!.user, display_name: person?.display_name ?? null, role: person?.role ?? null, language: person?.language ?? null } : null,
       language: person?.language === "en" || person?.language === "nl" ? person.language : companyLanguage,
       owner_has_passkey: ownerPasskey, airwallex: awx ? { account_id: awx.account_id, status: awx.status } : null, inbox: c.env.mailDomain && t && !isDemoTenant(c.caller!.tenantId) ? `${t.slug}@${c.env.mailDomain}` : null,
@@ -580,7 +683,11 @@ export const ROUTES: Route[] = [
     // ID; its webhook delivery is one of those channels (cloud/src/alerts.ts). An alert never approves anything.
     // The alerts go out after the answer where the Worker allows it: each delivery's row makes it idempotent either way.
     const alerts: Promise<unknown>[] = [];
+    const hasChat = (await db(c).count("chat_hooks", { disabled_at: null })) > 0;
+    const chat = { sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin };
     for (const e of await eventsOf(db(c), b, before, head, c.env.origin)) {
+      // The company's Slack and Teams channels hear every business event (cloud/src/chatHooks.ts), after the answer too.
+      if (hasChat) alerts.push(postEvent(chat, e).catch((x: unknown) => logEvent("warn", "chat_hook.dispatch_failed", { tenant: c.caller!.tenantId, error: x instanceof Error ? x.message.slice(0, 200) : "unknown" })));
       if (e.type === "approval.needed") alerts.push(dispatchApprovalAlert({ sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, providers: c.env.alerts, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin }, e.data)
         .catch((x: unknown) => logEvent("warn", "alert.dispatch_failed", { tenant: c.caller!.tenantId, error: x instanceof Error ? x.message.slice(0, 200) : "unknown" })));
       else await notify(c.env.sql, c.caller!.tenantId, e.type, e.data, c.now, c.env.outbound, c.env.retryDelayMs);
@@ -590,6 +697,7 @@ export const ROUTES: Route[] = [
     return json(200, { applied });
   } },
   { method: "GET", path: "/v1/sync/state", summary: "Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds.", need: "sync", run: async (c) => json(200, await syncState(db(c))) },
+  { method: "GET", path: "/v1/mail/forwarding-confirmations", summary: "Gmail's forwarding confirmation codes that reached the company's Purser address in the last seven days (code and Gmail address only), for the owner who is setting up forwarding from Gmail.", need: "admin", run: async (c) => json(200, { items: await forwardingConfirmations(db(c), c.now) }) },
   { method: "GET", path: "/v1/mail", summary: "Inbound e-mail waiting for the runner; paginated (limit, cursor).", need: "sync", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "inbound_mail", "id", { status: "queued" }, c.url.searchParams, (r) => r)) },
   { method: "GET", path: "/v1/mail/{id}/raw", summary: "One inbound e-mail, raw (RFC 822).", need: "sync", run: async (c) => {
     const m = await db(c).one<{ blob_key: string }>("inbound_mail", { id: c.params[0]! });
@@ -800,7 +908,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
       // /mcp takes a bearer token only (no cookie rides along), so Claude's own web origins may call it too.
       // The consent page's answer arrives through the client's redirects (often Origin: null, in an app's own browser):
       // its form's own signed, single-use token holds it instead (cloud/src/claude/oauth.ts consentToken).
-      const anyOrigin = url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === "/oauth/authorize" || (url.pathname === "/mcp" && CLAUDE_ORIGINS.has(from ?? ""));
+      const anyOrigin = url.pathname === "/v1/auth/oidc/apple/callback" || url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === "/oauth/authorize" || (url.pathname === "/mcp" && CLAUDE_ORIGINS.has(from ?? ""));
       if (from !== null && from !== env.origin && !anyOrigin) return err(403, "this request came from another site");
       // The hands-on demo's start and renewal are a browser's only: they must say they come from this site (the admin's
       // controls are a program's, with the platform token, and are not held to it).
@@ -902,6 +1010,8 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
     }
     if (e instanceof StepUpRequired) return json(403, { error: e.message, code: e.code });
     if (e instanceof AlertRefused) return err(e.status, e.message);
+    if (e instanceof ChatHookRefused) return err(e.status, e.message);
+    if (e instanceof OidcRefused) return err(e.status, e.message);
     if (e instanceof SyncRefused) {
       if (e.tamper) audit.tamper = true;
       return err(e.status, e.message);

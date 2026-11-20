@@ -40,6 +40,11 @@ export interface Caller {
   user: string | null;
   /** 'first-owner': a new company's starter key, good only for the first owner's passkey (red team round 5). */
   purpose?: string | null;
+  /**
+   * How a session signed in: "oidc" for Sign in with Google, Microsoft or Apple (cloud/src/oidc.ts), which reads only:
+   * never admin, never a step-up's "fresh passkey", never an approval. Absent: the passkey.
+   */
+  via?: "oidc";
 }
 
 export class AuthError extends Error {
@@ -160,20 +165,31 @@ export async function liveKey(sql: Sql, keyId: string, secret: string | null, no
 
 const scopesOf = (role: Role): Set<Scope> => new Set<Scope>(role === "owner" ? ["read", "admin"] : ["read"]);
 
-export async function sessionToken(secret: string, s: { tenantId: string; userId: string; role: Role; gen: number }, now: Date): Promise<string> {
-  const body = toB64u(new TextEncoder().encode(JSON.stringify({ t: s.tenantId, u: s.userId, r: s.role, g: s.gen, exp: now.getTime() + SESSION_TTL_MS })));
+export async function sessionToken(secret: string, s: { tenantId: string; userId: string; role: Role; gen: number; via?: "oidc" }, now: Date): Promise<string> {
+  const body = toB64u(new TextEncoder().encode(JSON.stringify({ t: s.tenantId, u: s.userId, r: s.role, g: s.gen, exp: now.getTime() + SESSION_TTL_MS, ...(s.via ? { m: s.via } : {}) })));
   return `pcs.${body}.${await hmacB64u(secret, body)}`;
 }
 
 async function fromSession(sql: Sql, secret: string, token: string, now: Date): Promise<Caller> {
-  const p = await signedPayload(secret, "pcs", token, Infinity) as { t: string; u: string; r: Role; g: number; exp: number } | null;
+  const p = await signedPayload(secret, "pcs", token, Infinity) as { t: string; u: string; r: Role; g: number; exp: number; m?: unknown } | null;
   if (!p) throw new AuthError(401, "bad session");
   if (typeof p.exp !== "number" || p.exp <= now.getTime()) throw new AuthError(401, "the session expired; sign in again");
   // A person erased, given another role or signed out since the token was issued, or a closed company: access ends at once.
   const user = await sql.first<{ role: Role; erased_at: string | null; session_gen: number; closed_at: string | null }>(
     "SELECT u.role, u.erased_at, u.session_gen, t.closed_at FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.tenant_id = ? AND u.id = ?", [p.t, p.u]);
   if (!user || user.erased_at || user.closed_at || user.role !== p.r || user.session_gen !== p.g) throw new AuthError(401, "this sign-in is no longer valid");
+  // Signed in with Google, Microsoft or Apple: read only, whatever the role (cloud/src/oidc.ts).
+  if (p.m === "oidc") return { tenantId: p.t, kind: "session", principal: p.u, scopes: new Set<Scope>(["read"]), role: p.r, user: p.u, via: "oidc" };
+  if (p.m !== undefined) throw new AuthError(401, "bad session");
   return { tenantId: p.t, kind: "session", principal: p.u, scopes: scopesOf(p.r), role: p.r, user: p.u };
+}
+
+/** A read-only session for a person who signed in with a linked identity (cloud/src/oidc.ts finishSignIn). */
+export async function oidcSession(sql: Sql, secret: string, tenantId: string, userId: string, now: Date): Promise<{ token: string; role: Role; user_id: string }> {
+  const t = await sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [tenantId]);
+  const u = await new TenantDb(sql, tenantId).one<{ role: Role; erased_at: string | null; session_gen: number }>("users", { id: userId });
+  if (!t || t.closed_at || !u || u.erased_at) throw new AuthError(401, "this person has no access");
+  return { token: await sessionToken(secret, { tenantId, userId, role: u.role, gen: u.session_gen, via: "oidc" }, now), role: u.role, user_id: userId };
 }
 
 /** How long an access token Purser signs for a connector key lasts (never past the key's own expiry). */

@@ -19,6 +19,11 @@ format, and a person or the team's own tooling takes it from there; there is no 
 service. **built, run once in a sandbox**: as it says. **planned**: not built yet; the guide says what it needs. No
 label here is stronger than its record.
 
+**Setting it up.** Each company connects its own systems in Purser Cloud, Settings ("Your connections" shows what is
+connected, not connected, or not available yet). What the platform registers once (OAuth apps, redirect URIs, secrets,
+costs, reviews): [owner-setup.md](owner-setup.md). Invoices by e-mail from Gmail or Outlook:
+[email-forwarding.md](email-forwarding.md). QuickBooks bills, planned: [quickbooks-plan.md](quickbooks-plan.md).
+
 ## Payment rails
 
 Money moves only on these, and only within the limits the CFO signed or after the CFO's Face ID on the exact terms. T:0
@@ -76,7 +81,9 @@ or Make app.
 | Xero (API) | built, not tested live | With the owner's Xero OAuth app: `npx tsx src/cli/workplace.ts xero-tenants`, then `books xero --dry-run`. | [workplace.md](workplace.md) |
 | QuickBooks Online | format export | `GET /v1/export/csv/quickbooks/bills`; QuickBooks maps the columns at import. No journals yet. | [connections.md](../connections.md#accounting-exports-format-exports) |
 | Exact Online (CSV) | format export | `GET /v1/export/csv/exact/bills` or `/journals`: Exact's own import templates. | [connections.md](../connections.md#accounting-exports-format-exports) |
-| Exact Online (API) | built, not tested live | `npm run erp -- sync --connector exact --dry-run` shows the requests and sends nothing. | [erp.md](../erp.md#exact-online) |
+| Xero bills (connected in Purser Cloud) | built, not tested live | Each company: Settings, **Connect Xero**, pick its organisation; then **Send bills to Xero (drafts)**. Drafts only, never authorised or paid in Xero. | [owner-setup.md](owner-setup.md#16-xero) |
+| QuickBooks Online (API) | built, not tested live | Each company: Settings, **Connect QuickBooks**. Connect flow only; sending bills is planned. | [quickbooks-plan.md](quickbooks-plan.md) |
+| Exact Online (API) | built, not tested live | Each company: Settings, **Connect Exact Online**; its runner sets `ERP_EXACT_OAUTH=on`. `npm run erp -- sync --connector exact --dry-run` shows the requests and sends nothing. | [erp.md](../erp.md#exact-online), [owner-setup.md](owner-setup.md#18-exact-online) |
 | Moneybird (API) | built, run once in a sandbox | `npm run erp -- sync --connector moneybird --dry-run`, then `--live` with the runner's Moneybird token. | [moneybird.md](../moneybird.md) |
 | Business Central and Odoo (API) | built, not tested live | `npm run erp -- sync --connector bc --dry-run` (or `--connector odoo`). | [erp.md](../erp.md) |
 
@@ -87,7 +94,9 @@ or Make app.
 | Peppol invoices (UBL, BIS Billing 3.0) | built, not tested live | `npm run peppol:check -- <file.xml>` reads a file and names each rule broken; `npm run payables -- add <file.xml>` files it in the payables inbox, checked like a PDF. | [peppol.md](peppol.md) |
 | Peppol network (an Access Point) | planned | Receiving over the network needs a certified Access Point, the owner's choice and registration; nothing is wired yet. | [peppol.md](peppol.md#receiving-over-peppol-the-owners-step) |
 | ISO 20022 pacs.008 | format export | `npm run iso20022` writes a pacs.008.001.08 message for one paid invoice, validated against the official schema. | [connections.md](../connections.md#accounting-exports-format-exports) |
-| Slack and Microsoft Teams messages | format export | Relay the signed webhook into a Slack incoming webhook or a Teams workflow, with the message `chatMessage(event, "slack")` builds. | [connections.md](../connections.md#slack-and-microsoft-teams-format) |
+| Slack and Microsoft Teams messages | built, not tested live | Each company: Settings, **Slack and Teams**, paste its own Slack incoming webhook or Teams Workflow URL, **Send a test**. `approval.needed`, `payment.paid` and `books.closed` then post there; no real channel has received one yet. | [connections.md](../connections.md#slack-and-microsoft-teams) |
+| Invoices by e-mail (forwarded from Gmail or Outlook) | built, not tested live | Forward supplier invoices to the company's Purser address (Settings, Company, Inbox); Gmail's confirmation code shows in Settings. No mail domain is routed yet. | [email-forwarding.md](email-forwarding.md) |
+| Sign in with Google, Microsoft and Apple | built, not tested live | Each person: Settings, **Sign-in accounts**, **Link (Face ID)**; then "Sign in with …" on the sign-in page, read only. | [owner-setup.md](owner-setup.md#12-sign-in-with-google) |
 | Approval alerts (e-mail, Slack, Teams) | built, not tested live | Purser Cloud: Settings, Alerts. A single runner: `PURSER_SLACK_WEBHOOK_URL` or `PURSER_TEAMS_WEBHOOK_URL`, then `npm run notify:approvals`. | [cloud.md](../cloud.md#approval-alerts), [below](#slack-and-microsoft-teams-approval-notifications) |
 | Google Workspace and Microsoft 365 | built, not tested live | With the owner's OAuth apps: `npx tsx src/cli/workplace.ts poll gmail` (or `drive`, `outlook`, `onedrive`) files invoices through the inbox. | [workplace.md](workplace.md) |
 | Full export | live | `GET /v1/export` as an owner: every record as staged JSON parts with signed links. | [connections.md](../connections.md) |
@@ -232,7 +241,8 @@ The message reads "Payment P-0009 needs your signature: EUR 1,309.00, payee Berg
 link, to the invoice's page in Purser Cloud, where the CFO signs in with their passkey and signs
 (`src/integrations/approvalChat.ts`, `scripts/approval-chat.ts`).
 
-Purser Cloud also sends the same kind of alert per company (Settings, Alerts: Slack, Teams, e-mail, WhatsApp). There an
+Purser Cloud also sends the same kind of alert per company (Settings, Alerts: Slack, Teams, e-mail, WhatsApp), and posts
+every business event to a company's own Slack or Teams channel (Settings, Slack and Teams; built, not tested live). There an
 owner adds each target, and the API never shows a target back. Use that one on a multi-company cloud. The environment-configured notifier is for a
 single company's runner or deployment.
 

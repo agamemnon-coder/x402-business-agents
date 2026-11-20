@@ -4,7 +4,7 @@
 
 import { isDemoTenant } from "./guest/guest.js";
 import { bump } from "./auth.js";
-import { sha256Hex } from "./crypto.js";
+import { randomToken, sha256Hex } from "./crypto.js";
 import type { Blobs, Sql } from "./store.js";
 import { TenantDb, WriteConflict } from "./tenant.js";
 
@@ -82,5 +82,35 @@ export async function receiveEmail(sql: Sql, blobs: Blobs, msg: InboundEmail, op
     if (e instanceof WriteConflict) return { queued: false, reason: "already received", id };
     throw e;
   }
+  await noteForwardingConfirmation(db, bytes, msg.from, opts.now);
   return { queued: true, id };
+}
+
+/**
+ * Gmail's "Forwarding Confirmation" (20 Nov, docs/integrations/email-forwarding.md): before Gmail forwards a mailbox to
+ * the company's Purser address, it sends a confirmation code TO that address, where no person reads it (the runner
+ * files PDFs only). Its subject carries the code: "(#123456789) Gmail Forwarding Confirmation - Receive Mail from
+ * x@gmail.com". The code (digits only) and the Gmail address go to the company's security events, so an owner sees them
+ * in Settings and types the code into Gmail. Nothing else of the message is read; no link in it is ever shown (a spoofed
+ * message can only show a wrong number, which Gmail refuses).
+ */
+export function forwardingConfirmation(raw: Uint8Array, from: string): { code: string; gmail: string } | null {
+  if (!/^forwarding-noreply@google\.com$/i.test(from.trim())) return null;
+  const head = new TextDecoder().decode(raw.subarray(0, 32_768)).split(/\r?\n\r?\n/)[0] ?? "";
+  const subject = /^subject:[ \t]*(.*(?:\r?\n[ \t].*)*)/im.exec(head)?.[1]?.replace(/\r?\n[ \t]+/g, " ") ?? "";
+  const m = /^\(#(\d{6,12})\) Gmail Forwarding Confirmation - Receive Mail from ([A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,190})\s*$/.exec(subject.trim());
+  return m ? { code: m[1]!, gmail: m[2]!.toLowerCase() } : null;
+}
+
+async function noteForwardingConfirmation(db: TenantDb, raw: Uint8Array, from: string, now: Date): Promise<void> {
+  const c = forwardingConfirmation(raw, from);
+  if (!c) return;
+  await db.apply([db.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: now.toISOString(), kind: "mail.forwarding_confirmation", actor: "mail", detail_json: JSON.stringify({ code: c.code, gmail: c.gmail }) })]);
+}
+
+/** The Gmail forwarding confirmations of the last seven days, newest first, for the company's owners. */
+export async function forwardingConfirmations(db: TenantDb, now: Date): Promise<{ code: string; gmail: string; at: string }[]> {
+  const since = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+  const rows = await db.select<{ at: string; detail_json: string }>("security_events", { kind: "mail.forwarding_confirmation", at: { op: ">=", v: since } }, { order: ["at"], desc: true, limit: 5 });
+  return rows.map((r) => ({ ...(JSON.parse(r.detail_json) as { code: string; gmail: string }), at: r.at }));
 }

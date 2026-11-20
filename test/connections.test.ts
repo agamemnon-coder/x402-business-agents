@@ -183,7 +183,7 @@ describe("the read API's OpenAPI, and the catalogue of connections", () => {
     const cat = (await c.req("GET", "/v1/connections")).json as unknown as ReturnType<typeof connectionsCatalogue>;
     expect(cat.rule).toMatch(/None moves money.*Face ID/);
     const by = Object.fromEntries(cat.connections.map((x) => [x.name, x.kind]));
-    expect(by).toMatchObject({ "MCP server (Connect any AI)": "live", Webhooks: "live", Xero: "format export", "QuickBooks Online": "format export", "Exact Online (CSV)": "format export", "Slack and Microsoft Teams messages": "format export", "Exact Online (API)": "built, not tested live", "ISO 20022 pacs.008": "format export" });
+    expect(by).toMatchObject({ "MCP server (Connect any AI)": "live", Webhooks: "live", Xero: "format export", "QuickBooks Online": "format export", "Exact Online (CSV)": "format export", "Slack and Microsoft Teams messages": "built, not tested live", "Exact Online (API)": "built, not tested live", "Xero bills (connected in Purser Cloud)": "built, not tested live", "QuickBooks Online (API)": "built, not tested live", "ISO 20022 pacs.008": "format export" });
     expect(cat.connections.every((x) => ["read", "export", "notify"].includes(x.direction))).toBe(true);
     // 20 Nov (the hub): what moves money is listed apart, each on test money, under the CFO's limits or Face ID.
     expect(cat.money_rule).toMatch(/limits the CFO signed.*Face ID.*Test money only/);

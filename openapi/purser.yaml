@@ -587,6 +587,117 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/chat-hooks":
+    get:
+      operationId: getV1ChatHooks
+      tags:
+        - Company
+      summary: "Slack and Teams (Settings): whether the company's Slack and Teams incoming webhooks are set (their host only, never the URL), and each one's delivery state. Purser posts approval.needed, payment.paid and books.closed there; a message only tells and links to Purser Cloud, it never approves."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/chat-hooks/{product}":
+    post:
+      operationId: postV1ChatHooksByProduct
+      tags:
+        - Company
+      summary: "Set the company's Slack (product slack: https://hooks.slack.com/services/...) or Teams (product teams: a Teams Workflow's webhook URL) incoming webhook: { url }. A signed-in owner (a fresh passkey check when the company asks for one); never a key. Answers the host only."
+      parameters:
+        - name: product
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      x-purser-step-up: "a signed-in owner; when the company asks again before sensitive changes, passkey checked in the last five minutes"
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    delete:
+      operationId: deleteV1ChatHooksByProduct
+      tags:
+        - Company
+      summary: "Remove the company's Slack or Teams webhook (a signed-in owner)."
+      parameters:
+        - name: product
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      x-purser-step-up: "a signed-in owner; when the company asks again before sensitive changes, passkey checked in the last five minutes"
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/chat-hooks/{product}/test":
+    post:
+      operationId: postV1ChatHooksByProductTest
+      tags:
+        - Company
+      summary: "Post one test message to the company's Slack or Teams webhook now, so the owner sees it arrive: { delivered, status } (the status Slack or Teams answered; 0 when nothing answered). A working test switches a hook that was off back on."
+      parameters:
+        - name: product
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/airwallex/account":
     get:
       operationId: getV1AirwallexAccount
@@ -892,6 +1003,29 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/connect/xero/bills":
+    post:
+      operationId: postV1ConnectXeroBills
+      tags:
+        - Company
+      summary: "Send the company's supplier invoices that its connected Xero organisation does not hold yet to Xero as DRAFT bills (a signed-in owner): { from?, to? } (issue days). Each invoice goes once; at most 25 a push. Purser never authorises, pays or marks a bill paid in Xero: a person approves each draft there. Answers { pushed, already, failed, remaining }."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/connect/airwallex/webhook":
     post:
       operationId: postV1ConnectAirwallexWebhook
@@ -976,6 +1110,29 @@ paths:
         - bearer:
             - read
       x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/connections/mine":
+    get:
+      operationId: getV1ConnectionsMine
+      tags:
+        - Company
+      summary: "Your connections: every way this company is connected (API keys, MCP, the signed webhook, Slack, Teams, approval alerts, the e-mail inbox, Airwallex, Moneybird, Xero, QuickBooks Online, Exact Online, and the signed-in person's Google, Microsoft and Apple sign-in), each connected, not_connected (the company switches it on itself in Settings) or not_available (the platform has not configured it). Never a secret."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
       responses:
         "200":
           description: OK
@@ -1196,6 +1353,239 @@ paths:
       summary: "Try as guest: a read-only session (viewer, 15 minutes) for the demo company, made from demo data (no real money, no real company); no passkey, no e-mail."
       security: []
       x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc":
+    get:
+      operationId: getV1AuthOidc
+      tags:
+        - Access
+      summary: "Which sign-in providers this cloud offers besides the passkey (google, microsoft, apple), for the sign-in page. A person links one to their own membership first (Settings, while signed in with the passkey); a sign-in with it reads only."
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/{provider}/start":
+    post:
+      operationId: postV1AuthOidcByProviderStart
+      tags:
+        - Access
+      summary: "Start signing in to a company with a linked Google, Microsoft or Apple account: { tenant }. Answers the provider's URL (state, nonce, PKCE where documented) and a browser secret the page keeps until it finishes."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/{provider}/callback":
+    get:
+      operationId: getV1AuthOidcByProviderCallback
+      tags:
+        - Access
+      summary: "Where Google or Microsoft sends the browser back: forwards the code and state to the console (in the address's fragment, which no server sees), where the page that started it finishes. Stores nothing."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/apple/callback":
+    post:
+      operationId: postV1AuthOidcAppleCallback
+      tags:
+        - Access
+      summary: "Where Apple posts the browser back (response_mode form_post): forwards the code and state to the console's fragment, as the GET callback does. Stores nothing; the ID token Apple posts along is not used (the code is exchanged and its token checked)."
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/{provider}/finish":
+    post:
+      operationId: postV1AuthOidcByProviderFinish
+      tags:
+        - Access
+      summary: "Finish signing in with a linked account: { code, state, browser_secret }. Answers a 15-minute read-only session (read_only: true) for the person the account is linked to; 401 when it is linked to no one in that company."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities":
+    get:
+      operationId: getV1MeIdentities
+      tags:
+        - Access
+      summary: "The signed-in person's own linked sign-in accounts (Google, Microsoft, Apple: provider, verified e-mail if the provider gave one, when linked) and which providers this cloud offers."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities/{provider}/start":
+    post:
+      operationId: postV1MeIdentitiesByProviderStart
+      tags:
+        - Access
+      summary: "Link your own Google, Microsoft or Apple account to your membership: signed in with your passkey, checked again in the last five minutes (step-up). Answers the provider's URL and a browser secret. The link then signs you in to read only."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities/{provider}/finish":
+    post:
+      operationId: postV1MeIdentitiesByProviderFinish
+      tags:
+        - Access
+      summary: "Finish linking: { code, state, browser_secret } from the page that started it, for the signed-in person who started it."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities/{provider}":
+    delete:
+      operationId: deleteV1MeIdentitiesByProvider
+      tags:
+        - Access
+      summary: "Unlink your own Google, Microsoft or Apple account: it signs you in no more."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
       responses:
         "200":
           description: OK
@@ -2022,6 +2412,29 @@ paths:
         - bearer:
             - sync
       x-purser-needs: sync
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/mail/forwarding-confirmations":
+    get:
+      operationId: getV1MailForwardingConfirmations
+      tags:
+        - Company
+      summary: "Gmail's forwarding confirmation codes that reached the company's Purser address in the last seven days (code and Gmail address only), for the owner who is setting up forwarding from Gmail."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
       responses:
         "200":
           description: OK
