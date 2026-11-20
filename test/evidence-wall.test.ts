@@ -96,6 +96,19 @@ describe("the evidence wall's file", () => {
     expect(tile(w, "red-team").rec.split(" ")).toEqual(["docs/redteam/rerun-2026-11-20.json", "docs/redteam/rerun-2026-11-19b.json", "docs/redteam/rerun-2026-11-19.json", "docs/redteam/report.json"]);
     const bills = json<{ bills: { bill_id: string | null }[] }>("docs/runs/2026-11-19-airwallex-bills.json").bills.filter((b) => b.bill_id);
     expect(tile(w, "spend-bills").fig).toBe(countOf(bills.length, bills.length));
+    // 20 Nov (owner: the main run's 24 looked low): Claude's tile is the long run of 20 Nov, its figure the record's own
+    // sum of by_claude over the agents, labelled with the run's day and name; the main run's 24 stays, in the note.
+    type St = { agent_stats: { decisions: number; by_claude: number; fallback: number; claude_calls: number; calls_without_request_id: number }[] };
+    const lr = json<{ recorded_at: string; snapshot: St }>("docs/demo/long-run.json"), ls = lr.snapshot.agent_stats;
+    const main = json<{ snapshot: St }>("docs/demo/main-run.json").snapshot.agent_stats;
+    const sumOf = (s: St["agent_stats"], f: (a: St["agent_stats"][number]) => number) => s.reduce((n, a) => n + f(a), 0);
+    expect(tile(w, "claude-main").fig).toBe(String(sumOf(ls, (a) => a.by_claude)));
+    expect(Number(tile(w, "claude-main").fig)).toBeGreaterThan(sumOf(main, (a) => a.by_claude));
+    expect(tile(w, "claude-main").label).toBe(`decisions by Claude in the ${new Date(lr.recorded_at).getUTCDate()} Nov long run`);
+    expect(tile(w, "claude-main").note).toMatch(new RegExp(`^${sumOf(ls, (a) => a.fallback)} fallbacks?; ${sumOf(ls, (a) => a.claude_calls)} Claude calls, `));
+    expect(tile(w, "claude-main").note).toContain("virtual test passkeys, test money");
+    expect(tile(w, "claude-main").note).toContain(`The main run of 3 Nov: ${sumOf(main, (a) => a.by_claude)}.`);
+    expect(tile(w, "claude-main").rec.split(" ")).toEqual(["docs/demo/long-run.json", "docs/runs/2026-11-20-long-run.md", "docs/demo/main-run.json"]);
   });
 
   it("says what was simulated: every PAID at the sandbox is the sandbox's simulation, and a test world is labelled", () => {

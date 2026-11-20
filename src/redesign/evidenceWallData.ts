@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { liveTryRecords, liveTryTotals, type LiveTryRecord } from "./liveTry.js";
 import { REPO_BLOB } from "./metalStory.js";
-import { agentRun, payments } from "./run.js";
+import { agentRun, longRun, payments } from "./run.js";
 import { METAL_TX_LIST } from "./partners.js";
 import { proofFacts } from "./proof.js";
 import { centHolds, centRecord } from "./cardCent.js";
@@ -178,8 +178,13 @@ function forged(w: ReturnType<typeof walks>): WallTile[] {
 
 function ai(w: ReturnType<typeof walks>): WallTile[] {
   const out: WallTile[] = [];
-  const claude = proofFacts(agentRun()).find((f) => f.key === "claude");
-  if (claude) out.push({ key: "claude-main", fig: claude.fig, label: "decisions by Claude in the main run", note: claude.text, tag: "sandbox", tone: "claude", href: claude.href, rec: claude.rec ?? "" });
+  // The newest and largest count (owner, 20 Nov: 24 looked low): the long run of 20 Nov, under its own day and name, the
+  // main run's 24 kept in the note with its own record. Without the long run's record, the main run's figure as before.
+  const claude = proofFacts(agentRun()).find((f) => f.key === "claude"), lr = longRun();
+  if (lr?.decisions) {
+    const ids = lr.callsWithoutId ? `${lr.callsWithoutId} of them with no request id` : "each with its Anthropic request id";
+    out.push({ key: "claude-main", fig: String(lr.byClaude), label: `decisions by Claude in the ${day(lr.recordedAt)} long run`, note: `${lr.fallbacks} ${lr.fallbacks === 1 ? "fallback" : "fallbacks"}; ${lr.calls} Claude calls, ${ids}. A test world: virtual test passkeys, test money.${claude ? ` The main run of 3 Nov: ${claude.fig}.` : ""}`, tag: "sandbox", tone: "claude", href: blob(lr.log), rec: [lr.file, lr.log, ...(claude?.rec ? [claude.rec] : [])].join(" ") });
+  } else if (claude) out.push({ key: "claude-main", fig: claude.fig, label: "decisions by Claude in the main run", note: claude.text, tag: "sandbox", tone: "claude", href: claude.href, rec: claude.rec ?? "" });
   const script = worstOf("purser_script"), naive = worstOf("no_rules");
   if (WORST_CASE && script && naive) out.push({ key: "worst-case", fig: `${script.wrong_payments} vs ${naive.wrong_payments}`, label: "wrong payments: always-pay AI vs no rules", note: `${WORST_CASE.cases_per_run} hostile and clean invoices; ${script.paid_past_cfo} paid past the CFO.`, tag: "test", tone: "claude", href: blob(WORST_CASE_DOC), rec: "docs/evals/worst-case-summary.json" });
   // Eval v3 (19 Nov): 100 held-out invoices, the case file committed alone before the run (src/cli/adversarialV3.ts).

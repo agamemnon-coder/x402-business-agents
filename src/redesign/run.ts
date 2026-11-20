@@ -26,7 +26,7 @@ interface Flow { at: string; kind: string; agent: string | null; model: string |
 interface Trace { run_seq?: number; agent: string; task: string; status: string; model: string; tokens?: { input: number; output: number; cache_read: number; cache_write: number }; latency_ms?: number; claude_ms?: number[]; request_ids?: string[]; cost_usd_micros?: number; decision_seq?: number | null; steps: { ts: string; kind: string; tool: string | null; input: unknown; seq?: number; text?: string }[] }
 interface Refusal { seq: number; ts: string; agent: string; what: string; reason: string }
 interface Decision { proposal_id: string; title: string; status: string; by: string | null; at: string }
-interface Stat { agent: string; decisions: number; by_claude: number; fallback: number; claude_calls: number; cost_usd_micros: number; models: string[] }
+interface Stat { agent: string; decisions: number; by_claude: number; fallback: number; claude_calls: number; calls_without_request_id?: number; cost_usd_micros: number; models: string[] }
 export interface RunRecord {
   recorded_at: string; run: string; kind?: string;
   snapshot: {
@@ -86,6 +86,31 @@ export const money = (amount: string, unit: string) => unit === "EUR" ? `EUR ${a
 const SHORT_EUR = (a: string) => `€${a.replace(/\.00$/, "")}`;
 
 /** The record the pages play: the main run's when it is in the repo, else the newest dry run. */
+/**
+ * The long run (20 Nov; docs/runs/2026-11-20-long-run.md): the main run's world and order in a fresh test world
+ * (virtual test passkeys, test money), then an hour more of the world changing while the three agents kept deciding,
+ * recorded with `npm run autonomy-record` as the main run was. Its decision count is the newest and the largest; the
+ * main run's record stays as it is and stays the run the pages play.
+ */
+export const LONG_RUN_FILE = "docs/demo/long-run.json";
+export const LONG_RUN_LOG = "docs/runs/2026-11-20-long-run.md";
+export interface LongRun {
+  file: string; log: string; recordedAt: string; run: string;
+  byClaude: number; decisions: number; fallbacks: number; calls: number; callsWithoutId: number; costMicros: number;
+  agents: { agent: string; decisions: number; by_claude: number }[];
+}
+export function longRun(): LongRun | null {
+  if (!existsSync(new URL(`../../${LONG_RUN_FILE}`, import.meta.url))) return null;
+  const r = readJson<RunRecord>(LONG_RUN_FILE), st = r.snapshot.agent_stats, sp = split(r);
+  return {
+    file: LONG_RUN_FILE, log: LONG_RUN_LOG, recordedAt: r.recorded_at, run: r.run,
+    byClaude: sp.byClaude, decisions: sp.decisions, fallbacks: sp.fallbacks,
+    calls: st.reduce((n, a) => n + a.claude_calls, 0), callsWithoutId: st.reduce((n, a) => n + (a.calls_without_request_id ?? 0), 0),
+    costMicros: st.reduce((n, a) => n + a.cost_usd_micros, 0),
+    agents: st.map((a) => ({ agent: a.agent, decisions: a.decisions, by_claude: a.by_claude })),
+  };
+}
+
 export function loadRecord(): { file: string; standIn: boolean; record: RunRecord } {
   const own = existsSync(new URL(`../../${AGENT_RUN_FILE}`, import.meta.url));
   const file = own ? AGENT_RUN_FILE : STAND_IN_FILE;
