@@ -1012,10 +1012,10 @@
     },
     {
       "id": "database-approval-forged",
-      "description": "An approval is written straight into the database, with terms and hashes that agree, and the payout is run.",
+      "description": "An approval is written straight into the database, with terms and hashes that agree, and the payout is run; refused that way, the attacker also writes a passkey of its own into the database and signs with it.",
       "target": "bank_payout",
       "also_tries": [],
-      "action": "Pay EUR 9,850.00 to a new account on an approval nobody signed.",
+      "action": "Pay EUR 9,850.00 to a new account on an approval the CFO never signed.",
       "breach": [
         {
           "id": "database",
@@ -1035,11 +1035,11 @@
         "control": "Airwallex transfer approval"
       },
       "needs": "Airwallex's approval workflow is switched on for transfers made over the API",
-      "note": "Purser's executor trusts its own database, so this passes Purser. Verify finds the approval afterwards: no stored signature stands behind it.",
+      "note": "An approval row alone no longer runs (20 November): the executor re-verifies the stored passkey signature over the exact terms and refuses before any call to Airwallex (execution.refused_unsigned). A passkey of the attacker's own, written into the same file, still passes Purser.",
       "moved": 0,
       "evidence": {
-        "test": "test/zero-trust.test.ts > the matrix: every attack against the real code > database-approval-forged: An approval is written straight into the database, with terms and hashes that agree, and the payout is run.",
-        "record": "transfer.awaiting_airwallex_approval: IN_APPROVAL; verify: passkey approval P-0001: no stored signature",
+        "test": "test/zero-trust.test.ts > the matrix: every attack against the real code > database-approval-forged: An approval is written straight into the database, with terms and hashes that agree, and the payout is run; refused that way, the attacker also writes a passkey of its own into the database and signs with it.",
+        "record": "execution.refused_unsigned: P-0001: approved as a passkey approval, but no passkey signature is stored for its terms; with a passkey of its own: transfer.awaiting_airwallex_approval: IN_APPROVAL",
         "live": {
           "path": "docs/runs/2026-11-10-airwallex-two-locks.md",
           "fact": "On 10 November Airwallex held a transfer made over the API until a person approves it in Airwallex; it was not paid.",
@@ -3172,8 +3172,8 @@
     },
     {
       "id": "ledger-file-written",
-      "what": "Whoever can write the ledger file gets past Purser's own layers: the executor trusts its own database, so an approval written straight into it, with terms and hashes that agree, is run.",
-      "stillHolds": "Airwallex's own approval of transfers holds the payout once the company has switched it on, and verify finds the approval afterwards: no stored signature stands behind it (the attack database-approval-forged). With that approval switched off, nothing stops this payout before it is sent.",
+      "what": "Whoever can write the ledger file gets past Purser's own layers. Since 20 November an approval row alone is not enough (the executor re-verifies the stored passkey signatures over the exact terms, and refuses with execution.refused_unsigned), but whoever writes the file can also write a passkey of its own into it, sign with that, and lower the policy that says how many people must sign.",
+      "stillHolds": "Airwallex's own approval of transfers holds the payout once the company has switched it on (the attack database-approval-forged), and the passkey written into the file is in the passkeys table and the audit log for verify to show. With that approval switched off, nothing stops this payout before it is sent.",
       "source": "docs/security.md, accepted risks"
     },
     {
@@ -3208,7 +3208,7 @@
     }
   ],
   "generated": {
-    "date": "2026-11-19",
-    "commit": "d87c61f5"
+    "date": "2026-11-20",
+    "commit": "026df9844"
   }
 }
