@@ -4,6 +4,8 @@
 // signature itself. Its own checks (origin, hash, queue and rate limits, the enrolment code) only refuse early.
 
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
+import { ROBOTS_TXT, SITEMAP_XML, canonicalUrl, isIndexable } from "../../src/lib/siteIndex.js";
+import { DAY_CACHE, IMMUTABLE_CACHE } from "../../src/ui/assetVersions.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { normalizeCode } from "../../src/passkey/code.js";
 import { publicHealth, publicStatus, type Health } from "../../src/ops/publicHealth.js";
@@ -46,6 +48,11 @@ export interface Pages {
   llms?: string;
   /** /metal's mandate inspector: the record's read of 12 November, its answer without a chain call; absent: the inspector answers 503. */
   metalRecorded?: MetalRecorded | null;
+  /**
+   * The content version of each static file, by its path (/assets/<name>): the first 12 hex digits of its bytes' SHA-256,
+   * computed at build (src/relay/assets.ts). An answer to "<path>?v=<that version>" is cached for a year; absent in older bundles.
+   */
+  versions?: Record<string, string>;
   /** /proof.json: the runs, guarantees and agents' limits as data (src/redesign/agentData.ts); absent in older bundles. */
   proofJson?: string;
   /** /receipt-sample.json: one signed receipt, byte for byte, to verify offline; absent in older bundles. */
@@ -59,6 +66,8 @@ export interface Pages {
   security?: string;
   /** /docs, "Docs and API", under "More" too (src/redesign/docs.ts), no script; absent in a bundle built before it. */
   docs?: string;
+  /** /privacy, under "More" too (src/redesign/privacy.ts), no script; absent in a bundle built before it. */
+  privacy?: string;
   /** /status, under "More" too (src/redesign/status.ts): its one script reads this Worker's own /health; absent in a bundle built before it. */
   status?: string;
   /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger. */
@@ -107,7 +116,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; awxCalls?: string; claude?: string; security?: string; docs?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; verify?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; awxCalls?: string; claude?: string; security?: string; docs?: string; privacy?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; verify?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -187,13 +196,36 @@ const error = (status: number, message: string, extra: Record<string, unknown> =
 /** The icons a browser or a home screen asks for at the root (src/ui/brand/mark.ts). */
 const ROOT_ICONS = ["/favicon.ico", "/favicon.svg", "/apple-touch-icon.png", "/icon.png"];
 
-/** The pages; anything else is not ours. Ids in paths are checked, so nothing odd reaches the page script. */
+/**
+ * The pages; anything else is not ours. Ids in paths are checked, so nothing odd reaches the page script. A public page
+ * (src/lib/siteIndex.ts, the owner's choice of 20 Nov) is answered without the common noindex and names its canonical
+ * address in a Link header; every other answer keeps `x-robots-tag: noindex, nofollow`.
+ */
 export function pageResponse(req: Request, pages: Pages): Response | null {
+  const res = routePage(req, pages);
+  const url = new URL(req.url);
+  if (!res || res.status !== 200 || !isIndexable(url.pathname, url.search) || !(res.headers.get("content-type") ?? "").startsWith("text/html")) return res;
+  res.headers.delete("x-robots-tag");
+  res.headers.set("link", `<${canonicalUrl(url.pathname)}>; rel="canonical"`);
+  return res;
+}
+
+function routePage(req: Request, pages: Pages): Response | null {
   if (req.method !== "GET" && req.method !== "HEAD") return null;
-  const path = new URL(req.url).pathname;
+  const url = new URL(req.url);
+  const path = url.pathname;
   const page = (body: string, csp: string) => new Response(body, { headers: { ...PAGE_HEADERS, "content-security-policy": csp } });
+  // A static file asked for with its content version (?v=, src/ui/assetVersions.ts; Pages.versions, from the bytes at
+  // build) is cached for a year, immutable (site audit, 19 Nov, finding 6); without it, or with an old one, for a day.
+  const cacheFor = (assetPath: string) => {
+    const v = url.searchParams.get("v");
+    return v && pages.versions && Object.hasOwn(pages.versions, assetPath) && pages.versions[assetPath] === v ? IMMUTABLE_CACHE : DAY_CACHE;
+  };
   // How to report a vulnerability (RFC 9116; src/lib/securityTxt.ts).
   if (path === "/.well-known/security.txt") return new Response(SECURITY_TXT, { headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
+  // What crawlers may read, and the public pages' canonical addresses (src/lib/siteIndex.ts; the owner, 20 Nov).
+  if (path === "/robots.txt") return new Response(ROBOTS_TXT, { headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
+  if (path === "/sitemap.xml") return new Response(SITEMAP_XML, { headers: { ...COMMON_HEADERS, "content-type": "application/xml; charset=utf-8" } });
   // "/" is Home itself, so a reader without script (a link preview, a fetch) sees it too. With a query (?recorded,
   // ?autonomy, ?signin, ?dashboard…) it is the CFO dashboard's page. The CFO's viewer link keeps its key after the "#",
   // which never reaches a server: Home's script hands a device with a key to ?dashboard (src/redesign/home.ts).
@@ -230,6 +262,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/claude" && pages.claude && pages.csp.claude) return page(pages.claude, pages.csp.claude);
   if (path === "/security" && pages.security && pages.csp.security) return page(pages.security, pages.csp.security);
   if (path === "/docs" && pages.docs && pages.csp.docs) return page(pages.docs, pages.csp.docs);
+  if (path === "/privacy" && pages.privacy && pages.csp.privacy) return page(pages.privacy, pages.csp.privacy);
   if (path === "/status" && pages.status && pages.csp.status) return page(pages.status, pages.csp.status);
   if (path === "/t0" && pages.t0 && pages.csp.t0) return page(pages.t0, pages.csp.t0);
   if (path === "/books" && pages.books && pages.csp.books) return page(pages.books, pages.csp.books);
@@ -247,7 +280,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/assets/approve.js") return new Response(pages.client, { headers: { ...COMMON_HEADERS, "content-type": "text/javascript; charset=utf-8" } });
   if (path === "/assets/inter.woff2") {
     return new Response(Uint8Array.from(atob(pages.font), (c) => c.charCodeAt(0)), {
-      headers: { ...COMMON_HEADERS, "content-type": "font/woff2", "cache-control": "public, max-age=86400" },
+      headers: { ...COMMON_HEADERS, "content-type": "font/woff2", "cache-control": cacheFor(path) },
     });
   }
   // Purser's icons at the root too (/favicon.ico, /favicon.svg, /apple-touch-icon.png, /icon.png): a page with no icon
@@ -257,7 +290,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (imageName && Object.hasOwn(pages.images, imageName)) {
     const img = pages.images[imageName]!;
     return new Response(Uint8Array.from(atob(img.data), (c) => c.charCodeAt(0)), {
-      headers: { ...COMMON_HEADERS, "content-type": img.type, "cache-control": "public, max-age=86400" },
+      headers: { ...COMMON_HEADERS, "content-type": img.type, "cache-control": cacheFor(path) },
     });
   }
   if (path === "/assets/approve.css") return new Response(pages.css, { headers: { ...COMMON_HEADERS, "content-type": "text/css; charset=utf-8" } });

@@ -1,0 +1,36 @@
+{
+  "what": "SHA-256 of each approval page's served HTML (script and stylesheet inline) and its Content-Security-Policy, from the code at this commit. Purser Cloud's console: nonces and the deployment's origin, RP id and mail domain set to placeholders first. Check a live page: npm run verify-approval-page -- <url>.",
+  "pages": [
+    {
+      "name": "approve",
+      "path": "/approve/*",
+      "served_by": "relay",
+      "sha256": "148628ec3b2115e722276da7ed566b5a3a2ebcab4e62f5937a1a92dcfd60b910",
+      "csp": "default-src 'none'; script-src 'sha256-rr46CBeJo1vx8YmwPOrMzc8nLEB/u1A++u/Xmud1org='; style-src 'sha256-0NMV9FavlZv1cJvymw7o8DgfzG50GLtSgIuEgWy+hhc='; connect-src 'self'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "build": "CF1B-BC7E-08B5"
+    },
+    {
+      "name": "enrol",
+      "path": "/enrol",
+      "served_by": "relay",
+      "sha256": "fbf5e30574516d8519797fe1c949ae7fa34efc4b1ee6b676c41e9db58217a137",
+      "csp": "default-src 'none'; script-src 'sha256-rr46CBeJo1vx8YmwPOrMzc8nLEB/u1A++u/Xmud1org='; style-src 'sha256-0NMV9FavlZv1cJvymw7o8DgfzG50GLtSgIuEgWy+hhc='; connect-src 'self'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "build": "DF69-CD6D-3B59"
+    },
+    {
+      "name": "policy",
+      "path": "/policy",
+      "served_by": "relay",
+      "sha256": "8db3b36c5b9e402de3b0dc8423b184f0d6c71b7ed8a81432e0a8864d83b6c6f2",
+      "csp": "default-src 'none'; script-src 'sha256-rr46CBeJo1vx8YmwPOrMzc8nLEB/u1A++u/Xmud1org='; style-src 'sha256-0NMV9FavlZv1cJvymw7o8DgfzG50GLtSgIuEgWy+hhc='; connect-src 'self'; font-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "build": "9A84-A65E-5154"
+    },
+    {
+      "name": "cloud-console",
+      "path": "/",
+      "served_by": "cloud",
+      "sha256": "11ac88180622a0dd4d3711ce2ece213a769f99017b6652c1849cac1a871e26ac",
+      "csp": "default-src 'none'; script-src 'nonce-NONCE' 'self'; style-src 'nonce-NONCE'; img-src 'self' data: blob: https://kit11.max-31b.workers.dev; font-src 'self'; connect-src 'self'; frame-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"
+    }
+  ]
+}

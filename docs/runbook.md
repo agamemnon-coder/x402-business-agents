@@ -39,6 +39,8 @@ failed sign-ins, refusals or rate-limit hits, or a tamper alarm; `src/lib/securi
 | `reconciliation_difference` | The hourly reconciliation found a payment the ledger does not explain, or the reverse | Open the reconciliation's lines; check the payment at Airwallex or on the chain explorer; treat an unexplained outgoing payment as a compromise (below) | The next reconciliation is clean |
 | `reconciliation_stale` | No reconciliation for three hours | Check the runner is running and the keys still work (`npm run health`) | A reconciliation runs |
 | `action_stuck` | An action has been executing for over 10 minutes | Restart the runner: it resumes each action from its last finished step (B2) | The action finishes or fails |
+| `approved_terms_changed` (critical) | An approved payment's stored terms no longer hash to what the passkey signed; it is never paid | Pull the emergency stop, run `npm run verify`, find who wrote to the ledger | It expires; a new proposal needs a new approval |
+| `approved_blocked` | An approved payment was refused by its executor before it began (the EUR floor, a hold, a changed payee; `execution.blocked` has the reason and time). Nothing was paid and a restart does not retry it; the dashboard and approval page show it BLOCKED_NEEDS_REVIEW. Critical if the refusal was an unsigned approval or a tampered ledger | Fix the cause if it was a mistake, then pay by a new proposal and Face ID; or close it: `npm run approve -- <id> <hash prefix> --reject` | It expires or is closed |
 | `hold_stale` | A spend hold older than an hour | Usually a crashed payment: restart the runner; it settles or releases the hold | The hold is settled or released |
 | `airwallex_disagrees` | An Airwallex webhook the ledger cannot explain (a payout or conversion Purser did not make, a card live while frozen), in the last day | Treat as a possible compromise of the Airwallex account: check it in the Airwallex web app; pull the emergency stop if a payout is unknown | A day passes with no new disagreement |
 | `passkey_failures_spike` | 10 or more refused passkey submissions in the last hour, normal-use refusals not counted (a double tap, an option already decided, a looser change asked on the phone). Refusals are counted per hour and reason code in `passkey_failures`, never logged with the sender's text; `/metrics` shows `passkey_failures_1h`, `passkey_failures_24h` and one line per code | Nothing was approved by them. Check the codes: `bad_signature` / `unknown_passkey` in bulk means someone is trying | The last hour has fewer than 10 |
@@ -49,8 +51,11 @@ failed sign-ins, refusals or rate-limit hits, or a tamper alarm; `src/lib/securi
 | `passkey_enrol_attempts_day` | 5 or more failed enrolments in a day, spread out under the hourly rule | As `passkey_enrol_attempts` | The last day has fewer than 5 |
 | `passkey_failures_week` | 20 or more bad signatures, unknown or revoked passkeys (and similar) in 7 days: a slow, steady stream | Check the per-code lines in `/metrics`; revoke and re-enrol a passkey that keeps failing | The last 7 days have fewer than 20 |
 | `passkey_failures_above_baseline` | One of those types in the last day is at least 5 and at least 3 times its own average day over the 29 days before (counts are kept 30 days) | The alert names the type and its usual level; a jump is new behaviour, look at it | The last day is back under 3 times the usual |
+| `audit_checkpoint_mismatch` (critical) | With a checkpoint key configured: the audit log no longer matches its latest signed checkpoint (rows cut off, a row rewritten and rehashed, a money row no checkpoint covers, a checkpoint replayed or signed by an unknown or rotated-out key). Payments, loosening policy changes and key enrolments are refused | Pull the emergency stop (it still runs), stop the runner, run `npm run verify-audit` and read each `FAIL` line; see "The audit log does not match its checkpoint" below | The ledger matches again (restored, or a person accepted the tail) |
+| `audit_checkpoint_refused` (critical) | A payment, policy change or key enrolment was refused for that, in the last day | As above | A day passes with no new refusal |
+| `audit_checkpoint_config` (critical) | A checkpoint key is configured but cannot be used (missing file, readable by others, not Ed25519) | Fix the file (`chmod 600`) or the variable; nothing sensitive runs until then | The key loads |
 
-Tested in the red team against stand-ins: `velocity_stop`; not yet triggered live. Tested: all codes (`test/health.test.ts`, `test/airwallex-events.test.ts`, `test/passkey-failures.test.ts`).
+Tested in the red team against stand-ins: `velocity_stop`; not yet triggered live. Tested: all codes (`test/health.test.ts`, `test/airwallex-events.test.ts`, `test/passkey-failures.test.ts`, `test/approved-blocked.test.ts`).
 
 ## The emergency stop
 
@@ -116,10 +121,60 @@ exercised live.
 | The Airwallex API key | `.env` | Make a new scoped key in Airwallex ([airwallex.md](airwallex.md#the-scoped-key)), put it in `.env`, `npm run health`, delete the old key in Airwallex | Not yet exercised |
 | The Airwallex webhook signing secret | Keys dir, the Worker's secrets | `npm run cards -- webhook --replace` (new subscription first, secret to relay and runner, then the old one deleted) | Exercised live (30 October) |
 | The compliance key (send policy) | Keys dir; in production a signer of its own | Cancel every unused decision (`cancel`, signed by the old key), then deploy a new contract with the new key and move the funds by policy | Cancel exercised live; rotation not yet exercised |
+| The audit checkpoint key (20 November) | Keys dir, named by `PURSER_CHECKPOINT_KEY_FILE`; never the ledger | `npm run verify-audit -- rotate --new-key <file>` ("The audit log does not match its checkpoint", below) | Tested (`test/audit-checkpoints.test.ts`); not deployed |
 | The Metal RPC credential | `.env` | Make a new one in the Metal console, put it in `.env`, restart | Not yet exercised |
 
 Never put a key in chat, a log, an issue or git. The secret scan runs before every commit, and gitleaks runs in CI on
 the whole history.
+
+### The audit log does not match its checkpoint (added 20 November)
+
+Signed audit checkpoints (outside audit 1.4, [security.md](security.md#signed-audit-checkpoints-20-november-outside-audit-14)).
+**Tested** against the attacks in `test/audit-checkpoints.test.ts`; **not yet exercised** on a live runner, and not
+deployed: no runner has `PURSER_CHECKPOINT_KEY_FILE` set yet.
+
+**Switching it on** (operator, runner stopped):
+
+1. `npm run verify-audit -- keygen --out <keys dir>/audit-checkpoint.pem` makes an Ed25519 key, mode 0600. It refuses
+   a path inside this repository. Keep it with the runner's other keys, never in the ledger or in git. Write down the
+   printed public key and key id where an auditor can read them (they pin it with `--trust`).
+2. Set `PURSER_CHECKPOINT_KEY_FILE` to that file. Optional: `PURSER_CHECKPOINT_FILE` (default
+   `<ledger>.checkpoints.jsonl`; put it on another disk, or copy it off the host regularly),
+   `PURSER_CHECKPOINT_EVERY_MS` (default 300000), `PURSER_CHECKPOINT_TRUST` (more pinned public keys, comma-separated).
+3. On a ledger that already has rows: `npm run verify` (the chain must verify), then `npm run verify-audit -- init`.
+   The first checkpoint trusts the rows as they are. A ledger made fresh with the key set needs nothing.
+4. Start the runner. It prints `audit    checkpoints signed with key <id> to <file>…`.
+
+**When `audit_checkpoint_mismatch` is raised:**
+
+1. Pull the emergency stop (a policy change that only tightens still runs). Stop the runner.
+2. Copy the ledger, its `-wal` and the checkpoint file aside as evidence, before anything else.
+3. `npm run verify-audit` (add `--known <copy>` with any older copy of the checkpoint file you kept). Each `FAIL`
+   line names what was found:
+   - `truncated`, `rewritten`, `replay`, `bad_signature`, `unknown_key`, `rotated_out_key`, `untrusted`: someone wrote
+     to the ledger or the checkpoint file. Treat it as a compromise of the runner host: rotate every key on it
+     ("A key leaked or lost", above), restore the ledger from a backup that verifies against the checkpoint file, and
+     compare it with Airwallex and the chain (`npm run reconcile`) before paying from it.
+   - `uncovered_money` only: a money row that no checkpoint covers and no signed intent announced. Either it was
+     appended outside Purser's code, or the checkpoint file could not be written when it was recorded (a full disk)
+     and its process died before its next checkpoint (a plain crash is vouched for by the intent and raises nothing).
+     Read the rows after the latest checkpoint
+     (`npm run verify-log` shows the chain; the dashboard's audit view the rows), compare them with Airwallex and the
+     chain. Only if each one is a payment that really happened: `npm run verify-audit -- checkpoint --accept-tail`
+     signs them, and the alarm clears.
+   - `key_rotated`: this runner still has the old key after a rotation; start it with the new one.
+4. A ledger restored from a backup older than the latest checkpoint is refused (`truncated`): keep the old checkpoint
+   file as evidence, move it aside, and start a new one with `npm run verify-audit -- init` once the restored ledger
+   has been checked.
+
+**Rotating the checkpoint key** (planned, or when the key may have leaked), runner stopped:
+
+1. `npm run verify-audit -- keygen --out <keys dir>/audit-checkpoint-2.pem`.
+2. `npm run verify-audit -- rotate --new-key <keys dir>/audit-checkpoint-2.pem`: a checkpoint signed with the old key
+   that introduces the new one, then one signed with the new one. It is refused if the ledger does not match.
+3. Set `PURSER_CHECKPOINT_KEY_FILE` to the new file, start the runner, destroy the old key. A checkpoint the old key
+   signs after this is refused (`rotated_out_key`). Auditors who pinned the old key follow the rotation; give them the
+   new public key too.
 
 ### A leaked key: the first hour (added 2 November)
 
@@ -301,6 +356,8 @@ How to tell: `npm run health` fails on the RPC or the facilitator; the facilitat
      versions, finality certificates and, with keys, Airwallex.
    - `npm run verify-log -- --anchor <seq:hash>` checks nothing was cut off since an anchor printed earlier (the
      audit report prints one).
+   - `npm run verify-audit` checks the log against its signed checkpoints, when a checkpoint key is configured
+     ("The audit log does not match its checkpoint", above).
 3. **Reconcile:** `npm run reconcile` compares the ledger with Airwallex and the chain now, instead of waiting for
    the hourly round.
 4. **Report:** `npm run audit:report` makes the PDF for the auditor: decisions, refusals, finality, and the anchor.

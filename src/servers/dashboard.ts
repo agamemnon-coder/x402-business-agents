@@ -45,6 +45,7 @@ import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
 import { runsPage } from "../redesign/runs.js";
 import { securityPage } from "../redesign/security.js";
 import { docsPage } from "../redesign/docs.js";
+import { privacyPage } from "../redesign/privacy.js";
 import { statusPage } from "../redesign/status.js";
 import { agentPages } from "../redesign/agents.js";
 import { monthEndPack, PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
@@ -93,7 +94,8 @@ export const DOWNLOADS: Record<string, { type: string; body: Buffer }> = (() => 
 })();
 /** The sponsors' official logos (src/ui/logos/README.md), served as /assets/<name> for the landing's "Built on". */
 export const LOGOS: Record<string, { type: string; body: Buffer }> = {
-  "logo-airwallex.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/airwallex.png", import.meta.url)) },
+  // Site audit, 19 Nov: the official wordmark scaled to 306 x 42 (3x the badge), resized only; the original stays in src/ui/logos/.
+  "logo-airwallex.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/airwallex-306x42.png", import.meta.url)) },
   "logo-metal.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/logos/metal.svg", import.meta.url)) },
   "logo-claude.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/claude.png", import.meta.url)) },
   // Claude's own variant for light grounds (Anthropic press kit, docs/assets/logos/SOURCES.md): Home's white tiles.
@@ -302,6 +304,9 @@ export const SECURITY_CSP = styleOnlyCsp(SECURITY_PAGE);
 export const DOCS_PAGE = docsPage();
 // /docs carries one small script since 14 Nov: the copy buttons (src/redesign/runs.ts COPY_JS).
 export const DOCS_CSP = DOCS_PAGE.includes("<script>") ? styleAndScriptCsp(DOCS_PAGE) : styleOnlyCsp(DOCS_PAGE);
+/** /privacy (20 Nov), under "More" too (src/redesign/privacy.ts): no script, so a style-only policy. */
+export const PRIVACY_PAGE = privacyPage();
+export const PRIVACY_CSP = styleOnlyCsp(PRIVACY_PAGE);
 /**
  * /status (12 Nov), under "More" too (src/redesign/status.ts). Its one small script reads the site's own /health, so its
  * policy names that script and the style by hash and allows requests to the site itself only (connect-src 'self').
@@ -330,7 +335,7 @@ export const RUNS_CSP = styleAndScriptCsp(RUNS_PAGE);
 export const AGENT_PAGES: Record<string, string> = agentPages();
 export const AGENT_CSPS: Record<string, string> = Object.fromEntries(Object.entries(AGENT_PAGES).map(([id, html]) => [id, styleOnlyCsp(html)]));
 /** The clean 404, for any address that is not a page; its links and assets absolute, since it answers at any depth. */
-export const NOT_FOUND_PAGE = notFoundPage().replace(/(href|src)="(?!https?:|#|\/)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
+export const NOT_FOUND_PAGE = notFoundPage().replace(/(href|src)="(?!https?:|#|\/|mailto:)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
 export const NOT_FOUND_CSP = styleOnlyCsp(NOT_FOUND_PAGE);
 /** The public pages of the redesign (src/redesign/): Home, Watch and Proof, from the recorded agent run. */
 export const HOME_PAGE = homePage();
@@ -501,6 +506,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/docs", (_req, res) => {
     res.setHeader("Content-Security-Policy", DOCS_CSP);
     res.type("html").send(DOCS_PAGE);
+  });
+  app.get("/privacy", (_req, res) => {
+    res.setHeader("Content-Security-Policy", PRIVACY_CSP);
+    res.type("html").send(PRIVACY_PAGE);
   });
   // /status as the relay serves it. This server's own /health (below) has the runner's shape, not the relay's, so here
   // the page says the status could not be read and links to /health: it never reads another shape as good.

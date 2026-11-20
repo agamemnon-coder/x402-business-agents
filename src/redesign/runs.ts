@@ -509,6 +509,49 @@ function extraRuns(): RunRow[] {
     });
   }
 
+  // 20 Nov: the same money-moving create sent again under one request_id (docs/runs/2026-11-20-airwallex-replay.md).
+  type Rp = {
+    ran_at: string; finished_at: string; budget: { approved: number | null; used: number }; errors: string[];
+    cases: { kind: string; label: string; first: { id: string | null }; one_object: boolean; after: string | null }[];
+    summary: { cases: number; one_object: number; repeats_sent: number; repeats_refused: number; duplicate_codes_seen: string[] };
+  };
+  const RP_FILE = "docs/runs/2026-11-20-airwallex-replay.json", RP_LOG = "docs/runs/2026-11-20-airwallex-replay.md";
+  const rp = has(RP_FILE) ? readJson<Rp>(RP_FILE) : null;
+  if (rp && rp.cases.length && !rp.errors.length) {
+    const s = rp.summary, transfers = rp.cases.filter((c) => c.kind === "transfer");
+    out.push({
+      key: "replay-1", iso: rp.finished_at, date: day(rp.ran_at), kind: "sandbox", partners: ["Airwallex"],
+      name: "The same payment sent twice: Airwallex keeps one",
+      line: `${countOf(s.repeats_refused, s.repeats_sent)} repeated creates refused by Airwallex; one object per request_id. Transfers PAID by the sandbox's simulation; no passkey.`,
+      rate: { done: s.one_object, of: s.cases, what: "creates left with one object under their request_id" },
+      title: "Airwallex replay", rails: "Airwallex sandbox (SWIFT transfers, FX conversions, batch transfers)",
+      what: `${pl(transfers.length, "transfer")} of EUR 1.00, one USD to EUR 1.00 conversion and one empty batch, each created, then created again under the same request_id, and (transfers and conversion) again with one cent more; then the request_id looked up. Airwallex answered ${s.duplicate_codes_seen.join(", ")}. Purser's routed rail read two of those codes as a refusal that moved nothing; fixed the same day.`,
+      checks: `${countOf(s.one_object, s.cases)} creates have exactly one object under their request_id, with the first terms; transfers then PAID by the sandbox's simulation and read back. ${rp.budget.used} Airwallex calls${rp.budget.approved ? `, within the budget of ${rp.budget.approved}` : ""}.`,
+      money: "Sandbox · test money",
+      ids: transfers.filter((c) => c.first.id).slice(0, 2).map((c, i) => ({ label: `Transfer ${i + 1}`, value: c.first.id! })),
+      files: [{ label: "record (JSON)", href: blob(RP_FILE) }, { label: "run log", href: blob(RP_LOG) }],
+    });
+  }
+
+  // 20 Nov: the mandate refusals the 19 Nov series did not send (docs/runs/2026-11-20-alta-refusals.md).
+  type Ar = { ran_at: string; finished_at: string; summary: { payments_paid: number; paid_total: string; refusals_sent: number; refused_before_sending: number; refused_on_chain: number; reasons: string[]; unexpected: number }; steps: { kind: string; outcome: string; reason?: string; tx: string | null }[] };
+  const AR_FILE = "docs/runs/2026-11-20-alta-refusals.json", AR_LOG = "docs/runs/2026-11-20-alta-refusals.md";
+  const ar = has(AR_FILE) ? readJson<Ar>(AR_FILE) : null;
+  if (ar && ar.summary.refusals_sent && !ar.summary.unexpected) {
+    const s = ar.summary, refused = ar.steps.filter((x) => x.outcome === "refused on chain" && x.tx);
+    out.push({
+      key: "alta-refusals-1", iso: ar.finished_at, date: day(ar.ran_at), kind: "testnet", partners: ["Alta"],
+      name: "Four more ways Alta refuses an agent's payment",
+      line: `${countOf(s.refused_on_chain, s.refusals_sent)} refusals sent were refused on chain (${s.reasons.join(", ")}), each moving 0.00; ${pl(s.payments_paid, "payment")} inside the mandates.`,
+      rate: { done: s.refused_on_chain, of: s.refusals_sent, what: "refusals sent, refused on chain" },
+      title: "Alta refusals", rails: "Alta testnet (mandate payments)",
+      what: `A fresh Alta account and three agent mandates: one allowing 4 payments, then revoked; one starting a day later; one expiring 3 minutes after it was issued. A payment over the count, after the revoke, before the start and after the expiry was each sent to the chain on purpose; Alta's mandate refused each in a transaction of its own.${s.refused_before_sending ? ` A payment signed by a key that is not the mandate's was refused by Alta's pinned command-line tool before signing, so it never reached the chain.` : ""}`,
+      checks: `Each refusal moved 0.00 for the payee and the account, as the record's balance deltas show; ${pl(s.payments_paid, "payment")} inside the mandates (${s.paid_total} test USD) paid and read back.`, money: "Testnet · test money",
+      ids: refused.map((x) => tx(`Refused (${x.reason})`, x.tx!)),
+      files: [{ label: "record (JSON)", href: blob(AR_FILE) }, { label: "run log", href: blob(AR_LOG) }],
+    });
+  }
+
   // The soaks (19 and 20 Nov so far, src/airwallex/soakRecords.ts): signed payments at the Airwallex sandbox, each read
   // back; FX conversions; one-cent changes refused before any create (docs/runs/<date>-airwallex-soak.md). One row each,
   // every figure from its record. The 19 Nov soak keeps its key, soak-1 (its anchor), the next soak-2, and so on.

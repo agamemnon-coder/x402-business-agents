@@ -6,11 +6,18 @@ import { PRICING_LABEL, PRICING_LINE } from "./pricing.js";
 export const PRODUCT = "Purser";
 
 /**
+ * The address for a pilot or a partnership (the owner, 20 Nov: public on purpose), on one line at the very bottom of the
+ * site's footer (src/redesign/ui.ts footer) and behind the design-partner link.
+ */
+export const CONTACT_EMAIL = "max.geurtsen@outlook.com";
+export const CONTACT_LINE = "Pilot or partnership?";
+/**
  * Where a company that wants to use Purser goes (review 9 Nov: no call to action anywhere). Empty until Max gives the
  * address; while empty, nothing shows. Once set (an https: or mailto: URL), the link shows on Home, on /try/sign's
- * closing card and, by hand, in the README under the badges (test/design-partner.test.ts keeps the README in step).
+ * closing card and, by hand, in the README (its Links; test/design-partner.test.ts keeps the README in step).
+ * Set on 20 Nov (the owner): the contact address above.
  */
-export const DESIGN_PARTNER_URL = "";
+export const DESIGN_PARTNER_URL = `mailto:${CONTACT_EMAIL}`;
 export const DESIGN_PARTNER_LABEL = "Become a design partner";
 /** The design-partner link as HTML, or "" while there is no valid address. */
 export function designPartnerHtml(url: string = DESIGN_PARTNER_URL): string {

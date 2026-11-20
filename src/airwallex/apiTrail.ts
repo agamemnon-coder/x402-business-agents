@@ -359,6 +359,15 @@ export function trailRuns(): TrailRun[] {
     runs.push({ key: "bills-1119", iso: str(calls[0]?.at)!, title: "Paid invoices as bills in Airwallex Spend (accounts payable)", record: "docs/runs/2026-11-19-airwallex-bills.json", alsoReads: ["docs/runs/2026-11-19-airwallex-bills.md"], calls, checks: [] });
   }
 
+  // 20 Nov: the same create sent again under one request_id (npm run airwallex:replay, src/proof/awxReplay.ts). Its call
+  // lines carry Airwallex's status and error code; each repeat is tagged with what Airwallex answered.
+  const rp = readJson("docs/runs/2026-11-20-airwallex-replay.json");
+  if (rp) {
+    const lines = arr(rp.calls), calls = lineCalls(rp);
+    calls.forEach((c, i) => { const l = lines[i]!; if (Number(l.status) >= 400) c.outcome = `${String(l.status)} ${str(l.code) ?? ""}`.trim(); });
+    runs.push({ key: "replay-1120", iso: str(calls[0]?.at)!, title: "The same create sent again under one request_id: Airwallex keeps one", record: "docs/runs/2026-11-20-airwallex-replay.json", alsoReads: ["docs/runs/2026-11-20-airwallex-replay.md"], calls, checks: [] });
+  }
+
   // The soaks (npm run airwallex:soak; 19 and 20 Nov so far, src/airwallex/soakRecords.ts): signed payments created,
   // taken to PAID by the sandbox's simulation and read back, some with an FX conversion first; one-cent changes refused
   // before any create. Each record itemises its calls; each create is tagged with its payment, in payment order, and

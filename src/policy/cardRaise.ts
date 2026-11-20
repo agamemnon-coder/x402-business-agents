@@ -23,6 +23,7 @@ import { fromCents, toCents } from "../lib/money.js";
 import { termsHash, type Terms } from "../lib/terms.js";
 import { approvalHashOf } from "../metal/ownersExecute.js";
 import { passkeyById } from "../passkey/ledger.js";
+import { sealRefusal } from "../passkey/seal.js";
 import { assertionSha256, verifyApprovalSignature } from "../passkey/webauthn.js";
 
 export type LimitPart = "per_tx" | "monthly";
@@ -53,7 +54,7 @@ async function signatureRefusal(db: DB, p: ProposalRow): Promise<string | null> 
     { assertion_sha256: string; credential_id: string; terms_sha256: string; assertion_json: string; verified_at: string }[];
   for (const s of stored) {
     const pk = passkeyById(db, s.credential_id);
-    if (!pk || s.terms_sha256 !== recomputed || Date.parse(pk.enrolled_at) > Date.parse(s.verified_at)) continue;
+    if (!pk || s.terms_sha256 !== recomputed || Date.parse(pk.enrolled_at) > Date.parse(s.verified_at) || sealRefusal(db, pk)) continue;
     let response: AuthenticationResponseJSON;
     try {
       response = JSON.parse(s.assertion_json) as AuthenticationResponseJSON;

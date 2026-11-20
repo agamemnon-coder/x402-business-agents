@@ -422,9 +422,10 @@ describe("FX rates read the right way round (live, 14 Nov)", () => {
 });
 
 describe("the tab's look: the official logo, the Overview card", () => {
-  it("embeds the Airwallex wordmark byte for byte", async () => {
+  // Site audit, 19 Nov (finding 4): the site's file, the official wordmark scaled to 306 x 42 (src/ui/logos/README.md).
+  it("embeds the site's Airwallex wordmark byte for byte", async () => {
     const { AIRWALLEX_LOGO_DATA_URL } = await import("../cloud/src/awxLogo.gen.js");
-    const file = readFileSync(new URL("../src/ui/logos/airwallex.png", import.meta.url));
+    const file = readFileSync(new URL("../src/ui/logos/airwallex-306x42.png", import.meta.url));
     expect(AIRWALLEX_LOGO_DATA_URL).toBe(`data:image/png;base64,${file.toString("base64")}`);
   });
   it("puts the live card on the Overview, labelled apart from the demo month, and the logo in the console's script", async () => {

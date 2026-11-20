@@ -41,6 +41,9 @@ describe("the judge-facing READMEs' shared header", () => {
     const glance = read("docs/README.md").split("\n").filter((l) => l.startsWith("| **")).join("\n");
     const s = stripFigures();
     expect(glance).toContain(`**${s.tests.passed.toLocaleString("en-US")} tests passing**, ${s.tests.failed} failed`);
+    // Which run (audit, 20 Nov): the full suite's, on the summary's commit; coverage is a separate run.
+    const summary = JSON.parse(read("docs/assets/test-summary.json")) as { commit: string };
+    expect(glance).toContain(`in the last full run of the suite, on commit \`${summary.commit}\` (coverage is a separate run: [evidence/coverage.md](evidence/coverage.md))`);
     expect(glance).toContain(`**${liveRunCount()} live runs**, the last on `);
     expect(glance).toContain(`**${s.verification.passed} checks passed**, ${s.verification.couldNotRun} could not run here, ${s.verification.failed} failed`);
     expect(glance).toContain(`(${s.verification.file.replace("docs/", "").replace(".json", ".md")})`);

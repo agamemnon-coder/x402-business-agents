@@ -30,8 +30,11 @@ import { clearingDeployment } from "../metal/clearing.js";
 import { rpcUrl } from "../metal/network.js";
 import { finalityChecks } from "../metal/finality.js";
 import { redactSecrets } from "../lib/redact.js";
+import { loadRunnerSealKey } from "../passkey/sealKeyFile.js";
 
 const db = openDb();
+// The enrolment seal key, from outside the ledger (src/passkey/sealKeyFile.ts): a signature by an unsealed passkey fails.
+loadRunnerSealKey();
 let failed = 0;
 const line = (ok: boolean, what: string, detail = "") => {
   if (!ok) failed++;

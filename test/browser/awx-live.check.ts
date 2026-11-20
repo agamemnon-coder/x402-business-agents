@@ -101,7 +101,7 @@ try {
     // Rates: in the pair's own terms, buy side named.
     const rates = await page.$$eval(".aw-rates .awtile", (n) => n.map((x) => [x.querySelector(".awtl")!.textContent, x.querySelector("b")!.textContent]));
     ok(JSON.stringify(rates) === JSON.stringify([["Sell USD, buy EUR", "1 EUR = 1.116374 USD"], ["Sell GBP, buy EUR", "1 EUR = 0.844602 GBP"], ["Sell EUR, buy USD", "1 EUR = 1.08768 USD"]]), `${name}: the rates read the right way round (${JSON.stringify(rates)})`);
-    ok(await page.$eval(".awhead img.awlogo", (i) => (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth === 2435), `${name}: the official logo, its own size, in the header`);
+    ok(await page.$eval(".awhead img.awlogo", (i) => (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth === 306), `${name}: the official logo, resized only to 306 x 42 (src/ui/builtOn.ts), in the header`);
     ok(st.events === "live", `${name}: the events feed shows the replayed webhooks`);
     const evIds = await page.$$eval(".aw-events code.awid", (cs) => cs.map((c) => c.textContent));
     ok(evIds.includes("4140dee2-6373-4eb4-a71f-bf69130f96a7"), `${name}: each event's Airwallex object id in full`);

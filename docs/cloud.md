@@ -185,6 +185,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/export/staged/{id}` | admin | A staged export's state, with a fresh 15-minute link to its manifest while it is ready. Needs admin and read. |
 | `GET /v1/export/download/{id}/{part}` | anyone | With its signed link only: one part (or the manifest) of a staged export, by its signed link (no key): the signature in the `x-purser-export-link` header, or in the query; each link is good once, for 15 minutes. The manifest carries a signed link per part. |
 | `POST /v1/close` | admin | Close the company's account: access ends; records are kept until the retention day, then purged. |
+| `POST /v1/offboarding` | admin | A signed-in owner only, passkey checked in the last five minutes (never a key): offboard the company after downloading its staged export (`{ confirm: <the company's address>, export_id }`). The account closes; names become pseudonyms; e-mails, passkeys, sessions, keys and message targets go; the bookkeeping is kept until the retention day, then purged ([privacy/retention.md](privacy/retention.md)). |
 | `GET /v1/engine` | read | Where the company's engine stands: `mode` (`test_money`), the approval passkey, every active approval key with whose it is and its `cooling_until` (`passkeys`), the caller's own (`my_passkey`), how long a new key cools off here (`cooling_off`), the stand-in bank's balances, whether both chains verify, who reads (`reader`: `claude` under the caps or `parser`), who decides (`agents`: `code` until the agents join), and what this company's Claude calls cost so far against its cap (`spent_micros`, `cap_micros`, micro-USD at list price). |
 | `POST /v1/engine/documents` | admin | Upload a supplier invoice: `{ filename, mime?, base64 }`, at most 15 MB once decoded (22,000,000 bytes of body). Filed, read and checked; answers `{ kind, sha256, invoice }`, or 400 with the inbox's reason when it refuses the file (not a PDF, too large). |
 | `GET /v1/engine/invoices` | read | The engine's invoices: status, whether it can be paid, what the checks found, its proposal; `{ items }`. |
@@ -413,6 +414,14 @@ at once all read the final total and every one was refused; it now counts and re
 - **Closing:** `POST /v1/close` ends access at once and sets the purge day to seven full years after the year of the
   last record. The daily job (`scheduled`) removes a closed company's rows and documents after that day, leaving a
   tombstone.
+- **Offboarding:** `POST /v1/offboarding` `{ confirm, export_id }` is the complete way out: a signed-in owner whose
+  passkey was checked in the last five minutes (always, whatever the step-up setting; never a key), after downloading a
+  staged export. It closes the company as above and, in the same write, replaces every person's name with a pseudonym
+  and removes their e-mail, passkeys, linked sign-in accounts, sessions, invites and recovery requests, and the webhook,
+  alert targets and chat hooks. The bookkeeping and its documents are kept unchanged until the purge day, so both hash
+  chains still verify. Recorded in the company's security events (`company.offboarded`) and the platform's security
+  log. The rules: [privacy/retention.md](privacy/retention.md); what is stored where: [privacy/data-inventory.md](privacy/data-inventory.md).
+  Tests: `test/cloud-offboarding.test.ts`.
 
 ## Going live: what Max does
 

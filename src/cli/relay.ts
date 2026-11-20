@@ -22,7 +22,9 @@ import { recoverHolds } from "../policy/holds.js";
 import { recoverRecordPulls } from "../agents/sourcing.js";
 import { resumeInterrupted } from "../policy/saga.js";
 import { health, RECONCILE_EVERY_MS } from "../ops/health.js";
+import { checkpointStatus, checkpointTick } from "../audit/checkpointer.js";
 import { openEnrolment } from "../passkey/ledger.js";
+import { loadRunnerSealKey } from "../passkey/sealKeyFile.js";
 import { enrolLink, relayConfig, viewerLink, type RelayConfig, mfaOn } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
 import { RelayRunner } from "../relay/runner.js";
@@ -33,7 +35,7 @@ import { pollQuarantine } from "../policy/quarantine.js";
 import { LiveReceivePolicy } from "../metal/receivePolicy.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { assertRoleKeys } from "../airwallex/keyScopes.js";
-import { cardPollMs, cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
+import { cardPollMs, cardRows, pollCardTransactions, recoverCardWindows, syncCardsIfChanged } from "../policy/cards.js";
 import { handleAirwallexHook } from "../policy/cardHooks.js";
 import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -62,6 +64,8 @@ if (!process.env.KIT11_DB) {
 const group = await asWorldGroup();
 const db = openDb();
 holdRunnerLock(db, db.name, "relay", group, osProcesses);
+// The enrolment seal key, from outside the ledger (src/passkey/sealKeyFile.ts): only sealed passkeys decide anything.
+loadRunnerSealKey();
 
 const args = process.argv.slice(2);
 const once = args.includes("--once");
@@ -84,6 +88,8 @@ console.log(`relay    ${cfg.url}/  (approvals ${cfg.url}/approve/<id>; ledger ${
 const signer = displayKey(keyPath("relay-display-key.pem"));
 console.log(`viewer   ${viewerLink(cfg, signer.publicSpki)}  (open once on each device: it unlocks the dashboard and pins this runner's key; it approves nothing${mfaOn() ? "; with MFA on it reads only and expires after next week: the CFO's actions need a passkey sign-in" : ""})`);
 console.log(`key      ${displayKeyFingerprint(signer.publicSpki)}  (this runner's key; each run has its own, and a phone that knew another asks once before it uses this one)`);
+// Outside audit 1.4: signed audit checkpoints (src/audit/checkpointer.ts), on when PURSER_CHECKPOINT_KEY_FILE is set.
+console.log(`audit    checkpoints ${checkpointStatus(db)}`);
 // D20: under MFA the viewer link changes every Monday; print the new one, so devices can renew without a restart.
 if (mfaOn()) {
   let shown = viewerLink(cfg, signer.publicSpki);
@@ -163,10 +169,18 @@ if (issuing) console.log(`cards    ${pollEvery === null ? "poll off: card transa
 let cardsAt = 0;
 let polledAt = 0;
 let cardsError = "";
+// Card drill (20 Nov): at the start, every card is read back from Airwallex once and any purchase window a process left
+// open when it died is closed, so a card thawed before a crash is frozen now. Retried at each tick until it succeeds.
+let cardsRecovered = false;
 async function cardsTick(): Promise<void> {
   if (!issuing || cardRows(db).length === 0 || Date.now() - cardsAt < 5000) return;
   cardsAt = Date.now();
   try {
+    if (!cardsRecovered) {
+      const r = await recoverCardWindows(db, issuing.rail);
+      cardsRecovered = true;
+      if (r.closed.length || r.changed.length) console.log(`${stamp()} cards    at start: ${r.closed.length ? `window(s) left open closed: ${r.closed.join(", ")}; ` : ""}synced at Airwallex: ${r.changed.join(", ") || "none"}`);
+    }
     const synced = await syncCardsIfChanged(db, issuing.rail);
     if (synced.length) console.log(`${stamp()} cards    limits updated at Airwallex: ${synced.join(", ")}`);
     const fresh = pollEvery !== null && Date.now() - polledAt >= pollEvery ? (polledAt = Date.now(), await pollCardTransactions(db, issuing.rail)) : 0;
@@ -349,8 +363,20 @@ function t0Tick(): void {
   void t0SinkFor(db, { log: (line) => console.log(`${stamp()} ${line}`) }).afterMoney();
 }
 
+// The scheduled audit checkpoint (outside audit 1.4): every PURSER_CHECKPOINT_EVERY_MS, besides the one after each
+// money action. A refusal (the ledger no longer matches) is logged; /health already carries the alarm.
+function auditCheckpointTick(): void {
+  try {
+    const r = checkpointTick(db);
+    if (r && !r.ok) console.error(`${stamp()} ALARM    audit checkpoint not written: ${redactSecrets(r.reason).slice(0, 300)}`);
+  } catch (e) {
+    console.error(`${stamp()} ALARM    audit checkpoint failed: ${redactSecrets((e as Error).message).slice(0, 300)}`);
+  }
+}
+
 let lastError = "";
 while (!stopping) {
+  auditCheckpointTick();
   alarmsTick();
   await cardsTick();
   await quarantineTick();

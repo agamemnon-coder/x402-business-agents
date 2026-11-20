@@ -28,6 +28,8 @@ maintainer is responsible for every merged change, whoever drafted it.
 
 Conduct reports go to the maintainer, as the [code of conduct](CODE_OF_CONDUCT.md) says.
 
+[.github/CODEOWNERS](.github/CODEOWNERS) (20 November 2026) names the code owner of the money-moving, approval and passkey, security, cryptography, deployment and migration paths: today the one maintainer for all of them, so a second maintainer is still needed before any of those changes gets a second human review.
+
 ## How a change is proposed, reviewed and merged
 
 1. **Propose.** A bug or an idea is an issue (the [templates](.github/ISSUE_TEMPLATE/)); a change is a pull request

@@ -30,6 +30,7 @@ describe("the site's header, byte for byte as before", () => {
     expect(sha(CSS)).toBe(snap.cssSha256);
     expect(sha(NAV_CSS)).toBe(snap.navCssSha256);
     expect(sha(MORE_CSS)).toBe(snap.moreCssSha256);
+    // 20 Nov: pageSha256 renewed: "Privacy" joined the More menu and the footer (outside audit, finding 3.4).
     // 15 Nov: pageSha256 renewed: "Agents negotiate" left the More menu (Max; /try/negotiate has a card on Home).
     // 14 Nov: pageSha256 renewed: the shared page script names Alta where it said Metal, and the More menu links /alta.
     // 12 Nov (wire-in): every page's stylesheet carries the shared motion (src/ui/motion.ts) after CSS; the rest is unchanged.

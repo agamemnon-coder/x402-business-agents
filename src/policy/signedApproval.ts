@@ -11,14 +11,17 @@
 //     that limit, the policy change's own signature (finding 7);
 //   - a typed hash prefix (cli, web, telegram): only while no passkey is enrolled, as decide() allows it.
 // One signature check per signer, per execution; the audit chain is not hashed again for it.
-// What this does not close: whoever can write the database file can also enrol a passkey of their own in it, and change
-// the policy rows that decide how many people must sign (docs/security.md, accepted risks).
+// Since the outside audit (finding 1.3) a passkey row counts only with its enrolment seal (src/passkey/seal.ts), a MAC
+// with a key outside the ledger, so a public key written into the database signs nothing here. What this does not close:
+// whoever can write the database file can still change the policy rows that decide how many people must sign, and,
+// while no passkey is enrolled, approve by typed prefix (docs/security.md, accepted risks).
 
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import type { DB } from "../db/open.js";
 import { termsHash, type Terms } from "../lib/terms.js";
 import { approvalHashOf } from "../metal/ownersExecute.js";
 import { passkeyById } from "../passkey/ledger.js";
+import { sealRefusal } from "../passkey/seal.js";
 import { assertionSha256, verifyStoredSignature, type PinnedKey } from "../passkey/storedSignature.js";
 import { aloneLimitRecord, sourceWords, type AloneRecord } from "./aloneLimit.js";
 import { BATCH_KIND } from "./batchLines.js";
@@ -55,7 +58,7 @@ function named(approver: string): { people: string[]; securityKey: boolean } {
 }
 
 /** Each stored signature of `table` for these exact terms that verifies against its own pinned key: whose key it is. */
-function verifiedSigners(db: DB, table: "passkey_assertions" | "security_key_assertions", p: Proposal, signed: string, keyOf: (id: string) => (PinnedKey & { label: string; enrolled_at: string }) | null): { labels: Set<string>; problem: string | null; rows: number } {
+function verifiedSigners(db: DB, table: "passkey_assertions" | "security_key_assertions", p: Proposal, signed: string, keyOf: (id: string) => (PinnedKey & { label: string; enrolled_at: string }) | string | null): { labels: Set<string>; problem: string | null; rows: number } {
   const where = table === "passkey_assertions" ? "AND outcome = 'APPROVED'" : "";
   let stored: { assertion_sha256: string; credential_id: string; assertion_json: string; verified_at: string }[];
   try {
@@ -68,7 +71,8 @@ function verifiedSigners(db: DB, table: "passkey_assertions" | "security_key_ass
   for (const s of stored) {
     const key = keyOf(s.credential_id);
     let why: string | null;
-    if (!key) why = `signed by a key that is not enrolled (${s.credential_id.slice(0, 8)})`;
+    if (typeof key === "string") why = `signed by ${s.credential_id.slice(0, 8)}, but ${key}`;
+    else if (!key) why = `signed by a key that is not enrolled (${s.credential_id.slice(0, 8)})`;
     else if (Date.parse(key.enrolled_at) > Date.parse(s.verified_at)) why = "signed before the key was enrolled";
     else {
       let response: AuthenticationResponseJSON | null = null;
@@ -79,7 +83,7 @@ function verifiedSigners(db: DB, table: "passkey_assertions" | "security_key_ass
         why = v.ok ? null : v.reason;
       }
     }
-    if (why === null) labels.add(key!.label);
+    if (why === null && key && typeof key !== "string") labels.add(key.label);
     else problem ??= why;
   }
   return { labels, problem, rows: stored.length };
@@ -101,7 +105,11 @@ function passkeyRefusal(db: DB, filed: Proposal, a: Approval, depth = 0): string
   // Four eyes is read from the signed terms (src/policy/fourEyes.ts), not only from the names on the row.
   let needs = people.length;
   try { if (fourEyes(db, p)) needs = Math.max(needs, 2); } catch { needs = Math.max(needs, 2); }
-  const own = verifiedSigners(db, "passkey_assertions", p, signed, (cid) => passkeyById(db, cid));
+  // Only a passkey the enrolment ceremony sealed counts (src/passkey/seal.ts): not a row written into the ledger.
+  const own = verifiedSigners(db, "passkey_assertions", p, signed, (cid) => {
+    const pk = passkeyById(db, cid);
+    return pk ? sealRefusal(db, pk) ?? pk : null;
+  });
   if (own.labels.size === 0 && own.rows === 0 && depth === 0) {
     // A line of a signed batch has no signature of its own: the CFO signed the batch, whose terms list this line's hash.
     const viaBatch = batchRefusal(db, p);

@@ -32,6 +32,8 @@ header.bar .mk { flex: none; width: 28px; height: 28px; border-radius: 8px; back
 header.bar h1 { font-size: 17px; margin: 0; font-weight: 750; letter-spacing: -.02em; }
 header.bar .sub { color: var(--muted); font-size: 14px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 main { max-width: 600px; margin: 0 auto; padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); }
+/* The page's build id, whose hash is published (src/approve/integrity.ts). */
+footer.build { max-width: 600px; margin: 0 auto; padding: 0 16px calc(16px + env(safe-area-inset-bottom)); color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 main > h1 { font-size: 26px; font-weight: 750; line-height: 1.15; margin: 14px 0 8px; letter-spacing: -.025em; }
 .lead { color: var(--muted); font-size: 16px; margin: 0 0 18px; }
 .fineprint { color: var(--faint); font-size: 13px; margin-top: 18px; }

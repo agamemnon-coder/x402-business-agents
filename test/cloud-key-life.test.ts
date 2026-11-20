@@ -92,7 +92,7 @@ describe("a second approval key", () => {
       expect(ok.final.json).toMatchObject({ credential_id: phone.credentialId, how: "endorsed", cooling_until: in72h });
       // Every owner hears of it: a security event in the console and the webhook.
       const ev = await kinds(c, t.session);
-      expect(ev.find((x) => x.kind === "approval_key.added")!.detail).toMatchObject({ person: cfo.id, how: "endorsed", cooling_until: in72h });
+      expect(ev.find((x) => x.kind === "approval_key.added" && x.detail.how !== "first")!.detail).toMatchObject({ person: cfo.id, how: "endorsed", cooling_until: in72h });
       expect(ev.find((x) => x.kind === "approval_key.refused")!.detail).toMatchObject({ person: cfo.id, code: "endorsement_refused" });
       expect(sent).toEqual(expect.arrayContaining(["security.approval_key_added", "security.approval_key_refused"]));
       // The status says whose key it is and until when it cools off; the CFO's own is marked.
@@ -135,7 +135,7 @@ describe("a second approval key", () => {
       const ok = await enrol(c, second.session, phone, (e) => (e ? { cosign: { credential_id: t.ownerPasskey.credential_id, assertion: cloudAssertion(t.ownerPasskey, e.challenge) } } : {}));
       expect(ok.final.status, JSON.stringify(ok.final.json)).toBe(200);
       expect(ok.final.json).toMatchObject({ how: "cosigned", cooling_until: in72h });
-      expect((await kinds(c, t.session)).find((x) => x.kind === "approval_key.added")!.detail).toMatchObject({ how: "cosigned", by: t.owner });
+      expect((await kinds(c, t.session)).find((x) => x.kind === "approval_key.added" && x.detail.how !== "first")!.detail).toMatchObject({ how: "cosigned", by: t.owner });
     } finally { c.close(); }
   });
 

@@ -443,3 +443,9 @@ dcdf0c10cd9cb6830478615402ebf364e619ee42:test/dashboard-feed-words.test.ts:gener
 60ae22e085453138b5c7ae0a5623ac2520c2d122:docs/runs/2026-11-19-mega-run/run-50-proof-paid.json:generic-api-key:65
 60ae22e085453138b5c7ae0a5623ac2520c2d122:docs/runs/2026-11-19-mega-run/run-50.json:generic-api-key:497
 60ae22e085453138b5c7ae0a5623ac2520c2d122:docs/runs/2026-11-19-mega-run/run-50.json:generic-api-key:885
+# docs/runs/2026-11-20-alta-refusals.json's "gas_only_key" is a public testnet address (0x + 40 hex), not a key.
+25bf3b621784f1edb137bc7579852e44c07201be:docs/runs/2026-11-20-alta-refusals.json:generic-api-key:12
+# Fake test values (20 Nov): the stand-in's token in test/airwallex-api-version.test.ts and the seal key in
+# test/passkey-seal.test.ts ("tok-0123…", "test-seal-key-0123…"); neither is a real credential.
+464f0e135018316d078cccaac785ef07351a5c43:test/airwallex-api-version.test.ts:generic-api-key:18
+22183434053bf59bc45d7ce196f969c84b6d904b:test/passkey-seal.test.ts:generic-api-key:30

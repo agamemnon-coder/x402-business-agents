@@ -20,12 +20,13 @@ describe("/try loads nothing from another host", () => {
     }
   });
 
-  it("serves the Airwallex logo itself, the official file unaltered", async () => {
+  // Site audit, 19 Nov (finding 4): the site's file, the official wordmark scaled to 306 x 42 (src/ui/logos/README.md).
+  it("serves the Airwallex logo itself, the same file as the site", async () => {
     c = testCloud({ engine: true, tryIt: {} });
     const r = await c.req("GET", "/assets/logo-airwallex.png");
     expect(r.status).toBe(200);
     expect(r.res.headers.get("content-type")).toBe("image/png");
     const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
-    expect(sha(new Uint8Array(await r.res.arrayBuffer()))).toBe(sha(readFileSync("src/ui/logos/airwallex.png")));
+    expect(sha(new Uint8Array(await r.res.arrayBuffer()))).toBe(sha(readFileSync("src/ui/logos/airwallex-306x42.png")));
   });
 });

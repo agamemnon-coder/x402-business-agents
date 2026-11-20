@@ -43,6 +43,8 @@ of the hackathon submission, not SemVer; they stay as submitted and are never mo
 
    The maintainer's public signing key is the one on their GitHub account (`https://github.com/agamemnon-coder.gpg`,
    or for an SSH signing key the account's *signing keys*), so GitHub shows the tag as *Verified*.
+
+   Create a release by pushing a tag (git tag vX.Y.Z && git push origin vX.Y.Z); do not publish it in the GitHub web UI first: with immutable releases on, the workflow can then no longer attach the signed files (this happened to v1.3.0).
 6. **The release workflow runs on the pushed tag** ([release.yml](../.github/workflows/release.yml)): it builds the
    source tarball (`git archive` of the tag), the runtime bill of materials (CycloneDX) and `SHA256SUMS`, attests them
    through GitHub's artifact attestations (SLSA build provenance and an SBOM attestation, signed with Sigstore through

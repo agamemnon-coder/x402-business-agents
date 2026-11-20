@@ -138,7 +138,7 @@ describe("the partner pages", () => {
     // /books (owner, 12 Nov) sits with the product pages.
     // 13 Nov, evening (owner): the product tour and Pricing are out.
     // 19 Nov (the owner: "we use T:0 too"): T:0 joins the partner pages, last.
-    expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "security", "docs", "books", "airwallex", "metal", "visa", "claude", "t0"]);
+    expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "security", "docs", "books", "privacy", "airwallex", "metal", "visa", "claude", "t0"]);
     expect(MORE_LINKS.filter((l) => l.group === "partner").map((l) => l.label)).toEqual(["Airwallex", "Alta", "Visa", "Claude", "T:0"]);
     // The template pages' navigation (src/ui/nav.ts): the four tabs as links with their keys, then More, a <details>
     // with the same links as the redesign's header (src/redesign/ui.ts), in the same order.

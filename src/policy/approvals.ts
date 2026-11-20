@@ -5,6 +5,8 @@ import { approvalHashOf } from "../metal/ownersExecute.js";
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit, type Actor } from "../audit/log.js";
 import { auditChainRefusal } from "../audit/intact.js";
+import { checkpointRefusal } from "../audit/checkpointer.js";
+import { loosens } from "./loosens.js";
 import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { fourEyes } from "./fourEyes.js";
@@ -17,6 +19,7 @@ import { BATCH_KIND, BATCHABLE, openBatchOf, verifyBatch } from "./batchLines.js
 import { aloneDecision } from "./withinLimit.js";
 import { aloneLimitInForce, sourceWords } from "./aloneLimit.js";
 import { ALONE_KINDS, approvalSignatureRefusal, POLICY_METHOD, WITHIN_LIMIT } from "./signedApproval.js";
+import { blockedApprovals, recordBlocked } from "./blocked.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
@@ -350,7 +353,24 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     if (why) audit(db, "system", "execution.refused_ledger_tampered", proposalId, { reason: why, kind }, now);
     return why;
   }).immediate();
-  if (tampered) throw new Error(`${proposalId}: ${tampered}`);
+  if (tampered) {
+    recordBlocked(db, proposalId, tampered, now);
+    throw new Error(`${proposalId}: ${tampered}`);
+  }
+  // Outside audit 1.4: with a checkpoint key configured, the ledger must also match its latest signed checkpoint
+  // (src/audit/checkpointer.ts). A policy change that only tightens (the emergency stop, a pause, a lower limit) still
+  // runs in an incident; one that loosens anything is checked, its chain included. Checked outside a transaction, so
+  // another process can finish the checkpoint of a payment it has just made. A restart's resume is not checked again.
+  const unanchored = (() => {
+    const p = get(db, proposalId);
+    if (p.status === "EXECUTING" && resuming.has(proposalId)) return null;
+    const t = JSON.parse(p.terms_json) as { kind?: unknown; changes?: unknown };
+    if (t.kind !== "policy_change") return checkpointRefusal(db, "payment", now);
+    const changes = Array.isArray(t.changes) ? (t.changes as { key?: unknown; from?: unknown; to?: unknown }[]) : [];
+    const looser = changes.some((c) => loosens({ key: String(c?.key ?? ""), from: String(c?.from ?? ""), to: String(c?.to ?? "") }));
+    return looser ? checkpointRefusal(db, "policy change", now) : null;
+  })();
+  if (unanchored) throw new Error(`${proposalId}: ${unanchored}`);
   // The hub gate (src/hub/gate.ts), an extra gate on top of every check below, never instead of one; off unless
   // HUB_DECISIONS_ENABLED. Its refusal is committed on its own, so the record survives the error thrown here. A
   // restart's resume is not a new execution: it was gated when it began.
@@ -363,39 +383,56 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     return why;
   }).immediate();
   if (hubRefused) throw new Error(hubRefused);
-  const run = db.transaction((): { terms: T } | { unsigned: string } => {
-    const p = get(db, proposalId);
-    // A restart resumes an action a crash left EXECUTING: same hash checks and preconditions, no new transition.
-    const resume = p.status === "EXECUTING" && resuming.has(proposalId);
-    if (p.status !== "APPROVED" && p.status !== "FAILED" && !resume) throw new Error(`${proposalId} is ${p.status}, not approved`);
-    const terms = JSON.parse(p.terms_json) as T;
-    const approval = db.prepare("SELECT approved_sha256, decision FROM approvals WHERE proposal_id = ?").get(proposalId) as
-      { approved_sha256: string; decision: string } | undefined;
-    const recomputed = termsHash(terms);
-    if (!approval || approval.decision !== "APPROVED") throw new Error(`${proposalId} has no approval`);
-    if (recomputed !== p.terms_sha256 || recomputed !== approval.approved_sha256) throw new Error(`${proposalId}: terms do not match the approved hash ${approval.approved_sha256}`);
-    if (!resume) {
-      // 20 Nov (security review, finding 1): the approval row is not enough, since it lives in the same database as the
-      // terms. The stored passkey signatures behind it must verify, here, over these exact terms (or, for a payment code
-      // approved within the limit to pay alone, its record and the limit it stood on: src/policy/signedApproval.ts). The
-      // refusal is recorded and committed, as a ledger-tamper refusal is, and nothing moves to EXECUTING.
-      const unsigned = approvalSignatureRefusal(db, proposalId);
-      if (unsigned) {
-        audit(db, "system", REFUSED_UNSIGNED, proposalId, { reason: unsigned.slice(0, 400), terms_sha256: recomputed }, now);
-        return { unsigned };
-      }
-      // Again inside the write lock, so nothing can change between the gate and the transition.
-      const why = hubGateRefusal(db, p, now);
-      if (why) throw new Error(why);
-    }
-    preconditions(terms);
-    if (resume) return { terms };
-    transition(db, proposalId, p.status, "EXECUTING");
-    audit(db, "system", "proposal.executing", proposalId, { terms_sha256: recomputed }, now);
-    return { terms };
-  }).immediate();
-  if ("unsigned" in run) throw new Error(unsignedRefusal(run.unsigned));
+  // Outside audit 2.1: a refusal below of a proposal that is APPROVED (the hash, the signature, the executor's own
+  // preconditions: the EUR floor, a hold, a changed payee) is recorded with its reason and time (src/policy/blocked.ts),
+  // so the CFO sees it blocked and /health raises approved_blocked, instead of it waiting silently until it expires.
+  // Nothing is recorded for a failed run's retry or a restart's resume (not APPROVED), nor for the hub gate (a wait).
+  let run: { terms: T } | { unsigned: string };
+  try {
+    run = guard();
+  } catch (e) {
+    if (!(e as Error).message.startsWith("hub gate:")) recordBlocked(db, proposalId, (e as Error).message, now);
+    throw e;
+  }
+  if ("unsigned" in run) {
+    recordBlocked(db, proposalId, unsignedRefusal(run.unsigned), now);
+    throw new Error(unsignedRefusal(run.unsigned));
+  }
   return run.terms;
+
+  function guard(): { terms: T } | { unsigned: string } {
+    return db.transaction((): { terms: T } | { unsigned: string } => {
+      const p = get(db, proposalId);
+      // A restart resumes an action a crash left EXECUTING: same hash checks and preconditions, no new transition.
+      const resume = p.status === "EXECUTING" && resuming.has(proposalId);
+      if (p.status !== "APPROVED" && p.status !== "FAILED" && !resume) throw new Error(`${proposalId} is ${p.status}, not approved`);
+      const terms = JSON.parse(p.terms_json) as T;
+      const approval = db.prepare("SELECT approved_sha256, decision FROM approvals WHERE proposal_id = ?").get(proposalId) as
+        { approved_sha256: string; decision: string } | undefined;
+      const recomputed = termsHash(terms);
+      if (!approval || approval.decision !== "APPROVED") throw new Error(`${proposalId} has no approval`);
+      if (recomputed !== p.terms_sha256 || recomputed !== approval.approved_sha256) throw new Error(`${proposalId}: terms do not match the approved hash ${approval.approved_sha256}`);
+      if (!resume) {
+        // 20 Nov (security review, finding 1): the approval row is not enough, since it lives in the same database as the
+        // terms. The stored passkey signatures behind it must verify, here, over these exact terms (or, for a payment code
+        // approved within the limit to pay alone, its record and the limit it stood on: src/policy/signedApproval.ts). The
+        // refusal is recorded and committed, as a ledger-tamper refusal is, and nothing moves to EXECUTING.
+        const unsigned = approvalSignatureRefusal(db, proposalId);
+        if (unsigned) {
+          audit(db, "system", REFUSED_UNSIGNED, proposalId, { reason: unsigned.slice(0, 400), terms_sha256: recomputed }, now);
+          return { unsigned };
+        }
+        // Again inside the write lock, so nothing can change between the gate and the transition.
+        const why = hubGateRefusal(db, p, now);
+        if (why) throw new Error(why);
+      }
+      preconditions(terms);
+      if (resume) return { terms };
+      transition(db, proposalId, p.status, "EXECUTING");
+      audit(db, "system", "proposal.executing", proposalId, { terms_sha256: recomputed }, now);
+      return { terms };
+    }).immediate();
+  }
 }
 
 /** The audit row of an execution refused because no verifying signature stands behind its approval (finding 1). */
@@ -443,6 +480,19 @@ export function closeAsStale(db: DB, proposalId: string, detail: { error: string
     audit(db, "system", "proposal.needs_reapproval", proposalId, { ...detail, error: detail.error.slice(0, 300), from: p.status }, now);
     return true;
   }).immediate();
+}
+
+/**
+ * A person closes an approved proposal that its executor blocked (src/policy/blocked.ts), as a rejection after the
+ * approval: NEEDS_REAPPROVAL, terminal, with the block's reason. It runs nothing and moves no money, so the first 8 hex
+ * of the terms hash suffice, as for a rejection. Paying on other terms is a new proposal with a new approval.
+ */
+export function closeBlocked(db: DB, proposalId: string, typedPrefix: string, person: string, now = new Date()): void {
+  const p = get(db, proposalId);
+  if (!prefixMatches(p.terms_sha256, typedPrefix)) throw new Error("typed prefix does not match the terms hash");
+  const b = blockedApprovals(db, now).find((x) => x.proposal_id === proposalId);
+  if (!b) throw new Error(`${proposalId} is ${p.status} and not blocked at execution; nothing to close`);
+  closeAsStale(db, proposalId, { error: b.reason, stopped: `closed by ${person} after its execution was blocked`, check: b.check, blocked_since: b.since }, {}, now);
 }
 
 /**

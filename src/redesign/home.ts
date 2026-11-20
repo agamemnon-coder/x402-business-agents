@@ -24,6 +24,7 @@ import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
 import { SITE_URL } from "../ui/meta.js";
 import { NEGOTIATE_URL } from "../ui/more.js";
+import { ASSET_VERSIONS, versioned, type VersionedAsset } from "../ui/assetVersions.js";
 
 /** The hub of every connection Purser has, each labelled, with a quickstart (docs/integrations/README.md); in Home's footer. */
 export const CONNECT_HUB_DOC = "docs/integrations/README.md", CONNECT_HUB_LABEL = "Connect to anything";
@@ -116,6 +117,9 @@ main.ent ul.stats b { font-size: 32px; }
 .kit11 b { color: var(--text); font-weight: 650; }
 .kit11 a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: flex; width: fit-content; align-items: center; min-height: 44px; white-space: nowrap; }
 .e-more { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
+/* The design-partner link (set 20 Nov, the owner): a tap target of 44 px, like every link on Home. */
+p.partner { margin: 16px 0 0; font-weight: 650; }
+p.partner a { color: var(--accent); display: inline-flex; align-items: center; min-height: 44px; }
 p.next { margin: 24px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44em; } p.next a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; }
 /* Scroll-in: a section still below the screen once the reader scrolls rises in as it comes into view. Every section is
    shown by default (jury, 13 Nov: no blank part for a reader who has not scrolled, a screenshot or no script); nothing
@@ -201,7 +205,9 @@ export const FILM_BUTTON = "Watch the demo";
 export const VERIFY_BUTTON = "Verify a payment yourself";
 export const VERIFY_URL = "/verify";
 /** The proof line's first words; its figures are Home's three measured ones (src/redesign/scale.ts homeScaleStats). */
-export const PROOF_LEAD = ["Built on Airwallex", "test money"] as const;
+// Site audit, 20 Nov (finding 6.3): "test money" moved from this line to the one under the buttons (SANDBOX_NOTE), beside
+// the primary button; it is still said once outside the fold.
+export const PROOF_LEAD = ["Built on Airwallex"] as const;
 /** The proof line: what it runs on, then three figures, each a link to its source; none without its record. */
 // 15 Nov: these three figures used to sit in a band in the records section; they lead the hero now, and /proof keeps
 // the full strip (src/redesign/scale.ts).
@@ -213,14 +219,18 @@ export function proofLineHtml(stats = homeScaleStats()): string {
   return `<p class="proofl" data-rec="${esc(SCALE_SOURCES)}">${[...PROOF_LEAD.map((w) => esc(w)), ...figs].join('<span class="dot" aria-hidden="true"> · </span>')}</p>`;
 }
 /**
- * The one line under the buttons, saying only what the page behind the first one does: the hands-on demo (TRY_URL), a
- * test company of your own on test money, deleted after 24 hours (its start page says "Test money · deleted after
- * 24 h"). The same line with /try/sign in the bundle or not; both keys kept for the callers.
+ * The one line under the buttons, saying only what the page behind the first one does: the hands-on demo (TRY_URL) is a
+ * sandbox demo on test money, with no real settlement (its start page adds that the test company is deleted after 24
+ * hours). The same line with /try/sign in the bundle or not; both keys kept for the callers.
  */
 // Partner scan, 14 Nov: Visa named in full in "Works with" takes a row on a phone, so "test money" moves up into this line.
 // 15 Nov: "test money" is said once outside the fold, in the hero's proof line, so this line no longer repeats it; "own"
 // went with the Verify button, to keep Home within its 378 words.
-export const REASSURE = { sign: "Your test company, deleted after 24 hours.", world: "Your test company, deleted after 24 hours." } as const;
+// Site audit, 20 Nov (finding 6.3): a short sandbox disclosure beside the primary button.
+export const SANDBOX_NOTE = "Sandbox demo: test money, no real settlement.";
+// It replaces "Your test company, deleted after 24 hours." (the start of /try says that), so the line fits the first screen
+// at 360 px and Home stays within its words.
+export const REASSURE = { sign: SANDBOX_NOTE, world: SANDBOX_NOTE } as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
 export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Each lock, on record";
@@ -229,7 +239,7 @@ export const FEATURES_HEAD = "Agents do the work. The CFO keeps the say.";
 /** What Claude adds, from the worst-case run (docs/worst-case-ai.md, "What code alone sends to the CFO"). */
 // Jury, 17 Nov: one plain before/after, from the same record (docs/evals/scorecard-2026-11-15.json: the seven cases the
 // script arm sent to the CFO, each held by the Purser arm with Claude reading, in both runs).
-export const CLAUDE_ADDS = "Offline eval: code alone sent seven invoices to the CFO that had to be held; with Claude, Purser held all seven.";
+export const CLAUDE_ADDS = "Offline eval: code alone sent seven invoices to the CFO it should have held; with Claude, Purser held all seven.";
 /** Four features, one line each; each says only what the runs and the code show (see /proof). */
 export const FEATURES = [
   // Jury panel, 15 Nov: the hero already says a changed cent breaks the signature; this card keeps the terms.
@@ -439,7 +449,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 18)}${esc(FILM_BUTTON)}</a>${verifyUrl ? `<a class="btn big ghost" href="${esc(verifyUrl)}">${esc(VERIFY_BUTTON)}</a>` : ""}</div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
     ${x402LineHtml(run)}
-    <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
+    <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src in ASSET_VERSIONS ? versioned(src as VersionedAsset) : src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
   <div class="show">${heroFlowHtml()}
     <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>

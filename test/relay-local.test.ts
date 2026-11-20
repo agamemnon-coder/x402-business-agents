@@ -12,7 +12,8 @@ describe("local relay", () => {
     servers.push(server);
     expect(url).toMatch(/^http:\/\/localhost:\d+$/);
     const page = await fetch(`${url}/approve/P-0001`);
-    expect(page.headers.get("content-security-policy")).toContain("script-src 'self'");
+    // One document under a CSP of its inline script's and stylesheet's hashes (src/approve/integrity.ts).
+    expect(page.headers.get("content-security-policy")).toMatch(/script-src 'sha256-[A-Za-z0-9+/]+=*'; style-src 'sha256-/);
     expect(await page.text()).toContain('data-page="approve"');
     expect((await fetch(`${url}/assets/approve.js`)).headers.get("content-type")).toMatch(/javascript/);
     const sync = (token: string) => fetch(`${url}/api/runner/sync`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ state_hash: "x" }) });

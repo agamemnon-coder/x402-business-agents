@@ -20,6 +20,7 @@
 import { AWX_SANDBOX_HOST } from "./fxQuote.js";
 import { looksLikePerson, publicNickname, publicPayeeName } from "../../src/airwallex/personName.js";
 import type { Sql } from "./core.js";
+import { apiVersionHeader } from "../../src/airwallex/apiVersion.js";
 
 /** The path inside the Worker where the RelayObject's awx-read instance answers. No outside request is routed here. */
 export const AWX_READ_PATH = "/internal/awx-read";
@@ -360,7 +361,7 @@ export class AwxReadDesk {
     this.admit(endpoint);
     let res: Response;
     try {
-      res = await this.fetchImpl(url.toString(), { method, headers: { ...headers, "content-type": "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+      res = await this.fetchImpl(url.toString(), { method, headers: { ...headers, "content-type": "application/json", ...apiVersionHeader(path) }, signal: AbortSignal.timeout(TIMEOUT_MS) });
     } catch {
       throw new AwxReadUnavailable("the Airwallex sandbox did not answer in time", "no_answer");
     }

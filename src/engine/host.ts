@@ -35,6 +35,7 @@ import { verifyLedger } from "../ledger/core.js";
 import { syncLedger } from "../ledger/feed.js";
 import { fromCents } from "../lib/money.js";
 import { confirmPasskey, activePasskey, openEnrolment, passkeyById, pendingPasskeys } from "../passkey/ledger.js";
+import { sealRefusal } from "../passkey/seal.js";
 import { processAssertion, processRegistration, type InboxItem } from "../passkey/process.js";
 import { finishSecurityKey, startSecurityKey } from "../passkey/securityKey.js";
 import { ensureSecondKeyTables, SECOND_KEY_KEYS, secondKeyMessage, secondKeyReasons } from "../policy/secondKey.js";
@@ -251,7 +252,7 @@ const credentialIdOf = (c: unknown): string | null => (c && typeof c === "object
 
 /** The answer to a new approval key. */
 export type PasskeyFinished =
-  | { ok: true; credential_id: string; how: KeyHow; by: string | null; cooling_until: string | null }
+  | { ok: true; credential_id: string; how: KeyHow; by: string | null; cooling_until: string | null; replaced?: string }
   | { ok: false; reason: string; code?: "endorsement_required" | "endorsement_refused"; endorse?: { credential_id: string; spki_sha256: string; challenge: string; keys: string[] } };
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e)).slice(0, 500);
 
@@ -721,6 +722,8 @@ export class EngineHost {
       if (out.status === "refused" || !out.credentialId) return { ok: false, reason: out.message };
       db.exec(PASSKEY_TRUST);
       let trust: { how: KeyHow; by: string | null; cooling_until: string | null } | null = this.trustOf(out.credentialId);
+      // The same person's earlier key, which this one replaces (recordPasskey revokes it): every owner is told (cloud/src/engine/routes.ts).
+      let replaced: string | null = null;
       if (out.status === "pending") {
         const id = out.credentialId;
         const waiting = pendingPasskeys(db, now).find((p) => p.credential_id === id);
@@ -741,6 +744,7 @@ export class EngineHost {
           }
           ({ how, by } = granted);
         }
+        replaced = (db.prepare("SELECT credential_id FROM passkeys WHERE status = 'ACTIVE' AND label = ? AND credential_id != ?").get(waiting.label, id) as { credential_id: string } | undefined)?.credential_id ?? null;
         try { confirmPasskey(db, waiting.fingerprint, now); } catch (e) { return { ok: false, reason: message(e) }; }
         const ms = how === "first" ? 0 : Number.isFinite(a.coolingOffMs) && a.coolingOffMs! >= 0 ? Math.floor(a.coolingOffMs!) : APPROVAL_KEY_COOLING_OFF_MS;
         const cooling = ms > 0 ? new Date(now.getTime() + ms).toISOString() : null;
@@ -754,7 +758,7 @@ export class EngineHost {
         db.exec(PASSKEY_PEOPLE);
         db.prepare("INSERT INTO engine_passkey_people (credential_id, person) VALUES (?, ?) ON CONFLICT(credential_id) DO UPDATE SET person = excluded.person").run(out.credentialId, a.person);
       }
-      return { ok: true, credential_id: out.credentialId, how: trust?.how ?? "first", by: trust?.by ?? null, cooling_until: trust?.cooling_until ?? null };
+      return { ok: true, credential_id: out.credentialId, how: trust?.how ?? "first", by: trust?.by ?? null, cooling_until: trust?.cooling_until ?? null, ...(replaced ? { replaced } : {}) };
     });
   }
 
@@ -779,7 +783,8 @@ export class EngineHost {
     if (a.endorsement !== undefined) {
       const id = credentialIdOf(a.endorsement);
       const pk = id && id !== newId ? passkeyById(db, id) : null;
-      if (!pk || pk.status !== "ACTIVE") return { refused: "The key that signed for the new one is not an active approval key of this company" };
+      // An unsealed key (a row the ceremony never wrote, src/passkey/seal.ts) vouches for nothing.
+      if (!pk || pk.status !== "ACTIVE" || sealRefusal(db, pk)) return { refused: "The key that signed for the new one is not an active approval key of this company" };
       const cooling = this.coolingOf(pk.credential_id, now);
       if (cooling) return { refused: `The key that signed for the new one is itself in its cooling-off until ${cooling.until}: it cannot vouch for another key yet` };
       const v = await verifyApprovalSignature(a.endorsement as AuthenticationResponseJSON, endorsementHash(newId, spki), pk);

@@ -7,7 +7,7 @@
 import { FILM_URL } from "../src/config/brand.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
+import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, DESIGN_PARTNER_URL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
 import { BOOKED, FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
 import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
 import { HOME_REFUSALS_LABEL, homeScaleStats, scaleStats } from "../src/redesign/scale.js";
@@ -80,7 +80,8 @@ describe("Home, the enterprise pass", () => {
 
   it("A6: one reassurance line under the buttons, saying only what the page behind the first one does", () => {
     // 15 Nov: "test money" is said once outside the fold, in the hero's proof line.
-    expect(REASSURE).toEqual({ sign: "Your test company, deleted after 24 hours.", world: "Your test company, deleted after 24 hours." });
+    // Site audit, 20 Nov (6.3): the sandbox disclosure first, beside the primary button.
+    expect(REASSURE).toEqual({ sign: "Sandbox demo: test money, no real settlement.", world: "Sandbox demo: test money, no real settlement." });
     for (const html of [ON, OFF]) expect(mainOf(html).match(/<p class="reassure">/g)).toHaveLength(1);
     expect(ON).toMatch(new RegExp(`${VERIFY_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
   });
@@ -181,7 +182,9 @@ describe("Home, the enterprise pass", () => {
     expect(line).not.toBe("");
     expect(mainOf(ON)).not.toContain('<ul class="scale"');
     expect(mainOf(ON).indexOf('<p class="proofl"')).toBeLessThan(mainOf(ON).indexOf('<div class="ctas">'));
-    expect(text(line).startsWith("Built on Airwallex · test money · ")).toBe(true);
+    // Site audit, 20 Nov (6.3): "test money" moved to the sandbox line under the buttons.
+    expect(text(line).startsWith("Built on Airwallex · ")).toBe(true);
+    expect(text(line)).not.toMatch(/test money/i);
     // Judge panel, 13 Nov: six figures read as number soup; Home keeps three, each with its link (/proof keeps them all).
     expect(homeScaleStats().map((x) => x.label)).toEqual(["tests passing", "sandbox and testnet runs", "refusals across all runs, on record"]);
     expect([...line.matchAll(/<b>([\d,]+)<\/b>/g)].map((m) => Number(m[1]!.replace(/,/g, "")))).toEqual(homeScaleStats().map((x) => x.n));
@@ -229,10 +232,10 @@ describe("Home, the enterprise pass", () => {
     for (const line of [SECOND_APPROVER, CHAIN_TEST, AWX.note, "one /try run of its sample invoice on"]) expect({ line, found: fold.includes(line) }).toEqual({ line, found: true });
   });
 
-  it("shows the line for small companies only when its demo has an address, and the design-partner link only when set", () => {
+  it("shows the line for small companies only when its demo has an address, and the design-partner link (set since 20 Nov)", () => {
     expect(SMALL_COMPANY_DEMO_URL).toBe("");
     expect(NEXT_NEXT).toMatch(/^Next, not live yet:/);
-    for (const html of [ON, OFF]) { expect(html).not.toContain(NEXT_NEXT); expect(html).not.toContain('class="next"'); expect(html).not.toContain(DESIGN_PARTNER_LABEL); }
+    for (const html of [ON, OFF]) { expect(html).not.toContain(NEXT_NEXT); expect(html).not.toContain('class="next"'); expect(mainOf(html)).toContain(`<a href="${DESIGN_PARTNER_URL}">${DESIGN_PARTNER_LABEL} →</a>`); }
     const url = "https://small.example.test/demo";
     const shown = homePage(undefined, { trySign: true, smallCompanyUrl: url });
     expect(mainOf(shown)).toContain(`<p class="next">${NEXT_NEXT} <a href="${url}" target="_blank" rel="noopener">Open its demo\u00a0↗</a></p>`);
@@ -248,6 +251,8 @@ describe("Home, the enterprise pass", () => {
   // 14 Nov (Max, Airwallex at the centre): one line on the live Airwallex sandbox FX quote in /try's signed terms (378 as built).
   // 398 since 15 Nov (Max): /try/negotiate's card under the features, its headline and button (392 as built); +3, the refusals label (#390).
   // 418 since the jury of 17 Nov: the x402 line under the hero, #24's caveat, "a passkey (Face ID on iPhone)" (417 as built).
+  // 20 Nov (site audit 6.3 and the owner): the sandbox line under the buttons in place of the test company's line, "test
+  // money" out of the proof line, and the design-partner link at the end: within the same 418.
   it("A11: stays within 418 visible words", () => {
     expect(visibleWords(ON)).toBeLessThanOrEqual(418);
     expect(visibleWords(OFF)).toBeLessThanOrEqual(418);

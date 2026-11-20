@@ -77,7 +77,7 @@ export const NEGOTIATE_COPY = {
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-const CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff2)")}
+const CSS = `${TOKENS.replace("url(assets/inter.woff2", "url(/assets/inter.woff2")}
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: 84px; }

@@ -10,7 +10,10 @@ import { pausesNotRevoked } from "../policy/pause.js";
 import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/disputeDecision.js";
 import { codeMayCarryOut, escalatedUndecided } from "../agents/disputeSource.js";
 import { failureAlerts, failureCounts } from "../passkey/failures.js";
+import { unsealedPasskeys } from "../passkey/seal.js";
 import { termsHash, type Terms } from "../lib/terms.js";
+import { BLOCKED_ALERT, blockedApprovals } from "../policy/blocked.js";
+import { checkpointAlerts } from "../audit/checkpointer.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -70,8 +73,15 @@ export function health(db: DB, now = new Date()): Health {
   // Chaos for money movement (19 Nov, H11): an approved payment whose stored terms no longer hash to what the passkey
   // signed is refused by its executor at every start, so nothing is paid; this tells a person at once, instead of it
   // waiting silently, APPROVED, until it expires.
-  for (const t of tamperedApprovals(db)) {
+  const tampered = tamperedApprovals(db);
+  for (const t of tampered) {
     alerts.push({ code: "approved_terms_changed", severity: "critical", since: t.since, words: `${t.proposal_id} was approved with a passkey, but its stored terms no longer match the signed hash: it will not be paid. Check who changed them; a new proposal needs a new approval.` });
+  }
+  // Outside audit 2.1 (chaos H17, 49 scenarios): an approved payment its executor refused before it began (the EUR
+  // floor, a hold, a changed payee) is recorded (execution.blocked) and stands here until it expires or a person closes
+  // it; a restart does not try it again. One with changed terms is already above, critical, and not repeated.
+  for (const b of blockedApprovals(db, now).filter((x) => !tampered.some((t) => t.proposal_id === x.proposal_id))) {
+    alerts.push({ code: BLOCKED_ALERT, severity: b.severity, since: b.since, words: `${b.proposal_id} was approved, but its execution was refused at ${b.last} (${b.check}): ${b.reason}. Nothing was paid and it is not tried again by itself; it stays blocked until ${b.expires_at}, or close it (npm run approve -- ${b.proposal_id} <hash prefix> --reject). Paying it on other terms needs a new proposal and a new approval.` });
   }
   // dry-179 review: a mandate replace that failed after a step of it ran leaves the mandates half replaced. Its guard
   // never closes it (src/executors/mandateReplace.ts) and the spending hold lifts at its expiry, so a person looks.
@@ -94,14 +104,23 @@ export function health(db: DB, now = new Date()): Health {
   const odd = has(db, "airwallex_events") ? (db.prepare("SELECT COUNT(*) AS n, MIN(received_at) AS since FROM airwallex_events WHERE agrees = 0 AND received_at > ?").get(DAY) as { n: number; since: string | null }) : { n: 0, since: null };
   if (odd.n > 0) alerts.push({ code: "airwallex_disagrees", severity: "critical", since: odd.since, words: `${odd.n} Airwallex webhook(s) in the last day report something the ledger cannot explain; check them on the dashboard.` });
 
+  // Outside audit 1.4: with a checkpoint key configured, the audit log against its latest signed checkpoint
+  // (src/audit/checkpointer.ts), and any sensitive operation refused for it in the last day.
+  if (has(db, "audit_log")) alerts.push(...checkpointAlerts(db, now));
+
   // Refused passkey submissions (src/passkey/failures.ts): counted, never logged; a burst in the last hour is someone
   // trying signatures or codes, so a person looks.
   const pkFail = has(db, "passkey_failures") ? failureCounts(db, now) : { lastHour: 0, last24h: 0, byCode: {} };
   if (has(db, "passkey_failures")) alerts.push(...failureAlerts(db, now));
+  // A passkey row the enrolment ceremony did not seal (outside audit, finding 1.3): it approves nothing, and someone
+  // wrote it into the ledger, or it predates the seal (npm run passkey -- seal, after comparing its fingerprint).
+  const unsealed = has(db, "passkeys") ? unsealedPasskeys(db) : [];
+  if (unsealed.length) alerts.push({ code: "passkey_unsealed", severity: "critical", since: null, words: `${unsealed.length} active passkey(s) (${unsealed.map((k) => `${k.label}, ${k.credential_id.slice(0, 8)}`).join("; ")}) carry no enrolment seal from this runner, so they approve nothing. If one was enrolled before the seal existed, compare its fingerprint with the phone and run npm run passkey -- seal; otherwise someone wrote it into the ledger: pull the emergency stop and run npm run verify.` });
 
   const metrics: Record<string, number> = {
     approvals_waiting: n(db, "SELECT COUNT(*) AS n FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?", now.toISOString()),
     actions_executing: n(db, "SELECT COUNT(*) AS n FROM proposals WHERE status = 'EXECUTING'"),
+    approvals_blocked: blockedApprovals(db, now).length,
     holds_open: holdsOpen.n,
     holds_open_cents: holdsOpen.cents,
     agents_stopped: stopped.length,

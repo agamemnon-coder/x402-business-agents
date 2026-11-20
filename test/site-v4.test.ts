@@ -30,6 +30,8 @@ const { record } = loadRecord();
 const PUBLIC: Record<string, string> = { home: pages.home!, watch: pages.watch!, try: pages.try, proof: pages.proof!, security: pages.security!, metal: pages.metal, airwallex: pages.airwallex!, visa: pages.visa, claude: pages.claude!, notFound: pages.notFound! };
 // /docs and /status (12 Nov), the other two product pages under "More".
 Object.assign(PUBLIC, { docs: pages.docs!, status: pages.status! });
+// /privacy (20 Nov; outside audit, finding 3.4), a product page under "More" too.
+Object.assign(PUBLIC, { privacy: pages.privacy! });
 
 const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 /** The words a person reads without opening anything: <main> only, no script, style, drawing, or folded details (their summary stays). */
@@ -109,6 +111,8 @@ describe("the site after v4", () => {
     // Status 90 since 12 Nov: the status lines (empty until /health is read) and the five latest live runs.
     // Status 115 since 19 Nov: the hourly checks' card, its heading, the as-built line with no number and its link (91 as built).
     Object.assign(budget, { docs: 280 /* +10, review 12 Nov: the KIT note; +35, 13 Nov: the "Connect your AI" card; +35, jury 13 Nov: Purser Cloud as a guest in that card, its link and its folded steps' header (274 as built) */, status: 115 });
+    // Privacy 120 since 20 Nov (outside audit, finding 3.4): four short cards, each one sentence, the detail folded.
+    Object.assign(budget, { privacy: 120 });
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -116,20 +120,21 @@ describe("the site after v4", () => {
     const bad = [/warehouse software/i, /stand-in/i, /\bdry-1\d*/i, /Dev test/i, /Recorded 30 October/i, /read, plan and advise/i, /\bfather\b/i, /four eyes.{0,80}\b(optional|off)\b/i, /\b(optional|off)\b.{0,80}four eyes/i, /\b0 unsafe\b/i, /confirmed (that )?TAP counts/i,
       // The old absolute claims (jury review, 4 Nov): the core sentence says who holds which limit instead.
       /every limit/i, /can['’]t break/i];
-    // The phone's script, stylesheet and font are not pages (the phone pages themselves are checked).
+    // The phone's script, stylesheet and font are not pages (the phone pages themselves are checked); since the outside
+    // audit (finding 1.5) the script sits inline in the phone pages, and is left out of them here the same way.
     const all = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && !["client", "css", "font"].includes(e[0]));
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "security", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["docs", "status"]));
     // 12 Nov (jury panel): /claude's hostile-model eval line says "0 unsafe" as CI computed it (docs/evals/ap-hostile.json).
     // Since 13 Nov the same record's figures are a proof tile on /claude (hostileTileLabel, src/redesign/claudePage.ts).
     const hostile = hostileClaimText(), tile = claudeEvidence().hostile ? hostileTileLabel(claudeEvidence().hostile!) : "\u0000";
-    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html).replace(hostile || "\u0000", " ").replace(tile, " "))?.[0] ?? null }).toEqual({ name, found: null });
+    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html.split(pages.client).join(" ")).replace(hostile || "\u0000", " ").replace(tile, " "))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
   it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Security, Docs, then Airwallex, Alta, Visa, Claude, T:0", () => {
     // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
     // 13 Nov, evening (owner): the product tour and Pricing are out.
-    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Airwallex", "airwallex"], ["Alta", "alta"], ["Visa", "visa"], ["Claude", "claude"], ["T:0", "t0"]]);
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Privacy", "privacy"], ["Airwallex", "airwallex"], ["Alta", "alta"], ["Visa", "visa"], ["Claude", "claude"], ["T:0", "t0"]]);
     // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
     // left out until it is registered; then the menu must list it).
     // 12 Nov: Purser Cloud is its own deployment (an absolute link), served there, not by this Worker.
@@ -184,7 +189,8 @@ describe("the site after v4", () => {
     expect(nf.headers.get("content-security-policy")).toBe(pages.csp.notFound);
     // The 404 answers at any depth, so its links and assets are absolute.
     expect(pages.notFound).toMatch(/href="\/home"/);
-    expect(pages.notFound).not.toMatch(/(href|src)="(?!https?:|#|\/)/);
+    // A mailto: link (the footer's contact line, 20 Nov) leaves the site, so it stays as it is.
+    expect(pages.notFound).not.toMatch(/(href|src)="(?!https?:|#|\/|mailto:)/);
   });
 
   it("sends a path pasted with the sentence's full stop or comma to the same path without it (jury review, 7 Nov, #18)", () => {

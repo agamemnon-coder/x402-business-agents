@@ -524,8 +524,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // and opened by their summary or a link to one of them; 44 px tap targets and a short page on a phone.
       // The frame around the entries at 390 px with the live runs' fold open (jury pass, 13 Nov): the heading, the four
       // cards, the fold's line, the strip, the line, "Face ID to paid", the filters, the closed groups and the last links.
-      // 1,263 px as built; the margin leaves room for one more line of filters.
-      const FRAME_390 = 1300;
+      // 1,263 px as built; the margin leaves room for one more line of filters. 20 Nov: 1,304 px with 36 live runs (the
+      // space between entries is not taken away, so each run added grows the frame by a few px); 1,340 leaves room.
+      const FRAME_390 = 1340;
       if (path === "/runs" && (w === 390 || w === 1440)) {
         // Since the jury pass (13 Nov) the live runs are in the one fold under the four cards: a reader opens it first,
         // and the checks below are of the list as it then shows (the cards count in the frame).
@@ -728,7 +729,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
       const budget = path === "/airwallex" ? 725 /* +35, 19 Nov (the owner: "lead with the strongest live-proven result"): five of the wall's Airwallex figures as chips under the heading, each linked to its record, and their line (749 on screen at 360 px as built) */ /* +110, 19 Nov (the owner: "the evidence where judges look"): the "Live on Airwallex" strip, six of the wall's tiles, its line and the endpoint not live (706 on screen at 360 px as built; test/site-v4.test.ts) */ /* +100, 15 Nov (one cent over the limit): the card test's block in sight, its line, both answers with their ids and times, and who signed (604 on screen at 360 px as built; test/site-v4.test.ts) */ /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 600 /* +88, 19 Nov (the owner): the Visa strip and, in the TAP section, the 19 Nov interop re-run (618 on screen as built) */ /* +47, judge panel 15 Nov: the vic-5 run's limits line and its three facts first; 465 with the headless-browser line in sight; 440 since the partner scan, 14 Nov evening: the VIC story in four steps first, the rest folded (437 on screen as built); 1205 before: +125, 14 Nov: the partner review's card-rail scene (main, 1,191 as built) and the partner scan's full title and one credential label (1,205 as built), as test/site-v4.test.ts; +30, jury round 3, 14 Nov: the production sentence and "None in this run."; +340, Visa judge 14 Nov: the story a to e, TAP shown openly (test/site-v4.test.ts) */ + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 725 : 675) /* +15, 19 Nov (the owner: "lead with the strongest live-proven result"): the opening facts from the newest records, the 19 Nov series and anchor (748 on screen as built) */ /* +70, 19 Nov (the owner): the "Live on Alta" strip, six of the wall's tiles (730 on screen as built) */ /* +24, 15 Nov: the /alta cap line (#390); 663 on screen as built in CI */ /* +110, Metal Award 15 Nov: /alta opens with three facts (refused on chain, two passkey owners, the anchor), each with its tx and record, and the main run's count */ /* +6, partner and judge scans 14 Nov: "Purser's entry for the Metal Award." and which mandate each figure is (532 on screen as built); +5, 14 Nov: "Alta (formerly Metal)" (test/site-v4.test.ts) */ /* +15, the final review 13 Nov: the separate Face ID on chain run said as it was, the recorded snapshot labelled; +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 325 /* +5, 14 Nov: "Alta (formerly Metal)" (test/site-v4.test.ts) */ /* +40, jury review 13 Nov: the eval names and days, the line on how the counts relate (test/site-v4.test.ts); 280: +20, final jury 13 Nov: on phones the split is plain figures (the 106 total, three bars), as in test/site-v4.test.ts; was 260: */ /* +10, judge panel 13 Nov: the tiles say what each count is (test/site-v4.test.ts); +10, 13 Nov: the Haiku-as-Support tile says why it matters (test/site-v4.test.ts) */ : 150;
-      if (words > budget + 28) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
+      // The frame +4 since 20 Nov (the owner): the footer's last line, "Pilot or partnership?" and the address (/metal 754 at 768 px).
+      if (words > budget + 32) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
       // /airwallex (jury panel, 12 Nov) shows several runs, each dated on its own tile: its label is true for all of them,
@@ -1049,7 +1051,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length - strip.split(/\s+/).filter((x) => /\w/.test(x)).length;
       // 185 since the partner review (14 Nov): the "Independent ledger check" tile (184 as built); 205 since the partner
       // scan the same evening: its "Run the close check" button, toggle and note (205 on screen as built); 210 with the line that says what T:0 is.
-      if (words > 210 + 25) fail(`/t0 ${tag}: ${words} words on screen, budget 210 plus the frame`);
+      // The frame +4 since 20 Nov (the owner): the footer's last line, "Pilot or partnership?" and the address (236 at 768 px).
+      if (words > 210 + 29) fail(`/t0 ${tag}: ${words} words on screen, budget 210 plus the frame`);
       if (!pt.includes("T:0 sandbox, test data")) fail(`/t0 ${tag}: not labelled as the T:0 sandbox with test data`);
       if (!/^Built on\s/.test(strip.trim()) || !/T:0: \d+ journal entries/.test(strip)) fail(`/t0 ${tag}: no Built on strip in the footer`);
       if (w < 500) await tapTargets(page, `/t0 ${tag}`);
@@ -1069,7 +1072,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // +8, partner and judge scans 14 Nov: the Metal Award line and which mandate each figure is (529 on screen as built).
       // +110, Metal Award 15 Nov: /alta opens with three facts (refused on chain, two passkey owners, the anchor), each with its tx and record, and the main run's count.
       // +17, 15 Nov: /alta says why the Sourcing cap is higher after #24.
-      if (words > 720 + 28) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 720 plus the frame`); // +13, 19 Nov (the owner): the opening facts from the 19 Nov series and anchor (745 as built); +70, 19 Nov (the owner): the "Live on Alta" strip (728 as built); +7, 15 Nov: the /alta cap line (#390), 660 as built in CI
+      if (words > 720 + 32) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 720 plus the frame`); // frame +4, 20 Nov (the owner): the footer's last line, "Pilot or partnership?" and the address (4 words; 750 as built); // +13, 19 Nov (the owner): the opening facts from the 19 Nov series and anchor (745 as built); +70, 19 Nov (the owner): the "Live on Alta" strip (728 as built); +7, 15 Nov: the /alta cap line (#390), 660 as built in CI
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
       if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Alta testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Amounts are scaled down 100× for testnet\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
@@ -1319,7 +1322,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (res?.status() !== 200) fail(`/airwallex/calls ${tag}: answered ${res?.status()}`);
       await look(page, `/airwallex/calls ${tag}`, w);
       const c = (await page.evaluate(`(() => ({ hash: /\\d+ of \\d+ transfers carry the signed hash/.test(document.body.innerText), runs: document.querySelectorAll("details.awc-run").length,
-        rel: [...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href")).filter((h) => !/^(https?:|#|\\/)/.test(h)).length }))()`)) as { hash: boolean; runs: number; rel: number };
+        rel: [...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href")).filter((h) => !/^(https?:|#|\\/|mailto:)/.test(h)).length }))()`)) as { hash: boolean; runs: number; rel: number };
       if (!c.hash || c.runs < 1 || c.rel) fail(`/airwallex/calls ${tag}: ${JSON.stringify(c)}`);
     }
     await page.goto(`${base}/metal/report`, { waitUntil: "load" });

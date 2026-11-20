@@ -21,6 +21,8 @@
 import { INVOICE, LIVE, PAY, WORK } from "../tryCopy.js";
 import { TRY_ALONE_LIMIT } from "../../../src/config/policy.js";
 import { AIRWALLEX_LOGO_DATA_URL } from "../awxLogo.gen.js";
+import { AIRWALLEX_LOGO_SIZE } from "../../../src/ui/builtOn.js";
+import { START_LOGOS } from "./run.js";
 import { LOGO_FILES } from "./logos.gen.js";
 import { AWX_TRAIL_CALLS } from "./proof.gen.js";
 import { SYSTEM_MAP_DATA_URL } from "./systemMap.gen.js";
@@ -72,7 +74,8 @@ export const V2_COPY = {
     ],
     flowEnd: "Changed by one cent: blocked",
     button: "Launch the live transfer demo",
-    fine: "Purser's real engine · test money · Airwallex sandbox · deleted after 24 hours",
+    // Site audit, 20 Nov (finding 6.3): the sandbox disclosure first, right under the primary button.
+    fine: "Sandbox demo: test money, no real settlement · Purser's real engine · deleted after 24 hours",
   },
   approve: {
     heading: "Approve the transfer.",
@@ -884,7 +887,7 @@ function partners(withHead){
   return mk('section','pp',(withHead?[mk('h2','',P.heading),mk('p','pp-sub',P.sub)]:[]).concat([cards,foot]));
 }
 const H=PC.how;
-const logoChip=(k)=>{const i=document.createElement('img');i.src=PC.logos[k].src;i.alt=PC.logos[k].alt;return mk('span','hw-logo hw-'+k,i)};
+const logoChip=(k)=>{const i=document.createElement('img');i.src=PC.logos[k].src;i.alt=PC.logos[k].alt;i.width=PC.logos[k].w;i.height=PC.logos[k].h;return mk('span','hw-logo hw-'+k,i)};
 const how=mk('section','pv-card pv-how');how.setAttribute('role','dialog');how.setAttribute('aria-label',H.eyebrow);
 {
   const flow=mk('ol','hw-flow',H.steps.map((st,i)=>{const li=mk('li','',[mk('span','n',String(i+1)),mk('b','',st.h),mk('p','',st.p)].concat(st.logo?[logoChip(st.logo)]:[]));li.style.setProperty('--i',String(i));return li}));
@@ -1220,11 +1223,16 @@ document.addEventListener('keydown',(e)=>{
 `;
 
 const b64 = (k: string) => { const f = LOGO_FILES[k]; return f ? `data:${f.type};base64,${f.b64}` : ""; };
-/** The partners' own files, unaltered (logos.gen.ts, awxLogo.gen.ts), on a white chip as on the README. */
-const LOGOS = {
-  claude: { src: b64("/assets/logo-claude-slate.svg"), alt: "Claude" },
-  airwallex: { src: AIRWALLEX_LOGO_DATA_URL, alt: "Airwallex" },
-  alta: { src: b64("/assets/logo-alta.svg"), alt: "Alta (formerly Metal)" },
+const own = (key: string) => START_LOGOS.find((l) => l.key === key)!;
+/**
+ * The partners' own files (logos.gen.ts unaltered, awxLogo.gen.ts the official wordmark scaled), on a white chip as on
+ * the README, each with the file's own width and height (site audit, 19 Nov, finding 5: the chip's <img> had neither, so
+ * the browser could not hold its box before the file loaded).
+ */
+export const LOGOS = {
+  claude: { src: b64("/assets/logo-claude-slate.svg"), alt: "Claude", w: own("claude").w, h: own("claude").h },
+  airwallex: { src: AIRWALLEX_LOGO_DATA_URL, alt: "Airwallex", w: AIRWALLEX_LOGO_SIZE.width, h: AIRWALLEX_LOGO_SIZE.height },
+  alta: { src: b64("/assets/logo-alta.svg"), alt: "Alta (formerly Metal)", w: own("alta").w, h: own("alta").h },
 };
 
 /**

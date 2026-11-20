@@ -7,6 +7,7 @@ import { purgeExpired } from "./privacy.js";
 import { sweepExports } from "./exports.js";
 import { warnExpiringKeys } from "./keyExpiry.js";
 import { pruneSessions } from "./sessions.js";
+import { pruneRecoveryRequests } from "./recovery.js";
 import { pruneSecurityLog } from "./securityLog.js";
 import { d1Sql, r2Blobs, type D1Like, type R2Like } from "./store.js";
 import { sqlBlobs } from "./blobsSql.js";
@@ -236,6 +237,9 @@ export default {
     // Keys 14 and 3 days from expiry: their company's owners are told, once each (./keyExpiry.ts; ASVS V2.3.3).
     // Session rows a day past their expiry (./sessions.ts).
     await edge("sessions_prune_failed", () => pruneSessions(env.sql, new Date()));
+    // Owner recovery requests: expired unapproved ones a day on, approved ones after a year (./recovery.ts;
+    // docs/privacy/retention.md). Spent export links go with the export sweep above.
+    await edge("recovery_prune_failed", () => pruneRecoveryRequests(env.sql, new Date()));
     await edge("key_expiry_warn_failed", () => warnExpiringKeys(env.sql, new Date(), env.outbound, env.retryDelayMs));
     if (env.engine && b.INBOX_QUEUE) await edge("inbox_requeue_failed", () => requeueWaitingMail(env.sql, b.INBOX_QUEUE!, new Date()));
     if (env.edge?.stats) {

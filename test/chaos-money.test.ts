@@ -15,6 +15,10 @@ describe("chaos for money movement", () => {
     expect(r.random).toHaveLength(100);
     const broken = [...r.hand, ...r.random].filter((x) => !x.ok).map((x) => `${x.id}: ${x.invariants.filter((i) => !i.ok).map((i) => `${i.id} ${i.detail}`).join("; ")}`);
     expect(broken).toEqual([]);
+    // Outside audit 2.1: every approved payment refused before it began was named by an alarm while it waited (I4 fails
+    // otherwise); H17's second approval, refused at the EUR floor, is recorded and shown, not silent.
+    expect([...r.hand, ...r.random].flatMap((x) => x.silentApprovals)).toEqual([]);
+    expect(r.hand.find((x) => x.id === "H17")!.blockedShown).toEqual(["P-0002"]);
     // The scenarios do what they say: faults were injected and processes died.
     expect(r.random.reduce((s, x) => s + x.faults, 0)).toBeGreaterThan(100);
     expect([...r.hand, ...r.random].reduce((s, x) => s + x.crashes, 0)).toBeGreaterThan(20);
@@ -46,5 +50,7 @@ describe("chaos for money movement", () => {
     expect(md).toContain(`**${report.totals.scenarios} scenarios (${report.totals.randomized} randomized, ${report.totals.hand_written} hand-written), ${report.totals.passed} passed, ${report.totals.failed} failed**`);
     for (const s of report.scenarios.filter((x) => !x.ok)) expect(md).toContain(`### ${s.id}:`);
     if (report.totals.silent_approvals) expect(md).toContain("Observation: an approved payment refused before it begins raises no alarm");
+    expect(report.totals.silent_approvals).toBe(0);
+    if (report.totals.blocked_shown) expect(md).toContain("### Approved payments refused before they began are shown (outside audit 2.1)");
   });
 });

@@ -64,7 +64,7 @@ describe("the paths the site passes to purser-try", () => {
     for (const p of named.filter((x) => x.startsWith("/assets/logo-"))) {
       expect(isTryEngineRequest("GET", p), p).toBe(false);
       const ours = p === AIRWALLEX_LOGO_PATH ? Buffer.from(AIRWALLEX_LOGO_DATA_URL.slice(AIRWALLEX_LOGO_DATA_URL.indexOf(",") + 1), "base64") : Buffer.from(LOGO_FILES[p]!.b64, "base64");
-      const site = p === AIRWALLEX_LOGO_PATH ? readFileSync(new URL("../src/ui/logos/airwallex.png", import.meta.url)) : LOGOS[p.slice("/assets/".length)]!.body;
+      const site = LOGOS[p.slice("/assets/".length)]!.body;
       expect(ours.equals(site), p).toBe(true);
     }
     for (const p of named) if (!p.endsWith("/") && !p.startsWith("/assets/")) expect(PAGE_CALLS.some(([, c]) => new URL(c, SITE).pathname === p), p).toBe(true);

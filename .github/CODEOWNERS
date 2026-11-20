@@ -1,2 +1,85 @@
-# Every change is reviewed by the repository owner.
+# Code owners (GitHub: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners).
+# The last matching line wins. Today every line names the one maintainer: a second maintainer is still needed
+# (GOVERNANCE.md). GitHub asks a code owner's review only once the ruleset on main requires it
+# (docs/security/owner-actions.md, section 3); until then this file names who reviews, it does not block a merge.
+
+# Everything else.
 * @agamemnon-coder
+
+# Money-moving code: executors, payouts, the rails' clients, treasury and the payables agents.
+/src/executors/ @agamemnon-coder
+/src/payouts/ @agamemnon-coder
+/src/airwallex/ @agamemnon-coder
+/src/awx/ @agamemnon-coder
+/src/metal/ @agamemnon-coder
+/src/money/ @agamemnon-coder
+/src/lib/money.ts @agamemnon-coder
+/src/finance/ @agamemnon-coder
+/src/ap/ @agamemnon-coder
+/src/agents/euroBill.ts @agamemnon-coder
+/src/agents/sweep.ts @agamemnon-coder
+/src/agents/treasury.ts @agamemnon-coder
+/src/visa/ @agamemnon-coder
+/src/airi/ @agamemnon-coder
+/src/tokenize/ @agamemnon-coder
+/src/engine/ @agamemnon-coder
+/cloud/src/engine/ @agamemnon-coder
+/worker/src/awxPayout.ts @agamemnon-coder
+/worker/src/awxGateway.ts @agamemnon-coder
+/worker/src/x402.ts @agamemnon-coder
+/contracts/ @agamemnon-coder
+
+# Approvals and passkeys: the policy, the signature over the exact terms, enrolment, sessions and recovery.
+/src/policy/ @agamemnon-coder
+/src/passkey/ @agamemnon-coder
+/src/approve/ @agamemnon-coder
+/src/relay/ @agamemnon-coder
+/worker/src/webauthn.ts @agamemnon-coder
+/worker/src/trySign.ts @agamemnon-coder
+/worker/src/core.ts @agamemnon-coder
+/cloud/src/auth.ts @agamemnon-coder
+/cloud/src/stepUp.ts @agamemnon-coder
+/cloud/src/recovery.ts @agamemnon-coder
+/cloud/src/sessions.ts @agamemnon-coder
+/cloud/src/adminKeys.ts @agamemnon-coder
+/cloud/src/keyExpiry.ts @agamemnon-coder
+
+# Security: the threat model and its gate, tenancy, headers, logs, redaction and the audit trail.
+/SECURITY.md @agamemnon-coder
+/docs/security.md @agamemnon-coder
+/docs/security/ @agamemnon-coder
+/docs/controls.md @agamemnon-coder
+/cloud/src/tenant.ts @agamemnon-coder
+/cloud/src/baseHeaders.ts @agamemnon-coder
+/cloud/src/securityAudit.ts @agamemnon-coder
+/cloud/src/securityLog.ts @agamemnon-coder
+/cloud/src/privacy.ts @agamemnon-coder
+/src/lib/redact.ts @agamemnon-coder
+/src/lib/securityEvents.ts @agamemnon-coder
+/src/audit/ @agamemnon-coder
+/src/provenance/ @agamemnon-coder
+/src/zerotrust/ @agamemnon-coder
+/scripts/pr-threat-model.ts @agamemnon-coder
+
+# Cryptography: hashing, sealing, signing, anchors and the proofs anyone can verify.
+/cloud/src/crypto.ts @agamemnon-coder
+/cloud/src/sealed.ts @agamemnon-coder
+/src/anchor/ @agamemnon-coder
+/src/proof/ @agamemnon-coder
+/src/verify/ @agamemnon-coder
+
+# Deployment: the Workers' configurations, CI and release workflows, dependency pins.
+/cloud/wrangler.jsonc @agamemnon-coder
+/cloud/wrangler.try.jsonc @agamemnon-coder
+/worker/wrangler.jsonc @agamemnon-coder
+/.github/workflows/ @agamemnon-coder
+/.github/dependabot.yml @agamemnon-coder
+/.github/CODEOWNERS @agamemnon-coder
+/package.json @agamemnon-coder
+/package-lock.json @agamemnon-coder
+/worker/package.json @agamemnon-coder
+/worker/package-lock.json @agamemnon-coder
+
+# Migrations and schemas: Purser Cloud's D1 migrations and the runner's ledger.
+/cloud/migrations/ @agamemnon-coder
+/src/db/ @agamemnon-coder

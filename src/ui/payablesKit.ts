@@ -35,7 +35,7 @@ export function svg(name: string, size = 18): string {
 export const ICON_SET = (names: string[]) => JSON.stringify(Object.fromEntries(names.map((n) => [n, svg(n, 16)])));
 export const escAttr = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-export const PAYABLES_CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff2)")}
+export const PAYABLES_CSS = `${TOKENS.replace("url(assets/inter.woff2", "url(/assets/inter.woff2")}
 :root { --warn: #a15c00; --warn-soft: #fff4e0; --r: 18px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --warn: #ffb547; --warn-soft: #33260f; } }
 * { box-sizing: border-box; }

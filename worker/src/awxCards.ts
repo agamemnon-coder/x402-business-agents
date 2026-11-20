@@ -7,6 +7,7 @@
 // Two locks on this side: without the key nothing is called, and anything but a read needs AWX_CARDS_WRITE=on (a plain
 // var, off by default). Purser Cloud has its own switch (awx_cards), the CFO's passkey and the caps in front of this one.
 import { fromCents } from "../../src/lib/money.js";
+import { apiVersionHeader } from "../../src/airwallex/apiVersion.js";
 import { createControlsBody, limitsUpdateBody } from "../../src/airwallex/cardBody.js";
 import {
   CARD_ID, CARDS_SANDBOX_BASE, FREEZE_MANY_MAX, cardCallCheck, safeCard, safeTx, SHA256_HEX,
@@ -59,7 +60,7 @@ export class AwxCardsDesk {
     if (this.token && this.token.until - TOKEN_EARLY_MS > this.now()) return this.token.value;
     this.token = null;
     const res = await this.fetchImpl(`${CARDS_SANDBOX_BASE}/authentication/login`, {
-      method: "POST", headers: { "x-client-id": k.id, "x-api-key": k.key, "content-type": "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS),
+      method: "POST", headers: { "x-client-id": k.id, "x-api-key": k.key, "content-type": "application/json", ...apiVersionHeader("/authentication/login") }, signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const j = (await res.json().catch(() => null)) as { token?: unknown } | null;
     if (!res.ok || typeof j?.token !== "string") return null;
@@ -88,7 +89,7 @@ export class AwxCardsDesk {
       let res: Response;
       try {
         res = await this.fetchImpl(url.toString(), {
-          method, headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          method, headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...apiVersionHeader(path) },
           body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(TIMEOUT_MS),
         });
       } catch {

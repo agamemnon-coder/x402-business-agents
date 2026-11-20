@@ -38,7 +38,7 @@ describe("About Purser on Home", () => {
   it("shows the partners' official logos in the hero, unaltered on white tiles, alt their names, never recoloured", () => {
     const hero = /<section class="e-hero">[\s\S]*?<\/section>/.exec(ON)![0];
     const trust = /<div class="trust">[\s\S]*?<\/small><\/div>/.exec(hero)![0];
-    expect([...trust.matchAll(/<img src="assets\/(logo-[\w-]+\.(?:png|svg))" alt="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["logo-alta.svg", "Alta (formerly Metal)"], ["logo-claude-slate.svg", "Claude"]]); // alt, judge panel 15 Nov
+    expect([...trust.matchAll(/<img src="assets\/(logo-[\w-]+\.(?:png|svg))(?:\?v=[0-9a-f]{12})?" alt="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["logo-alta.svg", "Alta (formerly Metal)"], ["logo-claude-slate.svg", "Claude"]]); // alt, judge panel 15 Nov
     // 14 Nov (owner): Airwallex left the "Works with" row: it is the platform, the header's "Built on Airwallex" badge.
     expect(trust).not.toContain("logo-airwallex");
     // 14 Nov: Metal is now Alta, its wordmark shown with the Alta team's OK (docs/evidence/logo-permissions.md); Visa as
@@ -57,11 +57,13 @@ describe("About Purser on Home", () => {
     expect(ON.replace(MARKS_NOTE, "").replace(`<small>${NO_ENDORSEMENT}</small>`, "")).not.toMatch(/endorse|certified|partner of/i);
   });
 
-  it("claims no customer, quotes no one, asks for no design partner and names no person", () => {
-    expect(DESIGN_PARTNER_URL).toBe("");
+  // 20 Nov (the owner): the design-partner link is set, to the pilot and partnership address he made public; it shows
+  // once, at the end of Home, and nowhere in the "About" part, which still names no person.
+  it("claims no customer, quotes no one, asks for a design partner only in its one link, and names no person", () => {
+    expect(DESIGN_PARTNER_URL).toBe("mailto:max.geurtsen@outlook.com");
     for (const html of [ON, OFF]) {
-      expect(html).not.toContain(DESIGN_PARTNER_LABEL);
-      expect(html).not.toMatch(/design partner|Looking for/i);
+      expect(html.split(DESIGN_PARTNER_LABEL)).toHaveLength(2);
+      expect(html.replace(DESIGN_PARTNER_LABEL, "")).not.toMatch(/design partner|Looking for/i);
     }
     const t = text(about(ON));
     expect(t).not.toMatch(/[“”"«»]/);

@@ -1,6 +1,6 @@
 # Chaos for money movement
 
-Run on 2026-11-19 with `npm run chaos:money` (src/cli/chaosMoney.ts), seed 20261119: **317 scenarios (300 randomized, 17 hand-written), 317 passed, 0 failed**.
+Run on 2026-11-20 with `npm run chaos:money` (src/cli/chaosMoney.ts), seed 20261119: **317 scenarios (300 randomized, 17 hand-written), 317 passed, 0 failed**.
 
 What runs: the real invoice payment executor, its saga and outbox (money_steps), the real Airwallex client and adapter, and the runner's recovery (recoverHolds, resumeInterrupted). Airwallex is a stand-in REST API in this process (src/chaos/standInAirwallex.ts) that, call by call, loses the request, loses the answer after doing the work (a dropped connection or a timeout), answers 500, 502 after doing the work, 503 or 429. The runner's process dies at saga checkpoints or with a call sent; a death is emulated faithfully: the ledger restarts from its SQLite image at that instant (whatever catch blocks did after it is thrown away) and Airwallex refuses the dead process's calls. Clocks are skewed (the runner against Airwallex) and approvals arrive late. The CFO approves with a passkey (a software authenticator, through the real assertion path). After the faulty lives: one calm life, a person's retry of each failed payment (the retry route's semantics), Airwallex paying out what it holds, the payout follow-up, a restart the next day, then a webhook storm (every Airwallex event several times, shuffled, with forged ones) and the checks. Test money, no network, no key.
 
@@ -11,16 +11,16 @@ What runs: the real invoice payment executor, its saga and outbox (money_steps),
 | I1: never paid twice: at most one live transfer and one conversion per approval at Airwallex, no request_id twice | 317 | 0 |
 | I2: never paid without a valid signature: every transfer is to passkey-approved terms, for the approved amount, and the stored signatures re-verify offline | 317 | 0 |
 | I3: the ledger balances: the audit chain and the general ledger verify, Airwallex's EUR is conserved, every executed payment's payout row says what Airwallex says | 317 | 0 |
-| I4: every payment ends in a known state, or goes to a person (an alarm row or a /health alert) | 317 | 0 |
+| I4: every payment ends in a known state, or goes to a person (an alarm row or a /health alert); an approved payment refused before it began is named by an alarm while it waits | 317 | 0 |
 | I5: webhooks move nothing: duplicated, out-of-order and forged events change no proposal, payout row or approval; forged ones are ignored | 317 | 0 |
 
 ## Totals
 
-- Airwallex calls: 9146; faults injected: 492 (429 76, 500 49, 503 72, lost-answer 80, crash 40, 502-after 64, timeout-after 46, lost-request 65); process deaths: 77.
+- Airwallex calls: 8970; faults injected: 490 (429 75, 500 49, 503 72, lost-answer 80, crash 40, 502-after 63, timeout-after 46, lost-request 65); process deaths: 77.
 - Webhooks delivered: 1686, of which forged: 459.
 - How the payments ended: EXECUTED 218, EXPIRED 165, PENDING_APPROVAL 2, APPROVED 1, REJECTED 1, FAILED 8.
 - Scenarios where a payment went to a person (an alarm row or a /health alert) instead of a final state: 1.
-- Scenarios where an approved payment was refused before it began and sat APPROVED with no alarm until its expiry: 49 (see the findings).
+- Scenarios where an approved payment was refused before it began and was shown (an execution.blocked row with the reason and time, BLOCKED_NEEDS_REVIEW, the approved_blocked alarm on /health): 50; where it sat APPROVED with no alarm naming it: 0.
 
 ## The invariants have teeth (canaries)
 
@@ -37,11 +37,11 @@ Each canary runs a calm payment and plants one break before the checks; each mus
 
 No invariant was broken in any scenario.
 
-### Observation: an approved payment refused before it begins raises no alarm until it expires
+### Approved payments refused before they began are shown (outside audit 2.1)
 
-In 49 scenario(s) an approved proposal was refused by the executor before anything was sent (the terms in the ledger no longer hash to the approved hash, or the EUR floor would be broken once another payment went out) and stayed APPROVED, with no alarm row and nothing on /health, retried and refused at each start until its expiry made it EXPIRED. Nothing was paid (I1, I2 held). A person is not told while it lasts: `resumeInterrupted` (src/policy/saga.ts) keeps the refusal in its return value only. The same EUR floor refusal, met after execution began, fails the proposal instead (FAILED, on the dashboard). Why they were refused: the EUR floor 49. Seen in: H17, R006, R007, R010, R016, R031, R032, R034, R046, R048, R055, R071, R072, R075, R085, R095, R103, R104, R108, R113, R115, R116, R132, R148, R157, R161, R174, R191, R203, R205, R216, R221, R222, R226, R232, R235, R241, R243, R244, R245, R248, R250, R254, R261, R274, R284, R291, R293, R298.
+In 50 scenario(s) an approved proposal was refused by its executor before anything was sent. Each was recorded (`execution.blocked`, with the reason and the time), shown as BLOCKED_NEEDS_REVIEW, and named by an alarm on /health while it waited (`approved_blocked`, or `approved_terms_changed` when its terms were changed); a restart did not try it again, and it closes when it expires. Nothing was paid (I1, I2 held). Why they were refused: the EUR floor 49, terms changed after the approval 1. Seen in: H17, H11, R006, R007, R010, R016, R031, R032, R034, R046, R048, R055, R071, R072, R075, R085, R095, R103, R104, R108, R113, R115, R116, R132, R148, R157, R161, R174, R191, R203, R205, R216, R221, R222, R226, R232, R235, R241, R243, R244, R245, R248, R250, R254, R261, R274, R284, R291, R293, R298.
 
-Repro: `npm run chaos:money -- --only H11` (terms edited after the approval) and `--only H17` (two approvals, the second refused at the EUR floor).
+Repro: `npm run chaos:money -- --only H17` (two approvals, the second refused at the EUR floor) and `--only H11` (terms edited after the approval).
 
 ## Hand-written scenarios
 
@@ -59,7 +59,7 @@ Repro: `npm run chaos:money -- --only H11` (terms edited after the approval) and
 | `H08` the approval is used 25 minutes later: the terms have expired | held | P-0001 EXPIRED, nothing at Airwallex |
 | `H09` a webhook storm: every event five times, shuffled, and six forged events | held | P-0001 EXECUTED, Airwallex PAID, payout row PAID |
 | `H10` never approved: the executor is asked to pay a proposal waiting for the CFO | held | P-0001 PENDING_APPROVAL, nothing at Airwallex |
-| `H11` the terms in the ledger are changed after the passkey approved them (amount +1.00) | held | P-0001 APPROVED, nothing at Airwallex → a person (approved_terms_changed) |
+| `H11` the terms in the ledger are changed after the passkey approved them (amount +1.00) | held | P-0001 APPROVED, nothing at Airwallex → a person (approved_terms_changed, alarm row) |
 | `H12` the passkey signed other terms (another amount): the approval is refused, nothing is paid | held | P-0001 PENDING_APPROVAL, nothing at Airwallex |
 | `H13` rejected with the passkey, then the executor is asked to pay | held | P-0001 REJECTED, nothing at Airwallex |
 | `H14` the process dies twice: with the transfer's answer in hand, then again during the next life's settlement | held | P-0001 EXECUTED, Airwallex PAID, payout row PAID |
@@ -259,7 +259,7 @@ Repro: `npm run chaos:money -- --only H11` (terms edited after the approval) and
 | `R188` | 0 | 0 | held | EXECUTED |
 | `R189` | 5 | 1 | held | EXECUTED |
 | `R190` | 1 | 0 | held | EXECUTED |
-| `R191` | 2 | 1 | held | EXECUTED+EXPIRED |
+| `R191` | 1 | 1 | held | EXECUTED+EXPIRED |
 | `R192` | 0 | 0 | held | EXECUTED |
 | `R193` | 3 | 1 | held | EXECUTED |
 | `R194` | 0 | 0 | held | EXPIRED |
@@ -289,7 +289,7 @@ Repro: `npm run chaos:money -- --only H11` (terms edited after the approval) and
 | `R218` | 0 | 0 | held | EXPIRED |
 | `R219` | 8 | 0 | held | FAILED+EXECUTED |
 | `R220` | 1 | 0 | held | EXPIRED+EXPIRED |
-| `R221` | 2 | 0 | held | EXECUTED+EXPIRED |
+| `R221` | 1 | 0 | held | EXECUTED+EXPIRED |
 | `R222` | 0 | 0 | held | EXECUTED+EXPIRED |
 | `R223` | 2 | 1 | held | EXECUTED |
 | `R224` | 0 | 0 | held | EXECUTED |

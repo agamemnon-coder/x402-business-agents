@@ -130,10 +130,15 @@ export async function openCardWindow(db: DB, rail: StatusSwitch, agent: string, 
   if (agent.startsWith("task:") || card.status === "CLOSED" || !policyAllowsCard(db, agent)) return null;
   const w: CardWindow = { agent, amount: fromCents(a.amountCents), merchant: a.merchant, until: new Date(now.getTime() + CARD_WINDOW_MS).toISOString(), why: a.why };
   audit(db, "awx-executor", "card.window_opened", agent, { ...w, last4: card.last4, currency: "EUR" }, now);
+  // The ledger says "thawed" before the thaw is sent (card drill, 20 Nov): if this process dies after Airwallex thawed
+  // the card, or the answer is lost, a stale INACTIVE here would make the runner's cheap sync skip the card for good
+  // once the window ran out. ACTIVE makes it read the card at Airwallex and freeze it again.
+  db.prepare("UPDATE cards SET status = 'ACTIVE', synced_at = ? WHERE agent = ?").run(now.toISOString(), agent);
   let after: Card;
   try {
     after = await rail.setCardStatus(card.card_id, "ACTIVE");
   } catch (e) {
+    // The row stays ACTIVE: the thaw may have reached Airwallex, so the next sync reads the card and freezes it.
     audit(db, "awx-executor", "card.window_closed", agent, { agent, last4: card.last4, why: `not thawed at Airwallex: ${(e as Error).message.slice(0, 120)}` }, now);
     throw new Error(`the ${agent} agent's card was not thawed for the purchase at Airwallex: ${(e as Error).message}`, { cause: e });
   }
@@ -175,19 +180,42 @@ export async function chargeInWindow(db: DB, sim: IssuingSim, agent: string, a: 
 
 /**
  * Whether an authorisation Purser did not start itself fits a window it opened: the same card, the same amount, at a
- * moment the window was open. One that does not is unexpected: the window closes, and the card is frozen again.
+ * moment the window was open, and a window not used already. A window is opened for one purchase, so it expects one
+ * authorisation: a second one of the same amount in it is unexpected too (card drill, 20 Nov: a second EUR 1.00 inside
+ * the window of a EUR 1.00 purchase was approved by Airwallex and taken for the purchase). One that does not fit is
+ * unexpected: the window closes, and the card is frozen again.
  */
-function expectedByWindow(db: DB, agent: string, amountCents: number, at: Date): boolean {
+function expectedByWindow(db: DB, agent: string, transactionId: string, amountCents: number, at: Date): boolean {
   const rows = db.prepare("SELECT ts, payload_json FROM audit_log WHERE subject = ? AND event = 'card.window_opened' AND ts <= ? ORDER BY seq DESC LIMIT 20")
     .all(agent, new Date(at.getTime() + WINDOW_SKEW_MS).toISOString()) as { ts: string; payload_json: string }[];
-  return rows.some((r) => {
+  const fits = rows.filter((r) => {
     const w = JSON.parse(r.payload_json) as CardWindow;
     return w.amount === fromCents(amountCents) && Date.parse(w.until) + WINDOW_SKEW_MS >= at.getTime();
   });
+  if (!fits.length) return false;
+  // The other approved authorisations of this amount on this card since the first of these windows opened: each used one.
+  const from = new Date(Math.min(...fits.map((r) => Date.parse(r.ts))) - WINDOW_SKEW_MS).toISOString();
+  const used = (db.prepare("SELECT COUNT(*) AS n FROM card_transactions WHERE agent = ? AND amount_cents = ? AND approved = 1 AND transaction_id <> ? AND occurred_at >= ? AND occurred_at <= ?")
+    .get(agent, amountCents, transactionId, from, new Date(at.getTime() + WINDOW_SKEW_MS).toISOString()) as { n: number }).n;
+  return used < fits.length;
+}
+
+/**
+ * A purchase window on a card the policy now blocks (the emergency stop, a velocity stop, a pause, a revoked identity)
+ * is closed for good, not only overruled: the purchase it was opened for is cancelled by the stop. Before 20 Nov (stop
+ * drill), lifting the emergency stop within a window's two minutes thawed every card that was mid-purchase when the
+ * stop was pulled. Returns true if a window was closed.
+ */
+export function closeBlockedWindow(db: DB, agent: string, now: Date): boolean {
+  if (agent.startsWith("task:") || policyAllowsCard(db, agent) || !openWindow(db, agent, now)) return false;
+  const card = cardOf(db, agent);
+  audit(db, "awx-executor", "card.window_closed", agent, { agent, last4: card?.last4 ?? "", why: frozen(db) ? "the emergency stop cancelled the purchase" : "a stop on this agent cancelled the purchase" }, now);
+  return true;
 }
 
 /** Makes one card match the policy (status, then limits). Returns true if Airwallex had something else. */
 export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Card, now: Date): Promise<boolean> {
+  closeBlockedWindow(db, agent, now);
   // A closed card (a used single-use card) is final at Airwallex: no status or limit can change it.
   if (card.status === "CLOSED") {
     storeCard(db, agent, card, now);
@@ -285,6 +313,22 @@ export async function syncCards(db: DB, rail: IssuingRail, now = new Date()): Pr
 }
 
 /**
+ * Once, when the runner starts (card drill, 20 Nov): a purchase window left open by a process that died between the
+ * thaw and the refreeze is closed, and every card is read back from Airwallex (not from the ledger) and made to match
+ * the policy, so a card thawed before a crash is frozen at the restart, not only once its window would have run out.
+ * A purchase another process still has under way then meets a frozen card and is declined: the safe side.
+ */
+export async function recoverCardWindows(db: DB, rail: IssuingRail, now = new Date()): Promise<{ closed: string[]; changed: string[] }> {
+  const closed: string[] = [];
+  for (const row of cardRows(db)) {
+    if (row.agent.startsWith("task:") || row.status === "CLOSED" || !openWindow(db, row.agent, now)) continue;
+    audit(db, "awx-executor", "card.window_closed", row.agent, { agent: row.agent, last4: row.last4, why: "the runner restarted: the purchase that opened this window is no longer running" }, now);
+    closed.push(row.agent);
+  }
+  return { closed, changed: await syncCards(db, rail, now) };
+}
+
+/**
  * The cheap check the runner makes every few seconds: only a card whose stored limits differ from what it may have
  * (the policy's, a raise only as signed) is touched. A refused raise is recorded here without calling Airwallex.
  */
@@ -292,6 +336,7 @@ export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Da
   const changed: string[] = [];
   for (const row of cardRows(db)) {
     if (row.status === "CLOSED") continue;
+    closeBlockedWindow(db, row.agent, now);
     const allowed = await allowedCardLimits(db, row.agent, { currency: "EUR", perTxCents: row.per_tx_cents, monthlyCents: row.monthly_cents }, cardLimits(db, row.agent));
     const want = allowed.limits;
     if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantCardStatus(db, row.agent, now)) {
@@ -406,7 +451,7 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
     // Freeze by default: an approval Purser did not start (seen by the webhook or the poll) that fits no window it opened
     // closes any open window, so the card is frozen again at the next sync (every few seconds on the runner).
     if (t.approved && source !== "simulation" && !card.agent.startsWith("task:") && !/REFUND|REVERSAL|CREDIT/i.test(t.type)
-      && !expectedByWindow(db, card.agent, t.amountCents, Number.isFinite(Date.parse(t.occurredAt)) ? new Date(t.occurredAt) : now)) {
+      && !expectedByWindow(db, card.agent, t.transactionId, t.amountCents, Number.isFinite(Date.parse(t.occurredAt)) ? new Date(t.occurredAt) : now)) {
       audit(db, "system", "card.unexpected_authorization", t.transactionId, { agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, source, action: "window closed; the card is frozen again" }, now);
       if (openWindow(db, card.agent, now)) audit(db, "awx-executor", "card.window_closed", card.agent, { agent: card.agent, last4: card.last4, why: `an authorisation Purser did not expect (${t.transactionId})` }, now);
     }

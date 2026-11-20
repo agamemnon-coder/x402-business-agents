@@ -170,7 +170,7 @@ export function securityEvidence(w: EvidenceWall | null = committedWall()): EvGr
       fromWall("e-fuzz", "fuzzing", w),
       fromWall("e-tamper", "tamper-matrix", w),
       { id: "e-formal", fig: fm.states, label: "states of the payment state machine checked by TLC (TLA+): no error", note: `${countOf(fm.caught, fm.planted)} planted bugs caught, each with a trace. A model of the code, not the code; offline.`, tag: "test", rec: FORMAL_REC, also: [repoHref("formal/PurserPayment.tla"), "The model"] },
-      { id: "e-mutation", fig: countOf(mu.killed, mu.total), label: "planted bugs caught in the proof verifier (mutation testing)", note: `${mu.score}% after the new tests, ${mu.before}% before.${mu.partial ? " A partial run: one module group is not reported yet." : ""} Offline.`, tag: "test", rec: "docs/evidence/mutation-testing.md" },
+      { id: "e-mutation", fig: countOf(mu.killed, mu.total), label: "planted bugs caught in the proof verifier (mutation testing)", note: `${mu.score}% after the new tests, ${mu.before}% before.${mu.partial ? " A partial run: most module groups are not measured yet." : ""} Offline.`, tag: "test", rec: "docs/evidence/mutation-testing.md" },
     ] },
     { id: "ev-supply", title: "Supply chain", items: [
       { id: "e-scan", fig: ci.fig, label: ci.label, note: `${ci.note} OSV-Scanner checks every lockfile daily; its ${vx.statements} findings are in CI tooling and test fixtures, none in the product, each with an OpenVEX statement.`, tag: "ci", rec: ".github/workflows/osv-scanner.yml", wall: "ci", also: [repoHref("docs/security/vex/README.md"), "VEX"] },

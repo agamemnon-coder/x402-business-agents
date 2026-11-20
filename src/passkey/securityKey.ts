@@ -6,6 +6,7 @@
 
 import { randomBytes } from "node:crypto";
 import type { RegistrationResponseJSON } from "@simplewebauthn/server";
+import { checkpointRefusal } from "../audit/checkpointer.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
@@ -52,6 +53,9 @@ export async function finishSecurityKey(db: DB, a: { label: string; credential: 
   if (db.prepare("SELECT 1 FROM passkeys WHERE credential_id = ?").get(v.credentialId) || db.prepare("SELECT 1 FROM security_keys WHERE credential_id = ?").get(v.credentialId)) {
     return { ok: false, reason: "this credential is already registered: a second key must be a different key" };
   }
+  // Outside audit 1.4: no key is enrolled on a ledger that does not match its latest signed checkpoint.
+  const unanchored = checkpointRefusal(db, "key enrolment", now);
+  if (unanchored) return { ok: false, reason: unanchored };
   db.transaction(() => {
     db.prepare(`INSERT INTO security_keys (credential_id, public_key, counter, transports, rp_id, origin, label, aaguid, registration_json, enrolled_at, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`).run(v.credentialId, v.publicKey, v.counter, v.transports ? JSON.stringify(v.transports) : null, w.rp_id, w.origin, a.label, v.aaguid, JSON.stringify(r), now.toISOString());

@@ -408,9 +408,11 @@ describe("pages", () => {
     for (const res of [d, js]) {
       expect(res.headers.get("x-content-type-options")).toBe("nosniff");
       expect(res.headers.get("referrer-policy")).toBe("no-referrer");
-      expect(res.headers.get("x-robots-tag")).toMatch(/noindex/);
       expect(res.headers.get("cache-control")).toBe("no-store");
     }
+    // The owner, 20 Nov: Home (/) may be indexed (src/lib/siteIndex.ts); the script, like every asset, may not.
+    expect(d.headers.get("x-robots-tag")).toBeNull();
+    expect(js.headers.get("x-robots-tag")).toMatch(/noindex/);
     expect(page("/approve/<script>")).toBeNull();
     expect(page("/nothing")).toBeNull();
     expect(pageResponse(new Request(`${BASE}/`, { method: "POST" }), pages)).toBeNull();

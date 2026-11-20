@@ -12,7 +12,7 @@ import { loadRecord } from "../redesign/run.js";
 import { proofData, RECEIPT_SAMPLE_FILE } from "../redesign/agentData.js";
 import { T0_READBACK_FILE } from "../accounting/t0Readback.js";
 import ts from "typescript";
-import { AWX_CALLS_CSP, AWX_CALLS_PAGE, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, MOVED, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE, BOOKS_CSP, BOOKS_PAGE,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, STATUS_CSP, STATUS_PAGE } from "../servers/dashboard.js";
+import { AWX_CALLS_CSP, AWX_CALLS_PAGE, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, MOVED, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE, BOOKS_CSP, BOOKS_PAGE,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, PRIVACY_CSP, PRIVACY_PAGE, STATUS_CSP, STATUS_PAGE } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 import { trySignOn } from "../try/sign.js";
 import { phonePhrases } from "../ui/i18n.js";
@@ -25,12 +25,14 @@ import { APP_START_SCRIPT, appStartPage } from "../pwa/appPage.js";
 import { APP_ICON_PNGS } from "../pwa/icons.gen.js";
 import { ICON_VERSION } from "../ui/brand/mark.js";
 import type { AppFiles } from "../../worker/src/pwa.js";
+import { inlinePhonePage } from "../approve/integrity.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 /**
- * The phone pages load their script and stylesheet from the Worker itself; nothing inline, nothing else. Images from
- * here only, for the favicon: with img-src 'none' Firefox logged a CSP error for the icon it fetches by itself (QA).
+ * The installed app's start page loads its script and stylesheet from the Worker itself; nothing inline, nothing else.
+ * Images from here only, for the favicon: with img-src 'none' Firefox logged a CSP error for the icon it fetches by
+ * itself (QA). The approval, enrolment and policy pages have their own CSP of hashes (src/approve/integrity.ts).
  */
 const PHONE_CSP = [
   "default-src 'none'", "script-src 'self'", "style-src 'self'", "connect-src 'self'", "font-src 'self'", "img-src 'self'",
@@ -102,17 +104,38 @@ export function flowLinks(html: string, trySign: boolean): string {
   return html.replace(/href="try" data-next="try"/g, 'href="try/sign" data-next="try"');
 }
 
+/** The phone's script as the relay serves it: TypeScript types stripped, its words (src/ui/i18n.ts, ph.*) in front. */
+export function phoneScript(source = read("../approve/client.ts")): string {
+  const clientCode = ts.transpileModule(source, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, removeComments: false },
+    reportDiagnostics: false,
+  }).outputText;
+  // The phone's payables words ride in front of the script: it has no imports (see client.ts).
+  return `globalThis.PURSER_PHRASES = ${JSON.stringify(phonePhrases()).replace(/</g, "\\u003c")};\n${clientCode}`;
+}
+
+/**
+ * The three phone pages (approval, enrolment, policy), each with the installed app's head tags, its script and
+ * stylesheet inline and its build id, and the CSP of their hashes (src/approve/integrity.ts). The approval page integrity
+ * record (docs/evidence/approval-page.json) is made from exactly these.
+ */
+export function phonePages(client = phoneScript(), css = read("../approve/style.css")): Record<"approve" | "enrol" | "policy", { page: string; csp: string; build: string }> {
+  return {
+    approve: inlinePhonePage(withAppHead(read("../approve/page.html"), "site"), client, css),
+    enrol: inlinePhonePage(withAppHead(read("../approve/enrol.html"), "site"), client, css),
+    // Jury scan, 14 Nov: a link to /policy previews with its own title and words.
+    // Phone pages carry no absolute address (test/relay-assets.test.ts), so no og:image or og:url: the title and words.
+    policy: inlinePhonePage(withAppHead(read("../approve/policy.html"), "site").replace("</title>", () => `</title><meta name="description" content="${POLICY_DESCRIPTION}"><meta property="og:type" content="website"><meta property="og:site_name" content="Purser"><meta property="og:title" content="Policy · Purser"><meta property="og:description" content="${POLICY_DESCRIPTION}">`), client, css),
+  };
+}
+
 export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
   const trySign = trySignOn(env);
   const flow = (html: string) => flowLinks(html, trySign);
   const home = trySign ? homeWithTrySign() : { page: HOME_PAGE, csp: HOME_CSP };
-  const clientCode = ts.transpileModule(read("../approve/client.ts"), {
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, removeComments: false },
-    reportDiagnostics: false,
-  }).outputText;
-  // The phone's payables words (src/ui/i18n.ts, ph.*) ride in front of the script: it has no imports (see client.ts).
-  const client = `globalThis.PURSER_PHRASES = ${JSON.stringify(phonePhrases()).replace(/</g, "\\u003c")};\n${clientCode}`;
+  const client = phoneScript();
   const css = read("../approve/style.css");
+  const phone = phonePages(client, css);
   // The month-end pack (DOWNLOADS) rides with the images: served the same way, at /assets/<name>, under its own type.
   const images = { ...Object.fromEntries(Object.entries({ ...LOGOS, ...FILM_STILLS, ...DOWNLOADS }).map(([name, l]) => [name, { type: l.type, data: l.body.toString("base64") }])), ...APP_IMAGES };
   return {
@@ -142,6 +165,7 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     claude: flow(CLAUDE_PAGE),
     security: flow(SECURITY_PAGE),
     docs: flow(DOCS_PAGE),
+    privacy: flow(PRIVACY_PAGE),
     status: flow(STATUS_PAGE),
     t0: flow(T0_PAGE),
     books: flow(BOOKS_PAGE),
@@ -162,17 +186,31 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     moved: trySign ? MOVED : { ...MOVED, "/try/sign": "/try", "/try/sign/": "/try" },
     // The CFO's own pages are private and reference nothing outside the relay (test/relay-assets.test.ts): no
     // link-preview tags with an absolute image there.
-    approve: withAppHead(read("../approve/page.html"), "site"),
-    enrol: withAppHead(read("../approve/enrol.html"), "site"),
-    // Jury scan, 14 Nov: a link to /policy previews with its own title and words.
-    // Phone pages carry no absolute address (test/relay-assets.test.ts), so no og:image or og:url: the title and words.
-    policy: withAppHead(read("../approve/policy.html"), "site").replace("</title>", () => `</title><meta name="description" content="${POLICY_DESCRIPTION}"><meta property="og:type" content="website"><meta property="og:site_name" content="Purser"><meta property="og:title" content="Policy · Purser"><meta property="og:description" content="${POLICY_DESCRIPTION}">`),
+    // Each phone page is one document: its script and stylesheet inline, under a CSP of their hashes, so the served HTML
+    // is all that runs and its SHA-256 is published (src/approve/integrity.ts, docs/evidence/approval-page.json).
+    approve: phone.approve.page,
+    enrol: phone.enrol.page,
+    policy: phone.policy.page,
     client,
     css,
     font: FONT.toString("base64"),
     images,
+    versions: assetVersions(FONT, images),
     app: appFiles(css, images),
-    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, awxCalls: AWX_CALLS_CSP, claude: CLAUDE_CSP, security: SECURITY_CSP, docs: DOCS_CSP, status: STATUS_CSP, t0: T0_CSP, books: BOOKS_CSP, home: home.csp, watch: FILM_WATCH_CSP, replay: WATCH_CSP, proof: PROOF_CSP, verify: VERIFY_BUNDLE_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP } : {}), approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
+    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, awxCalls: AWX_CALLS_CSP, claude: CLAUDE_CSP, security: SECURITY_CSP, docs: DOCS_CSP, privacy: PRIVACY_CSP, status: STATUS_CSP, t0: T0_CSP, books: BOOKS_CSP, home: home.csp, watch: FILM_WATCH_CSP, replay: WATCH_CSP, proof: PROOF_CSP, verify: VERIFY_BUNDLE_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP } : {}), approve: phone.approve.csp, enrol: phone.enrol.csp, policy: phone.policy.csp },
+  };
+}
+
+/**
+ * The content version of the font and of each image, by the path the Worker serves it at: the first 12 hex digits of the
+ * SHA-256 of its bytes (the same rule as src/ui/assetVersions.ts, whose constants the pages link with). The Worker
+ * caches "<path>?v=<version>" for a year (site audit, 19 Nov, finding 6).
+ */
+export function assetVersions(font: Buffer, images: Record<string, { data: string }>): Record<string, string> {
+  const v = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex").slice(0, 12);
+  return {
+    "/assets/inter.woff2": v(font),
+    ...Object.fromEntries(Object.entries(images).map(([name, img]) => [`/assets/${name}`, v(Buffer.from(img.data, "base64"))])),
   };
 }
 

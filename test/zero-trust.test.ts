@@ -911,8 +911,9 @@ SCENARIOS["decision-code-unsigned-payout"] = async () => {
 // An approval written straight into the database, for a payout to the attacker's account, with the stored hash. Since
 // 20 November (security review, finding 1) a row alone no longer runs: the executor re-verifies the stored passkey
 // signature and refuses, before any call to Airwallex, and records why. So the attacker who writes the file writes the
-// rest too: a passkey of its own, and its own signature over the terms (the real enrolment and signing below write
-// exactly the rows such an attacker writes). That gets past Purser; Airwallex's approval workflow holds it.
+// rest too: a passkey of its own. Since the outside audit (finding 1.3) that signs nothing: the row lacks the enrolment
+// seal (src/passkey/seal.ts), whose key the ledger does not hold. What still gets past Purser: deleting every passkey row,
+// so that a typed hash prefix approves again, and writing such an approval. Airwallex's approval workflow holds it.
 SCENARIOS["database-approval-forged"] = async () => {
   const w = await bankWorld({ approvalWorkflow: true });
   const id = await hostilePayout(w);
@@ -924,17 +925,25 @@ SCENARIOS["database-approval-forged"] = async () => {
   expect(w.awx.calls.length).toBe(calls);
   const unsigned = events(w.db, "execution.refused_unsigned");
   expect(unsigned).toHaveLength(1);
-  // The rest of the file: a passkey of the attacker's own, and its signature over the exact terms.
-  const own = await enrol(w.db, w.now, { person: "mallory" });
+  // A passkey of the attacker's own: a genuine row, made elsewhere, copied into the file without the ceremony's seal.
+  const scratch = openDb(":memory:");
+  const own = await enrol(scratch, w.now);
+  const row = scratch.prepare("SELECT credential_id, public_key, counter, transports, rp_id, origin, aaguid, registration_json, enrolled_at, status FROM passkeys WHERE credential_id = ?").get(own.credentialId) as Record<string, unknown>;
+  w.db.prepare("INSERT INTO passkeys (credential_id, public_key, counter, transports, rp_id, origin, label, aaguid, registration_json, enrolled_at, status) VALUES (@credential_id, @public_key, @counter, @transports, @rp_id, @origin, 'mallory', @aaguid, @registration_json, @enrolled_at, @status)").run(row);
   w.db.prepare("DELETE FROM approvals WHERE proposal_id = ?").run(id);
   w.db.prepare("UPDATE proposals SET status = 'PENDING_APPROVAL' WHERE proposal_id = ?").run(id);
-  expect((await sign(w.db, own, id, w.now)).status).toBe("approved");
+  const planted = await sign(w.db, own, id, w.now);
+  expect(planted).toMatchObject({ status: "refused", message: expect.stringMatching(/enrolment seal/) });
+  // What is left: every passkey row deleted, so a typed hash prefix approves again, and such an approval written.
+  w.db.prepare("DELETE FROM passkeys").run();
+  w.db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES (?, 'APPROVED', ?, 'max', 'cli', ?, ?)").run(id, hash, hash.slice(0, 8), w.now.toISOString());
+  w.db.prepare("UPDATE proposals SET status = 'APPROVED' WHERE proposal_id = ?").run(id);
   const out = await executeInvoicePayment(w.db, w.awx, w.awx, id);
   expect(out.transfer.status).toBe("IN_APPROVAL");
   expect(w.awx.transfers.map((t) => t.status)).toEqual(["IN_APPROVAL"]);
   const waiting = events(w.db, "transfer.awaiting_airwallex_approval");
   expect(waiting).toHaveLength(1);
-  return { moved: bankMoved(w), control: "Airwallex transfer approval", record: `execution.refused_unsigned: ${String(unsigned[0]!.reason).slice(0, 120)}; with a passkey of its own: transfer.awaiting_airwallex_approval: ${String(waiting[0]!.status)}` };
+  return { moved: bankMoved(w), control: "Airwallex transfer approval", record: `execution.refused_unsigned: ${String(unsigned[0]!.reason).slice(0, 120)}; a planted passkey: refused (no enrolment seal); with every passkey row deleted and a typed approval: transfer.awaiting_airwallex_approval: ${String(waiting[0]!.status)}` };
 };
 
 // ---------------------------------------------------------------------------------------------------------------------

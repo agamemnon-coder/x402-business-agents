@@ -26,7 +26,7 @@ export const STEP_UP_HEADER = "x-purser-step-up";
 
 /**
  * Sensitive settings: alert targets, the signed webhook, connector tokens (Claude and OAuth connections), API keys, team
- * members and their passkeys, the approval passkey, the company's export and closing, its Airwallex account and onboarding link, and its name
+ * members and their passkeys, the approval passkey, the company's export, closing and offboarding, its Airwallex account and onboarding link, and its name
  * and language. "METHOD path" as in the route table.
  * Spending limits are not set in Purser Cloud (they live in the CFO's policy on the runner, changed with the CFO's own
  * passkey there): when a route that changes a limit is added here, it belongs on this list.
@@ -39,16 +39,16 @@ export const STEP_UP_ROUTES: ReadonlySet<string> = new Set([
   "POST /v1/connect/{provider}/start", "DELETE /v1/connect/{provider}",
   "POST /v1/keys", "DELETE /v1/keys/{id}",
   "POST /v1/users", "POST /v1/users/{id}/enrolment", "DELETE /v1/users/{id}/passkeys/{credential}", "POST /v1/users/{id}/erase",
-  "POST /v1/export/staged", "POST /v1/close",
+  "POST /v1/export/staged", "POST /v1/close", "POST /v1/offboarding",
   "POST /v1/airwallex/account", "POST /v1/airwallex/onboarding-link", "POST /v1/company",
   "POST /v1/engine/security-key/start", "POST /v1/engine/security-key/finish",
   // The approval passkey itself: enrolling one replaces the person's earlier one (security review, 16 Nov).
   "POST /v1/engine/passkey/start", "POST /v1/engine/passkey/finish",
 ]);
 /** Step-up routes a key may not call at all: a signed-in owner only. */
-export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set(["POST /v1/alerts/targets", "DELETE /v1/alerts/targets/{id}", "POST /v1/chat-hooks/{product}", "DELETE /v1/chat-hooks/{product}", "POST /v1/security/settings"]);
-/** Routes that need a fresh passkey check whatever the setting says: the setting itself. */
-export const ALWAYS_STEP_UP_ROUTES: ReadonlySet<string> = new Set(["POST /v1/security/settings"]);
+export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set(["POST /v1/alerts/targets", "DELETE /v1/alerts/targets/{id}", "POST /v1/chat-hooks/{product}", "DELETE /v1/chat-hooks/{product}", "POST /v1/security/settings", "POST /v1/offboarding"]);
+/** Routes that need a fresh passkey check whatever the setting says: the setting itself, and offboarding the company. */
+export const ALWAYS_STEP_UP_ROUTES: ReadonlySet<string> = new Set(["POST /v1/security/settings", "POST /v1/offboarding"]);
 
 /** Whether the company asks for the passkey again before sensitive changes (off unless an owner switched it on). */
 export async function stepUpOn(sql: Sql, tenantId: string): Promise<boolean> {

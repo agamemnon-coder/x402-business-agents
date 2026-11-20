@@ -5,10 +5,12 @@
 import { createHash, createPublicKey, randomBytes, randomInt, type webcrypto } from "node:crypto";
 type JsonWebKey = webcrypto.JsonWebKey;
 import { isoCBOR } from "@simplewebauthn/server/helpers";
+import { checkpointRefusal } from "../audit/checkpointer.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { sha256Hex } from "../lib/terms.js";
 import { CODE_ALPHABET, CODE_LENGTH, normalizeCode } from "./code.js";
+import { sealPasskey } from "./seal.js";
 
 export { normalizeCode };
 
@@ -221,6 +223,10 @@ export function confirmPasskey(db: DB, fingerprint: string, now = new Date()): s
 
 /** Pins a verified passkey: revokes the previous one, uses up the window, all in one transaction. */
 export function recordPasskey(db: DB, p: NewPasskey, now = new Date(), confirmation: { fingerprint: string; confirmed_on: "runner" } | null = null): void {
+  // Outside audit 1.4: no key is enrolled on a ledger that does not match its latest signed checkpoint (when a
+  // checkpoint key is configured; src/audit/checkpointer.ts).
+  const unanchored = checkpointRefusal(db, "key enrolment", now);
+  if (unanchored) throw new Error(unanchored);
   db.transaction(() => {
     const w = db.prepare("SELECT * FROM passkey_enrolments WHERE window_id = ?").get(p.window.window_id) as EnrolmentWindow | undefined;
     if (!w || w.status !== "OPEN" || Date.parse(w.expires_at) <= now.getTime()) throw new Error(`enrolment window ${p.window.window_id} is not open`);
@@ -237,8 +243,25 @@ export function recordPasskey(db: DB, p: NewPasskey, now = new Date(), confirmat
       `INSERT INTO passkeys (credential_id, public_key, counter, transports, rp_id, origin, label, aaguid, registration_json, enrolled_at, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
     ).run(p.credentialId, p.publicKey, p.counter, p.transports ? JSON.stringify(p.transports) : null, w.rp_id, w.origin, label, p.aaguid, p.registrationJson, now.toISOString());
+    // The enrolment seal (src/passkey/seal.ts): only a passkey sealed here, by the ceremony, decides anything.
+    sealPasskey(db, { credential_id: p.credentialId, public_key: p.publicKey, rp_id: w.rp_id, origin: w.origin, label, enrolled_at: now.toISOString() }, now);
     db.prepare("UPDATE passkey_enrolments SET status = 'USED' WHERE window_id = ?").run(w.window_id);
     audit(db, "human", "passkey.enrolled", p.credentialId,
       { window_id: w.window_id, label, rp_id: w.rp_id, origin: w.origin, aaguid: p.aaguid, public_key_sha256: sha256Hex(p.publicKey), ...(confirmation ?? {}) }, now);
   }).immediate();
 }
+
+/**
+ * npm run passkey -- seal <fingerprint>: seals an active passkey enrolled before the enrolment seal existed (or while
+ * this runner had no seal key), once the person at the runner has compared its fingerprint with the one the phone
+ * showed at enrolment. Only the runner, which holds the seal key, can do it; whoever writes the ledger cannot.
+ */
+export function sealEnrolledPasskey(db: DB, fingerprint: string, now = new Date()): string {
+  const fp = fingerprint.trim().toUpperCase();
+  const row = (db.prepare("SELECT * FROM passkeys WHERE status = 'ACTIVE'").all() as PasskeyRow[]).find((r) => fingerprintOf(spkiSha256OfCose(r.public_key)) === fp);
+  if (!row) throw new Error(`no active passkey with fingerprint ${fp}`);
+  if (!sealPasskey(db, row, now)) throw new Error("this runner has no enrolment seal key (PURSER_ENROLMENT_SEAL_KEY or the key file in KIT11_KEYS_DIR)");
+  audit(db, "human", "passkey.sealed", row.credential_id, { label: row.label, fingerprint: fp, public_key_sha256: sha256Hex(row.public_key) }, now);
+  return row.credential_id;
+}
+

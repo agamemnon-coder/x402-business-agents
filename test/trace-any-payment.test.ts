@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { doubleEntry, trialBalance } from "../src/accounting/books.js";
 import { checkChainLinks, GENESIS } from "../src/audit/log.js";
-import { CFO_VIEW_URL } from "../src/config/brand.js";
+import { CFO_VIEW_URL, CONTACT_EMAIL } from "../src/config/brand.js";
 import { RECORD_UNCHANGED, TRACE_FILE, traceLabel, type PaymentKind } from "../src/demo/runTrace.js";
 import { fromCents, toCents } from "../src/lib/money.js";
 import { EXPLORER_TX } from "../src/metal/network.js";
@@ -224,7 +224,8 @@ describe("the companion record: labelled, and nothing private in it or on /trace
     expect(RECORD_UNCHANGED).toBe("The main run's record is unchanged.");
   });
 
-  const TEXTS: [string, string][] = [["the companion", raw], ["/trace", html]];
+  // The footer's pilot and partnership address (20 Nov) is public by the owner's choice; nothing else may be there.
+  const TEXTS: [string, string][] = [["the companion", raw], ["/trace", html.split(CONTACT_EMAIL).join("")]];
   const known = knownHex();
   const rec = readFileSync("docs/demo/main-run.json", "utf8");
   for (const [name, text] of TEXTS) {
