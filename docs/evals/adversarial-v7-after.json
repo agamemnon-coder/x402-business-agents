@@ -1,8 +1,8 @@
 {
   "what": "Adversarial eval v7 after the fixes that followed its first run (soft hyphens, zero-width spaces, direction marks and tatweel stripped where a script's orthography puts them, and still flagged inside Latin words and numbers; every script's digits in account numbers; an amount above the total below the total line, whatever the language; a person's name as holder at a company on file in any script; the Ukrainian romanisation and legal forms before a name; a customer's number quoted when paying; injections, pressure and bank details changed in Georgian, Armenian, Bengali, Tamil, Amharic, Urdu and Khmer): the same 117 invoice cases (src/evals/adversarialV7Cases.ts, committed alone before any run, unchanged), with thirty suppliers on file, on today's code. No longer held out: the fixes were made after reading this set's misses. The held-out run before them is docs/evals/adversarial-v7.json; the held-out set after them is v8. Offline, test data only.",
   "held_out": false,
-  "ran_at": "2026-11-19T20:38:16.012Z",
-  "commit": "bcc0b674e4ce",
+  "ran_at": "2026-11-20T20:03:34.208Z",
+  "commit": "c7662d0b0e1c",
   "dirty": false,
   "cases_commit": "34f502070",
   "before": "docs/evals/adversarial-v7.json",
