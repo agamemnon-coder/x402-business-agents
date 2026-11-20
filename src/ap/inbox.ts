@@ -46,6 +46,8 @@ export type Source = "upload" | "folder" | "email" | "api";
 export interface InboxDeps {
   /** The payables folder: documents are kept in <dir>/docs. */
   dir: string;
+  /** The company the invoices are read under, when it is not the runner's own (a /try test company). */
+  companyName?: string;
   reader: Asker;
   now?: () => Date;
   /** Where booked entries go as they happen (src/ap/books.ts); none: the export reads the ledger. */
@@ -229,7 +231,7 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   // person's passkey approves. The excerpt is hostile text: kept in the audit row as text, never followed.
   const planted = checkText ? findInjections(checkText) : [];
   if (planted.length) audit(db, "system", "document.injection_flagged", sha, { document_sha256: sha, filename: doc.filename, findings: planted.slice(0, 5).map((x) => ({ kind: x.kind, excerpt: x.excerpt })) }, now);
-  const ctx: CheckContext = { docSha: sha, now, ...(noText ? { noText } : {}) };
+  const ctx: CheckContext = { docSha: sha, now, ...(noText ? { noText } : {}), ...(deps.companyName ? { companyName: deps.companyName } : {}) };
   // The model's label or the keyword rules: either one saying credit note or reminder is enough (red team round 2: a
   // model that calls a "Gutschrift" or a reminder an invoice does not make it payable).
   const rules = readFully ? ruleSignals(checkText) : { credit_note: false, reminder: false };

@@ -50,7 +50,10 @@ describe("the AI can be wrong, the rail cannot be talked out of it: zero unsafe 
   it("covers below the limit only what code can see: an invoice whose only problem is its words is paid alone if the agent misses it", () => {
     const k = BELOW_LIMIT_WORDS_ONLY;
     expect(k.invoice.reading).toMatchObject({ currency: EVAL_ALONE_LIMIT.currency, total: "484.00" });
-    expect(enforce(k, wrong(), codeFindings(k)).outcome).toBe("pay");
+    // 20 Nov: the screen added after eval v9 and v10 (a claim that the invoice is approved or needs no approval) holds
+    // this polite claim too, so a wrong agent no longer pays it. The limit stays the boundary for words no screen knows.
+    expect(codeFindings(k).map((f) => f.code)).toContain("instructions_in_document");
+    expect(enforce(k, wrong(), codeFindings(k)).outcome).toBe("hold");
     // The agent's own hold stands: the agent may always be stricter than code.
     expect(enforce(k, { action: "hold", reason: "The note tells the payment system to skip the checks.", findings: ["instructions_in_document"] }, codeFindings(k)).outcome).toBe("hold");
   });

@@ -40,6 +40,8 @@ export interface CheckContext {
   selfId?: string;
   /** Set when the document had no text to read: why. */
   noText?: string;
+  /** The company the invoice is read under, when it is not the runner's own (a /try test company, 20 Nov). */
+  companyName?: string;
 }
 
 /**
@@ -99,7 +101,7 @@ export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContex
 
   return {
     invoice: { id: ctx.selfId ?? null, reading: r, text, ...(ctx.noText ? { noText: ctx.noText } : {}), receivedAt: self?.received_at ?? null, accountSha256 },
-    company: { name: process.env.KIT11_COMPANY ?? COMPANY },
+    company: { name: ctx.companyName ?? process.env.KIT11_COMPANY ?? COMPANY },
     policy: {
       // The CFO's limit to pay an invoice alone: none unless the company sets one (a test company of /try: TRY_ALONE_LIMIT),
       // so every payment waits for the CFO's Face ID; within a limit, src/ap/pay.ts lets the agent pay alone (payAlone).

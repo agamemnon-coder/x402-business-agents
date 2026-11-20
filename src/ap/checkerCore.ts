@@ -589,8 +589,9 @@ function examine(c: InvoiceCase): Examined {
   // 20 Nov (after the held-out evals v5 to v8, whose wrong payments were words in languages the lists did not hold yet):
   // a line in a language Purser's checks cannot read (src/policy/readable.ts) could say anything, so the agent never pays
   // the invoice alone; the CFO, who can have it read, decides (codeRequires). Names on file and the name the invoice is
-  // read under are left to the fraud checks. Why only, never the line itself.
-  const unread = unreadLines(text, [r.vendor, ...c.suppliers.flatMap((s) => [s.name, s.bank?.accountName ?? ""])].filter(Boolean));
+  // read under (the company's own name, 20 Nov: a /try invoice's "bill to" line was read as a sentence) are left to the
+  // fraud checks. Why only, never the line itself.
+  const unread = unreadLines(text, [r.vendor, c.company.name, ...c.suppliers.flatMap((s) => [s.name, s.bank?.accountName ?? ""])].filter(Boolean));
   if (unread.length) {
     const more = unread.length - 1;
     f.push({ code: "text_not_read", level: "warn", detail: `the document has ${unread[0]!.why}${more ? `, and ${more} more line${more === 1 ? "" : "s"} Purser's checks cannot read` : ""}: the agent never pays it alone, the CFO has it read and decides` });
