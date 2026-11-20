@@ -468,7 +468,7 @@ its output): `npm run deploy` (`scripts/deploy.ts`; ASVS V1.14.4, V14.1.1).
    Cloudflare's previous deployment (`npx wrangler rollback -c <config>`).
 
 `npm run deploy -- --check-only` runs step 3 alone: which commit is live, and whether it is the one checked out.
-The product cloud (`cloud/wrangler.jsonc`) is not deployed by it until it is configured (above, Purser Cloud).
+It deploys the hands-on deployment and the site only; the product cloud (`cloud/wrangler.jsonc`) keeps its own steps (above, Purser Cloud).
 Tested: `test/deploy-traceable.test.ts` (the refusals, the stamp, the post-deploy check, both health answers).
 
 ### Restore
