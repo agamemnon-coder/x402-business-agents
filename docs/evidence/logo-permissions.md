@@ -34,3 +34,15 @@ CSS), so it draws black, on the same neutral light tile as the other partners; n
 The owner's decision: Visa and Cloudflare are shown as text, with no logo image, everywhere (Home's partner strip,
 the partner pages, the README's "Built with" line). Their files stay in the repository, unchanged, and are no longer
 shown.
+
+## Connections, 20 November 2026
+
+The owner asked for the real brand logos on Purser Cloud's Connections page (Airwallex, Visa, Alta, Claude, Slack,
+Microsoft Teams, Xero, Moneybird, Odoo, Exact, QuickBooks, WhatsApp, Google, Microsoft and the AI clients) and states
+he has permission (20 Nov 2026, relayed by the orchestrator in his words: "they have permission"); no document is
+attached. The files, their sources and hashes: [src/ui/logos/README.md](../../src/ui/logos/README.md), section
+"Connections, 20 November 2026". Each mark stands beside the product's name on a white tile, at mark size; never
+"certified", "endorsed", "approved by" or "partner of". Where no logo file is on record (T:0, Peppol, ISO 20022), the
+card keeps its letters. For Visa this is the owner's newer decision: on the Connections page and the agents'
+cards its mark is shown (a Simple Icons drawing in Visa's blue, or white on the card); elsewhere the decision of 14
+November above stands.

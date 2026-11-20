@@ -269,8 +269,8 @@ await page.waitForSelector("#webhook .once code");
 ok(/^whsec_/.test((await page.textContent("#webhook .once code")) ?? "") && /hooks\.example\.com/.test(await page.innerText("#webhook")), "Connections, Signed webhook: the secret is shown once, the host is shown");
 // A card's button jumps to the card that connects it.
 await page.locator("#connections li.cx-card", { hasText: "Slack and Microsoft Teams messages" }).locator("button").click();
-await page.waitForTimeout(400);
-ok(await page.evaluate(() => { const r = document.getElementById("chat")!.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }), "a card's Set up button brings its card into view");
+// The scroll is smooth (21 Nov: six sections, a longer way down to the card): waited for, up to three seconds.
+ok(await page.waitForFunction(() => { const r = document.getElementById("chat")!.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }, null, { timeout: 3000 }).then(() => true, () => false), "a card's Set up button brings its card into view");
 await page.goto(`${ORIGIN}/#/settings`);
 await page.waitForSelector("text=API keys");
 // Close and offboard (cloud/src/offboardingView.ts): on the owner's Settings, its four steps, the export first and the
@@ -1011,6 +1011,23 @@ async function guestPass() {
     await p.waitForSelector("#claude");
     ok(/purser-demo-read-only/.test((await p.textContent("#claude")) ?? "") && await p.locator("#claude-make").count() === 0, `${tag}: Connect Claude shows the demo's read-only token and makes none`);
     ok(await p.locator("button", { hasText: /upload|new key|invite/i }).count() === 0, `${tag}: a guest has no button that writes`);
+    // 21 Nov (the owner): the products' own logos on Connections, the agents as passes, the charts on Books.
+    const logos = await p.locator(".cx-logos img").count();
+    ok(logos >= 20 && await p.locator(".cx-logos img:not([alt])").count() === 0 && await p.locator('.cx-logos img[src^="data:"]').count() === logos, `${tag}: Connections shows the products' own logos (${logos}), each named, none fetched from elsewhere`);
+    await p.goto(`${ORIGIN}/#/agents`);
+    await p.waitForSelector("button.wpass");
+    const pass = p.locator("button.wpass").first();
+    ok(await p.locator("button.wpass").count() === 3 && /EUR/.test((await pass.innerText()) ?? ""), `${tag}: Agents shows one pass per agent, with what it spent`);
+    await pass.click();
+    await p.waitForTimeout(motion === "reduce" ? 50 : 700);
+    ok(await pass.getAttribute("aria-pressed") === "true" && await p.locator("button.wpass").first().locator(".wp-back").getAttribute("aria-hidden") === "false", `${tag}: a pass turns over to its mandate`);
+    await p.locator(".wagent button.wmore").first().click();
+    ok(await p.locator(".wagent.open .wdetail .adec").first().isVisible() && await p.locator(".wagent button.wmore").first().getAttribute("aria-expanded") === "true", `${tag}: Details opens the agent's record`);
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: Agents: nothing is wider than the screen`);
+    await p.goto(`${ORIGIN}/#/books`);
+    await p.waitForSelector(".bcharts svg.chart", { timeout: 20_000 });
+    ok(await p.locator(".bcharts svg[role=img] > title").count() >= 3 && await p.locator(".bcharts details.ctable").count() >= 4 && await p.locator(".bcharts svg.ring.donut").count() === 1, `${tag}: Books: the charts, each titled, each with its table`);
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: Books: nothing is wider than the screen`);
     ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? ` (${errors.slice(0, 2).join(" | ")})` : ""}`);
     if (shots && motion === "no-preference") { await p.goto(`${ORIGIN}/#/overview`); await p.waitForSelector(".dash"); for (let y = 0; y < 8000; y += 400) { await p.mouse.wheel(0, 400); await p.waitForTimeout(150); } await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(2200); await p.screenshot({ path: join(shots, `guest-dashboard-${width}.png`), fullPage: true }); }
     await c.close();

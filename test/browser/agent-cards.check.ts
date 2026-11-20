@@ -85,8 +85,11 @@ await page.fill("#slug", "northwind");
 await page.click("text=Sign in with your passkey");
 await page.waitForSelector("#tabs", { state: "visible", timeout: 20_000 });
 await page.goto(`${ORIGIN}/#/agents`);
-await page.waitForSelector(".lcard", { timeout: 20_000 });
+// 21 Nov: each agent is a pass; its record, the live card panel with it, opens under "Details".
+await page.waitForSelector(".lcard", { state: "attached", timeout: 20_000 });
 ok((await page.$$(".lcard")).length === 3, "each agent has a live card panel");
+for (const b of await page.$$(".wagent button.wmore")) await b.click();
+await page.waitForSelector(".lcard", { timeout: 20_000 });
 ok((await text()).includes("No live card yet"), "before issuing: no live card, with the policy's limits");
 
 const sourcing = page.locator(".card.agent").filter({ hasText: "Sourcing" }).first();
@@ -127,6 +130,8 @@ ok(!all.includes(PAN) && !CVV_SEEN.test(await text()) && !all.includes("ch_secre
 
 await page.setViewportSize({ width: 390, height: 844 });
 await page.reload();
+await page.waitForSelector(".lcard .bcard", { state: "attached", timeout: 20_000 });
+await page.locator(".card.agent").filter({ hasText: "Sourcing" }).first().locator("button.wmore").click();
 await page.waitForSelector(".lcard .bcard", { timeout: 20_000 });
 await settle();
 ok(await page.evaluate(() => document.documentElement.scrollWidth <= 390), "nothing is wider than a phone");

@@ -1,6 +1,7 @@
 // GET /v1/dashboard: the console's start screen in one answer, every figure counted here from the company's own rows
 // (the transactions register, the invoices and the audit chain the runner pushed). Nothing is estimated or typed:
 //   cash      money in minus money out, day by day, in the main currency (moved rows only; fees count as out)
+//   rails     what moved out, by the rail it moved on
 //   spend     what moved out, by who started it: each agent's own card purchases (the register's authority names the
 //             agent), and supplier invoices paid with the CFO's approval
 //   approvals per week: what moved out with the CFO's approval of the exact terms, and what moved within an agent's own
@@ -126,6 +127,15 @@ export async function dashboard(db: TenantDb, o: { asOf?: string } = {}): Promis
     else { const a = agentOf(t); bump(a ?? "other", a ? `${agentName(a)}, own card` : "Other", cents(t.amount) + fee, t.moved); }
   }
 
+  // Spend by rail (21 Nov, the Overview's and Books' charts): what moved out in the main currency, fees with it, by the
+  // rail the register names (an Airwallex card, an Airwallex transfer, a testnet, ...).
+  const rails = new Map<string, { rail: string; cents: number; count: number }>();
+  for (const t of main.filter((x) => x.direction === "out")) {
+    const r = rails.get(t.rail || "other") ?? { rail: t.rail || "other", cents: 0, count: 0 };
+    r.cents += cents(t.amount) + (t.fee && t.fee.currency === currency ? cents(t.fee.amount) : 0); r.count++;
+    rails.set(r.rail, r);
+  }
+
   // Approvals per week.
   const weeks = new Map<string, { week: string; cfo: number; cfo_cents: number; alone: number; alone_cents: number }>();
   for (const t of main.filter((x) => x.direction === "out")) {
@@ -155,6 +165,7 @@ export async function dashboard(db: TenantDb, o: { asOf?: string } = {}): Promis
     cash: days.map((d) => ({ day: d.day, in: money(d.in), out: money(d.out), net: money(d.net) })),
     spend: [...spend.values()].sort((a, b) => b.cents - a.cents).map((s) => ({ key: s.key, label: s.label, amount: money(s.cents), count: s.count, declined: s.declined,
       ...(s.key === "invoices" ? { parts: { inbox: { count: parts.inbox.count, amount: money(parts.inbox.cents) }, outside: { count: parts.outside.count, amount: money(parts.outside.cents) }, fees: money(parts.fees) } } : {}) })),
+    rails: [...rails.values()].sort((a, b) => b.cents - a.cents).map((r) => ({ rail: r.rail, amount: money(r.cents), count: r.count })),
     approvals: { weeks: [...weeks.values()].sort((a, b) => a.week.localeCompare(b.week)).map((w) => ({ week: w.week, cfo: w.cfo, cfo_amount: money(w.cfo_cents), alone: w.alone, alone_amount: money(w.alone_cents) })),
       approved_by_cfo: approvedByCfo, waiting: invoices.waiting_cfo!.count },
     invoices: { ...invoices, duplicates_stopped: duplicates },

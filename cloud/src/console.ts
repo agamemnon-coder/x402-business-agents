@@ -21,9 +21,11 @@ import { LOGO_FILES } from "./try/logos.gen.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { NEGOTIATE_PATH, negotiatePageResponse } from "./try/negotiatePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
+import { CHARTS_CSS, CHARTS_JS } from "./consoleCharts.js";
+import { WALLET_CSS, WALLET_JS } from "./agentWallet.js";
 import { AWX_CSS, AWX_JS } from "./awxActUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
-import { CONNECTIONS_VIEW_JS } from "./connectionsView.js";
+import { CONNECTIONS_LOGOS_JS, CONNECTIONS_VIEW_JS } from "./connectionsView.js";
 import { OFFBOARDING_VIEW_JS } from "./offboardingView.js";
 import { t0CloseLine } from "./t0Close.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
@@ -225,7 +227,8 @@ p.fine { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; }
 button.linkish { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; }
 .pft td.pco { display: flex; align-items: center; gap: 10px; }
 .pft td.pay .pv { display: block; }
-.table.vat th.sh, .table.vat td.sh { width: 34%; }
+.table.vat th.sh, .table.vat td.sh { width: 22%; }
+.table.vat td:first-child { min-width: 10em; }
 .table.vat td.sh .meter { margin-top: 7px; max-width: none; }
 .table.vat tr.tot td { background: color-mix(in srgb, var(--sunken) 55%, var(--surface)); }
 .table tr.ln td { padding-top: 3px; padding-bottom: 3px; border-top: 0; font-size: 13.5px; color: var(--muted); }
@@ -398,18 +401,33 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 .cx-jump button:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); color: var(--accent); }
 .connections h2.sub-h, #view > .panel[id] { scroll-margin-top: 16px; }
 @media (min-width: 901px) { .connections h2.sub-h, #view > .panel[id] { scroll-margin-top: 124px; } }
-ul.cx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; margin-top: 4px; }
-ul.cx-grid > li.cx-card { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 14px 15px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); min-width: 0; }
+ul.cx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 258px), 1fr)); gap: 10px; margin-top: 2px; }
+ul.cx-grid > li.cx-card { display: flex; flex-direction: column; align-items: stretch; gap: 7px; padding: 12px 13px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); min-width: 0; transition: border-color .15s, box-shadow .15s; }
+ul.cx-grid > li.cx-card:hover { border-color: color-mix(in srgb, var(--accent) 28%, var(--border)); box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 6px 16px -10px rgba(16,24,40,.22); }
 li.cx-card.on { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); box-shadow: inset 3px 0 0 var(--ok); }
 li.cx-card.planned { border-style: dashed; background: transparent; }
 .cx-top { display: flex; gap: 11px; align-items: flex-start; }
-.cx-mark { flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-weight: 750; font-size: 12.5px; letter-spacing: -.01em; background: var(--sunken); color: var(--text); border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.cx-mark { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-weight: 750; font-size: 12.5px; letter-spacing: -.01em; background: var(--sunken); color: var(--text); border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+/* The products' own marks (21 Nov): on a white tile in both themes (their files have no light version), never recoloured. */
+.cx-mark.cx-logos { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 7px; background: #fff; border-color: rgba(16,24,40,.10); }
+.cx-logos img { display: block; width: 24px; height: 24px; object-fit: contain; }
+.cx-logos.n2 { width: 56px; } .cx-logos.n2 img { width: 19px; height: 19px; }
+.cx-logos.n3 { width: 72px; } .cx-logos.n3 img { width: 17px; height: 17px; }
+.cx-logos.wide { width: 84px; padding: 0 9px; } .cx-logos.wide img { width: 100%; height: 24px; }
+/* Visa's drawing is a square with the wordmark across its middle: shown wider, its empty top and bottom cropped. */
+.cx-logos img.k-visa { width: 60px; height: 38px; object-fit: cover; }
+@media (max-width: 640px) { .cx-sum { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .cx-stat { padding: 8px 9px; border-radius: 10px; } .cx-stat b { font-size: 18px; } .cx-stat span { font-size: 11.5px; } }
+.cx-mark.ic-mark { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.cx-mark.cx-letters { background: var(--sunken); color: var(--muted); }
+h2.sub-h .cx-n { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--sunken); color: var(--muted); font-size: 12px; font-weight: 650; vertical-align: 2px; letter-spacing: 0; }
+.connections h2.sub-h { font-size: 15px; letter-spacing: -.005em; margin: 22px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+.cx-jump button .num { margin-left: 6px; color: var(--muted); font-weight: 600; }
 .cx-mark.g-rails { background: var(--awx-soft); color: var(--awx); } .cx-mark.g-ai { background: var(--claude-soft); color: var(--claude); }
 .cx-mark.g-api, .cx-mark.g-no_code { background: var(--accent-soft); color: var(--accent); } .cx-mark.g-accounting { background: var(--ok-soft); color: var(--ok); }
 .cx-nm { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
-.cx-nm b { font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+.cx-nm b { font-size: 14.5px; line-height: 1.3; overflow-wrap: anywhere; }
 .pill.tmoney { background: var(--accent-soft); color: var(--accent); } .pill.plan { background: transparent; border: 1px dashed var(--border); color: var(--muted); }
-.cx-what { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--text); }
+.cx-what { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
 .cx-more { font-size: 13px; color: var(--muted); }
 .cx-more summary { cursor: pointer; color: var(--accent); font-weight: 600; width: max-content; }
 .cx-more p { margin: 6px 0 0; line-height: 1.45; }
@@ -429,7 +447,7 @@ a.cx-pointer { display: flex; align-items: center; gap: 14px; text-decoration: n
 a.cx-pointer > div { flex: 1; min-width: 0; } a.cx-pointer p { margin: 2px 0 0; }
 a.cx-pointer:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
 /* Get started (a new company's overview): four steps, each a link. */
-.startc { padding: 18px 20px; margin-top: 16px; }
+.startc { padding: 18px 20px; margin: 16px 0; }
 .startc .dh h2 { margin: 0; font-size: 17px; } .startc .dh p { margin: 2px 0 0; }
 .st-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; margin-top: 14px; }
 a.st-step { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: var(--text); min-width: 0; }
@@ -1663,10 +1681,10 @@ async function connectionsView(q){
   };
   const cat=await api('/v1/connections');
   const grid=el('div','card panel connections');grid.id='connections';
-  grid.replaceChildren(...connectionsViewOf(cat,t,tk,el,{mine:mine&&mine.items,icon:ic,action:(x)=>{const f=ACT[x.id];return f?f():null}}));
+  grid.replaceChildren(...connectionsViewOf(cat,t,tk,el,{mine:mine&&mine.items,icon:ic,logos:BRAND_LOGOS,action:(x)=>{const f=ACT[x.id];return f?f():null}}));
   // A row of the groups, each a jump to its heading (a long page on a phone).
   const heads=[...grid.querySelectorAll('h2.sub-h')];heads.forEach((h,k)=>{h.id='cx-g'+k});
-  const jumps=el('div','cx-jump',heads.map((h)=>{const b=el('button','',h.textContent);b.type='button';b.onclick=()=>h.scrollIntoView({behavior:RM()?'auto':'smooth',block:'start'});return b}));
+  const jumps=el('div','cx-jump',heads.map((h)=>{const b=el('button','',[h.firstChild.textContent,el('span','num',(h.querySelector('.cx-n')||{}).textContent||'')]);b.type='button';b.onclick=()=>h.scrollIntoView({behavior:RM()?'auto':'smooth',block:'start'});return b}));
   const links=grid.querySelector('.cx-links');if(links)links.after(jumps);
   const setupHead=el('div','cx-setup-h',[el('h2','',t('cs.cxp.setup')),el('p','sub',owner?t('cs.cxp.setup_sub'):t('cs.cxp.setup_sub_reader',{name:m.tenant.name}))]);
   view().replaceChildren(...[head(t('cs.nav.connections'),t('cs.cxp.lede')),grid,setupHead,claude,hook,chat,alerts,conn,owner?ints:null,awx].filter(Boolean));
@@ -2036,7 +2054,7 @@ const nonce = () => {
 const T0_CLOSE = t0CloseLine();
 
 /** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
-const USED = keysUsedIn(SCRIPT + UI_JS + AWX_UI_JS + AWX_JS + BODY);
+const USED = keysUsedIn(SCRIPT + UI_JS + CHARTS_JS + WALLET_JS + AWX_UI_JS + AWX_JS + BODY);
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain, whether the cloud runs an engine). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
@@ -2045,13 +2063,13 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + CHARTS_JS + WALLET_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${AWX_UI_CSS}${AWX_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${WALLET_CSS}${AWX_UI_CSS}${AWX_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}
 ${ASK_BUTTON_JS}</script>

@@ -6,7 +6,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CONNECTION_GROUPS, connectionsCatalogue, HUB_DOC, REPO_BLOB, type ConnectionGroup } from "../cloud/src/connections.js";
-import { CONNECTIONS_VIEW_JS } from "../cloud/src/connectionsView.js";
+import { BRAND_LOGOS } from "../cloud/src/brandLogos.gen.js";
+import { CONNECTIONS_LOGOS_JS, CONNECTIONS_VIEW_JS } from "../cloud/src/connectionsView.js";
+import { createHash } from "node:crypto";
 import { consolePage } from "../cloud/src/console.js";
 import { CONNECT_HUB_DOC, CONNECT_HUB_LABEL, homePage } from "../src/redesign/home.js";
 import { MESSAGES } from "../src/ui/i18n.js";
@@ -180,7 +182,7 @@ describe("Purser Cloud's Connections page (its own tab since 21 Nov)", () => {
   const cards = (card: Node) => find(card, (n) => n.tag === "li" && n.cls.startsWith("cx-card"));
   const cardOf = (card: Node, name: string) => cards(card).find((li) => find(li, (n) => n.tag === "b").map(text)[0] === name)!;
 
-  it("renders one card per connection, planned ones too, each with its label, what it needs, its guide and its run record, grouped as the hub", () => {
+  it("renders one card per connection, planned ones too, each with its label, what it needs, its guide and its run record, in six sections", () => {
     const card = render("en");
     expect(cards(card)).toHaveLength(all.length + cat.planned.length);
     for (const c of [...all, ...cat.planned.map((p) => ({ ...p, kind: "planned", record: undefined }))]) {
@@ -190,7 +192,9 @@ describe("Purser Cloud's Connections page (its own tab since 21 Nov)", () => {
         .toEqual({ name: c.name, label: c.kind, doc: true, record: true, needs: true });
     }
     const heads = find(card, (n) => n.tag === "h2").map(text);
-    expect(heads).toEqual(["Every connection", "Payment rails", "AI agents over MCP", "The API and webhooks", "No-code tools", "Accounting", "Peppol, e-mail, chat, alerts, sign-in and the full export"]);
+    // 21 Nov (the owner): six sections by what a company connects, each with its count; every card in exactly one.
+    expect(heads).toEqual(["Every connection", "Money rails3", "Bookkeeping & ERP12", "AI & agents10", "Messaging & alerts3", "API, data & export7", "Sign-in & workspace2"]);
+    expect(heads.slice(1).reduce((n, h) => n + Number(/\d+$/.exec(h)![0]), 0)).toBe(all.length + cat.planned.length);
     const top = find(card, (n) => n.tag === "a").slice(0, 2).map((a) => a.href);
     expect(top).toEqual([`${ORIGIN}/connect-ai`, cat.hub]);
     for (const a of find(card, (n) => n.tag === "a")) expect([a.target, a.rel]).toEqual(["_blank", "noopener"]);
@@ -228,6 +232,36 @@ describe("Purser Cloud's Connections page (its own tab since 21 Nov)", () => {
     expect(text(find(card, (n) => n.cls === "cx-stat here")[0]!)).toBe("3connected for this company");
     expect(find(card, (n) => n.tag === "button").map((b) => text(b))).toEqual(["Make a key"]);
     expect(find(cardOf(card, "Read API (REST) and its OpenAPI"), (n) => n.tag === "button")).toHaveLength(1);
+  });
+
+  it("shows each product's own logo where one is on record, named for a screen reader, and letters or an icon where none is", () => {
+    const logos = Object.fromEntries(Object.entries(BRAND_LOGOS).map(([k, v]) => [k, { name: v.name, uri: v.uri }]));
+    const card = render("en", { logos: { ...logos, airwallex: { name: "Airwallex", uri: "data:image/png;base64,AA" } }, icon: (n: string) => el("span", `ic-${n}`) });
+    const imgs = (name: string) => find(cardOf(card, name), (n) => n.tag === "img").map((i) => (i as Node & { alt: string }).alt);
+    expect(imgs("Airwallex")).toEqual(["Airwallex"]);
+    expect(imgs("Visa via Airwallex Airi")).toEqual(["Visa"]);
+    expect(imgs("Slack and Microsoft Teams messages")).toEqual(["Slack", "Microsoft Teams"]);
+    expect(imgs("Sign in with Google, Microsoft and Apple")).toEqual(["Google", "Microsoft", "Apple"]);
+    expect(imgs("Moneybird (API)")).toEqual(["Moneybird"]);
+    expect(imgs("Business Central and Odoo (API)")).toEqual(["Microsoft", "Odoo"]);
+    // No logo on record: T:0 keeps its letters; Purser's own webhook its icon.
+    expect(imgs("T:0 (outside ledger)")).toEqual([]);
+    expect(text(find(cardOf(card, "T:0 (outside ledger)"), (n) => n.cls.includes("cx-letters"))[0]!)).toBe("T:0");
+    expect(find(cardOf(card, "Webhooks"), (n) => n.cls === "ic-zap")).toHaveLength(1);
+    // Every logo is a data URL (the console's img-src allows data:, nothing is fetched from elsewhere).
+    for (const [k, v] of Object.entries(BRAND_LOGOS)) expect({ k, data: v.uri.startsWith("data:image/svg+xml,") }).toEqual({ k, data: true });
+    expect(CONNECTIONS_LOGOS_JS).not.toMatch(/https?:\/\/(?!www\.w3\.org|ns\.adobe\.com)/);
+  });
+
+  it("holds each logo to its file and its record in src/ui/logos/README.md", () => {
+    const readme = read("src/ui/logos/README.md");
+    for (const [k, v] of Object.entries(BRAND_LOGOS)) {
+      const src = k === "alta" ? "src/ui/logos/alta.svg" : null;
+      const file = src ?? readme.split("\n").map((l) => /^\| ([\w.-]+\.svg) \|.*`([0-9a-f]{64})` \|$/.exec(l)).find((m) => m && m[2]!.startsWith(v.sha256))?.[1];
+      expect({ k, recorded: !!file }).toEqual({ k, recorded: true });
+      const path = src ?? `src/ui/logos/brands/${file}`;
+      expect({ k, sha: createHash("sha256").update(readFileSync(new URL(path, ROOT))).digest("hex").slice(0, 16) }).toEqual({ k, sha: v.sha256 });
+    }
   });
 
   it("speaks Dutch in Dutch, keeps the names as they are, and links nothing but http(s)", () => {
