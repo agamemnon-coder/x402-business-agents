@@ -108,7 +108,10 @@ function verifiers() {
 // 2. Every Alta transaction the site links to ---------------------------------------------------------------------------
 const TX = /testnet\.metalntwx\.com\/tx\/(0x[0-9a-fA-F]{64})/g;
 const TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-interface Recorded { block?: number; from?: string; to?: string; amount?: string; where: string }
+// refused: the record says Alta refused this payment in the transaction (event MandateRefused): its `to` is the payee
+// asked for, so the check is the other way round: no USDZ moved to it (20 Nov: until then such a step was read as a
+// payment, and its missing transfer reported as a failure).
+interface Recorded { block?: number; from?: string; to?: string; amount?: string; refused?: boolean; where: string }
 /** What the committed JSON records say about each hash: a block, a sender, a recipient or an amount next to it. */
 function recordedFacts(): Map<string, Recorded[]> {
   const m = new Map<string, Recorded[]>();
@@ -125,6 +128,7 @@ function recordedFacts(): Map<string, Recorded[]> {
       for (const f of FROM) { const v = o[f]; if (typeof v === "string" && /^0x[0-9a-fA-F]{40}$/.test(v)) r.from = v.toLowerCase(); }
       for (const t of TO) { const v = o[t]; if (typeof v === "string" && /^0x[0-9a-fA-F]{40}$/.test(v)) r.to = v.toLowerCase(); }
       if (r.to && typeof o.amount === "string" && /^\d+\.\d{2}$/.test(o.amount)) r.amount = o.amount;
+      if (o.event === "MandateRefused") r.refused = true;
       if (r.block !== undefined || r.from || r.to) m.set(h.toLowerCase(), [...(m.get(h.toLowerCase()) ?? []), r]);
     }
     Object.values(o).forEach((v) => walk(v, where));
@@ -179,7 +183,10 @@ async function transactions(pages: Record<string, string>) {
       for (const r of rec) {
         if (r.block !== undefined && r.block !== Number(rc.blockNumber)) why.push(`block ${rc.blockNumber}, ${r.where} says ${r.block}`);
         if (r.from && r.from !== tx.from.toLowerCase()) why.push(`sender ${tx.from}, ${r.where} says ${r.from}`);
-        if (r.to && r.to !== (tx.to ?? "").toLowerCase()) {
+        if (r.to && r.refused) {
+          const moved = transfers.filter((x) => x.to === r.to);
+          if (moved.length) why.push(`USDZ ${moved.map((x) => x.amount).join(", ")} to ${r.to}, ${r.where} says Alta refused it (MandateRefused)`);
+        } else if (r.to && r.to !== (tx.to ?? "").toLowerCase()) {
           const t = transfers.find((x) => x.to === r.to);
           if (!t) why.push(`no USDZ transfer to ${r.to} (${r.where}); transfers to ${transfers.map((x) => x.to).join(", ") || "none"}`);
           else if (r.amount && t.amount !== r.amount) why.push(`USDZ ${t.amount} to ${r.to}, ${r.where} says ${r.amount}`);
@@ -192,7 +199,7 @@ async function transactions(pages: Record<string, string>) {
   rows.sort((a, b) => a.hash.localeCompare(b.hash));
   const withRecord = rows.filter((r) => r.recorded.length);
   const failed = rows.filter((r) => r.result === "FAIL");
-  const recWords = (r: Row) => r.recorded.map((x) => [x.block !== undefined ? `block ${x.block}` : "", x.from ? "sender" : "", x.to ? `recipient${x.amount ? ` and USDZ ${x.amount}` : ""}` : ""].filter(Boolean).join(", ")).join("; ");
+  const recWords = (r: Row) => r.recorded.map((x) => [x.block !== undefined ? `block ${x.block}` : "", x.from ? "sender" : "", x.to ? (x.refused ? "refusal (no USDZ to the payee)" : `recipient${x.amount ? ` and USDZ ${x.amount}` : ""}`) : ""].filter(Boolean).join(", ")).join("; ");
   for (const r of rows) {
     const what = `tx ${r.hash.slice(0, 10)}…${r.hash.slice(-4)} on chain, ${r.page_says !== "linked as a payment or step that went through" ? "reverted, as the page says" : "succeeded"}${r.recorded.length ? ", as its record says" : ""}`;
     add(G, r.result, what, r.result === "pass" ? `${r.status}, block ${r.block}${r.recorded.length ? `; matches the record's ${recWords(r)}` : ""}` : r.why, `linked from ${r.linked_from.join(", ")}${r.recorded.length ? `; ${[...new Set(r.recorded.map((x) => x.where))].join(", ")}` : ""}`);
