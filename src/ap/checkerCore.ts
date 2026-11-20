@@ -598,11 +598,19 @@ function examine(c: InvoiceCase): Examined {
   // (src/policy/paymentTalk.ts) is not understood either, whatever its wording; the CFO decides it as an unread line.
   const names = [r.vendor, c.company.name, ...c.suppliers.flatMap((s) => [s.name, s.bank?.accountName ?? ""])].filter(Boolean);
   const unreadOnly = unreadLines(text, names);
-  // A line the screens already classified (the injection screen's lines, the lines the pressure and bank-change findings
-  // quote) is understood: what they decided for it stands (a hold, or speed alone shown, as eval v3 decided).
-  const screened = new Set([...planted.map((x) => x.excerpt), ...f.filter((x) => (WORDS_FINDINGS as readonly string[]).includes(x.code)).flatMap((x) => [...x.detail.matchAll(/"([^"]+)"/g)].map((m) => m[1]!))]);
+  // A line the screens already held (the injection screen's lines, the lines a held pressure or bank-change finding
+  // quotes) keeps their hold. A line shown for speed alone (eval v3: a supplier's dunning is shown, not held) keeps that,
+  // unless it also names an approval, instructions, secrecy or a bank (v11-inject-english-forwarded-cfo: "I've approved
+  // this one myself — please pay it today" was quoted as speed alone).
+  const quoted = (level: Finding["level"] | "any") => f.filter((x) => (WORDS_FINDINGS as readonly string[]).includes(x.code) && (level === "any" || x.level === level))
+    .flatMap((x) => [...x.detail.matchAll(/"([^"]+)"/g)].map((m) => m[1]!));
+  const held = new Set([...planted.map((x) => x.excerpt), ...quoted("review")]);
+  const shown = new Set(quoted("warn"));
   const lines = text.split("\n");
-  const talk = talkLines(text, names).filter((x) => !unreadOnly.some((u) => u.line === x.line) && !screened.has(lines[x.line - 1]!.trim()));
+  const talk = talkLines(text, names).filter((x) => {
+    const l = lines[x.line - 1]!.trim();
+    return !unreadOnly.some((u) => u.line === x.line) && !held.has(l) && !(shown.has(l) && !x.strong);
+  });
   const unread = [...unreadOnly, ...talk].sort((a, b) => a.line - b.line);
   if (unread.length) {
     const more = unread.length - 1;

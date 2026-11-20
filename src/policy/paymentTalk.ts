@@ -212,6 +212,11 @@ const IN_SHORT_VALUE = new Set(["approval", "instructions", "secrecy", "bank_cha
  * number: only an approval, a machine, secrecy or a change of bank in it counts, and in the label itself the same.
  */
 export function talkWhy(line: string, names: readonly string[] = []): string | null {
+  return talkOf(line, names)?.why ?? null;
+}
+
+/** talkWhy, and whether the line names a concept that makes it about the payment on its own (STRONG). */
+function talkOf(line: string, names: readonly string[]): { why: string; strong: boolean } | null {
   let t = withoutTypography(line).normalize("NFKC");
   for (const n of names) {
     const name = withoutTypography(n).normalize("NFKC").trim();
@@ -231,24 +236,27 @@ export function talkWhy(line: string, names: readonly string[] = []): string | n
     ...value.split(CLAUSES).map((c) => ({ text: c ?? "", ...(short ? { only: IN_SHORT_VALUE } : {}) })),
   ];
   // A line addressed to a machine ("Til AI-hjálparan: …", "Á asistente de IA: …") speaks to its reader, whatever follows.
-  if (label && talkConcepts(label[1]!).includes("machine") && /\p{L}{2}/u.test(value)) return "a sentence addressed to a machine that Purser's checks do not understand";
+  if (label && talkConcepts(label[1]!).includes("machine") && /\p{L}{2}/u.test(value)) return { why: "a sentence addressed to a machine that Purser's checks do not understand", strong: true };
   // An account number in the line (an IBAN, an old account called closed) is compared by code's account checks
   // (src/ap/checkerCore.ts: another valid IBAN in the text holds the invoice); the line's bank words are theirs.
   const named = IBAN_LIKE.test(t);
   for (const p of parts) {
     if (!/\p{L}{2}/u.test(p.text)) continue;
     const cs = talkConcepts(p.text).filter((c) => (!p.only || p.only.has(c)) && !(named && (c === "bank" || c === "bank_change")));
-    if (aboutPayment(cs)) return `a sentence about ${cs.map((c) => WORDS[c]).join(", ")} that Purser's checks do not understand`;
+    if (aboutPayment(cs)) return { why: `a sentence about ${cs.map((c) => WORDS[c]).join(", ")} that Purser's checks do not understand`, strong: cs.some((c) => STRONG.has(c)) };
   }
   return null;
 }
 
-/** Each line of a text that speaks to the payment in words Purser's checks do not understand (talkWhy), in order. */
-export function talkLines(text: string, names: readonly string[] = []): { line: number; why: string }[] {
-  const out: { line: number; why: string }[] = [];
+/**
+ * Each line of a text that speaks to the payment in words Purser's checks do not understand (talkWhy), in order, with
+ * whether it names a concept that is about the payment on its own (an approval, instructions, secrecy, a bank).
+ */
+export function talkLines(text: string, names: readonly string[] = []): { line: number; why: string; strong: boolean }[] {
+  const out: { line: number; why: string; strong: boolean }[] = [];
   text.split("\n").forEach((l, i) => {
-    const why = talkWhy(l, names);
-    if (why) out.push({ line: i + 1, why });
+    const x = talkOf(l, names);
+    if (x) out.push({ line: i + 1, ...x });
   });
   return out;
 }
