@@ -8,11 +8,11 @@
 import type { EngineEvent } from "../../../src/engine/events.js";
 import type { InvoiceView, NegotiatedFacts, PaySignedResult, ProposalView, Settled, TermsView, UploadResult, VaultFile } from "../../../src/engine/host.js";
 import type { ComposeInput, ComposeRefusal, SupplierOnFile } from "../../../src/engine/tryWorld.js";
-import type { NameCheckView } from "../../../src/engine/host.js";
+import type { NameCheckView, PasskeyFinished } from "../../../src/engine/host.js";
 import type { PaidAlone } from "../../../src/ap/pay.js";
 import type { AwxView } from "../../../src/engine/awxActions.js";
 
-export type { AwxView, NameCheckView };
+export type { AwxView, NameCheckView, PasskeyFinished };
 import type { FxQuoteNote } from "./liveFx.js";
 import type { PayoutNote, SimulateReason } from "./livePayout.js";
 
@@ -22,6 +22,8 @@ export type { ComposeInput, ComposeRefusal, EngineEvent, InvoiceView, PaySignedR
 export interface EngineStatus {
   mode: "test_money";
   passkey: { credential_id: string; label: string } | null;
+  /** Every active approval key: whose (the cloud's id for the person), how it was authorised, until when it cools off (src/engine/host.ts). */
+  passkeys?: { credential_id: string; label: string; person: string | null; how: "first" | "endorsed" | "cosigned" | "recovery"; cooling_until: string | null }[];
   balances: Record<string, string>;
   chains: { audit: boolean; ledger: boolean };
 }
@@ -40,15 +42,21 @@ export interface EngineApi {
   proposal(id: string): Promise<ProposalView | null>;
   /** `rp`: the relying party of the request's host (cloud/src/hostOrigin.ts); without it, the engine's own. */
   passkeyStart(rp?: { rpId: string; origin: string }): Promise<{ challenge: string; code: string; exclude: string[] }>;
-  /** label: the person's name, shown; person: the cloud's id for them, by which forgetPasskey finds the passkey. */
-  passkeyFinish(a: { code: string; credential: unknown; label: string; person: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }>;
+  /**
+   * label: the person's name, shown; person: the cloud's id for them, by which forgetPasskey finds the passkey. While
+   * another key is active the new one needs `endorsement` (an active key's signature, checked by the engine), or the
+   * cloud's word in `cosigned` (a second owner's passkey, checked by the cloud) or `recovered` (two platform admins);
+   * then it cools off for `coolingOffMs` (src/engine/host.ts passkeyFinish).
+   */
+  passkeyFinish(a: { code: string; credential: unknown; label: string; person: string; endorsement?: unknown; cosigned?: { by: string }; cosignRefused?: string; recovered?: { by: string }; coolingOffMs?: number }): Promise<PasskeyFinished>;
   /** A security key (the second key of high-risk payments) for the person whose passkey has this label; `rp` as for passkeyStart. */
   securityKeyStart(a: { label: string; rp?: { rpId: string; origin: string } }): Promise<{ ok: true; challenge: string; user_id: string; exclude: string[] } | { ok: false; reason: string }>;
   securityKeyFinish(a: { label: string; credential: unknown }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }>;
   /** The CFO's rule for high-risk payments as a policy change to approve with Face ID (its keys only). */
   proposeSecondKey(changes: { key: string; to: string }[]): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
   /** A passkey's signature over a proposal's exact terms; only an approval pays, and what follows is in settled. */
-  approve(a: { proposal_id: string; terms_sha256: string; credential: unknown; hold?: boolean }): Promise<{ status: string; message: string; settled: Settled | null; held?: true }>;
+  /** A key in its cooling-off is refused: code cooling_off, with cooling_until. */
+  approve(a: { proposal_id: string; terms_sha256: string; credential: unknown; hold?: boolean }): Promise<{ status: string; message: string; settled: Settled | null; held?: true; code?: "cooling_off"; cooling_until?: string }>;
   /**
    * Try again: an approved payment whose execution failed is run once more by the executor's own resume path (never a
    * second payment), then followed, booked, archived and fed. Anything else answers nothing_to_retry and nothing runs.

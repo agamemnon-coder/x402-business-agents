@@ -333,7 +333,9 @@ async function invoiceView(id){
     if(proof){await proof.refresh(j);return}
     proof=proofCard(j);if(pay&&pay.isConnected)pay.after(proof);else stack.prepend(proof)};
   const mine=ev&&(ev.items||[]).find((x)=>x.id===id);
-  const pay=mine?payCard({inv:mine,eng,write:(await me()).scopes.includes('admin'),moved:again}):null;
+  // o.write: who files the payment (admin); o.approve: who approves it (approve: the CFO, or an owner of a company with no CFO).
+  const who=await me();
+  const pay=mine?payCard({inv:mine,eng,write:who.scopes.includes('admin'),approve:who.scopes.includes('approve'),ownerApproves:who.approves==='owner_without_cfo',moved:again}):null;
   const fs=i.findings||[];const fl=el('ul','findings');
   if(!fs.length)fl.append(el('li','ok',[ic('circle-check'),el('span','',t('cs.all_passed'))]));
   for(const f of fs){const m=RES[f.level]||['circle-minus',f.level];fl.append(el('li',f.level,[ic(m[0]),el('span','',[el('b','',m[1]+': '),finding(f)])]))}

@@ -5,6 +5,7 @@
 import { withBaseline } from "./baseHeaders.js";
 import { z } from "zod";
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
+import { approveRecovery, namedAdmin, RecoveryRefused, RECOVERY_CHECKS, requestRecovery } from "./recovery.js";
 import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
@@ -113,6 +114,14 @@ export interface CloudEnv {
    * local runs an engine in this process. Test money only. Absent (the default): the /v1/engine routes answer 404.
    */
   engine?: (tenantId: string) => EngineApi;
+  /**
+   * How long a new or recovered approval key waits before it approves (review finding 2; cloud/src/engine/routes.ts
+   * coolingOffMs): the Worker var APPROVAL_KEY_COOLING_HOURS, 72 by default. In production (the deployed Worker) never
+   * under 24; a test company of /try waits 0, labelled.
+   */
+  approvalKeyCoolingHours?: number;
+  /** The deployed Worker (cloud/src/worker.ts): the cooling-off's floor of 24 hours holds. Absent (tests, local runs): it does not. */
+  production?: boolean;
   /** Whether the daily counters behind GET /v1/stats are on (cloud/src/edge/stats.ts). Absent: /v1/stats answers 404. */
   edge?: { stats?: boolean };
   /**
@@ -241,6 +250,22 @@ const SLUG = z.string().regex(/^[a-z0-9][a-z0-9-]{1,40}$/, "a slug is lowercase 
 export const RESERVED_SLUGS = new Set([DEMO_SLUG, "postmaster", "hostmaster", "webmaster", "admin", "administrator", "abuse", "root", "noreply", "no-reply",
   "mailer-daemon", "security", "ssl-admin", "info", "support", "www", "mail", "dmarc", "dmarc-reports", "bounce", "bounces", "purser", "api", "console"]);
 const NEW_SLUG = SLUG.refine((v) => !RESERVED_SLUGS.has(v), "this address is reserved");
+
+/**
+ * A change to the company's approval keys, or a refusal of one (review finding 2), told to every owner: a security event
+ * in the console (GET /v1/security/events) and an event to the company's alert webhook. Telling never fails the request.
+ */
+async function tellOwners(c: Ctx, kind: string, detail: Record<string, string | null>): Promise<void> {
+  try {
+    const t = db(c);
+    const iso = c.now.toISOString();
+    await t.apply([t.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: iso, kind, actor: c.caller!.principal, detail_json: JSON.stringify(detail) })]);
+    const data = Object.fromEntries(Object.entries({ ...detail, by_person: c.caller!.principal, at: iso }).map(([k, v]) => [k, v ?? ""]));
+    await notify(c.env.sql, c.caller!.tenantId, `security.${kind.replace(/\./g, "_")}`, data, c.now, c.env.outbound, c.env.retryDelayMs);
+  } catch (e) {
+    logEvent("error", "security_tell_owners_failed", { kind, error: e instanceof Error ? e.message.slice(0, 200) : "unknown" }, c.now);
+  }
+}
 
 export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/health", summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all, and the security alarms raised in the last 24 hours per rule (security.alarms_24h; no company's data); 503 when something is down.", need: "public", run: async (c) => {
@@ -398,8 +423,9 @@ export const ROUTES: Route[] = [
     return json(201, { tenant: { id, slug: b.slug, name: b.name }, owner: { id: ownerId }, api_key: key.key, expires_at: key.expires_at, note: "the starter key is shown once and makes the first owner's passkey only; it stops working once that passkey exists" });
   } },
 
-  { method: "POST", path: "/v1/admin/tenants/{id}/recovery", summary: "An owner lost their passkey: after checking out of band who asks (checked_by says how), issue a one-time recovery key for that owner, good for one day and one passkey enrolment of that owner; redeemed, the owner's old passkeys and sessions end. One open recovery per company; the company's webhook and security events record it.", need: "platform", run: async (c) => {
-    const b = await body(c, z.object({ owner_id: z.string().min(1).max(80), checked_by: z.string().min(3).max(200) }).strict());
+  { method: "POST", path: "/v1/admin/tenants/{id}/recovery", summary: "An owner lost their passkey. The first of two platform admins, after checking out of band who asks: { owner_id, check } (check: video_call, in_person or phone_callback). Answers 202 with the request (a day long, one open per owner); no key is issued until a second, different named admin key approves it. The legacy admin token takes no part. The company's webhook and security events record it.", need: "platform", run: async (c) => {
+    const b = await body(c, z.object({ owner_id: z.string().min(1).max(80), check: z.enum(RECOVERY_CHECKS) }).strict());
+    const by = namedAdmin(c.audit.admin);
     const tenantId = c.params[0]!;
     if (!/^t_[A-Za-z0-9_-]{6,64}$/.test(tenantId)) return notFound("company");
     const tenant = await c.env.sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [tenantId]);
@@ -407,20 +433,38 @@ export const ROUTES: Route[] = [
     const t = new TenantDb(c.env.sql, tenantId);
     const owner = await t.one<{ role: Role; erased_at: string | null }>("users", { id: b.owner_id });
     if (!owner || owner.erased_at || owner.role !== "owner") return err(409, "a recovery is for an existing owner of this company");
+    const r = await requestRecovery(c.env.sql, { tenantId, ownerId: b.owner_id, check: b.check, by, now: c.now });
+    const iso = c.now.toISOString();
+    await t.apply([t.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: iso, kind: "recovery.requested", actor: `platform:${by}`, detail_json: JSON.stringify({ owner: b.owner_id, request: r.id, check: b.check, requested_by: by, expires_at: r.expires_at }) })]);
+    await notify(c.env.sql, tenantId, "security.recovery_requested", { owner: b.owner_id, request: r.id, requested_by: by, expires_at: r.expires_at }, c.now, c.env.outbound, c.env.retryDelayMs);
+    return json(202, { request_id: r.id, status: "awaiting_second_admin", owner_id: b.owner_id, check: b.check, requested_by: by, expires_at: r.expires_at, note: "no recovery key yet: a second, different platform admin approves with POST /v1/admin/tenants/{id}/recovery/{request}/approve" });
+  } },
+  { method: "POST", path: "/v1/admin/tenants/{id}/recovery/{request}/approve", summary: "The second platform admin approves an owner's recovery request: a named admin key other than the one that asked, while the request is open. Only then is the one-time recovery key issued for that owner, good for one day and one passkey enrolment of that owner; redeemed, the owner's old passkeys and sessions end, and a new approval key they enrol cools off before it approves. One open recovery per company; the company's webhook and security events record both admins.", need: "platform", run: async (c) => {
+    const by = namedAdmin(c.audit.admin);
+    const tenantId = c.params[0]!;
+    if (!/^t_[A-Za-z0-9_-]{6,64}$/.test(tenantId)) return notFound("company");
+    const tenant = await c.env.sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [tenantId]);
+    if (!tenant || tenant.closed_at) return notFound("company");
+    const req = await approveRecovery(c.env.sql, { tenantId, id: c.params[1]!, by, now: c.now });
+    const t = new TenantDb(c.env.sql, tenantId);
+    const owner = await t.one<{ role: Role; erased_at: string | null }>("users", { id: req.owner_id });
+    if (!owner || owner.erased_at || owner.role !== "owner") { await req.release(); return err(409, "a recovery is for an existing owner of this company"); }
     const iso = c.now.toISOString();
     const eventId = `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`;
     let key: { id: string; key: string; expires_at: string };
     try {
       // Checked when it commits: no other recovery key of the company is open (two at once could not be told apart).
-      key = await firstApiKey(t, { name: "owner recovery (one passkey enrolment)", scopes: ["read", "admin"], createdBy: "platform", createdByUser: b.owner_id,
+      key = await firstApiKey(t, { name: "owner recovery (one passkey enrolment)", scopes: ["read", "admin"], createdBy: "platform", createdByUser: req.owner_id,
         expiresInDays: RECOVERY_KEY_DAYS, purpose: "recovery", before: [t.noOpenRecoveryGuard(iso)], now: c.now });
     } catch (e) {
+      await req.release();
       if (e instanceof WriteConflict) return err(409, "a recovery is already open for this company; let it expire or revoke it first");
       throw e;
     }
-    await t.apply([t.insert("security_events", { id: eventId, at: iso, kind: "recovery.issued", actor: "platform", detail_json: JSON.stringify({ owner: b.owner_id, recovery_key: key.id, checked_by: b.checked_by, expires_at: key.expires_at }) })]);
-    await notify(c.env.sql, tenantId, "security.recovery_issued", { owner: b.owner_id, recovery_key: key.id, expires_at: key.expires_at }, c.now, c.env.outbound, c.env.retryDelayMs);
-    return json(201, { recovery_key: key.key, key_id: key.id, owner_id: b.owner_id, expires_at: key.expires_at, note: "shown once; good for one day and one passkey enrolment of this owner; give it to the owner over the channel you checked" });
+    await req.issued(key.id);
+    await t.apply([t.insert("security_events", { id: eventId, at: iso, kind: "recovery.issued", actor: `platform:${by}`, detail_json: JSON.stringify({ owner: req.owner_id, recovery_key: key.id, request: c.params[1]!, check: req.check, requested_by: req.requested_by, approved_by: by, expires_at: key.expires_at }) })]);
+    await notify(c.env.sql, tenantId, "security.recovery_issued", { owner: req.owner_id, recovery_key: key.id, requested_by: req.requested_by, approved_by: by, expires_at: key.expires_at }, c.now, c.env.outbound, c.env.retryDelayMs);
+    return json(201, { recovery_key: key.key, key_id: key.id, owner_id: req.owner_id, requested_by: req.requested_by, approved_by: by, expires_at: key.expires_at, note: "shown once; good for one day and one passkey enrolment of this owner; give it to the owner over the channel that was checked" });
   } },
 
   { method: "POST", path: "/v1/auth/challenge", summary: "Start a passkey sign-in: a one-time challenge for the company.", need: "public", run: async (c) => {
@@ -479,7 +523,7 @@ export const ROUTES: Route[] = [
     return json(200, { signed_out: true });
   } },
 
-  { method: "GET", path: "/v1/me", summary: "Who is calling: the company, and the key's scopes or the person's role.", need: "read", run: async (c) => {
+  { method: "GET", path: "/v1/me", summary: "Who is calling: the company, and the key's scopes or the person's role; approves says why a person may approve (cfo, or owner_without_cfo: an owner of a company with no CFO), null when they may not.", need: "read", run: async (c) => {
     const t = await c.env.sql.first<{ slug: string; name: string; language: string }>("SELECT slug, name, language FROM tenants WHERE id = ?", [c.caller!.tenantId]);
     // For the console: the person behind the call, whether an owner has a passkey yet (a new company's first run), and
     // the company's inbox address once mail is routed here.
@@ -491,6 +535,8 @@ export const ROUTES: Route[] = [
     // The company's Airwallex account opened through Purser, for the pages' header (its id is no secret; never a key).
     const awx = await c.env.sql.first<{ account_id: string | null; status: string }>("SELECT account_id, status FROM awx_accounts WHERE tenant_id = ? AND id = 'main'", [c.caller!.tenantId]);
     return json(200, { tenant: { id: c.caller!.tenantId, ...t, language: companyLanguage }, kind: c.caller!.kind, principal: c.caller!.principal, scopes: [...c.caller!.scopes], role: c.caller!.role ?? null,
+      // Why this person may approve (docs/security/roles.md): "cfo", or "owner_without_cfo" (the console's note); null: they may not.
+      approves: c.caller!.approves ?? null,
       user: c.caller!.user ? { id: c.caller!.user, display_name: person?.display_name ?? null, role: person?.role ?? null, language: person?.language ?? null } : null,
       language: person?.language === "en" || person?.language === "nl" ? person.language : companyLanguage,
       owner_has_passkey: ownerPasskey, airwallex: awx ? { account_id: awx.account_id, status: awx.status } : null, inbox: c.env.mailDomain && t && !isDemoTenant(c.caller!.tenantId) ? `${t.slug}@${c.env.mailDomain}` : null,
@@ -714,7 +760,7 @@ export const ROUTES: Route[] = [
   { method: "POST", path: "/v1/close", summary: "Close the company's account: access ends; records are kept until the retention day, then purged.", need: "admin", run: async (c) => json(200, await closeTenant(c.env.sql, c.caller!.tenantId, c.now)) },
 
   // The company's engine (cloud/src/engine/routes.ts): one block, the caller's own company only, 404 while no engine is wired.
-  ...engineRoutes<Ctx>({ json, err, body, approved: (c, out) => stageApproved(c.env.sql, c.caller!.tenantId, out, c.now) }),
+  ...engineRoutes<Ctx>({ json, err, body, approved: (c, out) => stageApproved(c.env.sql, c.caller!.tenantId, out, c.now), tellOwners }),
   ...edgeRoutes<Ctx>({ json, err }),
 
   // The hands-on demo's engine routes (cloud/src/try/engineRoutes.ts): one block, the caller's own company only.
@@ -912,6 +958,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
     if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);
     if (e instanceof PlatformRefused) return err(e.status, e.message);
+    if (e instanceof RecoveryRefused) return err(e.status, e.message);
     if (e instanceof TryRefused) return tryError(json, e.status, e.code, e.message);
     if (e instanceof SwitchRefused) return tryError(json, 400, "bad_request", e.message);
     if (e instanceof ConnectRefused) return err(e.status, e.message);
@@ -965,8 +1012,8 @@ export function openApi(origin: string, o: { readOnly?: boolean } = {}): Record<
       : { title: "Purser Cloud API", version: "1.0.0", description: "Everything a company's finance runs on, in one place: invoices, documents, suppliers, payments, the ledger and its reports. Test money only until a company goes live." },
     servers: [{ url: origin }],
     ...(o.readOnly ? {} : { tags: Object.entries(TAG_DESCRIPTIONS).map(([name, description]) => ({ name, description })) }),
-    "x-purser-safety": "A key reads (read) and files an invoice's payment for the CFO's approval (propose). No key approves: approving is a signed-in person's passkey over the exact terms (POST /v1/engine/proposals/{id}/approve refuses every key).",
-    components: { responses: Object.fromEntries(Object.entries(ERRORS).map(([name, [, description]]) => [name, ERROR(description)])), schemas: { ...API_SCHEMAS, Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: [...Object.values(CODES), "step_up_required"], description: "Stable, for a program" } } } }, securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...; scopes read, sync, admin, propose) or a passkey session (pcs....)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
+    "x-purser-safety": "A key reads (read) and files an invoice's payment for the CFO's approval (propose). No key approves: approving needs the approve scope, a signed-in CFO's (an owner's only in a company with no CFO), and their passkey over the exact terms (POST /v1/engine/proposals/{id}/approve refuses every key).",
+    components: { responses: Object.fromEntries(Object.entries(ERRORS).map(([name, [, description]]) => [name, ERROR(description)])), schemas: { ...API_SCHEMAS, Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: [...Object.values(CODES), "step_up_required"], description: "Stable, for a program" } } } }, securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...; scopes read, sync, admin, propose; never approve) or a passkey session (pcs....; its role's scopes: a CFO's carry approve, docs/security/roles.md)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
     paths,
   };
 }

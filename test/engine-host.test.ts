@@ -106,7 +106,7 @@ describe("the chain: one supplier invoice from upload to paid, booked and archiv
 
     // The passkey: created against the engine's own challenge, and confirmed by the host itself.
     expect(start.exclude).toEqual([]);
-    expect(enrolled).toEqual({ ok: true, credential_id: w.phone.credentialId });
+    expect(enrolled).toEqual({ ok: true, credential_id: w.phone.credentialId, how: "first", by: null, cooling_until: null });
     expect((await w.host.status()).passkey).toEqual({ credential_id: w.phone.credentialId, label: "Test Owner" });
 
     // The proposal: the exact terms' hash, the challenge the passkey signs, and the facts the phone page shows.

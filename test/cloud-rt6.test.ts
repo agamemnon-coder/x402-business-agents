@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { softPasskey } from "../src/metal/softPasskey.js";
 import type { NewConnectedAccount, PlatformRail } from "../src/airwallex/platform.js";
 import { checkBinding } from "../src/airwallex/binding.js";
-import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
+import { issueRecovery, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 import { PLATFORM_PRIVATE_KEY, PLATFORM_PUBLIC_KEY, PURSER_FEE_ACCOUNT } from "./support/platformBinding.js";
 
 const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
@@ -28,8 +28,8 @@ async function login(c: TestCloud, slug: string, p: Pk): Promise<{ status: numbe
     assertion: { authenticatorData: b64u(a.authenticatorData), clientDataJSON: b64u(a.clientDataJSON), signature: b64u(a.signature) } } });
   return { status: r.status, session: r.json.session as string };
 }
-const issue = (c: TestCloud, tenantId: string, owner: string) =>
-  c.req("POST", `/v1/admin/tenants/${tenantId}/recovery`, { key: ADMIN_TOKEN, body: { owner_id: owner, checked_by: "video call" } });
+// Since 20 Nov an owner recovery takes two platform admins (test/cloud-recovery-two-admins.test.ts): one asks, another approves.
+const issue = (c: TestCloud, tenantId: string, owner: string) => issueRecovery(c, tenantId, owner);
 const relative = (u: string) => u.replace(/^https:\/\/cloud\.test/, "");
 
 describe("RT6-R an owner recovery ends what the holder of the lost passkey set up", () => {

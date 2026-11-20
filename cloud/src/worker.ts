@@ -83,6 +83,11 @@ export interface Bindings {
   RESEND_API_KEY?: string;
   ALERT_EMAIL_FROM?: string;
   ALERTS_LIVE_MONEY?: string;
+  /**
+   * How many hours a new or recovered approval key waits before it approves (review finding 2): 72 when unset; this
+   * deployed Worker never takes less than 24 (cloud/src/engine/routes.ts coolingOffMs). A /try test company waits 0.
+   */
+  APPROVAL_KEY_COOLING_HOURS?: string;
   /** The site Worker's read-only Airwallex sandbox gateway (kit11's AwxRead entrypoint, a service binding): the live Airwallex tab. */
   AWX_READ?: AwxReadBinding;
   /** The agents' live Airwallex sandbox cards (cloud/src/agentCards.ts): kit11's AwxCards entrypoint, a service binding. */
@@ -123,7 +128,7 @@ function envOf(b: Bindings): CloudEnv {
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}), ...(b.TURNSTILE_SECRET ? { turnstileSecret: b.TURNSTILE_SECRET, siteverify: (url: string, init: RequestInit) => fetch(url, init) } : {}) } } : {}) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE && b.HANDS_ON === "on" ? { negotiateClaude: negotiateClaudeOf(sql, b.ENGINE_CLAUDE, b.KIT11_ANTHROPIC_API_KEY) } : {}),
-    edge: { stats: b.STATS !== "off" }, ...(connect ? { connect } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}) };
+    edge: { stats: b.STATS !== "off" }, production: true, ...(b.APPROVAL_KEY_COOLING_HOURS && /^\d{1,4}$/.test(b.APPROVAL_KEY_COOLING_HOURS) ? { approvalKeyCoolingHours: Number(b.APPROVAL_KEY_COOLING_HOURS) } : {}), ...(connect ? { connect } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}) };
 }
 
 export default {

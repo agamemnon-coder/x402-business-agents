@@ -20,6 +20,7 @@ expires (90 days by default) and can be revoked. Keep it in the environment (`PU
 | `propose` | File an invoice's payment for the CFO's approval (`POST /v1/engine/invoices/{id}/pay`). Nothing more. |
 | `admin` | Manage the company (keys, people, settings). It covers `propose`. An integration should not hold it. |
 | `sync` | The company's own runner pushing its records. Not for integrations. |
+| `approve` | Never a key's. A signed-in CFO's (or, in a company with no CFO, an owner's): approve or reject with their own passkey. `admin` does not cover it. Roles: [security/roles.md](../security/roles.md). |
 
 Status: everything on this page is built and tested locally (see "Tests" at the end). None of it has been used live by
 an outside agent or a no-code tool yet.
@@ -51,7 +52,7 @@ one HTML page, with no script and no third-party asset. `npm run openapi` writes
 route is in the code but not in the document, or the other way round, or when the file is out of date.
 
 Safety boundary: each operation names the scope it needs (`x-purser-needs`). Proposing needs `propose`. Approving needs
-a signed-in person's passkey, and no scope grants it.
+`approve`, which no key can hold: a signed-in CFO's own passkey over the exact terms.
 
 ## TypeScript SDK
 

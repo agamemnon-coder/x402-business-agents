@@ -66,12 +66,12 @@ describe("the route table", () => {
       "GET /v1/engine/invoices read",
       "POST /v1/engine/invoices/{id}/pay propose",
       "GET /v1/engine/proposals/{id} read",
-      "POST /v1/engine/passkey/start admin",
-      "POST /v1/engine/passkey/finish admin",
+      "POST /v1/engine/passkey/start approve",
+      "POST /v1/engine/passkey/finish approve",
       "POST /v1/engine/policy/second-key admin",
-      "POST /v1/engine/security-key/start admin",
-      "POST /v1/engine/security-key/finish admin",
-      "POST /v1/engine/proposals/{id}/approve admin",
+      "POST /v1/engine/security-key/start approve",
+      "POST /v1/engine/security-key/finish approve",
+      "POST /v1/engine/proposals/{id}/approve approve",
       "POST /v1/engine/proposals/{id}/retry admin",
       // 14 Nov: Purser Cloud's Airwallex actions (src/engine/awxActions.ts).
       "GET /v1/engine/airwallex read",
@@ -144,7 +144,8 @@ describe("one supplier invoice, from upload to paid, booked and archived, over H
     const again = await c.req("POST", "/v1/engine/passkey/start", { key: A.session });
     const done = await c.req("POST", "/v1/engine/passkey/finish", { key: A.session, body: { code: again.json.code, credential: phone.register({ challenge: again.json.challenge as string, origin: ORIGIN, rpId: RP }) } });
     expect(done.status, JSON.stringify(done.json)).toBe(200);
-    expect(done.json).toEqual({ credential_id: phone.credentialId });
+    // The company's first approval key: nothing more is asked, and it does not cool off (review finding 2).
+    expect(done.json).toEqual({ credential_id: phone.credentialId, how: "first", cooling_until: null });
     // The label is the signed-in person's name, never something the request says.
     expect((await c.req("GET", "/v1/engine", { key: A.session })).json.passkey).toEqual({ credential_id: phone.credentialId, label: "Owner" });
     expect((await c.req("POST", "/v1/engine/passkey/start", { key: A.session })).json.exclude).toEqual([phone.credentialId]);
@@ -540,6 +541,8 @@ describe("a cloud with no engine wired", () => {
       for (const key of [t.session, t.key]) {
         for (const r of ENGINE_ROUTES) {
           const res = await off.req(r.method, at(r.path), { key, ...(r.method === "POST" ? { body: {} } : {}) });
+          // A key never approves (docs/security/roles.md): it is refused before the engine is asked whether it is there.
+          if (key === t.key && r.need === "approve") { expect(res.status, `${r.method} ${r.path}`).toBe(403); continue; }
           expect(res.status, `${r.method} ${r.path}`).toBe(404);
           expect(res.json.code).toBe("not_found");
         }
