@@ -18,7 +18,7 @@ import { QuotaExceeded, reserveStorage, type StorageQuota } from "./storageQuota
 import { endSession, listSessions } from "./sessions.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
-import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
+import { closeTenant, eraseUser, exportTenant, offboardTenant, PrivacyRefused } from "./privacy.js";
 import { download, EXPORT_LINK_HEADER, ExportRefused, exportStatus, purgeEndedExportParts, signedLink, stageExport } from "./exports.js";
 import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
@@ -228,7 +228,9 @@ const db = (c: Ctx) => c.db!;
 /** A new API key's request: its name, its scopes (read, sync, admin, propose) and its life in days. */
 const KeyBody = z.object({ name: z.string().min(1).max(80), scopes: z.array(z.enum(SCOPES as [Scope, ...Scope[]])).min(1), expires_in_days: z.number().int().min(1).max(KEY_MAX_DAYS).optional() }).strict();
 /** The request bodies the OpenAPI document shows, from the zod schemas the routes parse them with. */
-const BODIES: Record<string, z.ZodType> = { "POST /v1/keys": KeyBody, ...ENGINE_BODIES };
+/** An offboarding's request: the company's address typed again, and the staged export the owner downloaded. */
+const OffboardBody = z.object({ confirm: z.string().min(1).max(80), export_id: z.string().min(1).max(80) }).strict();
+const BODIES: Record<string, z.ZodType> = { "POST /v1/keys": KeyBody, "POST /v1/offboarding": OffboardBody, ...ENGINE_BODIES };
 /** A key's row without the hash of its secret: secrets never leave, not even hashed. */
 export function withoutSecret(r: Record<string, unknown>): Record<string, unknown> {
   const copy = { ...r };
@@ -888,6 +890,23 @@ export const ROUTES: Route[] = [
     return new Response(typeof r.body === "string" ? r.body : new Uint8Array(r.body), { status: r.status, headers: { ...JSON_HEADERS, ...(r.status === 200 ? { "content-disposition": `attachment; filename="${c.params[0]!}-${c.params[1]!}.json"` } : {}) } });
   } },
   { method: "POST", path: "/v1/close", summary: "Close the company's account: access ends; records are kept until the retention day, then purged.", need: "admin", run: async (c) => json(200, await closeTenant(c.env.sql, c.caller!.tenantId, c.now)) },
+  { method: "POST", path: "/v1/offboarding", summary: "Offboard the company after its export (docs/privacy/retention.md): a signed-in owner, passkey checked in the last five minutes, names the staged export they downloaded and types the company's address. The account closes; names become pseudonyms, e-mails, passkeys, sessions, keys and message targets go; the bookkeeping is kept until the retention day, then purged.", need: "admin", run: async (c) => {
+    const caller = c.caller!;
+    if (caller.kind !== "session" || caller.role !== "owner" || caller.via) throw new AuthError(403, "only a signed-in owner offboards the company, with their passkey");
+    const b = await body(c, OffboardBody);
+    // The company's engine holds each person's approval passkey: those go first. If that fails, nothing is closed yet.
+    if (c.env.engine) {
+      const people = await db(c).select<{ id: string }>("users", {}, { order: ["id"] });
+      try { for (const p of people) await c.env.engine(caller.tenantId).forgetPasskey(p.id); } catch (e) {
+        logEvent("error", "offboard_engine_failed", { error: e instanceof Error ? e.message : String(e) }, c.now);
+        return err(502, "the engine could not remove the approval passkeys yet; nothing was closed: send it again");
+      }
+    }
+    const out = await offboardTenant(c.env.sql, { tenantId: caller.tenantId, by: caller.principal, confirm: b.confirm, exportId: b.export_id, now: c.now });
+    // The platform's security log (./securityAudit.ts) records the offboarding with these counts; never a name.
+    c.audit.detail = { offboarding: true, export_id: out.export_id, purge_after: out.purge_after, people_pseudonymised: out.people_pseudonymised, keys_revoked: out.keys_revoked };
+    return json(200, out);
+  } },
 
   // The company's engine (cloud/src/engine/routes.ts): one block, the caller's own company only, 404 while no engine is wired.
   ...engineRoutes<Ctx>({ json, err, body, approved: (c, out) => stageApproved(c.env.sql, c.caller!.tenantId, out, c.now), tellOwners }),

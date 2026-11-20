@@ -3044,6 +3044,49 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/offboarding":
+    post:
+      operationId: postV1Offboarding
+      tags:
+        - Company
+      summary: "Offboard the company after its export (docs/privacy/retention.md): a signed-in owner, passkey checked in the last five minutes, names the staged export they downloaded and types the company's address. The account closes; names become pseudonyms, e-mails, passkeys, sessions, keys and message targets go; the bookkeeping is kept until the retention day, then purged."
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: object
+              properties:
+                confirm:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                export_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+              required:
+                - confirm
+                - export_id
+              additionalProperties: false
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      x-purser-step-up: "always: a signed-in owner, passkey checked in the last five minutes"
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/engine":
     get:
       operationId: getV1Engine

@@ -121,6 +121,7 @@ the longer list.
 - [worst-case-ai.md](worst-case-ai.md): the worst-case AI test: Purser's AI replaced by a script that always says pay.
 - [agent-was-wrong.md](agent-was-wrong.md): when the agent was wrong: what it wanted, what stopped it, what the CFO saw.
 - [compliance.md](compliance.md): who does what, and how Purser supports it.
+- [privacy/data-inventory.md](privacy/data-inventory.md): every place personal or financial data is stored, why, for how long, how it is deleted, and the subprocessors; [privacy/retention.md](privacy/retention.md): the retention rules and offboarding a company. An engineering inventory, not legal advice.
 - [hardening.md](hardening.md): the hardening log, 30 October to the freeze on 4 November.
 - [audit/README.md](audit/README.md): the audit log of the recorded run of 30 October.
 - [accessibility.md](accessibility.md): accessibility (what the pages do and what CI checks) and internationalisation (English only).

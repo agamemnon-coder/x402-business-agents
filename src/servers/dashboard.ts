@@ -45,6 +45,7 @@ import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
 import { runsPage } from "../redesign/runs.js";
 import { securityPage } from "../redesign/security.js";
 import { docsPage } from "../redesign/docs.js";
+import { privacyPage } from "../redesign/privacy.js";
 import { statusPage } from "../redesign/status.js";
 import { agentPages } from "../redesign/agents.js";
 import { monthEndPack, PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
@@ -302,6 +303,9 @@ export const SECURITY_CSP = styleOnlyCsp(SECURITY_PAGE);
 export const DOCS_PAGE = docsPage();
 // /docs carries one small script since 14 Nov: the copy buttons (src/redesign/runs.ts COPY_JS).
 export const DOCS_CSP = DOCS_PAGE.includes("<script>") ? styleAndScriptCsp(DOCS_PAGE) : styleOnlyCsp(DOCS_PAGE);
+/** /privacy (20 Nov), under "More" too (src/redesign/privacy.ts): no script, so a style-only policy. */
+export const PRIVACY_PAGE = privacyPage();
+export const PRIVACY_CSP = styleOnlyCsp(PRIVACY_PAGE);
 /**
  * /status (12 Nov), under "More" too (src/redesign/status.ts). Its one small script reads the site's own /health, so its
  * policy names that script and the style by hash and allows requests to the site itself only (connect-src 'self').
@@ -501,6 +505,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/docs", (_req, res) => {
     res.setHeader("Content-Security-Policy", DOCS_CSP);
     res.type("html").send(DOCS_PAGE);
+  });
+  app.get("/privacy", (_req, res) => {
+    res.setHeader("Content-Security-Policy", PRIVACY_CSP);
+    res.type("html").send(PRIVACY_PAGE);
   });
   // /status as the relay serves it. This server's own /health (below) has the runner's shape, not the relay's, so here
   // the page says the status could not be read and links to /health: it never reads another shape as good.

@@ -19,6 +19,8 @@ function table(sql: Sql): Promise<void> {
   if (!p) { p = (async () => { for (const s of SESSIONS_SCHEMA) await sql.run(s); })().catch((e: unknown) => { ready.delete(sql); throw e; }); ready.set(sql, p); }
   return p;
 }
+/** Makes the table where it is not there yet (an offboarding deletes a company's rows from it in one batch). */
+export const ensureSessionsTable = (sql: Sql): Promise<void> => table(sql);
 
 /** Records a new session; returns its id (for the token). */
 export async function recordSession(sql: Sql, a: { tenantId: string; userId: string; userAgent: string | null; ip: string | null; now: Date; expiresAt: Date }): Promise<string> {

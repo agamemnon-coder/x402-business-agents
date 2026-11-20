@@ -28,6 +28,24 @@ function table(sql: Sql): Promise<void> {
   if (!p) { p = sql.run(RECOVERY_REQUESTS_SCHEMA).then(() => undefined).catch((e: unknown) => { ready.delete(sql); throw e; }); ready.set(sql, p); }
   return p;
 }
+/** Makes the table where it is not there yet (an offboarding deletes a company's rows from it in one batch). */
+export const ensureRecoveryTable = (sql: Sql): Promise<void> => table(sql);
+
+/** An approved request is the record of two admins' act: kept as long as the security log keeps its events, a year. */
+export const RECOVERY_APPROVED_KEEP_DAYS = 365;
+
+/**
+ * The daily job (docs/privacy/retention.md): a request that expired unapproved goes a day after its expiry; an approved
+ * one after RECOVERY_APPROVED_KEEP_DAYS. Returns how many went.
+ */
+export async function pruneRecoveryRequests(sql: Sql, now: Date): Promise<number> {
+  await table(sql);
+  const day = new Date(now.getTime() - 86_400_000).toISOString();
+  const year = new Date(now.getTime() - RECOVERY_APPROVED_KEEP_DAYS * 86_400_000).toISOString();
+  const a = await sql.run("DELETE FROM recovery_requests WHERE approved_at IS NULL AND expires_at < ?", [day]);
+  const b = await sql.run("DELETE FROM recovery_requests WHERE approved_at IS NOT NULL AND approved_at < ?", [year]);
+  return a.changes + b.changes;
+}
 
 /** Each admin of a recovery is a named admin key: the legacy single token (shared, every scope) is refused. */
 export function namedAdmin(id: string | null | undefined): string {
