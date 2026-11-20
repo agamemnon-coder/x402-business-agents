@@ -78,6 +78,8 @@
     "airwallex:soak": "tsx src/cli/airwallexSoak.ts",
     "airwallex:coverage-live": "tsx src/cli/airwallexCoverageLive.ts",
     "airwallex:deep": "tsx src/cli/airwallexDeep.ts",
+    "airwallex:card-drill": "tsx src/cli/airwallexCardDrill.ts",
+    "airwallex:stop-drill": "tsx src/cli/airwallexStopDrill.ts",
     "tamper-matrix": "tsx src/cli/tamperMatrix.ts",
     "mutation": "tsx scripts/mutation.ts",
     "e2e:live": "tsx src/cli/e2eLive.ts",

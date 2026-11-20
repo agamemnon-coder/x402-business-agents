@@ -33,7 +33,7 @@ import { pollQuarantine } from "../policy/quarantine.js";
 import { LiveReceivePolicy } from "../metal/receivePolicy.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { assertRoleKeys } from "../airwallex/keyScopes.js";
-import { cardPollMs, cardRows, pollCardTransactions, syncCardsIfChanged } from "../policy/cards.js";
+import { cardPollMs, cardRows, pollCardTransactions, recoverCardWindows, syncCardsIfChanged } from "../policy/cards.js";
 import { handleAirwallexHook } from "../policy/cardHooks.js";
 import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -163,10 +163,18 @@ if (issuing) console.log(`cards    ${pollEvery === null ? "poll off: card transa
 let cardsAt = 0;
 let polledAt = 0;
 let cardsError = "";
+// Card drill (20 Nov): at the start, every card is read back from Airwallex once and any purchase window a process left
+// open when it died is closed, so a card thawed before a crash is frozen now. Retried at each tick until it succeeds.
+let cardsRecovered = false;
 async function cardsTick(): Promise<void> {
   if (!issuing || cardRows(db).length === 0 || Date.now() - cardsAt < 5000) return;
   cardsAt = Date.now();
   try {
+    if (!cardsRecovered) {
+      const r = await recoverCardWindows(db, issuing.rail);
+      cardsRecovered = true;
+      if (r.closed.length || r.changed.length) console.log(`${stamp()} cards    at start: ${r.closed.length ? `window(s) left open closed: ${r.closed.join(", ")}; ` : ""}synced at Airwallex: ${r.changed.join(", ") || "none"}`);
+    }
     const synced = await syncCardsIfChanged(db, issuing.rail);
     if (synced.length) console.log(`${stamp()} cards    limits updated at Airwallex: ${synced.join(", ")}`);
     const fresh = pollEvery !== null && Date.now() - polledAt >= pollEvery ? (polledAt = Date.now(), await pollCardTransactions(db, issuing.rail)) : 0;
