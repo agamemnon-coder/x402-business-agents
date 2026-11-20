@@ -240,7 +240,9 @@ describe("the pages", () => {
   it("Home shows the badge as an image and its script still reaches no network", () => {
     for (const html of [homePage(), homePage(undefined, { trySign: true })]) expect(html).toContain(awxHomeBadgeHtml());
     expect(awxHomeBadgeHtml()).toContain('src="awx-live/books.svg"');
-    expect(buildPages({} as NodeJS.ProcessEnv).csp.home).toContain("connect-src 'none'");
-    expect(buildPages({} as NodeJS.ProcessEnv).csp.home).toContain("img-src 'self'");
-  });
+    // Building every page takes a few seconds on a loaded CI runner (5 s, the default, timed out on 20 Nov): once, 30 s.
+    const csp = buildPages({} as NodeJS.ProcessEnv).csp.home;
+    expect(csp).toContain("connect-src 'none'");
+    expect(csp).toContain("img-src 'self'");
+  }, 30_000);
 });
