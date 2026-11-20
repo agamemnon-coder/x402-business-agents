@@ -150,7 +150,7 @@ export const TRY_SIGN_END = [
   { label: "Read the code", href: REPO_URL, icon: "external-link" },
 ] as const;
 /** Under them, as a text link. */
-export const TRY_SIGN_FILM = { label: "Watch the film", href: FILM_URL } as const;
+export const TRY_SIGN_FILM = { label: "Watch the demo", href: FILM_URL } as const;
 
 /** Screen 4's full policy, behind "Show all fields and what Purser sends" (#71, Max's item 1): its words, word for word. */
 export const TRY_POLICY = {

@@ -104,8 +104,6 @@ The public /try, timed:
 - [Live demo](https://kit11.max-31b.workers.dev): the public site, on test money
 - [/try](https://kit11.max-31b.workers.dev/try): a test company of your own; Claude reads an invoice, the Checker agent's tool calls are shown with its model, timing and cost, you sign the exact terms with a passkey, then one cent more is refused
 - [The demo (3:15)](https://youtu.be/gEUm8RlhZac): the video in the submission; test money only
-- [The film, "Purser, under the hood" (3:29)](https://youtu.be/PNLuqhRzVfE): test money only
-- [The trailer (1:30)](https://youtu.be/n3HLVGROJc4): AI voice and music: ElevenLabs
 - [Finance value](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/finance-value.md): for a CFO: the job step by step, measured cost and time per invoice, the controls mapped, the books, what is not proven yet
 
 ## Finance and product value

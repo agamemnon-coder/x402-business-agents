@@ -384,10 +384,10 @@ describe("/proof's folds: the Airi runs, the read-back, every check, the busines
 
 describe("/proof's utility links: one quiet row at the end", () => {
   // Max, 14 Nov: the walkthrough is at the top, under the lead; the quiet row at the end keeps the other three.
-  it("links the walkthrough and the trailer at the top; the CFO's view, the trace and the month-end pack at the end, in that order, and nowhere above", () => {
+  it("links the demo at the top; the CFO's view, the trace and the month-end pack at the end, in that order, and nowhere above", () => {
     expect(main).toContain(`<p class="pwatch"><a class="film" href="${FILM_URL}" target="_blank" rel="noopener">`);
     expect(words(main.slice(main.indexOf('<p class="pwatch">')))).toContain(FILM_LINK);
-    expect(main).toContain(`<a class="film" href="${TRAILER_URL}" target="_blank" rel="noopener">`);
+    expect(main).not.toContain(`href="${TRAILER_URL}"`); // 20 Nov (owner): only the demo is linked
     expect(main.indexOf('<p class="pwatch">')).toBeLessThan(main.indexOf('<ul class="ptiles"'));
     const at = main.indexOf('<nav class="util"'), util = main.slice(at);
     expect([...util.matchAll(/<a class="open" href="([^"]+)"/g)].map((m) => decode(m[1]!))).toEqual([CFO_VIEW_URL, TRACE_URL, `assets/${PACK_NAME}`]);

@@ -129,14 +129,6 @@ The full suite, `npm test` (about 8 to 9 min on a laptop): **8574 tests passing*
 
 **[The demo (3:15)](https://youtu.be/gEUm8RlhZac)**, the video in the submission (its thumbnail is at the top) · test money only
 
-Earlier videos:
-
-| [The film: Purser, under the hood (3:29)](https://youtu.be/PNLuqhRzVfE) · test money only | [The trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only |
-|---|---|
-| <a href="https://youtu.be/PNLuqhRzVfE"><img src="docs/assets/readme/film-thumb.jpg" alt="Purser, under the hood: the film on YouTube" width="100%"></a> | <a href="https://youtu.be/n3HLVGROJc4"><img src="docs/assets/readme/trailer-thumb.jpg" alt="Purser: the trailer on YouTube" width="100%"></a> |
-
-The film was recorded on 15 November, so its test count (6,932) is older than the one above. Its "87 payments" is right for what it says: the main run's payments the agents made alone, 86 on Alta plus 1 card charge (`counts.alone` in [the record](docs/demo/main-run.json)).
-
 ## Airwallex at the centre
 
 **Built on Airwallex.** Purser calls Airwallex's API for a card per agent with the CFO's limits (Issuing), FX quotes inside the signed terms, transfers that carry the hash the CFO signed, the payee's bank check, Airwallex's own approval as a second lock, and signed webhooks (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).

@@ -27,7 +27,7 @@ import { trailLinkHtml } from "./awxTrailLink.js";
 import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
 import { CI_CSS, ciChecksHtml } from "./ciChecks.js";
-import { AWX_LIVE_LINE, CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, TRAILER_LINK, TRAILER_URL, SPLIT_LINE } from "../config/brand.js";
+import { AWX_LIVE_LINE, CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type StopStory, type Tile } from "./run.js";
 import { centHtml, centRecord } from "./cardCent.js";
 import { AWX_CONTROLS_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
@@ -642,7 +642,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   ${evidenceWallHtml()}
   ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
   ${verifyCalloutHtml()}
-  <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a> <a class="film" href="${esc(TRAILER_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(TRAILER_LINK)}&nbsp;↗</a></p>
+  <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>
   ${guaranteesHtml()}
   ${detailsFold("runs-fold", "Every live run, by partner", `${partnerStripHtml(undefined, liveRunCount())}
   <p class="pawx"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>

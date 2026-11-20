@@ -46,7 +46,7 @@ import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
 import type { CloudEnv } from "./app.js";
-import { FILM_URL, TRAILER_LINK, TRAILER_URL } from "../../src/config/brand.js";
+import { FILM_URL, TRY_VIDEO } from "../../src/config/brand.js";
 import { presentExtra, V2_COPY } from "./try/presentMode.js";
 import { VIS_CSS, visScript } from "./try/visuals.js";
 import { NEG_CSS, NEG_TRY_JS, negKitJs } from "./try/negotiateKit.js";
@@ -2098,7 +2098,7 @@ const TESTS_HREF = "https://github.com/agamemnon-coder/x402-business-agents/blob
 /** extra: the app shell and "How Purser works" (cloud/src/try/presentMode.ts); recording mode's too with /try?present=1. */
 /** over: the v2 preview's words (cloud/src/try/presentMode.ts V2_COPY), merged over the copy key by key; none on plain /try. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }, over?: Record<string, Record<string, unknown>>): string {
-  const copy = { limitAmount: TRY_ALONE_LIMIT.amount, limitCurrency: TRY_ALONE_LIMIT.currency, run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL }, cash: CASH };
+  const copy = { limitAmount: TRY_ALONE_LIMIT.amount, limitCurrency: TRY_ALONE_LIMIT.currency, run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRY_VIDEO.url, label: TRY_VIDEO.label }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL }, cash: CASH };
   if (over) for (const [k, v] of Object.entries(over)) { const c = copy as unknown as Record<string, Record<string, unknown>>; c[k] = { ...(c[k] ?? {}), ...v }; }
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,

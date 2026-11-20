@@ -151,11 +151,10 @@ describe("the first screen (section D, 6 Nov)", () => {
     // The rails that ran live, said once under the three proofs; the three commands shown once, in their own section.
     expect(lines.some((l) => l.startsWith("**Run live on test money** (Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude): the main run of 3 November"))).toBe(true);
     expect(README.split("npm run judge -- --check").length - 1).toBe(1);
-    // 14 Nov (Max): the walkthrough and the trailer side by side, each with its thumbnail in the trailer's style.
-    expect(README).toContain('<a href="https://youtu.be/PNLuqhRzVfE"><img src="docs/assets/readme/film-thumb.jpg"');
-    expect(README).toContain('<a href="https://youtu.be/n3HLVGROJc4"><img src="docs/assets/readme/trailer-thumb.jpg"');
-    // Jury round 2, 13 Nov: the film's own length (298.0 s) (the partners were text only until 14 Nov).
-    expect(README).toContain("| [The film: Purser, under the hood (3:29)](https://youtu.be/PNLuqhRzVfE) · test money only | [The trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only |"); // no duration on the walkthrough since 14 Nov (owner); the trailer beside it
+    // 20 Nov (owner): the demo is the one video the README links; the film and the trailer are no longer linked.
+    expect(README).not.toContain("youtu.be/PNLuqhRzVfE");
+    expect(README).not.toContain("youtu.be/n3HLVGROJc4");
+    expect(README).toContain("**[The demo (3:15)](https://youtu.be/gEUm8RlhZac)**");
     expect(README).not.toMatch(/5-minute walkthrough/);
     // 14 Nov (owner): the partners' logo row is back, the official files each on its own white tile, unaltered.
     // 14 Nov: Alta's wordmark in the row (the Alta team's OK); Visa and Cloudflare in text (the owner's decision).
@@ -166,7 +165,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);
     expect(lines.findIndex((l) => l.startsWith("| **For judges:**"))).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
-    expect(FILM_URL).toBe("https://youtu.be/PNLuqhRzVfE");
+    expect(FILM_URL).toBe("https://youtu.be/gEUm8RlhZac");
     expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(280); // 280 since 17 Nov, owner: strongest proof first (+8 lines: the proof table; 273 as built); 270 since 17 Nov, later (+7: the For judges table; +1: the film's figures dated); 260 since 17 Nov (+7 lines: one engine, two jobs; what the sandbox taught us; three invariants); 250 since 15 Nov (+the invariants table); 240 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram, the system map; 233 as built); 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
   });
 
@@ -175,7 +174,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     // 13 Nov, evening (owner): the product tour is gone, so Home's first button is the hands-on demo again. 15 Nov
     // (clarity): the idea in one sentence, a proof line (what it runs on and three measured figures), Try it in 2
     // minutes, then the film; "See the proof" stays at the end of Home.
-    expect([START, FILM_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the film"]);
+    expect([START, FILM_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the demo"]);
     expect(t.startsWith(`${HERO} ${HOME_SUB} Built on Airwallex · test money · `)).toBe(true);
     expect(t).toContain(` ${START} ${FILM_BUTTON} ${VERIFY_BUTTON} ${REASSURE.sign}`);
     expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost film"', 'class="btn big ghost"']);
