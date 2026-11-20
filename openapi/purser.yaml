@@ -587,6 +587,117 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/chat-hooks":
+    get:
+      operationId: getV1ChatHooks
+      tags:
+        - Company
+      summary: "Slack and Teams (Settings): whether the company's Slack and Teams incoming webhooks are set (their host only, never the URL), and each one's delivery state. Purser posts approval.needed, payment.paid and books.closed there; a message only tells and links to Purser Cloud, it never approves."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/chat-hooks/{product}":
+    post:
+      operationId: postV1ChatHooksByProduct
+      tags:
+        - Company
+      summary: "Set the company's Slack (product slack: https://hooks.slack.com/services/...) or Teams (product teams: a Teams Workflow's webhook URL) incoming webhook: { url }. A signed-in owner (a fresh passkey check when the company asks for one); never a key. Answers the host only."
+      parameters:
+        - name: product
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      x-purser-step-up: "a signed-in owner; when the company asks again before sensitive changes, passkey checked in the last five minutes"
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    delete:
+      operationId: deleteV1ChatHooksByProduct
+      tags:
+        - Company
+      summary: "Remove the company's Slack or Teams webhook (a signed-in owner)."
+      parameters:
+        - name: product
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      x-purser-step-up: "a signed-in owner; when the company asks again before sensitive changes, passkey checked in the last five minutes"
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/chat-hooks/{product}/test":
+    post:
+      operationId: postV1ChatHooksByProductTest
+      tags:
+        - Company
+      summary: "Post one test message to the company's Slack or Teams webhook now, so the owner sees it arrive: { delivered, status } (the status Slack or Teams answered; 0 when nothing answered). A working test switches a hook that was off back on."
+      parameters:
+        - name: product
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/airwallex/account":
     get:
       operationId: getV1AirwallexAccount

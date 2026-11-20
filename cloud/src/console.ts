@@ -1277,6 +1277,31 @@ async function securityCard(){
   return card;
 }
 
+// Slack and Teams (cloud/src/chatHooks.ts): the company's own incoming-webhook URL per product, pasted by an owner, and
+// a test post. Purser posts approval.needed, payment.paid and books.closed there; a message links here, never approves.
+async function chatCard(){
+  const card=el('div','card panel chat');card.id='chat';
+  const rows=el('div','');const out=el('div','');
+  async function draw(){
+    const r=await api('/v1/chat-hooks');
+    const kids=[];
+    for(const p of ['slack','teams']){const h=r.hooks[p];
+      const val=el('input','field');val.id='chat-'+p;val.type='url';val.maxLength=500;val.autocomplete='off';val.placeholder=t('cs.chat.ph.'+p);
+      const save=btn(h?t('cs.chat.replace'):t('cs.chat.save'),'primary','scan-face');
+      save.onclick=async()=>{if(!val.value.trim())return;save.disabled=true;try{await api('/v1/chat-hooks/'+p,{method:'POST',body:{url:val.value.trim()}});out.replaceChildren(note(t('cs.chat.saved'),'ok'));await draw()}catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'))}finally{save.disabled=false}};
+      const line=[el('span','pill'+(h?(h.status==='on'?' ok':' warn'):''),h?tk('cs.chat.st.'+h.status,h.status):t('cs.chat.st.none')),' ',el('b','',t('cs.chat.name.'+p)),h?el('span','mono',' · '+h.host):null];
+      const acts=[];
+      if(h){const test=btn(t('cs.chat.test'),'','zap');test.onclick=async()=>{test.disabled=true;try{const o=await api('/v1/chat-hooks/'+p+'/test',{method:'POST'});out.replaceChildren(note(o.delivered?t('cs.chat.test_ok'):t('cs.chat.test_failed',{status:o.status}),o.delivered?'ok':'bad'));await draw()}catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'))}finally{test.disabled=false}};
+        const rm=btn(t('cs.remove'),'danger','x');rm.onclick=async()=>{rm.disabled=true;try{await api('/v1/chat-hooks/'+p,{method:'DELETE'});out.replaceChildren();await draw()}catch(e){if(!(e instanceof Expired)){rm.disabled=false;out.replaceChildren(note(e.message,'bad'))}}};acts.push(test,rm)}
+      kids.push(el('p','',line),el('div','form-row',[el('div','',[el('label','',t('cs.chat.url')),val]),el('div','',[save]),...acts.map(a=>el('div','',[a]))]));
+    }
+    rows.replaceChildren(...kids);
+  }
+  card.replaceChildren(el('h2','',t('cs.chat.title')),el('p','',t('cs.chat.lede')),rows,out,note(t('cs.chat.keeps')));
+  try{await draw()}catch(e){if(!(e instanceof Expired))rows.replaceChildren(note(e.message,'bad'))}
+  return card;
+}
+
 async function settingsView(){
   title(t('cs.nav.settings'));
   const m=await me();
@@ -1293,8 +1318,9 @@ async function settingsView(){
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
   const alerts=m.kind==='session'?await alertsCard():null;
+  const chat=m.kind==='session'?await chatCard():null;
   const security=m.kind==='session'&&!m.demo?await securityCard():null;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,alerts,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){

@@ -33,6 +33,7 @@ export const STEP_UP_HEADER = "x-purser-step-up";
  */
 export const STEP_UP_ROUTES: ReadonlySet<string> = new Set([
   "POST /v1/alerts/targets", "DELETE /v1/alerts/targets/{id}",
+  "POST /v1/chat-hooks/{product}", "DELETE /v1/chat-hooks/{product}",
   "POST /v1/webhook", "DELETE /v1/webhook",
   "POST /v1/claude/connectors", "DELETE /v1/claude/connectors/{id}",
   "POST /v1/connect/{provider}/start", "DELETE /v1/connect/{provider}",
@@ -45,7 +46,7 @@ export const STEP_UP_ROUTES: ReadonlySet<string> = new Set([
   "POST /v1/engine/passkey/start", "POST /v1/engine/passkey/finish",
 ]);
 /** Step-up routes a key may not call at all: a signed-in owner only. */
-export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set(["POST /v1/alerts/targets", "DELETE /v1/alerts/targets/{id}", "POST /v1/security/settings"]);
+export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set(["POST /v1/alerts/targets", "DELETE /v1/alerts/targets/{id}", "POST /v1/chat-hooks/{product}", "DELETE /v1/chat-hooks/{product}", "POST /v1/security/settings"]);
 /** Routes that need a fresh passkey check whatever the setting says: the setting itself. */
 export const ALWAYS_STEP_UP_ROUTES: ReadonlySet<string> = new Set(["POST /v1/security/settings"]);
 

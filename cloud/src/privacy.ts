@@ -11,7 +11,7 @@ import { TENANT_TABLES, TenantDb, WriteConflict } from "./tenant.js";
 export class PrivacyRefused extends Error {}
 
 /** Columns that hold a secret's hash: they never leave, not even in an export. */
-export const SECRET_COLUMNS: Record<string, string> = { api_keys: "secret_sha256", enrolments: "token_sha256", webhooks: "secret", alert_targets: "target" };
+export const SECRET_COLUMNS: Record<string, string> = { api_keys: "secret_sha256", enrolments: "token_sha256", webhooks: "secret", alert_targets: "target", chat_hooks: "url" };
 
 /**
  * Everything the cloud holds for the company, as rows. The documents themselves are not inlined (a large company's would
@@ -52,6 +52,8 @@ export async function eraseUser(sql: Sql, tenantId: string, userId: string, by: 
       db.erasureGuard({ id: `e_${iso}_${userId}`, subject: userId, done_at: iso, done_by: by, detail: `name and e-mail erased; ${creds} passkey(s) removed; ${keys} key(s) revoked; bookkeeping records kept (7-year retention)` }),
       db.update("users", { id: userId }, { display_name: "[erased]", email: null, erased_at: iso, session_gen: gen + 1 }),
       db.delete("credentials", { user_id: userId }),
+      // Their linked sign-in identities (Google, Microsoft, Apple) go with their passkeys.
+      db.delete("identity_links", { user_id: userId }),
       db.update("api_keys", { created_by_user: userId, revoked_at: null }, { revoked_at: iso }),
       db.update("api_keys", { created_by: userId, revoked_at: null }, { revoked_at: iso }),
       // Their unused invites, and the ones they started for others, go too (red team round 5).
@@ -106,6 +108,8 @@ export async function closeTenant(sql: Sql, tenantId: string, now: Date): Promis
     // The company's OAuth tokens go at once (docs/real-customers.md): a closed company calls no provider again.
     { sql: "DELETE FROM oauth_connections WHERE tenant_id = ?", params: [tenantId] },
     { sql: "DELETE FROM oauth_states WHERE tenant_id = ?", params: [tenantId] },
+    { sql: "DELETE FROM books_connections WHERE tenant_id = ?", params: [tenantId] },
+    { sql: "DELETE FROM oidc_states WHERE tenant_id = ?", params: [tenantId] },
   ]);
   return { closed_at: iso, purge_after };
 }
@@ -134,6 +138,8 @@ export async function purgeExpired(sql: Sql, blobs: Blobs, now: Date, engine?: (
       { sql: "DELETE FROM challenges WHERE tenant_id = ?", params: [t.id] },
       { sql: "DELETE FROM oauth_connections WHERE tenant_id = ?", params: [t.id] },
       { sql: "DELETE FROM oauth_states WHERE tenant_id = ?", params: [t.id] },
+      { sql: "DELETE FROM books_connections WHERE tenant_id = ?", params: [t.id] },
+      { sql: "DELETE FROM oidc_states WHERE tenant_id = ?", params: [t.id] },
       // The address stays taken (red team round 5): a purged company's inbox address is never given to someone else.
       { sql: "UPDATE tenants SET name = '[purged]' WHERE id = ?", params: [t.id] },
     ]);

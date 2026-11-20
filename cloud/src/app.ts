@@ -52,6 +52,7 @@ import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js"
 import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, latestEdgeRun, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
 import { ALWAYS_STEP_UP_ROUTES, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
+import { ChatHookRefused, chatHooks, isChatProduct, postEvent, removeChatHook, setChatHook, SetChatHook, testChatHook, type ChatProduct } from "./chatHooks.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
 
 export interface CloudEnv {
@@ -219,6 +220,11 @@ function connectOf(c: Ctx): ConnectEnv {
   if (!c.env.connect) throw new ConnectRefused(404, "connecting accounts by OAuth is not switched on");
   return c.env.connect;
 }
+function chatProductOf(c: Ctx): ChatProduct {
+  const p = c.params[0]!;
+  if (!isChatProduct(p)) throw new ChatHookRefused(404, "no such chat product (slack or teams)");
+  return p;
+}
 function providerOf(c: Ctx): OAuthProviderName {
   const p = c.params[0]!;
   if (!isProvider(p)) throw new ConnectRefused(404, "no such provider (airwallex or moneybird)");
@@ -278,6 +284,14 @@ export const ROUTES: Route[] = [
     return json(201, await addTarget(c.env.sql, c.caller!.tenantId, b, c.caller!.principal, c.now));
   } },
   { method: "DELETE", path: "/v1/alerts/targets/{id}", summary: "Remove an alert target (a signed-in owner after a fresh passkey check).", need: "admin", run: async (c) => json(200, await removeTarget(c.env.sql, c.caller!.tenantId, c.params[0]!, c.caller!.principal, c.now)) },
+  { method: "GET", path: "/v1/chat-hooks", summary: "Slack and Teams (Settings): whether the company's Slack and Teams incoming webhooks are set (their host only, never the URL), and each one's delivery state. Purser posts approval.needed, payment.paid and books.closed there; a message only tells and links to Purser Cloud, it never approves.", need: "admin", run: async (c) => json(200, await chatHooks(c.env.sql, c.caller!.tenantId)) },
+  { method: "POST", path: "/v1/chat-hooks/{product}", summary: "Set the company's Slack (product slack: https://hooks.slack.com/services/...) or Teams (product teams: a Teams Workflow's webhook URL) incoming webhook: { url }. A signed-in owner (a fresh passkey check when the company asks for one); never a key. Answers the host only.", need: "admin", run: async (c) => {
+    const b = await body(c, SetChatHook, 2_000);
+    return json(200, await setChatHook(c.env.sql, c.caller!.tenantId, chatProductOf(c), b.url, c.caller!.principal, c.now));
+  } },
+  { method: "DELETE", path: "/v1/chat-hooks/{product}", summary: "Remove the company's Slack or Teams webhook (a signed-in owner).", need: "admin", run: async (c) => json(200, await removeChatHook(c.env.sql, c.caller!.tenantId, chatProductOf(c), c.caller!.principal, c.now)) },
+  { method: "POST", path: "/v1/chat-hooks/{product}/test", summary: "Post one test message to the company's Slack or Teams webhook now, so the owner sees it arrive: { delivered, status } (the status Slack or Teams answered; 0 when nothing answered). A working test switches a hook that was off back on.", need: "admin", run: async (c) =>
+    json(200, await testChatHook({ sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin }, chatProductOf(c))) },
   { method: "GET", path: "/v1/airwallex/account", summary: "The company's Airwallex account opened through Purser as a platform: its id and onboarding status (created, pending, action_required, active, refused, dormant, closed); whether the cloud offers it at all.", need: "admin", run: async (c) =>
     json(200, { switched_on: Boolean(c.env.awxPlatform), account: c.env.awxPlatform ? await accountOf(c.env.sql, c.caller!.tenantId) : null }) },
   { method: "POST", path: "/v1/airwallex/account", summary: "Open the company's Airwallex account through Purser (a signed-in owner, who agreed to Airwallex's terms first). One per company.", need: "admin", run: async (c) => {
@@ -580,7 +594,11 @@ export const ROUTES: Route[] = [
     // ID; its webhook delivery is one of those channels (cloud/src/alerts.ts). An alert never approves anything.
     // The alerts go out after the answer where the Worker allows it: each delivery's row makes it idempotent either way.
     const alerts: Promise<unknown>[] = [];
+    const hasChat = (await db(c).count("chat_hooks", { disabled_at: null })) > 0;
+    const chat = { sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin };
     for (const e of await eventsOf(db(c), b, before, head, c.env.origin)) {
+      // The company's Slack and Teams channels hear every business event (cloud/src/chatHooks.ts), after the answer too.
+      if (hasChat) alerts.push(postEvent(chat, e).catch((x: unknown) => logEvent("warn", "chat_hook.dispatch_failed", { tenant: c.caller!.tenantId, error: x instanceof Error ? x.message.slice(0, 200) : "unknown" })));
       if (e.type === "approval.needed") alerts.push(dispatchApprovalAlert({ sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, providers: c.env.alerts, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin }, e.data)
         .catch((x: unknown) => logEvent("warn", "alert.dispatch_failed", { tenant: c.caller!.tenantId, error: x instanceof Error ? x.message.slice(0, 200) : "unknown" })));
       else await notify(c.env.sql, c.caller!.tenantId, e.type, e.data, c.now, c.env.outbound, c.env.retryDelayMs);
@@ -902,6 +920,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
     }
     if (e instanceof StepUpRequired) return json(403, { error: e.message, code: e.code });
     if (e instanceof AlertRefused) return err(e.status, e.message);
+    if (e instanceof ChatHookRefused) return err(e.status, e.message);
     if (e instanceof SyncRefused) {
       if (e.tamper) audit.tamper = true;
       return err(e.status, e.message);
