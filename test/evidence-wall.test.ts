@@ -2,7 +2,7 @@
 // file is what the records give now, every tile names a record that exists and links to it, the figures are the
 // records' own, a later recording of the /try walks is added up with the first, and /proof renders the file with no
 // inline script or style (the page's CSP).
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EVIDENCE_WALL_CSS, LLMS_WALL_HEADING, PARTNER_STRIPS, evidenceLeadHtml, README_WALL_KEYS, evidenceStripHtml, readmeWallLine, withReadmeWallLine, WALL_FILE, committedWall, evidenceWallHtml, evidenceWallLlms, withWallSection, type EvidenceWall, type WallTile } from "../src/redesign/evidenceWall.js";
 import { evidenceWall, evidenceWallFile, wallWalks } from "../src/redesign/evidenceWallData.js";
@@ -60,11 +60,17 @@ describe("the evidence wall's file", () => {
     // Honest about the walks recorded before the reader's request-id fix was deployed.
     if (t.claude.readerNoId) expect(tile(w, "try-claude").note).toContain(`${t.claude.readerNoId} reader calls were logged with no request id`);
     if (t.ok !== t.siteStepsPassed) expect(tile(w, "try-journeys").note).toContain(`marked ${countOf(t.ok, t.runs, true)} all ok`);
-    const sk = json<{ summary: { created: number; readback_matches: number; conversions: { planned: number; readback_matches: number }; negatives: { planned: number; refused: number; posts_in_window: number } } }>("docs/runs/2026-11-19-airwallex-soak.json").summary;
-    expect(tile(w, "soak-paid").fig).toBe(countOf(sk.readback_matches, sk.created));
-    expect(tile(w, "soak-fx").fig).toBe(countOf(sk.conversions.readback_matches, sk.conversions.planned));
-    expect(tile(w, "soak-negatives").fig).toBe(countOf(sk.negatives.refused, sk.negatives.planned));
-    expect(tile(w, "soak-negatives").note).toMatch(new RegExp(`^${sk.negatives.posts_in_window} money-moving calls .*each refusal still read the balance once`));
+    // Every soak record (19 and 20 Nov so far), each figure the sum of the same field in each, read here from the files.
+    type Sk = { summary: { created: number; readback_matches: number; conversions: { planned: number; readback_matches: number }; negatives: { planned: number; refused: number; posts_in_window: number; calls_in_window: number } } };
+    const files = readdirSync(new URL("../docs/runs/", import.meta.url)).filter((n) => /^\d{4}-\d{2}-\d{2}-airwallex-soak\.json$/.test(n)).sort().map((n) => `docs/runs/${n}`);
+    expect(files).toEqual(["docs/runs/2026-11-19-airwallex-soak.json", "docs/runs/2026-11-20-airwallex-soak.json"]);
+    const all = files.map((f) => json<Sk>(f).summary), sum = (f: (s: Sk["summary"]) => number) => all.reduce((n, s) => n + f(s), 0);
+    expect(tile(w, "soak-paid").fig).toBe(countOf(sum((s) => s.readback_matches), sum((s) => s.created)));
+    expect(tile(w, "soak-paid").fig).toBe("All 60");
+    expect(tile(w, "soak-fx").fig).toBe(countOf(sum((s) => s.conversions.readback_matches), sum((s) => s.conversions.planned)));
+    expect(tile(w, "soak-negatives").fig).toBe(countOf(sum((s) => s.negatives.refused), sum((s) => s.negatives.planned)));
+    expect(tile(w, "soak-negatives").note).toMatch(new RegExp(`^${sum((s) => s.negatives.posts_in_window)} money-moving calls .*; ${sum((s) => s.negatives.calls_in_window)} reads in the refusal windows`));
+    for (const k of ["soak-paid", "soak-fx", "soak-negatives"]) expect(tile(w, k).rec.split(" ")).toEqual(files.flatMap((f) => [f, f.replace(/\.json$/, ".md")]));
     // 19 Nov, fourth round: the newest red-team run (the scripted attacks re-run after the fixes), labelled as a re-run,
     // with the first run of 30 Oct in its note and its records.
     const rt = json<{ attempts: number; blocked: number; caught_after: number }>("docs/redteam/report.json");
