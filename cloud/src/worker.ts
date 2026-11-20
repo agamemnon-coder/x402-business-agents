@@ -40,6 +40,9 @@ export interface Bindings {
   SECURITY_ALARMS?: string;
   /** The deployed version, shown by /v1/health (a var set at deploy, e.g. the commit). */
   VERSION?: string;
+  /** The commit (short sha) and build time scripts/deploy.ts stamps in as vars: never secrets. */
+  GIT_SHA?: string;
+  BUILT_AT?: string;
   /** Workers static assets (cloud/public, filled by npm run cloud:pdfjs): pdf.js for the console's invoice view. */
   ASSETS?: { fetch(req: Request): Promise<Response> };
   /** The company engines' Durable Object (cloud/src/engine/object.ts), and the switch that turns the /v1/engine routes on: "test_money". */
@@ -121,7 +124,7 @@ function envOf(b: Bindings): CloudEnv {
   const sql = d1Sql(b.DB);
   const connect = connectOf(b);
   return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", ...(b.ADMIN_KEYS ? { adminKeys: b.ADMIN_KEYS } : {}), rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "", ...(b.SECURITY_ALARMS ? { securityAlarms: b.SECURITY_ALARMS } : {}),
-    version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
+    version: b.GIT_SHA ?? b.VERSION ?? "dev", build: { sha: b.GIT_SHA ?? null, built_at: b.BUILT_AT ?? null }, outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}), ...(b.TURNSTILE_SECRET ? { turnstileSecret: b.TURNSTILE_SECRET, siteverify: (url: string, init: RequestInit) => fetch(url, init) } : {}) } } : {}) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE && b.HANDS_ON === "on" ? { negotiateClaude: negotiateClaudeOf(sql, b.ENGINE_CLAUDE, b.KIT11_ANTHROPIC_API_KEY) } : {}),

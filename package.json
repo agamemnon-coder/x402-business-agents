@@ -88,6 +88,7 @@
     "relay": "tsx src/cli/relay.ts",
     "up": "tsx src/cli/up.ts",
     "relay:deploy": "tsx src/cli/relay-deploy.ts",
+    "deploy": "tsx scripts/deploy.ts",
     "relay:pages": "tsx src/cli/relay-pages.ts",
     "devtest": "tsx src/cli/dev-test.ts",
     "policy": "tsx src/cli/policy.ts",

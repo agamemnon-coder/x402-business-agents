@@ -82,6 +82,8 @@ export interface CloudEnv {
   asset?: (path: string) => Promise<Response | null>;
   /** The deployed version (a Worker var), shown by /v1/health; "dev" when unset. */
   version?: string;
+  /** The commit and build time the deploy stamped in (GIT_SHA, BUILT_AT; scripts/deploy.ts), shown by /v1/health. */
+  build?: { sha: string | null; built_at: string | null };
   /** How alert webhooks are sent (the Worker's fetch); absent: none are sent. Tests pass a fake. */
   outbound?: Outbound;
   /** The pause before a webhook's second and third attempt, times the attempt (default 500 ms). */
@@ -253,7 +255,8 @@ export const ROUTES: Route[] = [
     // The security log's alarms of the last 24 hours (./securityLog.ts): counts per rule, no company, no address.
     let security: Record<string, unknown> = { alarms_24h: null };
     try { const a = await securityAlarms(c.env.sql, c.now); security = { alarms_24h: a.last_24h, rules: a.rules }; } catch { /* the database is down: d1 says so */ }
-    return json(h.status, { ...h.body, security });
+    // Which commit runs here and when it was built (scripts/deploy.ts stamps them; ASVS V1.14.4).
+    return json(h.status, { ...h.body, build: { sha: c.env.build?.sha ?? null, built_at: c.env.build?.built_at ?? null }, security });
   } },
   { method: "GET", path: "/v1/status", summary: "Where the company stands, for its owners: the last push from the runner, the mail queue, today's mail quota, the runner's alert codes and the webhook (never its secret).", need: "admin", run: async (c) => json(200, await companyStatus(c.env.sql, c.caller!.tenantId, c.now)) },
   { method: "POST", path: "/v1/health/report", summary: "The runner reports its health: alert codes and severities (their words are dropped). Alerts raised or cleared since the last report go to the company's webhook.", need: "sync", run: async (c) => {

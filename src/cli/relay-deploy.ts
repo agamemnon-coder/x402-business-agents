@@ -32,7 +32,9 @@ writeFileSync(resolve(worker, "src/pages.gen.ts"), pagesModule(buildPages()));
 if (!existsSync(wrangler)) run("npm", ["ci", "--no-audit", "--no-fund"]);
 /** wrangler with these arguments, through node. */
 const wr = (args: string[], input?: string) => run(process.execPath, [wrangler, ...args], input);
-wr(["deploy"]);
+// The commit and build time scripts/deploy.ts stamps in (--var GIT_SHA:<sha> --var BUILT_AT:<iso>); nothing else passes.
+const stamp = process.argv.slice(2).flatMap((a, i, all) => (a === "--var" && /^(GIT_SHA|BUILT_AT):[\w:.-]{1,40}$/.test(all[i + 1] ?? "") ? ["--var", all[i + 1]!] : []));
+wr(["deploy", ...stamp]);
 wr(["secret", "put", "RELAY_TOKEN"], token);
 
 const cfg = await relayConfig();

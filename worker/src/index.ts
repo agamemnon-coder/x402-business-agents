@@ -55,6 +55,9 @@ export interface Env extends GatewayEnv {
   AIRWALLEX_API_KEY?: string;
   /** "on" declares a live run (a plain var, off by default): /health then keeps the alarm however long the runner is silent. */
   LIVE_RUN?: string;
+  /** The commit (short sha) and build time scripts/deploy.ts stamps in as vars: never secrets. */
+  GIT_SHA?: string;
+  BUILT_AT?: string;
   /** The security log's alarm thresholds (a var), e.g. "auth_failures=20,rate_limited=100,window=300"; unset: the defaults (src/lib/securityEvents.ts). */
   SECURITY_ALARMS?: string;
   /** Where the short URL /go points (a plain var, an https URL; never an event token). Default: worker/src/go.ts. */
@@ -222,7 +225,7 @@ export class RelayObject extends DurableObject<Env> {
     return (this.relay ??= new Relay(this.ctx.storage.sql, {
       // The private key goes into the sender only; the relay holds the public key.
       ...(vapid ? { push: { publicKey: vapid.publicKey, send: pushSender(vapid) } } : {}),
-      relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on",
+      relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on", build: { sha: this.env.GIT_SHA ?? null, built_at: this.env.BUILT_AT ?? null },
       ...(this.env.SECURITY_ALARMS ? { securityAlarms: this.env.SECURITY_ALARMS } : {}),
       // /health's live agents: read from the try-sign instance, where their spend is kept (code review, 13 Nov).
       liveAgents: async () => {

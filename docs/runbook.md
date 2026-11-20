@@ -453,6 +453,24 @@ A company's webhook is used against someone else, or its receiver is down.
   `npx wrangler d1 execute purser-cloud --remote -c cloud/wrangler.jsonc --command "UPDATE webhooks SET disabled_at = '<now>' WHERE tenant_id = '<id>'"`.
   Tell the owners why. Not yet exercised.
 
+### Deploy (added 20 November)
+
+One command, run by the owner on their own computer with their wrangler login (no secret in the script, in CI or in
+its output): `npm run deploy` (`scripts/deploy.ts`; ASVS V1.14.4, V14.1.1).
+
+1. It refuses a tree with uncommitted changes, or a commit that is not on `origin/main` (it fetches `origin` first):
+   only merged code goes live.
+2. It copies pdf.js into `cloud/public`, deploys purser-try (`cloud/wrangler.try.jsonc`), then kit11 (`npm run
+   relay:deploy`), each with `--var GIT_SHA:<short sha> --var BUILT_AT:<build time>`. Apply new D1 migrations first
+   (`npx wrangler d1 migrations apply purser-try --remote -c cloud/wrangler.try.jsonc`).
+3. It reads purser-try's `/v1/health` and kit11's `/health` until each reports that commit in `build.sha` (a minute at
+   most) and checks the baseline security headers; anything else exits non-zero, and the old version is still
+   Cloudflare's previous deployment (`npx wrangler rollback -c <config>`).
+
+`npm run deploy -- --check-only` runs step 3 alone: which commit is live, and whether it is the one checked out.
+The product cloud (`cloud/wrangler.jsonc`) is not deployed by it until it is configured (above, Purser Cloud).
+Tested: `test/deploy-traceable.test.ts` (the refusals, the stamp, the post-deploy check, both health answers).
+
 ### Restore
 
 Two layers, different purposes.
