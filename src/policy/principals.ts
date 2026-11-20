@@ -10,6 +10,7 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
+import { revokeAgentTokens } from "./agentTokenStore.js";
 
 /** An agent as people read it: "the Support agent" (internal id support), or "agent ext:acme" for an outside one. */
 const who = (id: string) => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : `agent ${id}`);
@@ -91,6 +92,8 @@ export function revokePrincipal(db: DB, id: string, reason: string, by: string, 
   if (!principal(db, id, now)) throw new Error(`${id} is not an agent with an identity`);
   db.prepare("UPDATE principals SET status = 'REVOKED', reason = ?, updated_at = ? WHERE principal_id = ?").run(reason.slice(0, 200), now.toISOString(), id);
   audit(db, "human", "principal.revoked", id, { by, reason: reason.slice(0, 200) }, now);
+  // Its payment tokens go with it, in the same call (src/policy/agentTokens.ts): a copy an agent leaked pays nothing.
+  revokeAgentTokens(db, id, `the agent was revoked: ${reason}`, by, now);
 }
 
 /** Sets when an agent's identity ends (only sooner: a later end would be a loosening, which is the CFO's to approve). */

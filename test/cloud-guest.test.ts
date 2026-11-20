@@ -78,6 +78,7 @@ describe("Try as guest", () => {
       currency: string; money: { in: string; out: string; net: string }; cash: { day: string; net: string }[];
       spend: { key: string; amount: string; count: number; declined: number; parts?: { inbox: { count: number; amount: string }; outside: { count: number; amount: string }; fees: string } }[]; invoices: Record<string, { count: number; amount: string }> & { duplicates_stopped: number };
       approvals: { weeks: { cfo: number; alone: number }[]; approved_by_cfo: number }; agents: { decisions: number; by_fallback: number }; feed: { who: string; text: string }[];
+      rails: { rail: string; amount: string; count: number }[];
     };
     type Tx = { direction: string; moved: boolean; currency: string; amount: string; fee: { amount: string; currency: string } | null; approval: { required: boolean }; invoice: unknown };
     const rows = SEED_BATCHES.flatMap((b) => ((b as { transactions?: { body?: Tx }[] }).transactions ?? []).map((r) => (r.body ?? r) as Tx));
@@ -106,6 +107,10 @@ describe("Try as guest", () => {
     });
     expect(bar.parts!.inbox).toEqual({ count: d.invoices.paid!.count, amount: d.invoices.paid!.amount });
     expect(cents(bar.parts!.inbox.amount) + cents(bar.parts!.outside.amount) + cents(bar.parts!.fees)).toBe(cents(bar.amount));
+    // Spend by rail (21 Nov, the charts): every moved outgoing payment on exactly one rail, fees with it; the same total.
+    expect(d.rails.reduce((n, r) => n + cents(r.amount), 0)).toBe(outC);
+    expect(d.rails.reduce((n, r) => n + r.count, 0)).toBe(moved.filter((t) => t.direction === "out").length);
+    expect(d.rails.map((r) => r.rail).sort()).toEqual([...new Set(moved.filter((t) => t.direction === "out").map((t) => (t as Tx & { rail: string }).rail))].sort());
     // Approvals: each moved payment once, the CFO's where the register says an approval was required.
     expect(d.approvals.weeks.reduce((n, w) => n + w.cfo, 0)).toBe(moved.filter((t) => t.direction === "out" && t.approval.required).length);
     expect(d.approvals.weeks.reduce((n, w) => n + w.cfo + w.alone, 0)).toBe(moved.filter((t) => t.direction === "out").length);

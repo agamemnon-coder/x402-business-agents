@@ -468,3 +468,28 @@ ca9962ef43659ec812621d8036576d56afcca83d:src/evals/adversarialV9.ts:generic-api-
 # test/cloud-awx-codemode-edges.test.ts (20 Nov): a stub JWT ({"alg":"HS256"}, {"sub":"stub"}, signature
 # "stub-signature") for the stand-in Airwallex login; not a real token.
 7cc3cf80129be894fb065f1e75d49d6ea382a7e2:test/cloud-awx-codemode-edges.test.ts:jwt:12
+
+# 20 Nov partner-rails run records: "token_id" is tok_ + the first 16 hex of the token's SHA-256 (src/policy/agentTokens.ts), a public id, never the token.
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass1.json:generic-api-key:17
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass1.json:generic-api-key:41
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass1.json:generic-api-key:68
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass1.json:generic-api-key:100
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass1.json:generic-api-key:251
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass2.json:generic-api-key:17
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass2.json:generic-api-key:41
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass2.json:generic-api-key:68
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass2.json:generic-api-key:100
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass3.json:generic-api-key:17
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass3.json:generic-api-key:41
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass3.json:generic-api-key:68
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass3.json:generic-api-key:100
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass4.json:generic-api-key:17
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass4.json:generic-api-key:41
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass4.json:generic-api-key:68
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass4.json:generic-api-key:100
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails-pass4.json:generic-api-key:251
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails.json:generic-api-key:17
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails.json:generic-api-key:41
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails.json:generic-api-key:68
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails.json:generic-api-key:100
+b51b33944d617bb19d81e549322fecfa215d4003:docs/runs/2026-11-20-partner-rails.json:generic-api-key:251

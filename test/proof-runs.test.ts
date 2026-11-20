@@ -31,7 +31,9 @@ describe("/proof: the live runs and the strip's count", () => {
     expect(stat.n).toBe(proofRunCount() + elsewhereRuns().length);
     expect(stat.href).toBe("#live-runs");
     expect(stat.title).toBe(`Every live run: ${proofRunCount()} listed below, ${elsewhereRuns().length} more on /visa`);
-    const strip = /<ul class="scale"[\s\S]*?<\/ul>/.exec(main)![0];
+    // 21 Nov: the band is split over the question sections; the live runs' figure is in "Is it live on the partners?".
+    const strip = [...main.matchAll(/<ul class="scale"[\s\S]*?<\/ul>/g)].map((m) => m[0]).find((s) => s.includes(`href="#live-runs"`)) ?? "";
+    expect(main.indexOf(strip)).toBeGreaterThan(main.indexOf(`id="q-live"`));
     expect(strip).toContain(`<a href="#live-runs"`);
     expect(strip).toContain(`data-count="${liveRunCount()}"`);
     expect(scaleFigures().liveRuns).toBe(liveRunCount());

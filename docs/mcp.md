@@ -29,7 +29,7 @@ tests listed at the end, on a cloud in the test process, not against the hosted 
 | Server | `https://purser-try.max-31b.workers.dev/mcp` (the hosted test cloud), or `<your Purser Cloud address>/mcp` |
 | Transport | Streamable HTTP, JSON answers, no session. MCP 2026-07-28, and 2025-11-25 back to 2024-11-05 after `initialize` |
 | Sign-in | OAuth 2.1 with PKCE (Client ID Metadata Documents or dynamic registration), or `Authorization: Bearer <token>` |
-| Token | A connector token from Purser Cloud (Settings, Connect your AI). Tick *may propose payments* only if the AI should file payments for approval |
+| Token | A connector token from Purser Cloud (Connections, Connect your AI). Tick *may propose payments* only if the AI should file payments for approval |
 | Demo token | `purser-demo-read-only`: the demo company, made-up data from a simulated month, read only |
 
 ### Claude Code

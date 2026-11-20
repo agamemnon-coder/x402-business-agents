@@ -185,15 +185,15 @@ connected, not connected, or not available yet (the platform has not done Part 1
 | Connection | What the customer does | Needs from Part 1 |
 |---|---|---|
 | API keys (Zapier, Make, n8n, scripts) | Settings, API keys: a key with `read` and `propose`; paste it in the tool. | 1.0 |
-| Claude and other AI clients (MCP) | Settings, Connect Claude: a connector token, or add `<origin>/mcp` in the client and sign in. | 1.0 |
+| Claude and other AI clients (MCP) | Connections, Connect your AI: a connector token, or add `<origin>/mcp` in the client and sign in. | 1.0 |
 | Signed webhook | Settings: the address of their own endpoint; the secret is shown once. | 1.0 |
-| Slack | In Slack: api.slack.com/apps, Create an app, Incoming Webhooks, on, Add New Webhook to Workspace, pick the channel, copy the URL. In Purser: Settings, Slack and Teams, paste, Save (Face ID), **Send a test**. | none |
-| Microsoft Teams | In Teams: the channel, the "…" menu, **Workflows**, template "Send webhook alerts to a channel", copy the URL it shows. In Purser: Settings, Slack and Teams, paste, Save, Send a test. | none |
-| Approval alerts | Settings, Alerts: an e-mail address, WhatsApp number, or a Slack or Teams webhook for "a payment waits". | Twilio / Resend for those channels |
+| Slack | In Slack: api.slack.com/apps, Create an app, Incoming Webhooks, on, Add New Webhook to Workspace, pick the channel, copy the URL. In Purser: Connections, Slack and Teams, paste, Save (Face ID), **Send a test**. | none |
+| Microsoft Teams | In Teams: the channel, the "…" menu, **Workflows**, template "Send webhook alerts to a channel", copy the URL it shows. In Purser: Connections, Slack and Teams, paste, Save, Send a test. | none |
+| Approval alerts | Connections, Alerts: an e-mail address, WhatsApp number, or a Slack or Teams webhook for "a payment waits". | Twilio / Resend for those channels |
 | Invoices by e-mail | Forward from Gmail or Outlook to the address in Settings, Company ([email-forwarding.md](email-forwarding.md)). | 1.1 |
-| Xero | Settings, **Connect Xero**, sign in at Xero, pick the organisation, Allow. Then **Send bills to Xero (drafts)**. **Disconnect** at any time. | 1.0, 1.6 |
-| QuickBooks Online | Settings, **Connect QuickBooks**, sign in, pick the company. | 1.0, 1.7 |
-| Exact Online | Settings, **Connect Exact Online**, sign in, Allow; their runner sets `ERP_EXACT_OAUTH=on`. | 1.0, 1.8 |
+| Xero | Connections, **Connect Xero**, sign in at Xero, pick the organisation, Allow. Then **Send bills to Xero (drafts)**. **Disconnect** at any time. | 1.0, 1.6 |
+| QuickBooks Online | Connections, **Connect QuickBooks**, sign in, pick the company. | 1.0, 1.7 |
+| Exact Online | Connections, **Connect Exact Online**, sign in, Allow; their runner sets `ERP_EXACT_OAUTH=on`. | 1.0, 1.8 |
 | Moneybird, Airwallex | Settings, Connect. | as before |
 | Sign in with Google, Microsoft, Apple | Each **person**: Settings, Sign-in accounts, **Link (Face ID)**, sign in at the provider. Later: "Sign in with …" on the sign-in page, **read only**. **Unlink** at any time. | 1.2, 1.3, 1.4 |
 

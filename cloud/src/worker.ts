@@ -16,7 +16,9 @@ import { pruneAutopilot, runAutopilot } from "./edge/autopilot.js";
 import { consumeMail, enqueueMail, requeueWaitingMail, type MailQueue, type QueuedMessage } from "./edge/inbox.js";
 import { countsOf, countUp, pruneCounts, writeCounts } from "./edge/stats.js";
 import { sweepTry } from "./try/sweep.js";
+import { dropOldSalts } from "./try/start.js";
 import { negotiateClaudeOf } from "./try/negotiateRoutes.js";
+import { claudeAskModel } from "./ask/model.js";
 import { expireStale } from "./engine/spend.js";
 import { logEvent } from "./log.js";
 import type { ConnectEnv } from "./connect.js";
@@ -26,6 +28,7 @@ import { forRequest } from "./hostOrigin.js";
 import type { AwxReadBinding } from "./awxLive.js";
 import type { AwxReadPort } from "./claude/awxCodemode.js";
 import type { CardsPort } from "./agentCards.js";
+import { passConfigFrom } from "./walletPass.js";
 
 export interface Bindings {
   DB: D1Like;
@@ -115,6 +118,15 @@ export interface Bindings {
   OIDC_APPLE_KEY_ID?: string;
   OIDC_APPLE_PRIVATE_KEY?: string;
   /**
+   * Apple Wallet passes for the agents' cards (./walletPass.ts): the Pass Type ID, the Apple Developer team id, the Pass
+   * Type ID certificate and its private key (PEM), Apple's WWDR intermediate (PEM). Secrets; all five or no pass at all.
+   */
+  PASS_TYPE_ID?: string;
+  TEAM_ID?: string;
+  PASS_CERT_PEM?: string;
+  PASS_KEY_PEM?: string;
+  PASS_WWDR_PEM?: string;
+  /**
    * How many hours a new or recovered approval key waits before it approves (review finding 2): 72 when unset; this
    * deployed Worker never takes less than 24 (cloud/src/engine/routes.ts coolingOffMs). A /try test company waits 0.
    */
@@ -170,11 +182,16 @@ function envOf(b: Bindings): CloudEnv {
   const sql = d1Sql(b.DB);
   const connect = connectOf(b);
   const oidc = oidcOf(b);
-  return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", ...(b.ADMIN_KEYS ? { adminKeys: b.ADMIN_KEYS } : {}), rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "", ...(b.SECURITY_ALARMS ? { securityAlarms: b.SECURITY_ALARMS } : {}),
+  const walletPass = passConfigFrom(b);
+  return { ...(walletPass ? { walletPass } : {}), sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", ...(b.ADMIN_KEYS ? { adminKeys: b.ADMIN_KEYS } : {}), rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "", ...(b.SECURITY_ALARMS ? { securityAlarms: b.SECURITY_ALARMS } : {}),
     version: b.GIT_SHA ?? b.VERSION ?? "dev", build: { sha: b.GIT_SHA ?? null, built_at: b.BUILT_AT ?? null }, outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}), ...(b.TURNSTILE_SECRET ? { turnstileSecret: b.TURNSTILE_SECRET, siteverify: (url: string, init: RequestInit) => fetch(url, init) } : {}) } } : {}) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE && b.HANDS_ON === "on" ? { negotiateClaude: negotiateClaudeOf(sql, b.ENGINE_CLAUDE, b.KIT11_ANTHROPIC_API_KEY) } : {}),
+    // Ask Purser (cloud/src/ask/): Claude with the demo's capped key where the engine may call Claude; its switches and
+    // caps decide at run time. The secrets are handed over only so no answer can ever contain them.
+    ...(b.ENGINE_CLAUDE === "on" && b.KIT11_ANTHROPIC_API_KEY ? { askModel: claudeAskModel(b.KIT11_ANTHROPIC_API_KEY) } : {}),
+    askSecrets: [b.SESSION_SECRET, ...(b.KIT11_ANTHROPIC_API_KEY ? [b.KIT11_ANTHROPIC_API_KEY] : [])],
     edge: { stats: b.STATS !== "off" }, production: true, ...(b.APPROVAL_KEY_COOLING_HOURS && /^\d{1,4}$/.test(b.APPROVAL_KEY_COOLING_HOURS) ? { approvalKeyCoolingHours: Number(b.APPROVAL_KEY_COOLING_HOURS) } : {}), ...(connect ? { connect } : {}), ...(oidc ? { oidc } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}), ...(b.AWX_GATEWAY ? { awxGateway: b.AWX_GATEWAY } : {}) };
 }
 
@@ -240,6 +257,9 @@ export default {
     // Keys 14 and 3 days from expiry: their company's owners are told, once each (./keyExpiry.ts; ASVS V2.3.3).
     // Session rows a day past their expiry (./sessions.ts).
     await edge("sessions_prune_failed", () => pruneSessions(env.sql, new Date()));
+    // Ask Purser keys an address with the day's salt (./ask/limits.ts) on every deployment: where no /try sweep runs,
+    // salts older than 48 hours are dropped here (./try/start.ts dropOldSalts), so an old key cannot be redone.
+    if (!env.tryIt) await edge("salts_prune_failed", () => dropOldSalts(env.sql, new Date()));
     // Owner recovery requests: expired unapproved ones a day on, approved ones after a year (./recovery.ts;
     // docs/privacy/retention.md). Spent export links go with the export sweep above.
     await edge("recovery_prune_failed", () => pruneRecoveryRequests(env.sql, new Date()));

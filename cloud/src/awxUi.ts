@@ -121,7 +121,8 @@ const awlReading=()=>{const p=el('p','awreading',[el('i','awspin'),t('cs.awl.rea
 function awlOverview(){
   const body=el('div','awov-b',awlReading()),stamp=el('span','awstamp');
   const go=el('a','awov-go',[t('cs.awl.ov_open'),' ',ic('arrow-right')]);go.href='#/airwallex';
-  const card=el('section','card awov rise',[el('div','awov-h',[awlLogo('sm'),awlPill(),stamp]),el('p','sub awov-s',t('cs.awl.ov_sub')),body,go]);
+  const pill=awlPill();const down=()=>{pill.classList.add('down');pill.replaceChildren(el('i',''),t('cs.awl.pill_down'))};
+  const card=el('section','card awov rise',[el('div','awov-h',[awlLogo('sm'),pill,stamp]),el('p','sub awov-s',t(ME&&ME.demo?'cs.awl.ov_sub':'cs.awl.ov_sub_co')),body,go]);
   const draw=(b,r,cached)=>{
     stamp.replaceChildren(cached?el('span','awcached',[ic('clock'),t('cs.awl.cached',{time:awlTime(b.read_at)})]):el('span','awlive',[el('i',''),t('cs.awl.live',{time:awlTime(b.read_at)})]));
     const nz=((b.data&&b.data.balances)||[]).filter((x)=>!awlZero(x)).sort(awlOrder).slice(0,3);
@@ -134,10 +135,10 @@ function awlOverview(){
     if(c&&c.b&&c.b.source==='airwallex-sandbox')draw(c.b,c.r,true)},2000);
   (async()=>{try{
     const [b,r]=await Promise.all([api('/v1/airwallex-live/balances'),api('/v1/airwallex-live/rates')]);done=true;
-    if(b.source!=='airwallex-sandbox'){stamp.replaceChildren();body.replaceChildren(el('p','sub',t('cs.awl.unavailable')+(b.reason?': '+b.reason:'')));return}
+    if(b.source!=='airwallex-sandbox'){stamp.replaceChildren();down();body.replaceChildren(el('p','sub',t('cs.awl.unavailable')+(b.reason?': '+b.reason:'')));return}
     try{sessionStorage.setItem(AWL_OV_KEY,JSON.stringify({b,r}))}catch(e){}
     draw(b,r,false);
-  }catch(e){done=true;if(!(e instanceof Expired)){stamp.replaceChildren();body.replaceChildren(el('p','sub',t('cs.awl.unavailable')))}}})();
+  }catch(e){done=true;if(!(e instanceof Expired)){stamp.replaceChildren();down();body.replaceChildren(el('p','sub',t('cs.awl.unavailable')))}}})();
   return card}
 async function airwallexView(){
   title(t('cs.nav.awx'));
@@ -147,8 +148,8 @@ async function airwallexView(){
   const evSlot=awlCard('events','inbox','cs.awl.events',t('cs.awl.events_sub'));
   const grid=(ks,cls)=>el('div','awgrid '+(cls||''),ks.map((k)=>slots[k].card));
   const top=el('div','head awhead',[el('div','',[el('div','awbrand',[awlLogo(),awlPill()]),el('h1','',t('cs.awl.h1')),el('p','lede',t('cs.awl.lede'))])]);
-  view().replaceChildren(top,badges,m.demo?note(t('cs.awl.demo_note')):null,
-    slots.balances.card,slots.rates.card,slots.reconcile.card,evSlot.card,slots.transfers.card,slots.financial.card,slots.beneficiaries.card,slots.accounts.card,slots.issuing.card,slots.calls.card);
+  view().replaceChildren(...[top,badges,m.demo?note(t('cs.awl.demo_note')):null,
+    slots.balances.card,slots.rates.card,slots.reconcile.card,evSlot.card,slots.transfers.card,slots.financial.card,slots.beneficiaries.card,slots.accounts.card,slots.issuing.card,slots.calls.card].filter(Boolean));
   // The cards rise in one after another; with reduced motion the CSS shows them at once.
   AWL_VIEWS.forEach((k,n)=>{const c=slots[k].card;c.classList.add('rise');c.style.transitionDelay=(n*60)+'ms'});
   evSlot.card.classList.add('rise');evSlot.card.style.transitionDelay='180ms';

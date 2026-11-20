@@ -47,6 +47,11 @@ describe("the judge-facing READMEs' shared header", () => {
     expect(glance).toContain(`**${liveRunCount()} live runs**, the last on `);
     expect(glance).toContain(`**${s.verification.passed} checks passed**, ${s.verification.couldNotRun} could not run here, ${s.verification.failed} failed`);
     expect(glance).toContain(`(${s.verification.file.replace("docs/", "").replace(".json", ".md")})`);
+    // Jury pass, 20 Nov: "Where the numbers come from" names the same reports as the table (it named 15 Nov's and 30 Oct's).
+    const where = read("docs/README.md").split("**Where the numbers come from.**")[1]!.split("\n\n")[0]!;
+    expect(where).toContain(`(${s.verification.file.replace("docs/", "").replace(".json", ".md")})`);
+    expect(glance).toContain("(redteam/rerun-2026-11-20.md)");
+    expect(where).toContain("(redteam/rerun-2026-11-20.md)");
     expect(glance).toContain(`**${s.redteam.stopped} of ${s.redteam.attempts}** red-team attacks stopped, ${s.redteam.caughtAfter} caught afterwards`);
     expect(read("docs/runs/README.md")).toContain(`**${liveRunCount()} live runs**`);
     const last = /\*\*Last live run:\*\* ([^.]+)\./.exec(read("docs/runs/README.md"))![1]!;

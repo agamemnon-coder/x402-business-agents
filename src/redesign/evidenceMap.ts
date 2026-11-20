@@ -11,8 +11,8 @@ import { committedWall, type EvidenceWall, type WallTile } from "./evidenceWall.
 import { esc } from "./ui.js";
 
 export const MAP_ID = "evidence-map";
-// It names Alta as "Alta (formerly Metal)": the page's first mention in text (src/ui/formerly.ts).
-export const MAP_CAPTION = "How a payment is checked, each step with its evidence, on Airwallex, Alta (formerly Metal) and Visa via Airi. Tap a step for its figures. Test money; sandbox PAID is simulated.";
+// It names Alta plainly: formerlyMetal (src/ui/formerly.ts) writes "(formerly Metal)" at the page's first mention, wherever that falls.
+export const MAP_CAPTION = "How a payment is checked, each step with its evidence, on Airwallex, Alta and Visa via Airi. Tap a step for its figures. Test money; sandbox PAID is simulated.";
 
 type Tone = "" | "awx" | "metal" | "visa" | "claude" | "ok";
 /** One step of the path: its words, the wall group it links to, its badge (null when a figure is missing). */
@@ -32,27 +32,36 @@ export function evidenceMap(w: EvidenceWall | null = committedWall()): EvidenceM
     return got.length ? got.join(" · ") : null;
   };
   const node = (id: string, title: string, sub: string, group: string, tone: Tone, b: string | null): MapNode => ({ id, title, sub, group, tone, badge: b });
+  // Jury pass, 20 Nov: a figure from the long run says so ("#18 refused on chain, 20 Nov run"), so it is not read against the main
+  // run's figures beside it (#24, 24 decisions, 86 payments). The day is the tile's own words.
+  const run = (k: string) => {
+    const t = tiles.get(k);
+    const day = t ? /\b(\d{1,2} [A-Z][a-z]{2}) long run\b/.exec(`${t.label} ${t.note}`)?.[1] : undefined;
+    return day ? `, ${day} run` : "";
+  };
   const main = [
     node("invoice", "Invoice in", "a PDF in the inbox", "ev-scale", "", badge(["try-journeys", "/try walks passed"])),
-    node("claude", "Claude reads", "Haiku; each call's request id", "ev-ai", "claude", badge(["claude-main", "decisions"], ["try-claude", "fallbacks"])),
+    node("claude", "Claude reads", "Haiku; each call's request id", "ev-ai", "claude", badge(["claude-main", `decisions${run("claude-main")}`], ["try-claude", "fallbacks"])),
     node("rules", "Purser's rules", "limit, bank details, duplicates, cash floor", "ev-ai", "ok", badge(["worst-case", "wrong payments"])),
     node("passkey", "Passkey signs", "SHA-256 of the exact terms", "ev-forged", "ok", badge(["tamper-matrix", "forgeries refused"])),
     node("bundle", "Proof bundle", "the signed terms and receipts", "ev-forged", "ok", badge(["try-proofs", "proofs VALID"])),
     node("verify", "Anyone verifies", "offline: /verify or npm run verify-bundle", "ev-built", "ok", badge(["verify-all", "checks passed"])),
   ];
   const rails = [
-    node("alta", "Alta", "on-chain mandate", "ev-rails", "metal", badge(["alta-refusal", "refused on chain"])),
+    node("alta", "Alta", "on-chain mandate", "ev-rails", "metal", badge(["alta-refusal", `refused on chain${run("alta-refusal")}`])),
     node("airwallex", "Airwallex", "transfer with the hash, Spend Bills, cards", "ev-rails", "awx", badge(["try-transfers", "PAID"], ["awx-endpoints", "endpoints live"])),
     node("visa", "Visa via Airi", "test card", "ev-rails", "visa", badge(["visa-airi", "after Face ID"])),
   ];
   const held = fig("try-held") ? node("held", "Held", "", "ev-ai", "", badge(["try-held", "held at the cash floor"])) : null;
   const refused = fig("try-cent") ? node("refused", "Refused", "", "ev-forged", "", badge(["try-cent", "one-cent changes refused"])) : null;
   // The row under the path: only a check whose figure is on the wall.
+  const evalTile = [...tiles.values()].filter((t) => /^eval-v\d+$/.test(t.key) && !t.offProof).sort((a, b) => Number(b.key.slice(6)) - Number(a.key.slice(6)))[0];
   const checks = [
     node("c-redteam", "Red team", "the /try API, on this computer", "ev-attacked", "ok", badge(["redteam-api", "attacks held"])),
     node("c-chaos", "Chaos", "faults and crashes, money path", "ev-attacked", "ok", badge(["chaos-money", "invariants broken"])),
     node("c-fuzz", "Fuzzing", "properties at high run counts", "ev-attacked", "ok", badge(["fuzzing", "properties held"])),
-    node("c-eval", "Held-out eval", "129 invoices, written first", "ev-ai", "claude", badge(["eval-v10", "wrong payments"])),
+    // The newest held-out round on /proof, whichever it is (21 Nov: no version or count typed here); its invoices from its label.
+    node("c-eval", "Held-out eval", `${/on (\d+) held-out invoices/.exec(evalTile?.label ?? "")?.[1] ?? "new"} invoices, written first`, "ev-ai", "claude", evalTile ? badge([evalTile.key, "wrong payments"]) : null),
     node("c-site", "The public site", "Lighthouse, axe, WebKit", "ev-quality", "ok", badge(["site-quality", "accessibility"], ["webkit-try", "WebKit walks passed"])),
   ].filter((n) => n.badge);
   return { main, rails, held, refused, checks };

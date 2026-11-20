@@ -82,7 +82,8 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // table, under "At a glance".
     // 18 Nov: the demo in the submission (3:15) replaces the film in the links line; the film stays under "Watch it".
     // 19 Nov 2026 (README tightened for the judges): the links line is the judges' numbered path, the demo first.
-    expect(top.startsWith(`${README_WHAT} 1. Watch the demo (3:15) · 2. Try it (2 min, test money) · 3. Verify a payment (3 commands)`)).toBe(true);
+    // 20 Nov 2026 (owner): /try and /proof named in it, /proof added.
+    expect(top.startsWith(`${README_WHAT} 1. Watch the demo (3:15) · 2. Try it live on /try (2 min, test money) · 3. See every proof on /proof · 4. Verify a payment (3 commands)`)).toBe(true);
     expect(readme.indexOf(DIFFERENTIATORS[0])).toBeGreaterThan(readme.indexOf("## Kit 11, step by step"));
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
     // (TRY_IT's 2 minutes), the film (the tour's button went with the tour, 13 Nov, evening).
@@ -110,8 +111,9 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // sentence is told by the product card and the features ("Change one cent and it fails"), not word for word.
     // 15 Nov (clarity): the idea, its proof line, Try it in 2 minutes and the film, then the reassurance line.
     // Site audit, 20 Nov (6.3): "test money" moved into the sandbox line under the buttons.
-    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Built on Airwallex · `)).toBe(true);
-    expect(t).toContain(" Try it in 2 minutes Watch the demo Verify a payment yourself Sandbox demo: test money, no real settlement.");
+    // 20 Nov (the owner): Purser Cloud named first, over the heading; the hero's third button is the pilot.
+    expect(t.startsWith(`Purser Cloud, for finance teams AI agents spend. You sign off. ${HOME_SUB} Built on Airwallex · `)).toBe(true);
+    expect(t).toContain(" Try it in 2 minutes Watch the demo Start a pilot Sandbox demo: test money, no real settlement.");
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);

@@ -167,10 +167,11 @@ describe("the console", () => {
   const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
   // 14 Nov (Max: "make it just Invoices"): Invoices has its own tab again and the books have theirs.
   it("has the tabs in order, Invoices and Books apart, and says what Purser Cloud is", () => {
-    expect([...html.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1])).toEqual(["overview", "agents", "invoices", "books", "transactions", "tokenisation", "airwallex", "settings"]);
+    expect([...html.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1])).toEqual(["overview", "agents", "invoices", "books", "transactions", "tokenisation", "airwallex", "connections", "settings"]);
     expect(html).toContain("'/invoices':invoicesView,'/books':booksView");
     expect(html).toContain("'/agents':agentsView");
     expect(html).toContain("'/tokenisation':tokensView");
+    expect(html).toContain("'/connections':connectionsView");
     expect(html).toContain("Purser Cloud is where a company runs Purser: its agents, their limits, its payables and books, and every approval.");
   });
   it("keeps the live run's sandbox cards apart from the demo company's simulated ones (judge check, 13 Nov)", () => {

@@ -45,6 +45,9 @@ import { signedTrySession, tryGate } from "./try/gate.js";
 import { tryEngineRoutes } from "./try/engineRoutes.js";
 import { tryExtraEngineRoutes } from "./try/extraEngineRoutes.js";
 import { tryNegotiateRoutes, type NegotiateClaude } from "./try/negotiateRoutes.js";
+import { askRoutes } from "./ask/routes.js";
+import { ASK_BUTTON_PATH, ASK_PATH, askButtonResponse, askPageResponse } from "./ask/page.js";
+import type { AskModel } from "./ask/model.js";
 import { tryError, tryRoutes } from "./try/routes.js";
 import { DEAD_SESSIONS_PER_MINUTE, isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
 import { SwitchRefused } from "./try/switches.js";
@@ -55,6 +58,8 @@ import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, isMcpPath, mcpChallenge } from "./claude/routes.js";
 import type { AwxReadPort } from "./claude/awxCodemode.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
+import { partnerRailsOf } from "./partnerRails.js";
+import { walletPassFor, walletPassLink, walletPassByLink, type PassConfig } from "./walletPassRoutes.js";
 import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, latestEdgeRun, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
 import { ALWAYS_STEP_UP_ROUTES, freshPasskey, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
@@ -149,6 +154,12 @@ export interface CloudEnv {
    */
   negotiateClaude?: (tenantId: string) => NegotiateClaude | undefined;
   /**
+   * Ask Purser's model (cloud/src/ask/): Claude with the demo's capped key, under the switches claude and ask and their
+   * caps. Absent: the chat answers from the docs alone, labelled. askSecrets: values no answer may ever contain.
+   */
+  askModel?: AskModel;
+  askSecrets?: readonly string[];
+  /**
    * A company connects accounts it already has by OAuth (cloud/src/connect.ts, docs/real-customers.md): its Airwallex
    * account and its Moneybird administration. Absent (the default): the /v1/connect routes answer 404.
    */
@@ -173,6 +184,11 @@ export interface CloudEnv {
    * Absent, or a provider missing: its routes answer 404 and the console shows no button for it.
    */
   oidc?: OidcEnv;
+  /**
+   * Apple Wallet passes for the agents' cards (./walletPass.ts), only when the owner set every PASS_* secret and TEAM_ID.
+   * Absent: GET /v1/partner-rails says the pass is not available, the console shows no button, the pass routes answer 404.
+   */
+  walletPass?: PassConfig;
 }
 
 /** audit: what the request found out about its caller, for its security event (./securityAudit.ts); a route may add to it. */
@@ -232,6 +248,8 @@ async function body<T>(c: Ctx, schema: z.ZodType<T>, maxBytes = 1_000_000): Prom
 }
 
 const db = (c: Ctx) => c.db!;
+/** The clock itself, not the demo company's month end (c.now): a link's five minutes are real minutes for everyone. */
+const wallClock = (c: Ctx) => (c.env.now ?? (() => new Date()))();
 /** A new API key's request: its name, its scopes (read, sync, admin, propose) and its life in days. */
 const KeyBody = z.object({ name: z.string().min(1).max(80), scopes: z.array(z.enum(SCOPES as [Scope, ...Scope[]])).min(1), expires_in_days: z.number().int().min(1).max(KEY_MAX_DAYS).optional() }).strict();
 /** The request bodies the OpenAPI document shows, from the zod schemas the routes parse them with. */
@@ -371,7 +389,7 @@ export const ROUTES: Route[] = [
   { method: "POST", path: "/v1/airwallex/onboarding-link", summary: "Airwallex's hosted onboarding link for the company's checks, made for the signed-in owner and short-lived; never stored.", need: "admin", run: async (c) => {
     const p = platformOf(c);
     ownerOnly(c);
-    return json(200, { url: await onboardingLink(c.env.sql, c.caller!.tenantId, p, c.caller!.principal, `${c.env.origin}/#/settings`) });
+    return json(200, { url: await onboardingLink(c.env.sql, c.caller!.tenantId, p, c.caller!.principal, `${c.env.origin}/#/connections`) });
   } },
   { method: "POST", path: "/v1/airwallex/webhook", summary: "Airwallex's account.* webhooks (signed: x-timestamp, x-signature): the onboarding status of an account opened through Purser.", need: "public", run: async (c) => {
     const p = platformOf(c);
@@ -716,6 +734,10 @@ export const ROUTES: Route[] = [
     try { return json(200, await signCardAction({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), id: c.params[0]!, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now })); }
     catch (e) { if (e instanceof CardRefused) return err(e.status, e.message); throw e; }
   } },
+  { method: "GET", path: "/v1/partner-rails", summary: "T:0 at every payment and the agents' payment tokens: each settled payment's T:0 entry (its T:0 id, GL account, cost centre, agent and terms hash), the reconcile check of T:0 against the rails, and each agent's token (its id and last four, never the token) with its mandate, status, uses and refusals. From the company's own records when it has them, else the recorded live sandbox run, labelled. Also whether Apple Wallet passes are configured.", need: "read", run: async (c) => json(200, await partnerRailsOf(db(c), { walletPass: !!c.env.walletPass })) },
+  { method: "GET", path: "/v1/agents/{id}/wallet-pass", summary: "The agent card as an Apple Wallet pass (application/vnd.apple.pkpass): the agent's name, its card's limits and last four, its status. Only when the owner configured passes (PASS_TYPE_ID, TEAM_ID and the signing certificate); 404 otherwise or for an agent without a card.", need: "read", run: async (c) => (await walletPassFor(c.env.walletPass, c.env.sql, c.caller!.tenantId, c.params[0]!, c.env.origin, wallClock(c))) ?? err(404, "no wallet pass for this agent") },
+  { method: "POST", path: "/v1/agents/{id}/wallet-pass/link", summary: "A link to the agent card's Apple Wallet pass that works for 5 minutes without a header (for Safari's Add to Apple Wallet). 404 when passes are not configured or the agent has no card.", need: "read", run: async (c) => { const r = await walletPassLink(c.env.walletPass, c.env.sql, c.env.sessionSecret, c.caller!.tenantId, c.params[0]!, c.env.origin, wallClock(c)); return r ? json(201, r) : err(404, "no wallet pass for this agent"); } },
+  { method: "GET", path: "/v1/wallet-pass/{link}", summary: "An agent card's Apple Wallet pass by the 5-minute link POST /v1/agents/{id}/wallet-pass/link made (signed; nothing else is needed). 404 when the link is wrong or past its time, or passes are not configured.", need: "public", run: async (c) => (await walletPassByLink(c.env.walletPass, c.env.sql, c.env.sessionSecret, c.params[0]!, c.env.origin, wallClock(c))) ?? err(404, "no such wallet pass link") },
   { method: "GET", path: "/v1/tokenisation", summary: "Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it.", need: "read", run: async () => json(200, tokenisation()) },
   { method: "GET", path: "/v1/airwallex-live/{view}", summary: "The live Airwallex tab, read-only, from the Airwallex sandbox (test money) through the site Worker's gateway: balances, accounts, financial, rates, transfers, beneficiaries, issuing, calls, events (the webhooks Airwallex sent the site, signature verified: type, object id and time only), or reconcile (Purser's ledger of the recorded awx-1 run against Airwallex's financial transactions). Each answer says when it was read, or why the sandbox is unavailable.", need: "read", run: async (c) => {
     const view = c.params[0]!;
@@ -925,6 +947,9 @@ export const ROUTES: Route[] = [
   // The hands-on deployment (cloud/src/try/routes.ts): one block, 404 unless the deployment runs the hands-on demo.
   ...tryRoutes<Ctx>({ json, err, body }),
 
+  // Ask Purser (cloud/src/ask/routes.ts): the public chat, answered from the repository's public docs only; read-only.
+  ...askRoutes<Ctx>({ json, err, body }),
+
   // Connect Claude (cloud/src/claude/routes.ts): connector tokens, the MCP server at /mcp and its OAuth sign-in.
   ...claudeRoutes<Ctx>({ json, err, body, text: (c, max) => readCapped(c.req, max) }),
 
@@ -991,6 +1016,8 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
     if (url.pathname === "/.well-known/security.txt" && (req.method === "GET" || req.method === "HEAD")) {
       return new Response(SECURITY_TXT, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "max-age=3600", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" } });
     }
+    // Ask Purser's page and its button module (cloud/src/ask/page.ts), on every deployment.
+    if ((req.method === "GET" || req.method === "HEAD") && (url.pathname === ASK_PATH || url.pathname === ASK_BUTTON_PATH)) return url.pathname === ASK_PATH ? askPageResponse(url) : askButtonResponse();
     // The console (cloud/src/console.ts): the browser pages, everything outside /v1.
     if (!url.pathname.startsWith("/v1/") && !isClaudePath(url.pathname) && !isDiscoveryPath(url.pathname)) return consoleResponse(req, url, env);
     // A browser request that changes something must come from the console's own origin: a page elsewhere cannot make a
@@ -1073,7 +1100,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
       }
       // A Claude connector token works at /mcp (and /mcp/airwallex) only, and those take only connector tokens (cloud/src/claude/routes.ts).
       if (isConnector(caller.purpose) !== isMcpPath(hit.r.path)) {
-        return err(403, isConnector(caller.purpose) ? "a Claude connector token works at /mcp only" : "/mcp takes a Claude connector token (made in Purser Cloud: Settings, Connect Claude)");
+        return err(403, isConnector(caller.purpose) ? "a Claude connector token works at /mcp only" : "/mcp takes a Claude connector token (made in Purser Cloud: Connections, Connect your AI)");
       }
       if (caller.purpose === "first-owner") {
         const ok = (req.method === "GET" && hit.r.path === "/v1/me") || (req.method === "POST" && hit.r.path === "/v1/company")

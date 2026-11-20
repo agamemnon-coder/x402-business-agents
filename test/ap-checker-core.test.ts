@@ -192,8 +192,10 @@ describe("code's checks over a case", () => {
       { code: "unusual_amount", level: "warn", detail: `EUR 9250.00 is more than ${UNUSUAL_FACTOR} times this supplier's usual EUR 1850.00 (the median of 2 earlier invoices)` },
       { code: "overdue", level: "warn", detail: "the due date 2026-11-16 has passed" },
     ]);
-    // Blocked and rejected invoices are not what is usual; one earlier invoice is no pattern yet.
-    expect(codes(caseOf(EN_PLAIN.replace("1,850.00", "9,250.00"), { history: [history[0]!, earlier({ id: "AP-0002", invoiceNo: "BTX-2", state: "rejected" })] }))).toEqual([]);
+    // Blocked and rejected invoices are not what is usual. 20 Nov (after the held-out eval v12): one earlier invoice is a
+    // history too, read with a wider margin (UNUSUAL_FACTOR_ONE, three times it).
+    expect(codes(caseOf(EN_PLAIN.replace("1,850.00", "9,250.00"), { history: [history[0]!, earlier({ id: "AP-0002", invoiceNo: "BTX-2", state: "rejected" })] }))).toEqual(["unusual_amount"]);
+    expect(codes(caseOf(EN_PLAIN.replace("1,850.00", "5,550.00"), { history: [history[0]!, earlier({ id: "AP-0002", invoiceNo: "BTX-2", state: "rejected" })] }))).toEqual([]);
   });
 
   it("statusOf: block, then review, then wait; warnings change nothing", () => {

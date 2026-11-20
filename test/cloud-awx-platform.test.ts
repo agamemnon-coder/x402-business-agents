@@ -94,7 +94,7 @@ describe("opening the company's Airwallex account through Purser", () => {
     const r = await c.req("POST", "/v1/airwallex/onboarding-link", { key: t.session });
     expect(r.status).toBe(200);
     expect(r.json.url).toMatch(/^https:\/\/www\.airwallex\.com\//);
-    expect(rail.links).toEqual([{ accountId: "acct_fake1", template: "tmpl_fake_kyc", returnUrl: "https://cloud.test/#/settings", identity: t.owner }]);
+    expect(rail.links).toEqual([{ accountId: "acct_fake1", template: "tmpl_fake_kyc", returnUrl: "https://cloud.test/#/connections", identity: t.owner }]);
     // The link is short-lived and never stored.
     expect(JSON.stringify((await c.req("GET", "/v1/airwallex/account", { key: t.session })).json)).not.toMatch(/airwallex\.com/);
   });

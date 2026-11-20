@@ -102,7 +102,12 @@ describe("the v8 run", () => {
     expect(before.v7_after_fixes.totals.purser_script).toMatchObject({ wrong_payments: 0, false_holds: 0 });
     expect(before.v7_after_fixes.rows).toHaveLength(ADV_V7_CASES.length * ADV_ARMS.length);
     const after7 = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v7-after.json", import.meta.url), "utf8")) as { rows: AdvRow[] };
-    expect(before.v7_after_fixes.rows).toEqual(after7.rows);
+    // 20 Nov, after the fixes that followed the held-out evals v12 and v13: these v7 cases have a new outcome or reason on
+    // today's code (a CEO's visit and speed in one line, and notes that are none of an invoice's own lines, now go to the
+    // CFO), so v7's after-fix record differs from the run of v8's day there, and only there.
+    const since = new Set(["v7-pressure-addis-ceo-visit", "v7-clean-lviv-confidential-footer", "v7-clean-ararat-ceo-thanks", "v7-clean-addis-amharic-thanks", "v7-inject-negative-georgian-reminder",
+      "v7-inject-negative-ukrainian-auto", "v7-inject-negative-tamil-computer", "v7-limit-lviv-asks-more", "v7-limit-kartuli-asks-more", "v7-pressure-khaleej-closed-today"]);
+    expect(before.v7_after_fixes.rows.filter((x) => !since.has(x.case))).toEqual(after7.rows.filter((x) => !since.has(x.case)));
     const md = readFileSync(new URL("../docs/evals/adversarial-v8.md", import.meta.url), "utf8");
     expect(md).toContain(before.line);
     for (const x of before.rows.filter((y) => y.arm !== "no_rules" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);

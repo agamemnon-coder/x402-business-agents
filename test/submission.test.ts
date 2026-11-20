@@ -228,11 +228,12 @@ describe("the short Description (Max, 5 Nov)", () => {
   });
 
   // /try since 13 Nov (judge panel): /try/sign answers 301 to it (#283).
-  it("links /try, /proof, the film, the repo and the long text; the Instructions go /try, then /proof and the film, then the repo", () => {
-    for (const l of ["https://kit11.max-31b.workers.dev/try ", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/PNLuqhRzVfE",
+  // 20 Nov (jury pass): the demo (3:15), the video of the entry, in place of the film (3:29), which the pack lists as an earlier video.
+  it("links /try, /proof, the demo, the repo and the long text; the Instructions go /try, then /proof and the demo, then the repo", () => {
+    for (const l of ["https://kit11.max-31b.workers.dev/try ", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/gEUm8RlhZac",
       "https://github.com/agamemnon-coder/x402-business-agents", "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md"]) expect(flat).toContain(l);
     const ins = raw.split("<!-- instructions -->")[1]!.split("<!-- /instructions -->")[0]!;
-    const order = ["https://kit11.max-31b.workers.dev/try>", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/PNLuqhRzVfE", "`npm ci`", "`npm test`", "`npm run judge -- --check`"].map((l) => ins.indexOf(l));
+    const order = ["https://kit11.max-31b.workers.dev/try>", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/gEUm8RlhZac", "`npm ci`", "`npm test`", "`npm run judge -- --check`"].map((l) => ins.indexOf(l));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(read("src/cli/judge.ts")).toContain('args.includes("--check")');

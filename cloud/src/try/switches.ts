@@ -32,6 +32,12 @@ export const NUMBERS: Record<string, { ceiling: number; fallback: number }> = {
   cap_addr_micros: { ceiling: 3_000_000, fallback: 0 },
   cap_action_micros: { ceiling: 500_000, fallback: 0 },
   max_inflight: { ceiling: 20, fallback: 0 },
+  // Ask Purser (cloud/src/ask/limits.ts, 20 Nov): Claude's day for the chat and one address's day, in micro-dollars (0:
+  // no live answers); the questions per address and hour and for everyone a day, with defaults (they only narrow).
+  cap_day_micros_ask: { ceiling: 5_000_000, fallback: 0 },
+  cap_ask_addr_micros: { ceiling: 200_000, fallback: 0 },
+  ask_per_address_hour: { ceiling: 300, fallback: 30 },
+  ask_per_day: { ceiling: 50_000, fallback: 3_000 },
   // Starts.
   starts_per_address_hour: { ceiling: 50, fallback: 5 },
   // An IPv6 /48 holds 65,536 /64s: its starts in an hour are counted together too (security sweep 2, 15 Nov).

@@ -56,10 +56,15 @@ describe("README badges", () => {
     // The Dafny proofs: the badge JSON and docs/evidence/formal-proofs.md come with the formal-proof branch, merged
     // together with this one (19 Nov 2026, coordinator).
     expect(lines[at + 1]).toContain("[![Dafny: verified](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/agamemnon-coder/x402-business-agents/main/docs/badges/dafny.json&style=flat-square)](docs/evidence/formal-proofs.md)");
-    // 17 Nov, owner: the badges at the very top: the three rows right under the title; the proof strip stays at the
-    // foot of the centred top, after the For judges table.
-    expect(lines[at - 2]).toBe("# Purser · AI agents spend. You sign off.");
+    // 17 Nov, owner: the badges at the very top: the three rows right under the title. 20 Nov 2026 (owner: what Purser
+    // does, the demo, /try, /proof and the sponsor tracks on the first screen): still in the centred top, under the
+    // tracks table, the demo's thumbnail and the evidence wall's line; the proof strip stays at the foot of the centred
+    // top, after the For judges table.
+    expect(lines.indexOf("# Purser · AI agents spend. You sign off.")).toBe(2);
+    expect(lines[at - 2]!.startsWith("**Evidence wall, from the records:** ")).toBe(true);
     expect(lines[at - 1]).toBe("");
+    expect(at).toBeGreaterThan(lines.indexOf("| Sponsor track | What ran live (test money) | Record |"));
+    expect(at).toBeLessThan(lines.indexOf("</div>"));
     const stripAt = lines.findIndex((l) => l.startsWith('<a href="https://kit11.max-31b.workers.dev/proof"><picture>'));
     expect(stripAt).toBeGreaterThan(lines.findIndex((l) => l.startsWith("| **For judges:**")));
     const strip = lines[stripAt] ?? "";
@@ -74,15 +79,18 @@ describe("README badges", () => {
   // 18 Nov: the demo in the submission (3:15) replaces the film as the middle link; the film stays under "Watch it".
   // 19 Nov 2026 (README tightened for the judges): the same three links as the judges' numbered path, the demo first,
   // its thumbnail right under it.
-  it("puts three links under the badges, numbered: the demo, Try on /try, verify it yourself", () => {
+  // 20 Nov 2026 (owner): above the badges, on the first screen, with /proof live beside /try; the sponsor tracks' table
+  // between the path and the thumbnail.
+  it("puts four links above the badges, numbered: the demo, Try on /try, every proof on /proof, verify it yourself", () => {
     const links = readme.split("\n").find((l) => l.startsWith("**1. [Watch the demo (3:15)]")) ?? "";
-    expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://youtu.be/gEUm8RlhZac", "https://kit11.max-31b.workers.dev/try", "#verify-it-yourself-in-3-commands"]);
-    expect([...links.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Watch the demo (3:15)", "Try it (2 min, test money)", "Verify a payment (3 commands)"]);
-    expect(links).toBe("**1. [Watch the demo (3:15)](https://youtu.be/gEUm8RlhZac) · 2. [Try it (2 min, test money)](https://kit11.max-31b.workers.dev/try) · 3. [Verify a payment (3 commands)](#verify-it-yourself-in-3-commands)**");
+    expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://youtu.be/gEUm8RlhZac", "https://kit11.max-31b.workers.dev/try", "https://kit11.max-31b.workers.dev/proof", "#verify-it-yourself-in-3-commands"]);
+    expect([...links.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Watch the demo (3:15)", "Try it live on /try (2 min, test money)", "See every proof on /proof", "Verify a payment (3 commands)"]);
+    expect(links).toBe("**1. [Watch the demo (3:15)](https://youtu.be/gEUm8RlhZac) · 2. [Try it live on /try (2 min, test money)](https://kit11.max-31b.workers.dev/try) · 3. [See every proof on /proof](https://kit11.max-31b.workers.dev/proof) · 4. [Verify a payment (3 commands)](#verify-it-yourself-in-3-commands)**");
     const lines = readme.split("\n");
-    expect(lines[lines.indexOf(links) + 2]).toBe('<a href="https://youtu.be/gEUm8RlhZac"><img src="docs/assets/readme/demo-thumb.jpg" alt="Purser: the demo on YouTube (3:15)" width="100%"></a>');
+    expect(lines[lines.indexOf(links) + 2]).toBe("| Sponsor track | What ran live (test money) | Record |");
+    expect(lines[lines.indexOf(links) + 8]).toBe('<a href="https://youtu.be/gEUm8RlhZac"><img src="docs/assets/readme/demo-thumb.jpg" alt="Purser: the demo on YouTube (3:15)" width="100%"></a>');
     expect(readme).toContain("\n## Verify it yourself in 3 commands\n");
-    expect(readme.indexOf(links)).toBeGreaterThan(readme.indexOf(badgeLine));
+    expect(readme.indexOf(links)).toBeLessThan(readme.indexOf(badgeLine));
     expect(readme.split("youtu.be/n3HLVGROJc4").length - 1).toBe(1); // 20 Nov (owner): one quiet line under the demo
     expect(readme).toContain("(https://kit11.max-31b.workers.dev/proof)");
     expect(readme).not.toContain("kCUsFHrxE-o");

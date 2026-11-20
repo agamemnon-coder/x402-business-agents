@@ -26,6 +26,9 @@ export const TRY_ENGINE_PATHS: readonly (readonly [methods: readonly string[], p
   [["GET", "HEAD"], /^\/try\/stage$/],
   [["GET"], /^\/v1\/try\/stage\/stats$/],
   [["POST"], /^\/v1\/try\/stage\/qr$/],
+  // Ask Purser (20 Nov, cloud/src/ask/): the chat's page, its button module and its one route, on the site's host too.
+  [["GET", "HEAD"], /^\/ask(\/button\.js)?$/],
+  [["POST"], /^\/v1\/ask$/],
   [["GET"], /^\/v1\/engine$/],
   [["GET"], /^\/v1\/engine\/(events|samples|suppliers|invoices|vault|vault\/file|export|export\.pdf)$/],
   [["POST"], new RegExp(`^/v1/engine/samples/${ID}$`)],

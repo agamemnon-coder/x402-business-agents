@@ -6,7 +6,7 @@
 limit, Purser's code holds the rest; the CFO approves anything beyond them, by signing the exact terms with a passkey.
 Face ID here means a passkey with user verification: the signature over the exact terms is checked; the device is not (no attestation).
 
-[▶ Film (3:29)](https://youtu.be/PNLuqhRzVfE) · [Trailer (90 s)](https://youtu.be/n3HLVGROJc4) ·
+[▶ The demo (3:15)](https://youtu.be/gEUm8RlhZac) · [Earlier: the film (3:29)](https://youtu.be/PNLuqhRzVfE) ·
 [Try it in 2 minutes](https://kit11.max-31b.workers.dev/try) · [Every id on /proof](https://kit11.max-31b.workers.dev/proof) ·
 [Repository](https://github.com/agamemnon-coder/x402-business-agents)
 

@@ -26,6 +26,7 @@ import { START_LOGOS } from "./run.js";
 import { LOGO_FILES } from "./logos.gen.js";
 import { AWX_TRAIL_CALLS } from "./proof.gen.js";
 import { SYSTEM_MAP_DATA_URL } from "./systemMap.gen.js";
+import { DEMO_NAME } from "../guest/guest.js";
 
 const NEG_HINT = INVOICE.hints.clean ?? "";
 
@@ -87,7 +88,37 @@ export const V2_COPY = {
   books: { heading: "Transfer executed." },
   work: { heading: "The AI agent prepares the transfer.", ready: "Checks passed. Waiting for your approval.", readyAlone: "Checks passed. Approved by your policy.", readySub: "Agents can't raise their own limit or pay above it.", pay: "Send to CFO for approval →", took: "Purser's checks answered in {s} s, measured in your browser." },
   invoice: { send: "Give it to the AI agent →" },
-  company: { heading: "Your run, start to finish." },
+  company: {
+    heading: "Your run, start to finish.",
+    /**
+     * 21 Nov (owner: the finish judges see first): one summary of the run, row by row from the engine's records
+     * (cloud/src/tryPage.ts finishV2), then Purser Cloud's demo company, then the details folded. {money}, {limit}, {what}.
+     */
+    fin: {
+      eyebrow: "Your run",
+      sub: "Test money on Purser's real engine, read back from your test company's own records.",
+      totalPaid: "{money} paid", totalRefused: "{money} refused", nonePaid: "Nothing paid in this run.",
+      alone: "Paid by the agent", aloneNote: "Within the agent's {limit} limit: your rules approved it, no signature.",
+      signed: "Paid with your passkey", signedNote: "Above the agent's {limit} limit: you signed these exact terms.",
+      paid: "Paid",
+      refused: "Refused: one cent changed", refusedWho: "Your signed payment with the {what} changed", terms: "terms",
+      refusedNote: "Your signature no longer fitted. No transfer was made.",
+      notPaid: "Not paid",
+      proof: "Proof file",
+      cloudEb: "Purser Cloud",
+      cloudH: "This is what your company gets.",
+      cloudP: "The same engine, every day, for every supplier invoice, in one place your finance team shares.",
+      cloudItems: [
+        { icon: "file-check", h: "Every invoice read and checked", p: "Agents read each invoice; code checks it against what is on file." },
+        { icon: "scan-face", h: "You sign only the exceptions", p: "Inside your limits the agents pay. Above them, your passkey signs the exact terms." },
+        { icon: "shield-check", h: "Books and proof, kept for you", p: "Every payment booked, matched and logged in a chain nobody can quietly rewrite." },
+      ],
+      cloudGo: "Open Purser Cloud",
+      cloudNote: `Opens ${DEMO_NAME}: made-up data, read only, no sign-up. Your test company here is deleted after 24 hours.`,
+      cloudOwn: "Have a starter key? Set up your company",
+      hood: "Under the hood: how every step is verified",
+    },
+  },
   pay: {
     heading: "Test the lock.",
     line: "This is the payment you approved, with one cent added. Try to pay it with your earlier approval.",
@@ -215,9 +246,9 @@ export const PRESENT_INJ = {
   p2: "It was ignored. Check the terms below: only your passkey can approve them.",
 } as const;
 
-export const PRESENT_STAGES = ["The AI agent prepares", "The CFO approves", "The transfer", "The tamper test"] as const;
+export const PRESENT_STAGES = ["The agent reads and checks", "The CFO signs", "Paid", "One cent changed"] as const;
 /** The same four on a phone. */
-export const PRESENT_STAGES_SHORT = ["Agent", "CFO", "Transfer", "Tamper test"] as const;
+export const PRESENT_STAGES_SHORT = ["Agent checks", "CFO signs", "Paid", "Tamper test"] as const;
 
 export const PRESENT_SHELL = {
   workspace: "Your test company",
@@ -507,7 +538,7 @@ body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; fon
   /* Tags, the stage bar, the sidebar. */
   .pv-tag { animation: mvTag .5s cubic-bezier(.2,.8,.2,1) both .1s; }
   .pv-stages li .n { transition: background .35s, border-color .35s, color .35s, transform .35s; }
-  .pv-stages li.cur .n { animation: mvRing 2.4s ease-out infinite; }
+  .pv-stages li.cur .n { animation: mvRing 2.4s ease-out 3; }
   .pv-stages li.done .n { animation: mvPop .45s cubic-bezier(.2,1.6,.4,1) both; }
   .pv-stages li + li::before { transition: background .5s; }
   .pv-stages li.done + li::before, .pv-stages li.done + li.cur::before { background: var(--ok); }
@@ -519,7 +550,7 @@ body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; fon
   body.pv-shell #main .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--accent) 80%, transparent); }
   body.pv-shell #main .btn.primary::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, #ffffff40 50%, transparent 70%); transform: translateX(-120%); }
   body.pv-shell #main .btn.primary:hover::after { transform: translateX(120%); transition: transform .7s; }
-  body.pv-shell #main .btn.primary.big { animation: mvBreathe 2.8s ease-in-out infinite 1.4s; }
+  body.pv-shell #main .btn.primary.big { animation: mvBreathe 2.8s ease-in-out 2 1.4s; }
   /* Approve: the amount lands, the seal settles. */
   body.pv-shell .screen.approve .receipt.sheet .amount { animation: mvScale .6s cubic-bezier(.2,.9,.3,1.15) both .3s; }
   body.pv-shell .hashpill[data-v2] { background-image: linear-gradient(100deg, transparent 30%, #ffffff30 50%, transparent 70%); background-size: 250% 100%; animation: mvShine 1.6s ease-out .9s both; }
@@ -780,6 +811,104 @@ body.pv-shell .screen.company .cmdl { display: block !important; flex-basis: 100
   .pv-usechip li { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .pv-usechip li b { color: var(--text); font-weight: 600; }
 }
+
+/* 21 Nov (owner: enterprise grade for the judges). One shape for every button in the step column; the stage bar a real
+   progress track; the signature seals the terms; the finish a summary, then Purser Cloud, then the details folded.
+   Every animation here sits under prefers-reduced-motion: no-preference (tryPage's own reduce rule stops the rest). */
+body.pv-shell #main .btn:not(.samples .btn) { border-radius: 12px; }
+body.pv-shell #main .acts.sign .btn { min-height: 52px; }
+/* The refusal: what happened, then the way on (See your result) before the proof and the on-chain aside, so the next
+   step is on the first screen. */
+body.pv-shell .card.refusal { display: flex; flex-direction: column; }
+body.pv-shell .card.refusal > .acts.end { order: 1; margin-top: 6px; }
+body.pv-shell .card.refusal > .pv-chain, body.pv-shell .card.refusal > details, body.pv-shell .card.refusal > p:has(> .proofdl) { order: 2; }
+body.pv-shell .card.refusal > details { margin: 14px 0 4px; }
+/* The amber tags in the light theme: dark amber on pale amber (4.5:1), the bright amber kept for the dark theme. */
+.pv-tag.amber { color: #7a4f00; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pv-tag.amber { color: #f5b544; } }
+:root[data-theme="dark"] .pv-tag.amber { color: #f5b544; }
+/* The step column is one flex column here; tryPage's two-column grid (1024 px and up) left its align-items: start on it,
+   so the answer and the terms shrank to their text (397 of 640 px at 1280). */
+body.pv-shell .screen.work, body.pv-shell .screen.approve, body.pv-shell .screen.pay { align-items: stretch !important; }
+body.pv-shell #main .btn.fin-proof { min-height: 32px; padding: 0 10px; gap: 5px; border-radius: 8px; font-size: 13px; }
+.pv-stages.inmain { position: relative; display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 !important; padding: 10px 4px 9px !important; }
+.pv-stages.inmain::before, .pv-stages.inmain::after { content: ""; position: absolute; top: 20px; left: 12.5%; height: 2px; border-radius: 2px; }
+.pv-stages.inmain::before { right: 12.5%; background: var(--border); }
+.pv-stages.inmain::after { width: calc(75% * var(--p, 0)); background: var(--ok); }
+.pv-stages.inmain li { position: relative; z-index: 1; height: auto !important; flex-direction: column; justify-content: flex-start; gap: 5px !important; padding: 0 2px !important; border-radius: 0; background: none !important; text-align: center; line-height: 1.2; font-size: 12px !important; }
+.pv-stages.inmain .n { width: 22px !important; height: 22px !important; background: var(--surface); }
+.pv-stages.inmain li.done .n { font-size: 0 !important; }
+.pv-stages.inmain li.done .n::after { content: "✓"; font-size: 12px; font-weight: 800; }
+.pv-stages.inmain li.cur { color: var(--text); }
+.pv-stages.inmain li.done:not(.just) .n { animation: none !important; }
+.pv-stages.inmain li.notneeded .n { background: var(--surface); }
+/* The terms, sealed by the signature (Paying…), before the paid screen. */
+.receipt.sheet { position: relative; transition: border-color .4s ease, box-shadow .4s ease; }
+.receipt.sheet.sealed { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.receipt.sheet.sealed .pv-tag { color: #fff; background: var(--accent); }
+.receipt.sheet.sealed .amount { color: var(--accent); }
+/* The finish. */
+.fin-sum { margin: 0 0 18px; }
+.fin-eb { margin: 0 0 4px; font: 700 12px/1.2 Inter, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.fin-total { min-height: 32px; margin: 0; font: 760 26px/1.22 Inter, system-ui, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.fin-total .bad { color: var(--bad); }
+.fin-total > span { display: inline-block; white-space: nowrap; } /* each figure whole, the refused one on its own line on a phone */
+.fin-total > .sep { margin: 0 .3em; }
+.fin-total .sep { color: var(--faint); }
+.fin-total .sk-line { display: block; width: 70%; height: 28px; border-radius: 8px; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
+.fin-sub { margin: 4px 0 14px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.fin-sum .pv-paused { margin: 0 0 12px; }
+.fin-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.fin-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.fin-ic { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--ok-soft); color: var(--ok); }
+.fin-row.bad .fin-ic { background: var(--bad-soft); color: var(--bad); }
+.fin-row.wait .fin-ic { background: var(--sunken); color: var(--muted); }
+.fin-what { display: grid; gap: 1px; min-width: 0; }
+.fin-what b { font-weight: 680; }
+.fin-who { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.fin-note { color: var(--faint); font-size: 13px; line-height: 1.4; }
+.fin-amt { display: grid; justify-items: end; gap: 6px; text-align: right; }
+.fin-money { font-weight: 720; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fin-row.bad .fin-money { color: var(--bad); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.fin-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+@media (max-width: 520px) { .fin-row { grid-template-columns: 32px minmax(0, 1fr); gap: 10px; } .fin-ic { width: 32px; height: 32px; } .fin-amt { grid-column: 2; justify-items: start; text-align: left; } .fin-total { font-size: 22px; } }
+.fin-cloud { position: relative; overflow: hidden; margin: 18px 0 16px; padding: 24px; border-radius: 20px; color: #fff; background: radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--accent) 85%, transparent) 0%, transparent 60%), linear-gradient(140deg, #14162b 0%, #231f5c 58%, #3a2fa0 100%); box-shadow: 0 30px 60px -32px color-mix(in srgb, var(--accent) 75%, transparent); }
+.fc-eb { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 12px; padding: 5px 11px; border-radius: 999px; background: #ffffff1f; color: #fff; font: 700 12px/1.2 Inter, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.fin-cloud h2 { margin: 0 0 6px; color: #fff; font: 780 28px/1.15 Inter, system-ui, sans-serif; letter-spacing: -.02em; }
+.fc-p { margin: 0 0 18px; color: #ffffffcc; font-size: 15.5px; line-height: 1.5; }
+.fc-list { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 10px; }
+.fc-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px; border-radius: 14px; background: #ffffff10; border: 1px solid #ffffff21; }
+.fc-ic { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #ffffff1f; color: #fff; }
+.fc-t b { display: block; color: #fff; font-weight: 700; font-size: 14.5px; line-height: 1.3; }
+.fc-t span { display: block; margin-top: 2px; color: #ffffffb3; font-size: 13.5px; line-height: 1.42; }
+.fc-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+body.pv-shell #main .fin-cloud .fin-go, .fin-cloud .fin-go { margin: 0; background: #fff; color: #17143d; border-color: #fff; }
+.fin-own { display: inline-flex; align-items: center; gap: 5px; color: #fff; font-size: 14px; font-weight: 600; text-underline-offset: 3px; }
+.fc-note { margin: 14px 0 0; color: #ffffffa6; font-size: 12.5px; line-height: 1.45; }
+.fin-cloud a:focus-visible { outline-color: #fff; }
+@media (max-width: 520px) { .fin-cloud { padding: 20px 18px; } .fin-cloud h2 { font-size: 24px; } .fc-acts .fin-go { width: 100%; } }
+body.pv-shell .screen.company > details.fin-hood { display: block !important; }
+.fin-hood .acts.more > .verifyl, .fin-hood .acts.more > .proofdl { display: none !important; }
+.fin-hood { margin: 10px 0 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.fin-hood > summary { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; cursor: pointer; list-style: none; color: var(--text); font-size: 15px; font-weight: 650; }
+.fin-hood > summary::-webkit-details-marker { display: none; }
+.fin-hood > summary::after { content: "+"; margin-left: auto; color: var(--muted); font-size: 20px; font-weight: 500; }
+.fin-hood[open] > summary::after { content: "−"; }
+.fin-hood-b { padding: 0 16px 16px; }
+.fin-hood .pv-verify { margin: 4px 0 18px; padding: 0; border: 0; background: none; }
+.fin-hood .btn.primary { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; box-shadow: none !important; animation: none !important; }
+.fin-hood .pp-cards { grid-template-columns: 1fr; }
+@media (prefers-reduced-motion: no-preference) {
+  .pv-stages.inmain::after { transition: width .7s cubic-bezier(.2,.8,.2,1); }
+  .receipt.sheet.sealed .pv-tag { animation: sealStamp .6s cubic-bezier(.2,.8,.2,1) both; }
+  .receipt.sheet.sealed::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(100deg, transparent 35%, color-mix(in srgb, var(--accent) 20%, transparent) 50%, transparent 65%); transform: translateX(-100%); animation: mvSweep 1.1s ease-out both; }
+  .fin-row { animation: mvUp .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 90ms); }
+  .fin-row .fin-ic svg { animation: mvPop .45s cubic-bezier(.2,1.6,.4,1) both; animation-delay: calc(var(--i, 0) * 90ms + .15s); }
+  .fin-total > span:not(.sk-line) { animation: mvUp .4s ease-out both; }
+  .fin-cloud::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 35%, #ffffff17 50%, transparent 65%); transform: translateX(-100%); animation: mvSweep 1.8s ease-out .5s both; }
+  .fin-cloud .fin-go { transition: transform .18s ease, box-shadow .25s ease; }
+  .fin-cloud .fin-go:hover { transform: translateY(-1px); box-shadow: 0 12px 28px -12px #000a; }
+}
 `;
 
 /**
@@ -1023,7 +1152,9 @@ function railDraw(){const g=cap.dataset.k||'';const calls=[...CALLS.entries()].s
   const row=(cls,logo,name,txt,on)=>mk('li',(on?'on ':'')+cls,[logo,mk('div','',[mk('b','',name),mk('span','',txt)])]);
   const awxTxt=awx&&awx.source==='airwallex-sandbox'?'transfer '+String(awx.status||'').replace(/_/g,' ')+' · approval_sha256 attached':fx?'FX quote checked for this payment':'sandbox · standing by';
   rRails.replaceChildren(mk('h3','','Partner rails'),mk('ul','',[row('r-awx',logoChip('airwallex'),'Airwallex',awxTxt,!!awx||fx),row('r-alta',logoChip('alta'),'Alta (formerly Metal)',g==='refused'?'the same rule on chain: purchase #24 refused (recorded run)':'on-chain mandate limits · recorded run',g==='refused'),row('r-visa',mk('span','hw-logo pv-word','Visa Intelligent Commerce'),'via Airwallex Airi','one credential per purchase · recorded runs',false)]))}
+let LASTP=null;
 function v2(){
+  const stagesWereIn=stages.isConnected;
   {const mm=document.getElementById('main');const small=innerWidth<1200||!document.body.classList.contains('present');
    if(mm&&small&&stages.parentElement!==mm){stages.classList.add('inmain');mm.prepend(stages)}else if(!small&&stages.parentElement!==document.body){stages.classList.remove('inmain');document.body.append(stages)}
    if(mm&&small&&stages.parentElement===mm&&mm.firstElementChild!==stages)mm.prepend(stages);
@@ -1032,13 +1163,20 @@ function v2(){
    const res=mm&&mm.querySelector('.screen.work .result');if(res&&INJ.flag&&!res.querySelector('.pv-warn')){const w=mk('div','pv-warn',[mk('b','',PC.inj.h),mk('p','',PC.inj.p)]);const big=res.querySelector('p.big');if(big)res.insertBefore(w,big);else res.prepend(w)}}
   // 19 Nov 2026: the step's line in the code's words when Purser's code reads this invoice (PRESENT_GUIDE_CODE).
   {const g=guideKey();const m0=document.getElementById('main');const gc=readerIs()==='code'&&PC.guideCode[g]?PC.guideCode[g]:null;const gv=g+(gc?'|code':'');if(cap.dataset.k!==g||cap.dataset.v!==gv){cap.dataset.k=g;cap.dataset.v=gv;if(g&&PC.guide[g]){const G=gc||PC.guide[g];cap.children[0].textContent=G.k;cap.children[1].textContent=G.t;cap.children[2].textContent=G.d;cap.className='pv-cap on '+g.replace('workInj','work refused');void cap.offsetWidth;cap.classList.add('in')}else cap.className='pv-cap'}
-   if(m0&&g){const anchor=stages.parentElement===m0?stages:null;if(anchor){if(anchor.nextElementSibling!==cap)anchor.after(cap)}else if(m0.firstElementChild!==cap)m0.prepend(cap)}}
+   if(m0&&g){const anchor=stages.parentElement===m0?stages:null;if(anchor){if(anchor.nextElementSibling!==cap)anchor.after(cap)}else if(m0.firstElementChild!==cap)m0.prepend(cap)}
+   // 21 Nov: the rail's drawer goes back under the step card in the same frame as the card (it waited a frame, and the
+   // step below it jumped down by the drawer's height on a phone).
+   if(m0&&innerWidth<1280&&cap.parentElement===m0&&cap.nextElementSibling!==rail)cap.after(rail)}
   const k=stageOf();document.body.classList.toggle('pv-staged',k>=0);
-  {const g0=cap.dataset.k||'';const al=g0==='workAlone'||g0==='booksAlone';[...stages.querySelectorAll(':scope > li:not(.x)')].forEach((li,i)=>{li.className=al&&i===1?'notneeded':i<k?'done':i===k?'cur':''})}
+  // 21 Nov: the classes change only when the stage does, so a stage that just ended ticks once ('just'), not on every redraw.
+  {const g0=cap.dataset.k||'';const al=g0==='workAlone'||g0==='booksAlone';const sk=k+'|'+al;if(stages.dataset.sk!==sk){stages.dataset.sk=sk;[...stages.querySelectorAll(':scope > li:not(.x)')].forEach((li,i)=>{const c=al&&i===1?'notneeded':i<k?'done':i===k?'cur':'';li.className=c+(c==='done'&&li.dataset.st!=='done'&&li.dataset.st!==undefined?' just':'');li.dataset.st=c})}}
+  // 21 Nov: the stage bar's track fills to the current stage (a CSS transition; none with reduced motion). The bar is put
+  // back into each new screen, so it starts from where it was before it moves on.
+  {const p=String(k<0?0:Math.min(k,PC.stages.length-1)/(PC.stages.length-1));if(!stagesWereIn&&LASTP!==null&&LASTP!==p){stages.style.setProperty('--p',LASTP);void stages.offsetWidth}if(stages.style.getPropertyValue('--p')!==p)stages.style.setProperty('--p',p);LASTP=p}
   const m=document.getElementById('main');if(!m)return;
   const h1=m.querySelector(':scope > h1');if(h1&&m.querySelector('.screen.start')&&!h1.querySelector('.pv-grad')){const t=h1.textContent||'';const i=t.indexOf('. ');if(i>0&&i<t.length-2)h1.replaceChildren(t.slice(0,i+2),mk('span','pv-grad',t.slice(i+2)))}
   const st=m.querySelector('.screen.start');if(st&&!st.querySelector('.pp'))st.append(partners(true));
-  for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pp'))sc.append(partners(true));
+  for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pp'))(sc.querySelector('.fin-hood-b')||sc).append(partners(true));
   {const ch=m.querySelector('.screen.work .card.inv .slot .chip');const rd=[...CALLS.values()].find((c)=>c.who===PC.shell.reader);if(ch&&rd&&!ch.querySelector('.pv-rd')){const sp=ch.querySelector(':scope > span:not(.mono)');if(sp)sp.textContent='Read by Claude'+(rd.model?' · '+rd.model:'');const mo=ch.querySelector('.mono');if(mo)mo.hidden=true;ch.append(mk('span','pv-rd',[rd.ms?(rd.ms/1000).toFixed(1)+' s':'',rd.ms?' · ':'',usd(rd.cost)].join('')))}}
   for(const dt of m.querySelectorAll('.screen.approve .receipt dt'))if(/^(Conversion|Sign before)$/.test((dt.textContent||'').trim())&&!dt.hidden){dt.hidden=true;const dd=dt.nextElementSibling;if(dd&&dd.tagName==='DD')dd.hidden=true;const row=dt.parentElement;if(row&&row.tagName==='DIV'&&row.children.length===2)row.hidden=true}
   {const sh=m.querySelector('.screen.approve .receipt.sheet');if(sh&&INJ.flag&&!m.querySelector('.screen.approve .pv-warn')){const w=mk('div','pv-warn small',[mk('b','',PC.inj.h2),mk('p','',PC.inj.p2)]);const box=sh.parentElement;if(box)box.before(w)}}
@@ -1059,7 +1197,9 @@ function v2(){
       const href=r.href==='verify'?(vh&&vh.getAttribute('href')):r.href;if(r.link&&href){const l=mk('a','',r.link+' →');l.href=href;l.target='_blank';l.rel='noopener';kids[1].append(l)}return mk('li','',kids)}));
     const all=mk('a','btn primary big pv-all',V.all+' →');all.href=V.allHref;all.target='_blank';all.rel='noopener';
     const pn=paused?mk('p','pv-paused',paused):null;if(pn)pn.setAttribute('role','note');
-    const card=mk('section','pv-verify',[mk('h2','',V.h),mk('p','sub',V.sub),...(pn?[pn]:[]),ol,all,mk('p','foot',V.foot)]);const pp=sc.querySelector('.pp');if(pp)pp.before(card);else sc.append(card)}
+    const card=mk('section','pv-verify',[mk('h2','',V.h),mk('p','sub',V.sub),...(pn?[pn]:[]),ol,all,mk('p','foot',V.foot)]);const hb=sc.querySelector('.fin-hood-b');const pp=sc.querySelector('.pp');if(hb)hb.prepend(card);else if(pp)pp.before(card);else sc.append(card);
+    // 21 Nov: on the finish's summary too, in plain view: the details above are folded.
+    const fs=sc.querySelector('.fin-sum');if(fs&&paused&&!fs.querySelector('.pv-paused')){const p2=mk('p','pv-paused',paused);p2.setAttribute('role','note');fs.insertBefore(p2,fs.querySelector('.fin-rows'))}}
   // 16 Nov (review of the full run): three figures on the landing, not five; the warning in the green line too; terms are
   // locked by the Face ID, not before; no raw transfer ids on the paid card (they stay in the proof).
   for(const pk of m.querySelectorAll('.screen.start ul.rl li .pk'))if(/live runs|decisions by Claude/.test(pk.textContent||'')){const li=pk.closest('li');if(li)li.hidden=true}
@@ -1070,6 +1210,8 @@ function v2(){
   // A sandbox transfer Airwallex lets move (no approval workflow on it): its own simulation runs at once, labelled.
   for(const ax of m.querySelectorAll('section.awx.live'))if(!ax.dataset.sim){const b=[...ax.querySelectorAll('button')].find((x)=>!x.disabled&&x.offsetParent);const st=[...ax.querySelectorAll('dd')].map((d)=>(d.textContent||'').trim()).find((t)=>/^[A-Z ]+$/.test(t)||/Airwallex$/.test(t))||'';if(b&&!/APPROVAL|Waiting/.test(st)){ax.dataset.sim='1';b.click()}}
   const ap=m.querySelector('.screen.approve .receipt.sheet');if(ap&&!ap.querySelector('.pv-tag'))ap.prepend(mk('span','pv-tag amber','Awaiting CFO approval'));
+  // 21 Nov: signed, paying: the terms are sealed (the button's own "Paying…" says the signature went out).
+  if(ap&&!ap.classList.contains('sealed')&&[...m.querySelectorAll('.screen.approve button')].some((b)=>(b.textContent||'').trim()===PC.payingAlone)){const t=ap.querySelector('.pv-tag');if(t)t.textContent=PC.sealed;ap.classList.add('sealed')}
   const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Your passkey seals these exact terms'}
   const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok',aloneRun()?'Paid by the agent · test money':'Signed & paid · test money'));
   for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent=aloneRun()?'Approved by your policy · within EUR '+PC.limit:'Sealed by your passkey · any change breaks the seal'}
@@ -1079,12 +1221,14 @@ function v2(){
   if(!document.body.classList.contains('present')){const bk=m.querySelector('.screen.books .blk.booked');if(bk&&!bk.querySelector(':scope > details.v2fold')){const kids=[...bk.children].filter((c)=>!c.classList.contains('bh')&&!c.classList.contains('bal'));if(kids.length){const d=mk('details','v2fold',mk('summary','',PC.ledgerFold));d.append(...kids);bk.append(d)}}}
   if(document.body.classList.contains('pv-noneg'))for(const a of m.querySelectorAll('.screen.company a, .screen.company button, .screen.did a, .screen.did button'))if(/negotiat/i.test(a.textContent||'')&&!a.hidden)a.hidden=true;
   // The finish: one main way on, the rest quiet; nothing repeated from the landing.
-  for(const sc of m.querySelectorAll('.screen.company, .screen.did')){for(const a of sc.querySelectorAll('a, button'))if(/star on github|open purser cloud|download as json|watch agents negotiate/i.test(a.textContent||'')&&!a.hidden)a.hidden=true;for(const x of sc.querySelectorAll('li.wide'))x.hidden=true}
+  for(const sc of m.querySelectorAll('.screen.company, .screen.did')){for(const a of sc.querySelectorAll('a, button'))if(!a.closest('.fin-cloud')&&/star on github|open purser cloud|download as json|watch agents negotiate/i.test(a.textContent||'')&&!a.hidden)a.hidden=true;for(const x of sc.querySelectorAll('li.wide'))x.hidden=true}
   // Recording mode: the refusal's proof open, the two fingerprints large.
   if(document.body.classList.contains('present')){const rc=m.querySelector('.card.refusal');const hs=rc&&rc.querySelector('details .hashes');const df=rc&&rc.querySelector(':scope > .diff');if(hs&&df)df.after(hs)}
   const rf=m.querySelector('.card.refusal');if(rf&&!rf.querySelector('.pv-tag')){const x=rf.querySelector('.proof.xfer');const zero=x&&/:\s*0\b/.test(x.textContent);rf.prepend(mk('span','pv-tag bad',zero?'Payment blocked · EUR 0.00 moved':'Payment blocked'));const ch=mk('p','pv-chain',[PC.partners.chain+' ']);const l=mk('a','',PC.partners.chainLink);l.href=PC.partners.chainHref;l.target='_blank';l.rel='noopener';ch.append(l);const x2=rf.querySelector('.proof.xfer');(x2||rf.querySelector('.rule')||rf.lastChild).after(ch)}
 }
-let v2t=0;new MutationObserver(()=>{if(!v2t)v2t=requestAnimationFrame(()=>{v2t=0;v2()})}).observe(document.body,{childList:true,subtree:true});v2();
+// 21 Nov: a new screen is framed at once (its stage bar, step card and rail before its first paint: a frame without them
+// made the step jump down on a phone); any other change waits for the next frame, as before.
+let v2t=0;let v2screen=null;new MutationObserver(()=>{const sc=document.querySelector('#main > .screen');if(sc!==v2screen){v2screen=sc;if(v2t){cancelAnimationFrame(v2t);v2t=0}v2();return}if(!v2t)v2t=requestAnimationFrame(()=>{v2t=0;v2()})}).observe(document.body,{childList:true,subtree:true});v2();
 const showHow=()=>{how.classList.remove('on');void how.offsetWidth;how.classList.add('on')};
 // The app shell, unless ?shell=0: a sidebar with the workspace, the sections and Claude's usage in this run.
 if(SHELL){
@@ -1271,7 +1415,7 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, guideCode: PRESENT_GUIDE_CODE, caps: LIVE.caps, payAlone: WORK.payAlone, payingAlone: PAY.paying, inj: PRESENT_INJ, awx2: PRESENT_AWX2, verify: PRESENT_VERIFY, hood: PRESENT_HOOD, limit: PRESENT_AGENT_LIMIT, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, guideCode: PRESENT_GUIDE_CODE, caps: LIVE.caps, payAlone: WORK.payAlone, payingAlone: PAY.paying, inj: PRESENT_INJ, awx2: PRESENT_AWX2, verify: PRESENT_VERIFY, hood: PRESENT_HOOD, limit: PRESENT_AGENT_LIMIT, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries", sealed: "Signed · terms sealed",
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };

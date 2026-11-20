@@ -245,6 +245,34 @@ await page.goto(`${ORIGIN}/#/settings`);
 await page.waitForSelector("text=API keys");
 await settle();
 await shot("10-instellingen");
+ok(await page.locator("a.cx-pointer[href='#/connections']").count() === 1, "Settings points to the Connections page");
+// Connections (21 Nov, its own tab): one card per connection with its honest label; where each stands for this company;
+// a button only where the console really connects it; the cards that connect below.
+await page.goto(`${ORIGIN}/#/connections`);
+await page.waitForSelector("#connections li.cx-card");
+await page.waitForSelector("#claude-make");
+await settle();
+ok(await page.$eval("#tabs a[data-tab='connections']", (a) => a.getAttribute("aria-current") === "page"), "Connections is a tab of its own, and the current page");
+const cxCards = await page.locator("#connections li.cx-card").count();
+ok(cxCards >= 37, `Connections shows a card per connection (${cxCards})`);
+ok(await page.locator("#connections li.cx-card .pill").count() === cxCards, "every connection card carries its label");
+ok(/Connected for this company/.test(await page.innerText("#connections")) && /Not offered on this cloud yet/.test(await page.innerText("#connections")), "Connections says what is connected for this company and what this cloud does not offer yet");
+ok(await page.locator("#connections li.cx-card", { hasText: "Peppol network (an Access Point)" }).locator(".pill", { hasText: "planned" }).count() === 1, "a planned connection is labelled planned");
+ok(/\/mcp\/airwallex/.test(await page.innerText("#claude")), "Connect your AI names the read-only Airwallex Code Mode server");
+for (const id of ["webhook", "chat", "alerts", "integrations"]) ok(await page.locator(`#${id}`).count() === 1, `Connections holds the ${id} card`);
+ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Connections: nothing is wider than the screen");
+await shot("10c-koppelingen-pagina");
+// The signed webhook: an https address, its secret shown once, then on.
+await page.fill("#hook-url", "https://hooks.example.com/purser");
+await page.click("#hook-save");
+await page.waitForSelector("#webhook .once code");
+ok(/^whsec_/.test((await page.textContent("#webhook .once code")) ?? "") && /hooks\.example\.com/.test(await page.innerText("#webhook")), "Connections, Signed webhook: the secret is shown once, the host is shown");
+// A card's button jumps to the card that connects it.
+await page.locator("#connections li.cx-card", { hasText: "Slack and Microsoft Teams messages" }).locator("button").click();
+// The scroll is smooth (21 Nov: six sections, a longer way down to the card): waited for, up to three seconds.
+ok(await page.waitForFunction(() => { const r = document.getElementById("chat")!.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }, null, { timeout: 3000 }).then(() => true, () => false), "a card's Set up button brings its card into view");
+await page.goto(`${ORIGIN}/#/settings`);
+await page.waitForSelector("text=API keys");
 // Close and offboard (cloud/src/offboardingView.ts): on the owner's Settings, its four steps, the export first and the
 // rest closed until their turn. Nothing is pressed: offboarding would close this test company.
 await page.waitForSelector("#offboarding");
@@ -288,7 +316,8 @@ ok((await page.$$("#passkeys li")).length === 1, "Settings lists the owner's one
 await page.click("#passkeys >> text=Remove");
 await page.waitForSelector("text=last owner passkey");
 ok(true, "the company's last owner passkey cannot be removed");
-// Alerts (Settings, Alerts): an e-mail address added is shown masked, never whole (WhatsApp is not offered, 14 Nov). Then, with "Ask again" switched on
+await page.goto(`${ORIGIN}/#/connections`);
+// Alerts (Connections, Alerts): an e-mail address added is shown masked, never whole (WhatsApp is not offered, 14 Nov). Then, with "Ask again" switched on
 // and six minutes on by the cloud's clock, the sign-in no longer counts as a fresh passkey check: adding an address asks the passkey again (the virtual
 // authenticator answers), and the console sends the request once more with the step-up token.
 await page.waitForSelector("#alerts");
@@ -299,9 +328,13 @@ await page.click("#alert-add");
 await page.waitForSelector("#alerts >> text=a***@example.com");
 ok(!((await page.textContent("#alerts")) ?? "").includes("alerts@example.com"), "Settings, Alerts shows an e-mail address masked, never whole");
 // "Ask again before sensitive changes" is off by default; the owner switches it on (the fresh sign-in is the check).
+await page.goto(`${ORIGIN}/#/settings`);
+await page.waitForSelector("#step-up");
 ok(!(await page.isChecked("#step-up")), "Settings, Security: \"Ask again before sensitive changes\" is off by default");
 await page.check("#step-up");
 await page.waitForSelector("#security .note-ok");
+await page.goto(`${ORIGIN}/#/connections`);
+await page.waitForSelector("#alert-channel");
 skewMs = 6 * 60_000;
 const stepUps: string[] = [];
 page.on("request", (r) => { if (r.url().includes("/v1/auth/step-up")) stepUps.push(r.url()); });
@@ -349,7 +382,9 @@ const nlText = await page.innerText("main");
 ok(nlText.includes(tr("nl", "cs.nav.overview")) && !/\b(Overview|Invoices|Waits for|Supplier|Overdue|Blocked|Sign out)\b/.test(nlText), "the Dutch overview has no English words");
 ok(/€\s?\d{1,3}(\.\d{3})*,\d{2}/.test(nlText), "amounts are written the Dutch way (€ 1.309,00)");
 // No raw message keys on a Dutch page (the console once showed nav.invoices, ov.tile.open and test.label as words).
-const rawKeys = await page.evaluate(() => (document.body.textContent ?? "").split(/\s+/).filter((w) => /^[a-z]+(\.[a-z0-9_]+)+$/.test(w) && !/\.(js|pdf|csv|json|eml|com|nl|io|ai|test)$/.test(w)));
+// What a person reads: the page's text without its scripts and styles (20 Nov: Ask Purser's button script, inlined at the
+// end of the console's script, reads "st.nonce = nonce", which is code, not a message key).
+const rawKeys = await page.evaluate(() => { const b = document.body.cloneNode(true) as HTMLElement; b.querySelectorAll("script,style,template").forEach((n) => n.remove()); return b.textContent ?? ""; }).then((t) => t.split(/\s+/).filter((w) => /^[a-z]+(\.[a-z0-9_]+)+$/.test(w) && !/\.(js|pdf|csv|json|eml|com|nl|io|ai|test)$/.test(w)));
 ok(rawKeys.length === 0, `no raw message keys on the Dutch console${rawKeys.length ? ` (found ${rawKeys.slice(0, 5).join(", ")})` : ""}`);
 await shot("19-overzicht-nederlands");
 // The Dutch books and settings (screenshot pass, 9 November): no English left in the journal, the VAT overview or the
@@ -364,11 +399,14 @@ ok(!(booksText.includes(tr("nl", "cs.nothing_quarter")) && !/5b[^\n]*€\s?0,00/
 await page.goto(`${ORIGIN}/#/settings`);
 await page.waitForSelector(`text=${tr("nl", "cs.api_keys")}`, { timeout: 20_000 });
 await page.waitForSelector("text=runner", { timeout: 20_000 });
-await page.waitForSelector("#integrations dl", { timeout: 20_000 });
 await settle();
 const setText = await page.innerText("main");
 ok(!/first owner's passkey only|runner \(sync\)/.test(setText), "the Dutch settings name Purser's own keys in Dutch");
-// Koppelingen (docs/moneybird.md): this test world never synced to an ERP, so Moneybird reads "niet gekoppeld".
+// Moneybird on the runner (docs/moneybird.md), on the Connections page: this test world never synced to an ERP, so
+// Moneybird reads "niet gekoppeld".
+await page.goto(`${ORIGIN}/#/connections`);
+await page.waitForSelector("#integrations dl", { timeout: 20_000 });
+await settle();
 const ints = await page.innerText("#integrations");
 ok(ints.includes(tr("nl", "cs.int.title")) && ints.includes("Moneybird") && ints.includes(tr("nl", "cs.int.status.not_connected")) && ints.includes("documents"), "the Dutch settings show the Koppelingen card: Moneybird, niet gekoppeld, and how to connect it");
 if (shots) await page.locator("#integrations").screenshot({ path: join(shots, "16-koppelingen.png") });
@@ -426,6 +464,7 @@ async function enginePass() {
   const { ctx: ctxE, page: p, errors: errs, cdp: cdpE, internal: internalE } = await passkeyContext();
   await firstRun(p, origin, "harbour", madeE.json.api_key as string);
   const E: EnginePass = { origin, page: p, errors: errs, settle: () => settleOn(p), invoiceId: "", pdf: await pdfOf(EN) };
+  await engineEmpty(E);
   await engineUpload(E);
   const proposal = await enginePay(E);
   await engineSetUp(E);
@@ -520,10 +559,31 @@ async function engineSecondKey(E: EnginePass, cdp: CDPSession, internal: string)
   await cdp.send("WebAuthn.setAutomaticPresenceSimulation", { authenticatorId: internal, enabled: true });
 }
 
-/** Settings, Connect Claude: the owner makes a token that may propose; it is shown once, with the Claude Code command. */
+/**
+ * A company with nothing in it yet (21 Nov, the walk as a new company): the overview offers four first steps, and no page
+ * shows "null", "undefined", "NaN" or "Invalid Date" (the overview read "nullnull" and "since Invalid Date", the books
+ * "null" twice, the Airwallex tab "null" once).
+ */
+async function engineEmpty(E: EnginePass) {
+  const p = E.page;
+  const leaks = () => p.evaluate(() => { const w = document.createTreeWalker(document.querySelector("main")!, NodeFilter.SHOW_TEXT); const o: string[] = []; let x: Node | null;
+    while ((x = w.nextNode())) { const d = (x.textContent ?? "").trim(); if (/^(null|undefined|NaN)$|Invalid Date|nullnull/.test(d)) o.push(d); } return o; });
+  await p.goto(`${E.origin}/#/overview`);
+  await p.waitForSelector(".startc a.st-step");
+  ok(await p.locator(".startc a.st-step").count() === 4 && await p.locator(".startc a[href='#/connections']").count() === 1, "a new company's overview offers four first steps, one of them Connections");
+  for (const page of ["overview", "books", "airwallex", "transactions", "connections", "settings"]) {
+    await p.goto(`${E.origin}/#/${page}`);
+    await p.waitForTimeout(1200);
+    await E.settle();
+    const bad = await leaks();
+    ok(bad.length === 0, `a new company's ${page} shows no "null", "undefined" or "Invalid Date"${bad.length ? ` (${bad.join(" | ")})` : ""}`);
+  }
+}
+
+/** Connections, Connect your AI: the owner makes a token that may propose; it is shown once, with the Claude Code command. */
 async function engineClaude(E: EnginePass) {
   const p = E.page;
-  await p.goto(`${E.origin}/#/settings`);
+  await p.goto(`${E.origin}/#/connections`);
   await p.waitForSelector("#claude-make");
   ok((await p.textContent("#claude .once code")) === `${E.origin}/mcp`, "Connect Claude: the page shows Purser's /mcp address");
   await p.fill("#claude-name", "Claude (finance)");
@@ -869,7 +929,7 @@ async function engineArchive(E: EnginePass) {
   ok((await p.textContent("main h1"))?.trim() === "Archive", "archive: the page opens from the proof's link, with its title");
   // Eight since 14 Nov (Agents and Tokenisation joined on 13 Nov; Invoices and Books are two tabs again; Airwallex, live
   // from the sandbox, joined); the archive is not one.
-  ok(await p.locator("#tabs a").count() === 8 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its eight items");
+  ok(await p.locator("#tabs a").count() === 9 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its nine items");
   const files = (await apiAs(E, "/v1/engine/vault")).files as VaultFile[];
   ok(files.length >= 2 && await p.locator(".archive ul.files li").count() === files.length, `archive: every file of GET /v1/engine/vault is in the tree (${files.length})`);
   const tree = await p.$$eval(".archive details", (ds) => ds.map((d) => { let depth = 0; for (let x = d.parentElement; x; x = x.parentElement) if (x.tagName === "DETAILS") depth++; return { name: d.querySelector("summary")?.textContent ?? "", depth, open: (d as HTMLDetailsElement).open }; }));
@@ -932,8 +992,9 @@ async function guestPass() {
     // Jury round 2, 13 Nov: on a phone the six pages are two rows of three (they need about 480 px of a 390 px screen;
     // one scrolling row cut "Toke…" even under a fade); wider, one row. Either way every tab is whole, inside the bar.
     const rows = new Set(tabs).size;
-    // 14 Nov: eight pages (Invoices and Books apart, and Airwallex): on a phone two rows of four.
-    ok(width < 640 ? rows === 2 && tabs.filter((t) => t === tabs[0]).length === 4 : rows === 1, `${tag}: the pages are ${width < 640 ? "two rows of four" : "one row"} (${tabs.join(", ")})`);
+    // 14 Nov: eight pages (Invoices and Books apart, and Airwallex): on a phone two rows of four. 21 Nov: nine (Connections),
+    // three rows of three.
+    ok(width < 640 ? rows === 3 && tabs.filter((t) => t === tabs[0]).length === 3 : rows === 1, `${tag}: the pages are ${width < 640 ? "three rows of three" : "one row"} (${tabs.join(", ")})`);
     const cut = await p.evaluate(() => { const nav = document.querySelector("#tabs") as HTMLElement; const r = nav.getBoundingClientRect(); return [...nav.querySelectorAll("a")].filter((a) => { const b = a.getBoundingClientRect(); return b.right > Math.min(r.right, innerWidth) + 1 || b.left < -1 || a.scrollWidth > a.clientWidth + 1; }).map((a) => (a as HTMLElement).innerText.trim()); });
     ok(cut.length === 0, `${tag}: every tab is whole, none cut or off the screen (${JSON.stringify(cut)})`);
     if (width < 420) {
@@ -947,11 +1008,28 @@ async function guestPass() {
     ok(await p.locator(".kpis .kpi").count() === 4 && await p.locator("svg.chart path.line").count() === 1 && await p.locator("svg.ring .seg").count() >= 2 && await p.locator(".sbars li").count() >= 2 && await p.locator(".tline li").count() >= 8 /* 14 Nov: the decisions are a timeline (.tline), six in view */, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
-    for (const tab of ["invoices", "transactions", "books", "settings"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }
-    // Settings, Connect Claude: the demo company's public read-only token and the steps; no way to make a token.
+    for (const tab of ["invoices", "transactions", "books", "settings", "connections"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }
+    // Connections, Connect Claude: the demo company's public read-only token and the steps; no way to make a token.
     await p.waitForSelector("#claude");
     ok(/purser-demo-read-only/.test((await p.textContent("#claude")) ?? "") && await p.locator("#claude-make").count() === 0, `${tag}: Connect Claude shows the demo's read-only token and makes none`);
     ok(await p.locator("button", { hasText: /upload|new key|invite/i }).count() === 0, `${tag}: a guest has no button that writes`);
+    // 21 Nov (the owner): the products' own logos on Connections, the agents as passes, the charts on Books.
+    const logos = await p.locator(".cx-logos img").count();
+    ok(logos >= 20 && await p.locator(".cx-logos img:not([alt])").count() === 0 && await p.locator('.cx-logos img[src^="data:"]').count() === logos, `${tag}: Connections shows the products' own logos (${logos}), each named, none fetched from elsewhere`);
+    await p.goto(`${ORIGIN}/#/agents`);
+    await p.waitForSelector("button.wpass");
+    const pass = p.locator("button.wpass").first();
+    ok(await p.locator("button.wpass").count() === 3 && /EUR/.test((await pass.innerText()) ?? ""), `${tag}: Agents shows one pass per agent, with what it spent`);
+    await pass.click();
+    await p.waitForTimeout(motion === "reduce" ? 50 : 700);
+    ok(await pass.getAttribute("aria-pressed") === "true" && await p.locator("button.wpass").first().locator(".wp-back").getAttribute("aria-hidden") === "false", `${tag}: a pass turns over to its mandate`);
+    await p.locator(".wagent button.wmore").first().click();
+    ok(await p.locator(".wagent.open .wdetail .adec").first().isVisible() && await p.locator(".wagent button.wmore").first().getAttribute("aria-expanded") === "true", `${tag}: Details opens the agent's record`);
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: Agents: nothing is wider than the screen`);
+    await p.goto(`${ORIGIN}/#/books`);
+    await p.waitForSelector(".bcharts svg.chart", { timeout: 20_000 });
+    ok(await p.locator(".bcharts svg[role=img] > title").count() >= 3 && await p.locator(".bcharts details.ctable").count() >= 4 && await p.locator(".bcharts svg.ring.donut").count() === 1, `${tag}: Books: the charts, each titled, each with its table`);
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: Books: nothing is wider than the screen`);
     ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? ` (${errors.slice(0, 2).join(" | ")})` : ""}`);
     if (shots && motion === "no-preference") { await p.goto(`${ORIGIN}/#/overview`); await p.waitForSelector(".dash"); for (let y = 0; y < 8000; y += 400) { await p.mouse.wheel(0, 400); await p.waitForTimeout(150); } await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(2200); await p.screenshot({ path: join(shots, `guest-dashboard-${width}.png`), fullPage: true }); }
     await c.close();

@@ -189,10 +189,10 @@ describe("the console of a cloud with an engine", () => {
     expect(js).toContain("'/v1/engine/vault/file?path='+encodeURIComponent(");
     expect(js).toContain("f.setAttribute('sandbox','allow-scripts')");
     expect(js).toContain("PDF_MAX_BYTES");
-    // A page of its own, reached from links: the menu keeps its eight items (13 Nov: Agents and Tokenisation joined it;
-    // 14 Nov: Invoices and Books are two tabs again, and Airwallex, live from the sandbox, joined).
+    // A page of its own, reached from links: the menu keeps its nine items (13 Nov: Agents and Tokenisation joined it;
+    // 14 Nov: Invoices and Books are two tabs again, and Airwallex, live from the sandbox, joined; 21 Nov: Connections).
     expect(js).toContain("'/archive':archiveView");
-    expect(html.match(/data-tab="/g)).toHaveLength(8);
+    expect(html.match(/data-tab="/g)).toHaveLength(9);
     expect(html).not.toMatch(/<nav[^>]*>[^]*#\/archive[^]*<\/nav>/);
     expect(js).toContain("a.href='#/archive'");
   });

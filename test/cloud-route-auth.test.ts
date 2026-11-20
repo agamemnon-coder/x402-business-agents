@@ -15,8 +15,10 @@ const NEEDS = new Set(["public", "platform", "read", "sync", "admin", "propose",
 /** The public routes and why each needs no key or session: it is the sign-in itself, checks its own signature, or holds nothing of a company. */
 const PUBLIC: Record<string, string> = {
   "GET /v1/health": "an uptime monitor's: no company's data",
+  "POST /v1/ask": "Ask Purser, the public chat: answers from the repository's public docs only, holds nothing of a company, read-only, limited per address and capped (cloud/src/ask/)",
   "POST /v1/airwallex/webhook": "Airwallex's: its own signature (x-signature) is checked, failures are counted per address",
   "GET /v1/connect/{provider}/callback": "the provider's redirect: stores nothing, forwards the code to the signed-in owner's console",
+  "GET /v1/wallet-pass/{link}": "Safari's Add to Apple Wallet sends no header: the 5-minute link a signed-in reader made carries a MAC over company, agent and expiry; 404 without passes configured",
   "POST /v1/connect/airwallex/webhook": "Airwallex's: its own signature is checked, failures are counted per address",
   "GET /v1/openapi.json": "the API's description",
   "GET /v1/openapi.read.json": "the read API's description",

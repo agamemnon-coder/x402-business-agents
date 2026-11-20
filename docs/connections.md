@@ -18,7 +18,7 @@ connection to that product); **built, not tested live** means the code exists bu
 | MCP server (Connect any AI) | live | read | `/mcp`, set up per client on `/connect-ai`; [connect-claude.md](connect-claude.md) |
 | Read API (REST) and its OpenAPI | live | read | `/v1/openapi.read.json` (the read API alone), `/v1/openapi.json` (everything) |
 | Webhooks: `payment.paid`, `approval.needed`, `books.closed` | live | notify | `POST /v1/webhook` (an owner sets the address) |
-| Slack and Microsoft Teams messages | built, not tested live | notify | `POST /v1/chat-hooks/{slack,teams}` (Settings, Slack and Teams); below |
+| Slack and Microsoft Teams messages | built, not tested live | notify | `POST /v1/chat-hooks/{slack,teams}` (Connections, Slack and Teams); below |
 | Xero: bills and manual journals (CSV) | format export | export | `/v1/export/csv/xero/bills`, `/v1/export/csv/xero/journals` |
 | QuickBooks Online: bills (CSV) | format export | export | `/v1/export/csv/quickbooks/bills` |
 | Exact Online: Inkoopboekingen and Memoriaalboekingen (CSV) | format export | export | `/v1/export/csv/exact/bills`, `/v1/export/csv/exact/journals` |
@@ -59,7 +59,7 @@ carry ids, amounts and days, never a supplier's or a person's name.
 Each company's owner pastes its own Slack incoming webhook URL (`https://hooks.slack.com/services/…`) or Teams Workflow
 URL (the Teams "Workflows" app, "Send webhook alerts to a channel":
 `https://….environment.api.powerplatform.com/powerautomate/automations/direct/workflows/…/triggers/manual/paths/invoke?…`)
-in Settings, Slack and Teams (`POST /v1/chat-hooks/{slack,teams}`, a signed-in owner). Purser then posts
+in Connections, Slack and Teams (`POST /v1/chat-hooks/{slack,teams}`, a signed-in owner). Purser then posts
 `approval.needed`, `payment.paid` and `books.closed` there in the formats below (`cloud/src/chatHooks.ts`), retried up
 to three times, at most 30 an hour, and switched off after 20 failed events in a row; "Send a test" posts one message
 and switches a hook back on. Only Slack's and Microsoft's documented hosts are accepted; Office 365 connector URLs
@@ -68,7 +68,7 @@ Purser Cloud's own link; never an approve action, a secret or a bank detail. The
 A team can still relay the signed webhook into chat itself with `chatMessage(event, "slack" | "teams")` in
 `cloud/src/connections.ts`. The buttons only open Purser Cloud; there is nothing to approve in chat.
 Approval alerts (docs/cloud.md, Approval alerts) post the same formats straight to a Slack or Teams incoming webhook an
-owner sets in Settings, Alerts, with the payee and why the payment waits added; built and tested with stand-ins, not
+owner sets in Connections, Alerts, with the payee and why the payment waits added; built and tested with stand-ins, not
 yet sent live.
 
 Slack (Block Kit, for an incoming webhook):

@@ -11,7 +11,7 @@ import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, DESIGN_PARTNER_URL, HERO
 import { BOOKED, FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
 import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
 import { HOME_REFUSALS_LABEL, homeScaleStats, scaleStats } from "../src/redesign/scale.js";
-import { FILM_BUTTON, HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, STAT_RECORDS, VERIFY_BUTTON, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
+import { CLOUD_EYEBROW, ROSTER_NOTE, FILM_BUTTON, HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PATH_FILM, PILOT_BUTTON, PROOF_BUTTON, REASSURE, START, START_ID, STAT_RECORDS, VERIFY_BUTTON, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
 import { agentRun } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -44,31 +44,39 @@ const AWX = JSON.parse(read("docs/demo/airwallex-run.json")) as {
 const SAMPLE = JSON.parse(read(TRY_SAMPLE_RECORD)) as { mode: { reader: string; bank: string; money: string }; invoice: { supplier: string; number: string; currency: string; total: string; due: string; account_ending: string }; signed: { terms_hash_prefix: string }; booked: { account: string; debit: string | null; credit: string | null }[] };
 
 describe("Home, the enterprise pass", () => {
-  it("runs in this order: headline, sentence, two buttons, reassurance, logos, the product card and its note, features, the five steps, the stats, the last buttons", () => {
+  // 20 Nov (the owner: "Purser Cloud becomes the company's product"): Purser Cloud named over the heading, the
+  // explainer of the money flow beside it, then how to start (the pilot), then the 60-second proof (the product card
+  // moved there, with the sponsor tracks), then the features, the five steps and the stats as before.
+  it("runs in this order: Purser Cloud, headline, sentence, buttons, reassurance, logos, the explainer, how to start, the 60-second proof with the product card and the tracks, features, the five steps, the stats, the last buttons", () => {
     for (const html of [ON, OFF]) {
       const main = mainOf(html);
       const at = [
         // 15 Nov (clarity): the idea, then its proof line, then Try (primary) and the film (secondary).
-        '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<p class="proofl"', `<a class="btn primary big start" href="${TRY_URL}">`, `<a class="btn big ghost film" href="${FILM_URL}"`, '<p class="reassure">', '<div class="trust">',
-        '<figure class="hf"', '<p class="hf-note">', '<ul class="feat">', '<ol class="flow', '<ul class="stats">', '<a class="btn big primary" href="proof">',
+        `<p class="eyebrow cloud">`, '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<p class="proofl"', `<a class="btn primary big start" href="${TRY_URL}">`, `<a class="btn big ghost film" href="${FILM_URL}"`, `<a class="btn big ghost pilot" href="#${START_ID}">`, '<p class="reassure">',
+        // The refined pass (the owner, 20 Nov): the partners' row is one slim line under the whole hero, after the explainer.
+        '<figure class="mx"', '<div class="trust">', '<ol class="starts">', '<p class="ask">', '<ol class="path">', '<figure class="hf"', '<p class="hf-note">', '<ul class="tracks"', '<div class="roster">', '<ul class="feat">', '<ol class="flow', '<ul class="trustl">', '<div class="integ">', '<ul class="stats">', '<a class="btn big primary" href="proof">',
       ].map((s) => ({ s, i: main.indexOf(s) }));
       expect(at.filter((x) => x.i < 0)).toEqual([]);
       expect(at.map((x) => x.i)).toEqual([...at.map((x) => x.i)].sort((a, b) => a - b));
       expect(text(/<h1[\s\S]*?<\/h1>/.exec(main)![0])).toBe(HERO);
-      expect(main.match(/<section\b[^>]*>/g)).toEqual(['<section class="e-hero">', '<section class="e-feat" aria-labelledby="h-feat">', '<section class="e-flow" aria-labelledby="about">', '<section class="e-stats" aria-labelledby="h-locks">']);
+      expect(main.match(/<section\b[^>]*>/g)).toEqual(['<section class="e-hero">', `<section class="e-start" id="${START_ID}" aria-labelledby="h-start">`, '<section class="e-path" aria-labelledby="h-path">', '<section class="e-feat" aria-labelledby="h-feat">', '<section class="e-flow" aria-labelledby="about">', '<section class="e-trust" aria-labelledby="h-trust">', '<section class="e-stats" aria-labelledby="h-locks">']);
+      expect(text(/<p class="eyebrow cloud">[\s\S]*?<\/p>/.exec(main)![0])).toBe(CLOUD_EYEBROW);
     }
   });
 
   // 13 Nov, evening (owner): the product tour is gone, so the hero is again the hands-on demo (primary). 15 Nov (clarity):
   // the film is the hero's second button; "Verify a payment yourself" joins it once the site serves /verify; the proof
   // button stays at the end, with Books.
-  it("has Try it in 2 minutes (primary) and Watch the demo in the hero, the proof button with Books at the end", () => {
+  // 20 Nov (the owner): the hero's third button is "Start a pilot", to how to start on Home; "Verify a payment
+  // yourself" is the fourth step of the 60-second proof (a link, not a button), and still goes when verifyUrl is "".
+  it("has Try it in 2 minutes (primary), Watch the demo and Start a pilot in the hero, the proof button with Books at the end", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
     expect([START, FILM_BUTTON, PROOF_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the demo", "See the proof"]);
     // 15 Nov: /verify is live (#364), so "Verify a payment yourself" is the hero's third button; "" hides it.
     // 15 Nov (Max): /try/negotiate's card under the features, its one button after the hero's.
-    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, FILM_BUTTON], ["/verify", VERIFY_BUTTON], [NEGOTIATE_URL, NEGOTIATE_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
-    for (const html of [ON, OFF]) expect(html).toContain(`<a class="btn big ghost" href="/verify">${VERIFY_BUTTON}</a></div>`);
+    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, FILM_BUTTON], [`#${START_ID}`, PILOT_BUTTON], [NEGOTIATE_URL, NEGOTIATE_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
+    for (const html of [ON, OFF]) expect(html).toContain(`<a class="btn big ghost pilot" href="#${START_ID}">${PILOT_BUTTON}</a></div>`);
+    for (const html of [ON, OFF]) expect(mainOf(html)).toMatch(new RegExp(`<a href="/verify"><span class="pn">4</span><span><b>${VERIFY_BUTTON}</b>`));
     expect(homePage(undefined, { verifyUrl: "" })).not.toContain(VERIFY_BUTTON);
     for (const html of [ON, OFF]) expect(mainOf(html).match(/class="btn primary/g)).toHaveLength(1);
     expect(OFF).not.toContain('href="try/sign"');
@@ -83,7 +91,7 @@ describe("Home, the enterprise pass", () => {
     // Site audit, 20 Nov (6.3): the sandbox disclosure first, beside the primary button.
     expect(REASSURE).toEqual({ sign: "Sandbox demo: test money, no real settlement.", world: "Sandbox demo: test money, no real settlement." });
     for (const html of [ON, OFF]) expect(mainOf(html).match(/<p class="reassure">/g)).toHaveLength(1);
-    expect(ON).toMatch(new RegExp(`${VERIFY_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
+    expect(ON).toMatch(new RegExp(`${PILOT_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
   });
 
   it("A1: no heading says live; outside the fold, live is said only by the button to the hands-on demo, which runs live", () => {
@@ -94,11 +102,15 @@ describe("Home, the enterprise pass", () => {
     }
   });
 
-  it("A3: outside the What's real? fold, simulated and test money are each said once; the run caveat is in the fold", () => {
+  // 20 Nov (the owner: "test money and simulated parts labelled"): "test money" is said where a reader is sent on to
+  // Purser Cloud or the demo: the hero's sandbox line, the pilot card and the 60-second proof's Try step; nowhere else.
+  it("A3: outside the What's real? fold, simulated is said where a payment ran on the simulated bank and test money once in each place that sends a reader on; the run caveat is in the fold", () => {
     for (const html of [ON, OFF]) {
       const t = outsideFold(html);
-      expect(t.match(/simulated/gi)).toHaveLength(1);
-      expect(t.match(/test money/gi)).toHaveLength(1);
+      // "simulated" twice: the product card's bank, and the explainer's last step, which says /try pays a simulated bank.
+      expect(t.match(/simulated/gi)).toHaveLength(2);
+      expect(t.match(/test money/gi)).toHaveLength(3);
+      for (const where of [/<p class="reassure">[\s\S]*?<\/p>/, /<li class="reveal pilot">[\s\S]*?<\/li>/, /<ol class="path">[\s\S]*?<\/ol>/]) expect(text(where.exec(mainOf(html))![0])).toMatch(/test money/i);
       expect(text(/<details class="real"[\s\S]*?<\/details>/.exec(html)![0])).toContain(CAVEAT_LINE);
     }
   });
@@ -195,9 +207,13 @@ describe("Home, the enterprise pass", () => {
     expect(text(/<h2[^>]*id="h-locks"[^>]*>[\s\S]*?<\/h2>/.exec(ON)![0])).toBe(LOCKS_HEAD);
   });
 
-  it("A7: the product card is the one animation, and nothing on Home reaches the network", () => {
+  // 20 Nov (the owner: "one tasteful animated explainer of the money flow"; then "a refined animation, not busy"): the
+  // explainer in the hero and the product card in the 60-second proof are Home's two figures; the explainer is the one
+  // that moves, the card stands in its final state on Home.
+  it("A7: the explainer is the one animation, the product card stands still, and nothing on Home reaches the network", () => {
     for (const html of [ON, OFF]) {
-      expect(mainOf(html).match(/<figure\b/g)).toHaveLength(1);
+      expect(mainOf(html).match(/<figure\b[^>]*>/g)?.map((f) => /class="(\w+)"/.exec(f)![1])).toEqual(["mx", "hf"]);
+      expect(html).toContain(".e-path .hf *, .e-path .hf .hf-steps li { animation: none !important; }");
       const script = scriptBlocks(html).map(scriptBody).join("\n");
       expect(script).not.toMatch(/\bfetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/);
     }
@@ -210,7 +226,11 @@ describe("Home, the enterprise pass", () => {
       const t = text(outsideFold(mainOf(html)));
       const amounts = [...t.matchAll(/(\S+)\s+(\d[\d,]*\.\d{2})\b/g)];
       expect(amounts.length).toBeGreaterThanOrEqual(3);
-      for (const m of amounts) expect({ amount: m[2], unit: m[1] }).toEqual({ amount: m[2], unit: "EUR" });
+      // 20 Nov (agentic banking): the agents' mandate caps on Alta are test USD, said once under them (ROSTER_NOTE); every
+      // other amount is EUR.
+      const roster = text(/<div class="roster">[\s\S]*?<\/div>\s*<ul class="feat">/.exec(mainOf(html))![0]);
+      expect(roster).toContain(ROSTER_NOTE);
+      for (const m of amounts) expect({ amount: m[2], unit: m[1] }).toEqual({ amount: m[2], unit: m[1] === "USD" && roster.includes(`USD ${m[2]}`) ? "USD" : "EUR" });
       expect(html).not.toMatch(/Kit 11|x402 Business Agents|Competing for|Metal Award|Visa Award/);
     }
   });
@@ -220,6 +240,9 @@ describe("Home, the enterprise pass", () => {
       // The walkthrough on YouTube is the one "Watch" on Home: since 15 Nov the hero's second button (FILM_BUTTON), to
       // FILM_URL; no Watch block or tab, and the trailer's link left the hero.
       expect(html).toContain(`<a class="btn big ghost film" href="${FILM_URL}" target="_blank" rel="noopener">`);
+      // 20 Nov: the 60-second proof's first step names the same film "The demo (3:15)", without "Watch".
+      expect(PATH_FILM).toBe("The demo (3:15)");
+      expect(html).toContain(`<a href="${FILM_URL}" target="_blank" rel="noopener"><span class="pn">1</span><span><b>${PATH_FILM}</b>`);
       const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ").replace(FILM_BUTTON, " ");
       expect(rest).not.toMatch(/\bWatch\b|href="watch"/);
       expect(rest).not.toMatch(/TAP\b|Visa TAP|single-use Visa/);
@@ -253,8 +276,16 @@ describe("Home, the enterprise pass", () => {
   // 418 since the jury of 17 Nov: the x402 line under the hero, #24's caveat, "a passkey (Face ID on iPhone)" (417 as built).
   // 20 Nov (site audit 6.3 and the owner): the sandbox line under the buttons in place of the test company's line, "test
   // money" out of the proof line, and the design-partner link at the end: within the same 418.
-  it("A11: stays within 418 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(418);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(418);
+  // 665 since 20 Nov (the owner: "Home must lead with Purser Cloud"): the product's name over the heading (4), the
+  // explainer of the money flow (its steps, the changed cent and its caption), how to start in three cards (the pilot
+  // among them), and the 60-second proof (four steps and the three sponsor tracks, each with its record); the Visa line
+  // and the hero's Verify button went into the tracks and the proof's steps; then the link to Ask Purser (665 as built).
+  // 880 since 20 Nov (the owner: "what really completes this Home for agentic banking, fintech and enterprise"): the
+  // features became "Built for agentic banking", the three agents each with its own card, limits and Alta cap from their
+  // records, and six controls each with the link to its proof (the four features they replace were 45 words); then "For
+  // your security review", five links that exist and every connection with the hub's label (876 as built).
+  it("A11: stays within 880 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(880);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(880);
   });
 });

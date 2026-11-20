@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "playwright";
 import { startJudge } from "../../src/cli/judge.js";
 import { OFFLINE_TRY_NOTE } from "../../src/cli/judgeTry.js";
+import { FINISH_LINKS } from "../../cloud/src/tryCopy.js";
 import { gotoLoaded, launchBrowser } from "./support/browser.js";
 
 const args = process.argv.slice(2);
@@ -120,12 +121,35 @@ try {
   await dl.waitFor({ timeout: 30_000 });
   await page.waitForTimeout(1_500);
   await page.screenshot({ path: join(shots, "4-result.png") });
+  {
+    // 21 Nov 2026 (owner, judges on Monday): the finish sums the run up from the engine's own records, row by row: the
+    // agent's EUR 120.00 within the limit, the EUR 1,850.00 signed with the passkey (its proof file), the one cent refused
+    // (its proof file); no row for the test company's seeded original (paid before it started); then Purser Cloud's demo
+    // company, the only main button; the details folded under "Under the hood".
+    await page.locator(".fin-row").nth(2).waitFor({ timeout: 30_000 });
+    const rows = (await page.locator(".fin-row").allInnerTexts()).map((t) => t.replace(/\s+/g, " "));
+    ok(rows.length === 3, `the finish: three rows, one per thing this run did (${rows.length})`);
+    ok(/^Paid by the agent .*BTX-2026-23.*EUR 500\.00 limit.*EUR 120\.00/.test(rows[0] ?? ""), `the finish: the agent paid EUR 120.00 within the limit (${rows[0]})`);
+    ok(/^Paid with your passkey .*BTX-2026-21.*EUR 1,850\.00 Proof file/.test(rows[1] ?? ""), `the finish: EUR 1,850.00 signed with the passkey, with its proof file (${rows[1]})`);
+    ok(/^Refused: one cent changed .*amount changed.*No transfer was made\. EUR 1,850\.01 Proof file/.test(rows[2] ?? ""), `the finish: EUR 1,850.01 refused, no transfer, with its proof file (${rows[2]})`);
+    ok(!rows.some((r) => /BTX-2026-17/.test(r)), "the finish: no row for the seeded original paid before the company started");
+    ok(/^EUR 1,970\.00 paid\s*·\s*EUR 1,850\.01 refused$/.test((await page.locator(".fin-total").innerText()).trim()), `the finish: the totals (${await page.locator(".fin-total").innerText()})`);
+    const go = page.locator(".fin-cloud a.fin-go");
+    ok(await go.isVisible() && await go.getAttribute("href") === FINISH_LINKS.cloud && await go.getAttribute("target") === "_blank", "the finish: \"Open Purser Cloud\" opens its demo company (#/guest) in a new tab");
+    ok(await page.locator(".fin-cloud a.fin-own").getAttribute("href") === FINISH_LINKS.start, "the finish: a starter key's set-up is the console's own #/start");
+    const primaries = await page.locator("#main .screen.company .btn.primary").evaluateAll((bs) => bs.filter((b) => (b as HTMLElement).offsetParent !== null && !b.closest("details:not([open])")).map((b) => (b.textContent ?? "").trim()));
+    ok(primaries.length === 1 && /Open Purser Cloud/.test(primaries[0] ?? ""), `the finish: one main button, Open Purser Cloud (${primaries.join(" | ")})`);
+    ok((await page.locator(".fin-hood").getAttribute("open")) === null && !(await page.locator(".pv-verify").isVisible()), "the finish: how every step is verified is folded under the hood");
+    await page.locator(".fin-hood > summary").click();
+    ok(await page.locator(".pv-verify").isVisible(), "the finish: one tap opens how every step is verified");
+  }
   if (!live) {
     // 19 Nov 2026 (live review): the finish says who read the invoice in this run; offline, code did, and no call is counted.
     const card = await page.locator(".pv-verify").innerText();
     ok(/Read by Purser's code/.test(card) && !/Claude read the invoice/.test(card) && !/This run: \d+ calls/.test(card), `the finish: "Read by Purser's code", no Claude calls claimed (${card.replace(/\s+/g, " ").slice(0, 140)})`);
-    // Max, 19 Nov 2026: and plainly, in the end card itself.
-    const paused = page.locator(".pv-verify .pv-paused");
+    // Max, 19 Nov 2026: and plainly, in the end card itself (21 Nov: on the run's summary, in plain view; the fold has it too).
+    ok(/^Live Claude is off for this demo right now\./.test(await page.locator(".pv-verify .pv-paused").innerText()), "the finish: the fold's notice says live Claude did not read this invoice");
+    const paused = page.locator(".fin-sum .pv-paused");
     ok(await paused.isVisible() && /^Live Claude is off for this demo right now\. Purser's code read this invoice instead\./.test(await paused.innerText()), "the finish: the notice says live Claude did not read this invoice");
   }
   const [download] = await Promise.all([page.waitForEvent("download"), dl.click()]);

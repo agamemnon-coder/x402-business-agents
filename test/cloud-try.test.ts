@@ -339,7 +339,8 @@ describe("the admin route", () => {
     expect(g.status).toBe(200);
     expect(g.json).toEqual({
       switches: { starts: "on" },
-      today: { day: "2026-11-08", starts_by_pool: { public: 1, event: 0, jury: 0 }, open_companies: 1, spent_micros_by_pool: { public: 0, event: 0, jury: 0, smoke: 0 }, awx_calls: 0, metal_calls: 0 },
+      today: { day: "2026-11-08", starts_by_pool: { public: 1, event: 0, jury: 0 }, open_companies: 1, spent_micros_by_pool: { public: 0, event: 0, jury: 0, smoke: 0 }, awx_calls: 0, metal_calls: 0,
+        ask: { spent_micros: 0, counts: { asked: 0, live: 0, docs: 0, refused_money: 0, refused_data: 0, refused_injection: 0, limited: 0, trimmed: 0, stopped: 0 } } },
       all_time: { spent_micros: 0 },
     });
   });

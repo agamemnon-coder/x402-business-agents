@@ -6,7 +6,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CONNECTION_GROUPS, connectionsCatalogue, HUB_DOC, REPO_BLOB, type ConnectionGroup } from "../cloud/src/connections.js";
-import { CONNECTIONS_VIEW_JS } from "../cloud/src/connectionsView.js";
+import { BRAND_LOGOS } from "../cloud/src/brandLogos.gen.js";
+import { CONNECTIONS_LOGOS_JS, CONNECTIONS_VIEW_JS } from "../cloud/src/connectionsView.js";
+import { createHash } from "node:crypto";
 import { consolePage } from "../cloud/src/console.js";
 import { CONNECT_HUB_DOC, CONNECT_HUB_LABEL, homePage } from "../src/redesign/home.js";
 import { MESSAGES } from "../src/ui/i18n.js";
@@ -111,10 +113,34 @@ describe("the catalogue, GET /v1/connections", () => {
   it("has the console's words for every group and label, in Dutch and English", () => {
     const keyOf = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
     const keys = [...CONNECTION_GROUPS.map((g) => `cs.cx.group.${keyOf(g)}`), ...new Set(all.map((c) => `cs.cx.kind.${keyOf(c.kind)}`))];
-    for (const k of [...keys, "cs.cx.title", "cs.cx.lede", "cs.cx.hub", "cs.cx.guide", "cs.cx.rule"]) {
+    const page = ["cs.cx.kind.planned", "cs.cx.more", "cs.cx.needs", "cs.cx.record", "cs.cx.here.connected", "cs.cx.here.not_connected", "cs.cx.here.not_available",
+      "cs.cx.sum.here", "cs.cx.sum.live", "cs.cx.sum.test", "cs.cx.sum.file", "cs.cx.sum.built", "cs.cx.sum.planned", "cs.nav.connections", "cs.cxp.lede", "cs.cxp.setup", "cs.cxp.setup_sub", "cs.cxp.setup_sub_reader"];
+    for (const k of [...keys, ...page, "cs.cx.title", "cs.cx.lede", "cs.cx.hub", "cs.cx.guide", "cs.cx.rule"]) {
       expect({ k, en: k in MESSAGES.en, nl: k in MESSAGES.nl }).toEqual({ k, en: true, nl: true });
     }
-    expect(MESSAGES.nl["cs.cx.title" as keyof typeof MESSAGES.nl]).toBe("Verbindingen");
+    expect(MESSAGES.nl["cs.cx.title" as keyof typeof MESSAGES.nl]).toBe("Alle verbindingen");
+  });
+
+  it("gives every connection a unique id, what a company needs, the company's own rows it stands on, and a record that is a file", async () => {
+    const ids = [...all.map((c) => c.id), ...cat.planned.map((p) => p.id)];
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const c of all) expect({ name: c.name, needs: c.needs.length > 10 }).toEqual({ name: c.name, needs: true });
+    // The rows a card stands on are the ids GET /v1/connections/mine really returns.
+    const { testCloud } = await import("./support/cloud.js");
+    const c = testCloud();
+    try {
+      const t = await c.tenant("hub");
+      const mine = new Set(((await c.req("GET", "/v1/connections/mine", { key: t.session })).json.items as { id: string }[]).map((x) => x.id));
+      for (const x of all) for (const id of x.company) expect({ name: x.name, id, known: mine.has(id) }).toEqual({ name: x.name, id, known: true });
+    } finally { c.close(); }
+    // A record backs only a label that claims a run, and it is a file in the repository.
+    for (const x of all.filter((y) => y.record)) {
+      expect({ name: x.name, kind: ["live", "sandbox", "testnet", "built, run once in a sandbox"].includes(x.kind) }).toEqual({ name: x.name, kind: true });
+      expect({ name: x.name, exists: existsSync(new URL(x.record!.slice(REPO_BLOB.length), ROOT)) }).toEqual({ name: x.name, exists: true });
+    }
+    // Every planned one is a "planned" row of the hub, under its group.
+    const rows = hubRows();
+    for (const p of cat.planned) expect(rows.find((r) => r.name === p.name)).toMatchObject({ label: "planned", section: SECTION[p.group] });
   });
 });
 
@@ -144,51 +170,124 @@ const find = (n: Node | string, pick: (x: Node) => boolean, out: Node[] = []): N
   return out;
 };
 
-describe("Purser Cloud's Settings, Connections", () => {
-  const render = (lang: "en" | "nl") => {
+describe("Purser Cloud's Connections page (its own tab since 21 Nov)", () => {
+  type View = (c: unknown, t: unknown, tk: unknown, e: typeof el, o?: unknown) => Node[];
+  const view = () => new Function(`${CONNECTIONS_VIEW_JS}\nreturn connectionsViewOf;`)() as View;
+  const render = (lang: "en" | "nl", o?: unknown) => {
     const m = MESSAGES[lang] as Record<string, string>;
-    const t = (k: string) => m[k] ?? k, tk = (k: string, fallback: string) => (k in m ? m[k]! : fallback);
-    const view = new Function(`${CONNECTIONS_VIEW_JS}\nreturn connectionsViewOf;`)() as (c: unknown, t: unknown, tk: unknown, e: typeof el) => Node[];
-    return el("div", "card panel connections", view(JSON.parse(JSON.stringify(cat)), t, tk, el));
+    const t = (k: string, v?: Record<string, string>) => { let s = m[k] ?? k; for (const x in v ?? {}) s = s.split(`{${x}}`).join(v![x]!); return s; };
+    const tk = (k: string, fallback: string) => (k in m ? m[k]! : fallback);
+    return el("div", "card panel connections", view()(JSON.parse(JSON.stringify(cat)), t, tk, el, o));
   };
+  const cards = (card: Node) => find(card, (n) => n.tag === "li" && n.cls.startsWith("cx-card"));
+  const cardOf = (card: Node, name: string) => cards(card).find((li) => find(li, (n) => n.tag === "b").map(text)[0] === name)!;
 
-  it("renders the catalogue's list: each connection with its label and a link to its guide, grouped as the hub, then the hub and /connect-ai", () => {
+  it("renders one card per connection, planned ones too, each with its label, what it needs, its guide and its run record, in six sections", () => {
     const card = render("en");
-    const items = find(card, (n) => n.tag === "li");
-    expect(items).toHaveLength(all.length);
-    for (const c of all) {
-      const li = items.find((x) => (x.kids[0] as Node).tag === "b" && text(x.kids[0]!) === c.name)!;
-      expect({ name: c.name, label: text(find(li, (n) => n.cls.startsWith("pill"))[0]!), doc: find(li, (n) => n.tag === "a")[0]?.href }).toEqual({ name: c.name, label: c.kind, doc: c.doc });
+    expect(cards(card)).toHaveLength(all.length + cat.planned.length);
+    for (const c of [...all, ...cat.planned.map((p) => ({ ...p, kind: "planned", record: undefined }))]) {
+      const li = cardOf(card, c.name);
+      const hrefs = find(li, (n) => n.tag === "a").map((a) => a.href);
+      expect({ name: c.name, label: text(find(li, (n) => n.cls.startsWith("pill"))[0]!), doc: hrefs.includes(c.doc), record: c.record ? hrefs.includes(c.record) : true, needs: text(find(li, (n) => n.cls === "cx-needs")[0]!).includes(c.needs) })
+        .toEqual({ name: c.name, label: c.kind, doc: true, record: true, needs: true });
     }
     const heads = find(card, (n) => n.tag === "h2").map(text);
-    expect(heads).toEqual(["Connections", "Payment rails", "AI agents over MCP", "The API and webhooks", "No-code tools", "Accounting", "Peppol, ISO 20022, chat and the full export"]);
+    // 21 Nov (the owner): six sections by what a company connects, each with its count; every card in exactly one.
+    expect(heads).toEqual(["Every connection", "Money rails3", "Bookkeeping & ERP12", "AI & agents10", "Messaging & alerts3", "API, data & export7", "Sign-in & workspace2"]);
+    expect(heads.slice(1).reduce((n, h) => n + Number(/\d+$/.exec(h)![0]), 0)).toBe(all.length + cat.planned.length);
     const top = find(card, (n) => n.tag === "a").slice(0, 2).map((a) => a.href);
     expect(top).toEqual([`${ORIGIN}/connect-ai`, cat.hub]);
     for (const a of find(card, (n) => n.tag === "a")) expect([a.target, a.rel]).toEqual(["_blank", "noopener"]);
     expect(text(card)).toContain("None of these approves a payment");
-    // Live in green, built and not yet tried live in amber.
-    expect(find(card, (n) => n.cls === "pill ok").map(text).every((x) => x === "live")).toBe(true);
-    expect(find(card, (n) => n.cls === "pill warn").map(text).every((x) => x === "built, not tested live")).toBe(true);
+    // Live green, test money blue, built and not yet tried live amber, planned dashed grey.
+    const tone = (cls: string) => [...new Set(find(card, (n) => n.cls === cls).map(text))].sort();
+    expect(tone("pill ok")).toEqual(["live"]);
+    expect(tone("pill tmoney")).toEqual(["built, run once in a sandbox", "sandbox", "testnet"]);
+    expect(tone("pill warn")).toEqual(["built, not tested live"]);
+    expect(tone("pill plan")).toEqual(["planned"]);
+    // The summary counts the labels as they are; nothing about a company without the company's rows.
+    const sum = find(card, (n) => n.cls === "cx-sum")[0]!;
+    expect(find(sum, (n) => n.tag === "b").map(text)).toEqual([String(all.filter((c) => c.kind === "live").length), String(all.filter((c) => ["sandbox", "testnet", "built, run once in a sandbox"].includes(c.kind)).length),
+      String(all.filter((c) => c.kind === "format export").length), String(all.filter((c) => c.kind === "built, not tested live").length), String(cat.planned.length)]);
+    expect(find(card, (n) => n.cls.startsWith("cx-here"))).toHaveLength(0);
+  });
+
+  it("says where each connection stands for this company from its own rows, and puts a button only where the console gives one", () => {
+    const mine = [
+      { id: "mcp", status: "connected", detail: "1 connector token" }, { id: "api_keys", status: "not_connected", detail: null }, { id: "webhook", status: "not_connected", detail: null },
+      { id: "sign_in_google", status: "not_available", detail: null }, { id: "sign_in_microsoft", status: "not_available", detail: null }, { id: "sign_in_apple", status: "not_available", detail: null },
+      { id: "slack", status: "not_connected", detail: null }, { id: "teams", status: "connected", detail: null },
+    ];
+    const card = render("en", { mine, action: (x: { id: string }) => (x.id === "rest" ? el("button", "btn", "Make a key") : null) });
+    const here = (name: string) => { const p = find(cardOf(card, name), (n) => n.cls.startsWith("cx-here"))[0]; return p ? `${p.cls} ${text(p)}` : null; };
+    expect(here("MCP server (Connect any AI)")).toBe("cx-here connected Connected for this company · 1 connector token");
+    expect(here("Claude")).toBe("cx-here connected Connected for this company · 1 connector token");
+    expect(here("Read API (REST) and its OpenAPI")).toBe("cx-here not_connected Not connected yet: you can switch it on");
+    expect(here("Sign in with Google, Microsoft and Apple")).toBe("cx-here not_available Not offered on this cloud yet");
+    expect(here("Slack and Microsoft Teams messages")).toMatch(/^cx-here connected /);
+    // No row for it: no line (ChatGPT's own use of a token is not known; a file export has nothing to connect).
+    expect(here("ChatGPT")).toBeNull();
+    expect(here("Xero")).toBeNull();
+    expect(cardOf(card, "MCP server (Connect any AI)").cls).toBe("cx-card on");
+    expect(text(find(card, (n) => n.cls === "cx-stat here")[0]!)).toBe("3connected for this company");
+    expect(find(card, (n) => n.tag === "button").map((b) => text(b))).toEqual(["Make a key"]);
+    expect(find(cardOf(card, "Read API (REST) and its OpenAPI"), (n) => n.tag === "button")).toHaveLength(1);
+  });
+
+  it("shows each product's own logo where one is on record, named for a screen reader, and letters or an icon where none is", () => {
+    const logos = Object.fromEntries(Object.entries(BRAND_LOGOS).map(([k, v]) => [k, { name: v.name, uri: v.uri }]));
+    const card = render("en", { logos: { ...logos, airwallex: { name: "Airwallex", uri: "data:image/png;base64,AA" } }, icon: (n: string) => el("span", `ic-${n}`) });
+    const imgs = (name: string) => find(cardOf(card, name), (n) => n.tag === "img").map((i) => (i as Node & { alt: string }).alt);
+    expect(imgs("Airwallex")).toEqual(["Airwallex"]);
+    expect(imgs("Visa via Airwallex Airi")).toEqual(["Visa"]);
+    expect(imgs("Slack and Microsoft Teams messages")).toEqual(["Slack", "Microsoft Teams"]);
+    expect(imgs("Sign in with Google, Microsoft and Apple")).toEqual(["Google", "Microsoft", "Apple"]);
+    expect(imgs("Moneybird (API)")).toEqual(["Moneybird"]);
+    expect(imgs("Business Central and Odoo (API)")).toEqual(["Microsoft", "Odoo"]);
+    // No logo on record: T:0 keeps its letters; Purser's own webhook its icon.
+    expect(imgs("T:0 (outside ledger)")).toEqual([]);
+    expect(text(find(cardOf(card, "T:0 (outside ledger)"), (n) => n.cls.includes("cx-letters"))[0]!)).toBe("T:0");
+    expect(find(cardOf(card, "Webhooks"), (n) => n.cls === "ic-zap")).toHaveLength(1);
+    // Every logo is a data URL (the console's img-src allows data:, nothing is fetched from elsewhere).
+    for (const [k, v] of Object.entries(BRAND_LOGOS)) expect({ k, data: v.uri.startsWith("data:image/svg+xml,") }).toEqual({ k, data: true });
+    expect(CONNECTIONS_LOGOS_JS).not.toMatch(/https?:\/\/(?!www\.w3\.org|ns\.adobe\.com)/);
+  });
+
+  it("holds each logo to its file and its record in src/ui/logos/README.md", () => {
+    const readme = read("src/ui/logos/README.md");
+    for (const [k, v] of Object.entries(BRAND_LOGOS)) {
+      const src = k === "alta" ? "src/ui/logos/alta.svg" : null;
+      const file = src ?? readme.split("\n").map((l) => /^\| ([\w.-]+\.svg) \|.*`([0-9a-f]{64})` \|$/.exec(l)).find((m) => m && m[2]!.startsWith(v.sha256))?.[1];
+      expect({ k, recorded: !!file }).toEqual({ k, recorded: true });
+      const path = src ?? `src/ui/logos/brands/${file}`;
+      expect({ k, sha: createHash("sha256").update(readFileSync(new URL(path, ROOT))).digest("hex").slice(0, 16) }).toEqual({ k, sha: v.sha256 });
+    }
   });
 
   it("speaks Dutch in Dutch, keeps the names as they are, and links nothing but http(s)", () => {
     const card = render("nl");
-    expect(text(card)).toContain("Verbindingen");
+    expect(text(card)).toContain("Alle verbindingen");
     expect(text(card)).toContain("gebouwd, nog niet live getest");
     expect(text(card)).toContain("Alta (formerly Metal)");
-    const view = new Function(`${CONNECTIONS_VIEW_JS}\nreturn connectionsViewOf;`)() as (c: unknown, t: unknown, tk: unknown, e: typeof el) => Node[];
-    const bad = { ...cat, hub: "javascript:alert(1)", connections: [{ ...cat.connections[0]!, doc: "javascript:alert(1)" }], money: [] };
-    const nodes = el("div", "", view(bad, (k: string) => k, (_k: string, f: string) => f, el));
+    const bad = { ...cat, hub: "javascript:alert(1)", connections: [{ ...cat.connections[0]!, doc: "javascript:alert(1)", record: "javascript:alert(2)" }], money: [], planned: [] };
+    const nodes = el("div", "", view()(bad, (k: string) => k, (_k: string, f: string) => f, el));
     expect(find(nodes, (n) => n.tag === "a").map((a) => a.href)).toEqual([`${ORIGIN}/connect-ai`]);
   });
 
-  it("is in the console's script, reads /v1/connections, and sits on the Settings page for owners and everyone else", () => {
+  it("is its own tab, reads /v1/connections and the company's own rows, and Settings points there", () => {
     const html = consolePage("n0nce", { origin: ORIGIN, rpId: "cloud.test", mailDomain: "in.cloud.test" });
     expect(html).toContain(CONNECTIONS_VIEW_JS.trim());
-    expect(html).toContain("api('/v1/connections')");
-    const settings = html.slice(html.indexOf("async function settingsView(){"), html.indexOf("async function drawConn(){"));
-    expect(settings.match(/await connectionsCard\(\)/g)).toHaveLength(2);
+    expect(html).toContain('<a href="#/connections" data-tab="connections" data-t="cs.nav.connections">Connections</a>');
+    const page = html.slice(html.indexOf("async function connectionsView(q){"), html.indexOf("// --- The router"));
+    expect(page).toContain("api('/v1/connections')");
+    expect(page).toContain("api('/v1/connections/mine')");
+    expect(page).toContain("connectionsViewOf(cat,t,tk,el,{mine:");
+    for (const card of ["claudeCard(m,owner)", "webhookCard()", "alertsCard()", "chatCard()", "drawConn()", "drawInts()", "drawAwx()"]) expect({ card, there: page.includes(card) }).toEqual({ card, there: true });
+    const settings = html.slice(html.indexOf("async function settingsView(q){"), html.indexOf("// --- Connections (21 Nov)"));
+    expect(settings).toContain("toCx.href='#/connections'");
+    expect(settings).not.toContain("connectionsViewOf");
     expect(view_free(CONNECTIONS_VIEW_JS)).toBe(true);
+    expect(MESSAGES.nl["cs.nav.connections" as keyof typeof MESSAGES.nl]).toBe("Koppelingen");
   });
 });
 

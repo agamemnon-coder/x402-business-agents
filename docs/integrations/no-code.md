@@ -111,7 +111,7 @@ const ok = fresh && v1 && v1.length === want.length && crypto.timingSafeEqual(Bu
 (`sig` is the `x-purser-signature` header, `rawBody` the body as received. Self-hosted n8n allows `require("crypto")`
 only with `NODE_FUNCTION_ALLOW_BUILTIN=crypto`; its **Crypto** node, action Hmac, SHA256, hex, computes the same value
 without code. Check what your plan allows.) For Slack or Teams there is no need to
-relay events through a no-code tool any more: an owner pastes the channel's webhook URL in Settings, Slack and Teams.
+relay events through a no-code tool any more: an owner pastes the channel's webhook URL in Connections, Slack and Teams.
 
 Each event carries `x-purser-signature: t=<seconds>,v1=<hex>`, where `v1` is HMAC-SHA256, under the secret, of
 `<t>.<the raw body>`. Where the tool can run code (a Zapier Code step, a Make custom function), check the signature and

@@ -13,9 +13,16 @@ import { redactSecrets } from "../lib/redact.js";
 import { T0_SANDBOX_MAP } from "../config/t0Map.js";
 import { books, type Posting } from "./books.js";
 import { buildEntries, functionalCurrency, pushBooks, recordT0Posting, resolveAccounts, T0Client, t0Posted, type T0Rate } from "./t0.js";
+import { bookSettledPayments, type SettledPayment } from "./t0Payments.js";
 
 export function t0Enabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.T0_ENABLED === "on" || env.T0_ENABLED === "1" || env.T0_ENABLED === "true";
+  return env.T0_ENABLED === "on" || env.T0_ENABLED === "1" || env.T0_ENABLED === "true" || t0PaymentsOn(env);
+}
+
+/** T0_PAYMENTS=on: every settled payment is booked in T:0 the moment it settles, one entry each (./t0Payments.ts),
+ *  instead of the whole-books push, so a payment is never in T:0 twice. */
+export function t0PaymentsOn(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.T0_PAYMENTS === "on" || env.T0_PAYMENTS === "1" || env.T0_PAYMENTS === "true";
 }
 
 /** T0_RATES as a rate function, or why it cannot be read. */
@@ -31,7 +38,7 @@ export function ratesFromEnv(raw: string | undefined): T0Rate | string {
 
 export type T0SinkResult =
   | { ran: false; reason: "off" | "no key" }
-  | { ran: true; ok: true; posted: number; skipped: number }
+  | { ran: true; ok: true; posted: number; skipped: number; mode?: "books" | "payments" }
   | { ran: true; ok: false; error: string };
 
 export interface T0SinkDeps {
@@ -40,6 +47,8 @@ export interface T0SinkDeps {
   client?: Pick<T0Client, "listGlAccounts" | "profitLoss" | "listJournalEntries" | "postJournalEntry">;
   /** The books to post; the ledger's own by default. */
   books?: (db: DB) => { balanced: boolean; postings: Posting[] };
+  /** With T0_PAYMENTS=on: the settled payments to book (tests); the transactions register's own by default. */
+  payments?: SettledPayment[];
   log?: (line: string) => void;
 }
 
@@ -54,6 +63,14 @@ export async function t0SinkOnce(db: DB, deps: T0SinkDeps = {}): Promise<T0SinkR
   }
   try {
     const client = deps.client ?? new T0Client({ apiKey: key!, baseUrl: env.T0_BASE_URL || undefined, entity: env.T0_ENTITY || undefined });
+    if (t0PaymentsOn(env)) {
+      const rate = ratesFromEnv(env.T0_RATES);
+      if (typeof rate === "string") throw new Error(rate);
+      const r = await bookSettledPayments(db, client, rate, { sandboxMap: env.T0_MAP === "sandbox", payments: deps.payments });
+      for (const p of r.booked) deps.log?.(`t0       payment ${p.payment_id} booked in T:0 at once: ${p.t0_id} (${p.je_number}), GL ${p.gl_account}, cost centre ${p.cost_centre ?? "none"}, agent ${p.agent ?? "none"}`);
+      for (const s of r.skipped) deps.log?.(`t0       payment ${s.payment_id} not booked in T:0: ${s.why}`);
+      return { ran: true, ok: true, posted: r.booked.length, skipped: r.skipped.length, mode: "payments" };
+    }
     const b = (deps.books ?? books)(db);
     if (!b.balanced) throw new Error("our books are not balanced (npm run books); nothing posted");
     const rate = ratesFromEnv(env.T0_RATES);

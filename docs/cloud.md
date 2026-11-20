@@ -91,7 +91,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/openapi.read.json` | anyone | The read API alone (every GET a read-scoped key may call), as OpenAPI 3.1. |
 | `GET /v1/connections/mine` | admin | Your connections: each of the company's connections connected, not connected or not available on this cloud (never a secret). |
 | `POST /v1/connect/xero/bills` | admin | Send the company's supplier invoices to its own connected Xero organisation as DRAFT bills, once each, at most 25 a push `{ from?, to? }` (a signed-in owner). Never authorised or paid in Xero. |
-| `GET /v1/connections` | anyone | Every connection Purser has to other systems, each labelled live, sandbox, testnet, format export or built and not tested live, with its guide; the payment rails listed apart ([integrations/README.md](integrations/README.md), [connections.md](connections.md)). The console shows it under Settings, Connections. |
+| `GET /v1/connections` | anyone | Every connection Purser has to other systems, each labelled live, sandbox, testnet, format export or built and not tested live, with its guide; the payment rails listed apart ([integrations/README.md](integrations/README.md), [connections.md](connections.md)). The console shows it on its Connections page. |
 | `GET /v1/admin/companies` | platform admin | The companies on this cloud for the operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (no key, no account number). The console shows it at `#/platform`. |
 | `GET /v1/admin/security-log` | platform admin | The cloud's security event log, newest first (`kind`, `since`, `limit` up to 500): sign-ins and their failures, refusals (403), rate-limit hits (429), the admin's own actions, key, passkey, people and policy changes, exports, webhook signature failures, tamper alarms and the alarms they raised. Ids and networks (an address cut to /24 or /48) only, never a secret. Append-only in the database (`cloud/src/securityLog.ts`). |
 | `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the starter key once (a week, the first owner's passkey only). |
@@ -131,6 +131,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
 | `GET /v1/agents` | read | The company's agents from its own records: job, Claude model as its runs recorded it, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only. |
+| `GET /v1/partner-rails` | read | T:0 at every payment (each settled payment's T:0 entry, GL account, cost centre, agent, terms hash; the reconcile check against the rails) and each agent's payment token (id and last four, mandate, status, uses, refusals); the company's own records, else the recorded sandbox run, labelled; whether Wallet passes are configured. |
+| `GET /v1/agents/{id}/wallet-pass` | read | The agent card as an Apple Wallet pass (.pkpass): name, limits, the card's last four, status. 404 unless the owner configured passes. |
+| `POST /v1/agents/{id}/wallet-pass/link` | read | A 5-minute link to that pass, for Safari's Add to Apple Wallet. |
+| `GET /v1/wallet-pass/{link}` | anyone | The pass by that link (a MAC over company, agent and expiry); 404 when wrong, expired or not configured. |
 | `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
 | `GET /v1/cards` | read | The agents' live Airwallex sandbox cards (test money): last four digits only, live status, limits against the CFO policy, newest authorizations with their ids; whether card actions are on (`awx_cards`) and today's caps. |
 | `GET /v1/cards/scope` | anyone | Whether the sandbox key may use Airwallex Issuing: `ok`, `forbidden`, `no_key`, `no_gateway` or `unavailable`, with why in fixed codes (`why`: the gateway's code or `rpc_failed`; `http_status`; Airwallex's `awx_code`). One read a minute at most, for everyone; no card data. |
@@ -235,6 +239,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/try/negotiate` | admin | The hands-on deployment (a test company only): Purser's Sourcing agent and a simulated supplier's agent (both Claude) negotiate an early-payment discount on a test invoice of Bergtex Textil GmbH (or `{ invoice_id }`: the visitor's own payable invoice from a supplier on file), at most 4 turns; `?stream=1` answers a line a turn, each through the CFO's rails in code. `{ mode, label, reason, scene, bounds, rules, turns, outcome, agreement, canonical, sha256, compose }`; Claude off, capped or failing: the recorded negotiation, labelled. 3 a company. |
 | `POST /v1/try/negotiate/agreed` | admin | The hands-on deployment (a test company only): a negotiation's agreed terms, `{ agreement_sha256, compose, turns, invoice_id? }`. Files the agreed invoice and records what was negotiated with it (original and agreed amounts, discount, the agreement's SHA-256, turns), which the proof file carries beside the signed terms. With `invoice_id` (the visitor's own invoice in /try) the agreed invoice replaces it: the original's unsigned payment can no longer be signed, and it leaves the books with that reason, its accrual reversed. Only terms that fit the invoice (same supplier and account, the agreement's reference, less, by its due date). Answers `{ invoice, superseded }`. |
 | `GET /v1/try/negotiate/recorded` | anyone | The hands-on deployment: the recorded negotiation on the seeded scene, written in advance and labelled as such, checked by the rails live; for a visitor the live path turned away (a start limit, a pause). Nothing to sign. `?why=limit\|paused\|start`. |
+| `POST /v1/ask` | anyone | Ask Purser, the public chat (`/ask`, and the floating button `/ask/button.js` on the console; cloud/src/ask/). `{ question, history? }`: one question about Purser, answered only from the repository's public docs (a knowledge pack built from README, llms.txt and docs/ by `npm run cloud:ask-pack`), streamed one JSON object a line (`meta` with the passages used, `delta`, `reset`, `done` with the passages cited). Read-only: no tools; an order to pay, approve or change a limit, a request for a company's data and any instruction aimed at the assistant are answered by code. Every sentence is checked before it is sent (no secret, no link outside Purser's sites, no figure the passages do not hold, no claim to have acted). Claude Haiku only under the switches `claude` and `ask` and the caps `cap_day_micros_ask`, `cap_ask_addr_micros` and `cap_all_micros`; otherwise the docs alone, labelled. 6 a minute and `ask_per_address_hour` an hour per address (429 `limit`), `ask_per_day` for everyone. Keeps hourly counts only (`ask_tally`), never a question. |
 | `POST /v1/try/scenarios/{seed}` | admin | Plays that scenario in your test company: its invoices (test invoices, fake) through the engine's inbox in order. `{ seed, id, title, company, setup, answer, decided, expect }`: the engine's answer to the last invoice, what it means (refuse, ask a person first, or pay after your signature) and the right answer. |
 
 The `/v1/engine` routes are the company's engine behind the API (`cloud/src/engine/routes.ts`): the same inbox, checks,
@@ -317,7 +322,7 @@ The same Worker serves the company's console at `/` (`cloud/src/console.ts`): si
 the overview (inbox address, what is open, due, overdue, waiting and blocked, and what waits for the CFO), invoices and
 each invoice (what Purser read, the checks, the timeline, the document), the transactions register with its filters and
 CSV, the books (VAT overview per quarter, the journal) and, for owners, settings: people and their single-use passkey
-links, API keys, and the export of everything; and, for everyone who can open Settings, Connections: every way in or
+links, API keys, and the export of everything; and, on its own Connections page (a tab since 21 Nov): every way in or
 out of Purser from `GET /v1/connections`, each with its label and its guide, and links to `/connect-ai` and
 [Connect Purser to anything](integrations/README.md). A new company's first run takes the starter key Purser hands over, makes
 the owner's passkey, shows the inbox address and makes the runner's sync key with the one command to run; the starter
@@ -574,7 +579,7 @@ What the code does not do yet, and must be in place before a company's real data
 ## Approval alerts
 
 When a runner's push files an invoice for the CFO's Face ID (the `approval.needed` event), Purser tells the people the
-company chose in Settings, Alerts (`cloud/src/alerts.ts`). Every channel sits behind one notifier interface:
+company chose in Connections, Alerts (`cloud/src/alerts.ts`). Every channel sits behind one notifier interface:
 
 | Channel | How | Status |
 |---|---|---|
@@ -770,3 +775,38 @@ policy's. The CFO freezes and unfreezes it, or sets it back to the policy, with 
 - **Payees who are people.** They are shown by initials only, in the read gateway and again in Purser Cloud (`src/airwallex/personName.ts`).
 
 ![The Support agent: its live card adopted from the sandbox, an older test card frozen](assets/cloud/cloud-agents-card-older-1440.png)
+
+## Each agent's payment token, and its Apple Wallet pass (20 Nov)
+
+- **A token per agent** (`src/policy/agentTokens.ts`). The agent pays with a Purser token (`ptok_…`), never with its
+  card's number. The token is bound to a mandate made from the CFO's policy for that agent: its own Airwallex Issuing card
+  (a Visa card, sandbox), its limits per purchase and per month, its merchant categories, euros only, 30 days at most.
+  The ledger keeps the token's SHA-256 only. A payment is checked against the mandate and the policy as it stands now
+  (the stricter wins) before any call to Airwallex; within it, the card's purchase window opens for that one charge.
+  Revoking the agent (`revokePrincipal`) revokes its tokens in the same call. The card itself stays frozen at Airwallex
+  outside Purser's windows, so its number alone is declined (`CARD_INACTIVE`). Not a Visa network token: no Visa Token
+  Service or Airi credential is made. Live run: [runs/2026-11-20-partner-rails.md](runs/2026-11-20-partner-rails.md).
+- **On the Agents tab** (`cloud/src/partnerView.ts`, `GET /v1/partner-rails`): each agent card shows its token (id and
+  last four), mandate, status, uses and refusals, and each payment's T:0 reference; the Books tab shows "Booked in T:0"
+  and the reconcile check. From the company's own records when its runner pushed them, else the recorded run, labelled.
+- **Apple Wallet pass** (`cloud/src/walletPass.ts`, `cloud/src/walletPassRoutes.ts`): the agent's name, limits, the card's
+  last four and status, signed with the company's Pass Type ID certificate (a detached PKCS#7 over manifest.json). Offered
+  only when all five Worker secrets are set: `PASS_TYPE_ID`, `TEAM_ID`, `PASS_CERT_PEM`, `PASS_KEY_PEM`,
+  `PASS_WWDR_PEM` (optional var `PASS_ORG_NAME`). Without them there is no button and the routes answer 404.
+
+### What Max does for the Wallet pass
+
+1. In the Apple Developer account: Certificates, Identifiers & Profiles > Identifiers > + > Pass Type IDs. Register one,
+   e.g. `pass.com.purser.agents`. That string is `PASS_TYPE_ID`.
+2. Identifiers > that Pass Type ID > Create Certificate. Make a CSR on a Mac (Keychain Access > Certificate Assistant >
+   Request a Certificate From a Certificate Authority, saved to disk), upload it, download `pass.cer`.
+3. The team id is under Membership details (10 characters). That is `TEAM_ID`.
+4. Apple's WWDR intermediate: download "Worldwide Developer Relations - G4" from apple.com/certificateauthority.
+5. Convert, on the Mac (no file goes in git):
+   `openssl x509 -inform der -in pass.cer -out pass.pem`;
+   export the key from Keychain Access as `pass.p12`, then
+   `openssl pkcs12 -in pass.p12 -nocerts -nodes -legacy | openssl pkcs8 -topk8 -nocrypt -out pass.key.pem`;
+   `openssl x509 -inform der -in AppleWWDRCAG4.cer -out wwdr.pem`.
+6. Set the secrets on the Worker: `wrangler secret put PASS_TYPE_ID`, `TEAM_ID`, `PASS_CERT_PEM` (paste pass.pem),
+   `PASS_KEY_PEM` (pass.key.pem), `PASS_WWDR_PEM` (wwdr.pem), then delete the local key files. On the next deploy the
+   Agents tab shows "Add to Apple Wallet" on each agent with a card.

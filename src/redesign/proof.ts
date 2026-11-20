@@ -8,12 +8,11 @@
 import { AWX_LIVE_CSS, AWX_LIVE_JS, awxLiveHtml } from "./awxLive.js";
 import { VISA_MEETS_ID } from "./visaStory.js";
 import { COUNT_JS } from "./stats.js";
-import { LIFE_TITLE, REFUSALS_TITLE, VISUAL_CSS, lifecycleSvg, refusalsSvg } from "../visuals/svg.js";
-import { RAIL_RECORDS, TWO_LOCKS_LOG, airwallexHold, railRefusals } from "../visuals/facts.js";
+import { TWO_LOCKS_LOG, airwallexHold } from "../visuals/facts.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { SUMMARY_CSS, detailsFold, type SummaryCard } from "./summary.js";
-import { SCALE_CSS, scaleBandHtml, scaleFigures, scaleStats, type ScaleStat } from "./scale.js";
-import { PROOF_RUNS_CSS, PROOF_RUNS_ID, partnerStripHtml, proofRunCount, proofRunsHtml, verifyCalloutHtml } from "./proofRuns.js";
+import { AWX_CALLS_LABEL, SCALE_CSS, scaleBandHtml, scaleFigures, scaleStats, type ScaleStat } from "./scale.js";
+import { PROOF_RUNS_CSS, PROOF_RUNS_ID, latestVerificationReport, partnerStripHtml, proofRunCount, proofRuns, proofRunsHtml, recordsOf, verifyCalloutHtml } from "./proofRuns.js";
 import { COPY_JS, liveRunCount } from "./runs.js";
 import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 import { MOTION_JS } from "../ui/motion.js";
@@ -25,7 +24,7 @@ import { VAULT_TREE_RECORD } from "../vault/treeSvg.js";
 import { T0_JOURNAL_RECORD, t0Journal } from "./t0Page.js";
 import { trailLinkHtml } from "./awxTrailLink.js";
 import { whyCompanyHtml } from "./home.js";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { CI_CSS, ciChecksHtml } from "./ciChecks.js";
 import { AWX_LIVE_LINE, LIVE_FX_RECORD, CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type StopStory, type Tile } from "./run.js";
@@ -40,8 +39,10 @@ import { LEAD_CSS, RELIABILITY_EVALS, RELIABILITY_LOG, RELIABILITY_RUNS, leadHtm
 import { TRACE_LINK, TRACE_URL } from "./trace.js";
 import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { WORST_CASE_CSS, worstCaseCardHtml } from "./worstCaseCard.js";
-import { EVIDENCE_WALL_CSS, PROOF_INDEX_DOC, evidenceWallHtml } from "./evidenceWall.js";
-import { evidenceMapCss, evidenceMapHtml } from "./evidenceMap.js";
+import { EVIDENCE_WALL_CSS, PROOF_INDEX_DOC, committedWall } from "./evidenceWall.js";
+import { archCss, archHtml } from "./proofArch.js";
+import { PROOF_QUESTIONS_CSS, placeTiles, questionHtml, questionNavHtml, type QExtras, type QuestionId } from "./proofQuestions.js";
+import { PROOF_CHARTS_CSS, chartHtml, coverageChart, evalChart, liveRunsChart, redTeamChart, refusalsChart } from "./proofCharts.js";
 import { ASSET_VERSIONS, versioned, type VersionedAsset } from "../ui/assetVersions.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
@@ -466,24 +467,10 @@ export function readBack(run: AgentRun): string {
   <div class="awrb">${awx1}</div>` : ""}`;
 }
 
-// ── The visuals (owner, 12 Nov: "more visuals and animations"), from src/visuals: one payment's life, animated where
-// the viewer allows motion, and the three rails each holding a payment on their own. Their figures are the visuals'
-// own records (src/visuals/facts.ts, held by test/visuals.test.ts); the wide drawing on a wide screen, the tall one on a
-// phone. Then, folded: each signed approval checked in this browser (src/redesign/verifyTerms.ts) with the Face ID to
-// paid times (src/redesign/runTimes.ts), and the vault's folders (docs/media/vault-tree-*.svg, computed from layout.ts).
-
-// On a wide screen the two drawings sit under the guarantees; on a phone they come last, before the utility links, so
-// the folds keep their place on the first screens (test/browser/pages.check.ts).
-// The life drawing's only figures are its step numbers, drawn by src/visuals/svg.ts; the rails' are from their records.
-const lifeVisual = (layout: "wide" | "tall") => `<article class="pvis pv-${layout}" data-rec="src/visuals/svg.ts" aria-label="${esc(LIFE_TITLE)}">${lifecycleSvg(layout)}</article>`;
-function railsVisual(layout: "wide" | "tall"): string {
-  const rails = railRefusals();
-  if (!rails.length) return "";
-  const href = (path: string) => `${REPO_BLOB}${path}`;
-  // One line per card in the drawing; the full account of each, with its figures, in the fold under it.
-  const fold = `<details class="fold"><summary>${esc("What each rail did, in full")}</summary><ul>${rails.map((r) => `<li><b>${esc(r.name)}</b>: ${esc(r.what)}${r.note ? ` ${esc(r.note)}` : ""}</li>`).join("")}</ul></details>`;
-  return `<article class="pvis pv-${layout} rails" data-rec="${esc(RAIL_RECORDS.join(" "))}" aria-label="${esc(REFUSALS_TITLE)}">${refusalsSvg(rails, href, layout)}${fold}</article>`;
-}
+// Folded under "Can I verify it myself?": each signed approval checked in this browser (src/redesign/verifyTerms.ts)
+// with the Face ID to paid times (src/redesign/runTimes.ts). Under "Why this is a company": the vault's folders
+// (docs/media/vault-tree-*.svg, computed from layout.ts). (Until 21 Nov /proof also drew one payment's life and the three
+// rails' refusals from src/visuals; the architecture at the top, src/redesign/proofArch.ts, replaces both.)
 function checkItYourself(): string {
   const signed = signedByRun();
   const items = ["awx-1", "platform-e2e-1", "main-1"].flatMap((k) => (signed[k] ?? []).filter((x) => x.terms));
@@ -496,9 +483,7 @@ const countUpValue = (v: string) => {
   const m = /^(\d+)(.*)$/.exec(v);
   return m ? `<span data-count="${m[1]}" data-dec="0">${esc(m[1]!)}</span>${esc(m[2]!)}` : esc(v);
 };
-const PROOF_VISUAL_CSS = `.proofp .pvis { margin: 18px 0 22px; } .proofp .pvis.pv-tall { display: none; }
-@media (max-width: 999px) { .proofp .pvis.pv-wide { display: none; } .proofp .pvis.pv-tall { display: block; max-width: 420px; margin: 18px auto; } }
-.proofp .vault img { display: block; max-width: 100%; height: auto; margin: 8px 0; }`;
+const PROOF_VISUAL_CSS = `.proofp .vault img { display: block; max-width: 100%; height: auto; margin: 8px 0; }`;
 
 const dayShortUtc = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso.slice(0, 10)}T12:00:00Z`));
 
@@ -531,6 +516,48 @@ export function proofScaleStats(): ScaleStat[] {
 /** Every figure on this page with its record and how to check it (owner, 20 Nov), built by `npm run proof:index`. */
 export const PROOF_INDEX_FILE = PROOF_INDEX_DOC;
 export const PROOF_INDEX_LINK = "Every figure's record";
+
+/** The page's description (the link preview): what it opens with, no figure. */
+export const PROOF_DESCRIPTION = "How Purser works and where each part is proved: money within limits, the AI under control, live on the partners, the engineering, and how to check it all yourself.";
+
+/**
+ * "Can I verify it myself?" (the owner, 21 Nov): the commands that re-check the records, each with what it checks and
+ * its source; only commands package.json defines are listed (a renamed script drops out rather than shows a dead one).
+ */
+export const VERIFY_COMMANDS: readonly { cmd: string; what: string }[] = [
+  { cmd: "verify-all", what: "recomputes the site's figures from the records; reads the linked Alta transactions" },
+  { cmd: "verify-approval", what: "checks the owner's passkey approval offline" },
+  { cmd: "verify-bundle", what: "checks a /try proof file offline" },
+  { cmd: "verify-anchor", what: "recomputes the sealed head and compares it with Alta" },
+  { cmd: "proof:index", what: "lists every figure on this page with its record" },
+];
+export function commandsHtml(): string {
+  const scripts = pkgScriptsOf();
+  const rows = VERIFY_COMMANDS.filter((c) => scripts[c.cmd]);
+  if (!rows.length) return "";
+  const src = (c: string) => /\b((?:src|scripts)\/[\w/.-]+\.ts)\b/.exec(scripts[c] ?? "")?.[1];
+  return `<div class="pcmds" id="commands" data-rec="package.json"><h3>${esc("Run it yourself: clone the repository, npm ci, then")}</h3><ul>${rows.map((c) => `<li><code>npm run ${esc(c.cmd)}</code><span>${esc(c.what)}${src(c.cmd) ? ` <a class="pf" href="${esc(`${REPO_BLOB}${src(c.cmd)}`)}" target="_blank" rel="noopener">${esc("source")}&nbsp;↗</a>` : ""}</span></li>`).join("")}</ul></div>`;
+}
+const pkgScriptsOf = (): Record<string, string> => { try { return (JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { scripts?: Record<string, string> }).scripts ?? {}; } catch { return {}; } };
+const COMMANDS_CSS = `
+.pcmds { margin: 16px 0 6px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.pcmds h3 { font-size: 16px; font-weight: 720; margin: 0 0 8px; }
+.pcmds ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pcmds li { display: grid; grid-template-columns: minmax(0, 15em) minmax(0, 1fr); gap: 2px 14px; align-items: baseline; font-size: 15px; line-height: 1.45; }
+.pcmds code { font: 600 14.5px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+.pcmds span { color: var(--muted); }
+@media (max-width: 640px) { .pcmds li { grid-template-columns: minmax(0, 1fr); } }
+.pq-band { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 10px; }
+.pq-band .pq-bl { margin: 0; font-size: 14px; color: var(--muted); flex: 1 1 100%; }
+.pq-band ul.scale[data-look="strip"] { display: flex; flex-wrap: wrap; margin: 0; overflow: visible; border: 0; background: none; gap: 8px; }
+.pq-band ul.scale[data-look="strip"] li { border: 0; }
+.pq-band ul.scale[data-look="strip"] a { flex-direction: row; align-items: baseline; gap: 8px; padding: 8px 14px; min-height: 44px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.pq-band ul.scale[data-look="strip"] b { font-size: 22px; }
+.pq-band ul.scale[data-look="strip"] small { font-size: 14px; }
+.pq-old { margin: 8px 0 14px; } .pq-old > h3 { font-size: 16px; font-weight: 720; margin: 6px 0 8px; }
+/* The card-cent card's ids (src/redesign/cardCent.ts), read at 14 px on /proof like every line in a card. */
+.proofp ul.awc small { font-size: 14px; }
+`;
 
 /** The one line under the heading (the owner, 13 Nov: "the proof is what we need"). */
 export const PROOF_LEAD = "What ran live, when, and how to check each run yourself. Sandbox and testnet, test money.";
@@ -652,44 +679,79 @@ export function proofPage(run: AgentRun = agentRun()): string {
     { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops", rec: run.file, parts: stopBreakdown(story).map((x) => ({ value: String(x.value), label: x.label })) },
   ];
   const tile = (n: Tile & { cls: string; rec: string }) => `<a class="num card ${n.cls}" href="${esc(n.href)}" data-rec="${esc(n.rec)}"><span class="v">${countUpValue(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}${n.parts?.length ? `<span class="parts">${n.parts.map((x) => `<span><b>${esc(x.value)}</b> ${esc(x.label)}</span>`).join("")}</span>` : ""}</a>`;
-  // Jury pass, 13 Nov: four cards, then everything else in one fold (far less visible text). Jury, 13 Nov (second round):
-  // the first screen was too thin, so the guarantees are in sight again, under the cards; the rest stays folded.
-  // The owner, 13 Nov: the scale first, a band of figures computed from the records (src/redesign/scale.ts).
+  // 21 Nov (the owner: "/proof is now loose numbers, some outdated; organise the data, visuals and an animated
+  // architecture"): the heading and its line; the architecture, each part a link to its proof; the questions a judge
+  // asks, one section each (src/redesign/proofQuestions.ts): its answer, its current figures (each dated, each with its
+  // record), its charts (src/redesign/proofCharts.ts), its detail folded and its history folded and labelled. The
+  // main run of 3 Nov, the run the film plays, keeps every figure it had, in the folds, under its own label and day.
+  const stats = proofScaleStats(), band = (...labels: string[]) => {
+    const s = stats.filter((x) => labels.some((l) => x.label.startsWith(l)));
+    return s.length ? `<div class="pq-band"><p class="pq-bl">${esc("Across all records, as built:")}</p>${scaleBandHtml(s, "Across every record", { strip: true })}</div>` : "";
+  };
+  const deep = (summary: string, inner: string, id = "") => (inner.trim() ? `<details class="deep"${id ? ` id="${id}"` : ""}><summary>${esc(summary)}</summary>${inner}</details>` : "");
+  const wall = committedWall();
+  const groups = proofRuns();
+  const VR = latestVerificationReport();
+  const olderReports = VR ? readdirSync(new URL("../../docs/evidence/", import.meta.url)).filter((f) => /^verification-\d{4}-\d{2}-\d{2}\.json$/.test(f) && `docs/evidence/${f}` !== VR).sort().reverse() : [];
+  const extras: Record<QuestionId, QExtras> = {
+    "q-limits": {
+      lead: band("refusals on record"),
+      charts: [chartHtml(redTeamChart()), chartHtml(refusalsChart())],
+      after: guaranteesHtml(),
+      history: [`<div class="pq-old" data-rec="${esc(run.file)}"><h3>${esc(`The main run, ${shortDay(run.recordedAt)}: every stop and every Face ID decision, and the first red team`)}</h3>${moreCards(run)}</div>`],
+    },
+    "q-ai": {
+      lead: band("Claude calls"),
+      charts: [chartHtml(evalChart())],
+      folds: [deep("The worst case: an AI that always says pay", worstCaseCardHtml())],
+    },
+    "q-live": {
+      lead: band("sandbox and testnet runs", AWX_CALLS_LABEL, "Alta testnet transactions"),
+      charts: [chartHtml(liveRunsChart(groups, recordsOf(groups.flatMap((g) => g.runs)).split(" ").filter(Boolean)))],
+      folds: [
+        detailsFold("runs-fold", "Every live run, by partner", `${partnerStripHtml(undefined, liveRunCount())}
+  <p class="pawx" data-rec="${esc(LIVE_FX_RECORD)}"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>
+  ${proofRunsHtml()}
+  ${awxLiveHtml()}`),
+        detailsFold("details", "Each partner's strongest proof", `<h2 class="sec">The partners</h2>${partnerCards(run)}
+  ${airi ? deep("Visa Intelligent Commerce via Airwallex's Airi", `<div class="awrb">${airi}</div>`) : ""}
+  ${deep("Airwallex, read back", readBack(run))}`),
+      ],
+      history: [`<div class="pq-old"><h3>${esc(`The main run, ${shortDay(run.recordedAt)}: the run the film plays`)}</h3>
+  <div class="runline" data-rec="${esc(run.file)}"><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
+  <p class="split">${esc(SPLIT_LINE)}</p>
+  <div class="nums">${nums.map(tile).join("")}</div></div>`],
+    },
+    "q-built": {
+      lead: band("tests passing"),
+      charts: [chartHtml(coverageChart())],
+      folds: [detailsFold("ci-fold", "Checked on every change", ciChecksHtml())],
+    },
+    "q-verify": {
+      lead: verifyCalloutHtml(),
+      after: commandsHtml(),
+      folds: [deep("Check a signature yourself, in this browser", checkItYourself(), "check-signature")],
+      history: olderReports.length ? [`<ul class="pq-list">${olderReports.map((f) => `<li data-rec="docs/evidence/${esc(f)}">${esc("An earlier verify-all report, kept as written:")} <a class="pf" href="${esc(`${REPO_BLOB}docs/evidence/${f.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">${esc(f.replace(/\.json$/, ".md"))}&nbsp;↗</a></li>`).join("")}</ul>`] : [],
+    },
+  };
+  const sections = wall ? placeTiles(wall).map((p) => questionHtml(p, extras[p.q.id])).join("\n") : "";
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
   <p class="plead">${esc(PROOF_LEAD)}</p>
-  ${evidenceMapHtml()}
-  ${evidenceWallHtml()}
-  ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
-  ${verifyCalloutHtml()}
+  ${archHtml(wall)}
+  ${questionNavHtml()}
   <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>
-  ${guaranteesHtml()}
-  ${detailsFold("runs-fold", "Every live run, by partner", `${partnerStripHtml(undefined, liveRunCount())}
-  <p class="pawx" data-rec="${esc(LIVE_FX_RECORD)}"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>
-  ${proofRunsHtml()}
-  ${awxLiveHtml()}`)}
-  ${detailsFold("details", "All the proof: partners, numbers and every check", `${worstCaseCardHtml()}
-  ${lifeVisual("wide")}
-  ${railsVisual("wide")}
-  <h2 class="sec">The partners</h2>
-  ${partnerCards(run)}
-  <div class="runline" data-rec="${esc(run.file)}"><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
-  <p class="split">${esc(SPLIT_LINE)}</p>
-  <div class="nums">${nums.map(tile).join("")}</div>
-  ${airi ? `<details class="deep"><summary>Visa Intelligent Commerce via Airwallex's Airi</summary><div class="awrb">${airi}</div></details>` : ""}
-  <details class="deep"><summary>Airwallex, read back</summary>${readBack(run)}</details>
-  <details class="deep"><summary>Every check</summary>${checkItYourself()}${moreCards(run)}</details>
-  <details class="deep"><summary>Why this is a company</summary>${vaultTree()}${whyCompanyHtml()}</details>
+  <div class="pqs" id="evidence">
+  ${sections}
+  </div>
+  ${deep("Why this is a company", `${vaultTree()}${whyCompanyHtml()}`)}
   ${archiveFold(run)}
-  ${lifeVisual("tall")}
-  ${railsVisual("tall")}
-  ${ciChecksHtml()}`)}
   <nav class="util" aria-label="More from this run"><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a><a class="open" href="${esc(`${REPO_BLOB}${PROOF_INDEX_FILE}`)}" target="_blank" rel="noopener">${icon("file-text", 14)}${esc(PROOF_INDEX_LINK)}&nbsp;↗</a></nav>
 </div></main>`;
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS + PFACTS_CSS + EVIDENCE_WALL_CSS + evidenceMapCss(), body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
+    title: "Purser · Proof", description: PROOF_DESCRIPTION, tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS + PFACTS_CSS + EVIDENCE_WALL_CSS + archCss() + PROOF_QUESTIONS_CSS + PROOF_CHARTS_CSS + COMMANDS_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

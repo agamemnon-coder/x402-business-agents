@@ -12,9 +12,14 @@
 // value; then the scale band, each figure as src/redesign/scale.ts computes it, each a link to its source. Home makes no request after it has loaded. Every link, button, fold header and field in <main> is at least
 // 44 px high. On a phone the first two screens show one date, the card's due date, and say "test money". On a wide
 // screen the heading's two sentences are two lines. Every expected value is read from the records, not typed here.
+// 20 Nov (the owner: "Purser Cloud becomes the company's product"): the hero's buttons are Try, the film and "Start a
+// pilot" (to how to start on Home); the hero shows the explainer of the money flow (src/redesign/moneyFlow.ts), read from
+// /try's two proof files, which stands still under reduced motion; the product card moved to the 60-second proof, whose
+// sponsor tracks link /airwallex, /visa and /alta.
 import type { Page } from "playwright";
 import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
-import { FILM_BUTTON, homeStats, START, VERIFY_BUTTON, VERIFY_URL, WHATS_REAL } from "../../src/redesign/home.js";
+import { FILM_BUTTON, homeStats, PILOT_BUTTON, START, START_ID, WHATS_REAL } from "../../src/redesign/home.js";
+import { MONEY_FLOW_RECORDS, MONEY_FLOW_STEPS, moneyFlowFacts } from "../../src/redesign/moneyFlow.js";
 import { FILM_URL } from "../../src/config/brand.js";
 import { agentRun } from "../../src/redesign/run.js";
 import { homeScaleStats } from "../../src/redesign/scale.js";
@@ -45,13 +50,25 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   // One story: the hero's two buttons, Try then Proof (the product tour was first for part of 13 Nov, then removed), the
   // first in the first screen with its one line under it.
   const ctas = await page.locator("main .e-hero .ctas a.btn").evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").trim() })));
-  // 15 Nov (clarity): Try it in 2 minutes, then the film and "Verify a payment yourself" (/verify, live since #364).
-  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, FILM_URL, VERIFY_URL])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref}, the film and ${VERIFY_URL}`);
-  if (ctas[0]?.text !== START || ctas[1]?.text !== FILM_BUTTON || ctas[2]?.text !== VERIFY_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}", "${FILM_BUTTON}" and "${VERIFY_BUTTON}"`);
+  // 15 Nov (clarity): Try it in 2 minutes, then the film; 20 Nov (the owner): then "Start a pilot", to how to start.
+  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, FILM_URL, `#${START_ID}`])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref}, the film and #${START_ID}`);
+  if (ctas[0]?.text !== START || ctas[1]?.text !== FILM_BUTTON || ctas[2]?.text !== PILOT_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}", "${FILM_BUTTON}" and "${PILOT_BUTTON}"`);
   if ((await page.locator("main .e-hero .ctas a.btn.primary").count()) !== 1) fail("the hero has not exactly one primary button");
   const first = await page.locator("main p.reassure").boundingBox();
   if (!first || first.y + first.height > o.height) fail("the first button and its reassurance line are not in the first screen");
-  if (await page.locator('main a[href="watch"], [data-stage], main a[href="visa"]').count()) fail("a Watch link, a replay stage, or a third way out is back in Home's main part");
+  // The sponsor tracks link /visa since 20 Nov (the owner); the replay and its stage stay off Home.
+  if (await page.locator('main a[href="watch"], [data-stage]').count()) fail("a Watch link or a replay stage is back in Home's main part");
+
+  // The explainer: in the hero, named by its two records, its four steps and the changed cent in sight.
+  const mx = page.locator("main .e-hero figure.mx");
+  if ((await mx.count()) !== 1) fail("the hero has no explainer of the money flow");
+  else {
+    if ((await mx.getAttribute("data-rec")) !== MONEY_FLOW_RECORDS.join(" ")) fail(`the explainer does not name ${MONEY_FLOW_RECORDS.join(" ")}`);
+    const said = squash(await mx.innerText());
+    const facts = moneyFlowFacts();
+    for (const v of [...MONEY_FLOW_STEPS, facts?.amount ?? "?", `${facts?.signed}…`, ...(facts?.cent ? [`${facts.cent.sent}…`, "Signature breaks. Nothing paid."] : [])]) if (!said.includes(v)) fail(`the explainer does not show "${v}"`);
+    if (await mx.evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1 || e.getBoundingClientRect().left < -1)) fail("the explainer runs off the screen");
+  }
 
   // The card: once, named by its record, its five steps, and every value the record holds.
   const card = page.locator("main figure.hf");
@@ -75,7 +92,8 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   await o.shot?.("card");
 
   // "What's real?" opens the footer's fold of the same name.
-  const real = page.locator("main a[data-real]");
+  // The explainer's caption and the card's note both link it (20 Nov); the first, in the hero.
+  const real = page.locator("main a[data-real]").first();
   if ((await real.innerText()).trim() !== WHATS_REAL) fail(`the card's note does not link "${WHATS_REAL}"`);
   await (o.touch ? real.tap() : real.click());
   await page.waitForTimeout(300);
@@ -132,5 +150,9 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
     await still.waitForTimeout(1500);
     const b = await still.locator("main figure.hf").boundingBox();
     if (JSON.stringify(a) !== JSON.stringify(b)) fail("with reduced motion the card still moves");
+    // The explainer too: no animation runs, the dot is hidden, the refusal's panel is in sight.
+    const moving = await still.locator("main figure.mx").evaluate((f) => [...f.querySelectorAll("*")].filter((e) => getComputedStyle(e).animationName !== "none").length);
+    if (moving) fail(`with reduced motion ${moving} part(s) of the explainer still animate`);
+    if (await still.locator("main figure.mx .mx-dot").isVisible()) fail("with reduced motion the explainer's dot shows");
   } finally { await still.close(); }
 }

@@ -19,6 +19,10 @@ import { NOT_IN_BAND } from "./scale.js";
 import { soakHashReadbacks, soakTotals, soaks } from "../airwallex/soakRecords.js";
 import type { EvidenceWall, WallGroup, WallTile } from "./evidenceWall.js";
 import { verifyInclusion, type ProofStep } from "../anchor/merkle.js";
+import { t0CloseFacts } from "./t0CloseTile.js";
+import { T0_JOURNAL_RECORD, t0Journal } from "./t0Page.js";
+import { T0_READBACK_FILE } from "../accounting/t0Readback.js";
+import { newestDate } from "../proof/recordDate.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const has = (p: string) => existsSync(new URL(p, ROOT));
@@ -139,6 +143,16 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
   if (rv?.matched?.outcome === "MATCHED" && rv.link?.active_after === false) out.push({ offProof: true, key: "awx-receivable", fig: `${rv.invoice.currency} ${(rv.invoice.amount_cents / 100).toFixed(2)}`, label: "invoice matched from a Global Account's statement; its payment link switched off", note: `Bank transfer by the sandbox's simulation${d1?.ran_at ? `, ${day(d1.ran_at)}` : ""}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-deep.md"), rec: DEEP[0] });
   const rk = d3?.facts?.revoke;
   if (rk?.validated && rk.before === "SCHEDULED" && rk.after === "CANCELLED") out.push({ offProof: true, key: "awx-revoke", fig: "EUR 1.00", label: "scheduled payment cancelled at Airwallex before its day", note: `Terms checked by Airwallex first; no passkey${d3?.ran_at ? `; ${day(d3.ran_at)}` : ""}.`, tag: "sandbox", tone: "awx", href: blob("docs/runs/2026-11-19-airwallex-deep-3.md"), rec: DEEP[1] });
+  // 21 Nov (the owner: /proof organised by the questions a judge asks; T:0 is one of the rails): the newest T:0 record
+  // that read anything, the read-back of 14 Nov, run through Purser's close check (./t0CloseTile.ts). The later read of
+  // T:0's reports (19 Nov) was refused by T:0 and is said in the note; the figure's day stays the read-back's.
+  const t0 = t0CloseFacts();
+  if (t0?.check.expected) {
+    const T0_BLOCKED = "docs/runs/2026-11-19-t0-reports.json";
+    const blocked = (json(T0_BLOCKED) as { read_at?: string; blocked?: { status: number } } | null)?.blocked ? json(T0_BLOCKED) as { read_at?: string; blocked: { status: number } } : null;
+    const posted = t0Journal(has(T0_JOURNAL_RECORD) ? readFileSync(new URL(T0_JOURNAL_RECORD, ROOT), "utf8") : null)?.day;
+    out.push({ key: "t0-readback", fig: whole(t0.check.matched, t0.check.expected), label: t0.check.agrees ? "Purser's journal entries read back from T:0, every account to the cent" : "Purser's journal entries read back from T:0; the close check found differences", note: `T:0's shared sandbox entity, test data: ${posted ? `posted ${posted}, ` : ""}read back ${day(t0.readAt)}, read only.${blocked?.read_at ? ` A later read of T:0's reports, ${day(blocked.read_at)}, was refused by T:0 (HTTP ${blocked.blocked.status}); nothing read.` : ""}`, tag: "sandbox", tone: "", href: blob(T0_READBACK_FILE.replace(/\.json$/, ".md")), rec: [T0_READBACK_FILE, T0_READBACK_FILE.replace(/\.json$/, ".md"), ...(posted ? [T0_JOURNAL_RECORD] : []), ...(blocked ? [T0_BLOCKED] : [])].join(" "), asOf: t0.readAt.slice(0, 10) });
+  }
   return out;
 }
 
@@ -289,16 +303,20 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
     const p = v9.totals.purser_script, n = v9.totals.no_rules, a = v9a.totals.purser_script;
     out.push({ offProof: true, key: "eval-v9", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v9): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v9.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}; ${p.cfo_not_needed} sent to the CFO that could have been paid alone. Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v9.md"), rec: V9 });
   }
-  // Eval v10 (20 Nov): 129 held-out invoices written after the fixes that followed v9, committed alone with their
-  // pre-registration before the run (src/cli/adversarialV10.ts). The one eval tile on /proof (the owner, 20 Nov): the
-  // newest held-out run, its figure as recorded, with its false holds and what went to the CFO; the run after the fixes
-  // that followed it is said in the note, not held out.
-  const V10 = "docs/evals/adversarial-v10.json", V10_AFTER = "docs/evals/adversarial-v10-after.json";
-  const v10 = json(V10) as { held_out?: boolean; cases_commit?: string; totals?: AdvCfo } | null;
-  const v10a = json(V10_AFTER) as { held_out?: boolean; totals?: AdvCfo } | null;
-  if (v10?.held_out && v10.totals?.purser_script && v10.totals.no_rules) {
-    const p = v10.totals.purser_script, n = v10.totals.no_rules, a = v10a && !v10a.held_out ? v10a.totals?.purser_script : undefined;
-    out.push({ key: "eval-v10", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v10): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v10.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}; ${p.to_cfo_not_held} sent to the CFO that had to be held, ${p.cfo_not_needed} that could have been paid alone.${a ? ` Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds.` : ""} Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v10.md"), rec: a ? `${V10} ${V10_AFTER}` : V10 });
+  // Evals v10 to v14 (20 Nov): held-out sets written each after the fixes that followed the one before, committed alone
+  // with their pre-registration before the run (src/cli/adversarialV10.ts, src/evals/adversarialRound.ts). One eval tile
+  // on /proof (the owner, 20 Nov): the newest held-out run, its figure as recorded, with its false holds and what went to
+  // the CFO; the run after the fixes that followed it, when there is one, is said in the note, not held out. The older
+  // rounds stay on the wall's record, off /proof.
+  const ROUNDS = [10, 11, 12, 13, 14].filter((v) => (json(`docs/evals/adversarial-v${v}.json`) as { held_out?: boolean } | null)?.held_out);
+  const newest = ROUNDS.at(-1);
+  for (const v of ROUNDS) {
+    const rec = `docs/evals/adversarial-v${v}.json`, after = `docs/evals/adversarial-v${v}-after.json`;
+    const r = json(rec) as { held_out?: boolean; cases_commit?: string; totals?: AdvCfo } | null;
+    const ra = json(after) as { held_out?: boolean; totals?: AdvCfo } | null;
+    if (!r?.totals?.purser_script || !r.totals.no_rules) continue;
+    const p = r.totals.purser_script, n = r.totals.no_rules, a = ra && !ra.held_out ? ra.totals?.purser_script : undefined;
+    out.push({ ...(v === newest ? {} : { offProof: true }), key: `eval-v${v}`, fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v${v}): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${r.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}; ${p.to_cfo_not_held} sent to the CFO that had to be held, ${p.cfo_not_needed} that could have been paid alone.${a ? ` Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds.` : ""} Offline.`, tag: "test", tone: "claude", href: blob(`docs/evals/adversarial-v${v}.md`), rec: a ? `${rec} ${after}` : rec });
   }
 
   // 20 Nov: the newest red-team run is the full suite's re-run: every scripted attack and every earlier attempt a
@@ -438,6 +456,20 @@ function quality(): WallTile[] {
   const RV = "docs/evidence/release-v1.2.0.json";
   const rv = json(RV) as { attestations?: unknown[]; release?: string } | null;
   if (rv?.attestations?.length && rv.release) out.push({ key: "supply-chain", fig: "v1.2.0", label: "release signed: SLSA provenance and SBOM attested", note: `${rv.attestations.length} Sigstore-signed attestations on the source archive, read back from GitHub; check with gh attestation verify.`, tag: "ci", tone: "ok", href: rv.release, rec: RV });
+  // 21 Nov (the owner: "Is it engineered well?" as one of /proof's questions): test coverage, as measured, and the
+  // formal proofs, each from its committed record.
+  const CV = "docs/evidence/coverage.json";
+  type Pct = { statements: { pct: number }; branches: { pct: number } };
+  const cv = json(CV) as { measured_on?: string; scopes?: { product?: { before?: Pct; after?: Pct } } } | null;
+  const prod = cv?.scopes?.product;
+  if (prod?.after) out.push({ key: "coverage", fig: `${prod.after.statements.pct}%`, label: `of the product's statements covered by tests; branches ${prod.after.branches.pct}%`, note: `V8 coverage over src, cloud/src and worker/src${cv?.measured_on ? `, ${day(`${cv.measured_on}T12:00:00Z`)}` : ""}.${prod.before ? ` The previous coverage run: ${prod.before.statements.pct}% of statements, ${prod.before.branches.pct}% of branches.` : ""}`, tag: "measured", tone: "ok", href: blob("docs/evidence/coverage.md"), rec: CV });
+  const FP = "docs/evidence/formal-proofs.json";
+  const fp = json(FP) as { date?: string; totals?: { verified: number; errors: number; lemmas: number; files: number } } | null;
+  if (fp?.totals?.verified) out.push({ key: "formal-dafny", fig: String(fp.totals.verified), label: `Dafny proof obligations verified, ${fp.totals.errors} errors`, note: `${fp.totals.lemmas} lemmas in ${fp.totals.files} files about the code that guards money: the signed terms' bytes, cents and amounts${fp.date ? `; ${day(`${fp.date}T12:00:00Z`)}` : ""}. npm run formal:dafny runs them again.`, tag: "check", tone: "ok", href: blob("docs/evidence/formal-proofs.md"), rec: FP });
+  const FM = "docs/evidence/formal-model.md";
+  const fm = has(FM) ? readFileSync(new URL(FM, ROOT), "utf8") : "";
+  const states = /\*\*([\d,]+) distinct states\*\*/.exec(fm)?.[1], planted = /\| Planted bugs \| (\d+) of (\d+) caught/.exec(fm), noError = /\| Result \| \*\*No error\.\*\*/.test(fm);
+  if (states && noError) out.push({ key: "formal-tla", fig: states, label: "states of the payment model checked by TLC: no error", note: `A TLA+ model of paying an invoice over Airwallex, every state within its bound: never paid twice, never unsigned among its invariants${planted ? `; ${whole(Number(planted[1]), Number(planted[2])).toLowerCase()} planted bugs caught` : ""}. The model, not the code. npm run formal runs it again.`, tag: "check", tone: "ok", href: blob(FM), rec: FM });
   return out;
 }
 
@@ -474,7 +506,10 @@ export function evidenceWall(records: LiveTryRecord[] = wallWalks()): EvidenceWa
     { id: "ev-built", title: "Built to last", tiles: built() },
     { id: "ev-quality", title: "Quality and supply chain", tiles: quality() },
     { id: "ev-scale", title: "The public /try, timed", tiles: scale(w) },
-  ].filter((g) => g.tiles.length);
+  ].filter((g) => g.tiles.length)
+    // 21 Nov (the owner: "every figure shows its date"): each tile's day, the newest of the records it names, unless the
+    // tile says its own (a tile whose later record read nothing).
+    .map((g) => ({ ...g, tiles: g.tiles.map((t) => ({ ...t, asOf: t.asOf === undefined ? newestDate(t.rec) : t.asOf })) }));
   return {
     what: "/proof's evidence wall: every figure read from the committed record its tile links to. Test money only; what was simulated is said on each tile.",
     made_by: "npm run evidence:wall (scripts/evidence-wall.ts, src/redesign/evidenceWallData.ts)",

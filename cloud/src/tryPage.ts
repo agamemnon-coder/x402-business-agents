@@ -2019,6 +2019,9 @@ screen('company',{heading:C.company.heading,draw(box){
   yes.addEventListener('click',()=>{clearTimeout(renewTimer);renewTimer=null;forget();show('start')});
   const runs=el('ul','runs');
   for(const r of C.recorded){const a=el('a','',[el('span','rt',r.title),el('span','rd',fill(Y.recorded,{date:r.date}))]);a.href=RUNS+'#'+r.key;a.rel='noopener';a.target='_blank';runs.append(el('li','',a))}
+  // 21 Nov (owner, judges on Monday): the product frame's finish (V2_COPY's company.fin): what this run paid and refused,
+  // each row from the engine's own records with its proof file, then the way into Purser Cloud; the rest folded.
+  if(Y.fin){finishV2(box,{fin,rails,more,records:el('div','records',[line,el('div','acts',[dl,json])]),again,ask,runs});return}
   box.append(done,...(costLine?[costLine]:[]),did,runScore(),el('div','acts next',[rails]),more,proofBand(),el('div','records',[line,el('div','acts',[dl,json])]),el('p','againl',again),ask,el('details','',[el('summary','',Y.runs),runs]));
   // Early access (hook, 14 Nov): no such link until the owner names the contact channel; then one more quiet link in
   // "more", never a form, and nothing collected on this page.
@@ -2033,6 +2036,64 @@ screen('company',{heading:C.company.heading,draw(box){
     const a=el('a');a.href=blobUrl(g.blob);a.download=g.name||(asJson?'purser-test-company.json':'purser-test-company-records.pdf');a.hidden=true;box.append(a);a.click();a.remove();
   }
 }});
+// The product frame's finish (21 Nov): one summary of the run, row by row from the engine's own records (this company's
+// invoices, and which payments Purser's code approved within the limit: the engine's proposal.within_limit events), the
+// signed payment and the refusal each with its proof file; then Purser Cloud (its demo company, read only); then the
+// details, folded. Nothing is assumed: a payment above the limit was signed (the engine pays nothing above it without the
+// passkey); one within it is called the agent's only when the engine's own event says so.
+function finishV2(box,P){
+  const F=C.company.fin;const B=booksKit;
+  const total=el('p','fin-total',el('span','sk-line'));total.setAttribute('aria-busy','true');
+  const rows=el('ol','fin-rows');
+  const verify=el('a','btn quiet verifyl',[el('span','',C.verifyYourself.verify),icon('external-link',14)]);verify.href=C.verifyYourself.url;verify.target='_blank';verify.rel='noopener';
+  const sum=el('section','fin-sum',[el('p','fin-eb',F.eyebrow),total,el('p','fin-sub',F.sub),rows,el('div','fin-acts',[verify])]);
+  const go=el('a','btn primary big fin-go',[el('span','',F.cloudGo),icon('arrow-up-right',18)]);go.href=C.finish.cloud;go.target='_blank';go.rel='noopener';
+  const own=el('a','fin-own',[el('span','',F.cloudOwn),icon('arrow-right',14)]);own.href=C.finish.start;own.target='_blank';own.rel='noopener';
+  const cloud=el('section','fin-cloud',[el('p','fc-eb',[icon('sparkles',14),el('span','',F.cloudEb)]),el('h2','',F.cloudH),el('p','fc-p',F.cloudP),
+    el('ul','fc-list',F.cloudItems.map((x)=>el('li','',[el('span','fc-ic',icon(x.icon,18)),el('span','fc-t',[el('b','',x.h),el('span','',x.p)])]))),
+    el('div','fc-acts',[go,own]),el('p','fc-note',F.cloudNote)]);
+  const hood=el('details','fin-hood',[el('summary','',F.hood),el('div','fin-hood-b',[el('div','acts next',[P.rails]),P.more,proofBand(),P.records,el('details','',[el('summary','',C.company.runs),P.runs])])]);
+  const sc=runScore();
+  box.append(sum,...(sc?[sc]:[]),cloud,hood,el('p','againl',P.again),P.ask);
+  const small=(bundle,cls)=>{const b=proofDl(bundle);if(!b)return null;b.replaceChildren(icon('download',14),el('span','',F.proof));b.classList.add('fin-proof');if(cls)b.classList.add(cls);return b};
+  const row=(kind,ic,title,who,amount,note,proof)=>{const li=el('li','fin-row '+kind,[el('span','fin-ic',icon(ic,18)),el('div','fin-what',[el('b','',title),el('span','fin-who',who),note?el('span','fin-note',note):null]),el('div','fin-amt',[el('span','fin-money',amount),proof])]);li.style.setProperty('--i',String(rows.childElementCount));return li};
+  // Every proposal.within_limit event of this company (a few pages at most); null when the events cannot be read.
+  const policy=(async()=>{const ids=new Set();let after=0;for(let n=0;n<10;n++){const r=await api('GET','/v1/engine/events?after='+after+'&limit=200');if(r.status!==200||!Array.isArray(r.json.items))return null;
+    for(const e of r.json.items)if(e&&e.event==='proposal.within_limit'&&typeof e.subject==='string')ids.add(e.subject);
+    if(r.json.items.length<200||typeof r.json.next!=='number'||r.json.next<=after)return ids;after=r.json.next}return ids})();
+  Promise.all([P.fin,policy]).then(([r,pol])=>{
+    if(S.screen!=='company')return;
+    total.removeAttribute('aria-busy');
+    if(r.status!==200||!Array.isArray(r.json.items)){total.textContent=C.company.donePlain;return}
+    const items=r.json.items.filter((i)=>i&&typeof i==='object').slice().sort((a,b)=>String(a.received_at||'').localeCompare(String(b.received_at||'')));
+    const signedProof=S.proof&&typeof S.proof==='object'?S.proof:null;const ref=S.refusedProof&&typeof S.refusedProof==='object'?S.refusedProof:null;
+    const paid={},refused={};const add=(o,cur,amt)=>{const c=B.toCents(amt);if(c!==null&&/^[A-Z]{3}$/.test(String(cur)))o[cur]=(o[cur]||0)+c};
+    let refShown=false;
+    const refRow=()=>{refShown=true;const t=ref.asked&&typeof ref.asked==='object'&&ref.asked.terms&&typeof ref.asked.terms==='object'?ref.asked.terms:{};const d=ref.decision&&typeof ref.decision==='object'?ref.decision:{};
+      add(refused,t.currency,t.amount);const made=Number(d.transfers_after)-Number(d.transfers_before);
+      const ch=Array.isArray(d.changed)?d.changed.filter((k)=>/^[a-z_0-9]{1,32}$/.test(k)).map((k)=>k.replace(/_/g,' ')):[];
+      rows.append(row('bad','ban',F.refused,fill(F.refusedWho,{what:ch.join(', ')||F.terms}),t.amount!==undefined?cash(String(t.currency||''),String(t.amount)):'',made===0?F.refusedNote:'',small(ref,'finishdl')))};
+    for(const inv of items){
+      const p=inv.proposal&&typeof inv.proposal==='object'?inv.proposal:null;
+      // A paid invoice with no payment proposal was not paid in this run: the test company's seeded original, paid before it started.
+      if(inv.status==='paid'&&!p)continue;
+      const who=[inv.vendor,inv.invoice_no].filter(Boolean).join(' · ');const amt=cash(inv.currency,inv.total);
+      if(inv.status==='paid'){add(paid,inv.currency,inv.total);
+        const lim=inv.alone_limit&&typeof inv.alone_limit==='object'?inv.alone_limit:null;const mine=!!(signedProof&&p&&signedProof.proposal_id===p.id);
+        const signed=mine||!!(p&&lim&&lim.within===false);
+        const alone=!signed&&!!(p&&pol&&pol.has(p.id));
+        rows.append(signed?row('ok','scan-face',F.signed,who,amt,lim?fill(F.signedNote,{limit:cash(lim.currency,lim.amount)}):'',mine?small(signedProof):null)
+          :alone?row('ok','circle-check',F.alone,who,amt,lim?fill(F.aloneNote,{limit:cash(lim.currency,lim.amount)}):'',null)
+          :row('ok','circle-check',F.paid,who,amt,'',null));
+        if(ref&&p&&ref.proposal_id===p.id)refRow();
+      }else rows.append(row('wait','clock',F.notPaid,who,amt,String(inv.status_words||''),null));
+    }
+    if(ref&&!refShown)refRow();
+    const sums=(o)=>Object.keys(o).sort().map((c)=>cash(c,B.fromCents(o[c]))).join(' + ');
+    const pt=sums(paid),rt=sums(refused);
+    total.replaceChildren(pt?el('span','ok',fill(F.totalPaid,{money:pt})):el('span','',F.nonePaid),...(rt?[el('span','sep','·'),el('span','bad',fill(F.totalRefused,{money:rt}))]:[]));
+  });
+}
 // The time from upload to paid, as people say it: 42 s, 1 min 42 s.
 const took=(ms)=>{const s=Math.max(1,Math.round(ms/1000));return s<60?s+' s':Math.floor(s/60)+' min'+(s%60?' '+(s%60)+' s':'')};
 

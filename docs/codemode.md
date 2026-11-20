@@ -93,7 +93,7 @@ this one.
 
 ## How to connect
 
-Make a Claude connector token in Purser Cloud (Settings, Connect Claude: a signed-in owner), then add a remote MCP
+Make a Claude connector token in Purser Cloud (Connections, Connect your AI: a signed-in owner), then add a remote MCP
 server at `https://<purser-cloud>/mcp/airwallex` with `Authorization: Bearer <token>`, or sign in by OAuth as for
 `/mcp`. The same tokens work at `/mcp` and `/mcp/airwallex`, nowhere else. The demo company's public token is refused
 here (the sandbox is not the demo company's data). Each token may make 20 requests a minute.

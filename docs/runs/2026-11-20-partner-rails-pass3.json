@@ -1,0 +1,155 @@
+{
+  "run": "2026-11-20-partner-rails",
+  "mode": "live",
+  "started_at": "2026-11-20T20:11:02.749Z",
+  "finished_at": "2026-11-20T20:11:24.267Z",
+  "code": "c184c474c819",
+  "labels": {
+    "test_money": true,
+    "airwallex": "Airwallex sandbox (api.sandbox.airwallex.com): test money; card charges are the sandbox's simulation endpoint (no merchant charged anything); the transfer is settled by the sandbox's simulation (SENT, then PAID)",
+    "alta": "Alta (formerly Metal) testnet, chain id 63825: test USD (*USDZ)",
+    "t0": "T:0's shared sandbox entity (\"T:0 Sandbox\", USD), through its customer API: other teams' entries are in it too",
+    "token": "A Purser token per agent, bound to a mandate from the CFO's policy and to the agent's own Airwallex Issuing card (a Visa card, sandbox). Not a Visa network token: no Visa Token Service or Airi credential was made in this run"
+  },
+  "tokens": [
+    {
+      "agent": "sourcing",
+      "token_id": "tok_4af76b4bf7e23ea5",
+      "token_last4": "c35f",
+      "card_last4": "6051",
+      "card_status_at_airwallex": "INACTIVE",
+      "mandate": {
+        "v": 1,
+        "agent": "sourcing",
+        "card_id": "29c779e4-907b-43e5-b420-2f5cffc1ac58",
+        "card_last4": "6051",
+        "currency": "EUR",
+        "per_purchase_cents": 3000,
+        "monthly_cents": 10000,
+        "mccs": [
+          "5734"
+        ],
+        "issued_at": "2026-11-20T20:11:06.937Z",
+        "expires_at": "2026-12-20T20:11:06.937Z",
+        "source": "the CFO's policy for the sourcing agent (card.sourcing.per_tx, card.sourcing.monthly) and its card's merchant categories"
+      },
+      "mandate_sha256": "7019c1ec78d9dfb8eab84e762f3dce8c90f05d7c764d817889b76d97d8357fc3",
+      "status_at_end": "active"
+    },
+    {
+      "agent": "support",
+      "token_id": "tok_94e5a1c2f4636f23",
+      "token_last4": "8e64",
+      "card_last4": "2361",
+      "card_status_at_airwallex": "INACTIVE",
+      "mandate": {
+        "v": 1,
+        "agent": "support",
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_last4": "2361",
+        "currency": "EUR",
+        "per_purchase_cents": 6000,
+        "monthly_cents": 15000,
+        "mccs": [
+          "7372"
+        ],
+        "issued_at": "2026-11-20T20:11:07.256Z",
+        "expires_at": "2026-12-20T20:11:07.256Z",
+        "source": "the CFO's policy for the support agent (card.support.per_tx, card.support.monthly) and its card's merchant categories"
+      },
+      "mandate_sha256": "4130d7e7094be4eecf515d08e394689abe6fca264f3b5fc56de02134cd05b7f5",
+      "status_at_end": "active"
+    }
+  ],
+  "payments": [
+    {
+      "key": "a",
+      "what": "the sourcing agent's token pays Packwise EUR 1.00 (warehouse software, MCC 5734)",
+      "token_id": "tok_4af76b4bf7e23ea5",
+      "airwallex_status": "PENDING",
+      "card_last4": "6051",
+      "terms_what": "the token's mandate (SHA-256)",
+      "rail": "airwallex_card",
+      "rail_ref": "7b740b76-ecc1-4000-97b8-3e46c4ce3a31",
+      "amount": "1.00",
+      "currency": "EUR",
+      "agent": "sourcing",
+      "terms_sha256": "7019c1ec78d9dfb8eab84e762f3dce8c90f05d7c764d817889b76d97d8357fc3",
+      "counterparty": "Packwise",
+      "description": "Packwise: warehouse software, paid with the sourcing agent's token tok_4af76b4bf7e23ea5",
+      "gl_account": "6100",
+      "cost_centre": "CC100",
+      "settled_at": "2026-11-20T20:11:13.014Z",
+      "t0": {
+        "status": "booked",
+        "t0_id": "je_prod_5mdfU6jvatSJ4pc8",
+        "je_number": "PURPAY-ae1c6a836ccaebf07c0e4ba4",
+        "booked_at": "2026-11-20T20:11:13.897Z",
+        "ms_after_settled": 883,
+        "t0_account": "63410",
+        "functional": {
+          "currency": "USD",
+          "amount": "1.09",
+          "rate": 1.085653
+        }
+      }
+    },
+    {
+      "key": "b",
+      "what": "the support agent's token pays Replyhub EUR 1.25 (helpdesk software, MCC 7372)",
+      "token_id": "tok_94e5a1c2f4636f23",
+      "airwallex_status": "PENDING",
+      "card_last4": "2361",
+      "terms_what": "the token's mandate (SHA-256)",
+      "rail": "airwallex_card",
+      "rail_ref": "e70fc97a-5945-47a6-98cc-e8361d094820",
+      "amount": "1.25",
+      "currency": "EUR",
+      "agent": "support",
+      "terms_sha256": "4130d7e7094be4eecf515d08e394689abe6fca264f3b5fc56de02134cd05b7f5",
+      "counterparty": "Replyhub",
+      "description": "Replyhub: helpdesk software, paid with the support agent's token tok_94e5a1c2f4636f23",
+      "gl_account": "6100",
+      "cost_centre": "CC200",
+      "settled_at": "2026-11-20T20:11:20.867Z",
+      "t0": {
+        "status": "booked",
+        "t0_id": "je_prod_cNtHvaCfpabiiis3",
+        "je_number": "PURPAY-6c3747ac114fb81eadb61380",
+        "booked_at": "2026-11-20T20:11:22.229Z",
+        "ms_after_settled": 1362,
+        "t0_account": "63410",
+        "functional": {
+          "currency": "USD",
+          "amount": "1.36",
+          "rate": 1.085653
+        }
+      }
+    }
+  ],
+  "refusals": [],
+  "revoke": null,
+  "reconcile": null,
+  "calls": {
+    "airwallex": 17,
+    "t0": 8,
+    "alta_txs": 0
+  },
+  "checks": [
+    {
+      "key": "a_card_refrozen",
+      "ok": true,
+      "detail": "the sourcing agent's card after the purchase: INACTIVE"
+    },
+    {
+      "key": "b_card_refrozen",
+      "ok": true,
+      "detail": "the support agent's card after the purchase: INACTIVE"
+    }
+  ],
+  "notes": [
+    "Two earlier passes the same evening, each with its own record beside this one. Pass 1 (20:09 UTC, 2026-11-20-partner-rails-pass1.json) made the same four payments, booked each in T:0 (je_prod_7fKlf0yRwDEyD5Pa, je_prod_hHZTsSOo4zZa31Y0, je_prod_ooFq5BjpOst2hAOj, je_prod_1UL89I7V9TyCb1IT), refused the same misuses and reconciled, but timed each booking from before the T:0 call instead of after T:0's answer. Pass 2 (2026-11-20-partner-rails-pass2.json) booked its two card payments (je_prod_1UvG58AZh2tl28ob, je_prod_pY5WM9wYSztUs4YR) and stopped when Airwallex refused the transfer as a duplicate request_id (the same terms as pass 1, so nothing was paid twice); the terms now carry the run's start. All their T:0 entries are in T:0.",
+    "EUR to USD for T:0's functional currency: 1.085653 (the Airwallex sandbox's client rate, GET /fx/rates/current, 2026-11-20T20:11:04+0000); each entry keeps the EUR amount beside it.",
+    "STOPPED: Airwallex /simulation/transfers/7cbc1f80-1930-4771-a6f2-67d24b87d78e/transition: no answer; outcome unknown"
+  ]
+}

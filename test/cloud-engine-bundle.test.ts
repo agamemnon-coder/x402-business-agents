@@ -107,9 +107,15 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // Then 19 Nov, night: the ASVS L2 fixes (security event log and alarms, scoped admin keys, single-use export links),
   // the multilingual payables checks (scripts, numerals, other-script vocabularies) and the PWA: 12,598,172 bytes in CI,
   // about 15 KB over 12 MB; the budget moves to 12.5 MB. The compressed size, which is what Cloudflare limits, stays under 3 MiB.
-  it("stays under 12.5 MB, and under 3 MB gzipped", () => {
+  // Then 20 Nov: Ask Purser, the public chat (cloud/src/ask/: its knowledge pack of the public docs, about 116 KB, its
+  // page, button and checks), about 170 KB on main at c184c474c (13,015,000): 13,183,189 bytes; the budget moves to
+  // 12.75 MB. The compressed size, which is what Cloudflare limits, stays under 3 MiB (checked below).
+  // Then 20 Nov, later: the partner view (Airwallex, Visa via Airi, Alta), Apple Wallet passes for agent cards, T:0
+  // booking at payment, agent tokens, the console's charts and the partners' logos: 13,414,626 bytes, about 45 KB over
+  // 12.75 MB; the budget moves to 13 MB. The compressed size, which is what Cloudflare limits, stays under 3 MiB.
+  it("stays under 13 MB, and under 3 MB gzipped", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
-    expect(bytes).toBeLessThan(12.5 * 1024 * 1024);
+    expect(bytes).toBeLessThan(13 * 1024 * 1024);
     expect(gzipped).toBeLessThan(3 * 1024 * 1024);
   });
 });

@@ -80,7 +80,7 @@ Award. The long text, with Airwallex, Alta, Claude, the controls and the other l
 
 **What's real.** Test money. Simulated: customer, supplier, settlement, second approver. Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated
 
-**Links.** https://kit11.max-31b.workers.dev/proof · https://youtu.be/PNLuqhRzVfE · https://github.com/agamemnon-coder/x402-business-agents
+**Links.** https://kit11.max-31b.workers.dev/proof · https://youtu.be/gEUm8RlhZac · https://github.com/agamemnon-coder/x402-business-agents
 <!-- /description -->
 
 ## Instructions
@@ -96,9 +96,8 @@ Award. The long text, with Airwallex, Alta, Claude, the controls and the other l
    - Proof: <https://kit11.max-31b.workers.dev/proof> has every id from the main run, the Alta ones checkable on
      Alta's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
      Commerce via Airwallex's Airi (4 runs, 7 to 14 November; Airwallex sandbox, test card, test money; 6 paid; a reused
-     credential refused by Purser): <https://kit11.max-31b.workers.dev/visa>. The film, "Purser, under the hood" (3:29):
-     <https://youtu.be/PNLuqhRzVfE>. The 90-second trailer:
-     <https://youtu.be/n3HLVGROJc4>. The replay of the main run of 3 November (three Claude agents, a price
+     credential refused by Purser): <https://kit11.max-31b.workers.dev/visa>. The demo (3:15), this entry's video:
+     <https://youtu.be/gEUm8RlhZac>. The replay of the main run of 3 November (three Claude agents, a price
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
    - Purser Cloud as a guest: <https://purser-try.max-31b.workers.dev/>, then *Try as guest*: the demo company (made-up
      data, test money) with its Agents, Invoices and Tokenisation tabs. Approval alerts by
@@ -128,8 +127,9 @@ For the long form text and the jury: the Starter Kit 11 brief's flow ("x402 Busi
 
 ## Links
 
-- Trailer (90 s; an AI-generated voice over AI-generated music, ElevenLabs): <https://youtu.be/n3HLVGROJc4>
-- Film, "Purser, under the hood" (3:29): <https://youtu.be/PNLuqhRzVfE>
+- The demo (3:15), this entry's video: <https://youtu.be/gEUm8RlhZac>
+- Earlier videos: the film, "Purser, under the hood" (3:29): <https://youtu.be/PNLuqhRzVfE>; the trailer (90 s; an
+  AI-generated voice over AI-generated music, ElevenLabs): <https://youtu.be/n3HLVGROJc4>
 - Live: <https://kit11.max-31b.workers.dev/>
 - Try it yourself: <https://kit11.max-31b.workers.dev/try>: a test company of your own, a sample invoice read by
   Claude, your passkey on the exact terms, paid on a simulated bank and booked; change what you signed: refused.

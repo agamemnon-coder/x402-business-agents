@@ -1,3 +1,7 @@
+// Home leads with Purser Cloud (the owner, 20 Nov: "Purser Cloud becomes the company's product"): what it is for a
+// company, an explainer of the money flow (src/redesign/moneyFlow.ts, read from /try's two proof files), how to start
+// (try it, look around as a guest, run a pilot), then the 60-second proof judges need (the demo, /try, /proof, /verify,
+// one real /try run and the three sponsor tracks, each with its record). Below that, as before:
 // Home: ONE story (home-story, 12 Nov, after seven jurors judged the live site). Top to bottom: the heading and what
 // Purser is in one sentence; one button ("Try it yourself") with one reassurance line; the sentence every juror repeated
 // (now carried by the demo); the hero, which is also "how it works" in four steps and whose fourth step is the visitor's own
@@ -7,9 +11,10 @@
 // amount and date is read from the run records (docs/demo/airwallex-run.json, docs/demo/main-run.json) and the hero's
 // receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
+import { readFileSync } from "node:fs";
 import { AWX_HOME_BADGE_CSS, awxHomeBadgeHtml } from "./awxLive.js";
 import { VISA_REUSE_ID } from "./visaStory.js";
-import { AWX_HOME_LINE, FILM_URL, IDEA, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { AWX_HOME_LINE, FILM_LINK, FILM_URL, IDEA, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, payments, split, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -23,7 +28,8 @@ import { homeScaleStats, SCALE_CSS, SCALE_SOURCES } from "./scale.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
 import { SITE_URL } from "../ui/meta.js";
-import { NEGOTIATE_URL } from "../ui/more.js";
+import { NEGOTIATE_URL, PURSER_CLOUD_URL } from "../ui/more.js";
+import { MONEY_FLOW_CSS, MONEY_FLOW_RECORDS, moneyFlowFacts, moneyFlowHtml } from "./moneyFlow.js";
 import { ASSET_VERSIONS, versioned, type VersionedAsset } from "../ui/assetVersions.js";
 
 /** The hub of every connection Purser has, each labelled, with a quickstart (docs/integrations/README.md); in Home's footer. */
@@ -31,15 +37,15 @@ export const CONNECT_HUB_DOC = "docs/integrations/README.md", CONNECT_HUB_LABEL 
 
 const CSS = `/* Home, enterprise pass (the owner, 12 Nov): an 8 px grid, 1120 px wide, neutral greys and one accent. */
 main.ent .wrap { max-width: 1120px; }
-main.ent section { padding: 96px 0; border-top: 1px solid var(--border); }
-main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
+main.ent section { padding: 112px 0; border-top: 1px solid var(--border); }
+main.ent section.e-hero { padding: 88px 0 72px; border-top: 0; }
 .eyebrow { margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 .e-h { margin: 0; font-size: clamp(28px, 3.2vw, 40px); line-height: 1.15; font-weight: 760; letter-spacing: -.02em; max-width: 22em; }
 .e-sub { margin: 16px 0 0; font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 36em; }
 /* The hero: words and buttons on the left, the product card on the right. */
 .e-hero .wrap { display: grid; gap: 48px; align-items: center; }
 .e-hero .h-hero { font-size: clamp(40px, 5vw, 60px); line-height: 1.04; letter-spacing: -.03em; } .e-hero .h-hero span { display: block; }
-@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 56px; } .e-hero .h-hero { font-size: clamp(44px, 4vw, 54px); } .e-hero .h-hero span { white-space: nowrap; } }
+@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 460px); gap: 56px; } .e-hero .h-hero { font-size: clamp(44px, 4vw, 54px); } .e-hero .h-hero span { white-space: nowrap; } }
 .e-hero .what { margin: 24px 0 0; font-size: 20px; line-height: 1.5; color: var(--muted); max-width: 30em; }
 .ctas { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
 .btn.big { height: 56px; font-size: 17px; padding: 0 28px; }
@@ -130,7 +136,133 @@ p.next { margin: 24px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44
 }
 section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .sechead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
-.sechead .pill { white-space: normal; }`;
+.sechead .pill { white-space: normal; }
+/* Purser Cloud first (the owner, 20 Nov): the product's name over the heading. */
+.e-hero p.cloud { margin: 0 0 16px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); letter-spacing: .06em; }
+.e-hero p.cloud .i { flex: none; }
+/* On a phone the two secondary buttons share a row under the primary one, so the line under them stays on a 360 x 780
+   first screen with the product's name above the heading. */
+@media (max-width: 640px) {
+  .ctas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  .ctas .btn.primary { grid-column: 1 / -1; }
+  .ctas .btn.ghost { padding: 0 8px; font-size: 15px; gap: 6px; }
+  .e-hero p.cloud { margin-bottom: 12px; padding: 4px 10px; font-size: 12px; }
+}
+/* The proof line's figures rise in once, on load, by a wipe: every frame shows the record's own figure in its own colours. */
+.proofl a b { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .proofl a b { animation: fig-in .7s cubic-bezier(.2, .7, .2, 1) both; }
+  .proofl a:nth-of-type(2) b { animation-delay: .12s; } .proofl a:nth-of-type(3) b { animation-delay: .24s; }
+}
+@keyframes fig-in { from { clip-path: inset(0 0 100% 0); transform: translateY(6px); } to { clip-path: inset(0 0 0 0); transform: none; } }
+/* How to start: three cards, the third the pilot. */
+ol.starts { list-style: none; margin: 40px 0 0; padding: 0; display: grid; gap: 16px; counter-reset: st; }
+@media (min-width: 900px) { ol.starts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; } }
+ol.starts > li { counter-increment: st; display: flex; flex-direction: column; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+ol.starts > li.pilot { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 12px 32px -16px rgba(79, 70, 229, .35); }
+ol.starts .sh { display: flex; align-items: center; gap: 12px; }
+ol.starts .sh::before { content: counter(st); width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 14px; font-weight: 750; }
+ol.starts li.pilot .sh::before { background: var(--accent); color: var(--surface); }
+ol.starts b { font-size: 18px; font-weight: 720; letter-spacing: -.01em; }
+ol.starts p.st { margin: 12px 0 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
+ol.starts .go { margin-top: auto; padding-top: 12px; display: flex; flex-wrap: wrap; column-gap: 18px; }
+ol.starts .go a, ol.starts p.partner a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+ol.starts .go a:hover, ol.starts p.partner a:hover { text-decoration: underline; }
+ol.starts p.partner { margin: 0; }
+/* The 60-second proof: four numbered ways in beside one real /try run, then the sponsor tracks. */
+.pathgrid { margin: 40px 0 0; display: grid; gap: 32px; align-items: start; }
+@media (min-width: 1040px) { .pathgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 56px; } }
+ol.path { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+ol.path a { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 14px; align-items: center; min-height: 64px; padding: 12px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); text-decoration: none; transition: border-color .2s ease, transform .2s ease; }
+ol.path a:hover { border-color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { ol.path a:hover { transform: translateX(2px); } }
+ol.path .pn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 750; }
+ol.path li:first-child .pn { background: var(--accent); color: var(--surface); }
+ol.path b { display: block; font-size: 17px; font-weight: 700; } ol.path small { display: block; font-size: 14px; color: var(--muted); }
+ol.path .i { color: var(--accent); }
+h3.h-tracks { margin: 56px 0 0; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+ul.tracks { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 16px; }
+@media (min-width: 900px) { ul.tracks { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; } }
+ul.tracks li { display: flex; flex-direction: column; padding: 20px 24px 12px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+ul.tracks a.trk { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 19px; font-weight: 740; color: var(--text); text-decoration: none; letter-spacing: -.01em; }
+ul.tracks a.trk .i { color: var(--accent); } ul.tracks a.trk:hover { color: var(--accent); }
+ul.tracks p { margin: 4px 0 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
+ul.tracks a.rec { margin-top: auto; padding-top: 4px; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 14px; color: var(--accent); font-weight: 650; text-decoration: none; }
+ul.tracks a.rec code { font-family: var(--mono, ui-monospace, monospace); font-size: 13px; }
+ul.tracks a.rec:hover { text-decoration: underline; }
+.e-path .x402l { margin-top: 24px; }
+/* The refined pass (the owner, 20 Nov: "clean and enterprise-grade: fewer elements, more whitespace, one strong hero").
+   The proof line is a quiet strip of three figures under one label; the hero's three buttons are one row on a wide
+   screen; the partners' row is one slim line under the whole hero; the product card in the 60-second proof stands
+   still in its final state, so the explainer is the one thing that moves. */
+.proofl { margin: 32px 0 0; display: grid; grid-template-columns: repeat(3, auto); justify-content: start; align-items: stretch; max-width: none; line-height: 1.3; }
+.proofl .lead { grid-column: 1 / -1; margin-bottom: 10px; font-size: 12.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.proofl .dot { display: none; }
+.proofl a { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px; max-width: 13em; padding: 0 20px; border-left: 1px solid var(--border); font-size: 13.5px; color: var(--muted); text-decoration: none; white-space: normal; }
+.proofl a:first-of-type { padding-left: 0; border-left: 0; }
+.proofl a b { font-size: 26px; line-height: 1.1; font-weight: 750; letter-spacing: -.02em; }
+.proofl a:hover b, .proofl a:focus-visible b { color: var(--accent); }
+.e-hero .ctas { margin-top: 36px; gap: 10px; }
+.e-hero .ctas .btn.big { height: 50px; padding: 0 16px; font-size: 15.5px; }
+.e-hero .trust { grid-column: 1 / -1; margin: 16px 0 0; padding-top: 28px; }
+@media (min-width: 1040px) { .e-hero .trust { flex-wrap: nowrap; gap: 12px; } .e-hero .trust span:first-child { width: auto; margin-right: 12px; } .e-hero .trust small { width: auto; margin: 0 0 0 auto; } }
+.e-path .hf *, .e-path .hf .hf-steps li { animation: none !important; }
+p.ask { margin: 32px 0 0; font-size: 15.5px; color: var(--muted); }
+p.ask a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+p.ask a:hover { text-decoration: underline; }
+@media (max-width: 640px) {
+  .proofl { margin-top: 24px; grid-template-columns: repeat(3, minmax(0, 1fr)); } .proofl a { padding: 0 10px; font-size: 12.5px; max-width: none; } .proofl a b { font-size: 22px; } .e-hero .ctas { margin-top: 28px; }
+  .e-hero .ctas .btn.big { height: 48px; padding: 0 8px; font-size: 15px; } .e-hero .ctas .btn.primary { height: 54px; font-size: 16.5px; }
+}`;
+
+/* Built for agentic banking (the owner, 20 Nov): the agents as first-class actors, then six controls with their proof. */
+const AGENTIC_CSS = `
+div.roster { margin: 40px 0 0; }
+div.roster ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+@media (min-width: 900px) { div.roster ul { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; } }
+div.roster li { --ag: var(--accent); position: relative; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: 0 1px 2px rgba(16, 24, 40, .04); overflow: hidden; }
+div.roster li::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--ag); }
+div.roster li.ag-sourcing { --ag: var(--a-sourcing); } div.roster li.ag-support { --ag: var(--a-support); } div.roster li.ag-treasury { --ag: var(--a-treasury); }
+div.roster .ag-h { display: flex; align-items: center; gap: 10px; }
+div.roster .ag-i { width: 32px; height: 32px; flex: none; border-radius: 10px; display: grid; place-items: center; color: var(--ag); background: color-mix(in srgb, var(--ag) 14%, transparent); }
+div.roster .ag-h b { font-size: 17px; font-weight: 720; letter-spacing: -.01em; }
+div.roster .ag-card { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px; font-family: var(--mono, ui-monospace, monospace); font-size: 14px; color: var(--muted); }
+div.roster dl { margin: 18px 0 0; display: grid; grid-template-columns: repeat(3, auto); justify-content: start; column-gap: 12px; }
+div.roster dl div { min-width: 0; padding-left: 12px; border-left: 1px solid var(--border); } div.roster dl div:first-child { padding-left: 0; border-left: 0; }
+div.roster dt { font-size: 13px; color: var(--faint); }
+div.roster dd { margin: 2px 0 0; font-size: 15.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+div.roster p.rnote { margin: 14px 0 0; font-size: 14px; color: var(--faint); }
+main.ent ul.feat { margin-top: 24px; }
+@media (min-width: 1040px) { main.ent ul.feat { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+main.ent ul.feat li { display: flex; flex-direction: column; }
+main.ent ul.feat li p { flex: 1; }
+ul.feat a.pf { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; width: fit-content; color: var(--accent); font-size: 14.5px; font-weight: 650; text-decoration: none; }
+ul.feat a.pf:hover, ul.feat a.pf:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+/* For your security review: five links, then every connection with its label. */
+ul.trustl { list-style: none; margin: 40px 0 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+ul.trustl a { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; min-height: 64px; padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); text-decoration: none; transition: border-color .2s ease, box-shadow .2s ease; }
+ul.trustl a:hover, ul.trustl a:focus-visible { border-color: var(--accent); box-shadow: 0 8px 24px -16px rgba(16, 24, 40, .35); }
+ul.trustl .ti { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+ul.trustl b { display: block; font-size: 15.5px; font-weight: 700; } ul.trustl small { display: block; margin-top: 2px; font-size: 14px; line-height: 1.35; color: var(--muted); }
+ul.trustl a { position: relative; } ul.trustl .go { position: absolute; top: 18px; right: 18px; color: var(--faint); } ul.trustl a:hover .go { color: var(--accent); }
+.integ { margin: 40px 0 0; }
+.integ ul { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.integ li { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 6px 0 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 15px; font-weight: 600; }
+.integ .lbl { padding: 3px 9px; border-radius: 999px; background: var(--sunken, var(--accent-soft)); color: var(--muted); font-size: 13px; font-weight: 600; }
+.integ p.ask { margin-top: 12px; }
+/* One rise per row, in turn; nothing moves for a reader who prefers less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  div.roster li.reveal.pre:nth-child(2), main.ent ul.feat li.reveal.pre:nth-child(3n + 2) { transition-delay: .08s; }
+  div.roster li.reveal.pre:nth-child(3), main.ent ul.feat li.reveal.pre:nth-child(3n) { transition-delay: .16s; }
+}
+@media (max-width: 640px) {
+  div.roster li { padding: 18px 18px; } div.roster dd { font-size: 15px; }
+  main.ent ul.feat li { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; padding: 20px; }
+  main.ent ul.feat li .fi { grid-row: 1 / span 4; } main.ent ul.feat li b { margin: 8px 0 6px; }
+  ul.trustl { grid-template-columns: minmax(0, 1fr); } ul.trustl a { flex-direction: row; align-items: center; padding: 14px 16px; } ul.trustl .go { position: static; margin-left: auto; }
+  .integ li { font-size: 14.5px; }
+}
+`;
 
 /**
  * Home is served at "/" too (worker/src/core.ts). The CFO's viewer link opens "/" with its key after the "#" (never sent
@@ -216,7 +348,7 @@ export function proofLineHtml(stats = homeScaleStats()): string {
   // Each figure with its source's own title (the tests' "passed, skipped" wording, test/tests-title.test.ts); the line
   // names its records (data-rec), as the band did: test/home-story.test.ts holds the figures to them.
   const figs = stats.map((s) => `<a href="${esc(s.href)}" title="${esc(s.title)}"${s.external ? ' target="_blank" rel="noopener"' : ""}><b>${esc(fmt(s.n))}</b> ${esc(s.label)}</a>`);
-  return `<p class="proofl" data-rec="${esc(SCALE_SOURCES)}">${[...PROOF_LEAD.map((w) => esc(w)), ...figs].join('<span class="dot" aria-hidden="true"> · </span>')}</p>`;
+  return `<p class="proofl" data-rec="${esc(SCALE_SOURCES)}">${[...PROOF_LEAD.map((w) => `<span class="lead">${esc(w)}</span>`), ...figs].join('<span class="dot" aria-hidden="true"> · </span>')}</p>`;
 }
 /**
  * The one line under the buttons, saying only what the page behind the first one does: the hands-on demo (TRY_URL) is a
@@ -235,21 +367,130 @@ export const REASSURE = { sign: SANDBOX_NOTE, world: SANDBOX_NOTE } as const;
 export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Each lock, on record";
 export const FLOW_HEAD = "Claude agents decide. Code and the rails enforce.";
-export const FEATURES_HEAD = "Agents do the work. The CFO keeps the say.";
+export const FEATURES_HEAD = "Each agent gets its own card, mandate and limits. The CFO keeps the stop.";
 /** What Claude adds, from the worst-case run (docs/worst-case-ai.md, "What code alone sends to the CFO"). */
 // Jury, 17 Nov: one plain before/after, from the same record (docs/evals/scorecard-2026-11-15.json: the seven cases the
 // script arm sent to the CFO, each held by the Purser arm with Claude reading, in both runs).
 export const CLAUDE_ADDS = "Offline eval: code alone sent seven invoices to the CFO it should have held; with Claude, Purser held all seven.";
-/** Four features, one line each; each says only what the runs and the code show (see /proof). */
-export const FEATURES = [
-  // Jury panel, 15 Nov: the hero already says a changed cent breaks the signature; this card keeps the terms.
-  // Jury, 17 Nov: "passkey", not "Face ID": several runs were signed with test passkeys, and the check proves a passkey.
-  { icon: "scan-face", title: "Passkey on the exact terms", text: "Above a limit, the CFO signs the exact terms." },
-  // Jury panel, 15 Nov ("what does Claude add?"): docs/worst-case-ai.md, its figure word for word (test/home-about.test.ts).
-  { icon: "shield-check", title: "What Claude adds", text: CLAUDE_ADDS },
-  { icon: "ban", title: "Rails that refuse too", text: "Airwallex, Alta and Visa via Airi apply their own controls." },
-  { icon: "file-check", title: "Booked and checkable", text: "Every payment is booked; its signed receipt checks offline." },
-] as const;
+/**
+ * Built for agentic banking (the owner, 20 Nov: "what really completes this Home for agentic banking, fintech and
+ * enterprise"): the agent as a first-class actor. Above the controls, a roster of the three agents, each with its own
+ * Airwallex card and limits (as Airwallex read them back in the Airwallex-only sandbox run, docs/demo/airwallex-run.json)
+ * and its own mandate cap on Alta (the core run on testnet, docs/demo/main-run.json); then six controls, one line each,
+ * each with the link to its proof. A figure is read from its record, and a control whose record lacks it drops out.
+ */
+export const AGENTIC_EYEBROW = "Built for agentic banking";
+/** The emergency stop's drill (20 Nov, the Airwallex sandbox, a labelled virtual test passkey), and the recorded run's audit log. */
+export const STOP_DRILL_RECORD = "docs/runs/2026-11-20-stop-drill.json", STOP_DRILL_DOC = "docs/runs/2026-11-20-stop-drill.md";
+export const AUDIT_LOG_RECORD = "docs/audit/friday-1-audit.jsonl", AUDIT_LOG_DOC = "docs/audit/README.md";
+const repoFile = (f: string) => readFileSync(new URL(`../../${f}`, import.meta.url), "utf8");
+
+interface StopStep { id: string; pass: boolean; facts?: { changed?: unknown; failure_reason?: string } | null }
+interface StopDrill { test_money?: boolean; cards: { agent: string }[]; passes: { stopped: unknown; timings?: { fully_blocked_ms?: number } | null; steps: StopStep[] }[] }
+export interface StopFacts { agents: number; seconds: string }
+/**
+ * From the stop drill's record: the last pass that ran to its end with the stop pulled (stop.pull passed, every agent's
+ * card changed) and every check after it blocked, at least one of them a charge Airwallex declined as CARD_INACTIVE.
+ */
+export function stopDrillFacts(rec: StopDrill | null = (() => { try { return JSON.parse(repoFile(STOP_DRILL_RECORD)) as StopDrill; } catch { return null; } })()): StopFacts | null {
+  if (!rec?.test_money) return null;
+  for (const p of [...rec.passes].reverse()) {
+    if (p.stopped) continue;
+    const pull = p.steps.find((s) => s.id === "stop.pull" && s.pass);
+    const blocked = p.steps.filter((s) => s.id.startsWith("blocked."));
+    const changed = pull?.facts?.changed, ms = p.timings?.fully_blocked_ms;
+    if (!pull || !blocked.length || !blocked.every((s) => s.pass) || !Array.isArray(changed) || changed.length !== rec.cards.length || typeof ms !== "number") continue;
+    if (!blocked.some((s) => s.id === "blocked.charge" && s.facts?.failure_reason === "CARD_INACTIVE")) continue;
+    return { agents: changed.length, seconds: (ms / 1000).toFixed(1) };
+  }
+  return null;
+}
+/** The recorded run's audit log: its rows, one per line (docs/audit/README.md; test/recorded-audit.test.ts checks the chain). */
+export function auditRows(jsonl: string | null = (() => { try { return repoFile(AUDIT_LOG_RECORD); } catch { return null; } })()): number {
+  return jsonl ? jsonl.split("\n").filter((l) => l.trim()).length : 0;
+}
+
+export interface Control { icon: string; title: string; text: string; href: string; proof: string; external?: boolean; rec?: string }
+/**
+ * The six controls (their order: the agent's own mandate and card, the CFO's signature, the stop, the log, what Claude
+ * adds). FEATURES keeps its name: "What Claude adds" is still one of them (test/home-about.test.ts).
+ */
+export function agenticControls(o: { verifyUrl?: string; stop?: StopFacts | null; rows?: number } = {}): Control[] {
+  const verifyUrl = o.verifyUrl ?? VERIFY_URL, stop = o.stop === undefined ? stopDrillFacts() : o.stop, rows = o.rows ?? auditRows();
+  const words = ["no", "one", "two", "three", "four", "five"];
+  return [
+    { icon: "bot", title: "Its own mandate", text: "Each agent pays under its own mandate on Alta; over its cap, Alta refuses on chain.", href: "alta#mandates-cards", proof: "The mandates" },
+    { icon: "credit-card", title: "Its own card and limits", text: "Each agent has its own Airwallex card; its limits are written, then read back.", href: "proof#awx-cards", proof: "The cards" },
+    // Jury, 17 Nov: "passkey", not "Face ID": several runs were signed with test passkeys, and the check proves a passkey.
+    { icon: "scan-face", title: "Passkey on the exact terms", text: "Above a limit, the CFO signs the exact terms; a changed cent breaks it.", href: verifyUrl || "proof", proof: verifyUrl ? "Verify one" : "The proof" },
+    ...(stop ? [{ icon: "octagon-x", title: "Emergency stop", text: `One signed stop froze all ${words[stop.agents] ?? stop.agents} agents' cards at Airwallex in ${stop.seconds} s.`, href: `${REPO_BLOB}${STOP_DRILL_DOC}`, proof: "Sandbox drill record", external: true, rec: STOP_DRILL_RECORD }] : []),
+    ...(rows ? [{ icon: "file-lock-2", title: "An audit log you can check", text: `Every action in a hash-chained log; the recorded run's ${rows} rows check offline.`, href: `${REPO_BLOB}${AUDIT_LOG_DOC}`, proof: "How to check", external: true, rec: AUDIT_LOG_RECORD }] : []),
+    // Jury panel, 15 Nov ("what does Claude add?"): docs/worst-case-ai.md, its figure word for word (test/home-about.test.ts).
+    { icon: "shield-check", title: "What Claude adds", text: CLAUDE_ADDS, href: `${REPO_BLOB}docs/worst-case-ai.md`, proof: "The eval", external: true, rec: "docs/worst-case-ai.md" },
+  ];
+}
+export const FEATURES: readonly Control[] = agenticControls();
+
+export interface RosterAgent { id: string; name: string; last4: string; currency: string; perTx: string; monthly: string; altaCap: string | null }
+/**
+ * The three agents, each with its own card and limits as Airwallex returned them (awx-1's read-back) and, where the
+ * core run's record has it, its mandate cap on Alta. No card read back: no roster.
+ */
+export function agentRoster(awx: Awx1Record | null = awxRun(), run: AgentRun = agentRun()): RosterAgent[] {
+  const agents = ((run.record as unknown as { snapshot?: { agents?: { id: string; name: string; mandate?: { cap?: string } }[] } }).snapshot?.agents) ?? [];
+  const name = (id: string) => agents.find((a) => a.id === id)?.name ?? `${id[0]!.toUpperCase()}${id.slice(1)} agent`;
+  return (awx?.cards ?? []).flatMap((c) => {
+    const rb = c.read_back as { per_tx?: unknown; monthly?: unknown; currency?: unknown; last4?: unknown; status?: unknown };
+    if (typeof rb.per_tx !== "string" || typeof rb.monthly !== "string" || typeof rb.currency !== "string" || typeof rb.last4 !== "string" || rb.status !== "ACTIVE") return [];
+    const cap = agents.find((a) => a.id === c.agent)?.mandate?.cap;
+    return [{ id: c.agent, name: name(c.agent), last4: rb.last4, currency: rb.currency, perTx: rb.per_tx, monthly: rb.monthly, altaCap: typeof cap === "string" ? cap : null }];
+  });
+}
+export const ROSTER_RECORDS = "docs/demo/airwallex-run.json docs/demo/main-run.json";
+export const ROSTER_NOTE = "Card limits as Airwallex read them back (sandbox); Alta caps on testnet, in test USD.";
+export function rosterHtml(roster: RosterAgent[] = agentRoster()): string {
+  if (!roster.length) return "";
+  const row = (k: string, v: string) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`;
+  return `<div class="roster"><ul>${roster.map((a) => `<li class="reveal${/^(sourcing|support|treasury)$/.test(a.id) ? ` ag-${a.id}` : ""}" data-rec="${esc(ROSTER_RECORDS)}"><span class="ag-h"><span class="ag-i">${icon("bot", 18)}</span><b>${esc(a.name)}</b><span class="ag-card">${icon("credit-card", 14)}••${esc(a.last4)}</span></span><dl>${row("Per purchase", `${a.currency} ${a.perTx}`)}${row("Per month", `${a.currency} ${a.monthly}`)}${a.altaCap ? row("Alta cap", `USD ${a.altaCap}`) : ""}</dl></li>`).join("")}</ul><p class="rnote" data-rec="${esc(ROSTER_RECORDS)}">${esc(ROSTER_NOTE)}</p></div>`;
+}
+export function controlsHtml(controls: readonly Control[] = FEATURES): string {
+  return `<ul class="feat">${controls.map((f) => `<li class="reveal"${f.rec ? ` data-rec="${esc(f.rec)}"` : ""}><span class="fi">${icon(f.icon, 20)}</span><b>${esc(f.title)}</b><p>${esc(f.text)}</p><a class="pf" href="${esc(f.href)}"${f.external ? ' target="_blank" rel="noopener"' : ""}>${esc(f.proof)}${icon(f.external ? "external-link" : "arrow-right", 14)}</a></li>`).join("")}</ul>`;
+}
+
+/**
+ * For the CFO's security team (the owner, 20 Nov: a trust strip, only things that exist, each with its link), then
+ * every connection Purser has, with the honest label the connections hub gives it (docs/integrations/README.md;
+ * test/home-agentic.test.ts holds each label to cloud/src/connections.ts).
+ */
+export const TRUST_EYEBROW = "For your security review";
+export const TRUST_HEAD = "Check it before a pilot.";
+export interface TrustLink { icon: string; label: string; sub: string; href: string; external?: boolean }
+export const TRUST_LINKS: readonly TrustLink[] = [
+  { icon: "shield-check", label: "Security", sub: "Every lock a payment passes", href: "security" },
+  { icon: "lock", label: "Privacy and retention", sub: "What is kept, and how long", href: "privacy#how-long" },
+  { icon: "sliders-horizontal", label: "Controls matrix", sub: "Each risk, its control, its test", href: `${REPO_BLOB}docs/controls-matrix.md`, external: true },
+  { icon: "file-check", label: "Signed releases", sub: "Attested builds and an SBOM", href: `${REPO_BLOB}docs/releasing.md#verifying-a-release`, external: true },
+  { icon: "shield-alert", label: "Report a vulnerability", sub: "Our security policy", href: `${REPO_BLOB}SECURITY.md`, external: true },
+];
+/** Each shown name, its label, and the hub's own connection names it stands for ("running" is the hub's "live": built and running in Purser Cloud, on test money; Home says "live" only of the hands-on demo). */
+export const INTEGRATIONS: readonly { name: string; label: string; hub: readonly string[] }[] = [
+  { name: "Airwallex", label: "sandbox", hub: ["Airwallex"] },
+  { name: "Alta", label: "testnet", hub: ["Alta (formerly Metal)"] },
+  { name: "Visa via Airwallex Airi", label: "sandbox", hub: ["Visa via Airwallex Airi"] },
+  { name: "T:0", label: "sandbox", hub: ["T:0 (outside ledger)"] },
+  { name: "Claude and any MCP client", label: "running", hub: ["MCP server (Connect any AI)", "Claude"] },
+  { name: "REST API and webhooks", label: "running", hub: ["Read API (REST) and its OpenAPI", "Webhooks"] },
+  { name: "Xero, QuickBooks, Exact", label: "CSV export", hub: ["Xero", "QuickBooks Online", "Exact Online (CSV)"] },
+];
+export const INTEGRATIONS_LINK = "Every connection, labelled";
+function trustHtml(): string {
+  const link = (l: TrustLink) => `<li><a href="${esc(l.href)}"${l.external ? ' target="_blank" rel="noopener"' : ""}><span class="ti">${icon(l.icon, 18)}</span><span><b>${esc(l.label)}</b><small>${esc(l.sub)}</small></span><span class="go">${icon(l.external ? "external-link" : "arrow-right", 16)}</span></a></li>`;
+  return `<p class="eyebrow">${esc(TRUST_EYEBROW)}</p>
+  <h2 class="e-h reveal" id="h-trust">${esc(TRUST_HEAD)}</h2>
+  <ul class="trustl">${TRUST_LINKS.map(link).join("")}</ul>
+  <div class="integ"><h3 class="h-tracks" id="h-integ">${esc("Connects to")}</h3><ul aria-labelledby="h-integ">${INTEGRATIONS.map((x) => `<li>${esc(x.name)} <span class="lbl">${esc(x.label)}</span></li>`).join("")}</ul>
+  <p class="ask"><a href="${esc(`${REPO_BLOB}${CONNECT_HUB_DOC}`)}" target="_blank" rel="noopener">${esc(INTEGRATIONS_LINK)}${icon("external-link", 16)}</a></p></div>`;
+}
 /**
  * /try/negotiate on Home (Max, 15 Nov): one card under the features, its page's own headline word for word
  * (cloud/src/try/negotiatePage.ts; test/home-negotiate.test.ts keeps the two the same) and one button to watch it.
@@ -338,7 +579,7 @@ function aboutHtml(): string {
 `;
 }
 
-export interface ProofRow { partner: "Airwallex" | "Alta" | "Visa"; title: string; text: string; icon: string; id: string; full: string; href: string; external: boolean }
+export interface ProofRow { partner: "Airwallex" | "Alta" | "Visa"; title: string; text: string; icon: string; id: string; full: string; href: string; external: boolean; /** Airwallex's row: the declined charge and the card's limit, as the record holds them. */ charge?: { currency: string; amount: string; limit: string } }
 
 /**
  * The three proof rows, every value from a run record; a row whose record lacks a piece drops out.
@@ -355,7 +596,7 @@ export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = a
   const cents = (a: string) => Math.round(Number(a) * 100);
   const limitOf = (agent: string) => String(awx?.cards.find((c) => c.agent === agent)?.read_back.per_tx ?? "");
   const decline = awx?.card_transactions.find((t) => !t.approved && !!t.decline_code && !!limitOf(t.agent) && cents(t.amount) > cents(limitOf(t.agent)));
-  if (decline) rows.push({ partner: "Airwallex", title: "Airwallex declined the card", text: `${decline.currency} ${decline.amount} over a ${limitOf(decline.agent)} limit.`, icon: "ban", id: `${decline.id.slice(0, 8)}…`, full: decline.id, href: steps, external: false });
+  if (decline) rows.push({ partner: "Airwallex", title: "Airwallex declined the card", text: `${decline.currency} ${decline.amount} over a ${limitOf(decline.agent)} limit.`, icon: "ban", id: `${decline.id.slice(0, 8)}…`, full: decline.id, href: steps, external: false, charge: { currency: decline.currency, amount: decline.amount, limit: limitOf(decline.agent) } });
   const refusal = metalStory(run.record).refusal;
   const tx = /\/tx\/(0x[0-9a-f]{64})$/.exec(refusal?.proof.href ?? "")?.[1];
   if (refusal && tx && refusal.code === "mandate_cap_exceeded") rows.push({ partner: "Alta", title: "Alta refused it on chain", text: "Over its cap.", icon: "link-2", id: refusal.proof.label, full: tx, href: refusal.proof.href!, external: true });
@@ -421,6 +662,81 @@ export function nextHtml(url: string = SMALL_COMPANY_DEMO_URL): string {
   return `<p class="next">${esc(NEXT_NEXT)} <a href="${esc(url)}" target="_blank" rel="noopener">${esc("Open its demo")}\u00a0↗</a></p>`;
 }
 
+/**
+ * Purser Cloud first (the owner, 20 Nov). The product's name over the heading; the hero's third button goes to "How to
+ * start" on this page, whose third card is the pilot.
+ */
+export const CLOUD_EYEBROW = "Purser Cloud, for finance teams";
+export const PILOT_BUTTON = "Start a pilot";
+export const START_ID = "start";
+export const START_HEAD = "From a two-minute test to a pilot";
+/** Purser Cloud's console on its test-money deployment: the demo company as a guest, and a new company's first run. */
+export const CLOUD_GUEST_URL = `${PURSER_CLOUD_URL}#/guest`;
+export const CLOUD_SETUP_URL = `${PURSER_CLOUD_URL}#/start`;
+/**
+ * How to start, as Purser Cloud works today (cloud/src/console.ts, docs/cloud.md): /try makes a test company that the
+ * sweep deletes after 24 hours (cloud/src/try/sweep.ts); "Try as guest" opens the demo company read only, with no
+ * passkey and no e-mail (POST /v1/auth/guest); a pilot company is created by Purser (POST /v1/admin/tenants), which
+ * hands over a starter key; its owner makes a passkey and connects where invoices arrive at #/start ("about two
+ * minutes", the set-up page's own words). The deployment runs on test money; no customer is claimed.
+ */
+export interface StartStep { title: string; text: string; links: { href: string; label: string; external?: boolean }[]; pilot?: boolean }
+export const START_STEPS: readonly StartStep[] = [
+  { title: "Try it now", text: "Your own test company: an agent proposes, you sign with a passkey. Deleted after 24 hours.", links: [{ href: TRY_URL, label: "Open /try" }] },
+  { title: "Look around as a guest", text: "The console with its demo company: read only, no sign-up.", links: [{ href: CLOUD_GUEST_URL, label: "Open the console", external: true }] },
+  { title: "Run a pilot", text: "We set up your company and send a starter key; you add your passkey in about two minutes. Test money only; no real payments yet.", links: [{ href: CLOUD_SETUP_URL, label: "Set up with a starter key", external: true }], pilot: true },
+];
+export function startHtml(partnerUrl: string = DESIGN_PARTNER_URL): string {
+  const link = (l: StartStep["links"][number]) => `<a href="${esc(l.href)}"${l.external ? ' target="_blank" rel="noopener"' : ""}>${esc(l.label)}${icon(l.external ? "external-link" : "arrow-right", 16)}</a>`;
+  return `<p class="eyebrow">${esc("How to start")}</p>
+  <h2 class="e-h reveal" id="h-start">${esc(START_HEAD)}</h2>
+  <ol class="starts">${START_STEPS.map((st) => `<li class="reveal${st.pilot ? " pilot" : ""}"><span class="sh"><b>${esc(st.title)}</b></span><p class="st">${esc(st.text)}</p><div class="go">${st.pilot ? designPartnerHtml(partnerUrl) : ""}${st.links.map(link).join("")}</div></li>`).join("")}</ol>`;
+}
+
+/**
+ * "Ask Purser" (the owner, 20 Nov): a chat on Purser Cloud at /ask, built there; Home only links it, no chat code here.
+ */
+export const ASK_URL = `${PURSER_CLOUD_URL}ask`;
+export const ASK_LABEL = "Ask Purser";
+export function askHtml(url: string = ASK_URL): string {
+  return `<p class="ask">${esc("Questions first?")} <a href="${esc(url)}" target="_blank" rel="noopener">${esc(ASK_LABEL)}${icon("external-link", 16)}</a></p>`;
+}
+
+/** The 60-second proof (the owner, 20 Nov: "the path judges need"): the demo (3:15), /try, /proof, then /verify. */
+export const PATH_HEAD = "The 60-second proof";
+export const TRACKS_HEAD = "Sponsor tracks";
+/** The demo, as the README's judges' path names it: FILM_LINK's duration, without its "Watch" (Home's one "Watch" is the hero's button). */
+export const PATH_FILM = `The demo ${/\(\d+:\d\d\)$/.exec(FILM_LINK)?.[0] ?? ""}`.trim();
+export function pathStepsHtml(tryHref: string, verifyUrl: string): string {
+  const steps = [
+    { href: FILM_URL, title: PATH_FILM, sub: "On YouTube", external: true },
+    { href: tryHref, title: "Try it yourself", sub: "2 minutes, test money" },
+    { href: "proof", title: PROOF_BUTTON, sub: "Every run, with its record" },
+    ...(verifyUrl ? [{ href: verifyUrl, title: VERIFY_BUTTON, sub: "In your browser, no server call" }] : []),
+  ];
+  return `<ol class="path">${steps.map((p, i) => `<li><a href="${esc(p.href)}"${p.external ? ' target="_blank" rel="noopener"' : ""}><span class="pn">${i + 1}</span><span><b>${esc(p.title)}</b><small>${esc(p.sub)}</small></span>${icon(p.external ? "external-link" : "arrow-right", 18)}</a></li>`).join("")}</ol>`;
+}
+/**
+ * The three sponsor tracks, Airwallex, Visa, Alta, in the owner's order: each its page and one outcome from the proof
+ * rows (every value from a run record; a track whose row is missing drops out), with the link to that record.
+ */
+export interface Track { partner: ProofRow["partner"]; name: string; page: string; line: string; rec: { href: string; label: string; external: boolean } }
+export function sponsorTracks(rows: ProofRow[]): Track[] {
+  const by = (p: ProofRow["partner"]) => rows.find((r) => r.partner === p);
+  const out: Track[] = [];
+  const a = by("Airwallex"), v = by("Visa"), m = by("Alta");
+  if (a?.charge) out.push({ partner: "Airwallex", name: "Airwallex", page: "airwallex", line: `Declined an agent's card charge of ${a.charge.currency} ${a.charge.amount} over its ${a.charge.currency} ${a.charge.limit} limit (sandbox).`, rec: { href: a.href, label: `Record ${a.id}`, external: a.external } });
+  if (v) out.push({ partner: "Visa", name: "Visa", page: "visa", line: "Via Airwallex Airi (sandbox): Purser refused a reused credential before any Airwallex call.", rec: { href: v.href, label: `Record ${v.id}`, external: v.external } });
+  if (m) out.push({ partner: "Alta", name: "Alta", page: "alta", line: "With our own check off for a test, Alta refused an over-cap purchase on chain (testnet).", rec: { href: m.href, label: m.id, external: m.external } });
+  return out;
+}
+export function tracksHtml(rows: ProofRow[]): string {
+  const t = sponsorTracks(rows);
+  if (!t.length) return "";
+  return `<h3 class="h-tracks" id="h-tracks">${esc(TRACKS_HEAD)}</h3>
+  <ul class="tracks" aria-labelledby="h-tracks">${t.map((x) => `<li class="reveal"><a class="trk" href="${esc(x.page)}">${esc(x.name)}${icon("arrow-right", 18)}</a><p>${esc(x.line)}</p><a class="rec" href="${esc(x.rec.href)}"${x.rec.external ? ' target="_blank" rel="noopener"' : ""}>${icon(x.rec.external ? "external-link" : "file-check", 14)}<code>${esc(x.rec.label)}</code></a></li>`).join("")}</ul>`;
+}
+
 const dayMonth = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
 
 /**
@@ -443,44 +759,63 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const body = `<main class="ent">
 <section class="e-hero"><div class="wrap">
   <div class="copy">
+    <p class="eyebrow cloud">${icon("layout-dashboard", 14)}${esc(CLOUD_EYEBROW)}</p>
     ${homeHeadingHtml()}
     <p class="what">${esc(HOME_SUB)}</p>
     ${proofLineHtml()}
-    <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 18)}${esc(FILM_BUTTON)}</a>${verifyUrl ? `<a class="btn big ghost" href="${esc(verifyUrl)}">${esc(VERIFY_BUTTON)}</a>` : ""}</div>
+    <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 18)}${esc(FILM_BUTTON)}</a><a class="btn big ghost pilot" href="#${START_ID}">${esc(PILOT_BUTTON)}</a></div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
-    ${x402LineHtml(run)}
-    <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src in ASSET_VERSIONS ? versioned(src as VersionedAsset) : src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
-  <div class="show">${heroFlowHtml()}
-    <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
+  <div class="show">${moneyFlowHtml(moneyFlowFacts(), WHATS_REAL)}</div>
+  <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src in ASSET_VERSIONS ? versioned(src as VersionedAsset) : src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
+</div></section>
+<section class="e-start" id="${START_ID}" aria-labelledby="h-start"><div class="wrap">
+  ${startHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
+  ${askHtml()}
+</div></section>
+<section class="e-path" aria-labelledby="h-path"><div class="wrap">
+  <p class="eyebrow">${esc("For judges")}</p>
+  <h2 class="e-h reveal" id="h-path">${esc(PATH_HEAD)}</h2>
+  <div class="pathgrid">
+    ${pathStepsHtml(tryHref, verifyUrl)}
+    <div class="show">${heroFlowHtml()}
+      <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
+  </div>
+  ${tracksHtml(rows)}
+  ${x402LineHtml(run)}
 </div></section>
 <section class="e-feat" aria-labelledby="h-feat"><div class="wrap">
-  <p class="eyebrow">Why Purser</p>
+  <p class="eyebrow">${esc(AGENTIC_EYEBROW)}</p>
   <h2 class="e-h reveal" id="h-feat">${esc(FEATURES_HEAD)}</h2>
-  <ul class="feat">${FEATURES.map((f) => `<li class="reveal"><span class="fi">${icon(f.icon, 20)}</span><b>${esc(f.title)}</b><p>${esc(f.text)}</p></li>`).join("")}</ul>
+  ${rosterHtml()}
+  ${controlsHtml(agenticControls({ verifyUrl }))}
   ${negotiateCardHtml()}
 </div></section>
 <section class="e-flow" aria-labelledby="about"><div class="wrap">
   ${aboutHtml()}
+</div></section>
+<section class="e-trust" aria-labelledby="h-trust"><div class="wrap">
+  ${trustHtml()}
 </div></section>
 <section class="e-stats" aria-labelledby="h-locks"><div class="wrap">
   <p class="eyebrow">On record</p>
   <h2 class="e-h reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
   <article class="e-statrec" data-rec="${esc(STAT_RECORDS)}">${statsHtml(homeStats(run, rows))}</article>
   ${awxHomeBadgeHtml()}
-  ${visaLineHtml(rows)}
   <p class="statnote visal"><a href="${tryHref}">${esc(AWX_HOME_LINE)}</a></p>
   ${kit11Html(run)}
   <div class="e-more"><a class="btn big primary" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>${booksCardHtml()}</div>
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}
-  ${designPartnerHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
 </div></section>
 </main>`;
   // The full list behind the one provenance line: the main run's lines, the run the hero replays (its own note), what
   // step 4's receipt is (the file's own note), and the test behind the Alta row.
   const refusedAt = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at ?? "";
   // What Home shows first (the hero and its two Airwallex rows), then the Alta row and the main run it comes from.
+  const mf = moneyFlowFacts();
   const real = [
+    ...(mf ? [`The explainer's amount and fingerprints: /try's two proof files (${MONEY_FLOW_RECORDS.join(", ")}), from the live /try of 15 November: ${mf.amount} to ${mf.vendor}, signed with a passkey and paid on /try's simulated bank${mf.cent ? `; then the same terms with the amount one cent higher (${mf.cent.currency} ${mf.cent.asked}), refused because the signature is over other terms, and nothing paid` : ""}. A test company, test money. Purser's rails are Airwallex (sandbox) and Alta (testnet); /try also sends each payment it pays to the Airwallex sandbox as one transfer when the deployment's switch is on.`] : []),
+    "Purser Cloud's public deployment (purser-try.max-31b.workers.dev) runs on test money. As a guest its console shows a demo company made from demo data, read only; a pilot company is created by Purser and set up with the starter key it hands over. No customer uses it yet.",
     `The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on the live demo, 13 November, with Claude on: Claude Haiku 5.5 read that invoice, and the Checker, Coder and Payer agents ran on it, each request id in the record (docs/runs/2026-11-13-try-sample.json). Test money, a simulated bank, a test passkey. Since 14 November /try also sends each payment it pays to the Airwallex sandbox as one transfer when the deployment's switch is on; this run came before that, so the card says simulated bank.${VAT_THEN ? ` ${VAT_THEN}` : ""}`,
     ...(awx && facts ? [`The Airwallex figure: the Airwallex-only run (${awx.run}) of ${facts.date}. ${CAVEAT_LINE} ${awx.note}`] : []),
     `The Alta figure: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
@@ -488,11 +823,11 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ];
   return page({
     // Final jury, 13 Nov: / and /home serve this page; /home is its one canonical address.
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS + AWX_HOME_BADGE_CSS + NEGOTIATE_CSS, body, js: JS + COUNT_JS, stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + AGENTIC_CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS + MONEY_FLOW_CSS + AWX_HOME_BADGE_CSS + NEGOTIATE_CSS, body, js: JS + COUNT_JS, stage: false,
     // 20 Nov (the owner: "Purser connects to everything and everyone, findable"): the hub of every connection, in the footer.
     links: [[`${REPO_BLOB}${CONNECT_HUB_DOC}`, CONNECT_HUB_LABEL]],
     real,
-    source: `Source: a /try run of its sample invoice, ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
+    source: `Source: a /try run of its sample invoice, /try's two proof files (${MONEY_FLOW_RECORDS.join(", ")}), ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
   });
 }
 
