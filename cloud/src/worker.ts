@@ -17,6 +17,7 @@ import { negotiateClaudeOf } from "./try/negotiateRoutes.js";
 import { expireStale } from "./engine/spend.js";
 import { logEvent } from "./log.js";
 import type { ConnectEnv } from "./connect.js";
+import type { OidcEnv } from "./oidc.js";
 import { resendEmail, type AlertProviders } from "./alerts.js";
 import { forRequest } from "./hostOrigin.js";
 import type { AwxReadBinding } from "./awxLive.js";
@@ -83,6 +84,22 @@ export interface Bindings {
   RESEND_API_KEY?: string;
   ALERT_EMAIL_FROM?: string;
   ALERTS_LIVE_MONEY?: string;
+  /**
+   * Sign in with Google, Microsoft or Apple (cloud/src/oidc.ts): the OpenID Connect clients the platform registers once;
+   * each person then links their own account in Settings. All secrets (wrangler secret put); a provider whose settings
+   * are not all set is off. Redirect URI: <ORIGIN>/v1/auth/oidc/<provider>/callback.
+   */
+  OIDC_GOOGLE_CLIENT_ID?: string;
+  OIDC_GOOGLE_CLIENT_SECRET?: string;
+  OIDC_MICROSOFT_CLIENT_ID?: string;
+  OIDC_MICROSOFT_CLIENT_SECRET?: string;
+  /** "common" (the default), "organizations" or one directory's id. */
+  OIDC_MICROSOFT_TENANT?: string;
+  /** Apple: the Services ID, the team id, the Sign in with Apple key's id and its private key (the .p8 file's text). */
+  OIDC_APPLE_CLIENT_ID?: string;
+  OIDC_APPLE_TEAM_ID?: string;
+  OIDC_APPLE_KEY_ID?: string;
+  OIDC_APPLE_PRIVATE_KEY?: string;
   /** The site Worker's read-only Airwallex sandbox gateway (kit11's AwxRead entrypoint, a service binding): the live Airwallex tab. */
   AWX_READ?: AwxReadBinding;
   /** The agents' live Airwallex sandbox cards (cloud/src/agentCards.ts): kit11's AwxCards entrypoint, a service binding. */
@@ -110,6 +127,16 @@ export function connectOf(b: Bindings): ConnectEnv | undefined {
     ...(b.AIRWALLEX_PARTNER_WEBHOOK_SECRET ? { airwallexWebhookSecret: b.AIRWALLEX_PARTNER_WEBHOOK_SECRET } : {}) };
 }
 
+/** The OpenID Connect sign-in clients that are fully configured, or none (then /v1/auth/oidc lists no provider). */
+export function oidcOf(b: Bindings): OidcEnv | undefined {
+  const clients: OidcEnv["clients"] = {
+    ...(b.OIDC_GOOGLE_CLIENT_ID && b.OIDC_GOOGLE_CLIENT_SECRET ? { google: { clientId: b.OIDC_GOOGLE_CLIENT_ID, clientSecret: b.OIDC_GOOGLE_CLIENT_SECRET } } : {}),
+    ...(b.OIDC_MICROSOFT_CLIENT_ID && b.OIDC_MICROSOFT_CLIENT_SECRET ? { microsoft: { clientId: b.OIDC_MICROSOFT_CLIENT_ID, clientSecret: b.OIDC_MICROSOFT_CLIENT_SECRET, tenant: b.OIDC_MICROSOFT_TENANT || "common" } } : {}),
+    ...(b.OIDC_APPLE_CLIENT_ID && b.OIDC_APPLE_TEAM_ID && b.OIDC_APPLE_KEY_ID && b.OIDC_APPLE_PRIVATE_KEY ? { apple: { clientId: b.OIDC_APPLE_CLIENT_ID, apple: { teamId: b.OIDC_APPLE_TEAM_ID, keyId: b.OIDC_APPLE_KEY_ID, privateKeyPem: b.OIDC_APPLE_PRIVATE_KEY } } } : {}),
+  };
+  return Object.keys(clients).length ? { clients, fetch: (i, init) => fetch(i, init) } : undefined;
+}
+
 /** The part of the Workers runtime's ExecutionContext used here: work that may finish after the answer is sent. */
 interface Waits { waitUntil(p: Promise<unknown>): void }
 
@@ -118,12 +145,13 @@ function envOf(b: Bindings): CloudEnv {
   const assets = b.ASSETS;
   const sql = d1Sql(b.DB);
   const connect = connectOf(b);
+  const oidc = oidcOf(b);
   return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", ...(b.ADMIN_KEYS ? { adminKeys: b.ADMIN_KEYS } : {}), rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "", ...(b.SECURITY_ALARMS ? { securityAlarms: b.SECURITY_ALARMS } : {}),
     version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}), ...(b.TURNSTILE_SECRET ? { turnstileSecret: b.TURNSTILE_SECRET, siteverify: (url: string, init: RequestInit) => fetch(url, init) } : {}) } } : {}) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE && b.HANDS_ON === "on" ? { negotiateClaude: negotiateClaudeOf(sql, b.ENGINE_CLAUDE, b.KIT11_ANTHROPIC_API_KEY) } : {}),
-    edge: { stats: b.STATS !== "off" }, ...(connect ? { connect } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}) };
+    edge: { stats: b.STATS !== "off" }, ...(connect ? { connect } : {}), ...(oidc ? { oidc } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}) };
 }
 
 export default {

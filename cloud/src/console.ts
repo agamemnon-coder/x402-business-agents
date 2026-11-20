@@ -32,6 +32,7 @@ const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevr
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
+.idps { display: grid; gap: 8px; margin-top: 10px; }
 ul.plain { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /* 12 Nov: the site's header (cloud/src/siteHeader.ts) on top; the console's own bar under it, one thin row: its pages,
@@ -432,7 +433,7 @@ const forget=()=>{try{sessionStorage.removeItem(KEY);sessionStorage.removeItem(A
 // An older page kept that read in localStorage, past sign-out: it is removed.
 const dropOldCopies=()=>{try{localStorage.removeItem(AWL_OV_KEY)}catch(e){}};
 dropOldCopies();
-let S=load();let ME=null;let notice=null;let connNote=null;
+let S=load();let ME=null;let notice=null;let connNote=null;let idNote=null;
 
 class Expired extends Error{}
 async function api(path,o){
@@ -494,6 +495,21 @@ async function signIn(slug,status){
   const r=await api('/v1/auth/login',{method:'POST',token:'-',body:{tenant:slug,challenge_id:ch.challenge_id,credential_id:b64u(cred.rawId),assertion:assertionOf(cred)}});
   S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:slug};save(S);ME=null;
 }
+// An OpenID Connect start waiting for the provider to send the browser back: in this tab only, ten minutes at most.
+const OIDC_KEY='purser.oidc';
+function oidcPending(o){try{if(o)sessionStorage.setItem(OIDC_KEY,JSON.stringify(Object.assign({at:Date.now()},o)));else{const v=JSON.parse(sessionStorage.getItem(OIDC_KEY)||'null');sessionStorage.removeItem(OIDC_KEY);return v&&Date.now()-v.at<600000?v:null}}catch(e){return null}}
+// Back from Google, Microsoft or Apple (GET or POST /v1/auth/oidc/{provider}/callback put the code in this fragment):
+// a sign-in gets a read-only session; a link is finished by the signed-in person who started it.
+async function oidcBack(q){
+  const p=q.get('provider');const pend=oidcPending();
+  history.replaceState(null,'',S?'#/settings':'#/sign-in');
+  if(!pend||pend.provider!==p){notice=t('cs.oidc.lost');return go(S?'#/settings':'#/sign-in')}
+  if(q.get('error')||!q.get('code')){if(pend.purpose==='link'){idNote=[t('cs.oidc.declined'),'bad'];return go('#/settings')}notice=t('cs.oidc.declined');return go('#/sign-in')}
+  const body={code:q.get('code'),state:q.get('state'),browser_secret:pend.browser_secret};
+  if(pend.purpose==='link'){if(!S)return go('#/sign-in');try{await api('/v1/me/identities/'+p+'/finish',{method:'POST',body});idNote=[t('cs.oidc.linked'),'ok']}catch(e){if(e instanceof Expired)return;idNote=[e.message,'bad']}return go('#/settings')}
+  try{const r=await api('/v1/auth/oidc/'+p+'/finish',{method:'POST',token:'-',body});S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:r.tenant||pend.slug,via:'oidc'};save(S);ME=null;go('#/overview')}
+  catch(e){notice=e.message;go('#/sign-in')}
+}
 function signInView(){
   title(t('cs.sign_in'));
   const slug=el('input','field');slug.id='slug';slug.autocomplete='organization';slug.placeholder='your-company';slug.spellcheck=false;
@@ -513,6 +529,14 @@ function signInView(){
   card.append(el('div','guest',[el('div','or',[el('span','',t('cs.guest.or'))]),gb,el('p','gsub',t('cs.guest.sub')),gs]));
   if(notice){status.append(note(notice,'bad'));notice=null}
   if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys'),'bad'))}
+  // Sign in with a linked Google, Microsoft or Apple account (cloud/src/oidc.ts): read only; only the providers this
+  // cloud has switched on. The browser secret stays in this tab until the provider sends the browser back.
+  const idps=el('div','idps');b.after(idps);
+  api('/v1/auth/oidc',{token:'-'}).then((r)=>{for(const p of r.providers||[]){const ob=btn(t('cs.oidc.with.'+p),'ghost','log-out');ob.id='oidc-'+p;
+    ob.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note(t('cs.slug_rule'),'bad'));return}
+      ob.disabled=true;try{const o=await api('/v1/auth/oidc/'+p+'/start',{method:'POST',token:'-',body:{tenant:s}});oidcPending({purpose:'sign-in',provider:p,browser_secret:o.browser_secret,slug:s});try{localStorage.setItem('purser.cloud.slug',s)}catch(e){}location.assign(o.url)}
+      catch(e){status.replaceChildren(note(e.message,'bad'));ob.disabled=false}};idps.append(ob)}
+    if(idps.children.length)idps.append(el('p','sub',t('cs.oidc.read_only')))},()=>{});
   b.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note(t('cs.slug_rule'),'bad'));return}
     b.disabled=true;try{await signIn(s,status);try{localStorage.setItem('purser.cloud.slug',s)}catch(e){}go('#/overview')}catch(e){if(!(e instanceof Expired))status.replaceChildren(note(e.name==='NotAllowedError'?t('cs.passkey_cancelled'):e.message,'bad'))}finally{b.disabled=false}};
   slug.onkeydown=(e)=>{if(e.key==='Enter')b.click()};
@@ -1302,6 +1326,23 @@ async function chatCard(){
   return card;
 }
 
+// Sign-in accounts (cloud/src/oidc.ts): the signed-in person links their own Google, Microsoft or Apple account (a fresh
+// passkey check), or unlinks it. A linked account signs them in to read only; settings and approving need the passkey.
+async function identitiesCard(m){
+  const r=await api('/v1/me/identities');
+  if(!r.offered.length&&!r.linked.length)return null;
+  const card=el('div','card panel');card.id='identities';const out=el('div','');const kids=[el('h2','',t('cs.oidc.title')),el('p','',t('cs.oidc.lede'))];
+  for(const p of r.offered){const l=r.linked.find(x=>x.provider===p);
+    const line=[el('span','pill'+(l?' ok':''),l?t('cs.oidc.st.linked'):t('cs.oidc.st.not_linked')),' ',el('b','',t('cs.oidc.name.'+p)),l&&l.email?el('span','mono',' · '+l.email):null];
+    let act;
+    if(l){act=btn(t('cs.oidc.unlink'),'danger','x');act.onclick=async()=>{act.disabled=true;try{await api('/v1/me/identities/'+p,{method:'DELETE'});go('#/settings');route()}catch(e){if(!(e instanceof Expired)){out.replaceChildren(note(e.message,'bad'));act.disabled=false}}}}
+    else{act=btn(t('cs.oidc.link'),'primary','scan-face');act.disabled=m.signed_in_with==='oidc';act.onclick=async()=>{act.disabled=true;try{const o=await api('/v1/me/identities/'+p+'/start',{method:'POST'});oidcPending({purpose:'link',provider:p,browser_secret:o.browser_secret});location.assign(o.url)}catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'));act.disabled=false}}}
+    kids.push(el('div','row2',[el('p','',line),act]))}
+  if(m.signed_in_with==='oidc')kids.push(note(t('cs.oidc.signed_in_read_only')));
+  if(idNote){out.replaceChildren(note(idNote[0],idNote[1]));idNote=null}
+  card.replaceChildren(...kids,out);return card;
+}
+
 async function settingsView(){
   title(t('cs.nav.settings'));
   const m=await me();
@@ -1313,14 +1354,15 @@ async function settingsView(){
   if(owner){const c=langSel(langNames,m.tenant.language||'nl');c.onchange=async()=>{try{await api('/v1/company',{method:'POST',body:{language:c.value}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));if(!m.user||!m.user.language)useLanguage(c.value)}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_company')),c]))}
   if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'en')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
-  if(!owner){const cc=await claudeCard(m,false);view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})),cc);return}
+  const ids=m.kind==='session'&&!m.demo?await identitiesCard(m).catch(()=>null):null;
+  if(!owner){const cc=await claudeCard(m,false);view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})),ids,cc);return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
   const alerts=m.kind==='session'?await alertsCard():null;
   const chat=m.kind==='session'?await chatCard():null;
   const security=m.kind==='session'&&!m.demo?await securityCard():null;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,ids,alerts,chat,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){
@@ -1499,6 +1541,7 @@ async function route(){
   const open={'/sign-in':signInView,'/start':startView,'/platform':platformView};
   try{
     if(path==='/enrol')return enrolView(q);
+    if(path==='/oidc')return oidcBack(q);
     if(open[path])return open[path]();
     // Try as guest from a link (the hands-on demo's last step, 13 Nov): the demo company opens read only, as the sign-in's
     // button does; a session already open is kept.

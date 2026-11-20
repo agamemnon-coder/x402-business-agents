@@ -1320,6 +1320,239 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc":
+    get:
+      operationId: getV1AuthOidc
+      tags:
+        - Access
+      summary: "Which sign-in providers this cloud offers besides the passkey (google, microsoft, apple), for the sign-in page. A person links one to their own membership first (Settings, while signed in with the passkey); a sign-in with it reads only."
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/{provider}/start":
+    post:
+      operationId: postV1AuthOidcByProviderStart
+      tags:
+        - Access
+      summary: "Start signing in to a company with a linked Google, Microsoft or Apple account: { tenant }. Answers the provider's URL (state, nonce, PKCE where documented) and a browser secret the page keeps until it finishes."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/{provider}/callback":
+    get:
+      operationId: getV1AuthOidcByProviderCallback
+      tags:
+        - Access
+      summary: "Where Google or Microsoft sends the browser back: forwards the code and state to the console (in the address's fragment, which no server sees), where the page that started it finishes. Stores nothing."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/apple/callback":
+    post:
+      operationId: postV1AuthOidcAppleCallback
+      tags:
+        - Access
+      summary: "Where Apple posts the browser back (response_mode form_post): forwards the code and state to the console's fragment, as the GET callback does. Stores nothing; the ID token Apple posts along is not used (the code is exchanged and its token checked)."
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/auth/oidc/{provider}/finish":
+    post:
+      operationId: postV1AuthOidcByProviderFinish
+      tags:
+        - Access
+      summary: "Finish signing in with a linked account: { code, state, browser_secret }. Answers a 15-minute read-only session (read_only: true) for the person the account is linked to; 401 when it is linked to no one in that company."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      x-purser-needs: public
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities":
+    get:
+      operationId: getV1MeIdentities
+      tags:
+        - Access
+      summary: "The signed-in person's own linked sign-in accounts (Google, Microsoft, Apple: provider, verified e-mail if the provider gave one, when linked) and which providers this cloud offers."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities/{provider}/start":
+    post:
+      operationId: postV1MeIdentitiesByProviderStart
+      tags:
+        - Access
+      summary: "Link your own Google, Microsoft or Apple account to your membership: signed in with your passkey, checked again in the last five minutes (step-up). Answers the provider's URL and a browser secret. The link then signs you in to read only."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities/{provider}/finish":
+    post:
+      operationId: postV1MeIdentitiesByProviderFinish
+      tags:
+        - Access
+      summary: "Finish linking: { code, state, browser_secret } from the page that started it, for the signed-in person who started it."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/me/identities/{provider}":
+    delete:
+      operationId: deleteV1MeIdentitiesByProvider
+      tags:
+        - Access
+      summary: "Unlink your own Google, Microsoft or Apple account: it signs you in no more."
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/auth/step-up/start":
     post:
       operationId: postV1AuthStepUpStart

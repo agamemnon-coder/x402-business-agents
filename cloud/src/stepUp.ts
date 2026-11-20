@@ -79,7 +79,9 @@ const bindingOf = async (session: string) => (await sha256Hex(`purser-step-up|${
 /** When a session token was issued (its expiry less the session's life); null for anything that is not one. */
 export async function sessionIssuedAt(secret: string, token: string): Promise<number | null> {
   if (!token.startsWith("pcs.")) return null;
-  const p = await signedPayload(secret, "pcs", token, Infinity) as { exp?: unknown } | null;
+  const p = await signedPayload(secret, "pcs", token, Infinity) as { exp?: unknown; m?: unknown } | null;
+  // A session signed in with Google, Microsoft or Apple was no passkey check (cloud/src/oidc.ts).
+  if (p && p.m !== undefined) return null;
   return p && typeof p.exp === "number" ? p.exp - SESSION_TTL_MS : null;
 }
 
