@@ -16,10 +16,11 @@ import { ICC_HARD_CAP_CENTS, ICC_MERCHANTS } from "../src/icc/policy.js";
 import { ICC_NOT_USED, executeIccPurchase, iccPurchases, requestIccPurchase, type IccDeps, type IccOutcome, type IccPurchaseRequest } from "../src/icc/purchase.js";
 import { fromCents } from "../src/lib/money.js";
 import { termsHash } from "../src/lib/terms.js";
-import { decide, resuming } from "../src/policy/approvals.js";
+import { resuming } from "../src/policy/approvals.js";
 import { makeIccTestKeys, type IccTestKeys } from "./support/iccKeys.js";
 import { IccStandIn } from "./support/iccStandIn.js";
 import { privateFindings } from "./support/privacyScan.js";
+import { approveSigned } from "./support/signedApproval.js";
 
 const T0 = new Date("2026-11-12T10:00:00Z");
 /** A made-up instrument identifier of the documented length (32). Not a card number and not a real ID. */
@@ -67,7 +68,7 @@ const payload = (db: DB, event: string) => JSON.parse((db.prepare("SELECT payloa
 const steps = (db: DB) => (db.prepare("SELECT step, status FROM money_steps ORDER BY n").all() as { step: string; status: string }[]).map((s) => `${s.step}:${s.status}`);
 function approve(db: DB, id: string): void {
   const p = proposal(db, id);
-  decide(db, { proposalId: id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver: "cfo", method: "passkey", signedSha256: p.terms_sha256, passkey: { credentialId: "test-cred", assertionSha256: "0".repeat(64) } }, T0);
+  approveSigned(db, p.proposal_id, T0);
 }
 /** Files the purchase and has the CFO sign its exact terms. */
 async function approved(w: World, r: IccPurchaseRequest = req()): Promise<string> {

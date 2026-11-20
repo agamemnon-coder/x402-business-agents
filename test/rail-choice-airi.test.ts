@@ -14,7 +14,8 @@ import { openDb, type DB } from "../src/db/open.js";
 import { AIRI_RAIL, airiRailOffer, airiRailPay, airiRailPayment, chooseRails, type AiriRailPurchase, type RailDeps } from "../src/agents/railChoice.js";
 import { StandInAiriClient, StandInCheckout } from "../src/airi/standIn.js";
 import { airiPurchases, airiRailChoice, executeAiriPurchase, requestAiriPurchase, type AiriDeps } from "../src/airi/purchase.js";
-import { decide, resuming } from "../src/policy/approvals.js";
+import { resuming } from "../src/policy/approvals.js";
+import { approveSigned } from "./support/signedApproval.js";
 
 const ON = { KIT11_AIRI_RAIL: "on" };
 const OFF = {};
@@ -237,7 +238,7 @@ describe("the rail choice is recorded with the purchase: who chose Airi, and the
     expect(rows(db)).toEqual([]);
     const p = db.prepare("SELECT proposal_id, terms_sha256 FROM proposals WHERE kind = 'airi_purchase'").get() as { proposal_id: string; terms_sha256: string };
     expect(airiRailChoice(db, p.proposal_id)).toMatchObject({ rail: AIRI_RAIL, by: "claude", request_id: REQ });
-    decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver: "cfo", method: "passkey", signedSha256: p.terms_sha256, passkey: { credentialId: "test-cred", assertionSha256: "0".repeat(64) } }, T());
+    approveSigned(db, p.proposal_id, T());
     expect(await executeAiriPurchase(db, d, p.proposal_id, T())).toMatchObject({ status: "succeeded" });
     expect(rows(db)[0]).toMatchObject({ proposal_id: p.proposal_id, mandate_id: "standin-mdt-1", checkout_ref: "standin-order-1", rail_choice: { by: "claude", request_id: REQ } });
   });

@@ -13,7 +13,8 @@ import { executeAiriPurchase, requestAiriPurchase, type AiriDeps, type AiriPurch
 import { StandInAiriClient, StandInCheckout } from "../src/airi/standIn.js";
 import { TERMS_METADATA_KEYS, compareTermsMetadata, readBackTerms, readIntentMetadata, termsMetadata } from "../src/airi/termsMetadata.js";
 import { openDb, type DB } from "../src/db/open.js";
-import { decide, resuming } from "../src/policy/approvals.js";
+import { resuming } from "../src/policy/approvals.js";
+import { approveSigned } from "./support/signedApproval.js";
 
 const SHA = "a".repeat(64);
 const OTHER = "b".repeat(64);
@@ -138,7 +139,7 @@ describe("purchase.ts threads the signed terms to the checkout", () => {
     const d = deps(co);
     const out = await requestAiriPurchase(db, d, req("45.00"), T0);
     if (out.status !== "pending_approval") throw new Error(`expected a proposal, got ${out.status}`);
-    decide(db, { proposalId: out.proposalId, decision: "APPROVED", typedPrefix: out.termsSha256.slice(0, 8), approver: "cfo", method: "passkey", signedSha256: out.termsSha256, passkey: { credentialId: "test-cred", assertionSha256: "0".repeat(64) } }, T0);
+    approveSigned(db, out.proposalId, T0);
     const done = await executeAiriPurchase(db, d, out.proposalId, T0);
     if (done.status !== "succeeded") throw new Error(`expected success, got ${done.status}`);
     expect(await co.readMetadata(done.reference)).toEqual({ purser_terms_sha256: out.termsSha256, purser_proposal: out.proposalId });

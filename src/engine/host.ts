@@ -17,6 +17,7 @@ import { feeReserveCents } from "../policy/treasury.js";
 import { toCents } from "../lib/money.js";
 import { limitRule, payableAccount } from "../ap/checkerCore.js";
 import { aloneLimit, fxMarkupLimitBps, getSetting, setSetting } from "../world/settings.js";
+import { setSystemDefaultAloneLimit } from "../policy/aloneLimit.js";
 import { actionsFor } from "../ap/detail.js";
 import { SEEDED_PAID_REASON } from "../ap/books.js";
 import { docStoreOf } from "../ap/docStore.js";
@@ -122,7 +123,8 @@ export interface EngineDeps {
   fxMarkupBps?: number;
   /**
    * The CFO's limit an agent may pay a supplier invoice alone up to (owner, 16 Nov), written by the seed as the company's
-   * setting ap.alone_eur. Absent: none, and the CFO signs every invoice. Only a try company sets it (TRY_ALONE_LIMIT).
+   * setting ap.alone_eur, labelled in the record as a system default the CFO did not sign (src/policy/aloneLimit.ts).
+   * Absent: none unless the CFO signs one, and the CFO signs every invoice. Only a try company sets it (TRY_ALONE_LIMIT).
    */
   aloneLimit?: { currency: "EUR"; amount: string };
 }
@@ -443,7 +445,8 @@ export class EngineHost {
       const fx = this.deps.fxMarkupBps;
       if (fx !== undefined && getSetting(db, "fx.max_markup_bps", "") !== String(fx)) setSetting(db, "system", "fx.max_markup_bps", String(fx), this.now());
       const alone = this.deps.aloneLimit;
-      if (alone && alone.currency === "EUR" && getSetting(db, "ap.alone_eur", "") !== alone.amount) setSetting(db, "system", "ap.alone_eur", alone.amount, this.now());
+      // A test company's default limit to pay alone, labelled as one in the record (never over a limit the CFO signed).
+      if (alone && alone.currency === "EUR") setSystemDefaultAloneLimit(db, alone.amount, this.now());
       try { await seedTreasury(db, rails.rail, rails.sim); } finally { this.deps.afterMoney?.(); }
       if (this.deps.seedPaid) await this.seedPaidOriginal();
     });

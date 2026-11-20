@@ -3,7 +3,6 @@
 // terms only. Origin and rpId are the relay's host, as pinned when the passkey was enrolled.
 
 import { approvalHashOf } from "../metal/ownersExecute.js";
-import { createHash } from "node:crypto";
 import {
   verifyAuthenticationResponse, verifyRegistrationResponse,
   type AuthenticationResponseJSON, type AuthenticatorTransport, type RegistrationResponseJSON,
@@ -11,21 +10,14 @@ import {
 import type { DB } from "../db/open.js";
 import { rejectionSha256 } from "../lib/terms.js";
 import { passkeyById, type EnrolmentWindow, type PasskeyRow } from "./ledger.js";
+import { assertionSha256, challengeFor } from "./storedSignature.js";
+import { policyApprovalCheck, POLICY_METHOD, sourceWords } from "../policy/signedApproval.js";
 
-const HEX64 = /^[0-9a-f]{64}$/;
 /** ES256 (every phone passkey) and RS256 (some Windows Hello keys). */
 const ALGORITHMS = [-7, -257];
 
-/** base64url of the hash's 32 raw bytes: what the page passes as the challenge, and what the passkey signs. */
-export function challengeFor(termsSha256: string): string {
-  if (!HEX64.test(termsSha256)) throw new Error("a terms hash is 64 lowercase hex characters");
-  return Buffer.from(termsSha256, "hex").toString("base64url");
-}
-
-/** One signature's identity: what the authenticator signed and the signature itself. */
-export function assertionSha256(r: AuthenticationResponseJSON): string {
-  return createHash("sha256").update(`${r.response.clientDataJSON}.${r.response.authenticatorData}.${r.response.signature}`).digest("hex");
-}
+// The challenge of a hash and a signature's identity live beside the synchronous re-check (src/passkey/storedSignature.ts).
+export { assertionSha256, challengeFor };
 
 const reasonOf = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 240);
 const bytes = (b64url: string) => new Uint8Array(Buffer.from(b64url, "base64url"));
@@ -150,12 +142,23 @@ export async function reverifyPasskeyApprovals(db: DB): Promise<Check[]> {
 /**
  * `npm run verify`: once a passkey was enrolled, every approval must have been signed with a passkey. Anything else
  * (a typed prefix from the CLI or the local page, or a row written straight into the ledger) fails the check.
+ * A payment Purser's code approved within the limit to pay alone (method policy) is no person's approval: it passes
+ * only with its proposal.within_limit record over the approved hash and a limit in force at that moment, signed by the
+ * CFO with the passkey (that signature is checked again here) or a /try test company's labelled system default, which
+ * the line names (finding 7, 20 Nov); before as after a passkey is enrolled. Anything else fails.
  */
 export function approvalMethodChecks(db: DB): Check[] {
   const first = (db.prepare("SELECT MIN(enrolled_at) AS at FROM passkeys").get() as { at: string | null }).at;
-  if (!first) return [{ ok: true, what: "approval methods", detail: "no passkey enrolled; approvals by typed hash prefix" }];
-  const bad = (db.prepare("SELECT proposal_id, method, created_at FROM approvals WHERE decision = 'APPROVED' AND method != 'passkey' ORDER BY approval_id").all() as
+  const policy = (db.prepare("SELECT proposal_id FROM approvals WHERE decision = 'APPROVED' AND method = ? ORDER BY approval_id").all(POLICY_METHOD) as { proposal_id: string }[]).map((a): Check => {
+    const c = policyApprovalCheck(db, a.proposal_id, { signature: true });
+    return c.ok
+      ? { ok: true, what: `approval ${a.proposal_id}`, detail: `paid alone by Purser's code within ${c.limit.currency} ${c.limit.amount}, ${sourceWords(c.limit.source)}` }
+      : { ok: false, what: `approval ${a.proposal_id}`, detail: `approved by policy without a limit that stands: ${c.reason}` };
+  });
+  if (!first) return [{ ok: true, what: "approval methods", detail: "no passkey enrolled; approvals by typed hash prefix" }, ...policy];
+  const bad = (db.prepare("SELECT proposal_id, method, created_at FROM approvals WHERE decision = 'APPROVED' AND method NOT IN ('passkey', ?) ORDER BY approval_id").all(POLICY_METHOD) as
     { proposal_id: string; method: string; created_at: string }[]).filter((a) => Date.parse(a.created_at) >= Date.parse(first));
-  if (bad.length === 0) return [{ ok: true, what: "approval methods", detail: "every approval since the passkey was enrolled was signed with it" }];
-  return bad.map((a) => ({ ok: false, what: `approval ${a.proposal_id}`, detail: `approved by ${a.method} after a passkey was enrolled; only the passkey may approve` }));
+  const typed = bad.map((a): Check => ({ ok: false, what: `approval ${a.proposal_id}`, detail: `approved by ${a.method} after a passkey was enrolled; only the passkey may approve` }));
+  if (typed.length === 0) return [{ ok: true, what: "approval methods", detail: `every approval since the passkey was enrolled was signed with it${policy.length ? ", or paid alone by code within a limit in force (below)" : ""}` }, ...policy];
+  return [...typed, ...policy];
 }
