@@ -2,7 +2,7 @@
   "run": "checkpoint-drill",
   "date": "2026-11-20",
   "command": "npm run audit:checkpoint-drill -- record",
-  "commit": "cc36228c7d31b00b7443f50bfc99b9ca3a465946",
+  "commit": "e240c74d4588fe199b58936d7f223f19debf6beb",
   "node": "v22.22.0",
   "platform": "linux x64",
   "simulated": [
@@ -17,10 +17,10 @@
     "passed": 56,
     "failed": 0
   },
-  "started_at": "2026-11-20T14:41:40.463Z",
-  "ended_at": "2026-11-20T14:41:49.097Z",
+  "started_at": "2026-11-20T14:46:01.235Z",
+  "ended_at": "2026-11-20T14:46:12.203Z",
   "signer": {
-    "id": "3d145b0962d971cf"
+    "id": "bd9a8a43eae9cf62"
   },
   "ledger": {
     "rows": 53,
@@ -33,18 +33,18 @@
   "timings": {
     "check_before_payment": {
       "n": 25,
-      "median_ms": 0.36,
-      "max_ms": 2.18
+      "median_ms": 0.41,
+      "max_ms": 2.13
     },
     "checkpoint_write": {
       "n": 10,
-      "median_ms": 1.37,
-      "max_ms": 4.14
+      "median_ms": 1.73,
+      "max_ms": 1.96
     },
     "reserve_spend": {
       "n": 10,
-      "median_ms": 7.29,
-      "max_ms": 9.02
+      "median_ms": 13.17,
+      "max_ms": 16.61
     }
   },
   "steps": [
@@ -52,7 +52,7 @@
       "id": "key.made",
       "what": "an Ed25519 key made by npm run verify-audit -- keygen, outside the repository",
       "pass": true,
-      "detail": "key id 3d145b0962d971cf, file mode 600"
+      "detail": "key id bd9a8a43eae9cf62, file mode 600"
     },
     {
       "id": "flow.enrolment",
@@ -88,7 +88,7 @@
       "id": "clean.verify_audit",
       "what": "npm run verify-audit on the runner's ledger: every row's hash and every checkpoint's signature",
       "pass": true,
-      "detail": "ok    53 audit rows, 23 checkpoint(s); latest 23 covers 53 rows at 2026-11-20T14:41:41.910Z, key 3d145b0962d971cf; pinned 3d145b0962d971cf"
+      "detail": "ok    53 audit rows, 23 checkpoint(s); latest 23 covers 53 rows at 2026-11-20T14:46:03.128Z, key bd9a8a43eae9cf62; pinned bd9a8a43eae9cf62"
     },
     {
       "id": "clean.health",
@@ -107,7 +107,7 @@
       "what": "the last two audit rows cut off the end: the next payment",
       "pass": true,
       "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (the ledger has 51 rows; checkpoint 23 covers 53: rows were cut off the end",
-      "ms": 10.11
+      "ms": 23.5
     },
     {
       "id": "attack.truncate.tightening",
@@ -119,13 +119,13 @@
       "id": "attack.truncate.loosening",
       "what": "the last two audit rows cut off the end: a higher card limit (a loosening policy change)",
       "pass": true,
-      "detail": "P-0006: audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (row 53 has hash 443c4cda9a4e…; checkpoint 12 signed 6e9b083b43df…:"
+      "detail": "P-0006: audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (row 53 has hash 93213df8fdca…; checkpoint 12 signed 13247e131b34…:"
     },
     {
       "id": "attack.truncate.key_enrolment",
       "what": "the last two audit rows cut off the end: an agent key enrolment",
       "pass": true,
-      "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (row 53 has hash 443c4cda9a4e…; checkpoint 12 signed 6e9b083b43df…: the his"
+      "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (row 53 has hash 93213df8fdca…; checkpoint 12 signed 13247e131b34…: the his"
     },
     {
       "id": "attack.truncate.recorded",
@@ -155,8 +155,8 @@
       "id": "attack.rewrite.payment",
       "what": "audit row 3 rewritten and every hash after it recomputed: the next payment",
       "pass": true,
-      "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (row 13 has hash 21d9f4a9e1b5…; checkpoint 3 signed 436b10881cde…: the hist",
-      "ms": 19.98
+      "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (row 13 has hash 59fdd59555a9…; checkpoint 3 signed 15e06a394bcf…: the hist",
+      "ms": 16.11
     },
     {
       "id": "attack.rewrite.tightening",
@@ -168,13 +168,13 @@
       "id": "attack.rewrite.loosening",
       "what": "audit row 3 rewritten and every hash after it recomputed: a higher card limit (a loosening policy change)",
       "pass": true,
-      "detail": "P-0006: audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (row 13 has hash 21d9f4a9e1b5…; checkpoint 3 signed 436b10881cde…: "
+      "detail": "P-0006: audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (row 13 has hash 59fdd59555a9…; checkpoint 3 signed 15e06a394bcf…: "
     },
     {
       "id": "attack.rewrite.key_enrolment",
       "what": "audit row 3 rewritten and every hash after it recomputed: an agent key enrolment",
       "pass": true,
-      "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (row 13 has hash 21d9f4a9e1b5…; checkpoint 3 signed 436b10881cde…: the hist"
+      "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (row 13 has hash 59fdd59555a9…; checkpoint 3 signed 15e06a394bcf…: the hist"
     },
     {
       "id": "attack.rewrite.recorded",
@@ -205,7 +205,7 @@
       "what": "a money row (refund.paid, 500.00) appended after the latest checkpoint: the next payment",
       "pass": true,
       "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (1 money row(s) after checkpoint 23 that no checkpoint covers and no signed",
-      "ms": 10.52
+      "ms": 21.18
     },
     {
       "id": "attack.forged_money_row.tightening",
@@ -254,7 +254,7 @@
       "what": "the checkpoint file cut back to its first checkpoint: the next payment",
       "pass": true,
       "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (8 money row(s) after checkpoint 1 that no checkpoint covers and no signed ",
-      "ms": 9.66
+      "ms": 5.81
     },
     {
       "id": "attack.checkpoint_file_cut.tightening",
@@ -303,7 +303,7 @@
       "what": "an old checkpoint appended again as the latest: the next payment",
       "pass": true,
       "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (checkpoint 2 comes after checkpoint 23: an old checkpoint presented again ",
-      "ms": 9.86
+      "ms": 15.83
     },
     {
       "id": "attack.checkpoint_replayed.tightening",
@@ -351,8 +351,8 @@
       "id": "attack.wrong_key.payment",
       "what": "a forged row covered by a checkpoint signed with a key the chain never introduced: the next payment",
       "pass": true,
-      "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (checkpoint 24 is signed by key 4ece3f51f1b0f7c1, which no checkpoint intro",
-      "ms": 18.3
+      "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (checkpoint 24 is signed by key 70a0de0cf756fc81, which no checkpoint intro",
+      "ms": 8.79
     },
     {
       "id": "attack.wrong_key.tightening",
@@ -364,13 +364,13 @@
       "id": "attack.wrong_key.loosening",
       "what": "a forged row covered by a checkpoint signed with a key the chain never introduced: a higher card limit (a loosening policy change)",
       "pass": true,
-      "detail": "P-0006: audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (checkpoint 24 is signed by key 4ece3f51f1b0f7c1, which no checkpoi"
+      "detail": "P-0006: audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (checkpoint 24 is signed by key 70a0de0cf756fc81, which no checkpoi"
     },
     {
       "id": "attack.wrong_key.key_enrolment",
       "what": "a forged row covered by a checkpoint signed with a key the chain never introduced: an agent key enrolment",
       "pass": true,
-      "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (checkpoint 24 is signed by key 4ece3f51f1b0f7c1, which no checkpoint intro"
+      "detail": "audit_checkpoint_mismatch: the audit log does not match its latest signed checkpoint (checkpoint 24 is signed by key 70a0de0cf756fc81, which no checkpoint intro"
     },
     {
       "id": "attack.wrong_key.recorded",
