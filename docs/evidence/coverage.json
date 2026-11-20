@@ -1,797 +1,797 @@
 {
- "measured_on": "2026-11-20",
- "tool": "vitest 5.1.0 with @vitest/coverage-v8 (V8's own coverage, mapped to statements and branches)",
- "command": "npm run test:coverage (vitest run --coverage, then tsx test/coverage-areas.ts)",
- "run": {
-  "what": "The coverage run behind the product scope's \"after\" figure (20 November, afternoon, after the outside-audit round #457 and the follow-ups of #459). It is not the full-suite count, which is recorded separately in docs/assets/test-summary.json.",
-  "scope": "the coverage run: every test file vitest.config.ts includes except test/cloud-engine-bundle.test.ts, run once with V8 coverage over src/, cloud/src/ and worker/src/",
-  "commit": "33fdb0211",
-  "commit_note": "the head of #459 before its last three commits (the approval-page record, a gitleaks ignore and the ten coverage test files of coverage-more), so the ten files' gain is not in this figure",
-  "command": "npx vitest run --coverage --coverage.reportOnFailure --coverage.reporter=json-summary --coverage.reporter=text-summary --exclude test/cloud-engine-bundle.test.ts --pool=forks --maxWorkers=3 --testTimeout=90000",
-  "environment": "a Linux machine with four cores shared with other jobs, node_modules linked from outside the checkout (not CI)",
-  "result": {
-   "passed": 9268,
-   "failed": 3,
-   "skipped": 5,
-   "files": 857
+  "measured_on": "2026-11-20",
+  "tool": "vitest 5.1.0 with @vitest/coverage-v8 (V8's own coverage, mapped to statements and branches)",
+  "command": "npm run test:coverage (vitest run --coverage, then tsx test/coverage-areas.ts)",
+  "run": {
+    "what": "The coverage run behind the product scope's \"after\" figure (20 November, evening, after the red-team re-run, the long run, evals v9 and v10 and about 680 new behaviour tests). It is not the full-suite count, which is recorded separately in docs/assets/test-summary.json.",
+    "scope": "the coverage run: every test file vitest.config.ts includes except test/cloud-engine-bundle.test.ts, run once with V8 coverage over src/, cloud/src/ and worker/src/",
+    "commit": "7d42f9209",
+    "commit_note": "the head of the integration branch before its last three commits (a gitleaks ignore, the company name read as a name, not words, and this record)",
+    "command": "npx vitest run --coverage --coverage.reportOnFailure --coverage.reporter=json-summary --coverage.reporter=text-summary --exclude test/cloud-engine-bundle.test.ts --pool=forks --maxWorkers=3 --testTimeout=90000",
+    "environment": "a Linux machine with four cores shared with other jobs, node_modules linked from outside the checkout (not CI)",
+    "result": {
+      "passed": 10229,
+      "failed": 6,
+      "skipped": 5,
+      "files": 968
+    },
+    "failure": "test/ap-agent-evals.test.ts and test/engine-try-world.test.ts (a new check read the bill-to line of a /try invoice as unreadable words, and a words-only eval case is now held; both fixed in the next commits with tests), test/readme-glance.test.ts, test/readme-headers.test.ts and test/readme-proof-strip.test.ts (README lines regenerated after this run) and test/site-meta.test.ts (a claims.md date line). test/cloud-engine-bundle.test.ts was left out as before.",
+    "regenerated": "by hand from the run's coverage-summary.json (product totals only); the per-area, per-file and largest-gap sections below are from the earlier run on 8d50fc19c and are not refreshed"
   },
-  "failure": "test/approval-page-integrity.test.ts (the console's recorded hash was stale at that commit; the record was regenerated in the next commit) and test/redteam-api.test.ts (2 tests, timeouts on the loaded machine; they pass alone, 2/2). test/cloud-engine-bundle.test.ts was left out: with node_modules linked from outside the checkout it fails here and passes in CI.",
-  "regenerated": "by hand from the run's coverage-summary.json (product totals only); the per-area, per-file and largest-gap sections below are from the earlier run on 8d50fc19c and are not refreshed"
- },
- "measured_scope": {
-  "include": [
-   "src/**/*.ts",
-   "cloud/src/**/*.ts",
-   "worker/src/**/*.ts"
+  "measured_scope": {
+    "include": [
+      "src/**/*.ts",
+      "cloud/src/**/*.ts",
+      "worker/src/**/*.ts"
+    ],
+    "exclude": [
+      "src/cli/**",
+      "**/*.gen.ts",
+      "**/*.d.ts"
+    ]
+  },
+  "tests": {
+    "before": "9,268 tests passed, 3 failed, 5 skipped (857 files: 852 passed, 2 failed, 3 skipped) (the previous coverage run, 33fdb0211)",
+    "after": "10,229 tests passed, 6 failed, 5 skipped (968 files)"
+  },
+  "scopes": {
+    "product": {
+      "label": "The product (the measured scope): src, cloud/src and worker/src, without the CLI entry points and generated files",
+      "before": {
+        "files": 868,
+        "statements": {
+          "covered": 68941,
+          "total": 74760,
+          "pct": 92.21
+        },
+        "branches": {
+          "covered": 51775,
+          "total": 62978,
+          "pct": 82.21
+        }
+      },
+      "after": {
+        "files": 880,
+        "statements": {
+          "covered": 71994,
+          "total": 75739,
+          "pct": 95.05
+        },
+        "branches": {
+          "covered": 54817,
+          "total": 63720,
+          "pct": 86.02
+        }
+      }
+    },
+    "everything": {
+      "label": "Everything under src, cloud/src and worker/src, the CLI entry points included",
+      "before": {
+        "files": 995,
+        "statements": {
+          "covered": 65468,
+          "total": 82054,
+          "pct": 79.79
+        },
+        "branches": {
+          "covered": 48911,
+          "total": 66774,
+          "pct": 73.25
+        }
+      },
+      "after": {
+        "files": 998,
+        "statements": {
+          "covered": 65978,
+          "total": 82369,
+          "pct": 80.1
+        },
+        "branches": {
+          "covered": 49391,
+          "total": 67016,
+          "pct": 73.7
+        }
+      }
+    },
+    "src": {
+      "label": "src/ only (CI's scope until 19 November)",
+      "before": {
+        "files": 854,
+        "statements": {
+          "covered": 55276,
+          "total": 71143,
+          "pct": 77.7
+        },
+        "branches": {
+          "covered": 41005,
+          "total": 57535,
+          "pct": 71.27
+        }
+      },
+      "after": {
+        "files": 857,
+        "statements": {
+          "covered": 55786,
+          "total": 71458,
+          "pct": 78.07
+        },
+        "branches": {
+          "covered": 41486,
+          "total": 57777,
+          "pct": 71.8
+        }
+      }
+    },
+    "cloud_src": {
+      "label": "cloud/src (Purser Cloud)",
+      "before": {
+        "files": 116,
+        "statements": {
+          "covered": 6880,
+          "total": 7400,
+          "pct": 92.97
+        },
+        "branches": {
+          "covered": 5089,
+          "total": 6066,
+          "pct": 83.89
+        }
+      },
+      "after": {
+        "files": 116,
+        "statements": {
+          "covered": 6880,
+          "total": 7400,
+          "pct": 92.97
+        },
+        "branches": {
+          "covered": 5088,
+          "total": 6066,
+          "pct": 83.88
+        }
+      }
+    },
+    "worker_src": {
+      "label": "worker/src (the relay Worker)",
+      "before": {
+        "files": 25,
+        "statements": {
+          "covered": 3312,
+          "total": 3511,
+          "pct": 94.33
+        },
+        "branches": {
+          "covered": 2817,
+          "total": 3173,
+          "pct": 88.78
+        }
+      },
+      "after": {
+        "files": 25,
+        "statements": {
+          "covered": 3312,
+          "total": 3511,
+          "pct": 94.33
+        },
+        "branches": {
+          "covered": 2817,
+          "total": 3173,
+          "pct": 88.78
+        }
+      }
+    },
+    "cli": {
+      "label": "src/cli (left out: the entry points)",
+      "before": {
+        "files": 167,
+        "statements": {
+          "covered": 520,
+          "total": 11220,
+          "pct": 4.63
+        },
+        "branches": {
+          "covered": 300,
+          "total": 7071,
+          "pct": 4.24
+        }
+      },
+      "after": {
+        "files": 168,
+        "statements": {
+          "covered": 520,
+          "total": 11247,
+          "pct": 4.62
+        },
+        "branches": {
+          "covered": 300,
+          "total": 7087,
+          "pct": 4.23
+        }
+      }
+    }
+  },
+  "areas": {
+    "money": {
+      "prefixes": [
+        "src/lib/money",
+        "src/finance/",
+        "src/agents/euroBill",
+        "src/agents/sweep",
+        "src/metal/pay",
+        "src/executors/refunds",
+        "src/executors/invoicePayment"
+      ],
+      "before": {
+        "files": 16,
+        "statements": {
+          "covered": 1435,
+          "total": 1529,
+          "pct": 93.85
+        },
+        "branches": {
+          "covered": 1145,
+          "total": 1362,
+          "pct": 84.07
+        }
+      },
+      "after": {
+        "files": 16,
+        "statements": {
+          "covered": 1480,
+          "total": 1529,
+          "pct": 96.8
+        },
+        "branches": {
+          "covered": 1228,
+          "total": 1362,
+          "pct": 90.16
+        }
+      }
+    },
+    "policy": {
+      "prefixes": [
+        "src/policy/"
+      ],
+      "before": {
+        "files": 38,
+        "statements": {
+          "covered": 2380,
+          "total": 2475,
+          "pct": 96.16
+        },
+        "branches": {
+          "covered": 2099,
+          "total": 2281,
+          "pct": 92.02
+        }
+      },
+      "after": {
+        "files": 38,
+        "statements": {
+          "covered": 2473,
+          "total": 2575,
+          "pct": 96.04
+        },
+        "branches": {
+          "covered": 2162,
+          "total": 2352,
+          "pct": 91.92
+        }
+      }
+    },
+    "passkey": {
+      "prefixes": [
+        "src/passkey/"
+      ],
+      "before": {
+        "files": 6,
+        "statements": {
+          "covered": 470,
+          "total": 500,
+          "pct": 94
+        },
+        "branches": {
+          "covered": 315,
+          "total": 353,
+          "pct": 89.24
+        }
+      },
+      "after": {
+        "files": 6,
+        "statements": {
+          "covered": 470,
+          "total": 500,
+          "pct": 94
+        },
+        "branches": {
+          "covered": 315,
+          "total": 353,
+          "pct": 89.24
+        }
+      }
+    },
+    "executors": {
+      "prefixes": [
+        "src/executors/"
+      ],
+      "before": {
+        "files": 12,
+        "statements": {
+          "covered": 1202,
+          "total": 1314,
+          "pct": 91.48
+        },
+        "branches": {
+          "covered": 914,
+          "total": 1069,
+          "pct": 85.5
+        }
+      },
+      "after": {
+        "files": 12,
+        "statements": {
+          "covered": 1202,
+          "total": 1314,
+          "pct": 91.48
+        },
+        "branches": {
+          "covered": 914,
+          "total": 1069,
+          "pct": 85.5
+        }
+      }
+    },
+    "relay": {
+      "prefixes": [
+        "src/relay/",
+        "worker/src/"
+      ],
+      "before": {
+        "files": 32,
+        "statements": {
+          "covered": 3609,
+          "total": 3823,
+          "pct": 94.4
+        },
+        "branches": {
+          "covered": 3018,
+          "total": 3413,
+          "pct": 88.43
+        }
+      },
+      "after": {
+        "files": 32,
+        "statements": {
+          "covered": 3609,
+          "total": 3823,
+          "pct": 94.4
+        },
+        "branches": {
+          "covered": 3018,
+          "total": 3413,
+          "pct": 88.43
+        }
+      }
+    },
+    "proof": {
+      "prefixes": [
+        "src/proof/"
+      ],
+      "before": {
+        "files": 7,
+        "statements": {
+          "covered": 1023,
+          "total": 1066,
+          "pct": 95.97
+        },
+        "branches": {
+          "covered": 756,
+          "total": 923,
+          "pct": 81.91
+        }
+      },
+      "after": {
+        "files": 7,
+        "statements": {
+          "covered": 1023,
+          "total": 1066,
+          "pct": 95.97
+        },
+        "branches": {
+          "covered": 756,
+          "total": 923,
+          "pct": 81.91
+        }
+      }
+    },
+    "audit and anchor": {
+      "prefixes": [
+        "src/audit/",
+        "src/anchor/"
+      ],
+      "before": {
+        "files": 7,
+        "statements": {
+          "covered": 401,
+          "total": 407,
+          "pct": 98.53
+        },
+        "branches": {
+          "covered": 297,
+          "total": 319,
+          "pct": 93.1
+        }
+      },
+      "after": {
+        "files": 7,
+        "statements": {
+          "covered": 407,
+          "total": 414,
+          "pct": 98.31
+        },
+        "branches": {
+          "covered": 301,
+          "total": 325,
+          "pct": 92.62
+        }
+      }
+    },
+    "payouts": {
+      "prefixes": [
+        "src/payouts/"
+      ],
+      "before": {
+        "files": 7,
+        "statements": {
+          "covered": 318,
+          "total": 352,
+          "pct": 90.34
+        },
+        "branches": {
+          "covered": 324,
+          "total": 359,
+          "pct": 90.25
+        }
+      },
+      "after": {
+        "files": 7,
+        "statements": {
+          "covered": 318,
+          "total": 352,
+          "pct": 90.34
+        },
+        "branches": {
+          "covered": 324,
+          "total": 359,
+          "pct": 90.25
+        }
+      }
+    },
+    "airwallex": {
+      "prefixes": [
+        "src/airwallex/"
+      ],
+      "before": {
+        "files": 31,
+        "statements": {
+          "covered": 2056,
+          "total": 2259,
+          "pct": 91.01
+        },
+        "branches": {
+          "covered": 1682,
+          "total": 2079,
+          "pct": 80.9
+        }
+      },
+      "after": {
+        "files": 31,
+        "statements": {
+          "covered": 2055,
+          "total": 2259,
+          "pct": 90.97
+        },
+        "branches": {
+          "covered": 1681,
+          "total": 2079,
+          "pct": 80.86
+        }
+      }
+    },
+    "alta (metal)": {
+      "prefixes": [
+        "src/metal/"
+      ],
+      "before": {
+        "files": 32,
+        "statements": {
+          "covered": 2242,
+          "total": 2506,
+          "pct": 89.47
+        },
+        "branches": {
+          "covered": 1578,
+          "total": 1964,
+          "pct": 80.35
+        }
+      },
+      "after": {
+        "files": 32,
+        "statements": {
+          "covered": 2242,
+          "total": 2506,
+          "pct": 89.47
+        },
+        "branches": {
+          "covered": 1578,
+          "total": 1964,
+          "pct": 80.35
+        }
+      }
+    }
+  },
+  "files_before_after": {
+    "src/approve/client.ts": {
+      "before": {
+        "statements": [
+          577,
+          1332
+        ],
+        "branches": [
+          752,
+          1317
+        ]
+      },
+      "after": {
+        "statements": [
+          580,
+          1332
+        ],
+        "branches": [
+          762,
+          1317
+        ]
+      }
+    },
+    "src/film/capture.ts": {
+      "before": {
+        "statements": [
+          101,
+          197
+        ],
+        "branches": [
+          43,
+          96
+        ]
+      },
+      "after": {
+        "statements": [
+          141,
+          197
+        ],
+        "branches": [
+          60,
+          96
+        ]
+      }
+    },
+    "src/redesign/run.ts": {
+      "before": {
+        "statements": [
+          569,
+          635
+        ],
+        "branches": [
+          592,
+          909
+        ]
+      },
+      "after": {
+        "statements": [
+          591,
+          635
+        ],
+        "branches": [
+          685,
+          909
+        ]
+      }
+    },
+    "src/redesign/proof.ts": {
+      "before": {
+        "statements": [
+          235,
+          293
+        ],
+        "branches": [
+          190,
+          334
+        ]
+      },
+      "after": {
+        "statements": [
+          266,
+          293
+        ],
+        "branches": [
+          239,
+          334
+        ]
+      }
+    },
+    "src/demo/runTrace.ts": {
+      "before": {
+        "statements": [
+          6,
+          60
+        ],
+        "branches": [
+          0,
+          28
+        ]
+      },
+      "after": {
+        "statements": [
+          60,
+          60
+        ],
+        "branches": [
+          26,
+          28
+        ]
+      }
+    },
+    "src/servers/dashboard.ts": {
+      "before": {
+        "statements": [
+          263,
+          317
+        ],
+        "branches": [
+          41,
+          71
+        ]
+      },
+      "after": {
+        "statements": [
+          299,
+          317
+        ],
+        "branches": [
+          47,
+          71
+        ]
+      }
+    },
+    "src/finance/dataQa.ts": {
+      "before": {
+        "statements": [
+          267,
+          315
+        ],
+        "branches": [
+          193,
+          305
+        ]
+      },
+      "after": {
+        "statements": [
+          312,
+          315
+        ],
+        "branches": [
+          276,
+          305
+        ]
+      }
+    }
+  },
+  "largest_gaps_after": [
+    {
+      "file": "src/approve/client.ts",
+      "uncovered_statements": 752,
+      "statements": 1332,
+      "uncovered_branches": 555,
+      "branches": 1317
+    },
+    {
+      "file": "src/airi/vic3.ts",
+      "uncovered_statements": 77,
+      "statements": 583,
+      "uncovered_branches": 164,
+      "branches": 587
+    },
+    {
+      "file": "src/fuzz/properties.ts",
+      "uncovered_statements": 70,
+      "statements": 436,
+      "uncovered_branches": 69,
+      "branches": 250
+    },
+    {
+      "file": "worker/src/trySign.ts",
+      "uncovered_statements": 65,
+      "statements": 1047,
+      "uncovered_branches": 129,
+      "branches": 884
+    },
+    {
+      "file": "src/film/capture.ts",
+      "uncovered_statements": 56,
+      "statements": 197,
+      "uncovered_branches": 36,
+      "branches": 96
+    },
+    {
+      "file": "src/airwallex/routedRail.ts",
+      "uncovered_statements": 47,
+      "statements": 213,
+      "uncovered_branches": 42,
+      "branches": 120
+    },
+    {
+      "file": "src/film/captions.ts",
+      "uncovered_statements": 44,
+      "statements": 102,
+      "uncovered_branches": 27,
+      "branches": 67
+    },
+    {
+      "file": "src/redesign/run.ts",
+      "uncovered_statements": 44,
+      "statements": 635,
+      "uncovered_branches": 224,
+      "branches": 909
+    },
+    {
+      "file": "src/world/runtime.ts",
+      "uncovered_statements": 44,
+      "statements": 55,
+      "uncovered_branches": 18,
+      "branches": 19
+    },
+    {
+      "file": "src/servers/payables.ts",
+      "uncovered_statements": 43,
+      "statements": 337,
+      "uncovered_branches": 38,
+      "branches": 162
+    },
+    {
+      "file": "src/servers/seller.ts",
+      "uncovered_statements": 43,
+      "statements": 128,
+      "uncovered_branches": 47,
+      "branches": 85
+    },
+    {
+      "file": "src/metal/hold.ts",
+      "uncovered_statements": 42,
+      "statements": 71,
+      "uncovered_branches": 17,
+      "branches": 30
+    },
+    {
+      "file": "cloud/src/engine/hostWorker.ts",
+      "uncovered_statements": 41,
+      "statements": 117,
+      "uncovered_branches": 24,
+      "branches": 70
+    },
+    {
+      "file": "src/awx/live.ts",
+      "uncovered_statements": 41,
+      "statements": 60,
+      "uncovered_branches": 32,
+      "branches": 52
+    },
+    {
+      "file": "src/ops/runnerLock.ts",
+      "uncovered_statements": 41,
+      "statements": 127,
+      "uncovered_branches": 32,
+      "branches": 98
+    }
   ],
-  "exclude": [
-   "src/cli/**",
-   "**/*.gen.ts",
-   "**/*.d.ts"
-  ]
- },
- "tests": {
-  "before": "8,659 tests passed, 1 failed, 5 skipped (791 files: 787 passed, 1 failed, 3 skipped) (the previous coverage run, 8d50fc19c)",
-  "after": "9,268 tests passed, 3 failed, 5 skipped (857 files: 852 passed, 2 failed, 3 skipped)"
- },
- "scopes": {
-  "product": {
-   "label": "The product (the measured scope): src, cloud/src and worker/src, without the CLI entry points and generated files",
-   "before": {
-    "files": 830,
-    "statements": {
-     "covered": 65458,
-     "total": 71122,
-     "pct": 92.04
-    },
-    "branches": {
-     "covered": 49091,
-     "total": 59929,
-     "pct": 81.92
-    }
-   },
-   "after": {
-    "files": 868,
-    "statements": {
-     "covered": 68941,
-     "total": 74760,
-     "pct": 92.21
-    },
-    "branches": {
-     "covered": 51775,
-     "total": 62978,
-     "pct": 82.21
-    }
-   }
-  },
-  "everything": {
-   "label": "Everything under src, cloud/src and worker/src, the CLI entry points included",
-   "before": {
-    "files": 995,
-    "statements": {
-     "covered": 65468,
-     "total": 82054,
-     "pct": 79.79
-    },
-    "branches": {
-     "covered": 48911,
-     "total": 66774,
-     "pct": 73.25
-    }
-   },
-   "after": {
-    "files": 998,
-    "statements": {
-     "covered": 65978,
-     "total": 82369,
-     "pct": 80.1
-    },
-    "branches": {
-     "covered": 49391,
-     "total": 67016,
-     "pct": 73.7
-    }
-   }
-  },
-  "src": {
-   "label": "src/ only (CI's scope until 19 November)",
-   "before": {
-    "files": 854,
-    "statements": {
-     "covered": 55276,
-     "total": 71143,
-     "pct": 77.7
-    },
-    "branches": {
-     "covered": 41005,
-     "total": 57535,
-     "pct": 71.27
-    }
-   },
-   "after": {
-    "files": 857,
-    "statements": {
-     "covered": 55786,
-     "total": 71458,
-     "pct": 78.07
-    },
-    "branches": {
-     "covered": 41486,
-     "total": 57777,
-     "pct": 71.8
-    }
-   }
-  },
-  "cloud_src": {
-   "label": "cloud/src (Purser Cloud)",
-   "before": {
-    "files": 116,
-    "statements": {
-     "covered": 6880,
-     "total": 7400,
-     "pct": 92.97
-    },
-    "branches": {
-     "covered": 5089,
-     "total": 6066,
-     "pct": 83.89
-    }
-   },
-   "after": {
-    "files": 116,
-    "statements": {
-     "covered": 6880,
-     "total": 7400,
-     "pct": 92.97
-    },
-    "branches": {
-     "covered": 5088,
-     "total": 6066,
-     "pct": 83.88
-    }
-   }
-  },
-  "worker_src": {
-   "label": "worker/src (the relay Worker)",
-   "before": {
-    "files": 25,
-    "statements": {
-     "covered": 3312,
-     "total": 3511,
-     "pct": 94.33
-    },
-    "branches": {
-     "covered": 2817,
-     "total": 3173,
-     "pct": 88.78
-    }
-   },
-   "after": {
-    "files": 25,
-    "statements": {
-     "covered": 3312,
-     "total": 3511,
-     "pct": 94.33
-    },
-    "branches": {
-     "covered": 2817,
-     "total": 3173,
-     "pct": 88.78
-    }
-   }
-  },
-  "cli": {
-   "label": "src/cli (left out: the entry points)",
-   "before": {
-    "files": 167,
-    "statements": {
-     "covered": 520,
-     "total": 11220,
-     "pct": 4.63
-    },
-    "branches": {
-     "covered": 300,
-     "total": 7071,
-     "pct": 4.24
-    }
-   },
-   "after": {
-    "files": 168,
-    "statements": {
-     "covered": 520,
-     "total": 11247,
-     "pct": 4.62
-    },
-    "branches": {
-     "covered": 300,
-     "total": 7087,
-     "pct": 4.23
-    }
-   }
-  }
- },
- "areas": {
-  "money": {
-   "prefixes": [
-    "src/lib/money",
-    "src/finance/",
-    "src/agents/euroBill",
-    "src/agents/sweep",
-    "src/metal/pay",
-    "src/executors/refunds",
-    "src/executors/invoicePayment"
-   ],
-   "before": {
-    "files": 16,
-    "statements": {
-     "covered": 1435,
-     "total": 1529,
-     "pct": 93.85
-    },
-    "branches": {
-     "covered": 1145,
-     "total": 1362,
-     "pct": 84.07
-    }
-   },
-   "after": {
-    "files": 16,
-    "statements": {
-     "covered": 1480,
-     "total": 1529,
-     "pct": 96.8
-    },
-    "branches": {
-     "covered": 1228,
-     "total": 1362,
-     "pct": 90.16
-    }
-   }
-  },
-  "policy": {
-   "prefixes": [
-    "src/policy/"
-   ],
-   "before": {
-    "files": 38,
-    "statements": {
-     "covered": 2380,
-     "total": 2475,
-     "pct": 96.16
-    },
-    "branches": {
-     "covered": 2099,
-     "total": 2281,
-     "pct": 92.02
-    }
-   },
-   "after": {
-    "files": 38,
-    "statements": {
-     "covered": 2473,
-     "total": 2575,
-     "pct": 96.04
-    },
-    "branches": {
-     "covered": 2162,
-     "total": 2352,
-     "pct": 91.92
-    }
-   }
-  },
-  "passkey": {
-   "prefixes": [
-    "src/passkey/"
-   ],
-   "before": {
-    "files": 6,
-    "statements": {
-     "covered": 470,
-     "total": 500,
-     "pct": 94.0
-    },
-    "branches": {
-     "covered": 315,
-     "total": 353,
-     "pct": 89.24
-    }
-   },
-   "after": {
-    "files": 6,
-    "statements": {
-     "covered": 470,
-     "total": 500,
-     "pct": 94.0
-    },
-    "branches": {
-     "covered": 315,
-     "total": 353,
-     "pct": 89.24
-    }
-   }
-  },
-  "executors": {
-   "prefixes": [
-    "src/executors/"
-   ],
-   "before": {
-    "files": 12,
-    "statements": {
-     "covered": 1202,
-     "total": 1314,
-     "pct": 91.48
-    },
-    "branches": {
-     "covered": 914,
-     "total": 1069,
-     "pct": 85.5
-    }
-   },
-   "after": {
-    "files": 12,
-    "statements": {
-     "covered": 1202,
-     "total": 1314,
-     "pct": 91.48
-    },
-    "branches": {
-     "covered": 914,
-     "total": 1069,
-     "pct": 85.5
-    }
-   }
-  },
-  "relay": {
-   "prefixes": [
-    "src/relay/",
-    "worker/src/"
-   ],
-   "before": {
-    "files": 32,
-    "statements": {
-     "covered": 3609,
-     "total": 3823,
-     "pct": 94.4
-    },
-    "branches": {
-     "covered": 3018,
-     "total": 3413,
-     "pct": 88.43
-    }
-   },
-   "after": {
-    "files": 32,
-    "statements": {
-     "covered": 3609,
-     "total": 3823,
-     "pct": 94.4
-    },
-    "branches": {
-     "covered": 3018,
-     "total": 3413,
-     "pct": 88.43
-    }
-   }
-  },
-  "proof": {
-   "prefixes": [
-    "src/proof/"
-   ],
-   "before": {
-    "files": 7,
-    "statements": {
-     "covered": 1023,
-     "total": 1066,
-     "pct": 95.97
-    },
-    "branches": {
-     "covered": 756,
-     "total": 923,
-     "pct": 81.91
-    }
-   },
-   "after": {
-    "files": 7,
-    "statements": {
-     "covered": 1023,
-     "total": 1066,
-     "pct": 95.97
-    },
-    "branches": {
-     "covered": 756,
-     "total": 923,
-     "pct": 81.91
-    }
-   }
-  },
-  "audit and anchor": {
-   "prefixes": [
-    "src/audit/",
-    "src/anchor/"
-   ],
-   "before": {
-    "files": 7,
-    "statements": {
-     "covered": 401,
-     "total": 407,
-     "pct": 98.53
-    },
-    "branches": {
-     "covered": 297,
-     "total": 319,
-     "pct": 93.1
-    }
-   },
-   "after": {
-    "files": 7,
-    "statements": {
-     "covered": 407,
-     "total": 414,
-     "pct": 98.31
-    },
-    "branches": {
-     "covered": 301,
-     "total": 325,
-     "pct": 92.62
-    }
-   }
-  },
-  "payouts": {
-   "prefixes": [
-    "src/payouts/"
-   ],
-   "before": {
-    "files": 7,
-    "statements": {
-     "covered": 318,
-     "total": 352,
-     "pct": 90.34
-    },
-    "branches": {
-     "covered": 324,
-     "total": 359,
-     "pct": 90.25
-    }
-   },
-   "after": {
-    "files": 7,
-    "statements": {
-     "covered": 318,
-     "total": 352,
-     "pct": 90.34
-    },
-    "branches": {
-     "covered": 324,
-     "total": 359,
-     "pct": 90.25
-    }
-   }
-  },
-  "airwallex": {
-   "prefixes": [
-    "src/airwallex/"
-   ],
-   "before": {
-    "files": 31,
-    "statements": {
-     "covered": 2056,
-     "total": 2259,
-     "pct": 91.01
-    },
-    "branches": {
-     "covered": 1682,
-     "total": 2079,
-     "pct": 80.9
-    }
-   },
-   "after": {
-    "files": 31,
-    "statements": {
-     "covered": 2055,
-     "total": 2259,
-     "pct": 90.97
-    },
-    "branches": {
-     "covered": 1681,
-     "total": 2079,
-     "pct": 80.86
-    }
-   }
-  },
-  "alta (metal)": {
-   "prefixes": [
-    "src/metal/"
-   ],
-   "before": {
-    "files": 32,
-    "statements": {
-     "covered": 2242,
-     "total": 2506,
-     "pct": 89.47
-    },
-    "branches": {
-     "covered": 1578,
-     "total": 1964,
-     "pct": 80.35
-    }
-   },
-   "after": {
-    "files": 32,
-    "statements": {
-     "covered": 2242,
-     "total": 2506,
-     "pct": 89.47
-    },
-    "branches": {
-     "covered": 1578,
-     "total": 1964,
-     "pct": 80.35
-    }
-   }
-  }
- },
- "files_before_after": {
-  "src/approve/client.ts": {
-   "before": {
-    "statements": [
-     577,
-     1332
-    ],
-    "branches": [
-     752,
-     1317
-    ]
-   },
-   "after": {
-    "statements": [
-     580,
-     1332
-    ],
-    "branches": [
-     762,
-     1317
-    ]
-   }
-  },
-  "src/film/capture.ts": {
-   "before": {
-    "statements": [
-     101,
-     197
-    ],
-    "branches": [
-     43,
-     96
-    ]
-   },
-   "after": {
-    "statements": [
-     141,
-     197
-    ],
-    "branches": [
-     60,
-     96
-    ]
-   }
-  },
-  "src/redesign/run.ts": {
-   "before": {
-    "statements": [
-     569,
-     635
-    ],
-    "branches": [
-     592,
-     909
-    ]
-   },
-   "after": {
-    "statements": [
-     591,
-     635
-    ],
-    "branches": [
-     685,
-     909
-    ]
-   }
-  },
-  "src/redesign/proof.ts": {
-   "before": {
-    "statements": [
-     235,
-     293
-    ],
-    "branches": [
-     190,
-     334
-    ]
-   },
-   "after": {
-    "statements": [
-     266,
-     293
-    ],
-    "branches": [
-     239,
-     334
-    ]
-   }
-  },
-  "src/demo/runTrace.ts": {
-   "before": {
-    "statements": [
-     6,
-     60
-    ],
-    "branches": [
-     0,
-     28
-    ]
-   },
-   "after": {
-    "statements": [
-     60,
-     60
-    ],
-    "branches": [
-     26,
-     28
-    ]
-   }
-  },
-  "src/servers/dashboard.ts": {
-   "before": {
-    "statements": [
-     263,
-     317
-    ],
-    "branches": [
-     41,
-     71
-    ]
-   },
-   "after": {
-    "statements": [
-     299,
-     317
-    ],
-    "branches": [
-     47,
-     71
-    ]
-   }
-  },
-  "src/finance/dataQa.ts": {
-   "before": {
-    "statements": [
-     267,
-     315
-    ],
-    "branches": [
-     193,
-     305
-    ]
-   },
-   "after": {
-    "statements": [
-     312,
-     315
-    ],
-    "branches": [
-     276,
-     305
-    ]
-   }
-  }
- },
- "largest_gaps_after": [
-  {
-   "file": "src/approve/client.ts",
-   "uncovered_statements": 752,
-   "statements": 1332,
-   "uncovered_branches": 555,
-   "branches": 1317
-  },
-  {
-   "file": "src/airi/vic3.ts",
-   "uncovered_statements": 77,
-   "statements": 583,
-   "uncovered_branches": 164,
-   "branches": 587
-  },
-  {
-   "file": "src/fuzz/properties.ts",
-   "uncovered_statements": 70,
-   "statements": 436,
-   "uncovered_branches": 69,
-   "branches": 250
-  },
-  {
-   "file": "worker/src/trySign.ts",
-   "uncovered_statements": 65,
-   "statements": 1047,
-   "uncovered_branches": 129,
-   "branches": 884
-  },
-  {
-   "file": "src/film/capture.ts",
-   "uncovered_statements": 56,
-   "statements": 197,
-   "uncovered_branches": 36,
-   "branches": 96
-  },
-  {
-   "file": "src/airwallex/routedRail.ts",
-   "uncovered_statements": 47,
-   "statements": 213,
-   "uncovered_branches": 42,
-   "branches": 120
-  },
-  {
-   "file": "src/film/captions.ts",
-   "uncovered_statements": 44,
-   "statements": 102,
-   "uncovered_branches": 27,
-   "branches": 67
-  },
-  {
-   "file": "src/redesign/run.ts",
-   "uncovered_statements": 44,
-   "statements": 635,
-   "uncovered_branches": 224,
-   "branches": 909
-  },
-  {
-   "file": "src/world/runtime.ts",
-   "uncovered_statements": 44,
-   "statements": 55,
-   "uncovered_branches": 18,
-   "branches": 19
-  },
-  {
-   "file": "src/servers/payables.ts",
-   "uncovered_statements": 43,
-   "statements": 337,
-   "uncovered_branches": 38,
-   "branches": 162
-  },
-  {
-   "file": "src/servers/seller.ts",
-   "uncovered_statements": 43,
-   "statements": 128,
-   "uncovered_branches": 47,
-   "branches": 85
-  },
-  {
-   "file": "src/metal/hold.ts",
-   "uncovered_statements": 42,
-   "statements": 71,
-   "uncovered_branches": 17,
-   "branches": 30
-  },
-  {
-   "file": "cloud/src/engine/hostWorker.ts",
-   "uncovered_statements": 41,
-   "statements": 117,
-   "uncovered_branches": 24,
-   "branches": 70
-  },
-  {
-   "file": "src/awx/live.ts",
-   "uncovered_statements": 41,
-   "statements": 60,
-   "uncovered_branches": 32,
-   "branches": 52
-  },
-  {
-   "file": "src/ops/runnerLock.ts",
-   "uncovered_statements": 41,
-   "statements": 127,
-   "uncovered_branches": 32,
-   "branches": 98
-  }
- ],
- "scope_note": "Before is the previous record (the late evening of 19 November, commit 98ea941ab: 828 files, 70,834 statements). Since then 26 commits reached the branch this round started from (main, c5b893ecf): 21 product files changed, 2 of them new, and the product grew to 830 files and 71,122 statements; after measures the product as it is now, every file in it included. After is one run over every file under src, cloud/src and worker/src, src/cli included; the product's figure is that run without src/cli and generated files, as vitest.config.ts measures it. files_before_after: before is the previous record's largest_gaps_after for each file this round tested (each is listed there)."
+  "scope_note": "Before is the previous record (the late evening of 19 November, commit 98ea941ab: 828 files, 70,834 statements). Since then 26 commits reached the branch this round started from (main, c5b893ecf): 21 product files changed, 2 of them new, and the product grew to 830 files and 71,122 statements; after measures the product as it is now, every file in it included. After is one run over every file under src, cloud/src and worker/src, src/cli included; the product's figure is that run without src/cli and generated files, as vitest.config.ts measures it. files_before_after: before is the previous record's largest_gaps_after for each file this round tested (each is listed there)."
 }

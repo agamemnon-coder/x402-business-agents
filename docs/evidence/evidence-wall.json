@@ -494,9 +494,9 @@
       "tiles": [
         {
           "key": "verify-all",
-          "fig": "260",
-          "label": "checks passed by verify-all, 3 failed",
-          "note": "137 Alta transactions read from the chain; 20 Nov. Failed: Alta testnet transactions, Claude calls with request ids, refusals on record, each lower on the deployed /proof than in the records.",
+          "fig": "262",
+          "label": "checks passed by verify-all, 0 failed",
+          "note": "138 Alta transactions read from the chain; 20 Nov.",
           "tag": "check",
           "tone": "ok",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-20.md",

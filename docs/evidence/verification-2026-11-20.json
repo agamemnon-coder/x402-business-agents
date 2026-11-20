@@ -1,42 +1,20 @@
 {
  "what": "Verification report: every verifier of this repository on the committed records it is built for, every Alta testnet transaction the site links to read from the chain, every figure on /proof that a record backs recomputed and compared with the deployed page, and timed runs of the deployed /try. Test money only. Made by npm run verify-all (src/cli/verifyAll.ts); run it again to check.",
  "rerun": "npm ci && npm run verify-all   (METAL_RPC_URL, an Alta testnet RPC endpoint, for the chain checks; without it they say could not run here)",
- "started_at": "2026-11-20T17:30:02.695Z",
- "finished_at": "2026-11-20T17:30:23.688Z",
- "commit": "f29459399",
+ "started_at": "2026-11-20T18:05:22.984Z",
+ "finished_at": "2026-11-20T18:05:45.071Z",
+ "commit": "bd178742e",
  "site": "https://kit11.max-31b.workers.dev",
- "summary": "260 checks passed, 3 could not run here, 3 failed",
+ "summary": "262 checks passed, 3 could not run here, 0 failed",
  "counts": {
-  "passed": 260,
+  "passed": 262,
   "could_not_run_here": 3,
-  "failed": 3
+  "failed": 0
  },
- "failures": [
-  {
-   "group": "figures on the pages",
-   "status": "FAIL",
-   "what": "/proof: Alta testnet transactions",
-   "seen": "page 280, record 305",
-   "source": "distinct explorer links in docs/runs and docs/demo, counted here"
-  },
-  {
-   "group": "figures on the pages",
-   "status": "FAIL",
-   "what": "/proof: Claude calls with request ids",
-   "seen": "page 1620, record 1817",
-   "source": "distinct req_011… ids in docs/**/*.json(l), counted here"
-  },
-  {
-   "group": "figures on the pages",
-   "status": "FAIL",
-   "what": "/proof: refusals on record",
-   "seen": "page 68, record 85",
-   "source": "audit rows of a refusal, decline, rejection or fraud stop in docs/runs and docs/demo, counted here"
-  }
- ],
+ "failures": [],
  "transactions": {
-  "read_from_chain": 137,
-  "found": 137,
+  "read_from_chain": 138,
+  "found": 138,
   "not_found": [],
   "reverted_as_the_pages_say": 7,
   "compared_with_a_record": 137
@@ -132,7 +110,7 @@
    "group": "the site",
    "status": "pass",
    "what": "GET https://kit11.max-31b.workers.dev/proof",
-   "seen": "200, 287035 bytes",
+   "seen": "200, 287245 bytes",
    "source": "the deployed site"
   },
   {
@@ -146,7 +124,7 @@
    "group": "the site",
    "status": "pass",
    "what": "GET https://kit11.max-31b.workers.dev/alta",
-   "seen": "200, 113560 bytes",
+   "seen": "200, 113779 bytes",
    "source": "the deployed site"
   },
   {
@@ -244,960 +222,967 @@
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x02d5bf5b…e8fd on chain, succeeded, as its record says",
-   "seen": "success, block 14144676; matches the record's block 14144676, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14144676; matches the record's block 14144676, sender, recipient; block 14144676, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x03811931…e23a on chain, reverted, as the page says, as its record says",
-   "seen": "reverted, block 10097390; matches the record's block 10097390, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "reverted, block 10097390; matches the record's block 10097390, sender, recipient; block 10097390, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x03c218ce…d2f0 on chain, succeeded, as its record says",
-   "seen": "success, block 14154372; matches the record's block 14154372, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154372; matches the record's block 14154372, sender, recipient; block 14154372, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x04e43556…16b2 on chain, succeeded, as its record says",
-   "seen": "success, block 35368654; matches the record's block 35368654, refusal (no USDZ to the payee)",
-   "source": "linked from /alta, /runs; docs/runs/2026-11-19-alta-series.json"
+   "seen": "success, block 35368654; matches the record's block 35368654, sender, recipient; block 35368654, refusal (no USDZ to the payee)",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-19-alta-series.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x0536400e…5dd0 on chain, succeeded, as its record says",
-   "seen": "success, block 14146094; matches the record's block 14146094, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14146094; matches the record's block 14146094, sender, recipient; block 14146094, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x053d2b7c…c861 on chain, succeeded, as its record says",
-   "seen": "success, block 26125973; matches the record's block 26125973, sender, recipient",
-   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 26125973; matches the record's block 26125973, sender, recipient; block 26125973, sender, recipient",
+   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x055ba899…6766 on chain, succeeded, as its record says",
-   "seen": "success, block 8705132; matches the record's block 8705132, sender, recipient",
-   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 8705132; matches the record's block 8705132, sender, recipient; block 8705132, sender, recipient",
+   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x080cf1b0…4e1c on chain, succeeded, as its record says",
-   "seen": "success, block 14146910; matches the record's block 14146910, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14146910; matches the record's block 14146910, sender, recipient; block 14146910, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x09133534…2ed9 on chain, succeeded, as its record says",
-   "seen": "success, block 14154120; matches the record's block 14154120, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154120; matches the record's block 14154120, sender, recipient; block 14154120, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x108e9e74…4136 on chain, succeeded, as its record says",
-   "seen": "success, block 14153883; matches the record's block 14153883, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14153883; matches the record's block 14153883, sender, recipient; block 14153883, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x168c6579…8c2d on chain, succeeded, as its record says",
-   "seen": "success, block 26125740; matches the record's block 26125740, sender, recipient",
-   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 26125740; matches the record's block 26125740, sender, recipient; block 26125740, sender, recipient",
+   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x182fbd26…6668 on chain, succeeded, as its record says",
-   "seen": "success, block 14149546; matches the record's block 14149546, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14149546; matches the record's block 14149546, sender, recipient; block 14149546, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x1add0f46…dcce on chain, succeeded, as its record says",
-   "seen": "success, block 26134048; matches the record's block 26134048, sender, recipient",
-   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 26134048; matches the record's block 26134048, sender, recipient; block 26134048, sender, recipient",
+   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x1b82bda5…2e1e on chain, succeeded, as its record says",
-   "seen": "success, block 14157100; matches the record's block 14157100, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14157100; matches the record's block 14157100, sender, recipient; block 14157100, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x1b8c645f…f744 on chain, succeeded, as its record says",
-   "seen": "success, block 14154632; matches the record's block 14154632, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154632; matches the record's block 14154632, sender, recipient; block 14154632, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x1c6cb0c0…4f70 on chain, succeeded",
+   "seen": "success, block 37095344",
+   "source": "linked from /proof, /alta"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x222385b5…2737 on chain, reverted, as the page says, as its record says",
-   "seen": "reverted, block 10097250; matches the record's block 10097250, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "reverted, block 10097250; matches the record's block 10097250, sender, recipient; block 10097250, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x285281ea…2724 on chain, succeeded, as its record says",
-   "seen": "success, block 14153634; matches the record's block 14153634, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14153634; matches the record's block 14153634, sender, recipient; block 14153634, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x2a81d430…f08a on chain, succeeded, as its record says",
-   "seen": "success, block 9388477; matches the record's block 9388477, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 9388477; matches the record's block 9388477, sender, recipient; block 9388477, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x2a91ac97…e790 on chain, succeeded, as its record says",
-   "seen": "success, block 14153004; matches the record's block 14153004, sender, recipient",
-   "source": "linked from /proof, /alta; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14153004; matches the record's block 14153004, sender, recipient; block 14153004, sender, recipient",
+   "source": "linked from /proof, /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x2b3a3110…7159 on chain, succeeded, as its record says",
-   "seen": "success, block 14146080; matches the record's block 14146080, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14146080; matches the record's block 14146080, sender, recipient; block 14146080, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x2bc04ccd…38c2 on chain, succeeded, as its record says",
-   "seen": "success, block 35371564; matches the record's block 35371564, sender",
-   "source": "linked from /proof, /alta, /runs; docs/runs/2026-11-19-anchor.json"
+   "seen": "success, block 35371564; matches the record's block 35371564, sender, recipient; block 35371564, sender",
+   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-19-anchor.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x2cc5a16e…2fc7 on chain, succeeded, as its record says",
-   "seen": "success, block 14144153; matches the record's block 14144153, sender, recipient",
-   "source": "linked from /proof, /alta, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14144153; matches the record's block 14144153, sender, recipient; block 14144153, sender, recipient",
+   "source": "linked from /proof, /alta, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x2e92f9cb…1871 on chain, succeeded, as its record says",
-   "seen": "success, block 14150386; matches the record's block 14150386, sender, recipient; block 14150386, sender, recipient; block 14150386; block 14150386",
-   "source": "linked from /proof, /alta, README.md; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-metal-inspector.json"
+   "seen": "success, block 14150386; matches the record's block 14150386, sender, recipient; block 14150386, sender, recipient; block 14150386, sender, recipient; block 14150386; block 14150386",
+   "source": "linked from /proof, /alta, README.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-metal-inspector.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x2e981a5a…6677 on chain, succeeded, as its record says",
-   "seen": "success, block 36733984; matches the record's block 36733984, refusal (no USDZ to the payee)",
-   "source": "linked from /runs; docs/runs/2026-11-20-alta-refusals.json"
+   "seen": "success, block 36733984; matches the record's block 36733984, sender, recipient; block 36733984, refusal (no USDZ to the payee)",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-20-alta-refusals.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x2f2d7afc…fb2a on chain, succeeded, as its record says",
-   "seen": "success, block 23200516; matches the record's block 23200516, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 23200516; matches the record's block 23200516, sender, recipient; block 23200516, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x31ecebc2…2d3e on chain, succeeded, as its record says",
-   "seen": "success, block 14147725; matches the record's block 14147725, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14147725; matches the record's block 14147725, sender, recipient; block 14147725, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x32127371…434e on chain, succeeded, as its record says",
-   "seen": "success, block 14144436; matches the record's block 14144436, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14144436; matches the record's block 14144436, sender, recipient; block 14144436, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x32c0e691…1486 on chain, succeeded, as its record says",
-   "seen": "success, block 14148741; matches the record's block 14148741, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14148741; matches the record's block 14148741, sender, recipient; block 14148741, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x3878ee90…3bcf on chain, succeeded, as its record says",
-   "seen": "success, block 14156854; matches the record's block 14156854, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14156854; matches the record's block 14156854, sender, recipient; block 14156854, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x39a4a2e5…07ac on chain, succeeded, as its record says",
-   "seen": "success, block 14157615; matches the record's block 14157615, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14157615; matches the record's block 14157615, sender, recipient; block 14157615, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x39c5c7b0…ee33 on chain, succeeded, as its record says",
-   "seen": "success, block 14148494; matches the record's block 14148494, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14148494; matches the record's block 14148494, sender, recipient; block 14148494, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x3bf9f70e…3ab5 on chain, reverted, as the page says, as its record says",
-   "seen": "reverted, block 10099200; matches the record's block 10099200, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "reverted, block 10099200; matches the record's block 10099200, sender, recipient; block 10099200, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x3e4db1a7…eadb on chain, succeeded, as its record says",
-   "seen": "success, block 14156136; matches the record's block 14156136, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14156136; matches the record's block 14156136, sender, recipient; block 14156136, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x41a963a9…24de on chain, reverted, as the page says, as its record says",
-   "seen": "reverted, block 11567553; matches the record's block 11567553, sender, recipient",
-   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "reverted, block 11567553; matches the record's block 11567553, sender, recipient; block 11567553, sender, recipient",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x41ef8b79…39fb on chain, succeeded, as its record says",
-   "seen": "success, block 23200538; matches the record's block 23200538, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 23200538; matches the record's block 23200538, sender, recipient; block 23200538, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x48a5c5a7…1b93 on chain, succeeded, as its record says",
-   "seen": "success, block 36734258; matches the record's block 36734258, refusal (no USDZ to the payee)",
-   "source": "linked from /runs; docs/runs/2026-11-20-alta-refusals.json"
+   "seen": "success, block 36734258; matches the record's block 36734258, sender, recipient; block 36734258, refusal (no USDZ to the payee)",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-20-alta-refusals.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x4fde2db7…2b04 on chain, succeeded, as its record says",
-   "seen": "success, block 14153621; matches the record's block 14153621, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14153621; matches the record's block 14153621, sender, recipient; block 14153621, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x5099fe44…4510 on chain, succeeded, as its record says",
-   "seen": "success, block 14154286; matches the record's recipient and USDZ 0.05; block 14154286, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json, docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154286; matches the record's recipient and USDZ 0.05; block 14154286, sender, recipient; block 14154286, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json, docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x51f90725…3170 on chain, succeeded, as its record says",
-   "seen": "success, block 14155135; matches the record's block 14155135, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14155135; matches the record's block 14155135, sender, recipient; block 14155135, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x522470d2…5092 on chain, succeeded, as its record says",
-   "seen": "success, block 8767743; matches the record's block 8767743, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 8767743; matches the record's block 8767743, sender, recipient; block 8767743, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x5637860a…f4aa on chain, succeeded, as its record says",
-   "seen": "success, block 14150092; matches the record's block 14150092, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14150092; matches the record's block 14150092, sender, recipient; block 14150092, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x5669f975…be41 on chain, succeeded, as its record says",
-   "seen": "success, block 14146640; matches the record's block 14146640, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14146640; matches the record's block 14146640, sender, recipient; block 14146640, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x5717cfbc…8633 on chain, succeeded, as its record says",
-   "seen": "success, block 14149280; matches the record's block 14149280, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14149280; matches the record's block 14149280, sender, recipient; block 14149280, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x5c3c0161…e986 on chain, succeeded, as its record says",
-   "seen": "success, block 14148220; matches the record's block 14148220, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14148220; matches the record's block 14148220, sender, recipient; block 14148220, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x5f09a1fb…f594 on chain, succeeded, as its record says",
-   "seen": "success, block 14145516; matches the record's block 14145516, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14145516; matches the record's block 14145516, sender, recipient; block 14145516, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x6086aa0a…c831 on chain, succeeded, as its record says",
-   "seen": "success, block 14149035; matches the record's block 14149035, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14149035; matches the record's block 14149035, sender, recipient; block 14149035, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x64d22177…4c7d on chain, succeeded, as its record says",
-   "seen": "success, block 14144133; matches the record's block 14144133, sender, recipient",
-   "source": "linked from /proof, /alta, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14144133; matches the record's block 14144133, sender, recipient; block 14144133, sender, recipient",
+   "source": "linked from /proof, /alta, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x65fac962…3518 on chain, succeeded, as its record says",
-   "seen": "success, block 14148480; matches the record's block 14148480, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14148480; matches the record's block 14148480, sender, recipient; block 14148480, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x67fb4590…1836 on chain, succeeded, as its record says",
-   "seen": "success, block 14147715; matches the record's block 14147715, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14147715; matches the record's block 14147715, sender, recipient; block 14147715, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x68ab794b…67be on chain, succeeded, as its record says",
-   "seen": "success, block 14147990; matches the record's block 14147990, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14147990; matches the record's block 14147990, sender, recipient; block 14147990, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x6972c97d…6bd0 on chain, succeeded, as its record says",
-   "seen": "success, block 14157850; matches the record's block 14157850, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14157850; matches the record's block 14157850, sender, recipient; block 14157850, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x6b6ac4ab…a61e on chain, succeeded, as its record says",
-   "seen": "success, block 14157360; matches the record's block 14157360, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14157360; matches the record's block 14157360, sender, recipient; block 14157360, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x6e751649…874c on chain, succeeded, as its record says",
-   "seen": "success, block 14148234; matches the record's block 14148234, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14148234; matches the record's block 14148234, sender, recipient; block 14148234, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x6eba6d48…8caa on chain, succeeded, as its record says",
-   "seen": "success, block 14154906; matches the record's block 14154906, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154906; matches the record's block 14154906, sender, recipient; block 14154906, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x6f7d1da8…f13c on chain, succeeded, as its record says",
-   "seen": "success, block 14147456; matches the record's block 14147456, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14147456; matches the record's block 14147456, sender, recipient; block 14147456, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x728a9c27…c43b on chain, reverted, as the page says, as its record says",
-   "seen": "reverted, block 10099142; matches the record's block 10099142, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "reverted, block 10099142; matches the record's block 10099142, sender, recipient; block 10099142, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x7860403e…ebe2 on chain, succeeded, as its record says",
-   "seen": "success, block 14149800; matches the record's block 14149800, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14149800; matches the record's block 14149800, sender, recipient; block 14149800, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x786686b6…fc3c on chain, succeeded, as its record says",
-   "seen": "success, block 9466819; matches the record's block 9466819, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 9466819; matches the record's block 9466819, sender, recipient; block 9466819, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x789abb24…ebbc on chain, succeeded, as its record says",
-   "seen": "success, block 14152940; matches the record's block 14152940, sender, recipient; block 14152940, sender, recipient; block 14152940; block 14152940; block 14152940; block 14152940; block 14152940",
-   "source": "linked from /proof, /alta; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-metal-inspector.json"
+   "seen": "success, block 14152940; matches the record's block 14152940, sender, recipient; block 14152940, sender, recipient; block 14152940, sender, recipient; block 14152940; block 14152940; block 14152940; block 14152940; block 14152940",
+   "source": "linked from /proof, /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-metal-inspector.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x78e58558…ac3c on chain, succeeded, as its record says",
-   "seen": "success, block 14146654; matches the record's block 14146654, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14146654; matches the record's block 14146654, sender, recipient; block 14146654, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x7e6d0104…1098 on chain, succeeded, as its record says",
-   "seen": "success, block 14154642; matches the record's block 14154642, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154642; matches the record's block 14154642, sender, recipient; block 14154642, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x809e7a30…3a9f on chain, succeeded, as its record says",
-   "seen": "success, block 13906293; matches the record's block 13906293, sender, recipient",
-   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 13906293; matches the record's block 13906293, sender, recipient; block 13906293, sender, recipient",
+   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x81897ab4…b4fe on chain, succeeded, as its record says",
-   "seen": "success, block 14147972; matches the record's block 14147972, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14147972; matches the record's block 14147972, sender, recipient; block 14147972, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x86936a5b…ccb4 on chain, succeeded, as its record says",
-   "seen": "success, block 14153316; matches the record's recipient and USDZ 0.69; block 14153316; block 14153316, sender, recipient",
-   "source": "linked from /proof, /alta, /runs, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json, docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14153316; matches the record's recipient and USDZ 0.69; block 14153316; block 14153316, sender, recipient; block 14153316, sender, recipient",
+   "source": "linked from /proof, /alta, /runs, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json, docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x870e0c20…bc8f on chain, succeeded, as its record says",
-   "seen": "success, block 14150080; matches the record's block 14150080, sender, recipient",
-   "source": "linked from /alta, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14150080; matches the record's block 14150080, sender, recipient; block 14150080, sender, recipient",
+   "source": "linked from /alta, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x871c658e…4da5 on chain, succeeded, as its record says",
-   "seen": "success, block 14156866; matches the record's block 14156866, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14156866; matches the record's block 14156866, sender, recipient; block 14156866, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x88d59e38…1d09 on chain, succeeded, as its record says",
-   "seen": "success, block 14155407; matches the record's block 14155407, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14155407; matches the record's block 14155407, sender, recipient; block 14155407, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x898ebd4a…bf6b on chain, succeeded, as its record says",
-   "seen": "success, block 35367874; matches the record's block 35367874, refusal (no USDZ to the payee)",
-   "source": "linked from /proof, /alta, /runs; docs/runs/2026-11-19-alta-series.json"
+   "seen": "success, block 35367874; matches the record's block 35367874, sender, recipient; block 35367874, refusal (no USDZ to the payee)",
+   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-19-alta-series.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x8f3e8de3…9b6e on chain, succeeded, as its record says",
-   "seen": "success, block 14155900; matches the record's block 14155900, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14155900; matches the record's block 14155900, sender, recipient; block 14155900, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x902badf6…c3d4 on chain, succeeded, as its record says",
-   "seen": "success, block 8748888; matches the record's block 8748888, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 8748888; matches the record's block 8748888, sender, recipient; block 8748888, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x9076343b…20d3 on chain, succeeded, as its record says",
-   "seen": "success, block 9352421; matches the record's block 9352421, sender, recipient",
-   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 9352421; matches the record's block 9352421, sender, recipient; block 9352421, sender, recipient",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x91ed35a5…442e on chain, reverted, as the page says, as its record says",
-   "seen": "reverted, block 10098356; matches the record's block 10098356, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "reverted, block 10098356; matches the record's block 10098356, sender, recipient; block 10098356, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x91f25465…7ead on chain, succeeded, as its record says",
-   "seen": "success, block 14157838; matches the record's block 14157838, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14157838; matches the record's block 14157838, sender, recipient; block 14157838, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x9312b362…fede on chain, succeeded, as its record says",
-   "seen": "success, block 14156376; matches the record's block 14156376, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14156376; matches the record's block 14156376, sender, recipient; block 14156376, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x93b8a8b3…bcea on chain, succeeded, as its record says",
-   "seen": "success, block 14156148; matches the record's block 14156148, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14156148; matches the record's block 14156148, sender, recipient; block 14156148, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x96850ad4…7d5b on chain, succeeded, as its record says",
-   "seen": "success, block 11567572; matches the record's block 11567572, sender, recipient",
-   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 11567572; matches the record's block 11567572, sender, recipient; block 11567572, sender, recipient",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x99c7d22d…ae0d on chain, succeeded, as its record says",
-   "seen": "success, block 14155648; matches the record's block 14155648, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14155648; matches the record's block 14155648, sender, recipient; block 14155648, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x9c7d37f2…a2f7 on chain, succeeded, as its record says",
-   "seen": "success, block 13906369; matches the record's block 13906369, sender, recipient",
-   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 13906369; matches the record's block 13906369, sender, recipient; block 13906369, sender, recipient",
+   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x9cb93362…1808 on chain, succeeded, as its record says",
-   "seen": "success, block 13906203; matches the record's block 13906203, sender, recipient; block 13906203, sender, recipient; block 13906203; block 13906203; block 13906203",
-   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-metal-inspector.json"
+   "seen": "success, block 13906203; matches the record's block 13906203, sender, recipient; block 13906203, sender, recipient; block 13906203, sender, recipient; block 13906203; block 13906203; block 13906203",
+   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-metal-inspector.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0x9de16c5c…8fd3 on chain, succeeded, as its record says",
-   "seen": "success, block 14155664; matches the record's block 14155664, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14155664; matches the record's block 14155664, sender, recipient; block 14155664, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xa2e3a329…8ed4 on chain, succeeded, as its record says",
-   "seen": "success, block 14154384; matches the record's block 14154384, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154384; matches the record's block 14154384, sender, recipient; block 14154384, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xa4849dbd…b670 on chain, succeeded, as its record says",
-   "seen": "success, block 36737620; matches the record's block 36737620, refusal (no USDZ to the payee)",
-   "source": "linked from /runs; docs/runs/2026-11-20-alta-refusals.json"
+   "seen": "success, block 36737620; matches the record's block 36737620, sender, recipient; block 36737620, refusal (no USDZ to the payee)",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-20-alta-refusals.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xa6b615ce…c309 on chain, succeeded, as its record says",
-   "seen": "success, block 14147444; matches the record's block 14147444, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14147444; matches the record's block 14147444, sender, recipient; block 14147444, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xa86b5f04…ee11 on chain, succeeded, as its record says",
-   "seen": "success, block 14155915; matches the record's block 14155915, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14155915; matches the record's block 14155915, sender, recipient; block 14155915, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xaa93f270…e6c1 on chain, succeeded, as its record says",
-   "seen": "success, block 27469355; matches the record's block 27469355, sender, recipient; block 27469355, sender; block 27469355, sender",
-   "source": "linked from /proof, /runs; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-13-anchor.json, docs/runs/2026-11-15-anchor-verified.json"
+   "seen": "success, block 27469355; matches the record's block 27469355, sender, recipient; block 27469355, sender, recipient; block 27469355, sender; block 27469355, sender",
+   "source": "linked from /proof, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-13-anchor.json, docs/runs/2026-11-15-anchor-verified.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xac6f03f2…0efd on chain, succeeded, as its record says",
-   "seen": "success, block 14153872; matches the record's block 14153872, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14153872; matches the record's block 14153872, sender, recipient; block 14153872, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xad900a08…cfa3 on chain, succeeded, as its record says",
-   "seen": "success, block 14149526; matches the record's block 14149526, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14149526; matches the record's block 14149526, sender, recipient; block 14149526, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xadb282a0…c79d on chain, succeeded, as its record says",
-   "seen": "success, block 14146370; matches the record's block 14146370, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14146370; matches the record's block 14146370, sender, recipient; block 14146370, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xb28b5831…07ac on chain, succeeded, as its record says",
-   "seen": "success, block 14145810; matches the record's block 14145810, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14145810; matches the record's block 14145810, sender, recipient; block 14145810, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xb2fbcfc4…668d on chain, succeeded, as its record says",
-   "seen": "success, block 14144425; matches the record's block 14144425, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14144425; matches the record's block 14144425, sender, recipient; block 14144425, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xb371a336…7859 on chain, succeeded, as its record says",
-   "seen": "success, block 26157527; matches the record's block 26157527, sender, recipient",
-   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 26157527; matches the record's block 26157527, sender, recipient; block 26157527, sender, recipient",
+   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xb4f04a35…cf0b on chain, succeeded, as its record says",
-   "seen": "success, block 14157114; matches the record's block 14157114, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14157114; matches the record's block 14157114, sender, recipient; block 14157114, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xb64d78ea…82bc on chain, succeeded, as its record says",
-   "seen": "success, block 14155146; matches the record's block 14155146, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14155146; matches the record's block 14155146, sender, recipient; block 14155146, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xb6eff587…315d on chain, succeeded, as its record says",
-   "seen": "success, block 26133904; matches the record's block 26133904, sender, recipient",
-   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 26133904; matches the record's block 26133904, sender, recipient; block 26133904, sender, recipient",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xb7ef08bb…44ad on chain, succeeded, as its record says",
-   "seen": "success, block 13906111; matches the record's block 13906111, sender, recipient",
-   "source": "linked from /proof, /alta; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 13906111; matches the record's block 13906111, sender, recipient; block 13906111, sender, recipient",
+   "source": "linked from /proof, /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xb8fe41c8…9ffa on chain, succeeded, as its record says",
-   "seen": "success, block 14147158; matches the record's block 14147158, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14147158; matches the record's block 14147158, sender, recipient; block 14147158, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xba330558…4c38 on chain, succeeded, as its record says",
-   "seen": "success, block 14145234; matches the record's block 14145234, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14145234; matches the record's block 14145234, sender, recipient; block 14145234, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xbdb5b8f2…b0a8 on chain, succeeded, as its record says",
-   "seen": "success, block 14148754; matches the record's block 14148754, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14148754; matches the record's block 14148754, sender, recipient; block 14148754, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xc27764be…6fad on chain, succeeded, as its record says",
-   "seen": "success, block 26148767; matches the record's block 26148767, sender, recipient; block 26148767, sender",
-   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-tokenize.json"
+   "seen": "success, block 26148767; matches the record's block 26148767, sender, recipient; block 26148767, sender, recipient; block 26148767, sender",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-tokenize.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xc2eb6814…f237 on chain, succeeded, as its record says",
-   "seen": "success, block 10096702; matches the record's block 10096702, sender, recipient",
-   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 10096702; matches the record's block 10096702, sender, recipient; block 10096702, sender, recipient",
+   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xc3ac51e4…56cf on chain, succeeded, as its record says",
-   "seen": "success, block 26148487; matches the record's block 26148487, sender, recipient; block 26148487, sender",
-   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-tokenize.json"
+   "seen": "success, block 26148487; matches the record's block 26148487, sender, recipient; block 26148487, sender, recipient; block 26148487, sender",
+   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-tokenize.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xc3e7487e…c237 on chain, succeeded, as its record says",
-   "seen": "success, block 14144950; matches the record's block 14144950, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14144950; matches the record's block 14144950, sender, recipient; block 14144950, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xc6e1f0b2…0723 on chain, succeeded, as its record says",
-   "seen": "success, block 14144690; matches the record's block 14144690, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14144690; matches the record's block 14144690, sender, recipient; block 14144690, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xc704078e…6ded on chain, succeeded, as its record says",
-   "seen": "success, block 14146358; matches the record's block 14146358, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14146358; matches the record's block 14146358, sender, recipient; block 14146358, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xc7f59df3…3b59 on chain, succeeded, as its record says",
-   "seen": "success, block 14155394; matches the record's block 14155394, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14155394; matches the record's block 14155394, sender, recipient; block 14155394, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xc82912c3…b8cd on chain, succeeded, as its record says",
-   "seen": "success, block 11567638; matches the record's block 11567638, sender, recipient",
-   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 11567638; matches the record's block 11567638, sender, recipient; block 11567638, sender, recipient",
+   "source": "linked from /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xcf02673e…ab4e on chain, succeeded, as its record says",
-   "seen": "success, block 26148693; matches the record's block 26148693, sender, recipient; block 26148693, sender",
-   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-tokenize.json"
+   "seen": "success, block 26148693; matches the record's block 26148693, sender, recipient; block 26148693, sender, recipient; block 26148693, sender",
+   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-tokenize.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xcfb214b1…875d on chain, succeeded, as its record says",
-   "seen": "success, block 14145536; matches the record's block 14145536, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14145536; matches the record's block 14145536, sender, recipient; block 14145536, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xd00cf2e4…de7a on chain, succeeded, as its record says",
-   "seen": "success, block 14147178; matches the record's block 14147178, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14147178; matches the record's block 14147178, sender, recipient; block 14147178, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xd3bf7e0d…9f3e on chain, succeeded, as its record says",
-   "seen": "success, block 26135039; matches the record's block 26135039, sender, recipient",
-   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 26135039; matches the record's block 26135039, sender, recipient; block 26135039, sender, recipient",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xd4c40c27…9b91 on chain, succeeded, as its record says",
-   "seen": "success, block 26148264; matches the record's block 26148264, sender; block 26148264, sender",
-   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-tokenize.json"
+   "seen": "success, block 26148264; matches the record's block 26148264, sender; block 26148264, sender; block 26148264, sender",
+   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-tokenize.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xd5a11eca…a2d8 on chain, succeeded, as its record says",
-   "seen": "success, block 14157347; matches the record's block 14157347, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14157347; matches the record's block 14157347, sender, recipient; block 14157347, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xd5f54825…9134 on chain, succeeded, as its record says",
-   "seen": "success, block 14156390; matches the record's block 14156390, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14156390; matches the record's block 14156390, sender, recipient; block 14156390, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xd6d4ba5b…32de on chain, succeeded, as its record says",
-   "seen": "success, block 35370525; matches the record's block 35370525, refusal (no USDZ to the payee)",
-   "source": "linked from /alta, /runs; docs/runs/2026-11-19-alta-series-finish.json"
+   "seen": "success, block 35370525; matches the record's block 35370525, sender, recipient; block 35370525, refusal (no USDZ to the payee)",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-19-alta-series-finish.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xd95bf33c…900c on chain, succeeded, as its record says",
-   "seen": "success, block 14145796; matches the record's block 14145796, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14145796; matches the record's block 14145796, sender, recipient; block 14145796, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xd98e94ff…d30d on chain, succeeded, as its record says",
-   "seen": "success, block 10099167; matches the record's block 10099167, sender, recipient",
-   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 10099167; matches the record's block 10099167, sender, recipient; block 10099167, sender, recipient",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xe091e2b6…e471 on chain, succeeded, as its record says",
-   "seen": "success, block 36733781; matches the record's block 36733781, refusal (no USDZ to the payee)",
-   "source": "linked from /proof, /runs; docs/runs/2026-11-20-alta-refusals.json"
+   "seen": "success, block 36733781; matches the record's block 36733781, sender, recipient; block 36733781, refusal (no USDZ to the payee)",
+   "source": "linked from /proof, /runs; docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-20-alta-refusals.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xe0976c5a…69c3 on chain, reverted, as the page says, as its record says",
-   "seen": "reverted, block 10099120; matches the record's block 10099120, sender, recipient",
-   "source": "linked from /proof, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "reverted, block 10099120; matches the record's block 10099120, sender, recipient; block 10099120, sender, recipient",
+   "source": "linked from /proof, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xe44a3460…75e5 on chain, succeeded, as its record says",
-   "seen": "success, block 14154236; matches the record's recipient and USDZ 0.05; block 14154236, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json, docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154236; matches the record's recipient and USDZ 0.05; block 14154236, sender, recipient; block 14154236, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json, docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xe4bf7962…c89d on chain, succeeded, as its record says",
-   "seen": "success, block 14154191; matches the record's recipient and USDZ 0.05; block 14154191, sender, recipient",
-   "source": "linked from /proof, /alta, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json, docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154191; matches the record's recipient and USDZ 0.05; block 14154191, sender, recipient; block 14154191, sender, recipient",
+   "source": "linked from /proof, /alta, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json, docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xe6d9c7ea…5df4 on chain, succeeded, as its record says",
-   "seen": "success, block 26126103; matches the record's block 26126103, sender, recipient",
-   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 26126103; matches the record's block 26126103, sender, recipient; block 26126103, sender, recipient",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xe892abfd…a884 on chain, succeeded, as its record says",
-   "seen": "success, block 14146897; matches the record's block 14146897, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14146897; matches the record's block 14146897, sender, recipient; block 14146897, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xebd682c7…8ae0 on chain, succeeded, as its record says",
-   "seen": "success, block 26148537; matches the record's block 26148537, sender, recipient; block 26148537, sender",
-   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-tokenize.json"
+   "seen": "success, block 26148537; matches the record's block 26148537, sender, recipient; block 26148537, sender, recipient; block 26148537, sender",
+   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-tokenize.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xee14c617…eb44 on chain, succeeded, as its record says",
-   "seen": "success, block 14144963; matches the record's block 14144963, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14144963; matches the record's block 14144963, sender, recipient; block 14144963, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xef3c845b…32be on chain, succeeded, as its record says",
-   "seen": "success, block 26148587; matches the record's block 26148587, sender, recipient; block 26148587, sender",
-   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-tokenize.json"
+   "seen": "success, block 26148587; matches the record's block 26148587, sender, recipient; block 26148587, sender, recipient; block 26148587, sender",
+   "source": "linked from /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-tokenize.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xefc68319…b575 on chain, succeeded, as its record says",
-   "seen": "success, block 26148371; matches the record's block 26148371, sender, recipient; block 26148371, sender",
-   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-tokenize.json"
+   "seen": "success, block 26148371; matches the record's block 26148371, sender, recipient; block 26148371, sender, recipient; block 26148371, sender",
+   "source": "linked from /proof, /alta, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-tokenize.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xf1a7fe96…0c37 on chain, succeeded, as its record says",
-   "seen": "success, block 9351961; matches the record's block 9351961, sender, recipient",
-   "source": "linked from /proof, /runs; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 9351961; matches the record's block 9351961, sender, recipient; block 9351961, sender, recipient",
+   "source": "linked from /proof, /runs; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xf23d83dc…7b0b on chain, succeeded, as its record says",
-   "seen": "success, block 14149814; matches the record's block 14149814, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14149814; matches the record's block 14149814, sender, recipient; block 14149814, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xf4530112…a1a6 on chain, succeeded, as its record says",
-   "seen": "success, block 14157600; matches the record's block 14157600, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14157600; matches the record's block 14157600, sender, recipient; block 14157600, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xf4bdd52d…cf23 on chain, succeeded, as its record says",
-   "seen": "success, block 14154136; matches the record's block 14154136, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154136; matches the record's block 14154136, sender, recipient; block 14154136, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xf97bcade…f98d on chain, succeeded, as its record says",
-   "seen": "success, block 10099272; matches the record's block 10099272, sender, recipient; block 10099272, sender, recipient; block 10099272; block 10099272",
-   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/runs/2026-11-12-metal-inspector.json"
+   "seen": "success, block 10099272; matches the record's block 10099272, sender, recipient; block 10099272, sender, recipient; block 10099272, sender, recipient; block 10099272; block 10099272",
+   "source": "linked from /alta; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json, docs/runs/2026-11-12-metal-inspector.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xf9be147f…e93f on chain, succeeded, as its record says",
-   "seen": "success, block 14156629; matches the record's block 14156629, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14156629; matches the record's block 14156629, sender, recipient; block 14156629, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xfab9cc3d…c4c6 on chain, succeeded, as its record says",
-   "seen": "success, block 14156616; matches the record's block 14156616, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14156616; matches the record's block 14156616, sender, recipient; block 14156616, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xfacf2126…36a8 on chain, succeeded, as its record says",
-   "seen": "success, block 14149266; matches the record's block 14149266, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14149266; matches the record's block 14149266, sender, recipient; block 14149266, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xfd1db54e…b1d5 on chain, succeeded, as its record says",
-   "seen": "success, block 14149023; matches the record's block 14149023, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14149023; matches the record's block 14149023, sender, recipient; block 14149023, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xfdfa0cfc…4fb4 on chain, succeeded, as its record says",
-   "seen": "success, block 14154885; matches the record's block 14154885, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14154885; matches the record's block 14154885, sender, recipient; block 14154885, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "Alta transactions",
    "status": "pass",
    "what": "tx 0xff8debd3…9516 on chain, succeeded, as its record says",
-   "seen": "success, block 14145246; matches the record's block 14145246, sender, recipient",
-   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json"
+   "seen": "success, block 14145246; matches the record's block 14145246, sender, recipient; block 14145246, sender, recipient",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/evidence/verification-2026-11-15.json, docs/evidence/verification-2026-11-20.json"
   },
   {
    "group": "figures on the pages",
@@ -1229,23 +1214,23 @@
   },
   {
    "group": "figures on the pages",
-   "status": "FAIL",
+   "status": "pass",
    "what": "/proof: Alta testnet transactions",
-   "seen": "page 280, record 305",
+   "seen": "page 305, record 305",
    "source": "distinct explorer links in docs/runs and docs/demo, counted here"
   },
   {
    "group": "figures on the pages",
-   "status": "FAIL",
+   "status": "pass",
    "what": "/proof: Claude calls with request ids",
-   "seen": "page 1620, record 1817",
+   "seen": "page 1817, record 1817",
    "source": "distinct req_011… ids in docs/**/*.json(l), counted here"
   },
   {
    "group": "figures on the pages",
-   "status": "FAIL",
+   "status": "pass",
    "what": "/proof: refusals on record",
-   "seen": "page 68, record 85",
+   "seen": "page 85, record 85",
    "source": "audit rows of a refusal, decline, rejection or fraud stop in docs/runs and docs/demo, counted here"
   },
   {
@@ -1280,8 +1265,8 @@
    "group": "figures on the pages",
    "status": "pass",
    "what": "/proof evidence wall: approval-hash",
-   "seen": "page 797d4483…, record 797d4483…",
-   "source": "docs/evidence/evidence-wall.json (from docs/runs/airwallex-transfer-approval-2026-11-06.json)"
+   "seen": "page All 60, record All 60",
+   "source": "docs/evidence/evidence-wall.json (from docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md docs/runs/airwallex-transfer-approval-2026-11-06.json)"
   },
   {
    "group": "figures on the pages",
@@ -1294,15 +1279,15 @@
    "group": "figures on the pages",
    "status": "pass",
    "what": "/proof evidence wall: alta-refusal",
-   "seen": "page #24, record #24",
-   "source": "docs/evidence/evidence-wall.json (from docs/demo/main-run.json)"
+   "seen": "page #18, record #18",
+   "source": "docs/evidence/evidence-wall.json (from docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json)"
   },
   {
    "group": "figures on the pages",
    "status": "pass",
    "what": "/proof evidence wall: alta-payments",
-   "seen": "page 86, record 86",
-   "source": "docs/evidence/evidence-wall.json (from docs/demo/main-run.json)"
+   "seen": "page 204, record 204",
+   "source": "docs/evidence/evidence-wall.json (from docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json)"
   },
   {
    "group": "figures on the pages",
@@ -1413,8 +1398,8 @@
    "group": "figures on the pages",
    "status": "pass",
    "what": "/proof evidence wall: claude-main",
-   "seen": "page 24, record 24",
-   "source": "docs/evidence/evidence-wall.json (from docs/demo/main-run.json)"
+   "seen": "page 111, record 111",
+   "source": "docs/evidence/evidence-wall.json (from docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json)"
   },
   {
    "group": "figures on the pages",
@@ -1426,30 +1411,16 @@
   {
    "group": "figures on the pages",
    "status": "pass",
-   "what": "/proof evidence wall: eval-v3",
-   "seen": "page 11 vs 74, record 11 vs 74",
-   "source": "docs/evidence/evidence-wall.json (from docs/evals/adversarial-v3.json docs/evals/adversarial-v3-rerun-2026-11-19.json docs/evals/adversarial-v3-after.json)"
-  },
-  {
-   "group": "figures on the pages",
-   "status": "pass",
-   "what": "/proof evidence wall: eval-v4",
-   "seen": "page 11 vs 72, record 11 vs 72",
-   "source": "docs/evidence/evidence-wall.json (from docs/evals/adversarial-v4.json docs/evals/adversarial-v4-after.json docs/evals/adversarial-v4-rerun-2026-11-19.json)"
-  },
-  {
-   "group": "figures on the pages",
-   "status": "pass",
-   "what": "/proof evidence wall: eval-v8",
-   "seen": "page 20 vs 79, record 20 vs 79",
-   "source": "docs/evidence/evidence-wall.json (from docs/evals/adversarial-v8.json)"
+   "what": "/proof evidence wall: eval-v10",
+   "seen": "page 15 vs 84, record 15 vs 84",
+   "source": "docs/evidence/evidence-wall.json (from docs/evals/adversarial-v10.json docs/evals/adversarial-v10-after.json)"
   },
   {
    "group": "figures on the pages",
    "status": "pass",
    "what": "/proof evidence wall: red-team",
-   "seen": "page All 35, record All 35",
-   "source": "docs/evidence/evidence-wall.json (from docs/redteam/rerun-2026-11-19b.json docs/redteam/rerun-2026-11-19.json docs/redteam/report.json)"
+   "seen": "page All 48, record All 48",
+   "source": "docs/evidence/evidence-wall.json (from docs/redteam/rerun-2026-11-20.json docs/redteam/rerun-2026-11-19b.json docs/redteam/rerun-2026-11-19.json docs/redteam/report.json)"
   },
   {
    "group": "figures on the pages",
@@ -1497,8 +1468,8 @@
    "group": "figures on the pages",
    "status": "pass",
    "what": "/proof evidence wall: verify-all",
-   "seen": "page 189, record 189",
-   "source": "docs/evidence/evidence-wall.json (from docs/evidence/verification-2026-11-15.json)"
+   "seen": "page 260, record 260",
+   "source": "docs/evidence/evidence-wall.json (from docs/evidence/verification-2026-11-20.json)"
   },
   {
    "group": "figures on the pages",
@@ -1658,15 +1629,15 @@
    "group": "figures on the pages",
    "status": "pass",
    "what": "/alta strip: alta-refusal",
-   "seen": "page #24, record #24",
-   "source": "docs/evidence/evidence-wall.json (from docs/demo/main-run.json)"
+   "seen": "page #18, record #18",
+   "source": "docs/evidence/evidence-wall.json (from docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json)"
   },
   {
    "group": "figures on the pages",
    "status": "pass",
    "what": "/alta strip: alta-payments",
-   "seen": "page 86, record 86",
-   "source": "docs/evidence/evidence-wall.json (from docs/demo/main-run.json)"
+   "seen": "page 204, record 204",
+   "source": "docs/evidence/evidence-wall.json (from docs/demo/long-run.json docs/runs/2026-11-20-long-run.md docs/demo/main-run.json)"
   },
   {
    "group": "figures on the pages",
@@ -2014,6 +1985,12 @@
      "block": 14144676,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14144676,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -2033,6 +2010,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 10097390,
+     "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
+     "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 10097390,
      "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
      "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f"
@@ -2063,6 +2046,12 @@
      "block": 14154372,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14154372,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -2081,6 +2070,12 @@
    "to": "0xb6f3903bd90e4eba3239888a99141c2ceccb30bd",
    "transfers": [],
    "recorded": [
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 35368654,
+     "from": "0xd996570d2a70991e8793a074fe0000b099823374",
+     "to": "0xb6f3903bd90e4eba3239888a99141c2ceccb30bd"
+    },
     {
      "where": "docs/runs/2026-11-19-alta-series.json",
      "block": 35368654,
@@ -2114,6 +2109,12 @@
      "block": 14146094,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14146094,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -2138,6 +2139,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 26125973,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 26125973,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
@@ -2170,6 +2177,12 @@
      "block": 8705132,
      "from": "0x95c07d674f848bd29553b7bc9156a3f3c4db1a1c",
      "to": "0xab3cc15a5ad1812d0bfea239bbcf076d2437ec22"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 8705132,
+     "from": "0x95c07d674f848bd29553b7bc9156a3f3c4db1a1c",
+     "to": "0xab3cc15a5ad1812d0bfea239bbcf076d2437ec22"
     }
    ],
    "result": "pass",
@@ -2194,6 +2207,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14146910,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14146910,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
@@ -2224,6 +2243,12 @@
      "block": 14154120,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14154120,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -2251,6 +2276,12 @@
      "block": 14153883,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14153883,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -2272,6 +2303,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 26125740,
+     "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
+     "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 26125740,
      "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
      "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
@@ -2302,6 +2339,12 @@
      "block": 14149546,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14149546,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -2326,6 +2369,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 26134048,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 26134048,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
@@ -2356,6 +2405,12 @@
      "block": 14157100,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14157100,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -2383,8 +2438,30 @@
      "block": 14154632,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14154632,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x1c6cb0c0caa04e9e0518dd64cf894c3a1463e8c81d6265e13eae6cb596374f70",
+   "linked_from": [
+    "/proof",
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 37095344,
+   "from": "0x791c4616d4c2024b1782320239c0de2e6d2679b6",
+   "to": "0x77dee09962dea010d8559c880d3970e7eab6a313",
+   "transfers": [],
+   "recorded": [],
    "result": "pass",
    "why": ""
   },
@@ -2402,6 +2479,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 10097250,
+     "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
+     "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 10097250,
      "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
      "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f"
@@ -2432,6 +2515,12 @@
      "block": 14153634,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14153634,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -2459,6 +2548,12 @@
      "block": 9388477,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 9388477,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25"
     }
    ],
    "result": "pass",
@@ -2479,6 +2574,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14153004,
+     "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14153004,
      "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -2509,6 +2610,12 @@
      "block": 14146080,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14146080,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -2528,6 +2635,12 @@
    "to": "0xd996570d2a70991e8793a074fe0000b099823374",
    "transfers": [],
    "recorded": [
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 35371564,
+     "from": "0xd996570d2a70991e8793a074fe0000b099823374",
+     "to": "0xd996570d2a70991e8793a074fe0000b099823374"
+    },
     {
      "where": "docs/runs/2026-11-19-anchor.json",
      "block": 35371564,
@@ -2561,6 +2674,12 @@
      "block": 14144153,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14144153,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -2582,6 +2701,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14150386,
+     "from": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14150386,
      "from": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -2617,6 +2742,12 @@
    "transfers": [],
    "recorded": [
     {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 36733984,
+     "from": "0xe0ccad257c88b22226f44cbfd33f0fdf1b3ad8e4",
+     "to": "0x47bf9476d3690467f154ff76cee667d2e3c3706d"
+    },
+    {
      "where": "docs/runs/2026-11-20-alta-refusals.json",
      "block": 36733984,
      "to": "0xfc3c86a7b6fee39203934a6d8e7705494de617cb",
@@ -2641,6 +2772,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 23200516,
+     "from": "0xb598ae440ff61d234999f2e9923fecb94e85962a",
+     "to": "0x000000000000000000000000000000000000b5d5"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 23200516,
      "from": "0xb598ae440ff61d234999f2e9923fecb94e85962a",
      "to": "0x000000000000000000000000000000000000b5d5"
@@ -2671,6 +2808,12 @@
      "block": 14147725,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14147725,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -2695,6 +2838,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14144436,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14144436,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
@@ -2725,6 +2874,12 @@
      "block": 14148741,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14148741,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -2749,6 +2904,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14156854,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14156854,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -2779,6 +2940,12 @@
      "block": 14157615,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14157615,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -2806,6 +2973,12 @@
      "block": 14148494,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14148494,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -2825,6 +2998,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 10099200,
+     "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+     "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 10099200,
      "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
      "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
@@ -2855,6 +3034,12 @@
      "block": 14156136,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14156136,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -2875,6 +3060,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 11567553,
+     "from": "0xfd485b319d6159cecc5380b306a803db25949c12",
+     "to": "0x44af42d8f16981932aa6cec7668b8faef3f037e8"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 11567553,
      "from": "0xfd485b319d6159cecc5380b306a803db25949c12",
      "to": "0x44af42d8f16981932aa6cec7668b8faef3f037e8"
@@ -2905,6 +3096,12 @@
      "block": 23200538,
      "from": "0xfe75ebffb5427693c46956ef3d345d51526afd8e",
      "to": "0x000000000000000000000000000000000000b5d5"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 23200538,
+     "from": "0xfe75ebffb5427693c46956ef3d345d51526afd8e",
+     "to": "0x000000000000000000000000000000000000b5d5"
     }
    ],
    "result": "pass",
@@ -2922,6 +3119,12 @@
    "to": "0x47bf9476d3690467f154ff76cee667d2e3c3706d",
    "transfers": [],
    "recorded": [
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 36734258,
+     "from": "0xe0ccad257c88b22226f44cbfd33f0fdf1b3ad8e4",
+     "to": "0x47bf9476d3690467f154ff76cee667d2e3c3706d"
+    },
     {
      "where": "docs/runs/2026-11-20-alta-refusals.json",
      "block": 36734258,
@@ -2952,6 +3155,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14153621,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14153621,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -2987,6 +3196,12 @@
      "block": 14154286,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14154286,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -3011,6 +3226,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14155135,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14155135,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -3041,6 +3262,12 @@
      "block": 8767743,
      "from": "0x2dae87d24deec5fe8d211253d753947d1390fdcd",
      "to": "0xab3cc15a5ad1812d0bfea239bbcf076d2437ec22"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 8767743,
+     "from": "0x2dae87d24deec5fe8d211253d753947d1390fdcd",
+     "to": "0xab3cc15a5ad1812d0bfea239bbcf076d2437ec22"
     }
    ],
    "result": "pass",
@@ -3065,6 +3292,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14150092,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14150092,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
@@ -3095,6 +3328,12 @@
      "block": 14146640,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14146640,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -3119,6 +3358,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14149280,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14149280,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
@@ -3149,6 +3394,12 @@
      "block": 14148220,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14148220,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -3176,6 +3427,12 @@
      "block": 14145516,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14145516,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -3200,6 +3457,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14149035,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14149035,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
@@ -3232,6 +3495,12 @@
      "block": 14144133,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14144133,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -3256,6 +3525,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14148480,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14148480,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -3286,6 +3561,12 @@
      "block": 14147715,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14147715,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -3310,6 +3591,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14147990,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14147990,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
@@ -3340,6 +3627,12 @@
      "block": 14157850,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14157850,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -3364,6 +3657,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14157360,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14157360,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
@@ -3394,6 +3693,12 @@
      "block": 14148234,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14148234,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -3418,6 +3723,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14154906,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14154906,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
@@ -3448,6 +3759,12 @@
      "block": 14147456,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14147456,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -3467,6 +3784,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 10099142,
+     "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+     "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 10099142,
      "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
      "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
@@ -3497,6 +3820,12 @@
      "block": 14149800,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14149800,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -3524,6 +3853,12 @@
      "block": 9466819,
      "from": "0x5efc661508eac02798008350c4b829c6f15b6b23",
      "to": "0x0000000000000000000000000000000000000f4d"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 9466819,
+     "from": "0x5efc661508eac02798008350c4b829c6f15b6b23",
+     "to": "0x0000000000000000000000000000000000000f4d"
     }
    ],
    "result": "pass",
@@ -3544,6 +3879,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14152940,
+     "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14152940,
      "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -3600,6 +3941,12 @@
      "block": 14146654,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14146654,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -3627,6 +3974,12 @@
      "block": 14154642,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14154642,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -3646,6 +3999,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 13906293,
+     "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 13906293,
      "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -3673,6 +4032,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14147972,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14147972,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -3715,6 +4080,12 @@
      "block": 14153316,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14153316,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -3740,6 +4111,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14150080,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14150080,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -3770,6 +4147,12 @@
      "block": 14156866,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14156866,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -3797,6 +4180,12 @@
      "block": 14155407,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14155407,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -3816,6 +4205,12 @@
    "to": "0xb6f3903bd90e4eba3239888a99141c2ceccb30bd",
    "transfers": [],
    "recorded": [
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 35367874,
+     "from": "0xd996570d2a70991e8793a074fe0000b099823374",
+     "to": "0xb6f3903bd90e4eba3239888a99141c2ceccb30bd"
+    },
     {
      "where": "docs/runs/2026-11-19-alta-series.json",
      "block": 35367874,
@@ -3849,6 +4244,12 @@
      "block": 14155900,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14155900,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -3868,6 +4269,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 8748888,
+     "from": "0x2dae87d24deec5fe8d211253d753947d1390fdcd",
+     "to": "0xab3cc15a5ad1812d0bfea239bbcf076d2437ec22"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 8748888,
      "from": "0x2dae87d24deec5fe8d211253d753947d1390fdcd",
      "to": "0xab3cc15a5ad1812d0bfea239bbcf076d2437ec22"
@@ -3899,6 +4306,12 @@
      "block": 9352421,
      "from": "0xa262cd65b0ed95d23a56aa2e933f6482ad2cb646",
      "to": "0x000000000000000000000000000000000000b5d5"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 9352421,
+     "from": "0xa262cd65b0ed95d23a56aa2e933f6482ad2cb646",
+     "to": "0x000000000000000000000000000000000000b5d5"
     }
    ],
    "result": "pass",
@@ -3918,6 +4331,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 10098356,
+     "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
+     "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 10098356,
      "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
      "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f"
@@ -3948,6 +4367,12 @@
      "block": 14157838,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14157838,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -3972,6 +4397,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14156376,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14156376,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -4002,6 +4433,12 @@
      "block": 14156148,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14156148,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4022,6 +4459,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 11567572,
+     "from": "0xfd485b319d6159cecc5380b306a803db25949c12",
+     "to": "0x44af42d8f16981932aa6cec7668b8faef3f037e8"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 11567572,
      "from": "0xfd485b319d6159cecc5380b306a803db25949c12",
      "to": "0x44af42d8f16981932aa6cec7668b8faef3f037e8"
@@ -4052,6 +4495,12 @@
      "block": 14155648,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14155648,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -4074,6 +4523,12 @@
      "block": 13906369,
      "from": "0x4b88d7ec199b7975e0367337c743879bdb8a4818",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 13906369,
+     "from": "0x4b88d7ec199b7975e0367337c743879bdb8a4818",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4093,6 +4548,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 13906203,
+     "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 13906203,
      "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -4141,6 +4602,12 @@
      "block": 14155664,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14155664,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4168,6 +4635,12 @@
      "block": 14154384,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14154384,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4185,6 +4658,12 @@
    "to": "0x47bf9476d3690467f154ff76cee667d2e3c3706d",
    "transfers": [],
    "recorded": [
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 36737620,
+     "from": "0xe0ccad257c88b22226f44cbfd33f0fdf1b3ad8e4",
+     "to": "0x47bf9476d3690467f154ff76cee667d2e3c3706d"
+    },
     {
      "where": "docs/runs/2026-11-20-alta-refusals.json",
      "block": 36737620,
@@ -4218,6 +4697,12 @@
      "block": 14147444,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14147444,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -4245,6 +4730,12 @@
      "block": 14155915,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14155915,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4265,6 +4756,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 27469355,
+     "from": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93",
+     "to": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 27469355,
      "from": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93",
      "to": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93"
@@ -4305,6 +4802,12 @@
      "block": 14153872,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14153872,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -4329,6 +4832,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14149526,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14149526,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -4359,6 +4868,12 @@
      "block": 14146370,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14146370,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4386,6 +4901,12 @@
      "block": 14145810,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14145810,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4410,6 +4931,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14144425,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14144425,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -4446,6 +4973,12 @@
      "block": 26157527,
      "from": "0xfe75ebffb5427693c46956ef3d345d51526afd8e",
      "to": "0x000000000000000000000000000000000000b5d5"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 26157527,
+     "from": "0xfe75ebffb5427693c46956ef3d345d51526afd8e",
+     "to": "0x000000000000000000000000000000000000b5d5"
     }
    ],
    "result": "pass",
@@ -4470,6 +5003,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14157114,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14157114,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
@@ -4500,6 +5039,12 @@
      "block": 14155146,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14155146,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4523,6 +5068,12 @@
      "block": 26133904,
      "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
      "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 26133904,
+     "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
+     "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
     }
    ],
    "result": "pass",
@@ -4543,6 +5094,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 13906111,
+     "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 13906111,
      "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -4573,6 +5130,12 @@
      "block": 14147158,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14147158,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -4597,6 +5160,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14145234,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14145234,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -4627,6 +5196,12 @@
      "block": 14148754,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14148754,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4652,6 +5227,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 26148767,
+     "from": "0x4d7f6807abe468d511bcf11571cd6eca153b2c18",
+     "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 26148767,
      "from": "0x4d7f6807abe468d511bcf11571cd6eca153b2c18",
      "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b"
@@ -4689,6 +5270,12 @@
      "block": 10096702,
      "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
      "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 10096702,
+     "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
+     "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f"
     }
    ],
    "result": "pass",
@@ -4708,6 +5295,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 26148487,
+     "from": "0xd180c231b85d3d5aa95441cda5d14022e610f8c2",
+     "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 26148487,
      "from": "0xd180c231b85d3d5aa95441cda5d14022e610f8c2",
      "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b"
@@ -4743,6 +5336,12 @@
      "block": 14144950,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14144950,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -4767,6 +5366,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14144690,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14144690,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
@@ -4797,6 +5402,12 @@
      "block": 14146358,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14146358,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -4824,6 +5435,12 @@
      "block": 14155394,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14155394,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -4846,6 +5463,12 @@
      "block": 11567638,
      "from": "0xfd485b319d6159cecc5380b306a803db25949c12",
      "to": "0x44af42d8f16981932aa6cec7668b8faef3f037e8"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 11567638,
+     "from": "0xfd485b319d6159cecc5380b306a803db25949c12",
+     "to": "0x44af42d8f16981932aa6cec7668b8faef3f037e8"
     }
    ],
    "result": "pass",
@@ -4865,6 +5488,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 26148693,
+     "from": "0x4d7f6807abe468d511bcf11571cd6eca153b2c18",
+     "to": "0x000000000000000000000000000000000000b5d5"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 26148693,
      "from": "0x4d7f6807abe468d511bcf11571cd6eca153b2c18",
      "to": "0x000000000000000000000000000000000000b5d5"
@@ -4900,6 +5529,12 @@
      "block": 14145536,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14145536,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4927,6 +5562,12 @@
      "block": 14147178,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14147178,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -4950,6 +5591,12 @@
      "block": 26135039,
      "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
      "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 26135039,
+     "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
+     "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
     }
    ],
    "result": "pass",
@@ -4969,6 +5616,11 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 26148264,
+     "from": "0x4f12163d77d6bc540f48736f2e0c9a0958c3d1af"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 26148264,
      "from": "0x4f12163d77d6bc540f48736f2e0c9a0958c3d1af"
     },
@@ -5003,6 +5655,12 @@
      "block": 14157347,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14157347,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -5030,6 +5688,12 @@
      "block": 14156390,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14156390,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -5048,6 +5712,12 @@
    "to": "0xb6f3903bd90e4eba3239888a99141c2ceccb30bd",
    "transfers": [],
    "recorded": [
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 35370525,
+     "from": "0xd996570d2a70991e8793a074fe0000b099823374",
+     "to": "0xb6f3903bd90e4eba3239888a99141c2ceccb30bd"
+    },
     {
      "where": "docs/runs/2026-11-19-alta-series-finish.json",
      "block": 35370525,
@@ -5081,6 +5751,12 @@
      "block": 14145796,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14145796,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -5109,6 +5785,12 @@
      "block": 10099167,
      "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
      "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 10099167,
+     "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+     "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
     }
    ],
    "result": "pass",
@@ -5127,6 +5809,12 @@
    "to": "0x47bf9476d3690467f154ff76cee667d2e3c3706d",
    "transfers": [],
    "recorded": [
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 36733781,
+     "from": "0xe0ccad257c88b22226f44cbfd33f0fdf1b3ad8e4",
+     "to": "0x47bf9476d3690467f154ff76cee667d2e3c3706d"
+    },
     {
      "where": "docs/runs/2026-11-20-alta-refusals.json",
      "block": 36733781,
@@ -5153,6 +5841,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 10099120,
+     "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+     "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 10099120,
      "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
      "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
@@ -5185,6 +5879,12 @@
     },
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14154236,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14154236,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -5222,6 +5922,12 @@
      "block": 14154191,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14154191,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -5242,6 +5948,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 26126103,
+     "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
+     "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 26126103,
      "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
      "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c"
@@ -5272,6 +5984,12 @@
      "block": 14146897,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14146897,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -5291,6 +6009,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 26148537,
+     "from": "0xff85e23d4e7a9cdf928f6da186952ea0e7de197a",
+     "to": "0x000000000000000000000000000000000000b5d5"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 26148537,
      "from": "0xff85e23d4e7a9cdf928f6da186952ea0e7de197a",
      "to": "0x000000000000000000000000000000000000b5d5"
@@ -5326,6 +6050,12 @@
      "block": 14144963,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14144963,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -5351,6 +6081,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 26148587,
+     "from": "0xff85e23d4e7a9cdf928f6da186952ea0e7de197a",
+     "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 26148587,
      "from": "0xff85e23d4e7a9cdf928f6da186952ea0e7de197a",
      "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b"
@@ -5385,6 +6121,12 @@
      "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b"
     },
     {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 26148371,
+     "from": "0x4f12163d77d6bc540f48736f2e0c9a0958c3d1af",
+     "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b"
+    },
+    {
      "where": "docs/runs/2026-11-12-tokenize.json",
      "block": 26148371,
      "from": "0x4f12163d77d6bc540f48736f2e0c9a0958c3d1af"
@@ -5408,6 +6150,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 9351961,
+     "from": "0x5efc661508eac02798008350c4b829c6f15b6b23",
+     "to": "0x0000000000000000000000000000000000000f4d"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 9351961,
      "from": "0x5efc661508eac02798008350c4b829c6f15b6b23",
      "to": "0x0000000000000000000000000000000000000f4d"
@@ -5438,6 +6186,12 @@
      "block": 14149814,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14149814,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -5462,6 +6216,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14157600,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14157600,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -5492,6 +6252,12 @@
      "block": 14154136,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14154136,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -5511,6 +6277,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 10099272,
+     "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+     "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 10099272,
      "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
      "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
@@ -5555,6 +6327,12 @@
      "block": 14156629,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14156629,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
     }
    ],
    "result": "pass",
@@ -5579,6 +6357,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14156616,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14156616,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -5609,6 +6393,12 @@
      "block": 14149266,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14149266,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -5633,6 +6423,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14149023,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14149023,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
@@ -5663,6 +6459,12 @@
      "block": 14154885,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
+     "block": 14154885,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
     }
    ],
    "result": "pass",
@@ -5687,6 +6489,12 @@
    "recorded": [
     {
      "where": "docs/evidence/verification-2026-11-15.json",
+     "block": 14145246,
+     "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"
+    },
+    {
+     "where": "docs/evidence/verification-2026-11-20.json",
      "block": 14145246,
      "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
      "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf"

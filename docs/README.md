@@ -8,8 +8,8 @@ Every Purser document, grouped by what you need it for; test money only througho
 |---|---|
 | **9,385 tests passing**, 0 failed, in the last full run of the suite, on commit `10b78a0d7` (coverage is a separate run: [evidence/coverage.md](evidence/coverage.md)) | [assets/test-summary.json](assets/test-summary.json) |
 | **36 live runs**, the last on 20 Nov 2026 | [runs/README.md](runs/README.md) |
-| **189 checks passed**, 3 could not run here, 0 failed | [evidence/verification-2026-11-15.md](evidence/verification-2026-11-15.md) |
-| **37 of 39** red-team attacks stopped, 2 caught afterwards (a test world) | [redteam/report.json](redteam/report.json) |
+| **262 checks passed**, 3 could not run here, 0 failed | [evidence/verification-2026-11-20.md](evidence/verification-2026-11-20.md) |
+| **48 of 48** red-team attacks stopped, 0 caught afterwards (full re-run of 20 Nov, a test world, not held out) | [redteam/rerun-2026-11-20.md](redteam/rerun-2026-11-20.md) |
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture-wide-dark.svg"><img src="assets/architecture-wide-light.svg" alt="AI agents propose; three layers that do not trust each other can each stop a payment: Purser's checks in code, the CFO's Face ID over the exact terms above a limit, the rail's own controls; then the ledger. Sandbox and testnet runs, test money." width="100%"></picture>
 
