@@ -14,6 +14,7 @@ import { SCHEMA } from "./schema.js";
 import type { Blobs, Sql } from "./store.js";
 import { applySync, SyncBatch, SyncRefused, syncState } from "./sync.js";
 import { QuotaExceeded, reserveStorage, type StorageQuota } from "./storageQuota.js";
+import { endSession, listSessions } from "./sessions.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
@@ -440,7 +441,8 @@ export const ROUTES: Route[] = [
     if (!t || t.closed_at) return notFound("company");
     c.audit.tenant = t.id;
     c.audit.detail = { credential_id: b.credential_id.slice(0, 12) };
-    const s = await passkeyLogin(c.env.sql, { tenantId: t.id, challengeId: b.challenge_id, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, secret: c.env.sessionSecret, now: c.now });
+    const s = await passkeyLogin(c.env.sql, { tenantId: t.id, challengeId: b.challenge_id, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, secret: c.env.sessionSecret, now: c.now,
+      client: { userAgent: c.req.headers.get("user-agent"), ip: c.req.headers.get("cf-connecting-ip") } });
     c.audit.actor = s.user_id;
     return json(200, { session: s.token, role: s.role, user_id: s.user_id, expires_in: 900 });
   } },
@@ -483,6 +485,17 @@ export const ROUTES: Route[] = [
     return json(200, { signed_out: true });
   } },
 
+  // The signed-in person's active sessions, to see and end one by one (./sessions.ts; ASVS V3.3.4).
+  { method: "GET", path: "/v1/sessions", summary: "The signed-in person's active sessions: when each began, until when, the browser and the network it signed in from; the current one marked. Never a token.", need: "read", run: async (c) => {
+    if (c.caller!.kind !== "session") return err(403, "sessions are a signed-in person's; a key has none");
+    return json(200, { items: await listSessions(c.env.sql, c.caller!.tenantId, c.caller!.principal, c.now, c.caller!.sessionId ?? null) });
+  } },
+  { method: "DELETE", path: "/v1/sessions/{id}", summary: "End one of the signed-in person's sessions: its token stops at once; the others keep working.", need: "read", run: async (c) => {
+    if (c.caller!.kind !== "session") return err(403, "sessions are a signed-in person's; a key has none");
+    if (!(await endSession(c.env.sql, c.caller!.tenantId, c.caller!.principal, c.params[0]!, c.now))) return notFound("session");
+    c.audit.detail = { session_id: c.params[0]!.slice(0, 40) };
+    return json(200, { ended: true });
+  } },
   { method: "GET", path: "/v1/me", summary: "Who is calling: the company, and the key's scopes or the person's role.", need: "read", run: async (c) => {
     const t = await c.env.sql.first<{ slug: string; name: string; language: string }>("SELECT slug, name, language FROM tenants WHERE id = ?", [c.caller!.tenantId]);
     // For the console: the person behind the call, whether an owner has a passkey yet (a new company's first run), and

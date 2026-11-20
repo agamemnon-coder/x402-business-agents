@@ -1277,6 +1277,17 @@ async function securityCard(){
   return card;
 }
 
+// Where the person is signed in (ASVS V3.3.4; cloud/src/sessions.ts): each passkey session, ended one by one.
+async function sessionsCard(){
+  const card=el('div','card panel');card.id='sessions';const msg=el('div','');msg.setAttribute('role','status');
+  async function draw(){
+    const r=await api('/v1/sessions');const list=el('ul','plain');
+    for(const s of r.items){const end=btn(t('cs.ses.end'),'');end.disabled=!!s.current;
+      end.onclick=async()=>{end.disabled=true;try{await api('/v1/sessions/'+encodeURIComponent(s.id),{method:'DELETE'});await draw();msg.replaceChildren(note(t('cs.ses.ended'),'ok'))}catch(e){end.disabled=false;if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}};
+      list.append(el('li','',[el('span','',(s.current?t('cs.ses.this')+' · ':'')+s.user_agent+' · '+s.ip+' · '+s.created_at.slice(0,16).replace('T',' ')),' ',end]))}
+    card.replaceChildren(el('h2','',t('cs.ses.title')),el('p','sub',t('cs.ses.lede')),list,msg)}
+  await draw();return card}
+
 async function settingsView(){
   title(t('cs.nav.settings'));
   const m=await me();
@@ -1288,13 +1299,14 @@ async function settingsView(){
   if(owner){const c=langSel(langNames,m.tenant.language||'nl');c.onchange=async()=>{try{await api('/v1/company',{method:'POST',body:{language:c.value}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));if(!m.user||!m.user.language)useLanguage(c.value)}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_company')),c]))}
   if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'en')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
-  if(!owner){const cc=await claudeCard(m,false);view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})),cc);return}
+  const sessions=m.kind==='session'&&!m.demo?await sessionsCard():null;
+  if(!owner){const cc=await claudeCard(m,false);view().replaceChildren(head(t('cs.nav.settings')),company,sessions,note(t('cs.only_owner',{name:m.tenant.name})),cc);return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
   const alerts=m.kind==='session'?await alertsCard():null;
   const security=m.kind==='session'&&!m.demo?await securityCard():null;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,alerts,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,sessions,alerts,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){

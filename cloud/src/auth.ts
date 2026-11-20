@@ -5,6 +5,7 @@
 import { verifyAssertion, type AssertionB64 } from "../../worker/src/webauthn.js";
 import { hmacB64u, randomToken, sameString, sha256Hex, signedPayload, toB64u } from "./crypto.js";
 import type { Sql } from "./store.js";
+import { endAllSessions, recordSession, sessionLive } from "./sessions.js";
 import { TenantDb, WriteConflict, type Stmt } from "./tenant.js";
 
 /**
@@ -42,6 +43,8 @@ export interface Caller {
   purpose?: string | null;
   /** A key's expiry (ISO), for its renewal notice (./keyExpiry.ts; ASVS V2.3.3). */
   expiresAt?: string | null;
+  /** A passkey session's id (./sessions.ts; ASVS V3.3.4), when it has one. */
+  sessionId?: string | null;
 }
 
 export class AuthError extends Error {
@@ -162,20 +165,23 @@ export async function liveKey(sql: Sql, keyId: string, secret: string | null, no
 
 const scopesOf = (role: Role): Set<Scope> => new Set<Scope>(role === "owner" ? ["read", "admin"] : ["read"]);
 
-export async function sessionToken(secret: string, s: { tenantId: string; userId: string; role: Role; gen: number }, now: Date): Promise<string> {
-  const body = toB64u(new TextEncoder().encode(JSON.stringify({ t: s.tenantId, u: s.userId, r: s.role, g: s.gen, exp: now.getTime() + SESSION_TTL_MS })));
+export async function sessionToken(secret: string, s: { tenantId: string; userId: string; role: Role; gen: number; sid?: string }, now: Date): Promise<string> {
+  const body = toB64u(new TextEncoder().encode(JSON.stringify({ t: s.tenantId, u: s.userId, r: s.role, g: s.gen, exp: now.getTime() + SESSION_TTL_MS, ...(s.sid ? { s: s.sid } : {}) })));
   return `pcs.${body}.${await hmacB64u(secret, body)}`;
 }
 
 async function fromSession(sql: Sql, secret: string, token: string, now: Date): Promise<Caller> {
-  const p = await signedPayload(secret, "pcs", token, Infinity) as { t: string; u: string; r: Role; g: number; exp: number } | null;
+  const p = await signedPayload(secret, "pcs", token, Infinity) as { t: string; u: string; r: Role; g: number; exp: number; s?: unknown } | null;
   if (!p) throw new AuthError(401, "bad session");
   if (typeof p.exp !== "number" || p.exp <= now.getTime()) throw new AuthError(401, "the session expired; sign in again");
   // A person erased, given another role or signed out since the token was issued, or a closed company: access ends at once.
   const user = await sql.first<{ role: Role; erased_at: string | null; session_gen: number; closed_at: string | null }>(
     "SELECT u.role, u.erased_at, u.session_gen, t.closed_at FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.tenant_id = ? AND u.id = ?", [p.t, p.u]);
   if (!user || user.erased_at || user.closed_at || user.role !== p.r || user.session_gen !== p.g) throw new AuthError(401, "this sign-in is no longer valid");
-  return { tenantId: p.t, kind: "session", principal: p.u, scopes: scopesOf(p.r), role: p.r, user: p.u };
+  // A listed session the person ended (./sessions.ts; ASVS V3.3.4) stops at once.
+  const sid = typeof p.s === "string" ? p.s : null;
+  if (p.s !== undefined && (!sid || !(await sessionLive(sql, sid, p.t, p.u)))) throw new AuthError(401, "this session was ended; sign in again");
+  return { tenantId: p.t, kind: "session", principal: p.u, scopes: scopesOf(p.r), role: p.r, user: p.u, sessionId: sid };
 }
 
 /** How long an access token Purser signs for a connector key lasts (never past the key's own expiry). */
@@ -203,6 +209,7 @@ async function fromAccessToken(sql: Sql, secret: string, token: string, now: Dat
 /** Ends every session of one person (sign-out; erasure and closing a company end them too, see privacy.ts). */
 export async function endSessions(sql: Sql, tenantId: string, userId: string): Promise<void> {
   await sql.run("UPDATE users SET session_gen = session_gen + 1 WHERE tenant_id = ? AND id = ?", [tenantId, userId]);
+  await endAllSessions(sql, tenantId, userId, new Date());
 }
 
 export async function callerOf(sql: Sql, sessionSecret: string, authorization: string | null, now: Date): Promise<Caller> {
@@ -244,7 +251,7 @@ export async function newChallenge(sql: Sql, tenantId: string, now: Date, purpos
   return { challenge_id: id, challenge };
 }
 
-export async function passkeyLogin(sql: Sql, a: { tenantId: string; challengeId: string; credentialId: string; assertion: AssertionB64; rpId: string; origin: string; secret: string; now: Date }): Promise<{ token: string; role: Role; user_id: string }> {
+export async function passkeyLogin(sql: Sql, a: { tenantId: string; challengeId: string; credentialId: string; assertion: AssertionB64; rpId: string; origin: string; secret: string; now: Date; client?: { userAgent: string | null; ip: string | null } }): Promise<{ token: string; role: Role; user_id: string }> {
   // Used once, whatever the outcome, and taken atomically: the same assertion sent several times at once gets one
   // session (the update succeeds for one request only); a failed attempt cannot be retried with the same challenge.
   const iso = a.now.toISOString();
@@ -261,7 +268,9 @@ export async function passkeyLogin(sql: Sql, a: { tenantId: string; challengeId:
   if (!user || user.erased_at) throw new AuthError(401, "this person has no access");
   // The counter only moves forward: of two sign-ins at once, the one with the lower counter cannot set it back.
   await db.apply([db.update("credentials", { credential_id: a.credentialId, counter: { op: "<=", v: v.counter } }, { counter: v.counter })]);
-  return { token: await sessionToken(a.secret, { tenantId: a.tenantId, userId: cred.user_id, role: user.role, gen: user.session_gen }, a.now), role: user.role, user_id: cred.user_id };
+  // Each sign-in is a listed session the person can end on its own (./sessions.ts; ASVS V3.3.4).
+  const sid = await recordSession(sql, { tenantId: a.tenantId, userId: cred.user_id, userAgent: a.client?.userAgent ?? null, ip: a.client?.ip ?? null, now: a.now, expiresAt: new Date(a.now.getTime() + SESSION_TTL_MS) });
+  return { token: await sessionToken(a.secret, { tenantId: a.tenantId, userId: cred.user_id, role: user.role, gen: user.session_gen, sid }, a.now), role: user.role, user_id: cred.user_id };
 }
 
 // Passkey enrolment in the cloud (security review of 8 November: a credential pushed with a sync key let it sign in as

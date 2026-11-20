@@ -95,6 +95,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/auth/step-up/start` | read | A signed-in person starts a fresh passkey check for sensitive settings: a one-time challenge. |
 | `POST /v1/auth/step-up` | read | Finish it with the person's own passkey: a step-up token for five minutes, bound to this session (`x-purser-step-up`). |
 | `POST /v1/auth/logout` | read | Sign out: every session of the signed-in person ends. |
+| `GET /v1/sessions` | read | The signed-in person's active sessions: when each began, until when, the browser and the network it came from; the current one marked. Never a token. A key gets 403. |
+| `DELETE /v1/sessions/{id}` | read | End one of the signed-in person's sessions: its token stops at once, the others keep working. A security event (access.change). |
 | `GET /v1/me` | read | Who is calling: the company, and the key's scopes or the person's role; the person behind the call, whether an owner has a passkey yet, and the company's inbox address once mail is routed (the console's first run uses these). |
 | `POST /v1/company` | admin | Change the company's display name (its address, the slug, stays) or the pages' language for everyone: `{ "name"?, "language"?: "nl" \| "en" }`. |
 | `POST /v1/me/language` | read | The signed-in person's own language for the pages: `{ "language": "nl" \| "en" \| null }` (null follows the company's). Sessions only. |
