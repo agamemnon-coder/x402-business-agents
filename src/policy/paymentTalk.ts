@@ -24,6 +24,7 @@
 
 import { AI_WORDS, anyOf, APPROVE, AUTHORITY, BANK_CHANGE_ANY, BANK_DETAILS, BANK_DETAILS_CHANGED_ANY, BANK_UNCHANGED_ANY, CHANGE_NEGATED_ANY, CHECK_NOUN, DISREGARD_RULES, fold, PAY_ANY, PAYER_SIDE, SECRET, URGENT } from "./multilingual.js";
 import { withoutTypography } from "./scripts.js";
+import { amountsInWords } from "../ap/amountWords.js";
 
 const lazy = (make: () => RegExp) => { let re: RegExp | undefined; return () => (re ??= make()); };
 const either = (...res: RegExp[]) => new RegExp(res.map((r) => `(?:${r.source})`).join("|"), "u");
@@ -125,7 +126,11 @@ const BANK = lazy(() => either(BANK_DETAILS, anyOf([
   // A channel other than the account: a payment provider, a payment link, a QR code, a wallet.
   "payment provider", "payment processor", "payment platform", "payment link", "pay link", "qr code", "qr-code", "betaalprovider", "betaallink", "zahlungsdienst", "zahlungsanbieter",
   "prestataire de paiement", "proveedor de pago", "fornitore di pagamento", "paypal", "revolut", "wise.com",
-]), /(?<![\p{L}])bank(?!s?ide|str|weg|gasse|platz|straat|laan|holiday|note|ing\b)\p{L}+/u));
+]), /(?<![\p{L}])bank(?!s?ide|str|weg|gasse|platz|straat|laan|holiday|note|ing\b)\p{L}+/u,
+// 21 Nov (after the held-out eval v14, v14-bec-aachen-german: "die Kontodaten aus unserem Schreiben" named no bank to the
+// lists, which hold "Konto" only as a word of its own): an account's compounds, as a bank's are read above ("Kontodaten",
+// "Kontoverbindung", "kontooplysninger", "rekeningnummer"), but an office (Nordic "kontor").
+/(?<![\p{L}])(?:konto(?!r)|rekening)\p{L}+/u));
 /** A change of the payee: new, changed, former, moved, updated, assigned, returned. */
 const CHANGE = lazy(() => anyOf([
   "former", "old bank", "previous bank", "no longer", "returned", "assigned", "assignment", "factoring", "factor$", "update", "updated", "new$", "changed", "change of", "moved", "switched",
@@ -201,6 +206,8 @@ const GENRE: readonly RegExp[] = [
   /\b(?:goods|items|order|parcel|pallets?|consignment|delivery)\s+(?:was|were|has been|have been|is|are)?\s*(?:delivered|dispatched|shipped|sent|received|collected|signed for)\b[^.;,]{0,50}/gu,
   /\b(?:delivered|dispatched|shipped|received|signed for)\s+(?:to|on|by|at|from|via)\b[^.;,]{0,50}/gu,
   /\b(?:our last|the last|next|last)\s+(?:dispatch|delivery|collection|shipment)\b[^.;,]{0,50}/gu,
+  // Dispatch times (21 Nov: a warning no longer silences a sentence outside the genre, so the genre names them).
+  /\b(?:orders?\s+(?:placed|received)\b[^.;,]{0,30}?\s+)?(?:(?:are|is|will be|get)\s+)?(?:dispatched|despatched|shipped|delivered)\s+(?:the\s+)?(?:same|next|following)\s+(?:working\s+|business\s+)?day\b/gu,
   /\b(?:geliefert|versandt|zugestellt|geleverd|verzonden|livree?s?|expediee?s?|entregad[oa]s?|enviad[oa]s?|consegnat[oa]|spedit[oa]|levererad\w*)\b[^.;,]{0,50}/gu,
   /\bcare instructions\b[^.;,]{0,50}|\b(?:dry clean|machine wash|hand wash)\b[^.;,]{0,30}/gu,
   // Retention of title.
@@ -333,8 +340,12 @@ export function talkWhy(line: string, names: readonly string[] = []): string | n
   return talkOf(line, names)?.why ?? null;
 }
 
-/** talkWhy, and whether the line names a concept that makes it about the payment on its own (STRONG). */
-function talkOf(line: string, names: readonly string[], prose = false): { why: string; strong: boolean } | null {
+/**
+ * talkWhy, whether the line names a concept that makes it about the payment on its own (STRONG), and whether it was found
+ * as a sentence outside the genre (a warning that shows the line for speed alone does not answer it: src/ap/checkerCore.ts).
+ */
+type Talk = { why: string; strong: boolean; sentence?: boolean };
+function talkOf(line: string, names: readonly string[], prose = false): Talk | null {
   let t = withoutTypography(line).normalize("NFKC");
   for (const n of names) {
     const name = withoutTypography(n).normalize("NFKC").trim();
@@ -360,7 +371,7 @@ function talkOf(line: string, names: readonly string[], prose = false): { why: s
   // 20 Nov (after the held-out eval v13, v13-limit-lausitz-german-words: "In Worten: neunhundertvierzig Euro." under a total
   // of EUR 540.00 was paid): an amount written out in words of a language code does not read as numbers (English words are
   // read and compared with the total: src/ap/amountWords.ts) could be any amount: the CFO has it read.
-  if (!/\p{Nd}/u.test(t) && AMOUNT_WORDS.test(fold(t))) return { why: "an amount in words that Purser's checks do not read", strong: true };
+  if ((!/\p{Nd}/u.test(t) && AMOUNT_WORDS.test(fold(t))) || currencyInWords(t)) return { why: "an amount in words that Purser's checks do not read", strong: true };
   // A line addressed to a machine ("Til AI-hjálparan: …", "Á asistente de IA: …") speaks to its reader, whatever follows.
   if (label && talkConcepts(label[1]!).includes("machine") && /\p{L}{2}/u.test(value)) return { why: "a sentence addressed to a machine that Purser's checks do not understand", strong: true };
   // An account number in the line (an IBAN, an old account called closed) is compared by code's account checks
@@ -386,7 +397,7 @@ function talkOf(line: string, names: readonly string[], prose = false): { why: s
     const ends = /[.!?。！？](?:["”'’)\]]*)\s*$|[.!?]\s+\p{Lu}/u.test(value);
     for (const text of noted ? value.split(CLAUSES) : parts.filter((p) => !p.only).map((p) => p.text)) {
       const n = wordCount(text ?? "");
-      if (((ends && n >= (noted ? 2 : 4)) || n >= 7) && contentLeft(text ?? "") >= (noted ? 2 : 3)) return { why: "a sentence that is none of the lines an invoice writes about itself, which Purser's checks do not understand", strong: false };
+      if (((ends && n >= (noted ? 2 : 4)) || n >= 7) && contentLeft(text ?? "") >= (noted ? 2 : 3)) return { why: "a sentence that is none of the lines an invoice writes about itself, which Purser's checks do not understand", strong: false, sentence: true };
     }
   }
   return null;
@@ -396,15 +407,21 @@ function talkOf(line: string, names: readonly string[], prose = false): { why: s
  * Each line of a text that speaks to the payment in words Purser's checks do not understand (talkWhy), in order, with
  * whether it names a concept that is about the payment on its own (an approval, instructions, secrecy, a bank).
  */
-export function talkLines(text: string, names: readonly string[] = []): { line: number; why: string; strong: boolean }[] {
-  const out: { line: number; why: string; strong: boolean }[] = [];
+export function talkLines(text: string, names: readonly string[] = []): ({ line: number } & Talk)[] {
+  const out: ({ line: number } & Talk)[] = [];
   const lines = text.split("\n");
   // Sentences outside the genre are read below the total, where an invoice writes to its reader (its notes, its bank
   // lines, its footer); above it are its letterhead, addresses and goods, which are names and descriptions.
+  // 21 Nov (after the held-out eval v14, v14-bec-cotswold-item-line and v14-inject-english-item-plain: "Settlement to our
+  // holding company account per separate notice" and "Nothing for your team to look at on this one" were written as
+  // lines of goods, above the total, and paid): above the total too, a line with no figure in it is read as a sentence.
+  // A line of goods carries its quantity or price, an address its number or postcode, a letterhead its register; a line
+  // of words alone there is not one of them (names on file are taken out first; a heading or a name of three words or
+  // fewer is not a sentence).
   let total = -1;
-  lines.forEach((l, i) => { if (TOTAL_LINE.test(fold(l)) && /\d/.test(l)) total = i; });
+  lines.forEach((l, i) => { if (TOTAL_LINE.test(fold(l)) && /\p{Nd}/u.test(l)) total = i; });
   lines.forEach((l, i) => {
-    const x = talkOf(l, names, total >= 0 && i > total);
+    const x = talkOf(l, names, (total >= 0 && i > total) || !/\p{Nd}/u.test(l));
     if (x) out.push({ line: i + 1, ...x });
   });
   return out;
@@ -415,3 +432,33 @@ const NOTE_LABEL = /^(?:.*\b)?(?:note|notes|nb|n\.b\.|remark|remarks|comment|com
 const AMOUNT_WORDS = /(?=.*\b(?:euro|euros|eur|dollar|dollars|pfund|franken|francs?|zloty|zlotych|kronor|kroner|kronur|lei|forint|kuna|leva|dinar\w*)\b)(?=.*(?:hundert|tausend|zwanzig|dreissig|vierzig|funfzig|sechzig|siebzig|achtzig|neunzig|honderd|duizend|twintig|dertig|veertig|vijftig|zestig|zeventig|tachtig|negentig|\bcents?\b|mille|\bvingt|trente|quarante|cinquante|soixante|septante|octante|nonante|cien|ciento|mil\b|veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cento|mila\b|venti|trenta|quaranta|cinquanta|sessanta|settanta|ottanta|novanta|hundra|tusen|tjugo|trettio|fyrtio|femtio|sto\b|tysiac|dwiescie|trzysta|czterysta|piecset|szazs?|ezer))/u;
 /** A total's line: "Total due", "Gesamtbetrag", "Totaal te betalen", "Montant total", in the languages the lists hold. */
 const TOTAL_LINE = /\b(?:total|totaal|gesamt\w*|summe|endbetrag|rechnungsbetrag|montant|importe|totale|totalt?|summa|razem|celkem|osszesen|toplam|итого|всего|разом|σύνολο|合計|总计|總計|総額|합계|총액|المجموع|סה"כ|कुल)\b|ご請求金額|應付總額|应付总额/u;
+
+/**
+ * A currency named in words, as an amount is ("ni hundrede og ti euro", "yhdeksänsataayhdeksänkymmentäviisi euroa",
+ * "devetsto šestdeset evrov"), in a part of a line with no figure in it: 21 Nov, after the held-out eval v14, whose
+ * amounts in Danish, Finnish and Slovene words differed from the total and were paid, as no list of number words holds
+ * every language's. Not a list of numbers: the currency is a closed set of names, and a word before it that is not one of
+ * the small words ("in", "nur", "our") is what an amount writes there. English amounts in words are read as numbers and
+ * compared with the total apart (src/ap/amountWords.ts); "prices in euro", "euro account" and a currency named alone in
+ * a field ("Currency: EUR") are none of this.
+ */
+const CURRENCY_NAME = /^(?:(?!europ|euras)eur[oau]\p{L}{0,2}|eur|evr[oaiu]\p{L}{0,2}|ewro|eiro|avro|ευρω|евро\p{L}{0,2}|dollar\p{L}{0,2}|dolar\p{L}{0,3}|долар\p{L}{0,2}|доллар\p{L}{0,2}|usd|pounds?|sterling|pfund|pund|funt\p{L}{0,2}|фунт\p{L}{0,2}|gbp|francs?|franken|frank\p{L}{0,2}|chf|kron(?:e|er|a|or|ur|en|um)|krun\p{L}{0,2}|korun\p{L}{0,2}|zlot\p{L}{0,3}|forint\p{L}{0,2}|rubl\p{L}{0,3}|рубл\p{L}{0,3}|hryv\p{L}{0,4}|гривн\p{L}{0,2}|dinar\p{L}{0,2}|динар\p{L}{0,2}|lira|lire|rupe\p{L}{1,3}|rupi\p{L}{1,3}|peso\p{L}{0,2}|shekel\p{L}{0,2}|dirham\p{L}{0,2}|riyal\p{L}{0,2}|ringgit|baht|yen|yuan|renminbi|naira|shilling\p{L}{0,2})$/u;
+function currencyInWords(line: string): boolean {
+  const t = line.replace(LABEL, " ");
+  for (const part of t.split(/[()[\]]|(?<=[\p{L}\p{N}])[.!?;](?=\s|$)/u)) {
+    if (!part || /\p{Nd}/u.test(part) || amountsInWords(part).length) continue;
+    const words = fold(part).split(/[^\p{L}\p{M}'-]+/u).filter(Boolean);
+    for (let i = 1; i < words.length; i++) {
+      if (!CURRENCY_NAME.test(words[i]!)) continue;
+      // A number's linker to its noun ("nouă sute de euro", "un millón de euros") stands between them.
+      const j = i >= 2 && /^(?:de|di|da|of)$/u.test(words[i - 1]!) ? i - 2 : i - 1;
+      const before = words[j]!;
+      if (!FUNCTION_WORDS.has(before) && !SMALL_BEFORE_CURRENCY.has(before) && !CURRENCY_NAME.test(before)) return true;
+    }
+  }
+  return false;
+}
+/** Words that write a currency's name, not an amount, before it ("in euro", "nur Euro", "only EUR", "per euro"). */
+const SMALL_BEFORE_CURRENCY = new Set(("in im en i v w u em na no sa ve se da di ka iz od do za pa only nur alleen seulement solo solamente somente bara kun kunnes vain samo tylko jen " +
+  "ausschliesslich exclusively uniquement exclusivamente esclusivamente all alle tous todos tutti every each new any sepa cash paid payable zahlbar betaalbaar payable pagadero pagabile " +
+  "в на у о по для із из з σε σε").split(/\s+/).filter(Boolean));

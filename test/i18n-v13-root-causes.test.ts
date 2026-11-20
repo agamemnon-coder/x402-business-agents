@@ -33,7 +33,9 @@ describe("1. a sentence below the total that is none of an invoice's own", () =>
       "Please disregard this reminder if payment has already been sent.", "Our bank details remain unchanged.", "Kind regards, Siobhán",
       "Account name: Moorland Looms Ltd", "Bank: Bank of Ireland", "Six hundred and ten euros only.",
     ]) expect(below(line), line).toBe(false);
-    expect(talkLines("Moorland Looms Ltd\nNothing further is needed for this one\nTotal due EUR 410.00")).toEqual([]);
+    // 21 Nov, after the held-out eval v14: above the total, a line of words with no figure is read as a sentence too
+    // (test/i18n-v14-root-causes.test.ts); a line of goods with its quantity is left alone, as before.
+    expect(talkLines("Moorland Looms Ltd\nNothing further is needed, 20 pcs\nTotal due EUR 410.00")).toEqual([]);
   });
 });
 
