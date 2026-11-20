@@ -3,20 +3,20 @@
  "tool": "vitest 5.1.0 with @vitest/coverage-v8 (V8's own coverage, mapped to statements and branches)",
  "command": "npm run test:coverage (vitest run --coverage, then tsx test/coverage-areas.ts)",
  "run": {
-  "what": "The coverage run behind every \"after\" figure in this record. It is not the full-suite count: that is a separate, later run, recorded in docs/assets/test-summary.json (8,845 passed, 0 failed, on commit 1ef28d9fa).",
-  "scope": "the coverage run: every test file vitest.config.ts includes, run once with V8 coverage over src/, cloud/src/ and worker/src/",
-  "commit": "8d50fc19c",
-  "commit_note": "the third round's tests (8d50fc19c); this record and vitest.config.ts's new floor were committed on top of it in 53183c8e5, which changes no product code and no test",
-  "command": "npx vitest run --coverage --coverage.reportOnFailure, with a 90-second test timeout: npm run test:coverage's vitest step plus the option that writes the report after a failed test. These options are what the record's commit message and coverage.md name; the full command line was not kept.",
+  "what": "The coverage run behind the product scope's \"after\" figure (20 November, afternoon, after the outside-audit round #457 and the follow-ups of #459). It is not the full-suite count, which is recorded separately in docs/assets/test-summary.json.",
+  "scope": "the coverage run: every test file vitest.config.ts includes except test/cloud-engine-bundle.test.ts, run once with V8 coverage over src/, cloud/src/ and worker/src/",
+  "commit": "33fdb0211",
+  "commit_note": "the head of #459 before its last three commits (the approval-page record, a gitleaks ignore and the ten coverage test files of coverage-more), so the ten files' gain is not in this figure",
+  "command": "npx vitest run --coverage --coverage.reportOnFailure --coverage.reporter=json-summary --coverage.reporter=text-summary --exclude test/cloud-engine-bundle.test.ts --pool=forks --maxWorkers=3 --testTimeout=90000",
   "environment": "a Linux machine with four cores shared with other jobs, node_modules linked from outside the checkout (not CI)",
   "result": {
-   "passed": 8659,
-   "failed": 1,
+   "passed": 9268,
+   "failed": 3,
    "skipped": 5,
-   "files": 791
+   "files": 857
   },
-  "failure": "test/cloud-engine-bundle.test.ts, \"loads the engine in one place only\": it bundles the Worker, and with node_modules linked from outside the checkout it counted viem's own dynamic imports as the repository's. A local artefact of the measuring machine; it touches no measured code and passes in CI (coverage.md, Limits of these figures).",
-  "regenerated": "no: there is no script in the repository that writes this record from a coverage report, so it was not rebuilt after the full-suite count of 1ef28d9fa; it stays the record of this earlier run, labelled as such wherever its figures are shown"
+  "failure": "test/approval-page-integrity.test.ts (the console's recorded hash was stale at that commit; the record was regenerated in the next commit) and test/redteam-api.test.ts (2 tests, timeouts on the loaded machine; they pass alone, 2/2). test/cloud-engine-bundle.test.ts was left out: with node_modules linked from outside the checkout it fails here and passes in CI.",
+  "regenerated": "by hand from the run's coverage-summary.json (product totals only); the per-area, per-file and largest-gap sections below are from the earlier run on 8d50fc19c and are not refreshed"
  },
  "measured_scope": {
   "include": [
@@ -31,26 +31,13 @@
   ]
  },
  "tests": {
-  "before": "8,534 tests passed, 2 failed, 5 skipped (781 files: 777 passed, 1 failed, 3 skipped)",
-  "after": "8,659 tests passed, 1 failed, 5 skipped (791 files: 787 passed, 1 failed, 3 skipped)"
+  "before": "8,659 tests passed, 1 failed, 5 skipped (791 files: 787 passed, 1 failed, 3 skipped) (the previous coverage run, 8d50fc19c)",
+  "after": "9,268 tests passed, 3 failed, 5 skipped (857 files: 852 passed, 2 failed, 3 skipped)"
  },
  "scopes": {
   "product": {
    "label": "The product (the measured scope): src, cloud/src and worker/src, without the CLI entry points and generated files",
    "before": {
-    "files": 828,
-    "statements": {
-     "covered": 64948,
-     "total": 70834,
-     "pct": 91.69
-    },
-    "branches": {
-     "covered": 48611,
-     "total": 59703,
-     "pct": 81.42
-    }
-   },
-   "after": {
     "files": 830,
     "statements": {
      "covered": 65458,
@@ -61,6 +48,19 @@
      "covered": 49091,
      "total": 59929,
      "pct": 81.92
+    }
+   },
+   "after": {
+    "files": 868,
+    "statements": {
+     "covered": 68941,
+     "total": 74760,
+     "pct": 92.21
+    },
+    "branches": {
+     "covered": 51775,
+     "total": 62978,
+     "pct": 82.21
     }
    }
   },

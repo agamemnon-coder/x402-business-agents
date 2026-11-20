@@ -107,7 +107,7 @@ export async function auditRequest(env: CloudEnvLike, req: Request, res: Respons
   const kind = securityKindOf(req.method, pattern, res.status, audit);
   if (!kind) return;
   // Claude's connector first asks /mcp without a token to learn where to sign in: that is the protocol, not a failure.
-  if (kind === "auth.failure" && pattern === "/mcp" && !req.headers.get("authorization")) return;
+  if (kind === "auth.failure" && (pattern === "/mcp" || pattern === "/mcp/airwallex") && !req.headers.get("authorization")) return;
   const detail: Record<string, unknown> = { method: req.method, ...(audit.detail ?? {}) };
   if (kind.endsWith("failure") || kind === "access.denied" || kind === "rate.limited") {
     detail.credential_kind = tokenKind(req.headers.get("authorization"));

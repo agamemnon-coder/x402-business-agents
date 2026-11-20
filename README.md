@@ -110,7 +110,7 @@ checks any receipt of the same format. `npm run airwallex-trail` lists the Airwa
 
 The full suite, `npm test` (about 8 to 9 min on a laptop): **8845 tests passing**, 5 skipped, in 814 files (the last full run, on commit `1ef28d9fa`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
 
-`npm run test-count` writes that count from the last full run; `npm run test:coverage` measures coverage per area. The coverage badge is from a separate, earlier coverage run on commit `8d50fc19c` (8,659 passed, 1 failed on the measuring machine only, 5 skipped: [coverage.md](docs/evidence/coverage.md)). CI runs these checks on every push, with CodeQL and gitleaks; the CI badge at the top shows the result of the latest run on main.
+`npm run test-count` writes that count from the last full run; `npm run test:coverage` measures coverage per area. The coverage badge is from a separate, earlier coverage run on commit `33fdb0211` (9,268 passed, 3 failed: a stale page record at that commit, fixed in the next, and two timeouts on the loaded machine, 5 skipped: [coverage.md](docs/evidence/coverage.md)). CI runs these checks on every push, with CodeQL and gitleaks; the CI badge at the top shows the result of the latest run on main.
 
 ## Where things are
 

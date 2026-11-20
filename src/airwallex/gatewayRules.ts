@@ -28,6 +28,10 @@ export const AWX_GATEWAY_ALLOW: readonly GatewayRule[] = [
   { method: "GET", path: p("/beneficiaries"), kind: "read", name: "beneficiaries" },
   { method: "GET", path: p("/transfers"), kind: "read", name: "transfers (by request_id)" },
   { method: "GET", path: p("/transfers/{id}"), kind: "read", name: "one transfer" },
+  // Reads for /mcp/airwallex (cloud/src/claude/awxCodemode.ts): the ledger and the cards, never a card's /details.
+  { method: "GET", path: p("/financial_transactions"), kind: "read", name: "financial transactions" },
+  { method: "GET", path: p("/issuing/cards"), kind: "read", name: "cards" },
+  { method: "GET", path: p("/issuing/cards/{id}"), kind: "read", name: "one card" },
   { method: "GET", path: p("/batch_transfers"), kind: "read", name: "batch transfers (by request_id)" },
   { method: "GET", path: p("/batch_transfers/{id}"), kind: "read", name: "one batch transfer" },
   { method: "GET", path: p("/batch_transfers/{id}/items"), kind: "read", name: "batch transfer items" },

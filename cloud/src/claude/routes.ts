@@ -9,18 +9,20 @@
 //   OAuth (./oauth.ts): for claude.ai's custom connectors, which connect by address and sign in by OAuth.
 
 import { z } from "zod";
-import { AuthError, KEY_MAX_DAYS, newApiKey, type Caller } from "../auth.js";
+import { AuthError, KEY_MAX_DAYS, newApiKey, withinRate, type Caller } from "../auth.js";
 import type { EngineApi } from "../engine/api.js";
 import { DEMO_END, ensureDemoCompany, isDemoTenant } from "../guest/guest.js";
 import type { Blobs, Sql } from "../store.js";
 import type { TenantDb } from "../tenant.js";
 import { connectPage } from "./connectPage.js";
 import { mcpAnswer } from "./mcp.js";
+import type { AwxReadPort } from "./awxCodemode.js";
+import { awxMcpAnswer } from "./awxCodemodeMcp.js";
 import { ICON_ICO, ICON_PNG_180, ICON_PNG_512, ICON_SVG } from "../../../src/ui/brand/icons.gen.js";
 import { type FetchDoc, authorizationServer, authorizeAsk, consent, consentPage, exchange, OAuthRefused, protectedResource, registerClient } from "./oauth.js";
 
 export interface ClaudeCtx {
-  env: { sql: Sql; blobs: Blobs; sessionSecret: string; origin: string; engine?: (tenantId: string) => EngineApi; outbound?: FetchDoc };
+  env: { sql: Sql; blobs: Blobs; sessionSecret: string; origin: string; engine?: (tenantId: string) => EngineApi; outbound?: FetchDoc; awxGateway?: AwxReadPort };
   req: Request;
   url: URL;
   now: Date;
@@ -38,8 +40,12 @@ export interface ClaudeKit<C extends ClaudeCtx> {
 
 export interface ClaudeRoute<C extends ClaudeCtx> { method: "GET" | "POST" | "DELETE"; path: string; summary: string; need: "public" | "read" | "admin"; run: (c: C) => Promise<Response> }
 
+/** The MCP servers' paths: /mcp (the books) and /mcp/airwallex (the Airwallex sandbox, read only, ./awxCodemodeMcp.ts). */
+export const isMcpPath = (p: string): boolean => p === "/mcp" || p === AWX_MCP_PATH;
+export const AWX_MCP_PATH = "/mcp/airwallex";
+
 /** The paths outside /v1 this block answers (the rest of the site is the console's). */
-export const isClaudePath = (p: string): boolean => p === "/mcp" || p === "/connect-ai" || p.startsWith("/oauth/") || p.startsWith("/.well-known/oauth-") || ICON_PATHS.includes(p);
+export const isClaudePath = (p: string): boolean => isMcpPath(p) || p === "/connect-ai" || p.startsWith("/oauth/") || p.startsWith("/.well-known/oauth-") || ICON_PATHS.includes(p);
 
 /** Purser's mark (src/ui/brand/icons.gen.ts, the site header's, the same bytes the site serves): what a browser tab, a home screen and a connector show. */
 const ICON_PATHS = ["/favicon.ico", "/favicon.svg", "/apple-touch-icon.png", "/icon.png"];
@@ -51,6 +57,8 @@ export { iconsOf } from "../brand.js";
 export const mcpChallenge = (origin: string) => `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource", scope="purser"`;
 
 const CONNECTOR_PURPOSES = ["claude", "claude-propose"];
+/** /mcp/airwallex requests a minute per token (each may run a plan of up to ten reads). */
+export const AWX_MCP_PER_MINUTE = 20;
 const oauthError = (e: OAuthRefused) => new Response(JSON.stringify({ error: e.code, error_description: e.message }), { status: e.status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
 /** A token request's or registration's body: a form (as OAuth sends it) or JSON. */
@@ -98,6 +106,14 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
       if (demo) await ensureDemoCompany(c.env.sql, c.env.blobs, c.now);
       const company = (await c.env.sql.first<{ name: string }>("SELECT name FROM tenants WHERE id = ?", [caller.tenantId]))?.name ?? "the company";
       const out = await mcpAnswer({ origin: c.env.origin, caller, db: c.db!, now: demo ? new Date(DEMO_END) : c.now, company, engine: demo ? null : (c.env.engine?.(caller.tenantId) ?? null), demo }, await kit.text(c, 1_000_000), c.req.headers);
+      return out.status === 202 ? new Response(null, { status: 202 }) : json(out.status, out.body);
+    } },
+
+    { method: "POST", path: AWX_MCP_PATH, summary: "The Airwallex sandbox (test money), read only, as a Code Mode MCP server (docs/codemode.md): two tools, search over a small OpenAPI document of the allowed reads and execute running a declarative plan of GET calls. Never writes, pays or converts. A Claude connector token (or an access token from /oauth/token) as Authorization: Bearer; not the demo company's public token.", need: "read", run: async (c) => {
+      const caller = c.caller!;
+      if (caller.purpose === "claude-demo") return err(403, "the demo company's public token does not read the Airwallex sandbox; make a Claude connector token in Purser Cloud");
+      if (!(await withinRate(c.env.sql, `awx-mcp:${caller.tenantId}:${caller.principal}`, c.now, { windowSec: 60, max: AWX_MCP_PER_MINUTE }))) return err(429, "too many Airwallex reads; wait a minute");
+      const out = await awxMcpAnswer({ port: c.env.awxGateway ?? null }, await kit.text(c, 100_000));
       return out.status === 202 ? new Response(null, { status: 202 }) : json(out.status, out.body);
     } },
 

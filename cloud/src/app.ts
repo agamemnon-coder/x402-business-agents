@@ -52,7 +52,8 @@ import { noteRequest } from "./try/metrics.js";
 import { stageApproved } from "./try/stage.js";
 import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.js";
 import { dashboard } from "./dashboard.js";
-import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
+import { claudeRoutes, isClaudePath, isMcpPath, mcpChallenge } from "./claude/routes.js";
+import type { AwxReadPort } from "./claude/awxCodemode.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
 import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, latestEdgeRun, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
@@ -157,6 +158,11 @@ export interface CloudEnv {
    * a service binding (AWX_READ). Purser Cloud holds no Airwallex key. Absent: each view says the sandbox is unavailable.
    */
   awxRead?: AwxReadBinding;
+  /**
+   * The Airwallex gateway (kit11's AwxGateway entrypoint, the AWX_GATEWAY service binding), for /mcp/airwallex: GET reads
+   * of the sandbox only (cloud/src/claude/awxCodemode.ts). Purser Cloud holds no Airwallex key. Absent: execute refuses.
+   */
+  awxGateway?: AwxReadPort;
   /**
    * The security log's alarm thresholds (src/lib/securityEvents.ts alarmRules), e.g. "auth_failures=20,window=300"; a
    * Worker var. Unset: the defaults.
@@ -997,7 +1003,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
       // /mcp takes a bearer token only (no cookie rides along), so Claude's own web origins may call it too.
       // The consent page's answer arrives through the client's redirects (often Origin: null, in an app's own browser):
       // its form's own signed, single-use token holds it instead (cloud/src/claude/oauth.ts consentToken).
-      const anyOrigin = url.pathname === "/v1/auth/oidc/apple/callback" || url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === "/oauth/authorize" || (url.pathname === "/mcp" && CLAUDE_ORIGINS.has(from ?? ""));
+      const anyOrigin = url.pathname === "/v1/auth/oidc/apple/callback" || url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === "/oauth/authorize" || (isMcpPath(url.pathname) && CLAUDE_ORIGINS.has(from ?? ""));
       if (from !== null && from !== env.origin && !anyOrigin) return err(403, "this request came from another site");
       // The hands-on demo's start and renewal are a browser's only: they must say they come from this site (the admin's
       // controls are a program's, with the platform token, and are not held to it).
@@ -1042,7 +1048,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
           const tryTenant = await signedTrySession(env.sessionSecret, req.headers.get("authorization"));
           if (tryTenant) {
             if ((await noteTryFail(env.sql, tryTenant, now)) > DEAD_SESSIONS_PER_MINUTE) return tryError(json, 429, "limit", "This test company's old session was sent too often; renew the session, or wait a minute.");
-          } else if (!(hit.r.path === "/mcp" && !req.headers.get("authorization"))) await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
+          } else if (!(isMcpPath(hit.r.path) && !req.headers.get("authorization"))) await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
         }
         throw e;
       }
@@ -1065,8 +1071,8 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
         const ok = (req.method === "GET" && hit.r.path === "/v1/me") || (req.method === "POST" && hit.r.path === "/v1/users/{id}/enrolment" && hit.p![0] === caller.user);
         if (!ok) return err(403, "a recovery key only enrols the owner it was issued for; sign in with the new passkey to do the rest");
       }
-      // A Claude connector token works at /mcp only, and /mcp takes only connector tokens (cloud/src/claude/routes.ts).
-      if (isConnector(caller.purpose) !== (hit.r.path === "/mcp")) {
+      // A Claude connector token works at /mcp (and /mcp/airwallex) only, and those take only connector tokens (cloud/src/claude/routes.ts).
+      if (isConnector(caller.purpose) !== isMcpPath(hit.r.path)) {
         return err(403, isConnector(caller.purpose) ? "a Claude connector token works at /mcp only" : "/mcp takes a Claude connector token (made in Purser Cloud: Settings, Connect Claude)");
       }
       if (caller.purpose === "first-owner") {
@@ -1095,7 +1101,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
   } catch (e) {
     if (e instanceof AuthError) {
       const r = err(e.status, e.message);
-      if (e.status === 401 && url.pathname === "/mcp") r.headers.set("www-authenticate", mcpChallenge(env.origin));
+      if (e.status === 401 && isMcpPath(url.pathname)) r.headers.set("www-authenticate", mcpChallenge(env.origin));
       return r;
     }
     if (e instanceof StepUpRequired) return json(403, { error: e.message, code: e.code });

@@ -452,3 +452,6 @@ dcdf0c10cd9cb6830478615402ebf364e619ee42:test/dashboard-feed-words.test.ts:gener
 # test/cloud-oidc-token-refusals.test.ts (20 Nov): a PEM wrapper around a key the test generates at run time or around
 # the text "not a key", to test Sign in with Apple's refusals; no real key.
 8591609c607ac6a7f967253c36ff984badd1d7b4:test/cloud-oidc-token-refusals.test.ts:private-key:135
+# test/airwallex-codemode-mcp.test.ts (20 Nov): a stub JWT ({"sub":"stub"}, signature "stub-signature") for the stand-in
+# Airwallex login; not a real token.
+fef40703d6013ebd630bf8ddd0cb4b0739eede83:test/airwallex-codemode-mcp.test.ts:jwt:18

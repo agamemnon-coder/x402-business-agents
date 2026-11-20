@@ -24,6 +24,7 @@ import type { OidcEnv } from "./oidc.js";
 import { resendEmail, type AlertProviders } from "./alerts.js";
 import { forRequest } from "./hostOrigin.js";
 import type { AwxReadBinding } from "./awxLive.js";
+import type { AwxReadPort } from "./claude/awxCodemode.js";
 import type { CardsPort } from "./agentCards.js";
 
 export interface Bindings {
@@ -122,6 +123,8 @@ export interface Bindings {
   AWX_READ?: AwxReadBinding;
   /** The agents' live Airwallex sandbox cards (cloud/src/agentCards.ts): kit11's AwxCards entrypoint, a service binding. */
   AWX_CARDS?: CardsPort;
+  /** kit11's Airwallex gateway (AwxGateway entrypoint, a service binding): /mcp/airwallex reads the sandbox through it (GET only). */
+  AWX_GATEWAY?: AwxReadPort;
 }
 
 /** What approval alerts are sent with: Twilio for WhatsApp and Resend for e-mail, each only when all its settings are there. */
@@ -172,7 +175,7 @@ function envOf(b: Bindings): CloudEnv {
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}), ...(b.TURNSTILE_SECRET ? { turnstileSecret: b.TURNSTILE_SECRET, siteverify: (url: string, init: RequestInit) => fetch(url, init) } : {}) } } : {}) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE && b.HANDS_ON === "on" ? { negotiateClaude: negotiateClaudeOf(sql, b.ENGINE_CLAUDE, b.KIT11_ANTHROPIC_API_KEY) } : {}),
-    edge: { stats: b.STATS !== "off" }, production: true, ...(b.APPROVAL_KEY_COOLING_HOURS && /^\d{1,4}$/.test(b.APPROVAL_KEY_COOLING_HOURS) ? { approvalKeyCoolingHours: Number(b.APPROVAL_KEY_COOLING_HOURS) } : {}), ...(connect ? { connect } : {}), ...(oidc ? { oidc } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}) };
+    edge: { stats: b.STATS !== "off" }, production: true, ...(b.APPROVAL_KEY_COOLING_HOURS && /^\d{1,4}$/.test(b.APPROVAL_KEY_COOLING_HOURS) ? { approvalKeyCoolingHours: Number(b.APPROVAL_KEY_COOLING_HOURS) } : {}), ...(connect ? { connect } : {}), ...(oidc ? { oidc } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}), ...(b.AWX_GATEWAY ? { awxGateway: b.AWX_GATEWAY } : {}) };
 }
 
 export default {
