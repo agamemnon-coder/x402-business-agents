@@ -4539,6 +4539,29 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/mcp/airwallex":
+    post:
+      operationId: postMcpAirwallex
+      tags:
+        - "AI agents (MCP, OAuth)"
+      summary: "The Airwallex sandbox (test money), read only, as a Code Mode MCP server (docs/codemode.md): two tools, search over a small OpenAPI document of the allowed reads and execute running a declarative plan of GET calls. Never writes, pays or converts. A Claude connector token (or an access token from /oauth/token) as Authorization: Bearer; not the demo company's public token."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/connect-ai":
     get:
       operationId: getConnectAi
