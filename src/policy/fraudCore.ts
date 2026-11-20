@@ -100,6 +100,9 @@ export function legalName(name: string): string {
   return skeleton(legalTokens(name).join(" "));
 }
 
+/** The word for "company" that starts many names in the languages that put it first. */
+const LEADING_COMPANY_WORDS: ReadonlySet<string> = new Set(["syarikat", "perusahaan", "shirkadda", "sharikat", "shirkat", "kampuni", "kamfanin", "kompania", "kompaniya", "empresa", "sociedad", "societe", "societa", "companhia", "compania", "cong", "pt", "cv", "ud"]);
+
 /** A name's words as legalName reads them: lower case, no accents or dots, its legal form at the end dropped. */
 export function legalTokens(name: string): string[] {
   const tokens = withoutTypography(name).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\./g, "").replace(/&/g, " & ").split(/[^\p{L}\p{N}&]+/u).filter(Boolean);
@@ -118,6 +121,9 @@ export function legalTokens(name: string): string[] {
   // dropped as one at the end is, while something is left after it.
   const first = LEGAL_FORMS.find((form) => form[0] !== "&" && form[0] !== "and" && tokens.length > form.length && form.every((t, i) => tokens[i] === t));
   if (first) tokens.splice(0, first.length);
+  // 20 Nov (after the held-out eval v13, v13-name-kelantan-short: a bank's holder "TENUN KELANTAN SDN BHD" for "Syarikat
+  // Tenun Kelantan Sdn Bhd"): a name's first word that only says "company" in its language is left out as a form is.
+  if (tokens.length > 2 && LEADING_COMPANY_WORDS.has(tokens[0]!)) tokens.splice(0, 1);
   return tokens;
 }
 

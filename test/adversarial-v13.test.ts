@@ -78,14 +78,30 @@ describe("the v13 case set", () => {
 
 
 describe("the v13 run", () => {
-  it("the committed held-out record is what a fresh run adds up to (npm run eval:adversarial-v13)", async () => {
-    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v13.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string; hypotheses: unknown };
+  // 20 Nov, after v13's record: its misses led to fixes in the shared rules (test/i18n-v13-root-causes.test.ts), so v13
+  // is no longer held out. Its first run stays as recorded; the run on the fixed code is recorded apart.
+  it("the committed after-fix record is what a fresh run adds up to, no longer held out (npm run eval:adversarial-v13)", async () => {
+    const committed = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v13-after.json", import.meta.url), "utf8")) as { line: string; rows: AdvRow[]; totals: unknown; held_out: boolean; cases_commit: string; before: string; hypotheses: unknown };
     const r = await adversarialV2(ADV_V13_CASES, V13_WORLD);
-    expect(committed.rows).toHaveLength(ADV_V13_CASES.length * ADV_ARMS.length);
     expect(committed.totals).toEqual(r.totals);
     expect(committed.rows).toEqual(r.rows);
-    expect(committed.line).toBe(advLine(r.totals));
-    expect(committed).toMatchObject({ held_out: true, cases_commit: V13_CASES_COMMIT });
+    expect(committed.line).toBe(advLine(r.totals, ""));
+    expect(committed).toMatchObject({ held_out: false, cases_commit: V13_CASES_COMMIT, before: "docs/evals/adversarial-v13.json" });
     expect(committed.hypotheses).toEqual(roundHypotheses(V13_HYPOTHESES, r.rows));
   }, 240_000);
+
+  it("keeps the held-out run before the fixes as it was recorded: 14 wrong payments vs 93, 1 false hold of 63, on the cases of c6cba258e", () => {
+    const before = JSON.parse(readFileSync(new URL("../docs/evals/adversarial-v13.json", import.meta.url), "utf8")) as { line: string; held_out: boolean; cases_commit: string; commit: string; dirty: boolean; rows: AdvRow[]; totals: Record<string, { wrong_payments: number; false_holds: number; clean_truths: number; to_cfo_not_held: number; cfo_not_needed: number }>; hypotheses: unknown };
+    expect(before).toMatchObject({ held_out: true, cases_commit: "c6cba258e", commit: "5684d56c3bf4", dirty: false });
+    expect(before.rows).toHaveLength(ADV_V13_CASES.length * ADV_ARMS.length);
+    expect(before.totals.purser_script).toMatchObject({ wrong_payments: 14, false_holds: 1, clean_truths: 63, to_cfo_not_held: 20, cfo_not_needed: 4 });
+    expect(before.totals.purser_script_parser).toMatchObject({ wrong_payments: 14, false_holds: 1 });
+    expect(before.totals.no_rules).toMatchObject({ wrong_payments: 93 });
+    expect(before.line).toBe(advLine(before.totals as never));
+    expect(before.hypotheses).toEqual(roundHypotheses(V13_HYPOTHESES, before.rows));
+    const md = readFileSync(new URL("../docs/evals/adversarial-v13.md", import.meta.url), "utf8");
+    expect(md).toContain(before.line);
+    for (const x of before.rows.filter((y) => y.arm !== "no_rules" && !y.right)) expect(md, x.case).toContain(`| ${x.case} | ${x.category} | ${x.truth} | ${x.outcome} |`);
+    expect(md).toContain("added after this record; the record below is unchanged");
+  });
 });
