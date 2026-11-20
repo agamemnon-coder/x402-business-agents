@@ -7,7 +7,7 @@ Every Purser document, grouped by what you need it for; test money only througho
 | At a glance | Record |
 |---|---|
 | **8,574 tests passing**, 0 failed, in the last full run | [assets/test-summary.json](assets/test-summary.json) |
-| **33 live runs**, the last on 19 Nov 2026 | [runs/README.md](runs/README.md) |
+| **34 live runs**, the last on 20 Nov 2026 | [runs/README.md](runs/README.md) |
 | **189 checks passed**, 3 could not run here, 0 failed | [evidence/verification-2026-11-15.md](evidence/verification-2026-11-15.md) |
 | **37 of 39** red-team attacks stopped, 2 caught afterwards (a test world) | [redteam/report.json](redteam/report.json) |
 
