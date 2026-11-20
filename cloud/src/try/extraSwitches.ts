@@ -14,5 +14,7 @@
 //   awx_fx         the live Airwallex sandbox FX quote in the terms (cloud/src/engine/liveFx.ts); ON unless set to "off": then the recorded rate, labelled
 //   awx_payout     after a verified signature, one Airwallex sandbox transfer of the signed payment (cloud/src/engine/livePayout.ts); off: the simulated bank only, labelled
 //   turnstile      Cloudflare Turnstile before a start (./turnstile.ts, 19 November); needs the secret TURNSTILE_SECRET
-export const EXTRA_SWITCHES = ["bot_check", "counter", "end_card", "books_effect", "partner_lines", "scenarios", "tour", "feedback", "talk_round", "awx_fx", "awx_payout", "awx_cards", "turnstile"] as const;
+//   ask            Ask Purser's live answers by Claude (cloud/src/ask/, 20 November), also under `claude` and the caps
+//                  cap_day_micros_ask and cap_ask_addr_micros; off: the chat answers from the docs alone, labelled
+export const EXTRA_SWITCHES = ["bot_check", "counter", "end_card", "books_effect", "partner_lines", "scenarios", "tour", "feedback", "talk_round", "awx_fx", "awx_payout", "awx_cards", "turnstile", "ask"] as const;
 export type ExtraSwitch = (typeof EXTRA_SWITCHES)[number];

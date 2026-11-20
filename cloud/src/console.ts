@@ -5,6 +5,7 @@
 // page as text (textContent), never as HTML; account numbers come masked from the runner. The console reads and
 // manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
 
+import { ASK_BUTTON_JS } from "./ask/page.js";
 import { PREVIEW_TAGS } from "./brand.js";
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
@@ -2052,7 +2053,8 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
 <style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${AWX_UI_CSS}${AWX_CSS}</style></head><body class="signed-out">
 ${BODY}
-<script type="module" nonce="${n}">${script}</script>
+<script type="module" nonce="${n}">${script}
+${ASK_BUTTON_JS}</script>
 </body></html>`;
 }
 

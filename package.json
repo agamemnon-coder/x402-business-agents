@@ -29,6 +29,7 @@
     "cloud:icons": "tsx cloud/scripts/brandIcons.ts",
     "cloud:logos": "tsx cloud/scripts/tryLogos.ts",
     "cloud:pdfjs": "tsx cloud/scripts/pdfjs.ts",
+    "cloud:ask-pack": "tsx cloud/scripts/askPack.ts",
     "cloud:proof": "tsx cloud/scripts/tryProof.ts",
     "evidence:wall": "tsx scripts/evidence-wall.ts",
     "cloud:samples": "tsx cloud/scripts/samples.ts",

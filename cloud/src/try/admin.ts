@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { randomToken, sha256Hex } from "../crypto.js";
 import type { Sql } from "../store.js";
+import { askCounts } from "../ask/limits.js";
 import { MAX_TOKENS, readSwitches, setSwitch, setSwitchIf, SwitchRefused, tokensOf, type Switches } from "./switches.js";
 
 export const AdminOp = z.discriminatedUnion("op", [
@@ -63,6 +64,8 @@ export async function adminOp(sql: Sql, op: AdminOp, now: Date): Promise<Record<
       spent_micros_by_pool: spent,
       awx_calls: await maybe(sql, "SELECT n AS v FROM try_rail_day WHERE day = ?", [d]),
       metal_calls: await maybe(sql, "SELECT n AS v FROM try_metal_day WHERE day = ?", [d]),
+      // Ask Purser (cloud/src/ask/limits.ts): Claude's spend on the chat today and the day's counts; never a question.
+      ask: { spent_micros: await maybe(sql, "SELECT micros AS v FROM try_spend WHERE scope = ?", [`ask:day:${d}`]), counts: await askCounts(sql, `${d}T00`) },
     },
     all_time: { spent_micros: await maybe(sql, "SELECT micros AS v FROM try_spend WHERE scope = 'all'", []) },
   };

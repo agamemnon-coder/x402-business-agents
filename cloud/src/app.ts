@@ -45,6 +45,9 @@ import { signedTrySession, tryGate } from "./try/gate.js";
 import { tryEngineRoutes } from "./try/engineRoutes.js";
 import { tryExtraEngineRoutes } from "./try/extraEngineRoutes.js";
 import { tryNegotiateRoutes, type NegotiateClaude } from "./try/negotiateRoutes.js";
+import { askRoutes } from "./ask/routes.js";
+import { ASK_BUTTON_PATH, ASK_PATH, askButtonResponse, askPageResponse } from "./ask/page.js";
+import type { AskModel } from "./ask/model.js";
 import { tryError, tryRoutes } from "./try/routes.js";
 import { DEAD_SESSIONS_PER_MINUTE, isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
 import { SwitchRefused } from "./try/switches.js";
@@ -148,6 +151,12 @@ export interface CloudEnv {
    * and kill switch. Absent, or undefined for a company: the recorded negotiation, labelled.
    */
   negotiateClaude?: (tenantId: string) => NegotiateClaude | undefined;
+  /**
+   * Ask Purser's model (cloud/src/ask/): Claude with the demo's capped key, under the switches claude and ask and their
+   * caps. Absent: the chat answers from the docs alone, labelled. askSecrets: values no answer may ever contain.
+   */
+  askModel?: AskModel;
+  askSecrets?: readonly string[];
   /**
    * A company connects accounts it already has by OAuth (cloud/src/connect.ts, docs/real-customers.md): its Airwallex
    * account and its Moneybird administration. Absent (the default): the /v1/connect routes answer 404.
@@ -925,6 +934,9 @@ export const ROUTES: Route[] = [
   // The hands-on deployment (cloud/src/try/routes.ts): one block, 404 unless the deployment runs the hands-on demo.
   ...tryRoutes<Ctx>({ json, err, body }),
 
+  // Ask Purser (cloud/src/ask/routes.ts): the public chat, answered from the repository's public docs only; read-only.
+  ...askRoutes<Ctx>({ json, err, body }),
+
   // Connect Claude (cloud/src/claude/routes.ts): connector tokens, the MCP server at /mcp and its OAuth sign-in.
   ...claudeRoutes<Ctx>({ json, err, body, text: (c, max) => readCapped(c.req, max) }),
 
@@ -991,6 +1003,8 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
     if (url.pathname === "/.well-known/security.txt" && (req.method === "GET" || req.method === "HEAD")) {
       return new Response(SECURITY_TXT, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "max-age=3600", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" } });
     }
+    // Ask Purser's page and its button module (cloud/src/ask/page.ts), on every deployment.
+    if ((req.method === "GET" || req.method === "HEAD") && (url.pathname === ASK_PATH || url.pathname === ASK_BUTTON_PATH)) return url.pathname === ASK_PATH ? askPageResponse(url) : askButtonResponse();
     // The console (cloud/src/console.ts): the browser pages, everything outside /v1.
     if (!url.pathname.startsWith("/v1/") && !isClaudePath(url.pathname) && !isDiscoveryPath(url.pathname)) return consoleResponse(req, url, env);
     // A browser request that changes something must come from the console's own origin: a page elsewhere cannot make a
