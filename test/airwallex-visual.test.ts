@@ -29,11 +29,11 @@ describe("the path of a payment through Airwallex", () => {
     expect(flagged).toEqual([]);
     for (const label of ["Payee check", "Ledger reconciliation"]) expect(text(html)).toMatch(new RegExp(`${label} Live 12 Nov`));
     expect(text(html)).not.toContain("not yet switched on");
-    expect((html.match(/<li class="off">/g) ?? []).length).toBe(0);
+    expect((html.match(/<li class="off"[ >]/g) ?? []).length).toBe(0);
     // Built but not switched on, a stop says so (the switch-on record left out): a ring, and the words.
     const built = pathHtml(inUse.filter((t) => t.key !== "payee-check"), inUse.filter((t) => t.key === "payee-check"));
     expect(text(built)).toMatch(/Payee check Live 12 Nov not yet switched on/);
-    expect((built.match(/<li class="off">/g) ?? []).length).toBe(1);
+    expect((built.match(/<li class="off"[ >]/g) ?? []).length).toBe(1);
   });
 });
 

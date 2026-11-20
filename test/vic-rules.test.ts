@@ -16,7 +16,7 @@ import { VIC_DOCS, VIC_LIVE, VIC_RULES_ID, VIC_RULES_SUMMARY, vicRules, vicRules
 const run = airiRun()!, controls = vic2Run()!;
 const rows = vicRules(run, controls);
 const html = visaPage();
-const block = new RegExp(`<details class="fold" id="${VIC_RULES_ID}">[\\s\\S]*?</details>`).exec(html)?.[0] ?? "";
+const block = new RegExp(`<details class="fold" id="${VIC_RULES_ID}"[^>]*>[\\s\\S]*?</details>`).exec(html)?.[0] ?? "";
 const text = (h: string) => h.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 const root = (p: string) => new URL(`../${p}`, import.meta.url);
 const buy = (s: string) => run.purchases.find((p) => p.step === s)!;

@@ -8,7 +8,7 @@ import { VIC2_BADGES, VIC2_RUN_FILE, VIC2_RUN_LOG, vic2Lines, vic2Run, vic2RunHt
 
 const rec = JSON.parse(readFileSync(VIC2_RUN_FILE, "utf8")) as Vic2Record;
 const pages = buildPages() as unknown as Record<string, string>;
-const block = (html: string) => /<div class="card airi" id="airi-run-2">[\s\S]*?<\/div>/.exec(html)?.[0] ?? "";
+const block = (html: string) => /<div class="card airi" id="airi-run-2"[^>]*>[\s\S]*?<\/div>/.exec(html)?.[0] ?? "";
 const text = (html: string) => html.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 
 describe("the second Airi run on the site", () => {

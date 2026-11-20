@@ -9,7 +9,7 @@ import { AWX_LIVE_CSS, AWX_LIVE_JS, awxLiveHtml } from "./awxLive.js";
 import { VISA_MEETS_ID } from "./visaStory.js";
 import { COUNT_JS } from "./stats.js";
 import { LIFE_TITLE, REFUSALS_TITLE, VISUAL_CSS, lifecycleSvg, refusalsSvg } from "../visuals/svg.js";
-import { TWO_LOCKS_LOG, airwallexHold, railRefusals } from "../visuals/facts.js";
+import { RAIL_RECORDS, TWO_LOCKS_LOG, airwallexHold, railRefusals } from "../visuals/facts.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { SUMMARY_CSS, detailsFold, type SummaryCard } from "./summary.js";
 import { SCALE_CSS, scaleBandHtml, scaleFigures, scaleStats, type ScaleStat } from "./scale.js";
@@ -20,27 +20,27 @@ import { MOTION_JS } from "../ui/motion.js";
 import { altaWords } from "../ui/formerly.js";
 import { runTimes, runTimesLine } from "./runTimes.js";
 import { REPO_BLOB } from "./metalStory.js";
-import { SIGNED_FILES, VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList } from "./verifyTerms.js";
+import { SIGNED_FILES, SIGNED_REFS, VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList } from "./verifyTerms.js";
 import { VAULT_TREE_RECORD } from "../vault/treeSvg.js";
 import { T0_JOURNAL_RECORD, t0Journal } from "./t0Page.js";
 import { trailLinkHtml } from "./awxTrailLink.js";
 import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
 import { CI_CSS, ciChecksHtml } from "./ciChecks.js";
-import { AWX_LIVE_LINE, CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE } from "../config/brand.js";
+import { AWX_LIVE_LINE, LIVE_FX_RECORD, CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type StopStory, type Tile } from "./run.js";
 import { centHtml, centRecord } from "./cardCent.js";
-import { AWX_CONTROLS_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
+import { AWX_CONTROLS_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel, transferReadback } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { awxRunBlock } from "./awxRun.js";
 import { countOf, esc, icon, page } from "./ui.js";
 import { GUARANTEES_CSS, guaranteesHtml } from "./guarantees.js";
-import { LEAD_CSS, leadHtml, proofLeads, type Lead } from "./proofLead.js";
+import { LEAD_CSS, RELIABILITY_EVALS, RELIABILITY_LOG, RELIABILITY_RUNS, leadHtml, proofLeads, type Lead } from "./proofLead.js";
 import { TRACE_LINK, TRACE_URL } from "./trace.js";
 import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { WORST_CASE_CSS, worstCaseCardHtml } from "./worstCaseCard.js";
-import { EVIDENCE_WALL_CSS, evidenceWallHtml } from "./evidenceWall.js";
+import { EVIDENCE_WALL_CSS, PROOF_INDEX_DOC, evidenceWallHtml } from "./evidenceWall.js";
 import { evidenceMapCss, evidenceMapHtml } from "./evidenceMap.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
@@ -328,8 +328,14 @@ export function partnerCards(run: AgentRun, lead: Record<"airwallex" | "metal" |
   // its own (each card's anchor).
   const visa = visaCardParts(vic3()), t0 = t0CardParts();
   const leads: Record<string, Lead[]> = { ...lead, ...(visa ? { visa: visa.lead } : {}), ...(t0 ? { t0: t0.lead } : {}) };
-  // A card from a separate run names its record (data-rec): its figures are that record's, not the main run's.
-  const recOf: Record<string, string> = { visa: VIC3_RECORD, t0: T0_JOURNAL_RECORD };
+  // Every card names its records (data-rec): a card from a separate run, that run's; the main run's cards, the run's
+  // record and the dated read-backs or eval records their leads read (proofLeads, reliabilityFix).
+  const tr = transferReadback(), cr = cardsReadback();
+  const recOf: Record<string, string> = {
+    visa: VIC3_RECORD, t0: T0_JOURNAL_RECORD, metal: run.file,
+    airwallex: [run.file, ...(tr ? [tr.file] : []), ...(cr ? [cr.file] : [])].join(" "),
+    claude: [run.file, RELIABILITY_LOG, RELIABILITY_EVALS, RELIABILITY_RUNS].join(" "),
+  };
   const card = (id: "metal" | "airwallex" | "claude" | "visa" | "t0", name: string, what: string, facts: string, items: string[], extra = "") => {
     const [first, ...rest] = leads[id] ?? [];
     return `<article class="pcard card" id="${id}"${recOf[id] ? ` data-rec="${recOf[id]}"` : ""}><div class="ph">${CARD_MARK[id] ?? ""}<h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? leads[id]! : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id === "metal" ? "alta" : id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
@@ -346,6 +352,9 @@ ${card("claude", "Claude", `The agents decide with Claude: ${run.agents.map((a) 
 </div>
 ${ENDORSE_NOTE}`;
 }
+
+/** The red team box's records: the first red team, the agent-loop run, the night batch (in that order). */
+export const REDTEAM_RECORDS = ["docs/redteam/report.json", "docs/evals/autonomy-redteam.json", "docs/redteam/night-2026-11-02.json"] as const;
 
 function moreCards(run: AgentRun): string {
   const r = run.record, s = r.snapshot;
@@ -368,16 +377,18 @@ function moreCards(run: AgentRun): string {
   const earlier = money.filter((e) => e.earlier);
   // The red team (final review, 4 Nov: "39/39 attacks failed" read as all prevented): those stopped before anything
   // moved, apart from those found only afterwards; the later run Proof summarises with its scope, the latest linked.
-  const rt = readJson<{ ran_at: string; model: string; runs_per_case: number; summary: { runs: number; held: number }; results: { id: string }[] }>("docs/evals/autonomy-redteam.json");
-  const red = readJson<{ ran_at: string; attempts: number; results: { caught?: string; title: string }[] }>("docs/redteam/report.json");
-  const night = readJson<{ ran_at: string; model: string }>("docs/redteam/night-2026-11-02.json");
+  const [redFile, rtFile, nightFile] = REDTEAM_RECORDS;
+  const rt = readJson<{ ran_at: string; model: string; runs_per_case: number; summary: { runs: number; held: number }; results: { id: string }[] }>(rtFile);
+  const red = readJson<{ ran_at: string; attempts: number; results: { caught?: string; title: string }[] }>(redFile);
+  const night = readJson<{ ran_at: string; model: string }>(nightFile);
   const stoppedBefore = red.results.filter((x) => x.caught === "before").length;
   const after = red.results.filter((x) => x.caught === "after").map((x) => x.title.replace(/^./, (c) => c.toLowerCase()));
   const dayLong = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
   const t = s.traces.find((x) => x.agent === "support" && x.task.startsWith("dispute"));
   const checked = t ? new Set(t.steps.filter((x) => x.tool === "verify_order").map((x) => JSON.stringify(x.input))).size : 0;
   const refunded = money.filter((e) => e.agent === "support" && /refund/i.test(e.what) && !e.refused).length;
-  const box = (id: string, ic: string, h: string, n: string, p: string, inner: string, link?: [string, string]) => `<div class="card" id="${id}"><h3>${icon(ic, 18)}${n ? `<span class="n">${esc(n)}</span>` : ""}${esc(h)}</h3><p>${plain(p)}</p>${inner}${link ? `<a class="open" href="${esc(link[1])}">${esc(link[0])} ${icon("arrow-right", 14)}</a>` : ""}</div>`;
+  // Each box names its records (data-rec): the main run's, or the red team's own reports.
+  const box = (id: string, ic: string, h: string, n: string, p: string, inner: string, link?: [string, string], rec: string = run.file) => `<div class="card" id="${id}" data-rec="${esc(rec)}"><h3>${icon(ic, 18)}${n ? `<span class="n">${esc(n)}</span>` : ""}${esc(h)}</h3><p>${plain(p)}</p>${inner}${link ? `<a class="open" href="${esc(link[1])}">${esc(link[0])} ${icon("arrow-right", 14)}</a>` : ""}</div>`;
   // Jury panel, 15 Nov: "37 of 39", never "N/N"; the two not stopped named from the same record (red.results, caught "after").
   return `<div class="more">
 ${box("stops", "ban", stopSub(story), stopFigure(story), `${stopsLine(story)}${story.metal && metalDetail(story) ? ` Alta's ${story.metal}: ${metalDetail(story)}.` : ""}`, fold("Show each one", stopItems))}
@@ -387,7 +398,7 @@ ${box("dispute", "users", "orders disputed", String(checked), `${checked - refun
 ${box("redteam", "shield-check", "attacks stopped", `${stoppedBefore} of ${red.attempts}`, `${after.length ? `The other ${after.length} were detected afterwards, not prevented: ${after.join("; ")}. ` : ""}${dayLong(red.ran_at)}, a test world on simulated rails.`, fold("Later runs", [
   li(`${dayLong(rt.ran_at)}, against the agent loop: ${countOf(rt.summary.held, rt.summary.runs, true)} runs held (${new Set(rt.results.map((x) => x.id)).size} attacks, ${rt.runs_per_case} runs each; the Sourcing agent on ${family(rt.model)}, simulated rails).`, rt.summary.held === rt.summary.runs ? "ok" : "no"),
   `<li>${esc(`${dayLong(night.ran_at)}, Claude ${family(night.model)} as the attacker:`)} <a class="pf" href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-02-night-batch.md#5-red-team-opus-as-the-attacker" target="_blank" rel="noopener">the night batch's report, with what got through ↗</a></li>`,
-]))}
+]), undefined, REDTEAM_RECORDS.join(" "))}
 ${box("health", "database", "audit rows", String(s.audit.rows), `Hash chain ${s.audit.intact ? "intact" : "broken"} (${runName(r)}).`, "", ["Open the CFO dashboard", "./?autonomy"])}
 </div>`;
 }
@@ -397,12 +408,14 @@ ${box("health", "database", "audit rows", String(s.audit.rows), `Hash chain ${s.
  * played run first, its name and day from the record, then the earlier runs and tools, kept as they were.
  */
 function archiveFold(run: AgentRun): string {
-  const links: [string, string][] = [
-    ["replay", `Replay of ${run.name}, ${shortDay(run.recordedAt)}`],
-    ["./?recorded", "The CFO dashboard of the earlier recorded run (30 October)"], ["metal/report", "The Dispute desk's evidence report (30 October)"],
-    ["film", "The earlier animation (30 October)"], ["month", "A month in 90 seconds (simulated)"], ["lab", "The Scenario Lab"],
+  // Each with the record it plays (data-rec). The simulated month has no run behind it, so its line carries no figure
+  // (it read "A month in 90 seconds": the length of an animation, from no record).
+  const links: [string, string, string][] = [
+    ["replay", `Replay of ${run.name}, ${shortDay(run.recordedAt)}`, run.file],
+    ["./?recorded", "The CFO dashboard of the earlier recorded run (30 October)", "docs/demo/snapshot.json"], ["metal/report", "The Dispute desk's evidence report (30 October)", "docs/demo/metal.json"],
+    ["film", "The earlier animation (30 October)", "docs/demo/story.json"], ["month", "A simulated month, seeded (not a run)", ""], ["lab", "The Scenario Lab", "docs/lab/results.json"],
   ];
-  return `<details class="deep" id="archive"><summary>Archive</summary><ul class="pl">${links.map(([href, label]) => `<li><a class="pf" href="${esc(href)}">${esc(label)}</a></li>`).join("")}</ul></details>`;
+  return `<details class="deep" id="archive"><summary>Archive</summary><ul class="pl">${links.map(([href, label, rec]) => `<li${rec ? ` data-rec="${esc(rec)}"` : ""}><a class="pf" href="${esc(href)}">${esc(label)}</a></li>`).join("")}</ul></details>`;
 }
 
 /**
@@ -459,20 +472,21 @@ export function readBack(run: AgentRun): string {
 
 // On a wide screen the two drawings sit under the guarantees; on a phone they come last, before the utility links, so
 // the folds keep their place on the first screens (test/browser/pages.check.ts).
-const lifeVisual = (layout: "wide" | "tall") => `<article class="pvis pv-${layout}" data-rec="src/visuals/facts.ts" aria-label="${esc(LIFE_TITLE)}">${lifecycleSvg(layout)}</article>`;
+// The life drawing's only figures are its step numbers, drawn by src/visuals/svg.ts; the rails' are from their records.
+const lifeVisual = (layout: "wide" | "tall") => `<article class="pvis pv-${layout}" data-rec="src/visuals/svg.ts" aria-label="${esc(LIFE_TITLE)}">${lifecycleSvg(layout)}</article>`;
 function railsVisual(layout: "wide" | "tall"): string {
   const rails = railRefusals();
   if (!rails.length) return "";
   const href = (path: string) => `${REPO_BLOB}${path}`;
   // One line per card in the drawing; the full account of each, with its figures, in the fold under it.
   const fold = `<details class="fold"><summary>${esc("What each rail did, in full")}</summary><ul>${rails.map((r) => `<li><b>${esc(r.name)}</b>: ${esc(r.what)}${r.note ? ` ${esc(r.note)}` : ""}</li>`).join("")}</ul></details>`;
-  return `<article class="pvis pv-${layout} rails" data-rec="src/visuals/facts.ts" aria-label="${esc(REFUSALS_TITLE)}">${refusalsSvg(rails, href, layout)}${fold}</article>`;
+  return `<article class="pvis pv-${layout} rails" data-rec="${esc(RAIL_RECORDS.join(" "))}" aria-label="${esc(REFUSALS_TITLE)}">${refusalsSvg(rails, href, layout)}${fold}</article>`;
 }
 function checkItYourself(): string {
   const signed = signedByRun();
   const items = ["awx-1", "platform-e2e-1", "main-1"].flatMap((k) => (signed[k] ?? []).filter((x) => x.terms));
   const t = runTimes(), line = runTimesLine(t);
-  return `<article class="vfa" data-rec="${esc(Object.values(SIGNED_FILES).join(" "))}"><h3>Check a signature yourself</h3><p class="q">Each button hashes the stored terms here, in your browser, and compares the result with the hash the passkey signed.</p>${verifyList(items)}${line ? `<p class="q">${esc(line)} <a class="pf" href="runs">Every run</a></p>` : ""}</article>`;
+  return `<article class="vfa" data-rec="${esc([...Object.values(SIGNED_FILES), ...SIGNED_REFS].join(" "))}"><h3>Check a signature yourself</h3><p class="q">Each button hashes the stored terms here, in your browser, and compares the result with the hash the passkey signed.</p>${verifyList(items)}${line ? `<p class="q">${esc(line)} <a class="pf" href="runs">Every run</a></p>` : ""}</article>`;
 }
 const vaultTree = () => `<article class="vault" data-rec="${VAULT_TREE_RECORD}"><h3>Where every document is filed</h3><picture><source srcset="assets/vault-tree-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/vault-tree-light.svg" width="505" height="438" alt="The vault's folders: company, year, quarter, then Inkoopfacturen (invoices), Betalingen (payments) and Rapporten (reports), as src/vault/layout.ts files them"></picture><p class="q">Computed from the code (src/vault/layout.ts), with the two invoices of the 7 November run.</p></article>`;
 /** A tile's figure ("24", "3 of 3", "16 stops") with its leading number as a count-up (src/redesign/stats.ts COUNT_JS). */
@@ -511,6 +525,10 @@ export function proofScaleStats(): ScaleStat[] {
   // The site's one live-run count (the same as /home and /runs); the rows below are all of them but the TAP run, on /visa.
   return scaleStats(scaleFigures()).map((s) => (s.href === "runs" ? { ...s, href: `#${PROOF_RUNS_ID}`, title: `Every live run: ${proofRunCount()} listed below, ${liveRunCount() - proofRunCount()} more on /visa` } : s));
 }
+
+/** Every figure on this page with its record and how to check it (owner, 20 Nov), built by `npm run proof:index`. */
+export const PROOF_INDEX_FILE = PROOF_INDEX_DOC;
+export const PROOF_INDEX_LINK = "Every figure's record";
 
 /** The one line under the heading (the owner, 13 Nov: "the proof is what we need"). */
 export const PROOF_LEAD = "What ran live, when, and how to check each run yourself. Sandbox and testnet, test money.";
@@ -620,18 +638,18 @@ export function proofPage(run: AgentRun = agentRun()): string {
   const cards = cardsReadback(), rows = cards ? cardControlRows(r, cards) : [];
   const moved = run.events.filter((e) => e.k === "money" && e.rail === "airwallex" && !e.refused).length;
   // Four tiles. The Face ID decisions stay one number under #faceid ("Every check"), where guarantee 1 links.
-  const nums: (Tile & { cls: string })[] = [
-    { cls: "claude", value: String(sp.byClaude), label: `decisions by Claude (${sp.fallbacks} fallbacks)`, explain: "", href: "#claude" },
+  const nums: (Tile & { cls: string; rec: string })[] = [
+    { cls: "claude", value: String(sp.byClaude), label: `decisions by Claude (${sp.fallbacks} fallbacks)`, explain: "", href: "#claude", rec: run.file },
     // Second, so that on a phone the two short tiles share a row and the two with lines under them share the next.
     rows.length
-      ? { cls: "awx", value: countOf(rows.filter((x) => x.match).length, rows.length), label: "cards carry the CFO's policy as Airwallex's own controls", explain: "", href: `airwallex#${AWX_CONTROLS_ID}` }
-      : { cls: "awx", value: String(moved), label: "movements at Airwallex", explain: "", href: "#airwallex" },
+      ? { cls: "awx", value: countOf(rows.filter((x) => x.match).length, rows.length), label: "cards carry the CFO's policy as Airwallex's own controls", explain: "", href: `airwallex#${AWX_CONTROLS_ID}`, rec: `${run.file} ${cards!.file}` }
+      : { cls: "awx", value: String(moved), label: "movements at Airwallex", explain: "", href: "#airwallex", rec: run.file },
     // One canonical set (jury review, 6 Nov, #5): "86 Alta payments + 1 card charge", never 82 or 87 beside it.
-    { cls: "code", value: String(pay.onChain), label: pay.canonical.replace(/^\d+ /, ""), explain: "", href: "#metal", ...(pay.sums ? { note: `${pay.metalParts} on Alta, all inside the limits.` } : {}) },
+    { cls: "code", value: String(pay.onChain), label: pay.canonical.replace(/^\d+ /, ""), explain: "", href: "#metal", rec: run.file, ...(pay.sums ? { note: `${pay.metalParts} on Alta, all inside the limits.` } : {}) },
     // The stops by cause, summing to the figure (stopBreakdown). No TAP remark under the figures: TAP is on /visa.
-    { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops", parts: stopBreakdown(story).map((x) => ({ value: String(x.value), label: x.label })) },
+    { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops", rec: run.file, parts: stopBreakdown(story).map((x) => ({ value: String(x.value), label: x.label })) },
   ];
-  const tile = (n: Tile & { cls: string }) => `<a class="num card ${n.cls}" href="${esc(n.href)}"><span class="v">${countUpValue(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}${n.parts?.length ? `<span class="parts">${n.parts.map((x) => `<span><b>${esc(x.value)}</b> ${esc(x.label)}</span>`).join("")}</span>` : ""}</a>`;
+  const tile = (n: Tile & { cls: string; rec: string }) => `<a class="num card ${n.cls}" href="${esc(n.href)}" data-rec="${esc(n.rec)}"><span class="v">${countUpValue(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}${n.parts?.length ? `<span class="parts">${n.parts.map((x) => `<span><b>${esc(x.value)}</b> ${esc(x.label)}</span>`).join("")}</span>` : ""}</a>`;
   // Jury pass, 13 Nov: four cards, then everything else in one fold (far less visible text). Jury, 13 Nov (second round):
   // the first screen was too thin, so the guarantees are in sight again, under the cards; the rest stays folded.
   // The owner, 13 Nov: the scale first, a band of figures computed from the records (src/redesign/scale.ts).
@@ -645,7 +663,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>
   ${guaranteesHtml()}
   ${detailsFold("runs-fold", "Every live run, by partner", `${partnerStripHtml(undefined, liveRunCount())}
-  <p class="pawx"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>
+  <p class="pawx" data-rec="${esc(LIVE_FX_RECORD)}"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>
   ${proofRunsHtml()}
   ${awxLiveHtml()}`)}
   ${detailsFold("details", "All the proof: partners, numbers and every check", `${worstCaseCardHtml()}
@@ -653,7 +671,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   ${railsVisual("wide")}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
-  <div class="runline"><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
+  <div class="runline" data-rec="${esc(run.file)}"><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
   <p class="split">${esc(SPLIT_LINE)}</p>
   <div class="nums">${nums.map(tile).join("")}</div>
   ${airi ? `<details class="deep"><summary>Visa Intelligent Commerce via Airwallex's Airi</summary><div class="awrb">${airi}</div></details>` : ""}
@@ -664,7 +682,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   ${lifeVisual("tall")}
   ${railsVisual("tall")}
   ${ciChecksHtml()}`)}
-  <nav class="util" aria-label="More from this run"><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
+  <nav class="util" aria-label="More from this run"><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a><a class="open" href="${esc(`${REPO_BLOB}${PROOF_INDEX_FILE}`)}" target="_blank" rel="noopener">${icon("file-text", 14)}${esc(PROOF_INDEX_LINK)}&nbsp;↗</a></nav>
 </div></main>`;
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.

@@ -25,7 +25,7 @@ const allText = (html: string) => text(withoutBlocks(html, ["script"], " "));
 const entriesOf = (html: string) => [...html.matchAll(/<li class="run ([^"]*)" id="([^"]+)">([\s\S]*?)<\/li>/g)].map((m) => ({ cls: m[1]!.split(" "), key: m[2]!, html: m[3]!, text: allText(m[3]!) }));
 /** The list of live runs, and the closed group of rehearsals after it. */
 const liveList = (html: string) => /<ol class="tl">[\s\S]*?<\/ol>/.exec(html)?.[0] ?? "";
-const rehGroup = (html: string) => /<details class="rehs" id="rehearsals">[\s\S]*?<\/ol>/.exec(html)?.[0] ?? "";
+const rehGroup = (html: string) => /<details class="rehs" id="rehearsals"[^>]*>[\s\S]*?<\/ol>/.exec(html)?.[0] ?? "";
 /** What an entry shows without opening its fold. */
 const inSight = (entryHtml: string) => entryHtml.split("<details")[0]!;
 const escAttr = esc;
@@ -404,7 +404,7 @@ describe("/runs as a timeline", () => {
     const outside = (r: RunRow) => kindOf(r) === "rehearsal" || kindOf(r) === "control";
     // Jury pass, 13 Nov: a run that stopped short (PARTIAL_RUNS) is not counted as live; it has its own closed group.
     expect(live.map((e) => e.key)).toEqual(rows.filter((r) => !outside(r) && !r.partial).map((r) => r.key));
-    const partial = entriesOf(/<details class="rehs" id="partial">[\s\S]*?<\/details>/.exec(html)?.[0] ?? "");
+    const partial = entriesOf(/<details class="rehs" id="partial"[^>]*>[\s\S]*?<\/details>/.exec(html)?.[0] ?? "");
     expect(partial.map((e) => e.key)).toEqual(["real-customers-1", "metal-passkey-owners"]);
     expect(partial.map((e) => e.key)).toEqual(rows.filter((r) => !outside(r) && r.partial).map((r) => r.key));
     expect(html).not.toMatch(/<details class="rehs" id="partial"[^>]*\sopen/);
@@ -412,7 +412,7 @@ describe("/runs as a timeline", () => {
     expect(reh.map((e) => e.key)).toEqual(rows.filter(outside).map((r) => r.key));
     for (const e of live) expect(e.cls).not.toContain("k-rehearsal");
     // Closed by default (no open attribute), named with its count, with one link to the folder of the dry runs' logs.
-    expect(html).toContain(`<details class="rehs" id="rehearsals"><summary>Rehearsals, dry runs and control tests · ${reh.length}`);
+    expect(html).toMatch(new RegExp(`<details class="rehs" id="rehearsals" data-rec="[^"]+"><summary>Rehearsals, dry runs and control tests · ${reh.length}`));
     expect(rehGroup(html) + html.slice(html.indexOf(rehGroup(html)) + rehGroup(html).length).split("</details>")[0]).toMatch(/<a class="f" href="https:\/\/github\.com\/agamemnon-coder\/x402-business-agents\/tree\/main\/docs\/runs"[^>]*>docs\/runs on GitHub/);
     expect(existsSync("docs/runs")).toBe(true);
     // Rehearsals do not count as live runs.

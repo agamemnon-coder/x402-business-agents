@@ -724,6 +724,15 @@ const idChip = (i: RunId) => {
   return `<span class="idc"><span class="k">${esc(altaLabel(i.label))}</span>${val}${copy}</span>`;
 };
 
+/** A run's records as repository paths (its files that are in this repository), space-separated, for data-rec. */
+export function recordPaths(r: RunRow): string {
+  const repo = blob("");
+  return [...new Set(r.files.map((f) => siteHref(f.href)).filter((h) => h.startsWith(repo)).map((h) => h.slice(repo.length).split("#")[0]!))].join(" ");
+}
+
+/** The records of several runs, each once, for data-rec on a figure that counts them. */
+export const recsOf = (rs: readonly RunRow[]) => [...new Set(rs.flatMap((r) => recordPaths(r).split(" ")).filter(Boolean))].join(" ");
+
 /**
  * One run, one compact entry. In sight: its date and badge, its name, one line with the links to its record, its
  * partners, its rate and its first id. Behind its one fold (or, in the rehearsals group, which is itself the fold, under
@@ -742,7 +751,9 @@ function entry(r: RunRow, o: { newest?: boolean; folded: boolean; signed?: Signe
   const files = r.files.map((f) => `<a class="f" href="${esc(siteHref(f.href))}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
   const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what.replace(FULL_COUNT, "all $1"))}</p>`}<p><b>Checks:</b> ${esc(r.checks.replace(FULL_COUNT, "all $1"))}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p>${verifyList(o.signed)}</div>`;
   const label = `Ids, what ran and the checks${more ? `: ${pl(more, "more id")}` : ""}`;
-  return `<li class="${cls}" id="${esc(r.key)}"><article${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
+  // The entry names its records (data-rec): every file it links that is in this repository.
+  const rec = recordPaths(r);
+  return `<li class="${cls}" id="${esc(r.key)}"><article${rec ? ` data-rec="${esc(rec)}"` : ""}${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
 <p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>
 <h2>${esc(nameOf(r))}</h2>
 <p class="ln">${esc(lineOf(r))} ${files}</p>
@@ -864,6 +875,9 @@ const FILTER_JS = `(function () {
   window.addEventListener("hashchange", mark);
 })();`;
 
+/** The logs the Face ID to paid times are read from (each timed payout's, and each left out's), for data-rec. */
+const timedRecords = (t: RunTimes) => [...new Set([...t.payouts.map((p) => p.record), ...t.leftOut.map((l) => l.record)])].join(" ");
+
 /**
  * Face ID to paid (master list 81), one calm line from the run records (src/redesign/runTimes.ts): its median and spread
  * count up; the payouts and the runs left out sit behind its fold. Nothing when no payout is timed.
@@ -880,7 +894,7 @@ export function faceIdToPaid(t: RunTimes = runTimes()): string {
     : `Face ID to paid: median ${n(t.medianMs)} (${n(t.minMs)}–${n(t.maxMs)}), ${esc(pl(t.n, "payout"))}; ${SETTLEMENT_SIMULATED}`;
   const rows = t.payouts.map((p) => `<li>${esc(`${p.proposal}: ${secs(p.ms)} (Face ID ${p.approvedAt.slice(11, 19)}, PAID ${p.paidAt.slice(11, 19)} UTC, ${p.approvedAt.slice(0, 10)})`)} <a class="f" href="${esc(blob(p.record))}" target="_blank" rel="noopener">Log ↗</a></li>`).join("");
   const out = t.leftOut.map((l) => `<li class="q">${esc(`Left out: ${l.record.replace(/^docs\/runs\//, "")}, ${l.why}.`)}</li>`).join("");
-  return `<details class="ftp" id="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
+  return `<details class="ftp" id="ftp" data-rec="${esc(timedRecords(t))}"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
 }
 
 /**
@@ -926,11 +940,13 @@ ${Array.from({ length: 30 }, (_, i) => `  .runsp .rstrip g:nth-of-type(${i + 1})
 export function runsSummary(live: RunRow[], partial: RunRow[], rehearsals: RunRow[], t: RunTimes): SummaryCard[] {
   const newest = live[0], first = live[live.length - 1];
   const short = (r: RunRow) => r.date.replace(/ \d{4}$/, "");
+  // Each card names its records (data-rec): the runs it counts, the newest run's, the timed payouts' logs.
+  const recs = recsOf;
   return [
-    ...(newest && first ? [{ icon: "calendar-range", fig: String(live.length), title: "Live runs", href: "#all", text: `${short(first)} to ${short(newest)}; sandbox and testnet, test money, every id from its own record.` }] : []),
-    ...(newest ? [{ icon: "circle-check", fig: short(newest), title: `Newest: ${nameOf(newest)}`, href: `#${newest.key}`, tone: "ok" as const, text: firstSentence(lineOf(newest)) }] : []),
-    ...(t.n && t.minMs !== null && t.maxMs !== null ? [{ icon: "scan-face", fig: t.minMs === t.maxMs ? secs(t.minMs) : `${secs(t.minMs)}–${secs(t.maxMs)}`, title: "Face ID to paid", href: "#ftp", tone: "ok" as const, text: `${pl(t.n, "payout")}, from the CFO's Face ID to PAID at Airwallex (${SETTLEMENT_SIMULATED}).` }] : []),
-    ...(partial.length || rehearsals.length ? [{ icon: "info", fig: String(partial.length + rehearsals.length), title: "Not counted as live", href: partial.length ? "#partial" : "#rehearsals", text: `${pl(partial.length, "partial run")} and ${pl(rehearsals.length, "rehearsal or dry run")}, listed apart.` }] : []),
+    ...(newest && first ? [{ icon: "calendar-range", fig: String(live.length), title: "Live runs", href: "#all", rec: recs(live), text: `${short(first)} to ${short(newest)}; sandbox and testnet, test money, every id from its own record.` }] : []),
+    ...(newest ? [{ icon: "circle-check", fig: short(newest), title: `Newest: ${nameOf(newest)}`, href: `#${newest.key}`, rec: recordPaths(newest), tone: "ok" as const, text: firstSentence(lineOf(newest)) }] : []),
+    ...(t.n && t.minMs !== null && t.maxMs !== null ? [{ icon: "scan-face", fig: t.minMs === t.maxMs ? secs(t.minMs) : `${secs(t.minMs)}–${secs(t.maxMs)}`, title: "Face ID to paid", href: "#ftp", rec: timedRecords(t), tone: "ok" as const, text: `${pl(t.n, "payout")}, from the CFO's Face ID to PAID at Airwallex (${SETTLEMENT_SIMULATED}).` }] : []),
+    ...(partial.length || rehearsals.length ? [{ icon: "info", fig: String(partial.length + rehearsals.length), title: "Not counted as live", href: partial.length ? "#partial" : "#rehearsals", rec: recs([...partial, ...rehearsals]), text: `${pl(partial.length, "partial run")} and ${pl(rehearsals.length, "rehearsal or dry run")}, listed apart.` }] : []),
   ];
 }
 
@@ -945,7 +961,7 @@ export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes(
   const body = `<main class="wrap runsp">
 <h1>${esc(RUNS_TITLE)}</h1>
 ${summaryHtml(runsSummary(live, partial, rehearsals, times), "The runs in four cards")}
-<details class="sumd" id="runs-all"><summary>${esc(`All ${pl(live.length, "live run")}, newest first`)}</summary>
+<details class="sumd" id="runs-all" data-rec="${esc(recsOf(live))}"><summary>${esc(`All ${pl(live.length, "live run")}, newest first`)}</summary>
 ${runsStrip(live)}
 <p class="last">Last live run: ${esc(last.date)}. ${pl(live.length, "live run")}, newest first, every id from its own record. Test money only; what was simulated is said on each run.</p>
 ${faceIdToPaid(times)}
@@ -955,12 +971,12 @@ ${faceIdToPaid(times)}
 ${live.map((r, i) => entry(r, { newest: i === 0, folded: true, signed: signed[r.key] })).join("\n")}
 </ol>
 </details>
-${partial.length ? `<details class="rehs" id="partial"><summary>Partial runs, not counted as live · ${partial.length}${chevron}</summary>
-<ul class="q">${partial.map((r) => `<li>${esc(`${nameOf(r)} (${r.date}): ${r.partial}`)}</li>`).join("")}</ul>
+${partial.length ? `<details class="rehs" id="partial" data-rec="${esc(recsOf(partial))}"><summary>Partial runs, not counted as live · ${partial.length}${chevron}</summary>
+<ul class="q">${partial.map((r) => `<li data-rec="${esc(recordPaths(r))}">${esc(`${nameOf(r)} (${r.date}): ${r.partial}`)}</li>`).join("")}</ul>
 <ol class="tl">
 ${partial.map((r) => entry(r, { folded: false, signed: signed[r.key] })).join("\n")}
 </ol></details>` : ""}
-${rehearsals.length ? `<details class="rehs" id="rehearsals"><summary>Rehearsals, dry runs and control tests · ${rehearsals.length}${chevron}</summary>
+${rehearsals.length ? `<details class="rehs" id="rehearsals" data-rec="${esc(recsOf(rehearsals))}"><summary>Rehearsals, dry runs and control tests · ${rehearsals.length}${chevron}</summary>
 <ol class="tl">
 ${rehearsals.map((r) => entry(r, { folded: false, signed: signed[r.key] })).join("\n")}
 </ol>

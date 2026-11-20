@@ -58,7 +58,8 @@ describe("/proof: the live runs and the strip's count", () => {
     const inTiles = partnerTiles().reduce((n, t) => n + t.runs, 0);
     expect(inTiles + 1).toBe(listed);
     // Live measurement, 15 Nov: one plain line.
-    expect(main).toContain(`<p class="ptnote">${liveRunCount()} live runs: ${inTiles} by partner in the tiles, the main run${liveRunCount() > listed ? ` and ${liveRunCount() - listed} on /visa` : ""}.</p>`);
+    expect(main).toContain(`">${liveRunCount()} live runs: ${inTiles} by partner in the tiles, the main run${liveRunCount() > listed ? ` and ${liveRunCount() - listed} on /visa` : ""}.</p>`);
+    expect(main).toMatch(/<p class="ptnote" data-rec="[^"]+">/); // its records: every live run's (20 Nov)
     // Each tile's count is what its group's "Show all" opens (Airwallex and Alta, which have more than three).
     for (const t of tiles.filter((x) => x.name === "Airwallex" || x.name === "Alta")) expect(runs).toContain(`Show all ${t.runs}`);
   });

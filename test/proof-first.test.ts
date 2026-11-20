@@ -16,10 +16,11 @@ import { evidenceMapHtml } from "../src/redesign/evidenceMap.js";
 import { GUARANTEES_ID, guaranteesHtml } from "../src/redesign/guarantees.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { proofLeads, reliabilityFix, RELIABILITY_CASE } from "../src/redesign/proofLead.js";
-import { partnerCards, proofPage, stopBreakdown } from "../src/redesign/proof.js";
+import { PROOF_INDEX_FILE, PROOF_INDEX_LINK, partnerCards, proofPage, stopBreakdown } from "../src/redesign/proof.js";
 import { agentRun, faceIdDecisions, loadRecord, split, stopFigure, stopStory } from "../src/redesign/run.js";
 import { TRACE_LINK, TRACE_URL } from "../src/redesign/trace.js";
 import { VIC2_RUN_ID } from "../src/redesign/vic2Run.js";
+import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { buildPages } from "../src/relay/assets.js";
 import { OG_TITLE } from "../src/ui/meta.js";
 import { visibleWords } from "./support/visibleWords.js";
@@ -32,9 +33,9 @@ const sentence = (partner: string) => PROOF_SENTENCES.find((p) => p.partner === 
 const decode = (s: string) => s.split("&#39;").join("'").split("&quot;").join('"').split("&gt;").join(">").split("&lt;").join("<").split("&amp;").join("&");
 const html = proofPage();
 
-/** One partner card of /proof, found by position: from its <article …id="…"> to its </article>. */
+/** One partner card of /proof, found by position: from its <article …id="…"> (its records after the id) to its </article>. */
 function cardOf(page: string, id: string): string {
-  const a = page.indexOf(`<article class="pcard card" id="${id}">`);
+  const a = page.indexOf(`<article class="pcard card" id="${id}"`);
   expect({ id, found: a >= 0 }).toEqual({ id, found: true });
   return page.slice(a, page.indexOf("</article>", a) + "</article>".length);
 }
@@ -167,7 +168,7 @@ describe("/proof as served: each card shows its strongest claim as its one link 
       // 12 Nov (owner): each card's partner mark beside its name (alt empty: the name is the heading).
       // 14 Nov (owner): Alta's wordmark (logo-alta.svg) and Claude's press-kit SVG (logo-claude-slate.svg).
       const file = { airwallex: "airwallex\\.png", metal: "alta\\.svg", claude: "claude-slate\\.svg" }[id];
-      expect(card).toMatch(new RegExp(`^<article class="pcard card" id="${id}"><div class="ph">(<span class="logo( dark)?"><img src="assets/logo-${file}" alt="" width="\\d+" height="15"></span>)?<h3>${name}</h3></div>`));
+      expect(card).toMatch(new RegExp(`^<article class="pcard card" id="${id}" data-rec="[^"]+"><div class="ph">(<span class="logo( dark)?"><img src="assets/logo-${file}" alt="" width="\\d+" height="15"></span>)?<h3>${name}</h3></div>`));
       const sight = first.slice(0, first.indexOf('<details class="fold">'));
       expect(decode(sight)).toBe(`<ul class="lead"><li><a class="c" href="${lead0.href}"${out ? ' target="_blank" rel="noopener"' : ""}>${lead0.text}${out ? " ↗" : ""}</a></li></ul>`);
       expect(card.replace(/<span class="logo( dark)?"><img [^>]*><\/span>/, "")).not.toMatch(/<img /);
@@ -247,7 +248,7 @@ describe("TAP on /proof: nowhere (Max's last round, item 2; the footer link went
     // one link, "Visa TAP run → /visa" (src/redesign/proofRuns.ts), the only TAP on the page; the fold stays off /proof.
     // Judge panel, 15 Nov: the first of the three facts is Airwallex's own LIMIT_EXCEEDED decline of 7 Nov (awx-1, not TAP);
     // the one-cent-over card test's block (Airwallex's own LIMIT_EXCEEDED, test/card-cent.test.ts) is not TAP either.
-    expect(words(dropBlocks(html.replace(/<ol class="pfirst"[\s\S]*?<\/ol>/, "").replace(/<div class="card" id="awx-cent">[\s\S]*?<\/div>/, ""))).replace("Visa TAP run → /visa", "")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
+    expect(words(dropBlocks(html.replace(/<ol class="pfirst"[\s\S]*?<\/ol>/, "").replace(/<div class="card" id="awx-cent"[^>]*>[\s\S]*?<\/div>/, ""))).replace("Visa TAP run → /visa", "")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
   });
 
   // 12 Nov (merge of #148 into #157): main kept this footer link on Proof; #157 removes it, as Visa is a section of its
@@ -279,7 +280,7 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
     expect(main.replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <figure class="emap"[\s\S]*?<\/figure> <section class="ewall"[\s\S]*?<\/section> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <p class="pwatch">[\s\S]*?<\/p> <section class="gtee"/);
     expect(main).toContain(evidenceMapHtml());
     expect(main).toContain(evidenceWallHtml());
-    expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary><p class="ptnote">[^<]+<\/p><ul class="ptiles"/);
+    expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary><p class="ptnote" data-rec="[^"]+">[^<]+<\/p><ul class="ptiles"/);
     expect(main).toMatch(/<\/section>\s*<\/details>\s*<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
     expect(main).not.toContain('<section class="pfacts"');
     expect(main.slice(0, main.indexOf('<details class="sumd"'))).not.toContain('<span class="pill run">');
@@ -312,7 +313,7 @@ describe("/proof's numbers: four tiles, one of them Airwallex's, the stops with 
   // Since 12 Nov each tile's leading number counts up (a data-count span holding the same figure, src/redesign/stats.ts);
   // unwrapped here so the figure is read as before, and checked to hold the same number it shows.
   const countUp = /<span data-count="(\d+)" data-dec="0">(\d+)<\/span>/g;
-  const tiles = [...main.matchAll(/<a class="num card ([a-z]*)" href="([^"]+)">([\s\S]*?)<\/a>/g)].map((m) => {
+  const tiles = [...main.matchAll(/<a class="num card ([a-z]*)" href="([^"]+)" data-rec="[^"]+">([\s\S]*?)<\/a>/g)].map((m) => {
     for (const c of m[3]!.matchAll(countUp)) expect(c[1]).toBe(c[2]);
     return { cls: m[1]!, href: m[2]!, inner: decode(m[3]!.replace(countUp, "$2")) };
   });
@@ -323,7 +324,7 @@ describe("/proof's numbers: four tiles, one of them Airwallex's, the stops with 
     // The Face ID decisions and the cost per decision left the row; the Face ID figure stays under #faceid, one N.
     const row = main.slice(main.indexOf('<div class="nums">'), main.indexOf('<details class="deep"'));
     expect(row).not.toMatch(/Face ID|cost per decision/);
-    expect(words(main.slice(main.indexOf('<div class="card" id="faceid">')))).toContain(`${faceIdDecisions(record)} decisions signed with Face ID`);
+    expect(words(main.slice(main.indexOf('<div class="card" id="faceid"')))).toContain(`${faceIdDecisions(record)} decisions signed with Face ID`);
   });
 
   it("Airwallex's tile: the cards that carry the CFO's policy as Airwallex's own controls, counted from the card read-back", () => {
@@ -367,14 +368,15 @@ describe("/proof's folds: the Airi runs, the read-back, every check, the busines
   });
 
   it("hold what was in sight or in a card before: nothing of it is above the first fold", () => {
-    const marks: string[][] = [['<div class="card airi" id="airi-run">', `<div class="card airi" id="${VIC2_RUN_ID}">`], ['id="airwallex-readback"'], ['<div class="card" id="stops">', '<div class="card" id="faceid">'], ['<ul class="company">'], ['href="lab"']];
+    const marks: string[][] = [['<div class="card airi" id="airi-run"', `<div class="card airi" id="${VIC2_RUN_ID}"`], ['id="airwallex-readback"'], ['<div class="card" id="stops"', '<div class="card" id="faceid"'], ['<ul class="company">'], ['href="lab"']];
     const above = main.slice(0, starts[0]!.index);
     marks.forEach((ms, i) => { for (const m of ms) expect({ m, inFold: part(i).includes(m), above: above.includes(m) }).toEqual({ m, inFold: true, above: false }); });
   });
 
   it("the archive is its own fold, last: the replay of the main run with its date from the record, then the archived pages", () => {
     expect(starts[4]![1]).toBe("archive");
-    const links = [...part(4).matchAll(/<li><a class="pf" href="([^"]+)">([^<]+)<\/a><\/li>/g)].map((m) => [m[1]!, m[2]!]);
+    // Each with its record (data-rec), but the simulated month, which has none (20 Nov).
+    const links = [...part(4).matchAll(/<li(?: data-rec="[^"]+")?><a class="pf" href="([^"]+)">([^<]+)<\/a><\/li>/g)].map((m) => [m[1]!, m[2]!]);
     expect(links.map((l) => l[0])).toEqual(["replay", "./?recorded", "metal/report", "film", "month", "lab"]);
     expect(links[0]![1]).toBe(`Replay of the main run, ${day(agentRun().recordedAt)}`);
     expect(links[0]![1]).toBe("Replay of the main run, 3 Nov");
@@ -390,10 +392,11 @@ describe("/proof's utility links: one quiet row at the end", () => {
     expect(main).not.toContain(`href="${TRAILER_URL}"`); // 20 Nov (owner): only the demo is linked
     expect(main.indexOf('<p class="pwatch">')).toBeLessThan(main.indexOf('<ul class="ptiles"'));
     const at = main.indexOf('<nav class="util"'), util = main.slice(at);
-    expect([...util.matchAll(/<a class="open" href="([^"]+)"/g)].map((m) => decode(m[1]!))).toEqual([CFO_VIEW_URL, TRACE_URL, `assets/${PACK_NAME}`]);
+    // 20 Nov (owner): the index of every figure on this page and its record, last (docs/evidence/proof-index.md).
+    expect([...util.matchAll(/<a class="open" href="([^"]+)"/g)].map((m) => decode(m[1]!))).toEqual([CFO_VIEW_URL, TRACE_URL, `assets/${PACK_NAME}`, `${REPO_BLOB}${PROOF_INDEX_FILE}`]);
     const text = words(util), above = words(main.slice(0, at));
     let from = -1;
-    for (const label of [CFO_VIEW_LINK, TRACE_LINK, PACK_LINK]) {
+    for (const label of [CFO_VIEW_LINK, TRACE_LINK, PACK_LINK, PROOF_INDEX_LINK]) {
       const i = text.indexOf(label);
       expect({ label, after: i > from }).toEqual({ label, after: true });
       from = i;

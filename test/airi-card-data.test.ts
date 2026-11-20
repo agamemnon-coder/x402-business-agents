@@ -248,7 +248,7 @@ describe("the committed run records", () => {
 
 describe("\"Card data\" on /visa", () => {
   const html = visaPage();
-  const block = new RegExp(`<details class="fold" id="${CARD_DATA_ID}">[\\s\\S]*?</details>`).exec(html)?.[0] ?? "";
+  const block = new RegExp(`<details class="fold" id="${CARD_DATA_ID}"[^>]*>[\\s\\S]*?</details>`).exec(html)?.[0] ?? "";
   const text = (h: string) => h.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 
   it("is one folded row under the Airi runs, above the TAP section, and its line already says what this is not", () => {
@@ -258,7 +258,9 @@ describe("\"Card data\" on /visa", () => {
     expect(CARD_DATA_SUMMARY).toBe("Card data: not a network-tokenised checkout, no PCI attestation");
     expect(html.indexOf(`id="${CARD_DATA_ID}"`)).toBeGreaterThan(html.indexOf('id="vic-rules"'));
     expect(html.indexOf(`id="${CARD_DATA_ID}"`)).toBeLessThan(html.indexOf('id="visa-tap"'));
-    expect(cardDataHtml()).toBe(block);
+    // On /visa the block names its records (data-rec, the code that sets its figures); otherwise it is the module's own.
+    expect(block).toMatch(/^<details class="fold" id="[^"]+" data-rec="src\/airi\/cardData\.ts">/);
+    expect(cardDataHtml()).toBe(block.replace(/ data-rec="[^"]*"/, ""));
   });
 
   it("states plainly: not a network-tokenised checkout; a headless browser types the Airi credential (test card); no PCI attestation", () => {

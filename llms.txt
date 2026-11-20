@@ -43,7 +43,7 @@ Live on the rails:
 - All 33 signed Airwallex payments in one Alta transaction, each with a proof (testnet; One Merkle root on chain; each proof checks offline; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-alta-merkle.md
 - Both PAID, then FAILED: back to a person (sandbox; PAID and FAILED by the sandbox's simulation, 17 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-17-airwallex-late-failure.json
 - 71 Airwallex endpoints live, of 72 (sandbox; each with the first record that holds a call to it): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/airwallex-api-coverage.md
-- All 42 payouts and FX legs of the 19 Nov soak on Airwallex's statement, to the cent (sandbox; Balance history; all 92 links add up; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md
+- All 42 soak payouts and FX legs on Airwallex's statement, to the cent (sandbox; Balance history of the 19 Nov soak; all 92 links add up; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md
 - EUR 312.50 invoice matched from a Global Account's statement; its payment link switched off (sandbox; Bank transfer by the sandbox's simulation, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep.md
 - EUR 1.00 scheduled payment cancelled at Airwallex before its day (sandbox; Terms checked by Airwallex first; no passkey; 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md
 

@@ -149,8 +149,8 @@
         {
           "key": "awx-statement",
           "fig": "All 42",
-          "label": "payouts and FX legs of the 19 Nov soak on Airwallex's statement, to the cent",
-          "note": "Balance history; all 92 links add up; 19 Nov.",
+          "label": "soak payouts and FX legs on Airwallex's statement, to the cent",
+          "note": "Balance history of the 19 Nov soak; all 92 links add up; 19 Nov.",
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md",

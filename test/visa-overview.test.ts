@@ -48,7 +48,7 @@ describe("/visa: one summary of the paid run", () => {
     expect(c.kind).toBe("paid");
     expect(c.stats).toEqual([{ v: `${b.currency} ${b.amount}`, l: "paid after the CFO's Face ID" }]);
     expect(c.stats[0]!.v).toBe("EUR 45.00");
-    const fold = /<details class="fold" id="vic-attempts">[\s\S]*?<\/details>/.exec(visaPage())![0];
+    const fold = /<details class="fold" id="vic-attempts"[^>]*>[\s\S]*?<\/details>/.exec(visaPage())![0];
     expect(text(fold)).toContain(`${attempts.filter((a) => a.outcome === "passed").length} of ${attempts.length} attempts that day paid.`);
     expect(c.ids).toEqual([["Mandate", b.mandate_id], ["Payment", b.payment_intent_id]]);
   });
@@ -220,7 +220,8 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
   // Visa judge, 14 Nov: TAP was hidden in a closed fold and judges missed it. It is now its own open section, after the
   // VIC story, headed as outside the entry and opening with its status (Visa, 5 Nov); its full run is a fold inside it.
   it("shows TAP openly in its own section after the VIC story, headed as outside the entry", () => {
-    const tapAt = main.indexOf(`<section class="card vs vs-tap" id="${VISA_TAP_ID}">`);
+    // Its opening tag names its records (data-rec) after its id.
+    const tapAt = main.search(new RegExp(`<section class="card vs vs-tap" id="${VISA_TAP_ID}"[^>]*>`));
     expect(tapAt).toBeGreaterThan(-1);
     const before = main.slice(0, tapAt);
     // In no fold: every fold opened before it is closed before it.
@@ -260,11 +261,12 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
 
   it("fails the page build when the story is lost: TAP moved up or folded away, the status dropped, the old heading, the basis or the Connect line gone, a second run counted", () => {
     expect(() => assertVicFirst(html)).not.toThrow();
-    const open = `<section class="card vs vs-tap" id="${VISA_TAP_ID}">`;
+    const open = new RegExp(`<section class="card vs vs-tap" id="${VISA_TAP_ID}"[^>]*>`).exec(main)![0];
+    const asks = /<section class="card vs" id="visa-asks"[^>]*>/.exec(main)![0];
     const section = main.slice(main.indexOf(open), main.indexOf('<section class="card vs" id="visa-not-yet">'));
     expect(section.length).toBeGreaterThan(200);
     // The TAP section moved to the top, above what Visa asks for.
-    const moved = html.replace(section, "").replace('<section class="card vs" id="visa-asks">', `${section}<section class="card vs" id="visa-asks">`);
+    const moved = html.replace(section, "").replace(asks, `${section}${asks}`);
     expect(moved).not.toBe(html);
     expect(() => assertVicFirst(moved)).toThrow(/asks for is not above|inside a fold/);
     // The section folded away again.
