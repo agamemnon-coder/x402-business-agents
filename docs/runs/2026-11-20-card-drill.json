@@ -1,0 +1,3972 @@
+{
+  "run": "card-drill",
+  "date": "2026-11-20",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "command": "npm run airwallex:card-drill -- live",
+  "commit": "5d9bd3da29b4949779c51ceab73d9969f4b87c1c",
+  "simulated": [
+    "Every merchant charge is the sandbox's simulation endpoint (`POST /simulation/issuing/create`): no merchant charged anything. The approve or decline is Airwallex's own, on the card's status, limits and merchant categories.",
+    "The crash is a SIGKILL the child process sends itself at the point the drill chose (after the thaw was recorded; or the moment Airwallex answered the thaw, before the ledger heard of it). The restart is the runner's own card code run by the drill, not a restarted runner process.",
+    "Duplicate and late webhooks are replayed locally: built from this run's own simulation answers (whitelisted fields only) and signed with a local test secret. Airwallex sent none of them; the sandbox has no endpoint that replays an event.",
+    "No passkey signs anything in this drill, and no money other than the agents' cards' test balance moves."
+  ],
+  "budget": {
+    "approved": 200,
+    "max": 200,
+    "used": 115,
+    "logged_requests": 115,
+    "status_429": 0,
+    "unexpected_non_2xx": [
+      {
+        "n": 76,
+        "status": 400,
+        "call": "POST /simulation/issuing/create",
+        "code": "bad_request"
+      }
+    ]
+  },
+  "totals": {
+    "steps": 54,
+    "pass": 37,
+    "fail": 11,
+    "not_judged": 6
+  },
+  "cards": [
+    {
+      "agent": "sourcing",
+      "card_id": "29c779e4-907b-43e5-b420-2f5cffc1ac58",
+      "last4": "6051",
+      "nickname": "sourcing agent: warehouse and data software (card-drill)",
+      "per_tx": "30.00",
+      "monthly": "100.00"
+    },
+    {
+      "agent": "support",
+      "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+      "last4": "2361",
+      "nickname": "support agent: helpdesk software (card-drill)",
+      "per_tx": "60.00",
+      "monthly": "150.00"
+    },
+    {
+      "agent": "treasury",
+      "card_id": "8743bc4c-8d29-4c72-9f4b-fbe37e7cb830",
+      "last4": "4577",
+      "nickname": "treasury agent: bookkeeping (card-drill)",
+      "per_tx": "25.00",
+      "monthly": "50.00"
+    }
+  ],
+  "passes": [
+    {
+      "pass_no": 1,
+      "started_at": "2026-11-20T09:46:22.389Z",
+      "ended_at": "2026-11-20T09:51:52.379Z",
+      "stopped": null,
+      "note": "The card code as on origin/main (f667d16), with the drill beside it: no card recovery at the runner's start, the thaw written to the ledger only after Airwallex answered it, and a purchase window taken by any authorisation of its amount. **This pass's webhook replay is void:** the drill's log kept each simulation answer without its date (`transacted_at`), so the 30 replayed events under a new id were refused by the hook handler as malformed (no row, no alarm) and only the 15 repeats of an id were answered \"already recorded\". The log was fixed and the replay re-run in pass 3.",
+      "phases": [
+        "setup",
+        "cycle",
+        "purchase",
+        "crash",
+        "detect",
+        "webhooks"
+      ],
+      "code": {
+        "recover_card_windows": false,
+        "thaw_marked_before_call": false
+      },
+      "steps": [
+        {
+          "phase": "setup",
+          "id": "setup.cards",
+          "agent": null,
+          "title": "Issue or adopt the three agents' drill cards and bring them to the policy",
+          "expect": "every card INACTIVE at Airwallex, limits and merchant categories as the policy",
+          "outcome": "sourcing ••6051 INACTIVE, support ••2361 INACTIVE, treasury ••4577 INACTIVE",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T09:46:22.389Z",
+          "ended_at": "2026-11-20T09:46:31.703Z",
+          "ms": 9314,
+          "lines": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19
+          ],
+          "facts": {
+            "cards": [
+              {
+                "agent": "sourcing",
+                "last4": "6051",
+                "status": "INACTIVE"
+              },
+              {
+                "agent": "support",
+                "last4": "2361",
+                "status": "INACTIVE"
+              },
+              {
+                "agent": "treasury",
+                "last4": "4577",
+                "status": "INACTIVE"
+              }
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.freeze",
+          "agent": "sourcing",
+          "title": "Freeze the card (status INACTIVE)",
+          "expect": "Airwallex reads the card back INACTIVE",
+          "outcome": "read back INACTIVE; update to read-back 892 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T09:46:31.704Z",
+          "ended_at": "2026-11-20T09:46:32.599Z",
+          "ms": 895,
+          "lines": [
+            20,
+            21
+          ],
+          "facts": {
+            "seen": "INACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 892,
+            "update_ms": 330
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.charge_frozen",
+          "agent": "sourcing",
+          "title": "A merchant charges the frozen card (EUR 1.01)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:46:32.610Z",
+          "ended_at": "2026-11-20T09:46:35.416Z",
+          "ms": 2806,
+          "lines": [
+            22
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f859-bccd-7000-bd80-87de737d10dd",
+            "legacy_id": null,
+            "amount": "1.01",
+            "currency": "EUR",
+            "status": "DECLINED",
+            "approved": false,
+            "failure_reason": "CARD_INACTIVE",
+            "authorisation_ms": 2805
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.thaw",
+          "agent": "sourcing",
+          "title": "Purser opens a purchase window (openCardWindow: thaw)",
+          "expect": "Airwallex reads the card back ACTIVE",
+          "outcome": "read back ACTIVE; update to read-back 915 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T09:46:35.418Z",
+          "ended_at": "2026-11-20T09:46:36.336Z",
+          "ms": 918,
+          "lines": [
+            23,
+            24
+          ],
+          "facts": {
+            "seen": "ACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 915,
+            "update_ms": 606
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.auth_purchase",
+          "agent": "sourcing",
+          "title": "The approved purchase's authorisation (EUR 1.00)",
+          "expect": "approved",
+          "outcome": "approved (APPROVED)",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:46:36.342Z",
+          "ended_at": "2026-11-20T09:46:40.330Z",
+          "ms": 3988,
+          "lines": [
+            25
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f859-cb11-7000-a432-533d39a3e02b",
+            "legacy_id": null,
+            "amount": "1.00",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 3979
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.auth_in_window",
+          "agent": "sourcing",
+          "title": "A second authorisation inside the same window (EUR 1.37, another amount, another merchant)",
+          "expect": "declined (the brief's expectation)",
+          "outcome": "approved (APPROVED): the race is real at Airwallex; the card is thawed for any charge within its limits",
+          "pass": false,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:46:40.342Z",
+          "ended_at": "2026-11-20T09:46:42.878Z",
+          "ms": 2536,
+          "lines": [
+            26
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f859-dab3-7000-9f85-057747646b13",
+            "legacy_id": null,
+            "amount": "1.37",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 2534,
+            "same_amount_as_purchase": false
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.refreeze",
+          "agent": "sourcing",
+          "title": "Purser closes the window (closeCardWindow: refreeze)",
+          "expect": "Airwallex reads the card back INACTIVE",
+          "outcome": "read back INACTIVE; update to read-back 878 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T09:46:42.879Z",
+          "ended_at": "2026-11-20T09:46:43.761Z",
+          "ms": 882,
+          "lines": [
+            27,
+            28
+          ],
+          "facts": {
+            "seen": "INACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 878,
+            "update_ms": 565
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.charge_after_refreeze",
+          "agent": "sourcing",
+          "title": "A merchant charges right after the refreeze was read back (EUR 1.02)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:46:43.766Z",
+          "ended_at": "2026-11-20T09:46:46.414Z",
+          "ms": 2648,
+          "lines": [
+            29
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f859-e85b-7000-896e-fa078d66b61d",
+            "legacy_id": null,
+            "amount": "1.02",
+            "currency": "EUR",
+            "status": "DECLINED",
+            "approved": false,
+            "failure_reason": "CARD_INACTIVE",
+            "authorisation_ms": 2647
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.freeze",
+          "agent": "support",
+          "title": "Freeze the card (status INACTIVE)",
+          "expect": "Airwallex reads the card back INACTIVE",
+          "outcome": "read back INACTIVE; update to read-back 625 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T09:46:46.419Z",
+          "ended_at": "2026-11-20T09:46:47.045Z",
+          "ms": 626,
+          "lines": [
+            30,
+            31
+          ],
+          "facts": {
+            "seen": "INACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 625,
+            "update_ms": 328
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.charge_frozen",
+          "agent": "support",
+          "title": "A merchant charges the frozen card (EUR 1.01)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:46:47.046Z",
+          "ended_at": "2026-11-20T09:46:49.642Z",
+          "ms": 2596,
+          "lines": [
+            32
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f859-f510-7000-8b6f-4eb5ba2bd890",
+            "legacy_id": null,
+            "amount": "1.01",
+            "currency": "EUR",
+            "status": "DECLINED",
+            "approved": false,
+            "failure_reason": "CARD_INACTIVE",
+            "authorisation_ms": 2595
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.thaw",
+          "agent": "support",
+          "title": "Purser opens a purchase window (openCardWindow: thaw)",
+          "expect": "Airwallex reads the card back ACTIVE",
+          "outcome": "read back ACTIVE; update to read-back 705 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T09:46:49.644Z",
+          "ended_at": "2026-11-20T09:46:50.352Z",
+          "ms": 708,
+          "lines": [
+            33,
+            34
+          ],
+          "facts": {
+            "seen": "ACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 705,
+            "update_ms": 352
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.auth_purchase",
+          "agent": "support",
+          "title": "The approved purchase's authorisation (EUR 1.00)",
+          "expect": "approved",
+          "outcome": "approved (APPROVED)",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:46:50.374Z",
+          "ended_at": "2026-11-20T09:46:54.021Z",
+          "ms": 3647,
+          "lines": [
+            35
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f85a-01d7-7000-abd1-7c7910d09113",
+            "legacy_id": null,
+            "amount": "1.00",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 3644
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.auth_in_window",
+          "agent": "support",
+          "title": "A second authorisation inside the same window (EUR 1.00, the purchase's own amount, another merchant)",
+          "expect": "declined (the brief's expectation)",
+          "outcome": "approved (APPROVED): the race is real at Airwallex; the card is thawed for any charge within its limits",
+          "pass": false,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:46:54.022Z",
+          "ended_at": "2026-11-20T09:46:56.536Z",
+          "ms": 2514,
+          "lines": [
+            36
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f85a-1012-7000-b815-c56930ab9b66",
+            "legacy_id": null,
+            "amount": "1.00",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 2513,
+            "same_amount_as_purchase": true
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.refreeze",
+          "agent": "support",
+          "title": "Purser closes the window (closeCardWindow: refreeze)",
+          "expect": "Airwallex reads the card back INACTIVE",
+          "outcome": "read back INACTIVE; update to read-back 657 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T09:46:56.542Z",
+          "ended_at": "2026-11-20T09:46:57.203Z",
+          "ms": 661,
+          "lines": [
+            37,
+            38
+          ],
+          "facts": {
+            "seen": "INACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 657,
+            "update_ms": 359
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.charge_after_refreeze",
+          "agent": "support",
+          "title": "A merchant charges right after the refreeze was read back (EUR 1.02)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:46:57.222Z",
+          "ended_at": "2026-11-20T09:46:59.703Z",
+          "ms": 2481,
+          "lines": [
+            39
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f85a-1c89-7000-8dbc-80abcd0cd018",
+            "legacy_id": null,
+            "amount": "1.02",
+            "currency": "EUR",
+            "status": "DECLINED",
+            "approved": false,
+            "failure_reason": "CARD_INACTIVE",
+            "authorisation_ms": 2481
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.freeze",
+          "agent": "treasury",
+          "title": "Freeze the card (status INACTIVE)",
+          "expect": "Airwallex reads the card back INACTIVE",
+          "outcome": "read back INACTIVE; update to read-back 613 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T09:46:59.725Z",
+          "ended_at": "2026-11-20T09:47:00.343Z",
+          "ms": 618,
+          "lines": [
+            40,
+            41
+          ],
+          "facts": {
+            "seen": "INACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 613,
+            "update_ms": 324
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.charge_frozen",
+          "agent": "treasury",
+          "title": "A merchant charges the frozen card (EUR 1.01)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:47:00.347Z",
+          "ended_at": "2026-11-20T09:47:03.888Z",
+          "ms": 3541,
+          "lines": [
+            42
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f85a-28be-7000-8fed-7f92e7a3b544",
+            "legacy_id": null,
+            "amount": "1.01",
+            "currency": "EUR",
+            "status": "DECLINED",
+            "approved": false,
+            "failure_reason": "CARD_INACTIVE",
+            "authorisation_ms": 3541
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.thaw",
+          "agent": "treasury",
+          "title": "Purser opens a purchase window (openCardWindow: thaw)",
+          "expect": "Airwallex reads the card back ACTIVE",
+          "outcome": "read back ACTIVE; update to read-back 909 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T09:47:03.897Z",
+          "ended_at": "2026-11-20T09:47:04.811Z",
+          "ms": 914,
+          "lines": [
+            43,
+            44
+          ],
+          "facts": {
+            "seen": "ACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 909,
+            "update_ms": 606
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.auth_purchase",
+          "agent": "treasury",
+          "title": "The approved purchase's authorisation (EUR 1.00)",
+          "expect": "approved",
+          "outcome": "approved (APPROVED)",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:47:04.813Z",
+          "ended_at": "2026-11-20T09:47:08.472Z",
+          "ms": 3659,
+          "lines": [
+            45
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f85a-3a3a-7000-942f-5c3493d94e40",
+            "legacy_id": null,
+            "amount": "1.00",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 3647
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.auth_in_window",
+          "agent": "treasury",
+          "title": "A second authorisation inside the same window (EUR 0.73, another amount, another merchant)",
+          "expect": "declined (the brief's expectation)",
+          "outcome": "approved (APPROVED): the race is real at Airwallex; the card is thawed for any charge within its limits",
+          "pass": false,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:47:08.482Z",
+          "ended_at": "2026-11-20T09:47:12.031Z",
+          "ms": 3549,
+          "lines": [
+            46
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f85a-4871-7000-ba78-c19ea9050ec2",
+            "legacy_id": null,
+            "amount": "0.73",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 3548,
+            "same_amount_as_purchase": false
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.refreeze",
+          "agent": "treasury",
+          "title": "Purser closes the window (closeCardWindow: refreeze)",
+          "expect": "Airwallex reads the card back INACTIVE",
+          "outcome": "read back INACTIVE; update to read-back 754 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T09:47:12.035Z",
+          "ended_at": "2026-11-20T09:47:12.792Z",
+          "ms": 757,
+          "lines": [
+            47,
+            48
+          ],
+          "facts": {
+            "seen": "INACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 754,
+            "update_ms": 361
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.charge_after_refreeze",
+          "agent": "treasury",
+          "title": "A merchant charges right after the refreeze was read back (EUR 1.02)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:47:12.796Z",
+          "ended_at": "2026-11-20T09:47:16.450Z",
+          "ms": 3654,
+          "lines": [
+            49
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f85a-59a6-7000-88f0-87f815863860",
+            "legacy_id": null,
+            "amount": "1.02",
+            "currency": "EUR",
+            "status": "DECLINED",
+            "approved": false,
+            "failure_reason": "CARD_INACTIVE",
+            "authorisation_ms": 3654
+          },
+          "error": null
+        },
+        {
+          "phase": "purchase",
+          "id": "purchase.window",
+          "agent": "sourcing",
+          "title": "Purser's purchase path (chargeInWindow): thaw, charge EUR 1.11, refreeze",
+          "expect": "approved; the card INACTIVE again; the window's length measured",
+          "outcome": "approved (APPROVED); card INACTIVE; thawed for 4043 ms (thaw sent to refreeze read back)",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:47:16.452Z",
+          "ended_at": "2026-11-20T09:47:20.514Z",
+          "ms": 4062,
+          "lines": [
+            50,
+            51,
+            52,
+            53,
+            54
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f85a-6a90-7000-b185-322ca989e5b0",
+            "legacy_id": null,
+            "amount": "1.11",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 0,
+            "window_ms": 4043,
+            "card_after": "INACTIVE"
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k1.kill",
+          "agent": "treasury",
+          "title": "Killed after the thaw was answered and recorded, before the charge and the refreeze",
+          "expect": "the child ends by SIGKILL with the card thawed at Airwallex",
+          "outcome": "child ended by SIGKILL; Airwallex reads the card ACTIVE; ledger says ACTIVE",
+          "pass": true,
+          "simulated": "the kill is a SIGKILL the child process sends itself at the point the drill chose",
+          "started_at": "2026-11-20T09:47:20.515Z",
+          "ended_at": "2026-11-20T09:47:26.102Z",
+          "ms": 5587,
+          "lines": [
+            55,
+            56,
+            57,
+            58
+          ],
+          "facts": {
+            "code": null,
+            "signal": "SIGKILL",
+            "airwallex_status": "ACTIVE",
+            "ledger_status": "ACTIVE"
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k1.tick",
+          "agent": "treasury",
+          "title": "Restart: the runner's every-few-seconds card check (syncCardsIfChanged)",
+          "expect": "the card frozen at Airwallex",
+          "outcome": "changed nothing; Airwallex reads the card ACTIVE",
+          "pass": false,
+          "simulated": null,
+          "started_at": "2026-11-20T09:47:26.111Z",
+          "ended_at": "2026-11-20T09:47:26.531Z",
+          "ms": 420,
+          "lines": [
+            59
+          ],
+          "facts": {
+            "changed": [],
+            "airwallex_status": "ACTIVE",
+            "ledger_status": "ACTIVE",
+            "window_open": true
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k1.recover",
+          "agent": "treasury",
+          "title": "Restart: the runner's start-up card recovery (recoverCardWindows)",
+          "expect": "the card frozen at Airwallex at the restart",
+          "outcome": "no start-up card recovery in the runner at this commit",
+          "pass": false,
+          "simulated": null,
+          "started_at": "2026-11-20T09:47:26.532Z",
+          "ended_at": "2026-11-20T09:47:26.532Z",
+          "ms": 0,
+          "lines": [],
+          "facts": {
+            "present": false
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k1.charge",
+          "agent": "treasury",
+          "title": "A merchant charges the card after the restart (EUR 1.03)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "approved (APPROVED)",
+          "pass": false,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:47:26.534Z",
+          "ended_at": "2026-11-20T09:47:30.215Z",
+          "ms": 3681,
+          "lines": [
+            60
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f85a-8f36-7000-af31-dea1c9dcc353",
+            "legacy_id": null,
+            "amount": "1.03",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 3681
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k2.kill",
+          "agent": "support",
+          "title": "Killed the moment Airwallex answered the thaw, before the ledger recorded it; restarted after the window would have run out",
+          "expect": "the child ends by SIGKILL with the card thawed at Airwallex",
+          "outcome": "child ended by SIGKILL; Airwallex reads the card ACTIVE; ledger says INACTIVE",
+          "pass": true,
+          "simulated": "the kill is a SIGKILL the child process sends itself at the point the drill chose",
+          "started_at": "2026-11-20T09:47:30.216Z",
+          "ended_at": "2026-11-20T09:47:35.074Z",
+          "ms": 4858,
+          "lines": [
+            61,
+            62,
+            63,
+            64
+          ],
+          "facts": {
+            "code": null,
+            "signal": "SIGKILL",
+            "airwallex_status": "ACTIVE",
+            "ledger_status": "INACTIVE"
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k2.tick",
+          "agent": "support",
+          "title": "Restart: the runner's every-few-seconds card check (syncCardsIfChanged)",
+          "expect": "the card frozen at Airwallex",
+          "outcome": "changed treasury; Airwallex reads the card ACTIVE",
+          "pass": false,
+          "simulated": null,
+          "started_at": "2026-11-20T09:49:40.171Z",
+          "ended_at": "2026-11-20T09:49:42.077Z",
+          "ms": 1906,
+          "lines": [
+            65,
+            66,
+            67,
+            68
+          ],
+          "facts": {
+            "changed": [
+              "treasury"
+            ],
+            "airwallex_status": "ACTIVE",
+            "ledger_status": "INACTIVE",
+            "window_open": false
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k2.recover",
+          "agent": "support",
+          "title": "Restart: the runner's start-up card recovery (recoverCardWindows)",
+          "expect": "the card frozen at Airwallex at the restart",
+          "outcome": "no start-up card recovery in the runner at this commit",
+          "pass": false,
+          "simulated": null,
+          "started_at": "2026-11-20T09:49:42.086Z",
+          "ended_at": "2026-11-20T09:49:42.087Z",
+          "ms": 1,
+          "lines": [],
+          "facts": {
+            "present": false
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k2.charge",
+          "agent": "support",
+          "title": "A merchant charges the card after the restart (EUR 1.03)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "approved (APPROVED)",
+          "pass": false,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T09:49:42.090Z",
+          "ended_at": "2026-11-20T09:49:45.653Z",
+          "ms": 3563,
+          "lines": [
+            69
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f85c-a097-7000-ba35-59f3f202f24f",
+            "legacy_id": null,
+            "amount": "1.03",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 3562
+          },
+          "error": null
+        },
+        {
+          "phase": "detect",
+          "id": "detect.poll",
+          "agent": null,
+          "title": "The poll reads every card's transactions; each authorisation inside a window that Purser did not start must raise card.unexpected_authorization",
+          "expect": "each second authorisation flagged; the purchases not flagged",
+          "outcome": "11 new from the poll (4 recorded before); second authorisations flagged: sourcing yes, support NO (same amount as the purchase), treasury yes",
+          "pass": false,
+          "simulated": null,
+          "started_at": "2026-11-20T09:51:50.743Z",
+          "ended_at": "2026-11-20T09:51:52.250Z",
+          "ms": 1507,
+          "lines": [
+            70,
+            71,
+            72
+          ],
+          "facts": {
+            "fresh": 11,
+            "before": 4,
+            "second": [
+              {
+                "agent": "sourcing",
+                "amount": "1.37",
+                "same_amount_as_purchase": false,
+                "flagged": true
+              },
+              {
+                "agent": "support",
+                "amount": "1.00",
+                "same_amount_as_purchase": true,
+                "flagged": false
+              },
+              {
+                "agent": "treasury",
+                "amount": "0.73",
+                "same_amount_as_purchase": false,
+                "flagged": true
+              }
+            ],
+            "purchases_flagged": 0,
+            "ledger": [
+              {
+                "agent": "sourcing",
+                "amount": "1.01",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "sourcing",
+                "amount": "1.00",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "sourcing",
+                "amount": "1.37",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "sourcing",
+                "amount": "1.02",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "support",
+                "amount": "1.01",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "support",
+                "amount": "1.00",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "support",
+                "amount": "1.00",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "support",
+                "amount": "1.02",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "treasury",
+                "amount": "1.01",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "treasury",
+                "amount": "1.00",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "0.73",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "1.02",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "sourcing",
+                "amount": "1.11",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "1.03",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "support",
+                "amount": "1.03",
+                "approved": true,
+                "failure_reason": null
+              }
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "webhooks",
+          "id": "webhooks.sandbox_replay",
+          "agent": null,
+          "title": "Ask the sandbox to deliver an event twice, or late",
+          "expect": "the sandbox replays an event",
+          "outcome": "not supported by the sandbox: Airwallex's API has no endpoint that replays or resends a webhook event, and this run has no public webhook receiver; not attempted live",
+          "pass": null,
+          "simulated": null,
+          "started_at": "2026-11-20T09:51:52.254Z",
+          "ended_at": "2026-11-20T09:51:52.255Z",
+          "ms": 1,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "webhooks",
+          "id": "webhooks.local_replay",
+          "agent": null,
+          "title": "Duplicate and late card-transaction webhooks, replayed locally from this run's own sandbox answers",
+          "expect": "no second ledger row, no second alarm, no change to an earlier decision",
+          "outcome": "VOID (the drill's log kept the simulation answers without their date, so the replayed events were malformed (see the pass's note); re-run in pass 3). Seen: 45 deliveries of 15 authorisations: 0 new ledger row(s), 0 new alarm(s), 0 new approval and 0 new decline record(s); 15 answered \"already recorded\"",
+          "pass": null,
+          "simulated": "replayed locally: the events are built from this run's own simulation answers (whitelisted fields) and signed with a local test secret; Airwallex sent none of them",
+          "started_at": "2026-11-20T09:51:52.258Z",
+          "ended_at": "2026-11-20T09:51:52.287Z",
+          "ms": 29,
+          "lines": [],
+          "facts": {
+            "deliveries": 45,
+            "authorisations": 15,
+            "before": {
+              "rows": 15,
+              "unexpected": 4,
+              "approved": 9,
+              "declined": 6
+            },
+            "after": {
+              "rows": 15,
+              "unexpected": 4,
+              "approved": 9,
+              "declined": 6
+            },
+            "already_recorded": 15,
+            "after_poll": true,
+            "outcomes": [
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: evt-carddrill-22 already recorded",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-25 already recorded",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-26 already recorded",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: evt-carddrill-29 already recorded",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: evt-carddrill-32 already recorded",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-35 already recorded",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-36 already recorded",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: evt-carddrill-39 already recorded",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: evt-carddrill-42 already recorded",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-45 already recorded",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-46 already recorded",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.failed: evt-carddrill-49 already recorded",
+              "webhook issuing.card_transaction_event.failed: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-52 already recorded",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-60 already recorded",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-69 already recorded",
+              "webhook issuing.card_transaction_event.success: an Airwallex card transaction without an id, a result or a date (fields: card_id, card_transaction_id, transaction_id, transaction_amount, transaction_currency, status, process_result, failure_reason, created_at, transaction_date, transaction_type, merchant)"
+            ]
+          },
+          "error": null
+        }
+      ]
+    },
+    {
+      "pass_no": 2,
+      "started_at": "2026-11-20T10:00:11.580Z",
+      "ended_at": "2026-11-20T10:00:23.076Z",
+      "stopped": "cycle.charge_frozen: an unexpected HTTP 400 bad_request on POST /simulation/issuing/create (line 76)",
+      "note": "After the three fixes (src/policy/cards.ts: recoverCardWindows at the runner's start, the thaw written to the ledger before it is sent, a window expects one authorisation): a re-run of the support card's cycle, the crash, the poll and the webhooks. **Stopped at its second step:** the sandbox's simulation answered HTTP 400 bad_request \"failed to process transaction\" after 9.6 s to a charge on the frozen card (the stop drill had met an HTTP 400 on the same endpoint at 09:54 UTC). The drill halts on any unexpected 4xx, so nothing else was sent.",
+      "phases": [
+        "cycle",
+        "crash",
+        "detect",
+        "webhooks"
+      ],
+      "code": {
+        "recover_card_windows": true,
+        "thaw_marked_before_call": true
+      },
+      "steps": [
+        {
+          "phase": "cycle",
+          "id": "cycle.freeze",
+          "agent": "support",
+          "title": "Freeze the card (status INACTIVE)",
+          "expect": "Airwallex reads the card back INACTIVE",
+          "outcome": "read back INACTIVE; update to read-back 810 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T10:00:11.622Z",
+          "ended_at": "2026-11-20T10:00:13.357Z",
+          "ms": 1735,
+          "lines": [
+            73,
+            74,
+            75
+          ],
+          "facts": {
+            "seen": "INACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 810,
+            "update_ms": 452
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.charge_frozen",
+          "agent": "support",
+          "title": "A merchant charges the frozen card (EUR 1.01)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "the sandbox refused to simulate the charge (HTTP 400 bad_request): neither approved nor declined, nothing to judge. error: Airwallex /simulation/issuing/create -> 400 bad_request (trace 8f2f4c4a8d1b439bbc7194404d12c5d9)",
+          "pass": null,
+          "simulated": null,
+          "started_at": "2026-11-20T10:00:13.358Z",
+          "ended_at": "2026-11-20T10:00:22.937Z",
+          "ms": 9579,
+          "lines": [
+            76
+          ],
+          "facts": {},
+          "error": "Airwallex /simulation/issuing/create -> 400 bad_request (trace 8f2f4c4a8d1b439bbc7194404d12c5d9)"
+        }
+      ]
+    },
+    {
+      "pass_no": 3,
+      "started_at": "2026-11-20T10:02:19.171Z",
+      "ended_at": "2026-11-20T10:07:13.656Z",
+      "stopped": null,
+      "note": "The same re-run, two minutes later. From this pass the drill records up to 4 such refusals of the sandbox's simulation in the run's log as \"nothing to judge\" instead of halting; none occurred. The freeze latencies of passes 2 and 3 are taken from the request log when this record was written: the drill had measured them from the process's login, which that step needed first.",
+      "phases": [
+        "cycle",
+        "crash",
+        "detect",
+        "webhooks"
+      ],
+      "code": {
+        "recover_card_windows": true,
+        "thaw_marked_before_call": true
+      },
+      "steps": [
+        {
+          "phase": "cycle",
+          "id": "cycle.freeze",
+          "agent": "support",
+          "title": "Freeze the card (status INACTIVE)",
+          "expect": "Airwallex reads the card back INACTIVE",
+          "outcome": "read back INACTIVE; update to read-back 777 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T10:02:19.172Z",
+          "ended_at": "2026-11-20T10:02:20.779Z",
+          "ms": 1607,
+          "lines": [
+            77,
+            78,
+            79
+          ],
+          "facts": {
+            "seen": "INACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 777,
+            "update_ms": 415
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.charge_frozen",
+          "agent": "support",
+          "title": "A merchant charges the frozen card (EUR 1.01)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T10:02:20.780Z",
+          "ended_at": "2026-11-20T10:02:24.581Z",
+          "ms": 3801,
+          "lines": [
+            80
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f868-34f8-7000-831d-c282a8f6dd6e",
+            "legacy_id": null,
+            "amount": "1.01",
+            "currency": "EUR",
+            "status": "DECLINED",
+            "approved": false,
+            "failure_reason": "CARD_INACTIVE",
+            "authorisation_ms": 3801
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.thaw",
+          "agent": "support",
+          "title": "Purser opens a purchase window (openCardWindow: thaw)",
+          "expect": "Airwallex reads the card back ACTIVE",
+          "outcome": "read back ACTIVE; update to read-back 685 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T10:02:24.586Z",
+          "ended_at": "2026-11-20T10:02:25.299Z",
+          "ms": 713,
+          "lines": [
+            81,
+            82
+          ],
+          "facts": {
+            "seen": "ACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 685,
+            "update_ms": 360
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.auth_purchase",
+          "agent": "support",
+          "title": "The approved purchase's authorisation (EUR 1.00)",
+          "expect": "approved",
+          "outcome": "approved (APPROVED)",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T10:02:25.301Z",
+          "ended_at": "2026-11-20T10:02:28.210Z",
+          "ms": 2909,
+          "lines": [
+            83
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f868-4667-7000-ae75-4d176ef0b3e5",
+            "legacy_id": null,
+            "amount": "1.00",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 2875
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.auth_in_window",
+          "agent": "support",
+          "title": "A second authorisation inside the same window (EUR 1.00, the purchase's own amount, another merchant)",
+          "expect": "declined (the brief's expectation)",
+          "outcome": "approved (APPROVED): the race is real at Airwallex; the card is thawed for any charge within its limits",
+          "pass": false,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T10:02:28.212Z",
+          "ended_at": "2026-11-20T10:02:31.823Z",
+          "ms": 3611,
+          "lines": [
+            84
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f868-5157-7000-b95a-f76f79d400fa",
+            "legacy_id": null,
+            "amount": "1.00",
+            "currency": "EUR",
+            "status": "APPROVED",
+            "approved": true,
+            "failure_reason": null,
+            "authorisation_ms": 3611,
+            "same_amount_as_purchase": true
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.refreeze",
+          "agent": "support",
+          "title": "Purser closes the window (closeCardWindow: refreeze)",
+          "expect": "Airwallex reads the card back INACTIVE",
+          "outcome": "read back INACTIVE; update to read-back 694 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T10:02:31.824Z",
+          "ended_at": "2026-11-20T10:02:32.532Z",
+          "ms": 708,
+          "lines": [
+            85,
+            86
+          ],
+          "facts": {
+            "seen": "INACTIVE",
+            "extra_reads": 0,
+            "update_to_readback_ms": 694,
+            "update_ms": 363
+          },
+          "error": null
+        },
+        {
+          "phase": "cycle",
+          "id": "cycle.charge_after_refreeze",
+          "agent": "support",
+          "title": "A merchant charges right after the refreeze was read back (EUR 1.02)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T10:02:32.534Z",
+          "ended_at": "2026-11-20T10:02:35.057Z",
+          "ms": 2523,
+          "lines": [
+            87
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f868-623a-7000-990d-854ea56816f5",
+            "legacy_id": null,
+            "amount": "1.02",
+            "currency": "EUR",
+            "status": "DECLINED",
+            "approved": false,
+            "failure_reason": "CARD_INACTIVE",
+            "authorisation_ms": 2522
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k1.kill",
+          "agent": "treasury",
+          "title": "Killed after the thaw was answered and recorded, before the charge and the refreeze",
+          "expect": "the child ends by SIGKILL with the card thawed at Airwallex",
+          "outcome": "child ended by SIGKILL; Airwallex reads the card ACTIVE; ledger says ACTIVE",
+          "pass": true,
+          "simulated": "the kill is a SIGKILL the child process sends itself at the point the drill chose",
+          "started_at": "2026-11-20T10:02:35.058Z",
+          "ended_at": "2026-11-20T10:02:41.535Z",
+          "ms": 6477,
+          "lines": [
+            88,
+            89,
+            90,
+            91
+          ],
+          "facts": {
+            "code": null,
+            "signal": "SIGKILL",
+            "airwallex_status": "ACTIVE",
+            "ledger_status": "ACTIVE"
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k1.tick",
+          "agent": "treasury",
+          "title": "Restart: the runner's every-few-seconds card check (syncCardsIfChanged)",
+          "expect": "measured only: the restart's own step is the recovery below",
+          "outcome": "changed nothing; Airwallex reads the card ACTIVE",
+          "pass": null,
+          "simulated": null,
+          "started_at": "2026-11-20T10:02:41.543Z",
+          "ended_at": "2026-11-20T10:02:42.164Z",
+          "ms": 621,
+          "lines": [
+            92
+          ],
+          "facts": {
+            "changed": [],
+            "airwallex_status": "ACTIVE",
+            "ledger_status": "ACTIVE",
+            "window_open": true
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k1.recover",
+          "agent": "treasury",
+          "title": "Restart: the runner's start-up card recovery (recoverCardWindows)",
+          "expect": "the card frozen at Airwallex at the restart",
+          "outcome": "closed treasury; synced treasury; Airwallex reads the card INACTIVE; recovery took 1769 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T10:02:42.171Z",
+          "ended_at": "2026-11-20T10:02:44.264Z",
+          "ms": 2093,
+          "lines": [
+            93,
+            94,
+            95,
+            96,
+            97,
+            98
+          ],
+          "facts": {
+            "closed": [
+              "treasury"
+            ],
+            "changed": [
+              "treasury"
+            ],
+            "recovery_ms": 1769,
+            "airwallex_status": "INACTIVE"
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k1.charge",
+          "agent": "treasury",
+          "title": "A merchant charges the card after the restart (EUR 1.03)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T10:02:44.268Z",
+          "ended_at": "2026-11-20T10:02:47.952Z",
+          "ms": 3684,
+          "lines": [
+            99
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f868-9060-7000-b837-e59366fc4bfe",
+            "legacy_id": null,
+            "amount": "1.03",
+            "currency": "EUR",
+            "status": "DECLINED",
+            "approved": false,
+            "failure_reason": "CARD_INACTIVE",
+            "authorisation_ms": 3684
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k2.kill",
+          "agent": "support",
+          "title": "Killed the moment Airwallex answered the thaw, before the ledger recorded it; restarted after the window would have run out",
+          "expect": "the child ends by SIGKILL with the card thawed at Airwallex",
+          "outcome": "child ended by SIGKILL; Airwallex reads the card ACTIVE; ledger says ACTIVE",
+          "pass": true,
+          "simulated": "the kill is a SIGKILL the child process sends itself at the point the drill chose",
+          "started_at": "2026-11-20T10:02:47.959Z",
+          "ended_at": "2026-11-20T10:02:54.359Z",
+          "ms": 6400,
+          "lines": [
+            100,
+            101,
+            102,
+            103
+          ],
+          "facts": {
+            "code": null,
+            "signal": "SIGKILL",
+            "airwallex_status": "ACTIVE",
+            "ledger_status": "ACTIVE"
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k2.tick",
+          "agent": "support",
+          "title": "Restart: the runner's every-few-seconds card check (syncCardsIfChanged)",
+          "expect": "measured only: the restart's own step is the recovery below",
+          "outcome": "changed support; Airwallex reads the card INACTIVE",
+          "pass": null,
+          "simulated": null,
+          "started_at": "2026-11-20T10:04:59.507Z",
+          "ended_at": "2026-11-20T10:05:01.081Z",
+          "ms": 1574,
+          "lines": [
+            104,
+            105,
+            106,
+            107
+          ],
+          "facts": {
+            "changed": [
+              "support"
+            ],
+            "airwallex_status": "INACTIVE",
+            "ledger_status": "INACTIVE",
+            "window_open": false
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k2.recover",
+          "agent": "support",
+          "title": "Restart: the runner's start-up card recovery (recoverCardWindows)",
+          "expect": "the card frozen at Airwallex at the restart",
+          "outcome": "closed no window; synced nothing; Airwallex reads the card INACTIVE; recovery took 1046 ms",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T10:05:01.103Z",
+          "ended_at": "2026-11-20T10:05:02.496Z",
+          "ms": 1393,
+          "lines": [
+            108,
+            109,
+            110,
+            111
+          ],
+          "facts": {
+            "closed": [],
+            "changed": [],
+            "recovery_ms": 1046,
+            "airwallex_status": "INACTIVE"
+          },
+          "error": null
+        },
+        {
+          "phase": "crash",
+          "id": "crash.k2.charge",
+          "agent": "support",
+          "title": "A merchant charges the card after the restart (EUR 1.03)",
+          "expect": "declined CARD_INACTIVE",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-20T10:05:02.503Z",
+          "ended_at": "2026-11-20T10:05:06.309Z",
+          "ms": 3806,
+          "lines": [
+            112
+          ],
+          "facts": {
+            "card_transaction_id": "01a1f86a-ac3b-7000-a0b1-56b04f7ae751",
+            "legacy_id": null,
+            "amount": "1.03",
+            "currency": "EUR",
+            "status": "DECLINED",
+            "approved": false,
+            "failure_reason": "CARD_INACTIVE",
+            "authorisation_ms": 3806
+          },
+          "error": null
+        },
+        {
+          "phase": "detect",
+          "id": "detect.poll",
+          "agent": null,
+          "title": "The poll reads every card's transactions; each authorisation inside a window that Purser did not start must raise card.unexpected_authorization",
+          "expect": "each second authorisation flagged; the purchases not flagged",
+          "outcome": "16 new from the poll (16 recorded before); second authorisations flagged: support yes (same amount as the purchase)",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-20T10:07:11.407Z",
+          "ended_at": "2026-11-20T10:07:13.551Z",
+          "ms": 2144,
+          "lines": [
+            113,
+            114,
+            115
+          ],
+          "facts": {
+            "fresh": 16,
+            "before": 16,
+            "second": [
+              {
+                "agent": "support",
+                "amount": "1.00",
+                "same_amount_as_purchase": true,
+                "flagged": true
+              }
+            ],
+            "purchases_flagged": 0,
+            "ledger": [
+              {
+                "agent": "sourcing",
+                "amount": "1.01",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "sourcing",
+                "amount": "1.00",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "sourcing",
+                "amount": "1.37",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "sourcing",
+                "amount": "1.02",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "support",
+                "amount": "1.01",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "support",
+                "amount": "1.00",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "support",
+                "amount": "1.00",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "support",
+                "amount": "1.02",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "treasury",
+                "amount": "1.01",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "treasury",
+                "amount": "1.00",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "0.73",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "1.02",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "sourcing",
+                "amount": "1.11",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "1.03",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "support",
+                "amount": "1.03",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "sourcing",
+                "amount": "1.04",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "support",
+                "amount": "1.04",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "treasury",
+                "amount": "1.04",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "sourcing",
+                "amount": "1.05",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "0.21",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "0.22",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "0.23",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "0.24",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "0.25",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "treasury",
+                "amount": "0.26",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "support",
+                "amount": "1.01",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "support",
+                "amount": "1.01",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "support",
+                "amount": "1.00",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "support",
+                "amount": "1.00",
+                "approved": true,
+                "failure_reason": null
+              },
+              {
+                "agent": "support",
+                "amount": "1.02",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "treasury",
+                "amount": "1.03",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              },
+              {
+                "agent": "support",
+                "amount": "1.03",
+                "approved": false,
+                "failure_reason": "CARD_INACTIVE"
+              }
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "webhooks",
+          "id": "webhooks.sandbox_replay",
+          "agent": null,
+          "title": "Ask the sandbox to deliver an event twice, or late",
+          "expect": "the sandbox replays an event",
+          "outcome": "not supported by the sandbox: Airwallex's API has no endpoint that replays or resends a webhook event, and this run has no public webhook receiver; not attempted live",
+          "pass": null,
+          "simulated": null,
+          "started_at": "2026-11-20T10:07:13.570Z",
+          "ended_at": "2026-11-20T10:07:13.570Z",
+          "ms": 0,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "webhooks",
+          "id": "webhooks.local_replay",
+          "agent": null,
+          "title": "Duplicate and late card-transaction webhooks, replayed locally from this run's own sandbox answers",
+          "expect": "no second ledger row, no second alarm, no change to an earlier decision",
+          "outcome": "18 deliveries of 6 authorisations (15 logged without their date left out): 0 new ledger row(s), 0 new alarm(s), 0 new approval and 0 new decline record(s); 18 answered \"already recorded\"",
+          "pass": true,
+          "simulated": "replayed locally: the events are built from this run's own simulation answers (whitelisted fields) and signed with a local test secret; Airwallex sent none of them",
+          "started_at": "2026-11-20T10:07:13.607Z",
+          "ended_at": "2026-11-20T10:07:13.627Z",
+          "ms": 20,
+          "lines": [],
+          "facts": {
+            "deliveries": 18,
+            "authorisations": 6,
+            "before": {
+              "rows": 32,
+              "unexpected": 12,
+              "approved": 18,
+              "declined": 14
+            },
+            "after": {
+              "rows": 32,
+              "unexpected": 12,
+              "approved": 18,
+              "declined": 14
+            },
+            "already_recorded": 18,
+            "after_poll": true,
+            "outcomes": [
+              "webhook issuing.card_transaction_event.failed: 01a1f868 already recorded",
+              "webhook issuing.card_transaction_event.failed: evt-carddrill-80 already recorded",
+              "webhook issuing.card_transaction_event.failed: 01a1f868 already recorded",
+              "webhook issuing.card_transaction_event.success: 01a1f868 already recorded",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-83 already recorded",
+              "webhook issuing.card_transaction_event.success: 01a1f868 already recorded",
+              "webhook issuing.card_transaction_event.success: 01a1f868 already recorded",
+              "webhook issuing.card_transaction_event.success: evt-carddrill-84 already recorded",
+              "webhook issuing.card_transaction_event.success: 01a1f868 already recorded",
+              "webhook issuing.card_transaction_event.failed: 01a1f868 already recorded",
+              "webhook issuing.card_transaction_event.failed: evt-carddrill-87 already recorded",
+              "webhook issuing.card_transaction_event.failed: 01a1f868 already recorded",
+              "webhook issuing.card_transaction_event.failed: 01a1f868 already recorded",
+              "webhook issuing.card_transaction_event.failed: evt-carddrill-99 already recorded",
+              "webhook issuing.card_transaction_event.failed: 01a1f868 already recorded",
+              "webhook issuing.card_transaction_event.failed: 01a1f86a already recorded",
+              "webhook issuing.card_transaction_event.failed: evt-carddrill-112 already recorded",
+              "webhook issuing.card_transaction_event.failed: 01a1f86a already recorded"
+            ]
+          },
+          "error": null
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "n": 1,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:22.391Z",
+      "answered_at": "2026-11-20T09:46:23.096Z",
+      "ms": 705,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "14f8a65a07504a6a8b8cba10bfa5e8c7",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 2,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:23.103Z",
+      "answered_at": "2026-11-20T09:46:23.515Z",
+      "ms": 412,
+      "method": "GET",
+      "endpoint": "/issuing/cardholders",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "eaebf9687d694bf792f9ea54c3bd591e",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 3,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:23.516Z",
+      "answered_at": "2026-11-20T09:46:23.864Z",
+      "ms": 348,
+      "method": "GET",
+      "endpoint": "/issuing/cards",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "c815943fb0ff435e9c2aa3445de5bb9f",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 4,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:24.107Z",
+      "answered_at": "2026-11-20T09:46:24.495Z",
+      "ms": 388,
+      "method": "GET",
+      "endpoint": "/issuing/cards",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "f9547b5f051d4473a40da28aeda1184a",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 5,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:24.498Z",
+      "answered_at": "2026-11-20T09:46:25.211Z",
+      "ms": 713,
+      "method": "POST",
+      "endpoint": "/issuing/cards/create",
+      "status": 202,
+      "awx_request_id": null,
+      "trace_id": "dfd97f58522e4b77ba0f6db336eae08b",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 6,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:25.223Z",
+      "answered_at": "2026-11-20T09:46:25.585Z",
+      "ms": 362,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "72c7bd2bce554ee982fe2c6f9cbc0fd6",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 7,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:25.586Z",
+      "answered_at": "2026-11-20T09:46:26.161Z",
+      "ms": 575,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "eac7746d5a8d455a8f38a2ad93a88809",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 8,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:26.165Z",
+      "answered_at": "2026-11-20T09:46:26.477Z",
+      "ms": 312,
+      "method": "GET",
+      "endpoint": "/issuing/cardholders",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "ab755ac0b32e49aa91158415137fc341",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 9,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:26.478Z",
+      "answered_at": "2026-11-20T09:46:26.827Z",
+      "ms": 349,
+      "method": "GET",
+      "endpoint": "/issuing/cards",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "90cc49a0753a4a97838b5267de28ec4b",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 10,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:27.061Z",
+      "answered_at": "2026-11-20T09:46:27.371Z",
+      "ms": 310,
+      "method": "GET",
+      "endpoint": "/issuing/cards",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "1359b6af3ea6444abf93ed5ca52f40c5",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 11,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:27.372Z",
+      "answered_at": "2026-11-20T09:46:27.967Z",
+      "ms": 595,
+      "method": "POST",
+      "endpoint": "/issuing/cards/create",
+      "status": 202,
+      "awx_request_id": null,
+      "trace_id": "0e483beee66b45f79519cc197adb45fe",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 12,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:27.970Z",
+      "answered_at": "2026-11-20T09:46:28.401Z",
+      "ms": 431,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "2633b3b8a93445dc919746e904c693b4",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 13,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:28.403Z",
+      "answered_at": "2026-11-20T09:46:28.937Z",
+      "ms": 534,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "b19aa88a391b4161a0e9c898c2734f40",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 14,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:28.941Z",
+      "answered_at": "2026-11-20T09:46:29.231Z",
+      "ms": 290,
+      "method": "GET",
+      "endpoint": "/issuing/cardholders",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "f14bf455b06949ec805a5d1f47d3f2a7",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 15,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:29.232Z",
+      "answered_at": "2026-11-20T09:46:29.556Z",
+      "ms": 324,
+      "method": "GET",
+      "endpoint": "/issuing/cards",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "2347f68084d34308b930d7d8101a318a",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 16,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:29.791Z",
+      "answered_at": "2026-11-20T09:46:30.158Z",
+      "ms": 367,
+      "method": "GET",
+      "endpoint": "/issuing/cards",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "3e0d0a6e022a4eaabfc2736190854e25",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 17,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:30.159Z",
+      "answered_at": "2026-11-20T09:46:31.032Z",
+      "ms": 873,
+      "method": "POST",
+      "endpoint": "/issuing/cards/create",
+      "status": 202,
+      "awx_request_id": null,
+      "trace_id": "33e01d306f744de49b36cdaa3d990238",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 18,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:31.035Z",
+      "answered_at": "2026-11-20T09:46:31.387Z",
+      "ms": 352,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "9ebc6c05cc7448949f4875cdb4a41ff0",
+      "code": null,
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 19,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:31.388Z",
+      "answered_at": "2026-11-20T09:46:31.699Z",
+      "ms": 311,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "9dedbb5b8ccd4ca4b1f0557ccb816463",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 setup.cards"
+    },
+    {
+      "n": 20,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:31.705Z",
+      "answered_at": "2026-11-20T09:46:32.035Z",
+      "ms": 330,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "0d56565656894699b5328e336ff584c1",
+      "code": null,
+      "step": "pass 1 cycle.freeze (sourcing)"
+    },
+    {
+      "n": 21,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:32.035Z",
+      "answered_at": "2026-11-20T09:46:32.597Z",
+      "ms": 562,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "4d6c424d14304859b79d0262f93fac0d",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 cycle.freeze (sourcing)"
+    },
+    {
+      "n": 22,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:32.611Z",
+      "answered_at": "2026-11-20T09:46:35.415Z",
+      "ms": 2804,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "30f70141db274bd0a87bc048d83ffc61",
+      "code": null,
+      "sim": {
+        "card_id": "29c779e4-907b-43e5-b420-2f5cffc1ac58",
+        "card_transaction_id": "01a1f859-bccd-7000-bd80-87de737d10dd",
+        "transaction_id": null,
+        "transaction_amount": 1.01,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "DECLINED",
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL FROZEN_________",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 1 cycle.charge_frozen (sourcing)"
+    },
+    {
+      "n": 23,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:35.420Z",
+      "answered_at": "2026-11-20T09:46:36.026Z",
+      "ms": 606,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "c90080c615744861ab6a0c7834250a7d",
+      "code": null,
+      "step": "pass 1 cycle.thaw (sourcing)"
+    },
+    {
+      "n": 24,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:36.027Z",
+      "answered_at": "2026-11-20T09:46:36.335Z",
+      "ms": 308,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "9405a792fa9a40f092ad8c14d9ddf9fd",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 cycle.thaw (sourcing)"
+    },
+    {
+      "n": 25,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:36.343Z",
+      "answered_at": "2026-11-20T09:46:40.322Z",
+      "ms": 3979,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "4036e709166b46dbbd690da09dacf3a1",
+      "code": null,
+      "sim": {
+        "card_id": "29c779e4-907b-43e5-b420-2f5cffc1ac58",
+        "card_transaction_id": "01a1f859-cb11-7000-a432-533d39a3e02b",
+        "transaction_id": null,
+        "transaction_amount": 1,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL A______________",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 1 cycle.auth_purchase (sourcing)"
+    },
+    {
+      "n": 26,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:40.343Z",
+      "answered_at": "2026-11-20T09:46:42.875Z",
+      "ms": 2532,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "5ea31444c1794648880176c7b3cd33ef",
+      "code": null,
+      "sim": {
+        "card_id": "29c779e4-907b-43e5-b420-2f5cffc1ac58",
+        "card_transaction_id": "01a1f859-dab3-7000-9f85-057747646b13",
+        "transaction_id": null,
+        "transaction_amount": 1.37,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL B______________",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 1 cycle.auth_in_window (sourcing)"
+    },
+    {
+      "n": 27,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:42.881Z",
+      "answered_at": "2026-11-20T09:46:43.445Z",
+      "ms": 565,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "54ed1ce5ab374bf48c2faf19bbe68f17",
+      "code": null,
+      "step": "pass 1 cycle.refreeze (sourcing)"
+    },
+    {
+      "n": 28,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:43.446Z",
+      "answered_at": "2026-11-20T09:46:43.759Z",
+      "ms": 313,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "26b9895b27cb49e683f74c7dc48417be",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 cycle.refreeze (sourcing)"
+    },
+    {
+      "n": 29,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:43.767Z",
+      "answered_at": "2026-11-20T09:46:46.413Z",
+      "ms": 2646,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "ad32a45fc7e7450fb3634ee6eb13fc30",
+      "code": null,
+      "sim": {
+        "card_id": "29c779e4-907b-43e5-b420-2f5cffc1ac58",
+        "card_transaction_id": "01a1f859-e85b-7000-896e-fa078d66b61d",
+        "transaction_id": null,
+        "transaction_amount": 1.02,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "DECLINED",
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL C______________",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 1 cycle.charge_after_refreeze (sourcing)"
+    },
+    {
+      "n": 30,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:46.419Z",
+      "answered_at": "2026-11-20T09:46:46.747Z",
+      "ms": 328,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "01a06071189c41849b1d2bcbf6bab2bc",
+      "code": null,
+      "step": "pass 1 cycle.freeze (support)"
+    },
+    {
+      "n": 31,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:46.748Z",
+      "answered_at": "2026-11-20T09:46:47.044Z",
+      "ms": 296,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "4e41c70686a94e3d851a3a02d06e3b80",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 cycle.freeze (support)"
+    },
+    {
+      "n": 32,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:47.049Z",
+      "answered_at": "2026-11-20T09:46:49.641Z",
+      "ms": 2592,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "6a95a80216844cdeafb3ac2ebd3bb7a7",
+      "code": null,
+      "sim": {
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_transaction_id": "01a1f859-f510-7000-8b6f-4eb5ba2bd890",
+        "transaction_id": null,
+        "transaction_amount": 1.01,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "DECLINED",
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL FROZEN_________",
+          "category_code": "7372"
+        }
+      },
+      "step": "pass 1 cycle.charge_frozen (support)"
+    },
+    {
+      "n": 33,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:49.646Z",
+      "answered_at": "2026-11-20T09:46:49.998Z",
+      "ms": 352,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "e1127865dadf41d694bfa938f27539bc",
+      "code": null,
+      "step": "pass 1 cycle.thaw (support)"
+    },
+    {
+      "n": 34,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:49.999Z",
+      "answered_at": "2026-11-20T09:46:50.351Z",
+      "ms": 352,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "896f0f04fe2d4ad1ae12ca8fa5970de6",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 cycle.thaw (support)"
+    },
+    {
+      "n": 35,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:50.375Z",
+      "answered_at": "2026-11-20T09:46:54.018Z",
+      "ms": 3643,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "c17720b5a6db4734b5dbcf06cb0d4446",
+      "code": null,
+      "sim": {
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_transaction_id": "01a1f85a-01d7-7000-abd1-7c7910d09113",
+        "transaction_id": null,
+        "transaction_amount": 1,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL A______________",
+          "category_code": "7372"
+        }
+      },
+      "step": "pass 1 cycle.auth_purchase (support)"
+    },
+    {
+      "n": 36,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:54.023Z",
+      "answered_at": "2026-11-20T09:46:56.535Z",
+      "ms": 2512,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "fae53980f0d24ba7bd6951ae33d0ddfa",
+      "code": null,
+      "sim": {
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_transaction_id": "01a1f85a-1012-7000-b815-c56930ab9b66",
+        "transaction_id": null,
+        "transaction_amount": 1,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL B______________",
+          "category_code": "7372"
+        }
+      },
+      "step": "pass 1 cycle.auth_in_window (support)"
+    },
+    {
+      "n": 37,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:56.544Z",
+      "answered_at": "2026-11-20T09:46:56.903Z",
+      "ms": 359,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "c879ddf25b664283aaf169b7c3918acd",
+      "code": null,
+      "step": "pass 1 cycle.refreeze (support)"
+    },
+    {
+      "n": 38,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:56.904Z",
+      "answered_at": "2026-11-20T09:46:57.201Z",
+      "ms": 297,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "7ff8b315221e4049855b400e8b47f463",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 cycle.refreeze (support)"
+    },
+    {
+      "n": 39,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:57.222Z",
+      "answered_at": "2026-11-20T09:46:59.703Z",
+      "ms": 2481,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "0622e1421ddf4851b75fb4bf6649d7d1",
+      "code": null,
+      "sim": {
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_transaction_id": "01a1f85a-1c89-7000-8dbc-80abcd0cd018",
+        "transaction_id": null,
+        "transaction_amount": 1.02,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "DECLINED",
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL C______________",
+          "category_code": "7372"
+        }
+      },
+      "step": "pass 1 cycle.charge_after_refreeze (support)"
+    },
+    {
+      "n": 40,
+      "pid": 8017,
+      "at": "2026-11-20T09:46:59.727Z",
+      "answered_at": "2026-11-20T09:47:00.051Z",
+      "ms": 324,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "e0985347361c4060b815b4d34a5ff0b7",
+      "code": null,
+      "step": "pass 1 cycle.freeze (treasury)"
+    },
+    {
+      "n": 41,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:00.052Z",
+      "answered_at": "2026-11-20T09:47:00.340Z",
+      "ms": 288,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "5b94428c829740beafe10ec6d0251307",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 cycle.freeze (treasury)"
+    },
+    {
+      "n": 42,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:00.347Z",
+      "answered_at": "2026-11-20T09:47:03.887Z",
+      "ms": 3540,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "ddd9b5a67826475cb860781afc5242bc",
+      "code": null,
+      "sim": {
+        "card_id": "8743bc4c-8d29-4c72-9f4b-fbe37e7cb830",
+        "card_transaction_id": "01a1f85a-28be-7000-8fed-7f92e7a3b544",
+        "transaction_id": null,
+        "transaction_amount": 1.01,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "DECLINED",
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL FROZEN_________",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 1 cycle.charge_frozen (treasury)"
+    },
+    {
+      "n": 43,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:03.900Z",
+      "answered_at": "2026-11-20T09:47:04.506Z",
+      "ms": 606,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "7e5ab403f6c04d09bcff38d9887aa56f",
+      "code": null,
+      "step": "pass 1 cycle.thaw (treasury)"
+    },
+    {
+      "n": 44,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:04.507Z",
+      "answered_at": "2026-11-20T09:47:04.809Z",
+      "ms": 302,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "35c35ed9466b4bfab999143a5c8c1bcf",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 cycle.thaw (treasury)"
+    },
+    {
+      "n": 45,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:04.814Z",
+      "answered_at": "2026-11-20T09:47:08.460Z",
+      "ms": 3646,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "59137a7682e04f01bcfaa4ddd064e93b",
+      "code": null,
+      "sim": {
+        "card_id": "8743bc4c-8d29-4c72-9f4b-fbe37e7cb830",
+        "card_transaction_id": "01a1f85a-3a3a-7000-942f-5c3493d94e40",
+        "transaction_id": null,
+        "transaction_amount": 1,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL A______________",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 1 cycle.auth_purchase (treasury)"
+    },
+    {
+      "n": 46,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:08.483Z",
+      "answered_at": "2026-11-20T09:47:12.030Z",
+      "ms": 3547,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "010d59e8ac2948ccb17fbaf5c932a624",
+      "code": null,
+      "sim": {
+        "card_id": "8743bc4c-8d29-4c72-9f4b-fbe37e7cb830",
+        "card_transaction_id": "01a1f85a-4871-7000-ba78-c19ea9050ec2",
+        "transaction_id": null,
+        "transaction_amount": 0.73,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL B______________",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 1 cycle.auth_in_window (treasury)"
+    },
+    {
+      "n": 47,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:12.037Z",
+      "answered_at": "2026-11-20T09:47:12.398Z",
+      "ms": 361,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "45dd9a6760834a02b9645af4f3d285cd",
+      "code": null,
+      "step": "pass 1 cycle.refreeze (treasury)"
+    },
+    {
+      "n": 48,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:12.399Z",
+      "answered_at": "2026-11-20T09:47:12.791Z",
+      "ms": 392,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "e98fb6bc3f2f4b7584c1b874913d293e",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 cycle.refreeze (treasury)"
+    },
+    {
+      "n": 49,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:12.797Z",
+      "answered_at": "2026-11-20T09:47:16.449Z",
+      "ms": 3652,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "3cb47c1a98e34b6c88be952db9fd1985",
+      "code": null,
+      "sim": {
+        "card_id": "8743bc4c-8d29-4c72-9f4b-fbe37e7cb830",
+        "card_transaction_id": "01a1f85a-59a6-7000-88f0-87f815863860",
+        "transaction_id": null,
+        "transaction_amount": 1.02,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "DECLINED",
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL C______________",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 1 cycle.charge_after_refreeze (treasury)"
+    },
+    {
+      "n": 50,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:16.467Z",
+      "answered_at": "2026-11-20T09:47:16.842Z",
+      "ms": 375,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "4d7b5b060c2d46c6bda46373e7b0bda6",
+      "code": null,
+      "step": "pass 1 purchase.window (sourcing)"
+    },
+    {
+      "n": 51,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:16.842Z",
+      "answered_at": "2026-11-20T09:47:17.153Z",
+      "ms": 311,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "e187bdbc087942df9b089168d5545384",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 purchase.window (sourcing)"
+    },
+    {
+      "n": 52,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:17.154Z",
+      "answered_at": "2026-11-20T09:47:19.830Z",
+      "ms": 2676,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "ffdbe804f0ec4f568feacb95b2eefd13",
+      "code": null,
+      "sim": {
+        "card_id": "29c779e4-907b-43e5-b420-2f5cffc1ac58",
+        "card_transaction_id": "01a1f85a-6a90-7000-b185-322ca989e5b0",
+        "transaction_id": null,
+        "transaction_amount": 1.11,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL P______________",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 1 purchase.window (sourcing)"
+    },
+    {
+      "n": 53,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:19.832Z",
+      "answered_at": "2026-11-20T09:47:20.203Z",
+      "ms": 371,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "046be59ce8f64cbea6da6bbcec912ab2",
+      "code": null,
+      "step": "pass 1 purchase.window (sourcing)"
+    },
+    {
+      "n": 54,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:20.203Z",
+      "answered_at": "2026-11-20T09:47:20.510Z",
+      "ms": 307,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "db1b60e9d32347b8b9f2ca8686ff29de",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 purchase.window (sourcing)"
+    },
+    {
+      "n": 55,
+      "pid": 9130,
+      "at": "2026-11-20T09:47:23.829Z",
+      "answered_at": "2026-11-20T09:47:24.666Z",
+      "ms": 837,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "4df4441f07d443e9a4330ac25324cfc1",
+      "code": null,
+      "step": "pass 1 crash.k1.kill (treasury)"
+    },
+    {
+      "n": 56,
+      "pid": 9130,
+      "at": "2026-11-20T09:47:24.677Z",
+      "answered_at": "2026-11-20T09:47:25.385Z",
+      "ms": 708,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "0fb033cd028e4aae87245e95a6e1b8da",
+      "code": null,
+      "step": "pass 1 crash.k1.kill (treasury)"
+    },
+    {
+      "n": 57,
+      "pid": 9130,
+      "at": "2026-11-20T09:47:25.391Z",
+      "answered_at": "2026-11-20T09:47:25.706Z",
+      "ms": 315,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "eb41b330754e40edb1c6b4647220bc8c",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 crash.k1.kill (treasury)"
+    },
+    {
+      "n": 58,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:25.745Z",
+      "answered_at": "2026-11-20T09:47:26.101Z",
+      "ms": 356,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "224f5a7692dc4d55b397439ddcc2bdc4",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 crash.k1.kill (treasury)"
+    },
+    {
+      "n": 59,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:26.119Z",
+      "answered_at": "2026-11-20T09:47:26.530Z",
+      "ms": 411,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "15c2f677bfdb4b31b1d931e43466f727",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 crash.k1.tick (treasury)"
+    },
+    {
+      "n": 60,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:26.534Z",
+      "answered_at": "2026-11-20T09:47:30.214Z",
+      "ms": 3680,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "14408cd271244f95a6911a4786116d8a",
+      "code": null,
+      "sim": {
+        "card_id": "8743bc4c-8d29-4c72-9f4b-fbe37e7cb830",
+        "card_transaction_id": "01a1f85a-8f36-7000-af31-dea1c9dcc353",
+        "transaction_id": null,
+        "transaction_amount": 1.03,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL AFTER CRASH____",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 1 crash.k1.charge (treasury)"
+    },
+    {
+      "n": 61,
+      "pid": 9319,
+      "at": "2026-11-20T09:47:33.314Z",
+      "answered_at": "2026-11-20T09:47:33.988Z",
+      "ms": 674,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "faa1d7d1f46b4d18931329933ddb4b49",
+      "code": null,
+      "step": "pass 1 crash.k2.kill (support)"
+    },
+    {
+      "n": 62,
+      "pid": 9319,
+      "at": "2026-11-20T09:47:33.990Z",
+      "answered_at": "2026-11-20T09:47:34.391Z",
+      "ms": 401,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "e84279c7ccab458e87fd090db707d987",
+      "code": null,
+      "step": "pass 1 crash.k2.kill (support)"
+    },
+    {
+      "n": 63,
+      "pid": 9319,
+      "at": "2026-11-20T09:47:34.392Z",
+      "answered_at": "2026-11-20T09:47:34.708Z",
+      "ms": 316,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "6b76db44b0c241249433ccc89d34f3c8",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 crash.k2.kill (support)"
+    },
+    {
+      "n": 64,
+      "pid": 8017,
+      "at": "2026-11-20T09:47:34.734Z",
+      "answered_at": "2026-11-20T09:47:35.073Z",
+      "ms": 339,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "442dd28569fe47e380e196acc28c4981",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 crash.k2.kill (support)"
+    },
+    {
+      "n": 65,
+      "pid": 8017,
+      "at": "2026-11-20T09:49:40.176Z",
+      "answered_at": "2026-11-20T09:49:40.834Z",
+      "ms": 658,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "d1611cd7815e484c89cc8172cdb5939b",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 crash.k2.tick (support)"
+    },
+    {
+      "n": 66,
+      "pid": 8017,
+      "at": "2026-11-20T09:49:40.838Z",
+      "answered_at": "2026-11-20T09:49:41.451Z",
+      "ms": 613,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "8eb2043cf1534d0fb1aac67f30e5c22d",
+      "code": null,
+      "step": "pass 1 crash.k2.tick (support)"
+    },
+    {
+      "n": 67,
+      "pid": 8017,
+      "at": "2026-11-20T09:49:41.452Z",
+      "answered_at": "2026-11-20T09:49:41.763Z",
+      "ms": 311,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "ba8b153a5b7b4f8295d54be2c81b7924",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 1 crash.k2.tick (support)"
+    },
+    {
+      "n": 68,
+      "pid": 8017,
+      "at": "2026-11-20T09:49:41.777Z",
+      "answered_at": "2026-11-20T09:49:42.075Z",
+      "ms": 298,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "216b5aed70214311aa1e202e99b73fb1",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 1 crash.k2.tick (support)"
+    },
+    {
+      "n": 69,
+      "pid": 8017,
+      "at": "2026-11-20T09:49:42.091Z",
+      "answered_at": "2026-11-20T09:49:45.647Z",
+      "ms": 3556,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "951c141e89c64f048262c514cef7a58b",
+      "code": null,
+      "sim": {
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_transaction_id": "01a1f85c-a097-7000-ba35-59f3f202f24f",
+        "transaction_id": null,
+        "transaction_amount": 1.03,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL AFTER CRASH____",
+          "category_code": "7372"
+        }
+      },
+      "step": "pass 1 crash.k2.charge (support)"
+    },
+    {
+      "n": 70,
+      "pid": 8017,
+      "at": "2026-11-20T09:51:50.754Z",
+      "answered_at": "2026-11-20T09:51:51.435Z",
+      "ms": 681,
+      "method": "GET",
+      "endpoint": "/issuing/transactions",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "7531ae22751a4ee09c26b80980e305be",
+      "code": null,
+      "step": "pass 1 detect.poll"
+    },
+    {
+      "n": 71,
+      "pid": 8017,
+      "at": "2026-11-20T09:51:51.450Z",
+      "answered_at": "2026-11-20T09:51:51.824Z",
+      "ms": 374,
+      "method": "GET",
+      "endpoint": "/issuing/transactions",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "84a072e8ffe34c289722457bd00f3738",
+      "code": null,
+      "step": "pass 1 detect.poll"
+    },
+    {
+      "n": 72,
+      "pid": 8017,
+      "at": "2026-11-20T09:51:51.850Z",
+      "answered_at": "2026-11-20T09:51:52.232Z",
+      "ms": 382,
+      "method": "GET",
+      "endpoint": "/issuing/transactions",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "5c409755b51a485b8e6b2c302479241f",
+      "code": null,
+      "step": "pass 1 detect.poll"
+    },
+    {
+      "n": 73,
+      "pid": 22826,
+      "at": "2026-11-20T10:00:11.624Z",
+      "answered_at": "2026-11-20T10:00:12.525Z",
+      "ms": 901,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "34f804a771504e8385f626d4e4e0888e",
+      "code": null,
+      "step": "pass 2 cycle.freeze (support)"
+    },
+    {
+      "n": 74,
+      "pid": 22826,
+      "at": "2026-11-20T10:00:12.545Z",
+      "answered_at": "2026-11-20T10:00:12.997Z",
+      "ms": 452,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "b85911971c624ed3b2629beab49c6327",
+      "code": null,
+      "step": "pass 2 cycle.freeze (support)"
+    },
+    {
+      "n": 75,
+      "pid": 22826,
+      "at": "2026-11-20T10:00:12.998Z",
+      "answered_at": "2026-11-20T10:00:13.355Z",
+      "ms": 357,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "d644d2cd4d104132993c266fbf63d296",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 2 cycle.freeze (support)"
+    },
+    {
+      "n": 76,
+      "pid": 22826,
+      "at": "2026-11-20T10:00:13.358Z",
+      "answered_at": "2026-11-20T10:00:22.935Z",
+      "ms": 9577,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 400,
+      "awx_request_id": null,
+      "trace_id": "8f2f4c4a8d1b439bbc7194404d12c5d9",
+      "code": "bad_request",
+      "message": "failed to process transaction",
+      "step": "pass 2 cycle.charge_frozen (support)"
+    },
+    {
+      "n": 77,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:19.173Z",
+      "answered_at": "2026-11-20T10:02:19.985Z",
+      "ms": 812,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "deae5d8438ee466c8132e45965db1eda",
+      "code": null,
+      "step": "pass 3 cycle.freeze (support)"
+    },
+    {
+      "n": 78,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:20.000Z",
+      "answered_at": "2026-11-20T10:02:20.415Z",
+      "ms": 415,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "d98545dad51d41cdacdc07ede40c34be",
+      "code": null,
+      "step": "pass 3 cycle.freeze (support)"
+    },
+    {
+      "n": 79,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:20.416Z",
+      "answered_at": "2026-11-20T10:02:20.777Z",
+      "ms": 361,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "430fd494d7ba4903ac4c3e4266914b18",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 cycle.freeze (support)"
+    },
+    {
+      "n": 80,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:20.780Z",
+      "answered_at": "2026-11-20T10:02:24.580Z",
+      "ms": 3800,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "186bfcadaad64093aedd7401fe5767dc",
+      "code": null,
+      "sim": {
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_transaction_id": "01a1f868-34f8-7000-831d-c282a8f6dd6e",
+        "transaction_id": null,
+        "transaction_amount": 1.01,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "DECLINED",
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": null,
+        "transacted_at": "2026-11-20T10:02:21.304+0000",
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL FROZEN_________",
+          "category_code": "7372"
+        }
+      },
+      "step": "pass 3 cycle.charge_frozen (support)"
+    },
+    {
+      "n": 81,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:24.612Z",
+      "answered_at": "2026-11-20T10:02:24.972Z",
+      "ms": 360,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "20a933d4dda94fd6b87df3d50566784a",
+      "code": null,
+      "step": "pass 3 cycle.thaw (support)"
+    },
+    {
+      "n": 82,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:24.973Z",
+      "answered_at": "2026-11-20T10:02:25.297Z",
+      "ms": 324,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "7474c6502e75425981081edca12bb42d",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 3 cycle.thaw (support)"
+    },
+    {
+      "n": 83,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:25.301Z",
+      "answered_at": "2026-11-20T10:02:28.175Z",
+      "ms": 2874,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "6e3607f77fe24582a742df0349e5e6b9",
+      "code": null,
+      "sim": {
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_transaction_id": "01a1f868-4667-7000-ae75-4d176ef0b3e5",
+        "transaction_id": null,
+        "transaction_amount": 1,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transacted_at": "2026-11-20T10:02:25.767+0000",
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL A______________",
+          "category_code": "7372"
+        }
+      },
+      "step": "pass 3 cycle.auth_purchase (support)"
+    },
+    {
+      "n": 84,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:28.212Z",
+      "answered_at": "2026-11-20T10:02:31.818Z",
+      "ms": 3606,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "29ffe781e1434c408607d6c20ed2cac8",
+      "code": null,
+      "sim": {
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_transaction_id": "01a1f868-5157-7000-b95a-f76f79d400fa",
+        "transaction_id": null,
+        "transaction_amount": 1,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "APPROVED",
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": null,
+        "transacted_at": "2026-11-20T10:02:28.567+0000",
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL B______________",
+          "category_code": "7372"
+        }
+      },
+      "step": "pass 3 cycle.auth_in_window (support)"
+    },
+    {
+      "n": 85,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:31.827Z",
+      "answered_at": "2026-11-20T10:02:32.190Z",
+      "ms": 363,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "2148302d62d34dcc960a7d41c7725f96",
+      "code": null,
+      "step": "pass 3 cycle.refreeze (support)"
+    },
+    {
+      "n": 86,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:32.193Z",
+      "answered_at": "2026-11-20T10:02:32.521Z",
+      "ms": 328,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "75cd370250da44e68bdfcb8926f2bdbb",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 cycle.refreeze (support)"
+    },
+    {
+      "n": 87,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:32.535Z",
+      "answered_at": "2026-11-20T10:02:35.056Z",
+      "ms": 2521,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "20e4536fb88441a0b2d081882f174462",
+      "code": null,
+      "sim": {
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_transaction_id": "01a1f868-623a-7000-990d-854ea56816f5",
+        "transaction_id": null,
+        "transaction_amount": 1.02,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "DECLINED",
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": null,
+        "transacted_at": "2026-11-20T10:02:32.890+0000",
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL C______________",
+          "category_code": "7372"
+        }
+      },
+      "step": "pass 3 cycle.charge_after_refreeze (support)"
+    },
+    {
+      "n": 88,
+      "pid": 25720,
+      "at": "2026-11-20T10:02:39.674Z",
+      "answered_at": "2026-11-20T10:02:40.314Z",
+      "ms": 640,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "3f91cc14756240eaa8add94f94cc903d",
+      "code": null,
+      "step": "pass 3 crash.k1.kill (treasury)"
+    },
+    {
+      "n": 89,
+      "pid": 25720,
+      "at": "2026-11-20T10:02:40.321Z",
+      "answered_at": "2026-11-20T10:02:40.763Z",
+      "ms": 442,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "7a5f8cb8c8f54a3a84899ede94d0a7bf",
+      "code": null,
+      "step": "pass 3 crash.k1.kill (treasury)"
+    },
+    {
+      "n": 90,
+      "pid": 25720,
+      "at": "2026-11-20T10:02:40.764Z",
+      "answered_at": "2026-11-20T10:02:41.081Z",
+      "ms": 317,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "fde7f7ea3eb04ed48201890072bb7e14",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 3 crash.k1.kill (treasury)"
+    },
+    {
+      "n": 91,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:41.128Z",
+      "answered_at": "2026-11-20T10:02:41.534Z",
+      "ms": 406,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "db837f932661479f8f463d74e446d318",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 3 crash.k1.kill (treasury)"
+    },
+    {
+      "n": 92,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:41.552Z",
+      "answered_at": "2026-11-20T10:02:42.163Z",
+      "ms": 611,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "70cd10ea0f2c44fb86c626a14c1658b3",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 3 crash.k1.tick (treasury)"
+    },
+    {
+      "n": 93,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:42.175Z",
+      "answered_at": "2026-11-20T10:02:42.560Z",
+      "ms": 385,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "69f114c5322f4279a4ad6edc0360b3a2",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 crash.k1.recover (treasury)"
+    },
+    {
+      "n": 94,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:42.572Z",
+      "answered_at": "2026-11-20T10:02:42.893Z",
+      "ms": 321,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "f57925126baf4fafac7a3226d1b4b6b5",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 crash.k1.recover (treasury)"
+    },
+    {
+      "n": 95,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:42.899Z",
+      "answered_at": "2026-11-20T10:02:43.195Z",
+      "ms": 296,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "9d21a4e0b4734aff95df1e9cf338b313",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 3 crash.k1.recover (treasury)"
+    },
+    {
+      "n": 96,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:43.197Z",
+      "answered_at": "2026-11-20T10:02:43.637Z",
+      "ms": 440,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "46871e706dbb4dd69084eab5031d56da",
+      "code": null,
+      "step": "pass 3 crash.k1.recover (treasury)"
+    },
+    {
+      "n": 97,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:43.638Z",
+      "answered_at": "2026-11-20T10:02:43.937Z",
+      "ms": 299,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "7ba4c0ccc9f94f6e8827ba36d2e3b8eb",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 crash.k1.recover (treasury)"
+    },
+    {
+      "n": 98,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:43.940Z",
+      "answered_at": "2026-11-20T10:02:44.263Z",
+      "ms": 323,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "406175457b3b4cacb7c7b45216650e7c",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 crash.k1.recover (treasury)"
+    },
+    {
+      "n": 99,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:44.268Z",
+      "answered_at": "2026-11-20T10:02:47.951Z",
+      "ms": 3683,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "96bf3fda502b4b26939a969dcf563557",
+      "code": null,
+      "sim": {
+        "card_id": "8743bc4c-8d29-4c72-9f4b-fbe37e7cb830",
+        "card_transaction_id": "01a1f868-9060-7000-b837-e59366fc4bfe",
+        "transaction_id": null,
+        "transaction_amount": 1.03,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "DECLINED",
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": null,
+        "transacted_at": "2026-11-20T10:02:44.704+0000",
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL AFTER CRASH____",
+          "category_code": "5734"
+        }
+      },
+      "step": "pass 3 crash.k1.charge (treasury)"
+    },
+    {
+      "n": 100,
+      "pid": 25967,
+      "at": "2026-11-20T10:02:52.023Z",
+      "answered_at": "2026-11-20T10:02:52.792Z",
+      "ms": 769,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "ef589f46e36648209203be96567b70d1",
+      "code": null,
+      "step": "pass 3 crash.k2.kill (support)"
+    },
+    {
+      "n": 101,
+      "pid": 25967,
+      "at": "2026-11-20T10:02:52.834Z",
+      "answered_at": "2026-11-20T10:02:53.231Z",
+      "ms": 397,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "20f904e940fe42748fc926dc22db36fd",
+      "code": null,
+      "step": "pass 3 crash.k2.kill (support)"
+    },
+    {
+      "n": 102,
+      "pid": 25967,
+      "at": "2026-11-20T10:02:53.234Z",
+      "answered_at": "2026-11-20T10:02:53.787Z",
+      "ms": 553,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "d860c1f82e164eb9b568447a9923772b",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 3 crash.k2.kill (support)"
+    },
+    {
+      "n": 103,
+      "pid": 25237,
+      "at": "2026-11-20T10:02:53.852Z",
+      "answered_at": "2026-11-20T10:02:54.323Z",
+      "ms": 471,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "9eb80a297cf243088840c8d3d89fc254",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 3 crash.k2.kill (support)"
+    },
+    {
+      "n": 104,
+      "pid": 25237,
+      "at": "2026-11-20T10:04:59.513Z",
+      "answered_at": "2026-11-20T10:04:59.942Z",
+      "ms": 429,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "9ec5300ea1ba4bc7a9c6c1a492b35fde",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "pass 3 crash.k2.tick (support)"
+    },
+    {
+      "n": 105,
+      "pid": 25237,
+      "at": "2026-11-20T10:04:59.945Z",
+      "answered_at": "2026-11-20T10:05:00.425Z",
+      "ms": 480,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "c510b0a07b6b4b4192e88b7aa198a95a",
+      "code": null,
+      "step": "pass 3 crash.k2.tick (support)"
+    },
+    {
+      "n": 106,
+      "pid": 25237,
+      "at": "2026-11-20T10:05:00.431Z",
+      "answered_at": "2026-11-20T10:05:00.743Z",
+      "ms": 312,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "8bd38f36555a42d992d84f9463494998",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 crash.k2.tick (support)"
+    },
+    {
+      "n": 107,
+      "pid": 25237,
+      "at": "2026-11-20T10:05:00.770Z",
+      "answered_at": "2026-11-20T10:05:01.080Z",
+      "ms": 310,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "83261e3f35794e399605e940f804fbd7",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 crash.k2.tick (support)"
+    },
+    {
+      "n": 108,
+      "pid": 25237,
+      "at": "2026-11-20T10:05:01.103Z",
+      "answered_at": "2026-11-20T10:05:01.424Z",
+      "ms": 321,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "174dd31ccbe241ecb120c9a2fa821c26",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 crash.k2.recover (support)"
+    },
+    {
+      "n": 109,
+      "pid": 25237,
+      "at": "2026-11-20T10:05:01.440Z",
+      "answered_at": "2026-11-20T10:05:01.820Z",
+      "ms": 380,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "390e813837d14461b7c0439f71619feb",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 crash.k2.recover (support)"
+    },
+    {
+      "n": 110,
+      "pid": 25237,
+      "at": "2026-11-20T10:05:01.829Z",
+      "answered_at": "2026-11-20T10:05:02.147Z",
+      "ms": 318,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "d9b9e0e42ac440a09abed4f5338f6668",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 crash.k2.recover (support)"
+    },
+    {
+      "n": 111,
+      "pid": 25237,
+      "at": "2026-11-20T10:05:02.174Z",
+      "answered_at": "2026-11-20T10:05:02.495Z",
+      "ms": 321,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "c7ff2fa1dec1445cb3cc2e01292cbae7",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "pass 3 crash.k2.recover (support)"
+    },
+    {
+      "n": 112,
+      "pid": 25237,
+      "at": "2026-11-20T10:05:02.503Z",
+      "answered_at": "2026-11-20T10:05:06.308Z",
+      "ms": 3805,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "6db7f21c60d043f0a8b4a6134f2b5f8e",
+      "code": null,
+      "sim": {
+        "card_id": "71fa14e1-42be-4da3-9329-cdc15f2b5f65",
+        "card_transaction_id": "01a1f86a-ac3b-7000-a0b1-56b04f7ae751",
+        "transaction_id": null,
+        "transaction_amount": 1.03,
+        "transaction_currency": "EUR",
+        "status": null,
+        "process_result": "DECLINED",
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": null,
+        "transacted_at": "2026-11-20T10:05:02.907+0000",
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "CARDDRILL AFTER CRASH____",
+          "category_code": "7372"
+        }
+      },
+      "step": "pass 3 crash.k2.charge (support)"
+    },
+    {
+      "n": 113,
+      "pid": 25237,
+      "at": "2026-11-20T10:07:11.411Z",
+      "answered_at": "2026-11-20T10:07:11.993Z",
+      "ms": 582,
+      "method": "GET",
+      "endpoint": "/issuing/transactions",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "4894646666454e5f86bfcbd41386d107",
+      "code": null,
+      "step": "pass 3 detect.poll"
+    },
+    {
+      "n": 114,
+      "pid": 25237,
+      "at": "2026-11-20T10:07:12.017Z",
+      "answered_at": "2026-11-20T10:07:12.551Z",
+      "ms": 534,
+      "method": "GET",
+      "endpoint": "/issuing/transactions",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "5bf6378981624a92a89769d16cd7d6f5",
+      "code": null,
+      "step": "pass 3 detect.poll"
+    },
+    {
+      "n": 115,
+      "pid": 25237,
+      "at": "2026-11-20T10:07:12.840Z",
+      "answered_at": "2026-11-20T10:07:13.232Z",
+      "ms": 392,
+      "method": "GET",
+      "endpoint": "/issuing/transactions",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "dee775a3bd6d4210b2b44af7e077e5ce",
+      "code": null,
+      "step": "pass 3 detect.poll"
+    }
+  ],
+  "calls_by_endpoint": [
+    {
+      "endpoint": "POST /authentication/login",
+      "calls": 7
+    },
+    {
+      "endpoint": "GET /issuing/cardholders",
+      "calls": 3
+    },
+    {
+      "endpoint": "GET /issuing/cards",
+      "calls": 6
+    },
+    {
+      "endpoint": "POST /issuing/cards/create",
+      "calls": 3
+    },
+    {
+      "endpoint": "POST /issuing/cards/{id}/update",
+      "calls": 25
+    },
+    {
+      "endpoint": "GET /issuing/cards/{id}",
+      "calls": 43
+    },
+    {
+      "endpoint": "POST /simulation/issuing/create",
+      "calls": 22
+    },
+    {
+      "endpoint": "GET /issuing/transactions",
+      "calls": 6
+    }
+  ],
+  "not_shown": [
+    "Real merchants and card networks: the sandbox's simulated authorisation is decided by Airwallex, but its timing is not a card network's.",
+    "A webhook delivered by Airwallex: this run has no public receiver; the replay checks Purser's handling of the same payloads.",
+    "One run per card: latencies are single measurements, not a distribution.",
+    "The restart is the runner's card code called by the drill (src/policy/cards.ts), not a restarted `npm run relay` process."
+  ]
+}

@@ -163,8 +163,9 @@ export async function runCardDrill(d: CardDrillDeps): Promise<CardDrillResults> 
       reads++;
     }
     const mine = linesSince(k);
-    const post = mine.find((l) => l.method === "POST");
-    const first = mine.find((l) => l.card_status === to);
+    // The status update itself (not a login the same step may have needed first).
+    const post = mine.find((l) => l.method === "POST" && l.endpoint === "/issuing/cards/{id}/update");
+    const first = mine.find((l) => l.card_status === to && (!post || l.n > post.n));
     const latency = d.mode === "live" ? (post && first ? Date.parse(first.answered_at) - Date.parse(post.at) : null) : Date.now() - t0;
     return { seen, extra_reads: reads, update_to_readback_ms: latency, update_ms: post?.ms ?? null };
   };

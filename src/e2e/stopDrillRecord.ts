@@ -26,19 +26,25 @@ export const STOP_DRILL_PASS_NOTES: Record<number, string> = {
 
 type Step = DrillRecord["passes"][number]["steps"][number];
 
+const verdict = (s: Step) => (s.pass === true ? "as expected" : s.pass === false ? "NOT as expected" : "not judged");
+
+/** The record's "in short", computed from its steps, pass by pass. */
 export function stopDrillSummary(r: DrillRecord): string[] {
-  const all: Step[] = r.passes.flatMap((p) => p.steps);
-  const t = Object.assign({}, ...r.passes.map((p) => p.timings ?? {})) as Record<string, number | null>;
+  const many = r.passes.length > 1;
   const out: string[] = [];
-  const pull = all.find((s) => s.id === "stop.pull");
-  if (pull) out.push(`Emergency stop: ${pull.outcome}.`);
-  const blocked = all.filter((s) => s.phase === ("blocked" as Step["phase"]));
-  if (blocked.length) out.push(`After the stop: ${blocked.filter((s) => s.pass).length} of ${blocked.length} checks blocked${blocked.some((s) => !s.pass) ? `; not blocked: ${blocked.filter((s) => !s.pass).map((s) => `${s.id} ${s.agent ?? ""}`.trim()).join(", ")}` : ""}.`);
-  const lift = all.filter((s) => s.id.startsWith("lift."));
-  if (lift.length) out.push(`Lifting it: ${lift.map((s) => `${s.id.slice(5)} ${s.pass ? "as expected" : "NOT as expected"}`).join(", ")}.`);
-  const burst = all.find((s) => s.id === "velocity.burst");
-  if (burst) out.push(`Velocity stop: ${burst.outcome}; stopped ${t.velocity_stop_after_authorisation_ms ?? "–"} ms after Airwallex answered the authorisation that broke the limit.`);
-  const vel = all.filter((s) => s.id.startsWith("velocity.") && s.id !== "velocity.burst");
-  if (vel.length) out.push(`After the velocity stop: ${vel.map((s) => `${s.id.slice(9)} ${s.pass ? "as expected" : "NOT as expected"}`).join(", ")}.`);
+  for (const p of r.passes) {
+    const tag = many ? `Pass ${p.pass_no}: ` : "";
+    const t = p.timings ?? {};
+    const pull = p.steps.find((s) => s.id === "stop.pull");
+    if (pull) out.push(`${tag}emergency stop pulled: ${pull.outcome}.`);
+    const blocked = p.steps.filter((s) => s.id.startsWith("blocked."));
+    if (blocked.length) out.push(`${tag}after the stop, ${blocked.filter((s) => s.pass).length} of ${blocked.length} checks blocked${blocked.some((s) => !s.pass) ? `; not blocked: ${blocked.filter((s) => !s.pass).map((s) => `${s.id} ${s.agent ?? ""}`.trim()).join(", ")}` : ""}.`);
+    const lift = p.steps.filter((s) => s.id.startsWith("lift."));
+    if (lift.length) out.push(`${tag}lifting it: ${lift.map((s) => `${s.id.slice(5)} ${verdict(s)}`).join(", ")}${lift.some((s) => s.pass === false) ? ` (${lift.filter((s) => s.pass === false).map((s) => `${s.id}: ${s.outcome}`).join("; ")})` : ""}.`);
+    const burst = p.steps.find((s) => s.id === "velocity.burst");
+    if (burst) out.push(`${tag}velocity stop: ${burst.outcome}; the agent was stopped ${t.velocity_stop_after_authorisation_ms ?? "–"} ms after Airwallex answered the authorisation that broke the limit.`);
+    const vel = p.steps.filter((s) => s.id.startsWith("velocity.") && s.id !== "velocity.burst");
+    if (vel.length) out.push(`${tag}after the velocity stop: ${vel.map((s) => `${s.id.slice(9)} ${verdict(s)}`).join(", ")}.`);
+  }
   return out;
 }

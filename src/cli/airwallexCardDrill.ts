@@ -117,7 +117,8 @@ if (cmd === "stand-in") {
   if (!drillLedger(process.env) || !process.env.AIRWALLEX_CALL_LOG) { console.error("REFUSED  KIT11_DB=…/card-drill*.sqlite and AIRWALLEX_CALL_LOG (this run's own files); nothing was read"); process.exit(2); }
   const { readCallLog } = await import("../airwallex/callBudget.js");
   const { drillRecord, renderDrillMarkdown } = await import("../e2e/drillRecord.js");
-  const { cardDrillSummary, CARD_DRILL_SIMULATED, CARD_DRILL_NOT_SHOWN, CARD_DRILL_PASS_NOTES } = await import("../e2e/cardDrillRecord.js");
+  const lines = readDrillLog(httpLog());
+  const { cardDrillSummary, statusLatencies, voidSteps, CARD_DRILL_SIMULATED, CARD_DRILL_NOT_SHOWN, CARD_DRILL_PASS_NOTES } = await import("../e2e/cardDrillRecord.js");
   const files = existsSync(runDir()) ? readdirSync(runDir()).filter((f) => /^results-pass\d\.json$/.test(f)).sort() : [];
   if (!files.length) { console.error(`no results in ${runDir()}: run live first`); process.exit(2); }
   const results = files.map((f) => JSON.parse(readFileSync(join(runDir(), f), "utf8")) as import("../e2e/cardDrill.js").CardDrillResults);
@@ -127,8 +128,8 @@ if (cmd === "stand-in") {
   const rec = drillRecord({
     run: "card-drill", date, command: "npm run airwallex:card-drill -- live", commit, simulated: CARD_DRILL_SIMULATED, max: drill.CARD_DRILL_MAX_BUDGET,
     approved: Number(process.env.AIRWALLEX_CALL_BUDGET ?? 0) || null, cards: results[0]!.cards,
-    passes: results.map((r) => ({ pass_no: r.pass_no, started_at: r.started_at, ended_at: r.ended_at, stopped: r.stopped, note: CARD_DRILL_PASS_NOTES[r.pass_no] ?? null, phases: r.phases, code: r.code, steps: r.steps })),
-    lines: readDrillLog(httpLog()), callLog: readCallLog(process.env.AIRWALLEX_CALL_LOG), notShown: CARD_DRILL_NOT_SHOWN,
+    passes: results.map((r) => ({ pass_no: r.pass_no, started_at: r.started_at, ended_at: r.ended_at, stopped: r.stopped, note: CARD_DRILL_PASS_NOTES[r.pass_no] ?? null, phases: r.phases, code: r.code, steps: statusLatencies(voidSteps(r.pass_no, r.steps), lines) })),
+    lines, callLog: readCallLog(process.env.AIRWALLEX_CALL_LOG), notShown: CARD_DRILL_NOT_SHOWN,
   });
   const base = resolve(repo, "docs/runs", `${date}-card-drill`);
   writeFileSync(`${base}.json`, `${JSON.stringify(rec, null, 2)}\n`);

@@ -11,8 +11,8 @@ import { drillFetch, drillHaltReason, readDrillLog, DrillHalted } from "../src/e
 import { CARD_DRILL_SUFFIX, crashChild, runCardDrill } from "../src/e2e/cardDrill.js";
 import { runStopDrill } from "../src/e2e/stopDrill.js";
 import { soakStandIn } from "../src/e2e/airwallexSoakStandIn.js";
-import { drillRecord, renderDrillMarkdown } from "../src/e2e/drillRecord.js";
-import { cardDrillSummary } from "../src/e2e/cardDrillRecord.js";
+import { drillRecord, renderDrillMarkdown, simRefusalsNotJudged } from "../src/e2e/drillRecord.js";
+import { cardDrillSummary, statusLatencies } from "../src/e2e/cardDrillRecord.js";
 
 const SANDBOX = "https://api.sandbox.airwallex.com/api/v1";
 const answer = (status: number, body: unknown, headers: Record<string, string> = {}) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
@@ -127,5 +127,14 @@ describe("the drill record", () => {
     expect(md).toMatch(/1 of 3 steps passed, 1 failed, 1 not judged/);
     expect(md).toMatch(/freeze sourcing 612 ms/);
     expect(md).not.toMatch(/undefined|NaN/);
+  });
+
+  it("times a status step from the update, not from a login the step needed first; a simulation refusal is not judged", () => {
+    const l = (n: number, endpoint: string, at: number, ms: number, card_status?: string) => ({ n, pid: 1, at: new Date(at).toISOString(), answered_at: new Date(at + ms).toISOString(), ms, method: endpoint === "/issuing/cards/{id}" ? "GET" : "POST", endpoint, status: 200, awx_request_id: null, trace_id: null, code: null, ...(card_status ? { card_status } : {}) });
+    const lines = [l(1, "/authentication/login", 0, 800), l(2, "/issuing/cards/{id}/update", 1000, 400), l(3, "/issuing/cards/{id}", 1400, 350, "INACTIVE")];
+    const s = { phase: "cycle" as const, id: "cycle.freeze", agent: "support", title: "t", expect: "e", outcome: "read back INACTIVE; update to read-back 1750 ms", pass: true, simulated: null, started_at: "", ended_at: "", ms: 0, lines: [1, 2, 3], facts: { update_to_readback_ms: 1750 }, error: null };
+    expect(statusLatencies([s], lines)[0]).toMatchObject({ facts: { update_to_readback_ms: 750 }, outcome: "read back INACTIVE; update to read-back 750 ms" });
+    const refused = { ...s, id: "cycle.charge_frozen", pass: false, error: "Airwallex /simulation/issuing/create -> 400 bad_request (trace x)" };
+    expect(simRefusalsNotJudged([refused])[0]!.pass).toBeNull();
   });
 });

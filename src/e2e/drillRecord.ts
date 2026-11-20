@@ -20,12 +20,23 @@ export interface DrillRecord {
   not_shown: string[];
 }
 
+/**
+ * A step that ended on the sandbox's simulation refusing to simulate (HTTP 400 "failed to process transaction") saw no
+ * approval and no decline: it is shown as not judged, also in a pass that ran before the drills said so themselves.
+ */
+export function simRefusalsNotJudged<T extends Step>(steps: T[]): T[] {
+  return steps.map((s) => s.pass === false && /\/simulation\/issuing\/create -> 400 bad_request/.test(s.error ?? "")
+    ? { ...s, pass: null, outcome: `the sandbox refused to simulate the charge (HTTP 400 bad_request): neither approved nor declined, nothing to judge. ${s.outcome}` }
+    : s);
+}
+
 export function drillRecord(o: {
   run: DrillRecord["run"]; date: string; command: string; commit: string | null; simulated: string[]; max: number; approved: number | null;
   cards: DrillRecord["cards"]; passes: DrillPass[]; lines: DrillLine[]; callLog: CallLine[]; notShown: string[];
 }): DrillRecord {
   const owner = new Map<number, string>();
   for (const p of o.passes) for (const s of p.steps) for (const n of s.lines) owner.set(n, `${o.passes.length > 1 ? `pass ${p.pass_no} ` : ""}${s.id}${s.agent ? ` (${s.agent})` : ""}`);
+  o = { ...o, passes: o.passes.map((p) => ({ ...p, steps: simRefusalsNotJudged(p.steps) })) };
   const steps = o.passes.flatMap((p) => p.steps);
   return {
     run: o.run, date: o.date, label: "Airwallex sandbox · test money", sandbox: SANDBOX_BASE, test_money: true, command: o.command, commit: o.commit, simulated: o.simulated,
@@ -47,7 +58,7 @@ const hhmmss = (iso: string) => (iso ? iso.slice(11, 23) : "–");
 export function renderDrillMarkdown(r: DrillRecord, o: { title: string; intro: string; file: string; summary: string[] }): string {
   const out: string[] = [];
   out.push(`# ${o.title}: ${r.date}`, "");
-  out.push(`\`${r.command}\`. ${o.intro} The **Airwallex sandbox** only (${r.sandbox}), test money only.${r.commit ? ` Code: \`${r.commit.slice(0, 12)}\`.` : ""} The machine-readable record, with every request's HTTP status and Airwallex's own request and trace ids, is ${o.file}.`, "");
+  out.push(`\`${r.command}\`. ${o.intro} The **Airwallex sandbox** only (${r.sandbox}), test money only.${r.commit ? ` Code when this record was written: \`${r.commit.slice(0, 12)}\`${r.passes.length > 1 ? " (each pass says what it ran on)" : ""}.` : ""} The machine-readable record, with every request's HTTP status and Airwallex's own request and trace ids, is ${o.file}.`, "");
   out.push(`**${r.totals.pass} of ${r.totals.steps} steps passed, ${r.totals.fail} failed, ${r.totals.not_judged} not judged** (measurements, or not supported by the sandbox). ${r.budget.used} Airwallex calls of a budget of ${r.budget.approved ?? "–"} (the drill's hard limit: ${r.budget.max}; logins included), one at a time, at least 200 ms apart; ${r.budget.status_429} answered 429; ${r.budget.unexpected_non_2xx.length} unexpected non-2xx.`, "");
   if (o.summary.length) { out.push("## In short", ""); for (const s of o.summary) out.push(`- ${s}`); out.push(""); }
   out.push("## Simulated, and how", "");
