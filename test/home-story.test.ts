@@ -11,7 +11,7 @@ import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, DESIGN_PARTNER_URL, HERO
 import { BOOKED, FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
 import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
 import { HOME_REFUSALS_LABEL, homeScaleStats, scaleStats } from "../src/redesign/scale.js";
-import { CLOUD_EYEBROW, FILM_BUTTON, HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PATH_FILM, PILOT_BUTTON, PROOF_BUTTON, REASSURE, START, START_ID, STAT_RECORDS, VERIFY_BUTTON, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
+import { CLOUD_EYEBROW, ROSTER_NOTE, FILM_BUTTON, HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PATH_FILM, PILOT_BUTTON, PROOF_BUTTON, REASSURE, START, START_ID, STAT_RECORDS, VERIFY_BUTTON, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
 import { agentRun } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -54,12 +54,12 @@ describe("Home, the enterprise pass", () => {
         // 15 Nov (clarity): the idea, then its proof line, then Try (primary) and the film (secondary).
         `<p class="eyebrow cloud">`, '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<p class="proofl"', `<a class="btn primary big start" href="${TRY_URL}">`, `<a class="btn big ghost film" href="${FILM_URL}"`, `<a class="btn big ghost pilot" href="#${START_ID}">`, '<p class="reassure">',
         // The refined pass (the owner, 20 Nov): the partners' row is one slim line under the whole hero, after the explainer.
-        '<figure class="mx"', '<div class="trust">', '<ol class="starts">', '<p class="ask">', '<ol class="path">', '<figure class="hf"', '<p class="hf-note">', '<ul class="tracks"', '<ul class="feat">', '<ol class="flow', '<ul class="stats">', '<a class="btn big primary" href="proof">',
+        '<figure class="mx"', '<div class="trust">', '<ol class="starts">', '<p class="ask">', '<ol class="path">', '<figure class="hf"', '<p class="hf-note">', '<ul class="tracks"', '<div class="roster">', '<ul class="feat">', '<ol class="flow', '<ul class="trustl">', '<div class="integ">', '<ul class="stats">', '<a class="btn big primary" href="proof">',
       ].map((s) => ({ s, i: main.indexOf(s) }));
       expect(at.filter((x) => x.i < 0)).toEqual([]);
       expect(at.map((x) => x.i)).toEqual([...at.map((x) => x.i)].sort((a, b) => a - b));
       expect(text(/<h1[\s\S]*?<\/h1>/.exec(main)![0])).toBe(HERO);
-      expect(main.match(/<section\b[^>]*>/g)).toEqual(['<section class="e-hero">', `<section class="e-start" id="${START_ID}" aria-labelledby="h-start">`, '<section class="e-path" aria-labelledby="h-path">', '<section class="e-feat" aria-labelledby="h-feat">', '<section class="e-flow" aria-labelledby="about">', '<section class="e-stats" aria-labelledby="h-locks">']);
+      expect(main.match(/<section\b[^>]*>/g)).toEqual(['<section class="e-hero">', `<section class="e-start" id="${START_ID}" aria-labelledby="h-start">`, '<section class="e-path" aria-labelledby="h-path">', '<section class="e-feat" aria-labelledby="h-feat">', '<section class="e-flow" aria-labelledby="about">', '<section class="e-trust" aria-labelledby="h-trust">', '<section class="e-stats" aria-labelledby="h-locks">']);
       expect(text(/<p class="eyebrow cloud">[\s\S]*?<\/p>/.exec(main)![0])).toBe(CLOUD_EYEBROW);
     }
   });
@@ -226,7 +226,11 @@ describe("Home, the enterprise pass", () => {
       const t = text(outsideFold(mainOf(html)));
       const amounts = [...t.matchAll(/(\S+)\s+(\d[\d,]*\.\d{2})\b/g)];
       expect(amounts.length).toBeGreaterThanOrEqual(3);
-      for (const m of amounts) expect({ amount: m[2], unit: m[1] }).toEqual({ amount: m[2], unit: "EUR" });
+      // 20 Nov (agentic banking): the agents' mandate caps on Alta are test USD, said once under them (ROSTER_NOTE); every
+      // other amount is EUR.
+      const roster = text(/<div class="roster">[\s\S]*?<\/div>\s*<ul class="feat">/.exec(mainOf(html))![0]);
+      expect(roster).toContain(ROSTER_NOTE);
+      for (const m of amounts) expect({ amount: m[2], unit: m[1] }).toEqual({ amount: m[2], unit: m[1] === "USD" && roster.includes(`USD ${m[2]}`) ? "USD" : "EUR" });
       expect(html).not.toMatch(/Kit 11|x402 Business Agents|Competing for|Metal Award|Visa Award/);
     }
   });
@@ -276,8 +280,12 @@ describe("Home, the enterprise pass", () => {
   // explainer of the money flow (its steps, the changed cent and its caption), how to start in three cards (the pilot
   // among them), and the 60-second proof (four steps and the three sponsor tracks, each with its record); the Visa line
   // and the hero's Verify button went into the tracks and the proof's steps; then the link to Ask Purser (665 as built).
-  it("A11: stays within 665 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(665);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(665);
+  // 880 since 20 Nov (the owner: "what really completes this Home for agentic banking, fintech and enterprise"): the
+  // features became "Built for agentic banking", the three agents each with its own card, limits and Alta cap from their
+  // records, and six controls each with the link to its proof (the four features they replace were 45 words); then "For
+  // your security review", five links that exist and every connection with the hub's label (876 as built).
+  it("A11: stays within 880 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(880);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(880);
   });
 });
