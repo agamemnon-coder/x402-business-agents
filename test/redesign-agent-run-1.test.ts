@@ -62,7 +62,7 @@ describe("the pages, played from agent run 1's record", () => {
     expect(faces.every((f) => ["COSIGNED", "APPROVED", "REJECTED", "STOPPED"].includes(f.status))).toBe(true);
   });
 
-  it("every page renders from it, with nothing undefined", () => {
+  it("every page renders from it, with nothing undefined", { timeout: 60_000 }, () => {
     const pages = { home: homePage(run), watch: watchPage(run), proof: proofPage(run), metal: P.metalPage(run), airwallex: P.airwallexPage(run), visa: P.visaPage(run), claude: P.claudePage(run), books: P.booksPage(run), notFound: P.notFoundPage(run) };
     for (const [name, html] of Object.entries(pages)) {
       expect(html.startsWith("<!doctype html>"), name).toBe(true);

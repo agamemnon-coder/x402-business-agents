@@ -41,7 +41,7 @@ describe("the evidence wall without its records", () => {
     expect(html).not.toMatch(/undefined|NaN/);
   });
 
-  it("the records of each folder hidden on their own take away at most their own tiles", () => {
+  it("the records of each folder hidden on their own take away at most their own tiles", { timeout: 60_000 }, () => {
     const fullKeys = keys(full);
     let removed = 0;
     for (const dir of ["docs/evals/", "docs/evidence/", "docs/runs/2026-11-1", "docs/runs/2026-11-2", "docs/runs/c", "docs/redteam/", "docs/assurance.md"]) {

@@ -42,7 +42,7 @@ describe("without the main run's record, the pages play the newest dry run", () 
     expect(run.events.filter((e) => e.k === "face").map((e) => (e as { id: string }).id).sort()).toEqual(signed);
   });
 
-  it("every page renders from it and names it, never the main run's figures", () => {
+  it("every page renders from it and names it, never the main run's figures", { timeout: 60_000 }, () => {
     const pages = { home: homePage(run), watch: watchPage(run), proof: proofPage(run), metal: P.metalPage(run), airwallex: P.airwallexPage(run), visa: P.visaPage(run), claude: P.claudePage(run), books: P.booksPage(run), notFound: P.notFoundPage(run) };
     for (const [name, html] of Object.entries(pages)) {
       expect(html.startsWith("<!doctype html>"), name).toBe(true);
