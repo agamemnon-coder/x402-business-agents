@@ -47,7 +47,7 @@ export interface CheckpointDrillResult {
   started_at: string; ended_at: string;
   key: { key_id: string; public_key: string };
   ledger: { rows: number; money_rows: number; checkpoints: number; intents: number; ledger_bytes: number; checkpoint_file_bytes: number };
-  timings: { check_before_payment: Timing; checkpoint_write: Timing; money_row_with_checkpoint: Timing };
+  timings: { check_before_payment: Timing; checkpoint_write: Timing; reserve_spend: Timing };
   steps: DrillStep[];
 }
 
@@ -148,11 +148,11 @@ export async function runCheckpointDrill(o: { log?: (l: string) => void; keep?: 
     for (let i = 0; i < 25; i++) { const t0 = performance.now(); const r = checkpointRefusal(db, "payment", w.now()); checks.push(performance.now() - t0); if (r) throw new Error(`clean ledger refused: ${r}`); }
     const writes: number[] = [];
     for (let i = 0; i < 10; i++) { const t0 = performance.now(); const r = writeCheckpoint(db); writes.push(performance.now() - t0); if (!r.ok) throw new Error(`checkpoint write refused: ${r.reason}`); }
-    const moneyRows: number[] = [];
+    const spends: number[] = [];
     for (let i = 0; i < 10; i++) {
       const t0 = performance.now();
       const r = reserveSpend(db, { agent: "sourcing", rail: "metal", cents: 1, ref: `drill-${i}`, now: w.now(), payee: "supplier" });
-      moneyRows.push(performance.now() - t0);
+      spends.push(performance.now() - t0);
       if (r) throw new Error(`spend refused: ${r}`);
     }
     writeCheckpoint(db);
@@ -220,7 +220,7 @@ export async function runCheckpointDrill(o: { log?: (l: string) => void; keep?: 
       step(`attack.${a.id}.verify_audit`, `${a.what}: npm run verify-audit`, v.status === 1 && findings.length > 0, `exit ${v.status}; ${findings.join(", ") || "no finding"}`);
     }
     const ended = new Date();
-    return { started_at: started.toISOString(), ended_at: ended.toISOString(), key, ledger, timings: { check_before_payment: timing(checks), checkpoint_write: timing(writes), money_row_with_checkpoint: timing(moneyRows) }, steps };
+    return { started_at: started.toISOString(), ended_at: ended.toISOString(), key, ledger, timings: { check_before_payment: timing(checks), checkpoint_write: timing(writes), reserve_spend: timing(spends) }, steps };
   } finally {
     for (const [k, v] of Object.entries(saved)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
     resetCheckpointMemory();
@@ -253,9 +253,9 @@ export function renderCheckpointDrill(rec: CheckpointDrillRecord): string {
     "## In short",
     "",
     `- The runner's ledger: ${rec.ledger.rows} audit rows (${rec.ledger.money_rows} money rows), ${rec.ledger.checkpoints} signed checkpoints and ${rec.ledger.intents} signed intents, key id \`${rec.key.key_id}\`.`,
-    `- The check before a payment: ${ms(rec.timings.check_before_payment)}.`,
-    `- A checkpoint write (sign and append, fsync): ${ms(rec.timings.checkpoint_write)}.`,
-    `- An agent's spend with its money row, signed intent and checkpoint (reserveSpend): ${ms(rec.timings.money_row_with_checkpoint)}.`,
+    `- The check before a payment (the ledger against its latest checkpoint): ${ms(rec.timings.check_before_payment)}.`,
+    `- A checkpoint written (checked, signed, appended with fsync): ${ms(rec.timings.checkpoint_write)}.`,
+    `- An agent's whole spend reservation with the gate on (reserveSpend: the check, the hold and its audit row): ${ms(rec.timings.reserve_spend)}.`,
     `- Attacks: ${attacks.join(", ")}. After each, the next payment, a loosening policy change (a higher card limit) and a key enrolment were tried; the emergency stop, which moves no money and tightens, was also tried.`,
     "",
     "## Simulated, and how",
