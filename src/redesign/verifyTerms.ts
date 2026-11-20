@@ -100,13 +100,16 @@ export const SIGNED_FILES = {
   owners: "docs/runs/2026-11-12-faceid-onchain.json",
 } as const;
 
+/** The records the approvals' payments are read from (the transfer or payout each led to), beside SIGNED_FILES. */
+export const SIGNED_REFS = ["docs/demo/airwallex-run.json", "docs/runs/2026-11-10-platform-e2e/facts.json"] as const;
+
 /** The signed approvals per run on /runs (its row key), read from the records. */
 export function signedByRun(): Record<string, Signed[]> {
   const out: Record<string, Signed[]> = {};
   const add = (key: string, xs: (Signed | null)[]) => { const ok = xs.filter((x): x is Signed => !!x && !!x.id); if (ok.length) out[key] = ok; };
-  const awxTransfer = readJson<{ invoices?: { proposal_id?: string; transfer_id?: string }[] }>("docs/demo/airwallex-run.json")?.invoices?.find((i) => i.proposal_id === "P-0002")?.transfer_id;
+  const awxTransfer = readJson<{ invoices?: { proposal_id?: string; transfer_id?: string }[] }>(SIGNED_REFS[0])?.invoices?.find((i) => i.proposal_id === "P-0002")?.transfer_id;
   add("awx-1", [fromReceipt(SIGNED_FILES.awx1, awxTransfer ? { label: "Airwallex transfer, PAID", value: awxTransfer } : undefined)]);
-  const platformPayout = readJson<{ transfers?: { transfer_id: string; status: string }[] }[]>("docs/runs/2026-11-10-platform-e2e/facts.json")?.[0]?.transfers?.find((t) => t.status === "PAID")?.transfer_id;
+  const platformPayout = readJson<{ transfers?: { transfer_id: string; status: string }[] }[]>(SIGNED_REFS[1])?.[0]?.transfers?.find((t) => t.status === "PAID")?.transfer_id;
   add("platform-e2e-1", [fromReceipt(SIGNED_FILES.platform, platformPayout ? { label: "Airwallex payout, PAID", value: platformPayout } : undefined)]);
   add("main-1", fromLedger(SIGNED_FILES.main));
   add("agent-1", fromLedger(SIGNED_FILES.agent));

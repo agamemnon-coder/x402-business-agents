@@ -28,23 +28,23 @@
         },
         {
           "key": "soak-paid",
-          "fig": "All 30",
+          "fig": "All 60",
           "label": "soak payments PAID, signed hash read back",
-          "note": "Each read back from Airwallex as signed: hash, amount, payee, reference; PAID by the sandbox's simulation, 19 Nov.",
+          "note": "Each read back from Airwallex as signed: hash, amount, payee, reference; PAID by the sandbox's simulation; 2 soaks, 19 and 20 Nov.",
           "tag": "sandbox",
           "tone": "awx",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md",
-          "rec": "docs/runs/2026-11-19-airwallex-soak.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md"
         },
         {
           "key": "soak-fx",
-          "fig": "All 6",
+          "fig": "All 12",
           "label": "FX conversions booked and read back",
-          "note": "In the soak, each before the payment it funded, 19 Nov.",
+          "note": "In the soaks of 19 and 20 Nov, each before the payment it funded.",
           "tag": "sandbox",
           "tone": "awx",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md",
-          "rec": "docs/runs/2026-11-19-airwallex-soak.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md"
         },
         {
           "key": "approval-hash",
@@ -150,7 +150,7 @@
           "key": "awx-statement",
           "fig": "All 42",
           "label": "soak payouts and FX legs on Airwallex's statement, to the cent",
-          "note": "Balance history; all 92 links add up; 19 Nov.",
+          "note": "Balance history of the 19 Nov soak; all 92 links add up; 19 Nov.",
           "tag": "sandbox",
           "tone": "awx",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-deep-3.md",
@@ -226,13 +226,13 @@
         },
         {
           "key": "soak-negatives",
-          "fig": "All 5",
+          "fig": "All 10",
           "label": "one-cent changes refused before any create",
-          "note": "0 money-moving calls (0 creates); each refusal still read the balance once (5 GET /balances/current). Soak, 19 Nov.",
+          "note": "0 money-moving calls (0 creates); 5 reads in the refusal windows (5 GET /balances/current). Soaks, 19 and 20 Nov.",
           "tag": "sandbox",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-airwallex-soak.md",
-          "rec": "docs/runs/2026-11-19-airwallex-soak.json"
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md"
         },
         {
           "key": "card-cent",

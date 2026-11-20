@@ -62,8 +62,11 @@ export const VISA_CLAIM = "Visa: the Sourcing agent signs its card checkout with
  */
 /** Home's shorter form: Home says "live" only on its button, "simulated" once, and no new date (test/home-story.test.ts). */
 export const AWX_HOME_LINE = "In /try, the Airwallex sandbox quotes the FX inside the terms you sign.";
-export const AWX_LIVE_LINE = "New on 14 Nov: in /try, the Airwallex sandbox quotes the FX live, and the quote is part of the terms you sign. The conversion runs on a simulated bank; the payment also goes to the Airwallex sandbox as one transfer when the deployment allows it.";
+/** /proof's line (20 Nov: no date in it, "New on 14 Nov" had no record; its record is the recorded /try walk, LIVE_FX_RECORD). */
+export const AWX_LIVE_LINE = "In /try, the Airwallex sandbox quotes the FX live, and the quote is part of the terms you sign. The conversion runs on a simulated bank; the payment also goes to the Airwallex sandbox as one transfer when the deployment allows it.";
 /** The one name /visa gives the card credential Airi hands out (partner scan, 14 Nov): what it is, and that it is a test card. */
+/** A recorded /try walk whose signed terms carry the Airwallex FX quote (fx_quote, quote_id): AWX_LIVE_LINE's record. */
+export const LIVE_FX_RECORD = "docs/runs/2026-11-19-live-try/run-1.json";
 export const AIRI_CREDENTIAL = "Airi credential (test card)";
 export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's public reference verifier; not part of this entry.";
 /**

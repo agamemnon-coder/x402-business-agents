@@ -13,7 +13,7 @@ const prev = JSON.parse(readFileSync(new URL(`../${VIC3_PREV_FILE}`, import.meta
 const dayOf = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 const text = (h: string) => h.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 const html = visaPage();
-const block = /<div class="card airi" id="vic3-run">[\s\S]*?<\/details>/.exec(html)?.[0] ?? "";
+const block = /<div class="card airi" id="vic3-run"[^>]*>[\s\S]*?<\/details>/.exec(html)?.[0] ?? "";
 
 describe("/visa's lead: the latest live run", () => {
   it("is the live record, and its block comes before the first run's drawing", () => {

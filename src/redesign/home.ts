@@ -175,9 +175,9 @@ const JS = `${CFO_FORWARD_JS}
 export function whyCompanyHtml(): string {
   return `<section class="band" aria-labelledby="h-company"><div class="wrap">
   <div class="sechead"><h2 class="h-sec" id="h-company">Why this is a company</h2></div>
-  <ul class="company">${WHY_COMPANY.map((l) => `<li><b>${esc(l.label)}:</b> ${esc(l.text)}</li>`).join("")}</ul>
+  <ul class="company">${WHY_COMPANY.map((l) => `<li data-rec="${esc(`docs/business/${l.page}`)}"><b>${esc(l.label)}:</b> ${esc(l.text)}</li>`).join("")}</ul>
   <p class="clink"><a href="${esc(BUSINESS_DOCS)}" target="_blank" rel="noopener">${esc(BUSINESS_CASE_LINK)}</a></p>
-  <p class="cnote">${esc(WHY_COMPANY_NOTE_LAST)}</p>
+  <p class="cnote" data-rec="docs/business/README.md">${esc(WHY_COMPANY_NOTE_LAST)}</p>
 </div></section>`;
 }
 

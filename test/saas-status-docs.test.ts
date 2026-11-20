@@ -530,7 +530,7 @@ describe("/status: the latest live runs", () => {
     expect([...all].sort((a, b) => b.iso.localeCompare(a.iso)).map((r) => r.key)).toEqual(all.map((r) => r.key));
     const five = latestRuns();
     expect(five.map((r) => r.key)).toEqual(all.slice(0, 5).map((r) => r.key));
-    const items = [...runs.matchAll(/<li><time datetime="([^"]+)">([^<]+)<\/time> <a class="pf" href="([^"]+)" target="_blank" rel="noopener" title="([^"]+)">([^<]+) ↗<\/a><\/li>/g)].map((m) => ({ iso: m[1]!, day: m[2]!, href: m[3]!, full: decode(m[4]!), short: decode(m[5]!) }));
+    const items = [...runs.matchAll(/<li data-rec="[^"]+"><time datetime="([^"]+)">([^<]+)<\/time> <a class="pf" href="([^"]+)" target="_blank" rel="noopener" title="([^"]+)">([^<]+) ↗<\/a><\/li>/g)].map((m) => ({ iso: m[1]!, day: m[2]!, href: m[3]!, full: decode(m[4]!), short: decode(m[5]!) }));
     expect(items.length).toBe(5);
     items.forEach((it, i) => {
       const row = all[i]!;
@@ -572,7 +572,7 @@ describe("/status: the latest live runs", () => {
     // Walk the list: a label item heads the runs after it, until the next one.
     let current: string | null = null, heads = 0;
     const labelled: (string | null)[] = [];
-    for (const m of runs.matchAll(/<li class="grp">([^<]+)<\/li>|<li><time /g)) {
+    for (const m of runs.matchAll(/<li class="grp">([^<]+)<\/li>|<li data-rec="[^"]+"><time /g)) {
       if (m[1] !== undefined) { current = decode(m[1]); heads++; } else labelled.push(current);
     }
     expect(labelled).toEqual(five.map((r) => (groups ? r.money : null)));

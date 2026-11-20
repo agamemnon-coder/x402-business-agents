@@ -176,7 +176,7 @@ describe("the attempts that failed first", () => {
       expect(a.cause).toMatch(/nothing charged/i);
       for (const code of [...lines[i]!.matchAll(/\(([A-Za-z_]+)\)/g)].map((m) => m[1]!)) expect({ code, inCause: a.cause.includes(code), inLog: LOG.includes(code) }).toEqual({ code, inCause: true, inLog: true });
     });
-    const fold = new RegExp(`<details class="fold" id="${VIC_ATTEMPTS_ID}">[\\s\\S]*?</details>`).exec(main)![0];
+    const fold = new RegExp(`<details class="fold" id="${VIC_ATTEMPTS_ID}"[^>]*>[\\s\\S]*?</details>`).exec(main)![0];
     expect(/<summary>([^<]*)<\/summary>/.exec(fold)![1]).toBe("The 3 attempts that failed first");
     for (const l of lines) expect(text(fold)).toContain(l);
     expect(fold).toContain("docs/runs/2026-11-07-vic-1.md");

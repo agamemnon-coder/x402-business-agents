@@ -216,7 +216,7 @@ const checksLink = (s: AiriRunSummary) => {
 /** The block: heading, label, summary, the three outcomes, the checks; every check, step and id folded. */
 export function airiRunHtml(s: AiriRunSummary | null, o: { h?: "h2" | "h3" } = {}): string {
   if (!s) return "";
-  return `<div class="card airi" id="${AIRI_RUN_ID}">${heading(s, o.h ?? "h3")}
+  return `<div class="card airi" id="${AIRI_RUN_ID}" data-rec="${AIRI_RUN_FILE} ${AIRI_RUN_LOG}">${heading(s, o.h ?? "h3")}
 ${outcomes(s)}
 ${checksLink(s)}
 <details class="fold" id="${AIRI_RUN_STEPS_ID}"><summary>${esc("Details")}</summary>
@@ -228,7 +228,7 @@ ${checksLink(s)}
 /** Proof's version: the same heading, label, summary, outcomes and checks, then a link to every id on /airwallex and one to the VIC flow on /visa. */
 export function airiRunShortHtml(s: AiriRunSummary | null): string {
   if (!s) return "";
-  return `<div class="card airi" id="${AIRI_RUN_ID}">${heading(s, "h3")}
+  return `<div class="card airi" id="${AIRI_RUN_ID}" data-rec="${AIRI_RUN_FILE} ${AIRI_RUN_LOG}">${heading(s, "h3")}
 ${outcomes(s)}
 ${checksLink(s)}
 <p class="src">${esc(s.source)}</p>

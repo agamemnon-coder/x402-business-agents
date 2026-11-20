@@ -14,6 +14,7 @@
 // title is its name, its badge and partners are read from its rails and money words, its what's first sentence is its
 // line. A new row adds the optional fields: name, line, kind, rate (and product, for the one run that is the product).
 
+import { soaks } from "../airwallex/soakRecords.js";
 import { altaLabel } from "../ui/formerly.js";
 import { readFileSync } from "node:fs";
 import { AIRI_RUN_FILE, AIRI_RUN_LOG, airiRun } from "./airiRun.js";
@@ -508,31 +509,27 @@ function extraRuns(): RunRow[] {
     });
   }
 
-  // 19 Nov soak: 30 signed payments at the Airwallex sandbox, each read back; 6 FX conversions; 5 one-cent changes refused
-  // before any create (docs/runs/2026-11-19-airwallex-soak.md). Counted when every read-back the record holds agrees.
-  type Sk = {
-    started_at: string; ended_at: string; budget: { approved: number; used: number };
-    summary: { planned: number; created: number; paid: number; readback_matches: number; conversions: { planned: number; booked: number; readback_matches: number }; latency_ms: { p50: number }; calls: { total: number };
-      negatives: { planned: number; refused: number; posts_in_window: number; creates_in_window: number; calls_in_window: number } };
-    payments: { invoice_no: string; transfer_id: string }[];
-  };
-  const SK_FILE = "docs/runs/2026-11-19-airwallex-soak.json", SK_LOG = "docs/runs/2026-11-19-airwallex-soak.md";
-  const sk = has(SK_FILE) ? readJson<Sk>(SK_FILE) : null;
-  if (sk && sk.summary.created) {
-    const m = sk.summary, n = m.negatives;
+  // The soaks (19 and 20 Nov so far, src/airwallex/soakRecords.ts): signed payments at the Airwallex sandbox, each read
+  // back; FX conversions; one-cent changes refused before any create (docs/runs/<date>-airwallex-soak.md). One row each,
+  // every figure from its record. The 19 Nov soak keeps its key, soak-1 (its anchor), the next soak-2, and so on.
+  soaks().forEach((soak, i) => {
+    const sk = soak.rec, m = sk.summary, n = m.negatives;
+    // What each refusal called, as the record counts it: 19 Nov read the balance once per refusal, 20 Nov made no call.
+    const window = n.calls_in_window === 0 ? "no call between the change and the refusal" : n.calls_in_window === n.refused ? "each refusal read the balance once" : `${n.calls_in_window} calls between the changes and the refusals`;
+    const budget = sk.budget.approved ? `, within the budget of ${sk.budget.approved}` : "";
     out.push({
-      key: "soak-1", iso: sk.ended_at, date: day(sk.started_at), kind: "sandbox", partners: ["Airwallex"],
+      key: `soak-${i + 1}`, iso: sk.ended_at, date: day(sk.started_at), kind: "sandbox", partners: ["Airwallex"],
       name: `${m.created} signed payments in a row, each read back from Airwallex`,
       line: `${countOf(m.paid, m.created)} PAID (by the sandbox's simulation), the signed hash read back on each; ${countOf(m.conversions.booked, m.conversions.planned, true)} FX conversions; ${countOf(n.refused, n.planned, true)} one-cent changes refused. A test passkey.`,
       rate: { done: m.readback_matches, of: m.created, what: "payments read back as signed" },
       title: "Airwallex soak", rails: "Airwallex sandbox (SWIFT transfers, FX conversions), test passkey",
       what: `${m.created} payments to two test suppliers, each signed by a labelled virtual test passkey over its exact terms, created once at the Airwallex sandbox, taken to PAID by its simulation endpoint and read back (status, amount, payee, reference, request id and the signed hash). ${m.conversions.booked} needed EUR bought first, by an FX conversion read back too. Between them, ${n.planned} payments were changed by one cent after signing.`,
-      checks: `${countOf(m.readback_matches, m.created)} read-backs equal to the signed terms; ${countOf(m.conversions.readback_matches, m.conversions.booked, true)} conversions read back; the ${n.refused} changed payments refused before any create (${n.posts_in_window} POSTs; each refusal read the balance once). ${m.calls.total} Airwallex calls, within the budget of ${sk.budget.approved}.`,
+      checks: `${countOf(m.readback_matches, m.created)} read-backs equal to the signed terms; ${countOf(m.conversions.readback_matches, m.conversions.booked, true)} conversions read back; the ${n.refused} changed payments refused before any create (${n.posts_in_window} POSTs; ${window}). ${m.calls.total} Airwallex calls${budget}.`,
       money: "Sandbox · test money",
-      ids: sk.payments.slice(0, 2).map((p) => ({ label: `Transfer (${p.invoice_no})`, value: p.transfer_id })),
-      files: [{ label: "record (JSON)", href: blob(SK_FILE) }, { label: "run log", href: blob(SK_LOG) }],
+      ids: sk.payments.filter((p) => p.transfer_id).slice(0, 2).map((p) => ({ label: `Transfer (${p.invoice_no})`, value: p.transfer_id! })),
+      files: [{ label: "record (JSON)", href: blob(soak.file) }, { label: "run log", href: blob(soak.log) }],
     });
-  }
+  });
 
   // 19 Nov: the public /try walked as a visitor, recorded with every answer (docs/runs/2026-11-19-live-try.md); one row a
   // recorded series, its walks its rate (src/redesign/liveTry.ts reads every series in that shape).
@@ -727,6 +724,15 @@ const idChip = (i: RunId) => {
   return `<span class="idc"><span class="k">${esc(altaLabel(i.label))}</span>${val}${copy}</span>`;
 };
 
+/** A run's records as repository paths (its files that are in this repository), space-separated, for data-rec. */
+export function recordPaths(r: RunRow): string {
+  const repo = blob("");
+  return [...new Set(r.files.map((f) => siteHref(f.href)).filter((h) => h.startsWith(repo)).map((h) => h.slice(repo.length).split("#")[0]!))].join(" ");
+}
+
+/** The records of several runs, each once, for data-rec on a figure that counts them. */
+export const recsOf = (rs: readonly RunRow[]) => [...new Set(rs.flatMap((r) => recordPaths(r).split(" ")).filter(Boolean))].join(" ");
+
 /**
  * One run, one compact entry. In sight: its date and badge, its name, one line with the links to its record, its
  * partners, its rate and its first id. Behind its one fold (or, in the rehearsals group, which is itself the fold, under
@@ -745,7 +751,9 @@ function entry(r: RunRow, o: { newest?: boolean; folded: boolean; signed?: Signe
   const files = r.files.map((f) => `<a class="f" href="${esc(siteHref(f.href))}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
   const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what.replace(FULL_COUNT, "all $1"))}</p>`}<p><b>Checks:</b> ${esc(r.checks.replace(FULL_COUNT, "all $1"))}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p>${verifyList(o.signed)}</div>`;
   const label = `Ids, what ran and the checks${more ? `: ${pl(more, "more id")}` : ""}`;
-  return `<li class="${cls}" id="${esc(r.key)}"><article${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
+  // The entry names its records (data-rec): every file it links that is in this repository.
+  const rec = recordPaths(r);
+  return `<li class="${cls}" id="${esc(r.key)}"><article${rec ? ` data-rec="${esc(rec)}"` : ""}${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
 <p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>
 <h2>${esc(nameOf(r))}</h2>
 <p class="ln">${esc(lineOf(r))} ${files}</p>
@@ -867,6 +875,9 @@ const FILTER_JS = `(function () {
   window.addEventListener("hashchange", mark);
 })();`;
 
+/** The logs the Face ID to paid times are read from (each timed payout's, and each left out's), for data-rec. */
+const timedRecords = (t: RunTimes) => [...new Set([...t.payouts.map((p) => p.record), ...t.leftOut.map((l) => l.record)])].join(" ");
+
 /**
  * Face ID to paid (master list 81), one calm line from the run records (src/redesign/runTimes.ts): its median and spread
  * count up; the payouts and the runs left out sit behind its fold. Nothing when no payout is timed.
@@ -883,7 +894,7 @@ export function faceIdToPaid(t: RunTimes = runTimes()): string {
     : `Face ID to paid: median ${n(t.medianMs)} (${n(t.minMs)}–${n(t.maxMs)}), ${esc(pl(t.n, "payout"))}; ${SETTLEMENT_SIMULATED}`;
   const rows = t.payouts.map((p) => `<li>${esc(`${p.proposal}: ${secs(p.ms)} (Face ID ${p.approvedAt.slice(11, 19)}, PAID ${p.paidAt.slice(11, 19)} UTC, ${p.approvedAt.slice(0, 10)})`)} <a class="f" href="${esc(blob(p.record))}" target="_blank" rel="noopener">Log ↗</a></li>`).join("");
   const out = t.leftOut.map((l) => `<li class="q">${esc(`Left out: ${l.record.replace(/^docs\/runs\//, "")}, ${l.why}.`)}</li>`).join("");
-  return `<details class="ftp" id="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
+  return `<details class="ftp" id="ftp" data-rec="${esc(timedRecords(t))}"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
 }
 
 /**
@@ -929,11 +940,13 @@ ${Array.from({ length: 30 }, (_, i) => `  .runsp .rstrip g:nth-of-type(${i + 1})
 export function runsSummary(live: RunRow[], partial: RunRow[], rehearsals: RunRow[], t: RunTimes): SummaryCard[] {
   const newest = live[0], first = live[live.length - 1];
   const short = (r: RunRow) => r.date.replace(/ \d{4}$/, "");
+  // Each card names its records (data-rec): the runs it counts, the newest run's, the timed payouts' logs.
+  const recs = recsOf;
   return [
-    ...(newest && first ? [{ icon: "calendar-range", fig: String(live.length), title: "Live runs", href: "#all", text: `${short(first)} to ${short(newest)}; sandbox and testnet, test money, every id from its own record.` }] : []),
-    ...(newest ? [{ icon: "circle-check", fig: short(newest), title: `Newest: ${nameOf(newest)}`, href: `#${newest.key}`, tone: "ok" as const, text: firstSentence(lineOf(newest)) }] : []),
-    ...(t.n && t.minMs !== null && t.maxMs !== null ? [{ icon: "scan-face", fig: t.minMs === t.maxMs ? secs(t.minMs) : `${secs(t.minMs)}–${secs(t.maxMs)}`, title: "Face ID to paid", href: "#ftp", tone: "ok" as const, text: `${pl(t.n, "payout")}, from the CFO's Face ID to PAID at Airwallex (${SETTLEMENT_SIMULATED}).` }] : []),
-    ...(partial.length || rehearsals.length ? [{ icon: "info", fig: String(partial.length + rehearsals.length), title: "Not counted as live", href: partial.length ? "#partial" : "#rehearsals", text: `${pl(partial.length, "partial run")} and ${pl(rehearsals.length, "rehearsal or dry run")}, listed apart.` }] : []),
+    ...(newest && first ? [{ icon: "calendar-range", fig: String(live.length), title: "Live runs", href: "#all", rec: recs(live), text: `${short(first)} to ${short(newest)}; sandbox and testnet, test money, every id from its own record.` }] : []),
+    ...(newest ? [{ icon: "circle-check", fig: short(newest), title: `Newest: ${nameOf(newest)}`, href: `#${newest.key}`, rec: recordPaths(newest), tone: "ok" as const, text: firstSentence(lineOf(newest)) }] : []),
+    ...(t.n && t.minMs !== null && t.maxMs !== null ? [{ icon: "scan-face", fig: t.minMs === t.maxMs ? secs(t.minMs) : `${secs(t.minMs)}–${secs(t.maxMs)}`, title: "Face ID to paid", href: "#ftp", rec: timedRecords(t), tone: "ok" as const, text: `${pl(t.n, "payout")}, from the CFO's Face ID to PAID at Airwallex (${SETTLEMENT_SIMULATED}).` }] : []),
+    ...(partial.length || rehearsals.length ? [{ icon: "info", fig: String(partial.length + rehearsals.length), title: "Not counted as live", href: partial.length ? "#partial" : "#rehearsals", rec: recs([...partial, ...rehearsals]), text: `${pl(partial.length, "partial run")} and ${pl(rehearsals.length, "rehearsal or dry run")}, listed apart.` }] : []),
   ];
 }
 
@@ -948,7 +961,7 @@ export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes(
   const body = `<main class="wrap runsp">
 <h1>${esc(RUNS_TITLE)}</h1>
 ${summaryHtml(runsSummary(live, partial, rehearsals, times), "The runs in four cards")}
-<details class="sumd" id="runs-all"><summary>${esc(`All ${pl(live.length, "live run")}, newest first`)}</summary>
+<details class="sumd" id="runs-all" data-rec="${esc(recsOf(live))}"><summary>${esc(`All ${pl(live.length, "live run")}, newest first`)}</summary>
 ${runsStrip(live)}
 <p class="last">Last live run: ${esc(last.date)}. ${pl(live.length, "live run")}, newest first, every id from its own record. Test money only; what was simulated is said on each run.</p>
 ${faceIdToPaid(times)}
@@ -958,12 +971,12 @@ ${faceIdToPaid(times)}
 ${live.map((r, i) => entry(r, { newest: i === 0, folded: true, signed: signed[r.key] })).join("\n")}
 </ol>
 </details>
-${partial.length ? `<details class="rehs" id="partial"><summary>Partial runs, not counted as live · ${partial.length}${chevron}</summary>
-<ul class="q">${partial.map((r) => `<li>${esc(`${nameOf(r)} (${r.date}): ${r.partial}`)}</li>`).join("")}</ul>
+${partial.length ? `<details class="rehs" id="partial" data-rec="${esc(recsOf(partial))}"><summary>Partial runs, not counted as live · ${partial.length}${chevron}</summary>
+<ul class="q">${partial.map((r) => `<li data-rec="${esc(recordPaths(r))}">${esc(`${nameOf(r)} (${r.date}): ${r.partial}`)}</li>`).join("")}</ul>
 <ol class="tl">
 ${partial.map((r) => entry(r, { folded: false, signed: signed[r.key] })).join("\n")}
 </ol></details>` : ""}
-${rehearsals.length ? `<details class="rehs" id="rehearsals"><summary>Rehearsals, dry runs and control tests · ${rehearsals.length}${chevron}</summary>
+${rehearsals.length ? `<details class="rehs" id="rehearsals" data-rec="${esc(recsOf(rehearsals))}"><summary>Rehearsals, dry runs and control tests · ${rehearsals.length}${chevron}</summary>
 <ol class="tl">
 ${rehearsals.map((r) => entry(r, { folded: false, signed: signed[r.key] })).join("\n")}
 </ol>

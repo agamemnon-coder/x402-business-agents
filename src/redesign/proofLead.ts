@@ -26,6 +26,9 @@ export interface Lead {
 /** The eval rebuilt from the reliability run's moment, before and after the fix. */
 export const RELIABILITY_CASE = "treasury-card-raise";
 export const RELIABILITY_LOG = "docs/runs/reliability-2026-11.md";
+/** The eval record after the fix, and the reliability runs (each passed or not): the fix's other two records. */
+export const RELIABILITY_EVALS = "docs/evals/agents.json";
+export const RELIABILITY_RUNS = "docs/demo/reliability.json";
 export interface ReliabilityFix { run: string; next: string; commit: string; before: { passed: number; runs: number }; after: { passed: number; runs: number } }
 
 const read = (p: string) => readFileSync(new URL(`../../${p}`, import.meta.url), "utf8");
@@ -36,14 +39,14 @@ const read = (p: string) => readFileSync(new URL(`../../${p}`, import.meta.url),
  * (the reliability log), and its result after (the eval record, run on that commit).
  */
 export function reliabilityFix(): ReliabilityFix | null {
-  const runs = JSON.parse(read("docs/demo/reliability.json")) as { run: string; passed: boolean }[];
+  const runs = JSON.parse(read(RELIABILITY_RUNS)) as { run: string; passed: boolean }[];
   const i = runs.findIndex((r) => !r.passed);
   const next = i >= 0 ? runs.slice(i + 1).find((r) => r.passed) : undefined;
   const log = read(RELIABILITY_LOG);
   const row = log.split("\n").find((l) => l.startsWith(`| \`${RELIABILITY_CASE}\` |`)) ?? "";
   const before = /\| (\d+)\/(\d+) before the fix\./.exec(row);
   const commit = /The fix\*\* is commit ([0-9a-f]{7,40})\b/.exec(log)?.[1];
-  const evals = JSON.parse(read("docs/evals/agents.json")) as { rows: { case: string; passed: number; runs: number; commit?: string }[] };
+  const evals = JSON.parse(read(RELIABILITY_EVALS)) as { rows: { case: string; passed: number; runs: number; commit?: string }[] };
   const after = evals.rows.find((r) => r.case === RELIABILITY_CASE);
   if (i < 0 || !next || !before || !commit || !after || !after.commit?.startsWith(commit)) return null;
   return { run: runs[i]!.run, next: next.run, commit, before: { passed: Number(before[1]), runs: Number(before[2]) }, after: { passed: after.passed, runs: after.runs } };

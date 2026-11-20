@@ -61,13 +61,16 @@ export function evidenceWallLlms(w: EvidenceWall | null = committedWall()): stri
 
 /** The README's line under the judge path: four headline figures of the wall, each as the wall has it, and its link. */
 export const README_WALL_PREFIX = "**Evidence wall, from the records:** ";
+/** docs/evidence/proof-index.md, as the README links it (the same path as PROOF_INDEX_FILE in ./proof.ts). */
+export const PROOF_INDEX_DOC = "docs/evidence/proof-index.md";
 export const README_WALL_KEYS = ["soak-paid", "try-transfers", "tamper-matrix", "awx-endpoints"] as const;
 /** The README's few words for each figure (its word budget); the figures are the wall's. */
 const README_WORDS: Record<(typeof README_WALL_KEYS)[number], string> = { "soak-paid": "soak payments read back", "try-transfers": "/try payouts PAID", "tamper-matrix": "forged copies refused", "awx-endpoints": "Airwallex endpoints live" };
 export function readmeWallLine(w: EvidenceWall | null = committedWall()): string {
   const tiles = new Map((w?.groups ?? []).flatMap((g) => g.tiles.map((t) => [t.key, t] as const)));
   const parts = README_WALL_KEYS.filter((k) => tiles.has(k)).map((k) => `${tiles.get(k)!.fig} ${README_WORDS[k]}`);
-  return `${README_WALL_PREFIX}${parts.join(" · ")} · [every figure, with its record](${SITE}/proof#${WALL_ID})`;
+  // 20 Nov (owner): every figure on /proof, its record and how to check it, in one table (npm run proof:index).
+  return `${README_WALL_PREFIX}${parts.join(" · ")} · [every figure, with its record](${SITE}/proof#${WALL_ID}) · [the index of /proof's figures](${PROOF_INDEX_DOC})`;
 }
 /**
  * The README with its evidence block under the demo's thumbnail: the map's picture (readmeMapLine in ./evidenceMap.ts),

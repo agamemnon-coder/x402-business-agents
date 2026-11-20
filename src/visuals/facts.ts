@@ -21,6 +21,8 @@ export const TWO_LOCKS_LOG = "docs/runs/2026-11-10-airwallex-two-locks.md";
 export const TWO_LOCKS_PAID_LOG = "docs/runs/2026-11-12-airwallex-two-locks-paid.md";
 export const MAIN_RUN_LOG = "docs/runs/2026-11-03-main-run.md";
 export const MAIN_RUN_RECORD = "docs/demo/main-run.json";
+/** The records the rails' drawing reads (railRefusals): each card's figures are in one of them (data-rec on /proof). */
+export const RAIL_RECORDS = [TWO_LOCKS_LOG, TWO_LOCKS_PAID_LOG, MAIN_RUN_RECORD, MAIN_RUN_LOG, AIRI_RUN_FILE, AIRI_RUN_LOG] as const;
 
 export type Rail = "airwallex" | "metal" | "airi";
 export interface RailRefusal {

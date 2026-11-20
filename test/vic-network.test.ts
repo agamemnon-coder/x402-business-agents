@@ -19,7 +19,7 @@ const run = airiRun()!;
 const text = (html: string) => html.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 const at = (o: unknown, path: string): unknown => path.split(".").reduce<unknown>((v, k) => (v as Record<string, unknown> | undefined)?.[k], o);
 const html = visaPage();
-const block = new RegExp(`<details class="fold" id="${VIC_NETWORK_ID}">[\\s\\S]*?</details>`).exec(html)?.[0] ?? "";
+const block = new RegExp(`<details class="fold" id="${VIC_NETWORK_ID}"[^>]*>[\\s\\S]*?</details>`).exec(html)?.[0] ?? "";
 
 describe("the record of what Airwallex reports for the Airi run's payments", () => {
   it("is dated, GET only, test money, read within the approved budget, and is the Airi run's two PaymentIntents", () => {

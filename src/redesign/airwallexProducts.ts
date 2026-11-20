@@ -22,8 +22,8 @@ import { AWX_HASH_ID, hashTravel, type HashTravel } from "./airwallexProof.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { REPO_BLOB } from "./metalStory.js";
-import { liveRuns, type RunRow } from "./runs.js";
-import type { AgentRun, RunRecord } from "./run.js";
+import { liveRuns, recordPaths, type RunRow } from "./runs.js";
+import { tapRun, type AgentRun, type RunRecord } from "./run.js";
 import { countOf, esc, icon } from "./ui.js";
 import { VISUAL_CSS, visualsHtml } from "./airwallexVisual.js";
 import { trailLinkHtml } from "./awxTrailLink.js";
@@ -597,7 +597,7 @@ export const FACEID_KEY = "awx-faceid-1";
 /** That run as a fold on /airwallex, in its row's words: held IN_APPROVAL, not PAID that day. */
 export function faceIdFoldHtml(row: RunRow | null | undefined): string {
   if (!row) return "";
-  return foldHtml(`Approved with the owner's own Face ID (${dayShort(row.iso)})`, `<ul class="pl">${liPlain(row.line ?? row.what)}</ul><p class="src"><a class="pf" href="runs#${FACEID_KEY}">${esc("Every id on /runs")}</a></p>`, ` id="faceid-run"`);
+  return foldHtml(`Approved with the owner's own Face ID (${dayShort(row.iso)})`, `<ul class="pl">${liPlain(row.line ?? row.what)}</ul><p class="src"><a class="pf" href="runs#${FACEID_KEY}">${esc("Every id on /runs")}</a></p>`, ` id="faceid-run" data-rec="${esc(recordPaths(row))}"`);
 }
 
 /** /airwallex's body: the tiles first, the hash block under them, everything else folded. */
@@ -611,7 +611,7 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
     o.airi ? foldHtml("Airi runs: every step and id", `<div class="awrb">${o.airi}</div>`) : "",
     faceIdFoldHtml(liveRuns().find((r) => r.key === FACEID_KEY)),
     platformFoldHtml(platform, first, firstRow ? dayShort(firstRow.iso) : null),
-    foldHtml("Alta earnings booked at Airwallex", `<div class="flow" role="img" aria-label="${esc("The main run at Airwallex, step by step")}">${o.picture}</div><ul class="pl">${[...o.mainProof, ...fxLine].join("")}</ul>`, ` id="${MAIN_RUN_FOLD_ID}"`),
+    foldHtml("Alta earnings booked at Airwallex", `<div class="flow" role="img" aria-label="${esc("The main run at Airwallex, step by step")}">${o.picture}</div><ul class="pl">${[...o.mainProof, ...fxLine].join("")}</ul>`, ` id="${MAIN_RUN_FOLD_ID}" data-rec="${esc([run.file, ...(tapRun() ? [tapRun()!.file] : [])].join(" "))}"`),
     foldHtml("The Airwallex features and Airi, with their docs", `<ul class="pl awd">${[...productDocs().filter((d) => tiles.some((t) => t.key === d.key)).map((d) => docsLi(d.name, d.docs)), ...(o.depositDocs.length ? [docsLi("Alta earnings booked", o.depositDocs)] : [])].join("")}</ul>`),
     foldHtml("What is simulated", `<ul class="pl">${[
       liPlain("The Airwallex sandbox, with test money only."),
@@ -623,7 +623,7 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
       // A sandbox transfer reaches PAID only through the simulation API: said for the two-locks transfer too, once its run is finished.
       ...(locks?.finished ? [liPlain("The two-locks transfer's PAID came through the sandbox's simulation API too.")] : []),
       ...(testPasskeys.length ? [liPlain(`In ${testPasskeys.join(" and ")} the approvals were signed with a labelled test passkey, not Face ID.`)] : []),
-    ].join("")}</ul>`),
+    ].join("")}</ul>`, ` data-rec="${esc(run.file)}"`),
   ].join("");
   const flagged = flaggedTiles();
   return `<main class="pp awxp"><div class="wrap">

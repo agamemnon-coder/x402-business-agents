@@ -203,7 +203,7 @@ describe("the site after v4", () => {
   it("reaches the archive (/lab, /film, /month, /metal/report) only through Proof's folded, labelled Archive", () => {
     // Its own closed line at the end of Proof since 12 Nov (before: a card inside "Every check"), the replay first.
     const archive = /<details class="deep" id="archive"><summary>Archive<\/summary>[\s\S]*?<\/details>/.exec(pages.proof!)?.[0] ?? "";
-    expect(archive).toContain(`<li><a class="pf" href="replay">Replay of the main run, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(run.recordedAt))}</a></li>`);
+    expect(archive).toContain(`<li data-rec="${run.file}"><a class="pf" href="replay">Replay of the main run, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(run.recordedAt))}</a></li>`);
     expect(archive).toContain('href="replay">Replay of the main run, 3 Nov</a>');
     for (const href of ["lab", "film", "month", "metal/report"]) {
       expect(archive).toMatch(new RegExp(`<details[\\s\\S]*href="${href}"`));
@@ -278,7 +278,7 @@ describe("the site after v4", () => {
       // /visa opens with Visa Intelligent Commerce (12 Nov): its picture is the VIC flow, right under the heading and
       // before anything folded; the Airi run (owner's copy, 7 Nov) is under it and above the one closed TAP fold, the
       // last thing on the page (test/visa-overview.test.ts holds the order, test/airi-run-page.test.ts the block).
-      const airi = /<div class="awrb"><div class="card airi" id="airi-run">[\s\S]*?<\/details><\/div><\/div>/.exec(whole)?.[0] ?? "";
+      const airi = /<div class="awrb"><div class="card airi" id="airi-run"[^>]*>[\s\S]*?<\/details><\/div><\/div>/.exec(whole)?.[0] ?? "";
       expect({ name, airiAboveTap: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiAboveTap: true });
       // /airwallex opens on a tile per Airwallex product (jury panel, 12 Nov); its flow of the main run is one of the folds.
       // /metal opens on one picture (owner's redesign, 13 Nov): a payment paid and one refused under the same mandate.
