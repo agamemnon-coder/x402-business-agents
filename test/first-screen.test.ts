@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, README_WHAT, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
-import { FILM_BUTTON, HOME_SUB, REASSURE, START, VERIFY_BUTTON, homePage } from "../src/redesign/home.js";
+import { CLOUD_EYEBROW, FILM_BUTTON, HOME_SUB, PILOT_BUTTON, REASSURE, START, START_ID, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { loadRecord } from "../src/redesign/run.js";
@@ -150,9 +150,13 @@ describe("the first screen (section D, 6 Nov)", () => {
     // minutes, then the film; "See the proof" stays at the end of Home.
     expect([START, FILM_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the demo"]);
     // Site audit, 20 Nov (6.3): "test money" moved from the proof line to the sandbox line under the buttons (REASSURE).
-    expect(t.startsWith(`${HERO} ${HOME_SUB} Built on Airwallex · `)).toBe(true);
-    expect(t).toContain(` ${START} ${FILM_BUTTON} ${VERIFY_BUTTON} ${REASSURE.sign}`);
-    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost film"', 'class="btn big ghost"']);
+    // 20 Nov (the owner: "Purser Cloud becomes the company's product"): the product's name over the heading, and the
+    // third button goes to "How to start" on Home (its pilot card); "Verify a payment yourself" is in the 60-second proof.
+    expect(t.startsWith(`${CLOUD_EYEBROW} ${HERO} ${HOME_SUB} Built on Airwallex · `)).toBe(true);
+    expect(t).toContain(` ${START} ${FILM_BUTTON} ${PILOT_BUTTON} ${REASSURE.sign}`);
+    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost film"', 'class="btn big ghost pilot"']);
+    expect(hero(HOME)).toContain(`<a class="btn big ghost pilot" href="#${START_ID}">${PILOT_BUTTON}</a>`);
+    expect(HOME).toContain(`<section class="e-start" id="${START_ID}"`);
     // Every Try call to action opens the hands-on demo (TRY_URL), with /try/sign in the bundle or not.
     expect(hero(HOME)).toContain('<a class="btn primary big start" href="/try">');
     expect(hero(HOME)).toContain(`<a class="btn big ghost film" href="${FILM_URL}" target="_blank" rel="noopener">`);
@@ -162,7 +166,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     // Without /try/sign in the bundle the button leads to /try, never to a dead link, and the line under it says what /try is.
     expect(homePage()).not.toContain('href="try/sign"');
     expect(hero(homePage())).toContain('<a class="btn primary big start" href="/try">');
-    expect(words(hero(homePage()))).toContain(`${START} ${FILM_BUTTON} ${VERIFY_BUTTON} ${REASSURE.world}`);
+    expect(words(hero(homePage()))).toContain(`${START} ${FILM_BUTTON} ${PILOT_BUTTON} ${REASSURE.world}`);
     // No link to the product tour or to Pricing, both gone (13 Nov, evening).
     expect(homePage()).not.toMatch(/href="\/?(tour|pricing)"/);
     expect(homePage()).not.toMatch(/href="\/?judge"/);

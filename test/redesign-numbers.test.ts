@@ -132,6 +132,10 @@ const visibleText = (html: string) => html
   // (src/ap/books.ts AP_ACCOUNTS.foreignVat, a constant of the chart, not a figure of the run); test/home-story.test.ts
   // holds it to the engine's own accrual of that invoice.
   .replace(/\b1515 Foreign VAT\b/g, " ")
+  // Home's explainer of the money flow (the owner, 20 Nov) names its records (data-rec, above); its line in "What's
+  // real?" repeats the amount signed and the amount one cent higher, read from /try's two proof files
+  // (docs/proof/try-paid.json, try-refused.json) and held to them in test/home-cloud.test.ts.
+  .replace(/The explainer's amount and fingerprints:[\s\S]*?A test company, test money\./g, " ")
   // Judge panel, 15 Nov: /visa's three facts of the vic-5 run (amounts, ids, the step), read from
   // docs/runs/2026-11-14-vic-5.json and checked against it in test/proof-first-facts.test.ts.
   .replace(/Paid after Face ID: [A-Z]{3} [\s\S]*?vic-\d+, step [A-Z]\d?/g, " ")
@@ -306,7 +310,8 @@ describe("the redesigned public pages", () => {
     // 15 Nov (clarity, the parent's brief): the hero's proof line opens with "Built on Airwallex · test money" (factual,
     // the header's badge in words); still no "Built on" row, chip or partner list in Home's main.
     expect(/<main[\s\S]*<\/main>/.exec(homePage())![0].replace(/<p class="proofl"[\s\S]*?<\/p>/, " ")).not.toMatch(/Built on/);
-    expect(/<p class="proofl"[^>]*>Built on Airwallex<span/.test(homePage())).toBe(true);
+    // 20 Nov (the refined pass): the same words, as the label over the strip of three figures.
+    expect(/<p class="proofl"[^>]*><span class="lead">Built on Airwallex<\/span><span/.test(homePage())).toBe(true);
     // Since the jury check of 12 Nov Home has a Visa Intelligent Commerce proof card (vic-3, to /visa) and the logos; still no TAP and no award wording.
     expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa TAP|Visa Award|\bTAP\b/);
     // Proof has no footer link to /visa since 12 Nov either: Visa TAP is on /visa only, in its closed fold.

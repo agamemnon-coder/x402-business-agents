@@ -1,3 +1,7 @@
+// Home leads with Purser Cloud (the owner, 20 Nov: "Purser Cloud becomes the company's product"): what it is for a
+// company, an explainer of the money flow (src/redesign/moneyFlow.ts, read from /try's two proof files), how to start
+// (try it, look around as a guest, run a pilot), then the 60-second proof judges need (the demo, /try, /proof, /verify,
+// one real /try run and the three sponsor tracks, each with its record). Below that, as before:
 // Home: ONE story (home-story, 12 Nov, after seven jurors judged the live site). Top to bottom: the heading and what
 // Purser is in one sentence; one button ("Try it yourself") with one reassurance line; the sentence every juror repeated
 // (now carried by the demo); the hero, which is also "how it works" in four steps and whose fourth step is the visitor's own
@@ -9,7 +13,7 @@
 
 import { AWX_HOME_BADGE_CSS, awxHomeBadgeHtml } from "./awxLive.js";
 import { VISA_REUSE_ID } from "./visaStory.js";
-import { AWX_HOME_LINE, FILM_URL, IDEA, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { AWX_HOME_LINE, FILM_LINK, FILM_URL, IDEA, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, payments, split, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -23,7 +27,8 @@ import { homeScaleStats, SCALE_CSS, SCALE_SOURCES } from "./scale.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
 import { SITE_URL } from "../ui/meta.js";
-import { NEGOTIATE_URL } from "../ui/more.js";
+import { NEGOTIATE_URL, PURSER_CLOUD_URL } from "../ui/more.js";
+import { MONEY_FLOW_CSS, MONEY_FLOW_RECORDS, moneyFlowFacts, moneyFlowHtml } from "./moneyFlow.js";
 import { ASSET_VERSIONS, versioned, type VersionedAsset } from "../ui/assetVersions.js";
 
 /** The hub of every connection Purser has, each labelled, with a quickstart (docs/integrations/README.md); in Home's footer. */
@@ -31,15 +36,15 @@ export const CONNECT_HUB_DOC = "docs/integrations/README.md", CONNECT_HUB_LABEL 
 
 const CSS = `/* Home, enterprise pass (the owner, 12 Nov): an 8 px grid, 1120 px wide, neutral greys and one accent. */
 main.ent .wrap { max-width: 1120px; }
-main.ent section { padding: 96px 0; border-top: 1px solid var(--border); }
-main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
+main.ent section { padding: 112px 0; border-top: 1px solid var(--border); }
+main.ent section.e-hero { padding: 88px 0 72px; border-top: 0; }
 .eyebrow { margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 .e-h { margin: 0; font-size: clamp(28px, 3.2vw, 40px); line-height: 1.15; font-weight: 760; letter-spacing: -.02em; max-width: 22em; }
 .e-sub { margin: 16px 0 0; font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 36em; }
 /* The hero: words and buttons on the left, the product card on the right. */
 .e-hero .wrap { display: grid; gap: 48px; align-items: center; }
 .e-hero .h-hero { font-size: clamp(40px, 5vw, 60px); line-height: 1.04; letter-spacing: -.03em; } .e-hero .h-hero span { display: block; }
-@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 56px; } .e-hero .h-hero { font-size: clamp(44px, 4vw, 54px); } .e-hero .h-hero span { white-space: nowrap; } }
+@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 460px); gap: 56px; } .e-hero .h-hero { font-size: clamp(44px, 4vw, 54px); } .e-hero .h-hero span { white-space: nowrap; } }
 .e-hero .what { margin: 24px 0 0; font-size: 20px; line-height: 1.5; color: var(--muted); max-width: 30em; }
 .ctas { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
 .btn.big { height: 56px; font-size: 17px; padding: 0 28px; }
@@ -130,7 +135,84 @@ p.next { margin: 24px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44
 }
 section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .sechead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
-.sechead .pill { white-space: normal; }`;
+.sechead .pill { white-space: normal; }
+/* Purser Cloud first (the owner, 20 Nov): the product's name over the heading. */
+.e-hero p.cloud { margin: 0 0 16px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); letter-spacing: .06em; }
+.e-hero p.cloud .i { flex: none; }
+/* On a phone the two secondary buttons share a row under the primary one, so the line under them stays on a 360 x 780
+   first screen with the product's name above the heading. */
+@media (max-width: 640px) {
+  .ctas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  .ctas .btn.primary { grid-column: 1 / -1; }
+  .ctas .btn.ghost { padding: 0 8px; font-size: 15px; gap: 6px; }
+  .e-hero p.cloud { margin-bottom: 12px; padding: 4px 10px; font-size: 12px; }
+}
+/* The proof line's figures rise in once, on load, by a wipe: every frame shows the record's own figure in its own colours. */
+.proofl a b { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .proofl a b { animation: fig-in .7s cubic-bezier(.2, .7, .2, 1) both; }
+  .proofl a:nth-of-type(2) b { animation-delay: .12s; } .proofl a:nth-of-type(3) b { animation-delay: .24s; }
+}
+@keyframes fig-in { from { clip-path: inset(0 0 100% 0); transform: translateY(6px); } to { clip-path: inset(0 0 0 0); transform: none; } }
+/* How to start: three cards, the third the pilot. */
+ol.starts { list-style: none; margin: 40px 0 0; padding: 0; display: grid; gap: 16px; counter-reset: st; }
+@media (min-width: 900px) { ol.starts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; } }
+ol.starts > li { counter-increment: st; display: flex; flex-direction: column; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+ol.starts > li.pilot { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 12px 32px -16px rgba(79, 70, 229, .35); }
+ol.starts .sh { display: flex; align-items: center; gap: 12px; }
+ol.starts .sh::before { content: counter(st); width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 14px; font-weight: 750; }
+ol.starts li.pilot .sh::before { background: var(--accent); color: var(--surface); }
+ol.starts b { font-size: 18px; font-weight: 720; letter-spacing: -.01em; }
+ol.starts p.st { margin: 12px 0 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
+ol.starts .go { margin-top: auto; padding-top: 12px; display: flex; flex-wrap: wrap; column-gap: 18px; }
+ol.starts .go a, ol.starts p.partner a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+ol.starts .go a:hover, ol.starts p.partner a:hover { text-decoration: underline; }
+ol.starts p.partner { margin: 0; }
+/* The 60-second proof: four numbered ways in beside one real /try run, then the sponsor tracks. */
+.pathgrid { margin: 40px 0 0; display: grid; gap: 32px; align-items: start; }
+@media (min-width: 1040px) { .pathgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 56px; } }
+ol.path { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+ol.path a { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 14px; align-items: center; min-height: 64px; padding: 12px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); text-decoration: none; transition: border-color .2s ease, transform .2s ease; }
+ol.path a:hover { border-color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { ol.path a:hover { transform: translateX(2px); } }
+ol.path .pn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 750; }
+ol.path li:first-child .pn { background: var(--accent); color: var(--surface); }
+ol.path b { display: block; font-size: 17px; font-weight: 700; } ol.path small { display: block; font-size: 14px; color: var(--muted); }
+ol.path .i { color: var(--accent); }
+h3.h-tracks { margin: 56px 0 0; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+ul.tracks { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 16px; }
+@media (min-width: 900px) { ul.tracks { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; } }
+ul.tracks li { display: flex; flex-direction: column; padding: 20px 24px 12px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+ul.tracks a.trk { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 19px; font-weight: 740; color: var(--text); text-decoration: none; letter-spacing: -.01em; }
+ul.tracks a.trk .i { color: var(--accent); } ul.tracks a.trk:hover { color: var(--accent); }
+ul.tracks p { margin: 4px 0 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
+ul.tracks a.rec { margin-top: auto; padding-top: 4px; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 14px; color: var(--accent); font-weight: 650; text-decoration: none; }
+ul.tracks a.rec code { font-family: var(--mono, ui-monospace, monospace); font-size: 13px; }
+ul.tracks a.rec:hover { text-decoration: underline; }
+.e-path .x402l { margin-top: 24px; }
+/* The refined pass (the owner, 20 Nov: "clean and enterprise-grade: fewer elements, more whitespace, one strong hero").
+   The proof line is a quiet strip of three figures under one label; the hero's three buttons are one row on a wide
+   screen; the partners' row is one slim line under the whole hero; the product card in the 60-second proof stands
+   still in its final state, so the explainer is the one thing that moves. */
+.proofl { margin: 32px 0 0; display: grid; grid-template-columns: repeat(3, auto); justify-content: start; align-items: stretch; max-width: none; line-height: 1.3; }
+.proofl .lead { grid-column: 1 / -1; margin-bottom: 10px; font-size: 12.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.proofl .dot { display: none; }
+.proofl a { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px; max-width: 13em; padding: 0 20px; border-left: 1px solid var(--border); font-size: 13.5px; color: var(--muted); text-decoration: none; white-space: normal; }
+.proofl a:first-of-type { padding-left: 0; border-left: 0; }
+.proofl a b { font-size: 26px; line-height: 1.1; font-weight: 750; letter-spacing: -.02em; }
+.proofl a:hover b, .proofl a:focus-visible b { color: var(--accent); }
+.e-hero .ctas { margin-top: 36px; gap: 10px; }
+.e-hero .ctas .btn.big { height: 50px; padding: 0 16px; font-size: 15.5px; }
+.e-hero .trust { grid-column: 1 / -1; margin: 16px 0 0; padding-top: 28px; }
+@media (min-width: 1040px) { .e-hero .trust { flex-wrap: nowrap; gap: 12px; } .e-hero .trust span:first-child { width: auto; margin-right: 12px; } .e-hero .trust small { width: auto; margin: 0 0 0 auto; } }
+.e-path .hf *, .e-path .hf .hf-steps li { animation: none !important; }
+p.ask { margin: 32px 0 0; font-size: 15.5px; color: var(--muted); }
+p.ask a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+p.ask a:hover { text-decoration: underline; }
+@media (max-width: 640px) {
+  .proofl { margin-top: 24px; grid-template-columns: repeat(3, minmax(0, 1fr)); } .proofl a { padding: 0 10px; font-size: 12.5px; max-width: none; } .proofl a b { font-size: 22px; } .e-hero .ctas { margin-top: 28px; }
+  .e-hero .ctas .btn.big { height: 48px; padding: 0 8px; font-size: 15px; } .e-hero .ctas .btn.primary { height: 54px; font-size: 16.5px; }
+}`;
 
 /**
  * Home is served at "/" too (worker/src/core.ts). The CFO's viewer link opens "/" with its key after the "#" (never sent
@@ -216,7 +298,7 @@ export function proofLineHtml(stats = homeScaleStats()): string {
   // Each figure with its source's own title (the tests' "passed, skipped" wording, test/tests-title.test.ts); the line
   // names its records (data-rec), as the band did: test/home-story.test.ts holds the figures to them.
   const figs = stats.map((s) => `<a href="${esc(s.href)}" title="${esc(s.title)}"${s.external ? ' target="_blank" rel="noopener"' : ""}><b>${esc(fmt(s.n))}</b> ${esc(s.label)}</a>`);
-  return `<p class="proofl" data-rec="${esc(SCALE_SOURCES)}">${[...PROOF_LEAD.map((w) => esc(w)), ...figs].join('<span class="dot" aria-hidden="true"> · </span>')}</p>`;
+  return `<p class="proofl" data-rec="${esc(SCALE_SOURCES)}">${[...PROOF_LEAD.map((w) => `<span class="lead">${esc(w)}</span>`), ...figs].join('<span class="dot" aria-hidden="true"> · </span>')}</p>`;
 }
 /**
  * The one line under the buttons, saying only what the page behind the first one does: the hands-on demo (TRY_URL) is a
@@ -338,7 +420,7 @@ function aboutHtml(): string {
 `;
 }
 
-export interface ProofRow { partner: "Airwallex" | "Alta" | "Visa"; title: string; text: string; icon: string; id: string; full: string; href: string; external: boolean }
+export interface ProofRow { partner: "Airwallex" | "Alta" | "Visa"; title: string; text: string; icon: string; id: string; full: string; href: string; external: boolean; /** Airwallex's row: the declined charge and the card's limit, as the record holds them. */ charge?: { currency: string; amount: string; limit: string } }
 
 /**
  * The three proof rows, every value from a run record; a row whose record lacks a piece drops out.
@@ -355,7 +437,7 @@ export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = a
   const cents = (a: string) => Math.round(Number(a) * 100);
   const limitOf = (agent: string) => String(awx?.cards.find((c) => c.agent === agent)?.read_back.per_tx ?? "");
   const decline = awx?.card_transactions.find((t) => !t.approved && !!t.decline_code && !!limitOf(t.agent) && cents(t.amount) > cents(limitOf(t.agent)));
-  if (decline) rows.push({ partner: "Airwallex", title: "Airwallex declined the card", text: `${decline.currency} ${decline.amount} over a ${limitOf(decline.agent)} limit.`, icon: "ban", id: `${decline.id.slice(0, 8)}…`, full: decline.id, href: steps, external: false });
+  if (decline) rows.push({ partner: "Airwallex", title: "Airwallex declined the card", text: `${decline.currency} ${decline.amount} over a ${limitOf(decline.agent)} limit.`, icon: "ban", id: `${decline.id.slice(0, 8)}…`, full: decline.id, href: steps, external: false, charge: { currency: decline.currency, amount: decline.amount, limit: limitOf(decline.agent) } });
   const refusal = metalStory(run.record).refusal;
   const tx = /\/tx\/(0x[0-9a-f]{64})$/.exec(refusal?.proof.href ?? "")?.[1];
   if (refusal && tx && refusal.code === "mandate_cap_exceeded") rows.push({ partner: "Alta", title: "Alta refused it on chain", text: "Over its cap.", icon: "link-2", id: refusal.proof.label, full: tx, href: refusal.proof.href!, external: true });
@@ -421,6 +503,81 @@ export function nextHtml(url: string = SMALL_COMPANY_DEMO_URL): string {
   return `<p class="next">${esc(NEXT_NEXT)} <a href="${esc(url)}" target="_blank" rel="noopener">${esc("Open its demo")}\u00a0↗</a></p>`;
 }
 
+/**
+ * Purser Cloud first (the owner, 20 Nov). The product's name over the heading; the hero's third button goes to "How to
+ * start" on this page, whose third card is the pilot.
+ */
+export const CLOUD_EYEBROW = "Purser Cloud, for finance teams";
+export const PILOT_BUTTON = "Start a pilot";
+export const START_ID = "start";
+export const START_HEAD = "From a two-minute test to a pilot";
+/** Purser Cloud's console on its test-money deployment: the demo company as a guest, and a new company's first run. */
+export const CLOUD_GUEST_URL = `${PURSER_CLOUD_URL}#/guest`;
+export const CLOUD_SETUP_URL = `${PURSER_CLOUD_URL}#/start`;
+/**
+ * How to start, as Purser Cloud works today (cloud/src/console.ts, docs/cloud.md): /try makes a test company that the
+ * sweep deletes after 24 hours (cloud/src/try/sweep.ts); "Try as guest" opens the demo company read only, with no
+ * passkey and no e-mail (POST /v1/auth/guest); a pilot company is created by Purser (POST /v1/admin/tenants), which
+ * hands over a starter key; its owner makes a passkey and connects where invoices arrive at #/start ("about two
+ * minutes", the set-up page's own words). The deployment runs on test money; no customer is claimed.
+ */
+export interface StartStep { title: string; text: string; links: { href: string; label: string; external?: boolean }[]; pilot?: boolean }
+export const START_STEPS: readonly StartStep[] = [
+  { title: "Try it now", text: "Your own test company: an agent proposes, you sign with a passkey. Deleted after 24 hours.", links: [{ href: TRY_URL, label: "Open /try" }] },
+  { title: "Look around as a guest", text: "The console with its demo company: read only, no sign-up.", links: [{ href: CLOUD_GUEST_URL, label: "Open the console", external: true }] },
+  { title: "Run a pilot", text: "We set up your company and send a starter key; you add your passkey in about two minutes. Test money only; no real payments yet.", links: [{ href: CLOUD_SETUP_URL, label: "Set up with a starter key", external: true }], pilot: true },
+];
+export function startHtml(partnerUrl: string = DESIGN_PARTNER_URL): string {
+  const link = (l: StartStep["links"][number]) => `<a href="${esc(l.href)}"${l.external ? ' target="_blank" rel="noopener"' : ""}>${esc(l.label)}${icon(l.external ? "external-link" : "arrow-right", 16)}</a>`;
+  return `<p class="eyebrow">${esc("How to start")}</p>
+  <h2 class="e-h reveal" id="h-start">${esc(START_HEAD)}</h2>
+  <ol class="starts">${START_STEPS.map((st) => `<li class="reveal${st.pilot ? " pilot" : ""}"><span class="sh"><b>${esc(st.title)}</b></span><p class="st">${esc(st.text)}</p><div class="go">${st.pilot ? designPartnerHtml(partnerUrl) : ""}${st.links.map(link).join("")}</div></li>`).join("")}</ol>`;
+}
+
+/**
+ * "Ask Purser" (the owner, 20 Nov): a chat on Purser Cloud at /ask, built there; Home only links it, no chat code here.
+ */
+export const ASK_URL = `${PURSER_CLOUD_URL}ask`;
+export const ASK_LABEL = "Ask Purser";
+export function askHtml(url: string = ASK_URL): string {
+  return `<p class="ask">${esc("Questions first?")} <a href="${esc(url)}" target="_blank" rel="noopener">${esc(ASK_LABEL)}${icon("external-link", 16)}</a></p>`;
+}
+
+/** The 60-second proof (the owner, 20 Nov: "the path judges need"): the demo (3:15), /try, /proof, then /verify. */
+export const PATH_HEAD = "The 60-second proof";
+export const TRACKS_HEAD = "Sponsor tracks";
+/** The demo, as the README's judges' path names it: FILM_LINK's duration, without its "Watch" (Home's one "Watch" is the hero's button). */
+export const PATH_FILM = `The demo ${/\(\d+:\d\d\)$/.exec(FILM_LINK)?.[0] ?? ""}`.trim();
+export function pathStepsHtml(tryHref: string, verifyUrl: string): string {
+  const steps = [
+    { href: FILM_URL, title: PATH_FILM, sub: "On YouTube", external: true },
+    { href: tryHref, title: "Try it yourself", sub: "2 minutes, test money" },
+    { href: "proof", title: PROOF_BUTTON, sub: "Every run, with its record" },
+    ...(verifyUrl ? [{ href: verifyUrl, title: VERIFY_BUTTON, sub: "In your browser, no server call" }] : []),
+  ];
+  return `<ol class="path">${steps.map((p, i) => `<li><a href="${esc(p.href)}"${p.external ? ' target="_blank" rel="noopener"' : ""}><span class="pn">${i + 1}</span><span><b>${esc(p.title)}</b><small>${esc(p.sub)}</small></span>${icon(p.external ? "external-link" : "arrow-right", 18)}</a></li>`).join("")}</ol>`;
+}
+/**
+ * The three sponsor tracks, Airwallex, Visa, Alta, in the owner's order: each its page and one outcome from the proof
+ * rows (every value from a run record; a track whose row is missing drops out), with the link to that record.
+ */
+export interface Track { partner: ProofRow["partner"]; name: string; page: string; line: string; rec: { href: string; label: string; external: boolean } }
+export function sponsorTracks(rows: ProofRow[]): Track[] {
+  const by = (p: ProofRow["partner"]) => rows.find((r) => r.partner === p);
+  const out: Track[] = [];
+  const a = by("Airwallex"), v = by("Visa"), m = by("Alta");
+  if (a?.charge) out.push({ partner: "Airwallex", name: "Airwallex", page: "airwallex", line: `Declined an agent's card charge of ${a.charge.currency} ${a.charge.amount} over its ${a.charge.currency} ${a.charge.limit} limit (sandbox).`, rec: { href: a.href, label: `Record ${a.id}`, external: a.external } });
+  if (v) out.push({ partner: "Visa", name: "Visa", page: "visa", line: "Via Airwallex Airi (sandbox): Purser refused a reused credential before any Airwallex call.", rec: { href: v.href, label: `Record ${v.id}`, external: v.external } });
+  if (m) out.push({ partner: "Alta", name: "Alta", page: "alta", line: "With our own check off for a test, Alta refused an over-cap purchase on chain (testnet).", rec: { href: m.href, label: m.id, external: m.external } });
+  return out;
+}
+export function tracksHtml(rows: ProofRow[]): string {
+  const t = sponsorTracks(rows);
+  if (!t.length) return "";
+  return `<h3 class="h-tracks" id="h-tracks">${esc(TRACKS_HEAD)}</h3>
+  <ul class="tracks" aria-labelledby="h-tracks">${t.map((x) => `<li class="reveal"><a class="trk" href="${esc(x.page)}">${esc(x.name)}${icon("arrow-right", 18)}</a><p>${esc(x.line)}</p><a class="rec" href="${esc(x.rec.href)}"${x.rec.external ? ' target="_blank" rel="noopener"' : ""}>${icon(x.rec.external ? "external-link" : "file-check", 14)}<code>${esc(x.rec.label)}</code></a></li>`).join("")}</ul>`;
+}
+
 const dayMonth = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
 
 /**
@@ -443,16 +600,30 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const body = `<main class="ent">
 <section class="e-hero"><div class="wrap">
   <div class="copy">
+    <p class="eyebrow cloud">${icon("layout-dashboard", 14)}${esc(CLOUD_EYEBROW)}</p>
     ${homeHeadingHtml()}
     <p class="what">${esc(HOME_SUB)}</p>
     ${proofLineHtml()}
-    <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 18)}${esc(FILM_BUTTON)}</a>${verifyUrl ? `<a class="btn big ghost" href="${esc(verifyUrl)}">${esc(VERIFY_BUTTON)}</a>` : ""}</div>
+    <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 18)}${esc(FILM_BUTTON)}</a><a class="btn big ghost pilot" href="#${START_ID}">${esc(PILOT_BUTTON)}</a></div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
-    ${x402LineHtml(run)}
-    <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src in ASSET_VERSIONS ? versioned(src as VersionedAsset) : src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
-  <div class="show">${heroFlowHtml()}
-    <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
+  <div class="show">${moneyFlowHtml(moneyFlowFacts(), WHATS_REAL)}</div>
+  <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src in ASSET_VERSIONS ? versioned(src as VersionedAsset) : src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
+</div></section>
+<section class="e-start" id="${START_ID}" aria-labelledby="h-start"><div class="wrap">
+  ${startHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
+  ${askHtml()}
+</div></section>
+<section class="e-path" aria-labelledby="h-path"><div class="wrap">
+  <p class="eyebrow">${esc("For judges")}</p>
+  <h2 class="e-h reveal" id="h-path">${esc(PATH_HEAD)}</h2>
+  <div class="pathgrid">
+    ${pathStepsHtml(tryHref, verifyUrl)}
+    <div class="show">${heroFlowHtml()}
+      <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
+  </div>
+  ${tracksHtml(rows)}
+  ${x402LineHtml(run)}
 </div></section>
 <section class="e-feat" aria-labelledby="h-feat"><div class="wrap">
   <p class="eyebrow">Why Purser</p>
@@ -468,19 +639,20 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <h2 class="e-h reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
   <article class="e-statrec" data-rec="${esc(STAT_RECORDS)}">${statsHtml(homeStats(run, rows))}</article>
   ${awxHomeBadgeHtml()}
-  ${visaLineHtml(rows)}
   <p class="statnote visal"><a href="${tryHref}">${esc(AWX_HOME_LINE)}</a></p>
   ${kit11Html(run)}
   <div class="e-more"><a class="btn big primary" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>${booksCardHtml()}</div>
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}
-  ${designPartnerHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
 </div></section>
 </main>`;
   // The full list behind the one provenance line: the main run's lines, the run the hero replays (its own note), what
   // step 4's receipt is (the file's own note), and the test behind the Alta row.
   const refusedAt = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at ?? "";
   // What Home shows first (the hero and its two Airwallex rows), then the Alta row and the main run it comes from.
+  const mf = moneyFlowFacts();
   const real = [
+    ...(mf ? [`The explainer's amount and fingerprints: /try's two proof files (${MONEY_FLOW_RECORDS.join(", ")}), from the live /try of 15 November: ${mf.amount} to ${mf.vendor}, signed with a passkey and paid on /try's simulated bank${mf.cent ? `; then the same terms with the amount one cent higher (${mf.cent.currency} ${mf.cent.asked}), refused because the signature is over other terms, and nothing paid` : ""}. A test company, test money. Purser's rails are Airwallex (sandbox) and Alta (testnet); /try also sends each payment it pays to the Airwallex sandbox as one transfer when the deployment's switch is on.`] : []),
+    "Purser Cloud's public deployment (purser-try.max-31b.workers.dev) runs on test money. As a guest its console shows a demo company made from demo data, read only; a pilot company is created by Purser and set up with the starter key it hands over. No customer uses it yet.",
     `The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on the live demo, 13 November, with Claude on: Claude Haiku 5.5 read that invoice, and the Checker, Coder and Payer agents ran on it, each request id in the record (docs/runs/2026-11-13-try-sample.json). Test money, a simulated bank, a test passkey. Since 14 November /try also sends each payment it pays to the Airwallex sandbox as one transfer when the deployment's switch is on; this run came before that, so the card says simulated bank.${VAT_THEN ? ` ${VAT_THEN}` : ""}`,
     ...(awx && facts ? [`The Airwallex figure: the Airwallex-only run (${awx.run}) of ${facts.date}. ${CAVEAT_LINE} ${awx.note}`] : []),
     `The Alta figure: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
@@ -488,11 +660,11 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ];
   return page({
     // Final jury, 13 Nov: / and /home serve this page; /home is its one canonical address.
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS + AWX_HOME_BADGE_CSS + NEGOTIATE_CSS, body, js: JS + COUNT_JS, stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS + MONEY_FLOW_CSS + AWX_HOME_BADGE_CSS + NEGOTIATE_CSS, body, js: JS + COUNT_JS, stage: false,
     // 20 Nov (the owner: "Purser connects to everything and everyone, findable"): the hub of every connection, in the footer.
     links: [[`${REPO_BLOB}${CONNECT_HUB_DOC}`, CONNECT_HUB_LABEL]],
     real,
-    source: `Source: a /try run of its sample invoice, ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
+    source: `Source: a /try run of its sample invoice, /try's two proof files (${MONEY_FLOW_RECORDS.join(", ")}), ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
   });
 }
 

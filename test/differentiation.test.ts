@@ -111,8 +111,9 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // sentence is told by the product card and the features ("Change one cent and it fails"), not word for word.
     // 15 Nov (clarity): the idea, its proof line, Try it in 2 minutes and the film, then the reassurance line.
     // Site audit, 20 Nov (6.3): "test money" moved into the sandbox line under the buttons.
-    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Built on Airwallex · `)).toBe(true);
-    expect(t).toContain(" Try it in 2 minutes Watch the demo Verify a payment yourself Sandbox demo: test money, no real settlement.");
+    // 20 Nov (the owner): Purser Cloud named first, over the heading; the hero's third button is the pilot.
+    expect(t.startsWith(`Purser Cloud, for finance teams AI agents spend. You sign off. ${HOME_SUB} Built on Airwallex · `)).toBe(true);
+    expect(t).toContain(" Try it in 2 minutes Watch the demo Start a pilot Sandbox demo: test money, no real settlement.");
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);
