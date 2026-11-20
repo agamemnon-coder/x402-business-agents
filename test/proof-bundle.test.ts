@@ -189,7 +189,7 @@ describe("/verify, and the links to it", () => {
     expect(r?.status).toBe(200);
     expect(r?.headers.get("content-security-policy")).toBe(VERIFY_BUNDLE_CSP);
     expect(await r!.text()).toBe(VERIFY_BUNDLE_PAGE);
-  });
+  }, 30_000); // a cold import of the dashboard module can pass 5 s on a loaded CI runner (20 Nov)
 
   it("is linked from /proof, from the /try finish, and from the README", async () => {
     const { verifyCalloutHtml } = await import("../src/redesign/proofRuns.js");
@@ -251,5 +251,5 @@ describe("the sample proof bundles as downloads (Max, 15 Nov: \"I don't have any
     const { verifyCalloutHtml } = await import("../src/redesign/proofRuns.js");
     expect(verifyCalloutHtml()).toContain('<a href="verify/samples/try-paid.json" download="try-paid.json">A paid sample</a>');
     expect(verifyCalloutHtml()).toContain('<a href="verify/samples/try-refused.json" download="try-refused.json">the refused sample</a>');
-  });
+  }, 30_000); // a cold import of the dashboard module can pass 5 s on a loaded CI runner (20 Nov)
 });
