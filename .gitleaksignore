@@ -449,3 +449,6 @@ dcdf0c10cd9cb6830478615402ebf364e619ee42:test/dashboard-feed-words.test.ts:gener
 # test/passkey-seal.test.ts ("tok-0123…", "test-seal-key-0123…"); neither is a real credential.
 464f0e135018316d078cccaac785ef07351a5c43:test/airwallex-api-version.test.ts:generic-api-key:18
 22183434053bf59bc45d7ce196f969c84b6d904b:test/passkey-seal.test.ts:generic-api-key:30
+# test/cloud-oidc-token-refusals.test.ts (20 Nov): a PEM wrapper around a key the test generates at run time or around
+# the text "not a key", to test Sign in with Apple's refusals; no real key.
+8591609c607ac6a7f967253c36ff984badd1d7b4:test/cloud-oidc-token-refusals.test.ts:private-key:135

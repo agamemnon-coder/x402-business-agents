@@ -245,6 +245,15 @@ await page.goto(`${ORIGIN}/#/settings`);
 await page.waitForSelector("text=API keys");
 await settle();
 await shot("10-instellingen");
+// Close and offboard (cloud/src/offboardingView.ts): on the owner's Settings, its four steps, the export first and the
+// rest closed until their turn. Nothing is pressed: offboarding would close this test company.
+await page.waitForSelector("#offboarding");
+const offHeads = await page.locator("#offboarding h2").allTextContents();
+ok(offHeads.length === 5 && offHeads[0] === tr("en", "cs.off.title") && offHeads[4] === tr("en", "cs.off.step4_h"), `Settings shows the owner "Close and offboard the company" with its four steps (${offHeads.join(" | ")})`);
+const offState = await page.evaluate(() => ["off-export", "off-confirm", "off-passkey", "off-go"].map((id) => (document.getElementById(id) as HTMLButtonElement | HTMLInputElement | null)?.disabled));
+ok(JSON.stringify(offState) === JSON.stringify([false, true, true, true]), `offboarding opens with the export only; the address, the passkey and the request wait (${JSON.stringify(offState)})`);
+ok((await page.getAttribute("#offboarding a", "href"))?.endsWith("/privacy") ?? false, "offboarding links /privacy");
+if (shots) await page.locator("#offboarding").screenshot({ path: join(shots, "10b-offboarding.png") });
 // An invite: one-time link and its QR code, which a phone's camera reads as exactly that link.
 await page.fill('input[placeholder="Name"]', "Fleur (test person)");
 await page.click("text=Add and invite");

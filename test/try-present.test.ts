@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { SYSTEM_MAP_DATA_URL } from "../cloud/src/try/systemMap.gen.js";
 import { describe, expect, it } from "vitest";
 import { tryPage } from "../cloud/src/tryPage.js";
-import { presentExtra, V2_COPY, PRESENT_AFTER, PRESENT_BEFORE, PRESENT_MONEY, PRESENT_TRY } from "../cloud/src/try/presentMode.js";
+import { presentExtra, V2_COPY, PRESENT_AFTER, PRESENT_BEFORE, PRESENT_MONEY, PRESENT_OUTCOME, PRESENT_TRY } from "../cloud/src/try/presentMode.js";
 import { ADMIN_TOKEN, ORIGIN, testCloud } from "./support/cloud.js";
 
 const cfg = { origin: "https://x.test", rpId: "x.test" };
@@ -38,6 +38,19 @@ describe("recording mode", () => {
   it("says Before, After, test money and where to try, in plain words", () => {
     const { script } = presentExtra();
     for (const w of [PRESENT_BEFORE, PRESENT_AFTER, PRESENT_MONEY, PRESENT_TRY]) expect(script).toContain(JSON.stringify(w).slice(1, -1));
+  });
+
+  it("says where the payment was made: the simulated bank, and the Airwallex sandbox only when the pay answer made a transfer there", () => {
+    const { script } = presentExtra();
+    // Never the sandbox's name without its transfer (src/try/partners.ts says it the same way), always test money.
+    expect(PRESENT_OUTCOME.paid).toBe("Paid on the simulated bank (test money)");
+    expect(PRESENT_OUTCOME.paidAwx).toBe("Paid on the simulated bank, then once on the Airwallex sandbox (test money)");
+    expect(script).toContain("const ap=j.airwallex_payout;RUN.awx=!!(ap&&typeof ap==='object'&&ap.source==='airwallex-sandbox')");
+    expect(script).toContain("fig(RUN.paid?RUN.paid:null,RUN.awx?O.paidAwx:O.paid)");
+    // A new run forgets it; a reload in the middle of one keeps it.
+    expect(script).toContain("RUN.paid=null;RUN.awx=false;");
+    expect(script).toContain("RUN.awx=o.awx===true;");
+    expect(script).toContain(JSON.stringify(PRESENT_OUTCOME.paidAwx).slice(1, -1));
   });
 
   it("leaves the phone lane out with ?phone=0, and R keeps that switch", () => {
