@@ -303,16 +303,20 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
     const p = v9.totals.purser_script, n = v9.totals.no_rules, a = v9a.totals.purser_script;
     out.push({ offProof: true, key: "eval-v9", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v9): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v9.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}; ${p.cfo_not_needed} sent to the CFO that could have been paid alone. Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v9.md"), rec: V9 });
   }
-  // Eval v10 (20 Nov): 129 held-out invoices written after the fixes that followed v9, committed alone with their
-  // pre-registration before the run (src/cli/adversarialV10.ts). The one eval tile on /proof (the owner, 20 Nov): the
-  // newest held-out run, its figure as recorded, with its false holds and what went to the CFO; the run after the fixes
-  // that followed it is said in the note, not held out.
-  const V10 = "docs/evals/adversarial-v10.json", V10_AFTER = "docs/evals/adversarial-v10-after.json";
-  const v10 = json(V10) as { held_out?: boolean; cases_commit?: string; totals?: AdvCfo } | null;
-  const v10a = json(V10_AFTER) as { held_out?: boolean; totals?: AdvCfo } | null;
-  if (v10?.held_out && v10.totals?.purser_script && v10.totals.no_rules) {
-    const p = v10.totals.purser_script, n = v10.totals.no_rules, a = v10a && !v10a.held_out ? v10a.totals?.purser_script : undefined;
-    out.push({ key: "eval-v10", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v10): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v10.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}; ${p.to_cfo_not_held} sent to the CFO that had to be held, ${p.cfo_not_needed} that could have been paid alone.${a ? ` Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds.` : ""} Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v10.md"), rec: a ? `${V10} ${V10_AFTER}` : V10 });
+  // Evals v10 to v14 (20 Nov): held-out sets written each after the fixes that followed the one before, committed alone
+  // with their pre-registration before the run (src/cli/adversarialV10.ts, src/evals/adversarialRound.ts). One eval tile
+  // on /proof (the owner, 20 Nov): the newest held-out run, its figure as recorded, with its false holds and what went to
+  // the CFO; the run after the fixes that followed it, when there is one, is said in the note, not held out. The older
+  // rounds stay on the wall's record, off /proof.
+  const ROUNDS = [10, 11, 12, 13, 14].filter((v) => (json(`docs/evals/adversarial-v${v}.json`) as { held_out?: boolean } | null)?.held_out);
+  const newest = ROUNDS.at(-1);
+  for (const v of ROUNDS) {
+    const rec = `docs/evals/adversarial-v${v}.json`, after = `docs/evals/adversarial-v${v}-after.json`;
+    const r = json(rec) as { held_out?: boolean; cases_commit?: string; totals?: AdvCfo } | null;
+    const ra = json(after) as { held_out?: boolean; totals?: AdvCfo } | null;
+    if (!r?.totals?.purser_script || !r.totals.no_rules) continue;
+    const p = r.totals.purser_script, n = r.totals.no_rules, a = ra && !ra.held_out ? ra.totals?.purser_script : undefined;
+    out.push({ ...(v === newest ? {} : { offProof: true }), key: `eval-v${v}`, fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v${v}): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${r.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}; ${p.to_cfo_not_held} sent to the CFO that had to be held, ${p.cfo_not_needed} that could have been paid alone.${a ? ` Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds.` : ""} Offline.`, tag: "test", tone: "claude", href: blob(`docs/evals/adversarial-v${v}.md`), rec: a ? `${rec} ${after}` : rec });
   }
 
   // 20 Nov: the newest red-team run is the full suite's re-run: every scripted attack and every earlier attempt a
