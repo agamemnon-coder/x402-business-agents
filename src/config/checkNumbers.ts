@@ -10,6 +10,11 @@
 /** An invoice this many times its supplier's usual (the median of its earlier ones) is flagged. */
 export const UNUSUAL_FACTOR = 2;
 /**
+ * With one earlier invoice only, the margin before an amount is unusual (20 Nov, after the held-out eval v12): one invoice
+ * says less than a median, so the amount must be more than three times it.
+ */
+export const UNUSUAL_FACTOR_ONE = 3;
+/**
  * Invoices from one supplier for the same total dated this close together are a possible duplicate under another number
  * (past a month). Kept at 45 days (eval v3): 90 would hold a supplier's fixed fee billed every two months, and the copy
  * resent two months later that v3 found (v3-dup-zeeland-60-days) is caught by its printed delivery date instead: the

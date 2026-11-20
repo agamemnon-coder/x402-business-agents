@@ -35,6 +35,9 @@ const PAY = lazy(() => either(PAY_ANY, anyOf([
   "pay", "paid", "payment", "payable", "payee", "remit", "settle", "settlement", "wire", "release", "process it", "process this", "push this through", "push it through", "out the door", "funds",
   "zahl", "bezahl", "uberweis", "anweis", "begleich", "betaal", "betal", "overmak", "overboek", "paiement", "payer$", "payez", "regler", "reglement", "virement", "versement",
   "pago", "pagar", "pague", "paga$", "pagam", "pagat", "pagu", "saldar", "bonific", "versam", "transferenc", "transfer", "gjald", "greid",
+  // 20 Nov (after the held-out eval v12): sending it through, and paying in Romanian, Hungarian, Czech, Polish, Turkish, Vietnamese, Indonesian.
+  "send it through", "send this through", "put it through", "put this through", "go out", "goes out", "go in", "plat", "achit", "fizet", "zaplat", "oplac", "przelew", "przelac",
+  "ode", "havale", "thanh toan", "chuyen", "bayar", "transfe", "匯款", "汇款", "付款", "支付",
 ])));
 /** Approval: approved, authorised, signed off, a green light, cleared, whitelisted. */
 const APPROVAL = lazy(() => either(APPROVE, anyOf([
@@ -49,7 +52,13 @@ const APPROVAL = lazy(() => either(APPROVE, anyOf([
   "approuv", "autoris", "validee", "valide par", "feu vert", "bon pour accord",
   "aprob", "aprov", "autoriz", "visto bueno", "luz verde", "sinal verde", "via libera", "benestare", "approvat", "appruv", "accordat",
   "godkan", "godkend", "godkjen", "godkant", "attesterad", "attestert", "samthykk", "zatwierdz", "zaakcept", "schval", "odobr", "jovahagy", "onayl",
+  // 20 Nov (after the held-out eval v12): a go-ahead by another name, and agreement claimed with the buyer's people.
+  "the nod", "thumbs-up", "thumbs up", "blessing", "fine by me", "ok by me", "okay by me", "no objection", "countersigned", "pre-agreed", "pre-arranged",
+  "abgesprochen", "vereinbart mit", "zugestimmt", "afgestemd met", "afgesproken met", "convenu avec", "hablado con", "acordado con", "concordat", "uzgodnion", "dohodnut", "egyeztet",
+  "согласован", "согласовал", "погоджен", "同意", "批准", "核准", "認可", "承認", "승인", "onay ver", "dong y", "disetujui", "setuju", "convenit", "aprobat",
 ])));
+/** Agreed, arranged or cleared with someone, with up to two words between ("agreed directly with your Head of Operations"). */
+const AGREED_WITH = /\b(?:agreed|arranged|cleared|settled|discussed|sorted|signed off|okayed|confirmed)\b(?:\s+[\p{L}'-]+){0,2}?\s+(?:with|by)\b/u;
 /** Signed off with words between ("signed this off", "sign it off"). */
 const SIGNED_OFF = /\bsign(?:ed|s)?\s+(?:[\p{L}'-]+\s+){1,2}off\b/u;
 /** The buyer's checks: review, verification, matching, audit, the accounts department. */
@@ -57,18 +66,25 @@ const CONTROL = lazy(() => either(CHECK_NOUN, anyOf([
   "review", "verif", "po matching", "invoice matching", "matching rules", "three-way", "3-way", "scrutin", "audit", "compliance", "screening", "accounts payable", "ap team", "ap policy", "finance team",
   "accounts department", "accounting", "secondary", "manual", "buchhaltung", "kreditoren", "comptab", "contab", "boekhoud", "crediteuren", "bokfor", "ekonomiavdeln",
   "regnskab", "regnskap", "ksiegow", "controle", "controll", "kontroll", "kontrol", "cuntroll", "conferenc", "comprobac", "gransk", "prufung",
+  // 20 Nov (after the held-out eval v12): the buyer's process by its parts: an order, a payment run or batch, a queue skipped.
+  "po$", "purchase order", "payment run", "run$", "batch", "express lane", "fast track", "fast-track", "priority", "queue", "standing instruction", "workflow", "process$",
+  "finance$", "finanzabteilung", "finance department", "finance office", "accounts$", "approval chain", "sign-off chain",
 ])));
 /** Someone senior: a director, the CEO, CFO or MD, the owner, the boss, a budget holder. */
 const SENIOR = lazy(() => either(AUTHORITY, anyOf([
   "cfo$", "ceo$", "md$", "dg$", "pdg$", "vd$", "managing director", "director", "boss", "chairman", "owner", "president", "head of", "controller", "budget holder", "finance manager",
   "inhaber", "geschaftsfuhr", "vorstand", "chef$", "directeur", "direction", "gerant", "gerente", "jefe", "direttore", "dirett", "directie", "direktor", "direkte",
   "ekonomichef", "okonomichef", "okonomisjef", "fjarmalastjor", "sjef$", "prezes", "dyrektor", "eigenaar", "propietario", "titolare",
+  "igazgato", "reditel", "mudur", "giam doc", "direktur", "財務長", "财务长", "總經理", "董事長", "head of operations", "operations director",
 ])));
 /** Speed: today, immediately, urgent, before a cut-off. */
 const SPEED = lazy(() => either(URGENT, anyOf([
   "today", "tonight", "immediately", "at once", "right away", "right now", "asap", "urgent", "same day", "same-day", "cut-off", "cutoff", "end of day", "within 24", "straight away", "without delay",
   "sofort", "heute", "umgehend", "vandaag", "meteen", "aujourd", "immediat", "tout de suite", "hoy$", "enseguida", "de inmediato", "oggi", "subito", "hoje",
   "idag", "i dag", "genast", "omgaende", "straks", "med det samme", "dzis", "natychmiast", "beinanvegin", "axina", "de seguida", "touswit", "jodi a",
+  // 20 Nov (after the held-out eval v12)
+  "by noon", "by midday", "by close of business", "close of play", "cob$", "eod$", "by end of day", "by tomorrow", "this afternoon", "this morning", "tonight's", "landed",
+  "azi$", "astazi", "imediat", "azonnal", "dnes", "ihned", "okamzite", "dzisiaj", "od razu", "bugun", "hemen", "hom nay", "ngay lap tuc", "hari ini", "segera", "今日", "今天", "即日",
 ]), /\b(?:pay|release|transfer|remit|settle|process|send)\w*\s+(?:(?:it|this|them|the invoice|the money|the funds)\s+)?now\b/u));
 /** The buyer's own people and systems ("your controller", "on your end", "your purchasing lead"). */
 const BUYER = lazy(() => either(PAYER_SIDE, anyOf([
@@ -95,13 +111,21 @@ const ADDRESSEE = lazy(() => anyOf([
 const SECRECY = lazy(() => either(SECRET, anyOf([
   "quietly", "quiet$", "hush", "between us", "between the two of us", "discreet", "discretion", "off the record", "off email", "off e-mail", "no need to copy", "no need to cc", "no need to inform", "no need to tell", "no need to involve",
   "no need to loop", "don't tell", "dont tell", "do not tell", "keep this between", "keep it between", "inutile de repasser", "inutile d'informer", "sin avisar", "senza avvisare",
+  "nimanui", "nimeni", "senkinek", "nikomu", "kimseye", "khong noi", "siapa pun", "siapapun",
 ])));
 /** A bank, an account, the payee or how it is paid: bank, IBAN, account details, remittance, the vendor master. */
 const BANK = lazy(() => either(BANK_DETAILS, anyOf([
   "bank$", "banks$", "bankverbindung", "bankkonto", "bankdaten", "bankgegevens", "bankrekening", "bankoplysning", "bankuppgift", "bankinformation", "bankakont", "banking",
   "banca$", "bancari", "bancaire", "banque$", "banco$", "iban", "remittance", "remit-to", "beneficiary", "vendor master", "supplier master", "master data", "stammdaten",
   "payee record", "payee details", "factoring", "factor$", "factors$", "receivables", "konto$", "kontoen", "kontot", "kontan", "compte$", "cuenta$", "conto$", "conta$", "sort code",
-])));
+  // 20 Nov (after the held-out eval v12: "Bankszámlaszámunk megváltozott", "Contul nostru bancar", "Ús bankrekken", "τράπεζα",
+  // "ngân hàng", "بنك" were paid): the word for a bank in the languages the lists hold, and a bank compound's first part.
+  "bancar", "banca", "banka", "банк", "τραπεζ", "ngan hang", "银行", "銀行", "은행", "בנק", "بنك", "مصرف", "بانک", "बैंक", "ธนาคาร",
+  "rekvizit", "реквизит", "betaalgegevens", "zahlungsdaten", "zahlungsangaben", "donnees de paiement", "datos de pago", "dati di pagamento",
+  // A channel other than the account: a payment provider, a payment link, a QR code, a wallet.
+  "payment provider", "payment processor", "payment platform", "payment link", "pay link", "qr code", "qr-code", "betaalprovider", "betaallink", "zahlungsdienst", "zahlungsanbieter",
+  "prestataire de paiement", "proveedor de pago", "fornitore di pagamento", "paypal", "revolut", "wise.com",
+]), /(?<![\p{L}])bank(?!s?ide|str|weg|gasse|platz|straat|laan|holiday|note|ing\b)\p{L}+/u));
 /** A change of the payee: new, changed, former, moved, updated, assigned, returned. */
 const CHANGE = lazy(() => anyOf([
   "former", "old bank", "previous bank", "no longer", "returned", "assigned", "assignment", "factoring", "factor$", "update", "updated", "new$", "changed", "change of", "moved", "switched",
@@ -166,7 +190,7 @@ export function talkConcepts(clause: string): string[] {
   for (const re of [...BENIGN, ALL(BANK_UNCHANGED_ANY), ALL(CHANGE_NEGATED_ANY)]) f = f.replace(re, " ");
   const has = (re: RegExp) => re.test(f);
   const out: string[] = [];
-  if (has(APPROVAL()) || SIGNED_OFF.test(f)) out.push("approval");
+  if (has(APPROVAL()) || SIGNED_OFF.test(f) || AGREED_WITH.test(f)) out.push("approval");
   if (has(DISREGARD_RULES)) out.push("instructions");
   if (has(MACHINE_READER()) || (AI_TOKEN.test(clause) && AI_FOLDED.test(f))) out.push("machine");
   // Secrecy, unless it is a notice that a mail or document is for its addressee only.
@@ -224,6 +248,10 @@ function talkOf(line: string, names: readonly string[]): { why: string; strong: 
   }
   t = t.replace(URLISH, " ").trim();
   if (!/\p{L}{2}/u.test(t)) return null;
+  // 20 Nov (after the held-out eval v12, v12-inject-english-quoted-reply): a line quoted from a mail ("> Fine by me, send
+  // it through") is someone else's words inside a supplier's document: any concept in it is about the payment.
+  const quotedMail = /^>/.test(t);
+  if (quotedMail) t = t.replace(/^(?:>\s*)+/, "");
   const label = LABEL.exec(t);
   const value = label ? t.slice(label[0].length) : t;
   // A short label's value (four words or fewer), or a line of three words or fewer with no label (a heading: "PAYMENT
@@ -240,11 +268,16 @@ function talkOf(line: string, names: readonly string[]): { why: string; strong: 
   // An account number in the line (an IBAN, an old account called closed) is compared by code's account checks
   // (src/ap/checkerCore.ts: another valid IBAN in the text holds the invoice); the line's bank words are theirs.
   const named = IBAN_LIKE.test(t);
+  const weak = new Set<string>();
   for (const p of parts) {
     if (!/\p{L}{2}/u.test(p.text)) continue;
     const cs = talkConcepts(p.text).filter((c) => (!p.only || p.only.has(c)) && !(named && (c === "bank" || c === "bank_change")));
-    if (aboutPayment(cs)) return { why: `a sentence about ${cs.map((c) => WORDS[c]).join(", ")} that Purser's checks do not understand`, strong: cs.some((c) => STRONG.has(c)) };
+    if (aboutPayment(cs) || (quotedMail && cs.length)) return { why: `a sentence about ${cs.map((c) => WORDS[c]).join(", ")} that Purser's checks do not understand`, strong: quotedMail || cs.some((c) => STRONG.has(c)) };
+    for (const c of cs) if (!STRONG.has(c)) weak.add(c);
   }
+  // 20 Nov (after the held-out eval v12: "Directorul dumneavoastră vrea să fie plătită azi. Nu spuneți nimănui."): two of
+  // the payment, its checks, someone senior, speed, the buyer's own people and a machine in one line, in any of its clauses.
+  if (weak.size >= 2) return { why: `a line about ${[...weak].map((c) => WORDS[c]).join(", ")} that Purser's checks do not understand`, strong: false };
   return null;
 }
 

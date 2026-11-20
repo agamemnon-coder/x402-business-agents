@@ -18,11 +18,12 @@ import { fromCents, toCents } from "../lib/money.js";
 import { abaOf, accountKey, chooseRoute, payableCurrency, sameAccount, validateDetails, type BankDetails, type Route } from "../payouts/routes.js";
 import { assessAgainst, sameName, type Beneficiary, type FraudFinding, type FraudSignal } from "../policy/fraudCore.js";
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
-import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
+import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS, SPLIT_DAYS, TWIN_DAYS, UNUSUAL_FACTOR, UNUSUAL_FACTOR_ONE, WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
 import { asksToPay, customerNumberBefore, identifierBefore, namesAccount } from "../policy/multilingual.js";
 import { plainDigits } from "../policy/numerals.js";
 import { talkLines } from "../policy/paymentTalk.js";
+import { wordsDifferFromTotal } from "./amountWords.js";
 import { unreadLines } from "../policy/readable.js";
 import { lineTotals } from "./lineTotals.js";
 import { deliveryDates, itemLines, periodsDiffer, sameLines, servicePeriods } from "./period.js";
@@ -392,7 +393,7 @@ function examine(c: InvoiceCase): Examined {
   } else if (MONEY.test(r.total)) {
     // 19 Nov (after the held-out eval v6, v6-limit-ege-asks-more): a line that asks to pay more than the total, in any
     // language the lists know: what is owed is not one amount (src/ap/reading.ts askedAboveTotal).
-    const more = askedAboveTotal(text, r.total, r.currency);
+    const more = askedAboveTotal(text, r.total, r.currency) ?? wordsDifferFromTotal(text, toCents(r.total));
     if (more) f.push({ code: "ambiguous_total", level: "review", detail: more });
   }
 
@@ -568,6 +569,14 @@ function examine(c: InvoiceCase): Examined {
       if (usual > 0 && toCents(r.total) > UNUSUAL_FACTOR * usual) {
         f.push({ code: "unusual_amount", level: "warn", detail: `${r.currency} ${r.total} is more than ${UNUSUAL_FACTOR} times this supplier's usual ${r.currency} ${fromCents(usual)} (the median of ${before.length} earlier invoices)` });
         phrases.push(`${UNUSUAL_FACTOR} times`, `${before.length} earlier invoices`);
+      }
+    } else if (before.length === 1) {
+      // 20 Nov (after the held-out eval v12, v12-limit-bursa-one-earlier-invoice: EUR 920.00 after one earlier invoice of
+      // EUR 140.00 was paid alone): one earlier invoice is a history too, read with a wider margin (UNUSUAL_FACTOR_ONE).
+      const only = before[0]!;
+      if (only > 0 && toCents(r.total) > UNUSUAL_FACTOR_ONE * only) {
+        f.push({ code: "unusual_amount", level: "warn", detail: `${r.currency} ${r.total} is more than ${UNUSUAL_FACTOR_ONE} times this supplier's only earlier invoice, ${r.currency} ${fromCents(only)}` });
+        phrases.push(`${UNUSUAL_FACTOR_ONE} times`);
       }
     }
   }

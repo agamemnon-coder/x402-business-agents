@@ -461,10 +461,11 @@ export function parseApFallback(text: string): ApReading {
   const als = amountLines(text ?? "");
   const total = chosenTotal(als);
   // A number is read only when it ends where the word ends: "ВTX-2026-21" (a Cyrillic В) or "BTX-2026-2１" is not read
-  // as part of itself; such a number is left empty for a person (red team round 2).
+  // as part of itself; such a number is left empty for a person (red team round 2). 20 Nov (after the held-out eval v12:
+  // "TŁ-2026-0151" was not read): Latin letters with marks (Ł, Ș, Ç) are a number's letters too, other alphabets' are not.
   const invoiceNo =
-    firstMatch(text, /(?:invoice\s*(?:no\.?|number|nr\.?|#)|factuurnummer|factuurnr\.?|rechnungsnummer|rechnungs-?nr\.?|gutschriftsnummer|gutschriftnummer|gutschrift-?nr\.?|credit\s*note\s*(?:no\.?|number|nr\.?|#)|creditnotanummer|creditnota\s*(?:nr\.?|nummer))\s*[:#]?\s*([A-Z0-9][A-Z0-9\-/.]*\d[A-Z0-9\-/.]*)(?=[\s,;)]|$)/im) ||
-    firstMatch(text, /\b(?:invoice|factuur|rechnung)\s+#?\s*([A-Z0-9][A-Z0-9\-/.]*\d[A-Z0-9\-/.]*)(?=[\s,;)]|$)/im);
+    firstMatch(text, /(?:invoice\s*(?:no\.?|number|nr\.?|#)|factuurnummer|factuurnr\.?|rechnungsnummer|rechnungs-?nr\.?|gutschriftsnummer|gutschriftnummer|gutschrift-?nr\.?|credit\s*note\s*(?:no\.?|number|nr\.?|#)|creditnotanummer|creditnota\s*(?:nr\.?|nummer))\s*[:#]?\s*([A-Z0-9\u00C0-\u024F][A-Z0-9\u00C0-\u024F\-/.]*\d[A-Z0-9\u00C0-\u024F\-/.]*)(?=[\s,;)]|$)/im) ||
+    firstMatch(text, /\b(?:invoice|factuur|rechnung)\s+#?\s*([A-Z0-9\u00C0-\u024F][A-Z0-9\u00C0-\u024F\-/.]*\d[A-Z0-9\u00C0-\u024F\-/.]*)(?=[\s,;)]|$)/im);
   const due = labelledDate(text, "due\\s+date|payment\\s+due|due|vervaldatum|uiterste\\s+betaaldatum|fällig\\s+am|fällig|zahlbar\\s+bis|zahlungsziel");
   const issued = labelledDate(text, "invoice\\s+date|date\\s+of\\s+issue|issue\\s+date|factuurdatum|rechnungsdatum|datum|date");
   // A label as a whole word, then a colon (red team round 4: "Reflective safety vests" gave the reference "lective",
