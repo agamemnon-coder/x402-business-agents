@@ -79,7 +79,7 @@ export const near = (a: RegExp, b: RegExp, gap: number) => new RegExp(`(?:${a.so
 // ── Concepts ──
 
 /** Disregard, ignore, forget, skip (an order about the reader's own rules). */
-const DISREGARD = anyOf([
+export const DISREGARD = anyOf([
   // English, German, Dutch, French, Spanish, Italian, Portuguese (also in injection.ts's own lists)
   "ignore", "disregard", "forget", "ignorier", "vergiss", "vergessen sie", "missacht", "negeer", "vergeet", "ignorez", "ignorer", "oubliez", "ne tenez pas compte",
   "ignora", "ignore", "ignorar", "olvida", "olvide", "haz caso omiso", "omite", "omita", "dimentica", "non tenere conto", "esqueca", "desconsidere", "desconsidera",
@@ -114,7 +114,7 @@ const DISREGARD = anyOf([
  * Instructions, rules, a prompt (what the reader was told). Not "previous" alone: "ignore our previous reminder if you
  * have paid" is a supplier's courtesy in every language.
  */
-const INSTRUCTIONS = anyOf([
+export const INSTRUCTIONS = anyOf([
   "instruction", "rules", "prompt", "anweisung", "vorgaben", "regeln", "richtlinie", "instructie", "regels", "consigne", "regle", "instruccion", "reglas", "normas", "istruzion",
   "regole", "instruc", "regras", "instrukcj", "polecen", "zasad", "instrukc", "pokyn", "pravidl", "talimat", "kural", "yonerge", "huong dan", "chi thi", "quy tac", "lenh$",
   "instruksi", "aturan", "perintah", "utasitas", "szabaly",
@@ -137,7 +137,7 @@ const INSTRUCTIONS = anyOf([
  * An AI by its name: the acronym and "artificial intelligence" in the languages the lists know (20 Nov, after eval v8),
  * for a heading that names one (headedToAi).
  */
-const AI_WORDS = [
+export const AI_WORDS = [
   "ai", "a.i.", "llm", "gpt", "chatbot", "ki", "ia", "yapay zeka", "tri tue nhan tao", "kecerdasan buatan", "ии", "ші", "изкуствен интелект", "искусственный интеллект",
   "штучний інтелект", "τεχνητη νοημοσυνη", "人工智能", "人工知能", "인공지능", "الذكاء الاصطناعي", "هوش مصنوعی", "בינה מלאכותית", "एआई", "कृत्रिम बुद्धि",
   "ปัญญาประดิษฐ์", "เอไอ", "ხელოვნური ინტელექტ", "արհեստական բանականություն", "এআই", "কৃত্রিম বুদ্ধিমত্তা", "செயற்கை நுண்ணறிவு", "ሰው ሰራሽ አስተውሎት",
@@ -167,7 +167,7 @@ const MACHINE_WORDS = [
   "ಸಿಸ್ಟಮ್", "ಸ್ವಯಂಚಾಲಿತ", "אסיסטענט", "סיסטעם", "אויטאמאטיש", "געהילף", "རིག་ནུས", "རོགས་རམ་པ", "ལག་རོགས", "རང་འགུལ", "མ་ལག", "ܡܥܕܪܢ", "ܡܟܝܢܬ",
   "ᐃᑲᔪᖅᑎ", "ᖃᕆᓴᐅᔭ", "otomatis",
 ];
-const MACHINE = anyOf([...new Set(MACHINE_WORDS)]);
+export const MACHINE = anyOf([...new Set(MACHINE_WORDS)]);
 /** A pattern built the first time it is used, not when the module loads (the Worker's start stays within its CPU limit). */
 const lazy = (make: () => RegExp) => { let re: RegExp | undefined; return () => (re ??= make()); };
 const AI = lazy(() => anyOf(AI_WORDS));
@@ -219,7 +219,7 @@ const TO = anyOf([
 ]);
 
 /** Approve, authorise, release (an order to sign off). */
-const APPROVE = anyOf([
+export const APPROVE = anyOf([
   "approve$", "authorise$", "authorize$", "genehmigen sie", "geben sie die zahlung frei", "keur$", "goedkeuren$", "approuvez$", "approuver$", "validez$", "aprueba$", "apruebe$", "aprobar$",
   "approva$", "approvi$", "approvare$", "aprove$", "aprova$", "aprovar$", "zatwierdz$", "zatwierdzcie$", "zaakceptuj$", "schvalte$", "schvalit$", "onayla$", "onaylayin$", "onaylayiniz$",
   "phe duyet", "chap thuan", "setujui$", "hagyja jova",
@@ -283,7 +283,7 @@ const WITHOUT_CHECK = anyOf([
   "אן איבערקוק", "אן באשטעטיקונג", "אן א קאנטראל", "ཞིབ་བཤེར་མ་བྱས་པར", "tanpa dipriksa", "tanpa priksa", "tanpa dicek", "ora usah dipriksa",
 ]);
 /** Already approved, pre-approved, verified elsewhere, in one phrase. */
-const ALREADY_APPROVED = anyOf([
+export const ALREADY_APPROVED = anyOf([
   "juz zatwierdz", "wstepnie zatwierdz", "jiz schvalen", "predem schvalen", "uz schvalen", "onceden onayland", "zaten onayland", "onaylanmistir", "on onayl",
   "da duoc phe duyet", "da phe duyet", "sudah disetujui", "mar jovahagyva",
   "уже одобрен", "предварительно одобрен", "уже согласован", "вече одобрен", "предварително одобрен", "вже затверджен", "већ одобрен",
@@ -334,7 +334,7 @@ const ADDRESSED = [
   new RegExp(`(?:${MACHINE.source})\\s*(?:様|殿|さま|님|귀하)|^\\W{0,3}[【「『〔［\\[]\\s*[^】」』〕］\\]\\n]{0,16}(?:${MACHINE.source})[^】」』〕］\\]\\n]{0,8}[】」』〕］\\]]`, "u"),
   new RegExp(`(?:给|給|致)\\s*(?:${MACHINE.source})|(?:${MACHINE.source})\\s*(?:へ|様|殿|에게|께)\\s*[:：,，、]|(?:الى)\\s+(?:${MACHINE.source})|(?:dear|liebe[rs]?|beste|cher|chere|querido|querida|caro|cara|drogi|droga|sayin|sevgili|kinh gui|than gui|уважаем\\p{L}*|дорог\\p{L}*|скъп\\p{L}*|αγαπητ\\p{L}*|親愛的|尊敬的|친애하는|عزيزي|ايها|יקר|प्रिय|เรียน)\\s*(?:${MACHINE.source})`, "u"),
 ];
-const DISREGARD_RULES = near(DISREGARD, INSTRUCTIONS, 40);
+export const DISREGARD_RULES = near(DISREGARD, INSTRUCTIONS, 40);
 const APPROVE_PAYMENT = near(APPROVE, PAY_OR_INVOICE, 25);
 /** An order about the reader's rules, a note addressed to a machine, or an order to approve a payment: an instruction. */
 export function instructionInAnyLanguage(line: string): boolean {
@@ -358,7 +358,7 @@ const VERIFIED_INVOICE = near(ALREADY_VERIFIED, PAY_OR_INVOICE, 40);
  * supplier's document cannot know that the buyer's own checks are done). Not "your team" or "your purchasing": they check
  * goods, which a supplier may well say they did.
  */
-const PAYER_SIDE = anyOf([
+export const PAYER_SIDE = anyOf([
   "your controller", "your financial controller", "your finance", "your accounts", "your accounting", "your treasury", "your management", "your cfo", "your md$", "your ceo",
   "your director", "your managing director", "your board", "your payables", "your ap team", "your accounts payable", "your head of finance", "your finance director",
   "ihre geschaftsfuhrung", "ihrer geschaftsfuhrung", "ihre buchhaltung", "ihrer buchhaltung", "ihre finanzabteilung", "ihrer finanzabteilung", "ihr controller", "ihr controlling",
@@ -374,7 +374,7 @@ const PAYER_SIDE = anyOf([
   "la vostra amministrazione",
 ]);
 /** A check done on a payment: approved, signed off, cleared, reconciled, validated, verified, released, authorised. */
-const CHECK_DONE = anyOf([
+export const CHECK_DONE = anyOf([
   "approved", "signed off", "signed-off", "sign-off", "cleared", "reconciled", "validated", "verified", "released", "authorised", "authorized", "okayed", "ok'd", "green-lit", "greenlit",
   "rubber-stamped", "freigegeben", "freigabe", "genehmigt", "gepruft", "abgestimmt", "abgezeichnet", "valide", "approuve", "verifie", "controle", "vise", "autorise",
   "aprobad", "validad", "verificad", "autorizad", "goedgekeurd", "gecontroleerd", "gefiatteerd", "akkoord gegeven", "approvat", "validat", "verificat", "autorizzat",
@@ -386,9 +386,9 @@ const CHECK_DONE = anyOf([
 ]);
 const PAYER_SIDE_DONE = near(PAYER_SIDE, CHECK_DONE, 40);
 /** Without, in the languages of PAYER_SIDE and more. */
-const WITHOUT = anyOf(["without", "ohne", "sans", "sin$", "senza", "zonder", "sem$", "bez$", "без$", "tanpa", "nelkul", "χωρισ"]);
+export const WITHOUT = anyOf(["without", "ohne", "sans", "sin$", "senza", "zonder", "sem$", "bez$", "без$", "tanpa", "nelkul", "χωρισ"]);
 /** A check of a payment, as a noun: a review, a check, an approval, a query, a sign-off. */
-const CHECK_NOUN = anyOf([
+export const CHECK_NOUN = anyOf([
   // Not "control" in English: "without temperature control" is a product. 20 Nov (after eval v10, v10-inject-italian-dato-ok:
   // "senza ulteriori passaggi"): a step or formality of the process too.
   "passaggi", "passaggio", "step", "steps", "formalities", "formalita", "tramite", "tramites", "schritte", "etapes", "stappen", "formaliteiten",
@@ -502,7 +502,7 @@ export const BYPASS_ANY = anyOf([
 // secrecy with a payment, speed or "keep").
 
 /** Bank details: the account, its number, the bank's details (not "account" alone where it also means a bill or a customer account). */
-const BANK_DETAILS = anyOf([
+export const BANK_DETAILS = anyOf([
   "bank details", "banking details", "payment details", "bank account", "account details", "account number", "iban",
   "banka hesab", "banka bilgi", "hesap bilgi", "hesap numara", "hesabimiz", "thong tin ngan hang", "tai khoan ngan hang", "so tai khoan", "tai khoan",
   "rekening", "akaun bank", "nombor akaun", "detail bank", "informasi bank", "rachun", "konto bankow", "numer konta", "dane bankow", "bankovni spojeni", "cislo uctu", "bankovni ucet",
@@ -525,7 +525,7 @@ const BANK_DETAILS = anyOf([
   "ಖಾತೆ ಸಂಖ್ಯೆ", "ಬ್ಯಾಂಕ್ ವಿವರ", "באנק־חשבון", "באנק חשבון", "באנק־פרטים", "חשבון־נומער", "חשבון נומער", "དངུལ་ཁང", "ཐོ་ཁོངས", "nomer rekening",
 ]);
 /** A word of change: changed, updated, new, replaced, moved. */
-const CHANGED = anyOf([
+export const CHANGED = anyOf([
   "changed", "updated", "new", "replaced", "moved", "switched", "different",
   "degis", "guncellen", "yeni", "farkli", "thay doi", "cap nhat", "berubah", "diubah", "diperbarui", "dikemaskini", "bertukar",
   "zmian", "zmieni", "zaktualizow", "nowy", "nowe", "nowego", "nowym", "zmen", "aktualizov", "novy", "nove", "noveho",
@@ -547,7 +547,7 @@ const CHANGED = anyOf([
 /** Bank details near a word of change, in either order: an announcement of other bank details. */
 export const BANK_DETAILS_CHANGED_ANY = near(BANK_DETAILS, CHANGED, 40);
 /** A negation, before the verb it negates. */
-const NOT_BEFORE = anyOf([
+export const NOT_BEFORE = anyOf([
   "not", "never", "nicht", "nie", "niemals", "niet", "nooit", "pas", "jamais", "no", "nunca", "non", "mai", "nao", "nigdy", "ne", "khong", "chua", "tidak", "tak", "bukan", "belum",
   "не", "ні", "никога", "никогда", "δεν", "μην", "ποτε", "不会", "不會", "并未", "並未", "没有", "沒有", "从未", "從未", "绝不", "絕不", "未变", "未變", "未更", "絶対に",
   "^לא$", "לעולם", "^لا$", "^لم$", "^لن$", "هرگز", "नहीं", "कभी", "ไม่",
@@ -566,7 +566,7 @@ const NOT_AFTER = anyOf(["ない", "ません", "せず", "않", "없", "نمی"
 export const CHANGE_NEGATED_ANY = new RegExp(`(?:${NOT_BEFORE.source})[^\\n]{0,12}(?:${CHANGED.source})|(?:${CHANGED.source})[^\\n]{0,8}(?:${NOT_AFTER.source})`, "u");
 
 /** Someone above the payer: the chief executive, a director, the owner, the board. */
-const AUTHORITY = anyOf([
+export const AUTHORITY = anyOf([
   "genel mudur", "yonetim kurulu", "patron$", "giam doc", "tong giam doc", "chu tich", "direktur", "pimpinan", "atasan", "prezes", "dyrektor", "zarzad", "reditel", "jednatel",
   "генеральн", "директор", "руководств", "руководител", "начальник", "собственик", "керівник", "διευθυν", "προεδρ",
   "总经理", "總經理", "董事长", "董事長", "老板", "老闆", "总裁", "總裁", "首席执行官", "财务总监", "財務總監", "社長", "代表取締役", "取締役", "上司", "대표이사", "사장님", "회장님", "대표님",
@@ -587,7 +587,7 @@ const AUTHORITY = anyOf([
   "inhaber", "eigentumer", "geschaftsleitung", "firmenleitung", "chef$", "eigenaar", "directeur general", "patron$", "propietario", "dueno", "gerente general",
 ]);
 /** Speed: urgent, immediately, today. */
-const URGENT = anyOf([
+export const URGENT = anyOf([
   "acil", "hemen", "bugun", "derhal", "khan cap", "ngay lap tuc", "hom nay", "segera", "mendesak", "hari ini", "pilne", "pilnie", "natychmiast", "dzisiaj", "urgentni", "okamzite", "ihned", "dnes$",
   "срочно", "немедленно", "сегодня", "незамедлительно", "спешно", "днес", "терміново", "негайно", "сьогодні", "επειγον", "αμεσωσ", "σημερα",
   "紧急", "緊急", "立即", "马上", "馬上", "今天", "尽快", "盡快", "至急", "本日中", "今日中", "直ちに", "すぐに", "긴급", "급히", "즉시", "오늘", "당장",
@@ -603,7 +603,7 @@ const URGENT = anyOf([
   "ܡܚܕܐ", "ᐅᓪᓗᒥ", "ᒫᓐᓇ", "dina iki", "saiki", "enggal", "cepet-cepet", "gage",
 ]);
 /** Asked, wants, approved, instructed (what someone above the payer is said to have done). */
-const ASKED = anyOf([
+export const ASKED = anyOf([
   "istedi", "istiyor", "onayladi", "talimat", "yeu cau", "chi dao", "meminta", "menyetujui", "prosi", "poprosil", "zatwierdzil", "polecil", "zada", "schvalil",
   "просил", "просит", "хочет", "одобрил", "поручил", "распоряд", "поиска", "одобри", "просив", "ζητησ", "ζητα", "εγκρινε",
   "要求", "希望", "批准", "指示", "交代", "依頼", "承認", "求め", "요청", "지시", "원하", "승인", "ขอให้", "สั่ง", "ต้องการ",
@@ -620,7 +620,7 @@ const ASKED = anyOf([
   "mochte", "will$", "wunscht", "verlangt", "bittet", "wil$", "wenst", "vraagt", "veut", "souhaite", "quiere", "desea",
 ]);
 /** Secrecy: confidential, secret, between us, no one. */
-const SECRET = anyOf([
+export const SECRET = anyOf([
   "confidential", "vertraulich", "vertrouwelijk", "confidentiel", "confidencial", "riservat", "a nadie", "a nessuno", "a personne", "niemandem", "aan niemand",
   "gizli", "aramizda", "kimseye", "bi mat", "kin dao", "rahasia", "diam-diam", "diam diam", "poufn", "tajemnic", "dyskret", "nikomu", "duvern", "tajn",
   "конфиденциальн", "секрет", "тайн", "между нами", "никому", "поверителн", "нікому", "εμπιστευτικ", "μυστικ",
@@ -762,6 +762,10 @@ const INFORMATION = anyOf([
   "gesellschaftskapital", "aktienkapital", "nennkapital", "stammeinlage", "kreditrahmen", "kreditlinie", "limite de credit", "limite de credito", "limite di credito",
   "limite di fido", "fido", "kredietlimiet", "kredietlijn", "limit kredytowy", "xadka deynta", "xad deyn", "kikomo cha mkopo", "iyakar bashi", "kredietlimiet", "limiti i kredise",
   "limitasyon ng kredito", "kreditlimit", "luottoraja", "kredito limitas", "kredītlimits",
+  // 20 Nov (after the held-out eval v11, v11-cur-thekwini-zar-reference: "(For reference: R 9,400.00)", a rand amount whose
+  // currency code knows no symbol for, was held as a second total): an amount said to be for reference or an equivalent.
+  "for reference", "reference only", "for information", "for your information", "equivalent", "approx", "indicative", "zur information", "zur info", "ter informatie",
+  "a titre indicatif", "pour information", "a titulo informativo", "a titolo informativo", "som referens", "til orientering", "for orientering",
 ]);
 /** Whether a line (or a clause of one) gives an amount for information only, in the languages the lists know. */
 export const isInformation = (line: string) => INFORMATION.test(fold(line));

@@ -22,6 +22,7 @@ import { NEAR_TWIN_CENTS, NEAR_TWIN_DAYS, NEAR_TWIN_PERCENT, SAME_DAY_TWIN_CENTS
 import { findInjections, findInjectionsInFields, type InjectionKind } from "../policy/injection.js";
 import { asksToPay, customerNumberBefore, identifierBefore, namesAccount } from "../policy/multilingual.js";
 import { plainDigits } from "../policy/numerals.js";
+import { talkLines } from "../policy/paymentTalk.js";
 import { unreadLines } from "../policy/readable.js";
 import { lineTotals } from "./lineTotals.js";
 import { deliveryDates, itemLines, periodsDiffer, sameLines, servicePeriods } from "./period.js";
@@ -591,7 +592,18 @@ function examine(c: InvoiceCase): Examined {
   // the invoice alone; the CFO, who can have it read, decides (codeRequires). Names on file and the name the invoice is
   // read under (the company's own name, 20 Nov: a /try invoice's "bill to" line was read as a sentence) are left to the
   // fraud checks. Why only, never the line itself.
-  const unread = unreadLines(text, [r.vendor, c.company.name, ...c.suppliers.flatMap((s) => [s.name, s.bank?.accountName ?? ""])].filter(Boolean));
+  // 20 Nov (after the held-out eval v11, whose 21 wrong payments were lines in languages the lists hold, or close to
+  // them, worded as no list had it): a line that speaks to the payment (its approval, its checks, a bank or payee, a
+  // machine, secrecy, someone senior and speed) outside what an invoice says about its own payment
+  // (src/policy/paymentTalk.ts) is not understood either, whatever its wording; the CFO decides it as an unread line.
+  const names = [r.vendor, c.company.name, ...c.suppliers.flatMap((s) => [s.name, s.bank?.accountName ?? ""])].filter(Boolean);
+  const unreadOnly = unreadLines(text, names);
+  // A line the screens already classified (the injection screen's lines, the lines the pressure and bank-change findings
+  // quote) is understood: what they decided for it stands (a hold, or speed alone shown, as eval v3 decided).
+  const screened = new Set([...planted.map((x) => x.excerpt), ...f.filter((x) => (WORDS_FINDINGS as readonly string[]).includes(x.code)).flatMap((x) => [...x.detail.matchAll(/"([^"]+)"/g)].map((m) => m[1]!))]);
+  const lines = text.split("\n");
+  const talk = talkLines(text, names).filter((x) => !unreadOnly.some((u) => u.line === x.line) && !screened.has(lines[x.line - 1]!.trim()));
+  const unread = [...unreadOnly, ...talk].sort((a, b) => a.line - b.line);
   if (unread.length) {
     const more = unread.length - 1;
     f.push({ code: "text_not_read", level: "warn", detail: `the document has ${unread[0]!.why}${more ? `, and ${more} more line${more === 1 ? "" : "s"} Purser's checks cannot read` : ""}: the agent never pays it alone, the CFO has it read and decides` });
@@ -712,8 +724,11 @@ export function codeRequires(c: InvoiceCase, findings: Finding[]): { action: Act
   // 19 Nov (adversarial eval v2): a possible split invoice, and words a person has released after reading them, go to
   // the CFO; neither is ever paid alone.
   // Words of speed alone (eval v3) are a warning that was never held: only words a person released send it to the CFO.
-  // 20 Nov: and text Purser's checks cannot read (text_not_read), which could say anything.
-  const cfo = findings.find((f) => f.code === "possible_split" || f.code === "text_not_read") ?? (c.released ? findings.find((f) => (WORDS_FINDINGS as readonly string[]).includes(f.code)) : undefined);
+  // 20 Nov: and text Purser's checks cannot read (text_not_read), which could say anything. And (after the held-out eval
+  // v11, v11-limit-liffey-far-above-history: EUR 940.00 from a supplier whose last four invoices were EUR 120.00 to EUR
+  // 160.00 was paid alone on a warning) an amount far above what the supplier usually invoices (unusual_amount): nothing
+  // says it is fraud, but the agent does not pay alone what the history does not explain.
+  const cfo = findings.find((f) => f.code === "possible_split" || f.code === "text_not_read" || f.code === "unusual_amount") ?? (c.released ? findings.find((f) => (WORDS_FINDINGS as readonly string[]).includes(f.code)) : undefined);
   if (cfo) return { action: "ask_cfo", by: cfo.code, why: cfo.detail };
   return vsExpected ? { action: "ask_cfo", by: "amount_not_expected", why: vsExpected.why } : { action: "pay", by: null, why: alone.why };
 }

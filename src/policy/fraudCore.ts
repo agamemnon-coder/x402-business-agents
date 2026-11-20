@@ -82,6 +82,9 @@ const LEGAL_FORMS: readonly string[][] = [
   // a bank's "SARL", "sh.p.k." against "SHPK"): Luxembourg's and Switzerland's S.à r.l. as its dots and spaces leave it,
   // Albania's and Kosovo's sh.p.k. and sh.a., South Africa's (Edms) Bpk and (Pty) Ltd.
   ["sa", "rl"], ["s", "a", "r", "l"], ["shpk"], ["sha"], ["edms", "bpk"], ["bpk"], ["pty", "ltd"],
+  // 20 Nov (after the held-out eval v11, v11-look-conamara-teo: "Olann Chonamara Teo." for "Olann Chonamara Teoranta"):
+  // Ireland's Irish-language forms, written out and as companies abbreviate them.
+  ["teoranta"], ["teo"], ["cuideachta", "teoranta"], ["cpt"],
   // "& Co.", "and Co."
   ["&"], ["and"],
 ];
@@ -110,6 +113,11 @@ export function legalTokens(name: string): string[] {
       }
     }
   }
+  // 20 Nov (after the held-out eval v11, v11-name-garrotxa-form-first: a bank's holder "SL FILATURES DE LA GARROTXA" for
+  // "Filatures de la Garrotxa S.L."): banks and registers write the legal form first too; one form at the start is
+  // dropped as one at the end is, while something is left after it.
+  const first = LEGAL_FORMS.find((form) => form[0] !== "&" && form[0] !== "and" && tokens.length > form.length && form.every((t, i) => tokens[i] === t));
+  if (first) tokens.splice(0, first.length);
   return tokens;
 }
 
@@ -128,6 +136,8 @@ const COMPANY_WORDS: ReadonlySet<string> = new Set([
   // as the languages suppliers write in romanise it, and the Southern African and Albanian forms.
   "shirkiti", "shirket", "shirkat", "sirket", "sharikat", "sherkat", "shirkadda", "shirkad", "kampuni", "kamfanin", "kamfani", "kompania", "kompaniya", "kompanija",
   "kompani", "kumpanya", "kampani", "perusahaan", "syarikat", "empresa", "impresa", "entreprise", "compagnie", "compania", "companhia", "gesellschaft", "firma", "bedrijf",
+  // 20 Nov (after eval v11): Ireland's Irish-language forms.
+  "teoranta", "teo", "cuideachta", "cpt",
   "fabrik", "fabriek", "fabrika", "fabryka", "factory", "udyog", "udyoga", "karkhana", "bpk", "edms", "sha",
 ]);
 /** Legal forms written in other scripts, and as banks write them in katakana, as they read after NFKC and in lower case. */
