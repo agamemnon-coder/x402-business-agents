@@ -47,5 +47,5 @@
     "null": "<details class=\"pmore\"><summary>More</summary><div class=\"pmenu\"><a href=\"security\">Security</a><a href=\"docs\">Docs</a><a href=\"books\">Books</a><a href=\"privacy\">Privacy</a><hr><a href=\"airwallex\">Airwallex</a><a href=\"alta\">Alta</a><a href=\"visa\">Visa</a><a href=\"claude\">Claude</a></div></details>"
   },
   "moreCssSha256": "a8c6ba93fddc3c3e79b906291e0b9a7c7d74254540fe9c60071066da454d735b",
-  "pageSha256": "c6c0b1b79de41d77f9135c40e8e99335218ab4ad926b32f728de79cf4b826721"
+  "pageSha256": "03e480c0d0666fff1333027f7548f39463ed5bfc060df37952d14928ca837ec5"
 }
