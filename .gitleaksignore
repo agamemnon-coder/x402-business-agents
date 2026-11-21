@@ -544,3 +544,6 @@ be0834119cfa621a039aaea54f332f450b99b7fe:docs/runs/2026-11-21-try-concurrent/run
 be0834119cfa621a039aaea54f332f450b99b7fe:docs/runs/2026-11-21-try-concurrent/run-7-proof-paid.json:generic-api-key:65
 be0834119cfa621a039aaea54f332f450b99b7fe:docs/runs/2026-11-21-try-concurrent/run-7.json:generic-api-key:497
 be0834119cfa621a039aaea54f332f450b99b7fe:docs/runs/2026-11-21-try-concurrent/run-7.json:generic-api-key:885
+# 21 Nov: UI copy (the Overview's approval line, EN and NL) read as a generic key by its word "passkey"; no secret.
+160b67112ec04383a202458417a63eae1f02f9b6:src/ui/i18n.ts:generic-api-key:880
+160b67112ec04383a202458417a63eae1f02f9b6:src/ui/i18n.ts:generic-api-key:2565
