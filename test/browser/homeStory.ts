@@ -47,6 +47,18 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const fail = (what: string) => o.fail(`${o.name}: ${what}`);
   await page.goto(o.url, { waitUntil: "load" });
 
+  // P0 visual trust: the Airwallex mark must be an actual loaded image, not a broken
+  // placeholder on either the desktop header or the separate mobile badge.
+  // This checks loaded pixels, not just that a URL was written into the DOM.
+  const airwallexMarks = await page.locator("header.top .awx-badge img, .awx-row .awx-badge img").evaluateAll((imgs) =>
+    imgs.filter((im) => im.getClientRects().length > 0).map((im) => {
+      const el = im as HTMLImageElement;
+      return { src: el.currentSrc || el.src, complete: el.complete, width: el.naturalWidth, height: el.naturalHeight };
+    })
+  );
+  if (airwallexMarks.length !== 1 || airwallexMarks.some((im) => !im.complete || im.width <= 0 || im.height <= 0))
+    fail(`the visible Airwallex logo is broken: ${JSON.stringify(airwallexMarks)}`);
+
   // One story: the hero's two buttons, Try then Proof (the product tour was first for part of 13 Nov, then removed), the
   // first in the first screen with its one line under it.
   const ctas = await page.locator("main .e-hero .ctas a.btn").evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").trim() })));
@@ -137,6 +149,25 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
     const lines = await page.locator("h1.h-hero span").evaluateAll((ss) => ss.map((s) => ({ rects: s.getClientRects().length, top: Math.round(s.getBoundingClientRect().top), text: s.textContent })));
     if (lines.length !== 2 || lines.some((l) => l.rects !== 1) || lines[0]!.top >= lines[1]!.top || lines[0]!.text !== "AI agents spend.") fail(`the heading does not break after "spend." (${JSON.stringify(lines)})`);
   }
+  // Release gate: the actual Home CTAs, not just their markup, at jury desktop and phone sizes.
+  // A relative /try link must resolve on the same public origin, and the page must be real (not a 404).
+  // The film intentionally opens YouTube in a new tab; check its destination/target without leaving Home.
+  if (o.width === 390 || o.width === 1440) {
+    const tryLink = page.locator("main .e-hero .ctas a.btn.primary");
+    const filmLink = page.locator("main .e-hero .ctas a.btn.film");
+    const filmHref = await filmLink.getAttribute("href");
+    const filmTarget = await filmLink.getAttribute("target");
+    if (filmHref !== FILM_URL || !/^https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(filmHref || "") || filmTarget !== "_blank")
+      fail("Watch the demo must link to the recorded YouTube film in a new tab");
+    if (!(await tryLink.isVisible())) fail("Try it in 2 minutes CTA is not visible");
+    await tryLink.click();
+    await page.waitForURL((u) => u.pathname === "/try", { timeout: 12_000 });
+    const response = await page.request.get(page.url());
+    if (response.status() !== 200 || !(await response.text()).includes("test money"))
+      fail(`the Try CTA landed on an invalid demo response: ${response.status()}`);
+    await page.goto(o.url, { waitUntil: "load" });
+  }
+
   if (o.quick) return;
 
   // Reduced motion: one still frame, its final state: the payment and the last booking line in sight, nothing hidden.
