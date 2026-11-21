@@ -225,7 +225,11 @@ describe("llms.txt's evidence section", () => {
     expect(t.indexOf(LLMS_WALL_HEADING)).toBeGreaterThan(t.indexOf("## For judges"));
     expect(withWallSection(t, section)).toBe(t);
     for (const l of section.split("\n").filter((x) => x.startsWith("- "))) expect(l).toMatch(/\): https:\/\/\S+$/);
-    expect(section.split("\n").filter((x) => x.startsWith("- "))).toHaveLength(tiles(committedWall()!).length);
+    // Review, 21 Nov: the older held-out rounds (off /proof) in one line, so only the newest eval's figure is listed.
+    const older = tiles(committedWall()!).filter((x) => x.offProof && /^eval-v\d+$/.test(x.key));
+    expect(older.length).toBeGreaterThan(0);
+    expect(section.split("\n").filter((x) => x.startsWith("- "))).toHaveLength(tiles(committedWall()!).length - older.length + 1);
+    expect(section).not.toMatch(/\(eval v16\)/);
   });
 });
 

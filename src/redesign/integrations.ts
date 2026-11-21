@@ -5,7 +5,8 @@
 // connection Purser Cloud's hub lists (cloud/src/connections.ts, docs/integrations/README.md), and the line under the
 // band says that each one carries its own label there (live, sandbox, testnet, a format export or built): the band
 // shows who Purser connects to, the hub how far each connection goes. Visa and T:0 stay as text (no mark on file for
-// T:0; Visa's mark is shown on Purser Cloud's Connections page only, the decision of 14 Nov elsewhere).
+// T:0; Visa's mark is shown nowhere on Purser's own art, the decision of 14 Nov, since 21 Nov on Connections too).
+// Since 21 Nov (review) only the sponsors' marks: Airwallex, Alta and Claude; the other connections are text.
 
 import { BRAND_LOGOS } from "../../cloud/src/brandLogos.gen.js";
 import { ASSET_VERSIONS, versioned, type VersionedAsset } from "../ui/assetVersions.js";
@@ -35,35 +36,40 @@ export function bandLogoFiles(): Record<string, { type: string; body: Buffer }> 
 }
 
 const asset = (f: string) => `assets/${f in ASSET_VERSIONS ? versioned(f as VersionedAsset) : f}`;
-/** In the order a reader meets them: the rails, the AI clients, the books, the messages, the automations, the SDKs. */
+/**
+ * In the order a reader meets them: the rails, the AI clients, the books, the messages, the automations, the SDKs.
+ * Review, 21 Nov: a mark only for the hackathon's sponsors whose files are on record (Airwallex, Alta, Claude); Visa
+ * and T:0 as text, as before; every other connection as text too, so no logo reads as a partnership.
+ */
 export const BAND: readonly BandItem[] = [
   { name: "Airwallex", file: "logo-airwallex.png", wordmark: true, w: 306, h: 42 },
   { name: "Alta (formerly Metal)", file: "logo-alta.svg", wordmark: true, w: 475, h: 250 },
   { name: "Visa · Airwallex Airi" },
   { name: "Claude", file: "logo-claude-slate.svg", wordmark: true, w: 184, h: 40 },
   { name: "T:0" },
-  { name: "ChatGPT", file: brandFile("chatgpt") },
-  { name: "Cursor", file: brandFile("cursor") },
-  { name: "VS Code", file: brandFile("vscode") },
-  { name: "Gemini", file: brandFile("gemini") },
-  { name: "MCP", file: brandFile("mcp") },
-  { name: "Xero", file: brandFile("xero") },
-  { name: "QuickBooks", file: brandFile("quickbooks") },
-  { name: "Exact", file: brandFile("exact") },
-  { name: "Moneybird", file: brandFile("moneybird") },
-  { name: "Odoo", file: brandFile("odoo") },
-  { name: "Slack", file: brandFile("slack") },
-  { name: "Microsoft Teams", file: brandFile("teams") },
-  { name: "WhatsApp", file: brandFile("whatsapp") },
-  { name: "Gmail", file: brandFile("gmail") },
-  { name: "Zapier", file: brandFile("zapier") },
-  { name: "Make", file: brandFile("make") },
-  { name: "Python", file: brandFile("python") },
-  { name: "TypeScript", file: brandFile("typescript") },
+  { name: "ChatGPT" },
+  { name: "Cursor" },
+  { name: "VS Code" },
+  { name: "Gemini" },
+  { name: "MCP" },
+  { name: "Xero" },
+  { name: "QuickBooks" },
+  { name: "Exact" },
+  { name: "Moneybird" },
+  { name: "Odoo" },
+  { name: "Slack" },
+  { name: "Microsoft Teams" },
+  { name: "WhatsApp" },
+  { name: "Gmail" },
+  { name: "Zapier" },
+  { name: "Make" },
+  { name: "Python" },
+  { name: "TypeScript" },
 ];
 /** The hub of every connection, each with its label (docs/integrations/README.md). */
 export const BAND_HUB = "docs/integrations/README.md";
-export const BAND_LABEL = "Works with";
+// Review, 21 Nov: "Connects to (each labelled)", not "Works with" (no partnership read into a mark).
+export const BAND_LABEL = "Connects to (each labelled)";
 export const BAND_NOTE = "Each connection carries its label: live, sandbox, testnet, export or built.";
 export const BAND_LINK = "See every connection";
 

@@ -10,6 +10,7 @@
 
 import { readFileSync } from "node:fs";
 import { esc } from "./ui.js";
+import { REPO_BLOB } from "./metalStory.js";
 
 export const WALL_FILE = "docs/evidence/evidence-wall.json";
 export const WALL_ID = "evidence";
@@ -55,7 +56,14 @@ export function evidenceWallLlms(w: EvidenceWall | null = committedWall()): stri
     LLMS_WALL_HEADING,
     "",
     `Written by npm run evidence:wall from the committed records; the same figures, each linked to its record, are on ${SITE}/proof#${WALL_ID}. Test money only; what was simulated is said on each line.`,
-    ...w.groups.flatMap((g) => ["", `${g.title}:`, ...g.tiles.map((t) => `- ${t.fig} ${t.label} (${tagWords(t.tag)}; ${inLine(t.note)}): ${abs(t.href)}`)]),
+    ...w.groups.flatMap((g) => {
+      // Review, 21 Nov: one held-out eval per line, the newest (the one /proof shows); the older rounds, off /proof, are
+      // named in one line with the wall's file, so no reader takes v16's figure for the current one.
+      const older = g.tiles.filter((t) => t.offProof && /^eval-v\d+$/.test(t.key));
+      const shown = g.tiles.filter((t) => !older.includes(t));
+      return ["", `${g.title}:`, ...shown.map((t) => `- ${t.fig} ${t.label} (${tagWords(t.tag)}; ${inLine(t.note)}): ${abs(t.href)}`),
+        ...(older.length ? [`- Older held-out rounds (${older.map((t) => t.key.replace(/^eval-/, "")).join(", ")}), superseded by the newest above (each with its figures in the wall's file): ${REPO_BLOB}${WALL_FILE}`] : [])];
+    }),
   ].join("\n");
 }
 

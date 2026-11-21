@@ -213,9 +213,11 @@ describe("Home, 21 Nov: one short story", () => {
   // your AI already works"), four agents, four proof tiles, the tour's seven stops and the three steps (612 as built).
   // 21 Nov (Max: "a clearly visible route from Home to /business"): 620 → 630 for the button "For companies: pilot and
   // plans" under the three steps to a pilot (625 as built).
-  it("A11: stays within 630 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(630);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(630);
+  // 21 Nov (review): 630 → 640 for the idea's wording ("one changed cent and the approval no longer matches the terms")
+  // and the band's label ("Connects to (each labelled)"), made outside Home (src/config/brand.ts, ./integrations.ts).
+  it("A11: stays within 640 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(640);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(640);
   });
 });
 
