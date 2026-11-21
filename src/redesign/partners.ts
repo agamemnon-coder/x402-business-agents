@@ -49,7 +49,7 @@ import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.j
 import { METAL_ONCHAIN_CSS, faceIdOnChainSection } from "./metalOnchain.js";
 import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, holdState, metalBody } from "./metalMandates.js";
 import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, newestHeldOut, sweepFold } from "./claudeEvidence.js";
-import { CLAUDE_CSS, HELD_OUT_CSS, claudeMain } from "./claudePage.js";
+import { CLAUDE_CSS, HELD_OUT_CSS, IN_PRODUCT_CSS, claudeMain } from "./claudePage.js";
 import { BOOKS_CSS, BOOKS_JS, MONEYBIRD_RECORD, RUN_FILE, booksBody, booksData } from "./booksPage.js";
 import { T0_CLOSE_JS, t0RunData } from "./t0CloseTile.js";
 import { T0_CSS, T0_JOURNAL_RECORD, T0_READBACK_RECORD, t0Data, t0SectionHtml } from "./t0Page.js";
@@ -494,7 +494,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
       + fold("Payments decided by Claude, with their request ids", requests.map((f) => `<li>${esc(`${f.what}: ${f.amount} ${f.unit === "EUR" ? "EUR" : "test USD"} · ${f.decided} · ${f.request}`)}</li>`))
       + mcpFold(ev),
   });
-  return page({ title: "Claude", description: "How Purser uses Claude: three agents decide the exceptions, each decision a recorded Claude call; routine payments per query are code.", tab: "claude", css: `${CSS}\n${EVIDENCE_CSS}\n${CLAUDE_CSS}\n${HELD_OUT_CSS}`, body, source: SOURCE(run), builtOn: builtOnHtml(run) });
+  return page({ title: "Claude", description: "How Purser uses Claude: three agents decide the exceptions, each decision a recorded Claude call; routine payments per query are code.", tab: "claude", css: `${CSS}\n${EVIDENCE_CSS}\n${CLAUDE_CSS}\n${HELD_OUT_CSS}\n${IN_PRODUCT_CSS}`, body, source: SOURCE(run), builtOn: builtOnHtml(run) });
 }
 
 /**

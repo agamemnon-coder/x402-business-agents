@@ -11,6 +11,10 @@ import { AGENT_EVALS, HOLDOUTS_RECORD, INJECTION_LINE, SWEEP_RECORD, VARIATION_R
 import { REPO_BLOB } from "./metalStory.js";
 import { countOf, esc, icon } from "./ui.js";
 import { hostileSplit, hostileWords } from "./partners.js";
+import { LONG_RUN_LOG, longRun } from "./run.js";
+import { liveTryRecords, liveTryTotals } from "./liveTry.js";
+import { NEGOTIATE_MODEL } from "../negotiate/claude.js";
+import { ASK_MODEL } from "../../cloud/src/ask/model.js";
 
 export const CLAUDE_CSS = `:root { --cv-code: #646d7e; --cv-claude: #a84d2b; --cv-face: #4f46e5; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cv-code: #858fa1; --cv-claude: #d27650; --cv-face: #7a73f0; } }
@@ -249,6 +253,36 @@ export const HELD_OUT_CSS = `.chold { padding: 18px 20px; display: grid; grid-te
 .ch-t { display: grid; gap: 4px; min-width: 0; } .ch-t h2 { margin: 0; font-size: 17px; line-height: 1.3; } .ch-t p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--muted); }
 .ch-t .r a.pf { min-height: 44px; display: inline-flex; align-items: center; }`;
 
+/**
+ * "Claude in the product today" (review, 21 Nov): where Claude runs in what is built now, each with its label and its
+ * record or code, beyond the main run's three agents above. Only what is built: /try's invoice reader (the recorded
+ * walks), the two negotiation agents (/try/negotiate), Ask Purser (the chat on Purser Cloud), the read-only MCP server
+ * an outside Claude connects to, and the long run of 20 Nov with its own count (111 decisions, not the main run's 24).
+ */
+export interface InProduct { id: string; title: string; line: string; label: string; href: string; link: string }
+export function inProductItems(): InProduct[] {
+  const blob = (p: string) => `${REPO_BLOB}${p}`;
+  const recs = liveTryRecords(), t = liveTryTotals(recs), lr = longRun();
+  const fam = (m: string) => modelName(m, m);
+  const day = (iso: string) => `${Number(iso.slice(8, 10))} ${MONTHS[Number(iso.slice(5, 7)) - 1]}`;
+  return [
+    ...(t && t.claude.entries ? [{ id: "reader", title: "Reads every /try invoice", line: `${t.claude.models.map(fam).join(", ")}: ${t.claude.entries} Claude entries, ${t.claude.fallbacks} fallbacks, over the recorded walks of ${day(t.days[0]!)} to ${day(t.days.at(-1)!)}.`, label: "Sandbox · test money", href: blob(recs.at(-1)!.summary), link: "record" }] : []),
+    { id: "negotiate", title: "Two agents negotiate a deal", line: `${fam(NEGOTIATE_MODEL)} plays both sides on /try/negotiate; code holds the limits and you sign the deal.`, label: "Built · test money", href: blob("src/negotiate/rails.ts"), link: "code" },
+    { id: "ask", title: "Ask Purser, the chat", line: `${fam(ASK_MODEL)} answers questions about Purser on Purser Cloud's /ask, with read-only tools.`, label: "Built · reads only", href: blob("cloud/src/ask/model.ts"), link: "code" },
+    { id: "mcp", title: "A read-only MCP server", line: "Connect Claude to the demo company's books: it reads and proposes, it can never approve or pay.", label: "Demo company · read only", href: blob("docs/mcp.md"), link: "docs/mcp.md" },
+    ...(lr ? [{ id: "long-run", title: `The long run, ${day(lr.recordedAt)}`, line: `${lr.byClaude === lr.decisions ? `All ${lr.decisions}` : `${lr.byClaude} of ${lr.decisions}`} decisions by Claude (${lr.agents.map((a) => `${a.agent[0]!.toUpperCase()}${a.agent.slice(1)} ${a.by_claude}`).join(", ")}), ${lr.fallbacks} fallbacks: its own run, not the main run's figures above.`, label: "Testnet and sandbox · test money", href: blob(LONG_RUN_LOG), link: "record" }] : []),
+  ];
+}
+export function inProductHtml(items: InProduct[] = inProductItems()): string {
+  if (!items.length) return "";
+  return `<section class="cinp card" id="in-product" aria-labelledby="cinp-h"><h2 id="cinp-h">${esc("Claude in the product today")}</h2><ul>${items.map((x) => `<li id="inp-${x.id}" data-rec="${esc(x.href.replace(REPO_BLOB, ""))}"><b>${esc(x.title)}</b><span>${esc(x.line)}</span><span class="g"><span class="pill">${esc(x.label)}</span>${link(x.href.replace(REPO_BLOB, ""), x.link)}</span></li>`).join("")}</ul></section>`;
+}
+export const IN_PRODUCT_CSS = `.cinp { padding: 18px 20px; display: grid; gap: 10px; } .cinp h2 { margin: 0; font-size: clamp(19px, 2vw, 23px); }
+.cinp ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+.cinp li { display: grid; gap: 4px; align-content: start; padding: 12px; border-radius: 14px; background: var(--sunken); min-width: 0; font-size: 14.5px; }
+.cinp li > span { color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; } .cinp .g { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.cinp .g a.pf { min-height: 44px; display: inline-flex; align-items: center; }`;
+
 export interface ClaudeBody { logo: string; label: string; split: SplitFigures; agents: AgentFigures[]; evidence: ClaudeEvidence; used: Record<string, string>; folds: string; runIcon: string; heldOut?: HeldOut | null }
 
 /**
@@ -268,6 +302,7 @@ export function claudeMain(b: ClaudeBody): string {
   ${splitFigure(b.split)}
   ${agentCards(b.agents)}
   ${heldOutTile(b.heldOut ?? null)}
+  ${inProductHtml()}
   <div class="folds card">${tiles ? `<details class="fold" id="measured"><summary>${esc("Measured, not asserted: five more figures")}</summary>${tiles}</details>` : ""}${folds}${injectionFold()}</div>
   <a class="open" href="proof#claude">All the proof ${icon("arrow-right", 15)}</a>
 </div></main>`;
