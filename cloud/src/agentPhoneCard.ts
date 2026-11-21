@@ -15,7 +15,7 @@
 
 import { AIRWALLEX_LOGO_DATA_URL } from "./awxLogo.gen.js";
 import { BRAND_LOGOS } from "./brandLogos.gen.js";
-import { ALTA_AGENTS, CARD_ART_CSS, CARD_PRESETS, cleanDesign, EMPTY_DESIGN, initialsOf, isLight, modelShort, styleOf, type CardDesign, type CardPreset } from "./agentCardArt.js";
+import { ALTA_AGENTS, CARD_ART_CSS, CARD_PRESETS, cleanDesign, EMPTY_DESIGN, FEATHER_SVG, isLight, modelShort, styleOf, type CardDesign, type CardPreset } from "./agentCardArt.js";
 import { REPO_BLOB, ROSTER } from "./agentRoster.js";
 import { recordedNegotiation } from "../../src/negotiate/negotiate.js";
 import { agentsOf } from "./consoleData.js";
@@ -122,9 +122,10 @@ export function cardFaceHtml(d: PhoneCardData, design: CardDesign): string {
   const spent = c && c.per_month && c.spent_month !== null ? Number(c.spent_month) : null;
   const cap = c && c.per_month ? Number(c.per_month) : 0;
   const pct = spent !== null && cap > 0 ? Math.min(100, (spent / cap) * 100) : 0;
-  const mark = design.logo ? `<img src="${esc(design.logo)}" alt="">` : esc(design.initials ?? initialsOf(d.company));
+  // 21 Nov (Max): Purser's feather until the company sets its own initials or logo.
+  const mark = design.logo ? `<img src="${esc(design.logo)}" alt="">` : design.initials ? esc(design.initials) : FEATHER_SVG;
   const claude = BRAND_LOGOS.claude!.uri, alta = BRAND_LOGOS.alta!.uri;
-  return `<div class="acard p-${preset}${light ? " ink" : ""}${d.status !== "active" ? " frozen" : ""}" role="img" aria-label="${esc(`${d.name}, ${d.company}: ${c ? `card ending ${c.last4}` : "no card"}, ${STATUS[d.status] ?? d.status}`)}"><span class="ac-shine"></span>
+  return `<div class="acard p-${preset}${light ? " ink" : ""}${c && c.last4 ? "" : " bare"}${d.status !== "active" ? " frozen" : ""}" role="img" aria-label="${esc(`${d.name}, ${d.company}: ${c ? `card ending ${c.last4}` : "no card"}, ${STATUS[d.status] ?? d.status}`)}"><span class="ac-shine"></span>
 <div class="ac-top"><span class="ac-mark">${mark}</span><span class="ac-who"><b class="ac-name">${esc(d.name)}</b><span class="ac-co">${esc(d.company.replace(/\s*\([^)]*\)\s*$/, ""))}</span></span>${c ? `<span class="ac-plate"><img src="${AIRWALLEX_LOGO_DATA_URL}" alt="Airwallex"></span>` : ""}</div>
 <div class="ac-mid">${c ? `<span class="ac-chip"></span>${NFC}` : ""}<span class="ac-st ${esc(d.status.replace(/[^a-z]/g, ""))}"><i></i>${esc(STATUS[d.status] ?? d.status)}</span></div>
 <div class="ac-num${c && c.last4 ? "" : " none"}">${c && c.last4 ? `•••• •••• •••• ${esc(c.last4)}` : "No card of its own"}</div>
