@@ -19,6 +19,7 @@ import { ATTACH_B64_MAX, ATTACH_TYPES, checkAttachment } from "./attach.js";
 import { ASK_COPY, citedIn, docsAnswer, HISTORY_TURN_MAX, OFF_WORDS, promptMessages, QUESTION_MAX, retrieve, screenQuestion, sentenceGate, sourcesBlock, SYSTEM, TOP_K, type OffReason, type Turn } from "./core.js";
 import { ASK_FILE_TOKENS_MAX, askDayOpen, askRate, askSwitches, askTally, questionWorstMicros, reserveAnswer, roundWorstMicros } from "./limits.js";
 import { ASK_MAX_ROUNDS, ASK_MAX_ROUNDS_FILE, ASK_MAX_TOKENS, type ApiMessage, type AskModel, type Block } from "./model.js";
+import { ASK_CONTEXT_KINDS, CONTEXT_ID, contextLine, parseContext } from "./context.js";
 import { ASK_TOOLS, localRead, resultForPeople, runAskTool, TOOLS_PER_QUESTION, TOOLS_PER_ROUND } from "./tools.js";
 
 export const ASK_ROUTE = "POST /v1/ask";
@@ -29,6 +30,8 @@ const Body = z.object({
   question: z.string().max(QUESTION_MAX * 2),
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), text: z.string().max(HISTORY_TURN_MAX * 4) }).strict()).max(12).optional(),
   attachment: z.object({ name: z.string().max(300), type: z.enum(ATTACH_TYPES), data: z.string().max(ATTACH_B64_MAX) }).strict().optional(),
+  // The console page Ask Purser is open on (./context.ts): a kind from a fixed list and a record's id, never a secret.
+  context: z.object({ kind: z.enum(ASK_CONTEXT_KINDS), id: z.string().regex(CONTEXT_ID).optional(), demo: z.boolean().optional() }).strict().optional(),
 }).strict();
 
 export interface AskCtx { env: { sql: Sql; blobs?: Blobs; origin?: string; askModel?: AskModel | undefined; askSecrets?: readonly string[]; waitUntil?: (p: Promise<unknown>) => void }; req: Request; now: Date }
@@ -67,7 +70,7 @@ const FIXED_TOKENS = tokensOf(SYSTEM + JSON.stringify(ASK_TOOLS));
 export function askRoutes<C extends AskCtx>(kit: { json(status: number, body: unknown): Response; err(status: number, error: string): Response; body<T>(c: C, schema: z.ZodType<T>, maxBytes?: number): Promise<T> }) {
   return [{
     method: "POST" as const, path: "/v1/ask", need: "public" as const,
-    summary: "Ask Purser (public, from this site's own pages): one question about Purser, answered by an agent with read-only tools over Purser's public docs (README, llms.txt, docs/) and the demo company's records (made-up data, read only), streamed as one JSON object a line (meta with the passages used, step for each read, source, delta, reset, done with the sources cited). Body { question (at most 600 characters), history? (the conversation's last turns, kept by the browser), attachment? { name, type (PDF, CSV, text, PNG, JPEG, WebP or GIF), data (base64, at most 5 MB) } }. Read-only: it cannot pay, approve, change a limit or read a real company's data; such a request, and any instruction aimed at the assistant, is answered by code. Claude (Haiku) only under the hands-on deployment's switches claude and ask and its caps; otherwise the docs answer alone (or code reads the demo company's records), labelled. 6 a minute and ask_per_address_hour an hour per address (429 { code: limit }). Nothing is kept but hourly counts: no question, answer or file.",
+    summary: "Ask Purser (public, from this site's own pages): one question about Purser, answered by an agent with read-only tools over Purser's public docs (README, llms.txt, docs/) and the demo company's records (made-up data, read only), streamed as one JSON object a line (meta with the passages used, step for each read, source, delta, reset, done with the sources cited). Body { question (at most 600 characters), history? (the conversation's last turns, kept by the browser), attachment? { name, type (PDF, CSV, text, PNG, JPEG, WebP or GIF), data (base64, at most 5 MB) }, context? { kind (the console page: overview, invoices, invoice, transactions, payment, agents, policy, books, audit or proof), id? (the record's id, letters, digits and _.:- only), demo? (the person is in the demo company) } }. Read-only: it cannot pay, approve, change a limit or read a real company's data; such a request, and any instruction aimed at the assistant, is answered by code. Claude (Haiku) only under the hands-on deployment's switches claude and ask and its caps; otherwise the docs answer alone (or code reads the demo company's records), labelled. 6 a minute and ask_per_address_hour an hour per address (429 { code: limit }). Nothing is kept but hourly counts: no question, answer or file.",
     run: async (c: C): Promise<Response> => {
       const b = await kit.body(c, Body, ASK_BODY_MAX);
       const sql = c.env.sql;
@@ -96,7 +99,8 @@ export function askRoutes<C extends AskCtx>(kit: { json(status: number, body: un
       const lastUser = [...history].reverse().find((t) => t.role === "user")?.text ?? "";
       let chunks = retrieve(screen.question, TOP_K);
       if (chunks.length < 2 && lastUser) chunks = retrieve(`${screen.question} ${lastUser.slice(0, 300)}`, TOP_K);
-      const records = localRead(screen.question);
+      const context = parseContext(b.context);
+      const records = localRead(screen.question, context);
       const toolCtx = { sql, ...(c.env.blobs ? { blobs: c.env.blobs } : {}), origin: c.env.origin ?? "", now: c.now };
       // Nothing in the docs, no file and nothing to read: "I don't know", without asking the model.
       if (!chunks.length && !file && !records) { await askTally(sql, "docs", c.now); return fixed(c, "docs", ASK_COPY.unknown, pub(retrieve("Purser in one minute what it is", 2)), !!c.env.askModel); }
@@ -147,8 +151,9 @@ export function askRoutes<C extends AskCtx>(kit: { json(status: number, body: un
         const sources: Src[] = pub(chunks);
         const seen = new Set(chunks.map((x) => x.id));
         line({ type: "meta", mode: "live", sources, live: true });
-        const gate = sentenceGate({ sources: `${sourcesBlock(chunks)}${fileOk?.text ? `\n${fileOk.text}` : ""}`, question: `${screen.question}\n${lastUser}`, secrets: c.env.askSecrets ?? [] }, { lenientFigures: fileOk !== null && fileOk.kind !== "text" });
-        const messages: ApiMessage[] = promptMessages(history, screen.question, chunks, fileOk?.block ?? null) as ApiMessage[];
+        const ctxLine = context ? contextLine(context) : null;
+        const gate = sentenceGate({ sources: `${sourcesBlock(chunks)}${fileOk?.text ? `\n${fileOk.text}` : ""}`, question: `${screen.question}\n${lastUser}${ctxLine ? `\n${ctxLine}` : ""}`, secrets: c.env.askSecrets ?? [] }, { lenientFigures: fileOk !== null && fileOk.kind !== "text" });
+        const messages: ApiMessage[] = promptMessages(history, screen.question, chunks, fileOk?.block ?? null, ctxLine) as ApiMessage[];
         const rounds = fileOk ? ASK_MAX_ROUNDS_FILE : ASK_MAX_ROUNDS;
         let said = "", spent = 0, calls = 0, steps = 0, outOfBudget = false;
         // The prompt's size without the file's bytes (counted apart, in fileTokens).

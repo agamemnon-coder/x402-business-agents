@@ -15,6 +15,7 @@ import { DEMO_END, DEMO_NAME, DEMO_TENANT, ensureDemoCompany } from "../guest/gu
 import type { Blobs, Sql } from "../store.js";
 import { TenantDb } from "../tenant.js";
 import { retrieve } from "./core.js";
+import { quickActions, type AskContext } from "./context.js";
 import type { ToolDef } from "./model.js";
 
 /** A tool result's text at most, so a round's prompt stays bounded (./limits.ts prices the worst case). */
@@ -182,8 +183,26 @@ const ROUTES: [RegExp, string, Record<string, unknown>][] = [
 ];
 const DATA_WORD = /\b(invoices?|payments?|transactions?|cash|balance|spend|spent|agents?|cards?|limits?|decisions?|approvals?|pending|waits?|waiting|vat|ledger|books|p&l|profit|overdue|policy|suppliers?)\b/i;
 
+/**
+ * A quick action's question (./context.ts) without a model: the read it names. A record's id is read only in the demo
+ * company (a guest's console), whose records these tools read; in a person's own company it is never looked up here.
+ */
+function quickRead(question: string, c: AskContext): { tool: string; args: Record<string, unknown> } | null | undefined {
+  const q = quickActions(c).find((x) => x.q === question.trim());
+  if (!q) return undefined;
+  const id = c.demo && c.id && question.includes(c.id) ? c.id : null;
+  if (q.key === "status") return id ? (c.kind === "payment" ? { tool: "explain_payment", args: { id } } : { tool: "get_invoice", args: { id } }) : question.includes("{") || c.id ? null : { tool: "pending_approvals", args: {} };
+  if (q.key === "transactions") return id ? { tool: "payment_audit_trail", args: { id } } : c.id && !c.demo && c.kind === "invoice" ? null : { tool: "list_transactions", args: {} };
+  if (id) return { tool: "explain_payment", args: { id } };
+  if (c.id && !c.demo && (c.kind === "invoice" || c.kind === "payment")) return null;
+  return c.kind === "policy" ? { tool: "cfo_policy", args: {} } : c.kind === "agents" ? { tool: "agents", args: {} } : { tool: "agent_decisions", args: { limit: 5 } };
+}
+
 /** The one read that answers a records question without a model, or null (then the docs answer). */
-export function localRead(question: string): { tool: string; args: Record<string, unknown> } | null {
+export function localRead(question: string, context: AskContext | null = null): { tool: string; args: Record<string, unknown> } | null {
+  // A quick action decides alone: its read, or none (an own company's record is never looked up here).
+  const quick = context ? quickRead(question, context) : undefined;
+  if (quick !== undefined) return quick;
   if (!ASKS_RECORDS.test(question) || !DATA_WORD.test(question)) return null;
   for (const [re, tool, args] of ROUTES) if (re.test(question)) return { tool, args };
   return null;

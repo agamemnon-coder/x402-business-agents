@@ -1827,9 +1827,17 @@ async function guestIn(fromButton){
   catch(e){if(fromButton)throw e;notice=t('cs.guest.failed',{error:e.message});go('#/sign-in')}
 }
 __UI__
+// Ask Purser in context (cloud/src/ask/context.ts): the page and the record the person views, as data on <body> that the
+// button reads when it opens (a kind and a record's id, never a token); in the demo company (a guest) the agent may read it.
+const ASK_KINDS={'/overview':'overview','/invoices':'invoices','/transactions':'transactions','/agents':'agents','/books':'books','/archive':'audit','/settings':'policy','/tokenisation':'proof'};
+function askContext(path){const b=document.body.dataset,m=/^\/invoices\/([^/]+)$/.exec(path),k=S?(m?'invoice':ASK_KINDS[path]||''):'';
+  if(k)b.askKind=k;else delete b.askKind;
+  let id='';try{id=m?decodeURIComponent(m[1]):''}catch(e){}
+  if(k&&id&&/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/.test(id))b.askId=id;else delete b.askId;
+  if(k&&(S.guest||(ME&&ME.demo)))b.askDemo='1';else delete b.askDemo}
 async function route(){
   const h=location.hash||'#/';const [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
-  S=load();shell();
+  S=load();shell();askContext(path);
   // No timer of the panel "At work" outlives the view it was mounted in.
   workStop();
   if(CFG.engine){engineChip(true);if(S)engineStatus().then((st)=>engineChip(!!st),()=>{})}
