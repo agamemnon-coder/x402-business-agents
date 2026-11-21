@@ -60,7 +60,10 @@ function recount(r: RunRecord): string[] {
 // /proof's count of Airwallex sandbox calls (src/redesign/scale.ts), counted from the run records by the API trail
 // (src/airwallex/apiTrail.ts, held to each record by test/airwallex-api-trail.test.ts). 154 matched a number in the main
 // run's record by chance until the late-failure run of 17 Nov added its 30 calls.
-const ALLOWED = new Set([...RECORD_NUMBERS, ...recount(JSON.parse(RAW) as RunRecord), String(apiTrail().calls)]);
+// 21 Nov (/proof by category): the evidence wall's figures, each generated from its own run record by
+// npm run evidence:wall (docs/evidence/evidence-wall.json, held to the records in test/evidence-wall.test.ts).
+const WALL_NUMBERS = (JSON.stringify(JSON.parse(readFileSync("docs/evidence/evidence-wall.json", "utf8"))).match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map((n) => n.replace(/,/g, ""));
+const ALLOWED = new Set([...RECORD_NUMBERS, ...recount(JSON.parse(RAW) as RunRecord), String(apiTrail().calls), ...WALL_NUMBERS]);
 
 /** The words a person reads on a page as served (scripts, styles and markup left out), without the fixed names that carry digits. */
 const visibleText = (html: string) => html
@@ -382,7 +385,8 @@ describe("the redesigned public pages", () => {
 describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5 Nov)", () => {
   const doc = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
   // Words as read: tags, Markdown emphasis and line breaks gone.
-  const text = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/[*\\]/g, "").replace(/\s+/g, " ");
+  // 21 Nov: a page's scripts (the wave's shader source on /proof) are not words a reader sees.
+  const text = (s: string) => s.replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/[*\\]/g, "").replace(/\s+/g, " ");
   const shots = new Proxy({}, { get: () => "" }) as DeckShots;
   const SOURCES: [string, string][] = [
     ["proof", proofPage()],
