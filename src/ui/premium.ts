@@ -37,14 +37,14 @@ const wavePath = (row: number): string => {
   const points: string[] = [];
   for (let x=0; x<=1320; x+=24) {
     const y=322+(row-20)*10+31*Math.sin(x/165+row*.105)+18*Math.sin(x/320+row*.045);
-    points.push(`\${x},\${y.toFixed(2)}`);
+    points.push(`${x},${y.toFixed(2)}`);
   }
-  return `<polyline points="\${points.join(" ")}" />`;
+  return `<polyline points="${points.join(" ")}" />`;
 };
 const WAVE_PATHS = Array.from({length:41},(_,i)=>wavePath(i)).join("");
 
 /** True moving dots, not a video or screenshot. Decorative and ignored by assistive technology. */
-export const waveMarkup = () => `<div class="pv-wave" aria-hidden="true"><svg viewBox="0 0 1320 680" preserveAspectRatio="xMidYMid slice" focusable="false"><g>\${WAVE_PATHS}</g></svg></div>`;
+export const waveMarkup = () => `<div class="pv-wave" aria-hidden="true"><svg viewBox="0 0 1320 680" preserveAspectRatio="xMidYMid slice" focusable="false"><g>${WAVE_PATHS}</g></svg></div>`;
 
 export const WAVE_CSS = String.raw`
 .pv-wave { position:absolute;z-index:0;inset:0;overflow:hidden;pointer-events:none; }
