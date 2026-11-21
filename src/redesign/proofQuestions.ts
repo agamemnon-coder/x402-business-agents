@@ -123,7 +123,9 @@ export function questionHtml(p: Placed, x: QExtras = {}): string {
   const charts = (x.charts ?? []).filter(Boolean);
   const more = p.more.length ? fold(null, "More results from the records", `<ul class="pq-list">${p.more.map((t) => tileLine(t)).join("")}</ul>`) : "";
   const newest = p.q.id === "q-ai" ? p.blocks.flatMap((b) => b.tiles).find((t) => EVAL_TILE.test(t.key)) : undefined;
-  const superseded = p.superseded.length ? `<ul class="pq-list">${p.superseded.map((t) => tileLine(t, `Superseded${newest ? ` by eval ${newest.key.slice(5)}` : ""}:`)).join("")}</ul>` : "";
+  // 21 Nov (review: fifteen "Superseded" lines crowd the page, and an older round's lower figure next to the newest reads
+  // like a regression): one line says what the rounds are; every earlier round stays, as recorded, one fold further in.
+  const superseded = p.superseded.length ? `<p class="pq-sup">${esc(`${p.superseded.length + (newest ? 1 : 0)} held-out rounds, each written after the last fixes; the newest is the honest one${newest ? ` (eval ${newest.key.slice(5)}, above)` : ""}. In each, a script that always says pay stands in for the AI: the worst case, not Claude.`)}</p>${fold(null, "Every earlier round, as recorded", `<ul class="pq-list">${p.superseded.map((t) => tileLine(t, `Superseded${newest ? ` by eval ${newest.key.slice(5)}` : ""}:`)).join("")}</ul>`, "pq-fold pq-sups")}` : "";
   const history = [superseded, ...(x.history ?? [])].filter((h) => h.trim()).join("\n");
   return `<section class="ewall pq" id="${p.q.id}" aria-labelledby="h-${p.q.id}" data-rec="${esc(WALL_FILE)}">
 <div class="pq-h"><span class="pq-n" aria-hidden="true"></span><h2 id="h-${p.q.id}">${esc(p.q.title)}</h2></div>
@@ -169,6 +171,7 @@ section.pq ul.pq-list { list-style: none; margin: 6px 0 10px; padding: 0; displa
 section.pq ul.pq-list li { border-left: 3px solid var(--border); padding-left: 10px; }
 section.pq ul.pq-list b { color: var(--text); font-variant-numeric: tabular-nums; }
 section.pq .pq-was { font-weight: 700; color: var(--text); }
+section.pq .pq-sup { margin: 6px 0 4px; font-size: 14px; line-height: 1.45; color: var(--muted); max-width: 64em; }
 section.pq .pq-day { white-space: nowrap; font-weight: 650; color: var(--text); }
 section.pq ul.scale { margin: 6px 0 12px; }
 @media (max-width: 760px) { section.pq ul.ew-ts { grid-template-columns: repeat(2, minmax(0, 1fr)); } section.pq .pq-a { font-size: 15px; } }

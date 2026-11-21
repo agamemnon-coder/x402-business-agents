@@ -70,16 +70,28 @@ const runKit=(()=>{
 
 /** The start screen (screen 0), in the page's script: its words from C.start, the logos from LOGOS. */
 export const START_JS = String.raw`
-// 0 Start (14 Nov, owner): eyebrow, headline, the line under it, the three steps and the one-cent refusal as a picture,
+// 0 Start (14 Nov, owner; the fork 21 Nov): eyebrow, headline, the line under it, the steps forking into paying alone
+// within the limit and the passkey above it, and the one-cent refusal as a picture,
 // the button with the trailer beside it, the small print, then the partners. The layout is CSS (START_CSS).
 screen('start',{heading:C.start.heading,band:false,draw(box){
   const T=C.start;box.classList.add('start');
   const eyebrow=el('p','eyebrow',[el('span','dot'),T.eyebrow]);
   const text=el('p','lede',T.text);
-  const flow=el('ol','flow');
+  // 21 Nov (the new direction): Read and Check, then the flow forks: within the limit the agent pays alone, above it
+  // you approve with your passkey; then what a one-cent change gets. A light runs the path (CSS; still with reduced motion).
+  const flow=el('ol','flow');flow.setAttribute('aria-label',T.heading);
   const glyphs=['file-text','shield-check','scan-face'];
-  T.flow.forEach((f,i)=>flow.append(el('li','fs fs'+(i+1),[el('span','fi',icon(glyphs[i],22)),el('span','fx',[el('span','fn',[el('span','num',String(i+1)),f.name]),el('span','fl',f.line)])])));
-  flow.append(el('li','fs fend',[el('span','fi',icon('ban',20)),el('span','fx',el('span','fn',T.flowEnd))]));
+  const step=(i,f)=>el('li','fs fs'+(i+1),[el('span','fi',icon(glyphs[i],22)),el('span','fx',[el('span','fn',[el('span','num',String(i+1)),f.name]),el('span','fl',f.line)])]);
+  flow.append(step(0,T.flow[0]),step(1,T.flow[1]));
+  const lane=(cls,glyph,tag,name,line)=>el('div','lane '+cls,[el('span','lt',tag),el('span','fx',[el('span','fn',[el('span','fi',icon(glyph,18)),name]),el('span','fl',line)])]);
+  flow.append(el('li','fork',[el('div','lanes',[lane('alone','zap',T.lanes.alone.tag,T.lanes.alone.name,T.lanes.alone.line),lane('face','scan-face',T.lanes.face.tag,T.flow[2].name,T.flow[2].line)]),el('p','ln',T.lanes.note)]));
+  flow.append(el('li','fs fend',[el('span','fi',icon('ban',20)),el('span','fx',[el('span','fn',T.flowEnd),el('span','ft',T.centTag)])]));
+  // The sample invoice the visit starts with (21 Nov, Max: an app start screen): the engine's first sample, as a card.
+  let card=null;const SX=T.sample;
+  if(SX){const st=el('ol','ac-steps');T.card.steps.forEach((w,i)=>st.append(el('li','acs acs'+(i+1),[el('span','ad',icon(i<2?'check':i===2?'scan-face':'ban',12)),w])));
+    card=el('aside','appcard',[el('div','ac-bar',[el('span','ac-t',T.card.title),el('span','ac-live',[el('i'),T.card.label])]),
+      el('div','ac-inv',[el('span','ac-v',SX.vendor),el('span','ac-no',SX.invoice_no+' · '+T.card.due+' '+SX.due),el('span','ac-amt',SX.money)]),st]);
+    card.setAttribute('aria-label',T.card.title)}
   const b=btn(T.button,true);
   const label=(words,glyph)=>b.replaceChildren(...[words,glyph?icon('arrow-right',18):null].filter(Boolean));label(T.button,true);
   const trailer=el('a','trailer',[el('span','play',icon('play',12)),T.trailer]);trailer.href=C.trailer.url;trailer.target='_blank';trailer.rel='noopener';
@@ -94,7 +106,7 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   }
   const partners=el('div','partners',[el('p','pl',T.worksWith),logos,el('p','pn',T.runs_note)]);
   // Proof in numbers (15 Nov, owner): the recorded runs' figures, each linked to its record, and the suite's count.
-  box.append(eyebrow,text,flow,el('div','cta',[b,trailer]),el('p','fine',T.fine),partners,proofBand());
+  box.append(eyebrow,text,flow,el('div','cta',[b,trailer]),el('p','fine',T.fine),...(card?[card]:[]),partners,proofBand());
   b.addEventListener('click',async()=>{
     b.disabled=true;label(T.starting,false);
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
@@ -247,29 +259,70 @@ body:has(.screen.start)::before { content: ""; position: fixed; inset: 0; z-inde
   background: radial-gradient(circle, color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1.4px) 0 0 / 24px 24px;
   -webkit-mask-image: linear-gradient(180deg, #000, transparent 70%); mask-image: linear-gradient(180deg, #000, transparent 70%); }
 body:has(.screen.start) main { max-width: 600px; padding-top: 22px; padding-bottom: 28px; display: grid; grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "eyebrow" "h1" "lede" "flow" "cta" "fine" "partners" "real"; }
+  grid-template-areas: "eyebrow" "h1" "lede" "flow" "cta" "fine" "card" "partners" "real"; }
 .screen.start { display: contents; animation: none; }
 body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-size: 33px; line-height: 1.08; letter-spacing: -.03em; font-weight: 780; text-wrap: balance; animation: rise .5s cubic-bezier(.2,.7,.2,1) .05s both; }
 .start .eyebrow { grid-area: eyebrow; justify-self: start; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 5px 12px 5px 10px; border-radius: 999px;
   background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); color: var(--muted); font-size: 13px; font-weight: 600; animation: rise .5s cubic-bezier(.2,.7,.2,1) both; }
 .start .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .start .lede { grid-area: lede; margin: 0 0 18px; color: var(--muted); font-size: 16.5px; line-height: 1.5; text-wrap: pretty; animation: rise .5s cubic-bezier(.2,.7,.2,1) .1s both; }
-.start .flow { grid-area: flow; list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; animation: rise .55s cubic-bezier(.2,.7,.2,1) .15s both; }
-.start .fs { position: relative; display: grid; gap: 6px; align-content: start; padding: 12px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
-  animation: fslit 7.2s ease-in-out infinite; }
-.start .fs2 { animation-delay: 1.2s; } .start .fs3 { animation-delay: 2.4s; }
-.start .fs .fi { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: var(--accent-soft); color: var(--accent); }
-.start .fs .fx { display: grid; gap: 2px; min-width: 0; }
-.start .fs .fn { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14.5px; }
+.start .flow { grid-area: flow; list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; animation: rise .55s cubic-bezier(.2,.7,.2,1) .15s both; }
+.start .fs { position: relative; display: grid; gap: 6px; align-content: start; padding: 11px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+  animation: fslit 9s ease-in-out infinite; }
+.start .fs2 { animation-delay: 1.1s; }
+.start .fs .fi { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--accent-soft); color: var(--accent); }
+.start .fs .fx, .start .lane .fx { display: grid; gap: 2px; min-width: 0; }
+.start .fs .fn, .start .lane .fn { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14.5px; }
 .start .fs .num { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--sunken); color: var(--muted); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.start .fs .fl { color: var(--muted); font-size: 12.5px; line-height: 1.35; text-wrap: balance; }
-.start .fs.fend { grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: center; padding: 10px 12px; background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); box-shadow: none;
-  animation: fsend 7.2s ease-in-out infinite; }
+.start .fs .fl, .start .lane .fl { color: var(--muted); font-size: 12.5px; line-height: 1.35; text-wrap: pretty; }
+/* The fork: within the limit the agent pays alone (the ok colour); above it, the passkey (the accent). */
+.start .fork { grid-column: 1 / -1; position: relative; display: grid; gap: 6px; }
+.start .fork .lanes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.start .lane { --lc: var(--ok); position: relative; display: grid; gap: 6px; align-content: start; padding: 10px 10px 11px; border-radius: 14px; background: var(--surface); border: 1px solid color-mix(in srgb, var(--lc) 30%, var(--border)); box-shadow: var(--shadow); overflow: hidden; animation: lanelit 9s ease-in-out 2.6s infinite; }
+.start .lane.face { --lc: var(--accent); animation-delay: 4.4s; }
+.start .lane::before { content: ""; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, transparent, var(--lc), transparent); transform: translateX(-100%); animation: lanerun 9s ease-in-out 2.6s infinite; }
+.start .lane.face::before { animation-delay: 4.4s; }
+.start .lane .lt { justify-self: start; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--lc) 13%, var(--surface)); color: var(--lc); font-size: 11px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.start .lane .fn .fi { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--lc) 13%, var(--surface)); color: var(--lc); flex: none; }
+.start .fork .ln { margin: 0; color: var(--faint); font-size: 11.5px; text-align: center; }
+/* A phone: Read and Check as two compact rows, icon beside the words, so the button stays in the first screen. */
+@media (max-width: 1023px) {
+  .start .fs:not(.fend) { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; padding: 9px 10px; }
+  .start .fs:not(.fend) .fi { width: 30px; height: 30px; border-radius: 9px; }
+  .start .fs .num { display: none; }
+  .start .lane { gap: 4px; padding: 9px 10px 10px; }
+  .start .lane .fn .fi { width: 22px; height: 22px; border-radius: 7px; }
+}
+.start .fs.fend { grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: center; padding: 9px 12px; background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); box-shadow: none;
+  animation: fsend 9s ease-in-out infinite; }
 .start .fs.fend .fi { width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--bad) 14%, var(--surface)); color: var(--bad); }
 .start .fs.fend .fn { color: var(--bad); font-size: 14px; }
-@keyframes fslit { 0%, 2% { border-color: var(--border); } 5%, 15% { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), var(--shadow); } 19%, 100% { border-color: var(--border); } }
-/* The refusal is always readable: only a shake and its border move, after the three steps have lit. */
-@keyframes fsend { 0%, 50% { transform: none; border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); } 53% { transform: translateX(-5px); border-color: var(--bad); } 56% { transform: translateX(4px); } 59% { transform: translateX(-2px); } 62%, 85% { transform: none; border-color: var(--bad); } 100% { border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); } }
+.start .fs.fend .fx { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.start .fs.fend .ft { padding: 2px 8px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--bad) 45%, var(--border)); color: var(--bad); font-size: 11px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+/* The sample invoice the visit starts with: a card of the app, not a device. */
+.start .appcard { grid-area: card; margin: 22px 0 0; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 30px 60px -30px color-mix(in srgb, var(--accent) 45%, rgba(16,24,40,.35)); overflow: hidden; animation: rise .6s cubic-bezier(.2,.7,.2,1) .2s both; }
+.start .ac-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--sunken) 60%, var(--surface)); }
+.start .ac-t { font-weight: 700; font-size: 14px; }
+.start .ac-live { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11.5px; font-weight: 700; }
+.start .ac-live i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.start .ac-inv { display: grid; gap: 2px; padding: 18px 18px 14px; }
+.start .ac-v { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.start .ac-no { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.start .ac-amt { margin-top: 10px; font-size: 34px; font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.start .ac-steps { list-style: none; margin: 0; padding: 4px 18px 18px; display: grid; gap: 8px; }
+.start .acs { display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 600; color: var(--text); }
+.start .acs .ad { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ok-soft); color: var(--ok); flex: none; animation: acs 9s ease-in-out infinite; }
+.start .acs2 .ad { animation-delay: 1.1s; }
+.start .acs3 .ad { background: var(--accent-soft); color: var(--accent); animation: acsk 2.4s ease-in-out infinite; }
+/* The one-cent step on the card, in the refusal's colour. */
+.start .acs4 { color: var(--bad); } .start .acs4 .ad { background: var(--bad-soft); color: var(--bad); animation: none; }
+@keyframes acs { 0%, 4% { transform: scale(.6); opacity: .3; } 9%, 100% { transform: none; opacity: 1; } }
+@keyframes acsk { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent); } }
+@keyframes fslit { 0%, 2% { border-color: var(--border); } 5%, 13% { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), var(--shadow); } 17%, 100% { border-color: var(--border); } }
+@keyframes lanelit { 0%, 2% { border-color: color-mix(in srgb, var(--lc) 30%, var(--border)); } 5%, 15% { border-color: var(--lc); box-shadow: 0 0 0 4px color-mix(in srgb, var(--lc) 16%, transparent), var(--shadow); } 20%, 100% { border-color: color-mix(in srgb, var(--lc) 30%, var(--border)); } }
+@keyframes lanerun { 0% { transform: translateX(-100%); } 14%, 100% { transform: translateX(100%); } }
+/* The refusal is always readable: only a shake and its border move, after the lanes have lit. */
+@keyframes fsend { 0%, 70% { transform: none; border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); } 72% { transform: translateX(-5px); border-color: var(--bad); } 74% { transform: translateX(4px); } 76% { transform: translateX(-2px); } 78%, 92% { transform: none; border-color: var(--bad); } 100% { border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); } }
 .start .cta { grid-area: cta; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; animation: rise .55s cubic-bezier(.2,.7,.2,1) .2s both; }
 .start .cta .btn.big { margin: 0; width: 100%; min-height: 54px; box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent); transition: transform .15s ease, box-shadow .15s ease; }
 .start .cta .btn.big:hover { transform: translateY(-1px); box-shadow: 0 14px 28px -10px color-mix(in srgb, var(--accent) 80%, transparent); }
@@ -290,16 +343,19 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 .start .partners .pn { margin: 10px 0 0; color: var(--faint); font-size: 11.5px; }
 @media (min-width: 1024px) {
   body:has(.screen.start) main { max-width: 1180px; padding: 36px 48px 32px; min-height: calc(100vh - 65px); min-height: calc(100svh - 65px); align-content: center;
-    grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); column-gap: 72px;
-    grid-template-areas: "eyebrow flow" "h1 flow" "lede flow" "cta flow" "fine flow" "partners partners" "real real"; }
-  body:has(.screen.start) main > h1 { font-size: 54px; margin: 20px 0 16px; }
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); column-gap: 64px;
+    grid-template-areas: "eyebrow card" "h1 card" "lede card" "flow card" "cta card" "fine card" "partners partners" "real real"; }
+  body:has(.screen.start) main > h1 { font-size: 46px; margin: 16px 0 10px; }
   .start .lede { font-size: 19px; max-width: 34em; margin-bottom: 28px; }
-  .start .flow { align-self: center; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 0; padding: 22px; border-radius: 24px; background: color-mix(in srgb, var(--surface) 70%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow); position: relative; }
-  .start .fs { grid-template-columns: auto 1fr; align-items: center; gap: 14px; padding: 16px 18px; }
-  .start .fs .fi { width: 46px; height: 46px; border-radius: 13px; }
-  .start .fs .fn { font-size: 16.5px; }
-  .start .fs .fl { font-size: 14px; }
-  .start .fs.fend { grid-column: auto; padding: 14px 18px; }
+  /* 21 Nov (Max: an app start screen, distinct from Home): the steps a compact rail under the words, the card right. */
+  .start .flow { margin: 0 0 22px; gap: 8px; max-width: 560px; }
+  .start .fs:not(.fend) { grid-template-columns: auto 1fr; align-items: center; gap: 10px; padding: 10px 12px; }
+  .start .fs:not(.fend) .fi { width: 34px; height: 34px; border-radius: 10px; }
+  .start .fs .fn, .start .lane .fn { font-size: 15px; }
+  .start .fs .fl, .start .lane .fl { font-size: 13px; }
+  .start .lane { padding: 11px 12px; }
+  .start .fs.fend { padding: 10px 14px; }
+  .start .appcard { align-self: center; }
   .start .cta { justify-content: flex-start; }
   .start .cta .btn.big { width: auto; padding: 0 28px; }
   .start .trailer { margin: 0; }
@@ -307,6 +363,8 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
   .start .partners { margin-top: 40px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 18px; }
   .start .partners .pl, .start .partners .pn { margin: 0; }
 }
+/* 4K (Max, 21 Nov: "razor-sharp at 4K"): a wider measure and a larger headline, never a narrow column. */
+@media (min-width: 1920px) { body:has(.screen.start) main { max-width: 1400px; column-gap: 96px; } body:has(.screen.start) main > h1 { font-size: 56px; } .start .lede { font-size: 20px; } }
 @media (max-width: 420px) { .score .tile { padding: 9px 10px; } .score .tile .v { font-size: 21px; } }
 @media (min-width: 1024px) and (max-height: 820px) { body:has(.screen.start) main > h1 { font-size: 46px; } .start .partners { margin-top: 26px; } }
 
@@ -324,10 +382,10 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 .proofband li.wide .ph2 { font-size: 15px; font-weight: 700; line-height: 1.3; }
 .proofband li.wide .pk { font-size: 12.5px; }
 @media (min-width: 1024px) { .start .proofband { margin-top: 22px; } .proofband .rl { grid-template-columns: repeat(5, minmax(0, 1fr)); } .proofband li:last-child:nth-child(odd):not(.wide) { grid-column: auto; } .proofband .pv { font-size: 24px; } }
-/* The steps light one after another, each icon filling, then the refusal shakes (a loop; still with reduced motion). */
-.start .fs .fi { animation: fifill 7.2s ease-in-out infinite; }
-.start .fs2 .fi { animation-delay: 1.2s; } .start .fs3 .fi { animation-delay: 2.4s; } .start .fs.fend .fi { animation: none; }
-@keyframes fifill { 0%, 2% { background: var(--accent-soft); color: var(--accent); } 5%, 15% { background: var(--accent); color: #fff; } 19%, 100% { background: var(--accent-soft); color: var(--accent); } }
+/* The steps light one after another, each icon filling, the lanes after them, then the refusal shakes (a loop; still with reduced motion). */
+.start .fs .fi { animation: fifill 9s ease-in-out infinite; }
+.start .fs2 .fi { animation-delay: 1.1s; } .start .fs.fend .fi { animation: none; }
+@keyframes fifill { 0%, 2% { background: var(--accent-soft); color: var(--accent); } 5%, 13% { background: var(--accent); color: #fff; } 17%, 100% { background: var(--accent-soft); color: var(--accent); } }
 /* The button breathes a little light. */
 .start .cta .btn.big { animation: ctaglow 2.8s ease-in-out infinite alternate; }
 @keyframes ctaglow { from { box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); } to { box-shadow: 0 12px 28px -10px color-mix(in srgb, var(--accent) 80%, transparent), 0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent); } }

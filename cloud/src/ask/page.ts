@@ -13,6 +13,7 @@ import { ICON_LINKS } from "../brand.js";
 import { SITE_HEADER_CSS, TRY_HEADER_LINKS } from "../siteHeader.js";
 import { ATTACH_MAX_BYTES, ATTACH_TYPES } from "./attach.js";
 import { ASK_COPY, QUESTION_MAX, SUGGESTIONS } from "./core.js";
+import { ASK_CONTEXT_KINDS, ASK_NAV, CONTEXT_ID, CONTEXT_JS, OPEN_APPROVAL, approvalHash, contextLabel, parseContext, quickActions, type AskContext } from "./context.js";
 
 export const ASK_PATH = "/ask";
 export const ASK_BUTTON_PATH = "/ask/button.js";
@@ -20,12 +21,12 @@ export const ASK_BUTTON_PATH = "/ask/button.js";
 /** Every word of the page (tests and the browser check read them). */
 export const ASK_PAGE_COPY = {
   title: "Ask Purser",
-  lede: "An agent that answers questions about Purser from its public docs and reads the demo company's records, read-only, with a link to each source.",
-  statusLive: "Agent · reads docs and demo data · read-only",
+  lede: "A read-only finance copilot: it answers from Purser's docs and the demo company's records, citing each source.",
+  statusLive: "Claude connected · live",
   statusDocs: "Docs-only mode: live AI answers aren't switched on here yet.",
-  helloHead: "Ask anything about Purser",
-  helloText: "It searches Purser's docs and reads the demo company's records (made-up data). Attach an invoice or a CSV to ask about it.",
-  scope: "It can't pay, approve, change a limit or see a real company's data. If the sources don't say, it says so.",
+  helloHead: "Your read-only finance copilot",
+  helloText: "Ask about Purser, or about the demo company's invoices, payments and books.",
+  scope: "Read-only · test money · cites sources",
   privacy: "Nothing you type or attach is stored: only hourly counts. Answers can be wrong; the linked sources are what counts.",
   placeholder: "Ask about Purser, or attach a file",
   label: "Your question",
@@ -55,6 +56,15 @@ export const ASK_PAGE_COPY = {
   error: "The answer could not be fetched. Check your connection and ask again.",
   counter: "characters left",
   testMoney: ASK_COPY.testMoney,
+  canRead: "What I can read",
+  readNote: "Demo company data, made up · read only",
+  recent: "Sources in this chat",
+  recentEmpty: "The sources an answer cites appear here.",
+  dropHere: "Attach an invoice or a CSV",
+  viewing: "Viewing",
+  demoCompany: "demo company, made-up data",
+  ownCompany: "your company: Ask Purser reads the demo company only",
+  quick: "Quick actions",
   fab: "Ask Purser",
   fabHint: "Questions? Ask Purser",
 } as const;
@@ -65,13 +75,15 @@ const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 // ---- Ask Purser's mark: Purser's feather on its ink square, with a small spark for "ask" ----
 
 type El = [tag: string, attrs: Record<string, string>];
-const FEATHER = ["M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z", "M16 8 2 22", "M17.5 15H9"];
 /** The mark on a 32 grid, as elements: drawn as markup on the page and as DOM by the button (one source for both). */
 export const ASK_MARK: El[] = [
+  // 21 Nov (Max: "a proper agent mark, not a chat bubble"): an ink square, a white orbit with a gap and a white core
+  // (the agent), and one violet point on the orbit (live). Monochrome but for that point.
   ["rect", { width: "32", height: "32", rx: "9", fill: "#0b1220" }],
-  ["rect", { x: ".5", y: ".5", width: "31", height: "31", rx: "8.5", fill: "none", stroke: "#ffffff", "stroke-opacity": ".14" }],
-  ...FEATHER.map((d): El => ["path", { d, transform: "translate(4.4 8) scale(.76)", fill: "none", stroke: "#ffffff", "stroke-width": "2.1", "stroke-linecap": "round", "stroke-linejoin": "round" }]),
-  ["path", { d: "M24.5 4.2c.5 2.3 1.9 3.8 4.2 4.3-2.3.5-3.7 2-4.2 4.3-.5-2.3-1.9-3.8-4.2-4.3 2.3-.5 3.7-2 4.2-4.3Z", fill: "#a5a1ff" }],
+  ["rect", { x: ".5", y: ".5", width: "31", height: "31", rx: "8.5", fill: "none", stroke: "#ffffff", "stroke-opacity": ".16" }],
+  ["path", { d: "M22.6 11.4A8 8 0 1 0 24 16", fill: "none", stroke: "#ffffff", "stroke-width": "2.2", "stroke-linecap": "round" }],
+  ["circle", { cx: "16", cy: "16", r: "3.1", fill: "#ffffff" }],
+  ["circle", { cx: "23.4", cy: "13.2", r: "2.8", fill: "#a5a1ff" }],
 ];
 const svgOf = (els: El[], size: number, viewBox: string, cls = "") =>
   `<svg${cls ? ` class="${cls}"` : ""} width="${size}" height="${size}" viewBox="${viewBox}" aria-hidden="true" focusable="false">${els.map(([t, a]) => `<${t} ${Object.entries(a).map(([k, v]) => `${k}="${v}"`).join(" ")}/>`).join("")}</svg>`;
@@ -85,7 +97,19 @@ const ICON: Record<string, string[]> = {
   clip: ["m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l8.6-8.6a4 4 0 0 1 5.7 5.7l-8.6 8.6a2 2 0 0 1-2.8-2.8l8.5-8.5"],
   up: ["M12 19V5", "m5 12 7-7 7 7"],
   file: ["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z", "M14 2v6h6"],
+  docs: ["M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"],
+  swap: ["M8 3 4 7l4 4", "M4 7h16", "m16 21 4-4-4-4", "M20 17H4"],
+  books: ["M3 3v18h18", "M7 16l4-4 3 3 5-6"],
+  wallet: ["M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1", "M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"],
+  clock: ["M12 6v6l4 2", "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"],
+  shield: ["M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"],
+  bot: ["M12 8V4H8", "M4 8h16v12H4z", "M2 14h2", "M20 14h2", "M15 13v2", "M9 13v2"],
+  trail: ["M3 12h4l3-9 4 18 3-9h4"],
+  chain: ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71", "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
+  upload: ["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "m17 8-5-5-5 5", "M12 3v12"],
 };
+/** What the agent can read (./tools.ts), as the rail shows it: an icon and a few words each. */
+const READS: [string, string][] = [["docs", "Purser's docs"], ["file", "Invoices"], ["swap", "Payments"], ["books", "Books & VAT"], ["wallet", "Cash"], ["clock", "Waiting for the CFO"], ["shield", "CFO's policy"], ["bot", "Agents & limits"], ["trail", "Audit trails"], ["chain", "Run records"]];
 const icon = (name: string, size = 18) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICON[name]!.map((d) => `<path d="${d}"/>`).join("")}</svg>`;
 
 const CSS = `${TOKENS.replace("url(assets/", "url(/assets/")}
@@ -198,12 +222,62 @@ textarea::placeholder { color: var(--faint); }
 .foot { font-size: 11.5px; line-height: 1.4; color: var(--faint); margin: 7px 2px 0; }
 .btn-focus, .chip:focus-visible, .ib:focus-visible, .send:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .lede { color: var(--muted); margin: 18px 0 0; font-size: 15px; }
+/* In context (./context.ts): what the person views, three quick actions for it, and the page where the CFO approves. */
+.ctxbar { padding: 10px 12px 0; border-top: 1px solid var(--border); background: var(--surface); display: grid; gap: 8px; }
+.ctx-now { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+.ctx-now .ctx-k { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+.ctx-now b { color: var(--text); font-weight: 650; overflow-wrap: anywhere; }
+.ctx-now .ctx-d { color: var(--faint); }
+.qa { display: flex; flex-wrap: wrap; gap: 6px; }
+.qa button, .qa a { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font: 600 13px/1.2 Inter, system-ui, sans-serif; cursor: pointer; text-decoration: none; }
+.qa button:hover, .qa a:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); background: var(--accent-soft); }
+.qa button:disabled { opacity: .5; cursor: default; }
+.qa .qa-go { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); color: var(--accent); }
+.qa .qa-go::after { content: "→"; }
+body.has-ctx .sugg { display: none; }
+/* 21 Nov (Max: "a rich, premium copilot, not a generic chatbot; less text"): a compact header with a live chip, the
+   conversation left and, on a wide screen, a rail of what the agent can read, the sources cited so far and a drop zone. */
+.bar { padding: 10px 12px 10px 14px; gap: 12px; }
+.bar h1 { font-size: 15.5px; }
+.status { display: inline-flex; width: fit-content; margin: 3px 0 0; padding: 2px 9px 2px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); font-size: 12px; font-weight: 600; }
+.dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+@media (prefers-reduced-motion: no-preference) { .dot:not(.docs) { animation: live 2.4s ease-in-out infinite; } }
+@keyframes live { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 6%, transparent); } }
+.body2 { display: flex; flex: 1; min-height: 0; }
+.convo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rail { display: none; }
+.hello { padding: 22px 4px 6px; gap: 8px; }
+.hello h2 { font-size: 22px; letter-spacing: -.02em; margin: 6px 0 0; }
+.hello .scope { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); font-size: 12px; font-weight: 600; }
+.sugg { flex-direction: row; flex-wrap: wrap; }
+.sugg li { flex: 1 1 200px; min-width: 0; }
+.chip { min-height: 44px; border-radius: 12px; font-weight: 550; }
+.msg.bot > .body, .msg.bot > .steps, .msg.bot > .meta { padding-left: 2px; }
+.steps { position: relative; background: transparent; border: 0; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 0; padding: 2px 0 2px 12px; }
+.rail { flex-direction: column; gap: 18px; width: 300px; flex: none; padding: 16px; border-left: 1px solid var(--border); background: color-mix(in srgb, var(--sunken) 55%, var(--surface)); overflow-y: auto; }
+.rail h2 { margin: 0 0 8px; font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
+.rail .reads { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.rail .reads li { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; font-weight: 550; color: var(--text); }
+.rail .reads svg { color: var(--accent); flex: none; }
+.rail .rnote { margin: 8px 0 0; font-size: 12px; color: var(--faint); }
+.rail ol.rsrc { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rail ol.rsrc li.empty { font-size: 12.5px; color: var(--faint); }
+.rail .dz { width: 100%; display: grid; justify-items: center; gap: 4px; padding: 16px 12px; border: 1.5px dashed color-mix(in srgb, var(--accent) 40%, var(--border)); border-radius: 14px; background: var(--surface); color: var(--text); font: 600 13.5px/1.3 Inter, system-ui, sans-serif; cursor: pointer; text-align: center; }
+.rail .dz svg { color: var(--accent); }
+.rail .dz small { font-weight: 500; font-size: 12px; color: var(--faint); }
+.rail .dz:hover { border-color: var(--accent); background: var(--accent-soft); }
+@media (min-width: 1024px) {
+  body.page .app { max-width: 1180px; }
+  body.page .rail { display: flex; }
+  body.page .shell { height: max(560px, min(880px, calc(100dvh - 150px))); }
+}
 @media (max-width: 520px) { .msg.you { max-width: 92%; } .hello { padding-top: 18px; } body.page .lede { display: none; } body.page .shell { margin: 10px 0 12px; border-radius: 16px; height: max(460px, calc(100dvh - 96px)); } }
 `;
 
 // The page's script: plain JavaScript, raw (no TS escapes), with the copy and the settings put in where it says so.
 const SCRIPT = String.raw`
 const C = __COPY__, CFG = __CFG__;
+__CONTEXT__
 const $ = (id) => document.getElementById(id);
 const chat = $('chat'), form = $('ask'), q = $('q'), send = $('send'), say = $('say'), count = $('count'), hello = $('hello'), scroller = $('scroll');
 const fileIn = $('file'), att = $('att'), fname = $('fname'), fsize = $('fsize'), unatt = $('unatt'), ferr = $('ferr'), drop = $('drop'), statusDot = $('sdot'), statusText = $('stext');
@@ -299,8 +373,23 @@ function meta(m, sources, cited, mode, note, reason) {
     box.append(ol);
   }
   if (note) box.append(el('p', 'note', note));
+  railSources(shown);
   box.append(el('span', 'how', (mode === 'live' ? C.live : mode === 'refused' ? C.refused : mode === 'records' ? C.records : C.docs) + (reason && mode !== 'live' && mode !== 'refused' ? ' ' + reason : '')));
   m.append(box);
+}
+// The rail's sources: each source an answer cited, once, newest first (the page on a wide screen).
+const RAIL = new Set();
+function railSources(list) {
+  const ol = $('rsrc'); if (!ol) return;
+  for (const s of list) {
+    if (RAIL.has(s.title)) continue; RAIL.add(s.title);
+    const empty = ol.querySelector('.empty'); if (empty) empty.remove();
+    const link = s.kind !== 'data' && okHost(s.url);
+    const a = el(link ? 'a' : 'span', 'src' + (s.kind === 'data' ? ' data' : ''));
+    if (link) { a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; }
+    a.title = s.title; a.append(el('span', null, s.title + (s.kind === 'data' ? ' (' + C.demo + ')' : '')));
+    const li = el('li'); li.append(a); ol.prepend(li);
+  }
 }
 function step(list, ev) {
   let li = list.querySelector('[data-id="' + ev.id + '"]');
@@ -313,7 +402,7 @@ function step(list, ev) {
 function scroll() { scroller.scrollTop = scroller.scrollHeight; }
 function counter() { const left = CFG.max - q.value.length; count.textContent = left < 120 ? left + ' ' + C.counter : ''; }
 function grow() { q.style.height = ''; if (q.value) q.style.height = Math.min(q.scrollHeight, 160) + 'px'; }
-function ready() { send.disabled = busy || (!q.value.trim()); }
+function ready() { send.disabled = busy || (!q.value.trim()); for (const b of document.querySelectorAll('#qa button[data-q]')) b.disabled = busy; }
 
 // One file, checked here first (the server checks again): its type, its size, then read as base64 in this tab only.
 const EXT = { pdf: 'application/pdf', csv: 'text/csv', txt: 'text/plain', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
@@ -355,6 +444,7 @@ async function ask(question) {
   let text = '', sources = [], done = null, settled = false;
   try {
     const payload = { question, history: history.slice(-6).map((t) => ({ role: t.role, text: t.text })) };
+    if (CTX) payload.context = CTX;
     if (file) payload.attachment = { name: file.name, type: file.type, data: file.data };
     const r = await fetch('/v1/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     if (!r.ok || !r.body) {
@@ -402,6 +492,7 @@ q.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !
 q.addEventListener('input', () => { counter(); grow(); ready(); });
 fileIn.addEventListener('change', () => take(fileIn.files && fileIn.files[0]));
 $('clip').addEventListener('click', () => fileIn.click());
+if ($('dz')) $('dz').addEventListener('click', () => fileIn.click());
 unatt.addEventListener('click', () => { clearFile(); fileError(''); q.focus(); });
 // A file dropped anywhere on the chat.
 let depth = 0;
@@ -411,6 +502,23 @@ document.addEventListener('dragover', (e) => { if (hasFile(e)) e.preventDefault(
 document.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) drop.hidden = true; });
 document.addEventListener('drop', (e) => { if (!hasFile(e)) return; e.preventDefault(); depth = 0; drop.hidden = true; take(e.dataTransfer.files[0]); });
 for (const b of hello.querySelectorAll('button[data-q]')) b.addEventListener('click', () => ask(b.dataset.q));
+// The page Ask Purser is open on (./context.ts): from the address on load, then from the console's button as the person
+// moves (a message from the frame's own parent, this origin only). Three quick actions fit it; an approval is the CFO's,
+// on its own page: the panel can open that page, never act.
+let CTX = parseCtx(CFG.ctx);
+const ctxbar = $('ctxbar');
+function drawCtx() {
+  document.body.classList.toggle('has-ctx', !!CTX);
+  if (!ctxbar) return;
+  ctxbar.hidden = !CTX; if (!CTX) return;
+  $('ctxl').textContent = ctxLabel(CTX); $('ctxd').textContent = '· ' + (CTX.demo ? C.demoCompany : C.ownCompany);
+  const qa = $('qa'); qa.textContent = '';
+  for (const x of quickOf(CTX)) { const b = el('button', null, x.label); b.type = 'button'; b.dataset.q = x.q; b.dataset.k = x.key; b.addEventListener('click', () => ask(x.q)); qa.append(b); }
+  const hash = CFG.embed ? approvalOf(CTX) : null;
+  if (hash) { const a = el('button', 'qa-go', QUICK.open); a.type = 'button'; a.addEventListener('click', () => { try { parent.postMessage({ type: 'purser-ask:navigate', hash }, location.origin); } catch (e) {} }); qa.append(a); }
+}
+drawCtx();
+addEventListener('message', (e) => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.type !== 'purser-ask:context') return; CTX = parseCtx(e.data.ctx); drawCtx(); });
 const reset = $('reset');
 if (reset) reset.addEventListener('click', () => { history = []; save(); chat.textContent = ''; hello.hidden = false; say.textContent = ''; clearFile(); fileError(''); q.focus(); });
 const close = $('close');
@@ -426,17 +534,31 @@ if (pre && pre.length <= CFG.max) ask(pre);
 if (CFG.embed) q.focus();
 `;
 
+/** What the person views and its three quick actions, drawn as markup for the first paint (the script redraws it). */
+function ctxBar(c: AskContext | null, embed: boolean): string {
+  const C = ASK_PAGE_COPY;
+  const hash = embed ? approvalHash(c) : null;
+  const ASK_NAV_OK = hash ? ASK_NAV.test(hash) : false;
+  return `<div class="ctxbar" id="ctxbar"${c ? "" : " hidden"}><p class="ctx-now"><span class="ctx-k">${esc(C.viewing)}</span><b id="ctxl">${c ? esc(contextLabel(c)) : ""}</b><span class="ctx-d" id="ctxd">${c ? esc(`· ${c.demo ? C.demoCompany : C.ownCompany}`) : ""}</span></p>`
+    + `<div class="qa" id="qa" role="group" aria-label="${esc(C.quick)}">${c ? quickActions(c).map((x) => `<button type="button" data-q="${esc(x.q)}" data-k="${x.key}">${esc(x.label)}</button>`).join("") + (ASK_NAV_OK ? `<button type="button" class="qa-go">${esc(OPEN_APPROVAL)}</button>` : "") : ""}</div></div>`;
+}
+
 /** The page: the chat, standalone (the site's header) or embedded (?embed=1, a bar with a close button). `live`: Claude answers here now. */
-export function askPage(n: string, o: { embed: boolean; live?: boolean }): string {
+export function askPage(n: string, o: { embed: boolean; live?: boolean; context?: AskContext | null }): string {
   const C = ASK_PAGE_COPY;
   const live = o.live ?? false;
-  const script = SCRIPT.replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ embed: o.embed, max: QUESTION_MAX, maxBytes: ATTACH_MAX_BYTES, types: ATTACH_TYPES, hosts: ["github.com/agamemnon-coder/x402-business-agents", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "youtu.be/"] }));
+  const ctx = o.context ?? null;
+  const script = SCRIPT.replace("__CONTEXT__", () => CONTEXT_JS).replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ embed: o.embed, ctx, max: QUESTION_MAX, maxBytes: ATTACH_MAX_BYTES, types: ATTACH_TYPES, hosts: ["github.com/agamemnon-coder/x402-business-agents", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "youtu.be/"] }));
   const bar = `<header class="bar">${askMarkSvg(32, "logo")}<div class="grow"><h1>${esc(C.title)}</h1><p class="status"><span class="dot${live ? "" : " docs"}" id="sdot" aria-hidden="true"></span><span id="stext">${esc(live ? C.statusLive : C.statusDocs)}</span></p></div>`
     + `<button class="ib" id="reset" type="button" aria-label="${esc(C.newChat)}" title="${esc(C.newChat)}">${icon("plus")}</button>`
     + (o.embed ? `<a class="ib" href="${ASK_PATH}" target="_blank" rel="noopener" aria-label="${esc(C.full)}" title="${esc(C.full)}">${icon("out", 17)}</a><button class="ib" id="close" type="button" aria-label="${esc(C.close)}" title="${esc(C.close)}">${icon("x")}</button>` : "")
     + `</header>`;
-  const helloBlock = `<section class="hello" id="hello" aria-labelledby="hh">${askMarkSvg(44)}<h2 id="hh">${esc(C.helloHead)}</h2><p>${esc(C.helloText)}</p><p class="scope">${esc(C.scope)}${o.embed ? "" : ` ${esc(C.testMoney)}`}</p>`
+  const helloBlock = `<section class="hello" id="hello" aria-labelledby="hh">${askMarkSvg(40)}<h2 id="hh">${esc(C.helloHead)}</h2><p>${esc(C.helloText)}</p><p class="scope">${esc(C.scope)}</p>`
     + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="sugg">${SUGGESTIONS.slice(0, 3).map((s) => `<li><button class="chip" type="button" data-q="${esc(s)}">${esc(s)}</button></li>`).join("")}</ul></section>`;
+  // The rail (a wide screen, the page only): what the agent can read, the sources cited so far, a drop zone for a file.
+  const rail = `<aside class="rail" aria-label="${esc(C.canRead)}"><section><h2>${esc(C.canRead)}</h2><ul class="reads">${READS.map(([i, w]) => `<li>${icon(i, 14)}${esc(w)}</li>`).join("")}</ul><p class="rnote">${esc(C.readNote)}</p></section>`
+    + `<section><h2>${esc(C.recent)}</h2><ol class="rsrc" id="rsrc"><li class="empty">${esc(C.recentEmpty)}</li></ol></section>`
+    + `<section><button class="dz" id="dz" type="button">${icon("upload", 22)}<span>${esc(C.dropHere)}</span><small>${esc(C.attachHint)}</small></button></section></aside>`;
   const composer = `<form class="composer" id="ask" autocomplete="off"><div class="drop" id="drop" hidden>${esc(C.drop)}</div><div class="box">`
     + `<div class="att" id="att" hidden>${icon("file", 16)}<span class="fn" id="fname"></span><span class="fs" id="fsize"></span><button class="ib" id="unatt" type="button" aria-label="${esc(C.removeFile)}" title="${esc(C.removeFile)}">${icon("x", 14)}</button></div>`
     + `<label class="sr" for="q">${esc(C.label)}</label><textarea id="q" name="q" rows="1" maxlength="${QUESTION_MAX}" placeholder="${esc(C.placeholder)}" aria-describedby="foot"></textarea>`
@@ -448,12 +570,14 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean }): strin
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="${esc(C.lede)}">
 <title>${esc(C.title)} · Purser</title>
-<style nonce="${n}">${CSS}${o.embed ? "" : SITE_HEADER_CSS}</style></head><body class="${o.embed ? "embed" : "page"}">
+<style nonce="${n}">${CSS}${o.embed ? "" : SITE_HEADER_CSS}</style></head><body class="${o.embed ? "embed" : "page"}${ctx ? " has-ctx" : ""}">
 ${o.embed ? "" : `<a class="skip" href="#q">Skip to the question box</a>${header(null, TRY_HEADER_LINKS)}`}
-<main id="main" class="app">${o.embed ? "" : `<p class="lede">${esc(C.lede)}</p>`}
+<main id="main" class="app">
 <div class="shell">${bar}
+<div class="body2"><div class="convo">
 <div class="scroll" id="scroll">${helloBlock}<div class="chat" id="chat" role="log" aria-label="Conversation"></div></div>
-${composer}</div>
+${ctxBar(ctx, o.embed)}
+${composer}</div>${o.embed ? "" : rail}</div></div>
 </main>
 <template id="mark">${askMarkSvg(26)}</template><template id="fileicon">${icon("file", 14)}</template>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
@@ -474,6 +598,9 @@ export const askCsp = (n: string) =>
 export const ASK_BUTTON_JS = `{ // Ask Purser's button (cloud/src/ask/page.ts): one floating button; the chat opens in a dialog, framed from this page's own origin (the site passes /ask through).
 const C = ${json({ fab: ASK_PAGE_COPY.fab, hint: ASK_PAGE_COPY.fabHint, close: ASK_PAGE_COPY.close, title: ASK_PAGE_COPY.title })};
 const ORIGIN = location.origin;
+const NAV = ${ASK_NAV.toString()}, KINDS = ${json(ASK_CONTEXT_KINDS)}, CID = ${CONTEXT_ID.toString()};
+// The page the person views, as the host page says it (data-ask-kind, data-ask-id, data-ask-demo on <body>), checked.
+const ctxNow = () => { const d = document.body.dataset; if (!d.askKind || !KINDS.includes(d.askKind)) return null; const c = { kind: d.askKind }; if (d.askId && CID.test(d.askId)) c.id = d.askId; if (d.askDemo === '1') c.demo = true; return c; };
 if (!document.getElementById('pask-fab')) {
   const me = document.querySelector('script[src*="/ask/button.js"]') || document.querySelector('script[nonce]');
   const nonce = (me && me.nonce) || '';
@@ -511,19 +638,26 @@ if (!document.getElementById('pask-fab')) {
       panel = document.createElement('div');
       panel.id = 'pask-panel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); panel.setAttribute('aria-label', C.title);
       const f = document.createElement('iframe');
-      f.src = ORIGIN + '/ask?embed=1'; f.title = C.title; f.setAttribute('allow', 'clipboard-write');
+      const cx = ctxNow(), qs = cx ? '&ctx=' + encodeURIComponent(cx.kind) + (cx.id ? '&id=' + encodeURIComponent(cx.id) : '') + (cx.demo ? '&demo=1' : '') : '';
+      f.src = ORIGIN + '/ask?embed=1' + qs; f.title = C.title; f.setAttribute('allow', 'clipboard-write');
       panel.append(f);
       document.body.append(panel);
       f.addEventListener('load', () => { try { f.contentWindow.focus(); } catch (e) {} });
     } else {
       panel.hidden = false;
-      const f = panel.querySelector('iframe'); try { f.contentWindow.focus(); } catch (e) {}
+      const f = panel.querySelector('iframe'); try { f.contentWindow.postMessage({ type: 'purser-ask:context', ctx: ctxNow() }, ORIGIN); f.contentWindow.focus(); } catch (e) {}
     }
     fab.setAttribute('aria-expanded', 'true');
     if (matchMedia('(max-width: 560px)').matches) fab.hidden = true;
   };
   fab.addEventListener('click', () => (panel && !panel.hidden ? close() : open()));
-  addEventListener('message', (e) => { if (e.origin === ORIGIN && e.data && e.data.type === 'purser-ask:close') close(); });
+  addEventListener('message', (e) => {
+    if (e.origin !== ORIGIN || !e.data) return;
+    if (e.data.type === 'purser-ask:close') close();
+    // The page where the CFO approves (a hash of this console, checked): the person acts there, with their own passkey.
+    const f = panel && panel.querySelector('iframe');
+    if (e.data.type === 'purser-ask:navigate' && f && e.source === f.contentWindow && typeof e.data.hash === 'string' && NAV.test(e.data.hash)) { close(); location.hash = e.data.hash; }
+  });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
   document.body.append(fab);
 }
@@ -546,7 +680,10 @@ const nonce = () => {
 /** GET /ask (and ?embed=1). `live`: Claude answers on this deployment now (its model is set and its switches are on). */
 export function askPageResponse(url: URL, live = false): Response {
   const n = nonce();
-  return new Response(askPage(n, { embed: url.searchParams.get("embed") === "1", live }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": askCsp(n) } });
+  const p = url.searchParams;
+  // The console's page, from the button's address (?ctx=invoice&id=…&demo=1): checked, or none.
+  const context = parseContext({ kind: p.get("ctx"), id: p.get("id") ?? undefined, demo: p.get("demo") === "1" });
+  return new Response(askPage(n, { embed: p.get("embed") === "1", live, context }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": askCsp(n) } });
 }
 
 /** GET /ask/button.js: the module, cached an hour, loadable by this origin's pages. */

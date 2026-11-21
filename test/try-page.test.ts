@@ -241,7 +241,7 @@ describe("the copy", () => {
   });
 
   it("counts every string of a screen in at least one of its states", () => {
-    const groups: Record<string, Record<string, string>> = { start: Object.fromEntries(Object.entries(COPY.START).filter(([k]) => k !== "flow" && k !== "real")) as Record<string, string>, invoice: Object.fromEntries(Object.entries(COPY.INVOICE).filter(([k]) => k !== "hints")) as Record<string, string>, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
+    const groups: Record<string, Record<string, string>> = { start: Object.fromEntries(Object.entries(COPY.START).filter(([k]) => k !== "flow" && k !== "real" && k !== "lanes" && k !== "card")) as Record<string, string>, invoice: Object.fromEntries(Object.entries(COPY.INVOICE).filter(([k]) => k !== "hints")) as Record<string, string>, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
     expect(Object.keys(COPY.VISIBLE).sort()).toEqual(Object.keys(groups).sort());
     for (const [screen, group] of Object.entries(groups)) {
       const seen = new Set(COPY.VISIBLE[screen as keyof typeof COPY.VISIBLE].flat());
@@ -289,7 +289,7 @@ describe("the copy", () => {
     expect(COPY.BAND.claudeLive).toBe("Claude, live");
     expect(COPY.BAND.claudeCode).toBe("Purser's code reads today");
     expect(COPY.START.heading).toBe("AI agents pay your suppliers. You approve the big ones with Face ID.");
-    expect(COPY.START.button).toBe("Start with a test company");
+    expect(COPY.START.button).toBe("Start the live demo"); // 21 Nov (Max: "one primary button, Start the live demo")
     expect(COPY.GONE.heading).toBe("Your test company was deleted after 24 hours.");
     expect(COPY.GONE.button).toBe("Start again");
     expect(COPY.INVOICE.ibanHint).toBe("Change the IBAN and see what Purser does");

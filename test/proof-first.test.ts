@@ -13,7 +13,8 @@ import { CFO_VIEW_LINK, CFO_VIEW_URL, FILM_LINK, FILM_URL, PROOF_SENTENCES, SPLI
 import { AWX_CONTROLS_ID, AWX_HASH_ID, awxCardId, cardControlRows, cardsReadback, hashTravel, transferReadback } from "../src/redesign/airwallexProof.js";
 import { QUESTIONS } from "../src/redesign/proofQuestions.js";
 import { evalRounds } from "../src/redesign/proofCharts.js";
-import { archCss, archHtml, archNodes } from "../src/redesign/proofArch.js";
+import { FLOW_CSS, FLOW_JS, FLOW_STEPS, flowHtml, flowSteps, partial, recordHref } from "../src/redesign/proofFlow.js";
+import { committedWall } from "../src/redesign/evidenceWall.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { proofLeads, reliabilityFix, RELIABILITY_CASE } from "../src/redesign/proofLead.js";
 import { PROOF_INDEX_FILE, PROOF_INDEX_LINK, partnerCards, proofPage, stopBreakdown } from "../src/redesign/proof.js";
@@ -269,8 +270,8 @@ describe("/proof tells one story (the owner, 21 Nov): the architecture, then the
   // proof), the questions as links, the film link, then one section per question; the business and the archive folded;
   // the utility links last. The guarantees are in sight in the first section (test/guarantees.test.ts).
   it("has the heading, the lead, the architecture, the questions, the film link, then the five sections", () => {
-    expect(main.replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <figure class="parch" id="architecture"[\s\S]*?<\/figure> <nav class="pq-nav"[\s\S]*?<\/nav> <p class="pwatch">[\s\S]*?<\/p> <div class="pqs" id="evidence"> <section class="ewall pq" id="q-limits"/);
-    expect(main).toContain(archHtml());
+    expect(main.replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <figure class="pflow" id="architecture"[\s\S]*?<\/figure> <nav class="pq-nav"[\s\S]*?<\/nav> <p class="pwatch">[\s\S]*?<\/p> <div class="pqs" id="evidence"> <section class="ewall pq" id="q-limits"/);
+    expect(main).toContain(flowHtml().slice(0, 400));
     const at = QUESTIONS.map((q) => main.indexOf(`<section class="ewall pq" id="${q.id}"`));
     expect(at.every((i) => i > 0)).toBe(true);
     expect(at).toEqual([...at].sort((x, y) => x - y));
@@ -281,23 +282,44 @@ describe("/proof tells one story (the owner, 21 Nov): the architecture, then the
     expect(main).not.toContain('<figure class="emap"');
   });
 
-  it("links each part of the architecture to a section or block of the page that proves it, with a figure from the wall", () => {
-    const a = archNodes()!;
-    const parts = [a.agents, a.purser, a.passkey, ...a.rails, a.audit, a.checks, a.refused, a.built];
-    for (const n of parts) {
-      expect({ id: n.id, ids: html.split(` id="${n.href.slice(1)}"`).length - 1 }).toEqual({ id: n.id, ids: 1 });
-      expect({ id: n.id, badge: !!n.badge, rec: !!n.rec }).toEqual({ id: n.id, badge: true, rec: true });
+  it("draws the path of one payment, each step closed with its evidence, status, limits and the section that proves it", () => {
+    // 21 Nov (the owner's new direction: "a progressive, interactive visualization ... whose nodes reveal the real
+    // evidence tiles, sources, statuses and limitations"; Max: the one-cent demo one of the visible steps).
+    expect(FLOW_STEPS.map((x) => x.title)).toEqual(["Invoice", "Checks", "Policy", "Passkey (Face ID)", "One cent changed", "Rail", "Books", "Independent verification"]);
+    const fig = /<figure class="pflow"[\s\S]*?<\/figure>/.exec(main)![0];
+    expect(fig).not.toMatch(/style=|<script| open[ >]/);
+    const wall = committedWall()!;
+    const all = new Map(wall.groups.flatMap((g) => g.tiles).map((t) => [t.key, t] as const));
+    for (const p of flowSteps()) {
+      // Every key a step names is a tile of the wall, and every one is drawn as the wall has it, with its record.
+      expect({ id: p.step.id, missing: p.step.keys.filter((k) => !all.has(k)) }).toEqual({ id: p.step.id, missing: [] });
+      expect(p.tiles.length).toBeGreaterThan(0);
+      for (const t of p.tiles) expect(fig).toContain(`data-flow="${t.key}" data-rec="${t.rec}"><a href="${recordHref(t).replace(/&/g, "&amp;")}"`);
+      // Its section is on the page, once; its limits are said.
+      expect({ id: p.step.id, ids: html.split(` id="${p.step.href.slice(1)}"`).length - 1 }).toEqual({ id: p.step.id, ids: 1 });
+      expect(p.step.limits.length).toBeGreaterThan(0);
+      expect(fig).toContain(`<details class="pf-x" id="${p.step.id}">`);
+      expect(fig).toContain(`<a href="#${p.step.id}">`);
     }
-    expect(a.rails.map((r) => r.title)).toEqual(["Airwallex", "Alta", "Visa via Airi", "T:0"]);
-    // Two drawings (wide, tall), every part a link in each; motion only when allowed, and no style attribute (the CSP).
-    const fig = /<figure class="parch"[\s\S]*?<\/figure>/.exec(main)![0];
-    expect((fig.match(/<svg /g) ?? []).length).toBe(2);
-    expect((fig.match(/<a class="pa-n /g) ?? []).length).toBe(2 * parts.length);
-    expect(fig).not.toMatch(/style=|<script/);
-    const css = archCss();
-    expect(css).toContain("@media (prefers-reduced-motion: no-preference)");
-    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ [^}]*animation: none/);
-    expect(css.indexOf("animation: pa-move")).toBeGreaterThan(css.indexOf("@media (prefers-reduced-motion: no-preference)"));
+    // A figure short of all ("66 of 67") is marked as such, never hidden.
+    expect(partial("66 of 67")).toBe(true);
+    expect(partial("All 132")).toBe(false);
+    expect(partial("3 of 3")).toBe(false);
+    for (const t of flowSteps().flatMap((p) => p.tiles).filter((x) => partial(x.fig))) expect(fig).toMatch(new RegExp(`<li class="pf-e[^"]* part" data-flow="${t.key}"`));
+    // The one-cent step, with a way to try it in the books, and what it proves and does not prove (the review, 21 Nov).
+    expect(fig).toContain('<a class="pf-try" href="books#cent">');
+    expect(fig).toMatch(/<details class="pf-x" id="pf-cent">[\s\S]*?<h4>What it proves<\/h4>[\s\S]*?<h4>What it does not prove<\/h4>/);
+    // A tile whose link is the folder of every run links its newest record instead; what is not finished is linked.
+    const folder = flowSteps().flatMap((p) => p.tiles).find((t) => /\/tree\/main\/docs\/runs$/.test(t.href));
+    if (folder) expect(recordHref(folder)).toMatch(/\/blob\/main\/docs\/runs\/.+\.(json|md)$/);
+    expect(fig).not.toMatch(/href="[^"]*\/tree\/main\/docs\/runs"/);
+    expect(fig).toContain('<a class="pf-nf" href="security#not-finished">What is not finished');
+    // Motion only when allowed; the light needs the script, which does nothing under reduced motion.
+    expect(FLOW_CSS).toContain("@media (prefers-reduced-motion: no-preference)");
+    expect(FLOW_CSS).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ [^}]*animation: none/);
+    expect(FLOW_CSS.indexOf("animation: pf-pulse")).toBeGreaterThan(FLOW_CSS.indexOf("@media (prefers-reduced-motion: no-preference)"));
+    expect(FLOW_JS).toContain('matchMedia("(prefers-reduced-motion: reduce)")');
+    expect(html).toContain(FLOW_JS.trim().slice(0, 60));
   });
 
   it("keeps the main run's label beside its numbers, in the live section's history, and every fold before the utility links", () => {
@@ -505,8 +527,11 @@ describe("/proof's words in sight", () => {
     // section's current figures in sight with their tag and day (57 tiles, about 600 words), the architecture's legend,
     // the guarantees, the charts' titles and legends (their notes and numbers folded), the commands: 1,572 as built, from
     // 1,751 with the charts' notes in sight. The history of each question and the main run's figures stay folded.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(1600);
-    expect(visibleWords(html)).toBeLessThanOrEqual(2250); // 21 Nov (the page by question, every figure dated): 2,209 as built; this count reads past the first closing tag of a fold with folds inside it. 1,830 until then. 19 Nov, night: 1,817 as built once the eval v5, status, gold, hardening and partner branches were merged together. 19 Nov, evening: 1,756 as built with the groups "Attacked and broken on purpose" and "Quality and supply chain" (red team v2, chaos, fuzzing, eval v3, site quality, WebKit, assurance, supply chain: 8 more tiles, OpenSSF moved there) and the map's row of checks. 19 Nov, later: 1,642 as built with the soak, Alta series, anchor, Alta-payments, Visa and OpenSSF tiles (36 on /proof). 19 Nov, second pass (the owner: "clearer and tighter"): 1,559 as built, from 1,895 with the first wall; not back under 1,345: this count reads past the first closing tag of a fold with folds inside it (about 880 words of the closed "Every live run" and "All the proof" folds count as visible), and the 29 tiles' figures, labels and tags are in sight. The count outside every fold (above) is back under its old limit. // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words). // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
+    // 21 Nov, the new direction (the owner: "a progressive, interactive visualization"): the evidence flow in place of the
+    // architecture drawing, every step closed to its name, who acts and its headline figure, the one-cent step among
+    // them (Max): 1,644 as built, +72 over the drawing's legend and caption (the drawing's own words were SVG).
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(1660);
+    expect(visibleWords(html)).toBeLessThanOrEqual(2300); // 21 Nov (the evidence flow in place of the drawing, its steps closed): 2,281 as built. 21 Nov (the page by question, every figure dated): 2,209 as built; this count reads past the first closing tag of a fold with folds inside it. 1,830 until then. 19 Nov, night: 1,817 as built once the eval v5, status, gold, hardening and partner branches were merged together. 19 Nov, evening: 1,756 as built with the groups "Attacked and broken on purpose" and "Quality and supply chain" (red team v2, chaos, fuzzing, eval v3, site quality, WebKit, assurance, supply chain: 8 more tiles, OpenSSF moved there) and the map's row of checks. 19 Nov, later: 1,642 as built with the soak, Alta series, anchor, Alta-payments, Visa and OpenSSF tiles (36 on /proof). 19 Nov, second pass (the owner: "clearer and tighter"): 1,559 as built, from 1,895 with the first wall; not back under 1,345: this count reads past the first closing tag of a fold with folds inside it (about 880 words of the closed "Every live run" and "All the proof" folds count as visible), and the 29 tiles' figures, labels and tags are in sight. The count outside every fold (above) is back under its old limit. // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words). // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);

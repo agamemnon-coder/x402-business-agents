@@ -7,6 +7,7 @@
 
 import { CONSOLE_PREMIUM_CSS } from "../../src/ui/premium.js";
 import { ASK_BUTTON_JS } from "./ask/page.js";
+import { SIGNIN_CSS } from "./signInLook.js";
 import { PREVIEW_TAGS } from "./brand.js";
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
@@ -461,7 +462,8 @@ ${siteHeader(null)}
 <span class="who-am-i"><span class="cosw" id="cosw"><a class="co" id="co" href="#/company"></a><button type="button" class="co-more" id="co-more" aria-haspopup="menu" aria-expanded="false" aria-controls="co-menu" aria-label="Switch company" hidden>${svg("chevron-down", 16)}</button><span class="co-menu" id="co-menu" role="menu" aria-label="Switch company" hidden></span></span><span id="who"></span><span id="ask-slot"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" id="testchip" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
 <div class="demo-ribbon" id="demo" hidden><div class="wrap"><p class="dr">${svg("flask", 14)}<span class="dr-full" data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><span class="dr-short">${SHELL_WORDS.en.demo_short}</span><a href="#/sign-in" id="demo-out"><span class="lw" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</span><span class="lv">${SHELL_WORDS.en.demo_leave}</span></a></p></div></div>
-<div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${(["cs.side.1", "cs.side.2", "cs.side.3"] as const).map((k) => `<li>${svg("circle-check", 18)}<span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div></div>
+<div class="hero"><div class="side"><p class="side-eb" data-t="cs.side.eyebrow">${tr("en", "cs.side.eyebrow")}</p><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${([["cs.side.1", "file-check"], ["cs.side.2", "scan-face"], ["cs.side.3", "database"]] as const).map(([k, i]) => `<li><span class="si">${svg(i, 18)}</span><span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul>
+<figure class="side-flow" aria-labelledby="sf-h"><figcaption id="sf-h" data-t="cs.side.flow">${tr("en", "cs.side.flow")}</figcaption><ol><li class="sf-agent"><span class="si">${svg("bot", 16)}</span><span data-t="cs.side.flow_agent">${tr("en", "cs.side.flow_agent")}</span></li><li class="sf-alone"><span class="si">${svg("zap", 16)}</span><span data-t="cs.side.flow_alone">${tr("en", "cs.side.flow_alone")}</span></li><li class="sf-face"><span class="si">${svg("scan-face", 16)}</span><span data-t="cs.side.flow_face">${tr("en", "cs.side.flow_face")}</span></li></ol></figure></div></div>
 <main><div class="wrap subnav-wrap"><nav class="subnav" id="subnav" hidden></nav></div><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
 <p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>
@@ -601,7 +603,7 @@ function signInView(){
   const b=btn(t('cs.sign_in_passkey'),'primary big','scan-face');
   // What Purser Cloud is (13 Nov), as the card's own lede: one line, so the card and the trust line still fit a phone.
   const card=el('div','card auth',[el('h1','',t('cs.sign_in')),el('p','what',t('cs.what_cloud')),
-    el('label','',t('cs.company_address')),el('div','addr',[slug,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),b,status,
+    el('label','',t('cs.company_address')),el('div','addr',[slug,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),b,el('p','pk-note',[ic('lock'),t('cs.passkey_note')]),status,
     el('p','alt',[t('cs.new_company'),(()=>{const a=el('a','',t('cs.set_it_up'));a.href='#/start';return a})()])]);
   // Try as guest: the demo company, read only, no passkey and no e-mail (POST /v1/auth/guest). Its data is demo data.
   const gb=btn(t('cs.guest.button'),'ghost big','arrow-up-right');gb.id='guest';
@@ -1828,9 +1830,17 @@ async function guestIn(fromButton){
   catch(e){if(fromButton)throw e;notice=t('cs.guest.failed',{error:e.message});go('#/sign-in')}
 }
 __UI__
+// Ask Purser in context (cloud/src/ask/context.ts): the page and the record the person views, as data on <body> that the
+// button reads when it opens (a kind and a record's id, never a token); in the demo company (a guest) the agent may read it.
+const ASK_KINDS={'/overview':'overview','/invoices':'invoices','/transactions':'transactions','/agents':'agents','/books':'books','/archive':'audit','/settings':'policy','/tokenisation':'proof'};
+function askContext(path){const b=document.body.dataset,m=/^\/invoices\/([^/]+)$/.exec(path),k=S?(m?'invoice':ASK_KINDS[path]||''):'';
+  if(k)b.askKind=k;else delete b.askKind;
+  let id='';try{id=m?decodeURIComponent(m[1]):''}catch(e){}
+  if(k&&id&&/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/.test(id))b.askId=id;else delete b.askId;
+  if(k&&(S.guest||(ME&&ME.demo)))b.askDemo='1';else delete b.askDemo}
 async function route(){
   const h=location.hash||'#/';const [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
-  S=load();shell();
+  S=load();shell();askContext(path);
   // No timer of the panel "At work" outlives the view it was mounted in.
   workStop();
   if(CFG.engine){engineChip(true);if(S)engineStatus().then((st)=>engineChip(!!st),()=>{})}
@@ -2097,7 +2107,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_PREMIUM_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_PREMIUM_CSS}${SIGNIN_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}
 ${ASK_BUTTON_JS}</script>

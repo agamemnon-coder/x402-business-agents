@@ -1169,10 +1169,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 19 Nov, second pass (the owner: "clearer and tighter, more visuals"): the evidence map and the wall lead the page.
       // 21 Nov (the owner: "organise it; an animated architecture"): the heading, the lead, the architecture, the questions,
       // the film link, the five sections (every live run in the third), the business and the archive, the utility links.
-      if (first.order !== "h1 p.plead figure.parch nav.pq-nav p.pwatch div.pqs details.deep details.deep nav.util" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the architecture, the questions, the film link, the five sections (every live run, ${PROOF_RUN_ROWS}, in the third), the closed lines and the utility links, closed on load (${JSON.stringify(first)})`);
+      if (first.order !== "h1 p.plead figure.pflow nav.pq-nav p.pwatch div.pqs details.deep details.deep nav.util" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the architecture, the questions, the film link, the five sections (every live run, ${PROOF_RUN_ROWS}, in the third), the closed lines and the utility links, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
         // The architecture starts on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
-        const map = await page.evaluate(`(() => { const e = document.querySelector("main figure.parch"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
+        const map = await page.evaluate(`(() => { const e = document.querySelector("main figure.pflow"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
         if (map < 0 || map >= 440) fail(`/proof ${tag}: the architecture starts at ${map} px, not on the first screen`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
