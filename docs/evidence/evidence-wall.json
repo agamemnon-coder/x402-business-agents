@@ -393,7 +393,7 @@
           "key": "eval-v5",
           "fig": "14 vs 69",
           "label": "wrong payments on 100 held-out invoices (eval v5): Purser vs no rules",
-          "note": "Cases committed with their pre-registration before the run (commit 9e8d59c1); a script always says pay. 19 false holds of 47. Fixed since, no longer held out: 3 wrong payments, 9 false holds. Offline.",
+          "note": "Cases committed with their pre-registration before the run (commit 9e8d59c1); a script always says pay. 19 false holds of 47. Fixed since, no longer held out: 1 wrong payments, 9 false holds. Offline.",
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v5.md",
@@ -521,15 +521,27 @@
           "asOf": "2026-11-20"
         },
         {
+          "offProof": true,
           "key": "eval-v16",
           "fig": "8 vs 77",
           "label": "wrong payments on 128 held-out invoices (eval v16): Purser vs no rules",
-          "note": "Cases committed with their pre-registration before the run (commit bbb35513d); a script always says pay. 3 false holds of 59; 23 sent to the CFO that had to be held, 12 that could have been paid alone. Offline.",
+          "note": "Cases committed with their pre-registration before the run (commit bbb35513d); a script always says pay. 3 false holds of 59; 23 sent to the CFO that had to be held, 12 that could have been paid alone. Fixed since, no longer held out: 0 wrong payments, 0 false holds. Offline.",
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v16.md",
-          "rec": "docs/evals/adversarial-v16.json",
-          "asOf": "2026-11-20"
+          "rec": "docs/evals/adversarial-v16.json docs/evals/adversarial-v16-after.json",
+          "asOf": "2026-11-21"
+        },
+        {
+          "key": "eval-v17",
+          "fig": "14 vs 88",
+          "label": "wrong payments on 146 held-out invoices (eval v17): Purser vs no rules",
+          "note": "Cases committed with their pre-registration before the run (commit d83b80a3b); a script always says pay. 5 false holds of 67; 18 sent to the CFO that had to be held, 23 that could have been paid alone. Fixed since, no longer held out: 0 wrong payments, 0 false holds. Offline.",
+          "tag": "test",
+          "tone": "claude",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v17.md",
+          "rec": "docs/evals/adversarial-v17.json docs/evals/adversarial-v17-after.json",
+          "asOf": "2026-11-21"
         },
         {
           "key": "red-team",
