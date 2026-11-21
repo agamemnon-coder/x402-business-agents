@@ -137,6 +137,25 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
     const lines = await page.locator("h1.h-hero span").evaluateAll((ss) => ss.map((s) => ({ rects: s.getClientRects().length, top: Math.round(s.getBoundingClientRect().top), text: s.textContent })));
     if (lines.length !== 2 || lines.some((l) => l.rects !== 1) || lines[0]!.top >= lines[1]!.top || lines[0]!.text !== "AI agents spend.") fail(`the heading does not break after "spend." (${JSON.stringify(lines)})`);
   }
+  // Release gate: the actual Home CTAs, not just their markup, at jury desktop and phone sizes.
+  // A relative /try link must resolve on the same public origin, and the page must be real (not a 404).
+  // The film intentionally opens YouTube in a new tab; check its destination/target without leaving Home.
+  if (o.width === 390 || o.width === 1440) {
+    const tryLink = page.locator("main .e-hero .ctas a.btn.primary");
+    const filmLink = page.locator("main .e-hero .ctas a.btn.film");
+    const filmHref = await filmLink.getAttribute("href");
+    const filmTarget = await filmLink.getAttribute("target");
+    if (filmHref !== FILM_URL || !/^https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(filmHref || "") || filmTarget !== "_blank")
+      fail("Watch the demo must link to the recorded YouTube film in a new tab");
+    if (!(await tryLink.isVisible())) fail("Try it in 2 minutes CTA is not visible");
+    await tryLink.click();
+    await page.waitForURL((u) => u.pathname === "/try", { timeout: 12_000 });
+    const response = await page.request.get(page.url());
+    if (response.status() !== 200 || !(await response.text()).includes("test money"))
+      fail(`the Try CTA landed on an invalid demo response: ${response.status()}`);
+    await page.goto(o.url, { waitUntil: "load" });
+  }
+
   if (o.quick) return;
 
   // Reduced motion: one still frame, its final state: the payment and the last booking line in sight, nothing hidden.
