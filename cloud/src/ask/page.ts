@@ -430,10 +430,16 @@ body.page .shell { display: grid; grid-template-columns: minmax(0, 1fr); backgro
   body.page .side { display: flex; }
   .menu-b { display: none; }
 }
+/* 21 Nov (Max): the panel of what the agent can read opens only when asked (the header's toggle, remembered in this
+   browser); an invoice opened from an answer opens it too. Closed, the conversation takes the whole width. */
 @media (min-width: 1240px) {
-  body.page .shell { grid-template-columns: 248px minmax(0, 1fr) 340px; }
-  body.page .detail { display: flex; }
+  body.page.panel .shell, body.page:has(.detail.open) .shell { grid-template-columns: 248px minmax(0, 1fr) 340px; }
+  body.page.panel .detail, body.page .detail.open { display: flex; position: static; width: auto; box-shadow: none; }
+  @media (prefers-reduced-motion: no-preference) { body.page .detail { animation: pslide .28s cubic-bezier(.2,.7,.2,1); } }
 }
+@keyframes pslide { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.ib.pt[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent); }
+@media (max-width: 1239px) { body.page.panel .detail { display: flex; position: fixed; inset: 0 0 0 auto; width: min(400px, 100%); z-index: 41; background: var(--surface); box-shadow: var(--shadow); } }
 /* Narrower: the sidebar and the detail open over the conversation. */
 @media (max-width: 899px) { body.page .side.open { display: flex; position: fixed; inset: 0 30% 0 0; z-index: 40; background: var(--surface); box-shadow: var(--shadow); } }
 @media (max-width: 1239px) { body.page .detail.open { display: flex; position: fixed; inset: 0 0 0 auto; width: min(400px, 100%); z-index: 41; background: var(--surface); box-shadow: var(--shadow); } }
@@ -825,6 +831,11 @@ addEventListener('message', (e) => { if (e.origin !== location.origin || e.sourc
 const reset = $('reset');
 if (reset) reset.addEventListener('click', () => { history = []; save(); CONVO = ''; try { sessionStorage.removeItem('purser.ask.convo'); } catch (e) {} chat.textContent = ''; hello.hidden = false; if (!CFG.embed) document.body.classList.add('empty'); say.textContent = ''; clearFile(); fileError(''); closeDetail(); drawConvos(); q.focus(); });
 drawConvos();
+// The panel of what the agent can read: closed unless asked; the choice kept in this browser (it may refuse: then not kept).
+const ptog = $('ptog');
+const panelOn = (on) => { document.body.classList.toggle('panel', on); if (ptog) ptog.setAttribute('aria-expanded', on ? 'true' : 'false'); };
+try { panelOn(localStorage.getItem('purser.ask.panel') === '1'); } catch (e) { panelOn(false); }
+if (ptog) ptog.addEventListener('click', () => { const on = !document.body.classList.contains('panel'); panelOn(on); try { localStorage.setItem('purser.ask.panel', on ? '1' : '0'); } catch (e) {} });
 // The menu on a narrow screen; ⌘K (Ctrl+K) to the question box; the composer's plus opens the four actions.
 const side = $('side'), menuB = $('menu-b');
 if (menuB && side) menuB.addEventListener('click', () => { const on = side.classList.toggle('open'); menuB.setAttribute('aria-expanded', on ? 'true' : 'false'); });
@@ -863,7 +874,7 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
   const script = SCRIPT.replace("__CONTEXT__", () => CONTEXT_JS).replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ embed: o.embed, ctx, site: SITE_ORIGIN, max: QUESTION_MAX, maxBytes: ATTACH_MAX_BYTES, types: ATTACH_TYPES, hosts: ["github.com/agamemnon-coder/x402-business-agents", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "youtu.be/"] }));
   // The status: "Claude connected · live" only when Claude answers here now; else docs-only mode, said as plainly.
   const bar = `<header class="bar">${app ? `<button class="ib menu-b" id="menu-b" type="button" aria-label="${esc(C.menu)}" aria-controls="side" aria-expanded="false">${icon("menu")}</button>` : ""}${askMarkSvg(32, "logo")}<div class="grow"><h1>${esc(C.title)}</h1><p class="status"><span class="dot${live ? "" : " docs"}" id="sdot" aria-hidden="true"></span><span id="stext">${esc(live ? C.statusLive : C.statusDocs)}</span></p></div>`
-    + (app ? "" : `<button class="ib" id="reset" type="button" aria-label="${esc(C.newChat)}" title="${esc(C.newChat)}">${icon("plus")}</button>`)
+    + (app ? `<button class="ib pt" id="ptog" type="button" aria-controls="detail" aria-expanded="false" aria-label="${esc(C.canRead)}" title="${esc(C.canRead)}">${icon("layers", 18)}</button>` : `<button class="ib" id="reset" type="button" aria-label="${esc(C.newChat)}" title="${esc(C.newChat)}">${icon("plus")}</button>`)
     + (o.embed ? `<a class="ib" href="${ASK_PATH}" target="_blank" rel="noopener" aria-label="${esc(C.full)}" title="${esc(C.full)}">${icon("out", 17)}</a><button class="ib" id="close" type="button" aria-label="${esc(C.close)}" title="${esc(C.close)}">${icon("x")}</button>` : "")
     + `</header>`;
   // The empty state (21 Nov, Max's mockups): the mark, one question, one line, the read-only chip and four actions.
