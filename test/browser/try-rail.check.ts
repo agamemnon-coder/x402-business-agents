@@ -210,7 +210,11 @@ function moduleChecks(g: Geo, tag: string) {
   await page.getByRole("button", { name: /A supplier's invoice/ }).first().click();
   await page.getByRole("button", { name: /File this invoice|Give it to the AI agent/ }).click();
   await page.getByRole("button", { name: /Send to CFO for approval/ }).waitFor({ timeout: 60_000 });
-  await page.waitForTimeout(1200);
+  // Who read the invoice reaches the rail with the engine's own events (claude.capped, then the read), which the page
+  // polls once a second; until then the rail says what the start's mode said. Wait on that state, not on a fixed time
+  // (21 Nov: a 1.2 s wait failed now and then in the judge job): the rail naming Purser's code as the reader, in its
+  // header and its code window. If it never does, the checks below fail as before.
+  await page.waitForFunction(() => { const t = document.querySelector<HTMLElement>(".pv-rail")?.innerText ?? ""; return /Purser’s code read the invoice in this run/.test(t) && /what Purser’s code read/.test(t); }, undefined, { timeout: 20_000 }).catch(() => undefined);
   const g = await geo(page);
   const body = await page.evaluate(() => document.body.innerText);
   ok(!/\d+ calls? this run/.test(g.text) && !/\d+ calls?\b/.test(g.text.split("\n").slice(0, 3).join(" ")), `capped 1280: the rail counts no Claude call (${g.text.replace(/\s+/g, " ").slice(0, 120)})`);
