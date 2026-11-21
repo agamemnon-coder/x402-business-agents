@@ -20,7 +20,7 @@ import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
 import { proofSection } from "./proofSections.js";
 // 21 Nov (jury check): the sample card names the run its figures come from, since /try's sample today has a later due date.
-const RUN_DAY = (/(\d{4})-(\d{2})-(\d{2})/.exec(TRY_SAMPLE_RECORD) ?? []).slice(2, 4).reverse().map(Number).join(" ").replace(/ 11$/, " Nov");
+export const RUN_DAY = (/(\d{4})-(\d{2})-(\d{2})/.exec(TRY_SAMPLE_RECORD) ?? []).slice(2, 4).reverse().map(Number).join(" ").replace(/ 11$/, " Nov");
 
 /** The hero's three figures (Max: tests passing, sandbox and testnet runs, policy blocks), each a wall tile by key. */
 export const HERO_STATS: readonly { key: string; words: string }[] = [
