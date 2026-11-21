@@ -58,7 +58,9 @@ export function heroStatsHtml(stats: HeroStat[] = heroStats()): string {
  */
 export const WORKFLOW_RECORD = "docs/runs/2026-11-21-phone-try/summary.json";
 export const WORKFLOW_HEAD = "Workflow";
-export const WORKFLOW_TAG = "Recorded /try runs · sandbox";
+/** 21 Nov, later (owner: say what competitors advertise): the label says /try needs no account; the note under the card
+ * still says these are two recorded /try runs. */
+export const WORKFLOW_TAG = "Sandbox · no account needed";
 export const WORKFLOW_NOTE = "Two recorded /try runs of its sample invoice.";
 export const WORKFLOW_STEPS: readonly { icon: string; title: string }[] = [
   { icon: "bot", title: "Agent proposes a payment" },

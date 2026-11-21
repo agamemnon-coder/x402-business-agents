@@ -32,7 +32,7 @@ const NOTE_CSS = ".judge-offline{box-sizing:border-box;margin:12px auto 0;max-wi
 export const OFFLINE_WORDS: readonly (readonly [hosted: string, offline: string])[] = [
   // 21 Nov, redesign: the start card's reader row already says "Claude, or Purser's code: said as it runs", so it needs no
   // offline word; its fine line is the one sandbox disclosure (cloud/src/try/presentMode.ts V2_COPY start.fine).
-  ['"fine":"Sandbox · test money · deleted after 24 hours"', '"fine":"Offline copy · test money · simulated bank · nothing leaves this computer"'],
+  ['"fine":"Sandbox · test money · no account needed · deleted after 24 hours"', '"fine":"Offline copy · test money · simulated bank · nothing leaves this computer"'],
   ["Test money only · Airwallex sandbox", "Test money only · simulated bank (offline)"],
   ["Claude reads the PDF; code checks what it read.", "In this offline copy code reads the PDF (no Claude call) and checks what it read."],
   ["'Claude reads the PDF'", "'code reads the PDF (offline: no Claude)'"],

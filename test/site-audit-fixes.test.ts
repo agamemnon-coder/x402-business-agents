@@ -31,8 +31,9 @@ describe("6.3: a short sandbox disclosure beside the primary demo button", () =>
     for (const html of [homePage(), homePage(undefined, { trySign: true })]) {
       const m = mainOf(html);
       // 21 Nov: the hero's primary button starts the judge tour; the sandbox line, after its shield icon, is right under both.
+      // 21 Nov, later (owner: say what competitors advertise): the Workflow label says "Sandbox · no account needed".
       expect(m).not.toContain(SANDBOX_NOTE);
-      expect(m).toMatch(/<div class="ctas"><a class="btn primary big start"[\s\S]*?<\/div>\s*<\/div>\s*<div class="wf"[\s\S]*?Recorded \/try runs · sandbox[\s\S]*?Paid · Airwallex sandbox, test money/);
+      expect(m).toMatch(/<div class="ctas"><a class="btn primary big start"[\s\S]*?<\/div>\s*<\/div>\s*<div class="wf"[\s\S]*?Sandbox · no account needed[\s\S]*?Paid · Airwallex sandbox, test money/);
       expect(REASSURE).toEqual({ sign: SANDBOX_NOTE, world: SANDBOX_NOTE });
     }
   });
