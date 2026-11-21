@@ -87,3 +87,10 @@ pieces) keeps its letters or an icon.
 | si-zapier.svg | Simple Icons 16.37.0 (npm simple-icons@16.37.0, icons/zapier.svg), CC0-1.0 | 2026-11-20 | `51fa9cca6198c74f924600e6972520541261e2f74ff80b6bec5bbd60a4bdcc73` |
 | slack.svg | Wikimedia Commons, File:Slack_icon_2019.svg (Slack's 2019 mark) | 2026-11-20 | `17160477a475166ad0556e0028e3b0bd0634d70c02e7b920c04a4429ea184ab3` |
 | vscode.svg | Wikimedia Commons, File:Visual_Studio_Code_1.35_icon.svg (Microsoft's VS Code icon) | 2026-11-20 | `4c4dd46cc5892a947901fbcdc96ee4caf4c9eb341779b2b0589d8a2bbff436ba` |
+
+## The integrations band, 21 November 2026
+
+Home and /docs show a band of the marks above (src/redesign/integrations.ts; the owner's request and the permission it
+rests on: docs/evidence/logo-permissions.md, "The integrations band"). No new file: the site serves the drawings of
+`cloud/src/brandLogos.gen.ts` (made by `npm run cloud:logos` from `brands/`) as `/assets/brand-<name>.svg`, and the
+wordmarks it already served (`logo-airwallex.png`, `logo-alta.svg`, `logo-claude-slate.svg`). Visa and T:0 are text.

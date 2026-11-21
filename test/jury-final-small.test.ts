@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import { tryPage, TRY_DESCRIPTION } from "../cloud/src/tryPage.js";
 import { buildPages } from "../src/relay/assets.js";
 import { SITE_URL } from "../src/ui/meta.js";
-import { SECURITY_VIZ_CSS } from "../src/redesign/security.js";
 
 describe("final jury: small fixes", () => {
   it("/try has a meta description, in its head, once", () => {
@@ -23,10 +22,7 @@ describe("final jury: small fixes", () => {
     expect(canon(pages.proof!)).toBeNull();
   });
 
-  it("/security's L1 row is 64 px in one column, and the track's dots follow it", () => {
-    expect(SECURITY_VIZ_CSS).toMatch(/@media \(max-width: 899px\) \{\n {2}\.zlayers \{ grid-template-rows: 64px; grid-auto-rows: 1fr; \}/);
-    expect(SECURITY_VIZ_CSS).toContain(".ztrack { top: 32px; bottom: calc((100% - 104px) / 10); }");
-  });
+  // /security's L1 row (13 Nov) went with the layers diagram on 21 Nov (the owner: "a lot of old things on the new page").
 });
 
 describe("/try's first screen", () => {

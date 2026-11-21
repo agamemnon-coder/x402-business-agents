@@ -20,7 +20,9 @@ import { PLATFORM_FEE_RULE } from "../src/policy/rules.js";
 import { GUARANTEES, guaranteesHtml } from "../src/redesign/guarantees.js";
 import { PRICING_LEAD, e2eFeeRun, feeFacts, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
 import { proofPage } from "../src/redesign/proof.js";
-import { OVERVIEW_DOC, UNAVAILABLE, securityCards, securityPage, unavailableLines } from "../src/redesign/security.js";
+import { UNAVAILABLE, existingDoc, securityPage, unavailableLines } from "../src/redesign/security.js";
+/** docs/overview.md, or docs/archive/overview.md once moved there. */
+const OVERVIEW_DOC = existingDoc(["docs/overview.md", "docs/archive/overview.md"]);
 import { esc } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
@@ -169,7 +171,8 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
   const section = /^## If the approver is unavailable\n\n([\s\S]*?)\n## /m.exec(doc)?.[1] ?? "";
   const lines = section.split("\n").filter((l) => l.trim());
   const html = securityPage();
-  const card = /<article class="pc card[^"]*" id="s-sign">[\s\S]*?<\/article>/.exec(html)?.[0] ?? "";
+  // 21 Nov: the control cards left /security; the answer is the "When the approver is away" card's fold.
+  const card = /<article class="pc card[^"]*" id="s-away">[\s\S]*?<\/article>/.exec(html)?.[0] ?? "";
   const fold = /<details class="fold" id="unavailable"><summary>([^<]+)<\/summary><ul class="pl">([\s\S]*?)<\/ul><\/details>/.exec(card);
 
   it("docs/security.md answers both questions in at most five lines, and says plainly what is not built", () => {
@@ -258,7 +261,6 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
     expect(fold![2]).toContain('<a class="pf" href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security.md#if-the-approver-is-unavailable" target="_blank" rel="noopener">docs/security.md ↗</a>');
     // Folded: in sight it is five words under the signature's card, and one anchor on the page.
     expect((html.match(/id="unavailable"/g) ?? []).length).toBe(1);
-    expect(securityCards().find((c) => c.more)!.id).toBe("s-sign");
     // A section that grows past five lines, or loses its numbering, stops the page: never a longer or a looser answer.
     expect(() => unavailableLines(doc.replace("\n## Accepted risks", "\n6. **And more:** a sixth line.\n\n## Accepted risks"))).toThrow(/one to five numbered lines/);
     expect(doc).toContain("5. **Who may enrol, in Purser Cloud");

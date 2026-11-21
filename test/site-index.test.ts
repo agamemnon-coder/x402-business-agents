@@ -14,13 +14,16 @@ const get = (path: string) => pageResponse(new Request(`${BASE}${path}`), pages)
 
 describe("the site's index", () => {
   it("serves every public page without noindex, with its canonical address", () => {
-    for (const path of ["/", "/home", "/proof", "/verify", "/airwallex", "/alta", "/visa", "/claude", "/security", "/docs", "/books", "/status", "/t0", "/runs", "/trace", "/watch", "/airwallex/calls", "/agents/sourcing"]) {
+    for (const path of ["/", "/home", "/proof", "/verify", "/airwallex", "/alta", "/visa", "/claude", "/security", "/docs", "/books", "/status", "/runs", "/trace", "/watch", "/airwallex/calls", "/agents/sourcing"]) {
       const res = get(path)!;
       expect(res.status, path).toBe(200);
       expect(res.headers.get("content-type"), path).toMatch(/^text\/html/);
       expect(res.headers.get("x-robots-tag"), path).toBeNull();
       expect(res.headers.get("link"), path).toBe(`<${canonicalUrl(path)}>; rel="canonical"`);
     }
+    // 21 Nov: /t0 is merged into /books and answers 301 there.
+    expect(get("/t0")!.status).toBe(301);
+    expect(get("/t0")!.headers.get("location")).toBe("/books");
     // Home's canonical is /home, as its own <link rel="canonical">.
     expect(get("/")!.headers.get("link")).toBe(`<${SITE_URL}/home>; rel="canonical"`);
     expect(pages.home).toContain(`<link rel="canonical" href="${SITE_URL}/home">`);

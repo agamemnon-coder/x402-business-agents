@@ -1,4 +1,5 @@
-// /t0 (owner, 12 Nov): Purser's books in T:0's general ledger, told from the run records alone. What Purser sends (one
+// T:0 on /books (21 Nov, the owner: "merge them: the books page, with T:0 in it"; /t0 answers 301 to /books since).
+// Before that /t0 (owner, 12 Nov): Purser's books in T:0's general ledger, told from the run records alone. What Purser sends (one
 // journal entry per entry of its books, its proof in the memo, a stable id so nothing is posted twice), what ran live
 // (the 95 entries of the main run's books on 10 November, read back with 0 differences, then T:0's own statements; the
 // platform run's 2 entries the same day; the refused attempts of 3 and 5 November), the differences as recorded, and what
@@ -8,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE } from "./airwallexProducts.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { altaWords } from "../ui/formerly.js";
-import { esc, icon } from "./ui.js";
+import { esc } from "./ui.js";
 import { T0_CLOSE_CSS, t0CloseFacts, t0CloseTileHtml } from "./t0CloseTile.js";
 import { T0_READBACK_FILE } from "../accounting/t0Readback.js";
 
@@ -94,38 +95,32 @@ export const t0Data = (): T0Data => ({
   refusals: t0Refusals(read(T0_FIRST_RECORD), read(T0_SECOND_RECORD)),
 });
 
-export const T0_CSS = `.t0p .t0what { margin: 4px 0 0; font-size: 16px; color: var(--muted); }
-${T0_CLOSE_CSS}
-.t0r { padding: 16px 18px; display: grid; gap: 4px; }
-.t0r h2 { font-size: 19px; line-height: 1.25; margin: 0 0 4px; }
-.t0r ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
-.t0r li { font-size: 15.5px; line-height: 1.45; padding: 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
-.t0r li:first-child { border-top: 0; }
-.t0p a.pf { display: inline-flex; align-items: center; min-height: 44px; }
-.t0p ul.stats { margin: 0; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-@media (max-width: 520px) { .t0p ul.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.t0p ul.stats small a.pf { display: flex; width: max-content; font-size: 13.5px; min-height: 44px; }
-.t0p .t0flow { padding: 14px; }
-table.t0a { width: 100%; border-collapse: collapse; font-size: 14.5px; font-variant-numeric: tabular-nums; table-layout: auto; }
+/** The T:0 section's style on /books: the wordmark, two figures, the close check and the folds. */
+export const T0_CSS = `${T0_CLOSE_CSS}
+.t0s { padding: 20px; display: grid; gap: 14px; min-width: 0; }
+.t0s .t0hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.t0s .t0hd h2 { margin: 0; font-size: 21px; line-height: 1.25; letter-spacing: -.01em; }
+.t0mark { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 9px; background: #0b0d12; color: #fff; font-weight: 800; font-size: 17px; letter-spacing: -.02em; flex: none; }
+:root[data-theme="dark"] .t0mark { background: #fff; color: #0b0d12; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .t0mark { background: #fff; color: #0b0d12; } }
+.t0s .t0what { margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--muted); max-width: 50em; }
+.t0s .noend { font-size: 13px; color: var(--muted); }
+ul.t0n { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+ul.t0n li { display: grid; gap: 2px; padding: 14px 16px; border-radius: 14px; background: var(--sunken); }
+ul.t0n b { font-size: clamp(26px, 3vw, 34px); font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+ul.t0n li.ok b { color: var(--ok); }
+ul.t0n small { font-size: 14px; color: var(--muted); line-height: 1.35; }
+ul.t0n a.pf { font-size: 14px; }
+.t0s .t0c { border-radius: 14px; box-shadow: none; }
+table.t0a { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 table.t0a th, table.t0a td { text-align: left; padding: 6px 8px 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
 table.t0a thead th { font-size: 13px; color: var(--muted); font-weight: 600; } table.t0a tbody th { font-weight: 400; } table.t0a tbody th small { display: block; font-size: 12.5px; color: var(--muted); }
-table.t0a tbody th { overflow-wrap: break-word; }
 table.t0a td.ok { color: var(--ok); white-space: nowrap; }
 table.t0a .n { text-align: right; white-space: nowrap; overflow-wrap: normal; } table.t0a th.c, table.t0a td.c { width: 2em; text-align: center; }
-details.t0acc > table { margin-bottom: 6px; }
-.t0p .folds { min-width: 0; }
-@media (prefers-reduced-motion: no-preference) {
-  .t0flow .node { animation: t0-lit 6s ease-in-out infinite; }
-  .t0flow .node:nth-child(3) { animation-delay: 1.5s; } .t0flow .node:nth-child(5) { animation-delay: 3s; } .t0flow .node:nth-child(7) { animation-delay: 4.5s; }
-}
-@keyframes t0-lit { 0%, 30%, 100% { box-shadow: inset 0 0 0 1px transparent; } 8%, 22% { box-shadow: inset 0 0 0 2px var(--accent); } }
-/* On a phone the flow runs down: each arrow only as wide as itself, so turned it covers nothing below the flow (the folds' first header sits right under it since 19 Nov). */
-@media (max-width: 700px) { .t0p .t0flow .arrow { align-self: center; width: 22px; } .t0p a.pf { padding: 0; vertical-align: middle; max-width: 100%; } .t0p a.open { min-height: 44px; } table.t0a { font-size: 12.5px; } }`;
+@media (max-width: 560px) { table.t0a { font-size: 12.5px; } ul.t0n { grid-template-columns: minmax(0, 1fr); } }`;
 
 const link = (file: string, label: string) => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
 const li = (t: string) => `<li>${esc(t)}</li>`;
-const node = (ic: string, title: string, sub: string, tone = "") => `<div class="node ${tone}"><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
-const arrow = `<span class="arrow" aria-hidden="true">${icon("arrow-right", 22)}</span>`;
 /** Table rows: T:0's account, ours, T:0's; a check only where the two are the same, to the cent. */
 export const t0Rows = (accounts: Pick<T0Account, "code" | "name" | "ours" | "t0" | "our">[], codes = false): string => accounts.map((a) => {
   const same = cents(a.ours) === cents(a.t0);
@@ -134,52 +129,39 @@ export const t0Rows = (accounts: Pick<T0Account, "code" | "name" | "ours" | "t0"
 const head = `<thead><tr><th scope="col">${esc("Account")}</th><th scope="col" class="n">${esc("Ours")}</th><th scope="col" class="n">T:0</th><th scope="col" class="c" aria-label="Same"></th></tr></thead>`;
 
 const DAY = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
-/** The body of /t0: what Purser uses T:0 for, two figures, the close check, the flow; the accounts, the history and the ids folded. */
-export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: string; close?: ReturnType<typeof t0CloseFacts> }): string {
+/** The T:0 wordmark as text: no T:0 logo file is on record (docs/evidence/logo-permissions.md). */
+export const T0_MARK = '<span class="t0mark" role="img" aria-label="T:0">T:0</span>';
+/**
+ * /books' T:0 section (21 Nov; /t0 until then, which now answers 301 to /books): what Purser uses T:0 for, two figures,
+ * the independent close check with its button, and the accounts, the history and the ids folded.
+ */
+export function t0SectionHtml(d: T0Data, o: { endorse?: string; close?: ReturnType<typeof t0CloseFacts> } = {}): string {
   const j = d.journal, p = d.platform;
-  const rec = `${T0_JOURNAL_RECORD}#read-back-and-second-push-10-nov-2-more-t0-calls`;
-  const stat = (n: string, label: string, ic: string, href: string) => `<li class="ok"><span class="st-ic">${icon(ic, 20)}</span><b>${esc(n)}</b><small>${esc(label)} ${link(href, "record")}</small></li>`;
-  // 19 Nov: the second figure from the newest record, T:0's read-back of 14 Nov (the close check run on it at build);
-  // without that record, the read-back of 10 Nov as before.
+  if (!j) return "";
   const close = o.close === undefined ? t0CloseFacts() : o.close;
-  const diff = close ? stat(String(close.check.problems.length), `differences on read-back, ${DAY(close.readAt)}`, "circle-check", T0_READBACK_RECORD) : j ? stat(String(j.differences), "differences on read-back", "circle-check", rec) : "";
-  const stats = j ? `<ul class="stats t0s">${stat(String(j.posted), `journal entries posted, ${j.day}`, "file-check", T0_JOURNAL_RECORD)}${diff}</ul>` : "";
-  // Jury round 3 (14 Nov): the books' amounts are the Airwallex sandbox's test balances, millions, where every other page
-  // shows tens of euros. One plain line says so; the amounts themselves are folded.
-  const funding = j?.accounts.find((a) => a.code === "32000");
-  const sandbox = j && funding ? `<p class="vbasis">${esc(`Sandbox amounts: the books open with the Airwallex sandbox's test balances, ${funding.ours.replace(/^-/, "")} USD of owner funding. No real money. What counts is ${j.differences} differences.`)}</p>` : "";
-  const flow = j ? `<div class="flow card t0flow" role="img" aria-label="${esc("Purser's books are posted to T:0's general ledger, read back line by line, and match")}">${[node("file-check", "Purser's books", "double-entry"), arrow, node("database", "T:0's ledger", "posted"), arrow, node("arrow-left-right", "Read back", "every line"), arrow, node("circle-check", "Match", "to the cent", "ok")].join("")}</div>` : "";
-  const lead = j?.accounts.length ? `<details class="fold t0acc"><summary>${esc("Show the accounts, USD")}</summary><table class="t0a">${head}<tbody>${t0Rows(j.accounts, true)}</tbody></table><ul class="pl">${li("Net debit per account; credits show as minus. Sandbox test money.")}${li(`Debits and credits: ${j.debits} USD each, the same as our books.`)}</ul></details>` : "";
-  // Partner scan, 14 Nov: T:0's balance-sheet totals are the shared sandbox entity's, other teams' entries included;
-  // the page shows only Purser's own lines (the accounts above), each against T:0's read-back.
-  const history = [
-    // Partner scan, 14 Nov: the early 401/403 answers are history for the run records (docs/runs), not this page.
-    j ? `<li>${esc(`${j.day}: all ${j.posted} entries posted, one at a time, each with an idempotency key.`)} ${link(T0_JOURNAL_RECORD, "record")}</li>` : "",
-    j?.secondPush ? li(`A second push posted ${j.secondPush.posted} and skipped ${j.secondPush.skipped}: re-running is safe.`) : "",
-    p ? `<li>${esc(`10 Nov: the platform run booked ${p.entries.length} entries.`)} ${link(PLATFORM_RUN_FILE, "record")}</li>` : "",
-  ].filter(Boolean);
-  const notDone = [
-    "Accounts are made in T:0's app; its API cannot create them.",
-    "One rate per currency, given by us; no daily rate source yet.",
-    ...(p?.refusedCode ? [`A supplier bill on T:0's payables account needs a T:0 vendor (refused, ${p.refusedCode.split(" ")[0]}).`] : []),
-  ];
+  const stat = (n: string, label: string, href: string, ok = false) => `<li${ok ? ' class="ok"' : ""}><b>${esc(n)}</b><small>${esc(label)} ${link(href, "record")}</small></li>`;
+  const stats = `<ul class="t0n">${stat(String(j.posted), `journal entries posted to T:0, ${j.day}`, T0_JOURNAL_RECORD)}${close ? stat(String(close.check.problems.length), `differences when read back, ${DAY(close.readAt)}`, T0_READBACK_RECORD, close.check.agrees) : stat(String(j.differences), "differences on read-back", T0_JOURNAL_RECORD, j.differences === 0)}</ul>`;
+  const funding = j.accounts.find((a) => a.code === "32000");
+  const accounts = j.accounts.length ? `<details class="fold"><summary>${esc("The accounts, ours beside T:0's (USD)")}</summary><table class="t0a">${head}<tbody>${t0Rows(j.accounts, true)}</tbody></table><ul class="pl">${li("Net debit per account; credits show as minus.")}${funding ? li(`Sandbox amounts: the books open with the Airwallex sandbox's test balances, ${funding.ours.replace(/^-/, "")} USD of owner funding. No real money.`) : ""}${li(`Debits and credits: ${j.debits} USD each, the same as our books.`)}</ul></details>` : "";
   const sends = [
     li("One journal entry per entry of Purser's books, debits equal to credits, dated by the movement's day."),
     li("Each line's memo carries its proof: the transaction hash, the clearing receipt or the Airwallex id."),
-    li("A stable id per entry (PUR- and a hash of its content) and an idempotency key: a second push posts nothing twice."),
-    li("Test money on Alta (*USDZ) is posted as USD, labelled in the memo; other currencies at the rate we give."),
+    li("A stable id per entry (PUR- or PURPAY- and a hash of its content) and an idempotency key: a second push posts nothing twice."),
     `<li>${link(T0_DOC, "How it works, and the account map")}</li>`,
   ];
-  const ids = [j && !j.samples.some((x) => x.t0 === j.firstId) ? li(`First entry: ${j.firstId}.`) : "", ...(j?.samples ?? []).map((x) => li(`${x.ours} (${altaWords(x.what)}) is ${x.t0}.`)), ...(p ? [li(`Platform run: ${p.entries.join(", ")}.`)] : [])].filter(Boolean);
+  const history = [
+    `<li>${esc(`${j.day}: all ${j.posted} entries posted, one at a time, each with an idempotency key.`)} ${link(T0_JOURNAL_RECORD, "record")}</li>`,
+    j.secondPush ? li(`A second push posted ${j.secondPush.posted} and skipped ${j.secondPush.skipped}: re-running is safe.`) : "",
+    p ? `<li>${esc(`10 Nov: the platform run booked ${p.entries.length} entries.`)} ${link(PLATFORM_RUN_FILE, "record")}</li>` : "",
+  ].filter(Boolean);
+  const notDone = ["Accounts are made in T:0's app; its API cannot create them.", "One rate per currency, given by us; no daily rate source yet.", ...(p?.refusedCode ? [`A supplier bill on T:0's payables account needs a T:0 vendor (refused, ${p.refusedCode.split(" ")[0]}).`] : [])];
+  const ids = [!j.samples.some((x) => x.t0 === j.firstId) ? li(`First entry: ${j.firstId}.`) : "", ...j.samples.map((x) => li(`${x.ours} (${altaWords(x.what)}) is ${x.t0}.`)), ...(p ? [li(`Platform run: ${p.entries.join(", ")}.`)] : [])].filter(Boolean);
   const fold = (title: string, items: string[]) => items.length ? `<details class="fold"><summary>${esc(title)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
-  return `<main class="pp t0p"><div class="wrap">
-  <div class="phd">${o.logo}<span class="pill run">${esc(o.pill)}</span><h1>${esc("Our books, in a real ledger")}</h1></div>
-  <p class="t0what">${esc(T0_USE)}</p>
-  ${stats}
-  ${t0CloseTileHtml()}
-  ${sandbox}
-  ${flow}
-  <div class="folds card">${lead}${fold("How it got there", history)}${fold("Next steps", notDone.map(li))}${fold("What Purser sends", sends)}${fold("The ids in T:0", ids)}</div>
-  <a class="open" href="proof">All the proof</a>
-</div></main>`;
+  return `<section class="card t0s" id="t0" aria-labelledby="t0-h">
+<div class="t0hd">${T0_MARK}<h2 id="t0-h">${esc("The ledger: T:0")}</h2><span class="pill run">${esc(T0_LABEL)}</span>${o.endorse ?? ""}</div>
+<p class="t0what">${esc(T0_USE)}</p>
+${stats}
+${t0CloseTileHtml(close)}
+<div class="folds">${accounts}${fold("What Purser sends", sends)}${fold("How it got there", history)}${fold("Next steps", notDone.map(li))}${fold("The ids in T:0", ids)}</div>
+</section>`;
 }

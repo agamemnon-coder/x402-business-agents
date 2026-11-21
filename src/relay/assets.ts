@@ -12,7 +12,7 @@ import { loadRecord } from "../redesign/run.js";
 import { proofData, RECEIPT_SAMPLE_FILE } from "../redesign/agentData.js";
 import { T0_READBACK_FILE } from "../accounting/t0Readback.js";
 import ts from "typescript";
-import { AWX_CALLS_CSP, AWX_CALLS_PAGE, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, MOVED, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE, BOOKS_CSP, BOOKS_PAGE,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, PRIVACY_CSP, PRIVACY_PAGE, STATUS_CSP, STATUS_PAGE } from "../servers/dashboard.js";
+import { AWX_CALLS_CSP, AWX_CALLS_PAGE, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, MOVED, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage, BOOKS_CSP, BOOKS_PAGE,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, PRIVACY_CSP, PRIVACY_PAGE, STATUS_CSP, STATUS_PAGE } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 import { trySignOn } from "../try/sign.js";
 import { phonePhrases } from "../ui/i18n.js";
@@ -87,7 +87,7 @@ const LLMS = (() => { try { return read("../../llms.txt"); } catch { return unde
 /** The signed receipt served at /receipt-sample.json (src/redesign/agentData.ts names it), byte for byte. proofData()
  * reads it too, so a missing file fails the build rather than quietly dropping the proof. */
 const RECEIPT_SAMPLE = read(`../../${RECEIPT_SAMPLE_FILE}`);
-/** T:0's read-back, served at /t0-readback.json byte for byte (src/accounting/t0Readback.ts); /t0 links it. Missing: not served. */
+/** T:0's read-back, served at /t0-readback.json byte for byte (src/accounting/t0Readback.ts); /books links it. Missing: not served. */
 const T0_READBACK = (() => { try { return read(`../../${T0_READBACK_FILE}`); } catch { return undefined; } })();
 const EXPOSURE_RATE = (() => { try { return recordedRate(loadRecord().record as unknown as RecordForExposure); } catch { return null; } })();
 /** /metal's mandate inspector: the record's read of 12 November (its answer when it makes no chain call); missing or not in its shape: none. */
@@ -167,7 +167,6 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     docs: flow(DOCS_PAGE),
     privacy: flow(PRIVACY_PAGE),
     status: flow(STATUS_PAGE),
-    t0: flow(T0_PAGE),
     books: flow(BOOKS_PAGE),
     home: flow(home.page),
     watch: flow(FILM_WATCH_PAGE),
@@ -197,7 +196,7 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     images,
     versions: assetVersions(FONT, images),
     app: appFiles(css, images),
-    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, awxCalls: AWX_CALLS_CSP, claude: CLAUDE_CSP, security: SECURITY_CSP, docs: DOCS_CSP, privacy: PRIVACY_CSP, status: STATUS_CSP, t0: T0_CSP, books: BOOKS_CSP, home: home.csp, watch: FILM_WATCH_CSP, replay: WATCH_CSP, proof: PROOF_CSP, verify: VERIFY_BUNDLE_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP } : {}), approve: phone.approve.csp, enrol: phone.enrol.csp, policy: phone.policy.csp },
+    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, awxCalls: AWX_CALLS_CSP, claude: CLAUDE_CSP, security: SECURITY_CSP, docs: DOCS_CSP, privacy: PRIVACY_CSP, status: STATUS_CSP, books: BOOKS_CSP, home: home.csp, watch: FILM_WATCH_CSP, replay: WATCH_CSP, proof: PROOF_CSP, verify: VERIFY_BUNDLE_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP } : {}), approve: phone.approve.csp, enrol: phone.enrol.csp, policy: phone.policy.csp },
   };
 }
 

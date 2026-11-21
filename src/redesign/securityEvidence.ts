@@ -157,14 +157,26 @@ export const answerDays = (text: string = flat(REPORTING_REC)): number => {
   return Number(must(/Within (\d+) working days of the report \| We acknowledge it/.exec(text)?.[1], `${REPORTING_REC}: the answer time`));
 };
 
+/** The zero-trust harness's report (20 Nov): attacks on the payment path, how many stopped, how many moved money. */
+export const ZERO_TRUST_REC = "docs/zero-trust/report.json";
+export function zeroTrustTotals(r: { attacks_run: number; attacks_stopped: number; attacks_where_money_moved: number; layers: number; attacks: { stopped_by: unknown; moved: boolean }[]; generated: { date: string } } = json(ZERO_TRUST_REC)): { run: number; stopped: number; moved: number; layers: number } {
+  const stopped = r.attacks.filter((a) => a.stopped_by && !a.moved).length, moved = r.attacks.filter((a) => a.moved).length;
+  if (r.attacks.length !== r.attacks_run || stopped !== r.attacks_stopped || moved !== r.attacks_where_money_moved) throw new Error(`${ZERO_TRUST_REC}: its attacks do not add up to its totals`);
+  return { run: r.attacks_run, stopped, moved, layers: r.layers };
+}
+
 /** The section's groups and items, in the page's order. */
 export function securityEvidence(w: EvidenceWall | null = committedWall()): EvGroup[] {
-  const fm = formalModel(), mu = mutation(), vx = vex(), sc = supplyChain(), mp = mapping(), co = continuity(), ci = wallTile("ci", w);
+  const zt = zeroTrustTotals(), fm = formalModel(), mu = mutation(), vx = vex(), sc = supplyChain(), mp = mapping(), co = continuity(), ci = wallTile("ci", w);
   if (!vx.notInProduct) throw new Error(`${VEX_REC}: a statement is not "not affected, component not present"; the page would need to say which`);
   if (!mp.notCertified) throw new Error(`${MAPPING_REC} no longer says it is a map, not a certification`);
   if (co.inPlace + co.nothing !== co.parts) throw new Error(`${GOVERNANCE_REC}: a part of the continuity plan is not in place; the page would need to say which`);
   return [
     { id: "ev-attack", title: "Attacked and checked on purpose", items: [
+      // 21 Nov (the owner: "a lot of old things on the new page"): the zero-trust harness and the hostile model, the
+      // newest attack tests, here as items; their old charts and the red team's October rounds left the page.
+      { id: "e-zerotrust", fig: countOf(zt.stopped, zt.run), label: "attacks on the payment path stopped (zero-trust harness)", note: `${zt.moved === 0 ? "None" : zt.moved} moved money; each one is mapped to the layer that stopped it. Simulated rails, on this computer.`, tag: "test", rec: ZERO_TRUST_REC },
+      fromWall("e-hostile", "hostile-model", w),
       fromWall("e-redteam", "redteam-api", w, { label: "attacks on the /try API held (red team v2)" }),
       fromWall("e-chaos", "chaos-money", w),
       fromWall("e-fuzz", "fuzzing", w),

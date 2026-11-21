@@ -4,6 +4,7 @@
 // from the code), the commands are package.json's, each variable name is checked against the file that reads it, and
 // every link goes to a file of the repository. Names only, never a value. Sandbox and testnet only. No script.
 
+import { LOGO_BAND_CSS, LOGO_BAND_JS, logoBandHtml } from "./integrations.js";
 import type { ClaudeReader } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
 import { agentApiServer } from "../platform/mcpServer.js";
@@ -135,7 +136,12 @@ export const DOCS_FLOW: readonly ChainStep[] = [
   { icon: "landmark", title: "The rails", text: "Pay" },
 ];
 
+/** The owner, 21 Nov: Purser as the control layer where AI already works (Home's "Works where your AI already works"), in one line. */
+export const DOCS_AI_LINE = "Airwallex now reaches agents in ChatGPT. Purser adds the controls a company needs: limits in code, your passkey above them.";
 export const DOCS_CSS = `${PROOF_CHAIN_CSS}
+${LOGO_BAND_CSS}
+.dband .dai { margin: 4px auto 12px; max-width: 44em; text-align: center; font-size: 15px; color: var(--muted); }
+.dband { min-width: 0; max-width: 100%; margin: 8px 0 28px; padding: 24px 0 8px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 @media (min-width: 761px) { ol.pchain.n5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 ol.pchain.n5 { margin: 0; }
 .pc .promise { font-size: 17px; font-weight: 600; line-height: 1.45; }
@@ -168,7 +174,9 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   for (const c of WORKS_WITH) if (!repoText(CONNECT_DOC).includes(c)) throw new Error(`${CONNECT_DOC} no longer names ${c}`);
   // Max, 14 Nov: "less text, more clear and concrete". One promise per card, the values to paste as chips with a copy
   // button, the clients as chips, the tools as a grid; the steps, the variables and each tool's words stay folded.
+  // 21 Nov (Max: "logos of the companies you can integrate with, as a moving band, on the homepage (and on /docs)").
   const body = `${proofChainHtml(DOCS_FLOW).replace('<ol class="pchain"', '<ol class="pchain n5"').replace('aria-label="The proof chain"', 'aria-label="From your AI to the rails"')}
+<div class="dband">${logoBandHtml({ label: "Connects to" })}<p class="dai">${esc(DOCS_AI_LINE)}</p></div>
 <div class="cols c2">
   <article class="pc card wide" id="connect-ai">${head("link-2", "Connect your AI")}
     <p class="promise">Your AI reads the books; only the CFO's Face ID approves.</p>
@@ -211,7 +219,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     key: "docs", title: "Docs and API", h1: "Docs and API", label: "Sandbox and testnet only",
     lead: "For developers and integrators.",
     description: "Purser for developers: the agent API's tools (an MCP server), the Purser Cloud REST API and its OpenAPI document, x402 payments between agents, Airwallex webhooks, and how to run it offline. Sandbox and testnet only.",
-    body, css: DOCS_CSS, js: COPY_JS,
+    body, css: DOCS_CSS, js: COPY_JS + LOGO_BAND_JS,
     source: `Source: src/platform/mcpServer.ts (the tools), package.json (the commands), ${CLOUD_ROUTES} and the docs each link names.`,
     real: [
       "Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.",

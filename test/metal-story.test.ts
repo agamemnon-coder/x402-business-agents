@@ -6,7 +6,9 @@
 // refusal as it ran; who signed the replaces on chain (one owner key, held by the runner: the chain did not check Face
 // ID); what else ran on Alta, each dated with its own record and none of it the main run's, the hold said as not
 // finished; both refusals decoded, with the raw log beside them.
+import { tourJs } from "../src/redesign/tour.js";
 import { COUNT_JS } from "../src/redesign/stats.js";
+import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EXPLORER, MAIN_RUN_CHECK, REPO_BLOB, SEPARATE_RUNS, explorerLink, metalStory, refusalNote, separateRuns } from "../src/redesign/metalStory.js";
@@ -32,12 +34,16 @@ const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "
 const main = /<main[\s\S]*<\/main>/.exec(METAL_PAGE)![0];
 // The opening facts (15 Nov, src/redesign/altaFacts.ts) come from other records (12 Nov, 1 Nov, 13 and 15 Nov) and are
 // checked against them in test/alta-facts.test.ts; here, the main run's story under them.
-const top = main.slice(0, main.indexOf('<div class="folds card">')).replace(/<section class="afacts"[\s\S]*?<\/section>/, "");
+// 21 Nov (the owner, Max: "Our Kit 11 point is: a supplier raises its price, and you see it refused on chain. That has to
+// go at the top, not so much text."): in sight, the price-rise scene of the main run and the architecture; the main
+// run's picture, charts, mandate cards and replace in the first fold (#mfull), told and held here as before.
+const top = main.slice(0, main.indexOf('<div class="folds card">')).replace(/<section class="afacts[^"]*"[\s\S]*?<\/section>/, "");
+const full = main.slice(main.indexOf('<details class="fold" id="mfull">'), main.indexOf('<details class="fold" id="alta-facts-more">'));
 const hero = /<section class="mhero card"[\s\S]*?<\/section>/.exec(main)![0];
 const table = /<section class="mt"[\s\S]*?<\/section>/.exec(main)![0];
 // The mandate cards with their spend's source and the read to repeat, the table inside their "Details" fold.
 const cards = main.slice(main.indexOf('<section class="mmand card"'), main.indexOf('<section class="mrep card"'));
-const grid = main.slice(main.indexOf('<div class="mcharts">'), main.indexOf('<div class="folds card">'));
+const grid = full.slice(full.indexOf('<div class="mcharts">'));
 const also = /<details class="fold" id="also"[\s\S]*?<\/details>/.exec(main)?.[0] ?? "";
 const decoded = /<details class="fold" id="refusals"[\s\S]*?<\/details>/.exec(main)?.[0] ?? "";
 const simulated = /<details class="fold"><summary>What is simulated<\/summary>[\s\S]*?<\/details>/.exec(main)?.[0] ?? "";
@@ -57,10 +63,12 @@ describe("/metal plays the main run's record", () => {
   it("is labelled with the main run, and opens on one picture: a payment paid and one refused, under the same mandate", () => {
     expect(loadRecord().file).toBe(MAIN);
     expect(METAL_PAGE).toMatch(/Replay of the main run, 3 Nov/);
-    // The owner's redesign (13 Nov): the picture first, then the charts, then the mandate cards, the table folded.
-    expect(main.indexOf(hero)).toBeLessThan(main.indexOf('<div class="mcharts">'));
+    // The owner's redesign (13 Nov): the picture first, then the charts, then the mandate cards, the table folded. Since
+    // 21 Nov all of it opens the first fold, under the price-rise scene (test/alta-scene.test.ts holds the scene).
+    expect(main.indexOf('id="alta-scene"')).toBeLessThan(main.indexOf("<details"));
+    expect(full.indexOf(hero)).toBeGreaterThan(full.indexOf("</summary>"));
+    expect(full.indexOf(hero)).toBeLessThan(full.indexOf('<div class="mcharts">'));
     expect(main.indexOf('<div class="mcharts">')).toBeLessThan(main.indexOf('<section class="mmand card"'));
-    expect(main.indexOf(hero)).toBeLessThan(main.indexOf("<details"));
     expect(table).toBe(/<details class="fold" id="mandates"><summary>Details: every mandate<\/summary>(<section class="mt"[\s\S]*?<\/section>)<\/details>/.exec(main)![1]);
     // Both paths are the Sourcing agent under the mandate in force at #24, its first bind: #23 paid within the cap, the
     // payment just before #24, and #24 refused on chain; each with the transaction from the trace or the record.
@@ -149,7 +157,8 @@ describe("the four mandates, one table", () => {
 
   it("says live only what the chain answered: the page's script asks its own origin and writes text, never markup", () => {
     // The page's one script: the live read, then the count-up of its figures (src/redesign/stats.ts, 12 Nov).
-    expect(METAL_PAGE).toContain(`<script>\n${METAL_INSPECT_JS + COUNT_JS}</script>`);
+    // 21 Nov: and the links into the folds open them (src/redesign/ui.ts OPEN_TARGET_JS).
+    expect(METAL_PAGE).toContain(`<script>\n${METAL_INSPECT_JS + COUNT_JS + OPEN_TARGET_JS}\n${tourJs()}</script>`);
     expect(METAL_INSPECT_JS).toContain('fetch("api/metal/mandates"');
     expect(METAL_INSPECT_JS).toContain('a.source === "chain"');
     expect(METAL_INSPECT_JS).toContain("Spent: read live from Alta testnet at ");
@@ -247,7 +256,11 @@ describe("the payments, the refusal and the replace", () => {
   it("links in sight only the records' own transactions and account, the payment check, the check of 12 November and the inspector", () => {
     // 19 Nov: the "Live on Alta" strip's links are the evidence wall's (each tile's record, and the wall's group on
     // /proof), held to docs/evidence/evidence-wall.json by test/evidence-wall.test.ts; the rest is held here.
-    const links = hrefs(top.replace(/<section class="ewall pstrip"[\s\S]*?<\/section>/, ""));
+    // 21 Nov: in sight, the price-rise scene's (the bind, the refusal, the new mandate); the main run's fold under it.
+    const seen = hrefs(top);
+    expect(seen.length).toBeGreaterThanOrEqual(3);
+    for (const h of seen) expect(raw.includes(explorerLink(h)?.id ?? "\u0000") || traceRaw.includes(explorerLink(h)?.id ?? "\u0000"), h).toBe(true);
+    const links = [...seen, ...hrefs(full)];
     expect(links.length).toBeGreaterThanOrEqual(10);
     for (const h of links) {
       // 12 Nov (jury check): "Since 12 Nov it does" leads to the Face ID on chain section on this page; 13 Nov: the

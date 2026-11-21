@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import {
   AGENT_CSPS, AGENT_PAGES, AIRWALLEX_CSP, AIRWALLEX_PAGE, AWX_CALLS_CSP, AWX_CALLS_PAGE, BOOKS_CSP, CLAUDE_CSP, DEMO_CSP, DOCS_CSP, FILM_CSP, LIVE_CSP, LOGOS,
-  METAL_CSP, METAL_PAGE, MONTH_CSP, RUNS_CSP, SECURITY_CSP, STATUS_CSP, T0_CSP, T0_READBACK_TEXT, TRACE_CSP, TRY_CSP, TRY_PAGE_OFFLINE, VISA_CSP, dashboardApp,
+  METAL_CSP, METAL_PAGE, MONTH_CSP, RUNS_CSP, SECURITY_CSP, STATUS_CSP, T0_READBACK_TEXT, TRACE_CSP, TRY_CSP, TRY_PAGE_OFFLINE, VISA_CSP, dashboardApp,
 } from "../src/servers/dashboard.js";
 import { AGENT_CARDS_PATH } from "../worker/src/agentCardsLive.js";
 import { T0_READBACK_PATH } from "../src/accounting/t0Readback.js";
@@ -27,7 +27,7 @@ const get = (path: string, init?: RequestInit) => fetch(`${base}${path}`, { redi
 describe("the local dashboard's pages", () => {
   it.each([
     ["/alta", METAL_CSP], ["/visa", VISA_CSP], ["/airwallex", AIRWALLEX_CSP], ["/airwallex/calls", AWX_CALLS_CSP], ["/trace", TRACE_CSP], ["/runs", RUNS_CSP],
-    ["/claude", CLAUDE_CSP], ["/security", SECURITY_CSP], ["/docs", DOCS_CSP], ["/status", STATUS_CSP], ["/books", BOOKS_CSP], ["/t0", T0_CSP], ["/try", TRY_CSP],
+    ["/claude", CLAUDE_CSP], ["/security", SECURITY_CSP], ["/docs", DOCS_CSP], ["/status", STATUS_CSP], ["/books", BOOKS_CSP], ["/try", TRY_CSP],
     ["/demo", DEMO_CSP], ["/film", FILM_CSP], ["/live", LIVE_CSP], ["/month", MONTH_CSP],
   ])("%s is HTML with its own policy and the loopback headers", async (path, csp) => {
     const r = await get(path);
@@ -76,6 +76,9 @@ describe("the local dashboard's pages", () => {
   it("redirects old addresses, and sends an approval to the approval page only for a proposal id", async () => {
     const metal = await get("/metal");
     expect([metal.status, metal.headers.get("location")]).toEqual([301, "/alta"]);
+    // 21 Nov (the owner: "merge them"): T:0 lives on /books.
+    const t0 = await get("/t0");
+    expect([t0.status, t0.headers.get("location")]).toEqual([301, "/books"]);
     for (const old of ["/pricing", "/tour"]) {
       const r = await get(old);
       expect([r.status, r.headers.get("location")]).toEqual([302, "/home"]);

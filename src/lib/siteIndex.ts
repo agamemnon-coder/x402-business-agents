@@ -18,7 +18,7 @@ export const AGENT_PAGE_IDS = ["sourcing", "support", "treasury"] as const;
 export const INDEXABLE_PATHS: readonly string[] = [
   "/", "/home", "/try", "/watch", "/proof", "/verify", "/runs", "/trace",
   "/security", "/docs", "/books", "/status",
-  "/airwallex", "/airwallex/calls", "/alta", "/visa", "/claude", "/t0",
+  "/airwallex", "/airwallex/calls", "/alta", "/visa", "/claude",
   ...AGENT_PAGE_IDS.map((id) => `/agents/${id}`),
 ];
 const INDEXABLE = new Set(INDEXABLE_PATHS);

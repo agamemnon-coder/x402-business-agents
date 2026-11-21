@@ -46,8 +46,10 @@ describe("/privacy", () => {
     expect(text).toMatch(/seven years/);
   });
 
-  it("stays within 120 words in sight, the folds closed", () => {
-    expect(visibleWords(html)).toBeLessThanOrEqual(120);
+  // 21 Nov (Max: "It must be better and prettier. Make clear, with GDPR etc., that we are EU compliant"): 340, with where
+  // the data lives, the rights and the services' locations in sight (test/site-v4.test.ts holds the same budget).
+  it("stays within 340 words in sight, the folds closed", () => {
+    expect(visibleWords(html)).toBeLessThanOrEqual(340);
     expect((html.match(/<details class="fold"/g) ?? []).length).toBe(3);
     expect(html).not.toMatch(/<details class="fold" open/);
   });

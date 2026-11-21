@@ -46,6 +46,7 @@ describe("the final review (13 Nov)", () => {
   it("names both sets of agents in the README, as the site does", () => {
     const readme = readmeFull();
     for (const a of ["Sourcing", "Support", "Treasury", "Reader", "Checker", "Coder", "Payer"]) expect({ a, named: readme.includes(a) }).toEqual({ a, named: true });
+    // 21 Nov: Home's payables tile names each agent of the chain on its step.
     expect(read("src/redesign/home.ts")).toMatch(/Checker agent \(Claude\)[\s\S]*Coder agent \(Claude\)[\s\S]*Payer agent \(Claude\)/);
   });
 

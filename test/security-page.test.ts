@@ -79,7 +79,7 @@ describe("How a payment is guarded: the layers, the trust boundaries and where e
     const at = Object.fromEntries(ARCH_LAYERS.map((l) => [l.id, l.controls.map((c) => c.name)]));
     expect(at).toEqual({
       "ar-agent": ["CSP and headers", "Rate limits", "zod validation"],
-      "ar-rules": ["Hash first"],
+      "ar-rules": ["Hash first", "Each company apart", "Sealed secrets"],
       "ar-sign": ["/health tamper alarm"],
       "ar-locks": ["Idempotency", "HMAC webhooks"],
       "ar-proof": ["Hash-chained audit log", "Offline verifier"],
@@ -112,8 +112,8 @@ describe("What we did, with evidence: every figure from the wall or its own reco
   const items = evidenceItems();
   const byId = Object.fromEntries(items.map((i) => [i.id, i]));
 
-  it("lists the fourteen measures, each with a figure, where it ran and its record", () => {
-    expect(items.map((i) => i.id)).toEqual(["e-redteam", "e-chaos", "e-fuzz", "e-tamper", "e-formal", "e-mutation", "e-scan", "e-pinned", "e-stride", "e-mapping", "e-requirements", "e-openssf", "e-continuity", "e-report"]);
+  it("lists the sixteen measures, each with a figure, where it ran and its record", () => {
+    expect(items.map((i) => i.id)).toEqual(["e-zerotrust", "e-hostile", "e-redteam", "e-chaos", "e-fuzz", "e-tamper", "e-formal", "e-mutation", "e-scan", "e-pinned", "e-stride", "e-mapping", "e-requirements", "e-openssf", "e-continuity", "e-report"]);
     const html = evidenceHtml();
     for (const i of items) expect(html).toContain(`<li id="${i.id}"><div class="ev-top"><b class="ev-fig">`);
     expect(securityPage()).toContain(html);
@@ -122,7 +122,7 @@ describe("What we did, with evidence: every figure from the wall or its own reco
 
   it("takes the wall's figures as the wall has them, and the wall is its records' (evidenceWallData)", () => {
     const fromWall = items.filter((i) => i.wall);
-    expect(fromWall.map((i) => [i.id, i.wall])).toEqual([["e-redteam", "redteam-api"], ["e-chaos", "chaos-money"], ["e-fuzz", "fuzzing"], ["e-tamper", "tamper-matrix"], ["e-scan", "ci"], ["e-openssf", "openssf"]]);
+    expect(fromWall.map((i) => [i.id, i.wall])).toEqual([["e-hostile", "hostile-model"], ["e-redteam", "redteam-api"], ["e-chaos", "chaos-money"], ["e-fuzz", "fuzzing"], ["e-tamper", "tamper-matrix"], ["e-scan", "ci"], ["e-openssf", "openssf"]]);
     for (const i of fromWall) {
       const t = wallTile(i.wall!, wall), f = wallTile(i.wall!, fresh);
       expect({ id: i.id, fig: i.fig, tag: i.tag }).toEqual({ id: i.id, fig: t.fig, tag: t.tag });

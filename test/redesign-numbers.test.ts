@@ -112,6 +112,9 @@ const visibleText = (html: string) => html
   // /visa's card-rail scene (partner review, 14 Nov): its amounts, ids and codes are read from docs/runs/2026-11-14-vic-5.json
   // and checked against it in test/partner-controls.test.ts.
   .replace(/Agent pays with an Airi credential \(test card[\s\S]*?its tests/g, " ")
+  // /visa's card scene (the owner, 21 Nov: "visuals, animations, architecture"): the card's last four, the amounts, the
+  // CFO's limit and hard cap, the codes, read from docs/runs/2026-11-14-vic-5.json and held to it in test/visa-card-hero.test.ts.
+  .replace(/An agent(?:'|&#39;)s card, over the CFO(?:'|&#39;)s limit[\s\S]*?held the limits\./g, " ")
   // The CFO's policy next to Visa's published VIC rules (12 Nov, folded on /visa): Purser's figures from the two Airi
   // records and the code's constants, Visa's from its own quoted words; all checked in test/vic-rules.test.ts.
   .replace(/The CFO's policy next to Visa's VIC rules[\s\S]*?developer\.visa\.com, read \d{1,2} \w{3} \d{4}\./g, " ")
@@ -136,6 +139,9 @@ const visibleText = (html: string) => html
   // real?" repeats the amount signed and the amount one cent higher, read from /try's two proof files
   // (docs/proof/try-paid.json, try-refused.json) and held to them in test/home-cloud.test.ts.
   .replace(/The explainer's amount and fingerprints:[\s\S]*?A test company, test money\./g, " ")
+  // 21 Nov: the same two files behind the first tile of Home's proof row (the changed cent), its line in "What's real?"
+  // held to them in test/home-story.test.ts.
+  .replace(/The changed cent: \/try's two proof files[\s\S]*?A test company, test money\./g, " ")
   // Judge panel, 15 Nov: /visa's three facts of the vic-5 run (amounts, ids, the step), read from
   // docs/runs/2026-11-14-vic-5.json and checked against it in test/proof-first-facts.test.ts.
   .replace(/Paid after Face ID: [A-Z]{3} [\s\S]*?vic-\d+, step [A-Z]\d?/g, " ")
@@ -307,11 +313,9 @@ describe("the redesigned public pages", () => {
     // about awards or Visa, and carries no chip, strip or "Built on" row. /visa and /proof say what is true there.
     // The footer's "Built on" list is on every page since the review of 12 Nov; Home's main still carries no such row.
     expect(homePage()).not.toMatch(/Kit 11|x402 Business Agents|Metal Award|Visa Award|class="built"/);
-    // 15 Nov (clarity, the parent's brief): the hero's proof line opens with "Built on Airwallex · test money" (factual,
-    // the header's badge in words); still no "Built on" row, chip or partner list in Home's main.
-    expect(/<main[\s\S]*<\/main>/.exec(homePage())![0].replace(/<p class="proofl"[\s\S]*?<\/p>/, " ")).not.toMatch(/Built on/);
-    // 20 Nov (the refined pass): the same words, as the label over the strip of three figures.
-    expect(/<p class="proofl"[^>]*><span class="lead">Built on Airwallex<\/span><span/.test(homePage())).toBe(true);
+    // 21 Nov (Max: "Make it clean, tighter"): the hero's proof line went; no "Built on" row or chip in Home's main (the
+    // header's badge says it), and the integrations band says "Works with", with a link to every connection's label.
+    expect(/<main[\s\S]*<\/main>/.exec(homePage())![0]).not.toMatch(/Built on/);
     // Since the jury check of 12 Nov Home has a Visa Intelligent Commerce proof card (vic-3, to /visa) and the logos; still no TAP and no award wording.
     expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa TAP|Visa Award|\bTAP\b/);
     // Proof has no footer link to /visa since 12 Nov either: Visa TAP is on /visa only, in its closed fold.

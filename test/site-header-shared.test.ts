@@ -61,13 +61,14 @@ describe("the cloud pages carry the site's header", () => {
     expect(t).toContain(`<a class="brand" href="${SITE_ORIGIN}/home"`);
     expect(t).toContain(`<a href="${SITE_ORIGIN}/proof">Proof</a>`);
     // /try is served on the site's host too (kit11's TRY_ENGINE): Purser Cloud is absolute there, never "/".
-    expect(t).toContain(`<a href="${CLOUD}">Purser Cloud</a>`);
+    // 21 Nov: the menu's "Cloud" tab (Max: "simple and tight").
+    expect(t).toContain(`<a href="${CLOUD}">Cloud</a>`);
     expect(hrefs(t)).not.toContain("/");
     expect(t).toContain(`<a href="${SITE_ORIGIN}/security">Security</a>`);
     expect(t).not.toMatch(/\/(pricing|tour)"/);
     const c = siteHeader("cloud");
-    expect(c).toContain('<a href="/" aria-current="page">Purser Cloud</a>');
-    expect(c).toContain('<summary class="on">More</summary>');
+    expect(c).toContain('<a href="/" class="on" aria-current="page">Cloud</a>');
+    expect(c).not.toContain('<summary class="on">More</summary>');
     expect(c).not.toContain('class="on" aria-current="page">Try');
     // Every item of the site's menu is there, in its order.
     expect([...c.matchAll(/<a href="[^"]*"[^>]*>([^<]+)<\/a>/g)].map((m) => m[1])).toEqual([...shape(snap.header.cloud!).matchAll(/<a href="[^"]*"[^>]*>([^<]+)<\/a>/g)].map((m) => m[1]));

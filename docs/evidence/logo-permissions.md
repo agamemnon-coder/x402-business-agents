@@ -46,3 +46,17 @@ attached. The files, their sources and hashes: [src/ui/logos/README.md](../../sr
 card keeps its letters. For Visa this is the owner's newer decision: on the Connections page and the agents'
 cards its mark is shown (a Simple Icons drawing in Visa's blue, or white on the card); elsewhere the decision of 14
 November above stands.
+
+## The integrations band, 21 November 2026
+
+The owner asked for the marks of what Purser connects to on Home and on /docs (21 Nov, relayed by the orchestrator, in
+his words, translated: "Logos of the companies you can integrate with, as a moving band, on the homepage (and on /docs),
+showing that you can work with them"). The band (`src/redesign/integrations.ts`) shows the same files as Purser Cloud's
+Connections page, under the permission recorded for that page on 20 November: the Airwallex, Alta and Claude wordmarks
+already on the site, and the Connections page's drawings of ChatGPT, Cursor, VS Code, Gemini, MCP, Xero, QuickBooks,
+Exact, Moneybird, Odoo, Slack, Microsoft Teams, WhatsApp, Gmail, Zapier, Make, Python and TypeScript, served as
+`/assets/brand-<name>.svg` (the very drawings of `cloud/src/brandLogos.gen.ts`). Each sits on a white tile beside its name,
+unfiltered and not recoloured; never "certified", "endorsed", "approved by" or "partner of". Visa and T:0 stay text
+(the decision of 14 November above for Visa outside the Connections page; no T:0 mark on file). The line under the band
+says each connection carries its own label (live, sandbox, testnet, a format export, or built and not yet run live) and
+links the hub that gives it (docs/integrations/README.md).

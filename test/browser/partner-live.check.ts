@@ -21,6 +21,8 @@ for (const w of [390, 1440]) {
   p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
   p.on("pageerror", (e) => errs.push(e.message));
   await p.goto(`${j.url}/visa`);
+  // 21 Nov: the live check sits in the "Try Purser's check on this credential" fold; a judge opens it.
+  await p.evaluate(() => { const t = document.getElementById("vcs-try"); document.querySelectorAll("details").forEach((d) => { if (t && d.contains(t)) d.open = true; }); });
   ok(await p.locator("#vcs-try").isVisible(), `/visa ${w}: the live check shows once its script has run`);
   for (const [k, code] of [["amount", "PURSER_CREDENTIAL_AMOUNT_MISMATCH"], ["again", "PURSER_CREDENTIAL_ALREADY_USED"], ["merchant", "PURSER_CREDENTIAL_MERCHANT_MISMATCH"]] as const) {
     await p.locator(`#vcs-try button[data-use=${k}]`).click();

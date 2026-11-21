@@ -295,7 +295,9 @@ describe("the console's language, mark and first run", () => {
     // Cloud" under the site's "More" leads here, unmarked.
     expect(brand).toContain(icon("feather", 17));
     expect(brand).toMatch(/<span class="nm">Purser<\/span><\/a>/);
-    expect(markup).toContain('<a href="/">Purser Cloud</a>');
+    // 21 Nov (owner: "simple and tight"): Purser Cloud is the menu's "Cloud" tab, here its own address; the console
+    // still marks no item (cloud-review, 13 Nov).
+    expect(markup).toContain('<a href="/">Cloud</a>');
     expect(markup).not.toContain('<summary class="on">More</summary>');
     expect(svg("feather", 17)).toContain("<path");
     // Inline, through the page's own icons: the policy stays what it was.

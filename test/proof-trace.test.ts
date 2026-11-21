@@ -9,19 +9,20 @@
 import { describe, expect, it } from "vitest";
 import { distinctive, figures, gap, recExists, valueGap, type Figure } from "../src/proof/figureTrace.js";
 import { evidenceWallHtml } from "../src/redesign/evidenceWall.js";
-import { proofLineHtml } from "../src/redesign/home.js";
+import { proofRowHtml } from "../src/redesign/home.js";
 import { proofPage } from "../src/redesign/proof.js";
 
 const PAGES: Record<string, string> = {
   "/proof": proofPage(),
-  "Home's proof band": proofLineHtml(),
+  // 21 Nov: Home's proof row (src/redesign/home.ts), in place of the hero's proof line.
+  "Home's proof row": proofRowHtml(),
   "the evidence wall": evidenceWallHtml(),
 };
 /** Every data-rec on a page, whether or not a figure sits under it. */
 const dataRecs = (html: string) => [...html.matchAll(/ data-rec="([^"]*)"/g)].flatMap((m) => m[1]!.split(/\s+/).filter(Boolean));
 const say = (f: Figure, why: string) => `${f.where || "top"} · "${f.token}" in "${f.text.slice(0, 90)}": ${why}`;
 
-describe("every figure on /proof, Home's proof band and the evidence wall leads to a committed record", () => {
+describe("every figure on /proof, Home's proof row and the evidence wall leads to a committed record", () => {
   for (const [name, html] of Object.entries(PAGES)) {
     const figs = figures(html);
 
@@ -41,7 +42,7 @@ describe("every figure on /proof, Home's proof band and the evidence wall leads 
 
     it(`${name}: every hash, id, amount with cents and long number is in a record it names`, () => {
       const checked = figs.filter((f) => distinctive(f.token));
-      if (name !== "Home's proof band") expect(checked.length).toBeGreaterThan(0);
+      if (name !== "Home's proof row") expect(checked.length).toBeGreaterThan(0);
       expect(checked.flatMap((f) => { const g = valueGap(f); return g ? [say(f, g)] : []; })).toEqual([]);
     });
   }

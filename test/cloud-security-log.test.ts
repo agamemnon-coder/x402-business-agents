@@ -48,7 +48,8 @@ describe("authentication decisions (V7.2.1)", () => {
     const [r] = await rows("auth.failure");
     expect(r).toMatchObject({ ip: "203.0.113.0/24", route: "GET /v1/me", status: 401 });
     expect(JSON.parse(r!.detail_json)).toMatchObject({ credential_kind: "api_key", key_id: forged.split("_")[1], reason: "unknown API key" });
-    expect(JSON.stringify(await rows())).not.toContain(forged.split("_")[2]);
+    // The secret is base64url and may itself hold "_" (or start with it): everything after the key id.
+    expect(JSON.stringify(await rows())).not.toContain(forged.split("_").slice(2).join("_"));
   });
 
   it("a passkey sign-in that verifies: passkey.success with the person and the company; one that does not: passkey.failure", async () => {

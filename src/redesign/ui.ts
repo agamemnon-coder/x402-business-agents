@@ -8,19 +8,27 @@ import { MOTION_CSS, SITE_MOTION_CSS } from "../ui/motion.js";
 import { ICONS, type Icon } from "../ui/icons.js";
 import { CONTACT_EMAIL, CONTACT_LINE, NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
 import { TAGLINE_LINE, previewTags } from "../ui/meta.js";
-import { MORE_CSS, footerLinks, menuItemOf, moreHtml, type PageKey } from "../ui/more.js";
+import { CLOUD_TAB_LABEL, MORE_CSS, footerLinks, menuItemOf, moreHtml, tabLinks, type PageKey } from "../ui/more.js";
+import { TOUR_CSS, TOUR_PAGES, tourJs } from "./tour.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 import { ICON_VERSION } from "../ui/brand/mark.js";
 import { versioned } from "../ui/assetVersions.js";
 import { AIRWALLEX_LOGO_SRC, BUILT_ON_ALT, BUILT_ON_CSS, BUILT_ON_LABEL, builtOnBadge } from "../ui/builtOn.js";
 
 const EXTRA: Record<string, Icon> = {
+  // /privacy (21 Nov): where data lives, erasure, leaving, the company.
+  globe: [["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" }], ["path", { d: "M2 12h20" }]],
+  "trash-2": [["path", { d: "M3 6h18" }], ["path", { d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" }], ["path", { d: "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" }], ["line", { x1: "10", x2: "10", y1: "11", y2: "17" }], ["line", { x1: "14", x2: "14", y1: "11", y2: "17" }]],
+  "log-out": [["path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }], ["polyline", { points: "16 17 21 12 16 7" }], ["line", { x1: "21", x2: "9", y1: "12", y2: "12" }]],
+  "building-2": [["path", { d: "M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" }], ["path", { d: "M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" }], ["path", { d: "M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" }], ["path", { d: "M10 6h4" }], ["path", { d: "M10 10h4" }], ["path", { d: "M10 14h4" }], ["path", { d: "M10 18h4" }]],
   copy: [["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }], ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }]],
   "trending-up": [["polyline", { points: "22 7 13.5 15.5 8.5 10.5 2 17" }], ["polyline", { points: "16 7 22 7 22 13" }]],
   mail: [["rect", { width: "20", height: "16", x: "2", y: "4", rx: "2" }], ["path", { d: "m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" }]],
   coins: [["circle", { cx: "8", cy: "8", r: "6" }], ["path", { d: "M18.09 10.37A6 6 0 1 1 10.34 18" }], ["path", { d: "M7 6h1v4" }]],
   pause: [["rect", { x: "14", y: "4", width: "4", height: "16", rx: "1" }], ["rect", { x: "6", y: "4", width: "4", height: "16", rx: "1" }]],
   package: [["path", { d: "M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" }], ["path", { d: "M12 22V12" }], ["path", { d: "m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7" }]],
+  rocket: [["path", { d: "M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" }], ["path", { d: "m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" }], ["path", { d: "M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" }], ["path", { d: "M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" }]],
+  route: [["circle", { cx: "6", cy: "19", r: "3" }], ["path", { d: "M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" }], ["circle", { cx: "18", cy: "5", r: "3" }]],
   headphones: [["path", { d: "M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" }]],
   "rotate-ccw": [["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" }], ["path", { d: "M3 3v5h5" }]],
   download: [["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }], ["polyline", { points: "7 10 12 15 17 10" }], ["line", { x1: "12", x2: "12", y1: "15", y2: "3" }]],
@@ -58,10 +66,11 @@ export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "
  */
 export const TRY_URL = "/try";
 
-export type Tab = "home" | "watch" | "try" | "proof";
-/** The four tabs; the menu's fifth item, "More", and the pages under it are in src/ui/more.ts (shared with src/ui/nav.ts). */
+export type Tab = "home" | "watch" | "try" | "proof" | "cloud";
+/** The tabs; the menu's last item, "More", and the pages under it are in src/ui/more.ts (shared with src/ui/nav.ts). */
 // 13 Nov (owner): "Judge" is out of the top menu again (its page, then the product tour that replaced it, are gone).
-const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
+// 21 Nov (Max: "simple and tight"): Home, Try, Proof, Cloud (Purser Cloud, the product; src/ui/more.ts tabLinks), More.
+const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"], ...tabLinks().map((l) => [l.key, CLOUD_TAB_LABEL, l.href])] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
 
 /** The design tokens, light and dark: the same on every page. */
 export const TOKENS = `@font-face { font-family: Inter; src: url(assets/${versioned("inter.woff2")}) format("woff2"); font-weight: 100 900; font-display: swap; }
@@ -541,8 +550,14 @@ export const OPEN_TARGET_JS = `(function () {
 /** Every <title> is branded "Purser · <Page>" (review, 12 Nov); a title that already starts with Purser stays. */
 export const pageTitle = (t: string) => (/^Purser\b/.test(t) ? t : `Purser · ${t}`);
 export function page(o: { title: string; description: string; /** The page's one canonical address (Home, served at / and /home). */ canonical?: string; tab: PageKey | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][]; /** The partner pages' "Built on" strip (src/redesign/partners.ts builtOnHtml). */ builtOn?: string }): string {
-  const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}
-${o.js}</script>`;
+  // The judge tour (21 Nov, src/redesign/tour.ts): its bar's style and script on Home and on each stop of the tour that
+  // is a page of the site, inside the page's one <style> and one <script>, so the page's CSP hashes cover them. The bar
+  // shows only while a tour runs; a page that had no script gets one with the bar's alone (no stage).
+  const tour = !!o.tab && TOUR_PAGES.has(o.tab);
+  const js = tour ? `${o.js ?? ""}\n${tourJs()}` : o.js;
+  const stage = o.js === undefined ? false : o.stage;
+  const script = js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${stage === false ? "" : STAGE_JS}
+${js}</script>`;
   return formerlyMetal(`<!doctype html>
 <html lang="en">
 <head>
@@ -556,7 +571,7 @@ ${previewTags().join("\n")}
 <title>${esc(pageTitle(o.title))}</title>
 <style>${CSS}
 ${MOTION_CSS}${SITE_MOTION_CSS}
-${o.css}</style>
+${o.css}${tour ? TOUR_CSS : ""}</style>
 </head>
 <body>
 ${header(o.tab)}

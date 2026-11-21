@@ -32,6 +32,8 @@ The threat model with every trust boundary: [security.md](../security.md#trust-b
 
 | Measure | Figure | Where it ran | Record |
 |---|---|---|---|
+| Zero-trust harness on the payment path | **All 53** attacks stopped; none moved money | Test world: simulated rails, on this computer | [report.json](../zero-trust/report.json) |
+| A hostile model in the agents' place | **370 of 380** hostile tool calls stopped by code; the other 10 within the rules | Test world: offline | [ap-hostile.json](../evals/ap-hostile.json) |
 | Red team v2 on the /try API | **All 128** attacks held | Test world: servers on this computer, no live site | [redteam-api.md](../evidence/redteam-api.md) |
 | Chaos testing of money movement | **0** money invariants broken in 317 scenarios | Test world: in process, a simulated Airwallex | [chaos-money.md](../evidence/chaos-money.md) |
 | Fuzzing (fast-check) | **All 17** properties held | Test world: in process | [fuzzing.md](../evidence/fuzzing.md) |

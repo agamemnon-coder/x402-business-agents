@@ -310,7 +310,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL): Home's first button and Watch's "Now try it
   // yourself" lead there; /try/sign is "Sign in 60 seconds", linked from the README. The visit opens it by its address.
   await page.goto(`${local.url}/home`);
-  check(await page.locator(`main .e-hero a.btn.primary[href="${TRY_URL}"]`).count() === 1, `${tag}: Home's button leads to the hands-on demo (${TRY_URL})`);
+  // 21 Nov: the hero's primary button starts the judge tour; its second ("Try it") opens the hands-on demo.
+  check(await page.locator(`main .e-hero a.btn[href="${TRY_URL}"]`).count() === 1, `${tag}: Home's button leads to the hands-on demo (${TRY_URL})`);
   await page.goto(`${local.url}/watch`);
   check(await page.locator(`a.nextstep[href="${TRY_URL}"]`).count() >= 1, `${tag}: Watch ends in "Now try it yourself", to the hands-on demo (${TRY_URL})`);
   await page.goto(`${local.url}/try/sign`);

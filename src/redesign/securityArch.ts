@@ -49,6 +49,9 @@ export const ARCH_LAYERS: readonly ArchLayer[] = [
     ],
     controls: [
       { name: "Hash first", does: "The executor re-hashes the stored terms before any outside call.", code: "src/policy/hashFirst.ts" },
+      // 21 Nov: the two Purser Cloud controls that had cards of their own on /security, now on the path.
+      { name: "Each company apart", does: "Every row carries its company; a test tries each route on another company's data.", code: "cloud/src/tenant.ts" },
+      { name: "Sealed secrets", does: "Only the runner holds payment keys; each company's OAuth tokens sealed with AES-GCM.", code: "cloud/src/sealed.ts" },
     ],
   },
   {
