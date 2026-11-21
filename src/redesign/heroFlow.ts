@@ -11,7 +11,7 @@
 // CSS only. The final state is the default: with reduced motion (or no animation support) the whole flow stands.
 
 import { readFileSync } from "node:fs";
-import { AP_ACCOUNTS, dutchVat } from "../ap/books.js";
+import { AP_ACCOUNTS } from "../ap/books.js";
 import { esc, icon } from "./ui.js";
 
 /** The record of that run: every value the card shows is read from it. */
@@ -26,13 +26,10 @@ const cur = rec.invoice.currency;
  * invoice does today. The recorded run (13 Nov, earlier that day) posted it to 1510, Dutch input VAT; its record stays
  * as it was and "What's real?" says so. Every amount on the card is still the record's.
  */
-const vatLine = (l: TrySample["booked"][number]) => l.account === AP_ACCOUNTS.inputVat && l.debit;
-const net = rec.booked.find((l) => l.debit && !vatLine(l));
-const nowAbroad = (l: TrySample["booked"][number]) => vatLine(l) && net ? dutchVat(Math.round(Number(net.debit) * 100), Math.round(Number(l.debit) * 100)) === null : false;
-export const BOOKED = rec.booked.map((l) => (nowAbroad(l) ? { ...l, account: AP_ACCOUNTS.foreignVat, name: "Foreign VAT" } : l));
-export const VAT_THEN = rec.booked.some(nowAbroad)
-  ? "Its VAT line is booked as Purser books that invoice now, as VAT to reclaim from Germany, as /try does; the recorded run, earlier that day, booked it as Dutch input VAT."
-  : "";
+// 21 Nov (jury check): the card shows the record exactly as it is (1510, Dutch input VAT, as the linked run booked it), so
+// every line matches the record it links to; how Purser books that VAT today (1515) is /try's own run.
+export const BOOKED = rec.booked;
+export const VAT_THEN = "";
 
 export const FLOW = {
   supplier: rec.invoice.supplier, number: rec.invoice.number, amount: `${cur} ${money(rec.invoice.total)}`, due: rec.invoice.due, account: `…${rec.invoice.account_ending}`,

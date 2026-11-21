@@ -31,7 +31,7 @@ export const MODERN_VERSIONS = ["2026-07-28"] as const;
 export const LEGACY_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const;
 /** Every protocol version this server speaks, newest first. */
 export const PROTOCOL_VERSIONS = [...MODERN_VERSIONS, ...LEGACY_VERSIONS] as const;
-export const SERVER_VERSION = "1.3.2";
+export const SERVER_VERSION = "1.4.0";
 
 export interface McpCtx {
   /** The cloud's own address: the server's icons are served from it. */

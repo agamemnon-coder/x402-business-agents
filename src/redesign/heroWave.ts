@@ -18,6 +18,9 @@ import { waveScript } from "../ui/wave.js";
 import { FLOW, READER_CHIP, TRY_SAMPLE_RECORD } from "./heroFlow.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
+import { proofSection } from "./proofSections.js";
+// 21 Nov (jury check): the sample card names the run its figures come from, since /try's sample today has a later due date.
+const RUN_DAY = (/(\d{4})-(\d{2})-(\d{2})/.exec(TRY_SAMPLE_RECORD) ?? []).slice(2, 4).reverse().map(Number).join(" ").replace(/ 11$/, " Nov");
 
 /** The hero's three figures (Max: tests passing, sandbox and testnet runs, policy blocks), each a wall tile by key. */
 export const HERO_STATS: readonly { key: string; words: string }[] = [
@@ -37,7 +40,7 @@ export function heroStats(w: EvidenceWall | null = committedWall()): HeroStat[] 
     const value = hit?.t.fig.replace(/^All\s+/, "").trim();
     if (!hit || !value || !/^\d[\d,]*$/.test(value)) return [];
     const { t, group } = hit;
-    return [{ value, words: s.words, rec: t.rec, href: `proof#${group}`, source: `${t.fig} ${t.label}${t.asOf ? ` (${t.asOf})` : ""}. Record: ${t.rec}` }];
+    return [{ value, words: s.words, rec: t.rec, href: `proof#${proofSection(group)}`, source: `${t.fig} ${t.label}${t.asOf ? ` (${t.asOf})` : ""}. Record: ${t.rec}` }];
   });
 }
 export function heroStatsHtml(stats: HeroStat[] = heroStats()): string {
@@ -110,7 +113,7 @@ export function workflowHtml(f: WorkflowFacts | null = workflowFacts()): string 
   const rows = (st: WorkflowStep) => (st.rows ? `<table class="wf-led"><tbody>${st.rows.map((l) => `<tr><th>${esc(l.code)}</th><td>${esc(l.name)}</td><td>${esc(l.amount)}<small>${l.side}</small></td></tr>`).join("")}</tbody></table>` : "");
   return `<div class="wf" role="group" aria-labelledby="wf-k" data-rec="${esc(f.recs.join(" "))}">
   <div class="wf-head"><p class="wf-k" id="wf-k">${esc(WORKFLOW_HEAD)}</p><span class="wf-tag">${esc(WORKFLOW_TAG)}</span></div>
-  <div class="wf-inv">${icon("file-check", 16)}<span><b>${esc(f.invoice.supplier)}</b><small>${esc(`Invoice ${f.invoice.number} · due ${f.invoice.due}`)}</small></span><a class="wf-amt" href="${esc(REPO_BLOB + TRY_SAMPLE_RECORD)}" target="_blank" rel="noopener" title="${esc(TRY_SAMPLE_RECORD)}">${esc(f.invoice.amount)}</a></div>
+  <div class="wf-inv">${icon("file-check", 16)}<span><b>${esc(f.invoice.supplier)}</b><small>${esc(`Invoice ${f.invoice.number} · due ${f.invoice.due} · as in the run of ${RUN_DAY}`)}</small></span><a class="wf-amt" href="${esc(REPO_BLOB + TRY_SAMPLE_RECORD)}" target="_blank" rel="noopener" title="${esc(TRY_SAMPLE_RECORD)}">${esc(f.invoice.amount)}</a></div>
   <ol class="wf-steps">${f.steps.map((st, i) => `<li class="wf-s wf-s${i}"><details open><summary><span class="wf-i">${icon(titled[i]!.icon, 18)}</span><span class="wf-t"><b>${esc(titled[i]!.title)}</b>${chip(st)}</span><span class="wf-ok">${icon("check", 14)}</span></summary><div class="wf-d"><small>${esc(st.detail)}${recA(st.rec)}</small>${rows(st)}</div></details></li>`).join("")}</ol>
   ${f.refused ? `<div class="wf-no"><span class="wf-x">${icon("ban", 16)}</span><span class="wf-t">${chip(f.refused)}<small>${esc(f.refused.detail)}${recA(f.refused.rec)}</small></span></div>` : ""}
   <p class="wf-note">${esc(WORKFLOW_NOTE)} <a href="#real" data-real>${esc("What's real?")}</a></p>

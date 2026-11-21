@@ -1,13 +1,13 @@
 {
   "format": "purser.fuzzing/v1",
-  "checked": "2026-11-19",
+  "checked": "2026-11-21",
   "how": "npm run fuzz: fast-check properties (src/fuzz/properties.ts) at high run counts, each within a time limit, with a fixed seed per property; a failure is shrunk to a small counterexample and kept with the seed and path that replay it. In process, no network.",
   "totals": {
     "properties": 17,
     "runs": 315300,
     "passed": 17,
     "failed": 0,
-    "ms": 120555
+    "ms": 110714
   },
   "artifacts": {
     "bundles": [
@@ -52,14 +52,80 @@
       "docs/runs/2026-11-19-mega-run/run-16-proof-paid.json",
       "docs/runs/2026-11-19-mega-run/run-17-proof-downloaded.json",
       "docs/runs/2026-11-19-mega-run/run-17-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-18-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-18-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-19-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-19-proof-paid.json",
       "docs/runs/2026-11-19-mega-run/run-2-proof-downloaded.json",
       "docs/runs/2026-11-19-mega-run/run-2-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-20-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-20-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-21-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-21-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-22-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-22-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-23-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-23-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-24-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-24-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-25-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-25-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-26-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-26-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-27-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-27-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-28-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-28-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-29-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-29-proof-paid.json",
       "docs/runs/2026-11-19-mega-run/run-3-proof-downloaded.json",
       "docs/runs/2026-11-19-mega-run/run-3-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-30-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-30-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-31-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-31-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-32-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-32-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-33-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-33-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-34-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-34-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-35-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-35-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-36-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-36-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-37-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-37-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-38-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-38-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-39-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-39-proof-paid.json",
       "docs/runs/2026-11-19-mega-run/run-4-proof-downloaded.json",
       "docs/runs/2026-11-19-mega-run/run-4-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-40-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-40-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-41-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-41-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-42-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-42-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-43-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-43-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-44-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-44-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-45-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-45-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-46-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-46-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-47-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-47-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-48-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-48-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-49-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-49-proof-paid.json",
       "docs/runs/2026-11-19-mega-run/run-5-proof-downloaded.json",
       "docs/runs/2026-11-19-mega-run/run-5-proof-paid.json",
+      "docs/runs/2026-11-19-mega-run/run-50-proof-downloaded.json",
+      "docs/runs/2026-11-19-mega-run/run-50-proof-paid.json",
       "docs/runs/2026-11-19-mega-run/run-6-proof-downloaded.json",
       "docs/runs/2026-11-19-mega-run/run-6-proof-paid.json",
       "docs/runs/2026-11-19-mega-run/run-7-proof-downloaded.json",
@@ -71,7 +137,31 @@
       "docs/runs/2026-11-19-webkit-try/run-1-proof-downloaded.json",
       "docs/runs/2026-11-19-webkit-try/run-1-proof-paid.json",
       "docs/runs/2026-11-19-webkit-try/run-2-proof-downloaded.json",
-      "docs/runs/2026-11-19-webkit-try/run-2-proof-paid.json"
+      "docs/runs/2026-11-19-webkit-try/run-2-proof-paid.json",
+      "docs/runs/2026-11-21-phone-try/run-1-proof-downloaded.json",
+      "docs/runs/2026-11-21-phone-try/run-1-proof-paid.json",
+      "docs/runs/2026-11-21-phone-try/run-3-proof-downloaded.json",
+      "docs/runs/2026-11-21-phone-try/run-3-proof-paid.json",
+      "docs/runs/2026-11-21-phone-try/run-4-proof-downloaded.json",
+      "docs/runs/2026-11-21-phone-try/run-4-proof-paid.json",
+      "docs/runs/2026-11-21-phone-try/run-5-proof-downloaded.json",
+      "docs/runs/2026-11-21-phone-try/run-5-proof-paid.json",
+      "docs/runs/2026-11-21-phone-try/run-6-proof-downloaded.json",
+      "docs/runs/2026-11-21-phone-try/run-6-proof-paid.json",
+      "docs/runs/2026-11-21-phone-try/run-7-proof-downloaded.json",
+      "docs/runs/2026-11-21-phone-try/run-7-proof-paid.json",
+      "docs/runs/2026-11-21-phone-try/run-8-proof-downloaded.json",
+      "docs/runs/2026-11-21-phone-try/run-8-proof-paid.json",
+      "docs/runs/2026-11-21-phone-try/run-9-proof-downloaded.json",
+      "docs/runs/2026-11-21-phone-try/run-9-proof-paid.json",
+      "docs/runs/2026-11-21-try-concurrent/run-10-proof-downloaded.json",
+      "docs/runs/2026-11-21-try-concurrent/run-10-proof-paid.json",
+      "docs/runs/2026-11-21-try-concurrent/run-2-proof-downloaded.json",
+      "docs/runs/2026-11-21-try-concurrent/run-2-proof-paid.json",
+      "docs/runs/2026-11-21-try-concurrent/run-3-proof-downloaded.json",
+      "docs/runs/2026-11-21-try-concurrent/run-3-proof-paid.json",
+      "docs/runs/2026-11-21-try-concurrent/run-7-proof-downloaded.json",
+      "docs/runs/2026-11-21-try-concurrent/run-7-proof-paid.json"
     ],
     "receipts": [
       "docs/runs/2026-11-07-awx-1/receipt-P-0002.json",
@@ -94,11 +184,11 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 0,
-      "ms": 2327,
+      "ms": 4419,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261119,
-      "notes": "slowest single read 27.6 ms"
+      "notes": "slowest single read 10.9 ms"
     },
     {
       "id": "parser-compose-roundtrip",
@@ -108,7 +198,7 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 107950,
-      "ms": 5877,
+      "ms": 6922,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261120
@@ -121,7 +211,7 @@
       "runs_asked": 300,
       "runs_done": 300,
       "skipped": 1792,
-      "ms": 3778,
+      "ms": 2588,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261121
@@ -134,7 +224,7 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 0,
-      "ms": 701,
+      "ms": 403,
       "time_limit_ms": 90000,
       "interrupted": false,
       "seed": 20261122
@@ -147,7 +237,7 @@
       "runs_asked": 50000,
       "runs_done": 50000,
       "skipped": 4312,
-      "ms": 18368,
+      "ms": 10702,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261123
@@ -160,7 +250,7 @@
       "runs_asked": 30000,
       "runs_done": 30000,
       "skipped": 0,
-      "ms": 9018,
+      "ms": 8227,
       "time_limit_ms": 90000,
       "interrupted": false,
       "seed": 20261124
@@ -173,7 +263,7 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 0,
-      "ms": 2649,
+      "ms": 2632,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261125
@@ -186,7 +276,7 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 0,
-      "ms": 4351,
+      "ms": 4522,
       "time_limit_ms": 60000,
       "interrupted": false,
       "seed": 20261126
@@ -199,7 +289,7 @@
       "runs_asked": 20000,
       "runs_done": 20000,
       "skipped": 0,
-      "ms": 7295,
+      "ms": 6531,
       "time_limit_ms": 60000,
       "interrupted": false,
       "seed": 20261127
@@ -212,7 +302,7 @@
       "runs_asked": 10000,
       "runs_done": 10000,
       "skipped": 285,
-      "ms": 21919,
+      "ms": 18706,
       "time_limit_ms": 180000,
       "interrupted": false,
       "seed": 20261128
@@ -224,8 +314,8 @@
       "status": "PASS",
       "runs_asked": 10000,
       "runs_done": 10000,
-      "skipped": 456,
-      "ms": 19352,
+      "skipped": 458,
+      "ms": 20004,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261129
@@ -238,7 +328,7 @@
       "runs_asked": 10000,
       "runs_done": 10000,
       "skipped": 0,
-      "ms": 9336,
+      "ms": 7850,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261130
@@ -251,7 +341,7 @@
       "runs_asked": 10000,
       "runs_done": 10000,
       "skipped": 365,
-      "ms": 5651,
+      "ms": 5647,
       "time_limit_ms": 120000,
       "interrupted": false,
       "seed": 20261131
@@ -264,7 +354,7 @@
       "runs_asked": 50000,
       "runs_done": 50000,
       "skipped": 15,
-      "ms": 1711,
+      "ms": 1575,
       "time_limit_ms": 90000,
       "interrupted": false,
       "seed": 20261132
@@ -277,7 +367,7 @@
       "runs_asked": 10000,
       "runs_done": 10000,
       "skipped": 913,
-      "ms": 635,
+      "ms": 929,
       "time_limit_ms": 90000,
       "interrupted": false,
       "seed": 20261133
@@ -290,7 +380,7 @@
       "runs_asked": 10000,
       "runs_done": 10000,
       "skipped": 0,
-      "ms": 6475,
+      "ms": 7819,
       "time_limit_ms": 150000,
       "interrupted": false,
       "seed": 20261134
@@ -303,195 +393,195 @@
       "runs_asked": 5000,
       "runs_done": 5000,
       "skipped": 0,
-      "ms": 1112,
+      "ms": 1238,
       "time_limit_ms": 150000,
       "interrupted": false,
       "seed": 20261135
     }
   ],
   "sweep": {
-    "tried": 38722,
+    "tried": 95197,
     "still_valid": [
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "asked",
-        "artifacts": 30,
+        "artifacts": 75,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "assertion",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "decision",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "decision.executor",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "decision.signature",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "ledger",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "add a key",
         "path": "public_key",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "assertion.credential_id",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "decision.executor.said",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "decision.signature.reason",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "ledger.entries[]",
-        "artifacts": 181,
+        "artifacts": 451,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "made_at",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "note",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "proposal_id",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "public_key.alg",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "delete",
         "path": "public_key.format",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "assertion.credential_id",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "decision.executor.said",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "decision.signature.reason",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "decision.transfers_after",
-        "artifacts": 31,
+        "artifacts": 76,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "made_at",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "note",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "proposal_id",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "public_key.alg",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "public_key.cose",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "same key"
       },
       {
         "kind": "bundle",
         "change": "edit",
         "path": "public_key.format",
-        "artifacts": 61,
+        "artifacts": 151,
         "covered": "context"
       },
       {
