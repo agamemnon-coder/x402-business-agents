@@ -18,9 +18,8 @@ import { longRun } from "../src/redesign/run.js";
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
 const lines = readme.split("\n");
 const topLine = lines.find((l) => l.includes("actions/workflows/ci.yml/badge.svg")) ?? "";
-const qualityLine = lines.find((l) => l.startsWith("**Quality & security**<br>")) ?? "";
+const qualityLine = lines.find((l) => l.startsWith("[![CodeQL]")) ?? "";
 const names = (l: string) => [...l.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1]);
-const dayOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
 describe("README badges", () => {
   it("is one compact row under the title: CI, the tests, coverage, the partners as they ran, Claude, test money only", () => {
@@ -28,8 +27,8 @@ describe("README badges", () => {
     expect(lines.indexOf(topLine)).toBe(6);
     const claude = longRun()!;
     expect(claude.byClaude).toBe(stripFigures().decisions);
-    expect(names(topLine)).toEqual(["CI", "Tests: from docs/assets/test-summary.json", "Coverage: from docs/badges/coverage.json", "Airwallex: sandbox", "Alta (formerly Metal): testnet", "Visa via Airi: sandbox", "T:0: sandbox ledger", `Claude: ${claude.byClaude} decisions, ${dayOf(claude.recordedAt)} run`, "Test money only"]);
-    expect(topLine).toContain(`(https://img.shields.io/badge/Claude-${claude.byClaude}_decisions%2C_${dayOf(claude.recordedAt).replace(" ", "_")}_run-d97757?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/claude)`);
+    expect(names(topLine)).toEqual(["CI", "Tests: from docs/assets/test-summary.json", "Coverage: from docs/badges/coverage.json", "Airwallex: sandbox", "Alta (formerly Metal): testnet", "Visa via Airi: sandbox", "T:0: sandbox ledger", `Claude: ${claude.byClaude} decisions`, "Test money only"]);
+    expect(topLine).toContain(`(https://img.shields.io/badge/Claude-${claude.byClaude}_decisions-d97757?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/claude)`);
     expect(readme).not.toMatch(/Claude: 24 decisions|Claude-24_decisions/);
     // Sandbox or testnet for a partner: at least one live run of that partner in the run records (the tiles on /proof count them).
     const live = Object.fromEntries(partnerTiles().map((t) => [t.name, t.runs]));
@@ -45,14 +44,14 @@ describe("README badges", () => {
     expect(readme).toContain(`, ${r.skipped} skipped: [coverage.md](docs/evidence/coverage.md))`);
     for (const l of [topLine, qualityLine]) for (const u of l.matchAll(/img\.shields\.io\/[^)]+/g)) expect(u[0]).toContain("style=flat-square");
     // The pitch right under it, then the demo.
-    expect(lines.slice(7, 10)).toEqual(["", lines[8]!, ""]);
-    expect(lines[8]!.startsWith("**AI agents pay your suppliers.")).toBe(true);
+    expect(lines.slice(7, 12)).toEqual(["", qualityLine, "", lines[10]!, ""]);
+    expect(lines[10]!.startsWith("**AI agents pay your suppliers.")).toBe(true);
   });
 
-  it("keeps the rest in one Quality & security row under the quick start, each badge saying what its record says", () => {
+  // 21 Nov, later (Max): "make sure the rest of the badges is there too, underneath"; and the Claude badge without its date.
+  it("keeps the rest in one quality and security row right under the first, each badge saying what its record says", () => {
     expect(qualityLine).not.toBe("");
-    expect(lines.indexOf(qualityLine)).toBeGreaterThan(lines.indexOf("## Verify it yourself in 3 commands"));
-    expect(lines.indexOf(qualityLine)).toBeLessThan(lines.indexOf("## Try it in 2 minutes"));
+    expect(lines.indexOf(qualityLine)).toBe(8);
     const n = Math.max(...readdirSync(new URL("../docs/evals/", import.meta.url)).map((f) => /^adversarial-v(\d+)\.json$/.exec(f)?.[1]).filter(Boolean).map(Number));
     const ev = JSON.parse(readFileSync(new URL(`../docs/evals/adversarial-v${n}.json`, import.meta.url), "utf8")) as { held_out: boolean; totals: Record<"purser_script" | "no_rules", { wrong_payments: number }> };
     expect(ev.held_out).toBe(true);
@@ -88,13 +87,13 @@ describe("README badges", () => {
   // 20 Nov (owner): the demo, /try and /proof on the first screen. 21 Nov 2026 (Max, above): a small demo, then the three
   // steps with it (the video is the first step); "Verify a payment (3 commands)" lower, as its own section.
   it("puts the small demo under the pitch, then the three steps: the video, /try, /proof", () => {
-    expect(lines[10]).toBe(readmeDemoLine());
+    expect(lines[12]).toBe(readmeDemoLine());
     const [pictures, links] = readmeStepLines();
-    expect(lines.slice(11, 15)).toEqual(["", pictures, "", links]);
+    expect(lines.slice(13, 17)).toEqual(["", pictures, "", links]);
     expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://youtu.be/gEUm8RlhZac", "https://kit11.max-31b.workers.dev/try", "https://kit11.max-31b.workers.dev/proof"]);
     expect([...pictures.matchAll(/<a href="([^"]+)"/g)].map((m) => m[1])).toEqual(["https://youtu.be/gEUm8RlhZac", "https://kit11.max-31b.workers.dev/try", "https://kit11.max-31b.workers.dev/proof"]);
     expect(pictures).toContain('<img src="docs/assets/readme/demo-thumb.jpg" alt="1 · Watch the demo: Purser on YouTube (3:15)" width="32%">');
-    expect(lines[16]).toBe("| Sponsor track | What ran live (test money) | Record |");
+    expect(lines[18]).toBe("| Sponsor track | What ran live (test money) | Record |");
     expect(readme).not.toContain("4. [Verify a payment (3 commands)]");
     expect(readme).toContain("\n## Verify it yourself in 3 commands\n");
     expect(readme.split("youtu.be/n3HLVGROJc4").length - 1).toBe(1); // 20 Nov (owner): one quiet line under the demo
