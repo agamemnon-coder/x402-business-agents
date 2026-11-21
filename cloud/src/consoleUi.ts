@@ -436,7 +436,8 @@ async function tokensView(){
   const invoice=el('section','card panel tok tokhero',[el('div','th',[el('h2','',[ic('receipt'),' '+t('cs.tok.invoice')]),lbl(tok.label)]),
     el('p','sub',t('cs.tok.invoice_sub',{no:it.invoice_no,amount:cur(it.currency)+' '+it.amount,pid:it.proposal_id})),facts,
     el('h3','tsec',t('cs.tok.life')),tokLife(tok),el('h3','tsec',t('cs.tok.flow')),tokFlow(tok),hashes,el('p','links',[ext(tok.record,t('cs.tok.record')),' ',ext(tok.story,t('cs.tok.story'))])]);
-  view().replaceChildren(head(t('cs.nav.tokens'),t('cs.tok.lede2')),invoice);
+  // 23 Nov: one purchase, one token first (cloud/src/tokenLife.ts); the invoice token after it.
+  view().replaceChildren(head(t('cs.nav.tokens'),tw('lede')),...tokenLifeSections(r.token_life),invoice);
 }
 `;
 

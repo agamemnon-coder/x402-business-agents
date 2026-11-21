@@ -16,6 +16,7 @@ import TOKENIZE from "../../docs/runs/2026-11-12-tokenize.json" with { type: "js
 import CARDS from "../../docs/runs/airwallex-cards-2026-11-06.json" with { type: "json" };
 // The latest Visa credential run via Airi (vic-5, 14 Nov; vic-4 of 13 Nov before it): the panel shows the latest.
 import VIC from "../../docs/runs/2026-11-14-vic-5.json" with { type: "json" };
+import { tokenLifeOf } from "./tokenLife.js";
 
 type Json = Record<string, unknown>;
 interface Audit { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string; row_hash: string }
@@ -111,6 +112,8 @@ export function tokenisation(): Json {
   const c = CARDS as unknown as { read_at: string; method: string; test_money: boolean; cards: { last4: string; nick_name: string; card_status: string; brand: string; form_factor: string; controls: { transaction_limits?: { currency: string; limits: { amount: number; interval: string }[] }; allowed_merchant_categories?: string[] } }[] };
   const v = VIC as unknown as { run: string; mode: string; label: string; started_at: string; credential_deleted: boolean; purchases: { step: string; what: string; request: { amount: string; currency: string }; outcome?: { status?: string; reason?: string; refusal?: string } | null; mandate_id: string | null; payment_intent_id: string | null }[] };
   return {
+    // One purchase, one token (23 Nov): the Visa network token's life and Purser's agent tokens, from their run records.
+    token_life: tokenLifeOf(),
     invoice_token: {
       label: [t.labels.prototype ? "prototype" : null, String(t.labels.network ?? "").replace(/^Metal\b/, "Alta") /* the record's own words; Alta since 14 Nov */, t.labels.test_money ? "test money" : null, t.labels.financier === "simulated" ? "financier simulated" : null].filter(Boolean).join(" · "),
       recorded_at: t.recorded_at, invoice: { invoice_no: t.invoice.invoice_no, amount: t.invoice.amount, currency: t.invoice.currency, proposal_id: t.invoice.proposal_id, terms_sha256: t.invoice.terms_sha256, approved_at: t.invoice.approval.approved_at },
