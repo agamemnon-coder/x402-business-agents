@@ -106,7 +106,10 @@ export const T0_CSS = `${T0_CLOSE_CSS}
 .t0s .t0what { margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--muted); max-width: 50em; }
 .t0s .noend { font-size: 13px; color: var(--muted); }
 ul.t0n { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-ul.t0n li { display: grid; gap: 2px; padding: 14px 16px; border-radius: 14px; background: var(--sunken); }
+ul.t0n li { position: relative; display: grid; gap: 2px; padding: 14px 16px; border-radius: 14px; background: var(--sunken); border: 1px solid transparent; }
+ul.t0n a.t0f { color: inherit; text-decoration: none; outline: none; } ul.t0n a.t0f::after { content: ""; position: absolute; inset: 0; border-radius: 14px; }
+ul.t0n li small a { position: relative; z-index: 1; }
+ul.t0n li:has(a.t0f:hover), ul.t0n li:has(a.t0f:focus-visible) { border-color: var(--accent); } ul.t0n li:has(a.t0f:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 ul.t0n b { font-size: clamp(26px, 3vw, 34px); font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 ul.t0n li.ok b { color: var(--ok); }
 ul.t0n small { font-size: 14px; color: var(--muted); line-height: 1.35; }
@@ -139,7 +142,8 @@ export function t0SectionHtml(d: T0Data, o: { endorse?: string; close?: ReturnTy
   const j = d.journal, p = d.platform;
   if (!j) return "";
   const close = o.close === undefined ? t0CloseFacts() : o.close;
-  const stat = (n: string, label: string, href: string, ok = false) => `<li${ok ? ' class="ok"' : ""}><b>${esc(n)}</b><small>${esc(label)} ${link(href, "record")}</small></li>`;
+  // The figure is a link to its record, and it covers the tile (21 Nov, Max: "every figure goes somewhere").
+  const stat = (n: string, label: string, href: string, ok = false) => `<li${ok ? ' class="ok"' : ""}><a class="t0f" href="${esc(`${REPO_BLOB}${href}`)}" target="_blank" rel="noopener"><b>${esc(n)}</b></a><small>${esc(label)} ${link(href, "record")}</small></li>`;
   const stats = `<ul class="t0n">${stat(String(j.posted), `journal entries posted to T:0, ${j.day}`, T0_JOURNAL_RECORD)}${close ? stat(String(close.check.problems.length), `differences when read back, ${DAY(close.readAt)}`, T0_READBACK_RECORD, close.check.agrees) : stat(String(j.differences), "differences on read-back", T0_JOURNAL_RECORD, j.differences === 0)}</ul>`;
   const funding = j.accounts.find((a) => a.code === "32000");
   const accounts = j.accounts.length ? `<details class="fold"><summary>${esc("The accounts, ours beside T:0's (USD)")}</summary><table class="t0a">${head}<tbody>${t0Rows(j.accounts, true)}</tbody></table><ul class="pl">${li("Net debit per account; credits show as minus.")}${funding ? li(`Sandbox amounts: the books open with the Airwallex sandbox's test balances, ${funding.ours.replace(/^-/, "")} USD of owner funding. No real money.`) : ""}${li(`Debits and credits: ${j.debits} USD each, the same as our books.`)}</ul></details>` : "";

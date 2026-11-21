@@ -87,7 +87,9 @@ export const BOOKS_CSS = `.bkp .wrap { gap: 16px; }
 @keyframes bk-doc { from { transform: rotate(-12deg) translateY(8px); opacity: 0; } to { transform: rotate(-4deg); opacity: 1; } }
 .bk-folds { padding: 6px 20px 10px; gap: 0; }
 .bk-kpi { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.bk-kpi li { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; display: grid; gap: 4px; }
+.bk-kpi li { display: flex; }
+.bk-kpi a { flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; color: var(--text); text-decoration: none; }
+.bk-kpi a:hover, .bk-kpi a:focus-visible { border-color: var(--accent); }
 .bk-kpi small { color: var(--muted); font-size: 13px; font-weight: 600; }
 .bk-kpi b { font-size: 25px; line-height: 1.15; font-weight: 750; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bk-kpi b .cur { font-size: 14px; font-weight: 600; color: var(--muted); margin-right: 4px; }
@@ -169,8 +171,12 @@ const tr = (cls: string, name: string, cents: number | null) => `<tr${cls ? ` cl
 const lines = (xs: StatementLine[]) => xs.map((x) => tr("ln", x.name, x.cents)).join("");
 const gb = (cents: number) => (cents / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 /** A key figure; the HTML holds the final value, the script counts up to it (src/redesign/stats.ts COUNT_JS). */
-const kpi = (label: string, cents: number, cur: string, hint: string) => `<li><small>${esc(label)}</small><b><span class="cur">${esc(cur)}\u00a0</span><span data-count="${cents / 100}" data-dec="2">${esc(gb(cents))}</span></b><span class="hint">${esc(hint)}</span></li>`;
-const kpiCount = (label: string, n: number, of: number, hint: string) => `<li><small>${esc(label)}</small><b><span data-count="${n}" data-dec="0">${esc(String(n))}</span><span class="cur of">${esc(` of ${of}`)}</span></b><span class="hint">${esc(hint)}</span></li>`;
+// Each key figure is a link to the statement or the list it is taken from, on this page (21 Nov, Max: "no dead zones,
+// and every figure goes somewhere"); those are drawn from the run record, which the invoices card links.
+const kpi = (label: string, cents: number, cur: string, hint: string, href: string) => `<li><a href="${esc(href)}"><small>${esc(label)}</small><b><span class="cur">${esc(cur)}\u00a0</span><span data-count="${cents / 100}" data-dec="2">${esc(gb(cents))}</span></b><span class="hint">${esc(hint)}</span></a></li>`;
+const kpiCount = (label: string, n: number, of: number, hint: string, href: string) => `<li><a href="${esc(href)}"><small>${esc(label)}</small><b><span data-count="${n}" data-dec="0">${esc(String(n))}</span><span class="cur of">${esc(` of ${of}`)}</span></b><span class="hint">${esc(hint)}</span></a></li>`;
+/** Whether the run paid an invoice, as the invoices card reads it. */
+const isPaid = (r: RunInvoice) => r.payment?.invoice_status === "paid" || r.status === "paid";
 /** Plain words for why an invoice waits for a person: the Checker's own finding codes. */
 const WAIT_WORDS: Record<string, string> = { country_not_paid: "Purser does not pay to this country: a person pays it", currency_not_paid: "Purser does not pay this currency: a person pays it" };
 
@@ -251,7 +257,7 @@ function invoicesCard(d: BooksData, v: StatementView, f: BooksStatementFile): st
   const items = [...v.sorted].sort((a, b) => a.date.localeCompare(b.date) || a.supplier.localeCompare(b.supplier)).map((s) => {
     const [acct, vat, cc] = s.booking.split("  ·  ");
     const r = byNo.get(s.number);
-    const paid = r?.payment?.invoice_status === "paid" || r?.status === "paid";
+    const paid = !!r && isPaid(r);
     const wait = r && !paid ? r.findings.map((x) => WAIT_WORDS[x.code]).find(Boolean) ?? "Waiting for a person" : "";
     const state = r ? (paid ? `<span class="chip ok">${icon("check", 13)}${esc("Paid")}</span>` : `<span class="chip wait" title="${esc(wait)}">${esc("Waiting")}</span>`) : "";
     return `<li><span class="d">${esc(dayShort(s.date))}</span><span class="who">${esc(s.supplier)}<span class="no">${esc(s.number)}</span></span><span class="amt">${esc(`${s.currency} ${s.total}`)}</span>
@@ -273,6 +279,16 @@ function pdfTile(f: BooksStatementFile, v: StatementView): string {
   return `<div class="bk-doc"><span class="bk-page" aria-hidden="true"><i></i><i></i><i class="s"></i><i></i><i class="s"></i><em>PDF</em></span>
 <span class="bk-doc-t"><b>${esc("Balance sheet, P&L, invoices")}</b><small>${esc(`${v.company.replace(/\s*\(test company\)$/, "")} · ${dayShort(v.asOf)} · test money`)}</small>
 <a class="btn primary" href="assets/${esc(f.pdf)}" download>${icon("download", 18)}${esc("Download PDF")}</a></span></div>`;
+}
+
+/**
+ * "16 of 20" says what the other invoices are (21 Nov, Max: no bare "N of M"): those the run did not pay wait for a
+ * person, as the invoices card shows each one. The record's count and its invoices must agree.
+ */
+export function paidHint(run: Pick<RunRecord, "checks" | "invoices">): string {
+  const waiting = run.invoices.filter((r) => !isPaid(r)).length;
+  if (run.invoices.length !== run.checks.invoices || run.invoices.length - waiting !== run.checks.paid) throw new Error(`${RUN_FILE}: its paid count and its invoices differ`);
+  return waiting ? `approved with a test passkey; the other ${waiting} wait for a person` : "approved with a test passkey";
 }
 
 /** The rest, folded: the Moneybird sync of an earlier run, the account codes and where the sorted invoices are filed. */
@@ -301,10 +317,10 @@ ${v && f ? pdfTile(f, v) : ""}</div>`;
   const cash = v.assets.find((a) => a.name === "Cash at bank");
   const owed = v.liabilities.find((a) => a.name === "Creditors");
   const kpis = `<ul class="bk-kpi">${[
-    cash ? kpi("Cash at bank", cash.cents, v.currency, `at ${dayShort(v.asOf)}`) : "",
-    d.run ? kpiCount("Invoices paid", d.run.checks.paid, d.run.checks.invoices, "approved with a test passkey") : "",
-    kpi("Expenses", v.totalExpenses, v.currency, "invoices and fees"),
-    owed ? kpi("Owed to suppliers", owed.cents, v.currency, "waiting for a person") : "",
+    cash ? kpi("Cash at bank", cash.cents, v.currency, `at ${dayShort(v.asOf)}`, "#bk-bs") : "",
+    d.run ? kpiCount("Invoices paid", d.run.checks.paid, d.run.checks.invoices, paidHint(d.run), "#bk-inv") : "",
+    kpi("Expenses", v.totalExpenses, v.currency, "invoices and fees", "#bk-pl"),
+    owed ? kpi("Owed to suppliers", owed.cents, v.currency, "waiting for a person", "#bk-bs") : "",
   ].join("")}</ul>`;
   return `<main class="pp bkp"><div class="wrap">
   ${head}

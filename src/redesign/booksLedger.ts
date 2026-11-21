@@ -69,6 +69,8 @@ ol.bl-flow { list-style: none; margin: 0; padding: 0; display: grid; grid-templa
 :root[data-theme="dark"] .bl-st.t0 .ic { background: #fff; color: #0b0d12; border-color: #fff; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bl-st.t0 .ic { background: #fff; color: #0b0d12; border-color: #fff; } }
 .bl-st b { font-size: 16px; line-height: 1.3; }
+.bl-st a.fig { color: inherit; text-decoration: none; outline: none; } .bl-st a.fig::after { content: ""; position: absolute; inset: 0; border-radius: 16px; }
+.bl-st:has(a.fig:hover), .bl-st:has(a.fig:focus-visible) { border-color: var(--accent); } .bl-st:has(a.fig:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .bl-st .fig { font-size: 26px; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .bl-st .fig small { font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
 .bl-st span.s { font-size: 14px; color: var(--muted); line-height: 1.4; }
@@ -105,6 +107,7 @@ ul.bl-pay .ok { display: inline-flex; gap: 4px; align-items: center; color: var(
 /* The demo. */
 .lgd { display: grid; gap: 14px; }
 .lgd-eq { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; font-size: 15px; color: var(--muted); }
+.lgd-eq a { color: inherit; text-decoration: none; border-bottom: 1px dashed var(--border); } .lgd-eq a:hover, .lgd-eq a:focus-visible { border-bottom-color: var(--accent); }
 .lgd-eq b { color: var(--text); font-size: clamp(19px, 2.2vw, 24px); font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .lgd-eq .op { font-size: 22px; font-weight: 700; color: var(--text); }
 .lgd-eq .op.no { color: var(--bad); }
@@ -140,7 +143,9 @@ ul.lgd-checks li .i2, ul.lgd-checks li .w2 { display: none; } ul.lgd-checks li.n
 export function railsHtml(r: RailsRun | null = railsRun()): string {
   if (!r) return "";
   const lo = Math.min(...r.payments.map((p) => p.ms)), hi = Math.max(...r.payments.map((p) => p.ms));
-  const st = (n: number, cls: string, ic: string, title: string, fig: string, sub: string) => `<li class="bl-st ${cls} s${n}"><span class="n">${n}</span><span class="ic">${ic}</span><b>${esc(title)}</b><span class="fig">${fig}</span><span class="s">${sub}</span></li>`;
+  // Each step leads to the run's record (21 Nov, Max: "no dead zones, and every figure goes somewhere"): its figure is
+  // the link, and it covers the step.
+  const st = (n: number, cls: string, ic: string, title: string, fig: string, sub: string) => `<li class="bl-st ${cls} s${n}"><span class="n">${n}</span><span class="ic">${ic}</span><b>${esc(title)}</b><a class="fig" href="${esc(`${REPO_BLOB}${RAILS_RECORD}`)}" target="_blank" rel="noopener">${fig}</a><span class="s">${sub}</span></li>`;
   const flow = `<ol class="bl-flow" aria-label="${esc("A payment settles on its rail, is booked in T:0 as a PURPAY- journal entry at once, then is reconciled against the rail")}">
 ${st(1, "", icon("credit-card", 22), "Payment settles", `${r.payments.length}<small> payments · ${r.rails} rails</small>`, esc("Visa card and transfer on Airwallex, a payment on Alta (formerly Metal) testnet."))}
 <li class="bl-ln" aria-hidden="true"><i></i></li>
@@ -185,7 +190,7 @@ export function demoHtml(v: StatementView): string {
   return `<section class="card lg lgd" id="cent" aria-labelledby="bl-cent">
 <h2 id="bl-cent">${esc("Change one cent")}<span class="bl-tag demo">${esc("Demo · in your browser only")}</span></h2>
 <p class="bl-sub">${esc(`${v.company.replace(/\s*\(test company\)$/, "")}'s balance sheet as booked. Pick a line, change it by one cent.`)}</p>
-<p class="lgd-eq" aria-live="polite"><span>${esc("Assets")}</span><b data-sum="a">${esc(amt(v.totalAssets))}</b><span class="op" data-op>=</span><span>${esc("Liabilities + equity")}</span><b data-sum="le">${esc(amt(le))}</b><span class="lgd-st" data-st>${esc("Balanced")}</span></p>
+<p class="lgd-eq" aria-live="polite"><span>${esc("Assets")}</span><a href="#bk-bs" title="${esc("The balance sheet as booked")}"><b data-sum="a">${esc(amt(v.totalAssets))}</b></a><span class="op" data-op>=</span><span>${esc("Liabilities + equity")}</span><a href="#bk-bs" title="${esc("The balance sheet as booked")}"><b data-sum="le">${esc(amt(le))}</b></a><span class="lgd-st" data-st>${esc("Balanced")}</span></p>
 <div class="lgd-bars" aria-hidden="true"><div class="row" data-a><span>${esc("Assets")}</span>${assetBar}</div><div class="row" data-le><span>${esc("Liab. + equity")}</span>${leBar}</div></div>
 <div class="lgd-lines" role="group" aria-label="${esc("Balance sheet lines")}">${lines.map((x, i) => `<button type="button" data-i="${i}" data-side="${x.side}" data-cents="${x.line.cents}" aria-pressed="${i === 0 ? "true" : "false"}">${esc(x.line.name)} <b>${esc(amt(x.line.cents))}</b></button>`).join("")}</div>
 <div class="lgd-ctl"><button type="button" class="go" data-d="1">${esc("+ 1 cent")}</button><button type="button" data-d="-1">${esc("− 1 cent")}</button><button type="button" data-reset>${esc("Reset")}</button></div>
