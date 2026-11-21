@@ -14,6 +14,7 @@
 
 import { readFileSync } from "node:fs";
 import { committedWall, type EvidenceWall } from "./evidenceWall.js";
+import { waveScript } from "../ui/wave.js";
 import { FLOW, READER_CHIP, TRY_SAMPLE_RECORD } from "./heroFlow.js";
 import { esc, icon } from "./ui.js";
 
@@ -128,12 +129,11 @@ main.ent section.e-hero { isolation: isolate; }
   radial-gradient(60% 55% at 78% 30%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
   radial-gradient(45% 40% at 18% 92%, color-mix(in srgb, var(--accent-ink) 22%, transparent), transparent 70%),
   radial-gradient(30% 30% at 95% 0%, color-mix(in srgb, #e879f9 14%, transparent), transparent 70%); }
-canvas.h-wave { position: absolute; left: 0; top: 0; z-index: -1; width: 100%; height: min(100%, 900px); pointer-events: none;
-  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent), linear-gradient(90deg, rgba(0,0,0,.45), #000 55%); mask-image: linear-gradient(180deg, #000 70%, transparent), linear-gradient(90deg, rgba(0,0,0,.45), #000 55%);
-  -webkit-mask-composite: source-in; mask-composite: intersect; }
+canvas.h-wave { position: absolute; left: 0; top: 0; z-index: -1; width: 100%; height: min(100%, 940px); pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 78%, transparent); mask-image: linear-gradient(180deg, #000 78%, transparent); }
 @media (max-width: 1039px) { canvas.h-wave { height: min(100%, 760px); } }
 /* A phone: the wave runs below the words, behind the buttons and the card, never through the figures. */
-@media (max-width: 640px) { canvas.h-wave { top: 420px; height: 620px; -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 70%, transparent); mask-image: linear-gradient(180deg, transparent, #000 22%, #000 70%, transparent); } }
+@media (max-width: 640px) { canvas.h-wave { top: 0; height: min(100%, 1100px); -webkit-mask-image: linear-gradient(180deg, #000 80%, transparent); mask-image: linear-gradient(180deg, #000 80%, transparent); } }
 
 /* Three figures from the records. */
 ul.hstats { list-style: none; margin: 28px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; max-width: 34em; }
@@ -204,133 +204,5 @@ ${Array.from({ length: 5 }, (_, i) => { const a = 3 + i * 14; return `@keyframes
 @keyframes wf-no { 0%, 76% { clip-path: inset(0 100% 0 0); } 82%, 94% { clip-path: inset(0 0 0 0); } 100% { clip-path: inset(0 100% 0 0); } }
 `;
 
-/**
- * The wave: soft glowing points on two ribbons, the main one rising from the bottom left to the top right on three
- * layers at three speeds, a fainter counter-flow above it; a few brighter sparks that twinkle. Each point is one small
- * glow sprite drawn additively (dark) or plainly (light). The pointer, or a finger dragging over the hero, pushes the
- * points gently aside with a smooth falloff; a tap or click sends a ripple through them. The canvas never takes a click
- * (pointer-events: none): the listeners sit on the window and the hero, passive.
- */
-export const HERO_WAVE_JS = `
-(function () {
-  var c = document.querySelector("canvas.h-wave"), mm = window.matchMedia;
-  if (!c || !c.getContext || !mm) return;
-  var g = c.getContext("2d");
-  if (!g) return;
-  // Under reduced motion: one still frame, drawn once, and nothing listens to the pointer.
-  var still = mm("(prefers-reduced-motion: reduce)").matches;
-  var host = c.parentElement, W = 0, H = 0, dpr = 1, z = 1, raf = 0, seen = true, t0 = performance.now() - 24000;
-  var ribbons = [], sprites = {}, ripples = [];
-  var mx = -1e4, my = -1e4, px = -1e4, py = -1e4, box = null;
-  var darkQ = mm("(prefers-color-scheme: dark)");
-  function dark() { var a = document.documentElement.getAttribute("data-theme"); return a ? a === "dark" : darkQ.matches; }
-  // Glow sprites, drawn once: a sharp one (bright core, thin halo) for the near layer, a soft one (dim core, wide halo)
-  // for the far layers, a wide haze for the crest's bloom and the travelling lens light.
-  function sprite(rgb, core, halo) {
-    var s = document.createElement("canvas"), n = 64; s.width = s.height = n;
-    var x = s.getContext("2d"), gr = x.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
-    gr.addColorStop(0, "rgba(" + rgb + ",1)"); gr.addColorStop(core, "rgba(" + rgb + ",0.9)"); gr.addColorStop(halo, "rgba(" + rgb + ",0.22)"); gr.addColorStop(1, "rgba(" + rgb + ",0)");
-    x.fillStyle = gr; x.fillRect(0, 0, n, n); return s;
-  }
-  function rnd(i) { var v = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); }
-  function scale() { var r = c.getBoundingClientRect(); return c.clientWidth ? r.width / c.clientWidth : 1; }
-  var D = true;
-  function build() {
-    W = c.clientWidth; H = c.clientHeight; z = scale() || 1;
-    var phone = W < 700;
-    // Sharp on every screen: the screen's own pixel ratio, capped at 3 (2 on a phone).
-    dpr = Math.min((window.devicePixelRatio || 1) * z, (phone ? 2 : 3) * Math.max(1, z));
-    c.width = Math.max(1, Math.round(W * dpr)); c.height = Math.max(1, Math.round(H * dpr));
-    // As many points as the area holds, fewer on a small screen (a phone keeps its 60 frames a second).
-    var k = Math.max(0.3, Math.min(1.15, (W * H) / (1440 * 820))) * (phone ? 0.8 : 1);
-    D = dark();
-    sprites = D
-      ? { far: sprite("124,92,246", 0.05, 0.4), mid: sprite("176,160,255", 0.08, 0.32), near: sprite("246,244,255", 0.12, 0.26), warm: sprite("232,121,249", 0.06, 0.36), haze: sprite("139,92,246", 0.02, 0.3), lens: sprite("255,255,255", 0.04, 0.24) }
-      : { far: sprite("167,139,250", 0.05, 0.4), mid: sprite("139,92,246", 0.08, 0.32), near: sprite("109,40,217", 0.14, 0.26), warm: sprite("192,132,252", 0.06, 0.36), haze: sprite("167,139,250", 0.02, 0.3), lens: sprite("196,181,253", 0.04, 0.24) };
-    // A ribbon: its line (y at u = 0 and 1, as shares of the height), sway, thickness, direction; its layers far to near.
-    ribbons = [
-      { y0: 1.02, y1: 0.22, thick: 0.3, dir: 1, layers: [
-        { rows: 14, cols: Math.round(170 * k), amp: 0.06, speed: 0.006, size: 3.4, a: 0.32, ph: 0, z: 0.6, s: "far", par: 0.35 },
-        { rows: 11, cols: Math.round(130 * k), amp: 0.08, speed: 0.011, size: 2.6, a: 0.6, ph: 1.7, z: 0.85, s: "mid", par: 0.7 },
-        { rows: 7, cols: Math.round(96 * k), amp: 0.1, speed: 0.017, size: 2.2, a: 0.95, ph: 3.1, z: 1.1, s: "near", par: 1.2 } ] },
-      { y0: 0.52, y1: 0.02, thick: 0.16, dir: -1, layers: [
-        { rows: 8, cols: Math.round(110 * k), amp: 0.05, speed: 0.005, size: 3.2, a: 0.26, ph: 4.2, z: 0.6, s: "warm", par: 0.3 },
-        { rows: 5, cols: Math.round(80 * k), amp: 0.07, speed: 0.009, size: 2.4, a: 0.45, ph: 5.3, z: 0.85, s: "mid", par: 0.6 } ] }
-    ];
-    var id = 0;
-    ribbons.forEach(function (R) { R.layers.forEach(function (L) { var n = L.rows * L.cols; L.vary = new Float32Array(n); L.spark = new Uint8Array(n);
-      for (var i = 0; i < n; i++, id++) { L.vary[i] = 0.55 + rnd(id) * 0.9; L.spark[i] = rnd(id * 7.3) > 0.985 ? 1 : 0; } }); });
-  }
-  // The ribbon's centre line at u (no rows), for the crest's haze and the lens light.
-  function crest(R, L, u, t) { return H * (R.y0 + (R.y1 - R.y0) * u) + H * L.amp * (Math.sin(u * 6.2 + t * 0.45 + L.ph) + 0.3 * Math.sin(u * 13 - t * 0.3 + L.ph)); }
-  function frame(now) {
-    raf = 0;
-    var t = (now - t0) / 1000;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.clearRect(0, 0, W, H);
-    g.globalCompositeOperation = D ? "lighter" : "source-over";
-    px += (mx - px) * 0.1; py += (my - py) * 0.1;
-    // Parallax: the layers drift a little with the pointer, the near ones most.
-    var ox = px > -1e3 ? (px / W - 0.5) * 18 : 0, oy = py > -1e3 ? (py / H - 0.5) * 12 : 0;
-    ripples = ripples.filter(function (r) { return t - r.t < 2.2; });
-    // The lens light: one slow highlight that travels along the main ribbon.
-    var uL = (t * 0.045) % 1, main = ribbons[0], mainL = main.layers[1];
-    // The crest's haze: wide faint glows along the main ribbon's centre line.
-    g.globalAlpha = D ? 0.06 : 0.05;
-    for (var hq = 0; hq <= 28; hq++) { var hu = hq / 28, hx = (-0.08 + hu * 1.16) * W, hy = crest(main, mainL, hu, t), hr = H * 0.2 * (0.6 + 0.4 * Math.sin(hu * 5 + t * 0.3));
-      g.drawImage(sprites.haze, hx - hr, hy - hr, hr * 2, hr * 2); }
-    for (var q = 0; q < ribbons.length; q++) {
-      var R = ribbons[q];
-      for (var l = 0; l < R.layers.length; l++) {
-        var L = R.layers[l], img = sprites[L.s], idx = 0, dx0 = ox * L.par, dy0 = oy * L.par;
-        for (var r = 0; r < L.rows; r++) {
-          var v = r / (L.rows - 1) - 0.5;
-          for (var i = 0; i < L.cols; i++, idx++) {
-            var u = ((i / L.cols + R.dir * t * L.speed + r * 0.013) % 1 + 1) % 1;
-            var X = (-0.08 + u * 1.16) * W + dx0;
-            var Y = crest(R, L, u, t) + dy0 + v * H * R.thick * L.z * (0.5 + 0.5 * Math.sin(u * 4.1 + t * 0.28 + L.ph)) * Math.cos(u * 3 + t * 0.35 + r * 0.15);
-            var ex = X - px, ey = Y - py, dd = ex * ex + ey * ey;
-            if (dd < 25600) { var e = Math.sqrt(dd) + 1, f = 1 - e / 160; f = f * f * 26 * L.z; X += ex / e * f; Y += ey / e * f; }
-            for (var w = 0; w < ripples.length; w++) { var rp = ripples[w], age = t - rp.t, rad = age * 420, rx = X - rp.x, ry = Y - rp.y, de = Math.sqrt(rx * rx + ry * ry) + 1, band = 1 - Math.abs(de - rad) / 70;
-              if (band > 0) { var p = band * band * 16 * (1 - age / 2.2) * L.z; X += rx / de * p; Y += ry / de * p; } }
-            var lens = q === 0 ? Math.exp(-((u - uL) * (u - uL)) / 0.0018) : 0;
-            var tw = L.spark[idx] ? 1.4 + 0.9 * Math.sin(t * 3 + idx) : 1;
-            var a = L.a * L.vary[idx] * Math.min(1, u * 6, (1 - u) * 6) * (0.35 + 0.65 * Math.abs(Math.sin(u * 14 - t * 0.9 + r * 1.3 + L.ph))) * (1 - Math.abs(v) * 1.2) * (D ? 1 : 0.7) * (tw > 1 ? 1.6 : 1) * (1 + lens * 1.6);
-            if (a < 0.025) continue;
-            var sz = L.size * L.vary[idx] * tw * (L.spark[idx] ? 1.8 : 1) * (1 + lens * 0.6);
-            g.globalAlpha = a > 1 ? 1 : a;
-            g.drawImage(img, X - sz, Y - sz, sz * 2, sz * 2);
-          }
-        }
-      }
-    }
-    // The lens light itself: a soft bloom where the highlight is on the crest.
-    var lx = (-0.08 + uL * 1.16) * W + ox * 0.7, ly = crest(main, mainL, uL, t) + oy * 0.7, lr = Math.min(W, H) * 0.12, fade = Math.min(1, uL * 6, (1 - uL) * 6);
-    g.globalAlpha = (D ? 0.35 : 0.25) * fade; g.drawImage(sprites.lens, lx - lr, ly - lr, lr * 2, lr * 2);
-    g.globalAlpha = 1;
-    if (!still) go();
-  }
-  function go() { if (!raf && seen && !document.hidden) raf = requestAnimationFrame(frame); }
-  function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
-  build();
-  if (still) { frame(performance.now()); if ("ResizeObserver" in window) new ResizeObserver(function () { build(); frame(performance.now()); }).observe(c); return; }
-  go();
-  if ("ResizeObserver" in window) new ResizeObserver(function () { build(); }).observe(c); else addEventListener("resize", build);
-  if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { seen = es[0].isIntersecting; if (seen) go(); else stop(); }).observe(c);
-  document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else go(); });
-  darkQ.addEventListener && darkQ.addEventListener("change", build);
-  // Under reduced motion the script returns at its start: the canvas is not drawn and the still gradient stands.
-  // Where the pointer or a finger is, in the canvas's own pixels; nothing here prevents a click, a tap or a scroll.
-  function at(x, y) { if (!box) box = c.getBoundingClientRect(); var s = box.width / (c.clientWidth || 1) || 1; return [(x - box.left) / s, (y - box.top) / s]; }
-  function move(x, y) { var p = at(x, y); if (p[1] < 0 || p[1] > H) { mx = my = -1e4; return; } mx = p[0]; my = p[1]; if (px < -1e3) { px = mx; py = my; } }
-  function ripple(x, y) { var p = at(x, y); if (p[1] >= 0 && p[1] <= H && ripples.length < 4) ripples.push({ x: p[0], y: p[1], t: (performance.now() - t0) / 1000 }); }
-  addEventListener("pointermove", function (e) { if (e.pointerType === "mouse" || e.pointerType === "pen") move(e.clientX, e.clientY); }, { passive: true });
-  addEventListener("pointerdown", function (e) { ripple(e.clientX, e.clientY); }, { passive: true });
-  if (host) {
-    host.addEventListener("touchmove", function (e) { var p = e.touches[0]; if (p) move(p.clientX, p.clientY); }, { passive: true });
-    host.addEventListener("touchend", function () { mx = my = -1e4; px = py = -1e4; }, { passive: true });
-    host.addEventListener("mouseleave", function () { mx = my = -1e4; px = py = -1e4; });
-  }
-  addEventListener("scroll", function () { box = null; }, { passive: true });
-  addEventListener("resize", function () { box = null; }, { passive: true });
-})();`;
+/** Home's hero mounts the site's wave (src/ui/wave.ts) on its canvas, calm behind the headline. */
+export const HERO_WAVE_JS = waveScript({ selector: "canvas.h-wave", placement: "hero" });
