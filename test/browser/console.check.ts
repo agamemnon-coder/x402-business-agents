@@ -121,8 +121,9 @@ async function firstRun(p: Page, origin: string, slug: string, key: string, snap
 // The sign-in in its two zones (the illustration, the card, the trust line), at a phone and a laptop, light and dark:
 // both zones in view, nothing wider than the screen, no large empty band, the feather mark, no console or CSP error.
 // Screenshots (the viewport) when a directory is given: console-signin-<width>-<scheme>.png.
-for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"]] as const) {
-  const c = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
+// 2560 and 3840 px since 21 Nov (Max: "razor-sharp at 4K"): the same two zones, the card no narrow column.
+for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"], [2560, 1440, "dark"], [3840, 2160, "light"]] as const) {
+  const c = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots && width < 2000 ? 2 : 1 });
   const p = await c.newPage();
   const errs: string[] = [];
   p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
@@ -147,6 +148,11 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
     }
   }
   ok(await p.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
+  // 21 Nov (the new direction): the passkey the one primary action, with its line on what a passkey is; the guest way
+  // below it; on a wide screen the panel shows how a payment is approved (an agent, alone within its limit, Face ID above).
+  ok(await p.locator(".auth .btn.primary").count() === 1 && await p.isVisible(".auth .pk-note") && await p.isVisible("#guest"), `${tag}: one primary action (the passkey), its note, the guest way`);
+  if (width >= 1024) ok(await p.locator(".side-flow li").count() === 3 && await p.isVisible(".side-flow"), `${tag}: the panel shows how a payment is approved`);
+  if (width >= 2560 && card) ok(card.width >= 560, `${tag}: the card is no narrow column (${Math.round(card.width)} px)`);
   ok((await p.textContent(".trust"))!.includes(tr("en", "cs.trust_works")) && (await p.textContent(".trust"))!.includes(tr("en", "cs.trust_test")), `${tag}: the trust line`);
   ok(await p.locator("header .brand .mk svg").count() === 1, `${tag}: the brand's feather mark`);
   // 12 Nov: signed out too, the test-money chip is on the page, in the console's bar under the site's header.
