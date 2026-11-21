@@ -53,6 +53,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test examples cloud/src scripts",
     "health": "tsx src/cli/health.ts",
+    "policy:rego": "tsx src/cli/policyRego.ts",
     "bootstrap": "tsx src/cli/bootstrap.ts",
     "trade": "tsx src/cli/trade.ts",
     "proposals": "tsx src/cli/proposals.ts",

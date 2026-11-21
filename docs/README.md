@@ -58,6 +58,7 @@ and file names from before keep "Metal". Back to the [README](../README.md); eve
 - [enterprise.md](enterprise.md): what a finance team gets beyond the demo, each with where to check it.
 - [who-does-what.md](who-does-what.md): who does what: Purser, the rails and Claude, each with its part.
 - [cfo-policy.md](cfo-policy.md): the CFO policy.
+- [policy-opa.md](policy-opa.md): the CFO policy as OPA/Rego for teams on Open Policy Agent, held to Purser's own decisions by a test in CI.
 - [phone-approval.md](phone-approval.md): the dashboard and approval on a phone.
 - [see-it.md](see-it.md), [gallery.md](gallery.md) and [charts.md](charts.md): the product in pictures, and the proof in charts drawn from the records.
 
