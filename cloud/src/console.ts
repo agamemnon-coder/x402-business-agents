@@ -367,7 +367,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 /* 21 Nov (Max: "it must not cover the footer's Test money only"): Ask Purser's round button keeps the bottom-right
    corner; signed out, the screen is one screen (no room added below it), and on a phone the trust line ends above it. */
 .signed-out > #pask-space { display: none; }
-@media (max-width: 1023px) { .signed-out .trust { padding-bottom: calc(64px + env(safe-area-inset-bottom)); } }
+/* (the trust line clears the button by its right padding: src signInLook.ts, so it stays on the first phone screen) */
 @media (min-width: 1024px) {
   .signed-out { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 1fr auto auto 1fr; }
   .signed-out header.top { grid-column: 1 / -1; grid-row: 1; }
