@@ -485,6 +485,7 @@ describe("the model call", () => {
     expect(await m.countTokens!({ system: "", messages: [{ role: "user", content: "x" }], maxTokens: 1 })).toBe(1234);
     expect(sent[1]).toMatchObject({ url: "https://api.anthropic.com/v1/messages/count_tokens", model: "claude-haiku-5-5" });
     expect(sent[1]).not.toHaveProperty("stream");
+    expect(sent[1]).not.toHaveProperty("system");
   });
 });
 

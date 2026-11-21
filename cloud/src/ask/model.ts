@@ -128,7 +128,8 @@ export function claudeAskModel(apiKey: string, fetcher: typeof fetch = (i, init)
           }
         }
         if (stop === "refusal") throw new Error("the model declined");
-        finish({ micros: askCostMicros(usage), stop, content: blocks.filter(Boolean) });
+        // Sent back next round as they came; an empty text block is not (the API refuses one in a request).
+        finish({ micros: askCostMicros(usage), stop, content: blocks.filter((b) => b && !(b.type === "text" && !b.text)) });
       } catch (e) {
         // What it may have cost: the input counted, and the output at most the cap.
         const worst = { ...usage, output: Math.max(usage.output, usage.input + usage.cache_read + usage.cache_write ? req.maxTokens : 0) };
@@ -138,14 +139,14 @@ export function claudeAskModel(apiKey: string, fetcher: typeof fetch = (i, init)
       } finally {
         clearTimeout(timer);
         // Read no further (a check stopped the answer): the round ends here, at what it may have cost.
-        if (!settled) { ctl.abort(); finish({ micros: askCostMicros({ ...usage, output: Math.max(usage.output, req.maxTokens) }), stop: "stopped", content: blocks.filter(Boolean) }); }
+        if (!settled) { ctl.abort(); finish({ micros: askCostMicros({ ...usage, output: Math.max(usage.output, req.maxTokens) }), stop: "stopped", content: [] }); }
       }
     }
     return { text: text(), done: () => done };
   };
   model.countTokens = async (req) => {
     const { model: m, system, messages, tools } = askBody(req, false) as { model: string; system: string; messages: unknown; tools?: unknown };
-    const res = await fetcher("https://api.anthropic.com/v1/messages/count_tokens", { method: "POST", headers: HEADERS(apiKey), body: JSON.stringify({ model: m, system, messages, ...(tools ? { tools } : {}) }), signal: AbortSignal.timeout(10_000) });
+    const res = await fetcher("https://api.anthropic.com/v1/messages/count_tokens", { method: "POST", headers: HEADERS(apiKey), body: JSON.stringify({ model: m, ...(system ? { system } : {}), messages, ...(tools ? { tools } : {}) }), signal: AbortSignal.timeout(10_000) });
     if (!res.ok) throw new Error(`count_tokens answered HTTP ${res.status}`);
     const n = ((await res.json()) as { input_tokens?: unknown }).input_tokens;
     if (typeof n !== "number" || !Number.isFinite(n)) throw new Error("count_tokens gave no count");

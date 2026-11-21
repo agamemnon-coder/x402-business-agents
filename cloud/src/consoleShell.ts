@@ -245,7 +245,9 @@ export const SHELL_CSS = `
   .signed-in .who-am-i #co { min-width: 0; margin-right: auto; }
   .signed-in #ask-slot { display: inline-flex; flex: none; }
   .signed-in .appbar .test { margin-left: 2px; padding: 8px; }
-  .appbar #pask-fab { position: static; min-height: 36px; height: 36px; width: 36px; padding: 0; justify-content: center; border-radius: 10px; box-shadow: none; background: var(--accent-soft); color: var(--accent); }
+  .appbar #pask-fab { position: static; min-height: 36px; height: 36px; width: 36px; padding: 0; justify-content: center; border-radius: 10px; border: 0; box-shadow: none; background: transparent; color: var(--accent); transform: none; }
+  .appbar #pask-fab svg { width: 32px; height: 32px; }
+  .appbar #pask-fab:hover { transform: none; box-shadow: none; }
   .appbar #pask-fab .pask-t { display: none; }
   .signed-in .btabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; height: calc(var(--tabbar) + env(safe-area-inset-bottom)); padding: 0 4px env(safe-area-inset-bottom);
     background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: saturate(1.4) blur(16px); -webkit-backdrop-filter: saturate(1.4) blur(16px); border-top: 1px solid var(--border); }
