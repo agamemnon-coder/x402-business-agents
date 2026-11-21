@@ -126,7 +126,7 @@ describe("the core line", () => {
     // The owner's centred top (13 Nov): the logo, the title, the pitch, the first sentence, the links, the badges, all in
     // the first 16 lines.
     const top = words(SOURCES.README!.split("\n").slice(0, 16).join("\n").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"));
-    // 15 Nov (clarity): the README opens with the idea in one sentence (IDEA: "one changed cent breaks the signature");
+    // 15 Nov (clarity): the README opens with the idea in one sentence (IDEA; review 21 Nov: "one changed cent and the approval no longer matches the terms");
     // the first of the three sentences follows the Kit 11 table.
     expect(top).toContain(IDEA);
     expect(SOURCES.README!).toContain(DIFFERENTIATORS[0]);

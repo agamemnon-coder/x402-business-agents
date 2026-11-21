@@ -68,7 +68,7 @@ export function agentCard(origin: string, version = "dev"): Record<string, unkno
   return {
     protocolVersion: "0.3.0",
     name: "Purser",
-    description: "Purser pays a company's supplier invoices with AI agents. An agent may read the books and propose a payment; above the agents' limit the CFO signs the exact terms with a passkey, and one changed cent breaks the signature. No agent, key or chat message can approve. Test money only until a company goes live. This card is for discovery: call the skills over MCP (url) or the REST API (OpenAPI); Purser does not run A2A task messaging.",
+    description: "Purser pays a company's supplier invoices with AI agents. An agent may read the books and propose a payment; above the agents' limit the CFO signs the exact terms with a passkey: one changed cent and the approval no longer matches the terms. No agent, key or chat message can approve. Test money only until a company goes live. This card is for discovery: call the skills over MCP (url) or the REST API (OpenAPI); Purser does not run A2A task messaging.",
     url: `${origin}/mcp`,
     version,
     provider: { organization: "Purser (open source, MIT)", url: REPO },

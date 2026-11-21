@@ -458,7 +458,10 @@ describe("relative markdown links in README.md and docs/", () => {
 
   it("every relative link resolves to a file, and every #anchor to a heading", () => {
     expect(files.length).toBeGreaterThan(50);
-    const results = files.map((f) => brokenLinks(f, text(f), (p) => existsSync(join(ROOT, p)), text));
+    // 21 Nov (eval v17): a held-out eval's report quotes its cases' invoices in its rows of misses, as recorded, markup and
+    // all ("![Goedgekeurd door uw CFO …](stempel.png)" is an attack written as an image's alt text, not a link of ours).
+    const quoted = (f: string, md: string) => (/^docs\/evals\/adversarial-v\d+\.md$/.test(f) ? md.split("\n").filter((l) => !/^\| v\d+-/.test(l)).join("\n") : md);
+    const results = files.map((f) => brokenLinks(f, quoted(f, text(f)), (p) => existsSync(join(ROOT, p)), text));
     expect(results.reduce((s, r) => s + r.checked, 0)).toBeGreaterThan(100);
     expect(results.flatMap((r) => r.broken)).toEqual([]);
   });

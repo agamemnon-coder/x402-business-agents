@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" class="pv pv-life-wide" viewBox="0 0 1200 250" width="1200" height="250" role="img" aria-labelledby="pv-life-wide-t pv-life-wide-d">
 <title id="pv-life-wide-t">One payment's life</title><desc id="pv-life-wide-d">Eight steps: an invoice arrives; Claude reads it; Purser's code checks it; the exact terms are hashed; above a limit, the CFO signs that hash with Face ID; the rail checks with its own controls; the payment is made; it is written to the ledger. Each layer can stop it on its own.</desc>
-<style>.pv{--bg:#f7f8fa;--surface:#ffffff;--sunken:#f1f3f7;--border:#e3e6ec;--text:#0b1220;--muted:#586174;--faint:#646d7e;--accent:#4f46e5;--accent-soft:#eef0ff;--ok:#0b7d43;--ok-soft:#e6f6ee;--bad:#c5363c;--bad-soft:#fdecec;--metal:#0b7a70;--metal-soft:#e3f5f2;--awx:#ad4a0c;--awx-soft:#fdf0e7;--claude:#a84d2b;--claude-soft:#fbefe9;--a-sourcing:#2563eb}
+<style>.pv{--bg:#f7f6fb;--surface:#ffffff;--sunken:#f2f0f8;--border:#e4e1ef;--text:#0e0b1a;--muted:#57536b;--faint:#646078;--accent:#6d28d9;--accent-soft:#f1ebff;--ok:#0b7d43;--ok-soft:#e6f6ee;--bad:#c5363c;--bad-soft:#fdecec;--metal:#0b7a70;--metal-soft:#e3f5f2;--awx:#ad4a0c;--awx-soft:#fdf0e7;--claude:#a84d2b;--claude-soft:#fbefe9;--a-sourcing:#2563eb}
 .pv { display: block; width: 100%; height: auto; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
 .pv .pv-bg { fill: var(--bg); }
 .pv .pv-box { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }

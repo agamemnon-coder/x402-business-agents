@@ -576,18 +576,37 @@ function extraRuns(): RunRow[] {
 
   // 19 Nov: the public /try walked as a visitor, recorded with every answer (docs/runs/2026-11-19-live-try.md); one row a
   // recorded series, its walks its rate (src/redesign/liveTry.ts reads every series in that shape).
+  // Review, 21 Nov: each step's count is over the walks that reached it, the walks stopped before it said beside it; the
+  // browsers as the series records them ("WebKit 3 + Chromium 6"), never one browser for a mixed series.
+  const walksN = (k: number) => (k === 1 ? "1 walk" : `${k} walks`);
+  const stops = (t: { runs: number; signed: number; centTried: number; holdTried: number }) => [
+    t.runs > t.signed ? `${walksN(t.runs - t.signed)} stopped before the approval` : "",
+    t.signed > t.centTried ? `${walksN(t.signed - t.centTried)} stopped before the one-cent change` : "",
+    t.centTried > t.holdTried ? `${walksN(t.centTried - t.holdTried)} stopped before the cash check's invoice` : "",
+  ].filter(Boolean);
+  const browsersOf = (rec: { aggregate: Record<string, unknown>; log: string | null }): string => {
+    const by = rec.aggregate.by_browser;
+    if (by && typeof by === "object") {
+      const name = (k: string) => { const b = k.split(" ")[0]!; return b === "webkit" ? "WebKit" : b.charAt(0).toUpperCase() + b.slice(1); };
+      const n = new Map<string, number>();
+      for (const [k, v] of Object.entries(by as Record<string, number>)) n.set(name(k), (n.get(name(k)) ?? 0) + v);
+      return [...n].sort((x, y) => x[1] - y[1]).map(([b, c]) => `${b} ${c}`).join(" + ");
+    }
+    return "Chromium";
+  };
   for (const rec of liveTryRecords()) {
     const t = liveTryTotals([rec]);
     if (!t || !t.runs) continue;
+    const browsers = browsersOf(rec);
     out.push({
       // An id that starts with a letter: the key is the row's anchor and a CSS selector.
       key: `try-${rec.dir.split("/").pop()!}`, iso: rec.last, date: day(rec.first), kind: "sandbox", partners: ["Airwallex", "Claude"],
       name: `The public /try, walked ${t.runs} times as a visitor`,
-      line: `${countOf(t.paid, t.transfers)} Airwallex sandbox transfers PAID (by the sandbox's simulation), ${countOf(t.refused, t.runs, true)} one-cent changes refused, ${countOf(t.held, t.runs, true)} cash holds by code. A test passkey.`,
+      line: `${countOf(t.paid, t.transfers)} Airwallex sandbox transfers PAID (by the sandbox's simulation), ${countOf(t.refused, t.centTried, true)} one-cent changes refused, ${countOf(t.held, t.holdTried, true)} cash holds by code. A test passkey.`,
       rate: { done: t.siteStepsPassed, of: t.runs, what: "walks passed every site step" },
       title: "The public /try, recorded", rails: "Airwallex sandbox (SWIFT transfers), Claude, virtual test passkey",
-      what: `The judge's journey on https://kit11.max-31b.workers.dev/try, ${t.runs} times in Chromium, each a fresh test company: an invoice paid by the agent alone, one approved with a passkey and paid, a one-cent change refused, the proof checked on /verify, an invoice held by the cash check.`,
-      checks: `${countOf(t.approvalsMatching, t.runs)} approvals carry the hash the transfer carries; ${countOf(t.proofsValid, t.proofs, true)} proof files VALID; ${t.claude.entries} Claude entries, ${t.claude.fallbacks} fallbacks.`,
+      what: `The judge's journey on https://kit11.max-31b.workers.dev/try, ${t.runs} times ${browsers.includes("+") ? `(${browsers})` : `in ${browsers}`}, each a fresh test company: an invoice paid by the agent alone, one approved with a passkey and paid, a one-cent change refused, the proof checked on /verify, an invoice held by the cash check.`,
+      checks: `${stops(t).length ? `Each count is over the walks that reached its step: ${stops(t).join(", ")}. ` : ""}${countOf(t.approvalsMatching, t.signed)} ${t.signed < t.runs ? "signed approvals" : "approvals"} carry the hash the transfer carries; ${countOf(t.proofsValid, t.proofs, true)} proof files VALID; ${t.claude.entries} Claude entries, ${t.claude.fallbacks} fallbacks.`,
       money: "Sandbox · test money",
       ids: [],
       files: [{ label: "summary (JSON)", href: blob(rec.summary) }, ...(rec.log ? [{ label: "run log", href: blob(rec.log) }] : [])],
@@ -815,6 +834,7 @@ const CSS = `.runsp h1 { margin: 24px 0 6px; }
 /* The filters' anchors sit at the filter row: without the script a tap lands there, under the header. */
 .runsp .fa { display: block; height: 0; scroll-margin-top: 72px; } .runsp.js .fa { display: none; }
 .runsp nav.flt { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 6px; }
+.runsp .fltn { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
 .runsp nav.flt a { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font: 650 13.5px/1 Inter, system-ui, sans-serif; text-decoration: none; white-space: nowrap; }
 .runsp nav.flt a b { font-weight: 650; opacity: .75; font-variant-numeric: tabular-nums; }
 ${FILTER_CSS}
@@ -993,6 +1013,15 @@ export function runsSummary(live: RunRow[], partial: RunRow[], rehearsals: RunRo
   ];
 }
 
+/**
+ * What the filters' counts overlap (review, 21 Nov): a run with several partners, or both sandbox and testnet, is
+ * counted under each filter, so their counts add up to more than All; the line says so, with both sums, when they do.
+ */
+export const overlapLine = (filters: readonly { n: number }[], all: number): string => {
+  const sum = filters.reduce((n, f) => n + f.n, 0);
+  return sum > all ? `<p class="fltn">${esc(`A run with several partners or rails is counted under each filter: together they count ${sum}, for ${all} runs.`)}</p>` : "";
+};
+
 export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes()): string {
   const rows = newestFirst(all), live = rows.filter(isLive), rehearsals = rows.filter(isRehearsal), partial = rows.filter((r) => !isRehearsal(r) && !!r.partial);
   const last = lastLive(live);
@@ -1009,7 +1038,7 @@ ${runsStrip(live)}
 <p class="last">Last live run: ${esc(last.date)}. ${pl(live.length, "live run")}, newest first, every id from its own record. Test money only; what was simulated is said on each run.</p>
 ${faceIdToPaid(times)}
 <span class="fa" id="all"></span>${filters.map((f) => `<span class="fa" id="${f.id}"></span>`).join("")}
-<nav class="flt" aria-label="Filter the runs"><a class="all" href="#all">All <b>${live.length}</b></a>${filters.map((f) => `<a href="#${f.id}">${esc(f.label)} <b>${f.n}</b></a>`).join("")}</nav>
+<nav class="flt" aria-label="Filter the runs"><a class="all" href="#all">All <b>${live.length}</b></a>${filters.map((f) => `<a href="#${f.id}">${esc(f.label)} <b>${f.n}</b></a>`).join("")}</nav>${overlapLine(filters, live.length)}
 <ol class="tl">
 ${live.map((r, i) => entry(r, { newest: i === 0, folded: true, signed: signed[r.key] })).join("\n")}
 </ol>

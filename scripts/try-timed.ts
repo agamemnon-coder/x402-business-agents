@@ -3,7 +3,7 @@
 // company, the clean sample invoice (EUR 1,850.00, a test supplier), approved with Chromium's virtual passkey and paid on
 // the simulated bank; then the same signature sent with EUR 1,850.01, refused. Test money only; no key of ours is used.
 // Two times per run, read from this machine's clock (performance.now() in Node, around the clicks):
-//   start_to_paid_ms:   the click on "Start with a test company" to the Paid stamp on screen;
+//   start_to_paid_ms:   the click on "Start the live demo" (before 21 Nov: "Start with a test company") to the Paid stamp on screen;
 //   refusal_round_trip_ms: the click on Pay with one cent more to the refusal on screen.
 // Each run's two downloaded proof bundles are checked with src/proof/bundle.ts as well.
 // The deployed site caps starts per hour and per 48 hours: when it refuses a start, the loop stops and says so.
@@ -41,7 +41,7 @@ for (let i = 1; i <= runs; i++) {
     await cdp.send("WebAuthn.enable");
     await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
     await page.goto(TRY);
-    const start = page.getByRole("button", { name: /Start with a test company/ });
+    const start = page.getByRole("button", { name: /Start the live demo|Start with a test company/ });
     await start.waitFor({ timeout: 30_000 });
     const t0 = performance.now();
     await start.click();

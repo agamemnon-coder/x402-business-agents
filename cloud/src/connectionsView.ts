@@ -31,12 +31,13 @@ const cxSlug=(s)=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace
 const CX_TONE={live:'ok',sandbox:'tmoney',testnet:'tmoney',built_run_once_in_a_sandbox:'tmoney',built_not_tested_live:'warn',planned:'plan'};
 // Each card's mark: the products' own logos where they are on record (src/ui/logos/README.md; the page passes them in as logos), else
 // letters; an icon for Purser's own ways in and out.
-const CX_LOGO={airwallex:['airwallex'],alta:['alta'],'visa-airi':['visa'],claude:['claude'],mcp:['mcp'],chatgpt:['chatgpt'],cursor:['cursor'],vscode:['vscode'],
+const CX_LOGO={airwallex:['airwallex'],alta:['alta'],claude:['claude'],mcp:['mcp'],chatgpt:['chatgpt'],cursor:['cursor'],vscode:['vscode'],
   gemini:['gemini'],windsurf:['windsurf'],'awx-codemode':['airwallex'],sdks:['typescript','python'],'zapier-make':['zapier','make'],n8n:['n8n'],
   'xero-csv':['xero'],'xero-runner':['xero'],xero:['xero'],'quickbooks-csv':['quickbooks'],quickbooks:['quickbooks'],'exact-csv':['exact'],exact:['exact'],
   moneybird:['moneybird'],'bc-odoo':['microsoft','odoo'],'slack-teams':['slack','teams'],inbox:['gmail','microsoft'],'sign-in':['google','microsoft','apple'],
   alerts:['whatsapp','slack','teams'],workplace:['google','microsoft']};
-const CX_MARK={t0:'T:0','peppol-ubl':'P','peppol-network':'P',iso20022:'ISO'};
+// Visa in text only (review, 21 Nov): no Visa mark on Purser's pages outside /visa's attribution.
+const CX_MARK={'visa-airi':'Visa',t0:'T:0','peppol-ubl':'P','peppol-network':'P',iso20022:'ISO'};
 const CX_ICON={'agent-api':'credit-card',rest:'link-2',webhook:'zap',a2a:'sparkles',export:'download'};
 // Where a connection stands for this company, from the rows of GET /v1/connections/mine it names: connected when one of
 // them is, not offered when none of them is offered on this cloud, else not connected (the company can switch it on).

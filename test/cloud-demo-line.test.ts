@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import { consolePage } from "../cloud/src/console.js";
 import { MESSAGES } from "../src/ui/i18n.js";
 
-const LINE = "Demo company: made-up data, simulated bank, test money. The console never pays.";
+// Review, 21 Nov: one line for both rails, as the payments are labelled ("Airwallex sandbox or simulated bank").
+const LINE = "Demo company: made-up data, test money; each payment on the Airwallex sandbox or a simulated bank, labelled per payment. The console never pays.";
 
 describe("the demo company's one line", () => {
   it("is the ribbon's words, in English and in Dutch", () => {

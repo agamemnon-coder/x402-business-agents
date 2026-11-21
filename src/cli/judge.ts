@@ -16,7 +16,7 @@ import { createHash } from "node:crypto";
 import type { Server } from "node:http";
 import express from "express";
 import { T0_READBACK_PATH } from "../accounting/t0Readback.js";
-import { T0_READBACK_TEXT, AWX_CALLS_CSP, AWX_CALLS_PAGE, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage, BOOKS_CSP, BOOKS_PAGE, sendInspector,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, PRIVACY_CSP, PRIVACY_PAGE, MOVED, STATUS_OFFLINE_CSP, STATUS_PAGE_OFFLINE } from "../servers/dashboard.js";
+import { T0_READBACK_TEXT, AWX_CALLS_CSP, AWX_CALLS_PAGE, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage, BOOKS_CSP, BOOKS_PAGE, sendInspector,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, PRIVACY_CSP, PRIVACY_PAGE, BUSINESS_CSP, BUSINESS_PAGE, ONE_PAGER_CSP, ONE_PAGER_PAGE, MOVED, STATUS_OFFLINE_CSP, STATUS_PAGE_OFFLINE } from "../servers/dashboard.js";
 import { readFileSync } from "node:fs";
 import { loadRecord } from "../redesign/run.js";
 import { localTryAnswer } from "../try/local.js";
@@ -92,6 +92,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/security", page(SECURITY_CSP, () => SECURITY_PAGE));
   app.get("/docs", page(DOCS_CSP, () => DOCS_PAGE));
   app.get("/privacy", page(PRIVACY_CSP, () => PRIVACY_PAGE));
+  app.get("/business", page(BUSINESS_CSP, () => BUSINESS_PAGE));
+  app.get("/one-pager", page(ONE_PAGER_CSP, () => ONE_PAGER_PAGE));
   // /status, the offline copy: this server has no /health and no runner, so the page says so (no script, no request).
   app.get("/status", page(STATUS_OFFLINE_CSP, () => STATUS_PAGE_OFFLINE));
   app.get("/airwallex/calls", page(AWX_CALLS_CSP, () => AWX_CALLS_PAGE));
@@ -150,7 +152,7 @@ a{display:inline-block;margin-top:4px;padding:10px 16px;border-radius:8px;backgr
 const LIVE_ONLY_CSP = `default-src 'none'; style-src 'sha256-${createHash("sha256").update(/<style>([\s\S]*?)<\/style>/.exec(LIVE_ONLY_PAGE)![1]!, "utf8").digest("base64")}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
 /** The pages `--check` fetches once each: every page a juror reaches, both CFO dashboards included. */
-export const CHECK_PATHS = ["/", "/home", "/watch", "/replay", "/proof", "/verify", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/alta", "/metal/report", "/visa", "/airwallex", "/airwallex/calls", "/claude", "/security", "/docs", "/privacy", "/status", "/books", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/tasks", "/month", "/lab"];
+export const CHECK_PATHS = ["/", "/home", "/watch", "/replay", "/proof", "/verify", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/alta", "/metal/report", "/visa", "/airwallex", "/airwallex/calls", "/claude", "/security", "/docs", "/privacy", "/business", "/one-pager", "/status", "/books", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/tasks", "/month", "/lab"];
 
 /**
  * The menu printed at start. The main run's CFO dashboard comes first, and each dashboard is named by its own run, its

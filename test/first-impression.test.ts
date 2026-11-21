@@ -50,8 +50,8 @@ describe("/ for a guest", () => {
     // The enterprise pass (owner, 12 Nov): the heading, Home's one sentence, then the two buttons, the first to the hands-on
     // demo (again since the product tour went, 13 Nov, evening), the second the proof.
     // 21 Nov: the idea, then the two buttons, the judge tour first, Try second (to the hands-on demo).
-    expect(pages.home).toContain(`${homeHeadingHtml()}\n    <p class="what">${esc(HOME_SUB)}</p>\n    <div class="ctas"><a class="btn primary big tour"`);
-    expect(pages.home).toContain('<a class="btn big ghost start" href="/try">');
+    expect(pages.home).toContain(`${homeHeadingHtml()}\n    <p class="what">${esc(HOME_SUB)}</p>\n    <ul class="hstats">`);
+    expect(pages.home).toContain('<div class="ctas"><a class="btn primary big start" href="/try">');
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(DIFFERENTIATORS.length).toBe(3);
     // The core sentence stays the page's description.

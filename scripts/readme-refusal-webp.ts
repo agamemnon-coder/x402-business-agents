@@ -75,7 +75,7 @@ async function capture(dir: string): Promise<void> {
   const press = async (name: string | RegExp) => { const b = page.getByRole("button", { name }).first(); await b.waitFor({ timeout: 120_000 }); await b.click(); };
 
   await page.goto(`${BASE}/try`, { waitUntil: "load" });
-  await press(/Launch the live transfer demo/);
+  await press(/Start the live demo|Launch the live transfer demo/);
   await page.locator(".samples button", { hasText: "Needs your signature" }).first().click();
   await press(/Give it to the AI agent/);
   await page.getByRole("button", { name: /Send to CFO for approval/ }).first().waitFor({ timeout: 120_000 });

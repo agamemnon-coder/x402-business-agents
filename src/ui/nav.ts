@@ -3,7 +3,7 @@
 // each page by src/servers/dashboard.ts before the page's CSP hash is taken; "More" is a <details> element, so it needs
 // no script. Colours come from the page's own tokens, with fallbacks for pages that name them differently.
 
-import { CLOUD_TAB_LABEL, MORE_CSS, moreHtml, tabLinks } from "./more.js";
+import { MORE_CSS, moreHtml, tabLabel, tabLinks } from "./more.js";
 
 import { WATCH_IN_MENU } from "../config/film.js";
 
@@ -16,7 +16,7 @@ export const NAV_MAIN: [NavKey, string, string][] = ([
   ["try", "Try", "/try"],
   ["proof", "Proof", "proof"],
   // 21 Nov (Max: "simple and tight"): Purser Cloud, the product, is a tab of its own (src/ui/more.ts tabLinks).
-  ...tabLinks().map((l) => [l.key, CLOUD_TAB_LABEL, l.href]),
+  ...tabLinks().map((l) => [l.key, tabLabel(l), l.href]),
 ] as [NavKey, string, string][]).filter(([k]) => k !== "watch" || WATCH_IN_MENU);
 
 /** Which tab a page belongs to: the detail pages and the dashboard sit under Proof. */
@@ -43,7 +43,9 @@ ${MORE_CSS}
    under about 450 px), the header wraps and the tabs take a line of their own, as Try's did under 400 px. */
 @media (max-width: 520px) { header.top { flex-wrap: wrap !important; } header.top nav.pnav.pnav > a { padding: 8px 10px !important; font-size: 15px !important; } .pnav .pmore > summary { padding: 8px 8px 8px 10px; } }
 @media (max-width: 460px) { .pnav { gap: 0 !important; } header.top nav.pnav.pnav > a { padding: 8px 8px !important; font-size: 14.5px !important; } .pnav .pmore > summary { padding: 8px 6px 8px 8px; font-size: 14.5px; } }
-@media (max-width: 380px) { header.top nav.pnav.pnav > a { padding: 8px 7px !important; } .pnav .pmore > summary { padding: 8px 5px 8px 7px; } }
+@media (max-width: 380px) { header.top nav.pnav.pnav > a { padding: 8px 6px !important; } .pnav .pmore > summary { padding: 8px 4px 8px 6px; } }
+/* 21 Nov: with "Business" a sixth item, the row and the More menu fit 360 px (pages check). */
+@media (max-width: 370px) { header.top nav.pnav.pnav > a { padding: 8px 5px !important; font-size: 14px !important; } .pnav .pmore > summary { padding: 8px 3px 8px 5px; font-size: 14px; } .pnav .pmore .pmenu { right: 0 !important; max-width: calc(100vw - 24px); } }
 @media (max-width: 340px) { header.top nav.pnav.pnav > a { padding: 8px 5px !important; font-size: 14px !important; } .pnav .pmore > summary { padding: 8px 4px 8px 5px; font-size: 14px; gap: 2px; } }
 @media (max-width: 430px) { .pnav > a, .pnav summary { display: inline-flex !important; align-items: center; min-height: 44px; } }`;
 

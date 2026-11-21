@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { committedWall } from "../src/redesign/evidenceWall.js";
 import { evidenceWall } from "../src/redesign/evidenceWallData.js";
 import { ARCH_BOUNDARIES, ARCH_CSS, ARCH_LAYERS, archFiles, archHtml } from "../src/redesign/securityArch.js";
-import { EVIDENCE_CSS, evidenceHtml, evidenceItems, formalModel, securityEvidence, wallTile } from "../src/redesign/securityEvidence.js";
+import { EVIDENCE_CSS, evidenceHtml, evidenceItems, formalModel, itemHref, securityEvidence, wallTile } from "../src/redesign/securityEvidence.js";
 import { securityPage } from "../src/redesign/security.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
@@ -115,7 +115,7 @@ describe("What we did, with evidence: every figure from the wall or its own reco
   it("lists the sixteen measures, each with a figure, where it ran and its record", () => {
     expect(items.map((i) => i.id)).toEqual(["e-zerotrust", "e-hostile", "e-redteam", "e-chaos", "e-fuzz", "e-tamper", "e-formal", "e-mutation", "e-scan", "e-pinned", "e-stride", "e-mapping", "e-requirements", "e-openssf", "e-continuity", "e-report"]);
     const html = evidenceHtml();
-    for (const i of items) expect(html).toContain(`<li id="${i.id}"><div class="ev-top"><b class="ev-fig">`);
+    for (const i of items) expect(html).toContain(`<li id="${i.id}"><a class="ev-a" href="${itemHref(i)}" target="_blank" rel="noopener"><div class="ev-top"><b class="ev-fig">`);
     expect(securityPage()).toContain(html);
     expect(securityPage().indexOf('id="done"')).toBeGreaterThan(securityPage().indexOf('id="arch"'));
   });

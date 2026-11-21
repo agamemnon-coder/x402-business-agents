@@ -3,7 +3,7 @@
 // so the two definitions cannot drift apart. "More" is a <details> element: it opens and closes without any script, by
 // mouse, touch or keyboard (Enter or Space on the summary; its links take focus only while it is open).
 
-export type MoreKey = "cloud" | "negotiate" | "pricing" | "security" | "docs" | "books" | "privacy" | "status" | "airwallex" | "metal" | "visa" | "claude" | "t0";
+export type MoreKey = "cloud" | "negotiate" | "pricing" | "security" | "docs" | "books" | "privacy" | "business" | "status" | "airwallex" | "metal" | "visa" | "claude" | "t0";
 
 export interface MoreLink {
   key: MoreKey;
@@ -16,6 +16,8 @@ export interface MoreLink {
    * with the product pages.
    */
   tab?: true;
+  /** A tab's own short word in the top row (21 Nov: "Business", "Cloud"); the label otherwise. */
+  tabLabel?: string;
   /**
    * false: this page is not in the site yet, so no menu and no footer links to it. A link to an address the site does
    * not serve fails test/site-v4.test.ts (every internal link answers) and, the other way round, a served page that the
@@ -39,10 +41,16 @@ export const MORE_LINKS: readonly MoreLink[] = [
   // 12 Nov (owner): the hosted product, Purser Cloud, on its own test-money deployment.
   // 21 Nov (Max: "Should we show all these pages at all? I want it simple and tight"): the menu is Home, Try, Proof,
   // Cloud and More. Purser Cloud is the product, so it is a tab ("Cloud"); everything else stays one tap away under More.
-  { key: "cloud", label: "Purser Cloud", href: PURSER_CLOUD_URL, group: "product", tab: true },
+  // 21 Nov (the owner's concept, "expose Business prominently"): the page for a business owner is a tab of its own,
+  // "Business", before "Cloud"; the menu reads Home, Try, Proof, Business, Cloud, More.
+  { key: "business", label: "For companies", href: "business", group: "product", tab: true, tabLabel: "Business" },
+  { key: "cloud", label: "Purser Cloud", href: PURSER_CLOUD_URL, group: "product", tab: true, tabLabel: "Cloud" },
   // 15 Nov: "Agents negotiate" left the menu (Max: it read as unprofessional there); /try/negotiate has a card on Home
   // (src/redesign/home.ts negotiateCardHtml) and stays linked at the end of /try.
   // 13 Nov (Max): the product tour and Pricing are gone; /tour and /pricing answer 302 to /home (src/servers/dashboard.ts REDIRECTS).
+  // 21 Nov (Max: "we are technically strong, now we must make it commercially strong"): the page for a business owner,
+  // first under More: the problem, who it is for, a calculator for their own numbers, the pilot and its pilot prices,
+  // the buyer's questions (src/redesign/business.ts). /one-pager, its printable sheet, is linked from it, not listed.
   { key: "security", label: "Security", href: "security", group: "product" },
   { key: "docs", label: "Docs", href: "docs", group: "product" },
   // 12 Nov (owner): the bookkeeping with AI agents, from the run records (src/redesign/booksPage.ts); with T:0 in it since 21 Nov.
@@ -59,8 +67,9 @@ export const MORE_LINKS: readonly MoreLink[] = [
 
 /** The links under "More": every page of the list that the site serves, except the one that is a tab of its own. */
 export const moreLinks = (): MoreLink[] => MORE_LINKS.filter((l) => l.built !== false && !l.tab);
-/** The tabs the list adds after Home, Try and Proof (21 Nov: "Cloud"), each with its short label. */
+/** The tabs the list adds after Home, Try and Proof (21 Nov: "Business", "Cloud"), each with its short label. */
 export const CLOUD_TAB_LABEL = "Cloud";
+export const tabLabel = (l: MoreLink): string => l.tabLabel ?? l.label;
 export const tabLinks = (): MoreLink[] => MORE_LINKS.filter((l) => l.built !== false && l.tab);
 /** The footer repeats the product pages only (Purser Cloud among them); the partner pages are reached from Proof and from "More". */
 export const footerLinks = (): MoreLink[] => MORE_LINKS.filter((l) => l.built !== false && l.group === "product");
@@ -72,8 +81,8 @@ const underMore = (key: string | null): boolean => MORE_LINKS.some((l) => l.key 
 export type PageKey = "home" | "watch" | "try" | "proof" | "runs" | MoreKey;
 /** The menu item a page marks (12 Nov): a tab marks itself, a page listed under "More" marks "More", /runs sits under Proof. The one mapping both navigations use. */
 // Jury, 13 Nov: /runs is not Proof; it marks no tab.
-const UNDER_TAB: Readonly<Record<string, "home" | "watch" | "try" | "proof" | "cloud">> = { home: "home", watch: "watch", try: "try", proof: "proof", cloud: "cloud" };
-export function menuItemOf(page: string | null): "home" | "watch" | "try" | "proof" | "cloud" | "more" | null {
+const UNDER_TAB: Readonly<Record<string, "home" | "watch" | "try" | "proof" | "business" | "cloud">> = { home: "home", watch: "watch", try: "try", proof: "proof", business: "business", cloud: "cloud" };
+export function menuItemOf(page: string | null): "home" | "watch" | "try" | "proof" | "business" | "cloud" | "more" | null {
   if (!page) return null;
   if (underMore(page)) return "more";
   return UNDER_TAB[page] ?? null;

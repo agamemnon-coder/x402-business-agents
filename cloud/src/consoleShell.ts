@@ -4,7 +4,7 @@
 //   Overview
 //   Money     Invoices, Transactions, Books
 //   Agents    Agents (every agent Purser has, cloud/src/agentRoster.ts), Tokenisation (tokens and the agents' cards)
-//   Rails     Airwallex, Connections
+//   Connected Airwallex, Claude (once connected: cloud/src/consoleCompany.ts), Connections
 //   Settings
 // A laptop gets a sidebar with the groups (the page's one nav#tabs, so every deep link and check keeps working); a phone
 // gets a compact top bar, a bottom tab bar of the five groups and, inside a group, its pages as a segmented control.
@@ -19,8 +19,8 @@ import { REPO_BLOB, ROSTER } from "./agentRoster.js";
 /** The frame's words, English and Dutch. */
 export const SHELL_WORDS = {
   en: {
-    g_money: "Money", g_agents: "Agents & tokens", g_rails: "Payment rails",
-    b_overview: "Overview", b_money: "Money", b_agents: "Agents", b_rails: "Rails", b_settings: "Settings",
+    g_money: "Payments", g_agents: "Agents", g_rails: "Integrations",
+    b_overview: "Overview", b_money: "Money", b_agents: "Agents", b_rails: "Connected", b_settings: "Settings",
     sections: "Sections", in_group: "Pages in {group}",
     demo_short: "Demo company · made-up data · test money", demo_leave: "Leave",
     // The Overview
@@ -42,8 +42,8 @@ export const SHELL_WORDS = {
     t_sourcing: "Sourcing", t_payables: "Payables", t_treasury: "Treasury", t_customers: "Customers", t_books: "Books",
   },
   nl: {
-    g_money: "Geld", g_agents: "Agents & tokens", g_rails: "Betaalrails",
-    b_overview: "Overzicht", b_money: "Geld", b_agents: "Agents", b_rails: "Rails", b_settings: "Instellingen",
+    g_money: "Betalingen", g_agents: "Agents", g_rails: "Integraties",
+    b_overview: "Overzicht", b_money: "Geld", b_agents: "Agents", b_rails: "Gekoppeld", b_settings: "Instellingen",
     sections: "Onderdelen", in_group: "Pagina's in {group}",
     demo_short: "Demobedrijf · verzonnen gegevens · testgeld", demo_leave: "Verlaten",
     needs_h: "Wacht op jou", needs_sub: "Goedkeuringen wachten op de Face ID van de CFO op de telefoon; hier wordt niets betaald.",
@@ -69,14 +69,14 @@ export const NAV_GROUPS: readonly (readonly [string, readonly string[], string])
   ["overview", ["overview"], "layout-dashboard"],
   ["money", ["invoices", "transactions", "books"], "wallet"],
   ["agents", ["agents", "tokenisation"], "bot"],
-  ["rails", ["airwallex", "connections"], "landmark"],
+  ["rails", ["airwallex", "claude", "connections"], "link-2"],
   ["settings", ["settings"], "settings-2"],
 ];
 
 /** Each page's icon in the menu. */
 export const TAB_ICONS: Readonly<Record<string, string>> = {
   overview: "layout-dashboard", invoices: "receipt", transactions: "arrow-left-right", books: "file-check", agents: "bot", tokenisation: "credit-card",
-  airwallex: "landmark", connections: "link-2", settings: "settings-2",
+  airwallex: "landmark", claude: "sparkles", connections: "link-2", settings: "settings-2",
 };
 
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
@@ -101,7 +101,8 @@ function navSync(){
   for(const a of document.querySelectorAll('#btabs a[data-group]')){const k=a.dataset.group;const grp=NAV_GROUPS.find((x)=>x[0]===k);a.href='#/'+(LAST_IN[k]||grp[1][0]);
     if(g&&g[0]===k)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')}
   // A group's pages, side by side under the top bar on a phone (a laptop has them in the sidebar).
-  const sn=$('#subnav');if(sn){const pages=g?g[1]:[];
+  // A connected tab the company does not have yet (cloud/src/consoleCompany.ts) is left out.
+  const sn=$('#subnav');if(sn){const pages=(g?g[1]:[]).filter((k)=>{const a=document.querySelector('#tabs a[data-tab='+k+']');return a&&!a.hidden});
     if(pages.length>1){const want=pages.join(',')+'|'+tab;if(sn.dataset.k!==want){sn.dataset.k=want;sn.setAttribute('aria-label',sw('in_group',{group:sw('b_'+g[0])}));
       sn.replaceChildren(...pages.map((k)=>{const src=document.querySelector('#tabs a[data-tab='+k+']');const a=el('a','',[ic(TAB_IC[k]),el('span','',src?src.textContent:k)]);a.href='#/'+k;if(k===tab)a.setAttribute('aria-current','page');return a}))}
       sn.hidden=false}else{sn.hidden=true;sn.dataset.k=''}}
@@ -203,15 +204,20 @@ export const SHELL_CSS = `
 /* A laptop: the pages in a sidebar under the site's header, grouped; the company on top, the person and test money below. */
 @media (min-width: 1024px) {
   .signed-in .appbar { position: fixed; z-index: 25; top: var(--hdr); left: 0; bottom: 0; width: var(--side); border-right: 1px solid var(--border); border-bottom: 0; background: var(--surface); overflow-y: auto; backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .signed-in .appbar .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto 1fr auto auto auto; align-items: center; column-gap: 4px; min-height: 100%; height: auto; max-width: none; margin: 0; padding: 14px 12px 14px; }
+  .signed-in .appbar .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto 1fr auto; align-items: center; column-gap: 0; min-height: 100%; height: auto; max-width: none; margin: 0; padding: 14px 12px 12px; }
   .signed-in .appbar .who-am-i { display: contents; }
-  .signed-in .appbar #co { order: 1; grid-column: 1 / -1; display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; row-gap: 1px; align-items: center; margin: 0; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); max-width: none; text-decoration: none; }
+  /* 21 Nov: the company block is the switcher: its name opens the Company page, the chevron the other companies. */
+  .signed-in .appbar .cosw { order: 1; grid-column: 1 / -1; display: flex; align-items: stretch; gap: 0; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); }
+  .signed-in .appbar .cosw:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+  .signed-in .appbar .co-more { width: 32px; height: auto; border-radius: 0 9px 9px 0; border-left: 1px solid var(--border); }
+  .signed-in .appbar .co-menu { left: 0; width: calc(var(--side) - 24px); }
+  .signed-in .appbar #co { flex: 1 1 auto; display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; row-gap: 1px; align-items: center; margin: 0; padding: 9px 10px; border-radius: 9px 0 0 9px; border: 0; background: transparent; max-width: none; text-decoration: none; }
   .signed-in .appbar #co .av { grid-row: 1 / span 2; width: 28px; height: 28px; }
   .signed-in .appbar #co .cn { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .signed-in .appbar #co .cn .cx { display: none; }
   .signed-in .appbar #co .aw { grid-column: 2; justify-self: start; margin: 0; padding: 0; border: 0; background: none; font-size: 12px; }
   .signed-in .appbar #co .aw .aww { display: inline; }
-  .signed-in .appbar #co:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+  .signed-in .appbar #co:hover { background: var(--sunken); }
   .signed-in .appbar nav.apptabs { order: 2; grid-column: 1 / -1; display: flex; flex-direction: column; gap: 1px; margin: 14px 0 0; padding: 0; overflow: visible; -webkit-mask-image: none; mask-image: none; }
   .signed-in .appbar nav.apptabs a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); box-shadow: none; transition: background .15s, color .15s; }
   .signed-in .appbar nav.apptabs a .ic { display: inline-flex; color: var(--faint); transition: color .15s; }
@@ -221,13 +227,13 @@ export const SHELL_CSS = `
   .signed-in .apptabs .ng { display: block; margin: 16px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
   .signed-in .apptabs .ng.sep { height: 1px; margin: 12px 10px; background: var(--border); }
   .signed-in .appbar .spacer { order: 3; grid-column: 1 / -1; align-self: stretch; min-height: 24px; }
-  .signed-in .appbar .test { order: 4; grid-column: 1 / -1; justify-self: start; margin: 0 0 10px 6px; }
-  .signed-in .appbar .awx-app { order: 5; grid-column: 1 / -1; margin: 0 0 12px 6px; display: block; }
-  .signed-in .appbar #who { order: 6; grid-column: 1 / -1; padding: 12px 8px 4px; border-top: 1px solid var(--border); font-size: 13px; max-width: none; white-space: normal; }
-  .signed-in .appbar #who:empty { padding: 4px 0 0; }
-  .signed-in .appbar #who .we { display: block; color: var(--faint); font-size: 12px; }
-  .signed-in .appbar #out { order: 7; grid-column: 1 / -1; justify-self: stretch; justify-content: flex-start; gap: 10px; padding: 8px; font: 600 13.5px/1.2 Inter, system-ui, sans-serif; }
-  .signed-in .appbar #out::after { content: attr(aria-label); }
+  /* 21 Nov (the owner: the test-money pill and "Guest (demo) · ends in 8 min" looked buggy): one session block at the
+     foot, the person, a quiet countdown and sign out; test money sits once in the header strip (placeTest). */
+  .signed-in .appbar .awx-app { display: none; }
+  .signed-in .appbar #who { order: 6; grid-column: 1; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 12px 4px 2px 6px; border-top: 1px solid var(--border); font-size: 13px; max-width: none; white-space: normal; }
+  .signed-in .appbar #who:empty { display: none; }
+  .signed-in .appbar #out { order: 7; grid-column: 2; align-self: stretch; display: inline-grid; place-items: center; width: 36px; margin-top: 0; padding: 12px 0 2px; border-top: 1px solid var(--border); border-radius: 0; background: none; }
+  .signed-in .appbar #out:hover { color: var(--bad); background: none; }
   .signed-in main, .signed-in .demo-ribbon, .signed-in #foot, .signed-in .foot-awx { margin-left: var(--side); }
   .signed-in #foot, .signed-in .foot-awx { max-width: none; }
   .signed-in main > .wrap { max-width: 1240px; }
@@ -245,7 +251,9 @@ export const SHELL_CSS = `
   .signed-in .who-am-i #co { min-width: 0; margin-right: auto; }
   .signed-in #ask-slot { display: inline-flex; flex: none; }
   .signed-in .appbar .test { margin-left: 2px; padding: 8px; }
-  .appbar #pask-fab { position: static; min-height: 36px; height: 36px; width: 36px; padding: 0; justify-content: center; border-radius: 10px; box-shadow: none; background: var(--accent-soft); color: var(--accent); }
+  .appbar #pask-fab { position: static; min-height: 36px; height: 36px; width: 36px; padding: 0; justify-content: center; border-radius: 10px; border: 0; box-shadow: none; background: transparent; color: var(--accent); transform: none; }
+  .appbar #pask-fab svg { width: 32px; height: 32px; }
+  .appbar #pask-fab:hover { transform: none; box-shadow: none; }
   .appbar #pask-fab .pask-t { display: none; }
   .signed-in .btabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; height: calc(var(--tabbar) + env(safe-area-inset-bottom)); padding: 0 4px env(safe-area-inset-bottom);
     background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: saturate(1.4) blur(16px); -webkit-backdrop-filter: saturate(1.4) blur(16px); border-top: 1px solid var(--border); }

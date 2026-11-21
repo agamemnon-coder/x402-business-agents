@@ -10,7 +10,7 @@ import { AGENT_IDS, agentView } from "../src/redesign/agents.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { esc } from "../src/redesign/ui.js";
 import { loadRecord, decisionsOf } from "../src/redesign/run.js";
-import { KIND_LABEL, MAIN_RUN_GLOSSARY, kindOf, liveRuns, mdCell, runsPage, runsReadme, type RunKind, type RunRow } from "../src/redesign/runs.js";
+import { KIND_LABEL, MAIN_RUN_GLOSSARY, kindOf, liveRuns, mdCell, overlapLine, runsPage, runsReadme, type RunKind, type RunRow } from "../src/redesign/runs.js";
 import { loadTrace } from "../src/redesign/trace.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 import { visibleWords } from "./support/visibleWords.js";
@@ -675,6 +675,12 @@ describe("/runs as a timeline", () => {
     for (const n of named) expect(docs, n).toMatch(new RegExp(`\\b${n}\\b`));
   });
 
+  it("says what the filters' counts overlap when they add up to more than All (review, 21 Nov)", () => {
+    expect(overlapLine([{ n: 3 }, { n: 2 }], 4)).toBe("<p class=\"fltn\">A run with several partners or rails is counted under each filter: together they count 5, for 4 runs.</p>");
+    expect(overlapLine([{ n: 2 }, { n: 2 }], 4)).toBe("");
+    expect(html).toContain('<p class="fltn">');
+  });
+
   it("keeps each entry short and the frame around the entries short, so that a truthful row added later stays green", () => {
     // 12 Nov: 479 words in sight as built (501 before the timeline). Review 12 Nov (DC-5): one pin on the whole page went
     // red at the next row added; the pins are now per entry (60 words in sight at most) and on the frame around the
@@ -686,7 +692,8 @@ describe("/runs as a timeline", () => {
       // 13 Nov (jury pass): +66 for the four summary cards and the partial runs' line, with the strip, the filters and
       // the list in one fold. This count cuts a fold at its first </details>, so it still counts what follows the
       // "Face ID to paid" fold inside the outer one; the page in sight is shorter than it says.
-      expect(frame(page)).toBeLessThanOrEqual(150);
+      // 21 Nov (review): +20 for the line that says what the filters' counts overlap (165 as built).
+      expect(frame(page)).toBeLessThanOrEqual(170);
       for (const e of entriesOf(liveList(page))) expect(visibleWords(`<main>${e.html}</main>`), e.key).toBeLessThanOrEqual(60);
     }
     // The frame is what is not an entry: the page is the frame plus its entries.

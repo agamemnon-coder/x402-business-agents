@@ -3,9 +3,10 @@
 // script (cloud/src/console.ts puts this in at __UI__) and its own design tokens:
 //   Overview   the next action first, four figures, the cash line and the invoices ring, the decisions as a short
 //              timeline with who acted (an agent, Purser's code, the CFO, the rail), six rows and "Show all"
-//   Agents     one pass per agent (cloud/src/agentWallet.ts, 21 Nov): spent against the monthly limit, its card, and on
-//              its back the mandate and the newest decision; its record (limits, may and may not, decisions, model and
-//              runs) one tap away. Read only: changing a limit stays a proposal the CFO signs with Face ID
+//   Agents     one payment card per agent (cloud/src/agentWallet.ts, 23 Nov): its own design, its last four, spent against
+//              the monthly limit, its model; its record (limits, live card, may and may not, decisions, model and runs)
+//              one tap away in a drawer. Read only: changing a limit stays a proposal the CFO signs with Face ID
+//   Tokenisation  one purchase, one token (cloud/src/tokenLife.ts), then the invoice token
 //   Invoices   the invoices only (the books have their own tab)
 //   Books      the money at a glance (cloud/src/consoleCharts.ts, 21 Nov), the balance sheet per currency (no wrapped "EUR"), the VAT overview, the journal and the exports
 //   An invoice a document: supplier, number, dates, lines with VAT, totals; the trail from read to booked as a stepper;
@@ -24,6 +25,8 @@ function timeline(D,shown){
   more.onclick=()=>{const open=more.getAttribute('aria-expanded')!=='true';rows.forEach((r,k)=>{if(k>=shown)r.hidden=!open});more.setAttribute('aria-expanded',String(open));more.replaceChildren(ic('chevron-down'),open?t('cs.ov.show_less'):t('cs.ov.show_newest',{n:rows.length}))};
   return el('div','',[ol,more])}
 async function overviewView(){
+  // 21 Nov (Max): the Overview on twelve columns with the partners' globe (cloud/src/consoleOverviewPlus.ts).
+  if(typeof overviewNext==='function')return overviewNext();
   title(t('cs.nav.overview'));
   const soft=(p)=>api(p).catch((e)=>{if(e instanceof Expired)throw e;return null});
   const [m,x,all,D,AG,BK]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200'),soft('/v1/dashboard'),soft('/v1/agents'),soft('/v1/books/bookings')]);shell();
@@ -50,7 +53,7 @@ async function overviewView(){
   const main=Object.entries(per).sort((a,b)=>b[1]-a[1])[0];const days=(d)=>Math.round((Date.parse(d)-Date.parse(today))/86400000);
   const b=[0,0,0,0];for(const i of opn){if(!main||i.currency!==main[0])continue;const n=i.due_date?days(i.due_date):99999;b[n<=0?0:n<=7?1:n<=30?2:3]+=toCents(i.total)}
   const lab=['cs.due.late','cs.due.d7','cs.due.d30','cs.due.later'];
-  const due=el('section','card dcard rise due',[el('div','dh',[el('h2','',t('cs.due.title'))]),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title')):el('p','lede',t('cs.due.none')),
+  const due=el('section','card dcard rise due',[el('div','dh',[el('h2','',t('cs.due.title'))]),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title'),()=>'#/invoices?f=open'):el('p','lede',t('cs.due.none')),
     Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);cardLink(due,'#/invoices?f=open',sw('to_inv'));
   const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
   // 22 Nov (the owner: "calm, and everything connected"): what needs you, the figures, how invoices flow to payment, the
@@ -65,7 +68,9 @@ async function overviewView(){
       // The agents at work: each one's spend against its limit and newest decision, then the decisions as a timeline.
       el('div','dgrid g1',[cardLink(dcard('feedc',sw('act_h'),sub,el('div','',[agentStrip(AG&&AG.agents),timeline(D,6)])),'#/agents',sw('to_agents')),el('div','stack',[due,cardLink(dcard('weeks',t('cs.dash.appr_title'),t('cs.dash.appr_sub'),el('div','',[el('div','cv',[weekChart(D,Math.round(wide?full*0.36-40:weekW))]),el('ul','klegend',[el('li','',[el('i','cfo'),t('cs.dash.appr_cfo')]),el('li','',[el('i','alone'),t('cs.dash.appr_alone')])])])),'#/invoices?f=paid',sw('to_inv'))])]),
       // 21 Nov: spend by who started it beside spend by rail, each with its table.
-      el('div','dgrid g1',[cardLink(dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),agentSpend(D)),'#/agents',sw('to_agents')),cardLink(dcard('rails',t('cs.ch.rails_title'),t('cs.ch.rails_sub',{cur:cur(D.currency)}),railsChart(D)),'#/transactions',sw('to_tx'))]));
+      el('div','dgrid g1',[cardLink(dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),agentSpend(D)),'#/agents',sw('to_agents')),cardLink(dcard('rails',t('cs.ch.rails_title'),t('cs.ch.rails_sub',{cur:cur(D.currency)}),railsChart(D)),'#/transactions',sw('to_tx'))]),
+      // 21 Nov (Max: "too simple"): cash by week and the counterparties paid (cloud/src/consoleOverviewPlus.ts).
+      overviewPlus(D));
   }else dash.append(due);
   nodes.push(awlOverview());
   if(inbox)nodes.push(inbox);
@@ -89,7 +94,8 @@ function startCard(m){
 // --- Agents -------------------------------------------------------------------------------------------------------
 const OUTCOME={paid:['circle-check','ok'],declined:['ban','bad'],asked:['scan-face','wait'],note:['circle-dot','info']};
 function limitRow(icon,label,value,extra){return el('div','lim',[el('span','limic',ic(icon)),el('div','limb',[el('span','liml',label),extra||null]),el('b','limv num',value)])}
-function agentCard(a,demo,live,CV){
+// The agent's record, as blocks for its drawer on the Agents page (cloud/src/agentWallet.ts openDrawer).
+function agentRecord(a,demo,live,CV){
   let settings;
   if(a.card){const c=a.card;const C=cur(c.currency)+' ';
     const spent=c.spent_month!==null&&c.spent_month!==undefined&&c.per_month?toCents(c.spent_month):null,cap=c.per_month?toCents(c.per_month):0;
@@ -111,8 +117,7 @@ function agentCard(a,demo,live,CV){
     el('div','',[el('h3','',t('cs.agents.rails')),a.rails.length?el('p','',a.rails.join(', ')):el('p','sub',t('cs.agents.no_rail')),a.spent||a.declined?el('p','sub',t('cs.agents.moved',{n:a.spent,k:a.declined})):null]),
     el('div','',[el('h3','',t('cs.agents.decided')),el('ul','plain',a.decisions.filter((d)=>d.decided_by).map((d)=>el('li','sub',day(d.at)+' · '+d.decided_by)))]),
     a.status_since?el('div','',[el('h3','',t('cs.agents.status_h')),el('p','',tk('cs.agents.status.'+a.status,a.status)+' '+t('cs.agents.since',{day:day(a.status_since)}))]):null])]);
-  // 21 Nov: the agent as a pass (cloud/src/agentWallet.ts); this is its record, below the pass once opened.
-  return walletAgent(a,demo,live,CV,[settings,demo&&a.card?el('p','fine',[ic('flask'),t('cs.agents.card_demo2')]):null,live?liveCardPanel(live,CV):null,rules,dec,learnBlock(a,demo),det])}
+  return [settings,demo&&a.card?el('p','fine',[ic('flask'),t('cs.agents.card_demo2')]):null,live?liveCardPanel(live,CV):null,rules,dec,learnBlock(a,demo),det].filter(Boolean)}
 // --- The agent's live sandbox card (14 Nov): last four only, live status and limits, newest authorizations with their ids;
 // freeze, unfreeze, limits and a test purchase, each signed with the owner's own passkey over the exact action's hash.
 let cardMsg=null;
@@ -197,24 +202,22 @@ function learnBlock(a,demo){const L=a.learning;if(!L)return null;
     L.suggestions.length?el('div','sugg',[el('h4','',t('cs.agents.sugg_h')),el('ul','plain',L.suggestions.map((s)=>el('li','',[ic(s.key?'zap':'circle-dot'),el('span','',s.text+' ('+s.evidence.join(', ')+')')]))),el('p','fine',[ic('lock'),t('cs.agents.sugg_note')])]):null])}
 async function agentsView(q){
   title(t('cs.nav.agents'));
-  // A link to one agent (#/agents?a=id, from the Overview or the roster) opens its record.
-  const want=q&&q.get&&q.get('a');if(want)OPEN_AGENTS.add(want);
   const soft=(p)=>api(p).catch((e)=>{if(e instanceof Expired)throw e;return null});
-  const [m,r,tk0,CV,D]=await Promise.all([me(),api('/v1/agents'),soft('/v1/tokenisation'),soft('/v1/cards'),soft('/v1/dashboard')]);shell();
-  const cards=(r.agents||[]).map((a)=>agentCard(a,!!m.demo,CV&&(CV.agents||[]).find((x)=>x.agent===a.id),CV));
-  // A company whose records name no agent yet, with live cards on: each Kit 11 agent with its live card panel only.
-  if(!cards.length&&CV&&CV.agents&&CV.agents.length)for(const x of CV.agents)cards.push(el('section','card agent rise',[el('div','ah',[el('span','av',ic('bot')),el('div','',[el('h2','',x.name)])]),liveCardPanel(x,CV)]));
-  partnerAgents(cards,r.agents||[]).catch(()=>{}); // each card's payment token and Wallet pass (cloud/src/partnerView.ts)
-  // The agents' real cards and Visa runs from the live sandbox runs (judge scan, 14 Nov: they sat on Tokenisation, and
-  // their limits read as the demo cards' own). Each section says which run its figures come from.
-  const live=tk0?sandboxSections(tk0):[];
-  // 22 Nov: every agent Purser has first (cloud/src/agentRoster.ts), then the cards of those this company's records name.
-  view().replaceChildren(...[head(t('cs.nav.agents'),t('cs.agents.lede2')+(m.demo?' '+t('cs.agents.read_only'):'')),rosterSection(r.agents||[],D&&D.agents?D.agents.decisions:null),
-    el('div','sec-h agents-passes-h',[el('h2','',sw('passes_h')),el('p','sub',sw('passes_sub'))]),
-    cards.length?el('div','agents wallet',cards):el('div','card wempty',[el('span','wempty-ic',ic('bot')),el('div','',[el('b','',t('cs.agents.none')),el('p','sub',t('cs.wl.empty_sub'))]),(()=>{const x=el('a','btn',[t('cs.wl.empty_go'),' ',ic('arrow-right')]);x.href='#/connections';return x})()]),note(t('cs.agents.controls')),...live,
+  const [m,r,tk0,CV,D]=await Promise.all([me(),api('/v1/agents'),soft('/v1/tokenisation'),soft('/v1/cards'),soft('/v1/dashboard')]);
+  const P=await partnerData().catch((e)=>{if(e instanceof Expired)throw e;return null});
+  // 23 Nov (cloud/src/agentWallet.ts): every agent as its own card, at work first; its record one tap away in a drawer.
+  const ctx={demo:!!m.demo,CV,P};
+  const deck=await agentDeck(r.agents||[],ctx);shell();
+  // The live sandbox run's cards (6 Nov), folded: they are Airwallex's, not the demo company's simulated ones.
+  const sbx=tk0&&tk0.agent_cards?el('details','dk-sandbox',[el('summary','',dw('sandbox')),sandboxCards(tk0)]):null;
+  view().replaceChildren(head(t('cs.nav.agents'),dw('lede')+(m.demo?' '+t('cs.agents.read_only'):''),[deck.designBtn]),
+    deckStats(deck.items,D&&D.agents?D.agents.decisions:null),ticker(deck.items)||el('span',''),
+    deck.items.length?deck.grid:el('div','card wempty',[el('span','wempty-ic',ic('bot')),el('div','',[el('b','',t('cs.agents.none')),el('p','sub',t('cs.wl.empty_sub'))])]),
+    negoBand(),note(t('cs.agents.controls')),sbx||el('span',''),
     // 14 Nov: the agents' cards as the Airwallex sandbox holds them now, with their limits and authorizations.
-    el('p','links',[(()=>{const a=el('a','ext',[ic('credit-card'),' '+t('cs.awl.agents_link'),' ',ic('chevron-right')]);a.href='#/airwallex';return a})()])]);
-  requestAnimationFrame(()=>{for(const n of view().querySelectorAll('.rise'))n.classList.add('in')});
+    el('p','links',[(()=>{const a=el('a','ext',[ic('credit-card'),' '+t('cs.awl.agents_link'),' ',ic('chevron-right')]);a.href='#/airwallex';return a})()]));
+  // A card action (liveCardPanel) redraws the page: its agent's drawer opens again, with the result.
+  if(cardMsg&&cardMsg.agent){const x=deck.items.find((i)=>i.r.id===cardMsg.agent);if(x)openDrawer(x,ctx)}
   openAgentFromQuery(q);
 }
 
@@ -411,16 +414,12 @@ function sandboxCard(x){
     el('div','lims',[lv.per_purchase?limitRow('credit-card',t('cs.agents.lim_purchase'),C+amount(lv.per_purchase)):null,
       lv.monthly?limitRow('calendar-range',t('cs.agents.lim_month'),C+amount(lv.monthly),bar?el('div','limm',[bar,el('span','sub',t('cs.tok.share',{n:share}))]):null):null,
       x.merchant_categories.length?el('div','lim cats',[el('span','limic',ic('receipt')),el('div','limb',[el('span','liml',t('cs.tok.mcc')),el('div','chips',x.merchant_categories.map((m)=>el('span','mchip','MCC '+m))),el('span','sub',t('cs.tok.mcc_sub'))])]):null])])}
-function sandboxSections(r){
+// The live sandbox run's agent cards (6 Nov), as card tiles with their limits; the Visa credential run is on Tokenisation.
+function sandboxCards(r){
   const lbl=(s)=>el('span','rlabel',s);
   const c=r.agent_cards;
-  const cards=el('section','card panel tok',[el('div','th',[el('h2','',[ic('credit-card'),' '+t('cs.tok.cards')]),lbl(c.label)]),el('p','',el('b','',t('cs.tok.cards_note'))),el('p','sub',t('cs.tok.cards_sub',{day:day(c.read_at)})),
+  return el('section','card panel tok',[el('div','th',[el('h2','',[ic('credit-card'),' '+t('cs.tok.cards')]),lbl(c.label)]),el('p','',el('b','',t('cs.tok.cards_note'))),el('p','sub',t('cs.tok.cards_sub',{day:day(c.read_at)})),
     el('div','sbcs',c.cards.map(sandboxCard)),el('p','links',[ext(c.record,t('cs.tok.record'))])]);
-  const v=r.visa_credential;
-  const vic=el('section','card panel tok',[el('div','th',[el('h2','',[ic('shield-check'),' '+t('cs.tok.vic')]),lbl(v.label)]),el('p','sub',t('cs.tok.vic_sub',{run:v.run})),
-    el('ul','viclist',v.purchases.map((p)=>el('li','',[el('span','vstep',p.step),el('div','',[el('span','vw',p.what),p.reason?el('span','sub vr',p.reason):null]),el('b','num',p.amount),p.outcome?el('span','obadge '+(p.outcome==='succeeded'?'ok':'bad'),p.outcome):null]))),
-    v.credential_deleted?note(t('cs.tok.deleted')):null,el('p','links',[ext(v.record,t('cs.tok.record')),' ',ext(v.story,t('cs.tok.story'))])]);
-  return [el('h2','section-h',t('cs.agents.live_h')),cards,vic];
 }
 async function tokensView(){
   title(t('cs.nav.tokens'));
@@ -436,7 +435,8 @@ async function tokensView(){
   const invoice=el('section','card panel tok tokhero',[el('div','th',[el('h2','',[ic('receipt'),' '+t('cs.tok.invoice')]),lbl(tok.label)]),
     el('p','sub',t('cs.tok.invoice_sub',{no:it.invoice_no,amount:cur(it.currency)+' '+it.amount,pid:it.proposal_id})),facts,
     el('h3','tsec',t('cs.tok.life')),tokLife(tok),el('h3','tsec',t('cs.tok.flow')),tokFlow(tok),hashes,el('p','links',[ext(tok.record,t('cs.tok.record')),' ',ext(tok.story,t('cs.tok.story'))])]);
-  view().replaceChildren(head(t('cs.nav.tokens'),t('cs.tok.lede2')),invoice);
+  // 23 Nov: one purchase, one token first (cloud/src/tokenLife.ts); the invoice token after it.
+  view().replaceChildren(head(t('cs.nav.tokens'),tw('lede')),...tokenLifeSections(r.token_life),invoice);
 }
 `;
 

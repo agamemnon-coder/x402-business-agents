@@ -7,14 +7,13 @@
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { statusPage } from "../../src/redesign/status.js";
-import { REASSURE } from "../../src/redesign/home.js";
 import { FILM_LINK } from "../../src/config/brand.js";
 import { TRY_URL, pageTitle } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
 import { AWX_PAGE_LABEL } from "../../src/redesign/airwallexProducts.js";
-import { CLOUD_TAB_LABEL, MORE_LABEL, moreLinks, tabLinks } from "../../src/ui/more.js";
+import { MORE_LABEL, moreLinks, tabLabel, tabLinks } from "../../src/ui/more.js";
 import { agentTools } from "../../src/redesign/docs.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -28,6 +27,7 @@ import { CHROME, checkTaps } from "./tapTargets.js";
 import { ICC_RUN_EXTRA_WORDS, iccRecordIn } from "../../src/redesign/iccBlock.js";
 import { METAL_CSP } from "../../src/servers/dashboard.js";
 import { committedWall } from "../../src/redesign/evidenceWall.js";
+import { CALC_DEFAULTS, calc, calcEuro } from "../../src/redesign/business.js";
 
 const args = process.argv.slice(2);
 const liveAt = args.indexOf("--live");
@@ -66,7 +66,7 @@ const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}
 // Watch is a tab only once the film is set (src/config/film.ts WATCH_IN_MENU).
 // 13 Nov (owner): "Judge" is out of the menu again; the product tour and Pricing went the same evening.
 // 21 Nov (Max: "simple and tight"): Home, Try, Proof, Cloud (Purser Cloud, src/ui/more.ts tabLinks), then More.
-const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), ...tabLinks().map(() => CLOUD_TAB_LABEL), MORE_LABEL], more: moreLinks().map((l) => l.label) });
+const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), ...tabLinks().map(tabLabel), MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
@@ -103,6 +103,10 @@ async function look(page: Page, name: string, width: number): Promise<void> {
   for (const u of a11y.noAlt) fail(`${name}: an image with no alt text: ${u}`);
   const over = await page.evaluate(() => document.documentElement.scrollWidth) - width;
   if (over > 1) fail(`${name}: ${over}px wider than the screen`);
+  // "Built on Airwallex" (Max, 21 Nov: the logo did not show in a local render): the badge in sight has its logo loaded,
+  // and its alt text, which stands in for it if it ever fails, reads "Airwallex".
+  const awx = await page.evaluate(`[...document.querySelectorAll("a.awx-badge img")].filter((i) => i.getClientRects().length).map((i) => ({ ok: i.complete && i.naturalWidth > 0, alt: i.getAttribute("alt") }))`) as { ok: boolean; alt: string | null }[];
+  for (const b of awx) if (!b.ok || b.alt !== "Airwallex") fail(`${name}: the "Built on Airwallex" logo did not load (alt "${b.alt}")`);
   // The menu, on every page that carries it (both navigations: the redesign's header and the older pages'): exactly the
   // four tabs and "More"; "More" closed until it is opened, and under it exactly the pages the site serves, in order.
   const nav = await page.evaluate(`(() => {
@@ -110,8 +114,9 @@ async function look(page: Page, name: string, width: number): Promise<void> {
     if (!n || !n.offsetParent) return null;
     const d = n.querySelector(":scope > details.pmore");
     const items = [...n.querySelectorAll(":scope > a, :scope > details > summary")];
-    const tops = items.map((e) => e.getBoundingClientRect().top);
-    const out = { items: items.map((e) => e.textContent.trim()), more: d ? [...d.querySelectorAll(".pmenu a")].map((a) => a.textContent.trim()) : null,
+    // A phone shows the brand, Try and the menu (the sheet repeats the tabs, .pm-m); the row is measured on what is drawn.
+    const tops = items.filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().top);
+    const out = { items: items.map((e) => e.textContent.trim()), more: d ? [...d.querySelectorAll(".pmenu a:not(.pm-t)")].map((a) => a.textContent.trim()) : null,
       rows: Math.round(Math.max(...tops) - Math.min(...tops)), right: Math.round(n.getBoundingClientRect().right), left: Math.round(n.getBoundingClientRect().left),
       open: d ? d.open : null, menu: null, shown: null };
     if (d) {
@@ -119,7 +124,7 @@ async function look(page: Page, name: string, width: number): Promise<void> {
       const was = d.open; d.open = true;
       const r = d.querySelector(".pmenu").getBoundingClientRect();
       out.menu = { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) };
-      out.shown = [...d.querySelectorAll(".pmenu a")].every((a) => { const b = a.getBoundingClientRect(); return b.width > 0 && b.height >= 24 && b.left >= 0; });
+      out.shown = [...d.querySelectorAll(".pmenu a")].filter((a) => !a.classList.contains("pm-t") || a.getClientRects().length).every((a) => { const b = a.getBoundingClientRect(); return b.width > 0 && b.height >= 24 && b.left >= 0; });
       d.open = was;
     }
     return out;
@@ -176,7 +181,7 @@ async function moreByKeyboard(page: Page, name: string): Promise<void> {
   const summary = page.locator('nav[aria-label="Main"] > details.pmore > summary');
   const state = async () => (await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = document.activeElement; return { open: d.open, focus: a ? (a.textContent || "").trim() : "", inMenu: !!(a && a.closest(".pmenu")) }; })()`)) as { open: boolean; focus: string; inMenu: boolean };
   // From the tab before it (Proof), one Tab reaches "More".
-  await page.locator('nav[aria-label="Main"] > a').last().focus();
+  await page.locator('nav[aria-label="Main"] > a:visible').last().focus();
   await page.keyboard.press("Tab");
   const reached = await state();
   if (reached.focus !== MORE_LABEL || reached.open) fail(`${name}: Tab after the four tabs does not reach "More" (focus on "${reached.focus}")`);
@@ -187,7 +192,9 @@ async function moreByKeyboard(page: Page, name: string): Promise<void> {
   if (!opened.open) fail(`${name}: Enter on "More" does not open it`);
   await page.keyboard.press("Tab");
   const first = await state();
-  if (!first.inMenu || first.focus !== moreLinks()[0]!.label) fail(`${name}: Tab from the open "More" does not land on its first link (focus on "${first.focus}")`);
+  // A phone's sheet opens with the tabs (Product: Home first); elsewhere the dropdown opens with More's first page.
+  const firstLink = await page.evaluate(`[...document.querySelectorAll('nav[aria-label="Main"] .pmenu a')].find((a) => a.getClientRects().length)?.textContent.trim() ?? ""`) as string;
+  if (!first.inMenu || first.focus !== firstLink || ![moreLinks()[0]!.label, "Home"].includes(firstLink)) fail(`${name}: Tab from the open "More" does not land on its first link (focus on "${first.focus}")`);
   await summary.focus();
   await page.keyboard.press("Enter");
   if ((await state()).open) fail(`${name}: Enter on the open "More" does not close it`);
@@ -280,15 +287,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // Home as one story (home-story, 12 Nov; enterprise pass and jury pass): two buttons, the product card with its
     // record's values, the stat row from the records, no request, the sizes, the screens (test/browser/homeStory.ts).
     // The CFO's view is linked from Proof's head (checked below), not from Home.
-    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, shot: async (n) => { await page.locator("main figure.hf").screenshot({ path: join(shots, `home-${n}-${tag}.png`) }); } });
+    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, shot: async (n) => { await page.locator("main .e-hero .wf").screenshot({ path: join(shots, `home-${n}-${tag}.png`) }); } });
     await page.goto(`${base}/home`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
-    // At phone width: nothing in the hero or its card overlaps or is cut off (judges #12), and the card shows its final
-    // state, with no empty block waiting for the animation (review, 13 Nov).
+    // At phone width: nothing in the hero or its card overlaps or is cut off (judges #12).
     if (w <= 430) {
-      await noOverlap(page, `/ (Home) ${tag}`, ["main .e-hero .copy", "main .e-hero .ctas", "main .hf", "main .hf-card", "main .hf-side", "main .hf-inv dl"]);
-      const still = await page.evaluate(() => [...document.querySelectorAll(".hf-card *")].filter((e) => getComputedStyle(e).animationName !== "none").length);
-      if (still) fail(`/ (Home) ${tag}: ${still} parts of the product card still animate below 600 px`);
+      // The Workflow card (Max, 21 Nov) animates on a phone too, its steps folded to one line each, nothing overlapping.
+      await noOverlap(page, `/ (Home) ${tag}`, ["main .e-hero .copy", "main .e-hero .ctas", "main .wf", "main .wf-inv", "main .wf-s > details > summary"]);
     }
 
     // Tap targets on a phone (jury review, 12 Nov: menu links 37 px): every link, button and fold header of the shared
@@ -732,8 +737,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
       const budget = path === "/airwallex" ? 725 /* +35, 19 Nov (the owner: "lead with the strongest live-proven result"): five of the wall's Airwallex figures as chips under the heading, each linked to its record, and their line (749 on screen at 360 px as built) */ /* +110, 19 Nov (the owner: "the evidence where judges look"): the "Live on Airwallex" strip, six of the wall's tiles, its line and the endpoint not live (706 on screen at 360 px as built; test/site-v4.test.ts) */ /* +100, 15 Nov (one cent over the limit): the card test's block in sight, its line, both answers with their ids and times, and who signed (604 on screen at 360 px as built; test/site-v4.test.ts) */ /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 290 /* 21 Nov, the owner (Max): "It must be clear it is about cards, not all those walls of text." The card scene, its chips, the card flow and the entry line in sight, the rest folded (282 on screen at 390 px as built; 600 before) */ /* +88, 19 Nov (the owner): the Visa strip and, in the TAP section, the 19 Nov interop re-run (618 on screen as built) */ /* +47, judge panel 15 Nov: the vic-5 run's limits line and its three facts first; 465 with the headless-browser line in sight; 440 since the partner scan, 14 Nov evening: the VIC story in four steps first, the rest folded (437 on screen as built); 1205 before: +125, 14 Nov: the partner review's card-rail scene (main, 1,191 as built) and the partner scan's full title and one credential label (1,205 as built), as test/site-v4.test.ts; +30, jury round 3, 14 Nov: the production sentence and "None in this run."; +340, Visa judge 14 Nov: the story a to e, TAP shown openly (test/site-v4.test.ts) */ + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? 340 /* 21 Nov, the owner (Max): "Our Kit 11 point is: a supplier raises its price, and you see it refused on chain. That has to go at the top, not so much text." The scene, three short tiles and the architecture in sight, the rest folded, the invoice token too (334 on screen at 1440 px as built; 675 and 725 before) */ /* +15, 19 Nov (the owner: "lead with the strongest live-proven result"): the opening facts from the newest records, the 19 Nov series and anchor (748 on screen as built) */ /* +70, 19 Nov (the owner): the "Live on Alta" strip, six of the wall's tiles (730 on screen as built) */ /* +24, 15 Nov: the /alta cap line (#390); 663 on screen as built in CI */ /* +110, Metal Award 15 Nov: /alta opens with three facts (refused on chain, two passkey owners, the anchor), each with its tx and record, and the main run's count */ /* +6, partner and judge scans 14 Nov: "Purser's entry for the Metal Award." and which mandate each figure is (532 on screen as built); +5, 14 Nov: "Alta (formerly Metal)" (test/site-v4.test.ts) */ /* +15, the final review 13 Nov: the separate Face ID on chain run said as it was, the recorded snapshot labelled; +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 230 /* 21 Nov, the owner (Max): "Make sure Claude has really good, clear, correct visuals. I want it simple and tight." The split, the agents with their models and the newest held-out eval in sight (237 on screen at 390 px as built; 325 before) */ /* +5, 14 Nov: "Alta (formerly Metal)" (test/site-v4.test.ts) */ /* +40, jury review 13 Nov: the eval names and days, the line on how the counts relate (test/site-v4.test.ts); 280: +20, final jury 13 Nov: on phones the split is plain figures (the 106 total, three bars), as in test/site-v4.test.ts; was 260: */ /* +10, judge panel 13 Nov: the tiles say what each count is (test/site-v4.test.ts); +10, 13 Nov: the Haiku-as-Support tile says why it matters (test/site-v4.test.ts) */ : 150;
+      // The frame +2 since 21 Nov (Max: "commercially strong"): the footer's "For companies" link (/airwallex 758 at 360 px).
       // The frame +4 since 20 Nov (the owner): the footer's last line, "Pilot or partnership?" and the address (/metal 754 at 768 px).
-      if (words > budget + 32) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
+      if (words > budget + 34) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
       // /airwallex (jury panel, 12 Nov) shows several runs, each dated on its own tile: its label is true for all of them,
@@ -782,7 +788,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/claude") {
         const c = await page.evaluate(`(() => {
           // The wide drawing, or on phones the plain figures (final jury, 13 Nov), whichever shows: one of them.
-          const shown = [...document.querySelectorAll("#split > svg, #split > .sbars")].filter((s) => s.getBoundingClientRect().width > 0);
+          const shown = [...document.querySelectorAll("#split > svg, #split > .sbars, #split > a > svg, #split > a > .sbars")].filter((s) => s.getBoundingClientRect().width > 0);
           const r = shown[0] ? shown[0].getBoundingClientRect() : null, h1 = document.querySelector("h1").getBoundingClientRect();
           return { drawings: shown.length, width: r ? Math.round(r.width) : 0, below: r ? r.top >= h1.bottom : false, top: r ? Math.round(r.top + window.scrollY) : -1,
             agents: document.querySelectorAll("main .cag").length, tiles: document.querySelectorAll("main .ctile").length, bars: document.querySelectorAll("main .cmr svg.bar").length };
@@ -918,7 +924,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = 1300; // /security 1300 since 21 Nov (Max: "We still have a lot of old things on the new page"): the layers diagram, its charts and the eleven cards out, the zero-trust and hostile-model items in "What we did" (1236 as built); 1640 since 19 Nov (the owner: enterprise grade): the architecture with its controls and "What we did, with evidence" (test/site-v4.test.ts); 705 since 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words), 694 as built; 590 since 14 Nov: +5 for "Alta (formerly Metal)" at the first mention (587 as built); 585 since the merge of the final jury (13 Nov): main's 555 plus 30: the line under the heading names the three attack tests; 555 since 13 Nov evening: the optional second key's card (Max: MFA as an option); 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
+      const budget = 1345; // /security 1345 since 21 Nov, last (Max: no bare "N of M"): the mutation run's "50 of 51" says why its one survivor is left (1341 as built). 1330 since 21 Nov, later (review: "What is not finished", five lines in sight, the judges' questions folded; 1325 as built). 1300 since 21 Nov (Max: "We still have a lot of old things on the new page"): the layers diagram, its charts and the eleven cards out, the zero-trust and hostile-model items in "What we did" (1236 as built); 1640 since 19 Nov (the owner: enterprise grade): the architecture with its controls and "What we did, with evidence" (test/site-v4.test.ts); 705 since 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words), 694 as built; 590 since 14 Nov: +5 for "Alta (formerly Metal)" at the first mention (587 as built); 585 since the merge of the final jury (13 Nov): main's 555 plus 30: the line under the heading names the three attack tests; 555 since 13 Nov evening: the optional second key's card (Max: MFA as an option); 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
@@ -936,6 +942,33 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
+    }
+    // /business, "For companies" (21 Nov), first under "More", and /one-pager, its printable sheet: within their budgets
+    // (test/site-v4.test.ts), "More" marked, no text under 14 px in a card, and the calculator answering the visitor's own
+    // numbers with the page's own arithmetic (calc, src/redesign/business.ts), never "NaN". /one-pager's button shows
+    // once its script runs.
+    // 21 Nov: /business 860 after Max's six decisions (the written agreement, eligibility, first target group, scenario).
+    for (const [path, budget] of [["/business", 860], ["/one-pager", 660]] as const) {
+      const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
+      await look(page, `${path} ${tag}`, w);
+      const words = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
+      // 21 Nov (the owner's concept): "Business" is a tab of its own; /business and its one-pager mark it.
+      const tab = await page.evaluate(`(document.querySelector('nav[aria-label="Main"] > a[aria-current="page"]') || {}).textContent || ""`) as string;
+      if (tab.trim() !== "Business") fail(`${path} ${tag}: the "Business" tab is not marked as where the reader is ("${tab}")`);
+      const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead")].filter((e) => e.offsetParent && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
+      for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
+      if (path === "/business") {
+        await page.fill("#c-invoices", "400");
+        await page.fill("#c-risk", "20000");
+        const want = calc({ ...CALC_DEFAULTS, invoices: 400, atRisk: 20000 });
+        const got = await page.evaluate(() => ({ price: document.getElementById("o-price")?.textContent, year: document.getElementById("o-year")?.textContent, bars: document.querySelectorAll(".bz-bars > div:not([hidden])").length }));
+        if (got.price !== calcEuro(want.price) || got.year !== calcEuro(want.year) || got.bars !== 2) fail(`/business ${tag}: the calculator does not answer 400 invoices with the page's arithmetic (${JSON.stringify(got)})`);
+        await page.fill("#c-minutes", "");
+        if (/NaN|undefined/.test(await page.locator(".bz-res").innerText())) fail(`/business ${tag}: an empty input shows NaN`);
+      } else if (!(await page.locator("#print").isVisible())) fail(`/one-pager ${tag}: no "Save as PDF" button`);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
     }
     // Proof's guarantee 1 links "If the approver is unavailable" (12 Nov): it lands on /security#unavailable with the
     // fold's heading in view, below the sticky header. At 390 and 1440 px.
@@ -1093,7 +1126,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // +110, Metal Award 15 Nov: /alta opens with three facts (refused on chain, two passkey owners, the anchor), each with its tx and record, and the main run's count.
       // +17, 15 Nov: /alta says why the Sourcing cap is higher after #24.
       // 340 since 21 Nov (the owner, Max: "That has to go at the top, not so much text."): the block is folded; 720 before.
-      if (words > 340 + 33) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 340 plus the frame`); // frame +1, 21 Nov (Max: "simple and tight"): the menu's "Cloud" tab; // frame +4, 20 Nov (the owner): the footer's last line, "Pilot or partnership?" and the address (4 words; 750 as built); // +13, 19 Nov (the owner): the opening facts from the 19 Nov series and anchor (745 as built); +70, 19 Nov (the owner): the "Live on Alta" strip (728 as built); +7, 15 Nov: the /alta cap line (#390), 660 as built in CI
+      if (words > 340 + 35) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 340 plus the frame`); // frame +2, 21 Nov: the footer's "For companies" link; // frame +1, 21 Nov (Max: "simple and tight"): the menu's "Cloud" tab; // frame +4, 20 Nov (the owner): the footer's last line, "Pilot or partnership?" and the address (4 words; 750 as built); // +13, 19 Nov (the owner): the opening facts from the 19 Nov series and anchor (745 as built); +70, 19 Nov (the owner): the "Live on Alta" strip (728 as built); +7, 15 Nov: the /alta cap line (#390), 660 as built in CI
       // 21 Nov (the owner: "not so much text"): the block sits in the fold of the separate runs on Alta; opened as a reader opens it.
       await page.evaluate(() => { const d = document.querySelector("#invoice-token")?.closest("details"); if (d) (d as HTMLDetailsElement).open = true; });
       const block = page.locator("#invoice-token");
@@ -1125,8 +1158,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         const fold = document.querySelector("main details#details"), runs = document.getElementById("live-runs"), g = document.getElementById("guarantees");
         // The owner, 13 Nov ("the proof is what we need"): heading, lead line, proof chain, band, offline check, live runs,
         // then the guarantees and the one fold.
-        const order = [];
-        for (let e = h1; e; e = e.nextElementSibling) order.push(e.tagName.toLowerCase() + (e.className ? "." + e.className.split(" ")[0] : ""));
+        // 21 Nov (Max's mockup): the head is its own band; the order is read from the head and the page's column after it.
+        const order = [], head = h1 && h1.closest("section.pxh"), col = head && head.nextElementSibling;
+        if (head) order.push("section.pxh");
+        for (let e = col && col.firstElementChild; e; e = e.nextElementSibling) order.push(e.tagName.toLowerCase() + (e.className ? "." + e.className.split(" ")[0] : ""));
         return { order: order.slice(0, 9).join(" "), chain: top(document.querySelector("main ol.pchain")), band: top(document.querySelector("main ul.scale")), runs: top(runs), rows: runs ? runs.querySelectorAll("li[id^=run-]").length : 0, fold: top(fold), gtee: top(g), open: document.querySelectorAll("main details[open]").length };
       })()`)) as { order: string; chain: number; band: number; runs: number; rows: number; fold: number; gtee: number; open: number };
       // Max, 14 Nov: the walkthrough and the trailer, then a tile per partner with its one line, lead the page.
@@ -1136,11 +1171,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 19 Nov, second pass (the owner: "clearer and tighter, more visuals"): the evidence map and the wall lead the page.
       // 21 Nov (the owner: "organise it; an animated architecture"): the heading, the lead, the architecture, the questions,
       // the film link, the five sections (every live run in the third), the business and the archive, the utility links.
-      if (first.order !== "h1 p.plead figure.parch nav.pq-nav p.pwatch div.pqs details.deep details.deep nav.util" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the architecture, the questions, the film link, the five sections (every live run, ${PROOF_RUN_ROWS}, in the third), the closed lines and the utility links, closed on load (${JSON.stringify(first)})`);
+      // 21 Nov, later (Max's mockup): the head (heading, film link, lead, four figures), the stages, the architecture, the
+      // categories, the eight sections (every live run in the first), the closed lines and the utility links.
+      if (first.order !== "section.pxh section.pstage figure.parch nav.pq-nav div.pqs details.deep details.deep nav.util" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the head, the stages, the architecture, the categories, the eight sections (every live run, ${PROOF_RUN_ROWS}, in the first), the closed lines and the utility links, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
-        // The architecture starts on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
-        const map = await page.evaluate(`(() => { const e = document.querySelector("main figure.parch"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
-        if (map < 0 || map >= 440) fail(`/proof ${tag}: the architecture starts at ${map} px, not on the first screen`);
+        // The stages start on the first screen (under 844 px: the head's four figures sit two by two above them).
+        const map = await page.evaluate(`(() => { const e = document.querySelector("main section.pstage"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
+        if (map < 0 || map >= 844) fail(`/proof ${tag}: the stages start at ${map} px, not on the first screen`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 6) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
@@ -1369,18 +1406,19 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     if (judgeBase) {
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
       // 21 Nov: the hero's primary button starts the judge tour; its second opens the hands-on demo.
-      if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TOUR_START_HREF) fail(`/ (Home, with /try/sign) ${tag}: the first button does not start the judge tour`);
+      if ((await page.locator("main .e-tour a.btn[data-tour-start]").getAttribute("href")) !== TOUR_START_HREF) fail(`/ (Home, with /try/sign) ${tag}: the judge tour's button does not start the judge tour`);
       if ((await page.locator("main .e-hero a.btn.start").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the Try button does not lead to the hands-on demo`);
       if (await page.locator('a[href="tour"], a[href="pricing"], a[href*="judge"]').count()) fail(`/ (Home, with /try/sign) ${tag}: a link to /tour, /pricing or /judge is back`);
-      if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
+      if (await page.locator("main p.reassure").count()) fail(`/ (Home, with /try/sign) ${tag}: the line under the buttons is back (Max, 21 Nov: the Workflow card says sandbox)`);
       await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
       await page.goto(`${judgeBase}/home`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
-      for (const old of ["/tour", "/pricing", "/judge"]) {
+      // 21 Nov (Max): /pricing lands on the plans on /business, beside the 30-Day Founding Partner Pilot.
+      for (const [old, to] of [["/tour", "/home"], ["/pricing", "/business"], ["/judge", "/home"]] as const) {
         await page.goto(`${judgeBase}${old}`, { waitUntil: "load" });
-        if (new URL(page.url()).pathname !== "/home") fail(`${old} ${tag}: did not land on Home (${page.url()})`);
+        if (new URL(page.url()).pathname !== to) fail(`${old} ${tag}: did not land on ${to} (${page.url()})`);
       }
     }
 
@@ -1435,4 +1473,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /airwallex/calls, /visa, /claude (folds open), /security (folds open), /verify (the sample bundle passes every line, no server call), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", Home with /try/sign, and /tour, /pricing and /judge landing on Home" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /airwallex/calls, /visa, /claude (folds open), /security (folds open), /verify (the sample bundle passes every line, no server call), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /business and /one-pager, Home with /try/sign, /tour and /judge landing on Home and /pricing on /business" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

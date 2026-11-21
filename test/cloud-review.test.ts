@@ -32,9 +32,11 @@ describe("Purser Cloud after the review of 13 Nov", () => {
     expect(tr("nl", "cs.eng.archive_off")).toMatch(/engine van Purser/);
   });
 
-  it("(3) the demo chip says made-up data, as the banner does, never sandbox", () => {
-    expect(tr("en", "cs.demo.chip")).toBe("Demo: made-up data");
-    expect(tr("nl", "cs.demo.chip")).toBe("Demo: verzonnen gegevens");
+  // Max, 21 Nov: one quiet disclosure in the company switcher; the 177 Overview (21 Nov) words it "Demo workspace",
+  // matching the header pill "Demo workspace · Simulated data · No real payments". The banner keeps the full line.
+  it("(3) the demo chip says Demo workspace, never sandbox; the banner says made-up data", () => {
+    expect(tr("en", "cs.demo.chip")).toBe("Demo workspace");
+    expect(tr("nl", "cs.demo.chip")).toBe("Demo-werkruimte");
     expect(tr("en", "cs.demo.chip")).not.toMatch(/sandbox/i);
   });
 

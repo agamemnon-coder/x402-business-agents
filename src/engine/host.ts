@@ -23,7 +23,7 @@ import { actionsFor } from "../ap/detail.js";
 import { SEEDED_PAID_REASON } from "../ap/books.js";
 import { docStoreOf } from "../ap/docStore.js";
 import { clearPossibleDuplicate, ingestDocument, type IngestResult } from "../ap/inbox.js";
-import { earlyPayer, payApInvoice, rejectApInvoice, syncPayments, type PaidAlone } from "../ap/pay.js";
+import { earlyPayer, payApInvoice, rejectApInvoice, syncPayments, type AloneDeclined, type PaidAlone } from "../ap/pay.js";
 import type { EarlyPayer } from "../ap/payerAgent.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow } from "../ap/store.js";
@@ -614,7 +614,7 @@ export class EngineHost {
    * payAlone), code approves the exact terms and the agent's payment runs at once, like an approved one: `alone` says
    * so, and `settled` what followed (the proposal comes back EXECUTED, or FAILED with the reason in settled.error).
    */
-  propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView; alone?: PaidAlone; settled?: Settled } | { ok: false; reason: string }> {
+  propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView; alone?: PaidAlone; settled?: Settled; alone_declined?: AloneDeclined } | { ok: false; reason: string }> {
     return this.act(async () => {
       const { db, rails } = this.deps;
       try {
@@ -628,7 +628,8 @@ export class EngineHost {
         const settled = out.alone ? await this.pay(out.proposal.proposal_id) : null;
         const proposal = this.proposal(out.proposal.proposal_id);
         if (!proposal) return { ok: false, reason: `${out.proposal.proposal_id} was filed but is not in the ledger` };
-        return { ok: true, proposal, ...(out.alone && settled ? { alone: out.alone, settled } : {}) };
+        // 21 Nov: within the limit to pay alone but filed for the CFO, the answer says who did not say pay, and why.
+        return { ok: true, proposal, ...(out.alone && settled ? { alone: out.alone, settled } : {}), ...(out.declined ? { alone_declined: out.declined } : {}) };
       } catch (e) {
         return { ok: false, reason: message(e) };
       } finally {

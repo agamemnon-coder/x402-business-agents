@@ -68,6 +68,10 @@ export interface Pages {
   docs?: string;
   /** /privacy, under "More" too (src/redesign/privacy.ts), no script; absent in a bundle built before it. */
   privacy?: string;
+  /** /business, "For companies", under "More" (src/redesign/business.ts): its one script is the calculator; absent in a bundle built before it. */
+  business?: string;
+  /** /one-pager, the printable sales sheet linked from /business (src/redesign/business.ts): its one script is the print button. */
+  onePager?: string;
   /** /status, under "More" too (src/redesign/status.ts): its one script reads this Worker's own /health; absent in a bundle built before it. */
   status?: string;
   /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger. */
@@ -116,7 +120,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; awxCalls?: string; claude?: string; security?: string; docs?: string; privacy?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; verify?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; awxCalls?: string; claude?: string; security?: string; docs?: string; privacy?: string; business?: string; onePager?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; verify?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -245,7 +249,8 @@ function routePage(req: Request, pages: Pages): Response | null {
   const moved = pages.redirects && Object.hasOwn(pages.redirects, path) ? pages.redirects[path] : undefined;
   if (moved) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: moved } });
   const gone = pages.moved && Object.hasOwn(pages.moved, path) ? pages.moved[path] : undefined;
-  if (gone) return new Response(null, { status: 301, headers: { ...COMMON_HEADERS, location: gone + new URL(req.url).search } });
+  // A target with its own query or fragment (/judge: the tour on Home) keeps it; else the request's query goes with it.
+  if (gone) return new Response(null, { status: 301, headers: { ...COMMON_HEADERS, location: /[?#]/.test(gone) ? gone : gone + new URL(req.url).search } });
   if (path === "/month") return page(pages.month, pages.csp.month);
   if (path === "/demo") return page(pages.demo, pages.csp.demo);
   if (path === "/live") return page(pages.live, pages.csp.live);
@@ -263,6 +268,8 @@ function routePage(req: Request, pages: Pages): Response | null {
   if (path === "/security" && pages.security && pages.csp.security) return page(pages.security, pages.csp.security);
   if (path === "/docs" && pages.docs && pages.csp.docs) return page(pages.docs, pages.csp.docs);
   if (path === "/privacy" && pages.privacy && pages.csp.privacy) return page(pages.privacy, pages.csp.privacy);
+  if (path === "/business" && pages.business && pages.csp.business) return page(pages.business, pages.csp.business);
+  if (path === "/one-pager" && pages.onePager && pages.csp.onePager) return page(pages.onePager, pages.csp.onePager);
   if (path === "/status" && pages.status && pages.csp.status) return page(pages.status, pages.csp.status);
   if (path === "/t0" && pages.t0 && pages.csp.t0) return page(pages.t0, pages.csp.t0);
   if (path === "/books" && pages.books && pages.csp.books) return page(pages.books, pages.csp.books);

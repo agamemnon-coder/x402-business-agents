@@ -85,18 +85,24 @@ await page.fill("#slug", "northwind");
 await page.click("text=Sign in with your passkey");
 await page.waitForSelector("#tabs", { state: "visible", timeout: 20_000 });
 await page.goto(`${ORIGIN}/#/agents`);
-// 21 Nov: each agent is a pass; its record, the live card panel with it, opens under "Details".
-await page.waitForSelector(".lcard", { state: "attached", timeout: 20_000 });
-ok((await page.$$(".lcard")).length === 3, "each agent has a live card panel");
-for (const b of await page.$$(".wagent button.wmore")) await b.click();
-await page.waitForSelector(".lcard", { timeout: 20_000 });
+// 23 Nov: each agent is a card; its record, the live card panel with it, opens in its drawer (cloud/src/agentWallet.ts).
+await page.waitForSelector("article.dk-item", { timeout: 20_000 });
+ok(await page.locator("article.dk-item.on").count() === 3, "the three agents with a live card come first, at work");
+/** The agent's drawer, opened again when a card action redrew the page. */
+const drawer = async (id: string) => {
+  if (!(await page.locator(`dialog.dk-drawer[open]`).count())) await page.locator(`#roster-${id} button.dk-face`).click();
+  await page.waitForSelector("dialog.dk-drawer[open] .lcard", { timeout: 20_000 });
+  return page.locator("dialog.dk-drawer[open]");
+};
+await drawer("sourcing");
 ok((await text()).includes("No live card yet"), "before issuing: no live card, with the policy's limits");
 
-const sourcing = page.locator(".card.agent").filter({ hasText: "Sourcing" }).first();
+let sourcing = await drawer("sourcing");
 await sourcing.locator("button", { hasText: "Issue card" }).click();
 await page.waitForSelector("text=issued with the policy's limits", { timeout: 20_000 });
 ok(sandbox.calls.includes("POST /issuing/cards/create"), "the signed action created the card at the sandbox");
 await settle();
+sourcing = await drawer("sourcing");
 ok((await sourcing.innerText()).includes("1902") && (await sourcing.innerText()).includes("Limits match the CFO policy"), "the new card shows its last four and the policy's limits");
 
 // One cent over: the limit, then the limit and EUR 0.01, at the sandbox, with Face ID.
@@ -104,25 +110,29 @@ await sourcing.locator("button", { hasText: "Test: EUR 30.00, then EUR 30.01" })
 await page.waitForSelector("text=Airwallex itself: EUR 30.00 approved, EUR 30.01 declined (LIMIT_EXCEEDED)", { timeout: 20_000 });
 ok((await (await fetch(`${ORIGIN}/v1/cards/edge/latest`)).json() as { attempts: { approved: boolean }[] }).attempts.map((a) => a.approved).join() === "true,false", "the run record says what Airwallex said: approved, then declined");
 await settle();
+sourcing = await drawer("sourcing");
 const afterTest = await sourcing.innerText();
 ok(afterTest.includes("LIMIT_EXCEEDED") && /ctx_\d+/.test(afterTest), "the decline shows with its reason and its id");
 // The Support agent: its live card adopted from the sandbox, its older active card frozen in one signed action.
-const support = page.locator(".card.agent").filter({ hasText: "Support" }).first();
+await page.keyboard.press("Escape");
+const support = await drawer("support");
 ok((await support.innerText()).includes("6203") && (await support.innerText()).includes("still active: to be frozen"), "an adopted live card, and the older card still to be frozen");
 await support.locator("button", { hasText: "Freeze older test cards (1)" }).click();
 await page.waitForSelector("text=Older test cards frozen: 1", { timeout: 20_000 });
 await settle();
+await drawer("support"); // the redrawn page opens its drawer again
 ok([...sandbox.cards.values()].find((x) => x.last4 === "6949")?.card_status === "INACTIVE" && [...sandbox.cards.values()].find((x) => x.last4 === "6203")?.card_status === "ACTIVE", "the older card is frozen at the sandbox; the live card is not");
-await support.scrollIntoViewIfNeeded();
 await shot("cloud-agents-card-older-1440");
-await sourcing.scrollIntoViewIfNeeded();
+await page.keyboard.press("Escape");
+sourcing = await drawer("sourcing");
 await shot("cloud-agents-card-decline-1440");
 
 await sourcing.locator("button", { hasText: "Freeze card" }).click();
 await page.waitForSelector("text=is frozen", { timeout: 20_000 });
 await settle();
+sourcing = await drawer("sourcing");
 ok((await sourcing.locator(".lcard .bcard.frozen").count()) === 1 && (await sourcing.innerText()).includes("Unfreeze card"), "the card flips to Frozen, and offers Unfreeze");
-await sourcing.locator(".lcard").scrollIntoViewIfNeeded();
+await sourcing.locator(".lcard").first().scrollIntoViewIfNeeded();
 await shot("cloud-agents-card-1440");
 
 const all = await page.content();
@@ -130,12 +140,12 @@ ok(!all.includes(PAN) && !CVV_SEEN.test(await text()) && !all.includes("ch_secre
 
 await page.setViewportSize({ width: 390, height: 844 });
 await page.reload();
-await page.waitForSelector(".lcard .bcard", { state: "attached", timeout: 20_000 });
-await page.locator(".card.agent").filter({ hasText: "Sourcing" }).first().locator("button.wmore").click();
-await page.waitForSelector(".lcard .bcard", { timeout: 20_000 });
+await page.waitForSelector("article.dk-item", { timeout: 20_000 });
+sourcing = await drawer("sourcing");
+await page.waitForSelector("dialog.dk-drawer[open] .lcard .bcard", { timeout: 20_000 });
 await settle();
-ok(await page.evaluate(() => document.documentElement.scrollWidth <= 390), "nothing is wider than a phone");
-await page.locator(".card.agent").filter({ hasText: "Sourcing" }).first().locator(".lcard").scrollIntoViewIfNeeded();
+ok(await page.evaluate(() => document.documentElement.scrollWidth <= 390) && await page.evaluate(() => { const d = document.querySelector("dialog.dk-drawer[open] .dk-db"); return !!d && d.scrollWidth <= d.clientWidth + 1; }), "nothing is wider than a phone");
+await sourcing.locator(".lcard").first().scrollIntoViewIfNeeded();
 await shot("cloud-agents-card-390");
 
 ok(errors.length === 0, `no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);

@@ -56,7 +56,12 @@ export const CONFUSABLES: Readonly<Record<string, string>> = {
  */
 export function skeleton(name: string): string {
   // 19 Nov (after eval v7): soft hyphens, zero-width characters, direction marks and tatweel set a name, they are no letters of it.
-  return [...withoutTypography(name).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\u03C2/g, "\u03C3")]
+  // 21 Nov (after the held-out eval v17, v17-look-tonga-straight-apostrophe and v17-look-hawaii-plain: "Fale Lālanga 'o
+  // Tonga Ltd" and "Hale Ulana Oiwi LLC" at the accounts on file of "Fale Lālanga ʻo Tonga Ltd" and "Hale Ulana ʻŌiwi
+  // LLC" were held as lookalikes, one letter apart): the spacing modifier letters (U+02B9 to U+02FF: the ʻokina and
+  // fakauʻa, ʼ, ˀ, primes and tone marks) write an apostrophe, a glottal stop or a stress, as a mark does; a name with
+  // them is the same name as with an apostrophe or without, as it is with its accents or without.
+  return [...withoutTypography(name).normalize("NFKD").replace(/[\p{M}\u02B9-\u02FF]/gu, "").toLowerCase().replace(/\u03C2/g, "\u03C3")]
     .map((ch) => CONFUSABLES[ch] ?? ch)
     .filter((ch) => /[a-z0-9]/.test(ch) || (/\p{L}/u.test(ch) && !/\p{Script=Latin}/u.test(ch)))
     .join("");
@@ -89,6 +94,9 @@ const LEGAL_FORMS: readonly string[][] = [
   // Ltd" on file was held as another holder): a form is the same form written out or abbreviated. The forms above that
   // were held in one spelling only, in the other: Private and Pvt (Zimbabwe, India, Pakistan, Sri Lanka), Proprietary
   // (Pty), Sendirian Berhad (Sdn Bhd), and the long forms of the abbreviations above.
+  // 21 Nov (after the held-out eval v16, v16-name-saloniko-no-form: "TELAS DE SALONIKO" holding the account on file of
+  // "Telas de Saloniko A.E." was held as another holder): Greece's forms, as Latin letters and Greek ones write them.
+  ["ae"], ["epe"], ["ike"], ["oe"], ["ee"], ["αε"], ["επε"], ["ικε"], ["οε"], ["εε"],
   ["pvt"], ["private"], ["proprietary"], ["sdn", "bhd"], ["bhd"], ["sendirian", "berhad"], ["berhad"],
   ["public", "limited", "company"], ["limited", "liability", "company"], ["limited", "liability", "partnership"], ["limited", "partnership"],
   ["gesellschaft", "mit", "beschrankter", "haftung"], ["aktiengesellschaft"], ["kommanditgesellschaft"],
@@ -432,6 +440,9 @@ const BYPASS = new RegExp([
   // Secrecy: "keep this between us", "no need to loop in your controller", "do not phone Bergtex about it".
   "\\bkeep (this|it|the (payment|transfer|matter|invoice))\\b[^.\\n]{0,25}\\b(between us|confidential|secret|quiet|private|to yourself|discreet)",
   "\\b(no need to|don'?t|do not|please do not|without|never)\\s+(loop(ing)? in|involv\\w*|inform\\w*|tell\\w*|copy\\w*|cc|check\\w* with|call\\w*|phon\\w*|ring\\w*|contact\\w*|verify\\w*|discuss\\w*|mention\\w*)\\b",
+  // 21 Nov (after the held-out eval v16, v16-inject-vertical: "PLEASE NO NEED TO CHECK THIS ONE", once read as one
+  // sentence): the checks themselves, not only a check with someone: no need to check, review, match, inspect or look at it.
+  "\\b(no need to|need not|needn'?t|(it is )?not necessary to|unnecessary to|don'?t|do not|please do not|never)\\s+(check(ing)?|review\\w*|match\\w*|inspect\\w*|audit\\w*|look (at|over|into))\\b(?!\\s+(in|out)\\b)",
   // 20 Nov (after eval v9): someone looped in, told or copied with words between ("loop anyone else in", "let anyone else know").
   "\\b(no need to|don'?t|do not|please do not|without|never)\\s+(loop(ing)?|let(ting)?|keep(ing)?)\\s+(\\w+\\s+){0,3}(in|know|posted|informed)\\b",
   "\\b(no need to|don'?t|do not|please do not|without|never)\\s+(\\w+\\s+)?(involv|inform|tell|copy|cc|loop|alert|notify|bother)\\w*\\s+(anyone|anybody|others|other people|the rest|your (team|colleagues|finance|controller|cfo|boss|manager))\\b",
@@ -482,10 +493,22 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   // supplier also written differently in the same alphabets (case, spacing, punctuation, legal form, umlauts written out:
   // skeleton and sameName), or romanised from Greek or Cyrillic (sameName). A whole name in another alphabet that only
   // looks like one on file is not matched here, and the lookalike check below holds it.
-  const mixed = mixedScriptWord(inv.vendor);
+  // 21 Nov (after the held-out evals v16 and v17, v16-clean-shupashkar-chuvash and v17-clean-sakha-latin-h: "Шупашкар
+  // Тĕртекен АО" and "Саха Таҥаhа ХЭТ", on file as their banks hold them, with a Latin ĕ or h inside a Cyrillic word as
+  // Chuvash and Sakha are often typed, were held for mixing alphabets): a name on file was verified as the supplier's by
+  // a person; the same name, as written (NFKC, invisible format characters aside), is that supplier, whatever alphabets
+  // its words mix. Only a word that mixes alphabets where the name on file does not is suspect.
+  const asOnFile = (n: string) => all.find((b) => b.name === n || canonicalName(b.name) === canonicalName(n));
+  const mixedNotOnFile = (n: string) => { const w = mixedScriptWord(n); return w && !(asOnFile(n) && mixedScriptWord(asOnFile(n)!.name)) ? w : undefined; };
+  const mixed = mixedNotOnFile(inv.vendor);
   const canon = canonicalName(inv.vendor);
+  // 21 Nov (after the held-out eval v16, v16-look-iryston-latin-o: "Ирыстон Хъуымац OOO", its legal form in Latin O's,
+  // at the account on file of "Ирыстон Хъуымац ООО" was matched by romanisation and paid): a name in other alphabets than
+  // a name on file whose letters a reader sees as that name's (the same skeleton) is a lookalike, not a romanisation;
+  // only a name written as the one on file is matched past it.
+  const homoglyph = all.some((b) => !sameScripts(b.name, inv.vendor) && skeleton(b.name) === skeleton(inv.vendor) && canonicalName(b.name) !== canon);
   const matched = all.find((b) => b.name === inv.vendor) ?? all.find((b) => canonicalName(b.name) === canon)
-    ?? (mixed ? undefined : all.find((b) => sameScripts(b.name, inv.vendor) && skeleton(b.name) === skeleton(inv.vendor))
+    ?? (mixed || homoglyph ? undefined : all.find((b) => sameScripts(b.name, inv.vendor) && skeleton(b.name) === skeleton(inv.vendor))
       ?? all.find((b) => sameScripts(b.name, inv.vendor) && sameName(b.name, inv.vendor))
       ?? all.find((b) => sameRomanised(b.name, inv.vendor))
       // 20 Nov (after eval v8): the name on file as an ASCII system writes it.
@@ -517,7 +540,7 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   // Third round (eval v4): the holder transliterated or with "und" for "&" (sameName), and, at the account on file only,
   // cut short by the bank's field (truncates) or followed by the supplier's trade name (tradeNameOf).
   // 19 Nov (after eval v5): a holder with a word that mixes alphabets is held as the vendor's name is.
-  const holderMixed = holder ? mixedScriptWord(holder) : undefined;
+  const holderMixed = holder ? mixedNotOnFile(holder) : undefined;
   if (holder && holderMixed && !mixed) {
     signals.push({ code: "mixed_scripts", blocks: true, detail: `the account holder "${holder}" contains letters from a non-Latin alphabet` });
   }

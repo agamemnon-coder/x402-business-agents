@@ -42,6 +42,8 @@ export const FLOW = {
 
 /** The step labels above the card, a few words each. */
 export const FLOW_STEPS = ["Invoice", "Read", "Check", "Sign", "Paid"] as const;
+/** The steps are buttons (Max, 21 Nov: "the tabs clickable"): each jumps the loop to its moment; what reads them aloud. */
+export const FLOW_STEPS_LABEL = "Show a step of the run";
 // Jury, 13 Nov: whose run it is (a test company in /try, not the main run's Northwind Outdoor); its day is in "What's real?".
 // Partner scan, 14 Nov: "test money" moved up to the line under the buttons (REASSURE), still said once on Home.
 export const FLOW_NOTE = "One /try run, a test company's sample invoice.";
@@ -54,7 +56,7 @@ export function heroFlowHtml(): string {
   const f = FLOW;
   const field = (k: string, v: string, i: number) => `<div class="hf-row hf-t${i}"><dt>${esc(k)}</dt><dd>${esc(v)}<span class="hf-tick">${icon("check", 14)}</span></dd></div>`;
   return `<figure class="hf" data-rec="${TRY_SAMPLE_RECORD}" aria-label="${esc(`One payment in Purser: an invoice from ${f.supplier}, ${f.amount}, comes in; the reader reads it; the check says ready to pay; the CFO signs the exact terms with a passkey (a test passkey in this run); it is paid and booked. Values from a /try run.`)}">
-  <ol class="hf-steps" aria-hidden="true">${FLOW_STEPS.map((s, i) => `<li class="hf-s${i}">${esc(s)}</li>`).join("")}</ol>
+  <ol class="hf-steps" aria-label="${esc(FLOW_STEPS_LABEL)}">${FLOW_STEPS.map((s, i) => `<li class="hf-s${i}"><button type="button" data-hf="${i}"><span>${esc(s)}</span></button></li>`).join("")}</ol>
   <div class="hf-card" aria-hidden="true">
     <div class="hf-inv">
       <div class="hf-head"><span class="hf-doc">${icon("file-check", 16)}</span><div><b>${esc(f.supplier)}</b><small>${esc(`Invoice ${f.number}`)}</small></div></div>
@@ -70,7 +72,7 @@ export function heroFlowHtml(): string {
         <p class="hf-pill"><b>Signed with a passkey</b> · <span title="${esc(`SHA-256 of the signed terms: ${f.hash}`)}">fingerprint of the terms</span></p>
       </div>
       <div class="hf-paid">
-        <p class="hf-paid-h"><span>${icon("check", 14)}</span><b>Paid</b><small>simulated bank</small></p>
+        <p class="hf-paid-h"><span>${icon("check", 14)}</span><b>Paid</b><small>simulated bank · its payout also sent to the Airwallex sandbox</small></p>
         <table class="hf-led"><tbody>${f.ledger.map((l, i) => `<tr class="hf-l${i}"><th>${esc(l.code)}</th><td${l.code === AP_ACCOUNTS.foreignVat && VAT_THEN ? ` title="${esc(VAT_THEN)}"` : ""}>${esc(l.name)}</td><td>${esc(l.debit || l.credit)}<small>${l.debit ? "Dr" : "Cr"}</small></td></tr>`).join("")}</tbody></table>
       </div>
     </div>
@@ -97,8 +99,12 @@ export const SHOWN = "inset(0 0 0 0)";
 
 export const HERO_FLOW_CSS = `
 .hf { margin: 0; }
-.hf-steps { list-style: none; margin: 0 0 12px; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
-.hf-steps li { font-size: 13px; font-weight: 650; letter-spacing: .02em; color: var(--faint); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
+.hf-steps { list-style: none; margin: 0 0 4px; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.hf-steps li { font-size: 13px; font-weight: 650; letter-spacing: .02em; color: var(--faint); border: 0 solid var(--border); }
+.hf-steps button { display: inline-flex; align-items: center; min-height: 44px; padding: 0; margin: 0; border: 0 solid; border-color: inherit; background: none; color: inherit; font: inherit; letter-spacing: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.hf-steps button span { display: inline-block; padding: 4px 11px; border-radius: 999px; border: 1px solid; border-color: inherit; transition: background-color .2s ease; }
+.hf-steps button:hover span { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.hf-steps button:focus-visible { outline: none; } .hf-steps button:focus-visible span { outline: 2px solid var(--accent); outline-offset: 2px; }
 .hf-steps li:last-child { color: var(--accent); border-color: var(--accent); }
 .hf-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 18px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 12px 32px -12px rgba(16, 24, 40, .14); }
 .hf-inv { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--bg); }
@@ -143,3 +149,17 @@ ${LIT.map(([a, b], i) => `@keyframes hf-lit${i} { 0%, ${Math.max(0, a - 0.5)}% {
 p.hf-note { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
 p.hf-note a { color: var(--accent); font-weight: 650; display: inline-flex; align-items: center; min-height: 44px; }
 `;
+
+/** A step's button jumps every part of the card's loop to the end of that step (Web Animations; nothing when still). */
+export const HERO_FLOW_JS = `
+(function () {
+  var f = document.querySelector("figure.hf");
+  if (!f || !f.getAnimations) return;
+  var END = ${JSON.stringify(LIT.map(([, b], i) => (i === LIT.length - 1 ? 90 : b - 1)))}, LOOP = ${LOOP * 1000};
+  [].forEach.call(f.querySelectorAll("[data-hf]"), function (b) {
+    b.addEventListener("click", function () {
+      var at = END[+b.getAttribute("data-hf")] / 100 * LOOP;
+      f.getAnimations({ subtree: true }).forEach(function (a) { try { a.currentTime = at; a.play(); } catch (e) {} });
+    });
+  });
+})();`;

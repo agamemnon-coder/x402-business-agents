@@ -1,6 +1,10 @@
-# Ask Purser: a card for one task, from one sentence
+# Task cards: a card for one task, from one sentence
 
-The CFO types on the runner, or on the phone (CFO policy page, "Ask Purser"):
+Until 21 November this feature was called "Ask Purser"; that name is now the chat on Purser Cloud (`/ask`,
+`cloud/src/ask/`), so the feature is called task cards here. The code keeps its old names (`src/agents/askPurser.ts`,
+`npm run ask`).
+
+The CFO types on the runner, or on the phone (CFO policy page, "Task card"):
 
 ```bash
 npm run ask -- "Book a flight to Berlin for the trade fair on 12 November, at most €250"
@@ -35,8 +39,8 @@ npm run ask -- show P-0011            # a second charge and a hotel charge: Airw
 An agent can ask too: outside agents through the MCP tool `ask_for_task_card`. An agent's request is always a proposal
 for the CFO, never a card at once.
 
-The card shows in the dashboard's cards grid and its charges in the feed; the conversation is in the "Ask Purser"
-panel. Card spend on task cards goes to account 6300 (travel), cost centre CC500, in the GL export. A task card is
+The card shows in the dashboard's cards grid and its charges in the feed; the conversation is in the dashboard's
+task-card panel. Card spend on task cards goes to account 6300 (travel), cost centre CC500, in the GL export. A task card is
 not counted against an agent's velocity limits: its own limit, one purchase, is stricter. The emergency stop freezes it
 like any card.
 

@@ -40,7 +40,7 @@ function awlCard(key,icon,titleKey,subText){
   card.dataset.view=key;return {card,body,stamp}}
 function awlUnavailable(slot,a,retry){slot.stamp.replaceChildren(el('span','awbad',[ic('triangle-alert'),t('cs.awl.unavailable')]));
   const again=btn(t('cs.awl.retry'),'','arrow-right');again.onclick=retry;
-  slot.body.replaceChildren(el('div','awdown',[el('b','',t('cs.awl.unavailable')),el('p','sub',a&&a.reason?String(a.reason):t('cs.awl.no_answer')),again]))}
+  again.classList.add('sm');slot.body.replaceChildren(el('div','awdown sm',[el('p','sub',a&&a.reason?String(a.reason):t('cs.awl.no_answer')),again]))}
 function awlLive(slot,a){slot.stamp.replaceChildren(el('span','awlive',[el('i',''),t('cs.awl.live',{time:awlTime(a.read_at)})]))}
 const AWL_RENDER={
   balances(d){const all=d.balances||[];if(!all.length)return el('p','sub',t('cs.awl.empty'));
@@ -52,8 +52,8 @@ const AWL_RENDER={
       return el('div','awtile big',[el('span','awtl',x.currency),v,el('span','sub',t('cs.awl.bal_detail',{total:awlAmt('',x.total),pending:awlAmt('',x.pending)}))])}));
     const zeros=z.length?el('details','awzero',[el('summary','',t('cs.awl.bal_zero',{n:z.length})),el('div','chips',z.map((x)=>el('span','mchip',x.currency)))]):null;
     return el('div','',[el('p','awline',t('cs.awl.bal_line',{n:b.length})),tiles,zeros])},
-  rates(d){return el('div','awtiles',(d.rates||[]).map((r)=>el('div','awtile big',[el('span','awtl',t('cs.awl.rate_buy',{buy:r.buy_currency,sell:r.sell_currency})),
-    el('b','num',r.says||String(r.rate)),el('span','sub',r.says?t('cs.awl.rate_pair',{pair:r.base+'/'+r.quote}):t('cs.awl.rate_nopair'))])))},
+  rates(d){return el('div','awtiles',(d.rates||[]).map((r)=>{const how=r.says?t('cs.awl.rate_pair',{pair:r.base+'/'+r.quote}):t('cs.awl.rate_nopair');const x=el('div','awtile big',[el('span','awtl',t('cs.awl.rate_buy',{buy:r.buy_currency,sell:r.sell_currency})),
+    el('b','num',r.says||String(r.rate)),el('span','sub',how)]);x.title=how;return x}))},
   reconcile(d){
     const ok=d.computed&&d.differences===0&&d.checked>0;
     const sum=el('div','awrec '+(ok?'ok':'bad'),[ic(ok?'circle-check':'triangle-alert'),el('b','',ok?t('cs.awl.rec_zero',{n:d.checked}):t('cs.awl.rec_diff',{d:d.differences,m:d.matched,n:d.checked}))]);
@@ -140,28 +140,66 @@ function awlOverview(){
     draw(b,r,false);
   }catch(e){done=true;if(!(e instanceof Expired)){stamp.replaceChildren();down();body.replaceChildren(el('p','sub',t('cs.awl.unavailable')))}}})();
   return card}
+// 21 Nov (the owner: "a bit messy, a lot of text and mostly the same as Overview; it should be clear or gone"): the tab is
+// the Airwallex connection's own page under "Connected", focused on what Airwallex does here. Money and FX on top, the
+// payouts with the CFO's hash read back, the agents' cards and the webhooks; the reconciliation's verdict; the ledger,
+// payees, receiving accounts and API calls folded under "More from Airwallex". One short line says what is read; each
+// card's endpoint sits in its heading's tooltip. When the sandbox answers nothing at all, one panel says so, not ten.
 async function airwallexView(){
   title(t('cs.nav.awx'));
   const m=await me();shell();
-  const badges=el('div','awbadges',[el('span','awb',[ic('landmark'),t('cs.awl.b_sandbox')]),el('span','awb',[ic('flask'),t('cs.awl.b_test')]),el('span','awb',[ic('lock'),t('cs.awl.b_read')]),el('span','awb',t('cs.awl.b_built'))]);
-  const slots={};for(const k of AWL_VIEWS){const [i,h,s]=AWL_META[k];slots[k]=awlCard(k,i,h,t(s))}
-  const evSlot=awlCard('events','inbox','cs.awl.events',t('cs.awl.events_sub'));
-  const grid=(ks,cls)=>el('div','awgrid '+(cls||''),ks.map((k)=>slots[k].card));
-  const top=el('div','head awhead',[el('div','',[el('div','awbrand',[awlLogo(),awlPill()]),el('h1','',t('cs.awl.h1')),el('p','lede',t('cs.awl.lede'))])]);
-  view().replaceChildren(...[top,badges,m.demo?note(t('cs.awl.demo_note')):null,
-    slots.balances.card,slots.rates.card,slots.reconcile.card,evSlot.card,slots.transfers.card,slots.financial.card,slots.beneficiaries.card,slots.accounts.card,slots.issuing.card,slots.calls.card].filter(Boolean));
+  const slots={};for(const k of AWL_VIEWS){const [i,h,s]=AWL_META[k];const more=['financial','beneficiaries','accounts','calls'].includes(k);slots[k]=awlCard(k,i,h,more?t(s):null);if(!more)slots[k].card.querySelector('h2').title=t(s)}
+  const evSlot=awlCard('events','inbox','cs.awl.events',null);evSlot.card.querySelector('h2').title=t('cs.awl.events_sub');
+  const pill=el('span','awpill wait',[el('i',''),cw('awx_reading')]);
+  const top=el('div','head awhead',[el('div','',[el('div','awbrand',[awlLogo(),pill]),el('h1','vh',t('cs.nav.awx')),el('p','lede',cw(m.demo?'awx_lede_demo':'awx_lede_co')),el('p','awtags',[ic('flask'),cw('awx_tags')])])]);
+  const more=el('details','card panel awmore',[el('summary','',[el('b','',cw('awx_more')),el('span','sub',cw('awx_more_sub')),ic('chevron-down')]),
+    el('div','awgrid',[slots.financial.card,slots.beneficiaries.card,slots.accounts.card,slots.calls.card])]);
+  const main=el('div','awmain',[el('div','awgrid aw2 wide1',[slots.balances.card,slots.rates.card]),slots.transfers.card,el('div','awgrid aw2',[slots.issuing.card,evSlot.card]),slots.reconcile.card,more]);
+  const down=el('div','card panel awdownall');down.hidden=true;
+  view().replaceChildren(top,down,main);
   // The cards rise in one after another; with reduced motion the CSS shows them at once.
-  AWL_VIEWS.forEach((k,n)=>{const c=slots[k].card;c.classList.add('rise');c.style.transitionDelay=(n*60)+'ms'});
-  evSlot.card.classList.add('rise');evSlot.card.style.transitionDelay='180ms';
+  [...AWL_VIEWS.map((k)=>slots[k].card),evSlot.card].forEach((c,n)=>{c.classList.add('rise');c.style.transitionDelay=(n*40)+'ms'});
   requestAnimationFrame(()=>{for(const k of AWL_VIEWS)slots[k].card.classList.add('in');evSlot.card.classList.add('in')});
+  // The header's pill says what the first read found: live, or unavailable (never "live" before an answer).
+  const first=awlLoad('balances',slots.balances).then((a)=>{const live=a&&a.source==='airwallex-sandbox';pill.className='awpill'+(live?'':' down');pill.replaceChildren(el('i',''),t(live?'cs.awl.pill':'cs.awl.pill_down'));return a},(e)=>{if(e instanceof Expired)throw e});
+  await Promise.all([first,...AWL_VIEWS.filter((k)=>k!=='calls'&&k!=='balances').map((k)=>awlLoad(k,slots[k]).catch((e)=>{if(e instanceof Expired)throw e})),awlEvents(evSlot).catch((e)=>{if(e instanceof Expired)throw e})]);
   // The calls panel last, so it counts this visit's reads.
-  await Promise.all([...AWL_VIEWS.filter((k)=>k!=='calls').map((k)=>awlLoad(k,slots[k]).catch((e)=>{if(e instanceof Expired)throw e})),awlEvents(evSlot).catch((e)=>{if(e instanceof Expired)throw e})]);
-  await awlLoad('calls',slots.calls);
+  const c=await awlLoad('calls',slots.calls).catch((e)=>{if(e instanceof Expired)throw e;return null});
+  // Nothing answered at all (a cloud without the gateway): one panel with the reason, not ten cards saying the same.
+  const all=[...AWL_VIEWS.map((k)=>slots[k]),evSlot];
+  if(all.every((x)=>x.stamp.querySelector('.awbad'))){const again=btn(t('cs.awl.retry'),'','arrow-right');again.onclick=()=>airwallexView();
+    const why=(c&&c.reason)||(slots.balances.body.querySelector('.awdown p')||{}).textContent||t('cs.awl.no_answer');
+    down.replaceChildren(el('div','awdown',[el('b','',[ic('triangle-alert'),' '+cw('awx_down_h')]),el('p','sub',String(why)),again]));down.hidden=false;main.hidden=true}
 }
 `.replace("__AWL_LOGO__", () => JSON.stringify(AIRWALLEX_LOGO_DATA_URL));
 
 export const AWX_UI_CSS = `
 /* The Airwallex tab (14 Nov): live sandbox cards, ids in full with a copy button, tables that scroll inside their card. */
+/* 21 Nov: the tab's focused layout: money and FX side by side, payouts, the agents' cards beside the webhooks, the
+   reconciliation, the rest folded. */
+.awmain { display: grid; gap: 16px; } .awmain[hidden] { display: none; }
+.awmain > .awcard, .awmain > .awgrid, #view .awmain .awcard { margin-top: 0; }
+.awmain .awgrid { margin-top: 0; }
+@media (min-width: 980px) { .awgrid.aw2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .awgrid.aw2.wide1 { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+.awgrid.aw2.wide1 .aw-rates .awtiles { grid-template-columns: minmax(0, 1fr); }
+.awcard .th h2 { cursor: help; }
+.awhead h1.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
+.awhead .awbrand { margin-bottom: 4px; } .awhead .lede { margin-top: 6px; }
+.awmain .aw-rates .awtile .sub { display: none; }
+.awtags { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+.awtags .ic svg { width: 14px; height: 14px; }
+.awpill.wait { background: var(--sunken); color: var(--muted); } .awpill.wait i { background: var(--faint); }
+.awpill.down { background: var(--warn-soft); color: var(--warn); } .awpill.down i { background: var(--warn); } .awpill.down i::after, .awpill.wait i::after { display: none; }
+.awdown.sm { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; }
+.awdown.sm .btn { height: 30px; padding: 0 10px; font-size: 13px; }
+.awdownall .awdown { background: transparent; padding: 0; } .awdownall .awdown b { display: inline-flex; align-items: center; gap: 6px; color: var(--warn); }
+details.awmore { padding: 0; }
+details.awmore > summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; padding: 16px 20px; cursor: pointer; list-style: none; }
+details.awmore > summary::-webkit-details-marker { display: none; }
+details.awmore > summary b { font-size: 16px; } details.awmore > summary .sub { grid-column: 1; font-size: 13px; }
+details.awmore > summary .ic { grid-column: 2; grid-row: 1 / span 2; transition: transform .2s; } details.awmore[open] > summary .ic { transform: rotate(180deg); }
+details.awmore > .awgrid { padding: 0 16px 16px; margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { details.awmore > summary .ic { transition: none; } }
 .awbadges { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
 .awb { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--sunken); color: var(--text); font-size: 13px; font-weight: 600; }
 .awb .ic svg { width: 14px; height: 14px; }

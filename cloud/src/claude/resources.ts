@@ -63,7 +63,7 @@ export function connectionMarkdown(company: string, demo: boolean, canPropose: b
     "1. propose_invoice_payment files the invoice's payment (a token made to propose; never on the demo company). Purser refuses an invoice that is held, already waiting or paid.",
     "2. The proposal waits in Purser Cloud, beside the ones filed there, with its terms and their SHA-256; pending_approvals lists it.",
     "3. The CFO reads the terms and approves them with the passkey, or rejects them, or lets them expire. payment_proposal shows where it stands.",
-    "4. Only then does Purser pay; one changed cent breaks the signature.", "",
+    "4. Only then does Purser pay; one changed cent and the approval no longer matches the terms.", "",
     demo ? "This is the demo company: made-up data from a simulated month, test money. Say so when you quote it." : "Amounts are the company's own records; quote them as they are.", ""].join("\n");
 }
 

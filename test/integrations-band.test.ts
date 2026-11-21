@@ -2,7 +2,7 @@
 // band, on the homepage (and on /docs), showing that you can work with them"). Held here: every name in the band is a
 // connection Purser Cloud's hub lists (cloud/src/connections.ts), and the line under it sends the reader to the hub's
 // labels; every mark is a file the site serves, the same drawing as the Connections page's, on a white tile, never
-// filtered or recoloured; Visa and T:0 are text; the band moves only with script and without a wish for less motion.
+// filtered or recoloured; Visa and T:0 are text (21 Nov: the other marks back); the band moves only with script and without a wish for less motion.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BAND, BAND_HUB, BAND_NOTE, LOGO_BAND_CSS, LOGO_BAND_JS, bandLogoFiles, logoBandHtml } from "../src/redesign/integrations.js";
@@ -51,7 +51,10 @@ describe("The integrations band", () => {
       expect(`data:image/svg+xml,${encodeURIComponent(f.body.toString("utf8"))}`.length).toBeGreaterThan(0);
       expect(decodeURIComponent(BRAND_LOGOS[key]!.uri.slice("data:image/svg+xml,".length))).toBe(f.body.toString("utf8"));
     }
+    // Review, 21 Nov: marks only for the sponsors on record; Visa, T:0 and every other connection as text.
+    // 21 Nov (Max): every connection with its own mark again; only Visa and T:0 as text.
     expect(BAND.filter((b) => !b.file).map((b) => b.name)).toEqual(["Visa · Airwallex Airi", "T:0"]);
+    expect(logoBandHtml()).toContain('<p class="lb-h">Connects to (each labelled)</p>');
     expect(logoBandHtml()).not.toMatch(/logo-visa|brand-visa/);
     expect(LOGO_BAND_CSS).toMatch(/\.lb-i \{[^}]*background: #ffffff/);
     expect(LOGO_BAND_CSS).not.toMatch(/filter:|mix-blend-mode|opacity/);

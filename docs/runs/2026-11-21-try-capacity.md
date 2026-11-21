@@ -124,6 +124,10 @@ about one create's time, the day cap and the balance still hold under concurrent
 transfer, and the balance is read again after 30 s or a failed read. **Not deployed**: until kit11 is deployed with it,
 payouts asked in the same few seconds still queue.
 
+**Later the same day (21 Nov):** the fix (`6a051fb1b`) is on `main`: it is in `fd14ba1d6` (the merge of PR #468), the
+commit the owner deployed on 21 Nov. This record's own 10-at-once run was before it; no run at once has been recorded
+on the deployed fix yet.
+
 ## The judge's smoke test, run once (21 Nov, 01:17 UTC)
 
 `npm run smoke:judge` ([`scripts/smoke-judge.ts`](../../scripts/smoke-judge.ts)), for Sunday evening: the 13 key pages
@@ -170,4 +174,10 @@ prints them and warns on each):
 (docs/runs/2026-11-21-phone-try.md), one walk of 9 (Chromium) had its EUR 120.00 invoice sent to the CFO instead of
 paid by the agent alone; code's own checks said pay, so one of the two agents did not. Purser leaves a payment to the
 CFO whenever the agents and code do not all say pay, so a judge sees the passkey screen there instead of the agent
-paying. The recorder now reads the engine's events when a walk stops, so the next one will say which agent and why.
+paying. The recorder now reads the engine's events when a walk stops, so the next one will say which agent and why. Since the same day the engine says it too: a payment within
+the limit that is filed for the CFO comes back with `alone_declined` (who did not say pay: code, the Checker, the
+Payer, the cash check or the limit's last check, and why) and writes `ap.alone_declined` to its events (`src/ap/pay.ts`
+`payAlone`; `test/engine-agents.test.ts`). The record of walk 2 holds neither, so which agent it was stays unknown: its
+pay call ran about 4 s (a Payer run, no payout) and answered `PENDING_APPROVAL` with code's cash check at `pay`, so it
+was the Checker's enforced decision or the Payer's proposal (a later day, or off the plan), not code's checks. That is
+Purser's rule working (anything short of every decider saying pay goes to the CFO), not a payment made wrongly.

@@ -13,6 +13,7 @@
 import { AIRI_CREDENTIAL } from "../config/brand.js";
 import { airiAsker, airiClaudeChoices, airiRun, AIRI_RUN_ID, type AiriRunRecord } from "./airiRun.js";
 import { tapRun } from "./run.js";
+import { repoHref } from "./productPage.js";
 import { countOf, esc } from "./ui.js";
 
 /** The TAP fold's anchor on /visa: the last thing on the page, closed (src/redesign/partners.ts). */
@@ -55,6 +56,8 @@ export function tapCard(tap: Tap): RunCard {
     stats: [{ v: countOf(ok, tap.steps.length), l: "signatures accepted" }, ...(approved[0] ? [{ v: `EUR ${approved[0].amount}`, l: "approved" }] : []), ...(declined[0] ? [{ v: `EUR ${declined[0].amount}`, l: `declined (${declined[0].reason ?? "by Airwallex"})` }] : [])],
     ids: [["Visa reference verifier", `commit ${tap.commit}`]],
     label: "Our merchant (simulated) · Airwallex sandbox authorisations",
+    // The run's record (21 Nov, Max: "every figure goes somewhere"): the card's figures are read from it.
+    href: repoHref(tap.file),
   };
 }
 
@@ -64,13 +67,15 @@ export function visaOverviewHeading(cards: RunCard[]): string {
   return cards.some((c) => c.kind === "paid") ? VISA_SUMMARY_HEADING : "";
 }
 
-/** A run's card: a link to its block when it has one (the overview), a plain block otherwise (the TAP section). */
+/** A run's card: a link to its block (the overview) or to its record (the TAP section). */
 function cardHtml(c: RunCard): string {
   const inner = `<span class="vo-tag">${esc(c.tag)}</span><b class="vo-t">${esc(c.title)}</b>
 <span class="vo-stats">${c.stats.map((s) => `<span><b>${esc(s.v)}</b><small>${esc(s.l)}</small></span>`).join("")}</span>
 <span class="vo-ids">${c.ids.map(([k, v]) => `<span><small>${esc(k)}</small><code title="${esc(v)}">${esc(short(v))}</code></span>`).join("")}</span>
 <span class="vo-label">${esc(c.label)}</span>`;
-  return c.href ? `<a class="vo-run" href="${esc(c.href)}">${inner}</a>` : `<div class="vo-run ${esc(c.kind)}">${inner}</div>`;
+  if (!c.href) return `<div class="vo-run ${esc(c.kind)}">${inner}</div>`;
+  const out = /^https?:/.test(c.href);
+  return `<a class="vo-run${c.kind === "tap" ? " tap" : ""}" href="${esc(c.href)}"${out ? ' target="_blank" rel="noopener"' : ""}>${inner}</a>`;
 }
 
 export function visaOverviewHtml(cards: RunCard[]): string {
@@ -86,7 +91,7 @@ export function visaOverviewBlock(rec: AiriRunRecord | null = airiRun()): string
   return card ? visaOverviewHtml([card]) : "";
 }
 
-/** The TAP run's card for the TAP section: not a link, the section is its place. "" without a TAP record. */
+/** The TAP run's card for the TAP section, a link to the run's record. "" without a TAP record. */
 export function tapCardHtml(tap: Tap | null = tapRun()): string {
   return tap ? cardHtml(tapCard(tap)) : "";
 }
@@ -95,7 +100,7 @@ export const VISA_OVERVIEW_CSS = `.vo { padding: 18px 20px; display: grid; gap: 
 .vo h2 { font-size: 20px; margin: 0; }
 .vo-runs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .vo-run { display: grid; gap: 8px; align-content: start; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; min-width: 0; }
-a.vo-run:hover { border-color: var(--accent); }
+a.vo-run:hover, a.vo-run:focus-visible { border-color: var(--accent); }
 .vo-tag { font-size: 12.5px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
 .vo-t { font-size: 16px; line-height: 1.3; }
 .vo-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; }

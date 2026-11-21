@@ -5,7 +5,8 @@
 // connection Purser Cloud's hub lists (cloud/src/connections.ts, docs/integrations/README.md), and the line under the
 // band says that each one carries its own label there (live, sandbox, testnet, a format export or built): the band
 // shows who Purser connects to, the hub how far each connection goes. Visa and T:0 stay as text (no mark on file for
-// T:0; Visa's mark is shown on Purser Cloud's Connections page only, the decision of 14 Nov elsewhere).
+// T:0; Visa's mark is shown nowhere on Purser's own art, the decision of 14 Nov, since 21 Nov on Connections too).
+// 21 Nov (Max): the connections' marks are back; Visa and T:0 stay text.
 
 import { BRAND_LOGOS } from "../../cloud/src/brandLogos.gen.js";
 import { ASSET_VERSIONS, versioned, type VersionedAsset } from "../ui/assetVersions.js";
@@ -35,7 +36,11 @@ export function bandLogoFiles(): Record<string, { type: string; body: Buffer }> 
 }
 
 const asset = (f: string) => `assets/${f in ASSET_VERSIONS ? versioned(f as VersionedAsset) : f}`;
-/** In the order a reader meets them: the rails, the AI clients, the books, the messages, the automations, the SDKs. */
+/**
+ * In the order a reader meets them: the rails, the AI clients, the books, the messages, the automations, the SDKs.
+ * 21 Nov (Max): the connections' own marks are back, each named and labelled on the hub (nominative use, no endorsement
+ * implied); Visa and T:0 stay text (no mark cleared for Purser's own art).
+ */
 export const BAND: readonly BandItem[] = [
   { name: "Airwallex", file: "logo-airwallex.png", wordmark: true, w: 306, h: 42 },
   { name: "Alta (formerly Metal)", file: "logo-alta.svg", wordmark: true, w: 475, h: 250 },
@@ -63,7 +68,8 @@ export const BAND: readonly BandItem[] = [
 ];
 /** The hub of every connection, each with its label (docs/integrations/README.md). */
 export const BAND_HUB = "docs/integrations/README.md";
-export const BAND_LABEL = "Works with";
+// Review, 21 Nov: "Connects to (each labelled)", not "Works with" (no partnership read into a mark).
+export const BAND_LABEL = "Connects to (each labelled)";
 export const BAND_NOTE = "Each connection carries its label: live, sandbox, testnet, export or built.";
 export const BAND_LINK = "See every connection";
 

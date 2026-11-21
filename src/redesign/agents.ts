@@ -54,6 +54,23 @@ export function agentView(id: AgentId, r: RunRecord = loadRecord().record, t: Ru
 }
 
 const time = (iso: string) => iso.slice(11, 19);
+
+/**
+ * The agent's own model (review, 21 Nov: /agents/support listed Haiku, Sonnet and Opus, though Support decides on
+ * Sonnet): the model its own decisions were made by, as the record's calls name it; the helpers every agent shares
+ * (Haiku sorts the documents, Opus writes advice for the CFO) are not its model. No decision by Claude: every model the
+ * record lists for it, as before.
+ */
+export function ownModels(v: Pick<AgentView, "models" | "decisions">): string[] {
+  const fams = new Set(v.decisions.map((d) => d.model).filter((m) => m !== "code"));
+  const all = [...new Set(v.models.map((m) => m.model))];
+  const own = all.filter((m) => [...fams].some((f) => m.startsWith(`${f} `) || m === f));
+  return own.length ? own : all;
+}
+const ownModelsHtml = (v: Pick<AgentView, "models" | "decisions">) => {
+  const m = ownModels(v);
+  return m.length ? `<p class="models">${m.map((x) => `<span class="model">${esc(x)}</span>`).join("")}</p>` : "";
+};
 const KIND: Record<string, string> = { purchase: "Supplier purchase", refund: "Refund", sweep: "Sweep", card: "Card charge", sale: "Sale", transfer: "SWIFT transfer" };
 const SHOWN = 8;
 
@@ -124,7 +141,7 @@ export function agentPage(id: AgentId, r?: RunRecord, t?: RunTrace): string {
   const body = `<main class="wrap agentp">
 <div class="hd">${avatarHtml(id, 26)}<h1>${esc(v.name)}</h1></div>
 <p class="job">It ${esc(v.job)}.</p>
-${v.models.length ? `<p class="models">${v.models.map((m) => `<span class="model">${esc(m.model)}</span>`).join("")}</p>` : ""}
+${ownModelsHtml(v)}
 <p class="label">Main run of 3 November · test money · every figure from the run's record.</p>
 ${tiles}
 <div class="grid">

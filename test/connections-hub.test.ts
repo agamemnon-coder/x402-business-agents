@@ -239,7 +239,9 @@ describe("Purser Cloud's Connections page (its own tab since 21 Nov)", () => {
     const card = render("en", { logos: { ...logos, airwallex: { name: "Airwallex", uri: "data:image/png;base64,AA" } }, icon: (n: string) => el("span", `ic-${n}`) });
     const imgs = (name: string) => find(cardOf(card, name), (n) => n.tag === "img").map((i) => (i as Node & { alt: string }).alt);
     expect(imgs("Airwallex")).toEqual(["Airwallex"]);
-    expect(imgs("Visa via Airwallex Airi")).toEqual(["Visa"]);
+    // Visa in text only (review, 21 Nov).
+    expect(imgs("Visa via Airwallex Airi")).toEqual([]);
+    expect(text(find(cardOf(card, "Visa via Airwallex Airi"), (n) => n.cls.includes("cx-letters"))[0]!)).toBe("Visa");
     expect(imgs("Slack and Microsoft Teams messages")).toEqual(["Slack", "Microsoft Teams"]);
     expect(imgs("Sign in with Google, Microsoft and Apple")).toEqual(["Google", "Microsoft", "Apple"]);
     expect(imgs("Moneybird (API)")).toEqual(["Moneybird"]);
@@ -274,7 +276,7 @@ describe("Purser Cloud's Connections page (its own tab since 21 Nov)", () => {
     expect(find(nodes, (n) => n.tag === "a").map((a) => a.href)).toEqual([`${ORIGIN}/connect-ai`]);
   });
 
-  it("is its own tab, reads /v1/connections and the company's own rows, and Settings points there", () => {
+  it("is its own tab, reads /v1/connections and the company's own rows, and Settings no longer repeats it", () => {
     const html = consolePage("n0nce", { origin: ORIGIN, rpId: "cloud.test", mailDomain: "in.cloud.test" });
     expect(html).toContain(CONNECTIONS_VIEW_JS.trim());
     expect(html).toContain('<a href="#/connections" data-tab="connections" data-t="cs.nav.connections">Connections</a>');
@@ -284,8 +286,10 @@ describe("Purser Cloud's Connections page (its own tab since 21 Nov)", () => {
     expect(page).toContain("connectionsViewOf(cat,t,tk,el,{mine:");
     for (const card of ["claudeCard(m,owner)", "webhookCard()", "alertsCard()", "chatCard()", "drawConn()", "drawInts()", "drawAwx()"]) expect({ card, there: page.includes(card) }).toEqual({ card, there: true });
     const settings = html.slice(html.indexOf("async function settingsView(q){"), html.indexOf("// --- Connections (21 Nov)"));
-    expect(settings).toContain("toCx.href='#/connections'");
+    // 21 Nov (the owner): "remove the Connections section from Settings since there is already a Connections tab".
+    expect(settings).not.toContain("cx-pointer");
     expect(settings).not.toContain("connectionsViewOf");
+    for (const card of ["youCard(m)", "policyCard()", "notifyCard(m)", "accessCard(m)", "dangerCard(m)"]) expect({ card, there: settings.includes(card) }).toEqual({ card, there: true });
     expect(view_free(CONNECTIONS_VIEW_JS)).toBe(true);
     expect(MESSAGES.nl["cs.nav.connections" as keyof typeof MESSAGES.nl]).toBe("Koppelingen");
   });

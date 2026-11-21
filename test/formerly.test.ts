@@ -50,6 +50,18 @@ describe("the site after the rename", () => {
     }
   });
 
+  // Review, 21 Nov: a page whose <main> never names Alta names it first in its footer, so the first mention is there.
+  it("names Alta (formerly Metal) in the footer of a page whose main never names Alta (/visa, /verify, /watch, /airwallex/calls, the 404, /demo)", () => {
+    expect(formerlyMetal("<nav>Alta</nav><main><p>Visa.</p></main><footer><p>Built on Alta: 86</p></footer></body>")).toBe("<nav>Alta</nav><main><p>Visa.</p></main><footer><p>Built on Alta (formerly Metal): 86</p></footer></body>");
+    for (const k of ["visa", "verify", "watch", "awxCalls", "notFound", "demo"]) {
+      const h = html(pages[k]);
+      const main = /<main[\s\S]*<\/main>/.exec(h)![0];
+      const rest = visible(h.slice(h.indexOf("</main>")));
+      if (/\bAlta\b/.test(visible(main)) || !/\bAlta\b/.test(rest)) continue;
+      expect({ k, first: rest.indexOf(ALTA_FIRST) === rest.search(/\bAlta\b/) && rest.includes(ALTA_FIRST) }).toEqual({ k, first: true });
+    }
+  });
+
   it("serves the page at /alta, and /metal answers 301 to it, on the Worker and on the judge's server; the nav says Alta", () => {
     expect(read("worker/src/core.ts")).toContain('if (path === "/alta") return page(pages.metal, pages.csp.metal);');
     expect((pages as { moved: Record<string, string> }).moved["/metal"]).toBe("/alta");

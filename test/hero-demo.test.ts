@@ -88,7 +88,8 @@ describe("the hero's steps 1 to 3", () => {
 
   it("renders in a hero section, light enough to inline, with a still frame for reduced motion (Home shows the product card since 12 Nov)", () => {
     const home = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!;
-    expect(home).toContain('<figure class="hf"');
+    // 21 Nov, redesign (Max): Home's hero is the Workflow card on the wave, its figures from /try's records (home-story).
+    expect(home).toContain('<div class="wf"');
     expect(/<section class="hero">[\s\S]*?<\/section>/.exec(demoPage())![0]).toContain('id="hero-demo"');
     expect(Buffer.byteLength(heroDemoHtml() + HERO_DEMO_CSS + HERO_DEMO_JS)).toBeLessThan(48_000);
     expect(HERO_DEMO_CSS).toContain("prefers-reduced-motion: reduce");

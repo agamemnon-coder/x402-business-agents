@@ -73,7 +73,7 @@ export function awxCallsBody(t: Trail = apiTrail()): string {
 <h1>Every Airwallex API call, from the records</h1>
 <p class="lead">${t.calls} calls to the Airwallex sandbox in ${t.runs.length} committed run records. Each row says what the call did, what came back where the record keeps it, and which record it is from.</p>
 <ul class="sum" aria-label="Calls per endpoint family">${FAMILIES.filter((f) => t.byFamily[f]).map((f) => `<li>${esc(FAMILY_LABEL[f])} <b>${t.byFamily[f]}</b></li>`).join("")}</ul>
-<p class="awc-n">${t.timed} of the ${t.calls} calls carry their own time in the record; the others come from records that count calls per endpoint. A blank outcome means the record holds none: nothing here is estimated. Ids are folded to <code>{id}</code> in paths, as the call logs wrote them; no token, key, client id, account or card number is shown.</p>
+<p class="awc-n">${t.timed === t.calls ? `Every one of the ${t.calls} calls carries its own time in the record.` : `${t.timed} of the ${t.calls} calls carry their own time in the record; the others come from records that count calls per endpoint.`} A blank outcome means the record holds none: nothing here is estimated. Ids are folded to <code>{id}</code> in paths, as the call logs wrote them; no token, key, client id, account or card number is shown.</p>
 <section class="hashes" aria-labelledby="awc-hash">
 <h2 id="awc-hash">The signed hash, checked again from the records</h2>
 <p class="big">${esc(transferLine(t))}</p>

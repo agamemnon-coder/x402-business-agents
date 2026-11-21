@@ -93,6 +93,10 @@ try {
     ok(Object.values(st).every((s) => s !== "loading"), `${name}: every card ends live or unavailable (${JSON.stringify(st)})`);
     ok(["balances", "rates", "reconcile", "financial", "transfers", "beneficiaries", "calls"].every((k) => st[k] === "live"), `${name}: the views the stand-in holds read through the gateway`);
     ok(["accounts", "issuing"].every((k) => st[k] === "unavailable"), `${name}: views the stand-in does not hold say "Airwallex sandbox unavailable", nothing made up`);
+    // 21 Nov (the owner: "messy, a lot of text, mostly the same as Overview"): the tab is focused. Its pill says what the
+    // first read found; the ledger, payees, receiving accounts and calls are folded under "More from Airwallex".
+    ok((await page.textContent(".awhead .awpill"))?.trim() === "Sandbox · live", `${name}: the header's pill says live once the sandbox answered`);
+    ok(JSON.stringify(await page.$$eval("details.awmore .awcard", (cs) => cs.map((c) => (c as HTMLElement).dataset.view))) === JSON.stringify(["financial", "beneficiaries", "accounts", "calls"]) && !(await page.$eval("details.awmore", (d) => (d as HTMLDetailsElement).open)), `${name}: the technical views are folded under "More from Airwallex"`);
     // Balances: the four with money first, the 42 at 0 folded into one line.
     ok(JSON.stringify(await page.$$eval(".aw-balances .awtile .awtl", (n) => n.map((x) => x.textContent))) === JSON.stringify(["EUR", "USD", "GBP", "CNY"]), `${name}: balances with money only, the books' currencies first`);
     ok((await page.textContent(".aw-balances details.awzero summary"))?.trim() === "42 other currencies at 0.00", `${name}: the zeros folded into one line`);

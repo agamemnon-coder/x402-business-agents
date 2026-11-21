@@ -32,7 +32,7 @@ import { PROOF_URL, RUNS_URL, VERIFY_URL } from "../../cloud/src/tryPage.js";
 import { SAMPLES as GEN_SAMPLES } from "../../cloud/src/engine/samples.gen.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
-import { FILM_URL, TRAILER_URL } from "../../src/config/brand.js";
+import { FILM_URL } from "../../src/config/brand.js";
 import type { DB } from "../../src/db/open.js";
 import { EngineHost } from "../../src/engine/host.js";
 import { termsHash, type Terms } from "../../src/lib/terms.js";
@@ -317,38 +317,40 @@ async function passkeyContext(width: number, scheme: "light" | "dark"): Promise<
   return ctx;
 }
 
-// Part 0: the start screen (14 Nov, owner: enterprise-grade) at a phone and a laptop, light and dark: the eyebrow, the
-// headline, the three steps and the one-cent refusal, the button and the trailer link in view without scrolling, the
-// partners' logos loaded (the official files) with "No endorsement implied"; one column on a phone, the steps beside the
-// words on a laptop; nothing wider than the screen, the feather mark, no console or CSP error. Screenshots (the viewport)
-// when a directory is given: try-start-<width>-<scheme>.png.
-for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"]] as const) {
-  const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
+// Part 0: the start screen (21 Nov, Max: "the only purpose of this page is the demo and some key numbers, so make it
+// central"; mockup 175), on the public /try and the release's ?v=1, at a phone, a laptop and 4K, light and dark: the
+// pill, the headline and one line; one card that is the demo (the four stages, the engine's sample invoice, the rows of
+// the run with the one-cent refusal, the button that starts the real run) in view without scrolling; the honest check
+// row (EUR 1,850.00 is above the EUR 500.00 limit); three key numbers from the evidence wall, each a link to its proof;
+// the tiny line; no partners' cards; nothing wider than the screen, the feather mark, no console or CSP error.
+// Screenshots (the viewport) when a directory is given: try-start-<width>-<scheme>.png.
+for (const [width, height, scheme, path] of [[390, 844, "light", "/try?v=1"], [390, 844, "dark", "/try"], [1440, 900, "light", "/try"], [1440, 900, "dark", "/try?v=1"], [2560, 1440, "dark", "/try"], [3840, 2160, "light", "/try"]] as const) {
+  const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots && width < 2000 ? 2 : 1 });
   const page = await ctx.newPage();
   const errors: string[] = [];
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", (e) => errors.push(String(e)));
-  const tag = `start ${width}x${height} ${scheme}`;
-  await page.goto(`${ORIGIN}/try?v=1`);
+  const tag = `start ${path} ${width}x${height} ${scheme}`;
+  await page.goto(`${ORIGIN}${path}`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   await page.waitForTimeout(900);
   const box = (sel: string) => page.locator(sel).first().boundingBox();
-  const [h1, flow, main, trailer, partners] = [await box("main > h1"), await box(".start .flow"), await box("#main .btn.primary"), await box(".start .trailer"), await box(".start .partners")];
-  ok(!!h1 && !!flow && !!main && !!trailer && !!partners, `${tag}: the headline, the steps, the button, the trailer link and the partners are shown`);
-  ok(await page.locator(".start .flow li").count() === 4 && (await page.textContent(".start .fend"))!.includes(START.flowEnd), `${tag}: three steps and the one-cent refusal`);
-  if (h1 && flow && main && trailer) {
-    ok(main.y + main.height <= height && trailer.y + trailer.height <= height, `${tag}: the button and the trailer link are in view without scrolling`);
-    if (width === 390) ok(flow.y > h1.y + h1.height - 1 && main.y > flow.y + flow.height - 1, `${tag}: a phone: one column, the headline, the steps, then the button`);
-    else ok(flow.x >= h1.x + h1.width - 1 && flow.y < main.y + main.height && partners!.y + partners!.height <= height + 1, `${tag}: a laptop: the steps beside the words, the partners in view`);
-  }
-  const logos = await page.locator(".start .logos img").evaluateAll((im) => im.map((i) => [(i as HTMLImageElement).alt, (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0]));
-  ok(JSON.stringify(logos) === JSON.stringify([["Alta (formerly Metal)", true], ["Claude", true]]), `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);
-  const ptext = (await page.textContent(".start .partners"))!;
-  ok(ptext.includes(`Alta${START.formerly}`) || ptext.includes(START.formerly) && ptext.includes(START.visa) && ptext.includes("No endorsement implied"), `${tag}: Alta (formerly Metal), Visa in text, no endorsement implied`);
-  ok(await page.getAttribute(".start .trailer", "href") === TRAILER_URL, `${tag}: the trailer link`);
+  const [h1, card, main] = [await box("main > h1"), await box(".start .dcard"), await box("#main .btn.primary")];
+  ok(!!h1 && !!card && !!main && (await page.textContent(".start .eyebrow"))!.includes(START.eyebrow), `${tag}: the pill, the headline, the card and its button are shown`);
+  const ctext = (await page.textContent(".start .dcard"))!;
+  ok(ctext.includes("Bergtex Textil GmbH") && ctext.includes("EUR 1,850.00") && ctext.includes("BTX-2026-21"), `${tag}: the card shows the engine's sample invoice`);
+  ok(JSON.stringify(await page.locator(".start .stp .sl").allTextContents()) === JSON.stringify(START.steps), `${tag}: the four stages`);
+  ok(ctext.includes("Above your EUR 500.00 limit: needs your approval") && !/Within limits/.test(ctext) && ctext.includes("Change one cent (test)"), `${tag}: the check row says EUR 1,850.00 is above the limit, and the one-cent test is in the card`);
+  ok(!/Claude \(live\)/.test(ctext), `${tag}: no "Claude (live)" before a run has shown it`);
+  const keys = await page.locator(".start ul.keys a").evaluateAll((as) => as.map((a) => [(a as HTMLAnchorElement).href, a.textContent ?? ""]));
+  ok(keys.length === 3 && keys.every(([h]) => /\/(proof|airwallex)(#|$)/.test(h!)), `${tag}: three key numbers, each a link to its proof (${JSON.stringify(keys)})`);
+  ok((await page.textContent(".start .fine"))!.includes(START.fine) && (await page.locator(".start .partners, .start .pp, .start .proofband").count()) === 0, `${tag}: the tiny line, and no partners' cards or proof band on the start`);
+  if (width >= 2560) ok((card?.width ?? 0) >= 680, `${tag}: the card is no narrow column at ${width} px (${card?.width} px)`);
+  if (h1 && card && main) ok(main.y + main.height <= height && card.x > 0 && Math.abs((card.x + card.width / 2) - width / 2) < 4, `${tag}: the card centred and its button in view without scrolling`);
   ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
   ok(await page.locator(".brand .mk svg").count() === 1 && (await page.textContent(".brand"))!.trim() === "Purser", `${tag}: the brand is the feather mark and the name`);
-  if (shots) { await page.waitForTimeout(2600); await page.screenshot({ path: join(shots, `try-start-${width}-${scheme}.png`) }); }
+  ok(await page.locator("canvas.pw-wave").count() === 1, `${tag}: the site's wave behind the page`);
+  if (shots) { await page.waitForTimeout(1600); await page.screenshot({ path: join(shots, `try-start-${width}-${scheme}.png`) }); }
   ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
   await ctx.close();
 }
@@ -356,10 +358,11 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   // With reduced motion the start stands still, the refusal in sight.
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
   const page = await ctx.newPage();
-  await page.goto(`${ORIGIN}/try?v=1`);
-  await page.waitForSelector(".start .flow");
+  await page.goto(`${ORIGIN}/try`);
+  await page.waitForSelector(".start .dcard");
+  await page.waitForTimeout(700);
   const still = await page.evaluate(() => [...document.querySelectorAll(".start *")].every((e) => getComputedStyle(e).animationName === "none")
-    && getComputedStyle(document.querySelector(".start .fend")!).opacity === "1");
+    && getComputedStyle(document.querySelector(".start .rw.bad")!).opacity === "1");
   ok(still, "reduced motion: the start does not move, and shows the refusal");
   await ctx.close();
 }

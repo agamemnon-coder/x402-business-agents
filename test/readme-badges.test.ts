@@ -17,50 +17,56 @@ import { longRun } from "../src/redesign/run.js";
 // 15 Nov) became the newest held-out eval's figures.
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
 const lines = readme.split("\n");
+// Review, 21 Nov: the first screen keeps CI, OpenSSF, the partners' sandbox and testnet badges and test money first;
+// the rest (the tests, coverage, Claude with its scope, CodeQL, the licence and the quality badges) under the one-line
+// value, in one row.
 const topLine = lines.find((l) => l.includes("actions/workflows/ci.yml/badge.svg")) ?? "";
-const qualityLine = lines.find((l) => l.startsWith("[![CodeQL]")) ?? "";
+const qualityLine = lines.find((l) => l.startsWith("[![Tests: from docs/assets/test-summary.json]")) ?? "";
 const names = (l: string) => [...l.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1]);
 
 describe("README badges", () => {
-  it("is one compact row under the title: CI, the tests, coverage, the partners as they ran, Claude, test money only", () => {
+  it("is one compact row under the title: CI, OpenSSF, the partners as they ran, test money only", () => {
     expect(lines.indexOf("# Purser · AI agents spend. You sign off.")).toBe(4);
     expect(lines.indexOf(topLine)).toBe(6);
     const claude = longRun()!;
     expect(claude.byClaude).toBe(stripFigures().decisions);
-    expect(names(topLine)).toEqual(["CI", "Tests: from docs/assets/test-summary.json", "Coverage: from docs/badges/coverage.json", "Airwallex: sandbox", "Alta (formerly Metal): testnet", "Visa via Airi: sandbox", "T:0: sandbox ledger", `Claude: ${claude.byClaude} decisions`, "Test money only"]);
-    expect(topLine).toContain(`(https://img.shields.io/badge/Claude-${claude.byClaude}_decisions-d97757?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/claude)`);
+    expect(names(topLine)).toEqual(["CI", "OpenSSF Best Practices", "Airwallex: sandbox", "Alta (formerly Metal): testnet", "Visa via Airi: sandbox", "T:0: sandbox ledger", "Test money only"]);
+    // Review, 21 Nov: the Claude badge says its scope (the long run of 20 Nov, not the main run's 24) and links its record.
+    const day = `${Number(claude.recordedAt.slice(8, 10))} Nov`;
+    expect(names(qualityLine).slice(0, 3)).toEqual(["Tests: from docs/assets/test-summary.json", "Coverage: from docs/badges/coverage.json", `Claude: ${claude.byClaude} decisions, ${day} long run`]);
+    expect(qualityLine).toContain(`(https://img.shields.io/badge/Claude-${claude.byClaude}_decisions%2C_${day.replace(" ", "_")}_long_run-d97757?style=flat-square&labelColor=1f2937)](${claude.log})`);
     expect(readme).not.toMatch(/Claude: 24 decisions|Claude-24_decisions/);
     // Sandbox or testnet for a partner: at least one live run of that partner in the run records (the tiles on /proof count them).
     const live = Object.fromEntries(partnerTiles().map((t) => [t.name, t.runs]));
     for (const n of ["Airwallex", "Alta", "Visa via Airi", "T:0"]) expect({ n, runs: (live[n] ?? 0) > 0 }).toEqual({ n, runs: true });
     // The tests: a dynamic badge on the last full run (test-summary.json); coverage: a shields endpoint badge read from
     // the committed JSON (src/proof/badges.ts, test/badges.test.ts), naming its own, separate coverage run.
-    expect(topLine).toContain("query=%24.passed&label=tests%2C%20last%20full%20run&suffix=%20passing");
-    expect(topLine).toContain("(https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fbadges%2Fcoverage.json&style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)");
+    expect(qualityLine).toContain("query=%24.passed&label=tests%2C%20last%20full%20run&suffix=%20passing");
+    expect(qualityLine).toContain("(https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fbadges%2Fcoverage.json&style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)");
     expect(existsSync(new URL("../docs/badges/coverage.json", import.meta.url))).toBe(true);
     const cov = JSON.parse(readFileSync(new URL("../docs/evidence/coverage.json", import.meta.url), "utf8")) as { run: { commit: string; result: { passed: number; failed: number; skipped: number } } };
     const r = cov.run.result;
     expect(readme).toContain(`The coverage badge is from a separate, earlier coverage run on commit \`${cov.run.commit}\` (${r.passed.toLocaleString("en-GB")} passed, ${r.failed} failed`);
     expect(readme).toContain(`, ${r.skipped} skipped: [coverage.md](docs/evidence/coverage.md))`);
     for (const l of [topLine, qualityLine]) for (const u of l.matchAll(/img\.shields\.io\/[^)]+/g)) expect(u[0]).toContain("style=flat-square");
-    // The pitch right under it, then the demo.
-    expect(lines.slice(7, 12)).toEqual(["", qualityLine, "", lines[10]!, ""]);
-    expect(lines[10]!.startsWith("**AI agents pay your suppliers.")).toBe(true);
+    // The one-line value right under it, then the rest of the badges, then the demo.
+    expect(lines.slice(7, 12)).toEqual(["", lines[8]!, "", qualityLine, ""]);
+    expect(lines[8]!.startsWith("**AI agents pay your suppliers.")).toBe(true);
   });
 
   // 21 Nov, later (Max): "make sure the rest of the badges is there too, underneath"; and the Claude badge without its date.
-  it("keeps the rest in one quality and security row right under the first, each badge saying what its record says", () => {
+  it("keeps the rest in one row under the one-line value, each badge saying what its record says", () => {
     expect(qualityLine).not.toBe("");
-    expect(lines.indexOf(qualityLine)).toBe(8);
+    expect(lines.indexOf(qualityLine)).toBe(10);
     const n = Math.max(...readdirSync(new URL("../docs/evals/", import.meta.url)).map((f) => /^adversarial-v(\d+)\.json$/.exec(f)?.[1]).filter(Boolean).map(Number));
     const ev = JSON.parse(readFileSync(new URL(`../docs/evals/adversarial-v${n}.json`, import.meta.url), "utf8")) as { held_out: boolean; totals: Record<"purser_script" | "no_rules", { wrong_payments: number }> };
     expect(ev.held_out).toBe(true);
     const evalName = `Held-out eval v${n}, offline: ${ev.totals.purser_script.wrong_payments} vs ${ev.totals.no_rules.wrong_payments} wrong payments`;
-    expect(names(qualityLine)).toEqual(["CodeQL", "License: MIT", "OpenSSF Best Practices", "REUSE 3.3: compliant", "Releases: Sigstore-signed", "TLA+ model: 1,102,845 states, 0 errors", "Dafny: verified", evalName, "MCP server: read, propose only"]);
+    expect(names(qualityLine).slice(3)).toEqual(["CodeQL", "License: MIT", "REUSE 3.3: compliant", "Releases: Sigstore-signed", "TLA+ model: 1,102,845 states, 0 errors", "Dafny: verified", evalName, "MCP server: read, propose only"]);
     expect(qualityLine).toContain(`-${ev.totals.purser_script.wrong_payments}_vs_${ev.totals.no_rules.wrong_payments}_wrong_payments-`);
     expect(qualityLine).toContain(`](docs/evals/adversarial-v${n}.md)`);
     expect(readme).not.toMatch(/worst-case AI[^\n]*0 wrong payments|worst--case_AI/);
-    expect(qualityLine).toContain("[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)");
+    expect(topLine).toContain("[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)");
     expect(qualityLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
     expect(readme).not.toMatch(/\[!\[SLSA/);
     // REUSE: reuse lint runs in CI (job reuse) over REUSE.toml.

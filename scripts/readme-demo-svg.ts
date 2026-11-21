@@ -113,7 +113,7 @@ export function demoFigures(): DemoFigures {
 
 /** The demo's alt text in the README: what the picture shows, in words. */
 export function demoAlt(f = demoFigures()): string {
-  return `Animated, one recorded walk through /try (${f.day}, test money): invoice ${f.invoice.no} from ${f.invoice.vendor}, ${f.invoice.currency} ${f.invoice.amount}, comes in; Claude (${f.claude.model}) reads “${f.claude.line}”; Purser's checks pass (${f.checks.join(", ")})${f.finding ? ` and flag the amount as ${f.finding.times} the usual ${f.finding.usual}` : ""}; above the agent's ${f.limit} limit the CFO signs the SHA-256 of the exact terms with a passkey; paid, the Airwallex sandbox transfer ${f.paid.status} (settlement simulated). Then the same approval with one cent changed (${f.invoice.currency} ${f.refused.amount}): refused, nothing paid. Over all the /try walks of 19 to 21 Nov: ${f.wall.cent} one-cent changes refused.`;
+  return `Animated, one recorded walk through /try (${f.day}, test money): invoice ${f.invoice.no} from ${f.invoice.vendor}, ${f.invoice.currency} ${f.invoice.amount}, comes in; Claude (${f.claude.model}) reads “${f.claude.line}”; Purser's checks pass (${f.checks.join(", ")})${f.finding ? ` and flag the amount as ${f.finding.times} the usual ${f.finding.usual}` : ""}; above the agent's ${f.limit} limit the CFO signs the SHA-256 of the exact terms with a passkey; paid, the Airwallex sandbox transfer ${f.paid.status} (settlement simulated). Then the same approval with one cent changed (${f.invoice.currency} ${f.refused.amount}): refused, nothing paid. Over all the /try walks of 19 to 21 Nov: ${f.wall.cent} ${f.wall.centLabel.replace(/ after approval$/, "")}.`;
 }
 
 const SANS = `ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
@@ -188,7 +188,7 @@ export function demoSvg(theme: Theme, layout: Layout, f = demoFigures()): string
 <text x="${M + 46}" y="${LY + 43}" font-size="12.5" fill="${c.ink2}">its terms hash to <tspan font-family="${MONO}" font-size="12">${short(f.refused.sent)}</tspan>, not to the signed <tspan font-family="${MONO}" font-size="12">${short(f.signed)}</tspan></text>
 <text x="${W - M - 18}" y="${LY + 35}" font-size="16" font-weight="700" fill="${c.bad}" text-anchor="end">Refused · nothing paid</text></g>\n`;
     H = LY + LH + 30;
-    body += `<text class="in" style="animation-delay:${r1(END + 0.3)}s" x="${M}" y="${H - 11}" font-size="11.5" fill="${c.muted}">${fit(`One recorded walk, ${f.day}: ${DEMO_RECORD} · over all the /try walks of 19 to 21 Nov: ${f.wall.cent} one-cent changes refused · test money only`, 11.5, W - 2 * M)}</text>\n`;
+    body += `<text class="in" style="animation-delay:${r1(END + 0.3)}s" x="${M}" y="${H - 11}" font-size="11.5" fill="${c.muted}">${fit(`One recorded walk, ${f.day}: ${DEMO_RECORD} · /try walks, 19 to 21 Nov: ${f.wall.cent} ${f.wall.centLabel.replace(/ after approval$/, "")} · test money only`, 11.5, W - 2 * M)}</text>\n`;
     body = header(c, W, M) + body;
   } else {
     W = 420; const M = 14, TX = M + 44, ROOM = W - TX - M - 12;
@@ -214,7 +214,7 @@ export function demoSvg(theme: Theme, layout: Layout, f = demoFigures()): string
 <text x="${TX}" y="${LY + 70}" font-size="12.5" fill="${c.ink2}">hash <tspan font-family="${MONO}" font-size="12">${short(f.refused.sent)}</tspan>, not the signed one</text></g>\n`;
     H = LY + LH + 44;
     body += `<g class="in" style="animation-delay:${r1(END + 0.3)}s"><text x="${M}" y="${H - 28}" font-size="11.5" fill="${c.muted}">${fit(`One recorded walk on /try, ${f.day} · test money only`, 11.5, W - 2 * M)}</text>
-<text x="${M}" y="${H - 12}" font-size="11.5" fill="${c.muted}">${fit(`All /try walks, 19 to 21 Nov: ${f.wall.cent} one-cent changes refused`, 11.5, W - 2 * M)}</text></g>\n`;
+<text x="${M}" y="${H - 12}" font-size="11.5" fill="${c.muted}">${fit(`/try, 19 to 21 Nov: ${f.wall.cent} ${f.wall.centLabel.replace(/ after approval$/, "")}`, 11.5, W - 2 * M)}</text></g>\n`;
     body = header(c, W, M) + body;
   }
 

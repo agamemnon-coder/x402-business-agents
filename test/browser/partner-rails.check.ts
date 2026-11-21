@@ -1,8 +1,9 @@
 // T:0 at every payment, the agents' tokens and the Wallet button in Chromium, on this machine (20 Nov): the console as a
-// guest opens the demo company (read only), the Agents tab shows each agent's token and its payments' T:0 ids, the
+// guest opens the demo company (read only), each agent's drawer on Agents shows its token and its payments' T:0 ids, the
 // Books tab shows "Booked in T:0" with the reconcile check, from the recorded live run (labelled). With passes
-// configured (a throwaway certificate made at run time) the agents with a card get "Add to Apple Wallet" and the pass
-// downloads as application/vnd.apple.pkpass; without, no button. No console or CSP error, nothing wider than a phone.
+// configured (a throwaway certificate made at run time) "Add to phone" offers "Add to Apple Wallet" and the pass
+// downloads as application/vnd.apple.pkpass; without, it says Apple Wallet waits for the pass certificate. No console or
+// CSP error, nothing wider than a phone.
 // npx tsx test/browser/partner-rails.check.ts [screenshot dir]
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
@@ -49,18 +50,32 @@ async function pass(label: string, width: number, height: number, withWallet: bo
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto(`${ORIGIN}/#/sign-in`);
   await page.click("#guest");
-  await page.waitForSelector(".apptabs", { timeout: 20_000 });
+  // 22 Nov: on a phone the tabs are a bottom bar, and #tabs is there but hidden.
+  await page.waitForSelector(".apptabs", { timeout: 20_000, state: "attached" });
+  await page.waitForFunction(() => document.body.classList.contains("signed-in"), null, { timeout: 20_000 });
   await page.goto(`${ORIGIN}/#/agents`);
-  await page.waitForSelector(".prblock", { timeout: 20_000 });
-  const agents = await page.locator(".view, main").first().innerText();
-  ok(RUN.tokens.every((t) => agents.includes(t.token_id)), `${label}: every agent's token on its card`);
+  // 23 Nov: each agent's token sits in its drawer (cloud/src/agentWallet.ts); Apple Wallet in its "Add to phone".
+  await page.waitForSelector("article.dk-item.on", { timeout: 20_000 });
+  let agents = "";
+  for (const id of ["sourcing", "support", "treasury"]) {
+    await page.locator(`#roster-${id} button.dk-face`).click();
+    await page.waitForSelector("dialog.dk-drawer[open]", { timeout: 20_000 });
+    await page.waitForTimeout(300);
+    agents += await page.locator("dialog.dk-drawer[open]").innerText();
+    if (shots && id === "support") await page.locator("dialog.dk-drawer[open] .prblock").screenshot({ path: join(shots, `cloud-partner-token-${label}.png`) });
+    await page.keyboard.press("Escape");
+  }
+  ok(RUN.tokens.every((t) => agents.includes(t.token_id)), `${label}: every agent's token in its drawer`);
   // The card and Alta payments are the sourcing and support agents' (on the demo's cards); the transfer is the Payer's.
-  ok(RUN.payments.filter((p) => p.key !== "c").every((p) => agents.includes(p.t0.t0_id)), `${label}: the agents' payments' T:0 ids on their cards`);
+  ok(RUN.payments.filter((p) => p.key !== "c").every((p) => agents.includes(p.t0.t0_id)), `${label}: the agents' payments' T:0 ids in their drawers`);
   ok(/not this company's figures/.test(agents), `${label}: labelled as the recorded sandbox run`);
-  const buttons = await page.locator(".prwallet button").count();
-  ok(withWallet ? buttons > 0 : buttons === 0, `${label}: ${withWallet ? "an" : "no"} Add to Apple Wallet button (${buttons})`);
+  await page.locator("#roster-sourcing .dk-acts button").click();
+  await page.waitForSelector("dialog.dk-phone[open] button.dk-wal", { timeout: 20_000 });
+  const wal = page.locator("dialog.dk-phone[open] button.dk-wal");
+  ok(withWallet ? !(await wal.isDisabled()) && /Add to Apple Wallet/.test(await wal.innerText()) : (await wal.isDisabled()) && /waiting for the pass certificate/.test(await wal.innerText()),
+    `${label}: ${withWallet ? "an Add to Apple Wallet button" : "Apple Wallet said to wait for its certificate, the button off"}`);
+  await page.keyboard.press("Escape");
   ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${label}: Agents nothing wider than the window`);
-  if (shots) await page.locator(".prblock").nth(1).screenshot({ path: join(shots, `cloud-partner-token-${label}.png`) });
   if (withWallet) {
     // The link the button follows: the pass, as a .pkpass.
     const res = await page.evaluate(async () => {

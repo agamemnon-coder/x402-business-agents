@@ -44,8 +44,9 @@ function walks(records: LiveTryRecord[]) {
   const t = liveTryTotals(records);
   if (!t || !t.runs) return null;
   const last = records[records.length - 1]!;
-  // One series: its run log; several: the folder of runs, where each series has its own.
-  const href = records.length === 1 ? blob(last.log ?? last.summary) : `${REPO_BLOB.replace("/blob/", "/tree/")}docs/runs`;
+  // One series: its run log; several: the newest series' summary.json (review, 21 Nov: a record, never the folder of
+  // runs), every series' summary in data-rec.
+  const href = records.length === 1 ? blob(last.log ?? last.summary) : blob(last.summary);
   const rec = records.map((r) => r.summary).join(" ");
   const when = t.days.length === 1 ? day(`${t.days[0]}T12:00:00Z`) : `${day(`${t.days[0]}T12:00:00Z`)} to ${day(`${t.days.at(-1)}T12:00:00Z`)}`;
   return { t, href, rec, when, records };
@@ -53,6 +54,12 @@ function walks(records: LiveTryRecord[]) {
 
 /** A count as the site writes one (src/redesign/ui.ts countOf): "All 16", "Both", or "37 of 39"; never "16/16". */
 const whole = (n: number, of: number) => (n !== of ? `${fmt(n)} of ${fmt(of)}` : of === 2 ? "Both" : `All ${fmt(of)}`);
+/**
+ * The walks that never reached a step, said beside its count (review, 21 Nov): a step's count is over the walks that
+ * tried it, so "66 of 67 one-cent changes refused" no longer reads as if one changed cent got through when a walk
+ * stopped before that step.
+ */
+const stoppedBefore = (tried: number, runs: number) => (tried < runs ? ` ${runs - tried === 1 ? "1 walk" : `${fmt(runs - tried)} walks`} stopped before that step.` : "");
 
 function rails(w: ReturnType<typeof walks>): WallTile[] {
   const out: WallTile[] = [];
@@ -89,8 +96,8 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
   const mainPay = payments(main.record);
   if (long && lm?.refusal?.proof.href && lm.refusal.code === "mandate_cap_exceeded") out.push({ key: "alta-refusal", fig: `#${lm.refusal.seq}`, label: "refused on chain by Alta, over the mandate", note: `On Alta's testnet explorer; the ${day(long.recorded_at)} long run, a test world.${alta ? ` The main run of ${mainDay}: ${alta.fig}.` : ""}`, tag: "testnet", tone: "metal", href: lm.refusal.proof.href, rec: [LONG_RUN_FILE, LONG_RUN_LOG, ...(alta?.rec ? [alta.rec] : [])].join(" ") });
   else if (alta) out.push({ key: "alta-refusal", fig: alta.fig, label: "refused on chain by Alta, over the mandate", note: `On Alta's testnet explorer; the main run, ${mainDay}.`, tag: "testnet", tone: "metal", href: alta.href, rec: alta.rec ?? "" });
-  if (long && lp?.sums && lp.onChain && lm?.payments.account.href) out.push({ key: "alta-payments", fig: String(lp.onChain), label: "payments on Alta, each its own transaction", note: `The ${day(long.recorded_at)} long run, a test world: ${lp.metalParts}, every one inside the agents' mandates; the account on Alta's testnet explorer.${mainPay.sums && mainPay.onChain ? ` The main run of ${mainDay}: ${mainPay.onChain}.` : ""}`, tag: "testnet", tone: "metal", href: lm.payments.account.href, rec: [LONG_RUN_FILE, LONG_RUN_LOG, ...(mainPay.sums && mainPay.onChain ? [main.file] : [])].join(" ") });
-  else if (mainPay.sums && mainPay.onChain) out.push({ key: "alta-payments", fig: String(mainPay.onChain), label: "payments on Alta, each its own transaction", note: `The main run, ${mainDay}: every one inside the agents' mandates; each linked to Alta's testnet explorer.`, tag: "testnet", tone: "metal", href: blob(METAL_TX_LIST), rec: main.file });
+  if (long && lp?.sums && lp.onChain && lm?.payments.account.href) out.push({ key: "alta-payments", fig: String(lp.onChain), label: `payments on Alta, each its own transaction (${day(long.recorded_at)} long run)`, note: `The ${day(long.recorded_at)} long run, a test world: ${lp.metalParts}, every one inside the agents' mandates; the account on Alta's testnet explorer.${mainPay.sums && mainPay.onChain ? ` The main run of ${mainDay}: ${mainPay.onChain}.` : ""}`, tag: "testnet", tone: "metal", href: lm.payments.account.href, rec: [LONG_RUN_FILE, LONG_RUN_LOG, ...(mainPay.sums && mainPay.onChain ? [main.file] : [])].join(" ") });
+  else if (mainPay.sums && mainPay.onChain) out.push({ key: "alta-payments", fig: String(mainPay.onChain), label: `payments on Alta, each its own transaction (main run, ${mainDay})`, note: `The main run, ${mainDay}: every one inside the agents' mandates; each linked to Alta's testnet explorer.`, tag: "testnet", tone: "metal", href: blob(METAL_TX_LIST), rec: main.file });
   const v = vic3Run();
   if (v) {
     const s = vic3Summary(v), fid = s.paidFaceId[0]?.request;
@@ -162,8 +169,8 @@ function forged(w: ReturnType<typeof walks>): WallTile[] {
   const tm = json(TM) as { totals?: { artifacts: number; originalsValid: number; tried: number; refused: number; accepted: number } } | null;
   if (tm?.totals?.tried && tm.totals.accepted === 0 && tm.totals.originalsValid === tm.totals.artifacts) out.push({ key: "tamper-matrix", fig: whole(tm.totals.refused, tm.totals.tried), label: "tampered proof copies refused", note: `Every signed value of ${tm.totals.artifacts} proofs changed; the originals verify. Offline.`, tag: "test", tone: "ok", href: blob("docs/evidence/tamper-matrix.md"), rec: TM });
   if (w && w.t.runs) {
-    out.push({ key: "try-cent", fig: whole(w.t.refused, w.t.runs), label: "one-cent changes refused after approval", note: `The public /try, ${w.when}; a virtual test passkey signed.`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
-    out.push({ key: "try-hash", fig: whole(w.t.approvalsMatching, w.t.runs), label: "approvals whose hash Airwallex carries", note: `The public /try, ${w.when}.`, tag: "sandbox", tone: "awx", href: w.href, rec: w.rec });
+    out.push({ key: "try-cent", fig: whole(w.t.refused, w.t.centTried), label: w.t.centTried < w.t.runs ? "attempted one-cent changes refused after approval" : "one-cent changes refused after approval", note: `The public /try, ${w.when}; a virtual test passkey signed.${stoppedBefore(w.t.centTried, w.t.runs)}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
+    out.push({ key: "try-hash", fig: whole(w.t.approvalsMatching, w.t.signed), label: w.t.signed < w.t.runs ? "signed approvals whose hash Airwallex carries" : "approvals whose hash Airwallex carries", note: `The public /try, ${w.when}.${stoppedBefore(w.t.signed, w.t.runs)}`, tag: "sandbox", tone: "awx", href: w.href, rec: w.rec });
     if (w.t.proofs) out.push({ key: "try-proofs", fig: whole(w.t.proofsValid, w.t.proofs), label: "proof files VALID, browser and offline", note: "Downloaded from /try; npm run verify-bundle agrees.", tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
   }
   // The soaks' one-cent changes, summed over every soak record (the calls in each refusal's window, as each record counts them).
@@ -303,12 +310,12 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
     const p = v9.totals.purser_script, n = v9.totals.no_rules, a = v9a.totals.purser_script;
     out.push({ offProof: true, key: "eval-v9", fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v9): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${v9.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}; ${p.cfo_not_needed} sent to the CFO that could have been paid alone. Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds. Offline.`, tag: "test", tone: "claude", href: blob("docs/evals/adversarial-v9.md"), rec: V9 });
   }
-  // Evals v10 to v16 (20 and 21 Nov): held-out sets written each after the fixes that followed the one before, committed
-  // alone with their pre-registration before the run (src/cli/adversarialV10.ts, src/evals/adversarialRound.ts). One eval
-  // tile on /proof (the owner, 20 Nov): the newest held-out run, its figure as recorded, with its false holds and what
-  // went to the CFO; the run after the fixes that followed it, when there is one, is said in the note, not held out. The
-  // older rounds stay on the wall's record, off /proof.
-  const ROUNDS = [10, 11, 12, 13, 14, 15, 16].filter((v) => (json(`docs/evals/adversarial-v${v}.json`) as { held_out?: boolean } | null)?.held_out);
+  // Evals v10 to v17 (20 and 21 Nov): held-out sets written each after the fixes that followed the one before (v17 after
+  // v16's record, aimed at its misses), committed alone with their pre-registration before the run
+  // (src/cli/adversarialV10.ts, src/evals/adversarialRound.ts). One eval tile on /proof (the owner, 20 Nov): the newest
+  // held-out run, its figure as recorded, with its false holds and what went to the CFO; the run after the fixes that
+  // followed it, when there is one, is said in the note, not held out. The older rounds stay on the wall's record, off /proof.
+  const ROUNDS = [10, 11, 12, 13, 14, 15, 16, 17].filter((v) => (json(`docs/evals/adversarial-v${v}.json`) as { held_out?: boolean } | null)?.held_out);
   const newest = ROUNDS.at(-1);
   for (const v of ROUNDS) {
     const rec = `docs/evals/adversarial-v${v}.json`, after = `docs/evals/adversarial-v${v}-after.json`;
@@ -351,7 +358,7 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   if (ah?.calls) out.push({ key: "hostile-model", fig: whole(ah.refused ?? 0, ah.calls), label: "hostile tool calls stopped by code", note: `The other ${ah.stood ?? 0} stood within the rules, by the ledger: each the last pay of an invoice whose right outcome is pay, within the limit.${aha?.calls ? ` Sent to the CFO where a person had to look: ${ah.looser ?? 0}; ${aha.looser ?? 0} after the 19 Nov fixes, re-run, not held out.` : ""}`, tag: "test", tone: "claude", href: blob(AH), rec: aha?.calls ? `${AH} ${AH_AFTER}` : AH });
   if (w && w.t.claude.entries) {
     out.push({ key: "try-claude", fig: String(w.t.claude.fallbacks), label: `fallbacks in ${w.t.claude.entries} Claude calls on /try`, note: `${w.t.claude.distinctIds} Anthropic request ids; ${w.t.claude.models.join(", ")}.${w.t.claude.readerNoId ? ` ${w.t.claude.readerNoId} reader calls were logged with no request id: those walks ran before the fix of 19 Nov was deployed.` : ""}`, tag: "sandbox", tone: "claude", href: w.href, rec: w.rec });
-    if (w.t.held) out.push({ key: "try-held", fig: whole(w.t.held, w.t.runs), label: "invoices held by code's cash check", note: `Inside the agent's limit; no payout.${w.t.held < w.t.runs ? ` ${w.t.runs - w.t.held === 1 ? "One walk" : `${w.t.runs - w.t.held} walks`} stopped before this step.` : ""}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
+    if (w.t.held) out.push({ key: "try-held", fig: whole(w.t.held, w.t.holdTried), label: w.t.holdTried < w.t.runs ? "filed invoices held by code's cash check" : "invoices held by code's cash check", note: `Inside the agent's limit; no payout.${stoppedBefore(w.t.holdTried, w.t.runs)}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
   }
   return out;
 }

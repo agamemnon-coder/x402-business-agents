@@ -55,7 +55,14 @@ describe("the evidence wall's file", () => {
     expect(t.records.length).toBeGreaterThanOrEqual(2);
     expect(tile(w, "try-journeys").fig).toBe(countOf(t.siteStepsPassed, t.runs));
     expect(tile(w, "try-transfers").fig).toBe(countOf(t.paid, t.transfers));
-    expect(tile(w, "try-cent").fig).toBe(countOf(t.refused, t.runs));
+    // Review, 21 Nov: over the walks that tried the cent step (walk 2 of the phone series stopped before it), so the
+    // figure never reads as if a changed cent got through; the walks stopped before it said in the note.
+    expect(tile(w, "try-cent").fig).toBe(countOf(t.refused, t.centTried));
+    expect(tile(w, "try-hash").fig).toBe(countOf(t.approvalsMatching, t.signed));
+    expect(tile(w, "try-held").fig).toBe(countOf(t.held, t.holdTried));
+    expect(t.centTried).toBeLessThan(t.runs);
+    expect(tile(w, "try-cent").note).toContain(`${t.runs - t.centTried === 1 ? "1 walk" : `${t.runs - t.centTried} walks`} stopped before that step.`);
+    for (const k of ["try-cent", "try-hash", "try-held"]) expect(tile(w, k).fig, k).not.toMatch(/ of /);
     expect(tile(w, "try-claude")).toMatchObject({ fig: String(t.claude.fallbacks), label: `fallbacks in ${t.claude.entries} Claude calls on /try` });
     // Honest about the walks recorded before the reader's request-id fix was deployed.
     if (t.claude.readerNoId) expect(tile(w, "try-claude").note).toContain(`${t.claude.readerNoId} reader calls were logged with no request id`);
@@ -172,7 +179,7 @@ describe("the /try walks, added up over every recorded series", () => {
     expect(nearestRank(all, 0.5)).toBe(6200);
   });
 
-  it("feeds the wall: a later series moves its figures, and its link goes to the run folder", () => {
+  it("feeds the wall: a later series moves its figures, and its link goes to the newest series' summary.json", () => {
     const a = series("docs/runs/x-a", "2026-11-19T07:00:00.000Z", [6000, 6100]);
     const b = series("docs/runs/x-b", "2026-11-19T09:00:00.000Z", [5000, 5100, 5200]);
     const one = evidenceWall([a]), two = evidenceWall([a, b]);
@@ -181,7 +188,8 @@ describe("the /try walks, added up over every recorded series", () => {
     expect(tile(two, "try-transfers").fig).toBe("All 10");
     expect(tile(two, "try-cost").fig).toBe("USD 0.0050");
     expect(tile(one, "try-journeys").href).toBe(`${REPO_BLOB}docs/runs/x-a.md`);
-    expect(tile(two, "try-journeys").href).toMatch(/\/tree\/main\/docs\/runs$/);
+    // Review, 21 Nov: a record, never the folder of runs.
+    expect(tile(two, "try-journeys").href).toBe(`${REPO_BLOB}docs/runs/x-b/summary.json`);
     expect(tile(two, "try-journeys").rec).toBe("docs/runs/x-a/summary.json docs/runs/x-b/summary.json");
   });
 });
@@ -217,7 +225,11 @@ describe("llms.txt's evidence section", () => {
     expect(t.indexOf(LLMS_WALL_HEADING)).toBeGreaterThan(t.indexOf("## For judges"));
     expect(withWallSection(t, section)).toBe(t);
     for (const l of section.split("\n").filter((x) => x.startsWith("- "))) expect(l).toMatch(/\): https:\/\/\S+$/);
-    expect(section.split("\n").filter((x) => x.startsWith("- "))).toHaveLength(tiles(committedWall()!).length);
+    // Review, 21 Nov: the older held-out rounds (off /proof) in one line, so only the newest eval's figure is listed.
+    const older = tiles(committedWall()!).filter((x) => x.offProof && /^eval-v\d+$/.test(x.key));
+    expect(older.length).toBeGreaterThan(0);
+    expect(section.split("\n").filter((x) => x.startsWith("- "))).toHaveLength(tiles(committedWall()!).length - older.length + 1);
+    expect(section).not.toMatch(/\(eval v16\)/);
   });
 });
 
@@ -237,13 +249,13 @@ describe("the README's wall line and the partner pages' strips", () => {
   });
 
   it("each strip shows the wall's own tiles, links to its group on /proof, and says it is test money", () => {
-    const w = committedWall()!;
+    const w = committedWall()!, page = proofPage();
     for (const p of ["airwallex", "alta", "visa", "tap"] as const) {
       const html = evidenceStripHtml(p, {}, w);
       for (const k of PARTNER_STRIPS[p].keys) expect(html, `${p} ${k}`).toContain(`data-wall="${k}"`);
       expect(html).toContain(`href="proof#${PARTNER_STRIPS[p].group}"`);
       // The group is a section or block of /proof (21 Nov: the questions' sections), so the link lands.
-      expect(proofPage().split(` id="${PARTNER_STRIPS[p].group}"`).length - 1, p).toBe(1);
+      expect(page.split(` id="${PARTNER_STRIPS[p].group}"`).length - 1, p).toBe(1);
       expect(html).toMatch(/test money|no money moved/);
       expect(html).not.toMatch(/<script|style=|\son[a-z]+=|endorsed by|partnered with/i);
     }
@@ -353,24 +365,27 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     expect([v9.held_out, v9a.held_out]).toEqual([true, false]);
     expect(tile(w(), "eval-v9").fig).toBe(`${v9.totals.purser_script.wrong_payments} vs ${v9.totals.no_rules.wrong_payments}`);
     expect(tile(w(), "eval-v9").note).toContain(`Fixed since, no longer held out: ${v9a.totals.purser_script.wrong_payments} wrong payments, ${v9a.totals.purser_script.false_holds} false holds`);
-    // Evals v10 to v16 (20 and 21 Nov): each held out when recorded; v10 to v15 then fixed against (their after-fix
-    // records not held out); /proof shows only the newest held-out run, v16, as recorded; v10 to v15 stay on the wall's
+    // Evals v10 to v17 (20 and 21 Nov): each held out when recorded; v10 to v16 then fixed against (their after-fix
+    // records not held out); /proof shows only the newest held-out run, v17, as recorded; v10 to v16 stay on the wall's
     // record, off /proof.
-    for (const v of [10, 11, 12, 13, 14, 15]) {
+    for (const v of [10, 11, 12, 13, 14, 15, 16]) {
       const r = json<AdvCfo>(`docs/evals/adversarial-v${v}.json`), a = json<Adv>(`docs/evals/adversarial-v${v}-after.json`);
       expect([r.held_out, a.held_out], `v${v}`).toEqual([true, false]);
       expect(tile(w(), `eval-v${v}`).fig).toBe(`${r.totals.purser_script.wrong_payments} vs ${r.totals.no_rules.wrong_payments}`);
       expect(tile(w(), `eval-v${v}`).offProof, `v${v}`).toBe(true);
       expect(tile(w(), `eval-v${v}`).note).toContain(`Fixed since, no longer held out: ${a.totals.purser_script.wrong_payments} wrong payments, ${a.totals.purser_script.false_holds} false hold`);
     }
-    const v16 = json<AdvCfo & { totals: { purser_script: { cases: number } } }>("docs/evals/adversarial-v16.json");
-    expect(v16.held_out).toBe(true);
-    expect(tile(w(), "eval-v16").fig).toBe(`${v16.totals.purser_script.wrong_payments} vs ${v16.totals.no_rules.wrong_payments}`);
-    expect(tile(w(), "eval-v16").label).toBe(`wrong payments on ${v16.totals.purser_script.cases} held-out invoices (eval v16): Purser vs no rules`);
-    expect(tile(w(), "eval-v16").note).toContain(`(commit ${v16.cases_commit})`);
-    expect(tile(w(), "eval-v16").note).toContain(`${v16.totals.purser_script.false_holds} false holds of ${v16.totals.purser_script.clean_truths}; ${v16.totals.purser_script.to_cfo_not_held} sent to the CFO that had to be held, ${v16.totals.purser_script.cfo_not_needed} that could have been paid alone`);
-    expect(tile(w(), "eval-v16").note).not.toContain("Fixed since");
-    expect(tiles(w()).filter((x) => /^eval-v\d+$/.test(x.key) && !x.offProof).map((x) => x.key)).toEqual(["eval-v16"]);
+    const v17 = json<AdvCfo & { totals: { purser_script: { cases: number } } }>("docs/evals/adversarial-v17.json");
+    expect(v17.held_out).toBe(true);
+    expect(tile(w(), "eval-v17").fig).toBe(`${v17.totals.purser_script.wrong_payments} vs ${v17.totals.no_rules.wrong_payments}`);
+    expect(tile(w(), "eval-v17").label).toBe(`wrong payments on ${v17.totals.purser_script.cases} held-out invoices (eval v17): Purser vs no rules`);
+    expect(tile(w(), "eval-v17").note).toContain(`(commit ${v17.cases_commit})`);
+    expect(tile(w(), "eval-v17").note).toContain(`${v17.totals.purser_script.false_holds} false holds of ${v17.totals.purser_script.clean_truths}; ${v17.totals.purser_script.to_cfo_not_held} sent to the CFO that had to be held, ${v17.totals.purser_script.cfo_not_needed} that could have been paid alone`);
+    // Its fixes followed (21 Nov): the figure stays the held-out one; the after-fix run is said in the note as not held out.
+    const v17a = json<Adv>("docs/evals/adversarial-v17-after.json");
+    expect(v17a.held_out).toBe(false);
+    expect(tile(w(), "eval-v17").note).toContain(`Fixed since, no longer held out: ${v17a.totals.purser_script.wrong_payments} wrong payments, ${v17a.totals.purser_script.false_holds} false holds`);
+    expect(tiles(w()).filter((x) => /^eval-v\d+$/.test(x.key) && !x.offProof).map((x) => x.key)).toEqual(["eval-v17"]);
     const sq = json<{ lighthouse: { path: string; preset: string; median: { performance: number; accessibility: number } }[] }>("docs/evidence/site-quality.json").lighthouse;
     expect(tile(w(), "site-quality").fig).toBe(String(Math.min(...sq.map((x) => x.median.accessibility))));
     expect(tile(w(), "site-quality").note).toContain(`lowest performance ${Math.min(...sq.map((x) => x.median.performance))}`);

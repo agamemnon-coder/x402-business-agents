@@ -18,7 +18,8 @@ export const CONTACT_LINE = "Pilot or partnership?";
  * Set on 20 Nov (the owner): the contact address above.
  */
 export const DESIGN_PARTNER_URL = `mailto:${CONTACT_EMAIL}`;
-export const DESIGN_PARTNER_LABEL = "Become a design partner";
+// 21 Nov (Max): the 30-Day Founding Partner Pilot; its CTA says so everywhere (/business, Home's pilot step, /try/sign, README).
+export const DESIGN_PARTNER_LABEL = "Become a Founding Partner";
 /** The design-partner link as HTML, or "" while there is no valid address. */
 export function designPartnerHtml(url: string = DESIGN_PARTNER_URL): string {
   if (!/^(https:\/\/|mailto:)[^\s"'<>]+$/.test(url)) return "";
@@ -157,7 +158,9 @@ export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
  * The idea in one sentence (15 Nov, Founder's and Judges' Choice: one sharp idea, understood in 10 seconds): Home's
  * sentence under its heading, the README's bold line under its title, package.json's description.
  */
-export const IDEA = "AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey, and one changed cent breaks the signature.";
+// Review, 21 Nov: "one changed cent and the approval no longer matches the terms", not "breaks the signature" (the
+// signature itself is not broken: the terms it signed are no longer the ones asked for, so the payment is refused).
+export const IDEA = "AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey: one changed cent and the approval no longer matches the terms.";
 export const README_WHAT = IDEA;
 export const WHAT_IT_IS = "For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone).";
 /**

@@ -70,31 +70,25 @@ const runKit=(()=>{
 
 /** The start screen (screen 0), in the page's script: its words from C.start, the logos from LOGOS. */
 export const START_JS = String.raw`
-// 0 Start (14 Nov, owner): eyebrow, headline, the line under it, the three steps and the one-cent refusal as a picture,
-// the button with the trailer beside it, the small print, then the partners. The layout is CSS (START_CSS).
+// 0 Start (21 Nov, Max: "the only purpose of this page is the demo and some key numbers, so make it central"; mockup
+// 175): the pill, the headline (show() draws it) and one line; one centred card that is the demo: the four stages, the
+// engine's sample invoice, the rows of what the run will do, and the button that starts the real run; under it three
+// key numbers from the evidence wall (KEYNUMS), each a link to its proof; one tiny line. The layout is CSS (START_CSS).
 screen('start',{heading:C.start.heading,band:false,draw(box){
-  const T=C.start;box.classList.add('start');
+  const T=C.start;box.classList.add('start','v3');
   const eyebrow=el('p','eyebrow',[el('span','dot'),T.eyebrow]);
   const text=el('p','lede',T.text);
-  const flow=el('ol','flow');
-  const glyphs=['file-text','shield-check','scan-face'];
-  T.flow.forEach((f,i)=>flow.append(el('li','fs fs'+(i+1),[el('span','fi',icon(glyphs[i],22)),el('span','fx',[el('span','fn',[el('span','num',String(i+1)),f.name]),el('span','fl',f.line)])])));
-  flow.append(el('li','fs fend',[el('span','fi',icon('ban',20)),el('span','fx',el('span','fn',T.flowEnd))]));
+  const stp=el('ol','stp');T.steps.forEach((w,i)=>stp.append(el('li',i===0?'now':'',[el('span','sn',String(i+1)),el('span','sl',w)])));
+  const SX=T.sample;
+  const inv=SX?el('div','inv',[el('span','fi',icon('file-text',20)),el('span','iw',[el('b','',SX.vendor),el('span','',T.card.invoice+' '+SX.invoice_no+' · '+T.card.due+' '+SX.due)]),el('span','am',SX.money)]):null;
+  const rows=el('ul','rws');T.card.rows.forEach((r,i)=>rows.append(el('li','rw rw'+(i+1)+(i===3?' bad':''),[el('span','rd',i===3?icon('ban',14):null),el('span','rh',r.h),el('span','rr',r.r)])));
   const b=btn(T.button,true);
   const label=(words,glyph)=>b.replaceChildren(...[words,glyph?icon('arrow-right',18):null].filter(Boolean));label(T.button,true);
-  const trailer=el('a','trailer',[el('span','play',icon('play',12)),T.trailer]);trailer.href=C.trailer.url;trailer.target='_blank';trailer.rel='noopener';
-  const logos=el('ul','logos');
-  for(const l of LOGOS){
-    const img=el('img');img.src=l.src;img.alt=l.alt;img.width=l.w;img.height=l.h;img.decoding='async';img.className='lg lg-'+l.key;
-    // 15 Nov (judges: the strip read "(formerly Metal)" alone): the logo's alt names it, "Alta (formerly Metal)"; the
-    // visible "(formerly Metal)" beside it is the same words for the eye, so screen readers hear them once.
-    const was=el('span','was',T.formerly);was.setAttribute('aria-hidden','true');
-    logos.append(el('li','tile'+(l.key==='alta'?' alta':''),l.key==='alta'?[img,was]:img));
-    if(l.key==='alta')logos.append(el('li','tile tname',T.visa));
-  }
-  const partners=el('div','partners',[el('p','pl',T.worksWith),logos,el('p','pn',T.runs_note)]);
-  // Proof in numbers (15 Nov, owner): the recorded runs' figures, each linked to its record, and the suite's count.
-  box.append(eyebrow,text,flow,el('div','cta',[b,trailer]),el('p','fine',T.fine),partners,proofBand());
+  const card=el('section','dcard',[stp,inv,rows,el('div','cta',[b])]);card.setAttribute('aria-label',T.heading);
+  const keys=el('ul','keys');
+  for(const k of KEYNUMS){const a=el('a','',[el('span','kv',k.fig),el('span','kl',k.label)]);a.href=k.href;a.target='_blank';a.rel='noopener';keys.append(el('li','',a))}
+  keys.setAttribute('aria-label',T.keys);
+  box.append(eyebrow,text,card,el('p','fine',T.fine),...(KEYNUMS.length?[keys]:[]));
   b.addEventListener('click',async()=>{
     b.disabled=true;label(T.starting,false);
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
@@ -238,80 +232,64 @@ const tour=(()=>{
 
 /** The start screen's look, the rail's clock and live link, the score and the tour card. Existing tokens only. */
 export const START_CSS = `
-/* 14 Nov (owner): the start, enterprise-grade. One column on a phone; at 1024 px and up the words left, the steps right. */
-body:has(.screen.start) { min-height: 100vh; min-height: 100svh; background:
-  radial-gradient(60% 420px at 85% 0, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%) no-repeat,
-  radial-gradient(50% 360px at 0 100%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%) no-repeat,
-  var(--bg); }
-body:has(.screen.start)::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background: radial-gradient(circle, color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1.4px) 0 0 / 24px 24px;
-  -webkit-mask-image: linear-gradient(180deg, #000, transparent 70%); mask-image: linear-gradient(180deg, #000, transparent 70%); }
-body:has(.screen.start) main { max-width: 600px; padding-top: 22px; padding-bottom: 28px; display: grid; grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "eyebrow" "h1" "lede" "flow" "cta" "fine" "partners" "real"; }
-.screen.start { display: contents; animation: none; }
-body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-size: 33px; line-height: 1.08; letter-spacing: -.03em; font-weight: 780; text-wrap: balance; animation: rise .5s cubic-bezier(.2,.7,.2,1) .05s both; }
-.start .eyebrow { grid-area: eyebrow; justify-self: start; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 5px 12px 5px 10px; border-radius: 999px;
-  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); color: var(--muted); font-size: 13px; font-weight: 600; animation: rise .5s cubic-bezier(.2,.7,.2,1) both; }
-.start .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.start .lede { grid-area: lede; margin: 0 0 18px; color: var(--muted); font-size: 16.5px; line-height: 1.5; text-wrap: pretty; animation: rise .5s cubic-bezier(.2,.7,.2,1) .1s both; }
-.start .flow { grid-area: flow; list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; animation: rise .55s cubic-bezier(.2,.7,.2,1) .15s both; }
-.start .fs { position: relative; display: grid; gap: 6px; align-content: start; padding: 12px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
-  animation: fslit 7.2s ease-in-out infinite; }
-.start .fs2 { animation-delay: 1.2s; } .start .fs3 { animation-delay: 2.4s; }
-.start .fs .fi { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: var(--accent-soft); color: var(--accent); }
-.start .fs .fx { display: grid; gap: 2px; min-width: 0; }
-.start .fs .fn { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14.5px; }
-.start .fs .num { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--sunken); color: var(--muted); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.start .fs .fl { color: var(--muted); font-size: 12.5px; line-height: 1.35; text-wrap: balance; }
-.start .fs.fend { grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: center; padding: 10px 12px; background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); box-shadow: none;
-  animation: fsend 7.2s ease-in-out infinite; }
-.start .fs.fend .fi { width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--bad) 14%, var(--surface)); color: var(--bad); }
-.start .fs.fend .fn { color: var(--bad); font-size: 14px; }
-@keyframes fslit { 0%, 2% { border-color: var(--border); } 5%, 15% { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), var(--shadow); } 19%, 100% { border-color: var(--border); } }
-/* The refusal is always readable: only a shake and its border move, after the three steps have lit. */
-@keyframes fsend { 0%, 50% { transform: none; border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); } 53% { transform: translateX(-5px); border-color: var(--bad); } 56% { transform: translateX(4px); } 59% { transform: translateX(-2px); } 62%, 85% { transform: none; border-color: var(--bad); } 100% { border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); } }
-.start .cta { grid-area: cta; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; animation: rise .55s cubic-bezier(.2,.7,.2,1) .2s both; }
-.start .cta .btn.big { margin: 0; width: 100%; min-height: 54px; box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent); transition: transform .15s ease, box-shadow .15s ease; }
-.start .cta .btn.big:hover { transform: translateY(-1px); box-shadow: 0 14px 28px -10px color-mix(in srgb, var(--accent) 80%, transparent); }
-.start .cta .btn .i { vertical-align: 0; }
-.start .trailer { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0 auto; color: var(--text); font-size: 14px; font-weight: 600; text-decoration: none; }
-.start .trailer .play { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--accent); }
-.start .trailer:hover { color: var(--accent); }
-.start .fine { grid-area: fine; margin: 2px 0 0; font-size: 12.5px; color: var(--faint); text-align: center; }
-.start .partners { grid-area: partners; margin: 22px 0 0; padding: 16px 0 0; border-top: 1px solid var(--border); text-align: center; animation: rise .6s cubic-bezier(.2,.7,.2,1) .3s both; }
-.start .partners .pl { margin: 0 0 10px; color: var(--faint); font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.start .logos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-/* The official files on white tiles in both themes (their marks are dark; docs/assets/logos/SOURCES.md). */
-.start .logos .tile { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid #e3e6ec; color: #0b1220; font-size: 12.5px; font-weight: 650; }
-.start .logos .tile.tname { background: none; border-color: transparent; color: var(--text); padding: 0 6px; }
-.start .logos .lg { display: block; width: auto; height: 16px; }
-.start .logos .lg-alta { height: 20px; }
-.start .logos .was { color: #586174; font-size: 11.5px; font-weight: 600; }
-.start .partners .pn { margin: 10px 0 0; color: var(--faint); font-size: 11.5px; }
-@media (min-width: 1024px) {
-  body:has(.screen.start) main { max-width: 1180px; padding: 36px 48px 32px; min-height: calc(100vh - 65px); min-height: calc(100svh - 65px); align-content: center;
-    grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); column-gap: 72px;
-    grid-template-areas: "eyebrow flow" "h1 flow" "lede flow" "cta flow" "fine flow" "partners partners" "real real"; }
-  body:has(.screen.start) main > h1 { font-size: 54px; margin: 20px 0 16px; }
-  .start .lede { font-size: 19px; max-width: 34em; margin-bottom: 28px; }
-  .start .flow { align-self: center; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 0; padding: 22px; border-radius: 24px; background: color-mix(in srgb, var(--surface) 70%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow); position: relative; }
-  .start .fs { grid-template-columns: auto 1fr; align-items: center; gap: 14px; padding: 16px 18px; }
-  .start .fs .fi { width: 46px; height: 46px; border-radius: 13px; }
-  .start .fs .fn { font-size: 16.5px; }
-  .start .fs .fl { font-size: 14px; }
-  .start .fs.fend { grid-column: auto; padding: 14px 18px; }
-  .start .cta { justify-content: flex-start; }
-  .start .cta .btn.big { width: auto; padding: 0 28px; }
-  .start .trailer { margin: 0; }
-  .start .fine { text-align: left; }
-  .start .partners { margin-top: 40px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 18px; }
-  .start .partners .pl, .start .partners .pn { margin: 0; }
+/* 21 Nov (Max, mockup 175: "the demo, central, on the same high flow background"): the pill, the headline and one line
+   centred; one glass card that is the demo; three key numbers; one tiny line. The site's wave behind it (tryPage.ts). */
+body:has(.screen.start) { min-height: 100vh; min-height: 100svh; }
+body:has(.screen.start) main { max-width: 760px !important; padding-top: clamp(16px, 5vh, 56px) !important; padding-bottom: 32px; display: flex !important; flex-direction: column; align-items: stretch; text-align: center; zoom: 1 !important; }
+.screen.start.v3 { display: contents; animation: none; }
+.start.v3 .eyebrow { order: -1; align-self: center; }
+body:has(.screen.start) main > h1 { margin: 16px auto 10px; max-width: 18ch; font-size: clamp(32px, 4.6vw, 56px); line-height: 1.05; letter-spacing: -.035em; font-weight: 780; text-wrap: balance; animation: rise .5s cubic-bezier(.2,.7,.2,1) .05s both; }
+body:has(.screen.start) main > h1 .pv-grad { color: inherit; background: none; -webkit-text-fill-color: currentColor; }
+.start.v3 .eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--glass-line, var(--border)); background: var(--glass, var(--surface)); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: var(--muted); font-size: 12.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.start.v3 .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.start.v3 .lede { max-width: 40em; margin: 0 auto 22px; color: var(--muted); font-size: clamp(15.5px, 1.4vw, 18px); line-height: 1.5; text-wrap: balance; }
+/* The card that is the demo. */
+.start.v3 .dcard { text-align: left; padding: clamp(16px, 2.4vw, 26px); border-radius: 24px; border: 1px solid var(--glass-line, var(--border)); background: var(--glass, var(--surface)); -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2);
+  box-shadow: var(--hi, none), 0 40px 90px -40px var(--glow, rgba(0,0,0,.35)), var(--shadow); animation: rise .6s cubic-bezier(.2,.7,.2,1) .12s both; }
+.start.v3 ol.stp { list-style: none; margin: 0 0 18px; padding: 0; display: flex; align-items: center; justify-content: center; gap: 0; }
+.start.v3 ol.stp li { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; font-weight: 650; }
+.start.v3 ol.stp li + li::before { content: ""; width: clamp(14px, 4vw, 48px); height: 1px; margin: 0 10px; background: var(--border); }
+.start.v3 ol.stp .sn { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.start.v3 ol.stp li.now { color: var(--text); } .start.v3 ol.stp li.now .sn { border-color: transparent; background: var(--btn-bg, var(--accent)); color: var(--btn-ink, #fff); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+.start.v3 .inv { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.start.v3 .inv .fi { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); }
+.start.v3 .inv .iw { display: grid; gap: 2px; min-width: 0; } .start.v3 .inv b { font-size: 16.5px; font-weight: 700; } .start.v3 .inv .iw span { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.start.v3 .inv .am { font-size: clamp(18px, 2.2vw, 22px); font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.start.v3 ul.rws { list-style: none; margin: 10px 4px 16px; padding: 0; }
+.start.v3 .rw { display: grid; grid-template-columns: 22px auto 1fr; align-items: center; gap: 10px; padding: 10px 0; font-size: 14px; }
+.start.v3 .rw + .rw { border-top: 1px solid var(--border); }
+.start.v3 .rw .rd { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border); }
+.start.v3 .rw .rh { font-weight: 650; }
+.start.v3 .rw .rr { justify-self: end; text-align: right; color: var(--muted); font-size: 13px; }
+.start.v3 .rw.bad .rd { border-color: color-mix(in srgb, var(--bad) 50%, var(--border)); color: var(--bad); } .start.v3 .rw.bad .rh { color: var(--bad); }
+.start.v3 .rw2 .rr { color: var(--accent); }
+.start.v3 .cta { display: grid; }
+.start.v3 .cta .btn.big { width: 100%; margin: 0; min-height: 54px; border-radius: 999px; font-size: 16.5px; }
+.start.v3 .fine { margin: 14px 0 0; color: var(--faint); font-size: 12.5px; }
+/* Key numbers: three, each from the evidence wall, each a link to its proof. */
+.start.v3 ul.keys { list-style: none; margin: 22px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.start.v3 ul.keys a { display: grid; gap: 2px; height: 100%; box-sizing: border-box; padding: 12px 10px; border-radius: 16px; border: 1px solid var(--glass-line, var(--border)); background: var(--glass, var(--surface)); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: var(--text); text-decoration: none; }
+.start.v3 ul.keys a:hover, .start.v3 ul.keys a:focus-visible { border-color: var(--accent); }
+.start.v3 .kv { font-size: clamp(20px, 2.4vw, 26px); font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.start.v3 .kl { color: var(--muted); font-size: 12px; line-height: 1.3; }
+@media (max-width: 560px) {
+  body:has(.screen.start) main > h1 { font-size: 30px; margin: 10px auto 6px; }
+  .start.v3 .lede { font-size: 14.5px; margin-bottom: 14px; }
+  .start.v3 .dcard { padding: 14px; border-radius: 20px; }
+  .start.v3 ol.stp { margin-bottom: 12px; } .start.v3 ol.stp li .sl { display: none; } .start.v3 ol.stp li.now .sl { display: inline; }
+  .start.v3 .inv { gap: 10px; padding: 10px 12px; } .start.v3 .inv .fi { width: 36px; height: 36px; } .start.v3 .inv b { font-size: 15px; } .start.v3 .inv .iw span { font-size: 12px; }
+  .start.v3 .inv .am { font-size: 16px; }
+  .start.v3 ul.rws { margin: 6px 2px 12px; } .start.v3 .rw { grid-template-columns: 20px 1fr; gap: 2px 10px; padding: 7px 0; font-size: 13.5px; }
+  .start.v3 .rw .rr { grid-column: 2; justify-self: start; text-align: left; font-size: 12px; }
+  .start.v3 ul.rws .rw:not(.rw2) .rr { display: none; }
+  .start.v3 .cta .btn.big { min-height: 50px; }
+  .start.v3 ul.keys { gap: 6px; } .start.v3 ul.keys a { padding: 10px 6px; } .start.v3 .kl { font-size: 11px; }
 }
+@media (min-width: 1920px) { body:has(.screen.start) main { max-width: 900px !important; } }
 @media (max-width: 420px) { .score .tile { padding: 9px 10px; } .score .tile .v { font-size: 21px; } }
-@media (min-width: 1024px) and (max-height: 820px) { body:has(.screen.start) main > h1 { font-size: 46px; } .start .partners { margin-top: 26px; } }
 
 /* Proof in numbers (15 Nov, owner): one band of measured figures under the partners (and on the finish), each a link. */
-.start .real { grid-area: real; }
+
 .proofband { margin: 18px 0 0; animation: rise .6s cubic-bezier(.2,.7,.2,1) .4s both; }
 .proofband .rh { margin: 0 0 8px; color: var(--faint); font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-align: center; }
 .proofband .rl { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -323,14 +301,7 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 .proofband li:last-child:nth-child(odd), .proofband li.wide { grid-column: 1 / -1; }
 .proofband li.wide .ph2 { font-size: 15px; font-weight: 700; line-height: 1.3; }
 .proofband li.wide .pk { font-size: 12.5px; }
-@media (min-width: 1024px) { .start .proofband { margin-top: 22px; } .proofband .rl { grid-template-columns: repeat(5, minmax(0, 1fr)); } .proofband li:last-child:nth-child(odd):not(.wide) { grid-column: auto; } .proofband .pv { font-size: 24px; } }
-/* The steps light one after another, each icon filling, then the refusal shakes (a loop; still with reduced motion). */
-.start .fs .fi { animation: fifill 7.2s ease-in-out infinite; }
-.start .fs2 .fi { animation-delay: 1.2s; } .start .fs3 .fi { animation-delay: 2.4s; } .start .fs.fend .fi { animation: none; }
-@keyframes fifill { 0%, 2% { background: var(--accent-soft); color: var(--accent); } 5%, 15% { background: var(--accent); color: #fff; } 19%, 100% { background: var(--accent-soft); color: var(--accent); } }
-/* The button breathes a little light. */
-.start .cta .btn.big { animation: ctaglow 2.8s ease-in-out infinite alternate; }
-@keyframes ctaglow { from { box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); } to { box-shadow: 0 12px 28px -10px color-mix(in srgb, var(--accent) 80%, transparent), 0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent); } }
+@media (min-width: 1024px) { .proofband .rl { grid-template-columns: repeat(5, minmax(0, 1fr)); } .proofband li:last-child:nth-child(odd):not(.wide) { grid-column: auto; } .proofband .pv { font-size: 24px; } }
 /* The band's clock and "Same step, live" (screens after the start). */
 .band .clock { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .band .bx { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }

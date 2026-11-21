@@ -45,8 +45,10 @@ describe("visual files", () => {
   });
   it("take their colours from the site's tokens, light and dark", () => {
     const light = palette("light"), dark = palette("dark");
-    expect(TOKENS).toContain(`--accent: ${light.accent};`);
-    expect(TOKENS).toContain(`--accent: ${dark.accent};`);
+    // 21 Nov, redesign: the tokens are written without a space after the colon; the visuals read them the same way.
+    const tok = (k: string, v: string) => new RegExp(`--${k}:\\s*${v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")};`).test(TOKENS);
+    expect(tok("accent", light.accent)).toBe(true);
+    expect(tok("accent", dark.accent)).toBe(true);
     expect(files["docs/assets/architecture-wide-dark.svg"]).toContain(`--bg:${dark.bg}`);
     expect(files["docs/assets/architecture-wide-light.svg"]).toContain(`--bg:${light.bg}`);
   });

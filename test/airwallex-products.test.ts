@@ -65,7 +65,8 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
     // Review 12 Nov: the seven products, then the three tested live behind flags. 13 Nov: those three switched on in the
     // flow and shown live by docs/runs/2026-11-13-airwallex-switch-on.json, so all ten are in use.
     // Partner review, 13 Nov: Airi is a beta, the payee check and the ledger reconciliation are API features: counted as such.
-    expect(awx).toContain("<h1>Nine Airwallex features in use, plus Airi (beta)</h1>");
+    // Review, 21 Nov: Spend (its bills, a tile of the wall's Airwallex strip) counted with the nine product tiles.
+    expect(awx).toContain("<h1>Ten Airwallex features in use, plus Airi (beta)</h1>");
     expect(text(main(awx))).not.toMatch(/Replay of the main run/);
     expect(awx).toMatch(/<span class="pill run">[\s\S]*?Airwallex sandbox · test money · each run dated<\/span>/);
   });

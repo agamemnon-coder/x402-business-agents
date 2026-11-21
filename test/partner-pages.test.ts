@@ -132,20 +132,21 @@ describe("the partner pages", () => {
     // Watch is a tab once the film is on /watch (src/config/film.ts).
     // 13 Nov (owner): Judge is out of the menu again; the product tour (/tour) is linked from Home's footer instead.
     // 21 Nov (Max: "simple and tight"): Purser Cloud, the product, is the fourth tab ("Cloud"), out of More.
-    expect(NAV_MAIN.map(([k]) => k)).toEqual(WATCH_IN_MENU ? ["home", "watch", "try", "proof", "cloud"] : ["home", "try", "proof", "cloud"]);
+    // 21 Nov (the owner's concept): "Business" (/business) a tab of its own, before "Cloud".
+    expect(NAV_MAIN.map(([k]) => k)).toEqual(WATCH_IN_MENU ? ["home", "watch", "try", "proof", "business", "cloud"] : ["home", "try", "proof", "business", "cloud"]);
     // The fifth item, "More" (12 Nov): the product pages, then the four partner pages, the same list in both navigations.
     expect(MORE_LABEL).toBe("More");
     // Purser Cloud first (the owner, 12 Nov): the hosted product, on its own address.
     // /books (owner, 12 Nov) sits with the product pages.
     // 13 Nov, evening (owner): the product tour and Pricing are out.
     // 19 Nov (the owner: "we use T:0 too"): T:0 joined the partner pages; 21 Nov ("merge them"): it lives on /books.
-    expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "security", "docs", "books", "privacy", "airwallex", "metal", "visa", "claude"]);
+    expect(MORE_LINKS.map((l) => l.key)).toEqual(["business", "cloud", "security", "docs", "books", "privacy", "airwallex", "metal", "visa", "claude"]);
     expect(MORE_LINKS.filter((l) => l.group === "partner").map((l) => l.label)).toEqual(["Airwallex", "Alta", "Visa", "Claude"]);
     // The template pages' navigation (src/ui/nav.ts): the four tabs as links with their keys, then More, a <details>
     // with the same links as the redesign's header (src/redesign/ui.ts), in the same order.
     const nav = navHtml("try");
     const more = /<details class="pmore"><summary[^>]*>([^<]+)<\/summary><div class="pmenu">([\s\S]*?)<\/div><\/details><\/nav>$/.exec(nav);
-    expect([...nav.slice(0, more?.index).matchAll(/<a href="[^"]+" data-nav="([a-z]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(WATCH_IN_MENU ? [["home", "Home"], ["watch", "Watch"], ["try", "Try"], ["proof", "Proof"], ["cloud", "Cloud"]] : [["home", "Home"], ["try", "Try"], ["proof", "Proof"], ["cloud", "Cloud"]]);
+    expect([...nav.slice(0, more?.index).matchAll(/<a href="[^"]+" data-nav="([a-z]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(WATCH_IN_MENU ? [["home", "Home"], ["watch", "Watch"], ["try", "Try"], ["proof", "Proof"], ["business", "Business"], ["cloud", "Cloud"]] : [["home", "Home"], ["try", "Try"], ["proof", "Proof"], ["business", "Business"], ["cloud", "Cloud"]]);
     expect(moreLinks().map((l) => l.key)).not.toContain("cloud");
     expect(more?.[1]).toBe("More");
     expect([...(more?.[2] ?? "").matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(moreLinks().map((l) => [l.href, l.label]));

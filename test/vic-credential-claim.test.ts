@@ -21,7 +21,8 @@ describe("the Visa credential is never called single-use", () => {
   it("the README says what holds, with both records, and no single-use claim", () => {
     const readme = readmeFull();
     expect(readme).not.toMatch(SINGLE_USE_VISA);
-    expect(readme).toContain("a Visa credential Purser binds to one purchase; in the sandbox Airi/Airwallex did not refuse a reuse or a higher amount ([vic-3](docs/runs/2026-11-12-vic-3.md)), Purser did ([vic-4](docs/runs/2026-11-13-vic-4.md))");
+    // Review, 21 Nov: the partner-sensitive wording ("reuse left to the integrator; Purser enforces it"), both records kept.
+    expect(readme).toContain("a Visa credential Purser binds to one purchase; reuse and a higher amount are left to the integrator in the sandbox ([vic-3](docs/runs/2026-11-12-vic-3.md)), and Purser enforces it ([vic-4](docs/runs/2026-11-13-vic-4.md))");
   });
 
   it("no page of the site calls it single-use", () => {

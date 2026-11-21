@@ -53,7 +53,7 @@ try {
     ok(await page.locator(".judge-offline").isVisible(), "the offline label is on screen");
     ok((await page.locator(".judge-offline").innerText()).trim() === OFFLINE_TRY_NOTE, "the offline label says code reads, the simulated bank pays");
   }
-  await click(/Launch the live transfer demo/);
+  await click(/Start the live demo|Launch the live transfer demo/);
   await click(/A small invoice inside the agent's limit/);
   await click(/Give it to the AI agent/);
   await page.getByRole("button", { name: "See the agent pay it" }).waitFor({ timeout: 60_000 });
@@ -173,7 +173,7 @@ try {
     p2.on("request", (r) => { const u = new URL(r.url()); if (/^https?:$/.test(u.protocol) && (live ? u.hostname !== home : u.hostname !== "localhost" && u.hostname !== "127.0.0.1")) outside.push(r.url()); });
     const press = async (name: string | RegExp) => { const b = p2.getByRole("button", { name }).first(); await b.waitFor({ timeout: 60_000 }); await b.click(); };
     await gotoLoaded(p2, `${base}/try`);
-    await press(/Launch the live transfer demo/);
+    await press(/Start the live demo|Launch the live transfer demo/);
     await press(/Inside the limit — but cash says wait/);
     ok(/480\.00/.test(await p2.locator(".samples button[aria-pressed=true]").first().innerText()), "cash sample: the EUR 480.00 invoice is picked");
     await press(/Give it to the AI agent/);

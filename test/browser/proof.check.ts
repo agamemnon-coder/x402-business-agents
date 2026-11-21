@@ -94,7 +94,7 @@ const take = async (page: Page, click: () => Promise<void>): Promise<{ name: str
   await cdp.send("WebAuthn.enable");
   await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
   await page.goto(`${TRY_ORIGIN}/try?v=1`);
-  await page.getByRole("button", { name: /Start with a test company/ }).click();
+  await page.getByRole("button", { name: /Start the live demo|Start with a test company/ }).click();
   await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
   await page.locator(".samples .btn:not(.skel)").first().waitFor();
   await page.getByRole("button", { name: "A supplier's invoice", exact: true }).click();

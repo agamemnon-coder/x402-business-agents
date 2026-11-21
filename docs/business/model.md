@@ -65,7 +65,6 @@ they are a reference point only.
 | Tool | Public price | Source |
 |---|---|---|
 | Airwallex (EU plans) | Explore €0 or €19 a month; Grow €49 a month. Spend users: 5 free, then €6 per additional employee card user a month (Explore) or €12 per additional active spend user a month (Grow). Prices in EUR, VAT exclusive | [P1] |
-| Pleo (UK plans, small businesses) | Start £8, Build £14, Optimise £18 per user a month (Build and Optimise billed yearly, 3 users minimum) | [P2] |
 
 Starter's monthly price is what Airwallex charges for its own Grow plan [P1]. That anchor is our assumption, not a
 finding.
@@ -173,7 +172,6 @@ not put a number on it without one.
 All accessed on 6 November 2026.
 
 - [P1] Airwallex, "Pricing" (EU): https://www.airwallex.com/en-eu/pricing
-- [P2] Pleo, "Pricing" (UK, small businesses): https://www.pleo.io/en/pricing
 - [P3] Airwallex, Dan Kim, "Agentic banking starts with governance", published 5 October 2026:
   https://www.airwallex.com/en-us/blog/agentic-banking-governance
 - [P4] Metal Developer Docs, "What is Metal": https://docs.metalntwx.com/start/introduction

@@ -32,7 +32,7 @@ import { awxRunBlock } from "./awxRun.js";
 import { VISA_HERO_CSS, visaFlowHtml, visaHashHtml, visaOutcomesHtml } from "./visaHero.js";
 import { VIC3_RUN_FILE, VIC3_RUN_LOG, VIC_LATER_FILES, vic3Lead, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
 import { COUNT_JS, STATS_CSS } from "./stats.js";
-import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles, tilesCountWords } from "./airwallexProducts.js";
+import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles, tilesCountWords, wallFeatures } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
 import { ICC_RUN_ID, iccBlock, iccRecordIn } from "./iccBlock.js";
 import { VIC2_RUN_FILE, vic2Run, vic2RunBlock } from "./vic2Run.js";
@@ -49,7 +49,7 @@ import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.j
 import { METAL_ONCHAIN_CSS, faceIdOnChainSection } from "./metalOnchain.js";
 import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, holdState, metalBody } from "./metalMandates.js";
 import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, newestHeldOut, sweepFold } from "./claudeEvidence.js";
-import { CLAUDE_CSS, HELD_OUT_CSS, claudeMain } from "./claudePage.js";
+import { CLAUDE_CSS, HELD_OUT_CSS, IN_PRODUCT_CSS, claudeMain } from "./claudePage.js";
 import { BOOKS_CSS, BOOKS_JS, MONEYBIRD_RECORD, RUN_FILE, booksBody, booksData } from "./booksPage.js";
 import { T0_CLOSE_JS, t0RunData } from "./t0CloseTile.js";
 import { T0_CSS, T0_JOURNAL_RECORD, T0_READBACK_RECORD, t0Data, t0SectionHtml } from "./t0Page.js";
@@ -245,7 +245,15 @@ export function visaLabels(run: AgentRun, tap: NonNullable<ReturnType<typeof tap
 /** /visa's title and its large heading (jury panel, 12 Nov): the Airi run by its name. */
 /** Partner scan, 14 Nov: the full name of what Purser used, and that it is the sandbox. */
 export const VISA_TITLE = "Visa Intelligent Commerce via Airwallex Airi (sandbox)";
-export const VISA_H1 = VISA_TITLE;
+/** Review, 21 Nov: the heading leads with the track and what ran (agent card payments via Airi, sandbox, test card). */
+export const VISA_H1 = "Visa track: agent card payments via Airwallex Airi (sandbox, test card)";
+/**
+ * Why VIC via Airi is the Visa track's tooling, from the hackathon brief as docs/requirements-matrix.md quotes it (row V2:
+ * "Visa --> Trusted Access Protocol (TAP), Visa Intelligence Commerce (VIC) + Slack support"), and Visa's answer of
+ * 5 Nov in the hackathon Slack (VIC or ICC only; docs/evidence/README.md).
+ */
+export const VISA_BRIEF = { doc: "docs/requirements-matrix.md", anchor: "#6-visa-award", quote: "Visa Intelligence Commerce (VIC)" } as const;
+export const VISA_BRIEF_LINE = `The hackathon brief names Visa Intelligent Commerce as Visa tooling ("${VISA_BRIEF.quote}", row V2); Purser uses it through Airwallex's Airi.`;
 /**
  * The story in one line, right under the heading, true of the run's three purchases: Purser's policy came before any
  * request to Airi (within the limit it passed; above it the CFO signed first; the disallowed merchant got no credential).
@@ -394,7 +402,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   <div class="phd">${LOGO.visa}<span class="pill run" data-rec="${esc([AIRI_RUN_FILE, ...(vic3 ? [VIC3_RUN_FILE] : [])].join(" "))}">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   ${hero ? `${hero}
   ${visaArchHtml()}
-  <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
+  <p class="vbasis">${esc(VISA_BRIEF_LINE)} <a class="pf" href="${esc(`${REPO_BLOB}${VISA_BRIEF.doc}${VISA_BRIEF.anchor}`)}" target="_blank" rel="noopener">${esc("The brief, quoted")} ↗</a><br>${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   <div class="folds card vfolds"><details class="fold" id="visa-facts"><summary>${esc("The run's three facts, and the evidence tiles")}</summary>${top}</details>
   <details class="fold" id="visa-try"><summary>${esc("Try Purser's check on this credential")}</summary>${scene}</details>
   <details class="fold" id="visa-not-yet-fold"><summary>${esc("What is not proven yet")}</summary>${visaNotYetHtml()}</details>` : `${top}
@@ -484,7 +492,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
   // as a bar chart; the folds below as details.
   const ev = claudeEvidence(), used = Object.fromEntries(run.agents.map((a) => [a.id, a.family]));
   const body = claudeMain({
-    logo: LOGO.claude + ENDORSE_NOTE, label: run.label, runIcon: icon("database", 14), evidence: ev, used,
+    logo: LOGO.claude + ENDORSE_NOTE, label: run.label, runIcon: icon("database", 14), evidence: ev, used, record: run.file,
     split: { ...sp, calls, faceId: faceIdDecisions(run.record), onChain: metalStory(run.record).payments },
     agents: run.agents.map((a) => { const st = s.agent_stats.find((x) => x.agent === a.id); return { id: a.id, short: a.short, family: a.family, model: a.model, decisions: st?.decisions ?? 0, calls: st?.claude_calls ?? 0 }; }),
     heldOut: newestHeldOut(),
@@ -494,7 +502,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
       + fold("Payments decided by Claude, with their request ids", requests.map((f) => `<li>${esc(`${f.what}: ${f.amount} ${f.unit === "EUR" ? "EUR" : "test USD"} · ${f.decided} · ${f.request}`)}</li>`))
       + mcpFold(ev),
   });
-  return page({ title: "Claude", description: "How Purser uses Claude: three agents decide the exceptions, each decision a recorded Claude call; routine payments per query are code.", tab: "claude", css: `${CSS}\n${EVIDENCE_CSS}\n${CLAUDE_CSS}\n${HELD_OUT_CSS}`, body, source: SOURCE(run), builtOn: builtOnHtml(run) });
+  return page({ title: "Claude", description: "How Purser uses Claude: three agents decide the exceptions, each decision a recorded Claude call; routine payments per query are code.", tab: "claude", css: `${CSS}\n${EVIDENCE_CSS}\n${CLAUDE_CSS}\n${HELD_OUT_CSS}\n${IN_PRODUCT_CSS}`, body, source: SOURCE(run), builtOn: builtOnHtml(run) });
 }
 
 /**
@@ -523,7 +531,7 @@ export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: 
   const st = metalStory(run.record), tiles = productTiles(run), t0 = t0Data().journal;
   const decisions = run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0);
   return [
-    ...(tiles.length ? [{ name: "Airwallex", href: "airwallex", proof: `${tilesCountWords(tiles, true)}, each run dated` }] : []),
+    ...(tiles.length ? [{ name: "Airwallex", href: "airwallex", proof: `${tilesCountWords(tiles, true, wallFeatures())}, each run dated` }] : []),
     // Jury panel, 15 Nov: "Alta" here, as on every later mention; "(formerly Metal)" is said once per page, at its first mention in <main>.
     { name: "Alta", href: "alta", proof: `${st.payments.total} payments on testnet (main run)` },
     // Jury, 13 Nov: the latest run's own count first, as /visa leads with it, then all the runs' (they read as a clash).

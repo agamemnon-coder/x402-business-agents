@@ -136,17 +136,16 @@ const el = (tag: string, cls: string, kids?: unknown): Node => {
   return n;
 };
 const text = (n: Node | string): string => (typeof n === "string" ? n : (n.textContent ?? "") + n.kids.map(text).join(""));
-const find = (n: Node | string, pick: (x: Node) => boolean, out: Node[] = []): Node[] => { if (typeof n === "string") return out; if (pick(n)) out.push(n); for (const k of n.kids) find(k, pick, out); return out; };
 
 describe("the console's view", () => {
   const load = (P: unknown, nl = false) => {
     class Expired extends Error {}
     const calls: string[] = [];
     const api = async (path: string) => { calls.push(path); return P; };
-    const fns = new Function("el", "ic", "btn", "cur", "day", "stamp", "ext", "NL", "api", "Expired", "location", `${PARTNER_VIEW_JS}\nreturn { partnerAgents, partnerBooks };`)(
+    const fns = new Function("el", "ic", "btn", "cur", "day", "stamp", "ext", "NL", "api", "Expired", "location", `${PARTNER_VIEW_JS}\nreturn { partnerTokenBlock, partnerBooks };`)(
       el, (i: string) => el("i", `ic-${i}`), (label: string, cls: string, icon: string) => el("button", `btn ${cls} ${icon}`, label), (c: string) => c, (s: string) => String(s).slice(0, 10), (s: string) => String(s).slice(0, 16),
       (href: string, label: string) => el("a", "ext", label), nl, api, Expired, { href: "" },
-    ) as { partnerAgents(cards: Node[], agents: unknown[]): Promise<void>; partnerBooks(host: Node): Promise<void> };
+    ) as { partnerTokenBlock(P: unknown, agentId: string): Node | null; partnerBooks(host: Node): Promise<void> };
     return { ...fns, calls };
   };
   const recorded = () => ({ ...partnerFromRecord(), wallet_pass: { available: false } });
@@ -167,11 +166,11 @@ describe("the console's view", () => {
     expect(text(nl)).toContain("Geboekt in T:0");
   });
 
-  it("Agents: each agent's token on its own card, its payments' T:0 references; no Wallet button unless configured", async () => {
-    const agents = [{ id: "sourcing", card: { last4: "6051" } }, { id: "support", card: { last4: "2361" } }, { id: "payer", card: null }, { id: "checker", card: null }];
-    const cards = agents.map(() => el("section", "card agent"));
-    await load(recorded()).partnerAgents(cards, agents);
-    const [sourcing, support, payer, checker] = cards.map(text);
+  it("Agents: each agent's token in its drawer, its payments' T:0 references; nothing for an agent without either", () => {
+    // 23 Nov: the block sits in the agent's drawer (cloud/src/agentWallet.ts openDrawer); Apple Wallet moved to "Add to phone".
+    const P = recorded();
+    const v = load(P);
+    const [sourcing, support, payer, checker] = ["sourcing", "support", "payer", "checker"].map((id) => { const b = v.partnerTokenBlock(P, id); return b ? text(b) : ""; });
     expect(sourcing).toContain(RECORD.tokens[0]!.token_id);
     expect(sourcing).toContain(RECORD.payments.find((p) => p.key === "a")!.t0.t0_id);
     expect(sourcing).toContain(RECORD.payments.find((p) => p.key === "d")!.t0.t0_id);
@@ -179,17 +178,12 @@ describe("the console's view", () => {
     expect(support).toContain("TOKEN_REVOKED");
     expect(payer).toContain(RECORD.payments.find((p) => p.key === "c")!.t0.t0_id);
     expect(checker).toBe("");
-    expect(cards.flatMap((c) => find(c, (n) => n.tag === "button"))).toHaveLength(0);
-    // Configured: a button on each agent with a card, and only there.
-    const on = agents.map(() => el("section", "card agent"));
-    await load({ ...recorded(), wallet_pass: { available: true } }).partnerAgents(on, agents);
-    expect(on.map((c) => find(c, (n) => n.tag === "button").map(text))).toEqual([["Add to Apple Wallet"], ["Add to Apple Wallet"], [], []]);
   });
 
   it("is in the console, with its two hooks", () => {
     const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "in.cloud.test" });
     expect(html).toContain(PARTNER_VIEW_JS.trim());
-    expect(html).toContain("partnerAgents(cards,r.agents||[])");
+    expect(html).toContain("partnerTokenBlock(ctx.P,rec.id)");
     expect(html).toContain("partnerBooks(view())");
   });
 });

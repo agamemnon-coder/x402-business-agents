@@ -45,13 +45,27 @@ function textOf(markup: string): string {
   return out;
 }
 
-/** The page with its first visible "Alta" inside <main> written as "Alta (formerly Metal)"; unchanged when it has none, or already says so. */
+/**
+ * The page with its first visible "Alta" inside <main> written as "Alta (formerly Metal)"; unchanged when it has none, or
+ * already says so. Review, 21 Nov: a page whose <main> never names Alta (/visa, /verify, /watch, /airwallex/calls, the
+ * 404, /demo) names it first in its footer ("What's real", "Built on"): there the first visible one is written so.
+ */
 export function formerlyMetal(html: string): string {
   const open = html.search(/<main\b/i);
   const close = html.search(/<\/main>/i);
   if (open < 0 || close < 0 || close < open) return html;
   // In the text, not in an attribute (judge panel, 15 Nov: Alta's logo's alt reads "Alta (formerly Metal)").
   if (textOf(html.slice(open, close)).includes(ALTA_FIRST)) return html;
+  const inMain = firstAlta(html, open, close);
+  if (inMain !== html) return inMain;
+  const end = html.search(/<\/body>/i);
+  const after = html.slice(close);
+  if (textOf(after.replace(/<nav\b[\s\S]*?<\/nav>/gi, "")).includes(ALTA_FIRST)) return html;
+  return firstAlta(html, close, end < 0 ? html.length : end);
+}
+
+/** The first visible "Alta" between two offsets, written as the first mention; the page unchanged when there is none. */
+function firstAlta(html: string, open: number, close: number): string {
   const stack: { tag: string; cls: string }[] = [];
   const re = /<\/?([a-zA-Z][\w-]*)([^>]*)>|([^<]+)/g;
   re.lastIndex = open;

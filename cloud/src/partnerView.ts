@@ -1,8 +1,8 @@
 // The console's view of T:0 at every payment and the agents' payment tokens (21 Nov), as plain browser script the console
 // carries as it is (cloud/src/console.ts puts it in at __UI__). Two hooks only, so the pages around it can change freely:
-//   partnerAgents(cards, agents)  after the Agents page drew its cards: each agent card gets its payment token (id and
-//                                  last four, mandate, status, uses and refusals, each payment's T:0 reference) and, only
-//                                  when the owner configured passes, an "Add to Apple Wallet" button;
+//   partnerTokenBlock(P, agentId)  in an agent's drawer on the Agents page (cloud/src/agentWallet.ts): its payment token
+//                                  (id and last four, mandate, status, uses and refusals, each payment's T:0 reference);
+//                                  the Apple Wallet button moved to the drawer's "Add to phone" (23 Nov);
 //   partnerBooks(view)             after the Books page drew: a "Booked in T:0" card with every payment's T:0 entry and
 //                                  the reconcile check of T:0 against the rails.
 // Every figure is GET /v1/partner-rails's (cloud/src/partnerRails.ts), whose label says whose records they are. It builds
@@ -19,7 +19,6 @@ const PR_W={en:{
   recon_h:'Reconcile: T:0 against the rails',recon_ok:'T:0 and every rail agree',recon_bad:'T:0 and the rails disagree',recon_none:'No reconcile check yet.',recon_at:'read back {at}',
   t0holds:'T:0 holds',railholds:'The rail holds',agrees:'agrees',differs:'differs',
   misuse_h:'Card number without the token',record:'Run record',story:'What ran',
-  wallet:'Add to Apple Wallet',wallet_busy:'Making the pass…',wallet_fail:'The pass could not be made: {why}',
   rails:{airwallex_card:'Visa card (Airwallex Issuing)',airwallex_transfer:'Airwallex transfer',metal:'Alta testnet',airwallex_airi:'Visa via Airi'}},
 nl:{
   tok_h:'Betaaltoken',tok_sub:'De agent betaalt met dit token, nooit met het kaartnummer. Het werkt alleen binnen het mandaat hieronder, gemaakt uit jouw limieten; trek je de agent in, dan vervalt het.',
@@ -30,7 +29,6 @@ nl:{
   recon_h:'Aansluiting: T:0 tegen de rails',recon_ok:'T:0 en elke rail komen overeen',recon_bad:'T:0 en de rails wijken af',recon_none:'Nog geen aansluiting.',recon_at:'teruggelezen {at}',
   t0holds:'In T:0',railholds:'Op de rail',agrees:'klopt',differs:'wijkt af',
   misuse_h:'Kaartnummer zonder token',record:'Runverslag',story:'Wat er draaide',
-  wallet:'Toevoegen aan Apple Wallet',wallet_busy:'Pas wordt gemaakt…',wallet_fail:'De pas kon niet worden gemaakt: {why}',
   rails:{airwallex_card:'Visa-kaart (Airwallex Issuing)',airwallex_transfer:'Airwallex-overboeking',metal:'Alta testnet',airwallex_airi:'Visa via Airi'}}};
 function pw(k,v){const W=PR_W[NL?'nl':'en'];let s=W[k]||PR_W.en[k]||k;for(const [a,b] of Object.entries(v||{}))s=s.split('{'+a+'}').join(String(b));return s}
 const prRail=(r)=>(PR_W[NL?'nl':'en'].rails[r])||r;
@@ -59,20 +57,6 @@ function partnerTokenBlock(P,agentId){
   kids.push(prLinks(P));
   return el('div','lcard prblock',kids.filter(Boolean));
 }
-// The Wallet button: only when the owner configured passes, and only for an agent with a card.
-function partnerWalletBtn(P,a){
-  if(!P.wallet_pass||!P.wallet_pass.available||!a.card)return null;
-  const out=el('span','sub');const b=btn(pw('wallet'),'','wallet');
-  b.onclick=async()=>{b.disabled=true;out.textContent=pw('wallet_busy');
-    try{const r=await api('/v1/agents/'+encodeURIComponent(a.id)+'/wallet-pass/link',{method:'POST'});out.textContent='';location.href=r.url}
-    catch(e){if(e instanceof Expired)return;out.textContent=pw('wallet_fail',{why:e.message})}finally{b.disabled=false}};
-  return el('div','cbar prwallet',[b,out]);
-}
-// The hook on the Agents page: its cards in the order of its agents.
-async function partnerAgents(cards,agents){
-  const P=await partnerData();if(!P)return;
-  (agents||[]).forEach((a,i)=>{const c=cards[i];if(!c)return;const blk=partnerTokenBlock(P,a.id),w=partnerWalletBtn(P,a);if(blk)c.append(blk);if(w)c.append(w)});
-}
 // The hook on the Books page: the "Booked in T:0" card, after the page's own cards.
 async function partnerBooks(host){
   const P=await partnerData();if(!P||!host.isConnected)return;
@@ -96,7 +80,6 @@ export const PARTNER_VIEW_CSS = `
 .prtok { display: grid; gap: 4px; }
 .prtok.off { opacity: .75; }
 .prtk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.prwallet { margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .prbooks { border-left: 4px solid var(--ok, #067647); display: grid; gap: 8px; margin-top: 16px; }
 .prbooks.bad { border-left-color: var(--bad, #b42318); }
 .prbooks .says { font-weight: 650; margin: 0; }

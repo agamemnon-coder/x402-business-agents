@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="505" height="438" viewBox="0 0 505 438" role="img" aria-labelledby="vt-title">
 <title id="vt-title">The vault's folders: company, year, quarter, then Inkoopfacturen, Betalingen and Rapporten (computed from src/vault/layout.ts)</title>
 <style>
-.bg { fill: #12151d; stroke: #262b37; }
-.g line, .g path { stroke: #262b37; stroke-width: 1.2; fill: none; }
-.f { fill: #23224a; stroke: #8b85ff; stroke-width: 1.2; }
-.d { fill: #12151d; stroke: #a4adbd; stroke-width: 1.2; }
+.bg { fill: #111522; stroke: #2b2e44; }
+.g line, .g path { stroke: #2b2e44; stroke-width: 1.2; fill: none; }
+.f { fill: #28234b; stroke: #a398ff; stroke-width: 1.2; }
+.d { fill: #111522; stroke: #b6bed0; stroke-width: 1.2; }
 .t { font: 13px Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-.fo { fill: #eef1f6; font-weight: 600; } .k { fill: #8b85ff; font-weight: 650; } .fi { fill: #a4adbd; }
+.fo { fill: #f5f4ff; font-weight: 600; } .k { fill: #a398ff; font-weight: 650; } .fi { fill: #b6bed0; }
 </style>
 <rect class="bg" x=".5" y=".5" width="504" height="437" rx="12"/>
 <g class="g"></g><path class="f" d="M24 31h5l2 2h7v9h-14z"/><text class="t fo" x="46" y="41.5">Northwind Outdoor</text>

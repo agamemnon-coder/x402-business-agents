@@ -47,6 +47,7 @@ import { runsPage } from "../redesign/runs.js";
 import { securityPage } from "../redesign/security.js";
 import { docsPage } from "../redesign/docs.js";
 import { privacyPage } from "../redesign/privacy.js";
+import { businessPage, onePagerPage } from "../redesign/business.js";
 import { statusPage } from "../redesign/status.js";
 import { agentPages } from "../redesign/agents.js";
 import { monthEndPack, PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
@@ -311,6 +312,12 @@ export const DOCS_CSP = DOCS_PAGE.includes("<script>") ? styleAndScriptCsp(DOCS_
 /** /privacy (20 Nov), under "More" too (src/redesign/privacy.ts): no script, so a style-only policy. */
 export const PRIVACY_PAGE = privacyPage();
 export const PRIVACY_CSP = styleOnlyCsp(PRIVACY_PAGE);
+/** /business, "For companies" (21 Nov), under "More" (src/redesign/business.ts): one script, the calculator, so its hash and the style's. */
+export const BUSINESS_PAGE = businessPage();
+export const BUSINESS_CSP = styleAndScriptCsp(BUSINESS_PAGE);
+/** /one-pager, the printable sales sheet linked from /business: one script, the print button. */
+export const ONE_PAGER_PAGE = onePagerPage();
+export const ONE_PAGER_CSP = styleAndScriptCsp(ONE_PAGER_PAGE);
 /**
  * /status (12 Nov), under "More" too (src/redesign/status.ts). Its one small script reads the site's own /health, so its
  * policy names that script and the style by hash and allows requests to the site itself only (connect-src 'self').
@@ -373,11 +380,16 @@ export const FILM_WATCH_PAGE = filmWatchPage();
 export const FILM_WATCH_CSP = filmWatchCsp(FILM_WATCH_PAGE, filmId() !== null, cspFor, styleOnlyCsp);
 export const PROOF_CSP = cspFor(PROOF_PAGE);
 /** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */
-export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": "/replay", "/overview": "/home", "/tour": "/home", "/pricing": "/home" };
+/** 21 Nov (Max): the plans, beside the 30-Day Founding Partner Pilot, are on /business; /pricing (gone since 13 Nov) lands there. */
+// Max, 21 Nov: keep the 302, so every price has one central source (/business, from src/config/pricing.ts). /pricing
+// may later become its own SEO landing page; until then it only redirects.
+export const PRICING_HOME = "/business#pricing";
+export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": "/replay", "/overview": "/home", "/tour": "/home", "/pricing": PRICING_HOME };
 /** Addresses retired for good, answered 301 so old links keep working: /judge (it became the product tour, then went with it, 13 Nov). */
 // 14 Nov: Metal is now Alta; /metal answers 301 to /alta (old links, the README, the form and the walkthrough point there).
 // 21 Nov (the owner: "merge them: the books page, with T:0 in it"): /t0 answers 301 to /books, where T:0 now lives.
-export const MOVED: Record<string, string> = { "/judge": "/home", "/metal": "/alta", "/t0": "/books" };
+// Review, 21 Nov: /judge opens the judge tour on Home (src/redesign/tour.ts TOUR_START_HREF), not Home's top.
+export const MOVED: Record<string, string> = { "/judge": "/home?tour=1#tour", "/metal": "/alta", "/t0": "/books" };
 /** The label on the public evidence report: the customer in the 30 October case is simulated. */
 export const SIMULATED_CUSTOMER = "Summit Outfitters is a simulated customer run by us; we filed this claim on its behalf (30 October recorded run).";
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */
@@ -501,8 +513,9 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     res.setHeader("Content-Security-Policy", CLAUDE_CSP);
     res.type("html").send(CLAUDE_PAGE);
   });
-  // 13 Nov (owner): /pricing and /tour are gone; old links land on Home.
-  for (const from of ["/pricing", "/tour"]) app.get(from, (_req, res) => { res.redirect(302, "/home"); });
+  // 13 Nov (owner): /tour is gone and lands on Home; /pricing lands on the plans on /business since 21 Nov (Max).
+  app.get("/tour", (_req, res) => { res.redirect(302, "/home"); });
+  app.get("/pricing", (_req, res) => { res.redirect(302, PRICING_HOME); });
   app.get("/security", (_req, res) => {
     res.setHeader("Content-Security-Policy", SECURITY_CSP);
     res.type("html").send(SECURITY_PAGE);
@@ -514,6 +527,14 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/privacy", (_req, res) => {
     res.setHeader("Content-Security-Policy", PRIVACY_CSP);
     res.type("html").send(PRIVACY_PAGE);
+  });
+  app.get("/business", (_req, res) => {
+    res.setHeader("Content-Security-Policy", BUSINESS_CSP);
+    res.type("html").send(BUSINESS_PAGE);
+  });
+  app.get("/one-pager", (_req, res) => {
+    res.setHeader("Content-Security-Policy", ONE_PAGER_CSP);
+    res.type("html").send(ONE_PAGER_PAGE);
   });
   // /status as the relay serves it. This server's own /health (below) has the runner's shape, not the relay's, so here
   // the page says the status could not be read and links to /health: it never reads another shape as good.

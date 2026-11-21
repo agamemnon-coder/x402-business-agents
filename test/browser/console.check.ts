@@ -121,8 +121,9 @@ async function firstRun(p: Page, origin: string, slug: string, key: string, snap
 // The sign-in in its two zones (the illustration, the card, the trust line), at a phone and a laptop, light and dark:
 // both zones in view, nothing wider than the screen, no large empty band, the feather mark, no console or CSP error.
 // Screenshots (the viewport) when a directory is given: console-signin-<width>-<scheme>.png.
-for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"]] as const) {
-  const c = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
+// 2560 and 3840 px since 21 Nov (Max: "razor-sharp at 4K"): the same two zones, the card no narrow column.
+for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"], [2560, 1440, "dark"], [3840, 2160, "light"]] as const) {
+  const c = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots && width < 2000 ? 2 : 1 });
   const p = await c.newPage();
   const errs: string[] = [];
   p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
@@ -147,6 +148,15 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
     }
   }
   ok(await p.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
+  // 21 Nov (Max, his mockup: "just Purser Cloud and some small USP, and animating"; no paragraphs): the passkey the one
+  // primary action, "New company? Set it up", the guest way below it; no paragraph in the card. The panel: the mark,
+  // "Purser Cloud", one line and (on a wider screen) three small points; the globe and the wave drawn behind them.
+  ok(await p.locator(".auth .btn.primary").count() === 1 && await p.isVisible("#guest") && await p.isVisible(".auth .alt a[href='#/start']") && await p.locator(".auth p.what, .auth .pk-note").count() === 0, `${tag}: one primary action (the passkey), set it up, the guest way, no paragraph`);
+  ok(await p.isVisible(".hero .side-mk") && (await p.textContent(".hero .side h2"))?.trim() === tr("en", "cs.side.title") && await p.isVisible(".hero canvas.si-globe") && await p.isVisible(".hero canvas.si-wave"), `${tag}: the panel: the mark, Purser Cloud, the globe and the wave`);
+  const drawn = await p.evaluate(() => { const c = document.querySelector("canvas.si-globe") as HTMLCanvasElement | null; if (!c || !c.width) return 0; const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4 * 97) if (d[i]! > 0) n++; return n; });
+  ok(drawn > 50, `${tag}: the globe is drawn (${drawn} samples)`);
+  if (width >= 1024) ok(await p.locator(".hero .side li").count() === 3 && await p.isVisible(".hero .side ul"), `${tag}: the panel's three small points`);
+  if (width >= 2560 && card) ok(card.width >= 560, `${tag}: the card is no narrow column (${Math.round(card.width)} px)`);
   ok((await p.textContent(".trust"))!.includes(tr("en", "cs.trust_works")) && (await p.textContent(".trust"))!.includes(tr("en", "cs.trust_test")), `${tag}: the trust line`);
   ok(await p.locator("header .brand .mk svg").count() === 1, `${tag}: the brand's feather mark`);
   // 12 Nov: signed out too, the test-money chip is on the page, in the console's bar under the site's header.
@@ -245,7 +255,7 @@ await page.goto(`${ORIGIN}/#/settings`);
 await page.waitForSelector("text=API keys");
 await settle();
 await shot("10-instellingen");
-ok(await page.locator("a.cx-pointer[href='#/connections']").count() === 1, "Settings points to the Connections page");
+ok(await page.locator("a.cx-pointer").count() === 0 && await page.locator(".set-danger").count() === 1, "Settings no longer repeats Connections (its own tab) and ends on the danger zone");
 // Connections (21 Nov, its own tab): one card per connection with its honest label; where each stands for this company;
 // a button only where the console really connects it; the cards that connect below.
 await page.goto(`${ORIGIN}/#/connections`);
@@ -604,12 +614,13 @@ async function engineUpload(E: EnginePass) {
   await p.goto(`${E.origin}/#/invoices`);
   await p.waitForSelector("#work");
   await p.waitForSelector("#eng-file", { state: "attached" });
-  // 12 Nov: the test-money chip sits in the console's own bar (.appbar) under the site's header (cloud/src/siteHeader.ts).
-  ok((await p.textContent(".appbar .test .tl"))?.trim() === "Engine: test money", "engine pass: the header's test-money chip reads \"Engine: test money\"");
+  // 21 Nov: on a laptop the one test-money chip sits in the header strip, beside "Built on Airwallex"; the sidebar no
+  // longer repeats it (cloud/src/consoleCompany.ts, placeTest). On a phone it is in the top bar (below).
+  ok((await p.textContent("#testchip .tl"))?.trim() === "Engine: test money", "engine pass: the header's test-money chip reads \"Engine: test money\"");
   ok(/stand-in bank.*Nothing is sent to Airwallex/.test((await p.textContent("#foot")) ?? ""), "engine pass: the footer says the engine pays on a stand-in bank and nothing goes to Airwallex");
-  ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute(".appbar .test", "title")) ?? ""), "engine pass: the chip's title says the stand-in bank, no real money, nothing sent to Airwallex");
-  ok((await p.$$(".appbar .test")).length === 1 && (await p.$$("header .test")).length === 0, "engine pass: one chip in the header, not two");
-  ok(await p.isVisible(".appbar .test"), "engine pass: signed in, the test-money chip is visible");
+  ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute("#testchip", "title")) ?? ""), "engine pass: the chip's title says the stand-in bank, no real money, nothing sent to Airwallex");
+  ok((await p.locator(".test").count()) === 1 && (await p.locator("header.top #testchip").count()) === 1, "engine pass: one chip, in the header strip, not two");
+  ok(await p.isVisible("#testchip"), "engine pass: signed in, the test-money chip is visible");
 
   await p.setInputFiles("#eng-file", { name: "bergtex-BTX-2026-21.pdf", mimeType: "application/pdf", buffer: E.pdf });
   ok(await p.isDisabled("#view .drop.eng button"), "engine pass: while the upload runs its button is disabled");
@@ -929,7 +940,8 @@ async function engineArchive(E: EnginePass) {
   ok((await p.textContent("main h1"))?.trim() === "Archive", "archive: the page opens from the proof's link, with its title");
   // Eight since 14 Nov (Agents and Tokenisation joined on 13 Nov; Invoices and Books are two tabs again; Airwallex, live
   // from the sandbox, joined); the archive is not one.
-  ok(await p.locator("#tabs a").count() === 9 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its nine items");
+  // 21 Nov: Claude's tab is in the menu, hidden until the company has connected it (cloud/src/consoleCompany.ts).
+ok(await p.locator("#tabs a:not([hidden])").count() === 9 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its nine items");
   const files = (await apiAs(E, "/v1/engine/vault")).files as VaultFile[];
   ok(files.length >= 2 && await p.locator(".archive ul.files li").count() === files.length, `archive: every file of GET /v1/engine/vault is in the tree (${files.length})`);
   const tree = await p.$$eval(".archive details", (ds) => ds.map((d) => { let depth = 0; for (let x = d.parentElement; x; x = x.parentElement) if (x.tagName === "DETAILS") depth++; return { name: d.querySelector("summary")?.textContent ?? "", depth, open: (d as HTMLDetailsElement).open }; }));
@@ -990,11 +1002,12 @@ async function guestPass() {
     // Review, 13 Nov, at 390 px: no page wraps onto a line of its own ("Settings" did), and below 420 px the company chip shows the company's own name whole ("Northwind Outdoor (d…" was cut).
     // 22 Nov (the owner: on his iPhone the nine pages were a 3x4 grid of words): a laptop has them in a sidebar, one under
     // the other, in their groups; a phone has a bottom tab bar of the five groups and, in a group, its pages side by side.
-    const nav = width < 1024 ? "#btabs a" : "#tabs a";
+    // 21 Nov: the demo company has Claude connected (its read-only demo token), so its Connected group shows a tenth page.
+    const nav = width < 1024 ? "#btabs a" : "#tabs a:not([hidden])";
     const boxes = await p.locator(nav).evaluateAll((as) => as.map((a) => { const b = a.getBoundingClientRect(); return { top: Math.round(b.top), left: Math.round(b.left), whole: a.scrollWidth <= a.clientWidth + 1 && b.right <= innerWidth + 1 && b.left >= -1 && b.bottom <= innerHeight + 1 }; }));
     const rows = new Set(boxes.map((b) => b.top)).size, cols = new Set(boxes.map((b) => b.left)).size;
-    ok(width < 1024 ? boxes.length === 5 && rows === 1 && boxes.every((b) => b.whole) && !(await p.isVisible("#tabs")) : boxes.length === 9 && cols === 1 && rows === 9 && boxes.every((b) => b.whole),
-      `${tag}: the pages are ${width < 1024 ? "five groups in one bottom row, every one whole" : "a sidebar of nine, one under the other"} (${JSON.stringify(boxes)})`);
+    ok(width < 1024 ? boxes.length === 5 && rows === 1 && boxes.every((b) => b.whole) && !(await p.isVisible("#tabs")) : boxes.length === 10 && cols === 1 && rows === 10 && boxes.every((b) => b.whole),
+      `${tag}: the pages are ${width < 1024 ? "five groups in one bottom row, every one whole" : "a sidebar of ten (Claude connected), one under the other"} (${JSON.stringify(boxes)})`);
     if (width < 1024) {
       // The Ask button sits in the top bar, so it covers nothing; the bottom bar covers nothing at the page's end either.
       ok(await p.evaluate(() => !!document.querySelector(".appbar #ask-slot #pask-fab")), `${tag}: Ask Purser is in the top bar, not over the page`);
@@ -1012,8 +1025,10 @@ async function guestPass() {
     for (let y = 0; y < 6000; y += 500) { await p.mouse.wheel(0, 500); await p.waitForTimeout(120); }
     await p.evaluate(() => scrollTo(0, 0));
     await p.waitForTimeout(1600);
-    ok(await p.isVisible("#demo") && /Demo company/.test((await p.textContent("#demo")) ?? ""), `${tag}: the demo ribbon says what it is`);
-    ok(await p.locator(".kpis .kpi").count() === 4 && await p.locator("svg.chart path.line").count() === 1 && await p.locator("svg.ring .seg").count() >= 2 && await p.locator(".sbars li").count() >= 2 && await p.locator(".tline li").count() >= 8 /* 14 Nov: the decisions are a timeline (.tline), six in view */, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
+    // 21 Nov (Max's Overview): on the Overview the demo is said by the header's one quiet pill; the ribbon stays on the other pages.
+    ok((await p.isVisible("#demo") && /Demo company/.test((await p.textContent("#demo")) ?? "")) || /Demo workspace · Simulated data · No real payments/.test((await p.textContent(".ov-pill")) ?? ""), `${tag}: the demo ribbon says what it is`);
+    // 21 Nov (Max's Overview, 12 columns): four KPI links, the waiting table, the cash line, the payment flow, the activity feed and the partners' tiles.
+    ok(await p.locator(".ov-k a.ovk").count() === 4 && await p.locator(".ov-cash svg.chart path.line").count() === 1 && await p.locator(".ov-inv").count() === 1 && await p.locator(".ov-feed li").count() >= 1 && await p.locator(".ov-pts a.ov-pt").count() === 4, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
     for (const tab of ["invoices", "transactions", "books", "settings", "connections"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }
@@ -1025,16 +1040,26 @@ async function guestPass() {
     const logos = await p.locator(".cx-logos img").count();
     ok(logos >= 20 && await p.locator(".cx-logos img:not([alt])").count() === 0 && await p.locator('.cx-logos img[src^="data:"]').count() === logos, `${tag}: Connections shows the products' own logos (${logos}), each named, none fetched from elsewhere`);
     await p.goto(`${ORIGIN}/#/agents`);
-    await p.waitForSelector("button.wpass");
-    const pass = p.locator("button.wpass").first();
-    ok(await p.locator("button.wpass").count() === 3 && /EUR/.test((await pass.innerText()) ?? ""), `${tag}: Agents shows one pass per agent, with what it spent`);
-    // 22 Nov: every agent Purser has (cloud/src/agentRoster.ts), the three this company's records name marked at work.
-    ok(await p.locator("article.rs").count() === 9 && await p.locator("article.rs.on").count() === 3 && await p.locator("article.rs details.rs-how").count() === 9, `${tag}: Agents shows every agent in Purser, three at work here`);
-    await pass.click();
-    await p.waitForTimeout(motion === "reduce" ? 50 : 700);
-    ok(await pass.getAttribute("aria-pressed") === "true" && await p.locator("button.wpass").first().locator(".wp-back").getAttribute("aria-hidden") === "false", `${tag}: a pass turns over to its mandate`);
-    await p.locator(".wagent button.wmore").first().click();
-    ok(await p.locator(".wagent.open .wdetail .adec").first().isVisible() && await p.locator(".wagent button.wmore").first().getAttribute("aria-expanded") === "true", `${tag}: Details opens the agent's record`);
+    // 23 Nov: every agent Purser has (cloud/src/agentRoster.ts) as its own payment card, the three at work here first.
+    await p.waitForSelector("button.dk-face .acard");
+    const face = p.locator("button.dk-face").first();
+    ok(await p.locator("article.dk-item").count() === 9 && await p.locator("article.dk-item.on").count() === 3 && /EUR/.test((await face.innerText()) ?? ""), `${tag}: Agents shows every agent in Purser as a card, three at work here, with what each spent`);
+    ok(await p.locator(".acard img[alt=Claude]").count() >= 8 && await p.locator(".acard img[alt=Visa]").count() === 0 && await p.locator(".acard .ac-net.txt").count() === 3 && await p.locator('.acard img:not([src^="data:"])').count() === 0, `${tag}: the cards carry the real marks (Claude), the network Visa in text only, none fetched from elsewhere`);
+    await face.click();
+    await p.waitForSelector("dialog.dk-drawer[open] .adec");
+    ok(await p.locator("dialog.dk-drawer[open] .adec").isVisible(), `${tag}: a card opens the agent's record in a drawer`);
+    ok(await p.evaluate(() => { const d = document.querySelector("dialog.dk-drawer[open] .dk-db"); return !!d && d.scrollWidth <= d.clientWidth + 1; }), `${tag}: the drawer: nothing wider than it`);
+    await p.keyboard.press("Escape");
+    // Add to phone: Apple Wallet said to wait for its certificate (none here), and the QR to the card's read-only view.
+    await p.locator("article.dk-item.on .dk-acts button").first().click();
+    await p.waitForSelector("dialog.dk-phone[open] img.dk-qri", { timeout: 20_000 });
+    ok(/waiting for the pass certificate/.test(await p.locator("dialog.dk-phone[open]").innerText()) && await p.locator("dialog.dk-phone[open] button.dk-wal").isDisabled(), `${tag}: Add to phone: Apple Wallet waits for its certificate, the QR is there`);
+    const cardUrl = await p.locator("dialog.dk-phone[open] .dk-qa a").getAttribute("href");
+    await p.keyboard.press("Escape");
+    const phone = await c.newPage();
+    await phone.goto(cardUrl!);
+    ok(/Read only/.test(await phone.innerText("body")) && await phone.locator(".acard").count() === 1 && !/<script/i.test(await phone.content()), `${tag}: the QR's link opens the card, read only, without a script`);
+    await phone.close();
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: Agents: nothing is wider than the screen`);
     await p.goto(`${ORIGIN}/#/books`);
     await p.waitForSelector(".bcharts svg.chart", { timeout: 20_000 });
