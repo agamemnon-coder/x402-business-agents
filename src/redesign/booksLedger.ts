@@ -49,59 +49,59 @@ function readRepo(file: string): string | null { try { return readFileSync(new U
 
 const DAY = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
-const rec = (file: string, label: string) => `<a class="lg-rec" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
+const rec = (file: string, label: string) => `<a class="bl-rec" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
 /** "1,234.56" from cents, with a true minus sign: the same as the statement's (./booksPage.ts money). */
 const amt = (cents: number) => { const a = Math.abs(cents); return `${cents < 0 ? "−" : ""}${Math.floor(a / 100).toLocaleString("en-US")}.${String(a % 100).padStart(2, "0")}`; };
 
 export const LEDGER_CSS = `.lg { padding: 20px; display: grid; gap: 16px; min-width: 0; }
 .lg h2 { margin: 0; font-size: 21px; line-height: 1.25; letter-spacing: -.01em; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
-.lg .lg-sub { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; max-width: 48em; }
-.lg-tag { font-size: 12.5px; font-weight: 650; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
-.lg-tag.demo { color: var(--accent); border-color: var(--accent); }
-a.lg-rec { font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; min-height: 24px; }
+.lg .bl-sub { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; max-width: 48em; }
+.bl-tag { font-size: 12.5px; font-weight: 650; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.bl-tag.demo { color: var(--accent); border-color: var(--accent); }
+a.bl-rec { font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; min-height: 24px; }
 /* The path: three stages, two links with a travelling dot. */
-ol.lg-flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr) 56px minmax(0, 1fr); align-items: stretch; }
-.lg-st { position: relative; display: grid; gap: 6px; align-content: start; padding: 16px; border-radius: 16px; background: var(--sunken); border: 1px solid var(--border); min-width: 0; }
-.lg-st .n { position: absolute; top: 12px; right: 14px; font-size: 12px; font-weight: 750; color: var(--muted); font-variant-numeric: tabular-nums; }
-.lg-st .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface); color: var(--accent); border: 1px solid var(--border); }
-.lg-st.t0 .ic { background: #0b0d12; color: #fff; border-color: #0b0d12; font-weight: 800; font-size: 14px; letter-spacing: -.02em; }
-.lg-st.ok .ic { color: var(--ok); }
-:root[data-theme="dark"] .lg-st.t0 .ic { background: #fff; color: #0b0d12; border-color: #fff; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lg-st.t0 .ic { background: #fff; color: #0b0d12; border-color: #fff; } }
-.lg-st b { font-size: 16px; line-height: 1.3; }
-.lg-st .fig { font-size: 26px; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.lg-st .fig small { font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
-.lg-st span.s { font-size: 14px; color: var(--muted); line-height: 1.4; }
-.lg-st code, .lg-pay code { font: 600 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
-li.lg-ln { position: relative; display: grid; place-items: center; }
-li.lg-ln::before { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; height: 2px; background: var(--border); }
-li.lg-ln::after { content: ""; position: absolute; right: 4px; top: calc(50% - 5px); border: 5px solid transparent; border-left-color: var(--border); border-right: 0; }
-li.lg-ln i { position: absolute; top: calc(50% - 6px); left: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); opacity: 0; }
-li.lg-ln.l2 i { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+ol.bl-flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr) 56px minmax(0, 1fr); align-items: stretch; }
+.bl-st { position: relative; display: grid; gap: 6px; align-content: start; padding: 16px; border-radius: 16px; background: var(--sunken); border: 1px solid var(--border); min-width: 0; }
+.bl-st .n { position: absolute; top: 12px; right: 14px; font-size: 12px; font-weight: 750; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bl-st .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface); color: var(--accent); border: 1px solid var(--border); }
+.bl-st.t0 .ic { background: #0b0d12; color: #fff; border-color: #0b0d12; font-weight: 800; font-size: 14px; letter-spacing: -.02em; }
+.bl-st.ok .ic { color: var(--ok); }
+:root[data-theme="dark"] .bl-st.t0 .ic { background: #fff; color: #0b0d12; border-color: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bl-st.t0 .ic { background: #fff; color: #0b0d12; border-color: #fff; } }
+.bl-st b { font-size: 16px; line-height: 1.3; }
+.bl-st .fig { font-size: 26px; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.bl-st .fig small { font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+.bl-st span.s { font-size: 14px; color: var(--muted); line-height: 1.4; }
+.bl-st code, .bl-pay code { font: 600 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+li.bl-ln { position: relative; display: grid; place-items: center; }
+li.bl-ln::before { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; height: 2px; background: var(--border); }
+li.bl-ln::after { content: ""; position: absolute; right: 4px; top: calc(50% - 5px); border: 5px solid transparent; border-left-color: var(--border); border-right: 0; }
+li.bl-ln i { position: absolute; top: calc(50% - 6px); left: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); opacity: 0; }
+li.bl-ln.l2 i { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
 @media (prefers-reduced-motion: no-preference) {
-  li.lg-ln i { animation: lg-x 4s cubic-bezier(.45,0,.2,1) infinite; } li.lg-ln.l2 i { animation-delay: 2s; }
-  .lg-st { animation: lg-lit 4s ease-in-out infinite; } .lg-st.s2 { animation-delay: 1.3s; } .lg-st.s3 { animation-delay: 3.3s; }
+  li.bl-ln i { animation: bl-x 4s cubic-bezier(.45,0,.2,1) infinite; } li.bl-ln.l2 i { animation-delay: 2s; }
+  .bl-st { animation: bl-lit 4s ease-in-out infinite; } .bl-st.s2 { animation-delay: 1.3s; } .bl-st.s3 { animation-delay: 3.3s; }
 }
-@keyframes lg-x { 0% { left: 6px; opacity: 0; } 10% { opacity: 1; } 45% { left: calc(100% - 18px); opacity: 1; } 55%, 100% { left: calc(100% - 18px); opacity: 0; } }
-@keyframes lg-lit { 0%, 12%, 100% { border-color: var(--border); } 4%, 9% { border-color: var(--accent); } }
+@keyframes bl-x { 0% { left: 6px; opacity: 0; } 10% { opacity: 1; } 45% { left: calc(100% - 18px); opacity: 1; } 55%, 100% { left: calc(100% - 18px); opacity: 0; } }
+@keyframes bl-lit { 0%, 12%, 100% { border-color: var(--border); } 4%, 9% { border-color: var(--accent); } }
 @media (max-width: 760px) {
-  ol.lg-flow { grid-template-columns: minmax(0, 1fr); }
-  li.lg-ln { height: 34px; }
-  li.lg-ln::before { left: 50%; right: auto; top: 4px; bottom: 4px; width: 2px; height: auto; }
-  li.lg-ln::after { right: auto; left: calc(50% - 4px); top: auto; bottom: 2px; border: 5px solid transparent; border-top-color: var(--border); border-bottom: 0; }
-  li.lg-ln i { left: calc(50% - 6px); top: 2px; }
-  @keyframes lg-x { 0% { top: 2px; opacity: 0; } 10% { opacity: 1; } 45% { top: 20px; opacity: 1; } 55%, 100% { top: 20px; opacity: 0; } }
+  ol.bl-flow { grid-template-columns: minmax(0, 1fr); }
+  li.bl-ln { height: 34px; }
+  li.bl-ln::before { left: 50%; right: auto; top: 4px; bottom: 4px; width: 2px; height: auto; }
+  li.bl-ln::after { right: auto; left: calc(50% - 4px); top: auto; bottom: 2px; border: 5px solid transparent; border-top-color: var(--border); border-bottom: 0; }
+  li.bl-ln i { left: calc(50% - 6px); top: 2px; }
+  @keyframes bl-x { 0% { top: 2px; opacity: 0; } 10% { opacity: 1; } 45% { top: 20px; opacity: 1; } 55%, 100% { top: 20px; opacity: 0; } }
 }
 /* The run, payment by payment. */
-ul.lg-pay { list-style: none; margin: 0; padding: 0; display: grid; }
-ul.lg-pay li { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto auto; gap: 4px 14px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); font-size: 14.5px; }
-ul.lg-pay .rl { font-size: 13px; font-weight: 650; border-radius: 999px; padding: 3px 10px; background: var(--sunken); justify-self: start; white-space: nowrap; }
-ul.lg-pay .rl.metal { color: var(--metal); } ul.lg-pay .rl.awx { color: var(--awx); }
-ul.lg-pay .who { min-width: 0; overflow-wrap: anywhere; } ul.lg-pay .who b { font-variant-numeric: tabular-nums; margin-right: 8px; }
-ul.lg-pay .je { color: var(--muted); }
-ul.lg-pay .t { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
-ul.lg-pay .ok { display: inline-flex; gap: 4px; align-items: center; color: var(--ok); font-weight: 700; white-space: nowrap; }
-@media (max-width: 760px) { ul.lg-pay li { grid-template-columns: auto minmax(0, 1fr) auto; } ul.lg-pay .who { grid-column: 1 / -1; order: -1; } ul.lg-pay .t { justify-self: end; } }
+ul.bl-pay { list-style: none; margin: 0; padding: 0; display: grid; }
+ul.bl-pay li { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto auto; gap: 4px 14px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); font-size: 14.5px; }
+ul.bl-pay .rl { font-size: 13px; font-weight: 650; border-radius: 999px; padding: 3px 10px; background: var(--sunken); justify-self: start; white-space: nowrap; }
+ul.bl-pay .rl.metal { color: var(--metal); } ul.bl-pay .rl.awx { color: var(--awx); }
+ul.bl-pay .who { min-width: 0; overflow-wrap: anywhere; } ul.bl-pay .who b { font-variant-numeric: tabular-nums; margin-right: 8px; }
+ul.bl-pay .je { color: var(--muted); }
+ul.bl-pay .t { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+ul.bl-pay .ok { display: inline-flex; gap: 4px; align-items: center; color: var(--ok); font-weight: 700; white-space: nowrap; }
+@media (max-width: 760px) { ul.bl-pay li { grid-template-columns: auto minmax(0, 1fr) auto; } ul.bl-pay .who { grid-column: 1 / -1; order: -1; } ul.bl-pay .t { justify-self: end; } }
 /* The demo. */
 .lgd { display: grid; gap: 14px; }
 .lgd-eq { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; font-size: 15px; color: var(--muted); }
@@ -140,21 +140,21 @@ ul.lgd-checks li .i2, ul.lgd-checks li .w2 { display: none; } ul.lgd-checks li.n
 export function railsHtml(r: RailsRun | null = railsRun()): string {
   if (!r) return "";
   const lo = Math.min(...r.payments.map((p) => p.ms)), hi = Math.max(...r.payments.map((p) => p.ms));
-  const st = (n: number, cls: string, ic: string, title: string, fig: string, sub: string) => `<li class="lg-st ${cls} s${n}"><span class="n">${n}</span><span class="ic">${ic}</span><b>${esc(title)}</b><span class="fig">${fig}</span><span class="s">${sub}</span></li>`;
-  const flow = `<ol class="lg-flow" aria-label="${esc("A payment settles on its rail, is booked in T:0 as a PURPAY- journal entry at once, then is reconciled against the rail")}">
-${st(1, "", icon("credit-card", 22), "Payment settles", `${r.payments.length}<small> payments · ${r.rails} rails</small>`, esc("Visa card and transfer on Airwallex, a payment on Alta testnet."))}
-<li class="lg-ln" aria-hidden="true"><i></i></li>
+  const st = (n: number, cls: string, ic: string, title: string, fig: string, sub: string) => `<li class="bl-st ${cls} s${n}"><span class="n">${n}</span><span class="ic">${ic}</span><b>${esc(title)}</b><span class="fig">${fig}</span><span class="s">${sub}</span></li>`;
+  const flow = `<ol class="bl-flow" aria-label="${esc("A payment settles on its rail, is booked in T:0 as a PURPAY- journal entry at once, then is reconciled against the rail")}">
+${st(1, "", icon("credit-card", 22), "Payment settles", `${r.payments.length}<small> payments · ${r.rails} rails</small>`, esc("Visa card and transfer on Airwallex, a payment on Alta (formerly Metal) testnet."))}
+<li class="bl-ln" aria-hidden="true"><i></i></li>
 ${st(2, "t0", "T:0", "Journal entry in T:0", `${esc(secs(lo))}–${esc(secs(hi))}<small> later</small>`, `${esc("One entry per payment, id ")}<code>PURPAY-</code>${esc(", never posted twice.")}`)}
-<li class="lg-ln l2" aria-hidden="true"><i></i></li>
+<li class="bl-ln l2" aria-hidden="true"><i></i></li>
 ${st(3, "ok", icon("circle-check", 22), "Reconciled with the rail", `${esc(countOf(r.payments.filter((p) => p.ok).length, r.payments.length))}<small> agree</small>`, esc("Rail amount = T:0 amount = the books, line by line."))}
 </ol>`;
   const tone = (rail: string) => (rail === "metal" ? "metal" : "awx");
   const rows = r.payments.map((p) => `<li><span class="rl ${tone(p.rail)}">${esc(p.railName)}</span><span class="who"><b>${esc(`${p.currency} ${p.amount}`)}</b>${esc(p.counterparty)} <code class="je" title="${esc(`T:0 ${p.t0Id}`)}">${esc(p.je.slice(0, 15))}…</code></span><span class="t">${esc(`+${secs(p.ms)}`)}</span><span class="ok">${icon("check", 15)}${esc(`${p.checks} checks`)}</span></li>`).join("");
-  return `<section class="card lg" id="how" aria-labelledby="lg-how">
-<h2 id="lg-how">${esc("How a payment reaches the books")}<span class="lg-tag">${esc(`Run of ${DAY(r.day)} · sandbox · test money`)}</span></h2>
+  return `<section class="card lg" id="how" aria-labelledby="bl-how">
+<h2 id="bl-how">${esc("How a payment reaches the books")}<span class="bl-tag">${esc(`Run of ${DAY(r.day)} · sandbox · test money`)}</span></h2>
 ${flow}
-<ul class="lg-pay">${rows}</ul>
-<p class="lg-sub">${esc("Each line: the rail, the payment, its T:0 entry, the time from settlement to entry, and the reconcile checks that passed.")} ${rec(RAILS_RECORD, "record")}</p>
+<ul class="bl-pay">${rows}</ul>
+<p class="bl-sub">${esc("Each line: the rail, the payment, its T:0 entry, the time from settlement to entry, and the reconcile checks that passed.")} ${rec(RAILS_RECORD, "record")}</p>
 </section>`;
 }
 
@@ -182,9 +182,9 @@ export function demoHtml(v: StatementView): string {
   const assetBar = bars(lines.flatMap((l, i) => (l.side === "a" ? [[`a a${Math.min(3, i + 1)}`, String(i), l.line.cents] as [string, string, number]] : [])));
   const leBar = bars([...lines.flatMap((l, i) => (l.side === "l" ? [["l", String(i), l.line.cents] as [string, string, number]] : [])), ["e", "e", v.totalEquity]]);
   const chk = (id: string, yes: string, no: string) => `<li data-check="${id}"><span class="i1">${icon("circle-check", 18)}</span><span class="i2">${icon("octagon-x", 18)}</span><span class="w1">${esc(yes)}</span><span class="w2">${esc(no)}</span><span class="x"></span></li>`;
-  return `<section class="card lg lgd" id="cent" aria-labelledby="lg-cent">
-<h2 id="lg-cent">${esc("Change one cent")}<span class="lg-tag demo">${esc("Demo · in your browser only")}</span></h2>
-<p class="lg-sub">${esc(`${v.company.replace(/\s*\(test company\)$/, "")}'s balance sheet as booked. Pick a line, change it by one cent.`)}</p>
+  return `<section class="card lg lgd" id="cent" aria-labelledby="bl-cent">
+<h2 id="bl-cent">${esc("Change one cent")}<span class="bl-tag demo">${esc("Demo · in your browser only")}</span></h2>
+<p class="bl-sub">${esc(`${v.company.replace(/\s*\(test company\)$/, "")}'s balance sheet as booked. Pick a line, change it by one cent.`)}</p>
 <p class="lgd-eq" aria-live="polite"><span>${esc("Assets")}</span><b data-sum="a">${esc(amt(v.totalAssets))}</b><span class="op" data-op>=</span><span>${esc("Liabilities + equity")}</span><b data-sum="le">${esc(amt(le))}</b><span class="lgd-st" data-st>${esc("Balanced")}</span></p>
 <div class="lgd-bars" aria-hidden="true"><div class="row" data-a><span>${esc("Assets")}</span>${assetBar}</div><div class="row" data-le><span>${esc("Liab. + equity")}</span>${leBar}</div></div>
 <div class="lgd-lines" role="group" aria-label="${esc("Balance sheet lines")}">${lines.map((x, i) => `<button type="button" data-i="${i}" data-side="${x.side}" data-cents="${x.line.cents}" aria-pressed="${i === 0 ? "true" : "false"}">${esc(x.line.name)} <b>${esc(amt(x.line.cents))}</b></button>`).join("")}</div>

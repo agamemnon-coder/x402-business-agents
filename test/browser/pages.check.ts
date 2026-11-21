@@ -1052,7 +1052,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const green = await page.locator("#cent ul.lgd-checks li.no").count();
       if (red !== 3 || green !== 0) fail(`/books ${tag}: one cent does not turn the three checks red, or Reset does not clear them (${red}, ${green})`);
       await page.emulateMedia({ reducedMotion: "reduce" });
-      const still = await page.evaluate(`[...document.querySelectorAll("#how li.lg-ln i")].map((e) => getComputedStyle(e).animationName).join()`) as string;
+      const still = await page.evaluate(`[...document.querySelectorAll("#how li.bl-ln i")].map((e) => getComputedStyle(e).animationName).join()`) as string;
       await page.emulateMedia({ reducedMotion: null });
       if (still !== "none,none") fail(`/books ${tag}: the flow still moves under reduced motion (${still})`);
       if (w < 500) await tapTargets(page, `/books ${tag}`);

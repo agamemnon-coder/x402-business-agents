@@ -159,7 +159,7 @@ table.bk-t0 td:first-child, table.bk-t0 th:first-child { text-align: left; }
   ul.bk-inv > li { grid-template-columns: minmax(0, 1fr) auto; } .bk-inv .d { grid-column: 1 / -1; order: -1; } .bk-inv .bk-b, .bk-inv .why { grid-column: 1 / -1; }
   .bk-acts { width: 100%; } .bk-acts .btn { flex: 1 1 auto; justify-content: center; }
   .bk-doc { padding: 14px; gap: 14px; } .bk-page { width: 56px; height: 74px; padding: 10px 8px; gap: 5px; }
-  .bkp a.bk-rec, .bkp a.lg-rec, .bkp a.pf, .bkp a.open { min-height: 44px; display: inline-flex; align-items: center; vertical-align: middle; }
+  .bkp a.bk-rec, .bkp a.bl-rec, .bkp a.pf, .bkp a.open { min-height: 44px; display: inline-flex; align-items: center; vertical-align: middle; }
 }
 @media (prefers-reduced-motion: reduce) { .bkp .wrap > *, .bk-chart .ln, .bk-bar .bar { animation: none; } }
 ${LEDGER_CSS}`;
