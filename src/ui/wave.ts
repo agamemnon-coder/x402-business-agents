@@ -154,8 +154,11 @@ export const waveScript = (o: WaveOptions): string => `
     gl.viewport(0, 0, c.width, c.height);
   }
   var mx = 9, my = 9, px = 9, py = 9, ripples = [], box = null;
+  // 21 Nov: a slow device (or a software-rendered headless browser) holds the last frame still instead of starving the page.
+  var lastF = 0, emaF = 0, nF = 0;
   function frame(now) {
     raf = 0;
+    if (lastF) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 300 || (++nF > 10 && emaF > 50)) still = true; } lastF = now;
     var t = (now - t0) / 1000, D = dark();
     px += (mx - px) * 0.08; py += (my - py) * 0.08;
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
@@ -246,8 +249,11 @@ function wave2d() {
   }
   // The ribbon's centre line at u (no rows), for the crest's haze and the lens light.
   function crest(R, L, u, t) { return H * (R.y0 + (R.y1 - R.y0) * u) + H * L.amp * (Math.sin(u * 6.2 + t * 0.45 + L.ph) + 0.3 * Math.sin(u * 13 - t * 0.3 + L.ph)); }
+  // 21 Nov: a slow device (or a software-rendered headless browser) holds the last frame still instead of starving the page.
+  var lastF = 0, emaF = 0, nF = 0;
   function frame(now) {
     raf = 0;
+    if (lastF) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 300 || (++nF > 10 && emaF > 50)) still = true; } lastF = now;
     var t = (now - t0) / 1000;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, W, H);
