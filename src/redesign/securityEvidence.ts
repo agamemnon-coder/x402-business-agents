@@ -28,6 +28,8 @@ export interface EvItem {
   wall?: string;
   /** A second link (an outside page), as [href, label]. */
   also?: [string, string];
+  /** Where the tile itself leads, when that is not the record (the CI runs the figure counts); default: the record. */
+  go?: string;
 }
 export interface EvGroup { id: string; title: string; items: EvItem[] }
 
@@ -73,12 +75,18 @@ export function formalModel(text: string = repoText(FORMAL_REC)): { states: stri
 }
 
 export const MUTATION_REC = "docs/evidence/mutation-testing.json";
-interface MutationRecord { status: string; proof_verifier: { before: { total: number; killed: number; score: number }; after: { total: number; killed: number; score: number } } }
-/** The proof verifier's mutation run, before and after the new tests; whether the run as a whole is partial. */
-export function mutation(r: MutationRecord = json<MutationRecord>(MUTATION_REC)): { killed: number; total: number; score: number; before: number; partial: boolean } {
-  const a = r.proof_verifier.after;
-  return { killed: a.killed, total: a.total, score: a.score, before: r.proof_verifier.before.score, partial: r.status.startsWith("partial") };
+interface MutationRecord { status: string; proof_verifier: { before: { total: number; killed: number; score: number }; after: { total: number; killed: number; score: number }; survivors_after?: { id: string; verdict: string }[] } }
+/**
+ * The proof verifier's mutation run, before and after the new tests; whether the run as a whole is partial; and why the
+ * mutants left alive are left, in the record's words (so "50 of 51" never reads as a bug missed without its reason).
+ */
+export function mutation(r: MutationRecord = json<MutationRecord>(MUTATION_REC)): { killed: number; total: number; score: number; before: number; partial: boolean; left: string[] } {
+  const a = r.proof_verifier.after, left = r.proof_verifier.survivors_after ?? [];
+  if (left.length !== a.total - a.killed) throw new Error(`${MUTATION_REC}: ${a.total - a.killed} mutants survived but ${left.length} are explained`);
+  return { killed: a.killed, total: a.total, score: a.score, before: r.proof_verifier.before.score, partial: r.status.startsWith("partial"), left: left.map((x) => x.verdict) };
 }
+/** The survivors' verdicts as a sentence: "The one left is equivalent: …". */
+const leftWords = (left: string[]): string => left.length === 0 ? "" : left.length === 1 ? ` The one left is ${left[0]!.replace(/\.?$/, ".")}` : ` The ${left.length} left: ${left.join("; ").replace(/\.?$/, ".")}`;
 
 export const VEX_REC = "docs/security/vex/purser.openvex.json";
 /** The OpenVEX statements: how many, and whether every one says the component is not in the product. */
@@ -182,10 +190,10 @@ export function securityEvidence(w: EvidenceWall | null = committedWall()): EvGr
       fromWall("e-fuzz", "fuzzing", w),
       fromWall("e-tamper", "tamper-matrix", w),
       { id: "e-formal", fig: fm.states, label: "states of the payment state machine checked by TLC (TLA+): no error", note: `${countOf(fm.caught, fm.planted)} planted bugs caught, each with a trace. A model of the code, not the code; offline.`, tag: "test", rec: FORMAL_REC, also: [repoHref("formal/PurserPayment.tla"), "The model"] },
-      { id: "e-mutation", fig: countOf(mu.killed, mu.total), label: "planted bugs caught in the proof verifier (mutation testing)", note: `${mu.score}% after the new tests, ${mu.before}% before.${mu.partial ? " A partial run: most module groups are not measured yet." : ""} Offline.`, tag: "test", rec: "docs/evidence/mutation-testing.md" },
+      { id: "e-mutation", fig: countOf(mu.killed, mu.total), label: "planted bugs caught in the proof verifier (mutation testing)", note: `${mu.score}% after the new tests, ${mu.before}% before.${leftWords(mu.left)}${mu.partial ? " A partial run: most module groups are not measured yet." : ""} Offline.`, tag: "test", rec: "docs/evidence/mutation-testing.md" },
     ] },
     { id: "ev-supply", title: "Supply chain", items: [
-      { id: "e-scan", fig: ci.fig, label: ci.label, note: `${ci.note} OSV-Scanner checks every lockfile daily; its ${vx.statements} findings are in CI tooling and test fixtures, none in the product, each with an OpenVEX statement.`, tag: "ci", rec: ".github/workflows/osv-scanner.yml", wall: "ci", also: [repoHref("docs/security/vex/README.md"), "VEX"] },
+      { id: "e-scan", fig: ci.fig, label: ci.label, note: `${ci.note} OSV-Scanner checks every lockfile daily; its ${vx.statements} findings are in CI tooling and test fixtures, none in the product, each with an OpenVEX statement.`, tag: "ci", rec: ".github/workflows/osv-scanner.yml", wall: "ci", go: ci.href, also: [repoHref("docs/security/vex/README.md"), "VEX"] },
       { id: "e-pinned", fig: countOf(sc.pinned, sc.actions), label: "Actions pinned to a full commit SHA", note: `${sc.slsaByTag ? `The ${sc.actions - sc.pinned === 1 ? "other is" : "others are"} the SLSA generator, by its release tag as its README requires. ` : ""}Harden-Runner on ${sc.hardened} of ${sc.jobs} CI jobs${sc.auditOnly ? ", auditing egress (it blocks nothing yet)" : ""}; a CycloneDX bill of materials, ${sc.components} components; ${sc.release} released with Sigstore-signed SLSA provenance.`, tag: "ci", rec: RELEASE_REC(sc.release), also: [repoHref("docs/security/README.md", "#verify-a-release"), "Verify a release"] },
     ] },
     { id: "ev-written", title: "Governance, written down", items: [
@@ -208,7 +216,14 @@ export const EVIDENCE_CSS = `.ev { padding: 18px; display: grid; gap: 14px; min-
 .ev h3 { margin: 6px 0 0; font-size: 15px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); }
 .ev-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 600px) { .ev-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } }
-.ev-grid > li { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: var(--sunken); border: 1px solid var(--border); min-width: 0; }
+.ev-grid > li { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: var(--sunken); border: 1px solid var(--border); min-width: 0; }
+/* Each tile is one link to its source (21 Nov, the owner: "no dead zones, and every figure goes somewhere"): the
+   figure, its words and the whole tile around them; the second link stays a link of its own, above it. */
+.ev-grid a.ev-a { display: flex; flex-direction: column; gap: 6px; color: inherit; text-decoration: none; outline: none; }
+.ev-grid a.ev-a::after { content: ""; position: absolute; inset: 0; border-radius: 14px; }
+.ev-grid > li:has(a.ev-a:hover), .ev-grid > li:has(a.ev-a:focus-visible) { border-color: var(--accent); background: var(--surface); }
+.ev-grid > li:has(a.ev-a:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ev-grid > li .links a { position: relative; z-index: 1; }
 .ev-grid .ev-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .ev-grid .ev-fig { font-size: 30px; font-weight: 800; letter-spacing: -.025em; line-height: 1.05; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .ev-grid .ev-tag { flex: none; font-size: 14px; font-weight: 650; padding: 2px 9px; border-radius: 999px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); white-space: nowrap; }
@@ -218,8 +233,10 @@ export const EVIDENCE_CSS = `.ev { padding: 18px; display: grid; gap: 14px; min-
 .ev-grid .ev-note { margin: 0; font-size: 14.5px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
 .ev-grid .links { margin-top: auto; padding-top: 2px; }`;
 
-const itemHtml = (i: EvItem) => `<li id="${esc(i.id)}"><div class="ev-top"><b class="ev-fig">${esc(i.fig)}</b><span class="ev-tag t-${i.tag}">${esc(EV_TAG_WORDS[i.tag])}</span></div>
-      <p class="ev-lab">${esc(i.label)}</p><p class="ev-note">${esc(i.note)}</p>
+/** Where an item's tile leads: its own `go`, else its record. */
+export const itemHref = (i: EvItem): string => i.go ?? repoHref(i.rec, i.anchor ?? "");
+const itemHtml = (i: EvItem) => `<li id="${esc(i.id)}"><a class="ev-a" href="${esc(itemHref(i))}" target="_blank" rel="noopener"><div class="ev-top"><b class="ev-fig">${esc(i.fig)}</b><span class="ev-tag t-${i.tag}">${esc(EV_TAG_WORDS[i.tag])}</span></div>
+      <p class="ev-lab">${esc(i.label)}</p><p class="ev-note">${esc(i.note)}</p></a>
       <div class="links">${outLink(repoHref(i.rec, i.anchor ?? ""), i.rec.split("/").pop()!)}${i.also ? outLink(i.also[0], i.also[1]) : ""}</div></li>`;
 
 /** The section, as markup. */

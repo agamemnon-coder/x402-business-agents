@@ -427,9 +427,13 @@ const json = <T>(file: string): T | null => { const t = read(file); try { return
 export function payeeCheckTile(r: { checks: { match: string; proceed: number; checked_at: string }[] } | null): ProductTile | null {
   if (!r?.checks.length) return null;
   const ok = r.checks.filter((c) => c.proceed).length, refused = r.checks.length - ok;
+  // "3 of 4" says what the four are (21 Nov, Max): the checks made; the ones stopped are the mismatches, the one that
+  // proceeds the full match, as the record has them. A stop of a full match or a mismatch let through is an error.
+  const mismatched = r.checks.filter((c) => c.match !== "FULL_MATCH").length;
+  if (ok + mismatched !== r.checks.length || r.checks.some((c) => (c.match === "FULL_MATCH") !== Boolean(c.proceed))) throw new Error(`${PAYEE_CHECK_FILE}: a check proceeds without a full match, or a full match is stopped`);
   return {
     key: "payee-check", name: "Payee check", value: `${refused} of ${r.checks.length}`,
-    what: "mismatched names stopped before the CFO is asked.", why: "The payee's bank checks the name.",
+    what: "checked names stopped before the CFO: the mismatches.", why: "The payee's bank checks the name.",
     id: PAYEE_CHECK_FILE.replace(/^docs\/runs\/|\.json$/g, ""), idLabel: "Run record", href: `${REPO_BLOB}${PAYEE_CHECK_FILE.replace(/\.json$/, ".md")}`, iso: r.checks[0]!.checked_at, files: [PAYEE_CHECK_FILE, PAYEE_CHECK_FILE.replace(/\.json$/, ".md")],
   };
 }
@@ -537,7 +541,7 @@ function tileHtml(t: ProductTile): string {
   return `<article class="awt card${t.states ? " wide" : ""}" id="p-${t.key}" data-rec="${esc(t.files.join(" "))}"><h2>${esc(t.name)}</h2>
 ${line}
 <p class="d"><time datetime="${esc(t.iso)}">${esc(dayShort(t.iso))}</time>${link(t.href, icon("file-check", 18), ` class="pr" aria-label="${esc(`${t.name}: the proof`)}" title="The proof"`)}</p>
-<details class="fold awdet"><summary>Details</summary><span class="v">${countUp(t.value)}</span><p class="y">${esc(t.why)}</p><p class="i">${link(t.href, `<code>${esc(shortId(t.id))}</code>`, ` title="${esc(`${t.idLabel} ${t.id}`)}"`)}</p></details></article>`;
+<details class="fold awdet"><summary>Details</summary><a class="vl" href="${esc(t.href)}"${/^https?:/.test(t.href) ? ' target="_blank" rel="noopener"' : ""}><span class="v">${countUp(t.value)}</span></a><p class="y">${esc(t.why)}</p><p class="i">${link(t.href, `<code>${esc(shortId(t.id))}</code>`, ` title="${esc(`${t.idLabel} ${t.id}`)}"`)}</p></details></article>`;
 }
 
 /** The tiles: one per product, in order. */
@@ -662,6 +666,13 @@ export const PRODUCTS_CSS = `.awflag { margin: 18px 0 8px; color: var(--muted); 
 .awt details.awdet .v { display: block; margin: 6px 0 2px; }
 .awt .y { font-size: 14.5px; color: var(--muted); line-height: 1.4; }
 .awt .i { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+/* The whole tile leads to its proof (21 Nov, Max: "no dead zones, and every figure goes somewhere"): the proof link
+   covers the card; Details, the figure and the id stay links of their own above it. */
+.awt { position: relative; }
+.awt .d a.pr::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.awt details.awdet > summary, .awt details.awdet a { position: relative; z-index: 1; }
+.awt:has(.d a.pr:hover), .awt:has(.d a.pr:focus-visible) { border-color: var(--awx); }
+.awt a.vl { display: flex; align-items: center; min-height: 44px; color: inherit; text-decoration: none; } .awt details.awdet a.vl .v { margin: 0; } .awt a.vl:hover .v, .awt a.vl:focus-visible .v { color: var(--awx); }
 .awt .i a { display: inline-flex; align-items: center; min-height: 44px; min-width: 0; color: var(--accent); text-decoration: none; } .awt time { white-space: nowrap; }
 .awt code { font: 600 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
 ol.aws { list-style: none; padding: 2px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

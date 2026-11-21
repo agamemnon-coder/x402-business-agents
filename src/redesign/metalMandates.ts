@@ -198,7 +198,10 @@ const VIZ_CSS = `.mtp { --c-sourcing: #2a78d6; --c-support: #eb6834; --c-treasur
 .mtp svg.bar { display: block; width: 100%; height: 14px; }
 .mtp svg.stack { display: block; width: 100%; height: 30px; }
 .mlegend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); font-size: 15px; }
-.mlegend li { display: flex; align-items: center; gap: 8px; } .mlegend b { font-size: 20px; font-variant-numeric: tabular-nums; min-width: 2ch; }
+.mlegend li { display: flex; }
+/* Each count leads to the record that checks those payments one by one (21 Nov, Max: "every figure goes somewhere"). */
+.mlegend a { flex: 1; display: flex; align-items: center; gap: 8px; min-height: 44px; border-radius: 8px; color: inherit; text-decoration: none; }
+.mlegend a:hover, .mlegend a:focus-visible { background: var(--sunken); } .mlegend a:hover span:last-child { text-decoration: underline; } .mlegend b { font-size: 20px; font-variant-numeric: tabular-nums; min-width: 2ch; }
 .mmoment { padding: 16px 18px; display: grid; gap: 10px; border: 2px solid var(--bad); background: linear-gradient(var(--bad-soft), var(--surface)); }
 .mmoment .hd { display: flex; align-items: center; gap: 10px; color: var(--bad); font-weight: 780; font-size: 15px; text-transform: uppercase; letter-spacing: .04em; }
 .mmoment .mm { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
@@ -343,7 +346,7 @@ ${green ? `<div class="mpath ok"><span class="tag">${icon("circle-check", 18)}${
   }).join("");
   const payChart = `<section class="mchart card" aria-labelledby="mp-h"><h2 class="mh" id="mp-h">${esc(`${p.total} Alta payments, each its own transaction`)}</h2>
 <svg class="stack" viewBox="0 0 ${W} 30" preserveAspectRatio="none" role="img" aria-label="${esc(`${p.sales} sales, ${p.purchases} supplier purchases, ${p.refunds} refunds and ${p.sweeps} sweep`)}">${segs}</svg>
-<ul class="mlegend">${kinds.map((k) => `<li><span class="dot d-${k.cls}"></span><b>${k.n}</b><span>${esc(k.label)}</span></li>`).join("")}</ul>
+<ul class="mlegend">${kinds.map((k) => `<li><a href="${esc(p.checked.href!)}" target="_blank" rel="noopener" title="${esc(`${k.n} ${k.label}, each checked against the chain and the Books`)}"><span class="dot d-${k.cls}"></span><b>${k.n}</b><span>${esc(k.label)}</span></a></li>`).join("")}</ul>
 <p class="tx2">${a(p.account.href!, p.account.label)} ${a(`${REPO_BLOB}${MAIN_RUN_CHECK}`, "checked one by one")}</p></section>`;
 
   const x = st.replace, signer = replaceSigner(record);
