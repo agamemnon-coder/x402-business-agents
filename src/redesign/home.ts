@@ -163,7 +163,7 @@ p.ask a:hover { text-decoration: underline; }
   ol.steps3 .si { grid-row: 1 / span 4; width: 48px; height: 48px; border-radius: 14px; } ol.steps3 .si .i { width: 22px; height: 22px; }
   ol.steps3 b.st { margin: 2px 0 4px; font-size: 18px; } ol.steps3 .tagline { justify-self: start; } ol.steps3 .go { padding-top: 8px; }
   .e-hero::before { inset: -10% -40% auto 20%; height: 60%; opacity: .7; }
-  .e-more .btn { flex: 1 1 100%; justify-content: center; }
+  .e-more .btn { flex: 1 1 100%; justify-content: center; min-width: 0; max-width: 100%; white-space: normal; text-align: center; }
 }`;
 
 /**
