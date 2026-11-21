@@ -21,7 +21,7 @@ export const CONNECTIONS_VIEW_JS = String.raw`
 // hub); the console sorts the cards into these by id, and a card whose id is not listed goes under API, data and export.
 const CX_SECTIONS=[['rails',['airwallex','alta','visa-airi']],
   ['books',['xero','xero-runner','xero-csv','quickbooks','quickbooks-csv','exact','exact-csv','moneybird','bc-odoo','t0','peppol-ubl','peppol-network']],
-  ['ai',['claude','mcp','chatgpt','cursor','vscode','gemini','windsurf','awx-codemode','codemode','agent-api','a2a']],
+  ['ai',['claude','mcp','chatgpt','cursor','vscode','gemini','windsurf','awx-codemode','agent-api','a2a']],
   ['msg',['slack-teams','alerts','inbox']],
   ['data',['rest','webhook','sdks','zapier-make','n8n','export','iso20022']],
   ['work',['sign-in','workplace']]];
@@ -37,7 +37,7 @@ const CX_LOGO={airwallex:['airwallex'],alta:['alta'],'visa-airi':['visa'],claude
   moneybird:['moneybird'],'bc-odoo':['microsoft','odoo'],'slack-teams':['slack','teams'],inbox:['gmail','microsoft'],'sign-in':['google','microsoft','apple'],
   alerts:['whatsapp','slack','teams'],workplace:['google','microsoft']};
 const CX_MARK={t0:'T:0','peppol-ubl':'P','peppol-network':'P',iso20022:'ISO'};
-const CX_ICON={codemode:'bot','agent-api':'credit-card',rest:'link-2',webhook:'zap',a2a:'sparkles',export:'download'};
+const CX_ICON={'agent-api':'credit-card',rest:'link-2',webhook:'zap',a2a:'sparkles',export:'download'};
 // Where a connection stands for this company, from the rows of GET /v1/connections/mine it names: connected when one of
 // them is, not offered when none of them is offered on this cloud, else not connected (the company can switch it on).
 function cxHere(ids,mine){

@@ -193,7 +193,7 @@ describe("Purser Cloud's Connections page (its own tab since 21 Nov)", () => {
     }
     const heads = find(card, (n) => n.tag === "h2").map(text);
     // 21 Nov (the owner): six sections by what a company connects, each with its count; every card in exactly one.
-    expect(heads).toEqual(["Every connection", "Money rails3", "Bookkeeping & ERP12", "AI & agents11", "Messaging & alerts3", "API, data & export7", "Sign-in & workspace2"]);
+    expect(heads).toEqual(["Every connection", "Money rails3", "Bookkeeping & ERP12", "AI & agents10", "Messaging & alerts3", "API, data & export7", "Sign-in & workspace2"]);
     expect(heads.slice(1).reduce((n, h) => n + Number(/\d+$/.exec(h)![0]), 0)).toBe(all.length + cat.planned.length);
     const top = find(card, (n) => n.tag === "a").slice(0, 2).map((a) => a.href);
     expect(top).toEqual([`${ORIGIN}/connect-ai`, cat.hub]);
