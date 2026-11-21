@@ -11,14 +11,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { askPackChunks, askPackFile, ASK_SOURCES } from "../src/ask/pack.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { ASK_PACK } from "../cloud/src/ask/pack.gen.js";
-import { ASK_COPY, checkSentence, retrieve, RULES_CANARY, screenQuestion, sentenceGate, SUGGESTIONS, SYSTEM } from "../cloud/src/ask/core.js";
+import { ASK_COPY, checkSentence, retrieve, RULES_CANARY, screenQuestion, sentenceGate, SYSTEM } from "../cloud/src/ask/core.js";
 import { ASK_ACTION_MICROS, ASK_PER_MINUTE, askCounts, questionWorstMicros } from "../cloud/src/ask/limits.js";
 import { ASK_MAX_ROUNDS, ASK_MAX_TOKENS, ASK_MODEL, ASK_PRICE, askCostMicros, claudeAskModel, type AskModel, type AskRequest, type Block } from "../cloud/src/ask/model.js";
 import { ASK_TOOLS, localRead } from "../cloud/src/ask/tools.js";
 import { checkAttachment } from "../cloud/src/ask/attach.js";
 import { MODELS } from "../src/claude/reader.js";
 import { callCostMicros, PRICES } from "../src/claude/pricing.js";
-import { askCsp, ASK_BUTTON_JS, ASK_PAGE_COPY } from "../cloud/src/ask/page.js";
+import { askCsp, ASK_ACTIONS, ASK_BUTTON_JS, ASK_PAGE_COPY } from "../cloud/src/ask/page.js";
 import { isTryEngineRequest } from "../worker/src/tryEngine.js";
 import { ORIGIN, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -503,9 +503,9 @@ describe("the page and its button", () => {
       expect(html).toContain(`<script type="module" nonce="${n}">`);
       expect(html).not.toMatch(/\son[a-z]+=/i);
       expect(html).not.toContain("innerHTML");
-      // At most three suggestions, no "Try asking" wall; the mark is Ask Purser's own, drawn as markup.
-      expect(SUGGESTIONS.length).toBeLessThanOrEqual(3);
-      expect(html.match(/class="chip"/g)).toHaveLength(SUGGESTIONS.length);
+      // 21 Nov (Max's mockups): four actions in the empty state, no "Try asking" wall; the mark is Ask Purser's own.
+      expect(ASK_ACTIONS.map((x) => x.label)).toEqual(["Review invoices", "Check a payment", "Reconcile books", "Show proof"]);
+      expect(html.match(/<button class="act" type="button" data-q=/g)!.length).toBeGreaterThanOrEqual(ASK_ACTIONS.length);
       expect(html).not.toContain("Try asking");
       expect(html).toContain('id="file"');
       expect(html).toContain(ASK_PAGE_COPY.statusDocs);

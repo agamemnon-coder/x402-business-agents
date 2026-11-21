@@ -10,9 +10,11 @@
 // chat in a dialog (a same-origin frame), closed with Escape or its close button, focus returned to the button.
 import { header, TOKENS } from "../../../src/redesign/ui.js";
 import { ICON_LINKS } from "../brand.js";
+import { WAVE_CANVAS_CSS, WAVE_CANVAS_HTML, waveScript } from "../../../src/ui/wave.js";
+import { SITE_ORIGIN } from "../siteHeader.js";
 import { SITE_HEADER_CSS, TRY_HEADER_LINKS } from "../siteHeader.js";
 import { ATTACH_MAX_BYTES, ATTACH_TYPES } from "./attach.js";
-import { ASK_COPY, QUESTION_MAX, SUGGESTIONS } from "./core.js";
+import { ASK_COPY, QUESTION_MAX } from "./core.js";
 import { ASK_CONTEXT_KINDS, ASK_NAV, CONTEXT_ID, CONTEXT_JS, OPEN_APPROVAL, approvalHash, contextLabel, parseContext, quickActions, type AskContext } from "./context.js";
 
 export const ASK_PATH = "/ask";
@@ -56,7 +58,46 @@ export const ASK_PAGE_COPY = {
   error: "The answer could not be fetched. Check your connection and ask again.",
   counter: "characters left",
   testMoney: ASK_COPY.testMoney,
-  canRead: "What I can read",
+  helpHead: "How can Purser help today?",
+  helpLine: "Your read-only finance agent: invoices, payments, approvals and evidence.",
+  canRead: "I can work with",
+  nav: "Ask Purser",
+  navInvoices: "Invoices",
+  navPayments: "Payments",
+  navApprovals: "Approvals",
+  navEvidence: "Evidence",
+  convos: "Conversations",
+  convosKept: "Kept in this browser only",
+  convosEmpty: "Your questions appear here.",
+  company: "Northwind Outdoor",
+  companyDemo: "Demo company: made-up data from a simulated month, no real money.",
+  companySignIn: "Sign in to your company",
+  menu: "Menu",
+  review: "Review",
+  reviewApprove: "Review and approve",
+  showChecks: "Show the checks",
+  viewEvidence: "View evidence",
+  detail: "Invoice",
+  detailClose: "Close the invoice",
+  due: "Due",
+  payee: "Payee",
+  account: "Account",
+  method: "Method",
+  methodDemo: "Simulated bank (demo company)",
+  verification: "Verification",
+  evidence: "Evidence",
+  approve: "Approve with Face ID",
+  approveNote: "Opens the invoice in Purser Cloud, where only the CFO signs with a passkey. Ask Purser never approves, pays or writes.",
+  kbd: "⌘K",
+  actionsLabel: "Actions",
+  steps: { read: "Read", check: "Check", approve: "Approve", pay: "Pay" },
+  stepSub: { readCode: "By Purser's code", readAgent: "By the agent", check: "Policy & risk", checkFlag: "Flagged for a person", approveNow: "Your sign-off", approveDone: "Approved", approveBlocked: "Not reached", pay: "Simulated bank", payDone: "Paid" },
+  vRead: "Read", vCheck: "Checked (policy & risk)", vCheckFlag: "Checked: flagged", vApprove: "CFO approval (Face ID)", vApproveNow: "Requires the CFO's signature", vPay: "Execute payment",
+  evInvoice: "The invoice and its audit trail, in Purser Cloud",
+  evPolicy: "How the CFO's policy decides",
+  evSigned: "Signed terms and the one-cent check",
+  evRail: "Payments on the rails (sandbox records)",
+  evVerify: "Verify it yourself",
   readNote: "Demo company data, made up · read only",
   recent: "Sources in this chat",
   recentEmpty: "The sources an answer cites appear here.",
@@ -107,7 +148,22 @@ const ICON: Record<string, string[]> = {
   trail: ["M3 12h4l3-9 4 18 3-9h4"],
   chain: ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71", "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
   upload: ["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "m17 8-5-5-5 5", "M12 3v12"],
+  chat: ["M7.9 20A9 9 0 1 0 4 16.1L2 22Z"],
+  check: ["M21.8 10A10 10 0 1 1 17 3.3", "m9 11 3 3L22 4"],
+  layers: ["m12.8 2.2a2 2 0 0 0-1.6 0L2.6 6.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0l8.6-3.9a1 1 0 0 0 0-1.8Z", "m2 12 8.6 3.9a2 2 0 0 0 1.6 0L21 12", "m2 17 8.6 3.9a2 2 0 0 0 1.6 0L21 17"],
+  face: ["M3 7V5a2 2 0 0 1 2-2h2", "M17 3h2a2 2 0 0 1 2 2v2", "M21 17v2a2 2 0 0 1-2 2h-2", "M7 21H5a2 2 0 0 1-2-2v-2", "M8 14s1.5 2 4 2 4-2 4-2", "M9 9h.01", "M15 9h.01"],
+  menu: ["M4 6h16", "M4 12h16", "M4 18h16"],
+  eye: ["M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0", "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"],
+  down: ["m6 9 6 6 6-6"],
+  ext: ["M15 3h6v6", "M10 14 21 3", "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"],
 };
+/** The empty state's four actions (21 Nov, Max's mockups): each asks one question the agent answers from its reads. */
+export const ASK_ACTIONS: { icon: string; label: string; q: string }[] = [
+  { icon: "file", label: "Review invoices", q: "Which invoices wait for the CFO's Face ID?" },
+  { icon: "swap", label: "Check a payment", q: "Show the latest payments and transactions." },
+  { icon: "books", label: "Reconcile books", q: "How do the demo company's books stand?" },
+  { icon: "shield", label: "Show proof", q: "How can I verify a payment myself?" },
+];
 /** What the agent can read (./tools.ts), as the rail shows it: an icon and a few words each. */
 const READS: [string, string][] = [["docs", "Purser's docs"], ["file", "Invoices"], ["swap", "Payments"], ["books", "Books & VAT"], ["wallet", "Cash"], ["clock", "Waiting for the CFO"], ["shield", "CFO's policy"], ["bot", "Agents & limits"], ["trail", "Audit trails"], ["chain", "Run records"]];
 const icon = (name: string, size = 18) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICON[name]!.map((d) => `<path d="${d}"/>`).join("")}</svg>`;
@@ -243,9 +299,7 @@ body.has-ctx .sugg { display: none; }
 .dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 @media (prefers-reduced-motion: no-preference) { .dot:not(.docs) { animation: live 2.4s ease-in-out infinite; } }
 @keyframes live { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 6%, transparent); } }
-.body2 { display: flex; flex: 1; min-height: 0; }
-.convo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.rail { display: none; }
+.convo { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .hello { padding: 22px 4px 6px; gap: 8px; }
 .hello h2 { font-size: 22px; letter-spacing: -.02em; margin: 6px 0 0; }
 .hello .scope { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); font-size: 12px; font-weight: 600; }
@@ -254,24 +308,132 @@ body.has-ctx .sugg { display: none; }
 .chip { min-height: 44px; border-radius: 12px; font-weight: 550; }
 .msg.bot > .body, .msg.bot > .steps, .msg.bot > .meta { padding-left: 2px; }
 .steps { position: relative; background: transparent; border: 0; border-left: 2px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 0; padding: 2px 0 2px 12px; }
-.rail { flex-direction: column; gap: 18px; width: 300px; flex: none; padding: 16px; border-left: 1px solid var(--border); background: color-mix(in srgb, var(--sunken) 55%, var(--surface)); overflow-y: auto; }
-.rail h2 { margin: 0 0 8px; font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
-.rail .reads { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.rail .reads li { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; font-weight: 550; color: var(--text); }
-.rail .reads svg { color: var(--accent); flex: none; }
-.rail .rnote { margin: 8px 0 0; font-size: 12px; color: var(--faint); }
-.rail ol.rsrc { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.rail ol.rsrc li.empty { font-size: 12.5px; color: var(--faint); }
-.rail .dz { width: 100%; display: grid; justify-items: center; gap: 4px; padding: 16px 12px; border: 1.5px dashed color-mix(in srgb, var(--accent) 40%, var(--border)); border-radius: 14px; background: var(--surface); color: var(--text); font: 600 13.5px/1.3 Inter, system-ui, sans-serif; cursor: pointer; text-align: center; }
-.rail .dz svg { color: var(--accent); }
-.rail .dz small { font-weight: 500; font-size: 12px; color: var(--faint); }
-.rail .dz:hover { border-color: var(--accent); background: var(--accent-soft); }
+.detail .rnote { margin: 8px 0 0; font-size: 12px; color: var(--faint); }
+.detail ol.rsrc { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.detail ol.rsrc li.empty { font-size: 12.5px; color: var(--faint); }
+.detail .dz { width: 100%; display: grid; justify-items: center; gap: 4px; padding: 16px 12px; border: 1.5px dashed color-mix(in srgb, var(--accent) 40%, var(--border)); border-radius: 14px; background: var(--surface); color: var(--text); font: 600 13.5px/1.3 Inter, system-ui, sans-serif; cursor: pointer; text-align: center; }
+.detail .dz svg { color: var(--accent); }
+.detail .dz small { font-weight: 500; font-size: 12px; color: var(--faint); }
+.detail .dz:hover { border-color: var(--accent); background: var(--accent-soft); }
 @media (min-width: 1024px) {
   body.page .app { max-width: 1180px; }
-  body.page .rail { display: flex; }
-  body.page .shell { height: max(560px, min(880px, calc(100dvh - 150px))); }
 }
 @media (max-width: 520px) { .msg.you { max-width: 92%; } .hello { padding-top: 18px; } body.page .lede { display: none; } body.page .shell { margin: 10px 0 12px; border-radius: 16px; height: max(460px, calc(100dvh - 96px)); } }
+`;
+
+/**
+ * The page as an agent app (21 Nov, Max's mockups: "make Purser agent like this"): on a wide screen a sidebar (New
+ * chat, the pages, the conversations kept in this browser, the company), the conversation, and a detail panel that
+ * shows what the agent can read until an invoice is opened from an answer. Light and dark from the site's tokens; the
+ * site's wave behind it, quieter in light.
+ */
+const APP_CSS = `${WAVE_CANVAS_CSS}
+@media (prefers-color-scheme: light) { canvas.pw-wave { opacity: .4; } } :root[data-theme="light"] canvas.pw-wave { opacity: .4; }
+body.page main.app { position: relative; z-index: 1; max-width: 1480px; padding: 0 var(--gut, 16px); }
+body.page .shell { display: grid; grid-template-columns: minmax(0, 1fr); background: var(--glass, var(--surface)); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border-color: var(--glass-line, var(--border)); }
+.side, .detail { display: none; }
+.side { flex-direction: column; gap: 6px; padding: 14px 12px; border-right: 1px solid var(--border); min-height: 0; overflow-y: auto; }
+.newchat { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--btn-bg, var(--accent)); color: var(--btn-ink, #fff); font: 650 14.5px/1 Inter, system-ui, sans-serif; cursor: pointer; margin-bottom: 8px; }
+.side ul.nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.side ul.nav a { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 12px; border-radius: 10px; color: var(--text); text-decoration: none; font-size: 14.5px; font-weight: 550; }
+.side ul.nav a svg { color: var(--muted); flex: none; }
+.side ul.nav a:hover { background: var(--sunken); }
+.side ul.nav a.on { background: var(--accent-soft); color: var(--accent); } .side ul.nav a.on svg { color: var(--accent); }
+.side .badge { margin-left: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--accent); color: var(--btn-ink, #fff); font-size: 12px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.side .convos { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); flex: 1; min-height: 0; }
+.side .convos h2 { margin: 0 4px; font-size: 13px; font-weight: 700; color: var(--text); }
+.side .convos .kept { margin: 2px 4px 8px; font-size: 11.5px; color: var(--faint); }
+.side ol.cv { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.side ol.cv button { width: 100%; text-align: left; min-height: 38px; padding: 6px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: 500 13.5px/1.35 Inter, system-ui, sans-serif; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side ol.cv button:hover, .side ol.cv button[aria-current="true"] { background: var(--sunken); color: var(--text); }
+.side ol.cv li.none { padding: 6px 10px; font-size: 12.5px; color: var(--faint); }
+.side details.co { margin-top: auto; border-top: 1px solid var(--border); padding-top: 10px; }
+.side details.co summary { list-style: none; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 8px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 650; }
+.side details.co summary::-webkit-details-marker { display: none; }
+.side details.co summary .av { width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 750; flex: none; }
+.side details.co summary .down { margin-left: auto; color: var(--faint); }
+.side details.co p { margin: 6px 8px 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+.side details.co a { color: var(--accent); font-weight: 600; }
+/* The empty state. */
+.hello.app { align-items: center; text-align: center; padding: 6vh 8px 10px; }
+.hello.app .lg { padding: 10px; border-radius: 18px; background: var(--accent-soft); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent), 0 18px 40px -20px var(--glow, transparent); }
+.hello.app h2 { font-size: clamp(24px, 2.6vw, 34px); letter-spacing: -.025em; margin: 14px 0 0; }
+.hello.app p { max-width: 48ch; }
+.acts { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.acts button, .fups button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font: 600 14px/1.2 Inter, system-ui, sans-serif; cursor: pointer; }
+.acts button svg, .fups button svg { color: var(--accent); }
+.acts button:hover, .fups button:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); background: var(--accent-soft); }
+.acts li:first-child button, .fups li:first-child button { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: var(--accent-soft); color: var(--accent); }
+/* An answer's card: the invoices the agent read, each with Review. */
+.icard { margin: 10px 0 4px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; }
+.icard .ih { margin: 0; padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+.icard ul { list-style: none; margin: 0; padding: 0; }
+.icard li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 12px 14px; }
+.icard li + li { border-top: 1px solid var(--border); }
+.icard .fi { width: 36px; height: 36px; border-radius: 10px; display: inline-grid; place-items: center; background: var(--sunken); color: var(--muted); }
+.icard .who { margin: 0; display: grid; gap: 1px; min-width: 0; }
+.icard .who b { font-size: 14.5px; font-weight: 650; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icard .who span { font-size: 12.5px; color: var(--muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icard .amt { font-size: 15px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.icard .rv { min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: var(--accent-soft); color: var(--accent); font: 650 13px/1 Inter, system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+.icard .rv:hover { background: var(--accent); color: var(--btn-ink, #fff); }
+.icard .st { grid-column: 2 / -1; margin: -4px 0 0; font-size: 12px; color: var(--muted); }
+@media (max-width: 520px) { .icard li { grid-template-columns: auto minmax(0, 1fr) auto; } .icard .amt { grid-column: 2; grid-row: 2; } .icard .rv { grid-row: 1 / span 2; grid-column: 3; } .icard .st { grid-column: 2 / -1; } }
+/* The step tracker: Read, Check, Approve, Pay, each in its real state. */
+.track { list-style: none; margin: 10px 0 4px; padding: 14px 10px 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.track li { position: relative; display: grid; justify-items: center; gap: 3px; text-align: center; font-size: 13px; font-weight: 650; color: var(--text); min-width: 0; }
+.track li::before { content: ""; position: absolute; top: 14px; right: 50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
+.track li:first-child::before { display: none; }
+.track li.done::before, .track li.now::before { background: color-mix(in srgb, var(--ok) 55%, var(--border)); }
+.track .dot2 { position: relative; z-index: 1; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 2px solid var(--border); color: var(--faint); font-size: 12px; font-weight: 750; }
+.track li.done .dot2 { background: var(--ok); border-color: var(--ok); color: #fff; }
+.track li.now .dot2 { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+.track li.now { color: var(--accent); }
+.track li.warn .dot2, .track li.blocked .dot2 { border-color: var(--warn); color: var(--warn); }
+.track small { font-size: 11.5px; font-weight: 500; color: var(--muted); line-height: 1.3; }
+.fups { list-style: none; margin: 10px 0 2px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.fups p { width: 100%; margin: 0; font-size: 13.5px; color: var(--muted); }
+/* The detail panel. */
+.detail { flex-direction: column; min-height: 0; overflow-y: auto; border-left: 1px solid var(--border); padding: 18px; gap: 16px; }
+.detail .dh { display: flex; align-items: flex-start; gap: 10px; }
+.detail .dh .fi { width: 40px; height: 40px; border-radius: 11px; display: inline-grid; place-items: center; background: var(--sunken); color: var(--muted); flex: none; }
+.detail .dh .grow { min-width: 0; } .detail .dh b { display: block; font-size: 16px; } .detail .dh span { font-size: 12.5px; color: var(--muted); }
+.detail .pill { align-self: flex-start; display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 650; }
+.detail .big { margin: 0; font-size: 32px; font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.detail dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 13.5px; }
+.detail dt { color: var(--muted); } .detail dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.detail h3 { margin: 0 0 8px; font-size: 14px; font-weight: 700; }
+.detail ol.vs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.detail ol.vs li { display: grid; grid-template-columns: 22px 1fr; gap: 2px 10px; font-size: 13.5px; font-weight: 600; }
+.detail ol.vs .vd { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); }
+.detail ol.vs li.done .vd { background: var(--ok); border-color: var(--ok); }
+.detail ol.vs li.now .vd { border-color: var(--accent); box-shadow: inset 0 0 0 4px var(--surface), inset 0 0 0 10px var(--accent); }
+.detail ol.vs li.warn .vd { border-color: var(--warn); }
+.detail ol.vs small { grid-column: 2; font-weight: 500; color: var(--muted); font-size: 12.5px; }
+.detail ul.ev { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.detail ul.ev a { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; padding: 0 4px; border-radius: 8px; color: var(--text); text-decoration: none; font-size: 13.5px; font-weight: 550; }
+.detail ul.ev a:hover { background: var(--sunken); } .detail ul.ev svg { color: var(--faint); flex: none; }
+.detail .approve { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; border-radius: 12px; background: var(--btn-bg, var(--accent)); color: var(--btn-ink, #fff); font-weight: 700; font-size: 15px; text-decoration: none; border: 0; cursor: pointer; width: 100%; }
+.detail .anote { margin: -8px 0 0; font-size: 12px; line-height: 1.45; color: var(--faint); }
+.detail .xb { margin-left: auto; }
+.detail .reads2 { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.detail .reads2 li { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); font-size: 13.5px; font-weight: 600; }
+.detail .reads2 svg { color: var(--accent); }
+.kbd { flex: none; display: inline-grid; place-items: center; min-width: 34px; height: 28px; padding: 0 6px; border: 1px solid var(--border); border-radius: 8px; color: var(--faint); font: 600 12px/1 Inter, system-ui, sans-serif; }
+.menu-b { display: inline-grid; }
+@media (min-width: 900px) {
+  body.page .shell { grid-template-columns: 248px minmax(0, 1fr); height: max(600px, calc(100dvh - 92px)); margin: 12px 0 16px; }
+  body.page .side { display: flex; }
+  .menu-b { display: none; }
+}
+@media (min-width: 1240px) {
+  body.page .shell { grid-template-columns: 248px minmax(0, 1fr) 340px; }
+  body.page .detail { display: flex; }
+}
+/* Narrower: the sidebar and the detail open over the conversation. */
+@media (max-width: 899px) { body.page .side.open { display: flex; position: fixed; inset: 0 30% 0 0; z-index: 40; background: var(--surface); box-shadow: var(--shadow); } }
+@media (max-width: 1239px) { body.page .detail.open { display: flex; position: fixed; inset: 0 0 0 auto; width: min(400px, 100%); z-index: 41; background: var(--surface); box-shadow: var(--shadow); } }
+@media (prefers-reduced-motion: reduce) { canvas.pw-wave { display: none; } }
 `;
 
 // The page's script: plain JavaScript, raw (no TS escapes), with the copy and the settings put in where it says so.
@@ -345,15 +507,115 @@ function draw(box, text, sources) {
 }
 function avatar() { const t = $('mark'); const s = t.content.firstElementChild.cloneNode(true); s.setAttribute('width', '26'); s.setAttribute('height', '26'); const d = el('div', 'av'); d.append(s); return d; }
 function fileLine(name) { const f = el('span', 'fileline'); const ic = $('fileicon').content.firstElementChild.cloneNode(true); f.append(ic, el('span', null, name)); return f; }
-function bubble(role, text, file) {
+function bubble(role, text, file, cards) {
   const m = el('div', 'msg ' + (role === 'user' ? 'you' : 'bot'));
   if (role === 'user') {
     m.append(el('span', 'who', C.you));
     if (file) m.append(fileLine(file));
     m.append(el('div', 'txt', text));
-  } else { m.append(avatar(), el('span', 'who', C.purser)); const b = el('div', 'body'); m.append(b); draw(b, text, []); }
+  } else { m.append(avatar(), el('span', 'who', C.purser)); const b = el('div', 'body'); m.append(b); draw(b, text, []); if (Array.isArray(cards) && cards.length) { const box = el('div', 'cards'); for (const c of cards) box.append(renderCard(c)); m.append(box); } }
   chat.append(m);
   return m;
+}
+// ---- 21 Nov (Max's mockups): the answer's cards, the step tracker, the follow-ups and the invoice's detail panel ----
+// Every value is the demo company's record as the agent's read returned it (./cards.ts), put on the page as text.
+const mk = (tag, cls, kids) => { const e = el(tag, cls); for (const k of kids) if (k != null) e.append(k); return e; };
+const ico = (id) => { const t = $('ic-' + id); const n = t ? t.content.firstElementChild.cloneNode(true) : el('span'); return n; };
+function money(cur, v) { const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(String(v || '')); if (!m) return (cur ? cur + ' ' : '') + String(v || ''); return (cur ? cur + ' ' : '') + m[1] + m[2].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + ((m[3] || '') + '00').slice(0, 2); }
+function day(iso) { const d = new Date(String(iso || '').slice(0, 10) + 'T12:00:00Z'); return isNaN(d) ? String(iso || '') : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); }
+// How far an invoice got, from its own record: read, checked, approved (the CFO's Face ID), paid (the demo's simulated bank).
+function stepsOf(r) {
+  const S2 = C.stepSub, paid = !!r.paid_at || r.status === 'paid', waits = r.status === 'waiting_cfo';
+  return [
+    { k: C.steps.read, sub: r.read_by === 'claude' ? S2.readAgent : S2.readCode, st: 'done' },
+    { k: C.steps.check, sub: r.findings ? S2.checkFlag : S2.check, st: r.findings ? 'warn' : 'done' },
+    { k: C.steps.approve, sub: paid ? S2.approveDone : waits ? S2.approveNow : S2.approveBlocked, st: paid ? 'done' : waits ? 'now' : 'blocked' },
+    { k: C.steps.pay, sub: paid ? S2.payDone + ' ' + day(r.paid_at) : S2.pay, st: paid ? 'done' : 'todo' },
+  ];
+}
+function tracker(r) {
+  const ol = el('ol', 'track'); ol.setAttribute('aria-label', r.vendor + ' ' + r.invoice_no);
+  stepsOf(r).forEach((x, i) => { const d = el('span', 'dot2'); if (x.st === 'done') d.append(ico('check')); else d.textContent = String(i + 1); ol.append(mk('li', x.st, [d, el('span', null, x.k), el('small', null, x.sub)])); });
+  return ol;
+}
+let DETAIL_OPEN = null;
+function renderCard(card) {
+  const wrap = el('div', 'cardset');
+  if (!card || card.kind !== 'invoices' || !Array.isArray(card.items)) return wrap;
+  const box = el('div', 'icard'); box.append(el('p', 'ih', card.title || ''));
+  const ul = el('ul');
+  for (const r of card.items) {
+    const rv = el('button', 'rv', C.review + ' →'); rv.type = 'button'; rv.addEventListener('click', () => openDetail(r));
+    const fi = el('span', 'fi'); fi.append(ico('file'));
+    const li = mk('li', null, [fi, mk('p', 'who', [el('b', null, r.vendor), el('span', null, r.invoice_no + ' · ' + C.due + ' ' + day(r.due_date))]), el('span', 'amt', money(r.currency, r.total)), rv]);
+    if (r.status_words) li.append(el('p', 'st', r.status_words));
+    ul.append(li);
+  }
+  box.append(ul); wrap.append(box);
+  const first = card.items.find((x) => x.status === 'waiting_cfo') || (card.items.length === 1 ? card.items[0] : null);
+  if (first) {
+    wrap.append(tracker(first));
+    const f = el('ul', 'fups');
+    const chip = (icon, label, fn) => { const b = el('button', null); b.type = 'button'; b.append(ico(icon), label); b.addEventListener('click', fn); const li = el('li'); li.append(b); return li; };
+    f.append(chip('check', C.reviewApprove, () => openDetail(first)), chip('eye', C.showChecks, () => ask('Show the checks on invoice ' + first.id + '.')), chip('layers', C.viewEvidence, () => openDetail(first, true)));
+    wrap.append(f);
+  }
+  return wrap;
+}
+const detail = $('detail'), detailHome = detail ? [...detail.childNodes] : [];
+function closeDetail() { if (!detail) return; detail.replaceChildren(...detailHome); detail.classList.remove('open'); DETAIL_OPEN = null; }
+function openDetail(r, evidenceFirst) {
+  if (!detail) { const hash = '#/invoices/' + r.id; try { parent.postMessage({ type: 'purser-ask:navigate', hash }, location.origin); } catch (e) {} return; }
+  DETAIL_OPEN = r.id;
+  const x = el('button', 'ib xb'); x.type = 'button'; x.setAttribute('aria-label', C.detailClose); x.title = C.detailClose; x.append(ico('x')); x.addEventListener('click', closeDetail);
+  const fi = el('span', 'fi'); fi.append(ico('file'));
+  const head = mk('div', 'dh', [fi, mk('div', 'grow', [el('b', null, r.vendor), el('span', null, r.invoice_no)]), x]);
+  const dl = el('dl'); const row = (k, v) => { if (v) dl.append(el('dt', null, k), el('dd', null, v)); };
+  row(C.due, day(r.due_date)); row(C.payee, r.vendor); row(C.account, r.account); row(C.method, C.methodDemo);
+  const vs = el('ol', 'vs'); const S3 = stepsOf(r);
+  const vrow = (st, label, sub) => { const li = el('li', st); li.append(el('span', 'vd'), el('span', null, label)); if (sub) li.append(el('small', null, sub)); vs.append(li); };
+  vrow('done', C.vRead, S3[0].sub); vrow(S3[1].st, r.findings ? C.vCheckFlag : C.vCheck, r.review_note || ''); vrow(S3[2].st, C.vApprove, S3[2].st === 'now' ? C.vApproveNow : S3[2].sub); vrow(S3[3].st, C.vPay, S3[3].sub);
+  const ev = el('ul', 'ev');
+  const link = (href, label) => { const a = el('a', null, label); a.href = href; if (/^https?:/.test(href)) { a.target = '_blank'; a.rel = 'noopener'; } a.append(ico('ext')); const li = el('li'); li.append(a); ev.append(li); };
+  link('/#/invoices/' + encodeURIComponent(r.id), C.evInvoice); link(CFG.site + '/proof#pf-policy', C.evPolicy); link(CFG.site + '/proof#pf-passkey', C.evSigned); link(CFG.site + '/proof#pf-rail', C.evRail); link(CFG.site + '/proof#pf-verify', C.evVerify);
+  const parts = [head, el('p', 'big', money(r.currency, r.total))];
+  if (r.status_words) parts.push(el('span', 'pill', r.status_words));
+  parts.push(dl, mk('section', null, [el('h3', null, C.verification), vs]));
+  const evs = el('section'); evs.append(el('h3', null, C.evidence), ev);
+  if (evidenceFirst) parts.splice(2, 0, evs); else parts.push(evs);
+  if (r.status === 'waiting_cfo') {
+    // Only the CFO approves, on the invoice's own page in Purser Cloud, with a passkey: this opens that page, never acts.
+    const a = el('a', 'approve'); a.href = '/#/invoices/' + encodeURIComponent(r.id); a.append(ico('face'), C.approve);
+    parts.push(a, el('p', 'anote', C.approveNote));
+  }
+  detail.replaceChildren(...parts);
+  detail.classList.add('open'); detail.scrollTop = 0; x.focus({ preventScroll: true });
+}
+// ---- The conversations, kept in this browser only (localStorage; no server keeps them) ----
+const CKEY = 'purser.ask.convos';
+let CONVO = (() => { try { return sessionStorage.getItem('purser.ask.convo') || ''; } catch (e) { return ''; } })();
+function convos() { try { const a = JSON.parse(localStorage.getItem(CKEY) || '[]'); return Array.isArray(a) ? a.filter((c) => c && typeof c.id === 'string' && Array.isArray(c.turns)) : []; } catch (e) { return []; } }
+function keepConvo() {
+  if (!history.length) return;
+  if (!CONVO) { CONVO = 'c' + Date.now().toString(36); try { sessionStorage.setItem('purser.ask.convo', CONVO); } catch (e) {} }
+  const all = convos().filter((c) => c.id !== CONVO);
+  const first = history.find((t) => t.role === 'user');
+  all.unshift({ id: CONVO, title: first ? first.text.slice(0, 60) : '', at: Date.now(), turns: history.slice(-12) });
+  try { localStorage.setItem(CKEY, JSON.stringify(all.slice(0, 12))); } catch (e) {}
+  drawConvos();
+}
+function drawConvos() {
+  const ol = $('convos'); if (!ol) return; ol.textContent = '';
+  const all = convos();
+  if (!all.length) { ol.append(el('li', 'none', C.convosEmpty)); return; }
+  for (const c of all) { const b = el('button', null, c.title || '…'); b.type = 'button'; if (c.id === CONVO) b.setAttribute('aria-current', 'true'); b.addEventListener('click', () => loadConvo(c)); const li = el('li'); li.append(b); ol.append(li); }
+}
+function loadConvo(c) {
+  history = c.turns.filter((t) => t && (t.role === 'user' || t.role === 'assistant') && typeof t.text === 'string');
+  CONVO = c.id; try { sessionStorage.setItem('purser.ask.convo', CONVO); } catch (e) {}
+  chat.textContent = ''; closeDetail();
+  for (const t of history) bubble(t.role, t.text, typeof t.file === 'string' ? t.file : null, t.cards);
+  hello.hidden = history.length > 0; save(); drawConvos(); $('side') && $('side').classList.remove('open'); scroll();
 }
 function meta(m, sources, cited, mode, note, reason) {
   const box = el('div', 'meta');
@@ -441,7 +703,7 @@ async function ask(question) {
   m.append(steps, body);
   chat.append(m); scroll();
   say.textContent = C.sending;
-  let text = '', sources = [], done = null, settled = false;
+  let text = '', sources = [], done = null, settled = false; const cards = [], cardBox = el('div', 'cards');
   try {
     const payload = { question, history: history.slice(-6).map((t) => ({ role: t.role, text: t.text })) };
     if (CTX) payload.context = CTX;
@@ -466,14 +728,15 @@ async function ask(question) {
         else if (ev.type === 'step') { step(steps, ev); if (!text) { body.textContent = ''; body.append(wait); } scroll(); }
         else if (ev.type === 'delta') { text += ev.text; draw(body, text, sources); scroll(); }
         else if (ev.type === 'reset') { text = ev.text; if (text) draw(body, text, sources); else { body.textContent = ''; body.append(wait); } }
+        else if (ev.type === 'card' && ev.card) { cards.push(ev.card); if (!cardBox.isConnected) body.after(cardBox); cardBox.append(renderCard(ev.card)); scroll(); }
         else if (ev.type === 'done') done = ev;
       }
     }
     if (!done) throw new Error(C.error);
     draw(body, text, sources);
     meta(m, sources, done.cited || [], done.mode, done.note, done.reason);
-    history.push({ role: 'user', text: question, file: file ? file.name : null }, { role: 'assistant', text: text.slice(0, 1200) });
-    save();
+    history.push({ role: 'user', text: question, file: file ? file.name : null }, { role: 'assistant', text: text.slice(0, 1200), ...(cards.length ? { cards } : {}) });
+    save(); keepConvo();
     say.textContent = C.purser + ': ' + text.replace(/\[(\d{1,2})\]/g, '').replace(/\*\*/g, '');
     // A long answer: its question at the top of the view, so it reads from its start.
     if (m.offsetHeight > scroller.clientHeight * 0.8 && m.previousElementSibling) { m.previousElementSibling.scrollIntoView({ block: 'start' }); settled = true; }
@@ -520,13 +783,21 @@ function drawCtx() {
 drawCtx();
 addEventListener('message', (e) => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.type !== 'purser-ask:context') return; CTX = parseCtx(e.data.ctx); drawCtx(); });
 const reset = $('reset');
-if (reset) reset.addEventListener('click', () => { history = []; save(); chat.textContent = ''; hello.hidden = false; say.textContent = ''; clearFile(); fileError(''); q.focus(); });
+if (reset) reset.addEventListener('click', () => { history = []; save(); CONVO = ''; try { sessionStorage.removeItem('purser.ask.convo'); } catch (e) {} chat.textContent = ''; hello.hidden = false; say.textContent = ''; clearFile(); fileError(''); closeDetail(); drawConvos(); q.focus(); });
+drawConvos();
+// The menu on a narrow screen; ⌘K (Ctrl+K) to the question box; the composer's plus opens the four actions.
+const side = $('side'), menuB = $('menu-b');
+if (menuB && side) menuB.addEventListener('click', () => { const on = side.classList.toggle('open'); menuB.setAttribute('aria-expanded', on ? 'true' : 'false'); });
+document.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); q.focus(); } if (e.key === 'Escape' && detail && detail.classList.contains('open')) closeDetail(); });
+const plus = $('plus'), actMenu = $('actmenu');
+if (plus && actMenu) plus.addEventListener('click', () => { const on = actMenu.hidden; actMenu.hidden = !on; plus.setAttribute('aria-expanded', on ? 'true' : 'false'); });
+for (const b of document.querySelectorAll('#actmenu button[data-q]')) b.addEventListener('click', () => { actMenu.hidden = true; plus.setAttribute('aria-expanded', 'false'); ask(b.dataset.q); });
 const close = $('close');
 const bye = () => { try { parent.postMessage({ type: 'purser-ask:close' }, location.origin); } catch (e) {} };
 if (close) close.addEventListener('click', bye);
 if (CFG.embed) document.addEventListener('keydown', (e) => { if (e.key === 'Escape') bye(); });
 // The conversation of this tab, if it had one.
-try { const old = JSON.parse(sessionStorage.getItem(KEY) || '[]'); if (Array.isArray(old)) for (const t of old) if (t && (t.role === 'user' || t.role === 'assistant') && typeof t.text === 'string') { history.push(t); bubble(t.role, t.text, typeof t.file === 'string' ? t.file : null); } } catch (e) {}
+try { const old = JSON.parse(sessionStorage.getItem(KEY) || '[]'); if (Array.isArray(old)) for (const t of old) if (t && (t.role === 'user' || t.role === 'assistant') && typeof t.text === 'string') { history.push(t); bubble(t.role, t.text, typeof t.file === 'string' ? t.file : null, t.cards); } } catch (e) {}
 if (history.length) { hello.hidden = true; scroll(); }
 ready();
 const pre = new URLSearchParams(location.search).get('q');
@@ -544,46 +815,61 @@ function ctxBar(c: AskContext | null, embed: boolean): string {
 }
 
 /** The page: the chat, standalone (the site's header) or embedded (?embed=1, a bar with a close button). `live`: Claude answers here now. */
-export function askPage(n: string, o: { embed: boolean; live?: boolean; context?: AskContext | null }): string {
+export function askPage(n: string, o: { embed: boolean; live?: boolean; context?: AskContext | null; waiting?: number | null }): string {
   const C = ASK_PAGE_COPY;
   const live = o.live ?? false;
   const ctx = o.context ?? null;
-  const script = SCRIPT.replace("__CONTEXT__", () => CONTEXT_JS).replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ embed: o.embed, ctx, max: QUESTION_MAX, maxBytes: ATTACH_MAX_BYTES, types: ATTACH_TYPES, hosts: ["github.com/agamemnon-coder/x402-business-agents", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "youtu.be/"] }));
-  const bar = `<header class="bar">${askMarkSvg(32, "logo")}<div class="grow"><h1>${esc(C.title)}</h1><p class="status"><span class="dot${live ? "" : " docs"}" id="sdot" aria-hidden="true"></span><span id="stext">${esc(live ? C.statusLive : C.statusDocs)}</span></p></div>`
-    + `<button class="ib" id="reset" type="button" aria-label="${esc(C.newChat)}" title="${esc(C.newChat)}">${icon("plus")}</button>`
+  const app = !o.embed;
+  const script = SCRIPT.replace("__CONTEXT__", () => CONTEXT_JS).replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ embed: o.embed, ctx, site: SITE_ORIGIN, max: QUESTION_MAX, maxBytes: ATTACH_MAX_BYTES, types: ATTACH_TYPES, hosts: ["github.com/agamemnon-coder/x402-business-agents", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "youtu.be/"] }));
+  // The status: "Claude connected · live" only when Claude answers here now; else docs-only mode, said as plainly.
+  const bar = `<header class="bar">${app ? `<button class="ib menu-b" id="menu-b" type="button" aria-label="${esc(C.menu)}" aria-controls="side" aria-expanded="false">${icon("menu")}</button>` : ""}${askMarkSvg(32, "logo")}<div class="grow"><h1>${esc(C.title)}</h1><p class="status"><span class="dot${live ? "" : " docs"}" id="sdot" aria-hidden="true"></span><span id="stext">${esc(live ? C.statusLive : C.statusDocs)}</span></p></div>`
+    + (app ? "" : `<button class="ib" id="reset" type="button" aria-label="${esc(C.newChat)}" title="${esc(C.newChat)}">${icon("plus")}</button>`)
     + (o.embed ? `<a class="ib" href="${ASK_PATH}" target="_blank" rel="noopener" aria-label="${esc(C.full)}" title="${esc(C.full)}">${icon("out", 17)}</a><button class="ib" id="close" type="button" aria-label="${esc(C.close)}" title="${esc(C.close)}">${icon("x")}</button>` : "")
     + `</header>`;
-  const helloBlock = `<section class="hello" id="hello" aria-labelledby="hh">${askMarkSvg(40)}<h2 id="hh">${esc(C.helloHead)}</h2><p>${esc(C.helloText)}</p><p class="scope">${esc(C.scope)}</p>`
-    + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="sugg">${SUGGESTIONS.slice(0, 3).map((s) => `<li><button class="chip" type="button" data-q="${esc(s)}">${esc(s)}</button></li>`).join("")}</ul></section>`;
-  // The rail (a wide screen, the page only): what the agent can read, the sources cited so far, a drop zone for a file.
-  const rail = `<aside class="rail" aria-label="${esc(C.canRead)}"><section><h2>${esc(C.canRead)}</h2><ul class="reads">${READS.map(([i, w]) => `<li>${icon(i, 14)}${esc(w)}</li>`).join("")}</ul><p class="rnote">${esc(C.readNote)}</p></section>`
-    + `<section><h2>${esc(C.recent)}</h2><ol class="rsrc" id="rsrc"><li class="empty">${esc(C.recentEmpty)}</li></ol></section>`
+  // The empty state (21 Nov, Max's mockups): the mark, one question, one line, the read-only chip and four actions.
+  const actButtons = ASK_ACTIONS.map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}">${icon(x.icon, 17)}${esc(x.label)}</button></li>`).join("");
+  const helloBlock = `<section class="hello app" id="hello" aria-labelledby="hh"><span class="lg">${askMarkSvg(44)}</span><h2 id="hh">${esc(C.helpHead)}</h2><p>${esc(C.helpLine)}</p><p class="scope">${esc(C.scope)}</p>`
+    + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="acts">${actButtons}</ul></section>`;
+  // The sidebar (a wide screen; a menu on a narrow one): New chat, the pages, the conversations kept in this browser only,
+  // and the company: the demo company, said once and quietly.
+  const nav: [string, string, string, string][] = [["chat", C.nav, ASK_PATH, ""], ["file", C.navInvoices, "/#/invoices", ""], ["swap", C.navPayments, "/#/transactions", ""], ["check", C.navApprovals, "/#/invoices?f=waiting_cfo", o.waiting ? String(o.waiting) : ""], ["layers", C.navEvidence, `${SITE_ORIGIN}/proof`, ""]];
+  const side = `<nav class="side" id="side" aria-label="${esc(C.title)}"><button class="newchat" id="reset" type="button">${icon("plus")}${esc(C.newChat)}</button>`
+    + `<ul class="nav">${nav.map(([i, w, h, badge], k) => `<li><a href="${esc(h)}"${k === 0 ? ' class="on" aria-current="page"' : ""}>${icon(i, 18)}${esc(w)}${badge ? `<span class="badge" aria-label="${esc(`${badge} waiting`)}">${esc(badge)}</span>` : ""}</a></li>`).join("")}</ul>`
+    + `<section class="convos" aria-labelledby="cvh"><h2 id="cvh">${esc(C.convos)}</h2><p class="kept">${esc(C.convosKept)}</p><ol class="cv" id="convos"></ol></section>`
+    + `<details class="co"><summary><span class="av" aria-hidden="true">N</span>${esc(C.company)}${icon("down", 16).replace("<svg", '<svg class="down"')}</summary><p>${esc(C.companyDemo)} <a href="/#/sign-in">${esc(C.companySignIn)}</a></p></details></nav>`;
+  // The detail panel: what the agent can read, the sources cited so far and a drop zone, until an invoice is opened.
+  const detailPanel = `<aside class="detail" id="detail" aria-label="${esc(C.detail)}"><section><h3>${esc(C.canRead)}</h3><ul class="reads2">${READS.map(([i, w]) => `<li>${icon(i, 16)}${esc(w)}</li>`).join("")}</ul><p class="rnote">${esc(C.readNote)}</p></section>`
+    + `<section><h3>${esc(C.recent)}</h3><ol class="rsrc" id="rsrc"><li class="empty">${esc(C.recentEmpty)}</li></ol></section>`
     + `<section><button class="dz" id="dz" type="button">${icon("upload", 22)}<span>${esc(C.dropHere)}</span><small>${esc(C.attachHint)}</small></button></section></aside>`;
-  const composer = `<form class="composer" id="ask" autocomplete="off"><div class="drop" id="drop" hidden>${esc(C.drop)}</div><div class="box">`
+  const composer = `<form class="composer" id="ask" autocomplete="off"><div class="drop" id="drop" hidden>${esc(C.drop)}</div>`
+    + (app ? `<ul class="acts actmenu" id="actmenu" hidden aria-label="${esc(C.actionsLabel)}">${actButtons}</ul>` : "")
+    + `<div class="box">`
     + `<div class="att" id="att" hidden>${icon("file", 16)}<span class="fn" id="fname"></span><span class="fs" id="fsize"></span><button class="ib" id="unatt" type="button" aria-label="${esc(C.removeFile)}" title="${esc(C.removeFile)}">${icon("x", 14)}</button></div>`
     + `<label class="sr" for="q">${esc(C.label)}</label><textarea id="q" name="q" rows="1" maxlength="${QUESTION_MAX}" placeholder="${esc(C.placeholder)}" aria-describedby="foot"></textarea>`
-    + `<div class="row"><button class="ib clip" id="clip" type="button" aria-label="${esc(`${C.attach} (${C.attachHint})`)}" title="${esc(`${C.attach}: ${C.attachHint}`)}">${icon("clip", 18)}</button><input class="sr" type="file" id="file" accept=".pdf,.csv,.txt,${ATTACH_TYPES.join(",")}" tabindex="-1" aria-hidden="true">`
-    + `<span class="grow"><span class="count" id="count" aria-live="polite"></span></span><button class="send" id="send" type="submit" aria-label="${esc(C.send)}" title="${esc(C.send)}">${icon("up", 18)}</button></div></div>`
+    + `<div class="row">${app ? `<button class="ib" id="plus" type="button" aria-label="${esc(C.actionsLabel)}" aria-controls="actmenu" aria-expanded="false">${icon("plus", 18)}</button>` : ""}<button class="ib clip" id="clip" type="button" aria-label="${esc(`${C.attach} (${C.attachHint})`)}" title="${esc(`${C.attach}: ${C.attachHint}`)}">${icon("clip", 18)}</button><input class="sr" type="file" id="file" accept=".pdf,.csv,.txt,${ATTACH_TYPES.join(",")}" tabindex="-1" aria-hidden="true">`
+    + `<span class="grow"><span class="count" id="count" aria-live="polite"></span></span>${app ? `<kbd class="kbd" title="⌘K / Ctrl+K">${esc(C.kbd)}</kbd>` : ""}<button class="send" id="send" type="submit" aria-label="${esc(C.send)}" title="${esc(C.send)}">${icon("up", 18)}</button></div></div>`
     + `<p class="ferr" id="ferr" role="alert" hidden></p><p class="foot" id="foot">${esc(C.privacy)}</p></form>`;
+  const icons = (["file", "check", "face", "ext", "x", "eye", "layers"] as const).map((k) => `<template id="ic-${k}">${icon(k, k === "check" ? 14 : 16)}</template>`).join("");
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">${ICON_LINKS}
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="${esc(C.lede)}">
 <title>${esc(C.title)} · Purser</title>
-<style nonce="${n}">${CSS}${o.embed ? "" : SITE_HEADER_CSS}</style></head><body class="${o.embed ? "embed" : "page"}${ctx ? " has-ctx" : ""}">
-${o.embed ? "" : `<a class="skip" href="#q">Skip to the question box</a>${header(null, TRY_HEADER_LINKS)}`}
+<style nonce="${n}">${CSS}${o.embed ? "" : SITE_HEADER_CSS + APP_CSS}</style></head><body class="${o.embed ? "embed" : "page"}${ctx ? " has-ctx" : ""}">
+${o.embed ? "" : `${WAVE_CANVAS_HTML}<a class="skip" href="#q">Skip to the question box</a>${header(null, TRY_HEADER_LINKS)}`}
 <main id="main" class="app">
-<div class="shell">${bar}
-<div class="body2"><div class="convo">
+<div class="shell">${app ? side : ""}
+<section class="convo">${bar}
 <div class="scroll" id="scroll">${helloBlock}<div class="chat" id="chat" role="log" aria-label="Conversation"></div></div>
 ${ctxBar(ctx, o.embed)}
-${composer}</div>${o.embed ? "" : rail}</div></div>
+${composer}</section>${app ? detailPanel : ""}</div>
 </main>
-<template id="mark">${askMarkSvg(26)}</template><template id="fileicon">${icon("file", 14)}</template>
+<template id="mark">${askMarkSvg(26)}</template><template id="fileicon">${icon("file", 14)}</template>${icons}
 <p class="sr" id="say" role="status" aria-live="polite"></p>
-<script type="module" nonce="${n}">${script}</script>
+<script type="module" nonce="${n}">${script}${app ? `\n${ASK_WAVE_JS}` : ""}</script>
 </body></html>`;
 }
+const ASK_WAVE_JS = waveScript({ selector: "canvas.pw-wave", placement: "page", intensity: 0.8 });
 
 /** The page's policy: its own nonce, this origin only, and framed only by this origin (the button's panel). */
 export const askCsp = (n: string) =>
@@ -678,12 +964,12 @@ const nonce = () => {
 };
 
 /** GET /ask (and ?embed=1). `live`: Claude answers on this deployment now (its model is set and its switches are on). */
-export function askPageResponse(url: URL, live = false): Response {
+export function askPageResponse(url: URL, live = false, waiting: number | null = null): Response {
   const n = nonce();
   const p = url.searchParams;
   // The console's page, from the button's address (?ctx=invoice&id=…&demo=1): checked, or none.
   const context = parseContext({ kind: p.get("ctx"), id: p.get("id") ?? undefined, demo: p.get("demo") === "1" });
-  return new Response(askPage(n, { embed: p.get("embed") === "1", live, context }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": askCsp(n) } });
+  return new Response(askPage(n, { embed: p.get("embed") === "1", live, context, waiting }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": askCsp(n) } });
 }
 
 /** GET /ask/button.js: the module, cached an hour, loadable by this origin's pages. */

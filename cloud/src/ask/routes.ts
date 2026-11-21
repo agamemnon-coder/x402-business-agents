@@ -6,6 +6,7 @@
 //                                        { n, title, url, kind }
 //   {type: "step", id, tool, label, detail, state, ok}   a read the agent makes: "run" when it starts, "done" when read
 //   {type: "source", source}             a source a read added (a passage search_docs found, a record a tool read)
+//   {type: "card", card}                 the invoices a read returned, as rows the page draws (./cards.ts)
 //   {type: "delta", text}                checked sentences, as they come
 //   {type: "reset", text}                the text so far is replaced (words before a read, or a check stopped the answer)
 //   {type: "done", mode, cited, note, reason, steps}
@@ -19,6 +20,7 @@ import { ATTACH_B64_MAX, ATTACH_TYPES, checkAttachment } from "./attach.js";
 import { ASK_COPY, citedIn, docsAnswer, HISTORY_TURN_MAX, OFF_WORDS, promptMessages, QUESTION_MAX, retrieve, screenQuestion, sentenceGate, sourcesBlock, SYSTEM, TOP_K, type OffReason, type Turn } from "./core.js";
 import { ASK_FILE_TOKENS_MAX, askDayOpen, askRate, askSwitches, askTally, questionWorstMicros, reserveAnswer, roundWorstMicros } from "./limits.js";
 import { ASK_MAX_ROUNDS, ASK_MAX_ROUNDS_FILE, ASK_MAX_TOKENS, type ApiMessage, type AskModel, type Block } from "./model.js";
+import { cardOf, demoDetail } from "./cards.js";
 import { ASK_CONTEXT_KINDS, CONTEXT_ID, contextLine, parseContext } from "./context.js";
 import { ASK_TOOLS, localRead, resultForPeople, runAskTool, TOOLS_PER_QUESTION, TOOLS_PER_ROUND } from "./tools.js";
 
@@ -132,9 +134,11 @@ export function askRoutes<C extends AskCtx>(kit: { json(status: number, body: un
             const src: Src[] = r.sources.map((x, i) => ({ n: i + 1, title: x.title, url: x.url, kind: x.kind }));
             const [first = "", ...rest] = resultForPeople(r.text).split("\n").filter((l) => !/^Northwind Outdoor \(demo company\): demo company/.test(l));
             const text = `${lead ? `${lead} ` : ""}${OFF_WORDS[why]} ${ASK_COPY.records}\n${first} [1]\n${rest.join("\n")}`.trim();
+            const card = await cardOf(records.tool, r.data, demoDetail(toolCtx, runAskTool)).catch(() => null);
             return streamed(c, async (line) => {
               line({ type: "meta", mode: "records", sources: src, live: false });
               line({ type: "step", id: "s1", tool: r.step.tool, label: r.step.label, detail: r.step.detail, state: "done", ok: true });
+              if (card) line({ type: "card", card });
               line({ type: "delta", text });
               line({ type: "done", mode: "records", cited: [1], note: null, reason: OFF_WORDS[why], steps: 1 });
             });
@@ -204,6 +208,8 @@ export function askRoutes<C extends AskCtx>(kit: { json(status: number, body: un
               }
               if (!r.isError) gate.learn(r.text);
               line({ type: "step", id, tool: u.name, label: r.step.label, detail: r.step.detail, state: "done", ok: r.step.ok });
+              // The rows it read, as a card the page draws (./cards.ts): the demo company's records, as returned.
+              if (!r.isError && r.data) { const card = await cardOf(u.name, r.data, demoDetail(toolCtx, runAskTool)).catch(() => null); if (card) line({ type: "card", card }); }
               results.push({ type: "tool_result", tool_use_id: u.id, content: r.text, ...(r.isError ? { is_error: true } : {}) });
             }
             await askTally(sql, "tool_calls", c.now, Math.min(uses.length, TOOLS_PER_ROUND));

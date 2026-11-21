@@ -19,9 +19,9 @@ import { join } from "node:path";
 import { chromium, type Page } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
-import { ASK_COPY, SUGGESTIONS } from "../../cloud/src/ask/core.js";
+import { ASK_COPY } from "../../cloud/src/ask/core.js";
 import type { AskModel, Block } from "../../cloud/src/ask/model.js";
-import { ASK_PAGE_COPY as C } from "../../cloud/src/ask/page.js";
+import { ASK_ACTIONS, ASK_PAGE_COPY as C } from "../../cloud/src/ask/page.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -116,15 +116,16 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   ok(/script-src 'nonce-[^']+';/.test(r?.headers()["content-security-policy"] ?? ""), "under its own nonce policy");
   await page.getByRole("heading", { name: C.title, level: 1 }).waitFor();
   ok(await page.getByText(C.scope, { exact: false }).isVisible(), "says what it can't do (read-only) and that it runs on test money");
-  ok((await page.getByRole("button", { name: "How do limits and Face ID work?" }).count()) === 1, "the suggested questions are buttons");
-  ok((await page.locator(".chip").count()) === SUGGESTIONS.length && SUGGESTIONS.length <= 3, `at most three suggestions (${await page.locator(".chip").count()})`);
+  // 21 Nov (Max's mockups): "How can Purser help today?" and four actions, each a button that asks one question.
+  ok(await page.getByRole("heading", { name: C.helpHead }).isVisible() && (await page.locator("#hello button.act").count()) === ASK_ACTIONS.length, "the empty state's question and its four actions");
   ok(!(await page.getByText("Try asking").count()), "no \"Try asking\" wall of buttons");
   ok(await page.getByText(C.statusLive).isVisible(), "the header says Claude answers here, as an agent, read-only");
   ok((await page.getByRole("button", { name: /Attach a file/ }).count()) === 1, "a paperclip attaches a file");
   ok((await page.getByLabel(C.label).count()) === 1, "the question box has its label");
   await sane(page, "/ask, before");
   await shot(page, "1-ask-390-start");
-  await page.getByRole("button", { name: "How do limits and Face ID work?" }).click();
+  await page.getByLabel(C.label).fill("How do limits and Face ID work?");
+  await page.getByLabel(C.label).press("Enter");
   await page.locator(".msg.bot[aria-busy='true']").waitFor({ timeout: 5_000 });
   ok(true, "the answer is marked busy while it streams");
   await page.locator(".msg.bot:not([aria-busy]) .meta").waitFor({ timeout: 15_000 });
@@ -166,7 +167,7 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   const page = await ctx.newPage();
   watch(page, "ask 360");
   await page.goto(`${ORIGIN}/ask`);
-  await page.getByRole("button", { name: "Which invoices wait for the CFO's Face ID?" }).click();
+  await page.getByRole("button", { name: "Review invoices" }).click(); // asks "Which invoices wait for the CFO's Face ID?"
   await page.locator(".msg.bot:not([aria-busy]) .meta").waitFor({ timeout: 15_000 });
   const bot = page.locator(".msg.bot").last();
   const stepText = await bot.locator(".steps .step.done").first().innerText().catch(() => "");
@@ -199,6 +200,35 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   await ctx.close();
 }
 
+// 1c. The agent app at 1440 px, light (21 Nov, Max's mockups): the sidebar with Approvals' count, an answer's invoice card
+// from the demo company's own records (no invented row), the step tracker in its real states, the follow-ups, and the
+// detail panel opened from the row: its amount, due day, masked account, verification and evidence, and "Approve with
+// Face ID" only as a link to the invoice's page in Purser Cloud, where the CFO signs; the conversation kept in this
+// browser only, in the sidebar.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
+  const page = await ctx.newPage();
+  watch(page, "ask app 1440");
+  await page.goto(`${ORIGIN}/ask`);
+  ok((await page.locator(".side .badge").textContent())?.trim() === "1" && await page.locator(".side").isVisible() && await page.locator("#detail").isVisible(), "the sidebar shows Approvals with its count, and the panel what the agent can read");
+  await page.getByRole("button", { name: "Review invoices" }).click();
+  await page.locator(".msg.bot:not([aria-busy]) .icard").waitFor({ timeout: 15_000 });
+  const row = await page.locator(".icard li").first().innerText();
+  ok(/Bergtex Textil GmbH/.test(row) && /BTX-2026-24/.test(row) && /EUR 1,309\.00/.test(row) && !/Alpine|4,320/.test(await page.locator("main").innerText()), `the card is the demo company's own record (${row.replace(/\s+/g, " ")})`);
+  const track = await page.locator(".msg.bot .track li").evaluateAll((ls) => ls.map((l) => l.className));
+  ok(JSON.stringify(track) === JSON.stringify(["done", "done", "now", "todo"]), `the tracker in its real states (${JSON.stringify(track)})`);
+  ok((await page.locator(".msg.bot .fups button").allInnerTexts()).join("|") === "Review and approve|Show the checks|View evidence", "the three follow-ups");
+  await page.locator(".icard .rv").first().click();
+  const panel = await page.locator("#detail").innerText();
+  const approve = await page.locator("#detail a.approve").getAttribute("href");
+  ok(/EUR 1,309\.00/.test(panel) && /…3000/.test(panel) && /CFO approval \(Face ID\)/.test(panel) && approve === "/#/invoices/AP-0005", `the detail panel: amount, masked account, verification; Approve opens the invoice's page (${approve})`);
+  ok(/never approves, pays or writes/.test(panel), "it says Ask Purser never approves");
+  ok((await page.locator("#convos button").count()) === 1 && await page.evaluate(() => (localStorage.getItem("purser.ask.convos") ?? "").includes("Which invoices")), "the conversation is kept in this browser and listed");
+  await sane(page, "the agent app");
+  await shot(page, "1c-ask-1440-light-app");
+  await ctx.close();
+}
+
 // 2. The console at 1440 px, dark: the floating button and its dialog.
 {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "dark" });
@@ -216,7 +246,7 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   await dialog.waitFor({ timeout: 5_000 });
   ok((await fab.getAttribute("aria-expanded")) === "true", "the button says the dialog is open");
   const frame = page.frameLocator("#pask-panel iframe");
-  await frame.getByRole("button", { name: "What does Purser do?" }).click();
+  await frame.getByRole("button", { name: "Show proof" }).click();
   await frame.locator(".msg.bot:not([aria-busy]) .meta").waitFor({ timeout: 15_000 });
   ok((await frame.locator(".msg.bot").innerText()).includes("test money"), "a question asked inside the dialog is answered");
   await sane(page, "console with the dialog");
