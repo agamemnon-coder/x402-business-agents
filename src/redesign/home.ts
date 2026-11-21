@@ -11,6 +11,7 @@
 // amount and date is read from the run records (docs/demo/airwallex-run.json, docs/demo/main-run.json) and the hero's
 // receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
+import { HOME_PREMIUM_CSS, WAVE_CSS, waveMarkup } from "../ui/premium.js";
 import { readFileSync } from "node:fs";
 import { AWX_HOME_BADGE_CSS, awxHomeBadgeHtml } from "./awxLive.js";
 import { VISA_REUSE_ID } from "./visaStory.js";
@@ -757,7 +758,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   // 19 Nov (the owner: "we use T:0 too"): T:0, the outside ledger, as text on its tile like Visa (no T:0 mark is on file).
   // 14 Nov (owner): Visa as text on its tile, no logo image. Alta (formerly Metal, renamed 14 Nov): its header wordmark, shown with the Alta team's OK (docs/evidence/logo-permissions.md).
   const body = `<main class="ent">
-<section class="e-hero"><div class="wrap">
+<section class="e-hero">${waveMarkup()}<div class="wrap">
   <div class="copy">
     <p class="eyebrow cloud">${icon("layout-dashboard", 14)}${esc(CLOUD_EYEBROW)}</p>
     ${homeHeadingHtml()}
@@ -823,7 +824,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ];
   return page({
     // Final jury, 13 Nov: / and /home serve this page; /home is its one canonical address.
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + AGENTIC_CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS + MONEY_FLOW_CSS + AWX_HOME_BADGE_CSS + NEGOTIATE_CSS, body, js: JS + COUNT_JS, stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + AGENTIC_CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS + MONEY_FLOW_CSS + AWX_HOME_BADGE_CSS + NEGOTIATE_CSS + WAVE_CSS + HOME_PREMIUM_CSS, body, js: JS + COUNT_JS, stage: false,
     // 20 Nov (the owner: "Purser connects to everything and everyone, findable"): the hub of every connection, in the footer.
     links: [[`${REPO_BLOB}${CONNECT_HUB_DOC}`, CONNECT_HUB_LABEL]],
     real,
