@@ -16,7 +16,7 @@ import { ICONS, type Icon } from "../ui/icons.js";
 
 /** The hands-on demo at the site's own /try (src/redesign/ui.ts TRY_URL; test/judge-tour.test.ts holds the two equal). */
 const TRY_URL = "/try";
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 /** Lucide icons (src/ui/icons.ts), and three more in the same style, drawn as ui.ts icon() draws them. */
 const MORE_ICONS: Record<string, Icon> = {
   route: [["circle", { cx: "6", cy: "19", r: "3" }], ["path", { d: "M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" }], ["circle", { cx: "18", cy: "5", r: "3" }]],
@@ -137,7 +137,9 @@ aside.tbar :focus-visible { outline: 3px solid var(--accent); outline-offset: 2p
  */
 export function tourJs(): string {
   const stops = TOUR_STOPS.map((s) => ({ t: s.title, l: s.look, h: s.href, x: !!s.external }));
-  const icons = { map: icon("route", 16), back: icon("arrow-left", 16), next: icon("arrow-right", 16), open: icon("external-link", 16), x: icon("x", 18) };
+  // The icons travel as shapes and are built with createElementNS: no markup is parsed in the browser (CodeQL, 21 Nov).
+  const shape = (name: string, size: number) => ({ z: size, s: ICONS[name] ?? MORE_ICONS[name] });
+  const icons = { map: shape("route", 16), back: shape("arrow-left", 16), next: shape("arrow-right", 16), open: shape("external-link", 16), x: shape("x", 18) };
   return `
 (function () {
   var S = ${JSON.stringify(stops).replace(/</g, "\\u003c")}, I = ${JSON.stringify(icons).replace(/</g, "\\u003c")}, K = "purser.tour", ID = ${JSON.stringify(TOUR_ID)};
@@ -151,7 +153,13 @@ export function tourJs(): string {
   var n = m ? +m[1] : stored();
   if (!(n >= 1 && n <= S.length)) { if (m) store(0); return; }
   store(n);
-  function svg(markup) { var t = document.createElement("template"); t.innerHTML = markup; return t.content.firstChild; }
+  function svg(ic) {
+    var NS = "http://www.w3.org/2000/svg", g = document.createElementNS(NS, "svg");
+    var at = { "class": "i", viewBox: "0 0 24 24", width: ic.z, height: ic.z, fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" };
+    for (var k in at) g.setAttribute(k, String(at[k]));
+    ic.s.forEach(function (p) { var c = document.createElementNS(NS, p[0]); for (var a in p[1]) c.setAttribute(a, p[1][a]); g.appendChild(c); });
+    return g;
+  }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
   function link(cls, href, text, ic, after) { var a = el("a", cls); a.href = href; if (ic && !after) a.appendChild(svg(ic)); a.appendChild(document.createTextNode(text)); if (ic && after) a.appendChild(svg(ic)); return a; }
   var s = S[n - 1];
