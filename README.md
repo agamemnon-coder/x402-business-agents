@@ -277,6 +277,32 @@ The full suite, `npm test` (about 8 to 9 min on a laptop): **10239 tests passing
 2. **Look around a company:** [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/), then *Try as guest*: the demo company's dashboard and books, read-only, made-up data, test money.
 3. **Ask your own AI:** add the remote MCP server `https://purser-try.max-31b.workers.dev/mcp` and choose the demo company (public token `purser-demo-read-only`): ask "what's waiting for the CFO?". It reads; it cannot approve or pay ([Connect any AI](#more)). Everything else Purser connects to, each labelled: [Connect Purser to anything](docs/integrations/README.md).
 
+**From code, the same question:** the TypeScript and Python clients ([sdk/typescript](sdk/typescript/README.md), [sdk/python](sdk/python/README.md)), no dependencies, run from a clone: not published to npm or PyPI. They take an API key with the read scope (the demo token works at /mcp only). Neither can approve.
+
+```sh
+git clone https://github.com/agamemnon-coder/x402-business-agents purser && cd purser
+export PURSER_URL=https://purser.example.com
+export PURSER_API_KEY=pck_...   # a key with the read scope; never in code
+```
+
+```ts
+// quickstart.ts, in the clone: npx tsx quickstart.ts
+import { Purser } from "./sdk/typescript/src/index.js";
+const purser = Purser.fromEnv();
+for (const i of await purser.listPayableInvoices())
+  if (i.proposal?.status === "PENDING_APPROVAL") console.log(i.id, i.vendor, i.currency, i.total, "waits for the CFO");
+```
+
+```python
+# quickstart.py, in the clone: python3 quickstart.py
+import sys; sys.path.insert(0, "sdk/python")
+from purser import Purser
+purser = Purser.from_env()
+for i in purser.list_payable_invoices():
+    if (i.get("proposal") or {}).get("status") == "PENDING_APPROVAL":
+        print(i["id"], i["vendor"], i["currency"], i["total"], "waits for the CFO")
+```
+
 ## The business hypothesis
 
 Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue. Every line below is a hypothesis except the cited source.
