@@ -2,7 +2,8 @@
 // with your phone, and the designs like the one I was going to have in Apple Wallet, and give different ones to each, and
 // also customizable for companies"). One card per agent, credit-card shaped: the company's mark, the agent's name, its
 // status, the card's last four (never more), what it spent against its monthly limit, and real marks for what it runs on:
-// Claude for its model, Alta (formerly Metal) for an on-chain mandate, Visa for the card network, Airwallex as issuer.
+// Claude for its model, Alta (formerly Metal) for an on-chain mandate, Airwallex as issuer; the card network, Visa, in text
+// only (review, 21 Nov: no Visa mark on Purser's card art).
 //
 // Shared by the console's Agents page (cloud/src/agentWallet.ts draws it with el()) and the phone's read-only card view
 // (cloud/src/agentPhoneCard.ts draws it on the server, every value escaped). The design is cosmetic only: a preset per
@@ -116,6 +117,7 @@ export const CARD_ART_CSS = `
 .acard .ac-net { margin-left: auto; height: 30px; width: auto; display: block; margin-top: -6px; margin-bottom: -6px; }
 .acard .ac-tag { margin-left: auto; font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .72; white-space: nowrap; }
 .acard .ac-tag + .ac-net { margin-left: 6px; }
+.acard .ac-net.txt { height: auto; margin-top: 0; margin-bottom: 0; font-size: 12px; font-weight: 650; letter-spacing: .02em; opacity: .9; }
 .acard.frozen { filter: grayscale(.8) brightness(.92); }
 .acard.dim { filter: saturate(.55) brightness(.9); }
 .acard.ink { color: #111827; } .acard.ink .ac-mark { background: rgba(0,0,0,.08); box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); } .acard.ink .ac-bar { background: rgba(0,0,0,.15); } .acard.ink .ac-bar > span { background: #111827; }

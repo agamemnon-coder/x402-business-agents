@@ -112,7 +112,7 @@ export function tokenisation(): Json {
   const c = CARDS as unknown as { read_at: string; method: string; test_money: boolean; cards: { last4: string; nick_name: string; card_status: string; brand: string; form_factor: string; controls: { transaction_limits?: { currency: string; limits: { amount: number; interval: string }[] }; allowed_merchant_categories?: string[] } }[] };
   const v = VIC as unknown as { run: string; mode: string; label: string; started_at: string; credential_deleted: boolean; purchases: { step: string; what: string; request: { amount: string; currency: string }; outcome?: { status?: string; reason?: string; refusal?: string } | null; mandate_id: string | null; payment_intent_id: string | null }[] };
   return {
-    // One purchase, one token (23 Nov): the Visa network token's life and Purser's agent tokens, from their run records.
+    // One purchase, one token (23 Nov): Airi's single-use credential's life (vic-5) and Purser's agent tokens, from their run records.
     token_life: tokenLifeOf(),
     invoice_token: {
       label: [t.labels.prototype ? "prototype" : null, String(t.labels.network ?? "").replace(/^Metal\b/, "Alta") /* the record's own words; Alta since 14 Nov */, t.labels.test_money ? "test money" : null, t.labels.financier === "simulated" ? "financier simulated" : null].filter(Boolean).join(" · "),

@@ -27,10 +27,12 @@ describe("the agents' cards (23 Nov)", () => {
   it("draw from data as text, never as markup", () => {
     expect(WALLET_JS).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
   });
-  it("give each agent its own design, the company's mark, and real marks for Claude, Alta, Visa and Airwallex", () => {
+  it("give each agent its own design, the company's mark, and real marks for Claude, Alta and Airwallex, Visa in text only", () => {
     expect(new Set(Object.values(DEFAULT_STYLE)).size).toBe(ROSTER.length);
     for (const r of ROSTER) expect(DEFAULT_STYLE[r.id], r.id).toBeDefined();
-    for (const k of ["'claude'", "'alta'", "'visa-white'", "'airwallex'"]) expect(WALLET_JS).toContain(`dkLogo(${k})`);
+    for (const k of ["'claude'", "'alta'", "'airwallex'"]) expect(WALLET_JS).toContain(`dkLogo(${k})`);
+    expect(WALLET_JS).not.toContain("dkLogo('visa");
+    expect(WALLET_JS).toContain("el('span','ac-net txt','Visa')");
     for (const p of CARD_PRESETS) expect(CARD_ART_CSS).toContain(`.acard.p-${p} {`);
   });
   it("say plainly when Apple Wallet waits for its certificate, and offer the phone's QR either way", () => {

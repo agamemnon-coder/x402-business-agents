@@ -2,12 +2,13 @@
 // but this will be the future, so think critically"). The page used to show one invoice token. It now leads with what
 // changes for a business: every agent purchase gets its own credential, bound to one amount and one merchant, used once,
 // and refused when presented again. Two recorded runs show it, each with its own label, nothing beyond them:
-//   - vic-5 (docs/runs/2026-11-14-vic-5.json): a Visa network token (a DPAN) via Airwallex's Airi wallet in the Airwallex
-//     sandbox. The CFO's Face ID, Airi's mandate for EUR 45.00 at one merchant with Purser's terms hash read back, one
+//   - vic-5 (docs/runs/2026-11-14-vic-5.json): Airi's single-use credential on Airi's test card (Airi reports token_type
+//     DPAN; not a Visa network token Purser holds; review 21 Nov), via Airwallex's Airi wallet in the Airwallex sandbox. The CFO's Face ID, Airi's mandate for EUR 45.00 at one merchant with Purser's terms hash read back, one
 //     payment, then the same credential refused for another amount and for a second use, before any Airwallex call;
 //   - the partner-rails run (docs/runs/2026-11-20-partner-rails.json): Purser's own agent tokens over the agents'
 //     Airwallex sandbox cards, each bound to a mandate made from the CFO's limits; the misuse its record refused.
-// Ids are masked (the first eight and the last four characters); no token, card number or DPAN is in either record.
+// Ids are masked (the first eight and the last four characters); no credential, token or card number is in either record.
+// No Visa mark on this page (review 21 Nov): the card says "Airi's test card" in text.
 //
 // TOKEN_LIFE_JS goes into the console at __UI__ (cloud/src/console.ts) and draws with its el(), ic(), cur() and day();
 // tokensView (cloud/src/consoleUi.ts) calls tokenLifeSections(r.token_life) before the invoice token.
@@ -81,42 +82,42 @@ export const TOKEN_LIFE_JS = String.raw`
 // --- One purchase, one token (23 Nov) ---------------------------------------------------------------------------------
 const TL_W={en:{
   lede:'How an agent pays without ever holding your card, from the recorded runs, each with its label.',
-  h:'One purchase, one token',sub:'Each agent purchase gets its own Visa network token, bound to one amount and one merchant. It works once.',
+  h:'One purchase, one credential',sub:'Airi\'s single-use credential (Airi reports token_type DPAN; sandbox test card), one recorded run (vic-5): bound to one amount and one merchant, it worked once.',
   sandbox:'Airwallex sandbox · Airi beta · test money',
   why:'If it leaks, it buys one thing, once: not your company\'s card.',
   s:{issue:'Issued',bind:'Bound',use:'Used once',reuse:'Reuse refused'},
   sd:{issue:'CFO\'s Face ID, then Airi\'s mandate',bind:'{amt} · one merchant · Purser\'s terms hash read back',use:'Paid at the merchant',reuse:'Before any call to Airwallex'},
-  ntok:'Network token',dpan:'Network token (DPAN)',bound:'Bound to',at_m:'at',once:'one use',deleted:'Deleted after the run',not_kept:'Its number never enters Purser\'s records',
+  ntok:'Airi credential',dpan:'Airi credential (token_type DPAN)',bound:'Bound to',at_m:'at',once:'one use',deleted:'Deleted after the run',not_kept:'Its number never enters Purser\'s records',
   mis_h:'Try to misuse it',mis_sub:'What the record shows when the credential, or the agent, is pushed past its mandate.',
   mis:{F1:'Same token, another amount',F2:'Same token, a second time',C:'Above the CFO\'s hard cap',D:'A merchant not on the list'},calls0:'0 calls to Airwallex',refused:'Refused',
   cmp_h:'What a leak can cost',cmp:['A card on file','Agent token','Token per purchase'],cmp_k:['Where','How much','How long'],
   cmp_v:[['Wherever the card\'s controls allow','Its mandate\'s merchant categories','One merchant'],['Up to the card\'s limits','Within its mandate','The exact amount'],['Until the card is frozen or closed','Until revoked or it expires','One use']],
-  tok_h:'The tokens on record',tok_sub:'Masked; no token, card number or DPAN is in any record.',
-  t_vic:'Visa network token',t_agent:'Purser agent token',used_n:'{n} paid',refused_n:'{n} refused',active:'Active',revoked:'Revoked',used_once:'Used once, then deleted',
+  tok_h:'The tokens on record',tok_sub:'Masked; no credential, token or card number is in any record.',
+  t_vic:'Airi credential (vic-5)',t_agent:'Purser agent token',used_n:'{n} paid',refused_n:'{n} refused',active:'Active',revoked:'Revoked',used_once:'Used once, then deleted',
   per:'{amt} a purchase',month:'{amt} a month',mcc:'MCC {m}',card:'card •••• {l}',test_card:'Airi\'s test card •••• {l}',until:'until {d}',
   now_h:'Proven, and not yet',proven:'Proven in the sandbox',notyet:'Not yet',
-  p1:'One credential per purchase, bound and read back before it is used',p2:'Reuse and another amount refused before any Airwallex call',p3:'Revoking an agent revokes its tokens in the same call',
-  n1:'Live money: sandbox and test cards only',n2:'Airi is in beta ({cli}); each token waits for the owner\'s tap in Airi',n3:'One recorded run: the first try timed out waiting for the tap, nothing was charged',
+  p1:'The credential bound to one purchase and read back before it was used (vic-5)',p2:'Reuse and another amount refused before any Airwallex call',p3:'Revoking an agent revokes its tokens in the same call',
+  n1:'Live money: sandbox and test cards only',n2:'Airi is in beta ({cli}); its credential waits for the owner\'s tap in Airi',n3:'One recorded run: the first try timed out waiting for the tap, nothing was charged',
   agent:'Sourcing agent',model:'chose the rail',record:'Run record',story:'What happened',
   inv_h:'Invoices as tokens'},
 nl:{
   lede:'Hoe een agent betaalt zonder ooit je kaart te hebben, uit de vastgelegde runs, elk met zijn label.',
-  h:'Eén aankoop, één token',sub:'Elke aankoop van een agent krijgt een eigen Visa-netwerktoken, gebonden aan één bedrag en één winkel. Het werkt één keer.',
+  h:'Eén aankoop, één credential',sub:'De credential van Airi voor één gebruik (Airi meldt token_type DPAN; testkaart in de sandbox), één vastgelegde run (vic-5): gebonden aan één bedrag en één winkel, hij werkte één keer.',
   sandbox:'Airwallex-sandbox · Airi bèta · testgeld',
   why:'Lekt het uit, dan koopt het één ding, één keer: niet de kaart van je bedrijf.',
   s:{issue:'Uitgegeven',bind:'Gebonden',use:'Eén keer gebruikt',reuse:'Hergebruik geweigerd'},
   sd:{issue:'Face ID van de CFO, dan het mandaat in Airi',bind:'{amt} · één winkel · hash van Purser teruggelezen',use:'Betaald bij de winkel',reuse:'Vóór elke aanroep naar Airwallex'},
-  ntok:'Netwerktoken',dpan:'Netwerktoken (DPAN)',bound:'Gebonden aan',at_m:'bij',once:'één keer',deleted:'Na de run verwijderd',not_kept:'Het nummer komt nooit in de administratie van Purser',
+  ntok:'Airi-credential',dpan:'Airi-credential (token_type DPAN)',bound:'Gebonden aan',at_m:'bij',once:'één keer',deleted:'Na de run verwijderd',not_kept:'Het nummer komt nooit in de administratie van Purser',
   mis_h:'Probeer het te misbruiken',mis_sub:'Wat het record laat zien als de credential, of de agent, buiten zijn mandaat gaat.',
   mis:{F1:'Zelfde token, ander bedrag',F2:'Zelfde token, tweede keer',C:'Boven de harde limiet van de CFO',D:'Een winkel die niet op de lijst staat'},calls0:'0 aanroepen naar Airwallex',refused:'Geweigerd',
   cmp_h:'Wat een lek kan kosten',cmp:['Een opgeslagen kaart','Agent-token','Token per aankoop'],cmp_k:['Waar','Hoeveel','Hoe lang'],
   cmp_v:[['Waar de controles van de kaart het toestaan','De merchantcategorieën van zijn mandaat','Eén winkel'],['Tot de limieten van de kaart','Binnen zijn mandaat','Precies het bedrag'],['Tot de kaart bevroren of opgezegd is','Tot intrekking of verloop','Eén keer']],
-  tok_h:'De vastgelegde tokens',tok_sub:'Gemaskeerd; geen token, kaartnummer of DPAN staat in een record.',
-  t_vic:'Visa-netwerktoken',t_agent:'Agent-token van Purser',used_n:'{n} betaald',refused_n:'{n} geweigerd',active:'Actief',revoked:'Ingetrokken',used_once:'Eén keer gebruikt, daarna verwijderd',
+  tok_h:'De vastgelegde tokens',tok_sub:'Gemaskeerd; geen credential, token of kaartnummer staat in een record.',
+  t_vic:'Airi-credential (vic-5)',t_agent:'Agent-token van Purser',used_n:'{n} betaald',refused_n:'{n} geweigerd',active:'Actief',revoked:'Ingetrokken',used_once:'Eén keer gebruikt, daarna verwijderd',
   per:'{amt} per aankoop',month:'{amt} per maand',mcc:'MCC {m}',card:'kaart •••• {l}',test_card:'testkaart van Airi •••• {l}',until:'tot {d}',
   now_h:'Bewezen, en nog niet',proven:'Bewezen in de sandbox',notyet:'Nog niet',
-  p1:'Eén credential per aankoop, gebonden en teruggelezen vóór gebruik',p2:'Hergebruik en een ander bedrag geweigerd vóór elke aanroep naar Airwallex',p3:'Een agent intrekken trekt zijn tokens in dezelfde aanroep in',
-  n1:'Echt geld: alleen sandbox en testkaarten',n2:'Airi is in bèta ({cli}); elk token wacht op de tik van de eigenaar in Airi',n3:'Eén vastgelegde run: de eerste poging wachtte tevergeefs op de tik, er is niets afgeschreven',
+  p1:'De credential gebonden aan één aankoop en teruggelezen vóór gebruik (vic-5)',p2:'Hergebruik en een ander bedrag geweigerd vóór elke aanroep naar Airwallex',p3:'Een agent intrekken trekt zijn tokens in dezelfde aanroep in',
+  n1:'Echt geld: alleen sandbox en testkaarten',n2:'Airi is in bèta ({cli}); de credential wacht op de tik van de eigenaar in Airi',n3:'Eén vastgelegde run: de eerste poging wachtte tevergeefs op de tik, er is niets afgeschreven',
   agent:'Inkoopagent',model:'koos de rail',record:'Runrecord',story:'Wat er gebeurde',
   inv_h:'Facturen als token'}};
 function tw(k,v){const W=TL_W[NL?'nl':'en'];let s=k.split('.').reduce((o,p)=>o&&o[p],W);if(s===undefined)s=k.split('.').reduce((o,p)=>o&&o[p],TL_W.en);s=String(s);for(const [a,b] of Object.entries(v||{}))s=s.split('{'+a+'}').join(String(b));return s}
@@ -130,14 +131,13 @@ function tlTrack(V){
   const ol=el('ol','tl-track',[el('span','tl-rail',el('span','tl-tok')),...stops]);
   return ol}
 function tlTokenCard(V){
-  const visa=BRAND_LOGOS['visa-white'];
   return el('div','acard p-midnight tl-card',[el('span','ac-shine'),
-    el('div','ac-top',[el('span','ac-mark',ic('lock')),el('span','ac-who',[el('b','ac-name',tw('ntok')),el('span','ac-co',(V.token.type||'DPAN')+' · '+tw('bound')+' '+tlMoney(V.purchase.currency,V.purchase.amount))]),el('span','ac-plate',(()=>{const i=el('img','');i.src=BRAND_LOGOS.airwallex.uri;i.alt='Airwallex';return i})())]),
+    el('div','ac-top',[el('span','ac-mark',ic('lock')),el('span','ac-who',[el('b','ac-name',tw('ntok')),el('span','ac-co','token_type '+(V.token.type||'DPAN')+' · '+tw('bound')+' '+tlMoney(V.purchase.currency,V.purchase.amount))]),el('span','ac-plate',(()=>{const i=el('img','');i.src=BRAND_LOGOS.airwallex.uri;i.alt='Airwallex';return i})())]),
     el('div','ac-mid',[el('span','ac-chip'),el('span','ac-st',[el('i',''),tw('once')])]),
     el('div','ac-num','•••• •••• •••• ••••'),
     el('div','ac-meter',el('span','ac-ml',[el('b','',tw('at_m')+' '),el('span','',V.purchase.merchant)])),
     el('div','ac-foot',[V.purchase.model?el('span','ac-model',[(()=>{const i=el('img','');i.src=BRAND_LOGOS.claude.uri;i.alt='Claude';return i})(),V.purchase.model.replace(/^claude-([a-z]+)-(\d+)-(\d+).*$/,(_,n,a,b)=>n.charAt(0).toUpperCase()+n.slice(1)+' '+a+'.'+b)]):null,
-      el('span','ac-tag','Sandbox'),visa?(()=>{const i=el('img','ac-net');i.src=visa.uri;i.alt='Visa';return i})():null])])}
+      el('span','ac-tag','Sandbox'),el('span','ac-tag',tw('test_card',{l:V.card.last4||'····'}))])])}
 function tlHero(V){
   const sec=el('section','card tl-hero',[
     el('div','tl-hh',[el('div','',[el('h2','',tw('h')),el('p','tl-sub',tw('sub'))]),el('span','rlabel',tw('sandbox'))]),
@@ -159,7 +159,7 @@ function tlCompare(){
   const rows=keys.map((k,r)=>el('div','tl-cr',[el('span','tl-ck',k),...vals[r].map((v,i)=>el('span','c'+i,[i===2?ic('circle-check'):i===0?ic('triangle-alert'):ic('circle-dot'),v]))]));
   return el('section','card panel tl-sec',[el('h2','',tw('cmp_h')),el('div','tl-cmp',[head,...rows])])}
 function tlTokens(V,A){
-  const vic=el('li','tl-tk vic',[el('span','tl-tkk',tw('t_vic')),el('code','',(V.token.type||'DPAN')+' · '+V.card.network.toUpperCase()+(V.card.last4?' · '+tw('test_card',{l:V.card.last4}):'')),
+  const vic=el('li','tl-tk vic',[el('span','tl-tkk',tw('t_vic')),el('code','','token_type '+(V.token.type||'DPAN')+(V.card.last4?' · '+tw('test_card',{l:V.card.last4}):'')),
     el('span','tl-tkd',tlMoney(V.purchase.currency,V.purchase.amount)+' · '+V.purchase.merchant),el('span','obadge ok',[ic('circle-check'),tw('used_once')])]);
   const ag=A.tokens.map((x)=>{const on=x.status==='active';return el('li','tl-tk',[el('span','tl-tkk',tw('t_agent')+' · '+(x.agent.charAt(0).toUpperCase()+x.agent.slice(1))),el('code','',x.id+' ··'+x.last4+' · '+tw('card',{l:x.card_last4})),
     el('span','tl-tkd',[x.per_purchase?tw('per',{amt:tlMoney(x.currency,x.per_purchase)}):null,x.per_month?' · '+tw('month',{amt:tlMoney(x.currency,x.per_month)}):null,x.mccs.length?' · '+tw('mcc',{m:x.mccs.join(', ')}):null,x.expires_at?' · '+tw('until',{d:day(x.expires_at)}):null]),

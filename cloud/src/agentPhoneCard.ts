@@ -123,13 +123,13 @@ export function cardFaceHtml(d: PhoneCardData, design: CardDesign): string {
   const cap = c && c.per_month ? Number(c.per_month) : 0;
   const pct = spent !== null && cap > 0 ? Math.min(100, (spent / cap) * 100) : 0;
   const mark = design.logo ? `<img src="${esc(design.logo)}" alt="">` : esc(design.initials ?? initialsOf(d.company));
-  const claude = BRAND_LOGOS.claude!.uri, visa = BRAND_LOGOS["visa-white"]!.uri, alta = BRAND_LOGOS.alta!.uri;
+  const claude = BRAND_LOGOS.claude!.uri, alta = BRAND_LOGOS.alta!.uri;
   return `<div class="acard p-${preset}${light ? " ink" : ""}${d.status !== "active" ? " frozen" : ""}" role="img" aria-label="${esc(`${d.name}, ${d.company}: ${c ? `card ending ${c.last4}` : "no card"}, ${STATUS[d.status] ?? d.status}`)}"><span class="ac-shine"></span>
 <div class="ac-top"><span class="ac-mark">${mark}</span><span class="ac-who"><b class="ac-name">${esc(d.name)}</b><span class="ac-co">${esc(d.company.replace(/\s*\([^)]*\)\s*$/, ""))}</span></span>${c ? `<span class="ac-plate"><img src="${AIRWALLEX_LOGO_DATA_URL}" alt="Airwallex"></span>` : ""}</div>
 <div class="ac-mid">${c ? `<span class="ac-chip"></span>${NFC}` : ""}<span class="ac-st ${esc(d.status.replace(/[^a-z]/g, ""))}"><i></i>${esc(STATUS[d.status] ?? d.status)}</span></div>
 <div class="ac-num${c && c.last4 ? "" : " none"}">${c && c.last4 ? `•••• •••• •••• ${esc(c.last4)}` : "No card of its own"}</div>
 ${spent !== null && c ? `<div class="ac-meter"><span class="ac-ml"><b>${money(c.currency, c.spent_month)}</b><span>of ${money(c.currency, c.per_month)} this month</span></span><span class="ac-bar${spent >= cap ? " full" : ""}"><span class="w${Math.round(pct)}"></span></span></div>` : "<div></div>"}
-<div class="ac-foot">${d.model ? `<span class="ac-model"><img src="${claude}" alt="Claude">${esc(modelShort(d.model))}</span>` : `<span class="ac-model code">Code only</span>`}${(ALTA_AGENTS as readonly string[]).includes(d.agent) ? `<span class="ac-alta"><img src="${alta}" alt="Alta (formerly Metal)"></span>` : ""}${d.demo && c ? `<span class="ac-tag">Simulated</span>` : ""}${c && c.last4 ? `<img class="ac-net" src="${visa}" alt="Visa">` : ""}</div></div>`;
+<div class="ac-foot">${d.model ? `<span class="ac-model"><img src="${claude}" alt="Claude">${esc(modelShort(d.model))}</span>` : `<span class="ac-model code">Code only</span>`}${(ALTA_AGENTS as readonly string[]).includes(d.agent) ? `<span class="ac-alta"><img src="${alta}" alt="Alta (formerly Metal)"></span>` : ""}${d.demo && c ? `<span class="ac-tag">Simulated</span>` : ""}${c && c.last4 ? `<span class="ac-net txt">Visa</span>` : ""}</div></div>`;
 }
 
 /** The meter's width as a class: the page's style allows no inline style attribute. */

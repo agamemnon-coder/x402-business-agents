@@ -1,5 +1,5 @@
-// One purchase, one token (cloud/src/tokenLife.ts, 23 Nov): the Tokenisation page leads with the Visa network token's
-// life as the vic-5 run record holds it (issued, bound, used once, reuse refused) and Purser's agent tokens as the
+// One purchase, one token (cloud/src/tokenLife.ts, 23 Nov): the Tokenisation page leads with Airi's single-use
+// credential's life as the vic-5 run record holds it (issued, bound, used once, reuse refused) and Purser's agent tokens as the
 // partner-rails record holds them. Every figure from those records, every id masked, each with its label.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -47,5 +47,9 @@ describe("the token's life", () => {
     expect(TOKEN_LIFE_JS).toContain("if(RM()||!('IntersectionObserver' in window))go();");
     expect(TOKEN_LIFE_CSS).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ \.tl-stop \{ transition: none; opacity: 1; transform: none; \}/);
     expect(TOKEN_LIFE_JS).toContain("sandbox:'Airwallex sandbox · Airi beta · test money'");
+  });
+  it("calls it Airi's single-use credential from one run, not a Visa network token per purchase, with no Visa mark (review, 21 Nov)", () => {
+    expect(TOKEN_LIFE_JS).toContain("Airi\\'s single-use credential (Airi reports token_type DPAN; sandbox test card), one recorded run (vic-5)");
+    expect(TOKEN_LIFE_JS).not.toMatch(/Each agent purchase|Visa network token|Visa-netwerktoken|BRAND_LOGOS\['visa/);
   });
 });

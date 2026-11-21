@@ -120,14 +120,14 @@ function cardFace(x){
   let meter=el('div','');
   if(x.spent!==null&&x.cap>0){const bar=el('span','ac-bar'+(x.spent>=x.cap?' full':''));const f=el('span','');bar.append(f);f.dataset.w=Math.min(100,x.spent/x.cap*100).toFixed(1);
     meter=el('div','ac-meter',[el('span','ac-ml',[el('b','num',C+cents(x.spent)),el('span','',dw('of',{cap:C+cents(x.cap)}))]),bar])}
-  const visa=dkLogo('visa-white'),claude=dkLogo('claude'),alta=dkLogo('alta'),awx=dkLogo('airwallex');
+  const claude=dkLogo('claude'),alta=dkLogo('alta'),awx=dkLogo('airwallex');
   face.append(...[el('span','ac-shine'),
     el('div','ac-top',[mark,el('span','ac-who',[el('b','ac-name',x.name),el('span','ac-co',cardCompany())]),x.last4&&awx?el('span','ac-plate',dkImg(awx,'Airwallex')):null]),
     el('div','ac-mid',[x.last4?el('span','ac-chip'):null,x.last4?dkIc('nfc','ac-nfc'):null,el('span','ac-st '+x.status,[el('i',''),x.statusText])]),
     el('div','ac-num'+(x.last4?' num':' none'),x.last4?'•••• •••• •••• '+x.last4:dw('no_card')),
     meter,
     el('div','ac-foot',[x.model?el('span','ac-model',[claude?dkImg(claude,'Claude'):null,modelShort(x.model)]):el('span','ac-model code',dw('code_only')),
-      ALTA_AGENTS.includes(x.id)&&alta?el('span','ac-alta',dkImg(alta,'Alta (formerly Metal)')):null,x.demo&&x.last4?el('span','ac-tag',dw('simulated')):null,x.last4&&visa?dkImg(visa,'Visa','ac-net'):null]),
+      ALTA_AGENTS.includes(x.id)&&alta?el('span','ac-alta',dkImg(alta,'Alta (formerly Metal)')):null,x.demo&&x.last4?el('span','ac-tag',dw('simulated')):null,x.last4?el('span','ac-net txt','Visa'):null]),
   ].filter(Boolean));
   face.setAttribute('role','img');
   face.setAttribute('aria-label',[x.name,x.last4?'•••• '+x.last4:dw('no_card'),x.statusText,x.spent!==null&&x.cap>0?C+cents(x.spent)+' '+dw('of',{cap:C+cents(x.cap)}):null,x.model?modelShort(x.model):dw('code_only')].filter(Boolean).join(', '));

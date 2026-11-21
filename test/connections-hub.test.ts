@@ -239,7 +239,9 @@ describe("Purser Cloud's Connections page (its own tab since 21 Nov)", () => {
     const card = render("en", { logos: { ...logos, airwallex: { name: "Airwallex", uri: "data:image/png;base64,AA" } }, icon: (n: string) => el("span", `ic-${n}`) });
     const imgs = (name: string) => find(cardOf(card, name), (n) => n.tag === "img").map((i) => (i as Node & { alt: string }).alt);
     expect(imgs("Airwallex")).toEqual(["Airwallex"]);
-    expect(imgs("Visa via Airwallex Airi")).toEqual(["Visa"]);
+    // Visa in text only (review, 21 Nov).
+    expect(imgs("Visa via Airwallex Airi")).toEqual([]);
+    expect(text(find(cardOf(card, "Visa via Airwallex Airi"), (n) => n.cls.includes("cx-letters"))[0]!)).toBe("Visa");
     expect(imgs("Slack and Microsoft Teams messages")).toEqual(["Slack", "Microsoft Teams"]);
     expect(imgs("Sign in with Google, Microsoft and Apple")).toEqual(["Google", "Microsoft", "Apple"]);
     expect(imgs("Moneybird (API)")).toEqual(["Moneybird"]);
