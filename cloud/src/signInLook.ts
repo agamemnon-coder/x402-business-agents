@@ -1,55 +1,192 @@
-// Purser Cloud's signed-out screens (sign-in, first run, a passkey's enrolment), 21 Nov (the new direction: "premium
-// enterprise layout, better balance and legibility, the passkey as the prominent primary action, minimal motion"). Only
-// the look: the panel on the left gets an eyebrow, icon tiles for its three lines and a small picture of how a payment is
-// approved (an agent proposes; within its limit it pays alone; above it the CFO approves with Face ID); the card gets
-// more air, a larger passkey button and one line on what a passkey is. Scoped to .signed-out and written in the theme's
-// own variables (var(--accent), var(--surface), …), so a new palette applies as it is. Nothing here moves but one slow
-// glow, and not at all under prefers-reduced-motion. Authentication is unchanged: cloud/src/console.ts signInView.
+// Purser Cloud's signed-out screens (sign-in, first run, a passkey's enrolment). 21 Nov, Max, from his mockup: "upgrade
+// purser cloud login page to exactly this, only not with all the text left: just Purser Cloud and some small USP, and
+// animating". On the left: a large globe of particles, its land as dots, turning slowly; the site's wave at the bottom
+// (src/ui/wave.ts); over them the Purser mark, "Purser Cloud", one short line and three small points with icons. On the
+// right: the card as glass, with the heading, the company address, the passkey as the one large action, "New company?
+// Set it up", then "or" and the guest way. No paragraph. Only the look and two canvases: authentication is unchanged
+// (cloud/src/console.ts signInView). Scoped to .signed-out and written in the theme's own variables, light and dark.
+// Under prefers-reduced-motion the globe and the wave are drawn once and stand still.
+
+import { waveScript } from "../../src/ui/wave.js";
 
 export const SIGNIN_CSS = `
-.signed-out .hero { position: relative; overflow: hidden; isolation: isolate; background:
-  radial-gradient(70% 55% at 0% 0%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 70%),
-  radial-gradient(55% 45% at 100% 100%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
-  var(--sunken); }
-.signed-out .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background-image: linear-gradient(color-mix(in srgb, var(--text) 5%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--text) 5%, transparent) 1px, transparent 1px);
-  background-size: 32px 32px; -webkit-mask-image: radial-gradient(75% 65% at 35% 45%, #000, transparent); mask-image: radial-gradient(75% 65% at 35% 45%, #000, transparent); }
-.signed-out .side { max-width: 460px; }
-.signed-out .side .side-eb { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 5px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-.signed-out .side h2 { font-size: clamp(30px, 2.5vw, 46px); line-height: 1.08; letter-spacing: -.03em; font-weight: 750; text-wrap: balance; }
-.signed-out .side > p:not(.side-eb) { font-size: 17px; margin: 10px 0 26px; }
+/* The left panel: a deep ground, the globe and the wave behind the words. */
+.signed-out .hero { position: relative; overflow: hidden; isolation: isolate; border-right: 0; align-content: center; justify-items: start;
+  background: radial-gradient(70% 60% at 40% 30%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    radial-gradient(60% 50% at 0% 100%, color-mix(in srgb, var(--accent-ink, var(--accent)) 18%, transparent), transparent 70%), var(--bg); }
+.signed-out .hero::before { content: none; }
+/* The console's own page-wide wave waits for the signed-in pages: here the panel has its own. */
+.signed-out canvas.pw-wave { display: none; }
+.signed-out .hero canvas { position: absolute; pointer-events: none; }
+.signed-out .hero canvas.si-globe { inset: 0; width: 100%; height: 100%; z-index: -2; }
+.signed-out .hero canvas.si-wave { left: 0; right: 0; bottom: 0; width: 100%; height: 58%; z-index: -1;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 35%); mask-image: linear-gradient(180deg, transparent, #000 35%); }
+.signed-out .side { position: relative; display: flex; flex-direction: column; align-items: flex-start; max-width: 520px; margin: 0; padding: 22vh 0 0 clamp(8px, 3vw, 56px); }
+.signed-out .side .side-mk { order: -1; display: grid; place-items: center; width: 64px; height: 64px; margin: 0 0 22px; border-radius: 18px; color: var(--text);
+  border: 1px solid var(--glass-line, color-mix(in srgb, var(--accent) 30%, var(--border))); background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 34%, var(--surface)), color-mix(in srgb, var(--accent) 12%, var(--surface)));
+  box-shadow: 0 12px 34px -14px color-mix(in srgb, var(--accent) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, .12); }
+.signed-out .side .side-mk svg { width: 30px; height: 30px; }
+.signed-out .side h2 { margin: 0; font-size: clamp(38px, 3.6vw, 60px); line-height: 1.02; font-weight: 780; letter-spacing: -.035em; color: var(--text); }
+.signed-out .side > p { margin: 12px 0 30px; font-size: clamp(17px, 1.35vw, 21px); line-height: 1.4; color: color-mix(in srgb, var(--accent) 35%, var(--muted)); }
 .signed-out .side ul { gap: 14px; }
-.signed-out .side li { align-items: center; gap: 12px; font-size: 15.5px; }
-.signed-out .side .si { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border)); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--accent); }
+.signed-out .side li { align-items: center; gap: 14px; font-size: 16.5px; font-weight: 550; color: var(--text); }
+.signed-out .side .si { flex: none; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: color-mix(in srgb, var(--accent) 70%, var(--text));
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .signed-out .side .si .i { margin: 0; color: inherit; }
-/* How a payment is approved: the agent's proposal, then its two ways, joined by a hairline. */
-.signed-out .side-flow { margin: 30px 0 0; padding: 16px 16px 14px; border: 1px solid var(--border); border-radius: 16px; background: color-mix(in srgb, var(--surface) 78%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: var(--shadow); }
-.signed-out .side-flow figcaption { color: var(--faint); font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.signed-out .side-flow ol { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
-.signed-out .side-flow li { --lc: var(--muted); position: relative; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 11px; border: 1px solid color-mix(in srgb, var(--lc) 28%, var(--border)); background: var(--surface); font-size: 14px; line-height: 1.35; color: var(--text); }
-.signed-out .side-flow .si { width: 28px; height: 28px; border-radius: 8px; border-color: color-mix(in srgb, var(--lc) 30%, var(--border)); background: color-mix(in srgb, var(--lc) 12%, var(--surface)); color: var(--lc); }
-.signed-out .side-flow .sf-alone { --lc: var(--ok); margin-left: 26px; } .signed-out .side-flow .sf-face { --lc: var(--accent); margin-left: 26px; }
-.signed-out .side-flow .sf-alone::before, .signed-out .side-flow .sf-face::before { content: ""; position: absolute; left: -15px; top: -9px; width: 14px; height: calc(50% + 9px); border: solid var(--border); border-width: 0 0 1px 1px; border-bottom-left-radius: 8px; }
-.signed-out .side-flow .sf-face::before { top: -60%; height: calc(110% + 0px); }
-.signed-out .side-flow .sf-face { animation: sf-glow 6s ease-in-out infinite; }
-@keyframes sf-glow { 0%, 60%, 100% { box-shadow: none; } 75% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); } }
-/* The card: more air, the passkey first and large, the guest way quiet below it. */
-.signed-out .auth { border-radius: 20px; padding: 38px 38px 30px; box-shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 28px 64px -28px rgba(16, 24, 40, .32); }
-.signed-out .auth h1 { font-size: 30px; letter-spacing: -.025em; }
-.signed-out .auth p.what { color: var(--muted); font-size: 15px; line-height: 1.55; }
-.signed-out .auth .btn.primary.big { width: 100%; min-height: 54px; margin-top: 18px; border-radius: 12px; font-size: 16px; font-weight: 650; box-shadow: 0 12px 28px -12px color-mix(in srgb, var(--accent) 75%, transparent); transition: transform .15s ease, box-shadow .15s ease; }
-.signed-out .auth .btn.primary.big:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--accent) 85%, transparent); }
+/* The right: a soft light behind the card, the card as glass. */
+.signed-out main { isolation: isolate; }
+.signed-out main::before { content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none; background: radial-gradient(50% 50% at 50% 50%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%); }
+.signed-out .auth { position: relative; border-radius: 26px; padding: 40px 40px 30px; border: 1px solid var(--glass-line, color-mix(in srgb, var(--accent) 20%, var(--border)));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 78%, transparent), color-mix(in srgb, var(--surface) 60%, transparent));
+  -webkit-backdrop-filter: blur(22px) saturate(1.25); backdrop-filter: blur(22px) saturate(1.25);
+  box-shadow: 0 40px 90px -40px rgba(8, 6, 28, .55), 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent), inset 0 1px 0 rgba(255, 255, 255, .07); }
+.signed-out .auth::before { content: ""; position: absolute; left: 18%; right: 18%; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 75%, #fff), transparent); }
+.signed-out .auth h1 { margin: 0 0 22px; font-size: clamp(32px, 2.6vw, 42px); font-weight: 780; letter-spacing: -.03em; }
+.signed-out .auth label { font-weight: 650; font-size: 15px; }
+.signed-out .auth .addr { min-height: 56px; border-radius: 14px; border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); background: color-mix(in srgb, var(--bg) 55%, var(--surface)); }
+.signed-out .auth .addr .field { min-height: 54px; font-size: 16.5px; background: transparent; }
+.signed-out .auth .addr span { align-self: stretch; display: grid; place-items: center; padding: 0 16px; border-left: 1px solid var(--border); font-size: 16px; color: var(--text); }
+.signed-out .auth .btn.primary.big { width: 100%; min-height: 58px; margin-top: 18px; border-radius: 15px; font-size: 17px; font-weight: 700; border: 0;
+  background: var(--btn-bg, var(--accent)); color: var(--btn-ink, #fff); box-shadow: 0 16px 34px -14px color-mix(in srgb, var(--accent) 80%, transparent); transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+.signed-out .auth .btn.primary.big:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); box-shadow: 0 20px 40px -14px color-mix(in srgb, var(--accent) 90%, transparent); }
 .signed-out .auth .btn.primary.big:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 3px; }
-.signed-out .auth .pk-note { display: flex; align-items: center; gap: 7px; margin: 10px 2px 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
-.signed-out .auth .pk-note .ic { flex: none; display: inline-flex; color: var(--ok); }
-.signed-out .auth .pk-note .ic svg { width: 14px; height: 14px; }
-.signed-out .auth .guest .btn.ghost { min-height: 46px; border-radius: 12px; }
-.signed-out .trust { font-size: 12px; }
-@media (max-width: 1023px) { .signed-out .side-flow, .signed-out .side .side-eb { display: none; } .signed-out .side h2 { font-size: 24px; } .signed-out .side > p:not(.side-eb) { margin: 4px 0 0; font-size: 15px; } }
-@media (max-width: 640px) { .signed-out .auth { padding: 18px 18px 14px; border-radius: 16px; } .signed-out .auth h1 { font-size: 24px; } .signed-out .auth label { margin-top: 12px; } .signed-out .auth .btn.primary.big { min-height: 50px; margin-top: 12px; } .signed-out .auth .pk-note { margin-top: 6px; font-size: 12px; } .signed-out .auth .alt { margin-top: 10px; } .signed-out .auth .guest { margin-top: 8px; gap: 6px; } .signed-out .auth .guest .btn.ghost { min-height: 44px; } }
+.signed-out .auth .alt { margin: 16px 0 0; text-align: center; font-size: 15px; color: var(--muted); }
+.signed-out .auth .alt a { font-weight: 700; }
+.signed-out .auth .guest { margin-top: 16px; gap: 12px; }
+.signed-out .auth .guest .btn.ghost { min-height: 52px; border-radius: 999px; font-size: 16px; font-weight: 650; background: transparent; border-color: color-mix(in srgb, var(--text) 22%, var(--border)); }
+.signed-out .auth .guest .btn.ghost:hover:not(:disabled) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.signed-out .auth .guest .gsub { font-size: 13px; }
+.signed-out .trust { font-size: 12px; color: var(--faint); }
+/* A laptop or wider: the card's own width, a little more air. */
+@media (min-width: 1024px) { .signed-out .auth { max-width: 520px; } }
+@media (max-width: 1023px) {
+  .signed-out .hero { padding: 22px 20px; justify-items: start; border-bottom: 1px solid var(--border); }
+  .signed-out .side { padding: 0; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+  .signed-out .side .side-mk { width: 46px; height: 46px; margin: 0; border-radius: 14px; } .signed-out .side .side-mk svg { width: 22px; height: 22px; }
+  .signed-out .side h2 { font-size: 30px; }
+  .signed-out .side > p { flex-basis: 100%; margin: 6px 0 12px; font-size: 16px; }
+  .signed-out .side ul { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .signed-out .side li { font-size: 14px; gap: 8px; } .signed-out .side .si { width: 30px; height: 30px; border-radius: 9px; } .signed-out .side .si svg { width: 15px; height: 15px; }
+  .signed-out .hero canvas.si-wave { height: 75%; }
+}
+@media (max-width: 640px) {
+  .signed-out .hero { padding: 18px 16px 20px; }
+  .signed-out .side h2 { font-size: 26px; }
+  .signed-out .side > p { display: block; margin: 4px 0 0; font-size: 14.5px; }
+  .signed-out .side ul { display: none; }
+  .signed-out .hero canvas.si-wave { height: 70%; opacity: .5; }
+  .signed-out .side > p { text-shadow: 0 1px 8px var(--bg); }
+  .signed-out .auth { padding: 20px 18px 16px; border-radius: 20px; }
+  .signed-out .auth h1 { font-size: 26px; margin-bottom: 10px; }
+  .signed-out .auth .addr, .signed-out .auth .addr .field { min-height: 50px; }
+  .signed-out .auth .btn.primary.big { min-height: 52px; margin-top: 12px; font-size: 16px; }
+  .signed-out .auth .alt { margin-top: 10px; font-size: 14px; } .signed-out .auth .guest { margin-top: 10px; gap: 8px; }
+  .signed-out .auth .guest .btn.ghost { min-height: 46px; }
+}
 /* 4K (Max, 21 Nov: "razor-sharp at 4K"): a larger measure on very wide screens, never a narrow column. */
-@media (min-width: 1920px) { .signed-out .side { max-width: 560px; } .signed-out .side li { font-size: 17px; } .signed-out .side-flow li { font-size: 15px; } .signed-out .auth { max-width: 520px; padding: 44px 44px 36px; } .signed-out .auth h1 { font-size: 34px; } }
+@media (min-width: 1920px) { .signed-out .side { max-width: 640px; } .signed-out .side li { font-size: 18px; } .signed-out .auth { max-width: 580px; padding: 48px 48px 36px; } }
 @media (min-width: 2400px) { .signed-out .side, .signed-out .auth, .signed-out .trust { zoom: 1.3; } }
 @media (min-width: 3200px) { .signed-out .side, .signed-out .auth, .signed-out .trust { zoom: 1.65; } }
-@media (prefers-reduced-motion: reduce) { .signed-out .side-flow .sf-face, .signed-out .auth .btn.primary.big { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .signed-out .auth .btn.primary.big, .signed-out .auth .guest .btn.ghost { transition: none; } }
 `;
+
+/**
+ * The land, roughly (longitude, latitude), for the globe's dotted continents: hand-drawn outlines, coarse on purpose
+ * (a picture, not a map); a dot on the sphere is land when it falls inside one of them.
+ */
+const LAND: number[][][] = [
+  // North America
+  [[-168, 66], [-162, 70], [-156, 71], [-140, 70], [-128, 70], [-115, 68], [-100, 68], [-95, 72], [-85, 70], [-80, 66], [-75, 62], [-65, 60], [-60, 55], [-56, 52], [-60, 47], [-66, 44], [-70, 42], [-74, 40], [-76, 35], [-81, 31], [-80, 25], [-82, 27], [-84, 30], [-90, 29], [-97, 27], [-97, 22], [-95, 19], [-90, 21], [-87, 21], [-88, 16], [-84, 15], [-83, 10], [-79, 9], [-80, 7], [-85, 10], [-92, 14], [-100, 17], [-105, 20], [-110, 24], [-112, 29], [-115, 31], [-117, 32], [-120, 34], [-124, 40], [-124, 47], [-127, 51], [-133, 56], [-140, 60], [-150, 60], [-158, 57], [-165, 60]],
+  // Arctic islands of Canada
+  [[-120, 72], [-100, 74], [-85, 74], [-75, 78], [-90, 81], [-110, 78], [-122, 76]],
+  // Greenland
+  [[-73, 78], [-60, 82], [-35, 83], [-20, 80], [-20, 72], [-30, 68], [-42, 60], [-50, 62], [-55, 68], [-60, 75]],
+  // South America
+  [[-80, 9], [-75, 11], [-70, 12], [-62, 10], [-55, 6], [-50, 2], [-48, -1], [-40, -3], [-35, -6], [-35, -10], [-39, -15], [-40, -22], [-48, -26], [-53, -34], [-58, -38], [-62, -40], [-65, -45], [-68, -50], [-69, -55], [-73, -53], [-75, -46], [-73, -37], [-71, -30], [-71, -18], [-76, -14], [-81, -6], [-80, -2], [-78, 2], [-77, 7]],
+  // Europe
+  [[-10, 36], [-9, 43], [-2, 44], [-1, 46], [-5, 48], [2, 51], [5, 53], [8, 54], [8, 57], [10, 58], [5, 59], [5, 62], [12, 66], [18, 70], [26, 71], [31, 70], [40, 67], [44, 68], [50, 68], [60, 69], [60, 55], [50, 47], [40, 46], [37, 45], [30, 45], [28, 41], [26, 40], [23, 38], [20, 40], [19, 42], [13, 45], [16, 41], [16, 38], [12, 38], [10, 44], [7, 44], [3, 43], [0, 39], [-2, 37], [-6, 36]],
+  // Great Britain, Ireland, Iceland
+  [[-6, 50], [1, 51], [2, 53], [-1, 55], [-2, 58], [-5, 59], [-6, 56], [-5, 54], [-3, 52]],
+  [[-10, 52], [-6, 52], [-6, 55], [-8, 55], [-10, 54]],
+  [[-24, 64], [-14, 64], [-14, 66], [-22, 67]],
+  // Africa, Madagascar
+  [[-17, 21], [-16, 28], [-10, 30], [-6, 36], [0, 36], [10, 37], [11, 33], [20, 31], [25, 32], [32, 31], [34, 28], [38, 22], [43, 12], [51, 12], [50, 8], [45, 2], [40, -3], [40, -10], [35, -17], [35, -24], [32, -28], [27, -34], [20, -35], [18, -32], [15, -26], [12, -18], [13, -10], [12, -5], [9, -1], [9, 4], [5, 5], [0, 5], [-5, 5], [-8, 4], [-13, 8], [-17, 13]],
+  [[44, -13], [50, -15], [50, -17], [47, -25], [44, -24], [43, -18]],
+  // Asia, with Arabia and India
+  [[26, 40], [28, 41], [30, 45], [37, 45], [40, 46], [50, 47], [60, 55], [60, 69], [70, 73], [80, 73], [90, 76], [100, 78], [110, 77], [120, 73], [130, 71], [140, 72], [150, 71], [160, 70], [170, 70], [180, 69], [180, 65], [175, 62], [165, 60], [160, 55], [157, 51], [155, 57], [150, 59], [142, 59], [136, 55], [140, 48], [135, 43], [130, 42], [128, 39], [126, 35], [126, 38], [122, 40], [121, 37], [119, 35], [122, 31], [120, 26], [117, 23], [110, 21], [108, 18], [106, 10], [104, 9], [101, 13], [100, 7], [104, 1], [101, 3], [98, 8], [98, 16], [94, 17], [92, 22], [88, 22], [85, 20], [80, 15], [80, 10], [77, 8], [73, 17], [72, 21], [67, 24], [62, 25], [57, 25], [56, 27], [52, 28], [48, 30], [50, 26], [52, 24], [56, 24], [59, 22], [55, 17], [52, 16], [45, 13], [43, 15], [40, 20], [36, 26], [34, 28], [35, 32], [36, 36], [30, 37]],
+  // Japan, Sumatra, Borneo, Java, New Guinea, Sri Lanka, the Philippines
+  [[130, 31], [132, 34], [135, 34], [140, 35], [141, 38], [142, 42], [145, 44], [141, 45], [140, 41], [136, 37], [133, 35], [130, 33]],
+  [[95, 5], [98, 4], [104, -2], [106, -6], [102, -4], [96, 2]],
+  [[109, 2], [111, -3], [116, -4], [118, 1], [117, 7], [113, 4]],
+  [[105, -6], [114, -7], [114, -8], [106, -7]],
+  [[131, -1], [138, -2], [146, -6], [150, -10], [142, -9], [138, -8], [132, -4]],
+  [[80, 6], [82, 7], [81, 10], [79, 9]],
+  [[120, 18], [122, 18], [124, 13], [126, 7], [122, 7], [121, 13]],
+  // Australia, New Zealand
+  [[114, -22], [114, -26], [115, -34], [118, -35], [124, -33], [129, -32], [134, -32], [138, -35], [140, -38], [146, -39], [150, -37], [153, -32], [153, -25], [150, -22], [146, -19], [143, -11], [141, -13], [141, -17], [137, -15], [136, -12], [132, -11], [129, -15], [125, -14], [122, -17], [118, -20]],
+  [[172, -34], [178, -38], [175, -41], [172, -44], [167, -46], [170, -43], [174, -39]],
+  // Antarctica's coast
+  [[-180, -72], [-120, -73], [-60, -64], [-40, -78], [0, -70], [60, -67], [120, -66], [180, -72], [180, -90], [-180, -90]],
+];
+
+/** The globe: dots on a sphere (land bright, sea faint), turning slowly, a glow at its rim; still under reduced motion. */
+const GLOBE_JS = `
+(function () {
+  var c = document.querySelector("canvas.si-globe"); if (!c || !c.getContext || !window.matchMedia) return;
+  var g = c.getContext("2d"); if (!g) return;
+  var LAND = ${JSON.stringify(LAND)};
+  var boxes = LAND.map(function (p) { var b = [999, 999, -999, -999]; p.forEach(function (q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }); return b; });
+  function inside(p, x, y) { var o = false; for (var i = 0, j = p.length - 1; i < p.length; j = i++) { var a = p[i], b = p[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) o = !o; } return o; }
+  function land(lon, lat) { for (var k = 0; k < LAND.length; k++) { var b = boxes[k]; if (lon < b[0] || lon > b[2] || lat < b[1] || lat > b[3]) continue; if (inside(LAND[k], lon, lat)) return true; } return false; }
+  var still = matchMedia("(prefers-reduced-motion: reduce)").matches, dark = matchMedia("(prefers-color-scheme: dark)");
+  var pts = [], W = 0, H = 0, dpr = 1, raf = 0, seen = true, rot = -2.85, last = 0, ink = [180, 168, 255], acc = "#a398ff";
+  function theme() { var cs = getComputedStyle(document.documentElement), a = (cs.getPropertyValue("--accent") || "").trim(); acc = a || acc;
+    var m = /^#([0-9a-f]{6})$/i.exec(acc); if (m) { var n = parseInt(m[1], 16); ink = [n >> 16 & 255, n >> 8 & 255, n & 255]; } }
+  function sample(n) {
+    pts = []; var gold = Math.PI * (3 - Math.sqrt(5));
+    for (var i = 0; i < n; i++) { var y = 1 - 2 * (i + 0.5) / n, r = Math.sqrt(1 - y * y), th = i * gold, x = Math.cos(th) * r, z = Math.sin(th) * r;
+      var lat = Math.asin(y) * 180 / Math.PI, lon = Math.atan2(z, x) * 180 / Math.PI, l = land(lon, lat);
+      if (l || i % 4 === 0) pts.push([x, y, z, l ? 1 : 0, (i * 9301 + 49297) % 233280 / 233280]); }
+  }
+  function size() { var r = c.getBoundingClientRect(); dpr = Math.min(2, window.devicePixelRatio || 1); W = Math.max(1, r.width); H = Math.max(1, r.height);
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); sample(W < 700 ? 12000 : 34000); theme(); }
+  function frame(now) {
+    raf = 0; if (!last) last = now; var dt = Math.min(64, now - last); last = now; if (!still) rot += dt * 0.00006;
+    var lite = !dark.matches && document.documentElement.getAttribute("data-theme") !== "dark";
+    if (document.documentElement.getAttribute("data-theme") === "light") lite = true;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    var wide = W >= 700, R = wide ? Math.min(W * 0.62, H * 0.5) : Math.max(H * 0.95, 120), cx = wide ? W * 0.56 : W * 0.86, cy = wide ? H * 0.4 : H * 0.42;
+    var col = "rgba(" + ink[0] + "," + ink[1] + "," + ink[2] + ",";
+    // The atmosphere, then the sphere's body (so the wave behind it is covered), then a lit rim.
+    var at = g.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.28); at.addColorStop(0, col + (lite ? ".22)" : ".38)")); at.addColorStop(1, col + "0)");
+    g.fillStyle = at; g.beginPath(); g.arc(cx, cy, R * 1.28, 0, Math.PI * 2); g.fill();
+    var body = g.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R); body.addColorStop(0, lite ? "rgba(255,255,255,.75)" : "rgba(30,26,72,.92)"); body.addColorStop(1, lite ? "rgba(236,232,252,.92)" : "rgba(10,10,28,.96)");
+    g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
+    var cr = Math.cos(rot), sr = Math.sin(rot), tl = 0.42, ct = Math.cos(tl), st = Math.sin(tl);
+    for (var i = 0; i < pts.length; i++) {
+      var p = pts[i], x = p[0] * cr + p[2] * sr, z0 = -p[0] * sr + p[2] * cr, y = p[1] * ct - z0 * st, z = p[1] * st + z0 * ct;
+      if (z <= 0.02) continue;
+      var sx = cx - x * R, sy = cy - y * R; if (sx < -4 || sy < -4 || sx > W + 4 || sy > H + 4) continue;
+      var lim = 1 - z, a = p[3] ? (lite ? 0.35 + 0.5 * z : 0.4 + 0.6 * z) * (0.75 + 0.25 * p[4]) : (lite ? 0.1 : 0.12) * z;
+      a *= 1 + lim * lim * (p[3] ? 0.9 : 1.6);
+      var s = p[3] ? (wide ? 0.95 : 0.8) * (0.6 + 0.5 * z) : 0.6;
+      g.fillStyle = (p[3] && z > 0.55 && !lite ? "rgba(236,232,255," : col) + Math.min(1, a).toFixed(3) + ")";
+      g.fillRect(sx - s, sy - s, s * 2, s * 2);
+    }
+    var rim = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); rim.addColorStop(0, col + (lite ? ".7)" : ".95)")); rim.addColorStop(0.55, col + ".05)"); rim.addColorStop(1, col + ".25)");
+    g.strokeStyle = rim; g.lineWidth = wide ? 2 : 1.4; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+    if (!still) go();
+  }
+  function go() { if (!raf && seen && !document.hidden && c.getClientRects().length) raf = requestAnimationFrame(frame); }
+  size();
+  if (still) { frame(performance.now()); if ("ResizeObserver" in window) new ResizeObserver(function () { size(); frame(performance.now()); }).observe(c); return; }
+  go();
+  if ("ResizeObserver" in window) new ResizeObserver(function () { size(); go(); }).observe(c); else addEventListener("resize", function () { size(); go(); });
+  if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { seen = es[0].isIntersecting; last = 0; if (seen) go(); }).observe(c);
+  document.addEventListener("visibilitychange", function () { last = 0; go(); });
+  dark.addEventListener && dark.addEventListener("change", function () { theme(); go(); });
+})();`;
+
+/** The sign-in's script: the globe and the wave at the bottom of the left panel. */
+export const SIGNIN_JS = `${GLOBE_JS}
+${waveScript({ selector: "canvas.si-wave", placement: "hero", density: 0.7, intensity: 1.15 })}`;

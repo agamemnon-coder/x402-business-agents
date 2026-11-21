@@ -148,10 +148,14 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
     }
   }
   ok(await p.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
-  // 21 Nov (the new direction): the passkey the one primary action, with its line on what a passkey is; the guest way
-  // below it; on a wide screen the panel shows how a payment is approved (an agent, alone within its limit, Face ID above).
-  ok(await p.locator(".auth .btn.primary").count() === 1 && await p.isVisible(".auth .pk-note") && await p.isVisible("#guest"), `${tag}: one primary action (the passkey), its note, the guest way`);
-  if (width >= 1024) ok(await p.locator(".side-flow li").count() === 3 && await p.isVisible(".side-flow"), `${tag}: the panel shows how a payment is approved`);
+  // 21 Nov (Max, his mockup: "just Purser Cloud and some small USP, and animating"; no paragraphs): the passkey the one
+  // primary action, "New company? Set it up", the guest way below it; no paragraph in the card. The panel: the mark,
+  // "Purser Cloud", one line and (on a wider screen) three small points; the globe and the wave drawn behind them.
+  ok(await p.locator(".auth .btn.primary").count() === 1 && await p.isVisible("#guest") && await p.isVisible(".auth .alt a[href='#/start']") && await p.locator(".auth p.what, .auth .pk-note").count() === 0, `${tag}: one primary action (the passkey), set it up, the guest way, no paragraph`);
+  ok(await p.isVisible(".hero .side-mk") && (await p.textContent(".hero .side h2"))?.trim() === tr("en", "cs.side.title") && await p.isVisible(".hero canvas.si-globe") && await p.isVisible(".hero canvas.si-wave"), `${tag}: the panel: the mark, Purser Cloud, the globe and the wave`);
+  const drawn = await p.evaluate(() => { const c = document.querySelector("canvas.si-globe") as HTMLCanvasElement | null; if (!c || !c.width) return 0; const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4 * 97) if (d[i]! > 0) n++; return n; });
+  ok(drawn > 50, `${tag}: the globe is drawn (${drawn} samples)`);
+  if (width >= 1024) ok(await p.locator(".hero .side li").count() === 3 && await p.isVisible(".hero .side ul"), `${tag}: the panel's three small points`);
   if (width >= 2560 && card) ok(card.width >= 560, `${tag}: the card is no narrow column (${Math.round(card.width)} px)`);
   ok((await p.textContent(".trust"))!.includes(tr("en", "cs.trust_works")) && (await p.textContent(".trust"))!.includes(tr("en", "cs.trust_test")), `${tag}: the trust line`);
   ok(await p.locator("header .brand .mk svg").count() === 1, `${tag}: the brand's feather mark`);

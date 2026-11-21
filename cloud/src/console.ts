@@ -8,7 +8,7 @@
 import { CONSOLE_PREMIUM_CSS } from "../../src/ui/premium.js";
 import { CONSOLE_WAVE_JS, OVERVIEW_PLUS_CSS, OVERVIEW_PLUS_JS } from "./consoleOverviewPlus.js";
 import { ASK_BUTTON_JS } from "./ask/page.js";
-import { SIGNIN_CSS } from "./signInLook.js";
+import { SIGNIN_CSS, SIGNIN_JS } from "./signInLook.js";
 import { PREVIEW_TAGS } from "./brand.js";
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
@@ -463,8 +463,7 @@ ${siteHeader(null)}
 <span class="who-am-i"><span class="cosw" id="cosw"><a class="co" id="co" href="#/company"></a><button type="button" class="co-more" id="co-more" aria-haspopup="menu" aria-expanded="false" aria-controls="co-menu" aria-label="Switch company" hidden>${svg("chevron-down", 16)}</button><span class="co-menu" id="co-menu" role="menu" aria-label="Switch company" hidden></span></span><span id="who"></span><span id="ask-slot"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" id="testchip" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
 <div class="demo-ribbon" id="demo" hidden><div class="wrap"><p class="dr">${svg("flask", 14)}<span class="dr-full" data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><span class="dr-short">${SHELL_WORDS.en.demo_short}</span><a href="#/sign-in" id="demo-out"><span class="lw" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</span><span class="lv">${SHELL_WORDS.en.demo_leave}</span></a></p></div></div>
-<div class="hero"><div class="side"><p class="side-eb" data-t="cs.side.eyebrow">${tr("en", "cs.side.eyebrow")}</p><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${([["cs.side.1", "file-check"], ["cs.side.2", "scan-face"], ["cs.side.3", "database"]] as const).map(([k, i]) => `<li><span class="si">${svg(i, 18)}</span><span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul>
-<figure class="side-flow" aria-labelledby="sf-h"><figcaption id="sf-h" data-t="cs.side.flow">${tr("en", "cs.side.flow")}</figcaption><ol><li class="sf-agent"><span class="si">${svg("bot", 16)}</span><span data-t="cs.side.flow_agent">${tr("en", "cs.side.flow_agent")}</span></li><li class="sf-alone"><span class="si">${svg("zap", 16)}</span><span data-t="cs.side.flow_alone">${tr("en", "cs.side.flow_alone")}</span></li><li class="sf-face"><span class="si">${svg("scan-face", 16)}</span><span data-t="cs.side.flow_face">${tr("en", "cs.side.flow_face")}</span></li></ol></figure></div></div>
+<div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><span class="side-mk" aria-hidden="true">${svg("feather", 30)}</span><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${([["cs.side.1", "file-check"], ["cs.side.2", "scan-face"], ["cs.side.3", "database"]] as const).map(([k, i]) => `<li><span class="si">${svg(i, 18)}</span><span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div><canvas class="si-globe" aria-hidden="true"></canvas><canvas class="si-wave" aria-hidden="true"></canvas></div>
 <main><div class="wrap subnav-wrap"><nav class="subnav" id="subnav" hidden></nav></div><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
 <p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>
@@ -603,8 +602,11 @@ function signInView(){
   const status=el('div','');status.setAttribute('role','status');
   const b=btn(t('cs.sign_in_passkey'),'primary big','scan-face');
   // What Purser Cloud is (13 Nov), as the card's own lede: one line, so the card and the trust line still fit a phone.
-  const card=el('div','card auth',[el('h1','',t('cs.sign_in')),el('p','what',t('cs.what_cloud')),
-    el('label','',t('cs.company_address')),el('div','addr',[slug,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),b,el('p','pk-note',[ic('lock'),t('cs.passkey_note')]),status,
+  // 21 Nov (Max, his mockup: "no paragraphs"): the card is the heading, the address, the passkey, set it up, or the
+  // guest way; what Purser Cloud is stays in the page's description, what a passkey is in the button's title.
+  b.title=t('cs.passkey_note');
+  const card=el('div','card auth',[el('h1','',t('cs.sign_in')),
+    el('label','',t('cs.company_address')),el('div','addr',[slug,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),b,status,
     el('p','alt',[t('cs.new_company'),(()=>{const a=el('a','',t('cs.set_it_up'));a.href='#/start';return a})()])]);
   // Try as guest: the demo company, read only, no passkey and no e-mail (POST /v1/auth/guest). Its data is demo data.
   const gb=btn(t('cs.guest.button'),'ghost big','arrow-up-right');gb.id='guest';
@@ -2112,6 +2114,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
 ${BODY}
 <script type="module" nonce="${n}">${script}
 ${CONSOLE_WAVE_JS}
+${SIGNIN_JS}
 ${ASK_BUTTON_JS}</script>
 </body></html>`;
 }
