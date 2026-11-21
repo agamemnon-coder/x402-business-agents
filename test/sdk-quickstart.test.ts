@@ -40,7 +40,10 @@ describe("the SDK quickstart", () => {
   }, 120_000);
 
   it("is 5 to 8 lines each, takes a placeholder key, never a real one, and installs from the repository", () => {
-    for (const s of [q.ts, q.py]) expect(s.split("\n").length).toBeGreaterThanOrEqual(5), expect(s.split("\n").length).toBeLessThanOrEqual(8);
+    for (const s of [q.ts, q.py]) {
+      expect(s.split("\n").length).toBeGreaterThanOrEqual(5);
+      expect(s.split("\n").length).toBeLessThanOrEqual(8);
+    }
     expect(q.shell).toContain("PURSER_API_KEY=pck_...");
     expect(q.shell).toContain("git clone https://github.com/agamemnon-coder/x402-business-agents");
     expect(`${q.shell}${q.ts}${q.py}`).not.toMatch(/pck_[A-Za-z0-9]{4,}|npm install|pip install/);
