@@ -275,10 +275,10 @@ export function inProductItems(): InProduct[] {
 }
 export function inProductHtml(items: InProduct[] = inProductItems()): string {
   if (!items.length) return "";
-  return `<section class="cinp card" id="in-product" aria-labelledby="cinp-h"><h2 id="cinp-h">${esc("Claude in the product today")}</h2><ul>${items.map((x) => `<li id="inp-${x.id}" data-rec="${esc(x.href.replace(REPO_BLOB, ""))}"><b>${esc(x.title)}</b><span>${esc(x.line)}</span><span class="g"><span class="pill">${esc(x.label)}</span>${link(x.href.replace(REPO_BLOB, ""), x.link)}</span></li>`).join("")}</ul></section>`;
+  // Folded (CI, 21 Nov: /claude keeps its words in sight within its budget): the summary in sight, the five cards in it.
+  return `<details class="fold cinp" id="in-product"><summary>${esc("Claude in the product today: five places, each with its record")}</summary><ul>${items.map((x) => `<li id="inp-${x.id}" data-rec="${esc(x.href.replace(REPO_BLOB, ""))}"><b>${esc(x.title)}</b><span>${esc(x.line)}</span><span class="g"><span class="pill">${esc(x.label)}</span>${link(x.href.replace(REPO_BLOB, ""), x.link)}</span></li>`).join("")}</ul></details>`;
 }
-export const IN_PRODUCT_CSS = `.cinp { padding: 18px 20px; display: grid; gap: 10px; } .cinp h2 { margin: 0; font-size: clamp(19px, 2vw, 23px); }
-.cinp ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+export const IN_PRODUCT_CSS = `.cinp ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
 .cinp li { display: grid; gap: 4px; align-content: start; padding: 12px; border-radius: 14px; background: var(--sunken); min-width: 0; font-size: 14.5px; }
 .cinp li > span { color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; } .cinp .g { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
 .cinp .g a.pf { min-height: 44px; display: inline-flex; align-items: center; }`;
@@ -302,8 +302,7 @@ export function claudeMain(b: ClaudeBody): string {
   ${splitFigure(b.split)}
   ${agentCards(b.agents)}
   ${heldOutTile(b.heldOut ?? null)}
-  ${inProductHtml()}
-  <div class="folds card">${tiles ? `<details class="fold" id="measured"><summary>${esc("Measured, not asserted: five more figures")}</summary>${tiles}</details>` : ""}${folds}${injectionFold()}</div>
+  <div class="folds card">${inProductHtml()}${tiles ? `<details class="fold" id="measured"><summary>${esc("Measured, not asserted: five more figures")}</summary>${tiles}</details>` : ""}${folds}${injectionFold()}</div>
   <a class="open" href="proof#claude">All the proof ${icon("arrow-right", 15)}</a>
 </div></main>`;
 }

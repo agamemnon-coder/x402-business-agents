@@ -89,6 +89,8 @@ export const PILOT_STEPS: readonly { icon: string; title: string; line: string }
 
 /** The buyer's first questions, each answered from what is built, with where to check it. */
 export interface Faq { id: string; q: string; a: string; links: [string, string][] }
+/** The judges' questions among the FAQ (review, 21 Nov), folded together on /business. */
+export const JUDGE_FAQ: readonly string[] = ["bypass", "moat", "tools", "airwallex"];
 export function faqs(): Faq[] {
   // /privacy's reading of the configs: the database and the documents in the EU, the engine not pinned yet, AI and alerts opt-in.
   const z = Object.fromEntries(residency().map((r) => [r.id, r.zone]));
@@ -345,7 +347,10 @@ export function businessPage(): string {
   <p class="bz-sub">${esc(`${PRICING_LEAD} Not yet validated with customers.`)}</p>
   <div class="bz-ctas"><a class="btn" href="${esc(TRY_URL)}">${icon("zap", 18)}${esc(`Try it first (${TRY_TAG.split(" · ")[0]})`)}</a><a class="btn" href="${ONE_PAGER_PATH}">${icon("file-text", 18)}${esc("The one-pager")}</a></div>
 </section>`;
-  const faq = `<div class="bz-faq">${faqs().map((f) => `<details id="faq-${f.id}"><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p><div class="links">${f.links.map(([h, l]) => (/^https:/.test(h) ? outLink(h, l) : siteLink(h, l))).join("")}</div></details>`).join("")}</div>`;
+  const one = (f: Faq) => `<details id="faq-${f.id}"><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p><div class="links">${f.links.map(([h, l]) => (/^https:/.test(h) ? outLink(h, l) : siteLink(h, l))).join("")}</div></details>`;
+  // The judges' questions (review, 21 Nov) in one fold of their own, so the buyer's questions stay the ones in sight.
+  const judges = faqs().filter((f) => JUDGE_FAQ.includes(f.id));
+  const faq = `<div class="bz-faq">${faqs().filter((f) => !JUDGE_FAQ.includes(f.id)).map(one).join("")}${judges.length ? `<details id="faq-judges"><summary>${esc("Questions judges ask")}</summary>${judges.map(one).join("")}</details>` : ""}</div>`;
   const body = `${sectionHead("today", "The problem", "Today it is no agents, or blind trust.")}
   ${options}
   ${sectionHead("outcome", "What changes", "Agents do the routine. You keep the say.")}

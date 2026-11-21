@@ -4,6 +4,7 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { agentView as agentViewOwn, ownModels } from "../src/redesign/agents.js";
 import { AGENT_IDS, agentView } from "../src/redesign/agents.js";
 import { proofData, RECEIPT_SAMPLE_FILE, REPOSITORY_URL } from "../src/redesign/agentData.js";
 import { GUARANTEES } from "../src/redesign/guarantees.js";
@@ -184,5 +185,14 @@ describe("a bundle without them", () => {
       const r = (await get(path, older as Pages)) ?? notFoundResponse(older as Pages);
       expect({ path, status: r.status }).toEqual({ path, status: 404 });
     }
+  });
+});
+
+// Review, 21 Nov: an agent page names the agent's own model, the one its decisions were made by, not the helpers'.
+describe("each agent page names its own model", () => {
+  it("Support on Sonnet, Sourcing on Haiku, Treasury on Opus, as their decisions in the record were made", () => {
+    expect(ownModels(agentViewOwn("support"))).toEqual(["Claude Sonnet 5.5"]);
+    expect(ownModels(agentViewOwn("sourcing"))).toEqual(["Claude Haiku 5.5"]);
+    expect(ownModels(agentViewOwn("treasury"))).toEqual(["Claude Opus 5.5"]);
   });
 });

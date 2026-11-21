@@ -45,7 +45,7 @@ export function judgeQuestions(): { id: string; q: string; a: string; links: [st
   ];
 }
 
-export const NOT_FINISHED_CSS = `.nf { border-left: 4px solid var(--warn, #b54708); } .nf ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+export const NOT_FINISHED_CSS = `.nf { padding: 18px 20px; margin-top: 16px; border-left: 4px solid var(--warn, #b54708); } .nf h2 { margin: 0; display: flex; gap: 8px; align-items: center; } .nf ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
 .jq { display: grid; gap: 8px; } .jq details { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; } .jq summary { font-weight: 650; cursor: pointer; }
 .jq p { margin: 6px 0 0; }`;
 
@@ -53,8 +53,9 @@ export const NOT_FINISHED_CSS = `.nf { border-left: 4px solid var(--warn, #b5470
 export function notFinishedHtml(): string {
   const line = (x: (typeof NOT_FINISHED)[number]) => `<li id="nf-${x.id}">${esc(x.line)}${x.doc ? ` ${outLink(repoHref(x.doc), x.doc)}` : ""}</li>`;
   const qs = judgeQuestions().map((f) => `<details id="jq-${f.id}"><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p><div class="links">${f.links.map(([h, l]) => (/^https:/.test(h) ? outLink(h, l) : `<a href="${esc(h)}">${esc(l)} →</a>`)).join("")}</div></details>`).join("");
-  return `<article class="pc card fd nf" id="${NOT_FINISHED_ID}"><h2><span class="ic">${icon("clock", 19)}</span>${esc(NOT_FINISHED_TITLE)}</h2><ul>${NOT_FINISHED.map(line).join("")}</ul></article>
-<section class="jq" id="judge-questions" aria-labelledby="jq-h"><h2 id="jq-h">${esc("Questions judges ask")}</h2>${qs}</section>`;
+  // The five lines in sight (the limits are the point); the judges' questions in one fold (CI, 21 Nov: the words in sight).
+  return `<section class="card nf" id="${NOT_FINISHED_ID}" aria-labelledby="nf-h"><h2 id="nf-h"><span class="ic">${icon("clock", 19)}</span>${esc(NOT_FINISHED_TITLE)}</h2><ul>${NOT_FINISHED.map(line).join("")}</ul>
+<details class="fold jq" id="judge-questions"><summary>${esc("Questions judges ask")}</summary>${qs}</details></section>`;
 }
 
 /** The README's and JUDGES.md's block: the title in bold and the five lines, the docs linked relative to `base`. */

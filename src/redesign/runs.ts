@@ -834,6 +834,7 @@ const CSS = `.runsp h1 { margin: 24px 0 6px; }
 /* The filters' anchors sit at the filter row: without the script a tap lands there, under the header. */
 .runsp .fa { display: block; height: 0; scroll-margin-top: 72px; } .runsp.js .fa { display: none; }
 .runsp nav.flt { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 6px; }
+.runsp .fltn { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
 .runsp nav.flt a { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font: 650 13.5px/1 Inter, system-ui, sans-serif; text-decoration: none; white-space: nowrap; }
 .runsp nav.flt a b { font-weight: 650; opacity: .75; font-variant-numeric: tabular-nums; }
 ${FILTER_CSS}
@@ -1012,6 +1013,15 @@ export function runsSummary(live: RunRow[], partial: RunRow[], rehearsals: RunRo
   ];
 }
 
+/**
+ * What the filters' counts overlap (review, 21 Nov): a run with several partners, or both sandbox and testnet, is
+ * counted under each filter, so their counts add up to more than All; the line says so, with both sums, when they do.
+ */
+export const overlapLine = (filters: readonly { n: number }[], all: number): string => {
+  const sum = filters.reduce((n, f) => n + f.n, 0);
+  return sum > all ? `<p class="fltn">${esc(`A run with several partners or rails is counted under each filter: together they count ${sum}, for ${all} runs.`)}</p>` : "";
+};
+
 export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes()): string {
   const rows = newestFirst(all), live = rows.filter(isLive), rehearsals = rows.filter(isRehearsal), partial = rows.filter((r) => !isRehearsal(r) && !!r.partial);
   const last = lastLive(live);
@@ -1028,7 +1038,7 @@ ${runsStrip(live)}
 <p class="last">Last live run: ${esc(last.date)}. ${pl(live.length, "live run")}, newest first, every id from its own record. Test money only; what was simulated is said on each run.</p>
 ${faceIdToPaid(times)}
 <span class="fa" id="all"></span>${filters.map((f) => `<span class="fa" id="${f.id}"></span>`).join("")}
-<nav class="flt" aria-label="Filter the runs"><a class="all" href="#all">All <b>${live.length}</b></a>${filters.map((f) => `<a href="#${f.id}">${esc(f.label)} <b>${f.n}</b></a>`).join("")}</nav>
+<nav class="flt" aria-label="Filter the runs"><a class="all" href="#all">All <b>${live.length}</b></a>${filters.map((f) => `<a href="#${f.id}">${esc(f.label)} <b>${f.n}</b></a>`).join("")}</nav>${overlapLine(filters, live.length)}
 <ol class="tl">
 ${live.map((r, i) => entry(r, { newest: i === 0, folded: true, signed: signed[r.key] })).join("\n")}
 </ol>

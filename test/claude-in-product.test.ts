@@ -26,9 +26,9 @@ describe("Claude in the product today", () => {
     expect(items[4]!.line).toMatch(new RegExp(`^All ${lr.decisions} decisions by Claude \\(Sourcing \\d+, Support \\d+, Treasury \\d+\\), ${lr.fallbacks} fallbacks: its own run, not the main run's figures above\\.$`));
     expect(lr.decisions).toBe(111);
   });
-  it("is on /claude, under the main run's split and agents", () => {
+  it("is on /claude, folded, under the main run's split and agents", () => {
     const html = buildPages().claude!;
-    expect(html).toContain('<section class="cinp card" id="in-product"');
+    expect(html).toContain('<details class="fold cinp" id="in-product"><summary>Claude in the product today: five places, each with its record</summary>');
     expect(html.indexOf('id="in-product"')).toBeGreaterThan(html.indexOf('id="agents"'));
   });
 });

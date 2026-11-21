@@ -86,7 +86,7 @@
         {
           "key": "alta-payments",
           "fig": "204",
-          "label": "payments on Alta, each its own transaction",
+          "label": "payments on Alta, each its own transaction (20 Nov long run)",
           "note": "The 20 Nov long run, a test world: 100 sales + 100 supplier purchases + 3 refunds + 1 sweep, every one inside the agents' mandates; the account on Alta's testnet explorer. The main run of 3 Nov: 86.",
           "tag": "testnet",
           "tone": "metal",
