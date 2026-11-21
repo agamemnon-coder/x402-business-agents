@@ -249,7 +249,8 @@ function routePage(req: Request, pages: Pages): Response | null {
   const moved = pages.redirects && Object.hasOwn(pages.redirects, path) ? pages.redirects[path] : undefined;
   if (moved) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: moved } });
   const gone = pages.moved && Object.hasOwn(pages.moved, path) ? pages.moved[path] : undefined;
-  if (gone) return new Response(null, { status: 301, headers: { ...COMMON_HEADERS, location: gone + new URL(req.url).search } });
+  // A target with its own query or fragment (/judge: the tour on Home) keeps it; else the request's query goes with it.
+  if (gone) return new Response(null, { status: 301, headers: { ...COMMON_HEADERS, location: /[?#]/.test(gone) ? gone : gone + new URL(req.url).search } });
   if (path === "/month") return page(pages.month, pages.csp.month);
   if (path === "/demo") return page(pages.demo, pages.csp.demo);
   if (path === "/live") return page(pages.live, pages.csp.live);

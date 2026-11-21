@@ -388,7 +388,8 @@ export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": 
 /** Addresses retired for good, answered 301 so old links keep working: /judge (it became the product tour, then went with it, 13 Nov). */
 // 14 Nov: Metal is now Alta; /metal answers 301 to /alta (old links, the README, the form and the walkthrough point there).
 // 21 Nov (the owner: "merge them: the books page, with T:0 in it"): /t0 answers 301 to /books, where T:0 now lives.
-export const MOVED: Record<string, string> = { "/judge": "/home", "/metal": "/alta", "/t0": "/books" };
+// Review, 21 Nov: /judge opens the judge tour on Home (src/redesign/tour.ts TOUR_START_HREF), not Home's top.
+export const MOVED: Record<string, string> = { "/judge": "/home?tour=1#tour", "/metal": "/alta", "/t0": "/books" };
 /** The label on the public evidence report: the customer in the 30 October case is simulated. */
 export const SIMULATED_CUSTOMER = "Summit Outfitters is a simulated customer run by us; we filed this claim on its behalf (30 October recorded run).";
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */

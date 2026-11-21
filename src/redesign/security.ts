@@ -5,7 +5,8 @@
 // words, and "Not yet"); the CI checks (./ciChecks.ts).
 // Removed on 21 Nov, as superseded or said twice: the layers diagram and its two charts (the architecture and the
 // evidence show the same, newer), the eleven control cards (each control is on the architecture now, with its code), and
-// the red team's rounds of 30 Oct, 31 Oct and 2 Nov (red team v2, 19 Nov, is the evidence item). Nothing here is typed in:
+// the red team's rounds of 30 Oct, 31 Oct and 2 Nov (red team v2, 19 Nov, is the evidence item). Review, 21 Nov: "What is
+// not finished" and the judges' questions (./notFinished.ts, #not-finished, which /proof links). Nothing here is typed in:
 // a doc that no longer says a quoted line is an error, never a guess. No script.
 
 import { existingDoc, foldHtml, outLink, productPage, repoHref, repoText } from "./productPage.js";
@@ -13,6 +14,7 @@ import { esc, icon } from "./ui.js";
 import { CI_CSS, ciChecksHtml } from "./ciChecks.js";
 import { ARCH_CSS, archHtml } from "./securityArch.js";
 import { EVIDENCE_CSS, evidenceHtml, evidenceItems, securityEvidence, type EvGroup } from "./securityEvidence.js";
+import { NOT_FINISHED_CSS, notFinishedHtml } from "./notFinished.js";
 
 export { existingDoc };
 
@@ -99,8 +101,8 @@ export function securityPage(): string {
     key: "security", title: "Security and trust", h1: "Security and trust", label: "Sandbox and testnet only",
     lead: securityLead(groups),
     description: "How Purser guards company money: five layers and their controls, each linked to its code; what we did to break it, each with its record; the CI checks; and what is not in place yet. Sandbox and testnet only.",
-    css: ARCH_CSS + EVIDENCE_CSS + CI_CSS + SECURITY_CSS,
-    body: `<div class="links">${outLink(repoHref(CONTROLS_MATRIX), "Every risk, its control and its test")}</div>\n${archHtml()}\n${evidenceHtml(groups)}\n${limitsHtml()}\n${ciChecksHtml()}`,
+    css: ARCH_CSS + EVIDENCE_CSS + CI_CSS + SECURITY_CSS + NOT_FINISHED_CSS,
+    body: `<div class="links">${outLink(repoHref(CONTROLS_MATRIX), "Every risk, its control and its test")}</div>\n${archHtml()}\n${evidenceHtml(groups)}\n${limitsHtml()}\n${notFinishedHtml()}\n${ciChecksHtml()}`,
     source: "Source: docs/evidence/evidence-wall.json and the records each evidence item links, docs/zero-trust/report.json, and the docs each fold names.",
     real: [
       "Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.",

@@ -87,7 +87,7 @@ export function passJson(p: WaitingPayment, id: PassIdentity): Record<string, un
       auxiliaryFields: [{ key: "proposal", label: "PROPOSAL", value: p.proposalId }, ...(p.testMoney ? [{ key: "money", label: "MONEY", value: "Test money" }] : [])],
       backFields: [
         { key: "sign", label: "Sign in Purser", value: link, attributedValue: `<a href="${link}">Open the payment and sign with your passkey</a>` },
-        { key: "rule", label: "How approval works", value: "This pass only tells you a payment is waiting. It cannot approve or pay. Only your passkey, on the payment's page in Purser, signs the exact terms; one changed cent breaks the signature." },
+        { key: "rule", label: "How approval works", value: "This pass only tells you a payment is waiting. It cannot approve or pay. Only your passkey, on the payment's page in Purser, signs the exact terms; one changed cent and the approval no longer matches the terms." },
       ],
     },
     barcodes: [{ format: "PKBarcodeFormatQR", message: link, messageEncoding: "iso-8859-1", altText: "Open in Purser" }],

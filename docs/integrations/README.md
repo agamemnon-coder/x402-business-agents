@@ -6,7 +6,7 @@ of a line or two and a link to its guide. Purser Cloud shows the same list (its 
 `GET /v1/connections` (`cloud/src/connections.ts`), and `test/connections-hub.test.ts` holds this page to it.
 
 **The rule behind all of them.** An agent or an integration may **read** and **propose**. Only the CFO's **passkey**
-approves money: a signed-in person in Purser Cloud signs the exact terms, and one changed cent breaks the signature. No
+approves money: a signed-in person in Purser Cloud signs the exact terms: one changed cent and the approval no longer matches the terms. No
 key, agent, integration, webhook or chat message can approve. The approve route refuses every API key
 (`POST /v1/engine/proposals/{id}/approve` needs a signed-in person's session). If the CFO set a pay-alone limit
 (`ap.alone_eur`, off unless set), a proposal within it is paid under the CFO's own policy, and the answer says so in

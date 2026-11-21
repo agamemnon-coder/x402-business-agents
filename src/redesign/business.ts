@@ -35,7 +35,8 @@ export const POSITION = "Purser is the CFO control plane for AI-initiated busine
  */
 export const FOUNDING_NAME = "30-Day Founding Partner Pilot";
 export const FOUNDING_CTA = "Become a Founding Partner";
-export const FOUNDING_TEXT = "Get 30 days of guided access to Purser. Help shape the future of autonomous financial operations while retaining human control over every critical payment decision.";
+// Review, 21 Nov: no scarcity or hype ("limited availability", "shape the future"): what the pilot is, plainly.
+export const FOUNDING_TEXT = "Get 30 days of guided access to Purser: your agents do the routine payments, and a person approves every critical one.";
 export const GO_LIVE_DOC = "docs/go-live.md";
 export const FOUNDING_POINTS: readonly string[] = [
   "No credit card. No automatic conversion or billing.",
@@ -46,7 +47,8 @@ export const FOUNDING_POINTS: readonly string[] = [
 export const FOUNDING_TERMS: readonly { id: string; title: string; line: string }[] = [
   { id: "eligibility", title: "Eligibility", line: "Selected businesses with four things: a registered company, an authorised financial approver (a CFO, a fractional CFO or an accountant), one clearly described workflow, and a suitable test environment." },
   { id: "scope", title: "Scope", line: "Only under a written agreement: the workflow (such as paying supplier invoices), responsibilities, liability, privacy and access, agreed in writing beforehand. No real payments before the production checks are met." },
-  { id: "after", title: "After 30 days", line: "Nothing is billed. You choose whether to move to an existing paid plan. Early access for design partners, not a permanent free offer." },
+  // Review, 21 Nov: nothing is on sale yet (PRICING_LEAD), so not "an existing paid plan".
+  { id: "after", title: "After 30 days", line: "Nothing is billed. You choose whether to move to a paid plan, if one is offered then. Early access for design partners, not a permanent free offer." },
 ];
 export const BUSINESS_H1 = "Let AI agents pay. Keep the CFO in control.";
 export const BUSINESS_LEAD = POSITION;
@@ -97,6 +99,12 @@ export function faqs(): Faq[] {
     { id: "data", q: "Where is my data?", a: "Purser Cloud's database and documents are in the EU (western Europe, EU jurisdiction); each company's engine and its logs are not pinned to a region yet. Claude and e-mail or WhatsApp alerts leave the EU only when switched on. Access, export and erasure are built in.", links: [["privacy", "Privacy"]] },
     { id: "bank", q: "Do I change banks?", a: "No. Purser works on your company's own Airwallex account, today with an API key you create there. Connecting by signing in at Airwallex is built, not live yet.", links: [["airwallex", "Airwallex"]] },
     { id: "cost", q: "What does it cost?", a: `The ${FOUNDING_NAME} is free, with no credit card and no automatic billing. After it, the plans: ${PRICING_LINE} ${PRICING_LEAD} These prices are not yet validated with customers.`, links: [["#pricing", "The plans"]] },
+    // Review, 21 Nov: the questions a judge asks that the page did not answer yet. Short, and only what is built or
+    // stated as a hypothesis; no other company named.
+    { id: "bypass", q: "Can an agent bypass Purser?", a: "Only routes connected to Purser are protected. An agent pays through the routes Purser governs (the company's Airwallex account, through Purser, and the agents' Alta mandates); a wallet, card or key it can reach outside Purser is not governed by it.", links: [["security#not-finished", "What is not finished"]] },
+    { id: "moat", q: "What is the moat if the code is open source?", a: "The code is MIT: anyone may run it. What a company would pay for is the hosted service: the rails kept current with Airwallex and Alta, the CFO's policy, passkeys and audit log operated for it, and support. A hypothesis, not tested with customers.", links: [[repoHref("docs/business/model.md"), "The business model"]] },
+    { id: "tools", q: "Why not an existing spend or AP tool?", a: "They control a person with a card, or review an invoice after it is paid. Purser sits before the payment for an AI agent: code holds the agent's limit, and above it the CFO signs the exact terms, which the rail then carries.", links: [["proof", "The proof"]] },
+    { id: "airwallex", q: "Why isn't this just Airwallex?", a: "Purser runs on Airwallex and uses its own controls. It adds what sits on top for agents: one CFO policy across Airwallex and Alta, a passkey over the exact terms before the API call, and a hash-chained audit log.", links: [["airwallex", "Airwallex"]] },
     { id: "start", q: "How long does it take to start?", a: `Try it yourself first: ${TRY_TAG}. A Founding Partner pilot starts with a defined onboarding: we set up your company and send a starter key, you add your passkey, and we scope one workflow with you. Then it runs for 30 days.`, links: [[TRY_URL, "Try it"], ["#pilot", "The pilot"]] },
   ];
 }
@@ -271,12 +279,20 @@ export function proofChips(tiles: ProofTile[] = proofTiles()): string {
   return `<ul class="bz-proof">${tiles.map((t) => `<li${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}"${t.external ? ' target="_blank" rel="noopener"' : ""}><span class="k">${icon(t.icon, 14)}${esc(t.key)}</span><span class="v">${esc(t.value)}</span><span class="t">${esc(t.text)}</span><span class="g">${esc(t.tag)}</span></a></li>`).join("")}</ul>`;
 }
 
+/**
+ * The fee per payout in one line (review, 21 Nov): its ceiling is the paying code's (FEE_BPS_CAP, src/airwallex/
+ * platform.ts: 100 basis points, 1% of the payout); its rate is not set as a price, so a pilot agrees it.
+ */
+export const FEE_LINE = `Collected through Airwallex with each payout; capped at ${PRICING.platformFee.capBps / 100}% of the payout in code (FEE_BPS_CAP); rate agreed in the pilot`;
+/** The label of the link to Purser Cloud's #/start (review, 21 Nov): it is for a company that was sent a starter key. */
+export const STARTER_KEY_LABEL = "Have a starter key?";
+
 export function priceHtml(): string {
   const { starter, business, platformFee } = PRICING;
   return `<div class="bz-price" data-rec="src/config/pricing.ts">
   <div><b>${esc(starter.name)}</b><span class="v">${esc(euro(starter.monthlyCents))} <small>a month</small></span><small class="d">${esc(`${starter.invoicesIncluded} invoices, then ${euro(starter.extraInvoiceCents)} each`)}</small></div>
   <div><b>${esc(business.name)}</b><span class="v"><small>from</small> ${esc(euro(business.fromMonthlyCents))} <small>a month</small></span><small class="d">${esc(business.includes.map((x, i) => (i ? x.toLowerCase() : x)).join(", "))}</small></div>
-  <div><b>${esc(platformFee.name)}</b><span class="v"><small>a small fee per payout</small></span><small class="d">${esc("Collected through Airwallex with each payout")}</small></div>
+  <div><b>${esc(platformFee.name)}</b><span class="v"><small>a small fee per payout</small></span><small class="d">${esc(FEE_LINE)}</small></div>
 </div>`;
 }
 
@@ -316,7 +332,7 @@ export function businessPage(): string {
   const steps = `<ol class="bz-steps">${PILOT_STEPS.map((s, i) => `<li><span class="ic">${icon(s.icon, 20)}<em>${i + 1}</em></span><b>${esc(s.title)}</b><p>${esc(s.line)}</p></li>`).join("")}</ol>`;
   const pilot = `<section class="card bz-pilot" aria-labelledby="pilot">
   <div class="bz-fp">
-    <div class="bz-fpc" id="founding"><span class="pill run">${esc("Early access · limited availability")}</span><b class="n">${esc(FOUNDING_NAME)}</b><span class="v">${esc("Free")} <small>${esc("for 30 days")}</small></span>
+    <div class="bz-fpc" id="founding"><span class="pill run">${esc("Early access · for design partners")}</span><b class="n">${esc(FOUNDING_NAME)}</b><span class="v">${esc("Free")} <small>${esc("for 30 days")}</small></span>
       <ul class="ticks">${FOUNDING_POINTS.map((l) => `<li>${icon("check", 16)}<span>${esc(l)}</span></li>`).join("")}</ul>
       <a class="btn primary" href="${esc(PILOT_MAIL)}">${icon("mail", 18)}${esc(FOUNDING_CTA)}</a></div>
     ${steps}
@@ -426,9 +442,9 @@ export function onePagerPage(): string {
       <section><h2>${esc("Who it is for")}</h2><p>${esc(`${FIRST_TARGET} ${FIRST_TARGET_NOTE} Accounting firms: an accountant reads each client's books and cannot pay.`)}</p></section>
       <section><h2>${esc("Your data and your bank")}</h2><p>${esc(faqs().find((f) => f.id === "data")!.a)} ${esc("Your money stays in your own Airwallex account; Purser is never in the flow of funds.")}</p></section>
     </div>
-    <section><h2>${esc(`${FOUNDING_CTA}: the ${FOUNDING_NAME}`)}</h2><p>${esc(`${FOUNDING_TEXT} Free for 30 days, limited availability, for selected businesses. ${FOUNDING_POINTS.join(" ")} At the end you choose whether to move to a paid plan; nothing is billed.`)}</p><ol class="s">${PILOT_STEPS.map((s) => `<li><b>${esc(s.title)}</b><br>${esc(s.line)}</li>`).join("")}</ol></section>
+    <section><h2>${esc(`${FOUNDING_CTA}: the ${FOUNDING_NAME}`)}</h2><p>${esc(`${FOUNDING_TEXT} Free for 30 days, for selected businesses. ${FOUNDING_POINTS.join(" ")} At the end you choose whether to move to a paid plan, if one is offered then; nothing is billed.`)}</p><ol class="s">${PILOT_STEPS.map((s) => `<li><b>${esc(s.title)}</b><br>${esc(s.line)}</li>`).join("")}</ol></section>
     <section><h2>${esc("Plans after the pilot")}</h2>${priceHtml()}<small class="n">${esc(`${PRICING_LEAD} Not yet validated with customers.`)}</small></section>
-    <footer class="sf"><span>${esc(`${FOUNDING_CTA}:`)} <a href="${esc(PILOT_MAIL)}">${esc(CONTACT_EMAIL)}</a></span><span>${esc("Try it:")} <a href="${esc(`${SITE_URL}${TRY_URL}`)}">${esc(`${host}${TRY_URL}`)}</a></span><span>${esc("Set up:")} <a href="${esc(CLOUD_SETUP_URL)}" target="_blank" rel="noopener">${esc("Purser Cloud")}</a></span></footer>
+    <footer class="sf"><span>${esc(`${FOUNDING_CTA}:`)} <a href="${esc(PILOT_MAIL)}">${esc(CONTACT_EMAIL)}</a></span><span>${esc("Try it:")} <a href="${esc(`${SITE_URL}${TRY_URL}`)}">${esc(`${host}${TRY_URL}`)}</a></span><span>${esc("Purser Cloud:")} <a href="${esc(CLOUD_SETUP_URL)}" target="_blank" rel="noopener">${esc(STARTER_KEY_LABEL)}</a></span></footer>
     <small class="n">${esc("Test money only: sandboxes and testnet. No customers, pilots or revenue yet. Built on Airwallex; no partnership or endorsement is claimed. Every figure links to its record on the site.")}</small>
   </article>
   <p class="bz-sub noprint">${siteLink("business", "Back to For companies")}</p>

@@ -8,6 +8,7 @@ import { CONTACT_EMAIL } from "../src/config/brand.js";
 import { PRICING, PRICING_LINE, euro } from "../src/config/pricing.js";
 import { BUSINESS_PAGE, BUSINESS_CSP, ONE_PAGER_CSP, ONE_PAGER_PAGE } from "../src/servers/dashboard.js";
 import { FIRST_TARGET, FIRST_TARGET_NOTE, PILOT_AGREEMENT, CALC_DEFAULTS, CALC_JS, CALC_NOTE, FOUNDING_CTA, FOUNDING_NAME, FOUNDING_TERMS, FOUNDING_TEXT, GO_LIVE_DOC, PILOT_MAIL, POSITION, PRINT_JS, calc, calcEuro, calcHours, faqs, type CalcIn } from "../src/redesign/business.js";
+import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
 import { existsSync } from "node:fs";
 import { repoHref } from "../src/redesign/productPage.js";
 import { START_STEPS } from "../src/redesign/home.js";
@@ -98,8 +99,11 @@ describe("what the pages claim", () => {
     }
   });
 
-  it("answers the buyer's six questions from what is built, each with a link", () => {
-    expect(faqs().map((f) => f.q)).toEqual(["What if the AI is wrong?", "Who is liable for a payment?", "Where is my data?", "Do I change banks?", "What does it cost?", "How long does it take to start?"]);
+  it("answers the buyer's questions, and the judges' (review, 21 Nov), from what is built, each with a link", () => {
+    expect(faqs().map((f) => f.q)).toEqual(["What if the AI is wrong?", "Who is liable for a payment?", "Where is my data?", "Do I change banks?", "What does it cost?",
+      "Can an agent bypass Purser?", "What is the moat if the code is open source?", "Why not an existing spend or AP tool?", "Why isn't this just Airwallex?", "How long does it take to start?"]);
+    expect(faqs().find((f) => f.id === "bypass")!.a).toMatch(/^Only routes connected to Purser are protected\./);
+    expect(faqs().find((f) => f.id === "moat")!.a).toMatch(/A hypothesis, not tested with customers\.$/);
     for (const f of faqs()) {
       expect(f.links.length).toBeGreaterThan(0);
       expect(BUSINESS_PAGE).toContain(`<details id="faq-${f.id}"><summary>`);
@@ -132,7 +136,9 @@ describe("the 30-Day Founding Partner Pilot (Max, 21 Nov)", () => {
   it("sits beside the plans, which keep their tiers and prices, under Max's heading and words", () => {
     expect(BUSINESS_PAGE).toContain(`<h2 class="bz-h" id="pilot">${FOUNDING_CTA}</h2>`);
     expect(FOUNDING_CTA).toBe("Become a Founding Partner");
-    expect(FOUNDING_TEXT).toBe("Get 30 days of guided access to Purser. Help shape the future of autonomous financial operations while retaining human control over every critical payment decision.");
+    // Review, 21 Nov: no scarcity or hype ("limited availability", "shape the future").
+    expect(FOUNDING_TEXT).toBe("Get 30 days of guided access to Purser: your agents do the routine payments, and a person approves every critical one.");
+    expect(text(BUSINESS_PAGE) + text(ONE_PAGER_PAGE)).not.toMatch(/limited availability|shape the future/i);
     expect(t).toContain(FOUNDING_TEXT);
     expect(t).toContain(FOUNDING_NAME);
     expect(t).toMatch(/Free for 30 days/);
@@ -145,10 +151,15 @@ describe("the 30-Day Founding Partner Pilot (Max, 21 Nov)", () => {
 
   it("states eligibility, scope and terms, promises no production payments before go-live, and claims no validated pricing", () => {
     expect(FOUNDING_TERMS.map((x) => x.id)).toEqual(["eligibility", "scope", "after"]);
-    for (const want of ["No credit card.", "No automatic conversion or billing.", "limited availability", "a registered company, an authorised financial approver", "one clearly described workflow, and a suitable test environment", "Only under a written agreement", "No real payments before the production checks are met.", "one clearly scoped financial workflow", "Nothing is billed.", "You choose whether to move to an existing paid plan.", "not a permanent free offer", "Not yet validated with customers."]) expect({ want, found: t.includes(want) }).toEqual({ want, found: true });
+    for (const want of ["No credit card.", "No automatic conversion or billing.", "Early access · for design partners", "a registered company, an authorised financial approver", "one clearly described workflow, and a suitable test environment", "Only under a written agreement", "No real payments before the production checks are met.", "one clearly scoped financial workflow", "Nothing is billed.", "You choose whether to move to a paid plan, if one is offered then.", "not a permanent free offer", "Not yet validated with customers."]) expect({ want, found: t.includes(want) }).toEqual({ want, found: true });
     expect(existsSync(new URL(`../${GO_LIVE_DOC}`, import.meta.url))).toBe(true);
     expect(BUSINESS_PAGE).toContain(`${GO_LIVE_DOC}" target="_blank" rel="noopener">The go-live requirements ↗</a>`);
     expect(t).not.toMatch(/\b(validated|proven) (pricing|prices)\b|\blive payments\b|\bproduction-ready\b/i);
+    // Review, 21 Nov: nothing is on sale yet, so no "existing" paid plan; the fee's ceiling is the paying code's.
+    expect(t).not.toContain("existing paid plan");
+    expect(FEE_BPS_CAP).toBe(100);
+    expect(t).toContain("capped at 1% of the payout in code (FEE_BPS_CAP); rate agreed in the pilot");
+    expect(ONE_PAGER_PAGE).toContain(">Have a starter key?</a>");
   });
 
   it("presents the first target group as a starting point, not a proven segment, and lets other companies register interest", () => {

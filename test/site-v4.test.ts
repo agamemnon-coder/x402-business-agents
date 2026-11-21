@@ -122,8 +122,10 @@ describe("the site after v4", () => {
     // eligibility, scope and terms), the plans unchanged, and six questions as folded summaries (820 as built); 850 since
     // Max's six decisions the same day: the written agreement, the four eligibility conditions, the first target group
     // as a starting point with "Other companies can still register interest", the calculator's result a scenario (839 as built);
-    // /one-pager is the same story on one A4 page (603 as built).
-    Object.assign(budget, { business: 850, onePager: 640 });
+    // /one-pager is the same story on one A4 page (603 as built). 900 since the review of 21 Nov: four more folded
+    // questions (can an agent bypass Purser, the moat, an existing tool, why not just Airwallex) and the fee's 1% cap
+    // (882 as built).
+    Object.assign(budget, { business: 900, onePager: 640 });
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 

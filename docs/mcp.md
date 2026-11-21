@@ -186,7 +186,7 @@ What stops a payment beyond this server (Purser's checks in code, the CFO's pass
    SHA-256 (`terms_sha256`) and `"paid": false`; `pending_approvals` lists it with where to approve it.
 3. The CFO reads the terms in Purser Cloud and approves them with the passkey, rejects them, or lets them expire.
    `payment_proposal` shows where it stands.
-4. Only an approved proposal is paid. The signature covers the exact terms: one changed cent breaks it.
+4. Only an approved proposal is paid. The signature covers the exact terms: one changed cent and the approval no longer matches the terms.
 
 The AI's part ends at step 1. It should tell its user that the CFO approves; the server's instructions say so too.
 

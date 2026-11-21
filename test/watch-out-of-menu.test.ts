@@ -80,7 +80,10 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
       expect({ path, status: r?.status, to: r?.headers.get("location") }).toEqual({ path, status: 302, to });
     }
     const judge = pageResponse(new Request("https://kit11.max-31b.workers.dev/judge"), ON);
-    expect({ status: judge?.status, to: judge?.headers.get("location") }).toEqual({ status: 301, to: "/home" });
+    // Review, 21 Nov: /judge opens the judge tour on Home.
+    expect({ status: judge?.status, to: judge?.headers.get("location") }).toEqual({ status: 301, to: "/home?tour=1#tour" });
+    expect(pageResponse(new Request("https://kit11.max-31b.workers.dev/judge?x=1"), ON)?.headers.get("location")).toBe("/home?tour=1#tour");
+    expect(pageResponse(new Request("https://kit11.max-31b.workers.dev/metal?x=1"), ON)?.headers.get("location")).toBe("/alta?x=1");
   });
 
   it("the CFO dashboard's landing for a guest offers Home, Try and Proof", () => {

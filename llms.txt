@@ -1,6 +1,6 @@
 # Purser
 
-> AI agents pay your suppliers within the limits the CFO sets; above a limit nothing runs until the CFO's passkey (Face ID) signs the exact terms, and one changed cent breaks the signature.
+> AI agents pay your suppliers within the limits the CFO sets; above a limit nothing runs until the CFO's passkey (Face ID) signs the exact terms: one changed cent and the approval no longer matches the terms.
 > Purser is the control layer between a company's AI agents and its money on Airwallex and Alta (formerly Metal); everything here ran on test money, in sandboxes and on testnet.
 
 AI agents spend. You sign off. Built for the Airwallex Agentic Banking Hackathon: Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award, and for the Founder's Choice Award and the Judges' Choice Award.

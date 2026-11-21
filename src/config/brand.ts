@@ -158,7 +158,9 @@ export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
  * The idea in one sentence (15 Nov, Founder's and Judges' Choice: one sharp idea, understood in 10 seconds): Home's
  * sentence under its heading, the README's bold line under its title, package.json's description.
  */
-export const IDEA = "AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey, and one changed cent breaks the signature.";
+// Review, 21 Nov: "one changed cent and the approval no longer matches the terms", not "breaks the signature" (the
+// signature itself is not broken: the terms it signed are no longer the ones asked for, so the payment is refused).
+export const IDEA = "AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey: one changed cent and the approval no longer matches the terms.";
 export const README_WHAT = IDEA;
 export const WHAT_IT_IS = "For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone).";
 /**

@@ -61,8 +61,10 @@ describe("the first screen (section D, 6 Nov)", () => {
     // altogether (the flow and the banner to the gallery), the rest to "The proof" below.
     const [pictures, links] = readmeStepLines();
     // 21 Nov, later (Max): the second row of badges right under the first.
-    expect(lines.slice(0, 18)).toEqual(['<div align="center">', "", lines[2]!, "", `# Purser · ${HERO}`, "", lines[6]!, "", lines[8]!, "", `**${README_WHAT}**`, "", readmeDemoLine(), "", pictures, "", links, ""]);
-    expect(lines[8]!.startsWith("[![CodeQL]")).toBe(true);
+    // Review, 21 Nov: the one-line value right under the first row (CI, OpenSSF, the partners, test money), the rest of
+    // the badges under it.
+    expect(lines.slice(0, 18)).toEqual(['<div align="center">', "", lines[2]!, "", `# Purser · ${HERO}`, "", lines[6]!, "", `**${README_WHAT}**`, "", lines[10]!, "", readmeDemoLine(), "", pictures, "", links, ""]);
+    expect(lines[10]!.startsWith("[![Tests: from docs/assets/test-summary.json]")).toBe(true);
     expect(lines[2]!.includes('srcset="docs/assets/brand/purser-mark-dark.svg"><img src="docs/assets/brand/purser-mark.svg" alt="Purser"')).toBe(true);
     expect(lines[6]!.startsWith("[![CI](")).toBe(true);
     const tracks = lines.slice(18, 24);
@@ -114,7 +116,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines[submission]).toContain("(entered for the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award)");
     const kit = lines.findIndex((l) => l.startsWith(`**Kit 11, step by step.** ${KIT11_RUN_LINE}`));
     expect(kit).toBeGreaterThan(proof);
-    expect(kit).toBeLessThan(66);
+    expect(kit).toBeLessThanOrEqual(72); // 72 since 21 Nov (review: the JUDGES.md line and "What is not finished", 8 lines, above "The proof")
     expect(lines.slice(proof + 1, kit).filter((l) => l.startsWith("- **"))).toHaveLength(6);
     expect(README_WHAT).toBe(HOME_SUB);
     // The banner (13 Nov, evening, owner) and the animated flow (15 Nov, Max), one line, now in the gallery.
