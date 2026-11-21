@@ -32,6 +32,8 @@ const PUBLIC: Record<string, string> = { home: pages.home!, watch: pages.watch!,
 Object.assign(PUBLIC, { docs: pages.docs!, status: pages.status! });
 // /privacy (20 Nov; outside audit, finding 3.4), a product page under "More" too.
 Object.assign(PUBLIC, { privacy: pages.privacy! });
+// /business, "For companies" (21 Nov), first under "More", and /one-pager, its printable sheet (linked from it, not listed).
+Object.assign(PUBLIC, { business: pages.business!, onePager: pages.onePager! });
 
 const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 /** The words a person reads without opening anything: <main> only, no script, style, drawing, or folded details (their summary stays). */
@@ -115,6 +117,11 @@ describe("the site after v4", () => {
     // where the data lives, the rights with their routes, the retention lanes and the services with their locations as
     // the inventory states them, and the company line (335 as built). 120 since 20 Nov (outside audit, finding 3.4): four short cards.
     Object.assign(budget, { privacy: 340 });
+    // 21 Nov (Max: "commercially strong"): /business carries the problem, who it is for, the calculator (its labels and
+    // the example result), the 30-Day Founding Partner Pilot (Max's decision: its card, the four onboarding steps,
+    // eligibility, scope and terms), the plans unchanged, and six questions as folded summaries (820 as built);
+    // /one-pager is the same story on one A4 page (603 as built).
+    Object.assign(budget, { business: 830, onePager: 640 });
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -133,10 +140,10 @@ describe("the site after v4", () => {
     for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html.split(pages.client).join(" ")).replace(hostile || "\u0000", " ").replace(tile, " "))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
-  it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Security, Docs, Books, Privacy, then Airwallex, Alta, Visa, Claude (T:0 on Books since 21 Nov)", () => {
+  it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: For companies, Security, Docs, Books, Privacy, then Airwallex, Alta, Visa, Claude (T:0 on Books since 21 Nov)", () => {
     // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
     // 13 Nov, evening (owner): the product tour and Pricing are out.
-    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Privacy", "privacy"], ["Airwallex", "airwallex"], ["Alta", "alta"], ["Visa", "visa"], ["Claude", "claude"]]);
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["For companies", "business"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Privacy", "privacy"], ["Airwallex", "airwallex"], ["Alta", "alta"], ["Visa", "visa"], ["Claude", "claude"]]);
     // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
     // left out until it is registered; then the menu must list it).
     // 12 Nov: Purser Cloud is its own deployment (an absolute link), served there, not by this Worker.

@@ -74,9 +74,10 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
   });
 
   it("the product tour and Pricing are gone (13 Nov, evening, owner): their old addresses land on Home", () => {
-    for (const path of ["/tour", "/pricing"]) {
+    // 21 Nov (Max): /pricing lands on the plans on /business, beside the 30-Day Founding Partner Pilot.
+    for (const [path, to] of [["/tour", "/home"], ["/pricing", "/business#pricing"]]) {
       const r = pageResponse(new Request(`https://kit11.max-31b.workers.dev${path}`), ON);
-      expect({ path, status: r?.status, to: r?.headers.get("location") }).toEqual({ path, status: 302, to: "/home" });
+      expect({ path, status: r?.status, to: r?.headers.get("location") }).toEqual({ path, status: 302, to });
     }
     const judge = pageResponse(new Request("https://kit11.max-31b.workers.dev/judge"), ON);
     expect({ status: judge?.status, to: judge?.headers.get("location") }).toEqual({ status: 301, to: "/home" });
@@ -199,7 +200,7 @@ describe("no served page links to a path the site does not serve", () => {
   /** Where a bundle's pages are served. */
   const PATHS: Record<string, string> = {
     dashboard: "/?recorded", home: "/home", watch: "/watch", replay: "/replay", try: "/try", proof: "/proof", verify: "/verify", trace: "/trace", runs: "/runs", month: "/month", film: "/film", lab: "/lab",
-    metal: "/alta", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", awxCalls: "/airwallex/calls", claude: "/claude", books: "/books", security: "/security", docs: "/docs", privacy: "/privacy", status: "/status", trySign: "/try/sign", tryVerify: "/try/verify", tour: "/tour",
+    metal: "/alta", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", awxCalls: "/airwallex/calls", claude: "/claude", books: "/books", security: "/security", docs: "/docs", privacy: "/privacy", business: "/business", onePager: "/one-pager", status: "/status", trySign: "/try/sign", tryVerify: "/try/verify", tour: "/tour",
     enrol: "/enrol", policy: "/policy", approve: "/approve/P-0001", notFound: "/no/such/page",
   };
   /** The status a GET ends in, following redirects as a browser does; 404 for no page. */

@@ -28,6 +28,7 @@ import { CHROME, checkTaps } from "./tapTargets.js";
 import { ICC_RUN_EXTRA_WORDS, iccRecordIn } from "../../src/redesign/iccBlock.js";
 import { METAL_CSP } from "../../src/servers/dashboard.js";
 import { committedWall } from "../../src/redesign/evidenceWall.js";
+import { CALC_DEFAULTS, calc, calcEuro } from "../../src/redesign/business.js";
 
 const args = process.argv.slice(2);
 const liveAt = args.indexOf("--live");
@@ -937,6 +938,31 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `${path} folds open ${tag}`, w);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
     }
+    // /business, "For companies" (21 Nov), first under "More", and /one-pager, its printable sheet: within their budgets
+    // (test/site-v4.test.ts), "More" marked, no text under 14 px in a card, and the calculator answering the visitor's own
+    // numbers with the page's own arithmetic (calc, src/redesign/business.ts), never "NaN". /one-pager's button shows
+    // once its script runs.
+    for (const [path, budget] of [["/business", 840], ["/one-pager", 660]] as const) {
+      const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
+      await look(page, `${path} ${tag}`, w);
+      const words = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
+      const more = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null }; })()`) as { more: boolean; link: string | null };
+      if (!more.more || (path === "/business" && more.link !== "business")) fail(`${path} ${tag}: "More" is not marked as where the reader is (${JSON.stringify(more)})`);
+      const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead")].filter((e) => e.offsetParent && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
+      for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
+      if (path === "/business") {
+        await page.fill("#c-invoices", "400");
+        await page.fill("#c-risk", "20000");
+        const want = calc({ ...CALC_DEFAULTS, invoices: 400, atRisk: 20000 });
+        const got = await page.evaluate(() => ({ price: document.getElementById("o-price")?.textContent, year: document.getElementById("o-year")?.textContent, bars: document.querySelectorAll(".bz-bars > div:not([hidden])").length }));
+        if (got.price !== calcEuro(want.price) || got.year !== calcEuro(want.year) || got.bars !== 2) fail(`/business ${tag}: the calculator does not answer 400 invoices with the page's arithmetic (${JSON.stringify(got)})`);
+        await page.fill("#c-minutes", "");
+        if (/NaN|undefined/.test(await page.locator(".bz-res").innerText())) fail(`/business ${tag}: an empty input shows NaN`);
+      } else if (!(await page.locator("#print").isVisible())) fail(`/one-pager ${tag}: no "Save as PDF" button`);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+    }
     // Proof's guarantee 1 links "If the approver is unavailable" (12 Nov): it lands on /security#unavailable with the
     // fold's heading in view, below the sticky header. At 390 and 1440 px.
     if (w === 390 || w === 1440) {
@@ -1378,9 +1404,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
-      for (const old of ["/tour", "/pricing", "/judge"]) {
+      // 21 Nov (Max): /pricing lands on the plans on /business, beside the 30-Day Founding Partner Pilot.
+      for (const [old, to] of [["/tour", "/home"], ["/pricing", "/business"], ["/judge", "/home"]] as const) {
         await page.goto(`${judgeBase}${old}`, { waitUntil: "load" });
-        if (new URL(page.url()).pathname !== "/home") fail(`${old} ${tag}: did not land on Home (${page.url()})`);
+        if (new URL(page.url()).pathname !== to) fail(`${old} ${tag}: did not land on ${to} (${page.url()})`);
       }
     }
 
@@ -1435,4 +1462,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /airwallex/calls, /visa, /claude (folds open), /security (folds open), /verify (the sample bundle passes every line, no server call), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", Home with /try/sign, and /tour, /pricing and /judge landing on Home" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /airwallex/calls, /visa, /claude (folds open), /security (folds open), /verify (the sample bundle passes every line, no server call), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /business and /one-pager, Home with /try/sign, /tour and /judge landing on Home and /pricing on /business" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

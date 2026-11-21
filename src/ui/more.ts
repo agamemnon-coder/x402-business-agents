@@ -3,7 +3,7 @@
 // so the two definitions cannot drift apart. "More" is a <details> element: it opens and closes without any script, by
 // mouse, touch or keyboard (Enter or Space on the summary; its links take focus only while it is open).
 
-export type MoreKey = "cloud" | "negotiate" | "pricing" | "security" | "docs" | "books" | "privacy" | "status" | "airwallex" | "metal" | "visa" | "claude" | "t0";
+export type MoreKey = "cloud" | "negotiate" | "pricing" | "security" | "docs" | "books" | "privacy" | "business" | "status" | "airwallex" | "metal" | "visa" | "claude" | "t0";
 
 export interface MoreLink {
   key: MoreKey;
@@ -43,6 +43,10 @@ export const MORE_LINKS: readonly MoreLink[] = [
   // 15 Nov: "Agents negotiate" left the menu (Max: it read as unprofessional there); /try/negotiate has a card on Home
   // (src/redesign/home.ts negotiateCardHtml) and stays linked at the end of /try.
   // 13 Nov (Max): the product tour and Pricing are gone; /tour and /pricing answer 302 to /home (src/servers/dashboard.ts REDIRECTS).
+  // 21 Nov (Max: "we are technically strong, now we must make it commercially strong"): the page for a business owner,
+  // first under More: the problem, who it is for, a calculator for their own numbers, the pilot and its pilot prices,
+  // the buyer's questions (src/redesign/business.ts). /one-pager, its printable sheet, is linked from it, not listed.
+  { key: "business", label: "For companies", href: "business", group: "product" },
   { key: "security", label: "Security", href: "security", group: "product" },
   { key: "docs", label: "Docs", href: "docs", group: "product" },
   // 12 Nov (owner): the bookkeeping with AI agents, from the run records (src/redesign/booksPage.ts); with T:0 in it since 21 Nov.

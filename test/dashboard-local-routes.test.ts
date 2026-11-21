@@ -79,9 +79,9 @@ describe("the local dashboard's pages", () => {
     // 21 Nov (the owner: "merge them"): T:0 lives on /books.
     const t0 = await get("/t0");
     expect([t0.status, t0.headers.get("location")]).toEqual([301, "/books"]);
-    for (const old of ["/pricing", "/tour"]) {
-      const r = await get(old);
-      expect([r.status, r.headers.get("location")]).toEqual([302, "/home"]);
+    for (const [old, to] of [["/pricing", "/business#pricing"], ["/tour", "/home"]]) {
+      const r = await get(old!);
+      expect([r.status, r.headers.get("location")]).toEqual([302, to]);
     }
     const ok = await get("/approve/P-0042");
     expect([ok.status, ok.headers.get("location")]).toEqual([302, "http://127.0.0.1:4200/#P-0042"]);

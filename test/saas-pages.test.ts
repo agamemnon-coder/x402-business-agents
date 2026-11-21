@@ -75,7 +75,8 @@ describe("the page on the site, and the one that went", () => {
     // Without /try/sign in the bundle the page is served unchanged; with it, /security's link to Try leads there.
     expect(pages.security).toBe(SECURITY_PAGE);
     const gone = pageResponse(new Request("https://x.test/pricing"), pages);
-    expect({ status: gone?.status, to: gone?.headers.get("location") }).toEqual({ status: 302, to: "/home" });
+    // 21 Nov (Max): the plans are on /business, beside the 30-Day Founding Partner Pilot; /pricing lands there.
+    expect({ status: gone?.status, to: gone?.headers.get("location") }).toEqual({ status: 302, to: "/business#pricing" });
     expect((buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as Pages).security).toContain('href="/try" data-next="/try"');
     expect(CHECK_PATHS).toEqual(expect.arrayContaining(["/security"]));
     expect(CHECK_PATHS).not.toContain("/pricing");

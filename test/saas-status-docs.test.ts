@@ -652,7 +652,7 @@ describe("/status on the site", () => {
 
   it("is no longer in the menu or the footer (12 Nov, owner); the page itself still answers", () => {
     for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE]) expect(nav(html)).not.toContain('href="status"');
-    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Security", "Docs", "Books", "Privacy", "Airwallex", "Alta", "Visa", "Claude"]); // 21 Nov: Purser Cloud is the "Cloud" tab; T:0 lives on /books
+    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["For companies", "Security", "Docs", "Books", "Privacy", "Airwallex", "Alta", "Visa", "Claude"]); // 21 Nov: Purser Cloud is the "Cloud" tab; T:0 lives on /books; "For companies" (/business) leads the list
     expect(/<footer class="foot">[\s\S]*?<\/footer>/.exec(pages.home!)![0]).not.toMatch(/href="status"/);
   });
 
