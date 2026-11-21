@@ -2,7 +2,7 @@
 // count. Every figure is read from the records; a record that does not show its fact leaves the fact out.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { altaFacts, altaFactsHtml, ALTA_FACTS_ID, ANCHOR_19_CHECK, ANCHOR_19_RECORD, ANCHOR_RECORD, ANCHOR_VERIFIED_RECORD, FACEID_RECORD, NO_ENDORSEMENT_ALTA, OWNERS_RECORD, SERIES_LOG, SERIES_RECORDS } from "../src/redesign/altaFacts.js";
+import { altaFacts, altaFactsHtml, altaTilesHtml, ALTA_FACTS_ID, ANCHOR_19_CHECK, ANCHOR_19_RECORD, ANCHOR_RECORD, ANCHOR_VERIFIED_RECORD, FACEID_RECORD, NO_ENDORSEMENT_ALTA, OWNERS_RECORD, SERIES_LOG, SERIES_RECORDS } from "../src/redesign/altaFacts.js";
 import { explorerLink } from "../src/redesign/metalStory.js";
 import { metalTxs } from "../src/redesign/partners.js";
 import { METAL_PAGE } from "../src/servers/dashboard.js";
@@ -88,8 +88,23 @@ describe("/alta: the three facts", () => {
     expect(words).toContain("86 Alta payments in the main run, each its own transaction. 3 Nov record");
     expect(main).toContain(`title="docs/runs/2026-11-03-main-run-metal-transactions.md"`);
     expect(main).toMatch(new RegExp(`<img[^>]+logo-alta\\.svg[^>]*></span><span class="noend">${NO_ENDORSEMENT_ALTA}</span>`));
-    // "Alta (formerly Metal)" at the first mention in <main> (src/ui/formerly.ts): the first fact's.
-    expect(words).toMatch(/Refused on chain 19 Nov: 21 payments inside the agent's mandate, 1\.00 test USD in all\. Alta \(formerly Metal\) refused all 3 attempts outside it on chain/);
+    // 21 Nov (the owner: "not so much text"): the facts are short tiles under the price-rise scene; their full text, and
+    // the main run's count, in the fold right under it. "Alta (formerly Metal)" at the first mention in <main> (src/ui/
+    // formerly.ts): the line under the heading.
+    expect(words).toMatch(/Refused on chain 19 Nov: 21 payments inside the agent's mandate, 1\.00 test USD in all\. Alta refused all 3 attempts outside it on chain/);
+    expect(words).toMatch(/Each agent's limit is a mandate on Alta \(formerly Metal\)\./);
     expect(words.split("Alta (formerly Metal)")[0]).not.toMatch(/\bAlta\b/);
+    expect(main.indexOf('id="alta-scene"')).toBeLessThan(main.indexOf(`id="${ALTA_FACTS_ID}"`));
+    expect(main.indexOf(`id="${ALTA_FACTS_ID}-full"`)).toBeGreaterThan(main.indexOf('<details class="fold" id="alta-facts-more">'));
+  });
+
+  it("draws the tiles from the same facts: one figure each, its few words, the same explorer links (21 Nov)", () => {
+    const facts = altaFacts();
+    expect(facts.map((f) => [f.id, f.fig])).toEqual([["refused", "3 of 3"], ["owners", "2 of 2"], ["anchor", "731"]]);
+    const html = altaTilesHtml(facts);
+    for (const f of facts) for (const l of f.links) expect(html).toContain(`href="${l.href}"`);
+    expect(text(html)).toContain("3 of 3 attempts outside the mandate, refused on chain (19 Nov)");
+    expect(text(html)).toContain("731 records sealed in one transaction; verify-anchor: MATCH (19 Nov)");
+    expect(altaTilesHtml([])).toBe("");
   });
 });

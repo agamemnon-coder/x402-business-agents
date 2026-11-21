@@ -97,6 +97,25 @@ export const claudeEvidence = (): ClaudeEvidence => ({
   hostile: hostileOf(read(HOSTILE_EVAL)),
 });
 
+/**
+ * The newest held-out adversarial eval (/claude since 21 Nov; the owner: "the newest held-out eval as one tile"): the
+ * highest docs/evals/adversarial-v<N>.json marked held_out, read as the evidence wall reads it (src/redesign/
+ * evidenceWallData.ts): wrong payments with Purser's rules and a script that always says pay in the model's place,
+ * against a payer with no rules, on the same held-out invoices. Null when no such record is on this build.
+ */
+export interface HeldOut { version: number; file: string; md: string; cases: number; purser: number; noRules: number; falseHolds: number; clean: number; ranAt: string }
+export function newestHeldOut(versions: number[] = Array.from({ length: 40 }, (_, i) => i + 1)): HeldOut | null {
+  for (const v of [...versions].sort((a, b) => b - a)) {
+    const file = `docs/evals/adversarial-v${v}.json`;
+    let j: { held_out?: boolean; ran_at?: string; totals?: Record<"purser_script" | "no_rules", { cases: number; wrong_payments: number; false_holds: number; clean_truths: number }> };
+    try { j = JSON.parse(read(file) ?? ""); } catch { continue; }
+    const p = j.totals?.purser_script, n = j.totals?.no_rules;
+    if (!j.held_out || !p || !n || !j.ran_at || p.cases !== n.cases) continue;
+    return { version: v, file, md: file.replace(/\.json$/, ".md"), cases: p.cases, purser: p.wrong_payments, noRules: n.wrong_payments, falseHolds: p.false_holds, clean: p.clean_truths, ranAt: j.ran_at };
+  }
+  return null;
+}
+
 export const EVIDENCE_CSS = `.cev { padding: 16px 18px; display: grid; gap: 6px; }
 .cev h2 { font-size: 19px; line-height: 1.25; margin: 0; }
 .cev ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0; }

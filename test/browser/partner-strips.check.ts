@@ -34,7 +34,10 @@ for (const [w, h] of [[360, 800], [390, 844], [1440, 900]] as const) {
       await page.goto(`${judge.url}${path}`, { waitUntil: "load" });
       for (const strip of strips) {
         const id = `live-${strip}`;
-        const seen = (await page.evaluate(`(() => { const s = document.getElementById("${id}"); if (!s) return null;
+        // 21 Nov (the owner: "not so much text"): on /alta and /visa the strip sits in a fold under the scene; opened here,
+        // as a reader opens it, before it is measured.
+        await page.evaluate(`(() => { const s = document.getElementById("${id}"); for (let d = s && s.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) d.open = true; })()`);
+        const seen =(await page.evaluate(`(() => { const s = document.getElementById("${id}"); if (!s) return null;
           return { group: (s.querySelector(".ps-h a") || {}).getAttribute ? s.querySelector(".ps-h a").getAttribute("href") : null,
             tiles: [...s.querySelectorAll("li.ew-t")].map((li) => { const a = li.querySelector("a"), r = li.getBoundingClientRect();
               return { key: li.getAttribute("data-wall"), fig: (li.querySelector(".ew-f") || {}).textContent || "", href: a.getAttribute("href"), h: a.getBoundingClientRect().height, left: r.left, right: r.right, spill: a.scrollWidth > a.clientWidth + 1 }; }) }; })()`)) as { group: string | null; tiles: { key: string; fig: string; href: string; h: number; left: number; right: number; spill: boolean }[] } | null;

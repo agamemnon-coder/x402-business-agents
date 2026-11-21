@@ -7,7 +7,7 @@
 // its one style block), so every width is an SVG attribute, never a style attribute. The colours of the marks are the
 // page's own: Claude and Face ID validated as a pair in both themes (dataviz validator, 13 Nov), code in neutral grey.
 
-import { AGENT_EVALS, HOLDOUTS_RECORD, INJECTION_LINE, SWEEP_RECORD, VARIATION_RECORD, ZERO_TRUST_REPORT, HOSTILE_EVAL, modelLines, passedWords, type ClaudeEvidence, type ModelLine } from "./claudeEvidence.js";
+import { AGENT_EVALS, HOLDOUTS_RECORD, INJECTION_LINE, SWEEP_RECORD, VARIATION_RECORD, ZERO_TRUST_REPORT, HOSTILE_EVAL, modelLines, passedWords, type ClaudeEvidence, type HeldOut, type ModelLine } from "./claudeEvidence.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { countOf, esc, icon } from "./ui.js";
 import { hostileSplit, hostileWords } from "./partners.js";
@@ -30,6 +30,16 @@ export const CLAUDE_CSS = `:root { --cv-code: #646d7e; --cv-claude: #a84d2b; --c
 .csplit figcaption b { color: var(--text); }
 .sk-code { fill: var(--cv-code); } .sk-claude { fill: var(--cv-claude); } .sk-face { fill: var(--cv-face); }
 .sk-rib { fill-opacity: .22; } .sk-rib:hover { fill-opacity: .4; }
+.sk-tn { fill: var(--text); font-weight: 780; }
+/* 21 Nov (the owner: "really good, clear, correct visuals"): the split lights up once, code first, then Claude, then
+   Face ID. Every frame shows the whole drawing (a width change that swaps the two drawings restarts an animation), and
+   nothing moves under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .csplit .wid .sk-rib { animation: ck-glow 1.1s ease-in-out both; } .csplit .wid .sk-rib.sk-code { animation-delay: .2s; } .csplit .wid .sk-rib.sk-claude { animation-delay: 1s; } .csplit .wid .sk-rib.sk-face { animation-delay: 1.8s; }
+  .csplit .nar .sb-n { animation: ck-pop 1s ease-in-out both; } .csplit .nar li:nth-child(2) .sb-n { animation-delay: .6s; } .csplit .nar li:nth-child(3) .sb-n { animation-delay: 1.2s; }
+}
+@keyframes ck-glow { 50% { fill-opacity: .6; } }
+@keyframes ck-pop { 50% { color: var(--cv-claude); } }
 .sk-src { fill: var(--muted); }
 .sk-t { fill: var(--muted); font: 600 15px Inter, system-ui, sans-serif; }
 .sk-n { fill: var(--text); font: 780 34px Inter, system-ui, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
@@ -93,7 +103,7 @@ export function splitFigure(f: SplitFigures): string {
   const H = 200, hc = H * f.routine / total, hl = H * f.decisions / total, hf = Math.max(6, hl * f.faceId / f.decisions);
   const sy = 40, cy = 30, ly = cy + hc + 56, fy = ly + hl + 22, nx = 380, fx = 640, vh = Math.ceil(fy + Math.max(hf, 30) + 12);
   const wide = `<svg class="wid" viewBox="0 0 960 ${vh}" role="img" aria-label="${esc(splitSentence(f))}">
-<text class="sk-t" x="0" y="24">Payment requests</text>
+<text class="sk-t" x="0" y="24"><tspan class="sk-tn">${total}</tspan> payment requests</text>
 <rect class="sk-src" x="0" y="${sy}" width="12" height="${H}" rx="3"/>
 <path class="sk-code sk-rib" d="${ribbonH(12, sy, nx, cy, hc, hc)}">${tip(tCode)}</path>
 <path class="sk-claude sk-rib" d="${ribbonH(12, sy + hc, nx, ly, hl, hl)}">${tip(tClaude)}</path>
@@ -130,7 +140,7 @@ export const bar = (n: number, of: number, label: string, alt = false) => {
   return `<svg class="bar" role="img" aria-label="${esc(label)}"><title>${esc(label)}</title><rect class="trk" width="100%" height="10" rx="5"/>${pct ? `<rect class="fil${alt ? " alt" : ""}" width="${pct}%" height="10" rx="5"/>` : ""}</svg>`;
 };
 
-export interface AgentFigures { id: string; short: string; family: string; decisions: number; calls: number }
+export interface AgentFigures { id: string; short: string; family: string; decisions: number; calls: number; /** The model id the agent ran on (the record's), shown as "Claude Haiku 5.5". */ model?: string }
 const AGENT_ICON: Record<string, string> = { sourcing: "package", support: "headphones", treasury: "landmark" };
 
 /** The three agents, each a card: its model, its decisions as a bar of all of them, its Claude calls. */
@@ -138,7 +148,7 @@ export function agentCards(agents: AgentFigures[]): string {
   const all = agents.reduce((n, a) => n + a.decisions, 0);
   if (!agents.length || !all) return "";
   return `<h2 class="csec" id="agents">Three agents</h2><div class="cagents">${agents.map((a) => `<article class="cag card" data-agent="${esc(a.id)}">
-<div class="top"><span class="ic">${icon(AGENT_ICON[a.id] ?? "bot", 20)}</span><h3>${esc(a.short)}</h3><span class="model fam">${esc(a.family)}</span></div>
+<div class="top"><span class="ic">${icon(AGENT_ICON[a.id] ?? "bot", 20)}</span><h3>${esc(a.short)}</h3><span class="model fam">${esc(modelName(a.model, a.family))}</span></div>
 <span class="v">${a.decisions}<small>decisions</small></span>${bar(a.decisions, all, `${a.short}: ${a.decisions} of ${all} decisions`)}
 <span class="s">${a.calls} Claude calls</span></article>`).join("")}</div>`;
 }
@@ -210,17 +220,55 @@ export function modelChart(e: ClaudeEvidence, used: Record<string, string>): str
 /** The injection screen as code holds it, in its own fold (13 Nov: the proof tiles carry figures only). */
 export const injectionFold = () => `<details class="fold" id="injection"><summary>A line aimed at the AI</summary><ul class="pl"><li>${esc(INJECTION_LINE)}</li></ul></details>`;
 
-export interface ClaudeBody { logo: string; label: string; split: SplitFigures; agents: AgentFigures[]; evidence: ClaudeEvidence; used: Record<string, string>; folds: string; runIcon: string }
+/** "claude-haiku-5-5" → "Claude Haiku 5.5", from the record's model id; the family alone when the id says no version. */
+export function modelName(model: string | undefined, family: string): string {
+  const m = /^claude-(haiku|sonnet|opus)-(\d+)-(\d+)(?:-\d{8})?$/i.exec(model ?? "");
+  return m ? `Claude ${m[1]![0]!.toUpperCase()}${m[1]!.slice(1).toLowerCase()} ${m[2]}.${m[3]}` : `Claude ${family}`;
+}
 
-/** The page's main: the title, the split, the agents, the proof tiles, the model chart, then the folds. */
+/**
+ * The newest held-out eval as one tile (the owner, 21 Nov: "v16, 8 vs 77"): what code holds when the model is wrong. A
+ * script that always says pay stands in the model's place; Purser's rules against a payer with no rules, on the same
+ * held-out invoices. From its record (newestHeldOut, src/redesign/claudeEvidence.ts); empty without one.
+ */
+export function heldOutTile(h: HeldOut | null): string {
+  if (!h) return "";
+  return `<section class="chold card" id="held-out" data-rec="${esc(h.file)}" aria-labelledby="ch-h"><div class="ch-fig"><span class="ch-v"><b>${h.purser}</b> <span>vs</span> <b class="no">${h.noRules}</b></span>
+<span class="ch-k"><span>${esc("Purser's rules")}</span><span>${esc("no rules")}</span></span></div>
+<div class="ch-t"><h2 id="ch-h">${esc(`Newest held-out eval (v${h.version}): wrong payments on ${h.cases} invoices`)}</h2>
+<p>${esc(`If the model always said pay, Purser's rules would let ${h.purser} wrong payments out; with no rules, ${h.noRules}. ${h.falseHolds} false holds of ${h.clean} clean invoices. Cases committed before the run; offline, test data.`)}</p>
+<p class="r">${link(h.md, "record")}</p></div></section>`;
+}
+
+export const HELD_OUT_CSS = `.chold { padding: 18px 20px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 24px; align-items: center; }
+@media (max-width: 640px) { .chold { grid-template-columns: minmax(0, 1fr); } }
+.ch-fig { display: grid; gap: 2px; justify-self: start; }
+.ch-v { font-size: clamp(40px, 5vw, 56px); font-weight: 800; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ch-v b { color: var(--ok); } .ch-v b.no { color: var(--bad); } .ch-v span { font-size: .45em; color: var(--muted); font-weight: 650; letter-spacing: 0; }
+.ch-k { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 650; color: var(--muted); }
+.ch-t { display: grid; gap: 4px; min-width: 0; } .ch-t h2 { margin: 0; font-size: 17px; line-height: 1.3; } .ch-t p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--muted); }
+.ch-t .r a.pf { min-height: 44px; display: inline-flex; align-items: center; }`;
+
+export interface ClaudeBody { logo: string; label: string; split: SplitFigures; agents: AgentFigures[]; evidence: ClaudeEvidence; used: Record<string, string>; folds: string; runIcon: string; heldOut?: HeldOut | null }
+
+/**
+ * The page's main: the title, the split, the agents with their models, the newest held-out eval, then the folds: the
+ * proof tiles and the model chart first. 21 Nov (the owner, Max: "Upgrade the Claude page. Make sure Claude has really
+ * good, clear, correct visuals. I want it simple and tight."): the tiles and the chart moved into folds; in sight, the
+ * split (what code decides, what Claude decides, what goes on to Face ID), the three agents and one eval tile.
+ */
 export function claudeMain(b: ClaudeBody): string {
+  const tiles = proofTiles(b.evidence, b.used), chart = modelChart(b.evidence, b.used);
+  // The chart opens the sweep's own fold ("Each agent on each model (6 Nov)", its table under it); a fold of its own without one.
+  const sweepAt = /<summary>Each agent on each model \([^<]*<\/summary>/.exec(b.folds);
+  const folds = chart && sweepAt ? `${b.folds.slice(0, sweepAt.index + sweepAt[0].length)}${chart}${b.folds.slice(sweepAt.index + sweepAt[0].length)}`
+    : `${chart ? `<details class="fold" id="models-fold"><summary>${esc("Each agent on each model")}</summary>${chart}</details>` : ""}${b.folds}`;
   return `<main class="pp"><div class="wrap">
   <div class="phd">${b.logo}<span class="pill run">${b.runIcon}${esc(b.label)}</span><h1>Claude decides the exceptions</h1></div>
   ${splitFigure(b.split)}
   ${agentCards(b.agents)}
-  ${proofTiles(b.evidence, b.used)}
-  ${modelChart(b.evidence, b.used)}
-  <div class="folds card">${b.folds}${injectionFold()}</div>
+  ${heldOutTile(b.heldOut ?? null)}
+  <div class="folds card">${tiles ? `<details class="fold" id="measured"><summary>${esc("Measured, not asserted: five more figures")}</summary>${tiles}</details>` : ""}${folds}${injectionFold()}</div>
   <a class="open" href="proof#claude">All the proof ${icon("arrow-right", 15)}</a>
 </div></main>`;
 }

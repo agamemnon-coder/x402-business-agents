@@ -36,7 +36,9 @@ function read<T>(file: string): T | null {
 }
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 
-export interface AltaFact { id: "refused" | "owners" | "anchor"; title: string; text: string; links: { label: string; href: string }[]; record: string[] }
+export interface AltaFact { id: "refused" | "owners" | "anchor"; title: string; text: string; links: { label: string; href: string }[]; record: string[];
+  /** The tile's figure and its few words (/alta's proof tiles since 21 Nov; the owner: "not so much text"), from the same rows as the text. */
+  fig: string; short: string }
 
 export interface AltaFactsInput {
   faceid?: { steps?: Step[] } | null;
@@ -76,6 +78,7 @@ export function altaFacts(i: AltaFactsInput = {
     out.push({ id: "refused", title: "Refused on chain",
       text: `${day(ran)}: ${paid.length} payments inside the agent's mandate, ${total} test USD in all. Alta refused ${refused.length === 3 ? "all 3" : refused.length} attempts outside it on chain (${refused.map((x) => x.reason).join(", ")}); nothing moved.`,
       links: refused.map((x) => ({ label: REASON_LINK[x.reason!] ?? "tx", href: `${EXPLORER}/tx/${txOf(x)}` })),
+      fig: `${refused.length} of ${tried.length}`, short: `attempts outside the mandate, refused on chain (${day(ran)})`,
       // The run log (the first record's .md) tells both passes, each step with its transaction: one link for the two.
       record: [SERIES_RECORDS[0]] });
   }
@@ -85,7 +88,7 @@ export function altaFacts(i: AltaFactsInput = {
   if (!out.length && refusal && over && txOf(refusal) && refusal.at) {
     out.push({ id: "refused", title: "Refused on chain",
       text: `${day(refusal.at)}: ${over[1]} to ${over[2]}, over the mandate's ${over[3]} cap. Alta refused it on chain; nothing moved.`,
-      links: [{ label: "tx", href: `${EXPLORER}/tx/${txOf(refusal)}` }], record: [FACEID_RECORD] });
+      links: [{ label: "tx", href: `${EXPLORER}/tx/${txOf(refusal)}` }], record: [FACEID_RECORD], fig: over[1]!, short: `over the ${over[3]} cap, refused on chain (${day(refusal.at)})` });
   }
 
   // The mandate change: the relay of P-0002 after both owners signed; and, separately, one passkey alone refused.
@@ -101,7 +104,7 @@ export function altaFacts(i: AltaFactsInput = {
       links.push({ label: "one: tx", href: `${EXPLORER}/tx/${txOf(alone)}` });
       record.push(OWNERS_RECORD);
     }
-    out.push({ id: "owners", title: "Two passkey owners", text, links, record });
+    out.push({ id: "owners", title: "Two passkey owners", text, links, record, fig: "2 of 2", short: links.length > 1 ? "passkeys to change a cap; one alone is refused on chain" : "passkeys signed the cap change" });
   }
 
   // The fresh anchor of 19 Nov, which pins the series' records too; verify-anchor's MATCH as the run log prints it.
@@ -113,7 +116,8 @@ export function altaFacts(i: AltaFactsInput = {
     const pins = out[0]?.record[0] === SERIES_RECORDS[0] && (a19.parts ?? []).some((x) => (x as { file?: string }).file === SERIES_RECORDS[0]);
     out.push({ id: "anchor", title: "Anchored",
       text: `${day(a19.anchored_at)}: the head of Purser's records, ${a19.height} rows and lines${pins ? ", the series above included" : ""}, in one transaction.${match ? " verify-anchor: MATCH." : ""}`,
-      links: [{ label: "tx", href: `${EXPLORER}/tx/${a19.tx}` }], record: match ? [ANCHOR_19_RECORD, ANCHOR_19_CHECK] : [ANCHOR_19_RECORD] });
+      links: [{ label: "tx", href: `${EXPLORER}/tx/${a19.tx}` }], record: match ? [ANCHOR_19_RECORD, ANCHOR_19_CHECK] : [ANCHOR_19_RECORD],
+      fig: String(a19.height), short: `records sealed in one transaction${match ? "; verify-anchor: MATCH" : ""} (${day(a19.anchored_at)})` });
     return out;
   }
   const at = i.anchor?.anchored_at;
@@ -121,7 +125,8 @@ export function altaFacts(i: AltaFactsInput = {
     const v = i.verified && i.verified.result === "MATCH" && i.verified.tx === i.anchor.tx && i.verified.ran_at ? i.verified : null;
     out.push({ id: "anchor", title: "Anchored",
       text: `${day(at)}: the head of Purser's records, in one transaction.${v ? ` verify-anchor run live on ${day(v.ran_at!)}: MATCH.` : ""}`,
-      links: [{ label: "tx", href: `${EXPLORER}/tx/${i.anchor.tx}` }], record: v ? [ANCHOR_RECORD, ANCHOR_VERIFIED_RECORD] : [ANCHOR_RECORD] });
+      links: [{ label: "tx", href: `${EXPLORER}/tx/${i.anchor.tx}` }], record: v ? [ANCHOR_RECORD, ANCHOR_VERIFIED_RECORD] : [ANCHOR_RECORD],
+      fig: "1 tx", short: `the head of Purser's records${v ? "; verify-anchor: MATCH" : ""} (${day(at)})` });
   }
   return out;
 }
@@ -154,3 +159,25 @@ export function altaFactsHtml(facts: AltaFact[], payments: { count: number; list
   const num = payments ? `<p class="anum">${esc(`${payments.count} Alta payments in the main run, each its own transaction.`)} <a href="${esc(`${REPO_BLOB}${payments.list}`)}" title="${esc(payments.list)}" target="_blank" rel="noopener">${esc("3 Nov record")} ↗</a></p>` : "";
   return `<section class="afacts" id="${ALTA_FACTS_ID}" aria-label="${esc("Three facts on Alta testnet")}"><ol>${facts.map(li).join("")}</ol>${num}</section>`;
 }
+
+/**
+ * The three facts as proof tiles under /alta's scene (the owner, 21 Nov: "not so much text"): the title, one figure,
+ * its few words, and the same explorer links and records as the full facts (whose text stays in the page's folds).
+ */
+export function altaTilesHtml(facts: AltaFact[]): string {
+  if (!facts.length) return "";
+  const li = (f: AltaFact) => `<li class="card" id="fact-${f.id}" data-rec="${esc(f.record[0]!)}"><h2>${icon(ICON[f.id], 16)}${esc(f.title)}</h2><span class="at-v">${esc(f.fig)}</span><p>${esc(f.short)}</p>
+<p class="alinks">${f.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)} ↗</a>`).join("")}${f.record.slice(0, 1).map(recordLink).join("")}</p></li>`;
+  return `<section class="afacts atiles" id="${ALTA_FACTS_ID}" aria-label="${esc("Three facts on Alta testnet")}"><ol>${facts.map(li).join("")}</ol></section>`;
+}
+
+export const ALTA_TILES_CSS = `.atiles { margin: 0; }
+.atiles ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.atiles li { gap: 2px; padding: 12px 16px 4px; }
+.atiles h2 { font-size: 13px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); }
+.atiles h2 svg { color: var(--metal); }
+.atiles .at-v { font-size: clamp(28px, 3vw, 36px); font-weight: 780; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.atiles p { font-size: 14.5px; }
+@media (max-width: 760px) { .atiles ol { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .atiles li { grid-template-columns: 92px minmax(0, 1fr); column-gap: 12px; padding: 10px 14px 2px; } .atiles li > * { grid-column: 2; }
+  .atiles .at-v { grid-column: 1; grid-row: 1 / span 3; align-self: center; font-size: 28px; } }`;

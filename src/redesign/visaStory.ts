@@ -141,7 +141,7 @@ export function visaThreeRunsHtml(): string {
 }
 
 /** 4. TAP, openly: its status first (outside the entry), what the run proves, and its record. */
-export function visaTapSectionHtml(id: string, more = ""): string {
+export function visaTapSectionHtml(id: string, more = "", o: { folded?: boolean } = {}): string {
   const tap = tapRun();
   if (!tap) return "";
   const buy = tap.steps.find((s) => s.approved), over = tap.steps.find((s) => !s.approved);
@@ -152,8 +152,8 @@ export function visaTapSectionHtml(id: string, more = ""): string {
   ].filter(Boolean);
   return `<section class="card vs vs-tap" id="${id}"><h2>${esc(VISA_TAP_SECTION_HEADING)}</h2>
 <p class="claim">${esc(VISA_TAP_STATUS)}</p>
-<ul class="vs-list">${proved.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
-<p class="vh-src">${esc(`${tap.label}.`)} ${recLink(tap.file)}</p>${more}</section>`;
+${o.folded ? `<details class="fold" id="${id}-what"><summary>${esc("What the TAP run showed, and what it did not")}</summary>` : ""}<ul class="vs-list">${proved.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
+<p class="vh-src">${esc(`${tap.label}.`)} ${recLink(tap.file)}</p>${more}${o.folded ? "</details>" : ""}</section>`;
 }
 
 /** 5. What is not proven yet: short, honest. */

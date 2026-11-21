@@ -13,8 +13,9 @@
 // material sits in one closed fold at the very end, labelled as outside the entry (Visa, 5 Nov: TAP is not Visa tooling
 // for this hackathon). assertVicFirst fails the page build if any of that is lost.
 
-import { altaFacts, altaFactsHtml, ALTA_FACTS_CSS, ALTA_FACTS_ID, NO_ENDORSEMENT_ALTA } from "./altaFacts.js";
-import { quotedNote } from "../ui/formerly.js";
+import { altaFacts, altaFactsHtml, altaTilesHtml, ALTA_FACTS_CSS, ALTA_FACTS_ID, ALTA_TILES_CSS, NO_ENDORSEMENT_ALTA } from "./altaFacts.js";
+import { ALTA_SCENE_CSS, altaArchHtml, altaScene, altaSceneHtml } from "./altaScene.js";
+import { ALTA_FIRST, quotedNote } from "../ui/formerly.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 import { existsSync, readFileSync } from "node:fs";
 import { AIRI_CREDENTIAL, SANDBOX_SETTLED, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS } from "../config/brand.js";
@@ -41,12 +42,14 @@ import { VIC_NETWORK_CSS, vicNetworkBlock, vicNetworkRecord } from "./vicNetwork
 import { VIC_RULES_CSS, vicRulesBlock } from "./vicRules.js";
 import { VISA_ASKS_ID, VISA_MEETS_ID, VISA_PLAN_FILE, VISA_RUNS3_ID, VISA_STORY_CSS, VISA_TAP_SECTION_HEADING, visaAsksHtml, visaMeetsHtml, visaNotYetHtml, visaReuseHtml, visaTapSectionHtml, visaThreeRunsHtml } from "./visaStory.js";
 import { GUARD_FILE, GUARD_TEST, VISA_CARD_SCENE_CSS, VISA_CARD_SCENE_JS, cardSceneData, visaCardSceneHtml } from "./visaCardScene.js";
+import { VISA_CARD_HERO_CSS, visaArchHtml, visaCardHeroHtml, visaCardScene } from "./visaCardHero.js";
+import { ARCH_CSS } from "./altaScene.js";
 import { VISA_OVERVIEW_CSS, VISA_OVERVIEW_ID, VISA_SUMMARY_HEADING, VISA_TAP_ID, tapCardHtml, visaOverviewBlock } from "./visaOverview.js";
 import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.js";
 import { METAL_ONCHAIN_CSS, faceIdOnChainSection } from "./metalOnchain.js";
 import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, holdState, metalBody } from "./metalMandates.js";
-import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, sweepFold } from "./claudeEvidence.js";
-import { CLAUDE_CSS, claudeMain } from "./claudePage.js";
+import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, newestHeldOut, sweepFold } from "./claudeEvidence.js";
+import { CLAUDE_CSS, HELD_OUT_CSS, claudeMain } from "./claudePage.js";
 import { BOOKS_CSS, BOOKS_JS, MONEYBIRD_RECORD, RUN_FILE, booksBody, booksData } from "./booksPage.js";
 import { T0_CLOSE_JS, t0RunData } from "./t0CloseTile.js";
 import { T0_CSS, T0_JOURNAL_RECORD, T0_READBACK_RECORD, t0Data, t0SectionHtml } from "./t0Page.js";
@@ -171,13 +174,20 @@ export function metalPage(run: AgentRun = agentRun(), tokenize: TokenizeRun | nu
       plainLi("The second approver on the mandate change is a labelled test passkey; in production it is a second person."), plainLi("Passkeys as the account's owners ran on 1 November with software passkeys, not a phone."), ...(holdState(readFileSync(new URL(`../../${METAL_HOLD_RECORD}`, import.meta.url), "utf8"))?.finished === false ? [plainLi(`${HOLD_NOT_FINISHED}.`)] : [])])
     + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]);
   // The opening (Metal Award, 15 Nov): three facts with their explorer links and records, then the main run's count.
-  const intro = altaFactsHtml(altaFacts(), { count: metalTxs().length, list: METAL_TX_LIST });
-  const bodyOnly = metalBody(run.record, { logo: LOGO.metal, logoNote: intro ? NO_ENDORSEMENT_ALTA : undefined, intro, label: run.label, folds, proofHash: "metal", after: `\n  ${faceIdOnChainSection()}${tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : ""}` });
-  // 19 Nov (the owner): the wall's Alta tiles, right after the three facts that open the page (Metal Award, 15 Nov).
-  const factsEnd = bodyOnly.indexOf("</section>", bodyOnly.indexOf(`id="${ALTA_FACTS_ID}"`));
+  // 21 Nov (the owner, Max: "Our Kit 11 point is: a supplier raises its price, and you see it refused on chain. That has
+  // to go at the top, not so much text."): the main run's price rise as one scene on top (src/redesign/altaScene.ts),
+  // the three facts of the Metal Award (15 Nov) as short proof tiles under it, then the architecture. Their full text,
+  // the main run's count, the "Live on Alta" strip (19 Nov), the passkeys on chain and the invoice token are folded below,
+  // each with its transactions and records.
+  const facts = altaFacts(), scene = altaSceneHtml(altaScene(run.record));
+  const full = altaFactsHtml(facts, { count: metalTxs().length, list: METAL_TX_LIST }).replace(`id="${ALTA_FACTS_ID}"`, `id="${ALTA_FACTS_ID}-full"`).replace(/ id="fact-/g, ' id="factfull-');
   const strip = evidenceStripHtml("alta");
-  const body = factsEnd < 0 || !strip ? afterHeading(bodyOnly, strip) : `${bodyOnly.slice(0, factsEnd + 10)}\n  ${strip}${bodyOnly.slice(factsEnd + 10)}`;
-  return page({ title: "Alta", description: "How Purser uses Alta: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${EVIDENCE_WALL_CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}\n${STATS_CSS}\n${ALTA_FACTS_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
+  const more = (full ? `<details class="fold" id="alta-facts-more"><summary>${esc("The three facts in full, and the main run's count")}</summary>${full}</details>` : "")
+    + (strip ? `<details class="fold" id="alta-live"><summary>${esc("Live on Alta: six tiles from the evidence wall")}</summary>${strip}</details>` : "")
+    + `<details class="fold" id="alta-onchain"><summary>${esc("Separate runs on Alta, each with its record")}</summary>${faceIdOnChainSection()}${tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : ""}</details>`;
+  const body = metalBody(run.record, { logo: LOGO.metal, logoNote: NO_ENDORSEMENT_ALTA, intro: altaTilesHtml(facts), label: run.label, folds, proofHash: "metal",
+    scene, lead: `Each agent's limit is a mandate on ${ALTA_FIRST}. Over the cap, the chain refuses the payment.`, arch: altaArchHtml(), more });
+  return page({ title: "Alta", description: "How Purser uses Alta: each agent's limit is a mandate on chain; when a supplier raised its price over the cap, Alta refused the payment on chain.", tab: "metal", css: `${CSS}\n${EVIDENCE_WALL_CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}\n${STATS_CSS}\n${ALTA_FACTS_CSS}\n${ALTA_TILES_CSS}\n${ALTA_SCENE_CSS}\n.mlead { margin: -6px 0 0; font-size: clamp(17px, 1.7vw, 19px); font-weight: 600; max-width: 44em; }`, body, source: SOURCE(run), js: METAL_INSPECT_JS + COUNT_JS + OPEN_TARGET_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 export function airwallexPage(run: AgentRun = agentRun()): string {
@@ -370,14 +380,26 @@ export function visaPage(run: AgentRun = agentRun()): string {
   // Jury pass, 13 Nov: the latest run as it ended for each purchase ("1 paid after Face ID, 3 refused by Purser, 1 not
   // tapped: nothing charged"), four cards, the two lines that say what the entry is, then every detail in one fold; the
   // TAP work, outside the entry, last inside it (its own closed fold), so it is never on the first screen at any width.
-  const body = `<main class="pp"><div class="wrap">
-  <div class="phd">${LOGO.visa}<span class="pill run" data-rec="${esc([AIRI_RUN_FILE, ...(vic3 ? [VIC3_RUN_FILE] : [])].join(" "))}">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
-  ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
+  // 21 Nov (the owner, Max: "It must be clear it is about cards, not all those walls of text. So again: visuals,
+  // animations, architecture. Show it."): the card scene of vic-5 on top (src/redesign/visaCardHero.ts), the two
+  // refusals as chips, the card flow, the entry line; the three facts, the evidence strip, the live credential check and
+  // every detail folded below; TAP's section keeps its heading and status in sight, its content folded.
+  const hero = visaCardHeroHtml(visaCardScene());
+  const top = vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
   <p class="vlimits" data-rec="${VIC3_RUN_FILE}">${esc(visaLimitsLine(vic3 as never))}</p>
   ${withRec(proofFirstHtml(visaFirstFacts(vic3 as never, VIC3_RUN_FILE, `#${VISA_REUSE_ID}`)), [VIC3_RUN_FILE])}
-  ${evidenceStripHtml("visa", { note: "Visa is named in text only; no endorsement." })}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
-  ${withRec(visaCardSceneHtml(), [VIC3_RUN_FILE, AIRI_RUN_FILE, GUARD_FILE, GUARD_TEST])}
+  ${evidenceStripHtml("visa", { note: "Visa is named in text only; no endorsement." })}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`;
+  const scene = withRec(visaCardSceneHtml(), [VIC3_RUN_FILE, AIRI_RUN_FILE, GUARD_FILE, GUARD_TEST]);
+  const body = `<main class="pp"><div class="wrap">
+  <div class="phd">${LOGO.visa}<span class="pill run" data-rec="${esc([AIRI_RUN_FILE, ...(vic3 ? [VIC3_RUN_FILE] : [])].join(" "))}">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
+  ${hero ? `${hero}
+  ${visaArchHtml()}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
+  <div class="folds card vfolds"><details class="fold" id="visa-facts"><summary>${esc("The run's three facts, and the evidence tiles")}</summary>${top}</details>
+  <details class="fold" id="visa-try"><summary>${esc("Try Purser's check on this credential")}</summary>${scene}</details>
+  <details class="fold" id="visa-not-yet-fold"><summary>${esc("What is not proven yet")}</summary>${visaNotYetHtml()}</details>` : `${top}
+  ${scene}
+  <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}`}
   <details class="sumd" id="visa-asks-fold"><summary>${esc("What Visa Intelligent Commerce asks for, and how Purser meets it")}</summary>
   ${withRec(visaAsksHtml(), [VISA_PLAN_FILE])}
   ${withRec(visaMeetsHtml(), [VIC3_RUN_FILE, VIC3_RUN_LOG, ...VIC_RULES_CODE])}
@@ -401,8 +423,9 @@ export function visaPage(run: AgentRun = agentRun()): string {
   ${more ? `<div class="awrb"><div class="card" id="${VISA_MORE_ID}">${more}</div></div>` : ""}
   <a class="open" href="proof#${AIRI_RUN_ID}">All the proof ${icon("arrow-right", 15)}</a>
   </details>
-  ${withRec(visaTapSectionHtml(VISA_TAP_ID, `${evidenceStripHtml("tap")}<div class="folds card">${visaTapFold(run)}</div>`), [tapFile, run.file])}
-  ${visaNotYetHtml()}
+  ${hero ? "</div>" : ""}
+  ${withRec(visaTapSectionHtml(VISA_TAP_ID, `${evidenceStripHtml("tap")}<div class="folds card">${visaTapFold(run)}</div>`, { folded: !!hero }), [tapFile, run.file])}
+  ${hero ? "" : visaNotYetHtml()}
 </div></main>`;
   // The card scene's buttons run Purser's credential check in the browser on the recorded purchase (its data block).
   const sceneData = cardSceneData();
@@ -410,7 +433,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
     ...(sceneData ? { data: sceneData } : {}),
     // /visa says the ICC status once, in its body; its footer leaves that item out (assertVicFirst).
     builtOn: builtOnHtml(run, false),
-    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${EVIDENCE_WALL_CSS}\n${PROOF_FIRST_CSS}\n.pp .vlimits { margin: 6px 0 0; font-size: 14.5px; color: var(--muted); }\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}${sceneData ? `\n${VISA_CARD_SCENE_JS}` : ""}`, stage: false,
+    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${EVIDENCE_WALL_CSS}\n${PROOF_FIRST_CSS}\n.pp .vlimits { margin: 6px 0 0; font-size: 14.5px; color: var(--muted); }\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n${ARCH_CSS}\n${VISA_CARD_HERO_CSS}\n.vfolds { padding: 6px 20px 12px; } .vfolds ol.pfirst p, .vfolds ol.pfirst a { overflow-wrap: anywhere; }\n.vfolds details.sumd { border-top: 1px solid var(--border); padding-top: 6px; } .vfolds details.sumd > summary { cursor: pointer; font-weight: 650; font-size: 16px; color: var(--accent); list-style: none; display: flex; align-items: center; gap: 6px; min-height: 44px; }\n.vfolds details.sumd > summary::-webkit-details-marker { display: none; } .vfolds details.sumd > summary::after { content: "▾"; font-size: 14px; } .vfolds details.sumd[open] > summary::after { content: "▴"; }\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}${sceneData ? `\n${VISA_CARD_SCENE_JS}` : ""}`, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, an ${AIRI_CREDENTIAL} for one purchase is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
@@ -463,14 +486,15 @@ export function claudePage(run: AgentRun = agentRun()): string {
   const body = claudeMain({
     logo: LOGO.claude + ENDORSE_NOTE, label: run.label, runIcon: icon("database", 14), evidence: ev, used,
     split: { ...sp, calls, faceId: faceIdDecisions(run.record), onChain: metalStory(run.record).payments },
-    agents: run.agents.map((a) => { const st = s.agent_stats.find((x) => x.agent === a.id); return { id: a.id, short: a.short, family: a.family, decisions: st?.decisions ?? 0, calls: st?.claude_calls ?? 0 }; }),
+    agents: run.agents.map((a) => { const st = s.agent_stats.find((x) => x.agent === a.id); return { id: a.id, short: a.short, family: a.family, model: a.model, decisions: st?.decisions ?? 0, calls: st?.claude_calls ?? 0 }; }),
+    heldOut: newestHeldOut(),
     folds: sweepFold(ev, used) + failureFold(ev)
       // All the decisions the headline counts (final review, 4 Nov: the chat's 21 of 24), cut at a word, never inside a number.
       + fold("Every decision, with its Claude call", decisionsOf(run.record).map((d) => `<li class="ok">${esc(`${d.agent[0]!.toUpperCase()}${d.agent.slice(1)}, ${d.at.slice(11, 16)} UTC: ${d.text.length > 140 ? `${d.text.slice(0, 140).replace(/\s+\S*$/, "")}…` : d.text}${quotedNote(d.text, d.at)}`)}${d.call ? `<br><span class="call" title="${esc(d.call.requestIds.join(", "))}">${esc(callBadge(d.call))}</span>` : ""}</li>`))
       + fold("Payments decided by Claude, with their request ids", requests.map((f) => `<li>${esc(`${f.what}: ${f.amount} ${f.unit === "EUR" ? "EUR" : "test USD"} · ${f.decided} · ${f.request}`)}</li>`))
       + mcpFold(ev),
   });
-  return page({ title: "Claude", description: "How Purser uses Claude: three agents decide the exceptions, each decision a recorded Claude call; routine payments per query are code.", tab: "claude", css: `${CSS}\n${EVIDENCE_CSS}\n${CLAUDE_CSS}`, body, source: SOURCE(run), builtOn: builtOnHtml(run) });
+  return page({ title: "Claude", description: "How Purser uses Claude: three agents decide the exceptions, each decision a recorded Claude call; routine payments per query are code.", tab: "claude", css: `${CSS}\n${EVIDENCE_CSS}\n${CLAUDE_CSS}\n${HELD_OUT_CSS}`, body, source: SOURCE(run), builtOn: builtOnHtml(run) });
 }
 
 /**

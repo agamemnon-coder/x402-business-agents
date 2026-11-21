@@ -11,13 +11,14 @@ import { agentId } from "../src/platform/externalAgents.js";
 import { agentApiServer } from "../src/platform/mcpServer.js";
 import {
   AGENT_EVALS, HOLDOUTS_RECORD, HOSTILE_EVAL, INJECTION_LINE, MCP_TRANSCRIPT, SWEEP_RECORD, VARIATION_FIX_SUMMARY, VARIATION_RECORD, VARIATION_SUMMARY, ZERO_TRUST_REPORT,
-  claudeEvidence, firstTry, holdoutsOf, hostileOf, mcpOf, modelLines, sweepOf, variationOf,
+  claudeEvidence, firstTry, holdoutsOf, hostileOf, mcpOf, modelLines, newestHeldOut, sweepOf, variationOf,
 } from "../src/redesign/claudeEvidence.js";
 import { hostileTileLabel, proofTiles, splitSentence } from "../src/redesign/claudePage.js";
 import { agentRun, faceIdDecisions, split } from "../src/redesign/run.js";
 import { REPO_BLOB, metalStory } from "../src/redesign/metalStory.js";
 import { HOSTILE_RECORD_FILE, hostileClaimText } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
+import { committedWall } from "../src/redesign/evidenceWall.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
 import { CLAUDE_PAGE } from "../src/servers/dashboard.js";
 
@@ -103,10 +104,34 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     const cards = [...main.matchAll(/<article class="cag card" data-agent="(\w+)">([\s\S]*?)<\/article>/g)];
     expect(cards.map((c) => [c[1], shown(c[2]!)])).toEqual(run.agents.map((a) => {
       const x = st.find((y) => y.agent === a.id)!;
-      return [a.id, `${a.short} ${a.family} ${x.decisions}decisions ${x.claude_calls} Claude calls`.replace(/(\d)decisions/, "$1 decisions")];
+      // 21 Nov (the owner: "really good, clear, correct visuals"): each card names its model as the record does, with
+      // its version ("claude-haiku-5-5" is "Claude Haiku 5.5").
+      const [, fam, major, minor] = /^claude-(haiku|sonnet|opus)-(\d+)-(\d+)/.exec(a.model)!;
+      expect(fam!.toLowerCase()).toBe(a.family.toLowerCase());
+      return [a.id, `${a.short} Claude ${a.family} ${major}.${minor} ${x.decisions}decisions ${x.claude_calls} Claude calls`.replace(/(\d)decisions/, "$1 decisions")];
     }));
     expect(cards.map((c) => /<rect class="fil" width="([\d.]+)%"/.exec(c[2]!)?.[1])).toEqual(st.map((x) => String(Math.round(x.decisions / sp.decisions * 1000) / 10)));
     expect(cards.map((c) => c[1])).toEqual(["sourcing", "support", "treasury"]);
+  });
+
+  // 21 Nov (the owner: "the newest held-out eval as one tile: v16, 8 vs 77"): in sight under the agents, read from the
+  // newest held-out record, the same figure as the evidence wall's tile for that eval.
+  it("shows the newest held-out eval as one tile, from its record and as the evidence wall says it", () => {
+    const h = newestHeldOut()!;
+    const r = read(h.file);
+    const j = JSON.parse(r) as { held_out: boolean; totals: { purser_script: { cases: number; wrong_payments: number; false_holds: number; clean_truths: number }; no_rules: { wrong_payments: number } } };
+    expect(j.held_out).toBe(true);
+    expect([h.purser, h.noRules, h.cases, h.falseHolds, h.clean]).toEqual([j.totals.purser_script.wrong_payments, j.totals.no_rules.wrong_payments, j.totals.purser_script.cases, j.totals.purser_script.false_holds, j.totals.purser_script.clean_truths]);
+    // No newer held-out round is on this build.
+    expect(existsSync(new URL(`../docs/evals/adversarial-v${h.version + 1}.json`, import.meta.url))).toBe(false);
+    const wall = committedWall()!.groups.flatMap((g) => g.tiles).find((t) => t.key === `eval-v${h.version}`)!;
+    expect(wall.fig).toBe(`${h.purser} vs ${h.noRules}`);
+    const tile = /<section class="chold card" id="held-out"[\s\S]*?<\/section>/.exec(main)![0];
+    expect(tile).toContain(`data-rec="${h.file}"`);
+    expect(text(tile).replace(/\s+/g, " ")).toContain(`${h.purser} vs ${h.noRules} Purser's rules no rules Newest held-out eval (v${h.version}): wrong payments on ${h.cases} invoices`);
+    expect(text(tile)).toContain("If the model always said pay");
+    expect(main.indexOf('id="held-out"')).toBeGreaterThan(main.indexOf('id="agents"'));
+    expect(main.indexOf('id="held-out"')).toBeLessThan(main.indexOf("<details"));
   });
 
   it("shows five proof tiles, each an icon, one number, a short label and its record", () => {

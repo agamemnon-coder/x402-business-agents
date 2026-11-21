@@ -112,6 +112,9 @@ const visibleText = (html: string) => html
   // /visa's card-rail scene (partner review, 14 Nov): its amounts, ids and codes are read from docs/runs/2026-11-14-vic-5.json
   // and checked against it in test/partner-controls.test.ts.
   .replace(/Agent pays with an Airi credential \(test card[\s\S]*?its tests/g, " ")
+  // /visa's card scene (the owner, 21 Nov: "visuals, animations, architecture"): the card's last four, the amounts, the
+  // CFO's limit and hard cap, the codes, read from docs/runs/2026-11-14-vic-5.json and held to it in test/visa-card-hero.test.ts.
+  .replace(/An agent(?:'|&#39;)s card, over the CFO(?:'|&#39;)s limit[\s\S]*?held the limits\./g, " ")
   // The CFO's policy next to Visa's published VIC rules (12 Nov, folded on /visa): Purser's figures from the two Airi
   // records and the code's constants, Visa's from its own quoted words; all checked in test/vic-rules.test.ts.
   .replace(/The CFO's policy next to Visa's VIC rules[\s\S]*?developer\.visa\.com, read \d{1,2} \w{3} \d{4}\./g, " ")

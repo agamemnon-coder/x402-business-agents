@@ -270,7 +270,9 @@ export const METAL_INSPECT_JS = `(function () {
   }).catch(function () {});
 })();`;
 
-export interface MetalBody { logo: string; label: string; folds: string; proofHash: string; /** The opening facts (src/redesign/altaFacts.ts), right under the heading. */ intro?: string; /** Beside the logo (the Metal Award, 15 Nov): "No endorsement implied". */ logoNote?: string; /** Blocks of other runs shown under the folds (the invoice-token run, when its record exists). */ after?: string }
+export interface MetalBody { logo: string; label: string; folds: string; proofHash: string; /** The opening facts (src/redesign/altaFacts.ts), right under the heading. */ intro?: string; /** Beside the logo (the Metal Award, 15 Nov): "No endorsement implied". */ logoNote?: string; /** Blocks of other runs shown under the folds (the invoice-token run, when its record exists). */ after?: string;
+  /** Since 21 Nov: the price-rise scene on top (src/redesign/altaScene.ts), its heading and one line under it, the architecture, and folds put before the others. */
+  scene?: string; h1?: string; lead?: string; arch?: string; more?: string }
 
 /** A paid Alta payment from the main run's trace: the kind, its number, its amount and its transaction. */
 interface TracePayment { kind: string; ref: string; amount: string; rail: string; rail_id: string | null; origin?: { agent?: string } }
@@ -395,6 +397,23 @@ ${revoked ? `<p class="mnote"><b>${esc(`A revoked credential, ${day(revoked.bloc
   // Jury, 17 Nov: the opening facts are dated runs of their own (12 and 13 Nov), so the main run's label ("Replay of the
   // main run, 3 Nov") moves down to where the main run's part starts; without them it stays in the heading.
   const runPill = `<span class="pill run">${icon("database", 14)}${esc(o.label)}</span>`;
+  // 21 Nov (the owner, Max: "We must show the strongest points. Our Kit 11 point is: a supplier raises its price, and you
+  // see it refused on chain. That has to go at the top, not so much text."): the scene of the main run's price rise first,
+  // then three proof tiles and the architecture; the main run's mandates, charts and replace, and every other block,
+  // folded below, each still with its transactions and records.
+  if (o.scene) return `<main class="pp mtp"><div class="wrap">
+  <div class="phd">${o.logo}${o.logoNote ? `<span class="noend">${esc(o.logoNote)}</span>` : ""}${runPill}<h1>${esc(o.h1 ?? "A price rise, refused on chain")}</h1></div>
+  ${o.lead ? `<p class="mlead">${esc(o.lead)}</p>` : ""}
+  ${o.scene}
+  ${o.intro ?? ""}
+  ${o.arch ?? ""}
+  <p class="mnote">${esc(METAL_AWARD_LINE)}</p>
+  <div class="folds card"><details class="fold" id="mfull"><summary>${esc("The main run on Alta, in full: mandates, payments, the replace")}</summary>${hero}
+  <div class="mcharts">${budgetChart}${payChart}${moment}</div>
+  ${cards}
+  ${replace}</details>${o.more ?? ""}${coverage}${decodedFold}${o.folds}</div>
+  <a class="open" href="proof#${esc(o.proofHash)}">All the proof ${icon("arrow-right", 15)}</a>
+</div></main>`;
   return `<main class="pp mtp"><div class="wrap">
   <div class="phd">${o.logo}${o.logoNote ? `<span class="noend">${esc(o.logoNote)}</span>` : ""}${o.intro ? "" : runPill}<h1>${esc("A limit the agent cannot talk past")}</h1></div>
   ${o.intro ?? ""}<p class="mnote">${esc(METAL_AWARD_LINE)}</p>
