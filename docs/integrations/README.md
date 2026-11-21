@@ -53,16 +53,13 @@ books or carries a message, and none of it moves money.
 </tr>
 <tr>
 <td><b>Books and ERP</b></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-xero.svg" alt="Xero" height="24"><br><sub>Xero</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/si-quickbooks.svg" alt="QuickBooks" height="24"><br><sub>QuickBooks</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/exact.svg" alt="Exact" height="24"><br><sub>Exact Online</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/moneybird.svg" alt="Moneybird" height="24"><br><sub>Moneybird</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-odoo.svg" alt="Odoo" height="24"><br><sub>Odoo</sub></td>
 <td align="center"><b>BC</b><br><sub>Business Central</sub></td>
 </tr>
 <tr>
 <td><b>Messages and mail</b></td>
-<td align="center"><img src="../../src/ui/logos/brands/slack.svg" alt="Slack" height="24"><br><sub>Slack</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/microsoft-teams.svg" alt="Microsoft Teams" height="24"><br><sub>Microsoft Teams</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/si-whatsapp.svg" alt="WhatsApp" height="24"><br><sub>WhatsApp</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/gmail.svg" alt="Gmail" height="24"><br><sub>Gmail</sub></td>
@@ -139,8 +136,8 @@ flowchart LR
   alta --> ledger
   airi --> ledger
   ledger --> t0["T:0"]
-  ledger --> books["Xero, QuickBooks, Exact,<br/>Moneybird, Odoo, Business Central"]
-  ledger --> msgs["Slack, Teams, WhatsApp, e-mail"]
+  ledger --> books["QuickBooks, Exact,<br/>Moneybird, Business Central"]
+  ledger --> msgs["Teams, WhatsApp, e-mail"]
 ```
 
 No arrow from an agent, a key or an integration reaches a rail without passing Purser's policy, and above the limit only
