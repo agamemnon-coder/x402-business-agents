@@ -36,6 +36,8 @@ export const AWX_PAYOUT_DAY = 100;
 export const AWX_PAYOUT_PER_COMPANY = 2;
 /** The demo's invoices go up to EUR 5,000 (src/engine/tryWorld.ts); nothing larger is ever sent. */
 export const AWX_PAYOUT_MAX_CENTS = 500_000;
+/** How long one read of the sandbox's balance serves the payout decisions (21 Nov), each payout taken off it meanwhile. */
+export const BALANCE_READ_MS = 30_000;
 const TIMEOUT_MS = 6_000;
 
 export class PayoutCallNotAllowed extends Error {
@@ -194,54 +196,86 @@ export class AwxPayoutDesk {
   }
 
   /**
-   * One payout at a time. A Durable Object takes new calls while it awaits Airwallex, so without this every ask made at
-   * the same moment counted the caps and read the balance before any of them wrote its row (security review, 16 Nov).
+   * The decisions one at a time, the Airwallex calls side by side. A Durable Object takes new calls while it awaits
+   * Airwallex, so without one queue every ask made at the same moment counted the caps and read the balance before any of
+   * them wrote its row (security review, 16 Nov). The queue holds only the decision: the checks, the counts, the balance
+   * and the row, written before the next ask is decided. The create, and the read-back of a stored transfer, run after it.
+   * 21 Nov (docs/runs/2026-11-21-try-capacity.md): with the create in the queue too, 10 visitors paying in the same few
+   * seconds waited for each other's Airwallex calls; 6 of their 14 payouts passed the engine's 8 s and were paid on the
+   * simulated bank alone.
    */
   private queue: Promise<unknown> = Promise.resolve();
+  /** The payouts being made now, by terms: the same terms asked again meanwhile get the same answer, never a second create. */
+  private readonly making = new Map<string, Promise<PayoutAnswer>>();
+  /**
+   * The sandbox's available EUR balance as last read, and what this desk has sent since: a read serves the decisions of
+   * BALANCE_READ_MS, each payout taken off it, so a payout is still never more than the balance as read less every payout
+   * after the read, and the queue waits on Airwallex at most once in that time. Airwallex refuses a transfer it cannot
+   * cover in any case.
+   */
+  private balance: { cents: number; at: number; sent: number } | null = null;
 
   payout(a: PayoutAsk): Promise<PayoutAnswer> {
-    const run = this.queue.then(() => this.payoutNow(a));
-    this.queue = run.then(() => undefined, () => undefined);
-    return run;
+    const decided = this.queue.then(() => this.decide(a));
+    this.queue = decided.then(() => undefined, () => undefined);
+    return decided.then((d) => d.answer);
   }
 
-  private async payoutNow(a: PayoutAsk): Promise<PayoutAnswer> {
+  /** The decision for one ask, in the queue: an answer, or the payout to make (started here, awaited outside the queue). */
+  private async decide(a: PayoutAsk): Promise<{ answer: PayoutAnswer | Promise<PayoutAnswer> }> {
+    const no = (reason: PayoutReason) => ({ answer: { ok: false as const, reason } });
     if (!a || typeof a !== "object" || typeof a.company !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(a.company) || typeof a.terms_sha256 !== "string" || !/^[0-9a-f]{64}$/.test(a.terms_sha256)
       || typeof a.amount !== "string" || centsOf(a.amount) === null || typeof a.currency !== "string" || !/^[A-Z]{3}$/.test(a.currency)
-      || typeof a.reference !== "string" || a.reference.length > 140 || /[^\x20-\x7e]/.test(a.reference)) return { ok: false, reason: "bad_request" };
-    if (this.opts.off) return { ok: false, reason: "switched_off" };
-    if (!this.opts.rail) return { ok: false, reason: "no_key" };
+      || typeof a.reference !== "string" || a.reference.length > 140 || /[^\x20-\x7e]/.test(a.reference)) return no("bad_request");
+    if (this.opts.off) return no("switched_off");
+    if (!this.opts.rail) return no("no_key");
     const rail = this.opts.rail;
     const kept = this.keptOf(a.terms_sha256);
     // Another company's terms are never this company's payout.
-    if (kept && kept.company !== a.company) return { ok: false, reason: "bad_request" };
-    if (kept?.status === "REFUSED") return { ok: false, reason: "refused" };
-    if (kept?.transfer_id) {
-      // The same approved terms again: the stored transfer, its status read back; never a second create.
-      let status = kept.status ?? "UNKNOWN";
-      try { status = (await rail.transfer(kept.transfer_id)).status; this.setStatus(a.terms_sha256, status); } catch { /* the stored status stands */ }
-      return { ok: true, transfer_id: kept.transfer_id, status, amount: kept.amount, currency: kept.currency, request_id: kept.request_id, again: true };
-    }
+    if (kept && kept.company !== a.company) return no("bad_request");
+    if (kept?.status === "REFUSED") return no("refused");
+    const making = this.making.get(a.terms_sha256);
+    if (making) return { answer: making };
+    if (kept?.transfer_id) return { answer: this.again(rail, a.terms_sha256, kept, kept.transfer_id) };
     if (!kept) {
       const mine = (this.sql.exec("SELECT COUNT(*) AS n FROM awx_payouts_v2 WHERE company = ?", a.company).toArray()[0] as { n: number }).n;
-      if (mine >= AWX_PAYOUT_PER_COMPANY) return { ok: false, reason: "company_cap" };
+      if (mine >= AWX_PAYOUT_PER_COMPANY) return no("company_cap");
     }
     const cents = centsOf(a.amount)!;
-    if (a.currency !== "EUR") return { ok: false, reason: "not_eur" };
-    if (cents <= 0 || cents > AWX_PAYOUT_MAX_CENTS) return { ok: false, reason: "over_max" };
+    if (a.currency !== "EUR") return no("not_eur");
+    if (cents <= 0 || cents > AWX_PAYOUT_MAX_CENTS) return no("over_max");
     const day = utcDay(this.now());
     const requestId = requestIdOf(a.terms_sha256);
     if (!kept) {
       const today = (this.sql.exec("SELECT COUNT(*) AS n FROM awx_payouts_v2 WHERE day = ?", day).toArray()[0] as { n: number }).n;
-      if (today >= (this.opts.day ?? AWX_PAYOUT_DAY)) return { ok: false, reason: "day_cap" };
-      try {
-        if ((await rail.availableCents(a.currency)) < cents) return { ok: false, reason: "balance_low" };
-      } catch {
-        return { ok: false, reason: "unavailable" };
+      if (today >= (this.opts.day ?? AWX_PAYOUT_DAY)) return no("day_cap");
+      if (!this.balance || this.now() - this.balance.at >= BALANCE_READ_MS) {
+        try {
+          this.balance = { cents: await rail.availableCents(a.currency), at: this.now(), sent: 0 };
+        } catch {
+          this.balance = null;
+          return no("unavailable");
+        }
       }
+      if (this.balance.cents - this.balance.sent < cents) return no("balance_low");
+      this.balance.sent += cents;
       // The row first: from here on these terms have their payout, also if the create's answer is lost.
       this.sql.exec("INSERT INTO awx_payouts_v2 (terms_sha256, company, request_id, amount, currency, day) VALUES (?, ?, ?, ?, ?, ?)", a.terms_sha256, a.company, requestId, a.amount, a.currency, day);
     }
+    const answer = this.make(rail, a, requestId).finally(() => this.making.delete(a.terms_sha256));
+    this.making.set(a.terms_sha256, answer);
+    return { answer };
+  }
+
+  /** The same approved terms again: the stored transfer, its status read back; never a second create. */
+  private async again(rail: PayoutRail, termsSha256: string, kept: Kept, transferId: string): Promise<PayoutAnswer> {
+    let status = kept.status ?? "UNKNOWN";
+    try { status = (await rail.transfer(transferId)).status; this.setStatus(termsSha256, status); } catch { /* the stored status stands */ }
+    return { ok: true, transfer_id: transferId, status, amount: kept.amount, currency: kept.currency, request_id: kept.request_id, again: true };
+  }
+
+  /** The one create for these terms, with the request_id derived from them, and its answer kept. */
+  private async make(rail: PayoutRail, a: PayoutAsk, requestId: string): Promise<PayoutAnswer> {
     let t: SandboxTransfer;
     try {
       t = await rail.createTransfer({ requestId, amount: a.amount, currency: a.currency, reference: a.reference, approvalSha256: a.terms_sha256 });

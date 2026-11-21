@@ -15,7 +15,7 @@ const dir = argv.filter((a, i) => !a.startsWith("--") && !(alsoAt >= 0 && i === 
 interface Ev { seq: number; ts: string; actor: string; event: string; subject: string | null; fields: Record<string, unknown> }
 interface Answer { tab: string; path: string; status: number; body: Record<string, unknown> | null }
 interface Rec {
-  run: number; profile: string; browser?: { name: string; version: string | null }; passkey?: string; calls: { status: number; path: string }[]; viewport: { width: number }; color_scheme: string; started_at: string; finished_at: string; ok: boolean; failures: string[];
+  run: number; profile: string; browser?: { name: string; version: string | null }; passkey?: string; network?: { name: string }; calls: { status: number; path: string }[]; viewport: { width: number }; color_scheme: string; started_at: string; finished_at: string; ok: boolean; failures: string[];
   steps_ms: Record<string, number | null>; page_says: Record<string, string | null>;
   bundle: { downloaded?: { outcome: string; verify_page: { verdict: string }; repo_verifier: { ok: boolean; checks: number } }; paid?: { verify_page_pasted: { verdict: string | null }; repo_verifier: { ok: boolean; checks: number } | null } | null };
   held: { invoice?: { invoice_no?: string; total?: string; status?: string } | null; cash?: Record<string, unknown> | null; payout_events?: string[] };
@@ -90,7 +90,7 @@ return files.map((f) => {
   const big = transfers.find((t) => t.amount === "EUR 1850.00");
   const layers = (refused?.layers ?? {}) as { signature?: { reason?: string }; executor?: { said?: string } };
   return {
-    set: dir, run: r.run, profile: `${r.profile} ${r.viewport.width} ${r.color_scheme}`, browser: r.browser?.name ?? "chromium", browser_version: r.browser?.version ?? null, passkey: r.passkey ?? "cdp-virtual-authenticator",
+    set: dir, run: r.run, profile: `${r.profile} ${r.viewport.width} ${r.color_scheme}${r.network ? ` ${r.network.name}` : ""}`, browser: r.browser?.name ?? "chromium", browser_version: r.browser?.version ?? null, passkey: r.passkey ?? "cdp-virtual-authenticator",
     v1_calls: (r.calls ?? []).length, v1_statuses: statuses, started_at: r.started_at, finished_at: r.finished_at, ok: r.ok, failures: r.failures,
     claude: {
       calls, entries: calls.length, api_requests: calls.reduce((k, c) => k + c.turns, 0), with_request_id: calls.filter((c) => c.request_ids.length).length,

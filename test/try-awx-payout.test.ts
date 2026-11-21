@@ -7,7 +7,7 @@ import Database from "better-sqlite3";
 import { describe, expect, it, vi } from "vitest";
 import { sqlOver } from "../src/relay/local.js";
 import {
-  AWX_PAYOUT_ALLOWED, AWX_PAYOUT_BENEFICIARY, AWX_PAYOUT_DAY, AWX_PAYOUT_HOST, AWX_PAYOUT_PER_COMPANY, AwxPayoutDesk, PayoutCallNotAllowed, PayoutFailed, SandboxPayouts, payoutUrl, requestIdOf,
+  AWX_PAYOUT_ALLOWED, AWX_PAYOUT_BENEFICIARY, AWX_PAYOUT_DAY, BALANCE_READ_MS, AWX_PAYOUT_HOST, AWX_PAYOUT_PER_COMPANY, AwxPayoutDesk, PayoutCallNotAllowed, PayoutFailed, SandboxPayouts, payoutUrl, requestIdOf,
   type PayoutRail, type SandboxTransfer,
 } from "../worker/src/awxPayout.js";
 
@@ -235,5 +235,82 @@ describe("payouts asked at the same time (security review, 16 Nov)", () => {
     const others = await Promise.all(["t_try_b", "t_try_c", "t_try_d"].map((c, i) => d.payout(ask({ company: c, terms_sha256: String(7 + i).repeat(64).slice(0, 64) }))));
     expect(others.every((r) => !r.ok)).toBe(true);
     expect(created).toHaveLength(2);
+  });
+});
+
+describe("payouts asked at the same time, made side by side (21 Nov, docs/runs/2026-11-21-try-capacity.md)", () => {
+  /** A sandbox whose create takes `ms`, counting the creates in flight at once and the balance reads. */
+  function slowRail(ms: number, balance = 100_000_000) {
+    const seen = { creates: 0, most: 0, now: 0, balanceReads: 0 };
+    const rail: PayoutRail = {
+      availableCents: async () => { seen.balanceReads++; return balance; },
+      createTransfer: async (t) => {
+        seen.creates++; seen.now++; seen.most = Math.max(seen.most, seen.now);
+        await new Promise((r) => setTimeout(r, ms));
+        seen.now--;
+        return { id: `4074d684-4704-406c-a527-${t.approvalSha256.slice(0, 12)}`, status: "SCHEDULED" };
+      },
+      transfer: async (id) => ({ id, status: "SCHEDULED" }),
+      simulate: async (id, to) => ({ id, status: to }),
+    };
+    return { rail, seen };
+  }
+  const sha = (i: number) => i.toString(16).padStart(2, "0").repeat(32);
+
+  it("10 companies at once: every create runs at the same time, and all 10 answer in about one create's time", async () => {
+    const { rail, seen } = slowRail(200);
+    const d = desk(rail);
+    const t = Date.now();
+    const out = await Promise.all(Array.from({ length: 10 }, (_, i) => d.payout(ask({ company: `t_try_${i}`, terms_sha256: sha(i + 1), amount: "120.00" }))));
+    expect(out.every((r) => r.ok)).toBe(true);
+    expect(seen).toMatchObject({ creates: 10, most: 10, balanceReads: 1 });
+    // One after another this took 10 x 200 ms; the engine waits 8 s (cloud/src/engine/livePayout.ts PAYOUT_WAIT_MS).
+    expect(Date.now() - t).toBeLessThan(1_500);
+    expect(d.payoutsToday()).toBe(10);
+  });
+
+  it("the caps are still decided one ask at a time: the day cap and the balance hold however many ask at once", async () => {
+    const day = slowRail(50);
+    const d = desk(day.rail, { day: 4 });
+    const out = await Promise.all(Array.from({ length: 9 }, (_, i) => d.payout(ask({ company: `t_try_${i}`, terms_sha256: sha(i + 1) }))));
+    expect(out.filter((r) => r.ok)).toHaveLength(4);
+    expect(out.filter((r) => !r.ok).map((r) => !r.ok && r.reason)).toEqual(Array(5).fill("day_cap"));
+    expect(day.seen.creates).toBe(4);
+    // EUR 4,000.00 available: two payouts of EUR 1,850.00 at once fit, the third does not, though none has finished.
+    const low = slowRail(50, 400_000);
+    const d2 = desk(low.rail);
+    const three = await Promise.all([1, 2, 3].map((i) => d2.payout(ask({ company: `t_try_${i}`, terms_sha256: sha(i) }))));
+    expect(three.map((r) => (r.ok ? "ok" : r.reason))).toEqual(["ok", "ok", "balance_low"]);
+    expect(low.seen).toMatchObject({ creates: 2, balanceReads: 1 });
+  });
+
+  it("the same terms asked again while their create runs get that create's answer: one transfer, never two", async () => {
+    const { rail, seen } = slowRail(100);
+    const d = desk(rail);
+    const [a, b] = await Promise.all([d.payout(ask()), d.payout(ask())]);
+    expect(seen.creates).toBe(1);
+    expect(a).toMatchObject({ ok: true, again: false });
+    expect(b).toEqual(a);
+    expect(await d.payout(ask())).toMatchObject({ ok: true, again: true, transfer_id: (a as { transfer_id: string }).transfer_id });
+  });
+
+  it("reads the balance again once a read is 30 s old, and after a read that failed", async () => {
+    let now = Date.parse("2026-11-14T12:00:00Z");
+    let fail = true;
+    const seen = { reads: 0 };
+    const rail: PayoutRail = {
+      availableCents: async () => { seen.reads++; if (fail) { fail = false; throw new PayoutFailed("unavailable", "x"); } return 1_000_000; },
+      createTransfer: async (t) => ({ id: `4074d684-4704-406c-a527-${t.approvalSha256.slice(0, 12)}`, status: "SCHEDULED" }),
+      transfer: async (id) => ({ id, status: "SCHEDULED" }),
+      simulate: async (id, to) => ({ id, status: to }),
+    };
+    const d = new AwxPayoutDesk(sqlOver(new Database(":memory:")), { rail, off: false, now: () => now });
+    expect(await d.payout(ask({ terms_sha256: sha(1) }))).toEqual({ ok: false, reason: "unavailable" });
+    expect(await d.payout(ask({ terms_sha256: sha(1) }))).toMatchObject({ ok: true });
+    expect(await d.payout(ask({ company: "t_try_b", terms_sha256: sha(2) }))).toMatchObject({ ok: true });
+    expect(seen.reads).toBe(2);
+    now += BALANCE_READ_MS;
+    expect(await d.payout(ask({ company: "t_try_c", terms_sha256: sha(3) }))).toMatchObject({ ok: true });
+    expect(seen.reads).toBe(3);
   });
 });
