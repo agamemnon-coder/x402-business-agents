@@ -167,7 +167,10 @@ describe("the console", () => {
   const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
   // 14 Nov (Max: "make it just Invoices"): Invoices has its own tab again and the books have theirs.
   it("has the tabs in order, Invoices and Books apart, and says what Purser Cloud is", () => {
-    expect([...html.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1])).toEqual(["overview", "agents", "invoices", "books", "transactions", "tokenisation", "airwallex", "connections", "settings"]);
+    // 22 Nov: in their groups (cloud/src/consoleShell.ts): Overview; Money; Agents and tokens; payment rails; Settings.
+    expect([...html.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1])).toEqual(["overview", "invoices", "transactions", "books", "agents", "tokenisation", "airwallex", "connections", "settings"]);
+    expect([...html.matchAll(/data-sg="([a-z]+)"/g)].map((m) => m[1])).toEqual(["money", "agents", "rails"]);
+    expect([...html.matchAll(/data-group="([a-z]+)"/g)].map((m) => m[1])).toEqual(["overview", "money", "agents", "rails", "settings"]);
     expect(html).toContain("'/invoices':invoicesView,'/books':booksView");
     expect(html).toContain("'/agents':agentsView");
     expect(html).toContain("'/tokenisation':tokensView");

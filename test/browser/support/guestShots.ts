@@ -40,7 +40,7 @@ for (const scheme of schemes) for (const width of widths) {
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto(`${ORIGIN}/#/guest`);
-  await page.waitForSelector("#tabs a[aria-current]", { timeout: 15000 });
+  await page.waitForSelector("#tabs a[aria-current]", { state: "attached", timeout: 15000 });
   for (const r of routes) {
     await page.goto(`${ORIGIN}/#/${r}`);
     await page.waitForTimeout(700);

@@ -988,15 +988,23 @@ async function guestPass() {
     // The console is not one of the site's pages: its header marks no item ("More" was marked on every page).
     ok(await p.locator('header.top summary.on, header.top a[aria-current="page"]').count() === 0, `${tag}: the site header marks no menu item on the console`);
     // Review, 13 Nov, at 390 px: no page wraps onto a line of its own ("Settings" did), and below 420 px the company chip shows the company's own name whole ("Northwind Outdoor (d…" was cut).
-    const tabs = await p.locator("#tabs a").evaluateAll((as) => as.map((a) => Math.round(a.getBoundingClientRect().top)));
-    // Jury round 2, 13 Nov: on a phone the six pages are two rows of three (they need about 480 px of a 390 px screen;
-    // one scrolling row cut "Toke…" even under a fade); wider, one row. Either way every tab is whole, inside the bar.
-    const rows = new Set(tabs).size;
-    // 14 Nov: eight pages (Invoices and Books apart, and Airwallex): on a phone two rows of four. 21 Nov: nine (Connections),
-    // three rows of three.
-    ok(width < 640 ? rows === 3 && tabs.filter((t) => t === tabs[0]).length === 3 : rows === 1, `${tag}: the pages are ${width < 640 ? "three rows of three" : "one row"} (${tabs.join(", ")})`);
-    const cut = await p.evaluate(() => { const nav = document.querySelector("#tabs") as HTMLElement; const r = nav.getBoundingClientRect(); return [...nav.querySelectorAll("a")].filter((a) => { const b = a.getBoundingClientRect(); return b.right > Math.min(r.right, innerWidth) + 1 || b.left < -1 || a.scrollWidth > a.clientWidth + 1; }).map((a) => (a as HTMLElement).innerText.trim()); });
-    ok(cut.length === 0, `${tag}: every tab is whole, none cut or off the screen (${JSON.stringify(cut)})`);
+    // 22 Nov (the owner: on his iPhone the nine pages were a 3x4 grid of words): a laptop has them in a sidebar, one under
+    // the other, in their groups; a phone has a bottom tab bar of the five groups and, in a group, its pages side by side.
+    const nav = width < 1024 ? "#btabs a" : "#tabs a";
+    const boxes = await p.locator(nav).evaluateAll((as) => as.map((a) => { const b = a.getBoundingClientRect(); return { top: Math.round(b.top), left: Math.round(b.left), whole: a.scrollWidth <= a.clientWidth + 1 && b.right <= innerWidth + 1 && b.left >= -1 && b.bottom <= innerHeight + 1 }; }));
+    const rows = new Set(boxes.map((b) => b.top)).size, cols = new Set(boxes.map((b) => b.left)).size;
+    ok(width < 1024 ? boxes.length === 5 && rows === 1 && boxes.every((b) => b.whole) && !(await p.isVisible("#tabs")) : boxes.length === 9 && cols === 1 && rows === 9 && boxes.every((b) => b.whole),
+      `${tag}: the pages are ${width < 1024 ? "five groups in one bottom row, every one whole" : "a sidebar of nine, one under the other"} (${JSON.stringify(boxes)})`);
+    if (width < 1024) {
+      // The Ask button sits in the top bar, so it covers nothing; the bottom bar covers nothing at the page's end either.
+      ok(await p.evaluate(() => !!document.querySelector(".appbar #ask-slot #pask-fab")), `${tag}: Ask Purser is in the top bar, not over the page`);
+      await p.goto(p.url().replace(/#.*$/, "#/books"));
+      await p.waitForSelector("#subnav a[aria-current]", { timeout: 20_000 });
+      const sub = await p.locator("#subnav a").evaluateAll((as) => as.map((a) => (a as HTMLElement).innerText.trim()));
+      ok(sub.join("|") === "Invoices|Transactions|Books" && await p.getAttribute("#btabs a[data-group=money]", "aria-current") === "page", `${tag}: Money's pages side by side, Books current (${sub.join(", ")})`);
+      await p.goto(p.url().replace(/#.*$/, "#/overview"));
+      await p.waitForSelector(".dash", { timeout: 20_000 });
+    }
     if (width < 420) {
       const chip = await p.evaluate(() => { const cn = document.querySelector("#co .cn") as HTMLElement | null; return cn ? { text: cn.innerText.trim(), cut: cn.scrollWidth > cn.clientWidth + 1 } : null; });
       ok(chip?.text === "Northwind Outdoor" && !chip.cut, `${tag}: the company chip reads "Northwind Outdoor", whole (${JSON.stringify(chip)})`);
@@ -1020,6 +1028,8 @@ async function guestPass() {
     await p.waitForSelector("button.wpass");
     const pass = p.locator("button.wpass").first();
     ok(await p.locator("button.wpass").count() === 3 && /EUR/.test((await pass.innerText()) ?? ""), `${tag}: Agents shows one pass per agent, with what it spent`);
+    // 22 Nov: every agent Purser has (cloud/src/agentRoster.ts), the three this company's records name marked at work.
+    ok(await p.locator("article.rs").count() === 9 && await p.locator("article.rs.on").count() === 3 && await p.locator("article.rs details.rs-how").count() === 9, `${tag}: Agents shows every agent in Purser, three at work here`);
     await pass.click();
     await p.waitForTimeout(motion === "reduce" ? 50 : 700);
     ok(await pass.getAttribute("aria-pressed") === "true" && await p.locator("button.wpass").first().locator(".wp-back").getAttribute("aria-hidden") === "false", `${tag}: a pass turns over to its mandate`);

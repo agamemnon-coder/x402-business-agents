@@ -21,6 +21,7 @@ import { LOGO_FILES } from "./try/logos.gen.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { NEGOTIATE_PATH, negotiatePageResponse } from "./try/negotiatePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
+import { NAV_GROUPS, SHELL_CSS, SHELL_JS, SHELL_WORDS } from "./consoleShell.js";
 import { CHARTS_CSS, CHARTS_JS } from "./consoleCharts.js";
 import { WALLET_CSS, WALLET_JS } from "./agentWallet.js";
 import { AWX_CSS, AWX_JS } from "./awxActUi.js";
@@ -35,7 +36,7 @@ import { APP_ICON_LINKS, cloudAppResponse } from "./pwa.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
   "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy",
-  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down", "sparkles", "arrow-right", "zap", "info"];
+  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down", "sparkles", "arrow-right", "zap", "info", "layout-dashboard", "arrow-left-right", "file-check", "settings-2", "play"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
@@ -252,20 +253,7 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   .appbar .test .tl { display: none; }
   .who-am-i #who { max-width: 52vw; }
   .who-am-i #who .wc { display: none; }
-  /* Five pages do not fit one row on a phone: the row scrolls sideways (review, 13 Nov: "Settings" wrapped onto a line of
-     its own), the current page scrolled into view. */
-  .appbar nav.apptabs { display: flex; flex-wrap: nowrap; gap: 2px; overflow-x: auto; overscroll-behavior-x: contain; scroll-padding-inline: 12px; margin-right: calc(-1 * var(--gut, 16px)); padding-right: 16px; }
-  .appbar nav.apptabs a { padding: 6px 9px; font-size: 13.5px; flex: none; }
-  /* try-fixes (13 Nov): at 390 px the row still cut "Settings" off at the edge; the five pages share the row instead. */
-  .appbar nav.apptabs { justify-content: space-between; margin-left: -6px; }
-  .appbar nav.apptabs a { padding: 6px 5px; font-size: 13px; }
-  /* Jury review, 13 Nov: at 390 px "Tokenisation" was cut to "Token…" with no sign the row scrolls; a fade at the right
-     edge says there is more, and the row scrolls on as before. */
-  .appbar nav.apptabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 28px; }
-  /* Jury round 2, 13 Nov: the fade was not enough, "Toke…" still read as cut, and the six pages need about 480 px where a
-     phone has 352. On a phone they are two rows of three, each name whole: no scrolling, no fade, nothing cut. */
-  /* 14 Nov: seven pages (Invoices and Books apart): two rows, four and three. */
-  .appbar nav.apptabs { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; row-gap: 2px; overflow: visible; -webkit-mask-image: none; mask-image: none; padding-right: 0; margin-right: 0; }
+  /* 22 Nov: on a phone the pages are the bottom tab bar's five groups (cloud/src/consoleShell.ts), not a grid of words. */
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */
@@ -459,24 +447,23 @@ a.st-step:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--bord
 .awpill.down { background: var(--sunken); color: var(--muted); } .awpill.down i { background: var(--faint); } .awpill.down i::after { display: none; }
 .awov:has(.awpill.down) { border-color: var(--border); }
 @media (max-width: 640px) {
-  /* 21 Nov: nine pages (Connections has its own): three rows of three on a phone, each name whole. */
-  .appbar nav.apptabs { grid-template-columns: repeat(3, auto); }
   ul.cx-grid > li.cx-card { padding: 13px; }
 }`;
 
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
 ${siteHeader(null)}
-<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/connections" data-tab="connections" data-t="cs.nav.connections">${tr("en", "cs.nav.connections")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<div class="appbar"><div class="wrap"><a class="abrand" href="#/overview" aria-label="Purser Cloud"><span class="mk">${svg("feather", 16)}</span></a><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><span class="ng" data-sg="money">${escAttr(SHELL_WORDS.en.g_money)}</span><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><span class="ng" data-sg="agents">${escAttr(SHELL_WORDS.en.g_agents)}</span><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><span class="ng" data-sg="rails">${escAttr(SHELL_WORDS.en.g_rails)}</span><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/connections" data-tab="connections" data-t="cs.nav.connections">${tr("en", "cs.nav.connections")}</a><span class="ng sep" aria-hidden="true"></span><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="awx-app">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: AIRWALLEX_LOGO_SRC })}</span><span class="spacer"></span>
-<span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
+<span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><span id="ask-slot"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
-<div class="demo-ribbon" id="demo" hidden><div class="wrap">${svg("flask", 15)}<span data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><a href="#/sign-in" id="demo-out" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</a></div></div>
+<div class="demo-ribbon" id="demo" hidden><div class="wrap"><p class="dr">${svg("flask", 14)}<span class="dr-full" data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><span class="dr-short">${SHELL_WORDS.en.demo_short}</span><a href="#/sign-in" id="demo-out"><span class="lw" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</span><span class="lv">${SHELL_WORDS.en.demo_leave}</span></a></p></div></div>
 <div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${(["cs.side.1", "cs.side.2", "cs.side.3"] as const).map((k) => `<li>${svg("circle-check", 18)}<span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div></div>
-<main><div class="wrap" id="view" aria-live="polite"></div></main>
+<main><div class="wrap subnav-wrap"><nav class="subnav" id="subnav" hidden></nav></div><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
 <p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>
-<p class="foot-awx wrap">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: AIRWALLEX_LOGO_SRC })}</p>`;
+<p class="foot-awx wrap">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: AIRWALLEX_LOGO_SRC })}</p>
+<nav class="btabs" id="btabs" aria-label="${SHELL_WORDS.en.sections}">${NAV_GROUPS.map(([g, pages, icon]) => `<a href="#/${pages[0]}" data-group="${g}">${svg(icon, 22)}<span class="bl">${(SHELL_WORDS.en as Record<string, string>)[`b_${g}`]}</span></a>`).join("")}</nav>`;
 
 // The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
 const SCRIPT = String.raw`
@@ -575,13 +562,14 @@ function shell(){
   // An invoice's page lights the Invoices tab (14 Nov: Invoices and Books are two tabs again).
   const tab=(location.hash.split('/')[1]||'').split('?')[0];
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab){a.setAttribute('aria-current','page');if(a.parentElement.scrollWidth>a.parentElement.clientWidth)a.scrollIntoView({block:'nearest',inline:'nearest'})}else a.removeAttribute('aria-current');
+  navSync();
 }
 // A language chosen in the page (the person's own, or the company's for an owner who follows it): remember it in this
 // browser and load the page again when it is not the page's. Signed in, the person's own language decides (langOf).
 function useLanguage(lang){if(lang!=='nl'&&lang!=='en')return;try{localStorage.setItem('purser.cloud.language',lang)}catch(e){}if(lang!==L.lang)location.reload()}
 async function me(){if(!ME){ME=await api('/v1/me');const want=langOf(PREF,ME.user&&ME.user.language);if(want!==L.lang)useLanguage(want)}return ME}
 const title=(t)=>{document.title=t?'Purser Cloud · '+t:'Purser Cloud'};
-const head=(h,sub,tools)=>el('div','head',[el('div','',[el('h1','',h),sub?el('p','lede',sub):null]),tools?el('div','tools',tools):null]);
+const head=(h,sub,tools)=>{const g=groupWords();return el('div','head',[el('div','',[g?el('span','eyebrow',g):null,el('h1','',h),sub?el('p','lede',sub):null]),tools?el('div','tools',tools):null])};
 
 // --- Signing in -------------------------------------------------------------------------------------------------
 async function signIn(slug,status){
@@ -2055,7 +2043,7 @@ const nonce = () => {
 const T0_CLOSE = t0CloseLine();
 
 /** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
-const USED = keysUsedIn(SCRIPT + UI_JS + CHARTS_JS + WALLET_JS + AWX_UI_JS + AWX_JS + BODY);
+const USED = keysUsedIn(SCRIPT + SHELL_JS + UI_JS + CHARTS_JS + WALLET_JS + AWX_UI_JS + AWX_JS + BODY);
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain, whether the cloud runs an engine). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
@@ -2064,13 +2052,13 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + CHARTS_JS + WALLET_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + UI_JS + CHARTS_JS + WALLET_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${WALLET_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${WALLET_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}
 ${ASK_BUTTON_JS}</script>

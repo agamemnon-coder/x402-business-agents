@@ -25,7 +25,8 @@ function timeline(D,shown){
   return el('div','',[ol,more])}
 async function overviewView(){
   title(t('cs.nav.overview'));
-  const [m,x,all,D]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200'),api('/v1/dashboard').catch((e)=>{if(e instanceof Expired)throw e;return null})]);shell();
+  const soft=(p)=>api(p).catch((e)=>{if(e instanceof Expired)throw e;return null});
+  const [m,x,all,D,AG,BK]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200'),soft('/v1/dashboard'),soft('/v1/agents'),soft('/v1/books/bookings')]);shell();
   const items=all.items||[];
   const blocked=Object.entries(x.blocked_by_reason||{}).sort((a,b)=>b[1]-a[1]);const nb=blocked.reduce((n,[,c])=>n+c,0);
   // The next thing to do, from the same invoices: the CFO's Face ID first, then what needs a person.
@@ -37,30 +38,36 @@ async function overviewView(){
     ...[first?el('div','nw',faceid>1?[el('span','nv',t('cs.ov.n_suppliers',{n:new Set(wait.map((i)=>i.vendor)).size})),el('b','num',byCur(waitAmt).map(([c,v])=>cur(c)+' '+cents(v)).join(' · '))]:[el('span','nv',first.vendor||''),el('b','num',ma(first.currency,first.total))]):null,faceid||todo?el('span','ngo',[faceid?t('cs.ov.review'):t('cs.ov.go_open'),ic('chevron-right')]):null].filter(Boolean));
   // Four figures: cash, what is open to pay, what waits for the CFO's Face ID, what is blocked.
   const open=byCur(x.open_net_cents),over=byCur(x.overdue_cents),waitAmt={};for(const i of wait)waitAmt[i.currency]=(waitAmt[i.currency]||0)+toCents(i.total);
-  const fig=(label,icon,value,sub,tone)=>{const v=el('b','num');if(value instanceof Node)v.append(value);else v.textContent=value;return el('div','card kpi rise'+(tone?' '+tone:''),[el('span','kl',[ic(icon),label]),v,sub?el('span','ks',sub):null])};
-  const cash=D&&D.money?fig(t('cs.ov.cash'),'wallet',amt(D,toCents(D.money.net)),D.since?t('cs.dash.net_sub',{date:dday(D.since)}):t('cs.dash.net_none'),toCents(D.money.net)>=0?'pos':'neg'):null;
+  // 22 Nov: each figure is a link to the page it comes from.
+  const fig=(label,icon,value,sub,tone,href)=>{const v=el('b','num');if(value instanceof Node)v.append(value);else v.textContent=value;const a=el('a','card kpi rise'+(tone?' '+tone:''),[el('span','kl',[ic(icon),label]),v,sub?el('span','ks',sub):null]);a.href=href;return a};
+  const cash=D&&D.money?fig(t('cs.ov.cash'),'wallet',amt(D,toCents(D.money.net)),D.since?t('cs.dash.net_sub',{date:dday(D.since)}):t('cs.dash.net_none'),toCents(D.money.net)>=0?'pos':'neg','#/transactions'):null;
   const k=el('div','kpis',[cash,
-    fig(t('cs.ov.payables'),'receipt',open.length?cur(open[0][0])+' '+cents(open[0][1]):t('cs.nothing_open'),over.length?t('cs.ov.overdue',{amount:over.map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):t('cs.ov.none_overdue'),over.length?'neg':''),
-    fig(t('cs.ov.faceid'),'scan-face',String(x.waiting.for_cfo),byCur(waitAmt).length?byCur(waitAmt).map(([c,v])=>cur(c)+' '+cents(v)).join(' · '):t('cs.ov.nothing_waits'),x.waiting.for_cfo?'wait':''),
-    fig(t('cs.t.blocked'),'octagon-x',String(nb),blocked.length?tk('cs.w.f.'+blocked[0][0],t('cs.w.blocked')):t('cs.x.none_blocked'),nb?'neg':'')].filter(Boolean));
+    fig(t('cs.ov.payables'),'receipt',open.length?cur(open[0][0])+' '+cents(open[0][1]):t('cs.nothing_open'),over.length?t('cs.ov.overdue',{amount:over.map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):t('cs.ov.none_overdue'),over.length?'neg':'','#/invoices?f=open'),
+    fig(t('cs.ov.faceid'),'scan-face',String(x.waiting.for_cfo),byCur(waitAmt).length?byCur(waitAmt).map(([c,v])=>cur(c)+' '+cents(v)).join(' · '):t('cs.ov.nothing_waits'),x.waiting.for_cfo?'wait':'','#/invoices?f=waiting_cfo'),
+    fig(t('cs.t.blocked'),'octagon-x',String(nb),blocked.length?tk('cs.w.f.'+blocked[0][0],t('cs.w.blocked')):t('cs.x.none_blocked'),nb?'neg':'','#/invoices?f=blocked')].filter(Boolean));
   // When the open invoices fall due, in their main currency (other currencies are said, not mixed in).
   const opn=items.filter(i=>!['paid','rejected'].includes(i.status));const per={};for(const i of opn)per[i.currency]=(per[i.currency]||0)+toCents(i.total);
   const main=Object.entries(per).sort((a,b)=>b[1]-a[1])[0];const days=(d)=>Math.round((Date.parse(d)-Date.parse(today))/86400000);
   const b=[0,0,0,0];for(const i of opn){if(!main||i.currency!==main[0])continue;const n=i.due_date?days(i.due_date):99999;b[n<=0?0:n<=7?1:n<=30?2:3]+=toCents(i.total)}
   const lab=['cs.due.late','cs.due.d7','cs.due.d30','cs.due.later'];
   const due=el('section','card dcard rise due',[el('div','dh',[el('h2','',t('cs.due.title'))]),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title')):el('p','lede',t('cs.due.none')),
-    Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);
+    Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);cardLink(due,'#/invoices?f=open',sw('to_inv'));
   const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
-  const dash=el('div','dash',[k]);const nodes=[head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),nx,!items.length&&!m.demo?startCard(m):null,awlOverview(),dash].filter(Boolean);
+  // 22 Nov (the owner: "calm, and everything connected"): what needs you, the figures, how invoices flow to payment, the
+  // cash, the agents at work; each part links to its page. The live Airwallex read sits under the company's own figures.
+  const dups=D&&D.invoices&&D.invoices.duplicates_stopped||0;
+  const dash=el('div','dash',[k,payFlow(items,(BK&&BK.bookings)||{},dups,D&&D.currency)].filter(Boolean));const nodes=[head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),faceid?needsYou(wait):nx,!items.length&&!m.demo?startCard(m):null,dash].filter(Boolean);
   if(D&&D.cash&&D.cash.length){
     const wide=innerWidth>=980,full=view().clientWidth||960;const cashW=Math.round(wide?full*0.64-40:full-40),weekW=Math.round(wide?full*0.5-44:full-40);
     const sub=D.agents.by_fallback?t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback}):t('cs.dash.decisions_sub');
-    dash.append(el('div','dgrid g1',[dcard('cash',t('cs.dash.cash_title'),t('cs.dash.cash_sub',{cur:cur(D.currency),date:dday(D.since)}),cashWithTable(D,cashW)),
-        dcard('inv',t('cs.dash.inv_title'),t('cs.dash.inv_sub',{cur:cur(D.currency)}),invoiceRing(D))]),
-      el('div','dgrid g1',[dcard('feedc',t('cs.dash.feed_title'),sub,timeline(D,6)),el('div','stack',[due,dcard('weeks',t('cs.dash.appr_title'),t('cs.dash.appr_sub'),el('div','',[el('div','cv',[weekChart(D,Math.round(wide?full*0.36-40:weekW))]),el('ul','klegend',[el('li','',[el('i','cfo'),t('cs.dash.appr_cfo')]),el('li','',[el('i','alone'),t('cs.dash.appr_alone')])])]))])]),
+    dash.append(el('div','dgrid g1',[cardLink(dcard('cash',t('cs.dash.cash_title'),t('cs.dash.cash_sub',{cur:cur(D.currency),date:dday(D.since)}),cashWithTable(D,cashW)),'#/transactions',sw('to_tx')),
+        cardLink(dcard('inv',t('cs.dash.inv_title'),t('cs.dash.inv_sub',{cur:cur(D.currency)}),invoiceRing(D)),'#/invoices',sw('to_inv'))]),
+      // The agents at work: each one's spend against its limit and newest decision, then the decisions as a timeline.
+      el('div','dgrid g1',[cardLink(dcard('feedc',sw('act_h'),sub,el('div','',[agentStrip(AG&&AG.agents),timeline(D,6)])),'#/agents',sw('to_agents')),el('div','stack',[due,cardLink(dcard('weeks',t('cs.dash.appr_title'),t('cs.dash.appr_sub'),el('div','',[el('div','cv',[weekChart(D,Math.round(wide?full*0.36-40:weekW))]),el('ul','klegend',[el('li','',[el('i','cfo'),t('cs.dash.appr_cfo')]),el('li','',[el('i','alone'),t('cs.dash.appr_alone')])])])),'#/invoices?f=paid',sw('to_inv'))])]),
       // 21 Nov: spend by who started it beside spend by rail, each with its table.
-      el('div','dgrid g1',[dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),agentSpend(D)),dcard('rails',t('cs.ch.rails_title'),t('cs.ch.rails_sub',{cur:cur(D.currency)}),railsChart(D))]));
+      el('div','dgrid g1',[cardLink(dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),agentSpend(D)),'#/agents',sw('to_agents')),cardLink(dcard('rails',t('cs.ch.rails_title'),t('cs.ch.rails_sub',{cur:cur(D.currency)}),railsChart(D)),'#/transactions',sw('to_tx'))]));
   }else dash.append(due);
+  nodes.push(awlOverview());
   if(inbox)nodes.push(inbox);
   nodes.push(whatCloud(m));
   view().replaceChildren(...nodes);
@@ -188,10 +195,12 @@ function learnBlock(a,demo){const L=a.learning;if(!L)return null;
     rows.length?el('div','rates',[el('h4','',t('cs.agents.rate_h')),...rows.map((r)=>el('div','rgrp',[el('b','',r.kind.charAt(0).toUpperCase()+r.kind.slice(1)),rateBar(r.this_month,t('cs.agents.rate_this')+' · '+mon(r.month)),rateBar(r.last,t('cs.agents.rate_last')+' · '+mon(r.last_month))]))]):null,
     L.cases?el('p','fine',t('cs.agents.rate_note',{other:t('cs.agents.rate_other',other)})):null,
     L.suggestions.length?el('div','sugg',[el('h4','',t('cs.agents.sugg_h')),el('ul','plain',L.suggestions.map((s)=>el('li','',[ic(s.key?'zap':'circle-dot'),el('span','',s.text+' ('+s.evidence.join(', ')+')')]))),el('p','fine',[ic('lock'),t('cs.agents.sugg_note')])]):null])}
-async function agentsView(){
+async function agentsView(q){
   title(t('cs.nav.agents'));
+  // A link to one agent (#/agents?a=id, from the Overview or the roster) opens its record.
+  const want=q&&q.get&&q.get('a');if(want)OPEN_AGENTS.add(want);
   const soft=(p)=>api(p).catch((e)=>{if(e instanceof Expired)throw e;return null});
-  const [m,r,tk0,CV]=await Promise.all([me(),api('/v1/agents'),soft('/v1/tokenisation'),soft('/v1/cards')]);shell();
+  const [m,r,tk0,CV,D]=await Promise.all([me(),api('/v1/agents'),soft('/v1/tokenisation'),soft('/v1/cards'),soft('/v1/dashboard')]);shell();
   const cards=(r.agents||[]).map((a)=>agentCard(a,!!m.demo,CV&&(CV.agents||[]).find((x)=>x.agent===a.id),CV));
   // A company whose records name no agent yet, with live cards on: each Kit 11 agent with its live card panel only.
   if(!cards.length&&CV&&CV.agents&&CV.agents.length)for(const x of CV.agents)cards.push(el('section','card agent rise',[el('div','ah',[el('span','av',ic('bot')),el('div','',[el('h2','',x.name)])]),liveCardPanel(x,CV)]));
@@ -199,11 +208,14 @@ async function agentsView(){
   // The agents' real cards and Visa runs from the live sandbox runs (judge scan, 14 Nov: they sat on Tokenisation, and
   // their limits read as the demo cards' own). Each section says which run its figures come from.
   const live=tk0?sandboxSections(tk0):[];
-  view().replaceChildren(...[head(t('cs.nav.agents'),t('cs.agents.lede2')+(m.demo?' '+t('cs.agents.read_only'):'')),
+  // 22 Nov: every agent Purser has first (cloud/src/agentRoster.ts), then the cards of those this company's records name.
+  view().replaceChildren(...[head(t('cs.nav.agents'),t('cs.agents.lede2')+(m.demo?' '+t('cs.agents.read_only'):'')),rosterSection(r.agents||[],D&&D.agents?D.agents.decisions:null),
+    el('div','sec-h agents-passes-h',[el('h2','',sw('passes_h')),el('p','sub',sw('passes_sub'))]),
     cards.length?el('div','agents wallet',cards):el('div','card wempty',[el('span','wempty-ic',ic('bot')),el('div','',[el('b','',t('cs.agents.none')),el('p','sub',t('cs.wl.empty_sub'))]),(()=>{const x=el('a','btn',[t('cs.wl.empty_go'),' ',ic('arrow-right')]);x.href='#/connections';return x})()]),note(t('cs.agents.controls')),...live,
     // 14 Nov: the agents' cards as the Airwallex sandbox holds them now, with their limits and authorizations.
     el('p','links',[(()=>{const a=el('a','ext',[ic('credit-card'),' '+t('cs.awl.agents_link'),' ',ic('chevron-right')]);a.href='#/airwallex';return a})()])]);
   requestAnimationFrame(()=>{for(const n of view().querySelectorAll('.rise'))n.classList.add('in')});
+  openAgentFromQuery(q);
 }
 
 // --- Books --------------------------------------------------------------------------------------------------------
