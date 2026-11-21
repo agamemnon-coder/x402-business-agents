@@ -40,7 +40,7 @@ import { TRACE_LINK, TRACE_URL } from "./trace.js";
 import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { WORST_CASE_CSS, worstCaseCardHtml } from "./worstCaseCard.js";
 import { EVIDENCE_WALL_CSS, PROOF_INDEX_DOC, committedWall } from "./evidenceWall.js";
-import { archCss, archHtml } from "./proofArch.js";
+import { FLOW_CSS, FLOW_JS, flowHtml } from "./proofFlow.js";
 import { PROOF_QUESTIONS_CSS, placeTiles, questionHtml, questionNavHtml, type QExtras, type QuestionId } from "./proofQuestions.js";
 import { PROOF_CHARTS_CSS, chartHtml, coverageChart, evalChart, liveRunsChart, redTeamChart, refusalsChart } from "./proofCharts.js";
 import { ASSET_VERSIONS, versioned, type VersionedAsset } from "../ui/assetVersions.js";
@@ -470,7 +470,7 @@ export function readBack(run: AgentRun): string {
 // Folded under "Can I verify it myself?": each signed approval checked in this browser (src/redesign/verifyTerms.ts)
 // with the Face ID to paid times (src/redesign/runTimes.ts). Under "Why this is a company": the vault's folders
 // (docs/media/vault-tree-*.svg, computed from layout.ts). (Until 21 Nov /proof also drew one payment's life and the three
-// rails' refusals from src/visuals; the architecture at the top, src/redesign/proofArch.ts, replaces both.)
+// rails' refusals from src/visuals; the evidence flow at the top, src/redesign/proofFlow.ts, replaces both.)
 function checkItYourself(): string {
   const signed = signedByRun();
   const items = ["awx-1", "platform-e2e-1", "main-1"].flatMap((k) => (signed[k] ?? []).filter((x) => x.terms));
@@ -738,7 +738,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
   <p class="plead">${esc(PROOF_LEAD)}</p>
-  ${archHtml(wall)}
+  ${flowHtml(wall)}
   ${questionNavHtml()}
   <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>
   <div class="pqs" id="evidence">
@@ -751,7 +751,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: PROOF_DESCRIPTION, tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS + PFACTS_CSS + EVIDENCE_WALL_CSS + archCss() + PROOF_QUESTIONS_CSS + PROOF_CHARTS_CSS + COMMANDS_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
+    title: "Purser · Proof", description: PROOF_DESCRIPTION, tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS + PFACTS_CSS + EVIDENCE_WALL_CSS + FLOW_CSS + PROOF_QUESTIONS_CSS + PROOF_CHARTS_CSS + COMMANDS_CSS, body, js: `${JS}\n${FLOW_JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }
