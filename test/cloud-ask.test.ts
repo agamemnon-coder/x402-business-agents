@@ -504,7 +504,7 @@ describe("the page and its button", () => {
       expect(html).not.toMatch(/\son[a-z]+=/i);
       expect(html).not.toContain("innerHTML");
       // 21 Nov (Max's mockups): four actions in the empty state, no "Try asking" wall; the mark is Ask Purser's own.
-      expect(ASK_ACTIONS.map((x) => x.label)).toEqual(["Review invoices", "Check a payment", "Reconcile books", "Show proof"]);
+      expect(ASK_ACTIONS.map((x) => x.label)).toEqual(["Which invoices wait for the CFO?", "Check an invoice against policy", "Show invoice evidence", "Explain a policy or approval rule"]); // 21 Nov (Max, mockup 180)
       expect(html.match(/<button class="act" type="button" data-q=/g)!.length).toBeGreaterThanOrEqual(ASK_ACTIONS.length);
       expect(html).not.toContain("Try asking");
       expect(html).toContain('id="file"');
