@@ -53,6 +53,7 @@ its `/connect-ai` page.
 | Gemini CLI | built, not tested live | `gemini mcp add --transport http purser <address>/mcp` | [connect-claude.md](../connect-claude.md#gemini-cli) |
 | Windsurf | built, not tested live | `serverUrl` and `headers` in its `mcp_config.json`. | [connect-claude.md](../connect-claude.md#windsurf-now-devin-desktop) |
 | Airwallex sandbox, read only (Code Mode MCP) | built, not tested live | The same connector token at `https://<your-purser-cloud>/mcp/airwallex`: two tools, `search` and `execute`, GET reads of the Airwallex sandbox only. Tested against a stand-in gateway; no live read on record yet. | [codemode.md](../codemode.md) |
+| Purser's books in Code Mode (MCP) | built, not tested live | The same connector token at `https://<your-purser-cloud>/mcp/codemode`: two tools, `search` (a typed TypeScript API from Purser's read tools) and `execute` (the AI's code, run in a fresh Cloudflare Dynamic Worker: no network, no secrets, this company's books, read only). Tested in local workerd with a real Worker Loader; not yet run on Cloudflare (needs the `LOADER` binding). | [codemode.md](../codemode.md#purser-in-code-mode-mcpcodemode) |
 | Agent API on the runner (local MCP) | sandbox | `npm run -s mcp` on stdio, with `KIT11_AGENT` naming the outside agent; it asks for a company card, and each card and each raise waits for the CFO's Face ID. | [agent-api.md](../agent-api.md) |
 
 ## The API and webhooks

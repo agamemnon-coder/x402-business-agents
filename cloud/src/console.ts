@@ -1338,7 +1338,9 @@ async function claudeCard(m,owner){
   const guide=el('a','',t('cs.claude.guide')+' ↗');guide.href='/connect-ai';guide.target='_blank';guide.rel='noopener';
   // The Airwallex sandbox as a second, read-only MCP server (docs/codemode.md): the same token; never the demo's.
   const awxMcp=m.demo?null:el('p','sub others',[t('cs.claude.awx_mcp'),' ',el('code','mono',location.origin+'/mcp/airwallex')]);
-  const kids=[el('h2','',t('cs.claude.title')),el('p','',t('cs.claude.lede')),urlRow,steps,el('p','sub others',[t('cs.claude.others'),' ',guide]),awxMcp].filter(Boolean);
+  // Purser's own books in Code Mode (docs/codemode.md): the same token; never the demo's.
+  const codeMcp=m.demo?null:el('p','sub others',[t('cs.claude.code_mcp'),' ',el('code','mono',location.origin+'/mcp/codemode')]);
+  const kids=[el('h2','',t('cs.claude.title')),el('p','',t('cs.claude.lede')),urlRow,steps,el('p','sub others',[t('cs.claude.others'),' ',guide]),awxMcp,codeMcp].filter(Boolean);
   if(m.demo){
     const tok='purser-demo-read-only';
     kids.push(note(t('cs.claude.demo')),el('div','once',[el('b','',t('cs.claude.demo_token')),el('code','cmd',tok),el('b','',t('cs.claude.code')),el('code','cmd',codeCmd(tok)),el('div','row2',[copyBtn(codeCmd(tok))])]));
@@ -1689,7 +1691,7 @@ async function connectionsView(q){
     airwallex:()=>offers('airwallex')&&owner?to('connect',t('cs.cx.connect')):nav('#/airwallex',t('cs.cx.see_awx')),
     alta:()=>nav('#/tokenisation',t('cs.cx.see_alta')),'visa-airi':()=>nav('#/agents',t('cs.cx.see_visa')),t0:()=>nav('#/books',t('cs.cx.see_t0')),
     // 21 Nov: a connection the company has opens its own page (the menu's Connected tab); else its set-up below.
-    mcp:()=>CONN.claude?nav('#/claude',cw('open_tab')):to('claude'),claude:()=>CONN.claude?nav('#/claude',cw('open_tab')):to('claude'),'awx-codemode':()=>to('claude'),
+    mcp:()=>CONN.claude?nav('#/claude',cw('open_tab')):to('claude'),claude:()=>CONN.claude?nav('#/claude',cw('open_tab')):to('claude'),'awx-codemode':()=>to('claude'),codemode:()=>to('claude'),
     chatgpt:()=>null,cursor:()=>null,vscode:()=>null,gemini:()=>null,windsurf:()=>null,
     rest:()=>owner&&session?to('keys',t('cs.cx.make_key')):null,sdks:()=>null,'zapier-make':()=>null,n8n:()=>null,
     webhook:()=>hook?to('webhook'):null,

@@ -53,4 +53,10 @@
   //     "producers": [{ "queue": "purser-cloud-inbox", "binding": "INBOX_QUEUE" }],
   //     "consumers": [{ "queue": "purser-cloud-inbox", "max_batch_size": 5, "max_batch_timeout": 5, "max_retries": 8, "dead_letter_queue": "purser-cloud-inbox-dlq" }]
   //   }
+  //
+  // Code Mode at /mcp/codemode (cloud/src/claude/codemode.ts, docs/codemode.md) runs the AI's code in a fresh Cloudflare
+  // Dynamic Worker from the Worker Loader binding LOADER. Off until the binding is here: execute then answers
+  // sandbox_unavailable and reads nothing. Dynamic Workers need the Workers Paid plan and are billed per Worker created
+  // (developers.cloudflare.com/dynamic-workers/pricing). To switch it on, put this key in the object above:
+  //   "worker_loaders": [{ "binding": "LOADER" }]
 }
