@@ -69,7 +69,7 @@ ol.bl-flow { list-style: none; margin: 0; padding: 0; display: grid; grid-templa
 :root[data-theme="dark"] .bl-st.t0 .ic { background: #fff; color: #0b0d12; border-color: #fff; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bl-st.t0 .ic { background: #fff; color: #0b0d12; border-color: #fff; } }
 .bl-st b { font-size: 16px; line-height: 1.3; }
-.bl-st a.fig { color: inherit; text-decoration: none; outline: none; } .bl-st a.fig::after { content: ""; position: absolute; inset: 0; border-radius: 16px; }
+.bl-st a.fig { color: inherit; text-decoration: none; outline: none; padding: 8px 0; margin: -8px 0; } .bl-st a.fig::after { content: ""; position: absolute; inset: 0; border-radius: 16px; }
 .bl-st:has(a.fig:hover), .bl-st:has(a.fig:focus-visible) { border-color: var(--accent); } .bl-st:has(a.fig:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .bl-st .fig { font-size: 26px; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .bl-st .fig small { font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
@@ -107,7 +107,7 @@ ul.bl-pay .ok { display: inline-flex; gap: 4px; align-items: center; color: var(
 /* The demo. */
 .lgd { display: grid; gap: 14px; }
 .lgd-eq { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; font-size: 15px; color: var(--muted); }
-.lgd-eq a { color: inherit; text-decoration: none; border-bottom: 1px dashed var(--border); } .lgd-eq a:hover, .lgd-eq a:focus-visible { border-bottom-color: var(--accent); }
+.lgd-eq a { display: inline-block; padding: 8px 0; margin: -8px 0; color: inherit; text-decoration: none; } .lgd-eq a b { border-bottom: 1px dashed var(--border); } .lgd-eq a:hover b, .lgd-eq a:focus-visible b { border-bottom-color: var(--accent); }
 .lgd-eq b { color: var(--text); font-size: clamp(19px, 2.2vw, 24px); font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .lgd-eq .op { font-size: 22px; font-weight: 700; color: var(--text); }
 .lgd-eq .op.no { color: var(--bad); }

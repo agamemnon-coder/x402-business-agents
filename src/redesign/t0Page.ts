@@ -107,7 +107,7 @@ export const T0_CSS = `${T0_CLOSE_CSS}
 .t0s .noend { font-size: 13px; color: var(--muted); }
 ul.t0n { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 ul.t0n li { position: relative; display: grid; gap: 2px; padding: 14px 16px; border-radius: 14px; background: var(--sunken); border: 1px solid transparent; }
-ul.t0n a.t0f { color: inherit; text-decoration: none; outline: none; } ul.t0n a.t0f::after { content: ""; position: absolute; inset: 0; border-radius: 14px; }
+ul.t0n a.t0f { display: block; padding: 8px 0; margin: -8px 0; color: inherit; text-decoration: none; outline: none; } ul.t0n a.t0f::after { content: ""; position: absolute; inset: 0; border-radius: 14px; }
 ul.t0n li small a { position: relative; z-index: 1; }
 ul.t0n li:has(a.t0f:hover), ul.t0n li:has(a.t0f:focus-visible) { border-color: var(--accent); } ul.t0n li:has(a.t0f:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 ul.t0n b { font-size: clamp(26px, 3vw, 34px); font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
