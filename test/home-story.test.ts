@@ -13,6 +13,7 @@ import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
 import {
   AGENTS_HEAD, CLOUD_EYEBROW, HOME_SUB, PROOF_BUTTON, PROOF_HEAD, REASSURE, ROSTER_NOTE, ROSTER_RECORDS, START, START_HEAD, STOP_DRILL_DOC, STOP_DRILL_RECORD,
   AI_CONNECT_URL, AI_HEAD, AI_STEPS, AI_SUB, TOUR_BUTTON, TOUR_HEAD, VERIFY_BUTTON, WHATS_REAL, agentRoster, agentTiles, homePage, proofRows, proofTiles, stopDrillFacts,
+  CONNECT_CLAUDE, GITHUB_BUTTON, REPO_URL,
 } from "../src/redesign/home.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { MONEY_FLOW_RECORDS, moneyFlowFacts } from "../src/redesign/moneyFlow.js";
@@ -66,9 +67,11 @@ describe("Home, 21 Nov: one short story", () => {
     }
   });
 
-  it("has two buttons in the hero, the judge tour (primary) and Try, then the proof's two at its row; nothing else is a button", () => {
+  it("has two buttons in the hero, the judge tour (primary) and Try, Connect Claude and GitHub under the AI block, then the proof's two at its row; nothing else is a button", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [decode(m[1]!), text(m[2]!)]);
-    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TOUR_START_HREF, TOUR_BUTTON], [TRY_URL, START], ["proof", PROOF_BUTTON], ["/verify", VERIFY_BUTTON]]);
+    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TOUR_START_HREF, TOUR_BUTTON], [TRY_URL, START], [AI_CONNECT_URL, CONNECT_CLAUDE], [REPO_URL, GITHUB_BUTTON], ["proof", PROOF_BUTTON], ["/verify", VERIFY_BUTTON]]);
+    // Max, 21 Nov: "add a connect to GitHub and Claude".
+    expect([CONNECT_CLAUDE, GITHUB_BUTTON]).toEqual(["Connect Claude", "The code on GitHub"]);
     expect([TOUR_BUTTON, START]).toEqual(["Start the judge tour", "Try it"]);
     for (const html of [ON, OFF]) expect(mainOf(html).match(/class="btn primary/g)).toHaveLength(1);
     expect(homePage(undefined, { verifyUrl: "" })).not.toContain(VERIFY_BUTTON);
@@ -298,8 +301,8 @@ describe("The judge tour, on Home and its stops", () => {
   it("has seven stops: the film, Try, Purser Cloud as a guest, then Alta, Visa, T:0 and the proof on the site", () => {
     expect(TOUR_STOPS.map((s) => s.title)).toEqual(["Watch the demo", "Try it", "Purser Cloud", "Agents on Alta", "Cards via Visa", "Books on T:0", "Proof"]);
     expect(TOUR_STOPS.filter((s) => s.external).map((s) => s.href)).toEqual([FILM_URL, TRY_URL, "https://purser-try.max-31b.workers.dev/#/guest"]);
-    expect(TOUR_STOPS.filter((s) => !s.external).map((s) => [s.href, s.key])).toEqual([["alta", "metal"], ["visa", "visa"], ["t0", "t0"], ["proof", "proof"]]);
-    expect([...TOUR_PAGES]).toEqual(["home", "metal", "visa", "t0", "proof"]);
+    expect(TOUR_STOPS.filter((s) => !s.external).map((s) => [s.href, s.key])).toEqual([["alta", "metal"], ["visa", "visa"], ["books", "books"], ["proof", "proof"]]);
+    expect([...TOUR_PAGES]).toEqual(["home", "metal", "visa", "books", "proof"]);
     for (const html of [ON, OFF]) {
       const map = /<ol class="tmap">[\s\S]*?<\/ol>/.exec(mainOf(html))![0];
       expect([...map.matchAll(/<li data-stop="(\d)"><a href="([^"]+)"/g)].map((m) => [Number(m[1]), decode(m[2]!)])).toEqual(TOUR_STOPS.map((s, i) => [i + 1, s.external ? s.href : `${s.href}?tour=${i + 1}`]));
@@ -310,14 +313,14 @@ describe("The judge tour, on Home and its stops", () => {
   it("puts its bar's script on Home and on each stop on the site, inside the page's one hashed script, and on no other page", () => {
     const pages = buildPages({} as NodeJS.ProcessEnv) as unknown as Record<string, string> & { csp: Record<string, string> };
     const marker = 'K = "purser.tour"';
-    for (const key of ["home", "metal", "visa", "t0", "proof"]) {
+    for (const key of ["home", "metal", "visa", "books", "proof"]) {
       expect({ key, bar: pages[key]!.includes(marker) }).toEqual({ key, bar: true });
       expect(pages[key]!.match(/<script>/g)).toHaveLength(1);
       expect(pages.csp[key]).toMatch(/script-src 'sha256-/);
       expect(pages[key]).toContain("aside.tbar {");
     }
     // (The replay at /replay sits under the Proof tab, so it carries the bar too: a judge who opens it from /proof keeps the tour.)
-    for (const key of ["airwallex", "claude", "security", "privacy", "docs", "books", "status", "runs", "trace"]) expect({ key, bar: String(pages[key]).includes(marker) }).toEqual({ key, bar: false });
+    for (const key of ["airwallex", "claude", "security", "privacy", "docs", "status", "runs", "trace"]) expect({ key, bar: String(pages[key]).includes(marker) }).toEqual({ key, bar: false });
     // The bar is built with createElement and textContent; its words are the stops' own, never markup from the URL.
     const js = scriptBlocks(pages.home!).map(scriptBody).join("\n");
     expect(js).not.toMatch(/innerHTML\s*=(?!\s*markup\b)/);

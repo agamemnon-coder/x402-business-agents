@@ -281,6 +281,10 @@ export const AI_SUB = "Airwallex now reaches agents in ChatGPT. Purser adds the 
 /** Purser Cloud's page with each AI's set-up (cloud/src/claude/routes.ts serves /connect-ai). */
 export const AI_CONNECT_URL = `${PURSER_CLOUD_URL}connect-ai`;
 export const AI_AIRWALLEX_MCP = `${PURSER_CLOUD_URL}mcp/airwallex`;
+/** 21 Nov (Max: "add a connect to GitHub and Claude"): connect Claude (or another AI) to Purser, and the code on GitHub. */
+export const CONNECT_CLAUDE = "Connect Claude";
+export const GITHUB_BUTTON = "The code on GitHub";
+export const REPO_URL = "https://github.com/agamemnon-coder/x402-business-agents";
 export interface AiStep { key: string; icon: string; title: string; what: string; marks?: readonly { file: string; name: string }[]; tags?: readonly string[] }
 export const AI_STEPS: readonly AiStep[] = [
   { key: "ai", icon: "sparkles", title: "Your AI", what: "Reads and proposes", marks: [{ file: "brand-chatgpt.svg", name: "ChatGPT" }, { file: "brand-claude.svg", name: "Claude" }, { file: "brand-cursor.svg", name: "Cursor" }] },
@@ -504,6 +508,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
 </div></section>
 <section class="e-ai" id="${AI_ID}" aria-labelledby="h-ai"><div class="wrap">
   ${aiFlowHtml()}
+  <div class="e-more"><a class="btn big" href="${esc(AI_CONNECT_URL)}" target="_blank" rel="noopener">${icon("sparkles", 18)}${esc(CONNECT_CLAUDE)}</a><a class="btn big ghost" href="${esc(REPO_URL)}" target="_blank" rel="noopener">${icon("external-link", 18)}${esc(GITHUB_BUTTON)}</a></div>
 </div></section>
 <section class="e-agents" aria-labelledby="h-agents"><div class="wrap">
   <p class="eyebrow">${esc(AGENTS_EYEBROW)}</p>
