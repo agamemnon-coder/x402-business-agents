@@ -44,8 +44,9 @@ function walks(records: LiveTryRecord[]) {
   const t = liveTryTotals(records);
   if (!t || !t.runs) return null;
   const last = records[records.length - 1]!;
-  // One series: its run log; several: the folder of runs, where each series has its own.
-  const href = records.length === 1 ? blob(last.log ?? last.summary) : `${REPO_BLOB.replace("/blob/", "/tree/")}docs/runs`;
+  // One series: its run log; several: the newest series' summary.json (review, 21 Nov: a record, never the folder of
+  // runs), every series' summary in data-rec.
+  const href = records.length === 1 ? blob(last.log ?? last.summary) : blob(last.summary);
   const rec = records.map((r) => r.summary).join(" ");
   const when = t.days.length === 1 ? day(`${t.days[0]}T12:00:00Z`) : `${day(`${t.days[0]}T12:00:00Z`)} to ${day(`${t.days.at(-1)}T12:00:00Z`)}`;
   return { t, href, rec, when, records };
@@ -53,6 +54,12 @@ function walks(records: LiveTryRecord[]) {
 
 /** A count as the site writes one (src/redesign/ui.ts countOf): "All 16", "Both", or "37 of 39"; never "16/16". */
 const whole = (n: number, of: number) => (n !== of ? `${fmt(n)} of ${fmt(of)}` : of === 2 ? "Both" : `All ${fmt(of)}`);
+/**
+ * The walks that never reached a step, said beside its count (review, 21 Nov): a step's count is over the walks that
+ * tried it, so "66 of 67 one-cent changes refused" no longer reads as if one changed cent got through when a walk
+ * stopped before that step.
+ */
+const stoppedBefore = (tried: number, runs: number) => (tried < runs ? ` ${runs - tried === 1 ? "1 walk" : `${fmt(runs - tried)} walks`} stopped before that step.` : "");
 
 function rails(w: ReturnType<typeof walks>): WallTile[] {
   const out: WallTile[] = [];
@@ -162,8 +169,8 @@ function forged(w: ReturnType<typeof walks>): WallTile[] {
   const tm = json(TM) as { totals?: { artifacts: number; originalsValid: number; tried: number; refused: number; accepted: number } } | null;
   if (tm?.totals?.tried && tm.totals.accepted === 0 && tm.totals.originalsValid === tm.totals.artifacts) out.push({ key: "tamper-matrix", fig: whole(tm.totals.refused, tm.totals.tried), label: "tampered proof copies refused", note: `Every signed value of ${tm.totals.artifacts} proofs changed; the originals verify. Offline.`, tag: "test", tone: "ok", href: blob("docs/evidence/tamper-matrix.md"), rec: TM });
   if (w && w.t.runs) {
-    out.push({ key: "try-cent", fig: whole(w.t.refused, w.t.runs), label: "one-cent changes refused after approval", note: `The public /try, ${w.when}; a virtual test passkey signed.`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
-    out.push({ key: "try-hash", fig: whole(w.t.approvalsMatching, w.t.runs), label: "approvals whose hash Airwallex carries", note: `The public /try, ${w.when}.`, tag: "sandbox", tone: "awx", href: w.href, rec: w.rec });
+    out.push({ key: "try-cent", fig: whole(w.t.refused, w.t.centTried), label: w.t.centTried < w.t.runs ? "attempted one-cent changes refused after approval" : "one-cent changes refused after approval", note: `The public /try, ${w.when}; a virtual test passkey signed.${stoppedBefore(w.t.centTried, w.t.runs)}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
+    out.push({ key: "try-hash", fig: whole(w.t.approvalsMatching, w.t.signed), label: w.t.signed < w.t.runs ? "signed approvals whose hash Airwallex carries" : "approvals whose hash Airwallex carries", note: `The public /try, ${w.when}.${stoppedBefore(w.t.signed, w.t.runs)}`, tag: "sandbox", tone: "awx", href: w.href, rec: w.rec });
     if (w.t.proofs) out.push({ key: "try-proofs", fig: whole(w.t.proofsValid, w.t.proofs), label: "proof files VALID, browser and offline", note: "Downloaded from /try; npm run verify-bundle agrees.", tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
   }
   // The soaks' one-cent changes, summed over every soak record (the calls in each refusal's window, as each record counts them).
@@ -351,7 +358,7 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   if (ah?.calls) out.push({ key: "hostile-model", fig: whole(ah.refused ?? 0, ah.calls), label: "hostile tool calls stopped by code", note: `The other ${ah.stood ?? 0} stood within the rules, by the ledger: each the last pay of an invoice whose right outcome is pay, within the limit.${aha?.calls ? ` Sent to the CFO where a person had to look: ${ah.looser ?? 0}; ${aha.looser ?? 0} after the 19 Nov fixes, re-run, not held out.` : ""}`, tag: "test", tone: "claude", href: blob(AH), rec: aha?.calls ? `${AH} ${AH_AFTER}` : AH });
   if (w && w.t.claude.entries) {
     out.push({ key: "try-claude", fig: String(w.t.claude.fallbacks), label: `fallbacks in ${w.t.claude.entries} Claude calls on /try`, note: `${w.t.claude.distinctIds} Anthropic request ids; ${w.t.claude.models.join(", ")}.${w.t.claude.readerNoId ? ` ${w.t.claude.readerNoId} reader calls were logged with no request id: those walks ran before the fix of 19 Nov was deployed.` : ""}`, tag: "sandbox", tone: "claude", href: w.href, rec: w.rec });
-    if (w.t.held) out.push({ key: "try-held", fig: whole(w.t.held, w.t.runs), label: "invoices held by code's cash check", note: `Inside the agent's limit; no payout.${w.t.held < w.t.runs ? ` ${w.t.runs - w.t.held === 1 ? "One walk" : `${w.t.runs - w.t.held} walks`} stopped before this step.` : ""}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
+    if (w.t.held) out.push({ key: "try-held", fig: whole(w.t.held, w.t.holdTried), label: w.t.holdTried < w.t.runs ? "filed invoices held by code's cash check" : "invoices held by code's cash check", note: `Inside the agent's limit; no payout.${stoppedBefore(w.t.holdTried, w.t.runs)}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec });
   }
   return out;
 }

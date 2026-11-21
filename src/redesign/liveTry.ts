@@ -76,6 +76,12 @@ export interface LiveTryTotals {
   siteStepsPassed: number;
   transfers: number; paid: number; scheduledToPaid: Pct;
   approvalsMatching: number; refused: number; held: number;
+  /**
+   * The walks that reached each step (review, 21 Nov: "66 of 67 refused" read as if one changed cent got through, when
+   * walk 2 of docs/runs/2026-11-21-phone-try timed out before the cent step). signed: an approval signed; centTried: the
+   * one-cent change tried; holdTried: the cash check's invoice filed. Each from the run's own record of that step.
+   */
+  signed: number; centTried: number; holdTried: number;
   proofs: number; proofsValid: number;
   /** readerNoId: the reader's calls logged with no Anthropic request id (before the fix of 19 Nov was deployed). */
   claude: { entries: number; requests: number; distinctIds: number; fallbacks: number; costMicros: number; models: string[]; readerNoId: number };
@@ -102,6 +108,10 @@ export function liveTryTotals(records: LiveTryRecord[] = liveTryRecords()): Live
     const ok = (b: unknown) => isRec(b) && /^(VALID\b|Proof valid\b)/.test(String(b.verify_page ?? "")) && /every check passes/.test(String(b.verify_page ?? "")) && isRec(b.repo_verifier) && b.repo_verifier.ok === true;
     return a + (ok(r.bundle.downloaded) ? 1 : 0) + (ok(r.bundle.paid) ? 1 : 0);
   }, 0);
+  const stepped = (k: string) => (r: J) => isRec(r.steps_ms) && typeof r.steps_ms[k] === "number";
+  const signed = runs.filter((r) => (isRec(r.approval) && typeof r.approval.approval_sha256 === "string") || stepped("sign_ms")(r)).length;
+  const centTried = runs.filter((r) => isRec(r.refusal) || stepped("refusal_ms")(r)).length;
+  const holdTried = runs.filter((r) => (isRec(r.held) && r.held.outcome != null) || stepped("hold_ms")(r)).length;
   return {
     records: records.map((r) => r.summary),
     days: [...new Set(records.map((r) => r.first.slice(0, 10)))],
@@ -109,6 +119,7 @@ export function liveTryTotals(records: LiveTryRecord[] = liveTryRecords()): Live
     siteStepsPassed: records.reduce((a, r) => a + n(typeof r.aggregate.every_site_step_passed === "number" ? r.aggregate.every_site_step_passed : r.aggregate.ok), 0),
     transfers: awx("transfers"), paid: awx("paid"), scheduledToPaid: pctOf(s2p),
     approvalsMatching: sum("approvals_matching_transfer"), refused: sum("refused"), held: sum("held"),
+    signed, centTried, holdTried,
     proofs, proofsValid: valid,
     claude: { entries: claude("entries"), requests: claude("api_requests"), distinctIds: ids.size, fallbacks: claude("fallbacks"), costMicros: claude("cost_usd_micros"), models, readerNoId: claude("reader_calls_without_request_id") },
     consoleErrors: sum("console_errors"), outsideRequests: sum("outside_requests"),

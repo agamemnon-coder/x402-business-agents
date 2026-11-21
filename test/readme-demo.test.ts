@@ -47,7 +47,9 @@ describe("the README's small demo", () => {
     // The totals over every walk: the evidence wall's own tiles.
     const wall = read(WALL_RECORD);
     expect(wall).toContain(`"fig": "${f.wall.cent}"`);
-    expect(f.wall.centLabel).toBe("one-cent changes refused after approval");
+    // Review, 21 Nov: over the walks that tried the cent step, never "66 of 67" as if one changed cent got through.
+    expect(f.wall.centLabel).toMatch(/^(attempted )?one-cent changes refused after approval$/);
+    expect(f.wall.cent).toMatch(/^All /);
   });
 
   it("says test money and sandbox in every picture, and in the README's alt text what the picture shows", () => {

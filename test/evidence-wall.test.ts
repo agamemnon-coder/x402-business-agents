@@ -55,7 +55,14 @@ describe("the evidence wall's file", () => {
     expect(t.records.length).toBeGreaterThanOrEqual(2);
     expect(tile(w, "try-journeys").fig).toBe(countOf(t.siteStepsPassed, t.runs));
     expect(tile(w, "try-transfers").fig).toBe(countOf(t.paid, t.transfers));
-    expect(tile(w, "try-cent").fig).toBe(countOf(t.refused, t.runs));
+    // Review, 21 Nov: over the walks that tried the cent step (walk 2 of the phone series stopped before it), so the
+    // figure never reads as if a changed cent got through; the walks stopped before it said in the note.
+    expect(tile(w, "try-cent").fig).toBe(countOf(t.refused, t.centTried));
+    expect(tile(w, "try-hash").fig).toBe(countOf(t.approvalsMatching, t.signed));
+    expect(tile(w, "try-held").fig).toBe(countOf(t.held, t.holdTried));
+    expect(t.centTried).toBeLessThan(t.runs);
+    expect(tile(w, "try-cent").note).toContain(`${t.runs - t.centTried === 1 ? "1 walk" : `${t.runs - t.centTried} walks`} stopped before that step.`);
+    for (const k of ["try-cent", "try-hash", "try-held"]) expect(tile(w, k).fig, k).not.toMatch(/ of /);
     expect(tile(w, "try-claude")).toMatchObject({ fig: String(t.claude.fallbacks), label: `fallbacks in ${t.claude.entries} Claude calls on /try` });
     // Honest about the walks recorded before the reader's request-id fix was deployed.
     if (t.claude.readerNoId) expect(tile(w, "try-claude").note).toContain(`${t.claude.readerNoId} reader calls were logged with no request id`);
@@ -172,7 +179,7 @@ describe("the /try walks, added up over every recorded series", () => {
     expect(nearestRank(all, 0.5)).toBe(6200);
   });
 
-  it("feeds the wall: a later series moves its figures, and its link goes to the run folder", () => {
+  it("feeds the wall: a later series moves its figures, and its link goes to the newest series' summary.json", () => {
     const a = series("docs/runs/x-a", "2026-11-19T07:00:00.000Z", [6000, 6100]);
     const b = series("docs/runs/x-b", "2026-11-19T09:00:00.000Z", [5000, 5100, 5200]);
     const one = evidenceWall([a]), two = evidenceWall([a, b]);
@@ -181,7 +188,8 @@ describe("the /try walks, added up over every recorded series", () => {
     expect(tile(two, "try-transfers").fig).toBe("All 10");
     expect(tile(two, "try-cost").fig).toBe("USD 0.0050");
     expect(tile(one, "try-journeys").href).toBe(`${REPO_BLOB}docs/runs/x-a.md`);
-    expect(tile(two, "try-journeys").href).toMatch(/\/tree\/main\/docs\/runs$/);
+    // Review, 21 Nov: a record, never the folder of runs.
+    expect(tile(two, "try-journeys").href).toBe(`${REPO_BLOB}docs/runs/x-b/summary.json`);
     expect(tile(two, "try-journeys").rec).toBe("docs/runs/x-a/summary.json docs/runs/x-b/summary.json");
   });
 });

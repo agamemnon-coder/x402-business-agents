@@ -13,7 +13,7 @@
           "note": "67 walks as a visitor, 19 Nov to 21 Nov; PAID by the sandbox's simulation.",
           "tag": "sandbox",
           "tone": "awx",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         },
@@ -237,23 +237,23 @@
         },
         {
           "key": "try-cent",
-          "fig": "66 of 67",
-          "label": "one-cent changes refused after approval",
-          "note": "The public /try, 19 Nov to 21 Nov; a virtual test passkey signed.",
+          "fig": "All 66",
+          "label": "attempted one-cent changes refused after approval",
+          "note": "The public /try, 19 Nov to 21 Nov; a virtual test passkey signed. 1 walk stopped before that step.",
           "tag": "sandbox",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         },
         {
           "key": "try-hash",
-          "fig": "66 of 67",
-          "label": "approvals whose hash Airwallex carries",
-          "note": "The public /try, 19 Nov to 21 Nov.",
+          "fig": "All 66",
+          "label": "signed approvals whose hash Airwallex carries",
+          "note": "The public /try, 19 Nov to 21 Nov. 1 walk stopped before that step.",
           "tag": "sandbox",
           "tone": "awx",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         },
@@ -264,7 +264,7 @@
           "note": "Downloaded from /try; npm run verify-bundle agrees.",
           "tag": "sandbox",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         },
@@ -572,18 +572,18 @@
           "note": "1341 Anthropic request ids; claude-haiku-5-5. 168 reader calls were logged with no request id: those walks ran before the fix of 19 Nov was deployed.",
           "tag": "sandbox",
           "tone": "claude",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         },
         {
           "key": "try-held",
-          "fig": "65 of 67",
-          "label": "invoices held by code's cash check",
-          "note": "Inside the agent's limit; no payout. 2 walks stopped before this step.",
+          "fig": "All 65",
+          "label": "filed invoices held by code's cash check",
+          "note": "Inside the agent's limit; no payout. 2 walks stopped before that step.",
           "tag": "sandbox",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         }
@@ -783,7 +783,7 @@
           "note": "19 Nov to 21 Nov, Chromium and Firefox and WebKit, desktop, tablet and phone; 0 console errors. The recording script marked 62 of 67 all ok; 3 more passed every site step, marked failed only for /verify's new words. The run logs say why each of the other 2 stopped.",
           "tag": "sandbox",
           "tone": "ok",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         },
@@ -794,7 +794,7 @@
           "note": "Median of 66, p95 8.2 s.",
           "tag": "sandbox",
           "tone": "",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         },
@@ -805,7 +805,7 @@
           "note": "Median of 66, p95 13.2 s; PAID by the sandbox's simulation.",
           "tag": "sandbox",
           "tone": "",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         },
@@ -816,7 +816,7 @@
           "note": "Median of 66, p95 0.86 s.",
           "tag": "sandbox",
           "tone": "",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         },
@@ -827,7 +827,7 @@
           "note": "Median of 65, p95 0.39 s.",
           "tag": "sandbox",
           "tone": "",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         },
@@ -838,7 +838,7 @@
           "note": "List price; USD 0.3225 for 67.",
           "tag": "sandbox",
           "tone": "claude",
-          "href": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/runs",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-phone-try/summary.json",
           "rec": "docs/runs/2026-11-19-live-try/summary.json docs/runs/2026-11-19-mega-run/summary.json docs/runs/2026-11-21-phone-try/summary.json",
           "asOf": "2026-11-21"
         }

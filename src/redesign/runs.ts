@@ -576,18 +576,37 @@ function extraRuns(): RunRow[] {
 
   // 19 Nov: the public /try walked as a visitor, recorded with every answer (docs/runs/2026-11-19-live-try.md); one row a
   // recorded series, its walks its rate (src/redesign/liveTry.ts reads every series in that shape).
+  // Review, 21 Nov: each step's count is over the walks that reached it, the walks stopped before it said beside it; the
+  // browsers as the series records them ("WebKit 3 + Chromium 6"), never one browser for a mixed series.
+  const walksN = (k: number) => (k === 1 ? "1 walk" : `${k} walks`);
+  const stops = (t: { runs: number; signed: number; centTried: number; holdTried: number }) => [
+    t.runs > t.signed ? `${walksN(t.runs - t.signed)} stopped before the approval` : "",
+    t.signed > t.centTried ? `${walksN(t.signed - t.centTried)} stopped before the one-cent change` : "",
+    t.centTried > t.holdTried ? `${walksN(t.centTried - t.holdTried)} stopped before the cash check's invoice` : "",
+  ].filter(Boolean);
+  const browsersOf = (rec: { aggregate: Record<string, unknown>; log: string | null }): string => {
+    const by = rec.aggregate.by_browser;
+    if (by && typeof by === "object") {
+      const name = (k: string) => { const b = k.split(" ")[0]!; return b === "webkit" ? "WebKit" : b.charAt(0).toUpperCase() + b.slice(1); };
+      const n = new Map<string, number>();
+      for (const [k, v] of Object.entries(by as Record<string, number>)) n.set(name(k), (n.get(name(k)) ?? 0) + v);
+      return [...n].sort((x, y) => x[1] - y[1]).map(([b, c]) => `${b} ${c}`).join(" + ");
+    }
+    return "Chromium";
+  };
   for (const rec of liveTryRecords()) {
     const t = liveTryTotals([rec]);
     if (!t || !t.runs) continue;
+    const browsers = browsersOf(rec);
     out.push({
       // An id that starts with a letter: the key is the row's anchor and a CSS selector.
       key: `try-${rec.dir.split("/").pop()!}`, iso: rec.last, date: day(rec.first), kind: "sandbox", partners: ["Airwallex", "Claude"],
       name: `The public /try, walked ${t.runs} times as a visitor`,
-      line: `${countOf(t.paid, t.transfers)} Airwallex sandbox transfers PAID (by the sandbox's simulation), ${countOf(t.refused, t.runs, true)} one-cent changes refused, ${countOf(t.held, t.runs, true)} cash holds by code. A test passkey.`,
+      line: `${countOf(t.paid, t.transfers)} Airwallex sandbox transfers PAID (by the sandbox's simulation), ${countOf(t.refused, t.centTried, true)} one-cent changes refused, ${countOf(t.held, t.holdTried, true)} cash holds by code. A test passkey.`,
       rate: { done: t.siteStepsPassed, of: t.runs, what: "walks passed every site step" },
       title: "The public /try, recorded", rails: "Airwallex sandbox (SWIFT transfers), Claude, virtual test passkey",
-      what: `The judge's journey on https://kit11.max-31b.workers.dev/try, ${t.runs} times in Chromium, each a fresh test company: an invoice paid by the agent alone, one approved with a passkey and paid, a one-cent change refused, the proof checked on /verify, an invoice held by the cash check.`,
-      checks: `${countOf(t.approvalsMatching, t.runs)} approvals carry the hash the transfer carries; ${countOf(t.proofsValid, t.proofs, true)} proof files VALID; ${t.claude.entries} Claude entries, ${t.claude.fallbacks} fallbacks.`,
+      what: `The judge's journey on https://kit11.max-31b.workers.dev/try, ${t.runs} times ${browsers.includes("+") ? `(${browsers})` : `in ${browsers}`}, each a fresh test company: an invoice paid by the agent alone, one approved with a passkey and paid, a one-cent change refused, the proof checked on /verify, an invoice held by the cash check.`,
+      checks: `${stops(t).length ? `Each count is over the walks that reached its step: ${stops(t).join(", ")}. ` : ""}${countOf(t.approvalsMatching, t.signed)} ${t.signed < t.runs ? "signed approvals" : "approvals"} carry the hash the transfer carries; ${countOf(t.proofsValid, t.proofs, true)} proof files VALID; ${t.claude.entries} Claude entries, ${t.claude.fallbacks} fallbacks.`,
       money: "Sandbox · test money",
       ids: [],
       files: [{ label: "summary (JSON)", href: blob(rec.summary) }, ...(rec.log ? [{ label: "run log", href: blob(rec.log) }] : [])],
