@@ -30,6 +30,16 @@ export const CLAUDE_CSS = `:root { --cv-code: #646d7e; --cv-claude: #a84d2b; --c
 .sbars svg { grid-column: 1 / -1; display: block; width: 100%; height: 10px; margin-top: 4px; }
 .sbars .sb-trk { fill: var(--border); }
 @media (max-width: 860px) { .csplit { padding: 14px 14px 12px; } .csplit .wid { display: none; } .csplit .nar { display: block; max-width: 420px; } }
+/* The split, the agents and the proof tiles: each one link to its record (21 Nov, Max: "every figure goes somewhere"). */
+.csplit { position: relative; } .csplit a.cs-a { display: block; color: inherit; text-decoration: none; outline: none; }
+.csplit a.cs-a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.csplit:has(a.cs-a:hover), .csplit:has(a.cs-a:focus-visible) { border-color: var(--claude); } .csplit:has(a.cs-a:focus-visible) { outline: 2px solid var(--claude); outline-offset: 2px; }
+.cag { position: relative; } .cag a.cag-a { display: grid; gap: 8px; align-content: start; color: inherit; text-decoration: none; outline: none; }
+.cag a.cag-a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.cag:has(a.cag-a:hover), .cag:has(a.cag-a:focus-visible) { border-color: var(--claude); } .cag:has(a.cag-a:focus-visible) { outline: 2px solid var(--claude); outline-offset: 2px; }
+.ctiles .ctile { position: relative; } .ctile a.ct-a { display: grid; gap: 4px; color: inherit; text-decoration: none; outline: none; }
+.ctile a.ct-a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; } .ctile .r a { position: relative; z-index: 1; }
+.ctiles .ctile:has(a.ct-a:hover), .ctiles .ctile:has(a.ct-a:focus-visible) { background: var(--surface); box-shadow: inset 0 0 0 1px var(--claude); }
 .csplit figcaption { font-size: 15px; color: var(--muted); line-height: 1.45; border-top: 1px solid var(--border); padding-top: 10px; font-variant-numeric: tabular-nums; }
 .csplit figcaption b { color: var(--text); }
 .sk-code { fill: var(--cv-code); } .sk-claude { fill: var(--cv-claude); } .sk-face { fill: var(--cv-face); }
@@ -99,7 +109,7 @@ const ribbonH = (x0: number, y0: number, x1: number, y1: number, h0: number, h1:
 const tip = (t: string) => `<title>${esc(t)}</title>`;
 
 /** The split, drawn wide (from 861 px) and tall (phones): each band's thickness is its count. */
-export function splitFigure(f: SplitFigures): string {
+export function splitFigure(f: SplitFigures, rec?: string): string {
   const total = f.routine + f.decisions;
   if (!total || !f.decisions) return "";
   const tCode = `${f.routine} routine payments by code`, tClaude = `${f.decisions} exceptions decided by Claude`, tFace = `${f.faceId} high-risk decisions signed with the CFO's Face ID`;
@@ -135,7 +145,9 @@ ${bar("sk-face", f.faceId, "of those, high-risk: the CFO's Face ID")}
   const oc = f.onChain;
   const rel = oc && oc.sales + oc.purchases === f.routine && oc.total === f.routine + oc.refunds + oc.sweeps
     ? `<br>${esc(`On Alta: ${oc.total} payments, the ${f.routine} routine ones (${oc.sales} x402 sales, ${oc.purchases} purchases) and ${oc.refunds} refunds and ${oc.sweeps} sweep, decided among the ${f.decisions} exceptions.`)}` : "";
-  return `<figure class="csplit card" id="split">${wide}${nar}<figcaption>${cap}${rel}</figcaption></figure>`;
+  // 21 Nov (Max: "no dead zones, and every figure goes somewhere"): the drawing is a link to the record it is counted
+  // from, and it covers the figure, caption included.
+  return `<figure class="csplit card" id="split">${rec ? `<a class="cs-a" href="${esc(`${REPO_BLOB}${rec}`)}" target="_blank" rel="noopener">${wide}${nar}</a>` : `${wide}${nar}`}<figcaption>${cap}${rel}</figcaption></figure>`;
 }
 
 /** A bar of n out of of, as SVG (its width an attribute: the page's CSP allows no style attribute). */
@@ -148,13 +160,15 @@ export interface AgentFigures { id: string; short: string; family: string; decis
 const AGENT_ICON: Record<string, string> = { sourcing: "package", support: "headphones", treasury: "landmark" };
 
 /** The three agents, each a card: its model, its decisions as a bar of all of them, its Claude calls. */
-export function agentCards(agents: AgentFigures[]): string {
+export function agentCards(agents: AgentFigures[], rec?: string): string {
   const all = agents.reduce((n, a) => n + a.decisions, 0);
   if (!agents.length || !all) return "";
-  return `<h2 class="csec" id="agents">Three agents</h2><div class="cagents">${agents.map((a) => `<article class="cag card" data-agent="${esc(a.id)}">
+  // 21 Nov (Max): each card is one link to the record its counts are read from.
+  const open = rec ? `<a class="cag-a" href="${esc(`${REPO_BLOB}${rec}`)}" target="_blank" rel="noopener">` : "", close = rec ? "</a>" : "";
+  return `<h2 class="csec" id="agents">Three agents</h2><div class="cagents">${agents.map((a) => `<article class="cag card" data-agent="${esc(a.id)}">${open}
 <div class="top"><span class="ic">${icon(AGENT_ICON[a.id] ?? "bot", 20)}</span><h3>${esc(a.short)}</h3><span class="model fam">${esc(modelName(a.model, a.family))}</span></div>
 <span class="v">${a.decisions}<small>decisions</small></span>${bar(a.decisions, all, `${a.short}: ${a.decisions} of ${all} decisions`)}
-<span class="s">${a.calls} Claude calls</span></article>`).join("")}</div>`;
+<span class="s">${a.calls} Claude calls</span>${close}</article>`).join("")}</div>`;
 }
 
 export interface HostileFigures { calls: number; refused: number; stood: number; unsafe: number; cases: number }
@@ -187,7 +201,8 @@ export function supportTileLabel(lines: ModelLine[], used: Record<string, string
 /** Measured, not asserted: five proof tiles, each an icon, one number, a short label and its record. */
 export function proofTiles(e: ClaudeEvidence, used: Record<string, string> = {}): string {
   const lines = e.sweep ? modelLines(e.sweep) : [], haikuSupport = e.sweep?.rows.find((r) => r.agent === "support" && /haiku/.test(r.model) && r.passed === 0);
-  const tile = (ic: string, v: string, l: string, rec: string, links: string) => `<li class="ctile" data-rec="${esc(rec)}"><span class="ic">${icon(ic, 20)}</span><span class="tv">${esc(v)}</span><span class="tl">${esc(l)}</span><span class="r">${links}</span></li>`;
+  // Each tile leads to its record (21 Nov, Max: "no dead zones"): the figure and its words are the link, and it covers the tile.
+  const tile = (ic: string, v: string, l: string, rec: string, links: string) => `<li class="ctile" data-rec="${esc(rec)}"><span class="ic">${icon(ic, 20)}</span><a class="ct-a" href="${esc(`${REPO_BLOB}${rec}`)}" target="_blank" rel="noopener"><span class="tv">${esc(v)}</span><span class="tl">${esc(l)}</span></a><span class="r">${links}</span></li>`;
   const v = e.variation, h = e.hostile;
   const items = [
     v ? tile("database", String(v.decisions), `decisions in ${v.worlds} simulated worlds, ${v.claudePct === 100 ? "all" : `${v.claudePct}%`} by Claude; ${v.unsafe} unsafe actions${e.fix && e.fix.unsafe === 0 ? ", fixed" : ""}`, VARIATION_RECORD, link(VARIATION_RECORD)) : "",
@@ -237,8 +252,8 @@ export function modelName(model: string | undefined, family: string): string {
  */
 export function heldOutTile(h: HeldOut | null): string {
   if (!h) return "";
-  return `<section class="chold card" id="held-out" data-rec="${esc(h.file)}" aria-labelledby="ch-h"><div class="ch-fig"><span class="ch-v"><b>${h.purser}</b> <span>vs</span> <b class="no">${h.noRules}</b></span>
-<span class="ch-k"><span>${esc("Purser's rules")}</span><span>${esc("no rules")}</span></span></div>
+  return `<section class="chold card" id="held-out" data-rec="${esc(h.file)}" aria-labelledby="ch-h"><a class="ch-fig" href="${esc(`${REPO_BLOB}${h.md}`)}" target="_blank" rel="noopener"><span class="ch-v"><b>${h.purser}</b> <span>vs</span> <b class="no">${h.noRules}</b></span>
+<span class="ch-k"><span>${esc("Purser's rules")}</span><span>${esc("no rules")}</span></span></a>
 <div class="ch-t"><h2 id="ch-h">${esc(`Newest held-out eval (v${h.version}): wrong payments on ${h.cases} invoices`)}</h2>
 <p>${esc(`If the model always said pay, Purser's rules would let ${h.purser} wrong payments out; with no rules, ${h.noRules}. ${h.falseHolds} false holds of ${h.clean} clean invoices. Cases committed before the run; offline, test data.`)}</p>
 <p class="r">${link(h.md, "record")}</p></div></section>`;
@@ -246,7 +261,11 @@ export function heldOutTile(h: HeldOut | null): string {
 
 export const HELD_OUT_CSS = `.chold { padding: 18px 20px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 24px; align-items: center; }
 @media (max-width: 640px) { .chold { grid-template-columns: minmax(0, 1fr); } }
-.ch-fig { display: grid; gap: 2px; justify-self: start; }
+.ch-fig { display: grid; gap: 2px; justify-self: start; color: inherit; text-decoration: none; outline: none; }
+/* The whole tile leads to the eval's record (21 Nov, Max: "no dead zones"); its own "record" link stays above. */
+.chold { position: relative; } .chold a.ch-fig::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.chold .r a { position: relative; z-index: 1; }
+.chold:has(a.ch-fig:hover), .chold:has(a.ch-fig:focus-visible) { border-color: var(--claude); } .chold:has(a.ch-fig:focus-visible) { outline: 2px solid var(--claude); outline-offset: 2px; }
 .ch-v { font-size: clamp(40px, 5vw, 56px); font-weight: 800; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ch-v b { color: var(--ok); } .ch-v b.no { color: var(--bad); } .ch-v span { font-size: .45em; color: var(--muted); font-weight: 650; letter-spacing: 0; }
 .ch-k { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 650; color: var(--muted); }
@@ -283,7 +302,9 @@ export const IN_PRODUCT_CSS = `.cinp ul { list-style: none; margin: 0; padding: 
 .cinp li > span { color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; } .cinp .g { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
 .cinp .g a.pf { min-height: 44px; display: inline-flex; align-items: center; }`;
 
-export interface ClaudeBody { logo: string; label: string; split: SplitFigures; agents: AgentFigures[]; evidence: ClaudeEvidence; used: Record<string, string>; folds: string; runIcon: string; heldOut?: HeldOut | null }
+export interface ClaudeBody { logo: string; label: string; split: SplitFigures;
+  /** The main run's record (a repository path): the split and the agents' counts are read from it, and link to it. */
+  record?: string; agents: AgentFigures[]; evidence: ClaudeEvidence; used: Record<string, string>; folds: string; runIcon: string; heldOut?: HeldOut | null }
 
 /**
  * The page's main: the title, the split, the agents with their models, the newest held-out eval, then the folds: the
@@ -299,8 +320,8 @@ export function claudeMain(b: ClaudeBody): string {
     : `${chart ? `<details class="fold" id="models-fold"><summary>${esc("Each agent on each model")}</summary>${chart}</details>` : ""}${b.folds}`;
   return `<main class="pp"><div class="wrap">
   <div class="phd">${b.logo}<span class="pill run">${b.runIcon}${esc(b.label)}</span><h1>Claude decides the exceptions</h1></div>
-  ${splitFigure(b.split)}
-  ${agentCards(b.agents)}
+  ${splitFigure(b.split, b.record)}
+  ${agentCards(b.agents, b.record)}
   ${heldOutTile(b.heldOut ?? null)}
   <div class="folds card">${inProductHtml()}${tiles ? `<details class="fold" id="measured"><summary>${esc("Measured, not asserted: five more figures")}</summary>${tiles}</details>` : ""}${folds}${injectionFold()}</div>
   <a class="open" href="proof#claude">All the proof ${icon("arrow-right", 15)}</a>

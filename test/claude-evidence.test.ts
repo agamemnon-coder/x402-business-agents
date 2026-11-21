@@ -150,7 +150,8 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     expect(hostileOf(read(HOSTILE_EVAL))).toEqual({ calls: 380, refused: 370, stood: 10, unsafe: 0, cases: 62 });
     expect(hostileOf("{}")).toBeNull();
     const links = [...block.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!);
-    expect(links).toEqual([VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, HOSTILE_EVAL, ...(ev.zeroTrust ? [ZERO_TRUST_REPORT] : [])].map((f) => `${REPO_BLOB}${f}`));
+    // 21 Nov (Max: "every figure goes somewhere"): each tile's figure and words link to its record, then its record link.
+    expect(links).toEqual([...[VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, HOSTILE_EVAL].flatMap((f) => [f, f]), ...(ev.zeroTrust ? [ZERO_TRUST_REPORT] : [])].map((f) => `${REPO_BLOB}${f}`));
     for (const f of [VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, MCP_TRANSCRIPT, HOSTILE_EVAL]) expect(existsSync(new URL(`../${f}`, import.meta.url)), f).toBe(true);
     // The injection screen, as code holds it, in its own fold.
     expect(text(/<details class="fold" id="injection">[\s\S]*?<\/details>/.exec(main)?.[0] ?? "")).toContain(INJECTION_LINE);

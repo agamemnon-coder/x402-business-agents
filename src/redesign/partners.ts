@@ -492,7 +492,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
   // as a bar chart; the folds below as details.
   const ev = claudeEvidence(), used = Object.fromEntries(run.agents.map((a) => [a.id, a.family]));
   const body = claudeMain({
-    logo: LOGO.claude + ENDORSE_NOTE, label: run.label, runIcon: icon("database", 14), evidence: ev, used,
+    logo: LOGO.claude + ENDORSE_NOTE, label: run.label, runIcon: icon("database", 14), evidence: ev, used, record: run.file,
     split: { ...sp, calls, faceId: faceIdDecisions(run.record), onChain: metalStory(run.record).payments },
     agents: run.agents.map((a) => { const st = s.agent_stats.find((x) => x.agent === a.id); return { id: a.id, short: a.short, family: a.family, model: a.model, decisions: st?.decisions ?? 0, calls: st?.claude_calls ?? 0 }; }),
     heldOut: newestHeldOut(),
