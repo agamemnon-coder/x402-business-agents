@@ -14,7 +14,9 @@ describe("the tests figure's title", () => {
     const t = testsTitle(summary);
     expect(t.startsWith(`${n(summary.passed)} tests passed, ${n(summary.skipped)} skipped, in the last full run, on commit ${summary.commit} `)).toBe(true);
     expect(t).not.toMatch(/\d of [\d,]+ tests/);
-    for (const page of [homePage(), proofPage()]) expect(page).toContain(`title="${t}"`);
+    // 21 Nov (Max: "Make it clean, tighter"): the hero's proof line left Home; /proof keeps the figure with its title.
+    expect(proofPage()).toContain(`title="${t}"`);
+    expect(homePage()).not.toMatch(/\d of [\d,]+ tests/);
   });
 
   it("names failures when there are any", () => {

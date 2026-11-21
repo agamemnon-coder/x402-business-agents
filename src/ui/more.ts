@@ -12,6 +12,11 @@ export interface MoreLink {
   href: string;
   group: "product" | "partner";
   /**
+   * A tab of its own (21 Nov): shown in the top row, before "More", and not repeated in the dropdown; the footer keeps it
+   * with the product pages.
+   */
+  tab?: true;
+  /**
    * false: this page is not in the site yet, so no menu and no footer links to it. A link to an address the site does
    * not serve fails test/site-v4.test.ts (every internal link answers) and, the other way round, a served page that the
    * menu leaves out fails the same test. Remove the flag in the commit that registers the page.
@@ -32,7 +37,9 @@ export const NEGOTIATE_URL = `${PURSER_CLOUD_URL}try/negotiate`;
 /** The whole menu, in its order: the product pages first, then the partner pages (names as text, never a logo). */
 export const MORE_LINKS: readonly MoreLink[] = [
   // 12 Nov (owner): the hosted product, Purser Cloud, on its own test-money deployment.
-  { key: "cloud", label: "Purser Cloud", href: PURSER_CLOUD_URL, group: "product" },
+  // 21 Nov (Max: "Should we show all these pages at all? I want it simple and tight"): the menu is Home, Try, Proof,
+  // Cloud and More. Purser Cloud is the product, so it is a tab ("Cloud"); everything else stays one tap away under More.
+  { key: "cloud", label: "Purser Cloud", href: PURSER_CLOUD_URL, group: "product", tab: true },
   // 15 Nov: "Agents negotiate" left the menu (Max: it read as unprofessional there); /try/negotiate has a card on Home
   // (src/redesign/home.ts negotiateCardHtml) and stays linked at the end of /try.
   // 13 Nov (Max): the product tour and Pricing are gone; /tour and /pricing answer 302 to /home (src/servers/dashboard.ts REDIRECTS).
@@ -50,20 +57,25 @@ export const MORE_LINKS: readonly MoreLink[] = [
   // 21 Nov (the owner: "merge them"): T:0 lives on /books (Books above); /t0 answers 301 there.
 ];
 
-/** The links the pages show: every page of the list that the site serves. */
-export const moreLinks = (): MoreLink[] => MORE_LINKS.filter((l) => l.built !== false);
-/** The footer repeats the product pages only; the partner pages are reached from Proof and from "More". */
-export const footerLinks = (): MoreLink[] => moreLinks().filter((l) => l.group === "product");
+/** The links under "More": every page of the list that the site serves, except the one that is a tab of its own. */
+export const moreLinks = (): MoreLink[] => MORE_LINKS.filter((l) => l.built !== false && !l.tab);
+/** The tabs the list adds after Home, Try and Proof (21 Nov: "Cloud"), each with its short label. */
+export const CLOUD_TAB_LABEL = "Cloud";
+export const tabLinks = (): MoreLink[] => MORE_LINKS.filter((l) => l.built !== false && l.tab);
+/** The footer repeats the product pages only (Purser Cloud among them); the partner pages are reached from Proof and from "More". */
+export const footerLinks = (): MoreLink[] => MORE_LINKS.filter((l) => l.built !== false && l.group === "product");
 export const isMoreKey = (key: string | null): key is MoreKey => MORE_LINKS.some((l) => l.key === key);
+/** A page listed under "More" (not a tab of its own). */
+const underMore = (key: string | null): boolean => MORE_LINKS.some((l) => l.key === key && !l.tab);
 
 /** A page's own key, as it tells the navigation where it is: one of the four tabs, a page under "More", or a page that sits under a tab. */
 export type PageKey = "home" | "watch" | "try" | "proof" | "runs" | MoreKey;
 /** The menu item a page marks (12 Nov): a tab marks itself, a page listed under "More" marks "More", /runs sits under Proof. The one mapping both navigations use. */
 // Jury, 13 Nov: /runs is not Proof; it marks no tab.
-const UNDER_TAB: Readonly<Record<string, "home" | "watch" | "try" | "proof">> = { home: "home", watch: "watch", try: "try", proof: "proof" };
-export function menuItemOf(page: string | null): "home" | "watch" | "try" | "proof" | "more" | null {
+const UNDER_TAB: Readonly<Record<string, "home" | "watch" | "try" | "proof" | "cloud">> = { home: "home", watch: "watch", try: "try", proof: "proof", cloud: "cloud" };
+export function menuItemOf(page: string | null): "home" | "watch" | "try" | "proof" | "cloud" | "more" | null {
   if (!page) return null;
-  if (isMoreKey(page)) return "more";
+  if (underMore(page)) return "more";
   return UNDER_TAB[page] ?? null;
 }
 

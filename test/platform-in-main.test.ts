@@ -7,7 +7,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { reviewLabel } from "../src/approve/client.js";
-import { NEXT_NEXT } from "../src/redesign/home.js";
 import { runTrick } from "../worker/src/trick.js";
 import { readmeFull } from "./readmeFull.js";
 
@@ -218,7 +217,6 @@ describe("the product for small companies, in this repository (decision D29, 12 
   it("announces no public demo of it: none exists, and the site still calls it next, not live", () => {
     const announce = /public(ly)? (jury )?(demo|preview|console)|demo (world|environment) (is|are) (open|public|live)|open to (the public|everyone|anyone)|anyone can (try|sign in)|try the console/i;
     for (const [name, text] of STATUS_TEXTS) expect({ name, announces: announce.exec(flat(text))?.[0] ?? null }).toEqual({ name, announces: null });
-    expect(NEXT_NEXT).toMatch(/^Next, not live yet:/);
   });
 
   it("the design notes of 8 November are marked as that day's, with today's status beside them", () => {

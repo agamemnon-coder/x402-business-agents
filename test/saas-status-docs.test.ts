@@ -159,7 +159,7 @@ describe("/docs: docs and API", () => {
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     // The other cards are the same.
     for (const id of ["agent-api", "payments", "offline"]) expect(card(set, id)).toBe(card(html, id));
-    expect(visibleWords(set)).toBeLessThanOrEqual(195); // 14 Nov: the demo's OpenAPI link is in sight then (188 as built); +5, jury scan 14 Nov: the demo token labelled "Public, read-only demo token (demo company only)" (194 as built)
+    expect(visibleWords(set)).toBeLessThanOrEqual(255); // +60, 21 Nov (Max: "logos of the companies you can integrate with, as a moving band, on the homepage (and on /docs)"; the owner: Purser as the control layer where AI already works, "briefly on /docs"): the band's names, its line and link, and one line on Airwallex in ChatGPT (250 as built). 14 Nov: the demo's OpenAPI link is in sight then (188 as built); +5, jury scan 14 Nov: the demo token labelled "Public, read-only demo token (demo company only)" (194 as built)
     // Only an https address is linked; anything else is an error where the page is built.
     expect(() => docsPage({ cloudDemoUrl: "javascript:alert(1)" })).toThrow();
     expect(() => docsPage({ cloudDemoUrl: "http://demo.example.test" })).toThrow();
@@ -213,8 +213,10 @@ describe("/docs: docs and API", () => {
   });
 
   // +5, jury scan 14 Nov: the demo token labelled where it is shown, "Public, read-only demo token (demo company only)" (190 as built).
-  it("stays within 190 words in sight, the folds closed", () => {
-    expect(visibleWords(html)).toBeLessThanOrEqual(190);
+  // +60, 21 Nov (Max: "logos of the companies you can integrate with, as a moving band, on the homepage (and on /docs)";
+  // the owner: Purser as the control layer where AI already works, "briefly on /docs"): the band and one line (248 as built).
+  it("stays within 250 words in sight, the folds closed", () => {
+    expect(visibleWords(html)).toBeLessThanOrEqual(250);
     expect((html.match(/<details class="fold"/g) ?? []).length).toBeGreaterThan(0);
     expect(html).not.toMatch(/<details class="fold" open/);
   });
@@ -222,7 +224,8 @@ describe("/docs: docs and API", () => {
   it("shows no number of its own: only the names the code and the docs use", () => {
     // Names with digits in them are names (x402, the KIT11_ variables, the OpenAPI document's path), and the tools'
     // descriptions are the code's own words (held to the server's answer above): nothing else carries a figure.
-    const ours = (t: string) => agentTools().reduce((rest, tool) => rest.replace(tool.description, " "), t).replace(/\bx402\b|\bKIT11_[A-Z_]+\b|\/v1\/[\w./]+|\bhttps:\/\/[\w.-]+\/[\w/.-]*/g, " ");
+    // T:0 is a name too (the ledger, in the integrations band since 21 Nov).
+    const ours = (t: string) => agentTools().reduce((rest, tool) => rest.replace(tool.description, " "), t).replace(/\bx402\b|\bT:0\b|\bKIT11_[A-Z_]+\b|\/v1\/[\w./]+|\bhttps:\/\/[\w.-]+\/[\w/.-]*/g, " ");
     // The one number of its own (13 Nov, judge run): the cloud MCP server's read tools, counted from its READ_TOOLS list.
     expect(numbers(ours(text))).toEqual([String(readToolCount())]);
     expect(text).toContain(`${readToolCount()} read tools`);
@@ -649,7 +652,7 @@ describe("/status on the site", () => {
 
   it("is no longer in the menu or the footer (12 Nov, owner); the page itself still answers", () => {
     for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE]) expect(nav(html)).not.toContain('href="status"');
-    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Purser Cloud", "Security", "Docs", "Books", "Privacy", "Airwallex", "Alta", "Visa", "Claude"]);
+    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Security", "Docs", "Books", "Privacy", "Airwallex", "Alta", "Visa", "Claude"]); // 21 Nov: Purser Cloud is the "Cloud" tab; T:0 lives on /books
     expect(/<footer class="foot">[\s\S]*?<\/footer>/.exec(pages.home!)![0]).not.toMatch(/href="status"/);
   });
 

@@ -237,8 +237,9 @@ describe("the pages", () => {
     expect(buildPages({} as NodeJS.ProcessEnv).csp.proof).toContain("connect-src 'self'");
   });
 
-  it("Home shows the badge as an image and its script still reaches no network", () => {
-    for (const html of [homePage(), homePage(undefined, { trySign: true })]) expect(html).toContain(awxHomeBadgeHtml());
+  // 21 Nov (Max: "Make it clean, tighter"): the badge left Home with the "On record" part; /proof keeps the live block.
+  it("Home no longer shows the badge, and its script still reaches no network", () => {
+    for (const html of [homePage(), homePage(undefined, { trySign: true })]) expect(html).not.toContain(awxHomeBadgeHtml());
     expect(awxHomeBadgeHtml()).toContain('src="awx-live/books.svg"');
     // Building every page takes a few seconds on a loaded CI runner (5 s, the default, timed out on 20 Nov): once, 30 s.
     const csp = buildPages({} as NodeJS.ProcessEnv).csp.home;

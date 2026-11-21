@@ -14,7 +14,7 @@ import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
 import { AWX_PAGE_LABEL } from "../../src/redesign/airwallexProducts.js";
-import { MORE_LABEL, moreLinks } from "../../src/ui/more.js";
+import { CLOUD_TAB_LABEL, MORE_LABEL, moreLinks, tabLinks } from "../../src/ui/more.js";
 import { agentTools } from "../../src/redesign/docs.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -64,7 +64,8 @@ const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
 // Watch is a tab only once the film is set (src/config/film.ts WATCH_IN_MENU).
 // 13 Nov (owner): "Judge" is out of the menu again; the product tour and Pricing went the same evening.
-const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), MORE_LABEL], more: moreLinks().map((l) => l.label) });
+// 21 Nov (Max: "simple and tight"): Home, Try, Proof, Cloud (Purser Cloud, src/ui/more.ts tabLinks), then More.
+const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), ...tabLinks().map(() => CLOUD_TAB_LABEL), MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();

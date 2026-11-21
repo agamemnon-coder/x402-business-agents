@@ -19,8 +19,8 @@ describe("Purser Cloud after the review of 13 Nov", () => {
   it("(2) marks no item of the site's menu on the console: it is not one of the site's pages", () => {
     const head = /<header class="top">[\s\S]*?<\/header>/.exec(consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" }))![0];
     expect(head).not.toMatch(/<summary class="on">|aria-current="page"|class="on"/);
-    // Purser Cloud is still in "More", and leads to this console.
-    expect(head).toContain('<a href="/">Purser Cloud</a>');
+    // Purser Cloud leads to this console: in "More" until 21 Nov, the menu's "Cloud" tab since (Max: "simple and tight").
+    expect(head).toContain('<a href="/">Cloud</a>');
   });
 
   it("(5) #/archive asks the engine first: without one it says why, and never asks /v1/engine/vault", () => {

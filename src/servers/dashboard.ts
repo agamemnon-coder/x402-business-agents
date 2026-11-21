@@ -31,6 +31,7 @@ import { EXPOSURE_HOW, exposureOf, exposureWords } from "../policy/exposure.js";
 import { exposurePolicyFromRecord, recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
 import { loadRecord, replayRecord, runLabel } from "../redesign/run.js";
 import { homePage } from "../redesign/home.js";
+import { bandLogoFiles } from "../redesign/integrations.js";
 import { trySignPage } from "../try/sign.js";
 import { tryVerifyPage } from "../try/verify.js";
 import { verifyBundlePage } from "../proof/verifyPage.js";
@@ -105,6 +106,9 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   // Alta (formerly Metal), 14 Nov: shown with the Alta team's OK in the hackathon Slack (docs/evidence/logo-permissions.md).
   "logo-alta.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/logos/alta.svg", import.meta.url)) },
   "logo-cloudflare.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/cloudflare.png", import.meta.url)) },
+  // 21 Nov (Max: "logos of the companies you can integrate with, as a moving band"): the marks of Purser Cloud's
+  // Connections page, the same drawings (cloud/src/brandLogos.gen.ts), as /assets/brand-<name>.svg (src/redesign/integrations.ts).
+  ...bandLogoFiles(),
   // Home's "Works with" row (home-polish, 12 Nov): the partners' official logos on white tiles, rendered by npm run visuals.
   "built-with.png": { type: "image/png", body: readFileSync(new URL("../../docs/assets/logos/built-with.png", import.meta.url)) },
   // Home's hero walkthrough (src/redesign/walk.ts): the hands-on demo's own screens, captured by test/browser/try.check.ts.
