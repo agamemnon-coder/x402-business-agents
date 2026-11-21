@@ -83,20 +83,33 @@ function ovKpi(o){const a=el('a','card ovk rise'+(o.hot?' hot':''),[el('div','ov
 function ovAgo(at,now){const s=Math.max(0,(now-Date.parse(at))/1000);if(s<3600)return t('cs.ov2.ago_m',{n:Math.max(1,Math.round(s/60))});if(s<86400)return t('cs.ov2.ago_h',{n:Math.round(s/3600)});return t('cs.ov2.ago_d',{n:Math.round(s/86400)})}
 // The globe, in the header's background (21 Nov, Max: "more into the background", the loose white chips "look detached"):
 // a sphere of points turning slowly, dim, to the right and partly off the edge, never under the words or the figures.
-// Around it, quiet and in the same purple, the stack: only what is connected with a recorded run, each with a green
-// ping (OV_STACK, from the connections catalogue, cloud/src/connections.ts). Nothing planned is shown here.
+// Every frame (21 Nov, Max: smooth, no 30 fps cap), kept light: one sprite and the halo's gradient made per size, the
+// pixel ratio at most 1.5, paused off screen and in a hidden tab, still under reduced motion or on a slow device.
 const OV_STACK=` + JSON.stringify(overviewStack()) + String.raw`;
 function ovGlobe(){
   const c=el('canvas','ovg-c');c.setAttribute('aria-hidden','true');
-  const rows=[OV_STACK.slice(0,2),OV_STACK.slice(2,5),OV_STACK.slice(5)];
-  const chip=(s)=>{const name=s.run==='live'?t('cs.ov2.stack_live',{name:s.name}):t('cs.ov2.stack_run',{name:s.name,run:s.run});
-    const v=el('span','',s.label);v.setAttribute('aria-hidden','true');const li=el('li','ovs-c on',[el('i','ovs-p'),v,el('span','vh',name)]);li.title=name;li.dataset.id=s.id;return li};
-  const list=el('ul','ovs',rows.map((r)=>el('li','ovs-r',[el('ul','',r.map(chip))])));list.setAttribute('aria-label',t('cs.ov2.globe'));
-  const box=el('div','ovg',[c,list]);
+  const box=el('div','ovg',[c]);
   requestAnimationFrame(()=>ovGlobeRun(c));
   return box}
+// The stack (21 Nov, Max: the purple pills on the globe "look ugly"): one quiet strip under the headline, on the grid.
+// One green dot and "7 connected · recorded runs", then each mark at one height: the products' own files on a white tile,
+// never recoloured (the Airwallex wordmark as it is; Visa as text). Only what is connected with a recorded run
+// (OV_STACK, from the connections catalogue, cloud/src/connections.ts); each says so to a screen reader. Nothing planned.
+function ovStack(){
+  const L=(k)=>{const x=typeof BRAND_LOGOS!=='undefined'&&BRAND_LOGOS[k];if(!x)return null;const i=el('img','');i.src=x.uri;i.alt='';i.decoding='async';return i};
+  const MK={airwallex:()=>[el('span','ovs-k wide',[L('airwallex')||el('b','','Airwallex')]),null],
+    alta:()=>[el('span','ovs-k',[L('alta')]),'Alta'],'visa-airi':()=>[el('span','ovs-k visa',[el('b','','VISA')]),'Airi'],
+    claude:()=>[el('span','ovs-k',[L('claude')]),'Claude'],t0:()=>[el('span','ovs-k txt',[el('b','','T:0')]),null],
+    moneybird:()=>[el('span','ovs-k',[L('moneybird')]),'Moneybird'],mcp:()=>[el('span','ovs-k',[L('mcp')]),'Purser MCP']};
+  const item=(s)=>{const name=s.run==='live'?t('cs.ov2.stack_live',{name:s.name}):t('cs.ov2.stack_run',{name:s.name,run:s.run});
+    const [k,label]=(MK[s.id]||(()=>[el('span','ovs-k txt',[el('b','',s.label.charAt(0))]),s.label]))();
+    const v=el('span','ovs-v',[k,label?el('span','ovs-l',label):null]);v.setAttribute('aria-hidden','true');
+    const li=el('li','ovs-m',[v,el('span','vh',name)]);li.title=name;li.dataset.id=s.id;return li};
+  const list=el('ul','ovs-ms',OV_STACK.map(item));list.setAttribute('aria-label',t('cs.ov2.globe'));
+  // A space first: read as text the strip is a sentence of its own, never joined to the line above ("controle.7").
+  return el('div','ov-stack',[el('p','ovs-h',[document.createTextNode(' '),el('i','ovs-dot'),el('b','',t('cs.ov2.stack_n',{n:OV_STACK.length})),el('span','',' · '+t('cs.ov2.stack_k'))]),list])}
 function ovGlobeRun(c){
-  const g=c.getContext('2d');if(!g)return;let still=RM(),lastF=0,emaF=0,nF=0,lastD=0;let raf=0,seen=true,px=0,py=0,mx=0,my=0;
+  const g=c.getContext('2d');if(!g)return;let still=RM(),lastF=0,emaF=0,nF=0;let raf=0,seen=true,px=0,py=0,mx=0,my=0;
   const N=innerWidth<700?420:760,pts=[];for(let i=0;i<N;i++){const y=1-(i+0.5)/N*2,r=Math.sqrt(1-y*y),a=i*2.399963;pts.push([Math.cos(a)*r,y,Math.sin(a)*r])}
   const spr=(()=>{const s=document.createElement('canvas');s.width=s.height=32;const x=s.getContext('2d'),gr=x.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(235,228,255,1)');gr.addColorStop(.25,'rgba(167,139,250,.85)');gr.addColorStop(1,'rgba(124,92,255,0)');x.fillStyle=gr;x.fillRect(0,0,32,32);return s})();
   // The size, the centre and the halo change only on a resize: the halo's gradient is made then, not every frame.
@@ -105,7 +118,7 @@ function ovGlobeRun(c){
     cx=R.width*0.5;cy=R.height*0.5;rad=Math.min(R.width*0.42,R.height*0.5);
     halo=g.createRadialGradient(cx,cy,rad*0.2,cx,cy,rad*1.3);halo.addColorStop(0,'rgba(124,92,255,0.16)');halo.addColorStop(1,'rgba(124,92,255,0)')}
   size();
-  function frame(now){raf=0;if(lastF&&now-lastF<1000){const dtF=now-lastF;emaF=emaF?emaF*0.9+dtF*0.1:dtF;if(dtF>400||(++nF>12&&emaF>60))still=true}lastF=now;if(now-lastD<33){go();return}lastD=now;const W=R.width,H=R.height,t=now/1000;
+  function frame(now){raf=0;if(lastF&&now-lastF<1000){const dtF=now-lastF;emaF=emaF?emaF*0.9+dtF*0.1:dtF;if(dtF>400||(++nF>12&&emaF>60))still=true}lastF=now;const W=R.width,H=R.height,t=now/1000;
     px+=(mx-px)*0.06;py+=(my-py)*0.06;g.clearRect(0,0,W,H);g.globalCompositeOperation=document.documentElement.getAttribute('data-theme')==='light'||!matchMedia('(prefers-color-scheme: dark)').matches?'source-over':'lighter';
     g.globalAlpha=1;g.fillStyle=halo;g.fillRect(0,0,W,H);
     const ry=t*0.12+px*0.4,rx=-0.35+py*0.25,cs=Math.cos(ry),sn=Math.sin(ry),cxr=Math.cos(rx),sxr=Math.sin(rx);
@@ -118,7 +131,7 @@ function ovGlobeRun(c){
   function go(){if(!raf&&seen&&!document.hidden&&c.isConnected)raf=requestAnimationFrame(frame)}
   frame(performance.now());if(still)return;
   if('IntersectionObserver' in window)new IntersectionObserver((es)=>{seen=es[0].isIntersecting;if(seen)go()}).observe(c);
-  if('ResizeObserver' in window)new ResizeObserver(()=>{size();lastD=0;go()}).observe(c);
+  if('ResizeObserver' in window)new ResizeObserver(()=>{size();go()}).observe(c);
   document.addEventListener('visibilitychange',()=>{lastF=0;if(!document.hidden)go()});
   addEventListener('pointermove',(e)=>{if(e.pointerType!=='mouse')return;mx=(e.clientX/innerWidth-0.5)*2;my=(e.clientY/innerHeight-0.5)*2},{passive:true})}
 async function overviewNext(){
@@ -131,7 +144,7 @@ async function overviewNext(){
   const sumOf=(xs)=>xs.reduce((n,i)=>n+toCents(i.total),0);
   // The header: the one quiet line for the demo, the headline, and the partners' globe.
   const hero=el('section','ov-hero rise',[el('div','ov-ht',[m.demo?el('p','ov-pill',[ic('flask'),t('cs.ov2.pill')]):el('p','ov-pill',[ic('building-2'),t('cs.nav.overview')+(m.tenant.name?' · '+m.tenant.name:'')]),
-      el('h1','ov-h',[t('cs.ov2.h_a')+' ',el('em','',t('cs.ov2.h_b'))]),el('p','ov-sub',t('cs.ov2.sub'))]),ovGlobe()]);
+      el('h1','ov-h',[t('cs.ov2.h_a')+' ',el('em','',t('cs.ov2.h_b'))]),el('p','ov-sub',t('cs.ov2.sub'))]),ovGlobe(),ovStack()]);
   // Four figures, each from the records; a change only where an earlier figure exists to compare with.
   const days=(D&&D.cash)||[],nets=days.map((d)=>toCents(d.net)),last=nets[nets.length-1],prev=nets.length>7?nets[nets.length-8]:null;
   const delta=prev!==null&&prev!==0?(last-prev)/Math.abs(prev)*100:null;
@@ -214,33 +227,43 @@ canvas.pw-wave { z-index: -1; }
 @media (max-width: 760px) { .dash.ov2, .ov-row { gap: 12px; } .ov-row > * { grid-column: span 12 !important; } .ov-row.ov-k > * { grid-column: span 6 !important; }
   a.ovk { padding: 14px; gap: 10px; } a.ovk svg.ovspark { display: none; } a.ovk .ovk-top { align-items: flex-start; } a.ovk .ovk-l { font-size: 12.5px; line-height: 1.25; } a.ovk .ovk-v { font-size: 18px; } a.ovk .ovk-s { font-size: 12px; } }
 /* The header (21 Nov, Max: up, the globe in the background): the words on the left in a clean area; the globe behind,
-   dim, to the right and partly past the edge (clipped by the header, so never under the figures); the stack on it. */
-.ov-hero { position: relative; display: flex; align-items: flex-start; min-height: 204px; margin-top: -18px; overflow: clip; overflow-clip-margin: 0; }
+   dim, to the right and partly past the edge (clipped by the header, so never under the figures); under both, on the
+   grid, the one strip of the connected stack (no pills on the globe, Max 21 Nov). */
+.ov-hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 44%; grid-template-rows: auto auto; align-items: start; margin-top: -18px; overflow: clip; overflow-clip-margin: 0; }
 @media (max-width: 760px) { .ov-hero { margin-top: 0; } }
-.ov-ht { position: relative; z-index: 1; max-width: min(58%, 640px); padding-top: 6px; }
+.ov-ht { position: relative; z-index: 1; grid-column: 1; grid-row: 1; max-width: 640px; min-height: 176px; padding-top: 6px; box-sizing: border-box; }
 .ov-pill { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--glass-line, var(--border)); background: var(--glass, var(--surface)); color: var(--muted); font-size: 12.5px; font-weight: 600; }
 .ov-pill .ic svg { width: 13px; height: 13px; }
 .ov-h { margin: 0; font-size: clamp(30px, 3.2vw, 44px); line-height: 1.08; letter-spacing: -.035em; font-weight: 760; }
 .ov-h em { font-style: italic; background: var(--grad-text, linear-gradient(100deg, #c4b5fd, #a78bfa)); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: .06em; white-space: nowrap; }
 .ov-sub { margin: 10px 0 0; color: var(--muted); font-size: 16px; max-width: 34em; }
-.ovg { position: absolute; z-index: 0; top: 0; bottom: 0; right: -6%; width: 44%; display: grid; place-items: center; pointer-events: none; }
+.ovg { position: relative; z-index: 0; grid-column: 2; grid-row: 1; align-self: stretch; right: -6%; min-height: 176px; pointer-events: none; }
 .ovg-c { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .85; }
-/* The stack: small translucent purple chips in three rows (2, 3, 2) over the globe's face, each with a green ping. */
-ul.ovs { position: relative; list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; justify-items: center; pointer-events: auto; transform: translateX(-4%); }
-.ovs ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 7px; justify-content: center; }
-.ovs-c { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; line-height: 1.3; white-space: nowrap; letter-spacing: .005em;
-  color: color-mix(in srgb, var(--accent) 45%, var(--text)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 13%, color-mix(in srgb, var(--bg) 55%, transparent));
-  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.ovs-p { position: relative; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px color-mix(in srgb, var(--ok) 70%, transparent); }
-.ovs .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* The connected stack: one row, one green dot, every mark at one height. */
+.ov-stack { position: relative; z-index: 1; grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 22px; margin-top: 14px; padding: 10px 16px; border-radius: 14px;
+  border: 1px solid var(--glass-line, var(--border)); background: color-mix(in srgb, var(--surface) 72%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.ovs-h { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding-right: 22px; border-right: 1px solid var(--border); font-size: 13px; color: var(--muted); white-space: nowrap; }
+.ovs-h b { color: var(--text); font-weight: 650; }
+.ovs-dot { position: relative; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
+li.ovs-m { display: flex; align-items: center; }
+ul.ovs-ms { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; flex: 1; min-width: 0; }
+.ovs-v { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--text) 82%, var(--muted)); white-space: nowrap; }
+/* The products' own files on a white tile in both themes, never recoloured; Visa and T:0 as text. */
+.ovs-k { flex: none; height: 24px; min-width: 24px; box-sizing: border-box; padding: 0 4px; border-radius: 7px; display: inline-grid; place-items: center; background: #fff; border: 1px solid rgba(16,24,40,.10); }
+.ovs-k img { display: block; width: 16px; height: 16px; object-fit: contain; }
+.ovs-k.wide { padding: 0 8px; } .ovs-k.wide img { width: auto; height: 11px; }
+.ovs-k b { font-size: 11px; font-weight: 800; color: #1a1f2e; letter-spacing: .01em; }
+.ovs-k.visa b { font-style: italic; font-weight: 900; color: #1a1f71; letter-spacing: .02em; }
+.ovs-k.txt { padding: 0 6px; }
+.ov-stack .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) {
-  .ovs-p::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 1px solid var(--ok); opacity: 0; animation: ovping 2.6s ease-out infinite; }
-  .ovs-c:nth-child(2) .ovs-p::after { animation-delay: .9s; } .ovs-c:nth-child(3) .ovs-p::after { animation-delay: 1.7s; }
+  .ovs-dot::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 1px solid var(--ok); opacity: 0; animation: ovping 2.6s ease-out infinite; }
 }
 @keyframes ovping { 0% { transform: scale(.6); opacity: .8; } 80%, 100% { transform: scale(2.2); opacity: 0; } }
-/* A narrower screen: the words over the whole width, the globe and the stack in a band below them. */
-@media (max-width: 1100px) { .ov-hero { display: block; min-height: 0; } .ov-ht { max-width: none; } .ovg { position: relative; right: auto; width: auto; height: 150px; margin-top: 8px; } ul.ovs { transform: none; } }
-@media (max-width: 640px) { .ovg { height: 132px; } .ovs-c { font-size: 11px; padding: 2px 8px 2px 7px; } .ov-h { font-size: 29px; } .ov-pill { font-size: 12px; } }
+/* A narrower screen: the words over the whole width, the globe in a band below them, then the strip. */
+@media (max-width: 1100px) { .ov-hero { grid-template-columns: minmax(0, 1fr); } .ov-ht { max-width: none; min-height: 0; } .ovg { grid-column: 1; grid-row: 2; right: auto; height: 150px; min-height: 0; margin-top: 8px; } .ov-stack { grid-row: 3; } }
+@media (max-width: 640px) { .ovg { height: 108px; } .ov-h { font-size: 29px; } .ov-pill { font-size: 12px; }
+  .ov-stack { gap: 10px; padding: 10px 12px; } .ovs-h { padding-right: 0; border-right: 0; flex-basis: 100%; } ul.ovs-ms { gap: 8px 14px; } .ovs-v { font-size: 12.5px; gap: 6px; } }
 /* The four figures. */
 .ov-pm b.visa { font-style: italic; font-weight: 900; letter-spacing: .02em; color: #f2f4ff; background: #1a1f71; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
 a.ovk { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; text-decoration: none; color: inherit; }

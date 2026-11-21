@@ -503,10 +503,10 @@ async function engineGuestArchive(origin: string) {
   await p.goto(`${origin}/#/sign-in`);
   await p.waitForSelector("#guest");
   await p.click("#guest");
-  // Judge panel, 15 Nov: a guest lands on what waits for approval (Invoices, Waits for Face ID).
-  await p.waitForURL(/#\/invoices\?f=waiting_cfo$/, { timeout: 20_000 });
-  // Drawn before moving on, as the overview was (its .dash): a late list would land on the next page.
-  await p.waitForSelector("main >> text=Waits for Face ID", { timeout: 20_000 });
+  // 21 Nov (Max): a guest lands on the Overview (was: Invoices, Waits for Face ID, 15 Nov).
+  await p.waitForURL(/#\/overview$/, { timeout: 20_000 });
+  // Drawn before moving on (its .dash): a late page would land on the next one.
+  await p.waitForSelector(".dash", { timeout: 20_000 });
   await p.goto(`${origin}/#/archive`);
   await p.waitForSelector("text=kept by Purser's engine", { timeout: 10_000 }).catch(() => {});
   const text = (await p.textContent("main")) ?? "";
@@ -986,10 +986,14 @@ async function guestPass() {
     await p.goto(`${ORIGIN}/#/sign-in`);
     await p.waitForSelector("#guest");
     await p.click("#guest");
-    // Judge panel, 15 Nov: a guest lands on what waits for the CFO's approval, not on the overview or the sign-in.
-    await p.waitForURL(/#\/invoices\?f=waiting_cfo$/, { timeout: 20_000 });
-    await p.waitForTimeout(900);
-    ok(/Waits for Face ID/.test((await p.textContent("main")) ?? ""), `${tag}: a guest lands on the invoices that wait for Face ID`);
+    // 21 Nov (Max): opening Purser Cloud lands on the Overview, a guest's too (was: the invoices that wait for Face ID).
+    await p.waitForURL(/#\/overview$/, { timeout: 20_000 });
+    await p.waitForSelector(".dash", { timeout: 20_000 });
+    ok(/#\/overview$/.test(p.url()), `${tag}: a guest lands on the Overview`);
+    // A deep link still opens where it points.
+    await p.goto(`${ORIGIN}/#/invoices?f=waiting_cfo`);
+    await p.waitForSelector("main >> text=Waits for Face ID", { timeout: 20_000 });
+    ok(/#\/invoices\?f=waiting_cfo$/.test(p.url()), `${tag}: a deep link (#/invoices?f=waiting_cfo) still opens the invoices that wait for Face ID`);
     await p.goto(`${ORIGIN}/#/overview`);
     await p.waitForSelector(".dash", { timeout: 20_000 });
     // Review, 13 Nov: no empty band below the first screen. Without any scroll (a page read whole, or a full-page
@@ -1029,15 +1033,18 @@ async function guestPass() {
     ok((await p.isVisible("#demo") && /Demo company/.test((await p.textContent("#demo")) ?? "")) || /Demo workspace · Simulated data · No real payments/.test((await p.textContent(".ov-pill")) ?? ""), `${tag}: the demo ribbon says what it is`);
     // 21 Nov (Max's Overview, 12 columns): four KPI links, the waiting table, the cash line, the payment flow, the activity feed and the partners' tiles.
     ok(await p.locator(".ov-k a.ovk").count() === 4 && await p.locator(".ov-cash svg.chart path.line").count() === 1 && await p.locator(".ov-inv").count() === 1 && await p.locator(".ov-feed li").count() >= 1 && await p.locator(".ov-pts a.ov-pt").count() === 4, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
-    // 21 Nov (Max): the header's globe in the background with the stack on it: only what is connected with a recorded run
-    // (seven, each a green ping and a name a screen reader hears), nothing "coming"; never under the headline or the figures.
+    // 21 Nov (Max): the stack is no longer pills on the globe ("it looks ugly"): one quiet strip on the grid under the
+    // headline, one green dot and "7 connected · recorded runs", then seven marks at one height, each named to a screen
+    // reader as connected with a recorded run; nothing "coming"; clear of the headline, the globe and the figures.
     // (A string, not a function: the check runs under tsx, whose named helpers the page does not have.)
-    const stack = await p.evaluate(`(() => { const r = (s) => document.querySelector(s).getBoundingClientRect(); const cs = [...document.querySelectorAll(".ovs li.ovs-c")];
-      const h = r(".ov-h"), sub = r(".ov-sub"), k = r(".ov-k"), g = r(".ovg");
+    const stack = await p.evaluate(`(() => { const r = (s) => document.querySelector(s).getBoundingClientRect(); const cs = [...document.querySelectorAll(".ov-stack li.ovs-m")];
+      const h = r(".ov-h"), sub = r(".ov-sub"), k = r(".ov-k"), g = r(".ovg"), st = r(".ov-stack");
       const apart = (a, b) => a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
-      return { n: cs.length, green: cs.every((c) => c.classList.contains("on") && !!c.querySelector(".ovs-p")), named: cs.every((c) => /: connected \\((sandbox |testnet )?run recorded\\)$/.test(c.querySelector(".vh")?.textContent ?? "")),
-        clear: cs.every((c) => { const b = c.getBoundingClientRect(); return apart(b, h) && apart(b, sub) && apart(b, k); }) && g.bottom <= k.top + 1 }; })()`) as { n: number; green: boolean; named: boolean; clear: boolean };
-    ok(stack.n === 7 && stack.green && stack.named && stack.clear, `${tag}: the stack round the globe: seven connected with a recorded run, each named, clear of the words and the figures (${JSON.stringify(stack)})`);
+      const hs = [...cs].map((c) => Math.round(c.querySelector(".ovs-k").getBoundingClientRect().height));
+      return { n: cs.length, dots: document.querySelectorAll(".ov-stack .ovs-dot").length, pills: document.querySelectorAll(".ovg li, .ovs-c").length, head: (document.querySelector(".ovs-h")?.textContent ?? "").trim(),
+        named: cs.every((c) => /: connected \\((sandbox |testnet )?run recorded\\)$/.test(c.querySelector(".vh")?.textContent ?? "")), oneHeight: new Set(hs).size === 1,
+        clear: apart(st, h) && apart(st, sub) && apart(st, k) && apart(st, g) && g.bottom <= k.top + 1 }; })()`) as { n: number; dots: number; pills: number; head: string; named: boolean; oneHeight: boolean; clear: boolean };
+    ok(stack.n === 7 && stack.dots === 1 && stack.pills === 0 && /^7 connected · recorded runs$/.test(stack.head) && stack.named && stack.oneHeight && stack.clear, `${tag}: the connected stack: one strip, one green dot, seven marks at one height, each named, clear of the words, the globe and the figures (${JSON.stringify(stack)})`);
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
     for (const tab of ["invoices", "transactions", "books", "settings", "connections"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }

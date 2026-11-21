@@ -1427,10 +1427,10 @@ for (const [kind, scheme] of [["clean", "light"], ["hidden", "dark"]] as const) 
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto(`${ORIGIN}/${new URL(CLOUD_URL).hash}`);
-  // Judge panel, 15 Nov: a guest lands on what waits for the CFO's approval (Invoices, Waits for Face ID).
-  await page.waitForSelector('h1:text-is("Invoices")', { timeout: 20_000 });
+  // 21 Nov (Max): opening Purser Cloud lands on the Overview, a guest's too (was: Invoices, Waits for Face ID).
+  await page.waitForSelector(".dash", { timeout: 20_000 });
   const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem("purser.cloud.session") ?? "{}") as { guest?: boolean });
-  ok(stored.guest === true && new URL(page.url()).hash === "#/invoices?f=waiting_cfo" && errors.length === 0, `guest: ${new URL(CLOUD_URL).hash} opens the demo company's pending approvals as a guest, with no page error (${errors.join(" | ")})`);
+  ok(stored.guest === true && new URL(page.url()).hash === "#/overview" && errors.length === 0, `guest: ${new URL(CLOUD_URL).hash} opens the demo company's Overview as a guest, with no page error (${errors.join(" | ")})`);
   await ctx.close();
 }
 
