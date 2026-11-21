@@ -601,7 +601,9 @@ body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; fon
 .pv-cap .d { grid-column: 2; margin-top: 3px; color: var(--muted); font: 500 15.5px/1.45 Inter, system-ui, sans-serif; }
 .pv-cap.refused { border-color: color-mix(in srgb, var(--bad) 55%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--bad) 16%, var(--surface)), var(--surface) 70%); }
 .pv-cap.refused .k { background: var(--bad); }
-.pv-cap.books .k, .pv-cap.done .k { background: var(--ok); color: #04130d; }
+/* 21 Nov 2026: white on the light theme's dark green ("DONE" was near-black on it, about 3:1); near-black on the dark theme's bright green. */
+.pv-cap.books .k, .pv-cap.done .k { background: var(--ok); color: #fff; }
+@media (prefers-color-scheme: dark) { .pv-cap.books .k, .pv-cap.done .k { color: #04130d; } }
 .pv-cap.books { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--ok) 12%, var(--surface)), var(--surface) 70%); }
 .pv-cap.approve .k { background: #f5b544; color: #241500; }
 .pv-cap.approve { border-color: color-mix(in srgb, #f5b544 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, #f5b544 12%, var(--surface)), var(--surface) 70%); }
@@ -752,6 +754,9 @@ body.pv-shell.pv-staged .pv-rail { display: block; }
 .pv-m-agents li.done::before { background: var(--ok); border-color: var(--ok); }
 .pv-m-agents li.cur::before { border-color: var(--accent); background: var(--accent); }
 .pv-m-agents li.wait::before { border-color: #f5b544; }
+/* 21 Nov 2026 (owner: "be critical"): the page's own .wait (a flex row, 12 px above) and .done (19 px type, 16 px below)
+   reached these rows: the waiting agent sat on one line and a gap opened under a finished one. */
+.pv-m-agents li.done, .pv-m-agents li.wait, .pv-m-agents li.cur, .pv-m-agents li.bad { display: block; margin: 0; color: inherit; font-size: inherit; font-weight: inherit; line-height: inherit; }
 .pv-m-agents li.bad::before { background: var(--bad); border-color: var(--bad); }
 .pv-m-agents li.bad span { color: var(--bad); }
 .pv-m-rails ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -899,6 +904,10 @@ body.pv-shell .screen.company > details.fin-hood { display: block !important; }
 .fin-hood { margin: 10px 0 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
 .fin-hood > summary { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; cursor: pointer; list-style: none; color: var(--text); font-size: 15px; font-weight: 650; }
 .fin-hood > summary::-webkit-details-marker { display: none; }
+/* 21 Nov 2026 (owner, iPhone): the page's touch rule for summaries (.screen:not(.start) details > summary, padding 12px 0)
+   outranked the padding above, so the title and its "+" ran flush against the box. The box keeps its own. */
+.screen:not(.start) details.fin-hood > summary { padding: 12px 16px; line-height: 1.3; }
+.fin-hood > summary::after { flex: none; padding-left: 4px; }
 .fin-hood > summary::after { content: "+"; margin-left: auto; color: var(--muted); font-size: 20px; font-weight: 500; }
 .fin-hood[open] > summary::after { content: "−"; }
 .fin-hood-b { padding: 0 16px 16px; }
