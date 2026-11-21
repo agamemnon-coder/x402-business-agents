@@ -41,9 +41,9 @@ export const waveScript = (o: WaveOptions): string => `
     "    float X = (u - 0.5) * 5.0, ph = id * 2.17;",
     "    float base = id < 0.5 ? -1.05 + 0.75 * u - 0.35 * sin(u * 3.1) : id < 1.5 ? -1.45 + 2.3 * u * u : 0.85 - 0.45 * u;",
     "    float Y = base + 0.2 * sin(X * 1.25 + t * 0.33 + ph) + 0.07 * sin(X * 3.1 - t * 0.47 + ph * 1.7);",
-    "    float Z = 1.7 + 1.1 * sin(X * 0.75 + t * 0.21 + ph) + (id > 1.5 ? 1.4 : 0.0);",
+    "    float Z = 1.7 + 1.0 * sin(X * 0.75 + t * 0.21 + ph) + (id > 1.5 ? 1.4 : 0.0) - (id < 0.5 ? 0.9 * (1.0 - u) * (1.0 - u) : id < 1.5 ? 0.8 * u * u : 0.0);",
     "    float th = X * 1.05 + t * 0.38 + ph + 0.7 * sin(X * 0.6 + t * 0.17 + ph);",
-    "    float wd = (id > 1.5 ? 0.5 : 1.25) * (0.7 + 0.3 * sin(X * 0.9 + ph + t * 0.1));",
+    "    float wd = (id > 1.5 ? 0.55 : 1.5) * (0.7 + 0.3 * sin(X * 0.9 + ph + t * 0.1));",
     "    P = vec3(X, Y + w * wd * sin(th), Z + w * wd * cos(th));",
     "    edge = pow(abs(w), 10.0) * (w > 0.0 ? 1.0 : 0.45);",
     "    fold = 0.25 / (0.25 + abs(sin(th)));",
@@ -60,20 +60,20 @@ export const waveScript = (o: WaveOptions): string => `
     "  q += normalize(q - m + 0.0001) * rr * 0.03;",
     "  gl_Position = vec4(q, 0.0, 1.0);",
     "  float dep = clamp((zz - 2.2) / 3.2, 0.0, 1.0);",
-    "  float hot = clamp(edge * fold * 1.6, 0.0, 1.0);",
-    "  float a0 = near > 0.5 ? 0.05 + 0.12 * fract(sd * 7.0) : (1.3 + 1.0 * edge + 1.0 * hot + 0.4 * fold) * (0.45 + 0.55 * (0.55 + 0.45 * sin(a.x * 9.0 + id + t * 0.4))) * (1.0 - 0.65 * dep) * (id > 1.5 ? 0.5 : 1.0);",
+    "  float hot = clamp(edge * fold * 1.3, 0.0, 1.0);",
+    "  float a0 = near > 0.5 ? 0.05 + 0.12 * fract(sd * 7.0) : (1.7 + 1.2 * edge + 1.3 * hot + 0.4 * fold) * (0.45 + 0.55 * (0.55 + 0.45 * sin(a.x * 9.0 + id + t * 0.4))) * (1.0 - 0.65 * dep) * (id > 1.5 ? 0.5 : 1.0);",
     "  a0 *= 1.0 + bulge * 1.2 + rr * 2.0;",
     "  // Calm behind the headline (the upper left), the wave fully alive at the bottom and on the right.",
     "  float calm = smoothstep(-0.95, -0.55, q.x) * (1.0 - smoothstep(-0.2, 0.1, q.x)) * smoothstep(-0.25, 0.1, q.y);",
     "  a0 *= place < 0.5 ? 1.0 - 0.72 * calm : 0.25 + 0.75 * smoothstep(-0.2, 0.75, q.y);",
     "  a0 *= inten;",
-    "  float sz = near > 0.5 ? (8.0 + 22.0 * fract(sd * 13.0)) : (2.1 + 1.4 * edge + 1.8 * hot) * (2.8 / zz);",
-    "  if (glow > 0.5) { bool crestG = hot > 0.25; if (near > 0.5 || (!crestG && fract(sd * 31.0) > 0.12)) { gl_PointSize = 0.0; vA = 0.0; vC = vec3(0.0); return; } sz *= crestG ? 8.0 : 6.0; a0 *= crestG ? 0.08 : 0.05; }",
+    "  float sz = near > 0.5 ? (8.0 + 22.0 * fract(sd * 13.0)) : (2.1 + 1.8 * edge + 2.6 * hot) * (2.8 / zz);",
+    "  if (glow > 0.5) { bool crestG = hot > 0.25; if (near > 0.5 || (!crestG && fract(sd * 31.0) > 0.12)) { gl_PointSize = 0.0; vA = 0.0; vC = vec3(0.0); return; } sz *= crestG ? 11.0 : 9.0; a0 *= crestG ? 0.022 : 0.045; }",
     "  gl_PointSize = sz * dpr;",
-    "  vec3 vio = vec3(0.486, 0.361, 1.0), ind = vec3(0.30, 0.25, 0.86), mag = vec3(0.86, 0.36, 0.98), wht = vec3(1.0, 0.97, 1.0);",
+    "  vec3 vio = vec3(0.47, 0.30, 1.0), ind = vec3(0.28, 0.22, 0.92), mag = vec3(0.92, 0.30, 1.0), wht = vec3(1.0, 0.98, 1.0);",
     "  vec3 col = mix(vio, ind, dep);",
-    "  col = mix(col, mag, smoothstep(0.55, 0.95, abs(q.x)) * 0.6 + (near > 0.5 ? 0.3 : 0.0));",
-    "  col = mix(col, wht, hot * 0.85);",
+    "  col = mix(col, mag, smoothstep(0.45, 0.95, abs(q.x)) * 0.85 + (near > 0.5 ? 0.3 : 0.0));",
+    "  col = mix(col, wht, clamp(hot * 1.4, 0.0, 1.0));",
     "  if (lite > 0.5) { col = mix(col * 0.75, vec3(0.42, 0.16, 0.85), 0.35); a0 *= 0.75; }",
     "  vA = a0; vC = col;",
     "}"].join("\\n");
@@ -101,7 +101,7 @@ export const waveScript = (o: WaveOptions): string => `
     dpr = Math.min((window.devicePixelRatio || 1) * z, (phone ? 1.75 : 2) * Math.max(1, z));
     c.width = Math.max(1, Math.round(W * dpr)); c.height = Math.max(1, Math.round(H * dpr));
     var k = Math.max(0.35, Math.min(1.2, (W * H) / (1440 * 860))) * ${o.density ?? 1};
-    var rows = [Math.round((phone ? 30 : 56) * Math.sqrt(k)), Math.round((phone ? 28 : 50) * Math.sqrt(k)), Math.round((phone ? 12 : 20) * Math.sqrt(k))];
+    var rows = [Math.round((phone ? 34 : 66) * Math.sqrt(k)), Math.round((phone ? 32 : 60) * Math.sqrt(k)), Math.round((phone ? 12 : 20) * Math.sqrt(k))];
     var cols = [Math.round((phone ? 220 : 540) * Math.sqrt(k)), Math.round((phone ? 200 : 500) * Math.sqrt(k)), Math.round((phone ? 120 : 300) * Math.sqrt(k))];
     var bokeh = phone ? 40 : 110, out = [], n = 0;
     for (var r = 0; r < 3; r++) for (var j = 0; j < rows[r]; j++) for (var i = 0; i < cols[r]; i++) { out.push(i / (cols[r] - 1) + (rnd(n) - 0.5) * 0.002, j / (rows[r] - 1) * 2 - 1, r + rnd(n * 3.1) * 0.999); n++; }
