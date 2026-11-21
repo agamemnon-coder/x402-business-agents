@@ -5,6 +5,7 @@
 // page as text (textContent), never as HTML; account numbers come masked from the runner. The console reads and
 // manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
 
+import { CONSOLE_PREMIUM_CSS } from "../../src/ui/premium.js";
 import { ASK_BUTTON_JS } from "./ask/page.js";
 import { PREVIEW_TAGS } from "./brand.js";
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
@@ -24,7 +25,6 @@ import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { NAV_GROUPS, SHELL_CSS, SHELL_JS, SHELL_WORDS } from "./consoleShell.js";
 import { CHARTS_CSS, CHARTS_JS } from "./consoleCharts.js";
 import { COMPANY_CSS, COMPANY_JS } from "./consoleCompany.js";
-import { CONSOLE_THEME_CSS } from "./consoleTheme.js";
 import { WALLET_CSS, WALLET_JS } from "./agentWallet.js";
 import { TOKEN_LIFE_CSS, TOKEN_LIFE_JS } from "./tokenLife.js";
 import { AWX_CSS, AWX_JS } from "./awxActUi.js";
@@ -2097,7 +2097,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_THEME_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_PREMIUM_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}
 ${ASK_BUTTON_JS}</script>

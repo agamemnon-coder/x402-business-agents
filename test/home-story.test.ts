@@ -188,7 +188,7 @@ describe("Home, 21 Nov: one short story", () => {
       const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ").replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, " ");
       expect(rest.match(/\bWatch\b/g)).toEqual(["Watch", "Watch"]);
       expect(mainOf(html)).toContain(`<a href="${FILM_URL}" target="_blank" rel="noopener">`);
-      expect(mainOf(html)).toContain(`<a class="btn big ghost watch" href="${FILM_URL}" target="_blank" rel="noopener">`);
+      expect(mainOf(html)).toContain(`<a class="btn big ghost film" href="${FILM_URL}" target="_blank" rel="noopener">`);
       expect(rest).not.toMatch(/href="watch"/);
       expect(rest).not.toMatch(/TAP\b|Visa TAP|single-use Visa/);
     }

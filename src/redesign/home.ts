@@ -16,6 +16,7 @@
 // the footer), every connection with its label (the band's link to the hub), the stat row and the core run's line
 // (/proof, /alta). Every id, amount and date is read from the run records; nothing is typed in.
 
+import { HOME_PREMIUM_CSS } from "../ui/premium.js";
 import { readFileSync } from "node:fs";
 import { VISA_REUSE_ID } from "./visaStory.js";
 import { FILM_URL, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, DESIGN_PARTNER_URL, designPartnerHtml, BUSINESS_CASE_LINK, BUSINESS_DOCS, HERO, IDEA, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
@@ -526,7 +527,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     ${homeHeadingHtml()}
     <p class="what">${esc(HOME_SUB)}</p>
     ${heroStatsHtml()}
-    <div class="ctas"><a class="btn primary big start" href="${TRY_URL}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost watch" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(WATCH_BUTTON)}</a><a class="btn big ghost pilot" href="#${START_ID}">${esc(PILOT_CTA)}</a></div>
+    <div class="ctas"><a class="btn primary big start" href="${TRY_URL}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(WATCH_BUTTON)}</a><a class="btn big ghost pilot" href="#${START_ID}">${esc(PILOT_CTA)}</a></div>
     <p class="reassure">${icon("shield-check", 16)}${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
   </div>
   ${workflowHtml()}
@@ -577,7 +578,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ];
   return page({
     // Final jury, 13 Nov: / and /home serve this page; /home is its one canonical address.
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + HERO_WAVE_CSS + HERO_FLOW_CSS + LOGO_BAND_CSS + AI_CSS + TOUR_MAP_CSS, body, js: JS + HERO_WAVE_JS + LOGO_BAND_JS, stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + HERO_WAVE_CSS + HERO_FLOW_CSS + LOGO_BAND_CSS + AI_CSS + TOUR_MAP_CSS + HOME_PREMIUM_CSS, body, js: JS + HERO_WAVE_JS + LOGO_BAND_JS, stage: false,
     // 20 Nov (the owner: "Purser connects to everything and everyone, findable"): the hub of every connection, in the footer.
     links: [[`${REPO_BLOB}${CONNECT_HUB_DOC}`, CONNECT_HUB_LABEL]],
     real,

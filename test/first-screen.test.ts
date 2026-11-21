@@ -158,7 +158,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     // Start a pilot; the judge tour's button is under its map (test/home-story.test.ts).
     expect(t.startsWith(`${CLOUD_EYEBROW} ${HERO} ${HOME_SUB} ${heroStats().map((s) => `${s.value} ${s.words}`).join(" ")} ${START} ${WATCH_BUTTON} ${PILOT_CTA} ${REASSURE.sign}`)).toBe(true);
     expect(heroStats()).toHaveLength(3);
-    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost watch"', 'class="btn big ghost pilot"']);
+    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost film"', 'class="btn big ghost pilot"']);
     expect(HOME).toContain(`<a class="btn big tour" href="${TOUR_START_HREF}" data-tour-start>`);
     expect(HOME).toContain(`<section class="e-start" id="${START_ID}"`);
     // Every Try call to action opens the hands-on demo (TRY_URL), with /try/sign in the bundle or not.

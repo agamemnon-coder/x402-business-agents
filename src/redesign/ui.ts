@@ -3,6 +3,7 @@
 // <script> per page, so the pages keep the dashboard's hash-based CSP. Icons are Lucide (src/ui/icons.ts) plus a few
 // drawn here in the same style.
 
+import { PREMIUM_BASE_CSS, PREMIUM_CSS, PREMIUM_TOKENS } from "../ui/premium.js";
 import { formerlyMetal } from "../ui/formerly.js";
 import { MOTION_CSS, SITE_MOTION_CSS } from "../ui/motion.js";
 import { ICONS, type Icon } from "../ui/icons.js";
@@ -74,39 +75,7 @@ const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Wat
 
 /** The design tokens, light and dark: the same on every page. */
 export const TOKENS = `@font-face { font-family: Inter; src: url(assets/${versioned("inter.woff2")}) format("woff2"); font-weight: 100 900; font-display: swap; }
-:root {
-  /* Dark violet, premium (21 Nov, the owner's concept): obsidian ground, charcoal surfaces, one violet accent. Light is
-     the same system on white; both meet WCAG AA for text. */
-  --bg: #f7f6fb; --surface: #ffffff; --sunken: #f2f0f8; --border: #e5e1ef; --text: #0e0b1a; --muted: #57536b; --faint: #646078;
-  --accent: #6d28d9; --accent-soft: #f1ebff; --accent-ink: #6d28d9; --ok: #0b7d43; --ok-soft: #e6f6ee; --bad: #c5363c; --bad-soft: #fdecec; --on-bad: #ffffff;
-  --metal: #0b7a70; --metal-soft: #e3f5f2; --awx: #ad4a0c; --awx-soft: #fdf0e7; --claude: #a84d2b; --claude-soft: #fbefe9;
-  --a-sourcing: #2563eb; --a-support: #9333ea; --a-treasury: #0e7490;
-  --shadow: 0 1px 2px rgba(20,16,40,.05), 0 14px 36px -16px rgba(40,24,90,.16); --hi: inset 0 1px 0 rgba(255,255,255,.9); --glow: rgba(109,40,217,.28);
-  --glass: rgba(255,255,255,.72); --glass-line: rgba(14,11,26,.08);
-  --grad: linear-gradient(135deg, #7c3aed 0%, #6d28d9 55%, #5b21b6 100%); --grad-text: linear-gradient(100deg, #7c3aed, #a855f7 55%, #6d28d9);
-  --mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
-  --r-sm: 12px; --r: 20px; --r-lg: 28px; --gut: 16px; --s1: 8px; --s2: 16px; --s3: 24px; --s4: 40px; --s5: 64px; --s6: 104px;
-  --ease: cubic-bezier(.2, .7, .2, 1); --dur: .2s; color-scheme: light;
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #07060c; --surface: #100e18; --sunken: #18151f; --border: #27233a; --text: #f2f0f8; --muted: #aca6bd; --faint: #8d879f;
-  --accent: #a78bfa; --accent-soft: #211839; --accent-ink: #7c3aed; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c; --on-bad: #1a0607;
-  --metal: #2dd4bf; --metal-soft: #0f2a28; --awx: #ff8a4c; --awx-soft: #33200f; --claude: #ef9a76; --claude-soft: #33221b;
-  --a-sourcing: #60a5fa; --a-support: #e879f9; --a-treasury: #22d3ee;
-  --shadow: 0 1px 2px rgba(0,0,0,.45), 0 16px 40px -18px rgba(0,0,0,.7); --hi: inset 0 1px 0 rgba(255,255,255,.06); --glow: rgba(139,92,246,.45);
-  --glass: rgba(20,17,31,.62); --glass-line: rgba(255,255,255,.09); color-scheme: dark;
-  --grad-text: linear-gradient(100deg, #c4b5fd, #a78bfa 45%, #e879f9);
-} }
-:root[data-theme="dark"] {
-  --bg: #07060c; --surface: #100e18; --sunken: #18151f; --border: #27233a; --text: #f2f0f8; --muted: #aca6bd; --faint: #8d879f;
-  --accent: #a78bfa; --accent-soft: #211839; --accent-ink: #7c3aed; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c; --on-bad: #1a0607;
-  --metal: #2dd4bf; --metal-soft: #0f2a28; --awx: #ff8a4c; --awx-soft: #33200f; --claude: #ef9a76; --claude-soft: #33221b;
-  --a-sourcing: #60a5fa; --a-support: #e879f9; --a-treasury: #22d3ee;
-  --shadow: 0 1px 2px rgba(0,0,0,.45), 0 16px 40px -18px rgba(0,0,0,.7); --hi: inset 0 1px 0 rgba(255,255,255,.06); --glow: rgba(139,92,246,.45);
-  --glass: rgba(20,17,31,.62); --glass-line: rgba(255,255,255,.09); color-scheme: dark;
-  --grad-text: linear-gradient(100deg, #c4b5fd, #a78bfa 45%, #e879f9);
-}
-`;
+${PREMIUM_TOKENS}`;
 
 /**
  * The header's style (brand, tabs, "More"): part of CSS below, byte for byte, and exported on its own (12 Nov) so Purser
@@ -141,7 +110,7 @@ export const CSS = `${TOKENS}
 @media (min-width: 720px) { :root { --gut: 32px; } }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: radial-gradient(1200px 520px at 70% -220px, color-mix(in srgb, var(--accent) 12%, transparent), transparent 72%) no-repeat, var(--bg); color: var(--text); font: 400 17px/1.55 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+${PREMIUM_BASE_CSS}
 a { color: inherit; }
 /* Words for screen readers and search engines only (a link's full name, a section's heading), not shown. */
 .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -149,24 +118,9 @@ a { color: inherit; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 var(--gut); }
 ${HEADER_CSS}
 /* Type. */
-h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; text-wrap: balance; }
-.h-hero { font-size: clamp(38px, 5.4vw, 64px); font-weight: 780; letter-spacing: -.035em; }
-.h-sec { font-size: clamp(28px, 3.4vw, 40px); font-weight: 750; letter-spacing: -.03em; }
-.lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--muted); line-height: 1.5; margin: 0; }
-.eyebrow { font: 600 14px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 0 0 10px; }
 /* Buttons and pills. */
-/* Buttons: violet primary, glass secondary; one height, one radius, the same light on hover. */
-.btn { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 999px; font: 650 16px/1 Inter, system-ui, sans-serif; text-decoration: none; border: 1px solid var(--glass-line); background: var(--glass); color: var(--text); cursor: pointer; white-space: nowrap; box-shadow: var(--hi); transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease), background-color var(--dur) var(--ease); }
-.btn:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--glass-line)); }
-.btn.primary { background: var(--grad); color: #fff; border-color: transparent; box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 12px 32px -12px var(--glow), 0 2px 6px -2px rgba(20,8,50,.3); }
-.btn.primary:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 16px 40px -12px var(--glow), 0 2px 6px -2px rgba(20,8,50,.3); }
-@media (prefers-reduced-motion: no-preference) { .btn:hover { transform: translateY(-1px); } }
-/* Forms: one field style (low specificity, so a page's own rules still win). */
-:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) { font: inherit; color: var(--text); background: var(--sunken); border: 1px solid var(--border); border-radius: var(--r-sm); }
-:where(input, select, textarea):focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 1px; border-color: var(--accent); }
 .btn:focus-visible, a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .pill.run { background: var(--accent-soft); color: var(--accent); white-space: normal; }
-.card { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 3%, var(--surface)), var(--surface)); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--hi), var(--shadow); }
 /* Agent avatar. */
 .av { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; flex: none; }
 .av .i { width: 22px; height: 22px; }
@@ -283,11 +237,6 @@ footer.foot .fcontact a { color: var(--muted); display: inline-flex; align-items
 @media (max-width: 520px) { footer.foot .builton { flex-direction: column; align-items: flex-start; } footer.foot .builton li { white-space: normal; min-height: 36px; } footer.foot .builton li:not(:first-child):not(:last-child)::after { content: none; } }
 details.real .pop { margin: 0 0 10px; max-width: 640px; padding: 16px 18px; font-size: 15px; color: var(--text); }
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
-/* Very wide screens (the owner: "razor-sharp in 4K"): the whole page scales up as vectors, never a narrow column in a sea
-   of black. Borders stay whole device pixels (browsers snap them), text and drawings are re-rasterised at the new size. */
-@media (min-width: 2200px) { body { zoom: 1.25; } }
-@media (min-width: 2800px) { body { zoom: 1.5; } }
-@media (min-width: 3600px) { body { zoom: 2; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;
 
 /**
@@ -596,7 +545,8 @@ ${previewTags().join("\n")}
 <title>${esc(pageTitle(o.title))}</title>
 <style>${CSS}
 ${MOTION_CSS}${SITE_MOTION_CSS}
-${o.css}${tour ? TOUR_CSS : ""}</style>
+${o.css}${tour ? TOUR_CSS : ""}
+${PREMIUM_CSS}</style>
 </head>
 <body>
 ${header(o.tab)}
