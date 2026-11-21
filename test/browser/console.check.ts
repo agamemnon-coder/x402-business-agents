@@ -1025,8 +1025,10 @@ async function guestPass() {
     for (let y = 0; y < 6000; y += 500) { await p.mouse.wheel(0, 500); await p.waitForTimeout(120); }
     await p.evaluate(() => scrollTo(0, 0));
     await p.waitForTimeout(1600);
-    ok(await p.isVisible("#demo") && /Demo company/.test((await p.textContent("#demo")) ?? ""), `${tag}: the demo ribbon says what it is`);
-    ok(await p.locator(".kpis .kpi").count() === 4 && await p.locator("svg.chart path.line").count() === 1 && await p.locator("svg.ring .seg").count() >= 2 && await p.locator(".sbars li").count() >= 2 && await p.locator(".tline li").count() >= 8 /* 14 Nov: the decisions are a timeline (.tline), six in view */, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
+    // 21 Nov (Max's Overview): on the Overview the demo is said by the header's one quiet pill; the ribbon stays on the other pages.
+    ok((await p.isVisible("#demo") && /Demo company/.test((await p.textContent("#demo")) ?? "")) || /Demo workspace · Simulated data · No real payments/.test((await p.textContent(".ov-pill")) ?? ""), `${tag}: the demo ribbon says what it is`);
+    // 21 Nov (Max's Overview, 12 columns): four KPI links, the waiting table, the cash line, the payment flow, the activity feed and the partners' tiles.
+    ok(await p.locator(".ov-k a.ovk").count() === 4 && await p.locator(".ov-cash svg.chart path.line").count() === 1 && await p.locator(".ov-inv").count() === 1 && await p.locator(".ov-feed li").count() >= 1 && await p.locator(".ov-pts a.ov-pt").count() === 4, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
     for (const tab of ["invoices", "transactions", "books", "settings", "connections"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }
