@@ -18,7 +18,8 @@ export const CONTACT_LINE = "Pilot or partnership?";
  * Set on 20 Nov (the owner): the contact address above.
  */
 export const DESIGN_PARTNER_URL = `mailto:${CONTACT_EMAIL}`;
-export const DESIGN_PARTNER_LABEL = "Become a design partner";
+// 21 Nov (Max): the 30-Day Founding Partner Pilot; its CTA says so everywhere (/business, Home's pilot step, /try/sign, README).
+export const DESIGN_PARTNER_LABEL = "Become a Founding Partner";
 /** The design-partner link as HTML, or "" while there is no valid address. */
 export function designPartnerHtml(url: string = DESIGN_PARTNER_URL): string {
   if (!/^(https:\/\/|mailto:)[^\s"'<>]+$/.test(url)) return "";
