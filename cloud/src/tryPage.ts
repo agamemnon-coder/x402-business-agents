@@ -2164,7 +2164,7 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?
   if (over) for (const [k, v] of Object.entries(over)) { const c = copy as unknown as Record<string, Record<string, unknown>>; c[k] = { ...(c[k] ?? {}), ...v }; }
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
-    feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
+    feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], zap: ICONS.zap, "file-check": ICONS["file-check"],
     "external-link": ICONS["external-link"], "shield-check": ICONS["shield-check"], ban: ICONS.ban, play: ICONS.play, "arrow-up-right": MORE["arrow-up-right"] };
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__NEG__", () => `${negKitJs()}\n${NEG_TRY_JS}`).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__AGENT_TRACE__", () => AGENT_TRACE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)

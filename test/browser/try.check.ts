@@ -32,7 +32,7 @@ import { PROOF_URL, RUNS_URL, VERIFY_URL } from "../../cloud/src/tryPage.js";
 import { SAMPLES as GEN_SAMPLES } from "../../cloud/src/engine/samples.gen.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
-import { FILM_URL, TRAILER_URL } from "../../src/config/brand.js";
+import { FILM_URL, TRY_VIDEO } from "../../src/config/brand.js";
 import type { DB } from "../../src/db/open.js";
 import { EngineHost } from "../../src/engine/host.js";
 import { termsHash, type Terms } from "../../src/lib/terms.js";
@@ -322,7 +322,7 @@ async function passkeyContext(width: number, scheme: "light" | "dark"): Promise<
 // partners' logos loaded (the official files) with "No endorsement implied"; one column on a phone, the steps beside the
 // words on a laptop; nothing wider than the screen, the feather mark, no console or CSP error. Screenshots (the viewport)
 // when a directory is given: try-start-<width>-<scheme>.png.
-for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"]] as const) {
+for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"], [2560, 1440, "dark"], [3840, 2160, "light"]] as const) {
   const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
   const page = await ctx.newPage();
   const errors: string[] = [];
@@ -335,17 +335,22 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   const box = (sel: string) => page.locator(sel).first().boundingBox();
   const [h1, flow, main, trailer, partners] = [await box("main > h1"), await box(".start .flow"), await box("#main .btn.primary"), await box(".start .trailer"), await box(".start .partners")];
   ok(!!h1 && !!flow && !!main && !!trailer && !!partners, `${tag}: the headline, the steps, the button, the trailer link and the partners are shown`);
-  ok(await page.locator(".start .flow li").count() === 4 && (await page.textContent(".start .fend"))!.includes(START.flowEnd), `${tag}: three steps and the one-cent refusal`);
+  ok(await page.locator(".start .flow li").count() === 4 && (await page.textContent(".start .fend"))!.includes(START.flowEnd), `${tag}: read, check, the fork and the one-cent refusal`);
+  // 21 Nov (the new direction): after Check the flow forks: the agent pays alone within the limit, the passkey above it.
+  const lanes = await page.locator(".start .fork .lane").evaluateAll((ls) => ls.map((l) => (l.textContent ?? "").trim()));
+  ok(lanes.length === 2 && lanes[0]!.includes(START.lanes.alone.name) && lanes[0]!.includes(START.lanes.alone.tag) && lanes[1]!.includes(START.flow[2]!.name) && lanes[1]!.includes(START.lanes.face.tag)
+    && (await page.textContent(".start .fork .ln"))!.includes(START.lanes.note), `${tag}: the fork, paying alone within the limit and the passkey above it, test money said (${JSON.stringify(lanes)})`);
+  if (width >= 2560) { const mw = (await box("#main"))?.width ?? 0; ok(mw >= 1200, `${tag}: the start is no narrow column at ${width} px (${mw} px)`); }
   if (h1 && flow && main && trailer) {
     ok(main.y + main.height <= height && trailer.y + trailer.height <= height, `${tag}: the button and the trailer link are in view without scrolling`);
     if (width === 390) ok(flow.y > h1.y + h1.height - 1 && main.y > flow.y + flow.height - 1, `${tag}: a phone: one column, the headline, the steps, then the button`);
-    else ok(flow.x >= h1.x + h1.width - 1 && flow.y < main.y + main.height && partners!.y + partners!.height <= height + 1, `${tag}: a laptop: the steps beside the words, the partners in view`);
+    else ok(flow.x >= h1.x + h1.width - 1 && flow.y < main.y + main.height && partners!.y + partners!.height <= height + 1, `${tag}: a laptop or wider: the steps beside the words, the partners in view`);
   }
   const logos = await page.locator(".start .logos img").evaluateAll((im) => im.map((i) => [(i as HTMLImageElement).alt, (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0]));
   ok(JSON.stringify(logos) === JSON.stringify([["Alta (formerly Metal)", true], ["Claude", true]]), `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);
   const ptext = (await page.textContent(".start .partners"))!;
   ok(ptext.includes(`Alta${START.formerly}`) || ptext.includes(START.formerly) && ptext.includes(START.visa) && ptext.includes("No endorsement implied"), `${tag}: Alta (formerly Metal), Visa in text, no endorsement implied`);
-  ok(await page.getAttribute(".start .trailer", "href") === TRAILER_URL, `${tag}: the trailer link`);
+  ok(await page.getAttribute(".start .trailer", "href") === TRY_VIDEO.url, `${tag}: the demo video link (TRY_VIDEO since 20 Nov)`);
   ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
   ok(await page.locator(".brand .mk svg").count() === 1 && (await page.textContent(".brand"))!.trim() === "Purser", `${tag}: the brand is the feather mark and the name`);
   if (shots) { await page.waitForTimeout(2600); await page.screenshot({ path: join(shots, `try-start-${width}-${scheme}.png`) }); }
