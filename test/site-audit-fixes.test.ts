@@ -90,8 +90,8 @@ describe("6.6: images and caching", () => {
     expect(scaled.length).toBeLessThan(12_000);
     expect(SITE_LOGOS["logo-airwallex.png"]!.body.equals(scaled)).toBe(true);
     expect(AIRWALLEX_LOGO_DATA_URL).toBe(`data:image/png;base64,${scaled.toString("base64")}`);
-    // The badge still shows it 102 x 14 CSS px.
-    expect(builtOnBadge()).toContain(`<img src="${AIRWALLEX_LOGO_SRC}" alt="Airwallex" width="102" height="14">`);
+    // The badge shows it 87 x 12 CSS px (21 Nov, Max: smaller beside the brand), the file still sharp at 3.5x.
+    expect(builtOnBadge()).toContain(`<img src="${AIRWALLEX_LOGO_SRC}" alt="Airwallex" width="87" height="12">`);
   });
 
   it("each linked version is the content of the file served at that address", () => {

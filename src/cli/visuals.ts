@@ -4,6 +4,7 @@
 // file differs from what the code draws now (the test holds the same).
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { PNG } from "pngjs";
 import { visualFiles, SOCIAL_PNG } from "../visuals/files.js";
 import { SOCIAL_SIZE } from "../visuals/svg.js";
 import { BUILT_WITH, BUILT_WITH_PNG } from "../visuals/logos.js";
@@ -32,7 +33,12 @@ if (check) {
   const page = await browser.newPage({ viewport: SOCIAL_SIZE, deviceScaleFactor: 1 });
   await page.setContent(`<!doctype html><style>@font-face{font-family:Inter;src:url("${font}") format("woff2");font-weight:100 900}html,body{margin:0}</style>${svg}`, { waitUntil: "load" });
   await page.evaluate(() => document.fonts.ready);
-  const social = await page.locator("svg.pv-social").screenshot({ type: "png" });
+  // 21 Nov (Max: "keep the file small"): the dark card's gradients come out of Chromium dithered in the lowest bits,
+  // which a PNG cannot compress; each channel is rounded to a step of 4 (invisible on the card) and written at the
+  // highest compression, so a chat app fetches it quickly (test/site-meta.test.ts: under 300 KB).
+  const shot = PNG.sync.read(await page.locator("svg.pv-social").screenshot({ type: "png" }));
+  for (let i = 0; i < shot.data.length; i++) if (i % 4 !== 3) shot.data[i] = Math.min(255, Math.round(shot.data[i]! / 4) * 4);
+  const social = PNG.sync.write(shot, { colorType: 2, deflateLevel: 9, deflateStrategy: 0, filterType: 0 });
   writeFileSync(new URL(SOCIAL_PNG, root), social);
   // The same image is every page's link preview (src/ui/meta.ts OG_IMAGE, served at /assets/og.png): one file, two places.
   writeFileSync(new URL("src/ui/brand/og.png", root), social);

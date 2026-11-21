@@ -31,9 +31,11 @@ const repoLinks = (html: string) => [...html.matchAll(new RegExp(`href="${reEsca
 describe("/security: security and trust, current only (21 Nov)", () => {
   const html = securityPage(), text = mainText(html);
 
-  it("runs top to bottom: the architecture, what we did with evidence, the limits, the CI checks", () => {
+  // 21 Nov (Max: "security page is still not upgraded"): the hero's figures, the architecture, the six categories
+  // (approval with "If the approver is unavailable" folded, the CI checks folded under testing), the limits last.
+  it("runs top to bottom: the hero's figures, the architecture, the six categories, the limits", () => {
     const at = (s: string) => html.indexOf(s);
-    const order = ['id="arch"', 'class="card ev"', 'id="s-away"', 'id="s-notyet"', 'id="cichk-h"'].map(at);
+    const order = ['class="sxstats"', 'id="arch"', 'id="c-approval"', 'id="unavailable"', 'id="c-limits"', 'id="c-agents"', 'id="c-money"', 'id="c-testing"', 'id="cichk-h"', 'id="c-data"', 'id="s-notyet"', 'id="not-finished"'].map(at);
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
@@ -89,11 +91,14 @@ describe("the page on the site, and the one that went", () => {
     expect(HEADER_PATHS.filter((h) => ["/pricing", "/security"].includes(h.path))).toEqual(expect.arrayContaining([{ path: "/pricing", kind: "redirect", status: 302 }, { path: "/security", kind: "page", status: 200 }]));
   });
 
-  it("carries no script, so it is served under a style-only policy of its own", () => {
+  // 21 Nov (Max: "security page is still not upgraded"): one script, the site's wave behind the heading, so a policy
+  // with its hash and the style's, and nothing else (no connect-src: the wave calls nothing).
+  it("carries one script, the wave, and is served under a policy of its own that hashes it and its style", () => {
     for (const [name, html, csp] of [["security", SECURITY_PAGE, SECURITY_CSP]] as const) {
-      expect({ name, scripts: scriptBlocks(html) }).toEqual({ name, scripts: [] });
+      expect({ name, scripts: scriptBlocks(html).length }).toEqual({ name, scripts: 1 });
+      expect(scriptBlocks(html)[0]).toContain('document.querySelector("canvas.sx-wave")');
       expect({ name, styles: (html.match(/<style>/g) ?? []).length }).toEqual({ name, styles: 1 });
-      expect({ name, csp }).toEqual({ name, csp: expect.stringMatching(/^default-src 'none'; style-src 'sha256-[A-Za-z0-9+/=]+'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/) });
+      expect({ name, csp }).toEqual({ name, csp: expect.stringMatching(/^default-src 'none'; script-src 'sha256-[A-Za-z0-9+/=]+'; style-src 'sha256-[A-Za-z0-9+/=]+'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/) });
       expect(pages.csp[name]).toBe(csp);
       const res = pageResponse(new Request(`https://x.test/${name}`), pages)!;
       expect({ name, status: res.status, type: res.headers.get("content-type"), csp: res.headers.get("content-security-policy") }).toEqual({ name, status: 200, type: "text/html; charset=utf-8", csp });

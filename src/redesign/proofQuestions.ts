@@ -11,6 +11,7 @@ import { onProof, TAG_WORDS, WALL_FILE, type EvidenceWall, type WallTile } from 
 import { shortDay } from "../proof/recordDate.js";
 import { esc } from "./ui.js";
 import { picon } from "./proofIcons.js";
+import { PROOF_SECTION_OF_GROUP } from "./proofSections.js";
 
 export type QuestionId = "q-live" | "q-approvals" | "q-limits" | "q-books" | "q-ai" | "q-security" | "q-built" | "q-verify";
 /** A block of tiles inside a section: its id (an anchor), its heading, the tile keys it shows in order. */
@@ -82,7 +83,7 @@ export const QUESTIONS: readonly Question[] = [
 /** Where a tile no block names goes: its wall group's section. */
 /** Tiles told on another page only: the TAP interop run is on /visa (Max's last round, item 2). */
 export const NEVER_ON_PROOF: ReadonlySet<string> = new Set(["tap-interop"]);
-const GROUP_HOME: Record<string, QuestionId> = { "ev-rails": "q-live", "ev-forged": "q-approvals", "ev-ai": "q-ai", "ev-attacked": "q-security", "ev-built": "q-verify", "ev-quality": "q-built", "ev-scale": "q-live", "ev-load": "q-live" };
+export const GROUP_HOME: Record<string, QuestionId> = PROOF_SECTION_OF_GROUP as Record<string, QuestionId>;
 
 /** The newest held-out eval tile on /proof (the highest N of the eval-vN tiles shown), or null. */
 export function newestEvalKey(w: EvidenceWall): string | null {

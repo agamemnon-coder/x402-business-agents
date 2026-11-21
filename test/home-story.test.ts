@@ -126,7 +126,7 @@ describe("Home, 21 Nov: one short story", () => {
     }
   });
 
-  it("A4: one note line with the What's real? link; the only date in sight is the sample invoice's own due date", () => {
+  it("A4: one note line with the What's real? link; the only dates in sight are the sample invoice's own due date and the day of the run it comes from", () => {
     expect(WORKFLOW_NOTE).toBe("Two recorded /try runs of its sample invoice.");
     const DATE = /\b\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: \d{4})?|\b20\d\d-\d\d-\d\d/g;
     for (const html of [ON, OFF]) {
@@ -134,16 +134,18 @@ describe("Home, 21 Nov: one short story", () => {
       expect(main.match(/<p class="wf-note">/g)).toHaveLength(1);
       expect(text(/<p class="wf-note">[\s\S]*?<\/p>/.exec(main)![0])).toBe(`${WORKFLOW_NOTE} ${WHATS_REAL}`);
       expect(main).toContain(`<a href="#real" data-real>${WHATS_REAL}</a>`);
-      expect(text(outsideFold(main)).match(DATE)).toEqual([SAMPLE.invoice.due]);
+      // 21 Nov (jury check): the due date says which run it is from, since /try's sample today has a later one.
+      expect(text(outsideFold(main)).match(DATE)).toEqual([SAMPLE.invoice.due, "13 Nov"]);
     }
     expect(ON).toContain('document.querySelectorAll("[data-real]")');
   });
 
-  it("the product card books the VAT as the engine books that invoice now (judge scan, 15 Nov): 1515, not the record's 1510", () => {
+  // 21 Nov (jury check: Home said 1515 while the linked record says 1510): the card shows the record's own lines.
+  it("the product card books the VAT exactly as the record it links to (1510), every amount the record's", () => {
     const [net, vat] = [SAMPLE.booked[0]!.debit!, SAMPLE.booked[1]!.debit!].map((a) => Math.round(Number(a) * 100));
     expect(dutchVat(net!, vat!)).toBeNull();
     expect(SAMPLE.booked.map((b) => b.account)).toEqual(["6200", AP_ACCOUNTS.inputVat, "2100"]);
-    expect(BOOKED.map((b) => b.account)).toEqual(["6200", AP_ACCOUNTS.foreignVat, "2100"]);
+    expect(BOOKED.map((b) => b.account)).toEqual(["6200", AP_ACCOUNTS.inputVat, "2100"]);
     expect(BOOKED.map((b) => b.debit ?? b.credit)).toEqual(SAMPLE.booked.map((b) => b.debit ?? b.credit));
   });
 

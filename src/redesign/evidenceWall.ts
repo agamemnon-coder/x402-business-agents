@@ -11,6 +11,7 @@
 import { readFileSync } from "node:fs";
 import { esc } from "./ui.js";
 import { REPO_BLOB } from "./metalStory.js";
+import { proofSection } from "./proofSections.js";
 
 export const WALL_FILE = "docs/evidence/evidence-wall.json";
 export const WALL_ID = "evidence";
@@ -146,7 +147,7 @@ export function evidenceStripHtml(partner: keyof typeof PARTNER_STRIPS, o: { not
   if (!shown.length) return "";
   const tile = (t: WallTile) => `<li class="ew-t${t.tone ? ` ${t.tone}` : ""}" data-wall="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}" title="${esc(t.note)}"${isExternal(t.href) ? ' target="_blank" rel="noopener"' : ""}><b class="ew-f">${esc(t.fig)}</b><span class="ew-l">${esc(t.label)}</span><span class="ew-k"><span class="ew-tag ${t.tag}">${esc(TAG_WORDS[t.tag])}</span><span class="ew-r" aria-hidden="true">${isExternal(t.href) ? "↗" : "→"}</span></span></a></li>`;
   return `<section class="ewall pstrip" id="live-${partner}" aria-labelledby="ps-${partner}" data-rec="${esc(WALL_FILE)}">
-  <div class="ps-h"><h2 id="ps-${partner}">${esc(spec.title)}</h2><a href="proof#${esc(spec.group)}">${esc("All the evidence")} →</a></div>
+  <div class="ps-h"><h2 id="ps-${partner}">${esc(spec.title)}</h2><a href="proof#${esc(proofSection(spec.group))}">${esc("All the evidence")} →</a></div>
   <ul class="ew-ts">${shown.map(tile).join("")}</ul>
   <p class="ps-n">${esc(`${spec.legend}${o.note ? ` ${o.note}` : ""}`)}</p>
 </section>`;

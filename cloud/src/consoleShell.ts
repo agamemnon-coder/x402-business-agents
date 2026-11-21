@@ -254,7 +254,6 @@ export const SHELL_CSS = `
   .appbar #pask-fab { position: static; min-height: 36px; height: 36px; width: 36px; padding: 0; justify-content: center; border-radius: 10px; border: 0; box-shadow: none; background: transparent; color: var(--accent); transform: none; }
   .appbar #pask-fab svg { width: 32px; height: 32px; }
   .appbar #pask-fab:hover { transform: none; box-shadow: none; }
-  .appbar #pask-fab .pask-t { display: none; }
   .signed-in .btabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; height: calc(var(--tabbar) + env(safe-area-inset-bottom)); padding: 0 4px env(safe-area-inset-bottom);
     background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: saturate(1.4) blur(16px); -webkit-backdrop-filter: saturate(1.4) blur(16px); border-top: 1px solid var(--border); }
   .btabs a { display: grid; justify-items: center; align-content: center; gap: 3px; min-height: 48px; text-decoration: none; color: var(--faint); font-size: 11px; font-weight: 650; letter-spacing: .01em; border-radius: 12px; -webkit-tap-highlight-color: transparent; }

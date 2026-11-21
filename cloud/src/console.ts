@@ -364,6 +364,10 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 .signed-out main { position: relative; z-index: 1; margin-top: -28px; padding: 0; }
 .signed-out .auth { margin: 0 auto; border-radius: 16px; }
 .signed-out .trust { display: grid; gap: 2px; margin: auto 0 0; padding: 10px var(--gut, 16px) 12px; text-align: center; color: var(--faint); font-size: 12.5px; line-height: 1.4; } /* partner scan, 14 Nov: room for "No endorsement implied." at 390x844 */
+/* 21 Nov (Max: "it must not cover the footer's Test money only"): Ask Purser's round button keeps the bottom-right
+   corner; signed out, the screen is one screen (no room added below it), and on a phone the trust line ends above it. */
+.signed-out > #pask-space { display: none; }
+/* (the trust line clears the button by its right padding: src signInLook.ts, so it stays on the first phone screen) */
 @media (min-width: 1024px) {
   .signed-out { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 1fr auto auto 1fr; }
   .signed-out header.top { grid-column: 1 / -1; grid-row: 1; }

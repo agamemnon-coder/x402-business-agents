@@ -755,7 +755,7 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
   stand.payDelay = 0;
   ok(Date.now() - t0 >= 800, `${tag}: 800 ms: the outcome came after the answer`);
   // 14 Nov (owner): the reason first, signed beside asked with the changed value marked, one plain line; the rest in the fold.
-  ok((await page.locator(".why .head").textContent()) === `${TAMPER.refused}: ${TAMPER.head}` && await page.locator(".why .head").isVisible(), `${tag}: refused: the reason, big and first`);
+  ok((await page.locator(".why .head").textContent()) === `${TAMPER.refused} ${TAMPER.head}` && await page.locator(".why .head").isVisible(), `${tag}: refused: the reason, big and first`);
   // 15 Nov (owner: "it glows red"): one red word only; the reason in the text colour.
   const tones = await page.evaluate(() => { const h = document.querySelector(".why .head")!, no = h.querySelector(".no")!; return [getComputedStyle(h).color, getComputedStyle(no).color, getComputedStyle(document.body).color]; });
   ok(tones[0] === tones[2] && tones[1] !== tones[0], `${tag}: refused: "${TAMPER.refused}" is the one red word, the reason in the text colour (${tones.join(" / ")})`);

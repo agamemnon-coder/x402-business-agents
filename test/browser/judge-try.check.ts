@@ -54,6 +54,14 @@ try {
     ok((await page.locator(".judge-offline").innerText()).trim() === OFFLINE_TRY_NOTE, "the offline label says code reads, the simulated bank pays");
   }
   await click(/Start the live demo|Launch the live transfer demo/);
+  // 21 Nov 2026 (owner): a new visitor starts on Bergtex Textil GmbH, BTX-2026-21, EUR 1,850.00, picked; the EUR 120.00
+  // invoice the agent pays alone is right under it as its own example.
+  {
+    const first = page.locator(".samples button[aria-pressed=true]").first();
+    await first.waitFor({ timeout: 60_000 });
+    const t = (await first.innerText()).replace(/\s+/g, " ");
+    ok(/Bergtex Textil GmbH/.test(t) && /BTX-2026-21/.test(t) && /1,850\.00/.test(t), `the default sample is Bergtex BTX-2026-21, EUR 1,850.00 (${t})`);
+  }
   await click(/A small invoice inside the agent's limit/);
   await click(/Give it to the AI agent/);
   await page.getByRole("button", { name: "See the agent pay it" }).waitFor({ timeout: 60_000 });
@@ -107,7 +115,7 @@ try {
   ok(!/extra calls/.test(await page.locator(".pv-rail").innerText()), "the tamper step, before trying: no \"extra calls\" line yet");
   await click("Try to pay with my earlier approval");
   await page.waitForSelector(".why .head", { timeout: 30_000 });
-  ok(/Blocked|refused/i.test(await text(page)), "1,850.01: refused");
+  ok(/Payment refused\./.test(await text(page)), "1,850.01: Payment refused.");
   await page.waitForTimeout(800);
   {
     // 19 Nov 2026: the SHA-256 check is Purser's code, not an AI agent; and now the line about extra calls is earned.
