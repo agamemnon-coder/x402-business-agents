@@ -33,3 +33,5 @@ fixtures/peppol/official/
 # The Dafny translation the differential test runs is committed (scripts/formal-dafny.sh checks it).
 !formal/dafny/out/
 !formal/dafny/out/reference.js
+# npm run policy:rego writes a company's OPA bundle here by default (docs/policy-opa.md).
+opa-bundle*/

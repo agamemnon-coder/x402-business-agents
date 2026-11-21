@@ -35,6 +35,21 @@ jobs:
       - name: xmllint
         # Retries and a timeout: a slow apt mirror (19 Nov: exit 100 after 3 min) should not turn CI red.
         run: command -v xmllint || (sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 update && sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 install -y libxml2-utils)
+      # Purser's CFO policy as Rego (policy/purser.rego, docs/policy-opa.md) is held to Purser's own decisions by
+      # test/policy-rego.test.ts with the official OPA binary: a pinned release, its SHA-256 checked against the value
+      # in that release's own checksum file (opa_linux_amd64_static.sha256), put on PATH. With CI set the test fails
+      # without it.
+      - name: OPA (pinned)
+        env:
+          OPA_VERSION: v1.22.0
+          OPA_SHA256: 791790254c598a942eb140959bcec9a47f844535a632fd01d11d870ba2a47047
+        run: |
+          mkdir -p "$RUNNER_TEMP/opa"
+          curl -fsSL --retry 5 --retry-delay 5 -o "$RUNNER_TEMP/opa/opa" "https://github.com/open-policy-agent/opa/releases/download/${OPA_VERSION}/opa_linux_amd64_static"
+          echo "${OPA_SHA256}  $RUNNER_TEMP/opa/opa" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/opa/opa"
+          echo "$RUNNER_TEMP/opa" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/opa/opa" version
       # The hosted-page checkout test (test/airi-hosted-checkout.test.ts) drives headless Chromium against a local stub
       # page; the same lockfile-keyed cache as the judge job below.
       - name: Playwright browsers (cache)
