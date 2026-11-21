@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, KIT11_RUN_LINE, README_WHAT, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
-import { CLOUD_EYEBROW, HOME_SUB, PILOT_CTA, REASSURE, START, START_ID, WATCH_BUTTON, homePage } from "../src/redesign/home.js";
+import { CLOUD_EYEBROW, HOME_SUB, PILOT_CTA, REASSURE, START, WATCH_BUTTON, homePage } from "../src/redesign/home.js";
 import { heroStats } from "../src/redesign/heroWave.js";
 import { TOUR_START_HREF } from "../src/redesign/tour.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -160,7 +160,6 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(heroStats()).toHaveLength(3);
     expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost film"', 'class="btn big ghost pilot"']);
     expect(HOME).toContain(`<a class="btn big tour" href="${TOUR_START_HREF}" data-tour-start>`);
-    expect(HOME).toContain(`<section class="e-start" id="${START_ID}"`);
     // Every Try call to action opens the hands-on demo (TRY_URL), with /try/sign in the bundle or not.
     expect(hero(HOME)).toContain('<a class="btn primary big start" href="/try">');
     expect(HOME).not.toContain("Watch the agents");

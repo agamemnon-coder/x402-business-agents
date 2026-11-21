@@ -86,12 +86,16 @@ export const HEADER_CSS = `/* Header: brand, four tabs and "More" (a <details>, 
 header.top { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
 header.top .wrap { display: flex; align-items: center; gap: 12px; height: 64px; }
 .brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 750; font-size: 18px; letter-spacing: -.02em; text-decoration: none; }
-.brand .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--mk-bg, var(--text)); color: #fff; border: 1px solid var(--mk-line, transparent); display: grid; place-items: center; box-shadow: inset 0 1px 0 rgba(255,255,255,.14); }
+.brand .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--mk-bg, var(--text)); color: var(--mk-ink, var(--bg)); display: grid; place-items: center; }
+.brand .nm { color: var(--mk-wm, var(--text)); }
 nav.tabs { margin-left: auto; display: flex; align-items: center; gap: 2px; background: var(--glass); border: 1px solid var(--glass-line); border-radius: 999px; padding: 3px; }
-nav.tabs > a { text-decoration: none; font-weight: 600; font-size: 15px; line-height: 1.2; color: var(--muted); padding: 7px 14px; border-radius: 999px; white-space: nowrap; }
+nav.tabs > a { text-decoration: none; font-weight: 600; font-size: 14.5px; line-height: 1.2; color: var(--muted); padding: 7px 13px; border-radius: 999px; white-space: nowrap; letter-spacing: -.005em; }
 nav.tabs > a.on { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
 ${MORE_CSS}
 nav.tabs .pmore > summary { padding: 7px 12px 7px 14px; }
+/* Try is the one primary action, in the header too: a small pill in the primary's colours. */
+nav.tabs > a[href$="/try"] { background: var(--btn-bg, var(--text)); color: var(--btn-ink, var(--bg)); box-shadow: inset 0 1px 0 rgba(255,255,255,.28); margin: 0 2px; }
+nav.tabs > a[href$="/try"]:hover { filter: brightness(1.06); }
 /* The six items stay on one line beside the brand down to 641 px, closer together step by step; a phone has the sheet. */
 @media (max-width: 1000px) { nav.tabs > a { padding: 7px 11px; } nav.tabs .pmore > summary { padding: 7px 9px 7px 11px; } }
 @media (max-width: 860px) { nav.tabs > a { padding: 7px 9px; } nav.tabs .pmore > summary { padding: 7px 7px 7px 9px; } }
@@ -103,13 +107,13 @@ nav.tabs .pmore > summary { padding: 7px 12px 7px 14px; }
   .brand span.nm { display: inline; }
   nav.tabs { gap: 8px; padding: 0; background: none; border: 0; }
   nav.tabs > a:not([href$="/try"]) { display: none; }
-  nav.tabs > a[href$="/try"] { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 999px; background: var(--btn-bg, var(--text)); color: var(--btn-ink, var(--bg)); border: 1px solid var(--btn-line, transparent); font-size: 14.5px; font-weight: 650; box-shadow: none; }
+  nav.tabs > a[href$="/try"] { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--btn-bg, var(--text)); color: var(--btn-ink, var(--bg)); border: 1px solid var(--btn-line, transparent); font-size: 14.5px; font-weight: 650; box-shadow: none; }
   nav.tabs .pmore { position: static; }
-  nav.tabs .pmore > summary { min-height: 40px; padding: 0 14px 0 12px; gap: 8px; border: 1px solid var(--glass-line, var(--border)); background: var(--glass, var(--surface)); color: var(--text); font-size: 14.5px; }
+  nav.tabs .pmore > summary { min-height: 44px; padding: 0 14px 0 12px; gap: 8px; border: 1px solid var(--glass-line, var(--border)); background: var(--glass, var(--surface)); color: var(--text); font-size: 14.5px; }
   nav.tabs .pmore > summary::before { content: ""; width: 14px; height: 10px; background: linear-gradient(currentColor 0 0) top / 100% 1.75px no-repeat, linear-gradient(currentColor 0 0) center / 100% 1.75px no-repeat, linear-gradient(currentColor 0 0) bottom / 100% 1.75px no-repeat; }
   nav.tabs .pmore > summary::after { content: none; }
   nav.tabs .pmore[open] > summary { border-color: var(--accent); }
-  nav.tabs .pmenu { position: fixed; left: 12px; right: 12px; top: 62px; min-width: 0; max-width: none; max-height: calc(100vh - 80px); overflow: auto; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px 6px; padding: 10px; border-radius: 20px; box-shadow: 0 30px 80px -20px rgba(0,0,0,.6); }
+  nav.tabs .pmenu { position: fixed; left: 12px; right: 12px; top: 64px; min-width: 0; max-width: none; max-height: calc(100vh - 80px); overflow: auto; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px 6px; padding: 10px; border-radius: 20px; box-shadow: 0 30px 80px -20px rgba(0,0,0,.6); }
   .pm-m { display: contents; }
   .pm-h { grid-column: 1 / -1; margin: 10px 12px 2px; font: 600 11px/1.3 var(--mono, ui-monospace, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
   .pm-h:first-child { margin-top: 2px; }

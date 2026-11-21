@@ -104,6 +104,10 @@ async function look(page: Page, name: string, width: number): Promise<void> {
   for (const u of a11y.noAlt) fail(`${name}: an image with no alt text: ${u}`);
   const over = await page.evaluate(() => document.documentElement.scrollWidth) - width;
   if (over > 1) fail(`${name}: ${over}px wider than the screen`);
+  // "Built on Airwallex" (Max, 21 Nov: the logo did not show in a local render): the badge in sight has its logo loaded,
+  // and its alt text, which stands in for it if it ever fails, reads "Airwallex".
+  const awx = await page.evaluate(`[...document.querySelectorAll("a.awx-badge img")].filter((i) => i.getClientRects().length).map((i) => ({ ok: i.complete && i.naturalWidth > 0, alt: i.getAttribute("alt") }))`) as { ok: boolean; alt: string | null }[];
+  for (const b of awx) if (!b.ok || b.alt !== "Airwallex") fail(`${name}: the "Built on Airwallex" logo did not load (alt "${b.alt}")`);
   // The menu, on every page that carries it (both navigations: the redesign's header and the older pages'): exactly the
   // four tabs and "More"; "More" closed until it is opened, and under it exactly the pages the site serves, in order.
   const nav = await page.evaluate(`(() => {
@@ -953,8 +957,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `${path} ${tag}`, w);
       const words = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
-      const more = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null }; })()`) as { more: boolean; link: string | null };
-      if (!more.more || (path === "/business" && more.link !== "business")) fail(`${path} ${tag}: "More" is not marked as where the reader is (${JSON.stringify(more)})`);
+      // 21 Nov (the owner's concept): "Business" is a tab of its own; /business and its one-pager mark it.
+      const tab = await page.evaluate(`(document.querySelector('nav[aria-label="Main"] > a[aria-current="page"]') || {}).textContent || ""`) as string;
+      if (tab.trim() !== "Business") fail(`${path} ${tag}: the "Business" tab is not marked as where the reader is ("${tab}")`);
       const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead")].filter((e) => e.offsetParent && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
       for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
       if (path === "/business") {

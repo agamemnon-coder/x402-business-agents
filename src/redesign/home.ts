@@ -25,7 +25,7 @@ import { agentRun, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
 import { metalStory, REPO_BLOB } from "./metalStory.js";
 import { heroDemoFacts } from "./heroDemo.js";
-import { FLOW_NOTE, HERO_FLOW_CSS, heroFlowHtml, VAT_THEN } from "./heroFlow.js";
+import { VAT_THEN } from "./heroFlow.js";
 import { VIC3_RUN_FILE, VIC4_FILE, vic3Run, type Vic3Record } from "./vic3Run.js";
 import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 import { SITE_URL } from "../ui/meta.js";
@@ -33,7 +33,7 @@ import { NEGOTIATE_URL, PURSER_CLOUD_MCP, PURSER_CLOUD_URL } from "../ui/more.js
 import { MONEY_FLOW_RECORDS, moneyFlowFacts, type MoneyFlowFacts } from "./moneyFlow.js";
 import { LOGO_BAND_CSS, LOGO_BAND_JS, logoBandHtml } from "./integrations.js";
 import { TOUR_ID, TOUR_MAP_CSS, TOUR_START_HREF, tourMapHtml } from "./tour.js";
-import { HERO_WAVE_CSS, HERO_WAVE_HTML, HERO_WAVE_JS, heroStatsHtml, workflowHtml } from "./heroWave.js";
+import { HERO_WAVE_CSS, HERO_WAVE_HTML, HERO_WAVE_JS, WORKFLOW_JS, WORKFLOW_RECORD, heroStatsHtml, workflowHtml } from "./heroWave.js";
 
 /** The hub of every connection Purser has, each labelled, with a quickstart (docs/integrations/README.md); in Home's footer. */
 export const CONNECT_HUB_DOC = "docs/integrations/README.md", CONNECT_HUB_LABEL = "Connect to anything";
@@ -58,12 +58,10 @@ ul.agents > li, ul.prow a, ol.steps3 > li:not(.pilot), .af-n:not(.af-purser) { b
 main.ent section.e-hero { position: relative; padding: 88px 0 80px; overflow: hidden; }
 .e-hero .h-hero span + span { filter: drop-shadow(0 6px 28px color-mix(in srgb, var(--accent) 35%, transparent)); }
 /* The product card in a frame of its own: a pane of glass, lit from below. */
-.e-hero .show { position: relative; padding: 18px 18px 6px; border-radius: var(--r-lg); background: var(--glass); border: 1px solid var(--glass-line); box-shadow: var(--hi), 0 50px 120px -50px var(--glow), 0 30px 60px -36px rgba(0, 0, 0, .45); }
-.e-hero .show::before { content: ""; position: absolute; left: 12%; right: 12%; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
-.e-hero .show .hf-card { background: var(--bg); }
-.e-hero .wrap { position: relative; display: grid; gap: 40px; align-items: center; grid-template-areas: "copy" "wf" "show"; }
-.e-hero .copy { grid-area: copy; } .e-hero .wf { grid-area: wf; width: 100%; max-width: 480px; justify-self: center; } .e-hero .show { grid-area: show; width: 100%; max-width: 820px; justify-self: center; margin-top: 24px; }
-@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 440px); grid-template-areas: "copy wf" "show show"; column-gap: 56px; row-gap: 48px; } .e-hero .wf { justify-self: end; } .e-hero .show { margin-top: 32px; } }
+.e-hero .wrap { position: relative; display: grid; gap: 40px; align-items: center; }
+.e-hero .wf { width: 100%; max-width: 500px; justify-self: center; }
+@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 480px); column-gap: 56px; } .e-hero .wf { justify-self: end; } main.ent section.e-hero { padding: 56px 0 72px; } }
+.e-biz { align-items: center; } .e-partner a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
 .e-hero p.cloud { margin: 0 0 24px; display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: var(--glass); border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); box-shadow: 0 0 28px -8px var(--glow); letter-spacing: .16em; }
 .e-hero p.cloud::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
 .e-hero .h-hero { font-size: clamp(42px, 5.6vw, 64px); line-height: 1.02; letter-spacing: -.04em; font-weight: 790; } .e-hero .h-hero span { display: block; }
@@ -71,14 +69,16 @@ main.ent section.e-hero { position: relative; padding: 88px 0 80px; overflow: hi
 .e-hero .h-hero span + span { background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .e-hero .what { margin: 22px 0 0; font-size: 19.5px; line-height: 1.5; color: var(--muted); max-width: 30em; }
 .e-tourgo { margin-top: 28px; }
+/* The hierarchy (Max, 21 Nov): Try the one primary, the film the clear secondary, Pilot a quiet text link. */
+.ctas .btn.pilot { background: none; border-color: transparent; box-shadow: none; padding: 0 10px; color: var(--muted); }
+.ctas .btn.pilot:hover { color: var(--text); border-color: transparent; transform: none; }
+.ctas .btn.pilot .i { transition: transform .2s ease; } .ctas .btn.pilot:hover .i { transform: translateX(3px); }
 .ctas { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
 .reassure { margin: 16px 0 0; display: flex; align-items: center; gap: 8px; font-size: 14.5px; color: var(--muted); }
 .reassure .i { color: var(--ok); }
-.e-hero .show { min-width: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .e-hero .copy > * { animation: h-up .7s cubic-bezier(.2, .7, .2, 1) both; }
   .e-hero .copy > :nth-child(2) { animation-delay: .06s; } .e-hero .copy > :nth-child(3) { animation-delay: .12s; } .e-hero .copy > :nth-child(4) { animation-delay: .18s; } .e-hero .copy > :nth-child(5) { animation-delay: .24s; } .e-hero .copy > :nth-child(6) { animation-delay: .3s; }
-  .e-hero .show { animation: h-card 1s cubic-bezier(.2, .7, .2, 1) .15s both; }
   .e-hero .wf { animation: h-card 1s cubic-bezier(.2, .7, .2, 1) .1s both; }
 }
 @keyframes h-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -264,6 +264,8 @@ export const TOUR_BUTTON = "Start the judge tour";
 export const START = "Try it";
 export const WATCH_BUTTON = "Watch the demo";
 export const PILOT_CTA = "Start a pilot";
+/** "What is not finished" (review, 21 Nov), in Home's footer: /security's own list. */
+export const NOT_FINISHED = ["security#not-finished", "What is not finished"] as const;
 // Site audit, 20 Nov (finding 6.3): a short sandbox disclosure beside the buttons.
 export const SANDBOX_NOTE = "Sandbox demo: test money, no real settlement.";
 /** The line under the buttons, with /try/sign in the bundle or not (both keys kept for the callers). */
@@ -481,9 +483,6 @@ export const TOUR_SUB = "Seven stops. A bar at the foot of each page takes you t
  * /v1/auth/guest); a pilot company is created by Purser (POST /v1/admin/tenants), which hands over a starter key; its
  * owner makes a passkey at #/start. The deployment runs on test money; no customer is claimed.
  */
-export const START_ID = "start";
-export const START_EYEBROW = "How to start";
-export const START_HEAD = "Three steps to a pilot.";
 export const PILOT_BUTTON = "Run a pilot";
 /** Purser Cloud's console on its test-money deployment: the demo company as a guest, and a new company's first run. */
 export const CLOUD_GUEST_URL = `${PURSER_CLOUD_URL}#/guest`;
@@ -500,13 +499,6 @@ export const START_STEPS: readonly StartStep[] = [
  */
 export const BUSINESS_BUTTON = "For companies: pilot and plans";
 export const BUSINESS_HREF = "business";
-export function startHtml(partnerUrl: string = DESIGN_PARTNER_URL): string {
-  const link = (l: StartStep["links"][number]) => `<a href="${esc(l.href)}"${l.external ? ' target="_blank" rel="noopener"' : ""}>${esc(l.label)}${icon(l.external ? "external-link" : "arrow-right", 16)}</a>`;
-  return `<p class="eyebrow">${esc(START_EYEBROW)}</p>
-  <h2 class="e-h" id="h-start">${esc(START_HEAD)}</h2>
-  <ol class="steps3">${START_STEPS.map((st, i) => `<li class="reveal${st.pilot ? " pilot" : ""}"><span class="si">${icon(st.icon, 24)}<em>${i + 1}</em></span><b class="st">${esc(st.title)}</b><p>${esc(st.text)}</p><span class="tagline">${esc(st.tag)}</span><div class="go">${st.links.map(link).join("")}${st.pilot ? designPartnerHtml(partnerUrl) : ""}</div></li>`).join("")}</ol>
-  <div class="e-more"><a class="btn big" href="${BUSINESS_HREF}">${icon("building-2", 18)}${esc(BUSINESS_BUTTON)}${icon("arrow-right", 18)}</a></div>`;
-}
 
 /**
  * "Ask Purser" (the owner, 20 Nov): a chat on Purser Cloud at /ask, built there; Home only links it, no chat code here.
@@ -535,16 +527,10 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     ${homeHeadingHtml()}
     <p class="what">${esc(HOME_SUB)}</p>
     ${heroStatsHtml()}
-    <div class="ctas"><a class="btn primary big start" href="${TRY_URL}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(WATCH_BUTTON)}</a><a class="btn big ghost pilot" href="#${START_ID}">${esc(PILOT_CTA)}</a></div>
+    <div class="ctas"><a class="btn primary big start" href="${TRY_URL}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(WATCH_BUTTON)}</a><a class="btn big ghost pilot" href="${BUSINESS_HREF}">${esc(PILOT_CTA)}${icon("arrow-right", 16)}</a></div>
     <p class="reassure">${icon("shield-check", 16)}${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
   </div>
   ${workflowHtml()}
-  <div class="show">${heroFlowHtml()}
-    <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
-</div></section>
-<section class="e-start" id="${START_ID}" aria-labelledby="h-start"><div class="wrap">
-  ${startHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
-  ${askHtml()}
 </div></section>
 <section class="e-band" aria-label="Integrations"><div class="wrap">
   ${logoBandHtml()}
@@ -557,6 +543,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <p class="eyebrow">${esc(AGENTS_EYEBROW)}</p>
   <h2 class="e-h" id="h-agents">${esc(AGENTS_HEAD)}</h2>
   ${agentsHtml()}
+  <div class="e-more e-biz"><a class="btn big" href="${BUSINESS_HREF}">${icon("building-2", 18)}${esc(BUSINESS_BUTTON)}${icon("arrow-right", 18)}</a><span class="e-partner">${designPartnerHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}</span></div>
+  ${askHtml()}
 </div></section>
 <section class="e-proof" aria-labelledby="h-proof"><div class="wrap">
   <p class="eyebrow">${esc(PROOF_EYEBROW)}</p>
@@ -576,7 +564,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const refusedAt = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at ?? "";
   const real = [
     "Purser Cloud's public deployment (purser-try.max-31b.workers.dev) runs on test money. As a guest its console shows a demo company made from demo data, read only; a pilot company is created by Purser and set up with the starter key it hands over. No customer uses it yet.",
-    `The card's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on the live demo, 13 November, with Claude on: Claude Haiku 5.5 read that invoice, and the Checker, Coder and Payer agents ran on it, each request id in the record (docs/runs/2026-11-13-try-sample.json). Test money, a simulated bank, a test passkey.${VAT_THEN ? ` ${VAT_THEN}` : ""}`,
+    `The Workflow card: /try's sample invoice (Bergtex Textil GmbH, BTX-2026-21). Its supplier, amount, due date, account, Claude's reading and the three booking lines: one /try run of its sample invoice on the live demo, 13 November, with Claude on: Claude Haiku 5.5 read that invoice, and the Checker, Coder and Payer agents ran on it, each request id in the record (docs/runs/2026-11-13-try-sample.json). Test money, a simulated bank, a test passkey.${VAT_THEN ? ` ${VAT_THEN}` : ""}`,
+    `The Workflow card's hold, signature, payment and refusal: run 1 of ${WORKFLOW_RECORD} (the live /try on an iPhone profile, 21 November, a software test passkey): its EUR 120.00 invoice paid within the agent's limit, the EUR 1,850.00 one held for the CFO, signed, and paid through the Airwallex sandbox (SCHEDULED, then PAID, the signed hash in Airwallex's transfer record); then the signed amount changed to EUR 1,850.01, refused, no transfer added. Test money.`,
     ...(mf?.cent ? [`The changed cent: /try's two proof files (${MONEY_FLOW_RECORDS.join(", ")}), from the live /try of 15 November: ${mf.amount} to ${mf.vendor}, signed with a passkey and paid on /try's simulated bank; then the same terms one cent higher (${mf.cent.currency} ${mf.cent.asked}), refused because the signature is over other terms, and nothing paid. A test company, test money.`] : []),
     ...(awx && facts ? [`The Airwallex figure: the Airwallex-only run (${awx.run}) of ${facts.date}. ${CAVEAT_LINE} ${awx.note}`] : []),
     `The Alta figure: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
@@ -586,9 +575,9 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ];
   return page({
     // Final jury, 13 Nov: / and /home serve this page; /home is its one canonical address.
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + HERO_WAVE_CSS + HERO_FLOW_CSS + LOGO_BAND_CSS + AI_CSS + TOUR_MAP_CSS + HOME_PREMIUM_CSS, body, js: JS + HERO_WAVE_JS + LOGO_BAND_JS, stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + HERO_WAVE_CSS + LOGO_BAND_CSS + AI_CSS + TOUR_MAP_CSS + HOME_PREMIUM_CSS, body, js: JS + HERO_WAVE_JS + WORKFLOW_JS + LOGO_BAND_JS, stage: false,
     // 20 Nov (the owner: "Purser connects to everything and everyone, findable"): the hub of every connection, in the footer.
-    links: [[`${REPO_BLOB}${CONNECT_HUB_DOC}`, CONNECT_HUB_LABEL]],
+    links: [[`${REPO_BLOB}${CONNECT_HUB_DOC}`, CONNECT_HUB_LABEL], [NOT_FINISHED[0], NOT_FINISHED[1]]],
     real,
     source: `Source: a /try run of its sample invoice, /try's two proof files (${MONEY_FLOW_RECORDS.join(", ")}), ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
   });

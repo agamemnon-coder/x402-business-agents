@@ -25,7 +25,7 @@ const DARK = String.raw`
   --glass:rgba(17,21,34,.66); --glass-line:rgba(180,168,255,.14);
   --grad-text:linear-gradient(100deg,#f0edff 0%,#c3b8ff 40%,#a398ff 70%,#d8b4fe 100%);
   --btn-bg:linear-gradient(112deg,#c6baff 0%,#a297ff 60%,#8f85fc 100%); --btn-ink:#100d25; --btn-line:#b4a8ff;
-  --mk-bg:linear-gradient(180deg,#1f2335,#0c0e18); --mk-line:rgba(255,255,255,.16);
+  --mk-bg:#ffffff; --mk-ink:#000000; --mk-wm:#ffffff; --mk-line:transparent;
   color-scheme:dark;`;
 
 export const PREMIUM_TOKENS = String.raw`:root {
@@ -41,8 +41,8 @@ export const PREMIUM_TOKENS = String.raw`:root {
   --grad:linear-gradient(135deg,#7c3aed 0%,#6d28d9 55%,#5b21b6 100%);
   --grad-text:linear-gradient(100deg,#7c3aed,#a855f7 55%,#6d28d9);
   --btn-bg:var(--grad); --btn-ink:#ffffff; --btn-line:transparent;
-  /* The Purser mark: ink, monochrome, business-like (the owner: "not too purple"); violet stays an accent. */
-  --mk-bg:linear-gradient(180deg,#24203a,#0e0b1a); --mk-line:transparent;
+  /* The Purser mark: pure black and white (the owner: "monochrome, no violet at all"), the wordmark the same. */
+  --mk-bg:#000000; --mk-ink:#ffffff; --mk-wm:#000000; --mk-line:transparent;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
   --r-sm:12px; --r:20px; --r-lg:28px; --gut:16px;
   --s1:8px; --s2:16px; --s3:24px; --s4:40px; --s5:64px; --s6:104px;
@@ -113,7 +113,7 @@ export const CONSOLE_PREMIUM_CSS = String.raw`
   background-size:18px 18px;
   -webkit-mask-image:radial-gradient(ellipse 70% 75% at 75% 0%,#000 4%,transparent 90%);mask-image:radial-gradient(ellipse 70% 75% at 75% 0%,#000 4%,transparent 90%);}
 .signed-in main > .wrap {position:relative;z-index:1;}
-.abrand .mk { background:var(--mk-bg); color:#fff; border:1px solid var(--mk-line); box-shadow:inset 0 1px 0 rgba(255,255,255,.14); }
+.abrand .mk { background:var(--mk-bg); color:var(--mk-ink); border:0; box-shadow:none; }
 /* One surface for every card. */
 .card, .auth { border-radius:16px; border-color:color-mix(in srgb,var(--accent) 13%,var(--border)); background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 3%,var(--surface)),var(--surface)); box-shadow:var(--hi),0 1px 2px rgba(16,24,40,.05),0 22px 44px -34px rgba(0,0,0,.55); }
 .signed-in .card.next.hero, .signed-in .card.nyou {background:linear-gradient(130deg,color-mix(in srgb,var(--accent) 18%,var(--surface)),var(--surface) 58%);border-color:color-mix(in srgb,var(--accent) 38%,var(--border));}

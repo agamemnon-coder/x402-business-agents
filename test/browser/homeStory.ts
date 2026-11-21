@@ -15,7 +15,7 @@
 // two sentences are two lines. Every expected value is read from the records, not typed here.
 import type { Page } from "playwright";
 import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
-import { agentRoster, agentTiles, PILOT_CTA, proofTiles, START, START_ID, TOUR_BUTTON, WATCH_BUTTON, WHATS_REAL } from "../../src/redesign/home.js";
+import { agentRoster, agentTiles, BUSINESS_HREF, PILOT_CTA, proofTiles, START, TOUR_BUTTON, WATCH_BUTTON, WHATS_REAL } from "../../src/redesign/home.js";
 import { FILM_URL } from "../../src/config/brand.js";
 import { BAND } from "../../src/redesign/integrations.js";
 import { TOUR_STOPS } from "../../src/redesign/tour.js";
@@ -42,7 +42,7 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   // The hero's three buttons (the owner's concept, 21 Nov): Try (the one primary), Watch the demo, Start a pilot; the
   // sandbox line in the first screen. The judge tour's button is under its map.
   const ctas = await page.locator("main .e-hero .ctas a.btn").evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").trim() })));
-  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, FILM_URL, `#${START_ID}`])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref}, ${FILM_URL} and #${START_ID}`);
+  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, FILM_URL, BUSINESS_HREF])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref}, ${FILM_URL} and ${BUSINESS_HREF}`);
   if (JSON.stringify(ctas.map((c) => c.text)) !== JSON.stringify([START, WATCH_BUTTON, PILOT_CTA])) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}", "${WATCH_BUTTON}" and "${PILOT_CTA}"`);
   if ((await page.locator("main .e-hero .ctas a.btn.primary").getAttribute("href")) !== o.tryHref) fail("the hero's primary button is not Try");
   if ((await page.locator(`main .e-tour a.btn[data-tour-start]`).count()) !== 1 || (await page.locator(`main .e-tour a.btn[data-tour-start]`).innerText()).trim() !== TOUR_BUTTON) fail(`the judge tour's part has no "${TOUR_BUTTON}" button`);
@@ -138,7 +138,7 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
     await tryLink.click();
     await page.waitForURL((u) => u.pathname === "/try", { timeout: 12_000 });
     const response = await page.request.get(page.url());
-    if (response.status() !== 200 || !(await response.text()).includes("test money"))
+    if (response.status() !== 200 || !/test money/i.test(await response.text()))
       fail(`the Try CTA landed on an invalid demo response: ${response.status()}`);
     await page.goto(o.url, { waitUntil: "load" });
   }
