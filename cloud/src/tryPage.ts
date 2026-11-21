@@ -2195,6 +2195,14 @@ body:has(.screen.start)::after { content: ""; position: fixed; inset: 0; z-index
   radial-gradient(60% 55% at 85% 30%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
   radial-gradient(45% 40% at 10% 90%, color-mix(in srgb, var(--accent-ink, var(--accent)) 20%, transparent), transparent 70%); }
 body:not(:has(.screen.start)) canvas.pw-wave { opacity: .3; }
+/* 21 Nov (Max: "the run inside the same card"): after the start, the run's steps (the stage bar, the guide line and each
+   screen) sit in one centred glass card on the wave, as the start's card does; the engine's rail stays beside it. */
+body:has(#main .screen):not(:has(.screen.start)) main#main { max-width: 780px; margin-top: 18px; margin-bottom: 40px; padding: clamp(16px, 2.4vw, 26px) clamp(14px, 2.4vw, 26px) !important; border-radius: 24px;
+  border: 1px solid var(--glass-line, var(--border)); background: var(--glass, var(--surface)); -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2);
+  box-shadow: var(--hi, none), 0 40px 90px -40px var(--glow, rgba(0,0,0,.35)), var(--shadow); }
+body:has(#main .screen):not(:has(.screen.start)) main#main .screen > .card:not(.refusal), body:has(#main .screen):not(:has(.screen.start)) main#main .pv-stages { background: color-mix(in srgb, var(--surface) 72%, transparent); }
+@media (max-width: 560px) { body:has(#main .screen):not(:has(.screen.start)) main#main { margin: 10px 8px 28px; border-radius: 20px; } }
+@media (min-width: 1280px) { body:has(#main .screen):not(:has(.screen.start)) main#main { padding-left: 12px !important; padding-right: 12px !important; } }
 @media (prefers-color-scheme: light) { canvas.pw-wave { opacity: .45; } }
 :root[data-theme="light"] canvas.pw-wave { opacity: .45; }`;
 export const TRY_WAVE_JS = waveScript({ selector: "canvas.pw-wave", placement: "hero", intensity: 1.15 });
