@@ -30,7 +30,7 @@ describe("/try's first screen", () => {
     const { START } = await import("../cloud/src/tryCopy.js");
     // 15 Nov (Max): the concept in the headline, AI agents and Face ID; the step under it names the other devices' words.
     expect(START.heading).toBe("AI agents pay your suppliers. You approve the big ones with Face ID.");
-    expect(START.eyebrow).toBe("Hands-on · about 2 minutes");
+    expect(START.eyebrow).toBe("Live demo · about 2 minutes"); // 21 Nov (Max: the start as the live demo's own screen)
     expect(START.flow.map((f) => f.name)).toEqual(["Read", "Check", "You approve"]);
     expect(START.flow[2]!.line).toBe("With Face ID or a fingerprint.");
     // The trailer on YouTube, one quiet link beside the button (14 Nov, owner).

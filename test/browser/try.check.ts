@@ -333,8 +333,9 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   await page.waitForTimeout(900);
   const box = (sel: string) => page.locator(sel).first().boundingBox();
-  const [h1, flow, main, trailer, partners] = [await box("main > h1"), await box(".start .flow"), await box("#main .btn.primary"), await box(".start .trailer"), await box(".start .partners")];
+  const [h1, flow, main, trailer, partners, card] = [await box("main > h1"), await box(".start .flow"), await box("#main .btn.primary"), await box(".start .trailer"), await box(".start .partners"), await box(".start .appcard")];
   ok(!!h1 && !!flow && !!main && !!trailer && !!partners, `${tag}: the headline, the steps, the button, the trailer link and the partners are shown`);
+  ok((await page.textContent(".start .appcard"))!.includes("Bergtex Textil GmbH") && (await page.textContent(".start .appcard"))!.includes("EUR 1,850.00"), `${tag}: the card shows the sample invoice the visit starts with`);
   ok(await page.locator(".start .flow li").count() === 4 && (await page.textContent(".start .fend"))!.includes(START.flowEnd), `${tag}: read, check, the fork and the one-cent refusal`);
   // 21 Nov (the new direction): after Check the flow forks: the agent pays alone within the limit, the passkey above it.
   const lanes = await page.locator(".start .fork .lane").evaluateAll((ls) => ls.map((l) => (l.textContent ?? "").trim()));
@@ -344,7 +345,8 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   if (h1 && flow && main && trailer) {
     ok(main.y + main.height <= height && trailer.y + trailer.height <= height, `${tag}: the button and the trailer link are in view without scrolling`);
     if (width === 390) ok(flow.y > h1.y + h1.height - 1 && main.y > flow.y + flow.height - 1, `${tag}: a phone: one column, the headline, the steps, then the button`);
-    else ok(flow.x >= h1.x + h1.width - 1 && flow.y < main.y + main.height && partners!.y + partners!.height <= height + 1, `${tag}: a laptop or wider: the steps beside the words, the partners in view`);
+    // 21 Nov (Max: an app start screen): the steps under the words, the sample invoice's card beside them.
+    else ok(!!card && card.x >= h1.x + h1.width - 1 && flow.y > h1.y && main.y > flow.y && card.y < main.y + main.height && partners!.y + partners!.height <= height + 1, `${tag}: a laptop or wider: the steps under the words, the sample invoice beside them, the partners in view`);
   }
   const logos = await page.locator(".start .logos img").evaluateAll((im) => im.map((i) => [(i as HTMLImageElement).alt, (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0]));
   ok(JSON.stringify(logos) === JSON.stringify([["Alta (formerly Metal)", true], ["Claude", true]]), `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);

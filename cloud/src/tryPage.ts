@@ -50,6 +50,7 @@ import { FILM_URL, TRY_VIDEO } from "../../src/config/brand.js";
 import { presentExtra, V2_COPY } from "./try/presentMode.js";
 import { VIS_CSS, visScript } from "./try/visuals.js";
 import { NEG_CSS, NEG_TRY_JS, negKitJs } from "./try/negotiateKit.js";
+import { SAMPLES } from "./engine/samples.gen.js";
 
 /**
  * Recorded real runs on the site (kit11, package.json's homepage): its /runs, for when the demo is busy or paused, and
@@ -2159,8 +2160,18 @@ const TESTS_HREF = "https://github.com/agamemnon-coder/x402-business-agents/blob
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 /** extra: the app shell and "How Purser works" (cloud/src/try/presentMode.ts); recording mode's too with /try?present=1. */
 /** over: the v2 preview's words (cloud/src/try/presentMode.ts V2_COPY), merged over the copy key by key; none on plain /try. */
+/** The start's card: the first sample the engine offers, its supplier, number, amount and due day as the page writes them. */
+function startSample(): { vendor: string; invoice_no: string; money: string; due: string } | null {
+  const r = SAMPLES.find((x) => x.key === "clean")?.row;
+  if (!r) return null;
+  const n = Number(r.amount);
+  const money = `${r.currency} ${new Intl.NumberFormat("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
+  const due = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${r.due_date}T12:00:00Z`));
+  return { vendor: r.vendor, invoice_no: r.invoice_no, money, due };
+}
+
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }, over?: Record<string, Record<string, unknown>>): string {
-  const copy = { limitAmount: TRY_ALONE_LIMIT.amount, limitCurrency: TRY_ALONE_LIMIT.currency, run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRY_VIDEO.url, label: TRY_VIDEO.label }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL }, cash: CASH };
+  const copy = { limitAmount: TRY_ALONE_LIMIT.amount, limitCurrency: TRY_ALONE_LIMIT.currency, run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRY_VIDEO.url, label: TRY_VIDEO.label }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: { ...START, sample: startSample() }, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL }, cash: CASH };
   if (over) for (const [k, v] of Object.entries(over)) { const c = copy as unknown as Record<string, Record<string, unknown>>; c[k] = { ...(c[k] ?? {}), ...v }; }
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,

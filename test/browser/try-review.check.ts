@@ -94,7 +94,7 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   const shot = async (name: string) => { if (shots) { await page.waitForTimeout(600); await page.screenshot({ path: join(shots, `${tag}-${name}.png`), fullPage: true }); } };
 
   await page.goto(`${ORIGIN}/try?v=1`);
-  await page.getByRole("button", { name: /Start with a test company/ }).click();
+  await page.getByRole("button", { name: /Start the live demo|Start with a test company/ }).click();
   await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
   const tenant = await page.evaluate(() => JSON.parse(sessionStorage.getItem("purser.try") ?? "{}").tenant);
 
@@ -270,7 +270,7 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   let page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(`${tag}: ${String(e)}`));
   await page.goto(`${ORIGIN}/try?v=1`);
-  await page.getByRole("button", { name: /Start with a test company/ }).click();
+  await page.getByRole("button", { name: /Start the live demo|Start with a test company/ }).click();
   await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
   await pick(page, "A supplier's invoice");
   ok((await page.locator("main").innerText()).includes(WORK.ready), `${tag}: the clean sample is ready to pay`);
@@ -295,7 +295,7 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(`${tag}: ${String(e)}`));
   await page.goto(`${ORIGIN}/try?v=1`);
-  await page.getByRole("button", { name: /Start with a test company/ }).click();
+  await page.getByRole("button", { name: /Start the live demo|Start with a test company/ }).click();
   await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
   await pick(page, "An invoice with new bank details");
   ok(await page.getByRole("button", { name: WORK.override }).count() === 0 && await page.getByRole("button", { name: WORK.reject }).isVisible(), `${tag}: new bank details: no override, only Reject`);

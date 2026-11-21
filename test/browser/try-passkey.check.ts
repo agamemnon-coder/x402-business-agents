@@ -62,7 +62,7 @@ const browser = await chromium.launch();
 const iphone = devices["iPhone 13"]!;
 
 async function toApprove(page: Page): Promise<void> {
-  await page.getByRole("button", { name: /Start with a test company/ }).click();
+  await page.getByRole("button", { name: /Start the live demo|Start with a test company/ }).click();
   await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
   await page.locator(".samples .btn:not(.skel)").first().waitFor();
   await page.getByRole("button", { name: "A supplier's invoice", exact: true }).click();
