@@ -279,23 +279,27 @@ const repoFile = (f: string) => readFileSync(new URL(`../../${f}`, import.meta.u
 
 interface StopStep { id: string; pass: boolean; facts?: { changed?: unknown; failure_reason?: string } | null }
 interface StopDrill { test_money?: boolean; cards: { agent: string }[]; passes: { stopped: unknown; timings?: { fully_blocked_ms?: number } | null; steps: StopStep[] }[] }
-export interface StopFacts { agents: number; seconds: string }
+export interface StopFacts { agents: number; seconds: string; passes: number }
 /**
- * From the stop drill's record: the last pass that ran to its end with the stop pulled (stop.pull passed, every agent's
- * card changed) and every check after it blocked, at least one of them a charge Airwallex declined as CARD_INACTIVE.
+ * From the stop drill's record: every pass whose stop was pulled (stop.pull passed, every agent's card changed) and whose
+ * checks after it all blocked, at least one a charge Airwallex declined as CARD_INACTIVE; the time from the stop to all
+ * blocked, as each pass measured it (review, 21 Nov: the record has two such passes, 3.50 s and 3.35 s; one of them
+ * stopped later on an unrelated step, which the drill's own page says). "3.4–3.5" for two, "3.4" for one.
  */
 export function stopDrillFacts(rec: StopDrill | null = (() => { try { return JSON.parse(repoFile(STOP_DRILL_RECORD)) as StopDrill; } catch { return null; } })()): StopFacts | null {
   if (!rec?.test_money) return null;
-  for (const p of [...rec.passes].reverse()) {
-    if (p.stopped) continue;
+  const ok = rec.passes.flatMap((p) => {
     const pull = p.steps.find((s) => s.id === "stop.pull" && s.pass);
     const blocked = p.steps.filter((s) => s.id.startsWith("blocked."));
     const changed = pull?.facts?.changed, ms = p.timings?.fully_blocked_ms;
-    if (!pull || !blocked.length || !blocked.every((s) => s.pass) || !Array.isArray(changed) || changed.length !== rec.cards.length || typeof ms !== "number") continue;
-    if (!blocked.some((s) => s.id === "blocked.charge" && s.facts?.failure_reason === "CARD_INACTIVE")) continue;
-    return { agents: changed.length, seconds: (ms / 1000).toFixed(1) };
-  }
-  return null;
+    if (!pull || !blocked.length || !blocked.every((s) => s.pass) || !Array.isArray(changed) || changed.length !== rec.cards.length || typeof ms !== "number") return [];
+    if (!blocked.some((s) => s.id === "blocked.charge" && s.facts?.failure_reason === "CARD_INACTIVE")) return [];
+    return [{ agents: changed.length, ms }];
+  });
+  if (!ok.length) return null;
+  const lo = Math.min(...ok.map((p) => p.ms)) / 1000, hi = Math.max(...ok.map((p) => p.ms)) / 1000;
+  const seconds = lo.toFixed(1) === hi.toFixed(1) ? lo.toFixed(1) : `${lo.toFixed(1)}–${hi.toFixed(1)}`;
+  return { agents: ok[0]!.agents, seconds, passes: ok.length };
 }
 
 /**
@@ -405,7 +409,7 @@ export function agentTiles(stop: StopFacts | null = stopDrillFacts()): AgentTile
   return [
     { id: "sourcing", icon: "package", title: "Sourcing and negotiation", text: "Buys data per query on its own card. Two agents negotiate a deal; code holds the limits, you sign it.", href: NEGOTIATE_URL, link: NEGOTIATE_BUTTON, external: true },
     { id: "payables", icon: "receipt", title: "Payables", text: "Reads, checks and books each supplier invoice. Above the limit you sign the exact terms with a passkey.", href: TRY_URL, link: "Try it", steps: PAYABLES_STEPS },
-    { id: "treasury", icon: "landmark", title: "Treasury", text: `Watches spending, sweeps earnings to Airwallex, pays in EUR after your sign-off.${stop ? ` One signed stop froze all ${words[stop.agents] ?? stop.agents} agents' cards in ${stop.seconds} s.` : ""}`, href: stop ? `${REPO_BLOB}${STOP_DRILL_DOC}` : "agents/treasury", link: stop ? "The stop drill" : "Its run", external: !!stop, ...(stop ? { rec: STOP_DRILL_RECORD } : {}) },
+    { id: "treasury", icon: "landmark", title: "Treasury", text: `Watches spending, sweeps earnings to Airwallex, pays in EUR after your sign-off.${stop ? ` One signed stop froze all ${words[stop.agents] ?? stop.agents} agents' cards in ${stop.seconds} s${stop.passes > 1 ? ` (${words[stop.passes] ?? stop.passes} passes)` : ""}.` : ""}`, href: stop ? `${REPO_BLOB}${STOP_DRILL_DOC}` : "agents/treasury", link: stop ? "The stop drill" : "Its run", external: !!stop, ...(stop ? { rec: STOP_DRILL_RECORD } : {}) },
     { id: "support", icon: "headphones", title: "Support", text: "Refunds customers when a dispute holds, inside its own card limit and its mandate on Alta.", href: "agents/support", link: "Its run" },
   ];
 }

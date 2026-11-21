@@ -37,6 +37,7 @@ export interface TourStop {
   icon: string;
   /** A page of the site (its path, relative) or, for a stop elsewhere, the address it opens in a new tab. */
   href: string; external?: boolean;
+  /** A section of that page the stop opens at (its id), after the query: books?tour=6#t0. */ at?: string;
   /** The site's page key, for a stop on the site: the bar shows on that page. */ key?: PageKey;
 }
 
@@ -48,7 +49,8 @@ export const TOUR_STOPS: readonly TourStop[] = [
   { title: "Purser Cloud", sub: "The console, as a guest", look: "The product a company runs: invoices, agents, approvals and connections, read only.", icon: "layout-dashboard", href: TOUR_CLOUD_URL, external: true },
   { title: "Agents on Alta", sub: "Mandates on chain", look: "Each agent pays per request under its own mandate; over its cap, Alta refuses on chain.", icon: "link-2", href: "alta", key: "metal" },
   { title: "Cards via Visa", sub: "One credential, one purchase", look: "Visa Intelligent Commerce through Airwallex Airi (sandbox): a reused credential is refused.", icon: "credit-card", href: "visa", key: "visa" },
-  { title: "Books on T:0", sub: "A real ledger, read back", look: "The balance sheet, T:0 booking each payment, and the one-cent demo.", icon: "database", href: "books", key: "books" },
+  // Review, 21 Nov: the stop opens at T:0's section (books#t0) and says what T:0 is here, its shared sandbox ledger.
+  { title: "Books on T:0", sub: "T:0's shared sandbox ledger", look: "The balance sheet, T:0 booking each payment, and the one-cent demo.", icon: "database", href: "books", at: "t0", key: "books" },
   { title: "Proof", sub: "Every run, with its record", look: "Every figure on the site, each one tap from the run record it is read from.", icon: "file-check", href: "proof", key: "proof" },
 ];
 export const TOUR_LABEL = "Judge tour";
@@ -61,7 +63,7 @@ export const TOUR_START_HREF = `home?${TOUR_ID}=1#${TOUR_ID}`;
 /** Home's tour map: the seven stops in order, each a link (a new tab for a stop elsewhere), with ?tour=<n> on the site's own. */
 export function tourMapHtml(): string {
   const stop = (s: TourStop, i: number) => {
-    const href = s.external ? s.href : `${s.href}?${TOUR_ID}=${i + 1}`;
+    const href = s.external ? s.href : `${s.href}?${TOUR_ID}=${i + 1}${s.at ? `#${s.at}` : ""}`;
     return `<li data-stop="${i + 1}"><a href="${esc(href)}"${s.external ? ' target="_blank" rel="noopener"' : ""}><span class="tm-n"><span class="tm-i">${icon(s.icon, 18)}</span><em>${i + 1}</em></span><span class="tm-t"><b>${esc(s.title)}</b><small>${esc(s.sub)}</small></span>${icon(s.external ? "external-link" : "arrow-right", 16)}</a></li>`;
   };
   return `<ol class="tmap">${TOUR_STOPS.map(stop).join("")}</ol>`;
@@ -136,7 +138,7 @@ aside.tbar :focus-visible { outline: 3px solid var(--accent); outline-offset: 2p
  * Back and Next as links.
  */
 export function tourJs(): string {
-  const stops = TOUR_STOPS.map((s) => ({ t: s.title, l: s.look, h: s.href, x: !!s.external }));
+  const stops = TOUR_STOPS.map((s) => ({ t: s.title, l: s.look, h: s.href, x: !!s.external, a: s.at ?? "" }));
   // The icons travel as shapes and are built with createElementNS: no markup is parsed in the browser (CodeQL, 21 Nov).
   const shape = (name: string, size: number) => ({ z: size, s: ICONS[name] ?? MORE_ICONS[name] });
   const icons = { map: shape("route", 16), back: shape("arrow-left", 16), next: shape("arrow-right", 16), open: shape("external-link", 16), x: shape("x", 18) };
@@ -146,7 +148,7 @@ export function tourJs(): string {
   function store(v) { try { if (v) sessionStorage.setItem(K, String(v)); else sessionStorage.removeItem(K); } catch (e) {} }
   function stored() { try { return +(sessionStorage.getItem(K) || 0); } catch (e) { return 0; } }
   // A stop's address: a page of the site with ?tour=n; a stop elsewhere is shown on Home, at the map.
-  function to(i) { var s = S[i - 1]; return (s.x ? "home" : s.h) + "?" + ID + "=" + i + (s.x ? "#" + ID : ""); }
+  function to(i) { var s = S[i - 1]; return (s.x ? "home" : s.h) + "?" + ID + "=" + i + (s.x ? "#" + ID : s.a ? "#" + s.a : ""); }
   // Home's first button starts the tour at stop 1 (its link does the same without script).
   [].forEach.call(document.querySelectorAll("a[data-tour-start]"), function (a) { a.addEventListener("click", function () { store(1); }); });
   var m = new RegExp("[?&]" + ID + "=(\\\\d+)").exec(location.search);

@@ -285,15 +285,16 @@ describe("The agents, on Home", () => {
     expect(agentRoster({ ...AWX, cards: AWX.cards.map((c) => ({ ...c, read_back: { ...c.read_back, status: "INACTIVE" } })) } as never)).toEqual([]);
   });
 
-  it("states the emergency stop as the drill's record holds it, or not at all", () => {
-    const pass = [...DRILL.passes].reverse().find((p) => !p.stopped && p.steps.some((s) => s.id === "stop.pull" && s.pass))!;
+  // Review, 21 Nov: the record has two passes whose stop held (3.50 s and 3.35 s); Home says the range and the count.
+  it("states the emergency stop as the drill's record holds it, every pass whose stop held, or not at all", () => {
     expect(DRILL.test_money).toBe(true);
-    expect(pass.steps.filter((s) => s.id.startsWith("blocked.")).every((s) => s.pass)).toBe(true);
+    const held = DRILL.passes.filter((p) => p.steps.some((s) => s.id === "stop.pull" && s.pass) && p.steps.filter((s) => s.id.startsWith("blocked.")).every((s) => s.pass) && p.timings);
+    expect(held.map((p) => p.timings!.fully_blocked_ms)).toEqual([3501, 3352]);
     const facts = stopDrillFacts();
-    expect(facts).toEqual({ agents: DRILL.cards.length, seconds: (pass.timings!.fully_blocked_ms / 1000).toFixed(1) });
+    expect(facts).toEqual({ agents: DRILL.cards.length, seconds: "3.4–3.5", passes: 2 });
     expect(DRILL.cards).toHaveLength(3);
-    for (const html of [ON, OFF]) expect(text(section(html, "e-agents"))).toContain(`One signed stop froze all three agents' cards in ${facts!.seconds} s. ••`);
-    expect(stopDrillFacts({ ...DRILL, passes: DRILL.passes.map((p) => ({ ...p, stopped: "halted" })) } as never)).toBeNull();
+    for (const html of [ON, OFF]) expect(text(section(html, "e-agents"))).toContain(`One signed stop froze all three agents' cards in ${facts!.seconds} s (two passes). ••`);
+    expect(stopDrillFacts({ ...DRILL, passes: DRILL.passes.map((p) => ({ ...p, steps: p.steps.filter((s) => s.id !== "stop.pull") })) } as never)).toBeNull();
     expect(stopDrillFacts({ ...DRILL, test_money: false } as never)).toBeNull();
     expect(agentTiles(null).find((t) => t.id === "treasury")!.text).not.toMatch(/stop/);
   });
@@ -332,7 +333,7 @@ describe("The judge tour, on Home and its stops", () => {
     expect([...TOUR_PAGES]).toEqual(["home", "metal", "visa", "books", "proof"]);
     for (const html of [ON, OFF]) {
       const map = /<ol class="tmap">[\s\S]*?<\/ol>/.exec(mainOf(html))![0];
-      expect([...map.matchAll(/<li data-stop="(\d)"><a href="([^"]+)"/g)].map((m) => [Number(m[1]), decode(m[2]!)])).toEqual(TOUR_STOPS.map((s, i) => [i + 1, s.external ? s.href : `${s.href}?tour=${i + 1}`]));
+      expect([...map.matchAll(/<li data-stop="(\d)"><a href="([^"]+)"/g)].map((m) => [Number(m[1]), decode(m[2]!)])).toEqual(TOUR_STOPS.map((s, i) => [i + 1, s.external ? s.href : `${s.href}?tour=${i + 1}${s.at ? `#${s.at}` : ""}`]));
     }
     expect(TOUR_START_HREF).toBe("home?tour=1#tour");
   });
