@@ -1028,16 +1028,26 @@ async function guestPass() {
     const logos = await p.locator(".cx-logos img").count();
     ok(logos >= 20 && await p.locator(".cx-logos img:not([alt])").count() === 0 && await p.locator('.cx-logos img[src^="data:"]').count() === logos, `${tag}: Connections shows the products' own logos (${logos}), each named, none fetched from elsewhere`);
     await p.goto(`${ORIGIN}/#/agents`);
-    await p.waitForSelector("button.wpass");
-    const pass = p.locator("button.wpass").first();
-    ok(await p.locator("button.wpass").count() === 3 && /EUR/.test((await pass.innerText()) ?? ""), `${tag}: Agents shows one pass per agent, with what it spent`);
-    // 22 Nov: every agent Purser has (cloud/src/agentRoster.ts), the three this company's records name marked at work.
-    ok(await p.locator("article.rs").count() === 9 && await p.locator("article.rs.on").count() === 3 && await p.locator("article.rs details.rs-how").count() === 9, `${tag}: Agents shows every agent in Purser, three at work here`);
-    await pass.click();
-    await p.waitForTimeout(motion === "reduce" ? 50 : 700);
-    ok(await pass.getAttribute("aria-pressed") === "true" && await p.locator("button.wpass").first().locator(".wp-back").getAttribute("aria-hidden") === "false", `${tag}: a pass turns over to its mandate`);
-    await p.locator(".wagent button.wmore").first().click();
-    ok(await p.locator(".wagent.open .wdetail .adec").first().isVisible() && await p.locator(".wagent button.wmore").first().getAttribute("aria-expanded") === "true", `${tag}: Details opens the agent's record`);
+    // 23 Nov: every agent Purser has (cloud/src/agentRoster.ts) as its own payment card, the three at work here first.
+    await p.waitForSelector("button.dk-face .acard");
+    const face = p.locator("button.dk-face").first();
+    ok(await p.locator("article.dk-item").count() === 9 && await p.locator("article.dk-item.on").count() === 3 && /EUR/.test((await face.innerText()) ?? ""), `${tag}: Agents shows every agent in Purser as a card, three at work here, with what each spent`);
+    ok(await p.locator(".acard img[alt=Claude]").count() >= 8 && await p.locator(".acard img[alt=Visa]").count() === 3 && await p.locator('.acard img:not([src^="data:"])').count() === 0, `${tag}: the cards carry the real marks (Claude, Visa), none fetched from elsewhere`);
+    await face.click();
+    await p.waitForSelector("dialog.dk-drawer[open] .adec");
+    ok(await p.locator("dialog.dk-drawer[open] .adec").isVisible(), `${tag}: a card opens the agent's record in a drawer`);
+    ok(await p.evaluate(() => { const d = document.querySelector("dialog.dk-drawer[open] .dk-db"); return !!d && d.scrollWidth <= d.clientWidth + 1; }), `${tag}: the drawer: nothing wider than it`);
+    await p.keyboard.press("Escape");
+    // Add to phone: Apple Wallet said to wait for its certificate (none here), and the QR to the card's read-only view.
+    await p.locator("article.dk-item.on .dk-acts button").first().click();
+    await p.waitForSelector("dialog.dk-phone[open] img.dk-qri", { timeout: 20_000 });
+    ok(/waiting for the pass certificate/.test(await p.locator("dialog.dk-phone[open]").innerText()) && await p.locator("dialog.dk-phone[open] button.dk-wal").isDisabled(), `${tag}: Add to phone: Apple Wallet waits for its certificate, the QR is there`);
+    const cardUrl = await p.locator("dialog.dk-phone[open] .dk-qa a").getAttribute("href");
+    await p.keyboard.press("Escape");
+    const phone = await c.newPage();
+    await phone.goto(cardUrl!);
+    ok(/Read only/.test(await phone.innerText("body")) && await phone.locator(".acard").count() === 1 && !/<script/i.test(await phone.content()), `${tag}: the QR's link opens the card, read only, without a script`);
+    await phone.close();
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: Agents: nothing is wider than the screen`);
     await p.goto(`${ORIGIN}/#/books`);
     await p.waitForSelector(".bcharts svg.chart", { timeout: 20_000 });

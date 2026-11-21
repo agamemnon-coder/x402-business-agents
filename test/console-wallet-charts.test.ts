@@ -1,33 +1,58 @@
-// Purser Cloud's Agents as passes (cloud/src/agentWallet.ts) and the Overview's and Books' charts
+// Purser Cloud's Agents as cards (cloud/src/agentWallet.ts, 23 Nov; passes before) and the Overview's and Books' charts
 // (cloud/src/consoleCharts.ts), 21 Nov: what the page script promises in its text. The browser check
 // (test/browser/console.check.ts, the guest pass) turns a pass over, opens an agent's record and reads the charts.
 import { describe, expect, it } from "vitest";
 import { WALLET_CSS, WALLET_JS } from "../cloud/src/agentWallet.js";
+import { CARD_ART_CSS, CARD_PRESETS, DEFAULT_STYLE } from "../cloud/src/agentCardArt.js";
+import { ROSTER } from "../cloud/src/agentRoster.js";
 import { CHARTS_CSS, CHARTS_JS } from "../cloud/src/consoleCharts.js";
 import { consolePage } from "../cloud/src/console.js";
 
 const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "in.cloud.test" });
 
-describe("the agents' passes", () => {
-  it("are in the console, its script and its one stylesheet", () => {
+describe("the agents' cards (23 Nov)", () => {
+  it("are in the console, its script and its one stylesheet, with the card art the phone's view shares", () => {
     expect(html).toContain(WALLET_JS.trim());
     expect(html).toContain(WALLET_CSS.trim());
+    expect(WALLET_CSS).toContain(CARD_ART_CSS.trim());
   });
-  it("show the card's last four only, never a card number, a CVV or a way to act", () => {
-    expect(WALLET_JS).toContain("'•••• '+last4");
+  it("show the card's last four only, never a card number, a CVV or a way to move money", () => {
+    expect(WALLET_JS).toContain("'•••• •••• •••• '+x.last4");
     expect(WALLET_JS).not.toMatch(/card_number|cvv|\bpan\b/i);
-    // Visual only: no API call and no signed action from the pass (the live card's actions stay in its own panel).
-    expect(WALLET_JS).not.toMatch(/\bapi\(|cardAct\(|navigator\.credentials/);
+    // Its only calls: the design (read, and saved by an owner), the phone link, the Wallet pass link, the recorded negotiation.
+    const calls = [...WALLET_JS.matchAll(/api\('([^']+)'/g)].map((m) => m[1]).sort();
+    expect(calls).toEqual(["/v1/agents/", "/v1/agents/", "/v1/card-design", "/v1/card-design", "/v1/negotiation/recorded"]);
+    expect(WALLET_JS).not.toMatch(/cardAct\(|navigator\.credentials|\/v1\/cards\/actions/);
   });
-  it("turn over as a button a screen reader hears, and swap without motion when motion is reduced", () => {
-    expect(WALLET_JS).toContain("pass.setAttribute('aria-pressed'");
-    expect(WALLET_JS).toContain("more.setAttribute('aria-expanded'");
-    expect(WALLET_CSS).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[^]*button\.wpass\.flipped \.wp-inner \{ transform: none; \}/);
+  it("draw from data as text, never as markup", () => {
+    expect(WALLET_JS).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
   });
-  it("leave room for more rows and blocks (PASS_ROWS, AGENT_BLOCKS), and a row that throws leaves the pass drawn", () => {
-    expect(WALLET_JS).toContain("const PASS_ROWS=[];");
-    expect(WALLET_JS).toContain("const AGENT_BLOCKS=[];");
-    expect(WALLET_JS).toContain("const safely=(f,a,ctx)=>{try{return f(a,ctx)}catch(e){return null}};");
+  it("give each agent its own design, the company's mark, and real marks for Claude, Alta, Visa and Airwallex", () => {
+    expect(new Set(Object.values(DEFAULT_STYLE)).size).toBe(ROSTER.length);
+    for (const r of ROSTER) expect(DEFAULT_STYLE[r.id], r.id).toBeDefined();
+    for (const k of ["'claude'", "'alta'", "'visa-white'", "'airwallex'"]) expect(WALLET_JS).toContain(`dkLogo(${k})`);
+    for (const p of CARD_PRESETS) expect(CARD_ART_CSS).toContain(`.acard.p-${p} {`);
+  });
+  it("say plainly when Apple Wallet waits for its certificate, and offer the phone's QR either way", () => {
+    expect(WALLET_JS).toContain("wal_wait:'Apple Wallet: waiting for the pass certificate'");
+    expect(WALLET_JS).toContain("wal.disabled=true");
+    expect(WALLET_JS).toContain("/phone-card/link");
+    expect(WALLET_JS).toContain("ctx.P.wallet_pass.available");
+  });
+  it("keep a guest's design in the browser and say so; the company's is saved only by those who may", () => {
+    expect(WALLET_JS).toContain("DESIGN_MODE=r&&r.can_save?'company':ME&&ME.demo?'guest':'reader'");
+    expect(WALLET_JS).toContain("d_guest:'Kept in this browser only");
+    expect(WALLET_JS).toContain("Design only: no limit, card or payment changes.");
+  });
+  it("move only when motion is allowed: tilt, meters, ticker, dialogs", () => {
+    expect(WALLET_JS).toContain("if(RM()||e.pointerType!=='mouse')return;");
+    expect(WALLET_JS).toContain("let k=0,paused=RM();");
+    expect(WALLET_CSS).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[^}]*\.dk-item, \.dk-tl\.in/);
+    expect(CARD_ART_CSS).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ \.acard, \.acard \.ac-bar > span \{ transition: none; \} \.acard \{ transform: none; \} \}/);
+  });
+  it("let a link to one agent open its drawer (#/agents?a=id clicks its button.wmore)", () => {
+    expect(WALLET_JS).toContain("it.id='roster-'+x.r.id");
+    expect(WALLET_JS).toContain("el('button','dk-line wmore'");
   });
 });
 

@@ -1,173 +1,420 @@
-// Purser Cloud's Agents tab as a wallet (21 Nov, the owner: "each agent as an Apple-Wallet-style card"). One pass per
-// agent: a rounded card in the agent's own gradient with its name, its job, what it spent this month against the CFO's
-// monthly limit, its per-purchase limit, its Airwallex card (last four only) and the card's state. Tap the pass and it
-// turns over: the agent's mandate (what it may and may not do) and its newest decision. "Details" opens the full record
-// below it (limits, the live sandbox card and its signed actions, every decision, what it learns, the technical record),
-// and the opened agent takes the whole row. Visual only: nothing here is a pass file, and nothing here acts; the live
-// card's actions stay in its own panel (cloud/src/consoleUi.ts liveCardPanel), each signed with the owner's passkey.
-// Pure CSS and DOM: the turn is a 3D rotation that prefers-reduced-motion replaces with a plain swap; on a phone the
-// passes stack.
+// Purser Cloud's Agents tab as a wallet of cards (23 Nov, the owner: "way too sophisticated, too much text; give it logos
+// instead of pictograms and more visuals and animations; also cards that you can connect with your phone, and the designs
+// like the one I was going to have in Apple Wallet, and give different ones to each, and also customizable for companies").
 //
-// Room for more (another view module adds T:0 bookings and tokenisation to each agent): push a function onto PASS_ROWS,
-// (a, ctx) => ({icon, label, value}) or null, for a row on the pass's back; or onto AGENT_BLOCKS, (a, ctx) => Node or
-// null, for a block in the agent's details. ctx is {demo, live, CV}: the demo flag, the agent's live card row (GET
-// /v1/cards) and that answer. A function that throws is left out; the pass still draws.
+// The page: a line of figures, a ticker of the newest decisions, then one payment card per agent (every agent Purser has,
+// cloud/src/agentRoster.ts; those at work in this company first), each in its own design (cloud/src/agentCardArt.ts):
+// the company's mark, the agent, its status, the card's last four only, spent against its monthly limit, and real marks
+// for Claude (its model), Alta (an on-chain mandate), Visa and Airwallex. One line under each card. Everything else is
+// one tap away in a drawer: what it does, its model, its limits and live sandbox card, what it may and may not do, its
+// decisions, what it learns, its payment token and where it lives in code. The Sourcing agent's negotiation has its own
+// band, from the recorded negotiation when the deployment serves it.
 //
-// The script goes into the console at __UI__ (cloud/src/console.ts), after cloud/src/consoleUi.ts (agentCard calls
-// walletAgent) and uses its el, ic, btn, t, tk, cur, cents, toCents, day, MONTHS, OUTCOME, BRAND_LOGOS and RM.
+// "Add to phone": Apple Wallet when the owner configured the pass certificate (cloud/src/walletPass.ts), otherwise said
+// plainly as waiting for it; and always a QR code to a read-only view of the card on the phone (cloud/src/agentPhoneCard.ts).
+// "Card design": the company's colour, initials or a small logo, and a designed preset per agent; saved for the company
+// by an owner or admin, else kept in this browser and labelled so. Design only: nothing here changes a limit, a card or a
+// payment; the live card's actions stay in its own panel (cloud/src/consoleUi.ts liveCardPanel), each signed with Face ID.
+//
+// Motion: a card tilts and shines under the pointer, meters fill once drawn, the ticker turns every few seconds (with a
+// pause button); none of it with prefers-reduced-motion. Every value is set as text; images only from data URLs.
+//
+// The script goes into the console at __UI__ (cloud/src/console.ts), after cloud/src/consoleShell.ts (ROSTER, REPO_BLOB,
+// sw) and cloud/src/consoleUi.ts, and uses their el, ic, btn, t, tk, cur, cents, toCents, day, dday, MONTHS, OUTCOME, RM,
+// NL, api, Expired and BRAND_LOGOS (cloud/src/connectionsView.ts).
+
+import { ALTA_AGENTS, CARD_ART_CSS, CARD_PRESETS, DEFAULT_STYLE, LOGO_MAX, PRESET_NAMES } from "./agentCardArt.js";
+
+const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
 export const WALLET_JS = String.raw`
-// --- Agents as passes (21 Nov) ----------------------------------------------------------------------------------------
-const PASS_ROWS=[];
-const AGENT_BLOCKS=[];
-// The agents opened in this tab, kept across a redraw (a card action redraws the page).
-const OPEN_AGENTS=new Set();
-// Each agent its own gradient: the three of the runner by name, any other by a hash of its id.
+// --- Agents as cards (23 Nov) -----------------------------------------------------------------------------------------
+const CARD_PRESETS=` + json(CARD_PRESETS) + String.raw`;
+const PRESET_NAMES=` + json(PRESET_NAMES) + String.raw`;
+const DEFAULT_STYLE=` + json(DEFAULT_STYLE) + String.raw`;
+const ALTA_AGENTS=` + json(ALTA_AGENTS) + String.raw`;
+const LOGO_MAX=` + json(LOGO_MAX) + String.raw`;
+const DK_W={en:{
+  lede:'Every agent has its own card, limits and Claude model. Tap a card for its record.',
+  n_agents:'agents',n_here:'at work here',n_dec:'decisions on record',
+  tick:'Newest decisions',pause:'Pause',play:'Play',
+  details:'Details',phone:'Add to phone',nego:'Watch a negotiation',
+  no_card:'No card of its own',code_only:'Code only',spent:'{spent}',of:'of {cap} this month',simulated:'Simulated',
+  close:'Close',job_h:'What it does',model_h:'Model',limit_h:'Limit',code_h:'Where it lives in code',sw:'Turned on in the runner with {sw}=on',
+  phone_h:'{name} on your phone',wal_btn:'Add to Apple Wallet',wal_busy:'Making the pass…',wal_fail:'The pass could not be made: {why}',
+  wal_wait:'Apple Wallet: waiting for the pass certificate',wal_nocard:'Apple Wallet: only for an agent with a card',
+  qr_h:'Scan to open this card on your phone',qr_sub:'A read-only view in the same design: what it spent, its limits, its status. It cannot pay or change anything. Works until {d}.',
+  qr_busy:'Making the link…',qr_fail:'The link could not be made: {why}',copy:'Copy link',copied:'Copied',logo_local:'Your uploaded logo stays in this browser; the phone shows your initials.',
+  design:'Card design',design_sub:'Your company\'s look on every agent\'s card. Design only: no limit, card or payment changes.',
+  d_color:'Company colour',d_color_all:'Use it on every card',d_mark:'Mark on the cards',d_initials:'Initials',d_logo:'Logo',d_upload:'Upload a logo (PNG, JPEG or WebP)',d_remove:'Remove the logo',
+  d_logo_big:'That image is too large even after resizing; try a simpler one.',d_logo_bad:'That file is not an image this page can read.',
+  d_styles:'Each agent\'s design',d_save:'Save for the company',d_saving:'Saving…',d_saved:'Saved for everyone in the company.',d_save_fail:'Not saved: {why}',
+  d_guest:'Kept in this browser only: the demo company is shared, so a guest\'s design is not saved.',d_reader:'A preview in this browser: an owner or admin saves the design for the company.',
+  d_reset:'Back to Purser\'s designs',d_done:'Done',
+  nego_h:'The Sourcing agent negotiates',nego_sub:'With a supplier\'s agent, turn by turn, inside the CFO\'s rails in code. The CFO signs the deal.',
+  nego_rec:'Recorded negotiation: written in advance, not a live model call; the rails\' answers are computed.',n_inv:'Invoice',n_agreed:'Agreed',n_refused:'refused by the rails',n_you:'Sourcing',n_sup:'Supplier (simulated)',
+  sandbox:'Agents\' cards in the Airwallex sandbox (live run)'},
+nl:{
+  lede:'Elke agent heeft een eigen kaart, limieten en Claude-model. Tik op een kaart voor zijn dossier.',
+  n_agents:'agents',n_here:'aan het werk hier',n_dec:'beslissingen vastgelegd',
+  tick:'Nieuwste beslissingen',pause:'Pauze',play:'Afspelen',
+  details:'Details',phone:'Op je telefoon',nego:'Bekijk een onderhandeling',
+  no_card:'Geen eigen kaart',code_only:'Alleen code',spent:'{spent}',of:'van {cap} deze maand',simulated:'Gesimuleerd',
+  close:'Sluiten',job_h:'Wat hij doet',model_h:'Model',limit_h:'Limiet',code_h:'Waar hij in de code staat',sw:'Aan in de runner met {sw}=on',
+  phone_h:'{name} op je telefoon',wal_btn:'Toevoegen aan Apple Wallet',wal_busy:'Pas wordt gemaakt…',wal_fail:'De pas kon niet worden gemaakt: {why}',
+  wal_wait:'Apple Wallet: wacht op het pascertificaat',wal_nocard:'Apple Wallet: alleen voor een agent met een kaart',
+  qr_h:'Scan om deze kaart op je telefoon te openen',qr_sub:'Een alleen-lezen weergave in hetzelfde ontwerp: wat hij uitgaf, zijn limieten, zijn status. Hij kan niets betalen of wijzigen. Werkt tot {d}.',
+  qr_busy:'Link wordt gemaakt…',qr_fail:'De link kon niet worden gemaakt: {why}',copy:'Link kopiëren',copied:'Gekopieerd',logo_local:'Je geüploade logo blijft in deze browser; de telefoon toont je initialen.',
+  design:'Kaartontwerp',design_sub:'De uitstraling van je bedrijf op de kaart van elke agent. Alleen ontwerp: geen limiet, kaart of betaling verandert.',
+  d_color:'Bedrijfskleur',d_color_all:'Gebruik hem op elke kaart',d_mark:'Merk op de kaarten',d_initials:'Initialen',d_logo:'Logo',d_upload:'Upload een logo (PNG, JPEG of WebP)',d_remove:'Logo verwijderen',
+  d_logo_big:'Die afbeelding is ook verkleind te groot; probeer een eenvoudigere.',d_logo_bad:'Dat bestand is geen afbeelding die deze pagina kan lezen.',
+  d_styles:'Het ontwerp per agent',d_save:'Opslaan voor het bedrijf',d_saving:'Opslaan…',d_saved:'Opgeslagen voor iedereen in het bedrijf.',d_save_fail:'Niet opgeslagen: {why}',
+  d_guest:'Alleen in deze browser bewaard: het demobedrijf is gedeeld, dus het ontwerp van een gast wordt niet opgeslagen.',d_reader:'Een voorbeeld in deze browser: een eigenaar of beheerder slaat het ontwerp op voor het bedrijf.',
+  d_reset:'Terug naar de ontwerpen van Purser',d_done:'Klaar',
+  nego_h:'De inkoopagent onderhandelt',nego_sub:'Met de agent van een leverancier, beurt voor beurt, binnen de rails van de CFO in code. De CFO tekent de deal.',
+  nego_rec:'Opgenomen onderhandeling: vooraf geschreven, geen live modelaanroep; de antwoorden van de rails worden berekend.',n_inv:'Factuur',n_agreed:'Akkoord',n_refused:'geweigerd door de rails',n_you:'Inkoop',n_sup:'Leverancier (gesimuleerd)',
+  sandbox:'Kaarten van de agents in de Airwallex-sandbox (live run)'}};
+function dw(k,v){const W=DK_W[NL?'nl':'en'];let s=W[k]!==undefined?W[k]:DK_W.en[k];s=String(s===undefined?k:s);for(const [a,b] of Object.entries(v||{}))s=s.split('{'+a+'}').join(String(b));return s}
+// The Overview's agent strip keeps a colour per agent (cloud/src/consoleShell.ts agentStrip).
 const PASS_HUE={sourcing:0,support:1,treasury:2};
 function passHue(a){const k=String(a.id||a.name||'').toLowerCase();if(k in PASS_HUE)return PASS_HUE[k];let h=0;for(const ch of k)h=(h*31+ch.charCodeAt(0))>>>0;return 3+h%3}
-const passRow=(icon,label,value)=>el('div','wp-row',[ic(icon),el('span','wp-rl',label),el('b','wp-rv num',value)]);
-const safely=(f,a,ctx)=>{try{return f(a,ctx)}catch(e){return null}};
-// The pass: front (who, spent against the limit, the card) and back (the mandate, the newest decision, extra rows).
-function agentPass(a,ctx){
-  const c=a.card,lc=ctx.live&&ctx.live.card;
-  const frozen=lc?lc.status!=='ACTIVE':a.status!=='active';
-  const cardState=lc?(lc.status==='ACTIVE'?t('cs.cards.active'):lc.status==='INACTIVE'?t('cs.cards.frozen'):lc.status.charAt(0)+lc.status.slice(1).toLowerCase())
-    :a.status==='active'?t('cs.wl.card_active'):t(a.status==='revoked'?'cs.agents.card_status.closed':'cs.agents.card_status.frozen');
-  const last4=lc&&lc.last4?lc.last4:c&&c.last4?c.last4:null;
-  const C=c?cur(c.currency)+' ':'';
-  const spent=c&&c.per_month&&c.spent_month!==null&&c.spent_month!==undefined?toCents(c.spent_month):null,cap=c&&c.per_month?toCents(c.per_month):0;
-  const mon=c&&c.month?MONTHS[Number(c.month.slice(5,7))-1]+' '+c.month.slice(0,4):'';
-  const st=el('span','wp-st '+String(a.status).replace(/[^a-z]/g,''),[el('i',''),tk('cs.agents.status.'+a.status,a.status)]);
-  const who=el('div','wp-top',[el('span','wp-av',ic('bot')),el('div','wp-who',[el('b','wp-name',a.name),el('span','wp-job',a.job||'')]),st]);
-  let money;
-  if(spent!==null){const bar=el('span','wp-bar'+(spent>=cap?' full':''));const f=el('span','');f.style.width=(cap>0?Math.min(100,spent/cap*100):0).toFixed(1)+'%';bar.append(f);
-    bar.setAttribute('role','img');bar.setAttribute('aria-label',t('cs.agents.spent_of',{spent:C+cents(spent),cap:C+cents(cap),month:mon}));
-    money=el('div','wp-money',[el('span','wp-lab',t('cs.wl.spent',{month:mon})),el('div','wp-fig',[el('b','num',C+cents(spent)),el('span','num',' '+t('cs.wl.of',{cap:C+cents(cap)}))]),bar]);
-  }else money=el('div','wp-money',[el('span','wp-lab',t('cs.wl.no_limit')),el('div','wp-fig',[el('b','',c?t('cs.wl.limits_only'):t('cs.agents.no_card'))])]);
-  const per=c&&c.per_purchase?el('div','wp-chips',[el('span','wp-chip',t('cs.wl.per',{amt:C+cents(toCents(c.per_purchase))})),...(c.pays_for?c.pays_for.split(/,\s*/).slice(0,2).map((w)=>el('span','wp-chip soft',w)):[])]):null;
-  const visa=BRAND_LOGOS['visa-white'];const brand=(lc&&lc.brand)||(c&&c.brand)||null;
-  const foot=el('div','wp-foot',[el('div','wp-card',[el('span','wp-awx','Airwallex'),el('span','wp-num num',last4?'•••• '+last4:t('cs.wl.no_card_yet'))]),
-    el('div','wp-state',[el('span','wp-cs'+(frozen?' off':''),[el('i',''),cardState]),(!brand||/visa/i.test(brand))&&visa&&last4?(()=>{const i=el('img','wp-visa');i.src=visa.uri;i.alt='Visa';return i})():brand?el('span','wp-brand',brand):null])]);
-  const front=el('div','wp-face wp-front',[who,money,per,ctx.demo&&c?el('span','wp-demo',[ic('flask'),t('cs.wl.demo')]):null,foot]);
-  // The back: what the CFO allowed and did not, the newest decision, and any rows another view adds.
-  const may=a.may||[],not=a.may_not||[];
-  const d=(a.decisions||[])[0];const o=d?(OUTCOME[d.outcome]||OUTCOME.note):null;
-  const rows=PASS_ROWS.map((f)=>safely(f,a,ctx)).filter(Boolean).map((r)=>r instanceof Node?r:passRow(r.icon||'circle-dot',r.label,r.value));
-  const back=el('div','wp-face wp-back',[
-    el('div','wp-bh',[el('b','',t('cs.wl.mandate')),el('span','wp-name sm',a.name)]),
-    el('div','wp-mand',[el('ul','wp-can',[...may.slice(0,3).map((x)=>el('li','',[ic('circle-check'),el('span','',x)])),may.length>3?el('li','more',t('cs.wl.n_more',{n:may.length-3})):null]),
-      el('ul','wp-cannot',[...not.slice(0,2).map((x)=>el('li','',[ic('ban'),el('span','',x)])),not.length>2?el('li','more',t('cs.wl.n_more',{n:not.length-2})):null])]),
-    ...rows,
-    el('div','wp-last',[el('span','wp-lab',t('cs.wl.latest')),d?el('div','wp-dec',[el('span','wp-ob '+o[1],[ic(o[0]),t('cs.agents.out.'+(OUTCOME[d.outcome]?d.outcome:'note'))]),el('span','wp-dt',d.text.replace(/\s*\(code's fallback, no model\)$/,'')),el('time','num',day(d.at))]):el('span','wp-dt',t('cs.agents.no_decisions'))])]);
-  back.setAttribute('aria-hidden','true');
-  const pass=el('button','wpass h'+passHue(a)+(frozen?' frozen':''),[el('span','wp-inner',[front,back])]);pass.type='button';
-  pass.setAttribute('aria-pressed','false');pass.setAttribute('aria-label',t('cs.wl.turn',{name:a.name}));
-  pass.onclick=()=>{const on=!pass.classList.contains('flipped');pass.classList.toggle('flipped',on);pass.setAttribute('aria-pressed',String(on));front.setAttribute('aria-hidden',String(on));back.setAttribute('aria-hidden',String(!on))};
-  return pass}
-// One agent: its pass, a Details button, and the full record below (hidden until opened).
-function walletAgent(a,demo,live,CV,details){
-  const ctx={demo,live,CV};const key=String(a.id||a.name);
-  const panel=el('div','wdetail',[...details.filter(Boolean),...AGENT_BLOCKS.map((f)=>safely(f,a,ctx)).filter(Boolean)]);panel.id='agent-'+key.replace(/[^a-z0-9]+/gi,'-')+'-details';
-  const open=OPEN_AGENTS.has(key)||!!(cardMsg&&cardMsg.agent===a.id);if(open)OPEN_AGENTS.add(key);
-  panel.hidden=!open;
-  const sec=el('section','card agent wagent rise'+(open?' open':''),[el('h2','wvh',a.name)]);
-  const more=btn(open?t('cs.wl.less'):t('cs.wl.more'),'wmore','chevron-down');more.setAttribute('aria-expanded',String(open));more.setAttribute('aria-controls',panel.id);
-  more.onclick=()=>{const o=panel.hidden;panel.hidden=!o;sec.classList.toggle('open',o);more.setAttribute('aria-expanded',String(o));more.replaceChildren(ic('chevron-down'),o?t('cs.wl.less'):t('cs.wl.more'));
-    if(o)OPEN_AGENTS.add(key);else OPEN_AGENTS.delete(key);sec.scrollIntoView({block:'nearest',behavior:RM()?'auto':'smooth'})};
-  sec.append(el('div','wside',[agentPass(a,{demo,live,CV}),el('div','wbar',[el('span','wtap',[ic('arrow-right'),t('cs.wl.tap')]),more])]),panel);
-  return sec}
+const dkImg=(src,alt,cls)=>{const i=el('img',cls||'');i.src=src;i.alt=alt;i.decoding='async';return i};
+const dkLogo=(k)=>BRAND_LOGOS[k]?BRAND_LOGOS[k].uri:null;
+const modelShort=(m)=>String(m).replace(/^claude-([a-z]+)-(\d+)-(\d+).*$/,(_,n,a,b)=>n.charAt(0).toUpperCase()+n.slice(1)+' '+a+'.'+b);
+// A few line icons the console's set lacks, drawn as DOM (never markup from data).
+const DK_IC={phone:['M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z','M12 18h.01'],palette:['M12 22a10 10 0 1 1 10-10c0 2.8-2.2 4-4 4h-1.5a1.5 1.5 0 0 0-1 2.6A1.5 1.5 0 0 1 14.4 21 9.7 9.7 0 0 1 12 22z','M7.5 10.5h.01','M10.5 7h.01','M15 7.5h.01'],
+  nfc:['M8.5 7.5a6 6 0 0 1 0 9','M12 5a9.5 9.5 0 0 1 0 14','M15.5 2.5a13 13 0 0 1 0 19'],pause:['M8 5v14','M16 5v14'],upload:['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4','M17 8l-5-5-5 5','M12 3v12']};
+function dkIc(name,cls){const NS='http://www.w3.org/2000/svg';const s=document.createElementNS(NS,'svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('fill','none');s.setAttribute('stroke','currentColor');s.setAttribute('stroke-width','2');s.setAttribute('stroke-linecap','round');s.setAttribute('stroke-linejoin','round');s.setAttribute('aria-hidden','true');if(cls)s.setAttribute('class',cls);
+  for(const d of DK_IC[name]||[]){const p=document.createElementNS(NS,'path');p.setAttribute('d',d);s.append(p)}const w=el('span','ic');w.append(s);return w}
+
+// --- The company's design: the company's own (saved), or this browser's ----------------------------------------------
+let DESIGN={v:1,color:null,initials:null,logo:null,styles:{}};let DESIGN_MODE='guest';
+const designKey=()=>'purser.card-design.'+(ME&&ME.tenant?ME.tenant.id:'');
+// This browser's copy is read as untrusted as the server reads a request (cloud/src/agentCardArt.ts cleanDesign).
+function cleanLocal(j){if(!j||typeof j!=='object')return null;const st={};for(const [k,v] of Object.entries(j.styles&&typeof j.styles==='object'?j.styles:{}))if(/^[a-z0-9_]{1,40}$/.test(k)&&CARD_PRESETS.includes(v))st[k]=v;
+  return {v:1,color:typeof j.color==='string'&&/^#[0-9a-f]{6}$/i.test(j.color)?j.color:null,initials:typeof j.initials==='string'&&/^[A-Z0-9]{1,3}$/.test(j.initials)?j.initials:null,
+    logo:typeof j.logo==='string'&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(j.logo)&&j.logo.length<LOGO_MAX*1.4?j.logo:null,styles:st}}
+function localDesign(){try{return cleanLocal(JSON.parse(localStorage.getItem(designKey())||'null'))}catch(e){return null}}
+function keepLocal(){try{localStorage.setItem(designKey(),JSON.stringify(DESIGN))}catch(e){}}
+async function loadDesign(){
+  const r=await api('/v1/card-design').catch((e)=>{if(e instanceof Expired)throw e;return null});
+  DESIGN_MODE=r&&r.can_save?'company':ME&&ME.demo?'guest':'reader';
+  const d=DESIGN_MODE==='company'?r.design:(localDesign()||(r&&r.design)||null);
+  DESIGN=Object.assign({v:1,color:null,initials:null,logo:null,styles:{}},d||{});DESIGN.styles=Object.assign({},DESIGN.styles||{})}
+const styleOf=(id)=>DESIGN.styles[id]||DEFAULT_STYLE[id]||'graphite';
+const companyName=()=>ME&&ME.tenant?String(ME.tenant.name||''):'';
+// On the card, the company's name without what follows in brackets (the demo's label is on every page's band).
+const cardCompany=()=>companyName().replace(/\s*\([^)]*\)\s*$/,'');
+// The company's mark until it sets its own: its name's first letter, as the console's company chip shows it.
+function initialsOf(name){const m=/[A-Za-z0-9]/.exec(name);return (m?m[0]:'P').toUpperCase()}
+function isLight(hex){const n=parseInt(hex.slice(1),16);const lin=(c)=>{const s=c/255;return s<=0.03928?s/12.92:Math.pow((s+0.055)/1.055,2.4)};return 0.2126*lin((n>>16)&255)+0.7152*lin((n>>8)&255)+0.0722*lin(n&255)>0.45}
+
+// --- One card's face -------------------------------------------------------------------------------------------------
+// x: {id,name,status,statusText,last4,currency,spent,cap,model,demo,frozen}
+function cardFace(x){
+  const preset=styleOf(x.id);
+  const face=el('div','acard p-'+preset+(preset==='brand'&&DESIGN.color&&isLight(DESIGN.color)?' ink':'')+(x.frozen?' frozen':'')+(x.status==='off'?' dim':''));
+  if(DESIGN.color)face.style.setProperty('--brand',DESIGN.color);
+  const mark=el('span','ac-mark',DESIGN.logo?dkImg(DESIGN.logo,''):(DESIGN.initials||initialsOf(companyName())));
+  const C=x.currency?cur(x.currency)+' ':'';
+  let meter=el('div','');
+  if(x.spent!==null&&x.cap>0){const bar=el('span','ac-bar'+(x.spent>=x.cap?' full':''));const f=el('span','');bar.append(f);f.dataset.w=Math.min(100,x.spent/x.cap*100).toFixed(1);
+    meter=el('div','ac-meter',[el('span','ac-ml',[el('b','num',C+cents(x.spent)),el('span','',dw('of',{cap:C+cents(x.cap)}))]),bar])}
+  const visa=dkLogo('visa-white'),claude=dkLogo('claude'),alta=dkLogo('alta'),awx=dkLogo('airwallex');
+  face.append(...[el('span','ac-shine'),
+    el('div','ac-top',[mark,el('span','ac-who',[el('b','ac-name',x.name),el('span','ac-co',cardCompany())]),x.last4&&awx?el('span','ac-plate',dkImg(awx,'Airwallex')):null]),
+    el('div','ac-mid',[x.last4?el('span','ac-chip'):null,x.last4?dkIc('nfc','ac-nfc'):null,el('span','ac-st '+x.status,[el('i',''),x.statusText])]),
+    el('div','ac-num'+(x.last4?' num':' none'),x.last4?'•••• •••• •••• '+x.last4:dw('no_card')),
+    meter,
+    el('div','ac-foot',[x.model?el('span','ac-model',[claude?dkImg(claude,'Claude'):null,modelShort(x.model)]):el('span','ac-model code',dw('code_only')),
+      ALTA_AGENTS.includes(x.id)&&alta?el('span','ac-alta',dkImg(alta,'Alta (formerly Metal)')):null,x.demo&&x.last4?el('span','ac-tag',dw('simulated')):null,x.last4&&visa?dkImg(visa,'Visa','ac-net'):null]),
+  ].filter(Boolean));
+  face.setAttribute('role','img');
+  face.setAttribute('aria-label',[x.name,x.last4?'•••• '+x.last4:dw('no_card'),x.statusText,x.spent!==null&&x.cap>0?C+cents(x.spent)+' '+dw('of',{cap:C+cents(x.cap)}):null,x.model?modelShort(x.model):dw('code_only')].filter(Boolean).join(', '));
+  return face}
+// Meters fill once drawn (at once with reduced motion).
+function fillMeters(root){const go=()=>{for(const f of root.querySelectorAll('.ac-bar > span[data-w]'))f.style.width=f.dataset.w+'%'};if(RM())go();else requestAnimationFrame(()=>requestAnimationFrame(go))}
+// Tilt and shine under a mouse pointer; nothing with reduced motion or a touch.
+function tilt(host,face){
+  host.addEventListener('pointermove',(e)=>{if(RM()||e.pointerType!=='mouse')return;const r=host.getBoundingClientRect();const px=(e.clientX-r.left)/r.width,py=(e.clientY-r.top)/r.height;
+    face.style.setProperty('--ry',((px-.5)*10).toFixed(2)+'deg');face.style.setProperty('--rx',((.5-py)*8).toFixed(2)+'deg');face.style.setProperty('--mx',(px*100).toFixed(1)+'%');face.style.setProperty('--my',(py*100).toFixed(1)+'%')});
+  host.addEventListener('pointerleave',()=>{for(const k of ['--rx','--ry','--mx','--my'])face.style.removeProperty(k)})}
+
+// --- The deck's model: one entry per agent, from the roster and the company's records --------------------------------
+function deckAgents(recs,CV,demo){
+  const byId=new Map((recs||[]).map((a)=>[a.id,a]));
+  const extra=(recs||[]).filter((a)=>!ROSTER.some((r)=>r.id===a.id)).map((a)=>({id:a.id,name:a.name,team:'payables',role:a.role||'',job:a.job||'',model:(a.models||[])[0]||null,model_note:'',limit:'',switch:null,code:[]}));
+  const all=[...ROSTER,...extra].map((r)=>{const rec=byId.get(r.id)||null;const live=CV&&(CV.agents||[]).find((x)=>x.agent===r.id)||null;
+    const c=rec&&rec.card,lc=live&&live.card;
+    // An agent the records do not name yet may still hold a live sandbox card (its panel is in the drawer).
+    const status=rec?String(rec.status).replace(/[^a-z]/g,''):lc?(lc.status==='ACTIVE'?'active':'paused'):'off';
+    const statusText=rec?tk('cs.agents.status.'+rec.status,rec.status):lc?(lc.status==='ACTIVE'?t('cs.cards.active'):t('cs.cards.frozen')):(r.switch?sw('st_switch'):sw('st_code'));
+    const spent=c&&c.per_month&&c.spent_month!==null&&c.spent_month!==undefined?toCents(c.spent_month):null;
+    return {r,rec,live,face:{id:r.id,name:rec?rec.name:r.name,status,statusText,last4:(lc&&lc.last4)||(c&&c.last4)||null,currency:c?c.currency:null,spent,cap:c&&c.per_month?toCents(c.per_month):0,
+      model:(rec&&rec.models&&rec.models[0])||r.model,demo,frozen:lc?lc.status!=='ACTIVE':status!=='active'&&!!rec},at:!!(rec||live)}});
+  // Those at work in this company first, each group in the roster's order.
+  return [...all.filter((x)=>x.at),...all.filter((x)=>!x.at)]}
+
+// --- The page's parts --------------------------------------------------------------------------------------------------
+let TICK_TIMER=null;
+function deckStats(items,feedTotal){
+  const models=[...new Set(items.map((x)=>x.face.model).filter(Boolean))].sort();
+  const stat=(n,label)=>el('div','dk-stat',[el('b','num',String(n)),el('span','',label)]);
+  return el('div','dk-stats',[stat(items.length,dw('n_agents')),stat(items.filter((x)=>x.at).length,dw('n_here')),feedTotal!==null&&feedTotal!==undefined?stat(feedTotal,dw('n_dec')):null,
+    el('div','dk-models',[dkLogo('claude')?dkImg(dkLogo('claude'),'Claude'):null,el('span','',models.map((m)=>modelShort(m).split(' ')[0]).filter((v,i,a)=>a.indexOf(v)===i).join(' · '))])])}
+function ticker(items){
+  if(TICK_TIMER){clearInterval(TICK_TIMER);TICK_TIMER=null}
+  const all=[];for(const x of items)if(x.rec)for(const d of (x.rec.decisions||[]).slice(0,3))all.push({x,d});
+  all.sort((a,b)=>String(b.d.at).localeCompare(String(a.d.at)));const list=all.slice(0,8);
+  if(!list.length)return null;
+  const line=(it)=>{const o=OUTCOME[it.d.outcome]||OUTCOME.note;return el('div','dk-tl',[el('span','dk-sw p-'+styleOf(it.x.r.id)),el('b','',it.x.face.name),el('span','obadge '+o[1],[ic(o[0]),t('cs.agents.out.'+(OUTCOME[it.d.outcome]?it.d.outcome:'note'))]),el('span','dk-tt',it.d.text.replace(/\s*\(code's fallback, no model\)$/,'')),el('time','num',dday(it.d.at))])};
+  const view0=el('div','dk-tv',line(list[0]));
+  let k=0,paused=RM();
+  const pb=el('button','dk-tp');pb.type='button';
+  const setPb=()=>{pb.replaceChildren(paused?ic('play'):dkIc('pause'));pb.setAttribute('aria-label',paused?dw('play'):dw('pause'));pb.setAttribute('aria-pressed',String(paused))};setPb();
+  pb.onclick=()=>{paused=!paused;setPb()};
+  const box=el('section','card dk-tick'+(ME&&ME.demo?' demo':''),[el('span','dk-th',[el('i',''),dw('tick')]),view0,list.length>1?pb:null]);box.setAttribute('aria-label',dw('tick'));
+  if(list.length>1)TICK_TIMER=setInterval(()=>{if(!box.isConnected){clearInterval(TICK_TIMER);TICK_TIMER=null;return}if(paused||document.hidden||box.matches(':hover,:focus-within'))return;
+    k=(k+1)%list.length;const n=line(list[k]);n.classList.add('in');view0.replaceChildren(n)},4200);
+  return box}
+// The Sourcing agent's negotiation: the recorded one's turns when the deployment serves them; its page either way.
+function negoBand(){
+  const go=el('a','btn primary',[ic('play'),dw('nego')]);go.href='/try/negotiate';
+  const steps=el('ol','dk-nsteps');steps.hidden=true;
+  const band=el('section','card dk-nego',[el('div','dk-nh',[el('div','dk-nav',[el('span','dk-sw p-'+styleOf('sourcing')),el('span','dk-sw sup')]),el('div','',[el('h2','',dw('nego_h')),el('p','sub',dw('nego_sub'))]),go]),steps]);
+  api('/v1/negotiation/recorded').then((n)=>{if(!n||!Array.isArray(n.turns)||!n.turns.length||!band.isConnected)return;
+    const C=cur(n.currency)+' ',amt=(a)=>C+cents(toCents(a));
+    const inv=el('li','dk-ns inv',[el('span','dk-nw',dw('n_inv')),el('b','num',amt(n.amount)),el('span','dk-nd',n.supplier)]);
+    const turns=n.turns.map((tn,i)=>{const deal=tn.accept&&tn.ok;const li=el('li','dk-ns '+(tn.who==='sourcing'?'us':'them')+(tn.ok?'':' bad')+(deal?' deal':''),[
+      el('span','dk-nw',tn.who==='sourcing'?dw('n_you'):dw('n_sup')),el('b','num',deal?dw('n_agreed')+' · '+amt(tn.amount):amt(tn.amount)),
+      tn.ok?el('span','dk-nd','−'+tn.discount_pct):el('span','dk-nr',[ic('ban'),dw('n_refused')]),tn.refused?el('span','dk-nd dk-nwhy',tn.refused):null]);li.style.setProperty('--i',String(i+1));return li});
+    steps.replaceChildren(inv,...turns);steps.hidden=false;band.append(el('p','fine',[ic('info'),' '+n.label+'.']));
+    requestAnimationFrame(()=>band.classList.add('play'))}).catch((e)=>{if(e instanceof Expired)throw e});
+  return band}
+
+// --- The drawer: everything about one agent --------------------------------------------------------------------------
+function dialog(cls,labelText,kids){
+  const d=el('dialog','dk-dlg '+cls);d.setAttribute('aria-label',labelText);
+  const x=btn('', 'dk-x','x');x.setAttribute('aria-label',dw('close'));x.onclick=()=>d.close();
+  d.append(el('div','dk-dh',[el('h2','',labelText),x]),el('div','dk-db',kids));
+  d.addEventListener('click',(e)=>{if(e.target===d)d.close()});
+  d.addEventListener('close',()=>d.remove());
+  document.body.append(d);d.showModal();return d}
+function codeBlock(r){
+  if(!r.code||!r.code.length)return null;
+  return el('details','rs-how dk-code',[el('summary','',[dw('code_h'),ic('chevron-down')]),el('div','rs-hb',[r.switch?el('p','sub',dw('sw',{sw:r.switch})):null,
+    el('ul','rs-code',r.code.map((p)=>el('li','',[(()=>{const a=el('a','mono',p);a.href=REPO_BLOB+p;a.target='_blank';a.rel='noopener';return a})()])))])])}
+function openDrawer(x,ctx){
+  const r=x.r,rec=x.rec;
+  const face=cardFace(x.face);
+  const acts=el('div','dk-acts',[rec?phoneBtn(x,ctx):null,r.see?(()=>{const a=el('a','btn ghost2',[ic('play'),r.see.label==='Watch a negotiation'?dw('nego'):r.see.label]);a.href=r.see.href;return a})():null]);
+  const facts=el('dl','dk-facts',[el('dt','',dw('model_h')),el('dd','',[r.model||x.face.model?el('span','dk-mod',[dkLogo('claude')?dkImg(dkLogo('claude'),'Claude'):null,el('span','mono',x.face.model||r.model)]):el('span','sub',dw('code_only')),r.model_note?el('span','sub',r.model_note):null]),
+    r.limit&&!(rec&&rec.card)?el('dt','',dw('limit_h')):null,r.limit&&!(rec&&rec.card)?el('dd','',r.limit):null]);
+  const blocks=rec?agentRecord(rec,ctx.demo,x.live,ctx.CV):x.live&&ctx.CV?[liveCardPanel(x.live,ctx.CV)]:[];
+  const tok=rec&&ctx.P?partnerTokenBlock(ctx.P,rec.id):null;
+  const d=dialog('dk-drawer',x.face.name,[el('div','dk-top',[el('div','dk-cw',face),el('div','dk-tx',[el('p','dk-role',r.role),el('p','',r.job),acts])]),facts,...blocks,tok,codeBlock(r)]);
+  tilt(d.querySelector('.dk-cw'),face);fillMeters(d);
+  return d}
+
+// --- Add to phone: Apple Wallet when the certificate is set, and always the QR to a read-only view --------------------
+function phoneBtn(x,ctx){const b=btn(dw('phone'),'','');b.prepend(dkIc('phone'));b.onclick=()=>openPhone(x,ctx);return b}
+function openPhone(x,ctx){
+  const out=el('p','sub');out.setAttribute('aria-live','polite');
+  const hasCard=!!(x.rec&&x.rec.card);
+  let wal;
+  if(hasCard&&ctx.P&&ctx.P.wallet_pass&&ctx.P.wallet_pass.available){wal=btn(dw('wal_btn'),'dk-wal','wallet');
+    wal.onclick=async()=>{wal.disabled=true;out.textContent=dw('wal_busy');try{const r=await api('/v1/agents/'+encodeURIComponent(x.r.id)+'/wallet-pass/link',{method:'POST'});out.textContent='';location.href=r.url}
+      catch(e){if(e instanceof Expired)return;out.textContent=dw('wal_fail',{why:e.message})}finally{wal.disabled=false}}}
+  else{wal=btn(hasCard?dw('wal_wait'):dw('wal_nocard'),'dk-wal off','wallet');wal.disabled=true;wal.setAttribute('aria-disabled','true')}
+  const qr=el('div','dk-qr',el('span','sub',dw('qr_busy')));
+  const d=dialog('dk-phone',dw('phone_h',{name:x.face.name}),[el('div','dk-pc',cardFace(x.face)),wal,out,el('h3','',dw('qr_h')),qr]);
+  fillMeters(d);
+  const styles={};styles[x.r.id]=styleOf(x.r.id);
+  api('/v1/agents/'+encodeURIComponent(x.r.id)+'/phone-card/link',{method:'POST',body:{design:{styles,color:DESIGN.color,initials:DESIGN.initials||initialsOf(companyName())}}}).then((r)=>{
+    const q=el('img','dk-qri');q.alt=dw('qr_h');q.width=200;q.height=200;q.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(r.qr_svg);
+    const copy=btn(dw('copy'),'mini','copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(r.url);copy.replaceChildren(ic('circle-check'),dw('copied'))}catch(e){}};
+    const open=el('a','mini ext',[ic('external-link')]);open.href=r.url;open.target='_blank';open.rel='noopener noreferrer';open.setAttribute('aria-label',dw('phone_h',{name:x.face.name}));
+    qr.replaceChildren(q,el('div','dk-qt',[el('p','sub',dw('qr_sub',{d:day(r.expires_at)})),DESIGN.logo&&DESIGN_MODE!=='company'?el('p','fine',dw('logo_local')):null,el('div','dk-qa',[copy,open])]))})
+    .catch((e)=>{if(e instanceof Expired)return;qr.replaceChildren(el('p','sub',dw('qr_fail',{why:e.message})))});
+  return d}
+
+// --- Card design: colour, mark, a preset per agent ---------------------------------------------------------------------
+let DECK_REDRAW=null;
+function designNote(){return DESIGN_MODE==='company'?null:el('p','fine dk-dn',[ic('info'),' '+dw(DESIGN_MODE==='guest'?'d_guest':'d_reader')])}
+function shrinkLogo(file){return new Promise((res,rej)=>{if(!/^image\/(png|jpeg|webp)$/.test(file.type)){rej(new Error(dw('d_logo_bad')));return}
+  const rd=new FileReader();rd.onerror=()=>rej(new Error(dw('d_logo_bad')));rd.onload=()=>{const im=new Image();im.onerror=()=>rej(new Error(dw('d_logo_bad')));im.onload=()=>{
+    const s=Math.min(1,128/Math.max(im.width,im.height));const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(im.width*s));cv.height=Math.max(1,Math.round(im.height*s));
+    const g=cv.getContext('2d');g.drawImage(im,0,0,cv.width,cv.height);const u=cv.toDataURL('image/png');if(u.length*3/4>LOGO_MAX){rej(new Error(dw('d_logo_big')));return}res(u)};im.src=String(rd.result)};rd.readAsDataURL(file)})}
+function openDesign(items){
+  const msg=el('p','sub');msg.setAttribute('aria-live','polite');
+  const changed=()=>{if(DESIGN_MODE!=='company')keepLocal();if(DECK_REDRAW)DECK_REDRAW();preview()};
+  // Colour
+  const col=el('input','dk-col');col.type='color';col.value=DESIGN.color||'#4f46e5';col.setAttribute('aria-label',dw('d_color'));
+  col.oninput=()=>{DESIGN.color=col.value.toLowerCase();changed()};
+  const all=btn(dw('d_color_all'),'mini','');all.onclick=()=>{DESIGN.color=col.value.toLowerCase();for(const x of items)DESIGN.styles[x.r.id]='brand';changed();drawStyles()};
+  // Mark: initials or a logo
+  const ini=el('input','field dk-ini');ini.maxLength=3;ini.value=DESIGN.initials||initialsOf(companyName());ini.setAttribute('aria-label',dw('d_initials'));ini.autocapitalize='characters';
+  ini.oninput=()=>{const v=ini.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);ini.value=v;DESIGN.initials=v||null;changed()};
+  const file=el('input','dk-file');file.type='file';file.accept='image/png,image/jpeg,image/webp';file.setAttribute('aria-label',dw('d_upload'));
+  file.onchange=async()=>{const f=file.files&&file.files[0];if(!f)return;try{DESIGN.logo=await shrinkLogo(f);msg.textContent='';changed();drawMark()}catch(e){msg.textContent=e.message}file.value=''};
+  const up=el('label','btn mini dk-up',[dkIc('upload'),dw('d_upload'),file]);
+  const rm=btn(dw('d_remove'),'mini','x');rm.onclick=()=>{DESIGN.logo=null;changed();drawMark()};
+  const markRow=el('div','dk-mrow');const drawMark=()=>markRow.replaceChildren(...[el('label','dk-lab',[dw('d_initials'),ini]),up,DESIGN.logo?rm:null].filter(Boolean));drawMark();
+  // A preset per agent
+  const styles=el('div','dk-styles');
+  const drawStyles=()=>styles.replaceChildren(...items.map((x)=>{const g=el('div','dk-srow',[el('span','dk-sn',x.face.name)]);const opts=el('div','dk-sopts');opts.setAttribute('role','radiogroup');opts.setAttribute('aria-label',x.face.name);
+    for(const p of CARD_PRESETS){const b=el('button','dk-sw p-'+p+(styleOf(x.r.id)===p?' on':''));b.type='button';b.setAttribute('role','radio');b.setAttribute('aria-checked',String(styleOf(x.r.id)===p));b.setAttribute('aria-label',PRESET_NAMES[p][NL?'nl':'en']);b.title=PRESET_NAMES[p][NL?'nl':'en'];
+      if(p==='brand'&&DESIGN.color)b.style.setProperty('--brand',DESIGN.color);
+      b.onclick=()=>{DESIGN.styles[x.r.id]=p;changed();drawStyles();const n=styles.querySelector('[data-a="'+x.r.id+'"] .dk-sw.on');if(n)n.focus()};opts.append(b)}
+    g.dataset.a=x.r.id;g.append(opts);return g}));drawStyles();
+  const pv=el('div','dk-pv');const preview=()=>{const x=items[0];if(x)pv.replaceChildren(cardFace(x.face));fillMeters(pv)};preview();
+  const reset=btn(dw('d_reset'),'ghost2','');reset.onclick=()=>{DESIGN={v:1,color:null,initials:null,logo:null,styles:{}};col.value='#4f46e5';ini.value=initialsOf(companyName());changed();drawMark();drawStyles()};
+  const save=DESIGN_MODE==='company'?btn(dw('d_save'),'primary','check'):null;
+  if(save)save.onclick=async()=>{save.disabled=true;msg.textContent=dw('d_saving');try{const r=await api('/v1/card-design',{method:'POST',body:DESIGN});DESIGN=Object.assign(DESIGN,r.design);msg.textContent=dw('d_saved')}catch(e){if(e instanceof Expired)return;msg.textContent=dw('d_save_fail',{why:e.message})}finally{save.disabled=false}};
+  const done=btn(dw('d_done'),save?'':'primary','');
+  const d=dialog('dk-design',dw('design'),[el('p','sub',dw('design_sub')),designNote(),pv,
+    el('div','dk-row',[el('span','dk-lab',dw('d_color')),col,all]),el('div','dk-row',[el('span','dk-lab',dw('d_mark')),markRow]),
+    el('h3','',dw('d_styles')),styles,el('div','dk-foot',[reset,el('span',''),save,done]),msg]);
+  done.onclick=()=>d.close();
+  return d}
+
+// --- The page ------------------------------------------------------------------------------------------------------------
+// A dialog never outlives its page: closed when the page redraws (a card action) or the route changes.
+const closeDialogs=()=>{for(const d of document.querySelectorAll('dialog.dk-dlg'))d.open?d.close():d.remove()};
+addEventListener('hashchange',closeDialogs);
+async function agentDeck(recs,ctx){
+  closeDialogs();
+  await loadDesign();
+  const items=deckAgents(recs,ctx.CV,ctx.demo);
+  const grid=el('div','dk-grid');
+  const draw=()=>{grid.replaceChildren(...items.map((x)=>{
+    const face=cardFace(x.face);const open=el('button','dk-face',face);open.type='button';open.setAttribute('aria-label',x.face.name+': '+dw('details'));open.setAttribute('aria-haspopup','dialog');
+    open.onclick=()=>openDrawer(x,ctx);tilt(open,face);
+    // One line under the card: its role, which opens the drawer too (a link to #/agents?a=id clicks it: openAgentFromQuery).
+    const more=el('button','dk-line wmore',[el('span','',x.r.role),ic('chevron-right')]);more.type='button';more.setAttribute('aria-haspopup','dialog');more.setAttribute('aria-expanded','false');more.onclick=()=>openDrawer(x,ctx);
+    // The negotiation has its own band below the cards, and a button in the Sourcing agent's drawer.
+    const acts=[x.rec?(()=>{const b=phoneBtn(x,ctx);b.classList.add('mini');return b})():null].filter(Boolean);
+    const it=el('article','dk-item'+(x.at?' on':''),[open,more,acts.length?el('div','dk-acts',acts):null]);it.id='roster-'+x.r.id;return it}));fillMeters(grid)};
+  draw();DECK_REDRAW=draw;
+  const designBtn=btn(dw('design'),'','');designBtn.prepend(dkIc('palette'));designBtn.onclick=()=>openDesign(items);
+  return {items,grid,designBtn}}
 `;
 
-export const WALLET_CSS = `
-/* Agents as passes (cloud/src/agentWallet.ts). */
-.agents.wallet { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 16px; align-items: stretch; }
-/* Closed, the passes of a row stand equally tall (the tallest face sets it). */
-.wagent:not(.open) { display: flex; flex-direction: column; }
-.wagent:not(.open) .wside { flex: 1; display: flex; flex-direction: column; }
-.wagent:not(.open) button.wpass { flex: 1; display: grid; }
-.card.agent.wagent { padding: 12px; display: grid; gap: 0; border-radius: 22px; }
-.card.agent.wagent:not(.open) { padding: 0; background: transparent; border-color: transparent; box-shadow: none; }
-.wagent .wside { display: grid; gap: 8px; min-width: 0; }
-.wagent .wbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; }
-.wagent .wtap { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--faint); }
-.wagent .wtap .ic svg { width: 13px; height: 13px; transform: rotate(-90deg); }
-.wagent .btn.wmore { height: 32px; padding: 0 12px; font-size: 13px; background: var(--sunken); border-color: transparent; color: var(--text); }
-.wagent .btn.wmore .ic { transition: transform .2s; }
-.wagent.open .btn.wmore .ic { transform: rotate(180deg); }
-.wagent.open { grid-column: 1 / -1; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 22px; padding: 16px; align-items: start; }
-.wagent.open .wside { position: sticky; top: 132px; }
-.wagent .wdetail { display: grid; gap: 16px; min-width: 0; }
-.wagent .wdetail[hidden] { display: none; }
-.wagent .wvh { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.wagent .wdetail > :first-child { border-top: 0; padding-top: 0; }
-.wagent .wdetail .lims { padding-bottom: 4px; }
-@media (max-width: 900px) { .wagent.open { grid-template-columns: minmax(0, 1fr); } .wagent.open .wside { position: static; max-width: 420px; } }
-/* No agent yet: what brings one, and where to start. */
-.card.wempty { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 18px 20px; margin-top: 14px; border-style: dashed; }
-.wempty-ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
-.card.wempty p { margin: 2px 0 0; }
-@media (max-width: 640px) { .card.wempty { grid-template-columns: 44px minmax(0, 1fr); } .card.wempty .btn { grid-column: 1 / -1; justify-self: start; } }
-/* The pass: a button that turns over. */
-button.wpass { appearance: none; -webkit-appearance: none; display: block; width: 100%; margin: 0; padding: 0; border: 0; background: none; color: #fff; font: inherit; text-align: left; cursor: pointer; perspective: 1400px; border-radius: 18px; -webkit-tap-highlight-color: transparent; }
-button.wpass:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-.wp-inner { display: grid; transform-style: preserve-3d; transition: transform .6s cubic-bezier(.2, .75, .2, 1); }
-button.wpass.flipped .wp-inner { transform: rotateY(180deg); }
-button.wpass:hover .wp-face { box-shadow: 0 1px 2px rgba(16,24,40,.14), 0 18px 34px -14px rgba(16,24,40,.55); }
-.wp-face { grid-area: 1 / 1; position: relative; overflow: hidden; min-height: 232px; border-radius: 18px; padding: 16px 18px 15px; display: flex; flex-direction: column; gap: 10px;
-  backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 1px 2px rgba(16,24,40,.12), 0 12px 28px -14px rgba(16,24,40,.5); transition: box-shadow .2s; }
-.wp-face::before { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,.22), transparent 55%), linear-gradient(180deg, rgba(255,255,255,.06), transparent 40%); pointer-events: none; }
-.wp-face > * { position: relative; }
-.wp-face.wp-back { transform: rotateY(180deg); }
-.wpass.h0 .wp-face { background: linear-gradient(140deg, #312e81 0%, #4f46e5 52%, #7c3aed 100%); }
-.wpass.h1 .wp-face { background: linear-gradient(140deg, #064e3b 0%, #0f766e 55%, #0e9488 100%); }
-.wpass.h2 .wp-face { background: linear-gradient(140deg, #0b1b45 0%, #1e3a8a 50%, #2563eb 100%); }
-.wpass.h3 .wp-face { background: linear-gradient(140deg, #7c2d12 0%, #c2410c 55%, #d97706 100%); }
-.wpass.h4 .wp-face { background: linear-gradient(140deg, #701a3d 0%, #be185d 55%, #db2777 100%); }
-.wpass.h5 .wp-face { background: linear-gradient(140deg, #111827 0%, #374151 55%, #4b5563 100%); }
-.wpass.frozen .wp-face { filter: grayscale(.75) brightness(.92); }
-.wp-top { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
-.wp-av { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(255,255,255,.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
-.wp-who { display: grid; min-width: 0; }
-.wp-name { font-size: 16px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; } .wp-name.sm { font-size: 12.5px; font-weight: 600; opacity: .8; }
-.wp-job { font-size: 12px; line-height: 1.3; min-height: 2.6em; opacity: .82; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.wp-st { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 650; background: rgba(255,255,255,.16); white-space: nowrap; }
-.wp-st i { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 2px rgba(74,222,128,.25); }
-.wp-st.paused i, .wp-st.revoked i { background: #fca5a5; box-shadow: none; }
-.wp-money { display: grid; gap: 4px; margin-top: 2px; }
-.wp-lab { font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; opacity: .78; }
-.wp-fig { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; } .wp-fig b { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; } .wp-fig span { font-size: 13px; opacity: .8; }
-.wp-bar { display: block; height: 6px; border-radius: 999px; background: rgba(255,255,255,.22); overflow: hidden; margin-top: 4px; }
-.wp-bar > span { display: block; height: 100%; border-radius: 999px; background: #fff; }
-.wp-bar.full > span { background: #fecaca; }
-.wp-chips { display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; overflow: hidden; }
-.wp-chip { font-size: 11.5px; font-weight: 650; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,.2); white-space: nowrap; }
-.wp-chip.soft { background: rgba(255,255,255,.1); font-weight: 550; min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
-.wp-demo { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; opacity: .8; } .wp-demo svg { width: 12px; height: 12px; }
-.wp-foot { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.18); }
-.wp-card { display: grid; gap: 1px; } .wp-awx { font-size: 11px; font-weight: 700; letter-spacing: .04em; opacity: .8; }
-.wp-num { font-size: 16px; font-weight: 650; letter-spacing: .08em; }
-.wp-state { display: flex; align-items: center; gap: 10px; }
-.wp-cs { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 650; opacity: .92; } .wp-cs i { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; } .wp-cs.off i { background: #cbd5e1; }
-img.wp-visa { display: block; width: 34px; height: 34px; margin: -10px -2px -10px 0; }
-.wp-brand { font-weight: 800; font-style: italic; font-size: 14px; }
-.wp-bh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; } .wp-bh > b { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
-.wp-mand { display: grid; gap: 6px; }
-.wp-mand ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.wp-mand li { display: grid; grid-template-columns: 15px minmax(0, 1fr); gap: 6px; font-size: 12.5px; line-height: 1.35; }
-.wp-mand li > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .wp-mand li svg { width: 14px; height: 14px; margin-top: 1px; }
-.wp-mand .wp-can svg { color: #86efac; } .wp-mand .wp-cannot svg { color: #fca5a5; } .wp-mand li.more { display: block; padding-left: 21px; opacity: .75; font-size: 12px; }
-.wp-row { display: grid; grid-template-columns: 15px minmax(0, 1fr) auto; gap: 6px; align-items: center; font-size: 12.5px; } .wp-row svg { width: 14px; height: 14px; } .wp-rv { font-weight: 650; }
-.wp-last { margin-top: auto; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.18); display: grid; gap: 4px; }
-.wp-dec { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 8px; align-items: center; font-size: 12.5px; }
-.wp-dec time { grid-column: 2; font-size: 11.5px; opacity: .75; }
-.wp-dt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; }
-.wp-ob { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,.18); white-space: nowrap; } .wp-ob svg { width: 12px; height: 12px; }
-@media (max-width: 640px) { .card.agent.wagent { padding: 10px; border-radius: 20px; } .wagent.open { padding: 12px; gap: 14px; } .wp-face { min-height: 220px; padding: 15px 16px 14px; } .wp-fig b { font-size: 22px; } }
-@media (prefers-reduced-motion: reduce) {
-  .wp-inner, .wp-face, .wagent .btn.wmore .ic { transition: none; }
-  button.wpass.flipped .wp-inner { transform: none; }
-  .wp-face.wp-back { transform: none; visibility: hidden; }
-  button.wpass.flipped .wp-face.wp-back { visibility: visible; } button.wpass.flipped .wp-face.wp-front { visibility: hidden; }
+export const WALLET_CSS = CARD_ART_CSS + `
+/* Agents as cards (cloud/src/agentWallet.ts). */
+.dk-stats { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: baseline; margin: 6px 0 14px; }
+.dk-stat { display: inline-flex; align-items: baseline; gap: 6px; } .dk-stat b { font-size: 22px; letter-spacing: -.02em; } .dk-stat span { color: var(--muted); font-size: 13.5px; }
+.dk-models { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border-radius: 999px; background: var(--sunken); font-size: 13px; font-weight: 600; align-self: center; }
+.dk-models img { width: 18px; height: 18px; display: block; }
+.dk-tick { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; margin-bottom: 16px; overflow: hidden; }
+.dk-th { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.dk-th i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok, #067647); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok, #067647) 50%, transparent); animation: dk-ping 2s infinite; }
+.dk-tick.demo .dk-th i { animation: none; box-shadow: none; background: var(--muted); }
+@keyframes dk-ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok, #067647) 45%, transparent); } 70%, 100% { box-shadow: 0 0 0 7px transparent; } }
+.dk-tv { min-width: 0; overflow: hidden; }
+.dk-tl { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13.5px; white-space: nowrap; }
+.dk-tl.in { animation: dk-in .45s cubic-bezier(.2,.75,.2,1); }
+@keyframes dk-in { from { transform: translateY(70%); opacity: 0; } to { transform: none; opacity: 1; } }
+.dk-tl > b { flex: none; } .dk-tl .obadge { flex: none; } .dk-tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); } .dk-tl time { flex: none; margin-left: auto; color: var(--faint, var(--muted)); font-size: 12.5px; }
+.dk-sw { display: inline-block; flex: none; width: 22px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.dk-sw.sup { background: linear-gradient(135deg, #e5e7eb, #9ca3af); }
+.dk-tp { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.dk-tp .ic svg { width: 14px; height: 14px; }
+.dk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 292px), 1fr)); gap: 22px 18px; margin-top: 4px; }
+.dk-item { display: grid; gap: 8px; align-content: start; min-width: 0; animation: dk-rise .5s cubic-bezier(.2,.75,.2,1) both; }
+.dk-item:nth-child(2) { animation-delay: .05s; } .dk-item:nth-child(3) { animation-delay: .1s; } .dk-item:nth-child(4) { animation-delay: .15s; } .dk-item:nth-child(n+5) { animation-delay: .2s; }
+@keyframes dk-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+button.dk-face { appearance: none; -webkit-appearance: none; display: block; width: 100%; padding: 0; margin: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; border-radius: 16px; -webkit-tap-highlight-color: transparent; }
+button.dk-face:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+button.dk-face:hover .acard { box-shadow: 0 1px 2px rgba(16,24,40,.16), 0 22px 40px -16px rgba(16,24,40,.6); }
+.dk-line { appearance: none; border: 0; background: none; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 2px 4px; margin: 0; font-size: 13.5px; color: var(--muted); text-align: left; border-radius: 6px; min-height: 28px; }
+.dk-line > span:first-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dk-line .ic svg { width: 14px; height: 14px; } .dk-line:hover { color: var(--text); }
+.dk-acts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 2px; }
+.dk-acts .btn { gap: 5px; } .dk-acts .btn .ic svg { width: 14px; height: 14px; }
+.dk-item:not(.on) .dk-line { color: var(--faint, var(--muted)); }
+.dk-nego { margin-top: 18px; display: grid; gap: 12px; padding: 16px 18px; }
+.dk-nh { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.dk-nh h2 { margin: 0; font-size: 17px; } .dk-nh p { margin: 2px 0 0; }
+.dk-nav { display: grid; grid-template-columns: 1fr; gap: 3px; } .dk-nav .dk-sw { width: 30px; height: 19px; }
+.dk-nsteps { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+.dk-ns { flex: 1 0 150px; display: grid; gap: 2px; padding: 9px 11px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); font-size: 13px; opacity: 1; position: relative; }
+.dk-nego.play .dk-ns { animation: dk-rise .45s cubic-bezier(.2,.75,.2,1) both; animation-delay: calc(var(--i, 0) * .35s); }
+.dk-ns.us { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); } .dk-ns.them { background: var(--sunken); }
+.dk-ns.bad { border-color: var(--bad, #b42318); background: var(--bad-soft, #fef3f2); }
+.dk-nd { font-size: 12px; color: var(--muted); } .dk-nwhy { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; } .dk-ns.deal { border-color: var(--ok, #067647); background: var(--ok-soft, #ecfdf3); }
+.dk-nw { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.dk-nr { display: inline-flex; gap: 4px; align-items: center; font-size: 11.5px; color: var(--bad, #b42318); } .dk-nr .ic svg { width: 12px; height: 12px; }
+.dk-nego .fine { margin: 0; }
+.dk-sandbox { margin-top: 18px; } .dk-sandbox > summary { cursor: pointer; font-weight: 650; padding: 10px 0; color: var(--muted); }
+/* The dialogs: a drawer from the side on a laptop, a sheet from the bottom on a phone. */
+dialog.dk-dlg { padding: 0; border: 0; border-radius: 18px; background: var(--surface); color: var(--text); width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 24px); box-shadow: 0 24px 60px -12px rgba(16,24,40,.45); overflow: hidden; }
+dialog.dk-dlg[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); animation: dk-pop .28s cubic-bezier(.2,.75,.2,1); }
+dialog.dk-dlg::backdrop { background: rgba(10,14,25,.45); backdrop-filter: blur(2px); }
+dialog.dk-drawer { margin: 12px 12px 12px auto; height: calc(100vh - 24px); width: min(620px, calc(100vw - 24px)); }
+dialog.dk-drawer[open] { animation: dk-slide .32s cubic-bezier(.2,.75,.2,1); }
+@keyframes dk-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes dk-slide { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+.dk-dh { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 10px 20px; border-bottom: 1px solid var(--border); }
+.dk-dh h2 { margin: 0; font-size: 18px; min-width: 0; overflow-wrap: anywhere; }
+.btn.dk-x { width: 36px; height: 36px; padding: 0; justify-content: center; flex: none; }
+.dk-db { overflow: auto; padding: 16px 20px 22px; display: grid; gap: 16px; align-content: start; overscroll-behavior: contain; }
+.dk-db > * { min-width: 0; } .dk-db > p { margin: 0; }
+.dk-top { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.dk-top .dk-tx { display: grid; gap: 8px; } .dk-top p { margin: 0; } .dk-role { font-weight: 650; }
+.dk-facts { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px 12px; margin: 0; padding-top: 12px; border-top: 1px solid var(--border); }
+.dk-facts dt { color: var(--muted); font-size: 13px; font-weight: 600; } .dk-facts dd { margin: 0; display: grid; gap: 3px; }
+.dk-mod { display: inline-flex; align-items: center; gap: 6px; } .dk-mod img { width: 16px; height: 16px; }
+.dk-db .lims, .dk-db .rules, .dk-db .adec, .dk-db .alearn, .dk-db .lcard, .dk-db .adet { padding-top: 12px; border-top: 1px solid var(--border); }
+.dk-db .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.dk-phone .dk-pc { max-width: 340px; width: 100%; justify-self: center; }
+.btn.dk-wal { justify-content: center; background: #000; color: #fff; border-color: #000; height: 44px; }
+.btn.dk-wal.off { background: transparent; color: var(--muted); border-style: dashed; border-color: var(--border); opacity: 1; cursor: not-allowed; height: auto; min-height: 44px; white-space: normal; }
+.dk-phone h3 { margin: 4px 0 0; font-size: 15px; }
+.dk-qr { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 14px; align-items: center; }
+img.dk-qri { width: 200px; height: 200px; border-radius: 12px; background: #fff; padding: 6px; box-sizing: border-box; border: 1px solid var(--border); }
+.dk-qt { display: grid; gap: 8px; } .dk-qt p { margin: 0; } .dk-qa { display: flex; gap: 8px; flex-wrap: wrap; }
+.dk-design .dk-pv { max-width: 300px; }
+.dk-row { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.dk-row > .dk-mrow { grid-column: 2 / -1; }
+.dk-lab { font-size: 13px; font-weight: 600; color: var(--muted); display: inline-flex; gap: 8px; align-items: center; }
+input.dk-col { width: 52px; height: 36px; padding: 2px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+.dk-mrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+input.dk-ini { width: 72px; text-transform: uppercase; }
+label.dk-up { position: relative; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; } label.dk-up .ic svg { width: 14px; height: 14px; }
+input.dk-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+label.dk-up:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+.dk-design h3 { margin: 4px 0 0; font-size: 15px; }
+.dk-styles { display: grid; gap: 8px; }
+.dk-srow { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 10px; align-items: center; }
+.dk-sn { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dk-sopts { display: flex; flex-wrap: wrap; gap: 6px 5px; }
+button.dk-sw { width: 28px; height: 19px; border-radius: 5px; border: 0; cursor: pointer; padding: 0; }
+button.dk-sw.on { outline: 2px solid var(--text); outline-offset: 2px; }
+button.dk-sw:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.dk-sw.p-aurora, .dk-sw.p-lagoon, .dk-sw.p-midnight, .dk-sw.p-ember, .dk-sw.p-graphite, .dk-sw.p-rose, .dk-sw.p-citrus, .dk-sw.p-sky, .dk-sw.p-bullion, .dk-sw.p-brand { --brand: #4f46e5; }
+.dk-sw.p-aurora { background: linear-gradient(135deg, #312e81, #7c3aed 60%, #0891b2); } .dk-sw.p-lagoon { background: linear-gradient(135deg, #022c22, #0d9488); }
+.dk-sw.p-midnight { background: linear-gradient(135deg, #0b1020, #1e3a8a); } .dk-sw.p-ember { background: linear-gradient(135deg, #431407, #d97706); }
+.dk-sw.p-graphite { background: linear-gradient(135deg, #09090b, #3f3f46); } .dk-sw.p-rose { background: linear-gradient(135deg, #500724, #be185d); }
+.dk-sw.p-citrus { background: linear-gradient(135deg, #1a2e05, #4d7c0f); } .dk-sw.p-sky { background: linear-gradient(135deg, #082f49, #0284c7); }
+.dk-sw.p-bullion { background: linear-gradient(135deg, #1c1917, #a16207); } .dk-sw.p-brand { background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 45%, #000), var(--brand)); }
+.dk-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); } .dk-foot > span { flex: 1; }
+.dk-dn { margin: 0; display: flex; gap: 6px; align-items: flex-start; }
+@media (max-width: 640px) {
+  dialog.dk-dlg, dialog.dk-drawer { margin: auto 0 0; width: 100vw; max-width: 100vw; height: auto; max-height: 92vh; border-radius: 18px 18px 0 0; }
+  dialog.dk-dlg[open], dialog.dk-drawer[open] { animation: dk-up .3s cubic-bezier(.2,.75,.2,1); }
+  .dk-db { padding: 14px 16px 20px; } .dk-top { grid-template-columns: minmax(0, 1fr); } .dk-top .dk-cw { max-width: 320px; }
+  .dk-db .rules { grid-template-columns: minmax(0, 1fr); }
+  .dk-qr { grid-template-columns: minmax(0, 1fr); justify-items: center; } .dk-qt { justify-items: center; text-align: center; }
+  .dk-row { grid-template-columns: minmax(0, 1fr) auto; } .dk-row > .dk-lab { grid-column: 1 / -1; } .dk-row > .dk-mrow { grid-column: 1 / -1; }
+  .dk-srow { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .dk-nh { grid-template-columns: minmax(0, 1fr); } .dk-nav { display: none; } .dk-nh .btn { justify-self: start; }
+  .dk-tick { grid-template-columns: minmax(0, 1fr) auto; } .dk-th { grid-column: 1 / -1; } .dk-tl .obadge { display: none; } .dk-tl time { display: none; }
+  .dk-facts { grid-template-columns: minmax(0, 1fr); gap: 2px; } .dk-facts dd { margin-bottom: 8px; }
 }
-@media print { button.wpass .wp-face { box-shadow: none; } .wagent .wbar { display: none; } .wagent .wdetail[hidden] { display: grid; } }
+@keyframes dk-up { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .dk-item, .dk-tl.in, .dk-nego.play .dk-ns, dialog.dk-dlg[open], dialog.dk-drawer[open] { animation: none; }
+  .dk-th i { animation: none; }
+}
+@media print { .dk-acts, .dk-tick, .dk-tp { display: none; } }
 `;
