@@ -214,7 +214,12 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   ok((await page.locator(".side .badge").textContent())?.trim() === "1" && await page.locator(".side").isVisible() && !(await page.locator("#detail").isVisible()) && (await page.locator("#hello .acts button").count()) === 4, "the empty state: Approvals with its count, the four cards, no panel yet");
   await page.getByRole("button", { name: "Which invoices wait for the CFO?" }).click();
   await page.locator(".msg.bot:not([aria-busy]) .icard").waitFor({ timeout: 15_000 });
-  ok(await page.locator("#detail").isVisible() && !(await page.locator("#hello").isVisible()) && !(await page.evaluate(() => document.body.classList.contains("empty"))), "after the first question: the empty state gone, the panel of what the agent can read beside the thread");
+  ok(!(await page.locator("#detail").isVisible()) && !(await page.locator("#hello").isVisible()) && !(await page.evaluate(() => document.body.classList.contains("empty"))), "after the first question: the empty state gone, the thread full width, the panel closed");
+  // The panel of what the agent can read opens only when asked (Max, 21 Nov), and the choice is kept in this browser.
+  await page.locator("#ptog").click();
+  ok(await page.locator("#detail").isVisible() && (await page.getAttribute("#ptog", "aria-expanded")) === "true" && await page.evaluate(() => localStorage.getItem("purser.ask.panel") === "1"), "the header's toggle opens the panel and the choice is kept");
+  await page.locator("#ptog").click();
+  ok(!(await page.locator("#detail").isVisible()) && await page.evaluate(() => localStorage.getItem("purser.ask.panel") === "0"), "and closes it again");
   const row = await page.locator(".icard li").first().innerText();
   ok(/Bergtex Textil GmbH/.test(row) && /BTX-2026-24/.test(row) && /EUR 1,309\.00/.test(row) && !/Alpine|4,320/.test(await page.locator("main").innerText()), `the card is the demo company's own record (${row.replace(/\s+/g, " ")})`);
   const track = await page.locator(".msg.bot .track li").evaluateAll((ls) => ls.map((l) => l.className));
