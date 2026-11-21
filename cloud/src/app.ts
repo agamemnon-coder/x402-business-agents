@@ -57,6 +57,7 @@ import { stageApproved } from "./try/stage.js";
 import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.js";
 import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, isMcpPath, mcpChallenge } from "./claude/routes.js";
+import type { SandboxExecutor } from "./claude/codemode.js";
 import type { AwxReadPort } from "./claude/awxCodemode.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
 import { partnerRailsOf } from "./partnerRails.js";
@@ -177,6 +178,12 @@ export interface CloudEnv {
    * of the sandbox only (cloud/src/claude/awxCodemode.ts). Purser Cloud holds no Airwallex key. Absent: execute refuses.
    */
   awxGateway?: AwxReadPort;
+  /**
+   * Code Mode's sandbox for /mcp/codemode (cloud/src/claude/codemode.ts): a fresh Cloudflare Dynamic Worker per run, from
+   * the Worker Loader binding LOADER (worker_loaders in wrangler). No network, no env, no secret in it. Absent: execute
+   * refuses with sandbox_unavailable and nothing is read.
+   */
+  codemode?: SandboxExecutor;
   /**
    * The security log's alarm thresholds (src/lib/securityEvents.ts alarmRules), e.g. "auth_failures=20,window=300"; a
    * Worker var. Unset: the defaults.
