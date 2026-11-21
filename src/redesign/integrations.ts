@@ -50,12 +50,6 @@ export const BAND: readonly BandItem[] = [
   { name: "Moneybird", file: brandFile("moneybird") },
   { name: "Purser MCP server", file: brandFile("mcp") },
 ];
-/**
- * 21 Nov (Max): the connections that are built or planned but have no recorded run yet, named as coming, not as working:
- * each is on the hub with its own label ("built, not tested live" or "not built yet").
- */
-export const BAND_NEXT: readonly string[] = ["ChatGPT", "Cursor", "Gemini", "Xero", "QuickBooks", "Exact", "Odoo", "Slack", "Microsoft Teams", "WhatsApp", "Zapier", "Make"];
-export const BAND_NEXT_LABEL = "Coming next";
 /** The hub of every connection, each with its label (docs/integrations/README.md). */
 export const BAND_HUB = "docs/integrations/README.md";
 // Review, 21 Nov: "Connects to (each labelled)", not "Works with" (no partnership read into a mark).
@@ -76,7 +70,6 @@ export function logoBandHtml(o: { note?: boolean; label?: string } = {}): string
   return `<div class="lband" role="group" aria-label="${esc(o.label ?? BAND_LABEL)}">
   <p class="lb-h">${esc(o.label ?? BAND_LABEL)}</p>
   <div class="lb-view"><div class="lb-track"><ul class="lb-row">${BAND.map(item).join("")}</ul></div></div>
-  <p class="lb-next"><span class="lb-next-h">${esc(BAND_NEXT_LABEL)}</span>${BAND_NEXT.map((n) => `<span class="lb-n">${esc(n)}</span>`).join("")}</p>
   ${o.note === false ? "" : `<p class="lb-note">${esc(BAND_NOTE)} <a href="${esc(`${REPO_BLOB}${BAND_HUB}`)}" target="_blank" rel="noopener">${esc(BAND_LINK)}${icon("external-link", 14)}</a></p>`}
 </div>`;
 }
@@ -92,10 +85,6 @@ export const LOGO_BAND_CSS = `
 .lb-i img { display: block; height: 22px; width: auto; }
 .lb-i.wm img { height: 20px; } .lb-i.wm img[src*="alta"] { height: 26px; }
 .lb-i.tx { font-size: 16px; font-weight: 760; }
-.lb-next { margin: 14px auto 0; max-width: 760px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 8px; font-size: 12.5px; color: var(--faint); }
-.lb-next-h { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 11px; margin-right: 4px; display: inline-flex; align-items: center; gap: 6px; }
-.lb-next-h::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 0 3px color-mix(in srgb, #f59e0b 22%, transparent); }
-.lb-n { padding: 3px 9px; border-radius: 999px; border: 1px dashed color-mix(in srgb, var(--faint) 55%, transparent); white-space: nowrap; }
 .lb-note { margin: 16px 0 0; text-align: center; font-size: 14px; color: var(--muted); }
 .lb-note a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; }
 .lb-note a:hover { text-decoration: underline; }
