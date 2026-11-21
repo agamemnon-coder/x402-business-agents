@@ -14,10 +14,12 @@
 // phone the first two screens show one date, the card's due date, and say "test money". On a wide screen the heading's
 // two sentences are two lines. Every expected value is read from the records, not typed here.
 import type { Page } from "playwright";
-import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
-import { agentRoster, agentTiles, proofTiles, START, TOUR_BUTTON, WHATS_REAL } from "../../src/redesign/home.js";
+import { FLOW, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
+import { WORKFLOW_RECORD, workflowFacts } from "../../src/redesign/heroWave.js";
+import { agentRoster, agentTiles, BUSINESS_HREF, PILOT_CTA, proofTiles, START, TOUR_BUTTON, WATCH_BUTTON, WHATS_REAL } from "../../src/redesign/home.js";
+import { FILM_URL } from "../../src/config/brand.js";
 import { BAND } from "../../src/redesign/integrations.js";
-import { TOUR_START_HREF, TOUR_STOPS } from "../../src/redesign/tour.js";
+import { TOUR_STOPS } from "../../src/redesign/tour.js";
 
 /** The text in sight above a line of the page (document px): no hidden step, no closed fold, no script. */
 const SEEN_ABOVE = (limit: number) => `(() => {
@@ -38,26 +40,29 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   await page.goto(o.url, { waitUntil: "load" });
   await page.evaluate(() => { try { sessionStorage.removeItem("purser.tour"); } catch { /* no storage */ } });
 
-  // The hero's two buttons: the judge tour, then Try; one primary; the sandbox line in the first screen.
+  // The hero's three buttons (the owner's concept, 21 Nov): Try (the one primary), Watch the demo, Start a pilot; the
+  // sandbox line in the first screen. The judge tour's button is under its map.
   const ctas = await page.locator("main .e-hero .ctas a.btn").evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").trim() })));
-  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([TOUR_START_HREF, o.tryHref])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${TOUR_START_HREF} and ${o.tryHref}`);
-  if (ctas[0]?.text !== TOUR_BUTTON || ctas[1]?.text !== START) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${TOUR_BUTTON}" and "${START}"`);
+  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, FILM_URL, BUSINESS_HREF])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref}, ${FILM_URL} and ${BUSINESS_HREF}`);
+  if (JSON.stringify(ctas.map((c) => c.text)) !== JSON.stringify([START, WATCH_BUTTON, PILOT_CTA])) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}", "${WATCH_BUTTON}" and "${PILOT_CTA}"`);
+  if ((await page.locator("main .e-hero .ctas a.btn.primary").getAttribute("href")) !== o.tryHref) fail("the hero's primary button is not Try");
+  if ((await page.locator(`main .e-tour a.btn[data-tour-start]`).count()) !== 1 || (await page.locator(`main .e-tour a.btn[data-tour-start]`).innerText()).trim() !== TOUR_BUTTON) fail(`the judge tour's part has no "${TOUR_BUTTON}" button`);
   if ((await page.locator("main .e-hero .ctas a.btn.primary").count()) !== 1) fail("the hero has not exactly one primary button");
-  const first = await page.locator("main p.reassure").boundingBox();
-  if (!first || first.y + first.height > o.height) fail("the first button and its sandbox line are not in the first screen");
+  const first = await page.locator("main .e-hero .ctas a.btn.primary").boundingBox();
+  if (!first || first.y + first.height > o.height) fail("the first button is not in the first screen");
   if (await page.locator('main a[href="watch"], [data-stage]').count()) fail("a Watch link or a replay stage is in Home's main part");
 
   // The card: once, named by its record, its five steps, and every value the record holds.
-  const card = page.locator("main figure.hf");
-  if ((await card.count()) !== 1) fail(`Home shows ${await card.count()} product cards, not one`);
-  if ((await card.getAttribute("data-rec")) !== TRY_SAMPLE_RECORD) fail(`the card does not name its record ${TRY_SAMPLE_RECORD}`);
-  const steps = (await card.locator(".hf-steps > li").allInnerTexts()).map(squash);
-  if (JSON.stringify(steps) !== JSON.stringify([...FLOW_STEPS])) fail(`the card's steps are ${JSON.stringify(steps)}, not ${JSON.stringify(FLOW_STEPS)}`);
-  const shown = squash(await card.locator(".hf-card").textContent() ?? "");
-  const want = [FLOW.supplier, `Invoice ${FLOW.number}`, FLOW.amount, FLOW.due, FLOW.account, READER_CHIP, "Signed with a passkey", "fingerprint of the terms", ...FLOW.ledger.flatMap((l) => [l.code, l.name, l.debit || l.credit])];
-  for (const v of want) if (!shown.includes(v)) fail(`the card does not show "${v}" from ${TRY_SAMPLE_RECORD}`);
-  if ((await card.locator(".hf-pill span[title]").getAttribute("title")) !== `SHA-256 of the signed terms: ${FLOW.hash}`) fail(`the card's tooltip does not hold the hash ${FLOW.hash} from ${TRY_SAMPLE_RECORD}`);
-  if (await card.locator(".hf-card").evaluate((e) => getComputedStyle(e).display) !== "grid") fail("the card lost its style");
+  // The Workflow card (Max, 21 Nov: one demo): /try's sample invoice and each step's state, from both records.
+  const card = page.locator("main .e-hero .wf");
+  if ((await card.count()) !== 1) fail(`Home shows ${await card.count()} Workflow cards, not one`);
+  if ((await card.getAttribute("data-rec")) !== `${TRY_SAMPLE_RECORD} ${WORKFLOW_RECORD}`) fail(`the card does not name its records ${TRY_SAMPLE_RECORD} ${WORKFLOW_RECORD}`);
+  if (await page.locator("main figure.hf, main .e-start").count()) fail("the old product card or How to start is still on Home");
+  const f = workflowFacts()!;
+  const shown = squash(await card.textContent() ?? "");
+  const want = [FLOW.supplier, `Invoice ${FLOW.number}`, FLOW.amount, FLOW.due, READER_CHIP, ...f.steps.map((st) => st.chip), f.refused!.chip, ...FLOW.ledger.flatMap((l) => [l.code, l.name, l.debit || l.credit])];
+  for (const v of want) if (!shown.includes(v)) fail(`the card does not show "${v}" from its records`);
+  if (await card.evaluate((e) => getComputedStyle(e).display) === "none") fail("the card is not shown");
   const box = async () => { const b = await card.boundingBox(); return b ? `${Math.round(b.width)}x${Math.round(b.height)}@${Math.round(b.x)}` : "none"; };
   await page.waitForTimeout(1200);
   const s0 = await box();
@@ -120,10 +125,29 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
     const lines = await page.locator("h1.h-hero span").evaluateAll((ss) => ss.map((s) => ({ rects: s.getClientRects().length, top: Math.round(s.getBoundingClientRect().top), text: s.textContent })));
     if (lines.length !== 2 || lines.some((l) => l.rects !== 1) || lines[0]!.top >= lines[1]!.top || lines[0]!.text !== "AI agents spend.") fail(`the heading does not break after "spend." (${JSON.stringify(lines)})`);
   }
+  // Release gate: the actual Home CTAs, not just their markup, at jury desktop and phone sizes.
+  // A relative /try link must resolve on the same public origin, and the page must be real (not a 404).
+  // The film intentionally opens YouTube in a new tab; check its destination/target without leaving Home.
+  if (o.width === 390 || o.width === 1440) {
+    const tryLink = page.locator("main .e-hero .ctas a.btn.primary");
+    const filmLink = page.locator("main .e-hero .ctas a.btn.film");
+    const filmHref = await filmLink.getAttribute("href");
+    const filmTarget = await filmLink.getAttribute("target");
+    if (filmHref !== FILM_URL || !/^https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(filmHref || "") || filmTarget !== "_blank")
+      fail("Watch the demo must link to the recorded YouTube film in a new tab");
+    if (!(await tryLink.isVisible())) fail("Try it in 2 minutes CTA is not visible");
+    await tryLink.click();
+    await page.waitForURL((u) => u.pathname === "/try", { timeout: 12_000 });
+    const response = await page.request.get(page.url());
+    if (response.status() !== 200 || !/test money/i.test(await response.text()))
+      fail(`the Try CTA landed on an invalid demo response: ${response.status()}`);
+    await page.goto(o.url, { waitUntil: "load" });
+  }
 
-  // The judge tour: the first button starts it at stop 1, on Home's map, with the bar.
+
+  // The judge tour: its button under the map starts it at stop 1, on Home's map, with the bar.
   await page.evaluate(() => window.scrollTo(0, 0));
-  const start = page.locator("main .e-hero .ctas a.btn.primary");
+  const start = page.locator("main .e-tour a.btn[data-tour-start]");
   await (o.touch ? start.tap() : start.click());
   await page.waitForLoadState("load");
   await page.waitForTimeout(500);
@@ -152,11 +176,11 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   try {
     await still.goto(o.url, { waitUntil: "load" });
     await still.waitForTimeout(800);
-    const hidden = await still.locator("main figure.hf").evaluate((f) => [".hf-reader", ".hf-check", ".hf-pill", ".hf-paid", ".hf-l0", ".hf-l1", ".hf-l2"].filter((s) => { const e = f.querySelector(s); return !e || +getComputedStyle(e).opacity < 0.99 || getComputedStyle(e).visibility === "hidden"; }));
+    const hidden = await still.locator("main .wf").evaluate((f) => [".wf-s0 .wf-c", ".wf-s1 .wf-c", ".wf-s2 .wf-c", ".wf-s3 .wf-c", ".wf-s4 .wf-c", ".wf-no .wf-t", ".wf-s4 .wf-ok"].filter((s) => { const e = f.querySelector(s); return !e || +getComputedStyle(e).opacity < 0.99 || getComputedStyle(e).visibility === "hidden" || getComputedStyle(e).clipPath !== "none"; }));
     if (hidden.length) fail(`with reduced motion the card is not one still frame of its final state (${hidden.join(", ")} not shown)`);
-    const a = await still.locator("main figure.hf").boundingBox();
+    const a = await still.locator("main .wf").boundingBox();
     await still.waitForTimeout(1500);
-    const b = await still.locator("main figure.hf").boundingBox();
+    const b = await still.locator("main .wf").boundingBox();
     if (JSON.stringify(a) !== JSON.stringify(b)) fail("with reduced motion the card still moves");
     const moving = await still.evaluate(() => [...document.querySelectorAll("main .lband *, main .e-hero .copy *")].filter((e) => getComputedStyle(e).animationName !== "none").length);
     if (moving) fail(`with reduced motion ${moving} part(s) of the hero or the band still animate`);

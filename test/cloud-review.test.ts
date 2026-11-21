@@ -32,9 +32,11 @@ describe("Purser Cloud after the review of 13 Nov", () => {
     expect(tr("nl", "cs.eng.archive_off")).toMatch(/engine van Purser/);
   });
 
-  it("(3) the demo chip says made-up data, as the banner does, never sandbox", () => {
-    expect(tr("en", "cs.demo.chip")).toBe("Demo: made-up data");
-    expect(tr("nl", "cs.demo.chip")).toBe("Demo: verzonnen gegevens");
+  // Max, 21 Nov: one quiet disclosure in the company switcher, "Northwind Outdoor · Demo company"; the banner keeps
+  // the full line (made-up data, simulated bank, test money, the console never pays).
+  it("(3) the demo chip says Demo company, never sandbox; the banner says made-up data", () => {
+    expect(tr("en", "cs.demo.chip")).toBe("Demo company");
+    expect(tr("nl", "cs.demo.chip")).toBe("Demobedrijf");
     expect(tr("en", "cs.demo.chip")).not.toMatch(/sandbox/i);
   });
 

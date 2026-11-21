@@ -70,6 +70,11 @@ const visibleText = (html: string) => html
   // The partner pages' "Built on" strip (owner, 12 Nov): one proof number per partner, each from its own record (the
   // Airwallex tiles, the Airi run, the T:0 posting); test/t0-page.test.ts holds each to its record.
   .replace(/<p class="builton">[\s\S]*?<\/p>/g, " ")
+  // 21 Nov (the owner's concept): Home's Workflow card, its figures read from /try's sample-invoice record and run 1 of
+  // docs/runs/2026-11-21-phone-try (src/redesign/heroWave.ts workflowFacts), its line in "What's real?" the same; both
+  // held to their records in test/home-story.test.ts.
+  .replace(/<div class="wf"[\s\S]*?<p class="wf-note">/g, " ")
+  .replace(/The Workflow card's hold, signature, payment and refusal:[\s\S]*?Test money\./g, " ")
   .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ").replace(/<[^>]+>/g, " ")
   .replace(/&#39;|&quot;/g, "'").replace(/&amp;/g, "&").replace(KIT_LINE, " ").replace(/\bx402\b/g, " ").replace(/Kit 11/g, " ").replace(VISA_CLAIM, " ").replace(/agent run 1/g, " ").replace(HOME_BADGE, " ").replace(/\b404\b/g, " ").replace(/\breq_[A-Za-z0-9]+/g, " ")
   // Other named records /proof cites, each with its own name and date: the variation test, the red team, the archive.

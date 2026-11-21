@@ -7,14 +7,13 @@
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { statusPage } from "../../src/redesign/status.js";
-import { REASSURE } from "../../src/redesign/home.js";
 import { FILM_LINK } from "../../src/config/brand.js";
 import { TRY_URL, pageTitle } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
 import { AWX_PAGE_LABEL } from "../../src/redesign/airwallexProducts.js";
-import { CLOUD_TAB_LABEL, MORE_LABEL, moreLinks, tabLinks } from "../../src/ui/more.js";
+import { MORE_LABEL, moreLinks, tabLabel, tabLinks } from "../../src/ui/more.js";
 import { agentTools } from "../../src/redesign/docs.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -67,7 +66,7 @@ const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}
 // Watch is a tab only once the film is set (src/config/film.ts WATCH_IN_MENU).
 // 13 Nov (owner): "Judge" is out of the menu again; the product tour and Pricing went the same evening.
 // 21 Nov (Max: "simple and tight"): Home, Try, Proof, Cloud (Purser Cloud, src/ui/more.ts tabLinks), then More.
-const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), ...tabLinks().map(() => CLOUD_TAB_LABEL), MORE_LABEL], more: moreLinks().map((l) => l.label) });
+const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), ...tabLinks().map(tabLabel), MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
@@ -104,6 +103,10 @@ async function look(page: Page, name: string, width: number): Promise<void> {
   for (const u of a11y.noAlt) fail(`${name}: an image with no alt text: ${u}`);
   const over = await page.evaluate(() => document.documentElement.scrollWidth) - width;
   if (over > 1) fail(`${name}: ${over}px wider than the screen`);
+  // "Built on Airwallex" (Max, 21 Nov: the logo did not show in a local render): the badge in sight has its logo loaded,
+  // and its alt text, which stands in for it if it ever fails, reads "Airwallex".
+  const awx = await page.evaluate(`[...document.querySelectorAll("a.awx-badge img")].filter((i) => i.getClientRects().length).map((i) => ({ ok: i.complete && i.naturalWidth > 0, alt: i.getAttribute("alt") }))`) as { ok: boolean; alt: string | null }[];
+  for (const b of awx) if (!b.ok || b.alt !== "Airwallex") fail(`${name}: the "Built on Airwallex" logo did not load (alt "${b.alt}")`);
   // The menu, on every page that carries it (both navigations: the redesign's header and the older pages'): exactly the
   // four tabs and "More"; "More" closed until it is opened, and under it exactly the pages the site serves, in order.
   const nav = await page.evaluate(`(() => {
@@ -111,8 +114,9 @@ async function look(page: Page, name: string, width: number): Promise<void> {
     if (!n || !n.offsetParent) return null;
     const d = n.querySelector(":scope > details.pmore");
     const items = [...n.querySelectorAll(":scope > a, :scope > details > summary")];
-    const tops = items.map((e) => e.getBoundingClientRect().top);
-    const out = { items: items.map((e) => e.textContent.trim()), more: d ? [...d.querySelectorAll(".pmenu a")].map((a) => a.textContent.trim()) : null,
+    // A phone shows the brand, Try and the menu (the sheet repeats the tabs, .pm-m); the row is measured on what is drawn.
+    const tops = items.filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().top);
+    const out = { items: items.map((e) => e.textContent.trim()), more: d ? [...d.querySelectorAll(".pmenu a:not(.pm-t)")].map((a) => a.textContent.trim()) : null,
       rows: Math.round(Math.max(...tops) - Math.min(...tops)), right: Math.round(n.getBoundingClientRect().right), left: Math.round(n.getBoundingClientRect().left),
       open: d ? d.open : null, menu: null, shown: null };
     if (d) {
@@ -120,7 +124,7 @@ async function look(page: Page, name: string, width: number): Promise<void> {
       const was = d.open; d.open = true;
       const r = d.querySelector(".pmenu").getBoundingClientRect();
       out.menu = { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) };
-      out.shown = [...d.querySelectorAll(".pmenu a")].every((a) => { const b = a.getBoundingClientRect(); return b.width > 0 && b.height >= 24 && b.left >= 0; });
+      out.shown = [...d.querySelectorAll(".pmenu a")].filter((a) => !a.classList.contains("pm-t") || a.getClientRects().length).every((a) => { const b = a.getBoundingClientRect(); return b.width > 0 && b.height >= 24 && b.left >= 0; });
       d.open = was;
     }
     return out;
@@ -177,7 +181,7 @@ async function moreByKeyboard(page: Page, name: string): Promise<void> {
   const summary = page.locator('nav[aria-label="Main"] > details.pmore > summary');
   const state = async () => (await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = document.activeElement; return { open: d.open, focus: a ? (a.textContent || "").trim() : "", inMenu: !!(a && a.closest(".pmenu")) }; })()`)) as { open: boolean; focus: string; inMenu: boolean };
   // From the tab before it (Proof), one Tab reaches "More".
-  await page.locator('nav[aria-label="Main"] > a').last().focus();
+  await page.locator('nav[aria-label="Main"] > a:visible').last().focus();
   await page.keyboard.press("Tab");
   const reached = await state();
   if (reached.focus !== MORE_LABEL || reached.open) fail(`${name}: Tab after the four tabs does not reach "More" (focus on "${reached.focus}")`);
@@ -188,7 +192,9 @@ async function moreByKeyboard(page: Page, name: string): Promise<void> {
   if (!opened.open) fail(`${name}: Enter on "More" does not open it`);
   await page.keyboard.press("Tab");
   const first = await state();
-  if (!first.inMenu || first.focus !== moreLinks()[0]!.label) fail(`${name}: Tab from the open "More" does not land on its first link (focus on "${first.focus}")`);
+  // A phone's sheet opens with the tabs (Product: Home first); elsewhere the dropdown opens with More's first page.
+  const firstLink = await page.evaluate(`[...document.querySelectorAll('nav[aria-label="Main"] .pmenu a')].find((a) => a.getClientRects().length)?.textContent.trim() ?? ""`) as string;
+  if (!first.inMenu || first.focus !== firstLink || ![moreLinks()[0]!.label, "Home"].includes(firstLink)) fail(`${name}: Tab from the open "More" does not land on its first link (focus on "${first.focus}")`);
   await summary.focus();
   await page.keyboard.press("Enter");
   if ((await state()).open) fail(`${name}: Enter on the open "More" does not close it`);
@@ -281,15 +287,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // Home as one story (home-story, 12 Nov; enterprise pass and jury pass): two buttons, the product card with its
     // record's values, the stat row from the records, no request, the sizes, the screens (test/browser/homeStory.ts).
     // The CFO's view is linked from Proof's head (checked below), not from Home.
-    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, shot: async (n) => { await page.locator("main figure.hf").screenshot({ path: join(shots, `home-${n}-${tag}.png`) }); } });
+    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, shot: async (n) => { await page.locator("main .e-hero .wf").screenshot({ path: join(shots, `home-${n}-${tag}.png`) }); } });
     await page.goto(`${base}/home`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
-    // At phone width: nothing in the hero or its card overlaps or is cut off (judges #12), and the card shows its final
-    // state, with no empty block waiting for the animation (review, 13 Nov).
+    // At phone width: nothing in the hero or its card overlaps or is cut off (judges #12).
     if (w <= 430) {
-      await noOverlap(page, `/ (Home) ${tag}`, ["main .e-hero .copy", "main .e-hero .ctas", "main .hf", "main .hf-card", "main .hf-side", "main .hf-inv dl"]);
-      const still = await page.evaluate(() => [...document.querySelectorAll(".hf-card *")].filter((e) => getComputedStyle(e).animationName !== "none").length);
-      if (still) fail(`/ (Home) ${tag}: ${still} parts of the product card still animate below 600 px`);
+      // The Workflow card (Max, 21 Nov) animates on a phone too, its steps folded to one line each, nothing overlapping.
+      await noOverlap(page, `/ (Home) ${tag}`, ["main .e-hero .copy", "main .e-hero .ctas", "main .wf", "main .wf-inv", "main .wf-s > details > summary"]);
     }
 
     // Tap targets on a phone (jury review, 12 Nov: menu links 37 px): every link, button and fold header of the shared
@@ -950,8 +954,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `${path} ${tag}`, w);
       const words = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
-      const more = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null }; })()`) as { more: boolean; link: string | null };
-      if (!more.more || (path === "/business" && more.link !== "business")) fail(`${path} ${tag}: "More" is not marked as where the reader is (${JSON.stringify(more)})`);
+      // 21 Nov (the owner's concept): "Business" is a tab of its own; /business and its one-pager mark it.
+      const tab = await page.evaluate(`(document.querySelector('nav[aria-label="Main"] > a[aria-current="page"]') || {}).textContent || ""`) as string;
+      if (tab.trim() !== "Business") fail(`${path} ${tag}: the "Business" tab is not marked as where the reader is ("${tab}")`);
       const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead")].filter((e) => e.offsetParent && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
       for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
       if (path === "/business") {
@@ -1164,10 +1169,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 19 Nov, second pass (the owner: "clearer and tighter, more visuals"): the evidence map and the wall lead the page.
       // 21 Nov (the owner: "organise it; an animated architecture"): the heading, the lead, the architecture, the questions,
       // the film link, the five sections (every live run in the third), the business and the archive, the utility links.
-      if (first.order !== "h1 p.plead figure.parch nav.pq-nav p.pwatch div.pqs details.deep details.deep nav.util" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the architecture, the questions, the film link, the five sections (every live run, ${PROOF_RUN_ROWS}, in the third), the closed lines and the utility links, closed on load (${JSON.stringify(first)})`);
+      if (first.order !== "h1 p.plead figure.pflow nav.pq-nav p.pwatch div.pqs details.deep details.deep nav.util" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the architecture, the questions, the film link, the five sections (every live run, ${PROOF_RUN_ROWS}, in the third), the closed lines and the utility links, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
         // The architecture starts on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
-        const map = await page.evaluate(`(() => { const e = document.querySelector("main figure.parch"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
+        const map = await page.evaluate(`(() => { const e = document.querySelector("main figure.pflow"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
         if (map < 0 || map >= 440) fail(`/proof ${tag}: the architecture starts at ${map} px, not on the first screen`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
@@ -1397,10 +1402,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     if (judgeBase) {
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
       // 21 Nov: the hero's primary button starts the judge tour; its second opens the hands-on demo.
-      if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TOUR_START_HREF) fail(`/ (Home, with /try/sign) ${tag}: the first button does not start the judge tour`);
+      if ((await page.locator("main .e-tour a.btn[data-tour-start]").getAttribute("href")) !== TOUR_START_HREF) fail(`/ (Home, with /try/sign) ${tag}: the judge tour's button does not start the judge tour`);
       if ((await page.locator("main .e-hero a.btn.start").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the Try button does not lead to the hands-on demo`);
       if (await page.locator('a[href="tour"], a[href="pricing"], a[href*="judge"]').count()) fail(`/ (Home, with /try/sign) ${tag}: a link to /tour, /pricing or /judge is back`);
-      if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
+      if (await page.locator("main p.reassure").count()) fail(`/ (Home, with /try/sign) ${tag}: the line under the buttons is back (Max, 21 Nov: the Workflow card says sandbox)`);
       await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
       await page.goto(`${judgeBase}/home`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);

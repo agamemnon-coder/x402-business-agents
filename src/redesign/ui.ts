@@ -3,12 +3,13 @@
 // <script> per page, so the pages keep the dashboard's hash-based CSP. Icons are Lucide (src/ui/icons.ts) plus a few
 // drawn here in the same style.
 
+import { PREMIUM_BASE_CSS, PREMIUM_CSS, PREMIUM_TOKENS } from "../ui/premium.js";
 import { formerlyMetal } from "../ui/formerly.js";
 import { MOTION_CSS, SITE_MOTION_CSS } from "../ui/motion.js";
 import { ICONS, type Icon } from "../ui/icons.js";
 import { CONTACT_EMAIL, CONTACT_LINE, NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
 import { TAGLINE_LINE, previewTags } from "../ui/meta.js";
-import { CLOUD_TAB_LABEL, MORE_CSS, footerLinks, menuItemOf, moreHtml, tabLinks, type PageKey } from "../ui/more.js";
+import { MORE_CSS, footerLinks, menuItemOf, moreHtml, tabLabel, tabLinks, type PageKey } from "../ui/more.js";
 import { TOUR_CSS, TOUR_PAGES, tourJs } from "./tour.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 import { ICON_VERSION } from "../ui/brand/mark.js";
@@ -66,35 +67,15 @@ export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "
  */
 export const TRY_URL = "/try";
 
-export type Tab = "home" | "watch" | "try" | "proof" | "cloud";
+export type Tab = "home" | "watch" | "try" | "proof" | "business" | "cloud";
 /** The tabs; the menu's last item, "More", and the pages under it are in src/ui/more.ts (shared with src/ui/nav.ts). */
 // 13 Nov (owner): "Judge" is out of the top menu again (its page, then the product tour that replaced it, are gone).
 // 21 Nov (Max: "simple and tight"): Home, Try, Proof, Cloud (Purser Cloud, the product; src/ui/more.ts tabLinks), More.
-const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"], ...tabLinks().map((l) => [l.key, CLOUD_TAB_LABEL, l.href])] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
+const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"], ...tabLinks().map((l) => [l.key, tabLabel(l), l.href])] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
 
 /** The design tokens, light and dark: the same on every page. */
 export const TOKENS = `@font-face { font-family: Inter; src: url(assets/${versioned("inter.woff2")}) format("woff2"); font-weight: 100 900; font-display: swap; }
-:root {
-  --bg: #f7f8fa; --surface: #ffffff; --sunken: #f1f3f7; --border: #e3e6ec; --text: #0b1220; --muted: #586174; --faint: #646d7e;
-  --accent: #4f46e5; --accent-soft: #eef0ff; --ok: #0b7d43; --ok-soft: #e6f6ee; --bad: #c5363c; --bad-soft: #fdecec; --on-bad: #ffffff;
-  --metal: #0b7a70; --metal-soft: #e3f5f2; --awx: #ad4a0c; --awx-soft: #fdf0e7; --claude: #a84d2b; --claude-soft: #fbefe9;
-  --a-sourcing: #2563eb; --a-support: #9333ea; --a-treasury: #0e7490;
-  --shadow: 0 1px 2px rgba(16,24,40,.05), 0 12px 32px -12px rgba(16,24,40,.12);
-  --r: 22px; --gut: 16px; color-scheme: light;
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0a0c11; --surface: #12151d; --sunken: #191d27; --border: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #858fa1;
-  --accent: #8b85ff; --accent-soft: #23224a; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c; --on-bad: #1a0607;
-  --metal: #2dd4bf; --metal-soft: #0f2a28; --awx: #ff8a4c; --awx-soft: #33200f; --claude: #ef9a76; --claude-soft: #33221b;
-  --a-sourcing: #60a5fa; --a-support: #c084fc; --a-treasury: #22d3ee; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -12px rgba(0,0,0,.6); color-scheme: dark;
-} }
-:root[data-theme="dark"] {
-  --bg: #0a0c11; --surface: #12151d; --sunken: #191d27; --border: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #858fa1;
-  --accent: #8b85ff; --accent-soft: #23224a; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c; --on-bad: #1a0607;
-  --metal: #2dd4bf; --metal-soft: #0f2a28; --awx: #ff8a4c; --awx-soft: #33200f; --claude: #ef9a76; --claude-soft: #33221b;
-  --a-sourcing: #60a5fa; --a-support: #c084fc; --a-treasury: #22d3ee; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -12px rgba(0,0,0,.6); color-scheme: dark;
-}
-`;
+${PREMIUM_TOKENS}`;
 
 /**
  * The header's style (brand, tabs, "More"): part of CSS below, byte for byte, and exported on its own (12 Nov) so Purser
@@ -105,20 +86,39 @@ export const HEADER_CSS = `/* Header: brand, four tabs and "More" (a <details>, 
 header.top { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
 header.top .wrap { display: flex; align-items: center; gap: 12px; height: 64px; }
 .brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 750; font-size: 18px; letter-spacing: -.02em; text-decoration: none; }
-.brand .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--text); color: var(--bg); display: grid; place-items: center; }
-nav.tabs { margin-left: auto; display: flex; align-items: center; gap: 2px; background: var(--sunken); border-radius: 999px; padding: 4px; }
-nav.tabs > a { text-decoration: none; font-weight: 600; font-size: 15px; line-height: 1.2; color: var(--muted); padding: 7px 14px; border-radius: 999px; white-space: nowrap; }
-nav.tabs > a.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.brand .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--mk-bg, var(--text)); color: var(--mk-ink, var(--bg)); display: grid; place-items: center; }
+.brand .nm { color: var(--mk-wm, var(--text)); }
+nav.tabs { margin-left: auto; display: flex; align-items: center; gap: 2px; background: var(--glass); border: 1px solid var(--glass-line); border-radius: 999px; padding: 3px; }
+nav.tabs > a { text-decoration: none; font-weight: 600; font-size: 14.5px; line-height: 1.2; color: var(--muted); padding: 7px 13px; border-radius: 999px; white-space: nowrap; letter-spacing: -.005em; }
+nav.tabs > a.on { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
 ${MORE_CSS}
 nav.tabs .pmore > summary { padding: 7px 12px 7px 14px; }
-/* On a phone the five items stay on one line beside the brand (checked at 360 px): the items move closer together step
-   by step, and at 420 px and under the brand shows its mark only, as before. */
-@media (max-width: 520px) { header.top .wrap { gap: 8px; } nav.tabs > a { padding: 7px 10px; } nav.tabs .pmore > summary { padding: 7px 8px 7px 10px; } }
-@media (max-width: 460px) { nav.tabs { gap: 0; } nav.tabs > a { padding: 7px 8px; font-size: 14.5px; } nav.tabs .pmore > summary { padding: 7px 6px 7px 8px; font-size: 14.5px; } }
-@media (max-width: 420px) { .brand span.nm { display: none; } }
-@media (max-width: 380px) { nav.tabs > a { padding: 7px 7px; } nav.tabs .pmore > summary { padding: 7px 5px 7px 7px; } }
-@media (max-width: 340px) { nav.tabs > a { padding: 7px 5px; font-size: 14px; } nav.tabs .pmore > summary { padding: 7px 4px 7px 5px; font-size: 14px; gap: 2px; } }
+/* Try is the one primary action, in the header too: a small pill in the primary's colours. */
+nav.tabs > a[href$="/try"] { background: var(--btn-bg, var(--text)); color: var(--btn-ink, var(--bg)); box-shadow: inset 0 1px 0 rgba(255,255,255,.28); margin: 0 2px; }
+nav.tabs > a[href$="/try"]:hover { filter: brightness(1.06); }
+/* The six items stay on one line beside the brand down to 641 px, closer together step by step; a phone has the sheet. */
+@media (max-width: 1000px) { nav.tabs > a { padding: 7px 11px; } nav.tabs .pmore > summary { padding: 7px 9px 7px 11px; } }
+@media (max-width: 860px) { nav.tabs > a { padding: 7px 9px; } nav.tabs .pmore > summary { padding: 7px 7px 7px 9px; } }
 @media (max-width: 430px) { .brand, nav.tabs > a, nav.tabs summary { display: inline-flex; align-items: center; min-height: 44px; } }
+/* A phone: the brand, Try and a menu button; the sheet holds every page, grouped. */
+.pm-m { display: none; }
+@media (max-width: 640px) {
+  header.top .wrap { gap: 10px; }
+  .brand span.nm { display: inline; }
+  nav.tabs { gap: 8px; padding: 0; background: none; border: 0; }
+  nav.tabs > a:not([href$="/try"]) { display: none; }
+  nav.tabs > a[href$="/try"] { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--btn-bg, var(--text)); color: var(--btn-ink, var(--bg)); border: 1px solid var(--btn-line, transparent); font-size: 14.5px; font-weight: 650; box-shadow: none; }
+  nav.tabs .pmore { position: static; }
+  nav.tabs .pmore > summary { min-height: 44px; padding: 0 14px 0 12px; gap: 8px; border: 1px solid var(--glass-line, var(--border)); background: var(--glass, var(--surface)); color: var(--text); font-size: 14.5px; }
+  nav.tabs .pmore > summary::before { content: ""; width: 14px; height: 10px; background: linear-gradient(currentColor 0 0) top / 100% 1.75px no-repeat, linear-gradient(currentColor 0 0) center / 100% 1.75px no-repeat, linear-gradient(currentColor 0 0) bottom / 100% 1.75px no-repeat; }
+  nav.tabs .pmore > summary::after { content: none; }
+  nav.tabs .pmore[open] > summary { border-color: var(--accent); }
+  nav.tabs .pmenu { position: fixed; left: 12px; right: 12px; top: 64px; min-width: 0; max-width: none; max-height: calc(100vh - 80px); overflow: auto; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px 6px; padding: 10px; border-radius: 20px; box-shadow: 0 30px 80px -20px rgba(0,0,0,.6); }
+  .pm-m { display: contents; }
+  .pm-h { grid-column: 1 / -1; margin: 10px 12px 2px; font: 600 11px/1.3 var(--mono, ui-monospace, monospace); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+  .pm-h:first-child { margin-top: 2px; }
+  nav.tabs .pmenu hr { grid-column: 1 / -1; }
+}
 /* "Built on Airwallex": beside the brand from 760 px, else on its own line under the header. */
 ${BUILT_ON_CSS}
 .awx-row { display: none; }
@@ -128,7 +128,7 @@ export const CSS = `${TOKENS}
 @media (min-width: 720px) { :root { --gut: 32px; } }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 400 17px/1.55 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+${PREMIUM_BASE_CSS}
 a { color: inherit; }
 /* Words for screen readers and search engines only (a link's full name, a section's heading), not shown. */
 .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -136,17 +136,9 @@ a { color: inherit; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 var(--gut); }
 ${HEADER_CSS}
 /* Type. */
-h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
-.h-hero { font-size: clamp(38px, 5.4vw, 64px); font-weight: 780; }
-.h-sec { font-size: clamp(28px, 3.4vw, 40px); font-weight: 750; }
-.lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--muted); line-height: 1.5; margin: 0; }
-.eyebrow { font-size: 14px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 0 0 10px; }
 /* Buttons and pills. */
-.btn { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 999px; font: 650 16px/1 Inter, system-ui, sans-serif; text-decoration: none; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap; }
-.btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
 .btn:focus-visible, a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .pill.run { background: var(--accent-soft); color: var(--accent); white-space: normal; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); }
 /* Agent avatar. */
 .av { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; flex: none; }
 .av .i { width: 22px; height: 22px; }
@@ -284,6 +276,19 @@ export interface HeaderLinks { base: string; here: Readonly<Record<string, strin
 /** The phone's "Built on Airwallex" line is a landmark of its own (an <aside>): its name. */
 export const AWX_ROW_LABEL = `${BUILT_ON_LABEL} ${BUILT_ON_ALT}`;
 
+/**
+ * A phone's menu sheet (the owner, 21 Nov: "logo, Try and a clean menu button opening a well-designed sheet"): on a
+ * narrow screen the top row is the brand, Try and the menu; the sheet opens with the tabs, grouped (Product, Business),
+ * then More's own pages. From 641 px the group is not drawn and the menu is the row of tabs as before.
+ */
+function sheetTop(item: string | null, to: (key: string, href: string) => string): string {
+  const a = (k: string, label: string, href: string) => `<a href="${to(k, href)}" class="pm-t"${k === item ? ' aria-current="page"' : ""}>${label}</a>`;
+  const tab = (k: string) => TABS.find(([t]) => t === k);
+  const product = (["home", "try", "proof", "cloud"] as const).map(tab).filter((t): t is [Tab, string, string] => !!t).map(([k, label, href]) => a(k, k === "cloud" ? "Purser Cloud" : label, href));
+  const business = tab("business");
+  return `<div class="pm-m"><p class="pm-h">Product</p>${product.join("")}${business ? `<p class="pm-h">Business</p>${a(business[0], "For companies", business[2])}` : ""}<p class="pm-h">More</p></div>`;
+}
+
 /** The header: the four tabs, then "More". `current` is the page's own key; menuItemOf (src/ui/more.ts) says which item it marks. */
 export function header(current: PageKey | null, links?: HeaderLinks): string {
   const item = menuItemOf(current);
@@ -299,7 +304,7 @@ export function header(current: PageKey | null, links?: HeaderLinks): string {
   // (axe "region"). It is a labelled landmark of its own, an <aside> (a block, as the <div> was): it looks the same and
   // does not join the sticky header.
   return `<header class="top"><div class="wrap"><a class="brand" href="${to("brand", "home")}" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>${awx("awx-h")}
-<nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${to(k, href)}"${k === item ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current, links && ((l) => to(l.key, l.href)))}</nav></div></header>
+<nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${to(k, href)}"${k === item ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current, links && ((l) => to(l.key, l.href))).replace('<div class="pmenu">', () => `<div class="pmenu">${sheetTop(item, to)}`)}</nav></div></header>
 <aside class="awx-row" aria-label="${AWX_ROW_LABEL}">${awx("awx-m")}</aside>`;
 }
 
@@ -564,14 +569,15 @@ ${js}</script>`;
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="${esc(o.description)}">
-${o.canonical ? `<link rel="canonical" href="${esc(o.canonical)}">\n` : ""}<meta name="theme-color" content="#0b1220">
+${o.canonical ? `<link rel="canonical" href="${esc(o.canonical)}">\n` : ""}<meta name="theme-color" content="#07060c">
 ${previewTags().join("\n")}
 <link rel="icon" href="assets/favicon.svg?v=${ICON_VERSION}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=${ICON_VERSION}">
 <title>${esc(pageTitle(o.title))}</title>
 <style>${CSS}
 ${MOTION_CSS}${SITE_MOTION_CSS}
-${o.css}${tour ? TOUR_CSS : ""}</style>
+${o.css}${tour ? TOUR_CSS : ""}
+${PREMIUM_CSS}</style>
 </head>
 <body>
 ${header(o.tab)}

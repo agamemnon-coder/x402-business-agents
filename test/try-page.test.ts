@@ -241,7 +241,7 @@ describe("the copy", () => {
   });
 
   it("counts every string of a screen in at least one of its states", () => {
-    const groups: Record<string, Record<string, string>> = { start: Object.fromEntries(Object.entries(COPY.START).filter(([k]) => k !== "flow" && k !== "real")) as Record<string, string>, invoice: Object.fromEntries(Object.entries(COPY.INVOICE).filter(([k]) => k !== "hints")) as Record<string, string>, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
+    const groups: Record<string, Record<string, string>> = { start: Object.fromEntries(Object.entries(COPY.START).filter(([k]) => k !== "flow" && k !== "real" && k !== "lanes" && k !== "card")) as Record<string, string>, invoice: Object.fromEntries(Object.entries(COPY.INVOICE).filter(([k]) => k !== "hints")) as Record<string, string>, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
     expect(Object.keys(COPY.VISIBLE).sort()).toEqual(Object.keys(groups).sort());
     for (const [screen, group] of Object.entries(groups)) {
       const seen = new Set(COPY.VISIBLE[screen as keyof typeof COPY.VISIBLE].flat());
@@ -289,7 +289,7 @@ describe("the copy", () => {
     expect(COPY.BAND.claudeLive).toBe("Claude, live");
     expect(COPY.BAND.claudeCode).toBe("Purser's code reads today");
     expect(COPY.START.heading).toBe("AI agents pay your suppliers. You approve the big ones with Face ID.");
-    expect(COPY.START.button).toBe("Start with a test company");
+    expect(COPY.START.button).toBe("Start the live demo"); // 21 Nov (Max: "one primary button, Start the live demo")
     expect(COPY.GONE.heading).toBe("Your test company was deleted after 24 hours.");
     expect(COPY.GONE.button).toBe("Start again");
     expect(COPY.INVOICE.ibanHint).toBe("Change the IBAN and see what Purser does");
@@ -623,5 +623,26 @@ describe("signing and paying, in the page's own script", () => {
   it("draws the icons as SVG elements made one by one, never from markup", () => {
     expect(script).toContain("createElementNS('http://www.w3.org/2000/svg'");
     expect(script).not.toMatch(/innerHTML|DOMParser|createContextualFragment/);
+  });
+});
+
+
+// P0 award-demo guard: do not silently remove the one-cent tamper experiment during visual redesign.
+describe("P0 — signed one-cent attack stays in the interactive /try journey", () => {
+  it("has a first-attempt +€0.01 mutation pre-filled after actual approval", () => {
+    expect(COPY.BOOKS.cheat).toBe("Now try to change it");
+    expect(COPY.PAY.line).toContain("even one cent");
+    expect(script).toContain("const plus=up(T.terms.amount)");
+    expect(script).toContain("F.amount.value=plus");
+    expect(script).toContain("mark()");
+  });
+
+  it("sends the altered signed payment to the real engine and displays its refusal", () => {
+    expect(script).toContain("const body=payBody(T.terms,v,cred)");
+    expect(script).toContain("await payCall(pid,body)");
+    expect(script).toContain("if(o==='refused')");
+    expect(script).toContain("runKit.oneCent(T.terms,sent)");
+    expect(script).toContain("out.replaceChildren(card)");
+    expect(COPY.TAMPER.rule).toContain("Anything else is blocked");
   });
 });

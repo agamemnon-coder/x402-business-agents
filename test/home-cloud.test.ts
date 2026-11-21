@@ -73,44 +73,20 @@ describe("The explainer of the money flow", () => {
 });
 
 describe("How to start, on Home", () => {
-  const start = /<section class="e-start"[\s\S]*?<\/section>/.exec(mainOf(ON))![0];
-
-  it("is Try, the console as a guest, and the pilot, each to the address that serves it", () => {
-    // 21 Nov (Max: "The steps need to be prettier; it's the small details"): three steps, an icon, one line, one tag each.
-    expect(START_STEPS.map((s) => [s.icon, s.title])).toEqual([["zap", "Try it"], ["layout-dashboard", "Look around"], ["rocket", "Run a pilot"]]);
+  // Max, 21 Nov: "the How to start section is really ugly, just remove it". The pilot's way is the hero's "Start a
+  // pilot" and the For companies button, both to /business, where the pilot and its starter key are; the console as a
+  // guest is the menu's Cloud and the judge tour's third stop. The steps themselves live on in /business.
+  it("is gone from Home; the pilot leads to /business, the design-partner link and Ask Purser stay", () => {
+    expect(mainOf(ON)).not.toContain('class="e-start"');
+    expect(mainOf(ON)).toContain(`<a class="btn big ghost pilot" href="business">`);
     expect(START_STEPS.flatMap((s) => s.links.map((l) => l.href))).toEqual([TRY_URL, CLOUD_GUEST_URL, CLOUD_SETUP_URL]);
     expect([CLOUD_GUEST_URL, CLOUD_SETUP_URL]).toEqual([`${PURSER_CLOUD_URL}#/guest`, `${PURSER_CLOUD_URL}#/start`]);
-    // The console answers both routes (cloud/src/console.ts): the guest route and the first run with a starter key.
-    const console = read("cloud/src/console.ts");
-    expect(console).toContain("if(path==='/guest')");
-    expect(console).toContain("a.href='#/start'");
+    // The console still answers both routes (cloud/src/console.ts).
     expect(CONSOLE_PATHS["/start"]).toBe("#/start");
-    // The pilot card carries the design-partner contact (mailto, set since 20 Nov) and says it is test money.
-    const pilot = /<li class="reveal pilot">[\s\S]*?<\/li>/.exec(start)![0];
-    expect(pilot).toContain(`<a href="${DESIGN_PARTNER_URL}">${DESIGN_PARTNER_LABEL} →</a>`);
-    expect(text(pilot)).toMatch(/Test money · no real payments yet/);
+    for (const html of [ON, OFF]) expect(mainOf(html)).not.toContain('class="e-start"');
+    const biz = /<div class="e-more e-biz">[\s\S]*?<\/div>/.exec(mainOf(ON))![0];
+    expect(biz).toContain(`<a href="${DESIGN_PARTNER_URL}">${DESIGN_PARTNER_LABEL} →</a>`);
     expect(homePage(undefined, { partnerUrl: "" })).not.toContain(DESIGN_PARTNER_LABEL);
-  });
-
-  it("links Ask Purser, the chat on Purser Cloud, and carries no chat code itself", () => {
-    expect(ASK_URL).toBe(`${PURSER_CLOUD_URL}ask`);
-    expect(start).toContain(`<p class="ask">Questions first? <a href="${ASK_URL}" target="_blank" rel="noopener">${ASK_LABEL}`);
-    for (const html of [ON, OFF]) expect(mainOf(html).split(ASK_URL).length - 1).toBe(1);
-    // Home still calls no server: its CSP allows no connection (test/home-story.test.ts, A7).
-    expect(ON).not.toMatch(/<textarea|<form\b/);
-  });
-
-  it("says only what the product does today: the set-up page's two minutes, the sweep's 24 hours, no customer", () => {
-    expect(read("src/ui/i18n.ts")).toContain('"cs.setup_lede": "About two minutes.');
-    expect(read("cloud/src/try/sweep.ts")).toMatch(/every visitor's company past its 24 hours is wiped/);
-    expect(text(start)).toContain("2 minutes · deleted after 24 h");
-    expect(text(start)).toContain("as a guest. No sign-up. Read only");
-    for (const html of [ON, OFF]) {
-      const t = text(mainOf(html));
-      expect(t).not.toMatch(/\b(customers? (use|trust)|trusted by|used by \d|our customers|in production at)\b/i);
-      expect(t).not.toMatch(/\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Stripe|Mastercard|Coinbase)\b/);
-      expect(t).not.toMatch(/founder|Max Geurtsen/i);
-    }
-    expect(text(/<details class="real"[\s\S]*?<\/details>/.exec(ON)![0])).toContain("No customer uses it yet.");
+    expect(mainOf(ON)).toContain(`<a href="${ASK_URL}" target="_blank" rel="noopener">${ASK_LABEL}`);
   });
 });

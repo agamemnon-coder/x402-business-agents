@@ -24,12 +24,14 @@ const sha = (b: Buffer) => createHash("sha256").update(b).digest("hex");
 const pngSize = (b: Buffer) => ({ width: b.readUInt32BE(16), height: b.readUInt32BE(20) });
 
 describe("6.3: a short sandbox disclosure beside the primary demo button", () => {
-  it("Home: the line right under the hero's buttons opens with it, test money still said once outside the fold", () => {
+  // Max, 21 Nov: "drop the line under the CTAs": the disclosure moved into the Workflow card beside the buttons.
+  it("Home: the Workflow card beside the hero's buttons says sandbox and test money; the line under them is gone", () => {
     expect(SANDBOX_NOTE).toBe("Sandbox demo: test money, no real settlement.");
     for (const html of [homePage(), homePage(undefined, { trySign: true })]) {
       const m = mainOf(html);
       // 21 Nov: the hero's primary button starts the judge tour; the sandbox line, after its shield icon, is right under both.
-      expect(m).toMatch(new RegExp(`<div class="ctas"><a class="btn primary big tour"[\\s\\S]*?</div>\\s*<p class="reassure"><svg[^>]*>[\\s\\S]*?</svg>${SANDBOX_NOTE}</p>`));
+      expect(m).not.toContain(SANDBOX_NOTE);
+      expect(m).toMatch(/<div class="ctas"><a class="btn primary big start"[\s\S]*?<\/div>\s*<\/div>\s*<div class="wf"[\s\S]*?Recorded \/try runs · sandbox[\s\S]*?Paid · Airwallex sandbox, test money/);
       expect(REASSURE).toEqual({ sign: SANDBOX_NOTE, world: SANDBOX_NOTE });
     }
   });

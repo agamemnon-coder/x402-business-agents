@@ -6,7 +6,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, KIT11_RUN_LINE, README_WHAT, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
-import { CLOUD_EYEBROW, HOME_SUB, REASSURE, START, START_ID, TOUR_BUTTON, homePage } from "../src/redesign/home.js";
+import { CLOUD_EYEBROW, HOME_SUB, PILOT_CTA, REASSURE, START, WATCH_BUTTON, homePage } from "../src/redesign/home.js";
+import { WORKFLOW_HEAD, heroStats } from "../src/redesign/heroWave.js";
 import { TOUR_START_HREF } from "../src/redesign/tour.js";
 import { buildPages } from "../src/relay/assets.js";
 import { metalStory } from "../src/redesign/metalStory.js";
@@ -152,24 +153,26 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(280);
   });
 
-  it("opens Home under its heading with the idea, the judge tour as the one primary button, Try second, one sandbox line", () => {
+  it("opens Home under its heading with the idea, three figures, Try as the one primary button, Watch and Pilot, one sandbox line", () => {
     const t = words(hero(HOME));
-    // 21 Nov (Max: "a judge tour on the homepage where you really go from tab to tab"): the hero's first button starts the
-    // judge tour (src/redesign/tour.ts), the second opens the hands-on demo; the product card stands beside them.
-    expect([TOUR_BUTTON, START]).toEqual(["Start the judge tour", "Try it"]);
-    expect(t.startsWith(`${CLOUD_EYEBROW} ${HERO} ${HOME_SUB} ${TOUR_BUTTON} ${START} ${REASSURE.sign}`)).toBe(true);
-    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big tour"', 'class="btn big ghost start"']);
-    expect(hero(HOME)).toContain(`<a class="btn primary big tour" href="${TOUR_START_HREF}" data-tour-start>`);
-    expect(HOME).toContain(`<section class="e-start" id="${START_ID}"`);
+    expect([START, WATCH_BUTTON, PILOT_CTA]).toEqual(["Try it", "Watch the demo", "Start a pilot"]);
+    // The owner's concept (21 Nov): three figures from the records under the idea, then Try (primary), Watch the demo and
+    // Start a pilot; the judge tour's button is under its map (test/home-story.test.ts).
+    expect(t.startsWith(`${CLOUD_EYEBROW} ${HERO} ${HOME_SUB} ${heroStats().map((s) => `${s.value} ${s.words}`).join(" ")} ${START} ${WATCH_BUTTON} ${PILOT_CTA} ${WORKFLOW_HEAD}`)).toBe(true);
+    // Max, 21 Nov: no line under the buttons; the Workflow card beside them says sandbox and test money.
+    expect(hero(HOME)).not.toContain(REASSURE.sign);
+    expect(heroStats()).toHaveLength(3);
+    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost film"', 'class="btn big ghost pilot"']);
+    expect(HOME).toContain(`<a class="btn big tour" href="${TOUR_START_HREF}" data-tour-start>`);
     // Every Try call to action opens the hands-on demo (TRY_URL), with /try/sign in the bundle or not.
-    expect(hero(HOME)).toContain('<a class="btn big ghost start" href="/try">');
+    expect(hero(HOME)).toContain('<a class="btn primary big start" href="/try">');
     expect(HOME).not.toContain("Watch the agents");
     // The three sentences stay in the README, the form and the deck; Home tells the first with its product card.
     for (const d of DIFFERENTIATORS.slice(1)) expect(words(HOME)).not.toContain(d);
     // Without /try/sign in the bundle the button leads to /try, never to a dead link, and the line under it says what /try is.
     expect(homePage()).not.toContain('href="try/sign"');
-    expect(hero(homePage())).toContain('<a class="btn big ghost start" href="/try">');
-    expect(words(hero(homePage()))).toContain(`${TOUR_BUTTON} ${START} ${REASSURE.world}`);
+    expect(hero(homePage())).toContain('<a class="btn primary big start" href="/try">');
+    expect(words(hero(homePage()))).toContain(`${START} ${WATCH_BUTTON} ${PILOT_CTA} ${WORKFLOW_HEAD}`);
     // No link to Pricing or /judge, both gone (13 Nov, evening).
     expect(homePage()).not.toMatch(/href="\/?(tour|pricing)"/);
     expect(homePage()).not.toMatch(/href="\/?judge"/);

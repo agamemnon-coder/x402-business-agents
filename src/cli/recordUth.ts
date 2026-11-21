@@ -74,7 +74,7 @@ async function main(): Promise<void> {
     await hold(0.5);
     await mark(page, "start");
     await hold(1.5);
-    await page.getByRole("button", { name: /Start with a test company/ }).click();
+    await page.getByRole("button", { name: /Start the live demo|Start with a test company/ }).click();
     await page.locator(".samples .btn:not(.skel)").first().waitFor({ timeout: 60_000 });
     await mark(page, "inbox");
     await hold(2);

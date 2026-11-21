@@ -81,7 +81,7 @@ async function main(): Promise<void> {
     await hold(0.5);
     await mark(page, "start");
     await hold(2);
-    await page.getByRole("button", { name: /Start with a test company/ }).click();
+    await page.getByRole("button", { name: /Start the live demo|Start with a test company/ }).click();
     await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor({ timeout: 60_000 });
     await hold(1.5);
     // 1. An invoice already paid, sent again: the duplicate check.

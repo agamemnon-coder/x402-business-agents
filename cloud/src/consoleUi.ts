@@ -66,7 +66,9 @@ async function overviewView(){
       // The agents at work: each one's spend against its limit and newest decision, then the decisions as a timeline.
       el('div','dgrid g1',[cardLink(dcard('feedc',sw('act_h'),sub,el('div','',[agentStrip(AG&&AG.agents),timeline(D,6)])),'#/agents',sw('to_agents')),el('div','stack',[due,cardLink(dcard('weeks',t('cs.dash.appr_title'),t('cs.dash.appr_sub'),el('div','',[el('div','cv',[weekChart(D,Math.round(wide?full*0.36-40:weekW))]),el('ul','klegend',[el('li','',[el('i','cfo'),t('cs.dash.appr_cfo')]),el('li','',[el('i','alone'),t('cs.dash.appr_alone')])])])),'#/invoices?f=paid',sw('to_inv'))])]),
       // 21 Nov: spend by who started it beside spend by rail, each with its table.
-      el('div','dgrid g1',[cardLink(dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),agentSpend(D)),'#/agents',sw('to_agents')),cardLink(dcard('rails',t('cs.ch.rails_title'),t('cs.ch.rails_sub',{cur:cur(D.currency)}),railsChart(D)),'#/transactions',sw('to_tx'))]));
+      el('div','dgrid g1',[cardLink(dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),agentSpend(D)),'#/agents',sw('to_agents')),cardLink(dcard('rails',t('cs.ch.rails_title'),t('cs.ch.rails_sub',{cur:cur(D.currency)}),railsChart(D)),'#/transactions',sw('to_tx'))]),
+      // 21 Nov (Max: "too simple"): cash by week and the counterparties paid (cloud/src/consoleOverviewPlus.ts).
+      overviewPlus(D));
   }else dash.append(due);
   nodes.push(awlOverview());
   if(inbox)nodes.push(inbox);

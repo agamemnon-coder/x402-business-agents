@@ -11,7 +11,8 @@
 //  4. on every page: no console or CSP error, nothing wider than the screen, no "null", "undefined" or "NaN".
 // npx tsx test/browser/ask.check.ts [screenshot dir]
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -33,6 +34,8 @@ const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "ask-check-"));
 const env: CloudEnv = {
   sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "a".repeat(48), adminTokenSha256: createHash("sha256").update("ask-check-admin-not-a-secret").digest("hex"),
   rpId: "localhost", origin: ORIGIN, rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 },
+  // The Worker's static assets: pdf.js, as npm run cloud:pdfjs copies it (an invoice's page draws its PDF; visit 2c).
+  asset: async (path) => (path === "/assets/pdfjs.mjs" ? new Response(readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")))) : null),
 };
 // Claude, stood in for: an agent that reads the demo company when the question is about its records (one tool call,
 // then an answer citing the record), else an answer written from the passages the route sent, streamed a few words at a
@@ -240,6 +243,51 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   await page.frameLocator("#pask-panel iframe").getByRole("button", { name: C.close }).click();
   await page.waitForTimeout(200);
   ok(await page.locator("#pask-fab").isVisible(), "the close button closes it and the button is back");
+  await ctx.close();
+}
+
+// 2c. In context (cloud/src/ask/context.ts, 21 Nov): a guest in the demo company on an invoice's page opens Ask Purser;
+// the panel says which invoice and offers the three quick actions; one asked sends the page's kind and the record's id
+// (nothing else) with the question; then on the overview the same panel follows the page, and "Open where the CFO
+// approves" takes the console to what waits for the CFO's Face ID and closes the panel: it opens a page, never acts.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "dark" });
+  const page = await ctx.newPage();
+  watch(page, "console in context");
+  const sent: unknown[] = [];
+  page.on("request", (r) => { if (r.url().endsWith("/v1/ask") && r.method() === "POST") { try { sent.push(JSON.parse(r.postData() ?? "{}")); } catch { /* not JSON */ } } });
+  await page.goto(`${ORIGIN}/#/guest`);
+  await page.waitForFunction(() => location.hash.startsWith("#/invoices"), undefined, { timeout: 15_000 });
+  const link = page.locator('#view a[href^="#/invoices/"]').first();
+  await link.waitFor({ timeout: 15_000 });
+  const href = (await link.getAttribute("href"))!;
+  const id = decodeURIComponent(href.slice("#/invoices/".length));
+  await page.goto(`${ORIGIN}/${href}`);
+  await page.waitForFunction(() => document.body.dataset.askKind === "invoice", undefined, { timeout: 15_000 });
+  ok(await page.evaluate(() => [document.body.dataset.askKind, document.body.dataset.askId, document.body.dataset.askDemo].join(" ")) === `invoice ${id} 1`, `the console says which page and record the guest views (invoice ${id}, demo)`);
+  await page.locator("#pask-fab").click();
+  const frame = page.frameLocator("#pask-panel iframe");
+  await frame.locator("#ctxbar:not([hidden])").waitFor({ timeout: 10_000 });
+  ok((await frame.locator("#ctxl").innerText()) === `Invoice ${id}` && (await frame.locator("#ctxd").innerText()).includes("demo company"), "the panel says which invoice, in the demo company");
+  const labels = await frame.locator("#qa button[data-q]").allInnerTexts();
+  ok(JSON.stringify(labels) === JSON.stringify(["Check invoice status", "View transactions", "Explain a decision"]), `three quick actions (${JSON.stringify(labels)})`);
+  ok(await frame.locator("#qa .qa-go").count() === 1, "and the page where the CFO approves, to open");
+  await shot(page, "5b-console-1440-dark-context");
+  await frame.getByRole("button", { name: "Check invoice status" }).click();
+  await frame.locator(".msg.bot:not([aria-busy]) .meta").waitFor({ timeout: 15_000 });
+  const body = sent.at(-1) as { question?: string; context?: Record<string, unknown> } | undefined;
+  ok(!!body && body.question === `What is the status of invoice ${id}, and what is it waiting for?` && JSON.stringify(body.context) === JSON.stringify({ kind: "invoice", id, demo: true }), `the quick action asks about this invoice and sends only its page, its id and demo (${JSON.stringify(body?.context)})`);
+  await sane(page, "console in context");
+  // The overview: the panel follows the page, and its link opens what waits for the CFO.
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => { location.hash = "#/overview"; });
+  await page.waitForFunction(() => document.body.dataset.askKind === "overview", undefined, { timeout: 15_000 });
+  await page.locator("#pask-fab").click();
+  await page.waitForTimeout(300);
+  ok((await frame.locator("#ctxl").innerText()) === "The overview", "the panel follows the page the person moved to");
+  await frame.locator("#qa .qa-go").click();
+  await page.waitForTimeout(400);
+  ok(await page.evaluate(() => location.hash) === "#/invoices?f=waiting_cfo" && !(await page.locator("#pask-panel").isVisible()), "\"Open where the CFO approves\" opens what waits for the CFO's Face ID and closes the panel");
   await ctx.close();
 }
 
