@@ -16,7 +16,7 @@
 /** This module's words, English and Dutch. */
 export const CO_WORDS = {
   en: {
-    tap_open: "Tap again to open", click_open: "Click to open the list", net_so_far: "Net so far",
+    tap_open: "Tap again to open", click_open: "Click to open the list", key_open: "Enter opens the list", open_tab: "Open its page", net_so_far: "Net so far",
     // The session
     left_min: "Ends in {n} min", left_h: "Ends in {h} h {m} min", left_lt1: "Ends in under a minute", guest: "Guest", session: "Session",
     // The switcher
@@ -33,7 +33,6 @@ export const CO_WORDS = {
     per_purchase: "a purchase", per_month: "a month", no_limits: "No agent card on record.",
     open_h: "Open payables", open_none: "Nothing open to pay.", recent_h: "Recent payments", recent_none: "No payments yet.",
     conn_h: "Connected services", conn_none: "Nothing connected yet.", conn_manage: "Manage connections", see_all: "See all",
-    demo_rows: "Demo company: made-up data, simulated bank, test money.",
     // Connected tabs
     g_connected: "Connected", claude: "Claude",
     cl_h: "Claude and your AI", cl_lede: "Purser's MCP server: your AI reads the books, and never approves or pays.",
@@ -56,7 +55,7 @@ export const CO_WORDS = {
     danger_h: "Danger zone", danger_sub: "Sign out of this browser. Your session ends at once.", danger_guest: "Leave the demo company. Nothing you saw is kept.",
   },
   nl: {
-    tap_open: "Tik nog eens om te openen", click_open: "Klik om de lijst te openen", net_so_far: "Netto tot nu",
+    tap_open: "Tik nog eens om te openen", click_open: "Klik om de lijst te openen", key_open: "Enter opent de lijst", open_tab: "Open de pagina", net_so_far: "Netto tot nu",
     left_min: "Nog {n} min", left_h: "Nog {h} u {m} min", left_lt1: "Nog minder dan een minuut", guest: "Gast", session: "Sessie",
     switch: "Ander bedrijf", this_company: "Dit bedrijf", open_page: "Bedrijfspagina", other_companies: "Eerder aangemeld in deze browser",
     sign_in_to: "Aanmelden bij {slug}", demo_company: "Demobedrijf", demo_sub: "Verzonnen gegevens, alleen lezen", open_demo: "Open het demobedrijf",
@@ -70,7 +69,6 @@ export const CO_WORDS = {
     per_purchase: "per aankoop", per_month: "per maand", no_limits: "Geen agentkaart vastgelegd.",
     open_h: "Openstaand te betalen", open_none: "Niets open om te betalen.", recent_h: "Recente betalingen", recent_none: "Nog geen betalingen.",
     conn_h: "Gekoppelde diensten", conn_none: "Nog niets gekoppeld.", conn_manage: "Koppelingen beheren", see_all: "Alles zien",
-    demo_rows: "Demobedrijf: verzonnen gegevens, gesimuleerde bank, testgeld.",
     g_connected: "Gekoppeld", claude: "Claude",
     cl_h: "Claude en je AI", cl_lede: "De MCP-server van Purser: je AI leest de boeken, en keurt nooit goed of betaalt.",
     cl_status: "Status", cl_on: "Gekoppeld", cl_demo: "Demotoken, alleen lezen", cl_tokens: "{n} geldige koppeltokens", cl_tokens_1: "1 geldig koppeltoken",
@@ -214,7 +212,7 @@ async function companyView(){
   cardLink(conn,'#/connections',cw('conn_manage'));
   const hero=el('div','co-hero',[el('span','co-big',coName(name).charAt(0).toUpperCase()),el('div','',[el('h1','',coName(name)),el('p','lede',cw('co_lede',{name:coName(name)})),
     el('div','co-chips',[m.demo?el('span','pill warn',[ic('flask'),t('cs.demo.chip')]):null,el('span','pill mono',m.tenant.slug),aw&&!m.demo?el('span','pill'+(aw.status==='active'?' ok':''),'Airwallex · '+tk('cs.awx.status.'+aw.status,aw.status)):null].filter(Boolean))])]);
-  view().replaceChildren(hero,kpis,el('div','dgrid co-g',[profile,lims]),el('div','dgrid co-g',[money,conn]),el('div','dgrid co-g',[openList,recent]),m.demo?el('p','fine',cw('demo_rows')):null);
+  view().replaceChildren(hero,kpis,el('div','dgrid co-g',[profile,lims]),el('div','dgrid co-g',[money,conn]),el('div','dgrid co-g',[openList,recent]));
   riseIn();
 }
 // --- Claude (MCP): its own page once connected -------------------------------------------------------------------------
@@ -331,7 +329,7 @@ ul.cl-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14
 ul.cl-list.ok li .ic { color: var(--ok); } ul.cl-list.no li .ic { color: var(--bad); }
 .cl-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; } .cl-row code.cmd { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; margin: 0; }
 #view > .dgrid + .cl-addr, #view > .cl-addr + .dcard { margin-top: 16px; }
-.cl-k .kpi b { font-size: 18px; overflow-wrap: anywhere; }
+.cl-k .kpi b { font-size: 18px; white-space: normal; overflow-wrap: anywhere; }
 /* Settings' new cards. */
 .set-who { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; } .set-who > div { display: grid; min-width: 0; } .set-who b { overflow-wrap: anywhere; }
 .set-danger { border-color: color-mix(in srgb, var(--bad) 30%, var(--border)); }

@@ -930,7 +930,8 @@ async function engineArchive(E: EnginePass) {
   ok((await p.textContent("main h1"))?.trim() === "Archive", "archive: the page opens from the proof's link, with its title");
   // Eight since 14 Nov (Agents and Tokenisation joined on 13 Nov; Invoices and Books are two tabs again; Airwallex, live
   // from the sandbox, joined); the archive is not one.
-  ok(await p.locator("#tabs a").count() === 9 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its nine items");
+  // 21 Nov: Claude's tab is in the menu, hidden until the company has connected it (cloud/src/consoleCompany.ts).
+ok(await p.locator("#tabs a:not([hidden])").count() === 9 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its nine items");
   const files = (await apiAs(E, "/v1/engine/vault")).files as VaultFile[];
   ok(files.length >= 2 && await p.locator(".archive ul.files li").count() === files.length, `archive: every file of GET /v1/engine/vault is in the tree (${files.length})`);
   const tree = await p.$$eval(".archive details", (ds) => ds.map((d) => { let depth = 0; for (let x = d.parentElement; x; x = x.parentElement) if (x.tagName === "DETAILS") depth++; return { name: d.querySelector("summary")?.textContent ?? "", depth, open: (d as HTMLDetailsElement).open }; }));
@@ -991,11 +992,12 @@ async function guestPass() {
     // Review, 13 Nov, at 390 px: no page wraps onto a line of its own ("Settings" did), and below 420 px the company chip shows the company's own name whole ("Northwind Outdoor (d…" was cut).
     // 22 Nov (the owner: on his iPhone the nine pages were a 3x4 grid of words): a laptop has them in a sidebar, one under
     // the other, in their groups; a phone has a bottom tab bar of the five groups and, in a group, its pages side by side.
-    const nav = width < 1024 ? "#btabs a" : "#tabs a";
+    // 21 Nov: the demo company has Claude connected (its read-only demo token), so its Connected group shows a tenth page.
+    const nav = width < 1024 ? "#btabs a" : "#tabs a:not([hidden])";
     const boxes = await p.locator(nav).evaluateAll((as) => as.map((a) => { const b = a.getBoundingClientRect(); return { top: Math.round(b.top), left: Math.round(b.left), whole: a.scrollWidth <= a.clientWidth + 1 && b.right <= innerWidth + 1 && b.left >= -1 && b.bottom <= innerHeight + 1 }; }));
     const rows = new Set(boxes.map((b) => b.top)).size, cols = new Set(boxes.map((b) => b.left)).size;
-    ok(width < 1024 ? boxes.length === 5 && rows === 1 && boxes.every((b) => b.whole) && !(await p.isVisible("#tabs")) : boxes.length === 9 && cols === 1 && rows === 9 && boxes.every((b) => b.whole),
-      `${tag}: the pages are ${width < 1024 ? "five groups in one bottom row, every one whole" : "a sidebar of nine, one under the other"} (${JSON.stringify(boxes)})`);
+    ok(width < 1024 ? boxes.length === 5 && rows === 1 && boxes.every((b) => b.whole) && !(await p.isVisible("#tabs")) : boxes.length === 10 && cols === 1 && rows === 10 && boxes.every((b) => b.whole),
+      `${tag}: the pages are ${width < 1024 ? "five groups in one bottom row, every one whole" : "a sidebar of ten (Claude connected), one under the other"} (${JSON.stringify(boxes)})`);
     if (width < 1024) {
       // The Ask button sits in the top bar, so it covers nothing; the bottom bar covers nothing at the page's end either.
       ok(await p.evaluate(() => !!document.querySelector(".appbar #ask-slot #pask-fab")), `${tag}: Ask Purser is in the top bar, not over the page`);

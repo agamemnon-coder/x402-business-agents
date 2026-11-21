@@ -803,7 +803,7 @@ function invoiceRing(D){
   const items=parts.map(([k,l],i)=>el('li','',[el('i','r'+i),el('span','',t(l)),el('b','num',String(I[k].count)),el('small','num',amt(D,toCents(I[k].amount)))]));
   // Each state opens its invoices: paid, waiting for Face ID, needing a person (a new supplier), open, stopped.
   const F={paid:'paid',waiting_cfo:'waiting_cfo',needs_vendor:'act',open:'open',stopped:'blocked'};
-  if(parts.length)chartPoint({root:g,n:parts.length,at:(x,y)=>ringPick(g,fr,x,y),anchor:(i)=>ringAnchor(g,fr,i),mark:(i)=>ringMark(g,i),legend:items,
+  if(parts.length)chartPoint({root:g,n:parts.length,side:true,at:(x,y)=>ringPick(g,fr,x,y),anchor:(i)=>ringAnchor(g,fr,i),mark:(i)=>ringMark(g,i),legend:items,
     tip:(i)=>{const [k,l]=parts[i];return {h:t(l),rows:[{k:'r'+i,l:t('cs.dash.inv_count'),v:String(I[k].count)+' · '+Math.round(I[k].count/(tot||1)*100)+'%'},{l:t('cs.ch.amount'),v:amt(D,toCents(I[k].amount))}]}},
     href:(i)=>'#/invoices?f='+F[parts[i][0]]});
   return el('div','ringwrap',[g,el('div','',[el('ul','rlegend',items),I.duplicates_stopped?el('p','fine',t('cs.dash.inv_dup',{n:I.duplicates_stopped})):null])])}
@@ -1685,7 +1685,8 @@ async function connectionsView(q){
   const ACT={
     airwallex:()=>offers('airwallex')&&owner?to('connect',t('cs.cx.connect')):nav('#/airwallex',t('cs.cx.see_awx')),
     alta:()=>nav('#/tokenisation',t('cs.cx.see_alta')),'visa-airi':()=>nav('#/agents',t('cs.cx.see_visa')),t0:()=>nav('#/books',t('cs.cx.see_t0')),
-    mcp:()=>to('claude'),claude:()=>to('claude'),'awx-codemode':()=>to('claude'),
+    // 21 Nov: a connection the company has opens its own page (the menu's Connected tab); else its set-up below.
+    mcp:()=>CONN.claude?nav('#/claude',cw('open_tab')):to('claude'),claude:()=>CONN.claude?nav('#/claude',cw('open_tab')):to('claude'),'awx-codemode':()=>to('claude'),
     chatgpt:()=>null,cursor:()=>null,vscode:()=>null,gemini:()=>null,windsurf:()=>null,
     rest:()=>owner&&session?to('keys',t('cs.cx.make_key')):null,sdks:()=>null,'zapier-make':()=>null,n8n:()=>null,
     webhook:()=>hook?to('webhook'):null,
@@ -1697,7 +1698,7 @@ async function connectionsView(q){
     'sign-in':()=>session&&!m.demo&&mine&&mine.items.some((x)=>/^sign_in_/.test(x.id)&&x.status!=='not_available')?to('identities',t('cs.cx.link_account')):null,
     export:()=>owner&&session?to('data',t('cs.cx.download')):null,
   };
-  const cat=await api('/v1/connections');
+  const cat=await api('/v1/connections');await connState().catch((e)=>{if(e instanceof Expired)throw e});
   const grid=el('div','card panel connections');grid.id='connections';
   grid.replaceChildren(...connectionsViewOf(cat,t,tk,el,{mine:mine&&mine.items,icon:ic,logos:BRAND_LOGOS,action:(x)=>{const f=ACT[x.id];return f?f():null}}));
   // A row of the groups, each a jump to its heading (a long page on a phone).
@@ -1854,7 +1855,9 @@ async function route(){
     const pages={'/company':companyView,'/claude':claudeView,'/overview':overviewView,'/agents':agentsView,'/invoices':invoicesView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/airwallex':airwallexView,'/connections':connectionsView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
     if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
     await pages[path](q);shell();
-  }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
+  // A session that ended while the page loaded (another request met the 401 first) has gone to the sign-in already:
+  // its page is not overwritten by this one's failure.
+  }catch(e){if(e instanceof Expired||!S)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
 }
 $('#demo-out').onclick=(e)=>{e.preventDefault();$('#out').click()};
 $('#out').onclick=async()=>{workStop();try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}forget();S=null;ME=null;go('#/sign-in')};
@@ -1943,6 +1946,8 @@ table thead th, .tbl thead th { background: var(--sunken); color: var(--muted); 
 .kpi.pos .kl .ic { background: var(--ok-soft); color: var(--ok); } .kpi.neg .kl .ic { background: var(--bad-soft); color: var(--bad); }
 .kpi .ks { font-size: 12.5px; color: var(--faint); line-height: 1.35; }
 @media (max-width: 520px) { .kpi { padding: 14px; } .kpi b { font-size: 20px; } }
+/* 21 Nov: at 360 to 400 px a two-column figure ("EUR 9,226.92") fits whole instead of ending in an ellipsis. */
+@media (max-width: 400px) { .kpis .kpi { padding: 12px; } .kpis .kpi b { font-size: 17px; letter-spacing: -.025em; } }
 .dgrid { display: grid; gap: 16px; }
 @media (min-width: 980px) { .dgrid.g1 { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); } .dgrid.g2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .dcard { padding: 18px 20px 16px; min-width: 0; }

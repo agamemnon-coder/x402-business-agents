@@ -32,12 +32,15 @@ function chartPoint(o){
     const wrap=root.closest('.dcard,.card')||root.parentElement;if(!wrap)return;const [tip,say]=chartTipBox(wrap);
     if(i<0){tip.classList.remove('on');CH_OPEN.delete(c);return}
     CH_OPEN.add(c);const d=o.tip(i),h=o.href?o.href(i):null;
-    tip.replaceChildren(el('b','cth',d.h),...d.rows.map((r)=>el('span','ctr',[el('i','sw'+(r.k?' '+r.k:'')),el('span','ctl',r.l),el('b','num',r.v)])),h?el('span','cgo',touch&&!kb?cw('tap_open'):cw('click_open')):null);
+    tip.replaceChildren(...[el('b','cth',d.h),...d.rows.map((r)=>el('span','ctr',[el('i','sw'+(r.k?' '+r.k:'')),el('span','ctl',r.l),el('b','num',r.v)])),h?el('span','cgo',kb?cw('key_open'):touch?cw('tap_open'):cw('click_open')):null].filter(Boolean));
     tip.classList.add('on');
     const p=o.anchor(i),wr=wrap.getBoundingClientRect(),W=wrap.clientWidth,tw=tip.offsetWidth,th=tip.offsetHeight;
     // Above the point when it fits, else beside it (never over the part it describes), else below; always inside the card.
     const x=p.x-wr.left,y=p.y-wr.top,Hc=wrap.clientHeight,mid=Math.max(2,Math.min(x-tw/2,W-tw-2));let left=mid,top=y-th-12;
-    if(top<0){top=Math.max(2,Math.min(y-th/2,Hc-th-2));if(x+16+tw<=W)left=x+16;else if(x-16-tw>=0)left=x-16-tw;else{left=mid;top=Math.min(y+16,Hc-th-2)}}
+    // A ring prefers its side (above, the box would cover the ring it describes).
+    const sideTop=Math.max(2,Math.min(y-th/2,Hc-th-2)),sideL=x+16+tw<=W?x+16:x-16-tw>=0?x-16-tw:null;
+    if(o.side&&sideL!==null){left=sideL;top=sideTop}
+    else if(top<0){top=sideTop;if(sideL!==null)left=sideL;else{left=mid;top=Math.min(y+16,Hc-th-2)}}
     tip.style.transform='translate('+Math.round(left)+'px,'+Math.round(top)+'px)';
     if(speak)say.textContent=d.h+': '+d.rows.map((r)=>r.l+' '+r.v).join(', ')};
   c.set=set;
@@ -64,7 +67,8 @@ const svgY=(g,H,cy)=>{const r=g.getBoundingClientRect();return (cy-r.top)*H/(r.h
 // A ring's part under the pointer: any angle round its centre (no dead zone in the hole or the corners).
 function ringPick(g,fr,cx,cy){const r=g.getBoundingClientRect();const dx=cx-(r.left+r.width/2),dy=cy-(r.top+r.height/2);let a=Math.atan2(dx,-dy)/(2*Math.PI);if(a<0)a+=1;a*=100;
   let s=0;for(let i=0;i<fr.length;i++){s+=fr[i];if(a<=s)return i}return fr.length-1}
-function ringAnchor(g,fr,i){let s=0;for(let k=0;k<i;k++)s+=fr[k];const a=(s+fr[i]/2)/100*2*Math.PI;return svgAt(g,120,120,60+46*Math.sin(a),60-46*Math.cos(a))}
+// The box goes beside the ring, at the height of the part it describes, so it never covers the ring.
+function ringAnchor(g,fr,i){let s=0;for(let k=0;k<i;k++)s+=fr[k];const a=(s+fr[i]/2)/100*2*Math.PI;const p=svgAt(g,120,120,60+46*Math.sin(a),60-46*Math.cos(a));return {x:g.getBoundingClientRect().right-6,y:p.y}}
 function ringMark(g,i){g.querySelectorAll('.seg').forEach((s,k)=>{s.classList.toggle('hot',k===i);s.classList.toggle('dim',i>=0&&k!==i)})}
 // Columns: the one under the pointer lit, the others dimmed.
 function colMark(g,i){g.querySelectorAll('.col').forEach((s,k)=>{s.classList.toggle('hot',k===i);s.classList.toggle('dim',i>=0&&k!==i)})}
@@ -127,7 +131,7 @@ function donut(D,parts,title,centre,href){
   chartA11y(g,title,parts.map((p)=>p.l+' '+amt(D,p.v)+' ('+pc(p.v)+')').join(', '));
   const items=parts.map((p,i)=>el('li','',[el('i','c'+i),el('span','',p.l),el('b','num',pc(p.v)),el('small','num',amt(D,p.v)+(p.n?' · '+t(p.n===1?'cs.dash.n_payments_1':'cs.dash.n_payments',{n:p.n}):''))]));
   const lg=el('ul','rlegend clegend',items);
-  chartPoint({root:g,n:parts.length,at:(x,y)=>ringPick(g,fr,x,y),anchor:(i)=>ringAnchor(g,fr,i),mark:(i)=>ringMark(g,i),legend:items,
+  chartPoint({root:g,n:parts.length,side:true,at:(x,y)=>ringPick(g,fr,x,y),anchor:(i)=>ringAnchor(g,fr,i),mark:(i)=>ringMark(g,i),legend:items,
     tip:(i)=>{const p=parts[i];return {h:p.l,rows:[{k:'c'+i,l:t('cs.ch.amount'),v:amt(D,p.v)},{l:t('cs.ch.share'),v:pc(p.v)},p.n?{l:t('cs.ch.payments'),v:String(p.n)}:null].filter(Boolean)}},
     href:href?(i)=>href(parts[i]):null});
   return el('div','',[el('div','ringwrap',[g,el('div','',[lg])]),chartTable([title,t('cs.ch.amount'),t('cs.ch.share')],parts.map((p)=>[p.l,amt(D,p.v),pc(p.v)]))])}
