@@ -625,3 +625,24 @@ describe("signing and paying, in the page's own script", () => {
     expect(script).not.toMatch(/innerHTML|DOMParser|createContextualFragment/);
   });
 });
+
+
+// P0 award-demo guard: do not silently remove the one-cent tamper experiment during visual redesign.
+describe("P0 — signed one-cent attack stays in the interactive /try journey", () => {
+  it("has a first-attempt +€0.01 mutation pre-filled after actual approval", () => {
+    expect(COPY.BOOKS.cheat).toBe("Now try to change it");
+    expect(COPY.PAY.line).toContain("even one cent");
+    expect(script).toContain("const plus=up(T.terms.amount)");
+    expect(script).toContain("F.amount.value=plus");
+    expect(script).toContain("mark()");
+  });
+
+  it("sends the altered signed payment to the real engine and displays its refusal", () => {
+    expect(script).toContain("const body=payBody(T.terms,v,cred)");
+    expect(script).toContain("await payCall(pid,body)");
+    expect(script).toContain("if(o==='refused')");
+    expect(script).toContain("runKit.oneCent(T.terms,sent)");
+    expect(script).toContain("out.replaceChildren(card)");
+    expect(COPY.TAMPER.rule).toContain("Anything else is blocked");
+  });
+});
