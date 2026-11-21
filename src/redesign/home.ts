@@ -171,7 +171,7 @@ p.ask a:hover { text-decoration: underline; }
   .e-hero .wrap { gap: 28px; }
   .e-hero p.cloud { margin-bottom: 14px; padding: 5px 11px; font-size: 11px; letter-spacing: .14em; }
   .e-hero .h-hero { font-size: clamp(34px, 9.6vw, 40px); }
-  .e-hero .what { font-size: 16px; line-height: 1.45; margin-top: 12px; }
+  .e-hero .what { display: none; }
   ul.hstats { margin-top: 16px; } ul.hstats b { font-size: 24px; }
   .ctas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 18px; }
   .ctas .btn { width: 100%; justify-content: center; }
@@ -532,7 +532,6 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <p class="what">${esc(HOME_SUB)}</p>
     ${heroStatsHtml()}
     <div class="ctas"><a class="btn primary big start" href="${TRY_URL}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(WATCH_BUTTON)}</a><a class="btn big ghost pilot" href="${BUSINESS_HREF}">${esc(PILOT_CTA)}${icon("arrow-right", 16)}</a></div>
-    <p class="reassure">${icon("shield-check", 16)}${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
   </div>
   ${workflowHtml()}
 </div></section>

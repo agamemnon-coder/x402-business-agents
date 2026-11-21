@@ -59,7 +59,7 @@ describe("Home, 21 Nov: one short story", () => {
       expect(main.match(/<h[1-6]\b/g)).toEqual(["<h1", "<h2", "<h2", "<h2", "<h2"]);
       expect([...main.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)].map((m) => text(m[1]!))).toEqual([AI_HEAD, AGENTS_HEAD, PROOF_HEAD, TOUR_HEAD]);
       expect(text(/<h1[\s\S]*?<\/h1>/.exec(main)![0])).toBe(HERO);
-      const at = ['<p class="eyebrow cloud">', '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<ul class="hstats">', '<div class="ctas">', '<p class="reassure">', '<div class="wf"', '<p class="wf-note">', '<div class="lband"', '<ol class="aflow"', '<ul class="agents">', '<div class="e-more e-biz">', '<p class="ask">', '<ul class="prow">', '<ol class="tmap">'].map((s) => ({ s, i: main.indexOf(s) }));
+      const at = ['<p class="eyebrow cloud">', '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<ul class="hstats">', '<div class="ctas">', '<div class="wf"', '<p class="wf-note">', '<div class="lband"', '<ol class="aflow"', '<ul class="agents">', '<div class="e-more e-biz">', '<p class="ask">', '<ul class="prow">', '<ol class="tmap">'].map((s) => ({ s, i: main.indexOf(s) }));
       expect(at.filter((x) => x.i < 0)).toEqual([]);
       expect(at.map((x) => x.i)).toEqual([...at.map((x) => x.i)].sort((a, b) => a - b));
       // Max, 21 Nov: "'Purser Cloud for finance teams': it's for companies in general."
@@ -87,10 +87,16 @@ describe("Home, 21 Nov: one short story", () => {
     for (const html of [ON, OFF]) expect(html).not.toMatch(/href="\/?(pricing|judge)"/);
   });
 
-  it("A6: one sandbox line under the buttons", () => {
+  // Max, 21 Nov: "drop the line under the CTAs, the Workflow card already carries sandbox": the card beside the buttons
+  // says sandbox in its header and test money in its payment's state; the cent's tile says it again.
+  it("A6: the sandbox and the test money said in the Workflow card beside the buttons, no line under them", () => {
     expect(REASSURE).toEqual({ sign: "Sandbox demo: test money, no real settlement.", world: "Sandbox demo: test money, no real settlement." });
-    for (const html of [ON, OFF]) expect(mainOf(html).match(/<p class="reassure">/g)).toHaveLength(1);
-    expect(text(/<div class="ctas">[\s\S]*?<p class="reassure">[\s\S]*?<\/p>/.exec(ON)![0]).endsWith(REASSURE.sign)).toBe(true);
+    for (const html of [ON, OFF]) {
+      expect(mainOf(html)).not.toContain('<p class="reassure">');
+      const wf = text(/<div class="wf"[\s\S]*?<p class="wf-note">/.exec(mainOf(html))![0]);
+      expect(wf).toContain("Recorded /try runs · sandbox");
+      expect(wf).toContain("Paid · Airwallex sandbox, test money");
+    }
   });
 
   it("A1: no heading says live, and outside the fold nothing on Home is called live", () => {
@@ -108,7 +114,7 @@ describe("Home, 21 Nov: one short story", () => {
     for (const html of [ON, OFF]) {
       const t = outsideFold(mainOf(html));
       expect(text(t).match(/test money/gi)).toHaveLength(2);
-      for (const where of [/<p class="reassure">[\s\S]*?<\/p>/, /<li class="reveal p-cent"[\s\S]*?<\/li>/]) expect(text(where.exec(t)![0])).toMatch(/test money/i);
+      for (const where of [/<span class="wf-c wf-paid">[\s\S]*?<\/span>/, /<li class="reveal p-cent"[\s\S]*?<\/li>/]) expect(text(where.exec(t)![0])).toMatch(/test money/i);
       // The Workflow says where its payment ran, and that its passkey was a test passkey.
       const wf = text(/<div class="wf"[\s\S]*?<p class="wf-note">/.exec(t)![0]);
       expect(wf).toContain("Recorded /try runs · sandbox");

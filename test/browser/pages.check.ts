@@ -7,7 +7,6 @@
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { statusPage } from "../../src/redesign/status.js";
-import { REASSURE } from "../../src/redesign/home.js";
 import { FILM_LINK } from "../../src/config/brand.js";
 import { TRY_URL, pageTitle } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
@@ -1406,7 +1405,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await page.locator("main .e-tour a.btn[data-tour-start]").getAttribute("href")) !== TOUR_START_HREF) fail(`/ (Home, with /try/sign) ${tag}: the judge tour's button does not start the judge tour`);
       if ((await page.locator("main .e-hero a.btn.start").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the Try button does not lead to the hands-on demo`);
       if (await page.locator('a[href="tour"], a[href="pricing"], a[href*="judge"]').count()) fail(`/ (Home, with /try/sign) ${tag}: a link to /tour, /pricing or /judge is back`);
-      if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
+      if (await page.locator("main p.reassure").count()) fail(`/ (Home, with /try/sign) ${tag}: the line under the buttons is back (Max, 21 Nov: the Workflow card says sandbox)`);
       await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
       await page.goto(`${judgeBase}/home`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);

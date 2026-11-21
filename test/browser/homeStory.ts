@@ -48,8 +48,8 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   if ((await page.locator("main .e-hero .ctas a.btn.primary").getAttribute("href")) !== o.tryHref) fail("the hero's primary button is not Try");
   if ((await page.locator(`main .e-tour a.btn[data-tour-start]`).count()) !== 1 || (await page.locator(`main .e-tour a.btn[data-tour-start]`).innerText()).trim() !== TOUR_BUTTON) fail(`the judge tour's part has no "${TOUR_BUTTON}" button`);
   if ((await page.locator("main .e-hero .ctas a.btn.primary").count()) !== 1) fail("the hero has not exactly one primary button");
-  const first = await page.locator("main p.reassure").boundingBox();
-  if (!first || first.y + first.height > o.height) fail("the first button and its sandbox line are not in the first screen");
+  const first = await page.locator("main .e-hero .ctas a.btn.primary").boundingBox();
+  if (!first || first.y + first.height > o.height) fail("the first button is not in the first screen");
   if (await page.locator('main a[href="watch"], [data-stage]').count()) fail("a Watch link or a replay stage is in Home's main part");
 
   // The card: once, named by its record, its five steps, and every value the record holds.
