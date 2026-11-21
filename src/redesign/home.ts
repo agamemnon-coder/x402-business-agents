@@ -107,7 +107,11 @@ ul.agents .ag-chip .card .i { color: var(--ag); }
 ul.agents .steps { display: flex; flex-wrap: wrap; gap: 4px; }
 ul.agents .steps span { padding: 4px 8px; border-radius: 8px; background: var(--sunken); font-size: 12.5px; font-weight: 650; color: var(--muted); }
 ul.agents .steps span.you { background: var(--ag); color: var(--surface); }
-ul.agents a.go { position: relative; margin-top: 14px; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; width: fit-content; color: var(--ag); font-size: 15px; font-weight: 680; text-decoration: none; }
+ul.agents a.go { position: static; margin-top: 14px; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; width: fit-content; color: var(--ag); font-size: 15px; font-weight: 680; text-decoration: none; }
+/* The whole tile is its link (it lifts like one); its card chip opens its own record above it. */
+ul.agents a.go::after { content: ""; position: absolute; inset: 0; border-radius: 20px; }
+ul.agents a.ag-rec, ul.agents .ag-chip .steps { position: relative; z-index: 1; }
+ul.agents a.ag-rec { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-height: 44px; color: inherit; text-decoration: none; } ul.agents a.ag-rec:hover .card { border-color: var(--ag); }
 ul.agents a.go:hover, ul.agents a.go:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
 @media (prefers-reduced-motion: no-preference) { ul.agents a.go .i { transition: transform .2s ease; } ul.agents a.go:hover .i { transform: translateX(3px); } }
 p.fine { margin: 20px 0 0; font-size: 13.5px; color: var(--faint); }
@@ -416,7 +420,8 @@ export function agentTiles(stop: StopFacts | null = stopDrillFacts()): AgentTile
 export function agentsHtml(tiles: AgentTile[] = agentTiles(), roster: RosterAgent[] = agentRoster()): string {
   const card = (id: string) => {
     const a = roster.find((r) => r.id === id);
-    return a ? `<span class="card">${icon("credit-card", 14)}••${esc(a.last4)}</span><span>${esc(`${a.currency} ${a.perTx} a purchase`)}</span>` : "";
+    // The card and its limit open the record Airwallex read them back into (Max, 21 Nov: every figure to its source).
+    return a ? `<a class="ag-rec" href="${esc(`${REPO_BLOB}${ROSTER_RECORDS.split(" ")[0]}`)}" target="_blank" rel="noopener" title="${esc(ROSTER_NOTE)}"><span class="card">${icon("credit-card", 14)}••${esc(a.last4)}</span><span>${esc(`${a.currency} ${a.perTx} a purchase`)}</span></a>` : "";
   };
   const chip = (t: AgentTile) => t.steps ? `<span class="steps">${t.steps.map((s) => `<span title="${esc(PAYABLES_WHO[s as keyof typeof PAYABLES_WHO] ?? s)}"${s === "Sign" ? ' class="you"' : ""}>${esc(s)}</span>`).join("")}</span>` : card(t.id);
   return `<ul class="agents">${tiles.map((t) => {

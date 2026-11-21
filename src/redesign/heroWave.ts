@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import { committedWall, type EvidenceWall } from "./evidenceWall.js";
 import { waveScript } from "../ui/wave.js";
 import { FLOW, READER_CHIP, TRY_SAMPLE_RECORD } from "./heroFlow.js";
+import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
 
 /** The hero's three figures (Max: tests passing, sandbox and testnet runs, policy blocks), each a wall tile by key. */
@@ -69,14 +70,14 @@ export const WORKFLOW_STEPS: readonly { icon: string; title: string }[] = [
 interface TryRun { ok?: boolean; airwallex?: { amount: string; approval_sha256: string; path: { status: string }[] }[]; approval?: { approval_sha256: string; equals_transfer_metadata?: boolean }; refusal?: { outcome: string; changed?: string[]; signed_sha256?: string; sent_sha256?: string; transfers_before?: number; transfers_after?: number } }
 /** One step as its record has it: its state (a chip in its own colour) and its detail. */
 export type WorkflowState = "proposed" | "held" | "approved" | "paid" | "booked" | "refused";
-export interface WorkflowStep { state: WorkflowState; chip: string; detail: string; rows?: readonly { code: string; name: string; amount: string; side: "Dr" | "Cr" }[] }
+export interface WorkflowStep { state: WorkflowState; chip: string; detail: string; rec?: string; rows?: readonly { code: string; name: string; amount: string; side: "Dr" | "Cr" }[] }
 export interface WorkflowFacts { invoice: { supplier: string; number: string; amount: string; due: string }; steps: WorkflowStep[]; refused: WorkflowStep | null; recs: string[] }
 const money = (a: string) => { const m = /^([A-Z]{3}) (\d+)\.(\d{2})$/.exec(a); return m ? `${m[1]} ${Number(m[2]).toLocaleString("en-GB")}.${m[3]}` : a; };
 const short = (h: string) => `${h.slice(0, 8)}…`;
 export function workflowFacts(rec: { runs?: TryRun[] } | null = (() => { try { return JSON.parse(readFileSync(new URL(`../../${WORKFLOW_RECORD}`, import.meta.url), "utf8")) as { runs?: TryRun[] }; } catch { return null; } })()): WorkflowFacts | null {
   const f = FLOW;
-  const read: WorkflowStep = { state: "proposed", chip: "Proposed by agent", detail: `${READER_CHIP}: payee, amount, due date and account ${f.account} checked` };
-  const booked: WorkflowStep = { state: "booked", chip: "Booked", detail: "Three lines, debit equals credit", rows: f.ledger.map((l) => ({ code: l.code, name: l.name, amount: l.debit || l.credit, side: l.debit ? "Dr" as const : "Cr" as const })) };
+  const read: WorkflowStep = { state: "proposed", rec: TRY_SAMPLE_RECORD, chip: "Proposed by agent", detail: `${READER_CHIP}: payee, amount, due date and account ${f.account} checked` };
+  const booked: WorkflowStep = { state: "booked", rec: TRY_SAMPLE_RECORD, chip: "Booked", detail: "Three lines, debit equals credit", rows: f.ledger.map((l) => ({ code: l.code, name: l.name, amount: l.debit || l.credit, side: l.debit ? "Dr" as const : "Cr" as const })) };
   const base = { invoice: { supplier: f.supplier, number: f.number, amount: f.amount, due: f.due }, recs: [TRY_SAMPLE_RECORD] };
   const run = rec?.runs?.find((r) => r.ok && r.approval && r.airwallex?.length);
   const signed = run?.airwallex?.find((t) => t.approval_sha256 === run.approval?.approval_sha256);
@@ -85,14 +86,14 @@ export function workflowFacts(rec: { runs?: TryRun[] } | null = (() => { try { r
   const alone = run.airwallex!.find((t) => t !== signed && t.path.some((p) => p.status === "PAID"));
   const r = run.refusal;
   const refused: WorkflowStep | null = r?.outcome === "refused" && r.changed?.includes("amount") && r.transfers_before === r.transfers_after && r.signed_sha256 && r.sent_sha256
-    ? { state: "refused", chip: "Refused · nothing paid", detail: `+EUR 0.01 after signing: signed ${short(r.signed_sha256)} ≠ sent ${short(r.sent_sha256)}` } : null;
+    ? { state: "refused", rec: WORKFLOW_RECORD, chip: "Refused · nothing paid", detail: `+EUR 0.01 after signing: signed ${short(r.signed_sha256)} ≠ sent ${short(r.sent_sha256)}` } : null;
   return {
     ...base, recs: [TRY_SAMPLE_RECORD, WORKFLOW_RECORD], refused,
     steps: [
       read,
-      { state: "held", chip: "Held → sent to the CFO", detail: alone ? `Over the agent's limit (it paid ${money(alone.amount)} on its own)` : "Over the agent's limit" },
-      { state: "approved", chip: "Approved with a passkey", detail: `Exact terms signed · sha256 ${short(signed.approval_sha256)} · test passkey` },
-      { state: "paid", chip: "Paid · Airwallex sandbox, test money", detail: `${path.join(" → ")} · the signed hash in Airwallex's record` },
+      { state: "held", rec: WORKFLOW_RECORD, chip: "Held → sent to the CFO", detail: alone ? `Over the agent's limit (it paid ${money(alone.amount)} on its own)` : "Over the agent's limit" },
+      { state: "approved", rec: WORKFLOW_RECORD, chip: "Approved with a passkey", detail: `Exact terms signed · sha256 ${short(signed.approval_sha256)} · test passkey` },
+      { state: "paid", rec: WORKFLOW_RECORD, chip: "Paid · Airwallex sandbox, test money", detail: `${path.join(" → ")} · the signed hash in Airwallex's record` },
       booked,
     ],
   };
@@ -102,12 +103,14 @@ export function workflowHtml(f: WorkflowFacts | null = workflowFacts()): string 
   if (!f) return "";
   const chip = (st: WorkflowStep) => `<span class="wf-c wf-${st.state}">${esc(st.chip)}</span>`;
   const titled = f.steps.length === WORKFLOW_STEPS.length ? WORKFLOW_STEPS : [WORKFLOW_STEPS[0]!, WORKFLOW_STEPS[4]!];
+  // Every figure to the record it comes from (Max, 21 Nov: "every figure links to where it comes from").
+  const recA = (rec: string | undefined, label = "record") => (rec ? ` <a class="wf-rec" href="${esc(REPO_BLOB + rec)}" target="_blank" rel="noopener" title="${esc(rec)}">${esc(label)}</a>` : "");
   const rows = (st: WorkflowStep) => (st.rows ? `<table class="wf-led"><tbody>${st.rows.map((l) => `<tr><th>${esc(l.code)}</th><td>${esc(l.name)}</td><td>${esc(l.amount)}<small>${l.side}</small></td></tr>`).join("")}</tbody></table>` : "");
   return `<div class="wf" role="group" aria-labelledby="wf-k" data-rec="${esc(f.recs.join(" "))}">
   <div class="wf-head"><p class="wf-k" id="wf-k">${esc(WORKFLOW_HEAD)}</p><span class="wf-tag">${esc(WORKFLOW_TAG)}</span></div>
-  <div class="wf-inv">${icon("file-check", 16)}<span><b>${esc(f.invoice.supplier)}</b><small>${esc(`Invoice ${f.invoice.number} · due ${f.invoice.due}`)}</small></span><b class="wf-amt">${esc(f.invoice.amount)}</b></div>
-  <ol class="wf-steps">${f.steps.map((st, i) => `<li class="wf-s wf-s${i}"><details open><summary><span class="wf-i">${icon(titled[i]!.icon, 18)}</span><span class="wf-t"><b>${esc(titled[i]!.title)}</b>${chip(st)}</span><span class="wf-ok">${icon("check", 14)}</span></summary><div class="wf-d"><small>${esc(st.detail)}</small>${rows(st)}</div></details></li>`).join("")}</ol>
-  ${f.refused ? `<div class="wf-no"><span class="wf-x">${icon("ban", 16)}</span><span class="wf-t">${chip(f.refused)}<small>${esc(f.refused.detail)}</small></span></div>` : ""}
+  <div class="wf-inv">${icon("file-check", 16)}<span><b>${esc(f.invoice.supplier)}</b><small>${esc(`Invoice ${f.invoice.number} · due ${f.invoice.due}`)}</small></span><a class="wf-amt" href="${esc(REPO_BLOB + TRY_SAMPLE_RECORD)}" target="_blank" rel="noopener" title="${esc(TRY_SAMPLE_RECORD)}">${esc(f.invoice.amount)}</a></div>
+  <ol class="wf-steps">${f.steps.map((st, i) => `<li class="wf-s wf-s${i}"><details open><summary><span class="wf-i">${icon(titled[i]!.icon, 18)}</span><span class="wf-t"><b>${esc(titled[i]!.title)}</b>${chip(st)}</span><span class="wf-ok">${icon("check", 14)}</span></summary><div class="wf-d"><small>${esc(st.detail)}${recA(st.rec)}</small>${rows(st)}</div></details></li>`).join("")}</ol>
+  ${f.refused ? `<div class="wf-no"><span class="wf-x">${icon("ban", 16)}</span><span class="wf-t">${chip(f.refused)}<small>${esc(f.refused.detail)}${recA(f.refused.rec)}</small></span></div>` : ""}
   <p class="wf-note">${esc(WORKFLOW_NOTE)} <a href="#real" data-real>${esc("What's real?")}</a></p>
 </div>`;
 }
@@ -166,6 +169,7 @@ ol.wf-steps::after { background: linear-gradient(180deg, var(--accent), var(--ok
 .wf-i { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: #fff; background: var(--grad); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 8px 22px -8px var(--glow); }
 .wf-t { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; }
 .wf-t b { font-size: 14px; font-weight: 650; letter-spacing: -.01em; line-height: 1.3; }
+.wf-rec { padding: 15px 2px; color: var(--accent); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent); text-underline-offset: 2px; white-space: nowrap; } a.wf-amt { display: inline-flex; align-items: center; min-height: 44px; margin: -9px 0; color: inherit; text-decoration: none; font-weight: 700; } a.wf-amt:hover { text-decoration: underline; }
 .wf-d { padding: 0 10px 7px 52px; margin-top: -4px; display: grid; gap: 4px; }
 .wf-d small, .wf-no small { font-size: 12px; color: var(--muted); line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .wf-no small { flex-basis: 100%; }
