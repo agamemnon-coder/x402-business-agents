@@ -476,10 +476,12 @@ function quality(): WallTile[] {
 function scale(w: ReturnType<typeof walks>): WallTile[] {
   if (!w) return [];
   const t = w.t, st = (k: string) => t.steps[k];
-  const browsers = [...new Set(w.records.flatMap((r) => r.runs.map((x) => (typeof x.browser === "string" ? x.browser : "chromium"))))].map((b) => b[0]!.toUpperCase() + b.slice(1)).join(" and ");
+  // A browser by its own name (21 Nov: the phone series brought WebKit, which the first letter alone wrote "Webkit").
+  const NAMES: Record<string, string> = { chromium: "Chromium", firefox: "Firefox", webkit: "WebKit" };
+  const browsers = [...new Set(w.records.flatMap((r) => r.runs.map((x) => (typeof x.browser === "string" ? x.browser : "chromium"))))].map((b) => NAMES[b] ?? b[0]!.toUpperCase() + b.slice(1)).join(" and ");
   const devices = (["desktop", "tablet", "phone"] as const).filter((d) => w.records.some((r) => r.runs.some((x) => String(x.profile ?? "").startsWith(d))));
   const deviceWords = devices.length > 1 ? `${devices.slice(0, -1).join(", ")} and ${devices.at(-1)}` : devices.join("");
-  const out: WallTile[] = [{ key: "try-journeys", fig: whole(t.siteStepsPassed, t.runs), label: "/try walks: every site step passed", note: `${w.when}, ${browsers}, ${deviceWords}; ${t.consoleErrors} console errors.${t.ok !== t.siteStepsPassed ? ` The recording script marked ${whole(t.ok, t.runs).toLowerCase()} all ok: the others stopped on its own bug or on /verify's new words; the run logs say which.` : ""}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec }];
+  const out: WallTile[] = [{ key: "try-journeys", fig: whole(t.siteStepsPassed, t.runs), label: "/try walks: every site step passed", note: `${w.when}, ${browsers}, ${deviceWords}; ${t.consoleErrors} console errors.${t.ok !== t.siteStepsPassed ? ` The recording script marked ${whole(t.ok, t.runs).toLowerCase()} all ok; ${fmt(t.siteStepsPassed - t.ok)} more passed every site step, marked failed only for /verify's new words.` : ""}${t.siteStepsPassed < t.runs ? ` The run logs say why each of the other ${fmt(t.runs - t.siteStepsPassed)} stopped.` : ""}`, tag: "sandbox", tone: "ok", href: w.href, rec: w.rec }];
   const tile = (key: string, step: string, label: string, extra = "") => {
     const p = st(step);
     if (p?.p50 != null) out.push({ key, fig: secs(p.p50), label, note: `Median of ${p.n}, p95 ${secs(p.p95)}${extra}.`, tag: "sandbox", tone: "", href: w.href, rec: w.rec });
