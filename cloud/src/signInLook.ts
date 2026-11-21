@@ -66,7 +66,6 @@ export const SIGNIN_CSS = `
 .signed-out #pask-fab { padding: 0 7px; }
 .signed-out #pask-fab .pask-t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .signed-out p.trust { padding-left: 76px; padding-right: 76px; }
-@media (max-width: 1023px) { .signed-out p.trust { padding-bottom: 76px; } }
 @media (max-width: 1023px) {
   .signed-out .hero { padding: 22px 20px; justify-items: start; border-bottom: 1px solid var(--border); }
   .signed-out .side { padding: 0; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
@@ -83,9 +82,9 @@ export const SIGNIN_CSS = `
   .signed-out .side h2 { font-size: 26px; }
   .signed-out .side > p { display: block; margin: 4px 0 0; font-size: 14.5px; }
   .signed-out .side ul { display: none; }
-  .signed-out .hero { padding-bottom: 44px; }
-  .signed-out .hero canvas.si-wave { height: 40px; opacity: .8; }
-  .signed-out p.trust { padding-left: 16px; padding-right: 16px; }
+  .signed-out .hero { padding-bottom: 36px; }
+  .signed-out .hero canvas.si-wave { height: 34px; opacity: .8; }
+  .signed-out p.trust { padding-left: 12px; padding-right: 68px; }
   .signed-out .side > p { text-shadow: 0 1px 8px var(--bg); }
   .signed-out .auth { padding: 20px 18px 16px; border-radius: 20px; }
   .signed-out .auth h1 { font-size: 26px; margin-bottom: 10px; }
