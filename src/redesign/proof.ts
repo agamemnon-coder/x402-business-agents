@@ -308,7 +308,7 @@ function t0CardParts(): { lead: Lead[]; what: string; facts: string; items: stri
   const j = t0Journal(md);
   if (!j) return null;
   return {
-    lead: [{ text: `${j.posted} journal entries in T:0, an outside accounting ledger: ${j.differences} differences`, href: "t0" }],
+    lead: [{ text: `${j.posted} journal entries in T:0, an outside accounting ledger: ${j.differences} differences`, href: "books#t0" }],
     what: `Purser's books of the main run, posted to T:0's shared sandbox entity on ${j.day} and read back line by line. Test data.`,
     facts: fact(String(j.posted), "entries posted") + fact(String(j.differences), "differences") + fact(`${j.debits} USD`, "debits equal credits"),
     items: [
@@ -341,7 +341,7 @@ export function partnerCards(run: AgentRun, lead: Record<"airwallex" | "metal" |
   };
   const card = (id: "metal" | "airwallex" | "claude" | "visa" | "t0", name: string, what: string, facts: string, items: string[], extra = "") => {
     const [first, ...rest] = leads[id] ?? [];
-    return `<article class="pcard card" id="${id}"${recOf[id] ? ` data-rec="${recOf[id]}"` : ""}><div class="ph">${CARD_MARK[id] ?? ""}<h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? leads[id]! : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id === "metal" ? "alta" : id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
+    return `<article class="pcard card" id="${id}"${recOf[id] ? ` data-rec="${recOf[id]}"` : ""}><div class="ph">${CARD_MARK[id] ?? ""}<h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? leads[id]! : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id === "metal" ? "alta" : id === "t0" ? "books#t0" : id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
   };
   const cardsMatch = /^((?:\d+ of \d+|All \d+|Both)) cards carry the CFO's policy$/.exec(lead.airwallex.find((l) => / cards carry the CFO's policy$/.test(l.text))?.text ?? "");
   // Owner, 12 Nov: Airwallex, Visa, Alta, T:0, Claude (before: in the README's order, jury review, 7 Nov, #12: Airwallex, Alta, Claude). (The signed hash was the Airwallex card's

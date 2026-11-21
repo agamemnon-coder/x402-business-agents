@@ -49,7 +49,8 @@ import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, sweepFold } from ".
 import { CLAUDE_CSS, claudeMain } from "./claudePage.js";
 import { BOOKS_CSS, BOOKS_JS, MONEYBIRD_RECORD, RUN_FILE, booksBody, booksData } from "./booksPage.js";
 import { T0_CLOSE_JS, t0RunData } from "./t0CloseTile.js";
-import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_READBACK_RECORD, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
+import { T0_CSS, T0_JOURNAL_RECORD, T0_READBACK_RECORD, t0Data, t0SectionHtml } from "./t0Page.js";
+import { RAILS_FILE, railsHtml } from "./booksLedger.js";
 import { OPEN_TARGET_JS, esc, icon, page, pageTitle, setBuiltOn, TRY_URL, withRec } from "./ui.js";
 import { EVIDENCE_WALL_CSS, evidenceLeadHtml, evidenceStripHtml, notLiveLine } from "./evidenceWall.js";
 
@@ -504,7 +505,7 @@ export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: 
     // Jury, 13 Nov: the latest run's own count first, as /visa leads with it, then all the runs' (they read as a clash).
     ...(visaRunsLine() ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: visaRunsLine()! }] : []),
     { name: "Claude", href: "claude", proof: `${decisions} decisions (main run)` },
-    ...(t0 ? [{ name: "T:0", href: "t0", proof: `${t0.posted} journal entries (main run)` }] : []),
+    ...(t0 ? [{ name: "T:0", href: "books#t0", proof: `${t0.posted} journal entries (main run)` }] : []),
     // Jury, 17 Nov: "41 paid requests" beside /alta's 41 sales and 41 purchases read as a clash; both sides are x402.
     { name: "x402", href: `${REPO_BLOB}${METAL_TX_LIST}`, proof: `${st.payments.sales} requests sold, ${st.payments.purchases} bought (main run)` },
   ];
@@ -526,27 +527,21 @@ export function builtOnPlainHtml(run: AgentRun = agentRun()): string {
 let builtOnCache = "";
 setBuiltOn(() => (builtOnCache ||= builtOnPlainHtml()));
 
-const T0_LOGO = '<span class="logo txt">T:0</span>';
-/** What is real on /t0: its own lines (the main run's would name rails the page does not show). */
-export const T0_REAL = [
-  "T:0's shared sandbox entity (US, USD): other hackathon teams post to it too.",
-  "The books posted are the main run's of 3 November, test money; *USDZ is posted as USD, labelled in each memo.",
-  "The platform run's company (SANDBOXTEST, 10 November) is an Airwallex sandbox company.",
+/** What is real on /books (since 21 Nov with T:0 in it; /t0 answers 301 here). */
+export const BOOKS_REAL = [
+  "Studio Noorderlicht B.V. and its suppliers are fictional, and the money is test money on a simulated bank: its opening equity is that bank's opening balance.",
+  "Claude (Haiku) read and coded every invoice live in the run, under the demo's spend caps; the approvals were signed by a software passkey.",
+  "\"Change one cent\" is a demo: it runs in your browser on the balance sheet as recorded, and changes nothing.",
+  "T:0 is its shared sandbox entity (US, USD), with test data: other hackathon teams post to it too. The 20 Nov payments are Airwallex sandbox and Alta testnet payments, test money.",
+  "Moneybird is a sandbox with test data, from an earlier run.",
 ];
-/** /t0 (owner, 12 Nov): Purser's books in T:0's ledger, from the run records alone (src/redesign/t0Page.ts). */
-export function t0Page(run: AgentRun = agentRun()): string {
-  // 19 Nov (the owner: "we use T:0 too"): a partner page under "More" like the others, its mark with the same note.
-  const body = t0Body(t0Data(), { logo: T0_LOGO + ENDORSE_NOTE, pill: T0_LABEL });
-  return page({ title: "T:0", description: "How Purser uses T:0, a sandbox ledger: its double-entry books posted to T:0's general ledger as journal entries, read back line by line, and the month closed only when T:0 agrees.", tab: "t0", css: `${CSS}\n${STATS_CSS}\n${T0_CSS}`, body,
-    source: `Source: ${T0_READBACK_RECORD}, ${T0_JOURNAL_RECORD}, ${PLATFORM_RUN_FILE}, ${T0_FIRST_RECORD} and ${T0_SECOND_RECORD}.`, real: T0_REAL, builtOn: builtOnHtml(run),
-    // The close check's button (src/redesign/t0CloseTile.ts): Purser's books as recorded, and the script that fetches the read-back.
-    data: t0RunData(), js: T0_CLOSE_JS, stage: false });
-}
-
-/** /books (owner, 12 Nov): Purser's bookkeeping with AI agents, from the run records and evals alone (src/redesign/booksPage.ts). */
+/** /books (owner, 12 Nov; merged with /t0 on 21 Nov): the books, the one-cent demo, how a payment reaches T:0, and T:0 (src/redesign/booksPage.ts). */
 export function booksPage(run: AgentRun = agentRun()): string {
-  return page({ title: "Books", description: "A month of a test company's books: twenty supplier invoices read and booked by Claude live, paid on a simulated bank; balance sheet, P&L, charts and a PDF.", tab: "books", css: `${CSS}\n${BOOKS_CSS}`, body: booksBody(booksData()), js: BOOKS_JS, stage: false,
-    source: `Source: ${RUN_FILE} (npm run books:month), ${MONEYBIRD_RECORD} and ${T0_JOURNAL_RECORD}.`, real: ["The company and its suppliers are fictional, and the money is test money on a simulated bank: its opening equity is that bank's opening balance.", "Claude (Haiku) read and coded every invoice live in the run, under the demo's spend caps; the approvals were signed by a software passkey.", "Moneybird and T:0 are sandboxes with test data, from earlier runs."], builtOn: builtOnHtml(run) });
+  const body = booksBody(booksData(), { rails: railsHtml(), t0: t0SectionHtml(t0Data(), { endorse: ENDORSE_NOTE }) });
+  return page({ title: "Books", description: "A test company's books, sorted by Claude into a balance sheet and P&L, with the PDF; every payment booked in T:0 at payment time and reconciled against its rail; a demo of one changed cent.", tab: "books", css: `${CSS}\n${BOOKS_CSS}\n${T0_CSS}`, body,
+    // The close check's button (src/redesign/t0CloseTile.ts): Purser's books as recorded, and the script that fetches the read-back.
+    data: t0RunData(), js: `${BOOKS_JS}\n${T0_CLOSE_JS}`, stage: false,
+    source: `Source: ${RUN_FILE} (npm run books:month), ${RAILS_FILE}, ${T0_READBACK_RECORD}, ${T0_JOURNAL_RECORD}, ${PLATFORM_RUN_FILE} and ${MONEYBIRD_RECORD}.`, real: BOOKS_REAL, builtOn: builtOnHtml(run) });
 }
 
 /** The clean 404: what happened, and the four tabs. No script. */

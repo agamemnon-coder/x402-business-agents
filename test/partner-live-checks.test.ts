@@ -10,7 +10,7 @@ import { recordedAccounts, T0_POSTED_2026_11_10, T0_READBACK_FILE, entriesOfReco
 import { browserCode } from "../src/redesign/browserCode.js";
 import { cardSceneData, LIVE_CHECK_LABEL, VISA_CARD_SCENE_JS } from "../src/redesign/visaCardScene.js";
 import { T0_CLOSE_JS, T0_RUN, t0RunData } from "../src/redesign/t0CloseTile.js";
-import { T0_CSP, T0_PAGE, VISA_CSP, VISA_PAGE } from "../src/servers/dashboard.js";
+import { BOOKS_CSP as T0_CSP, BOOKS_PAGE as T0_PAGE, VISA_CSP, VISA_PAGE } from "../src/servers/dashboard.js";
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const inBrowser = <T>(file: string, name: string): T => runInNewContext(`${browserCode(file)}\n${name}`, { URL }) as T;
@@ -96,7 +96,7 @@ describe("/t0: the close check, run in the browser on the read-back", () => {
     expect(c).toEqual(closeCheck({ month: "2026-11", t0, ourAccounts: recordedAccounts(), ourCount: T0_POSTED_2026_11_10 }));
   });
 
-  it("is on /t0: the button and toggle hidden until the script runs, one script, and a policy that lets it fetch its own origin", () => {
+  it("is on /books (T:0 merged in, 21 Nov): the button and toggle hidden until the script runs, one script, and a policy that lets it fetch its own origin", () => {
     expect(T0_PAGE).toContain('<div id="t0c-run" hidden>');
     for (const w of [T0_RUN.button, T0_RUN.toggle]) expect(text(T0_PAGE)).toContain(w);
     expect(T0_PAGE).toContain(T0_CLOSE_JS);

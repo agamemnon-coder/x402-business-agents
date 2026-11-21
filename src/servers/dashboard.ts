@@ -4,7 +4,7 @@
 
 import { OG_FILE, withMeta } from "../ui/meta.js";
 import { T0_READBACK_FILE, T0_READBACK_PATH } from "../accounting/t0Readback.js";
-import { airwallexPage, booksPage, claudePage, metalPage, notFoundPage, t0Page, visaPage } from "../redesign/partners.js";
+import { airwallexPage, booksPage, claudePage, metalPage, notFoundPage, visaPage } from "../redesign/partners.js";
 import { awxCallsPage } from "../redesign/awxTrailPage.js";
 import { inspectorRecord } from "../redesign/metalMandates.js";
 import { METAL_INSPECTOR_PATH, localInspector } from "../../worker/src/metalInspector.js";
@@ -316,15 +316,14 @@ export const STATUS_PAGE = statusPage();
 export const STATUS_CSP = cspFor(STATUS_PAGE);
 export const STATUS_PAGE_OFFLINE = statusPage("offline");
 export const STATUS_OFFLINE_CSP = styleOnlyCsp(STATUS_PAGE_OFFLINE);
-/** /t0 (owner, 12 Nov): Purser's books in T:0's ledger, from the T:0 run records; no script, so a style-only policy. */
-export const T0_PAGE = t0Page();
-/** The read-back /t0 offers and its close check fetches, byte for byte (the Worker serves the same file). */
+/** The read-back /books offers and its close check fetches, byte for byte (the Worker serves the same file). */
 export const T0_READBACK_TEXT = readFileSync(new URL(`../../${T0_READBACK_FILE}`, import.meta.url), "utf8");
-/** /t0 runs the close check in the browser on /t0-readback.json (same origin): its script, its style, and connect-src 'self'. */
-export const T0_CSP = cspFor(T0_PAGE);
-/** /books (owner, 12 Nov): the bookkeeping with AI agents, from the run records; no script, so a style-only policy. */
+/**
+ * /books (owner, 12 Nov; with T:0 in it since 21 Nov, when /t0 became a 301 to it): the books, the one-cent demo and
+ * T:0's close check, which runs in the browser on /t0-readback.json (same origin): its script, its style, connect-src 'self'.
+ */
 export const BOOKS_PAGE = booksPage();
-export const BOOKS_CSP = BOOKS_PAGE.includes("<script>") ? styleAndScriptCsp(BOOKS_PAGE) : styleOnlyCsp(BOOKS_PAGE);
+export const BOOKS_CSP = cspFor(BOOKS_PAGE);
 /** /trace: any payment of the main run, step by step (src/redesign/trace.ts); no script, so a style-only policy. */
 export const TRACE_PAGE = tracePage();
 export const TRACE_CSP = styleOnlyCsp(TRACE_PAGE);
@@ -373,7 +372,8 @@ export const PROOF_CSP = cspFor(PROOF_PAGE);
 export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": "/replay", "/overview": "/home", "/tour": "/home", "/pricing": "/home" };
 /** Addresses retired for good, answered 301 so old links keep working: /judge (it became the product tour, then went with it, 13 Nov). */
 // 14 Nov: Metal is now Alta; /metal answers 301 to /alta (old links, the README, the form and the walkthrough point there).
-export const MOVED: Record<string, string> = { "/judge": "/home", "/metal": "/alta" };
+// 21 Nov (the owner: "merge them: the books page, with T:0 in it"): /t0 answers 301 to /books, where T:0 now lives.
+export const MOVED: Record<string, string> = { "/judge": "/home", "/metal": "/alta", "/t0": "/books" };
 /** The label on the public evidence report: the customer in the 30 October case is simulated. */
 export const SIMULATED_CUSTOMER = "Summit Outfitters is a simulated customer run by us; we filed this claim on its behalf (30 October recorded run).";
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */
@@ -521,10 +521,8 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     res.setHeader("Content-Security-Policy", BOOKS_CSP);
     res.type("html").send(BOOKS_PAGE);
   });
-  app.get("/t0", (_req, res) => {
-    res.setHeader("Content-Security-Policy", T0_CSP);
-    res.type("html").send(T0_PAGE);
-  });
+  // 21 Nov (the owner: "merge them"): T:0 lives on /books; old links land there.
+  app.get("/t0", (_req, res) => { res.redirect(301, "/books"); });
   app.get(T0_READBACK_PATH, (_req, res) => { res.type("json").setHeader("Content-Disposition", 'attachment; filename="t0-readback.json"'); res.send(T0_READBACK_TEXT); });
   app.get("/metal/report", (_req, res, next) => {
     if (!METAL_REPORT) return next();

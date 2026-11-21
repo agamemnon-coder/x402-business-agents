@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { T0_READBACK_FILE, type ReadBackRecord } from "../src/accounting/t0Readback.js";
 import { MESSAGES } from "../src/ui/i18n.js";
 import { t0CloseFacts, t0CloseTileHtml, T0_CLOSE_ID, T0_CLOSE_RULE } from "../src/redesign/t0CloseTile.js";
-import { t0Body, t0Data } from "../src/redesign/t0Page.js";
+import { t0Data, t0SectionHtml } from "../src/redesign/t0Page.js";
 import { cardScene, visaCardSceneHtml, VISA_CARD_SCENE_ID } from "../src/redesign/visaCardScene.js";
 import { visaPage } from "../src/redesign/partners.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -31,7 +31,7 @@ describe("/t0: the independent ledger check", () => {
     expect(T0_CLOSE_RULE).toBe(MESSAGES.en["cs.books.t0_rule"]);
     expect(words).not.toMatch(/\b95\s*\/\s*95\b|\b95 of 95\b/);
     expect(html).toContain('href="t0-readback.json" download');
-    expect(t0Body(t0Data(), { logo: "", pill: "" })).toContain(`id="${T0_CLOSE_ID}"`);
+    expect(t0SectionHtml(t0Data())).toContain(`id="${T0_CLOSE_ID}"`);
   });
 
   it("turns red and names the difference when the record disagrees, and shows nothing without a record", () => {

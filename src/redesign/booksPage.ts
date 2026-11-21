@@ -1,17 +1,18 @@
-// /books (owner, 13 Nov): a month of a test company's books, read from one run record, docs/runs/2026-11-13-books-month.json,
-// which npm run books:month writes (scripts/books-month.ts: twenty supplier invoices through the hands-on demo's engine on
-// its simulated bank, each read and booked by Claude live, each approved with the CFO's test passkey). Top to bottom:
-//   1. Four key figures that count up (cash, invoices paid, expenses, owed to suppliers).
-//   2. The balance sheet (assets, liabilities, equity, sub-totals, the balance check computed here) beside the P&L, and the
-//      other currencies the ledger keeps, each balancing on its own.
-//   3. Two small charts, inline SVG: the bank balance after each entry, and spend by category (the P&L's expenses).
-//   4. The invoices Claude sorted in the run: each row tagged "Sorted by Claude", with Claude's booking, its own reason,
-//      and what happened to the invoice (paid, or waiting for a person and why).
-//   5. "Download PDF" (the same record, the same view: src/vault/statementPdf.ts), the Moneybird and T:0 sync of earlier
-//      runs, the live demo, and the details folded (account codes, the vault's folders, the T:0 journal per account).
+// /books (owner, 13 Nov; merged with /t0 on 21 Nov, the owner: "the books page, with T:0 in it, explained well with
+// visuals, architecture and animations"; /t0 answers 301 here). A month of a test company's books, read from one run
+// record, docs/runs/2026-11-13-books-month.json, which npm run books:month writes (scripts/books-month.ts: twenty supplier
+// invoices through the hands-on demo's engine on its simulated bank, each read and booked by Claude live, each approved
+// with the CFO's test passkey). Top to bottom:
+//   1. The heading and the PDF (the same record, the same view: src/vault/statementPdf.ts), then four key figures.
+//   2. The balance sheet (assets, liabilities, equity, the balance check computed here) beside the P&L.
+//   3. "Change one cent" (./booksLedger.ts): the same balance sheet, one line changed by a cent in the browser, the checks red.
+//   4. How a payment reaches the books: rail → PURPAY- journal entry in T:0 at payment time → reconcile (./booksLedger.ts,
+//      the partner-rails run of 20 Nov), then T:0's section with its independent close check (./t0Page.ts).
+//   5. Two small charts, the invoices Claude sorted, and the details folded.
 // A record that is missing or does not balance leaves its block out; nothing here is typed in as a figure.
 import { readFileSync } from "node:fs";
 import { COUNT_JS } from "./stats.js";
+import { DEMO_JS, LEDGER_CSS, demoHtml } from "./booksLedger.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { T0_JOURNAL_RECORD, t0Journal, type T0Journal } from "./t0Page.js";
 import { countOf, esc, icon } from "./ui.js";
@@ -24,8 +25,8 @@ export const RUN_FILE = "docs/runs/2026-11-13-books-month.json";
 export const MONEYBIRD_RECORD = "docs/runs/2026-11-12-moneybird-sandbox.md";
 /** The hands-on demo, whose end screen shows the books of the visitor's own invoice. */
 export const BOOKS_LIVE_URL = "https://purser-try.max-31b.workers.dev/try";
-/** The page's script: the key figures count up once (src/redesign/stats.ts); nothing else runs. */
-export const BOOKS_JS = COUNT_JS;
+/** The page's own script: the key figures count up once (src/redesign/stats.ts), and the one-cent demo. */
+export const BOOKS_JS = `${COUNT_JS}\n${DEMO_JS}`;
 
 const read = (file: string): string | null => { try { return readFileSync(new URL(`../../${file}`, import.meta.url), "utf8"); } catch { return null; } };
 
@@ -71,10 +72,20 @@ export const BOOKS_CSS = `.bkp .wrap { gap: 16px; }
 .bkp .wrap > :nth-child(2) { animation-delay: .06s; } .bkp .wrap > :nth-child(3) { animation-delay: .12s; } .bkp .wrap > :nth-child(4) { animation-delay: .18s; }
 .bkp .wrap > :nth-child(5) { animation-delay: .24s; } .bkp .wrap > :nth-child(n+6) { animation-delay: .3s; }
 @keyframes bk-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.bk-hd { display: flex; gap: 16px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; }
-.bk-hd h1 { margin: 6px 0 4px; }
-.bk-hd .line { margin: 0; }
+.bk-hd { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: end; }
+.bk-hd-t { display: grid; gap: 8px; justify-items: start; min-width: 0; }
+.bk-hd h1 { margin: 0; font-size: clamp(34px, 4.4vw, 54px); font-weight: 800; letter-spacing: -.035em; }
+.bk-hd .line { margin: 0; max-width: 34em; }
 .bk-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+.bk-doc { display: flex; gap: 16px; align-items: center; padding: 16px 18px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 10px 30px -18px rgba(15, 23, 42, .35); }
+.bk-page { position: relative; width: 70px; height: 92px; flex: none; border-radius: 6px; background: #fff; border: 1px solid #d7dce5; box-shadow: 0 6px 14px -8px rgba(15, 23, 42, .45); display: grid; align-content: start; gap: 7px; padding: 14px 10px; transform: rotate(-4deg); }
+.bk-page i { display: block; height: 4px; border-radius: 2px; background: #cfd6e2; } .bk-page i.s { width: 60%; }
+.bk-page em { position: absolute; left: -6px; bottom: 10px; font: 800 11px/1 system-ui, sans-serif; font-style: normal; color: #fff; background: #d92d20; border-radius: 4px; padding: 4px 6px; letter-spacing: .04em; }
+.bk-doc-t { display: grid; gap: 4px; justify-items: start; }
+.bk-doc-t b { font-size: 16px; } .bk-doc-t small { color: var(--muted); font-size: 13.5px; } .bk-doc-t .btn { margin-top: 6px; }
+@media (prefers-reduced-motion: no-preference) { .bk-page { animation: bk-doc 1s .4s cubic-bezier(.2,.7,.2,1) both; } }
+@keyframes bk-doc { from { transform: rotate(-12deg) translateY(8px); opacity: 0; } to { transform: rotate(-4deg); opacity: 1; } }
+.bk-folds { padding: 6px 20px 10px; gap: 0; }
 .bk-kpi { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .bk-kpi li { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; display: grid; gap: 4px; }
 .bk-kpi small { color: var(--muted); font-size: 13px; font-weight: 600; }
@@ -142,13 +153,16 @@ ul.bk-codes { margin: 0; padding-left: 18px; font-size: 13.5px; }
 table.bk-t0 { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
 table.bk-t0 td, table.bk-t0 th { padding: 4px 0; border-top: 1px solid var(--border); text-align: right; }
 table.bk-t0 td:first-child, table.bk-t0 th:first-child { text-align: left; }
-@media (max-width: 860px) { .bk-two { grid-template-columns: 1fr; } .bk-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .bk-two { grid-template-columns: 1fr; } .bk-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bk-hd { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) {
   .bk-card { padding: 14px 14px; } .bk-kpi b { font-size: 21px; }
   ul.bk-inv > li { grid-template-columns: minmax(0, 1fr) auto; } .bk-inv .d { grid-column: 1 / -1; order: -1; } .bk-inv .bk-b, .bk-inv .why { grid-column: 1 / -1; }
   .bk-acts { width: 100%; } .bk-acts .btn { flex: 1 1 auto; justify-content: center; }
+  .bk-doc { padding: 14px; gap: 14px; } .bk-page { width: 56px; height: 74px; padding: 10px 8px; gap: 5px; }
+  .bkp a.bk-rec, .bkp a.lg-rec, .bkp a.pf, .bkp a.open { min-height: 44px; display: inline-flex; align-items: center; vertical-align: middle; }
 }
-@media (prefers-reduced-motion: reduce) { .bkp .wrap > *, .bk-chart .ln, .bk-bar .bar { animation: none; } }`;
+@media (prefers-reduced-motion: reduce) { .bkp .wrap > *, .bk-chart .ln, .bk-bar .bar { animation: none; } }
+${LEDGER_CSS}`;
 
 const rec = (file: string, label = "record") => `<a class="bk-rec" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
 const tr = (cls: string, name: string, cents: number | null) => `<tr${cls ? ` class="${cls}"` : ""}><td>${esc(name)}</td><td class="r">${cents === null ? "" : esc(money(cents))}</td></tr>`;
@@ -245,7 +259,7 @@ function invoicesCard(d: BooksData, v: StatementView, f: BooksStatementFile): st
 <p class="why"><b>${esc("Why: ")}</b>${esc(s.reason)}${wait ? ` <b>${esc(`${wait}.`)}</b>` : ""}</p></li>`;
   });
   // The first few in full; the rest one tap away, so the page stays readable on a phone.
-  const SHOWN = 6;
+  const SHOWN = 3;
   const rows = items.slice(0, SHOWN).join("");
   const more = items.length > SHOWN ? `<details class="fold bk-more"><summary>${esc(`All ${items.length} invoices`)}</summary><ul class="bk-inv">${items.slice(SHOWN).join("")}</ul></details>` : "";
   const run = d.run;
@@ -254,48 +268,53 @@ function invoicesCard(d: BooksData, v: StatementView, f: BooksStatementFile): st
 <ul class="bk-inv">${rows}</ul>${more}</section>`;
 }
 
-function pdfCard(f: BooksStatementFile): string {
-  return `<section class="bk-card bk-pdf" aria-label="${esc("Download")}"><span class="t"><span class="ic">${icon("file-text", 22)}</span><span><b>${esc("Balance sheet, P&L and sorted invoices")}</b><small>${esc("PDF · test company · test money")}</small></span></span>
-<a class="btn primary" href="assets/${esc(f.pdf)}" download>${icon("download", 18)}${esc("Download PDF")}</a></section>`;
+/** The PDF, in the header beside the heading: a drawn page, what is in it and the button (owner, 21 Nov: "a PDF"). */
+function pdfTile(f: BooksStatementFile, v: StatementView): string {
+  return `<div class="bk-doc"><span class="bk-page" aria-hidden="true"><i></i><i></i><i class="s"></i><i></i><i class="s"></i><em>PDF</em></span>
+<span class="bk-doc-t"><b>${esc("Balance sheet, P&L, invoices")}</b><small>${esc(`${v.company.replace(/\s*\(test company\)$/, "")} · ${dayShort(v.asOf)} · test money`)}</small>
+<a class="btn primary" href="assets/${esc(f.pdf)}" download>${icon("download", 18)}${esc("Download PDF")}</a></span></div>`;
 }
 
+/** The rest, folded: the Moneybird sync of an earlier run, the account codes and where the sorted invoices are filed. */
 function detailsCard(d: BooksData): string {
-  const t = d.synced.t0, m = d.synced.moneybird, f = d.file!;
-  const sync = [
-    m ? `<li><span class="lg">Moneybird</span><span>${esc(`Sandbox: ${m.invoices} purchase invoices equal to the cent, ${m.differences} differences.`)} ${rec(MONEYBIRD_RECORD)}</span></li>` : "",
-    t ? `<li><span class="lg">T:0</span><span>${esc(`Sandbox: the 3 Nov books, ${t.posted} journal entries, ${t.differences} differences.`)} ${rec(T0_JOURNAL_RECORD)}</span></li>` : "",
-  ].join("");
+  const m = d.synced.moneybird, f = d.file!;
   const codes = [...f.balance[0]!.accounts, ...(f.pnl[0]?.accounts ?? [])].map((a) => `<li>${esc(`${a.account} ${a.name}`)}</li>`).join("");
   const tree = d.folders.map((x) => x.path.join(" / ")).join("\n");
-  const journal = t && t.accounts.length ? `<details class="fold"><summary>${esc("The 3 Nov books in T:0, per account (USD, test money)")}</summary><table class="bk-t0"><thead><tr><th>${esc("Account")}</th><th>${esc("Ours, net debit")}</th><th>T:0</th></tr></thead><tbody>${t.accounts.map((a) => `<tr><td>${esc(a.account)}</td><td>${esc(a.ours)}</td><td>${esc(a.t0)}</td></tr>`).join("")}</tbody></table></details>` : "";
-  return `<section class="bk-card" aria-labelledby="bk-sy"><h2 id="bk-sy">${icon("check", 19)}${esc("Synced to outside books, earlier runs")}</h2>${sync ? `<ul class="bk-sync">${sync}</ul>` : ""}
+  return `<section class="bk-card bk-folds" aria-label="${esc("Details")}">
+${m ? `<details class="fold"><summary>${esc("Moneybird, an earlier run")}</summary><p class="sub">${esc(`Sandbox: ${m.invoices} purchase invoices equal to the cent, ${m.differences} differences.`)} ${rec(MONEYBIRD_RECORD)}</p></details>` : ""}
 <details class="fold"><summary>${esc("Account codes")}</summary><ul class="bk-codes">${codes}</ul></details>
-${tree ? `<details class="fold"><summary>${esc("Where the sorted invoices are filed")}</summary><pre class="bk-tree">${esc(tree)}</pre></details>` : ""}
-${journal}</section>`;
+${tree ? `<details class="fold"><summary>${esc("Where the sorted invoices are filed")}</summary><pre class="bk-tree">${esc(tree)}</pre></details>` : ""}</section>`;
 }
 
-/** The body: header and key figures, the statements, the charts, the invoices Claude sorted, the PDF, the details. */
-export function booksBody(d: BooksData): string {
+/**
+ * The body (owner, 21 Nov): the heading with the PDF; the key figures; the balance sheet and P&L; the one-cent demo;
+ * how a payment reaches the books (rail → PURPAY- entry in T:0 → reconcile); T:0's section with its close check; the
+ * charts; the invoices Claude sorted; the details folded.
+ */
+export function booksBody(d: BooksData, o: { rails?: string; t0?: string } = {}): string {
   const v = d.view, f = d.file;
-  const head = `<div class="bk-hd"><div><span class="pill run">${esc("Test company · test money")}</span><h1>${esc("Books")}</h1>
-<p class="line">${esc(v && d.run ? `${v.company}: October's ${d.run.checks.invoices} supplier invoices, read and booked by Claude and paid on the simulated bank in one run on ${dayShort(d.run.run_day)}.` : "The books Purser's agents keep.")}</p></div>
-<div class="bk-acts">${v && f ? `<a class="btn primary" href="assets/${esc(f.pdf)}" download>${icon("download", 18)}${esc("Download PDF")}</a>` : ""}<a class="btn" href="${esc(BOOKS_LIVE_URL)}">${esc("See it happen live")}${icon("arrow-right", 18)}</a></div></div>`;
-  if (!v || !f) return `<main class="pp bkp"><div class="wrap">${head}<a class="open" href="proof">All the proof</a></div></main>`;
+  const head = `<div class="bk-hd"><div class="bk-hd-t"><span class="pill run">${esc("Test company · test money")}</span><h1>${esc("Books")}</h1>
+<p class="line">${esc(v && d.run ? `${v.company.replace(/\s*\(test company\)$/, "")}: ${d.run.checks.invoices} supplier invoices sorted by Claude into the balance sheet, paid on a simulated bank.` : "The books Purser's agents keep.")}</p>
+<div class="bk-acts"><a class="btn" href="#cent">${esc("Change one cent")}</a><a class="btn" href="#how">${esc("How it works")}</a></div></div>
+${v && f ? pdfTile(f, v) : ""}</div>`;
+  if (!v || !f) return `<main class="pp bkp"><div class="wrap">${head}${o.rails ?? ""}${o.t0 ?? ""}<a class="open" href="proof">All the proof</a></div></main>`;
   const cash = v.assets.find((a) => a.name === "Cash at bank");
   const owed = v.liabilities.find((a) => a.name === "Creditors");
   const kpis = `<ul class="bk-kpi">${[
     cash ? kpi("Cash at bank", cash.cents, v.currency, `at ${dayShort(v.asOf)}`) : "",
-    d.run ? kpiCount("Invoices paid", d.run.checks.paid, d.run.checks.invoices, "approved with a test passkey (software)") : "",
-    kpi("Expenses", v.totalExpenses, v.currency, "October's invoices and fees"),
+    d.run ? kpiCount("Invoices paid", d.run.checks.paid, d.run.checks.invoices, "approved with a test passkey") : "",
+    kpi("Expenses", v.totalExpenses, v.currency, "invoices and fees"),
     owed ? kpi("Owed to suppliers", owed.cents, v.currency, "waiting for a person") : "",
   ].join("")}</ul>`;
   return `<main class="pp bkp"><div class="wrap">
   ${head}
   ${kpis}
   ${statementCards(v, f)}
+  ${demoHtml(v)}
+  ${o.rails ?? ""}
+  ${o.t0 ?? ""}
   ${chartCards(d, v)}
   ${invoicesCard(d, v, f)}
-  ${pdfCard(f)}
   ${detailsCard(d)}
   <a class="open" href="proof">All the proof</a>
 </div></main>`;

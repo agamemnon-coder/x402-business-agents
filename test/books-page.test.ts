@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { cashChart, money, otherCurrencies, RUN_FILE, spendChart, type RunRecord } from "../src/redesign/booksPage.js";
 import { centsOf, inBaseCurrency, statementView } from "../src/vault/statementPdf.js";
+import { railsRun } from "../src/redesign/booksLedger.js";
 import { BOOKS_CSP, BOOKS_PAGE, LOGOS } from "../src/servers/dashboard.js";
 
 type Inv = RunRecord["invoices"][number] & { read_by: string; coding: { source: string } | null; expected: { total: string; currency: string } };
@@ -50,6 +51,8 @@ describe("/books, from the month's run record", () => {
       (run.claude.spent_micros / 1e6).toFixed(2),
       // The translation note: money in transit on each side, from the record, and the rate between them.
       ...[...(v.translated ?? "").matchAll(/\d[\d,]*\.\d{2,4}/g)].map((m) => m[0]),
+      // Since 21 Nov (T:0 merged in): the partner-rails run's payments, each from its own record (test/books-ledger.test.ts).
+      ...(railsRun()?.payments ?? []).map((p) => p.amount),
     ]);
     const main = /<main[\s\S]*<\/main>/.exec(BOOKS_PAGE)![0].replace(/<details[\s\S]*?<\/details>/g, "").replace(/<p class="why">[\s\S]*?<\/p>/g, "");
     const shown = [...main.replace(/<[^>]+>/g, " ").matchAll(/−?\d[\d,]*\.\d{2}\b/g)].map((m) => m[0]);

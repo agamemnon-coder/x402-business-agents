@@ -38,7 +38,7 @@ export const MORE_LINKS: readonly MoreLink[] = [
   // 13 Nov (Max): the product tour and Pricing are gone; /tour and /pricing answer 302 to /home (src/servers/dashboard.ts REDIRECTS).
   { key: "security", label: "Security", href: "security", group: "product" },
   { key: "docs", label: "Docs", href: "docs", group: "product" },
-  // 12 Nov (owner): the bookkeeping with AI agents, from the run records (src/redesign/booksPage.ts).
+  // 12 Nov (owner): the bookkeeping with AI agents, from the run records (src/redesign/booksPage.ts); with T:0 in it since 21 Nov.
   { key: "books", label: "Books", href: "books", group: "product" },
   // 20 Nov (outside audit, finding 3.4): what is kept, for how long, who processes it (src/redesign/privacy.ts).
   { key: "privacy", label: "Privacy", href: "privacy", group: "product" },
@@ -47,8 +47,7 @@ export const MORE_LINKS: readonly MoreLink[] = [
   { key: "metal", label: "Alta", href: "alta", group: "partner" },
   { key: "visa", label: "Visa", href: "visa", group: "partner" },
   { key: "claude", label: "Claude", href: "claude", group: "partner" },
-  // 19 Nov (the owner: "we use T:0 too"): /t0 joins the partner pages; it was served since 12 Nov but marked Proof.
-  { key: "t0", label: "T:0", href: "t0", group: "partner" },
+  // 21 Nov (the owner: "merge them"): T:0 lives on /books (Books above); /t0 answers 301 there.
 ];
 
 /** The links the pages show: every page of the list that the site serves. */
