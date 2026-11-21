@@ -508,14 +508,14 @@ const hasPasskeys=()=>!!(window.PublicKeyCredential&&navigator.credentials);
 // The session: in this tab only, gone when it closes or after 15 minutes.
 const KEY='purser.cloud.session';
 const load=()=>{try{const s=JSON.parse(sessionStorage.getItem(KEY)||'null');return s&&s.exp>Date.now()?s:null}catch(e){return null}};
-const save=(s)=>{try{sessionStorage.setItem(KEY,JSON.stringify(s))}catch(e){}};
+const save=(s)=>{sessionEnded=false;try{sessionStorage.setItem(KEY,JSON.stringify(s))}catch(e){}};
 // The Overview's last live Airwallex read (awxUi.ts) is kept beside it in this tab (ASVS V8.2.2) and goes with it (V8.2.3).
 const AWL_OV_KEY='purser.awl.ov';
 const forget=()=>{try{sessionStorage.removeItem(KEY);sessionStorage.removeItem(AWL_OV_KEY)}catch(e){}};
 // An older page kept that read in localStorage, past sign-out: it is removed.
 const dropOldCopies=()=>{try{localStorage.removeItem(AWL_OV_KEY)}catch(e){}};
 dropOldCopies();
-let S=load();let ME=null;let notice=null;let connNote=null;let idNote=null;
+let S=load();let ME=null;let notice=null;let connNote=null;let idNote=null;let sessionEnded=false;
 
 class Expired extends Error{}
 async function api(path,o){
@@ -524,7 +524,9 @@ async function api(path,o){
   // A sensitive setting needs a fresh passkey check (cloud/src/stepUp.ts): the step-up token of this session, while it lasts.
   if(!o.token&&S&&S.up&&S.up.exp>Date.now())headers['x-purser-step-up']=S.up.token;
   const r=await fetch(path,{method:o.method||'GET',headers,body:o.body===undefined?undefined:JSON.stringify(o.body)});
-  if(r.status===401&&!o.token&&S){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in');throw new Expired('signed out')}
+  // A 401 ends the session once; a request that was in flight beside it gets the same answer (Expired), so no page
+  // paints an error over the sign-in.
+  if(r.status===401&&!o.token&&(S||sessionEnded)){if(S){forget();S=null;ME=null;notice=t('cs.session_ended');sessionEnded=true;go('#/sign-in')}throw new Expired('signed out')}
   if(o.raw){if(!r.ok){const j=await r.json().catch(()=>({error:r.statusText}));throw new Error(j.error||r.statusText)}return r}
   const j=await r.json().catch(()=>({error:r.statusText}));
   // The server asks for the passkey again: one Face ID prompt, then the same request once more.
