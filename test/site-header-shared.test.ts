@@ -30,6 +30,8 @@ describe("the site's header, byte for byte as before", () => {
     expect(sha(CSS)).toBe(snap.cssSha256);
     expect(sha(NAV_CSS)).toBe(snap.navCssSha256);
     expect(sha(MORE_CSS)).toBe(snap.moreCssSha256);
+    // 21 Nov, later (review): pageSha256 renewed: a page whose main never names Alta says "Alta (formerly Metal)" at the
+    // first mention in its footer (src/ui/formerly.ts).
     // 21 Nov: header, More and pageSha256 renewed: "For companies" (/business) leads the More menu and the footer.
     // 20 Nov: pageSha256 renewed: "Privacy" joined the More menu and the footer (outside audit, finding 3.4).
     // 15 Nov: pageSha256 renewed: "Agents negotiate" left the More menu (Max; /try/negotiate has a card on Home).
