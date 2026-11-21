@@ -249,13 +249,13 @@ describe("the README's wall line and the partner pages' strips", () => {
   });
 
   it("each strip shows the wall's own tiles, links to its group on /proof, and says it is test money", () => {
-    const w = committedWall()!;
+    const w = committedWall()!, page = proofPage();
     for (const p of ["airwallex", "alta", "visa", "tap"] as const) {
       const html = evidenceStripHtml(p, {}, w);
       for (const k of PARTNER_STRIPS[p].keys) expect(html, `${p} ${k}`).toContain(`data-wall="${k}"`);
       expect(html).toContain(`href="proof#${PARTNER_STRIPS[p].group}"`);
       // The group is a section or block of /proof (21 Nov: the questions' sections), so the link lands.
-      expect(proofPage().split(` id="${PARTNER_STRIPS[p].group}"`).length - 1, p).toBe(1);
+      expect(page.split(` id="${PARTNER_STRIPS[p].group}"`).length - 1, p).toBe(1);
       expect(html).toMatch(/test money|no money moved/);
       expect(html).not.toMatch(/<script|style=|\son[a-z]+=|endorsed by|partnered with/i);
     }

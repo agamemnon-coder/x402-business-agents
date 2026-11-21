@@ -1158,8 +1158,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         const fold = document.querySelector("main details#details"), runs = document.getElementById("live-runs"), g = document.getElementById("guarantees");
         // The owner, 13 Nov ("the proof is what we need"): heading, lead line, proof chain, band, offline check, live runs,
         // then the guarantees and the one fold.
-        const order = [];
-        for (let e = h1; e; e = e.nextElementSibling) order.push(e.tagName.toLowerCase() + (e.className ? "." + e.className.split(" ")[0] : ""));
+        // 21 Nov (Max's mockup): the head is its own band; the order is read from the head and the page's column after it.
+        const order = [], head = h1 && h1.closest("section.pxh"), col = head && head.nextElementSibling;
+        if (head) order.push("section.pxh");
+        for (let e = col && col.firstElementChild; e; e = e.nextElementSibling) order.push(e.tagName.toLowerCase() + (e.className ? "." + e.className.split(" ")[0] : ""));
         return { order: order.slice(0, 9).join(" "), chain: top(document.querySelector("main ol.pchain")), band: top(document.querySelector("main ul.scale")), runs: top(runs), rows: runs ? runs.querySelectorAll("li[id^=run-]").length : 0, fold: top(fold), gtee: top(g), open: document.querySelectorAll("main details[open]").length };
       })()`)) as { order: string; chain: number; band: number; runs: number; rows: number; fold: number; gtee: number; open: number };
       // Max, 14 Nov: the walkthrough and the trailer, then a tile per partner with its one line, lead the page.
@@ -1169,11 +1171,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 19 Nov, second pass (the owner: "clearer and tighter, more visuals"): the evidence map and the wall lead the page.
       // 21 Nov (the owner: "organise it; an animated architecture"): the heading, the lead, the architecture, the questions,
       // the film link, the five sections (every live run in the third), the business and the archive, the utility links.
-      if (first.order !== "h1 p.plead figure.pflow nav.pq-nav p.pwatch div.pqs details.deep details.deep nav.util" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the architecture, the questions, the film link, the five sections (every live run, ${PROOF_RUN_ROWS}, in the third), the closed lines and the utility links, closed on load (${JSON.stringify(first)})`);
+      // 21 Nov, later (Max's mockup): the head (heading, film link, lead, four figures), the stages, the architecture, the
+      // categories, the eight sections (every live run in the first), the closed lines and the utility links.
+      if (first.order !== "section.pxh section.pstage figure.parch nav.pq-nav div.pqs details.deep details.deep nav.util" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the head, the stages, the architecture, the categories, the eight sections (every live run, ${PROOF_RUN_ROWS}, in the first), the closed lines and the utility links, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
-        // The architecture starts on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
-        const map = await page.evaluate(`(() => { const e = document.querySelector("main figure.pflow"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
-        if (map < 0 || map >= 440) fail(`/proof ${tag}: the architecture starts at ${map} px, not on the first screen`);
+        // The stages start on the first screen (under 844 px: the head's four figures sit two by two above them).
+        const map = await page.evaluate(`(() => { const e = document.querySelector("main section.pstage"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
+        if (map < 0 || map >= 844) fail(`/proof ${tag}: the stages start at ${map} px, not on the first screen`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 6) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);

@@ -33,10 +33,12 @@ describe("What Purser guarantees", () => {
   // Jury pass, 13 Nov: the four summary cards come first; the guarantees open the one details fold under them.
   // 21 Nov (the owner: /proof by the questions a judge asks): the guarantees are in sight in the first question's section,
   // "Does money only move within limits?", after its figures and its charts and before its folds, above the partners.
-  it("is in sight in the first question's section, after its figures and charts, before its folds and above the partners", () => {
+  // 21 Nov, later (Max's mockup, the sections by category): in "Policy and limits", after its figures and its chart,
+  // before its folds; the partners' fold is in "Payments and rails", which comes first.
+  it("is in sight in the policy section, after its figures and charts, before its folds", () => {
     const proof = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).proof!;
     expect(proof).toContain(guaranteesHtml());
-    const at = proof.indexOf(guaranteesHtml()), sec = proof.indexOf('<section class="ewall pq" id="q-limits"'), next = proof.indexOf('<section class="ewall pq" id="q-ai"');
+    const at = proof.indexOf(guaranteesHtml()), sec = proof.indexOf('<section class="ewall pq" id="q-limits"'), next = proof.indexOf('<section class="ewall pq" id="q-books"');
     expect(sec).toBeGreaterThan(proof.indexOf("<h1>Proof</h1>"));
     expect([sec < at, at < next]).toEqual([true, true]);
     const before = proof.slice(sec, at), after = proof.slice(at + guaranteesHtml().length, next);
@@ -44,7 +46,7 @@ describe("What Purser guarantees", () => {
     expect(before).toContain('<figure class="pchart"');
     expect(before).not.toContain("<details class=\"sumd");
     expect(after.trim()).toMatch(/^<details class="sumd pq-fold/);
-    expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
+    expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeGreaterThan(sec);
   });
 
   it("keeps its seven promises, numbered in this order, each with who enforces it and its evidence in sight, how folded", () => {

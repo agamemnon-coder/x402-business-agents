@@ -1,5 +1,5 @@
-// /proof's evidence flow and evidence tiles in the browser (src/redesign/proofFlow.ts, src/redesign/proofQuestions.ts; the
-// architecture drawing, the evidence map and the wall before), on `npm run judge` started here (the page under its own CSP): at 360, 390 and 1440 px, light and dark, every tile of docs/evidence/evidence-wall.json is there with its
+// /proof's stages, architecture and evidence tiles in the browser (src/redesign/proofFlow.ts, proofArch.ts,
+// proofQuestions.ts; the evidence flow, the architecture drawing, the evidence map and the wall before), on `npm run judge` started here (the page under its own CSP): at 360, 390 and 1440 px, light and dark, every tile of docs/evidence/evidence-wall.json is there with its
 // figure and its link, at least 44 px high, inside the screen; the page is no wider than the screen; no console error,
 // page error or CSP report. Screenshots of the wall at 390 x 844 and 1440 x 900, light and dark (device scale 1).
 // The full /proof check (order, tap targets, folds) is test/browser/pages.check.ts.
@@ -52,45 +52,67 @@ for (const [w, h] of [[360, 800], [390, 844], [1440, 900], [2560, 1440], [3840, 
     // The tiles' colours come from the theme: the figure is not the background's colour in either scheme.
     const contrast = (await page.evaluate(`(() => { const a = document.querySelector("main section.ewall li.ew-t a"); if (!a) return null; const f = a.querySelector(".ew-f"); return [getComputedStyle(a).backgroundColor, getComputedStyle(f).color]; })()`)) as [string, string] | null;
     if (!contrast || contrast[0] === contrast[1]) fail(`${tag}: the tile's figure has the tile's own colour (${JSON.stringify(contrast)})`);
-    // The evidence flow (src/redesign/proofFlow.ts, 21 Nov; the animated architecture and the evidence map before it): the
-    // path of one payment, every step closed on load and a link in the overview to it; each step opened shows the wall's
-    // tiles for it, as the wall's file has them, each at least 44 px high and inside the screen, its limits and its link
-    // to the section that proves it; the one-cent step is one of them. Scrolled to its end, every connector is lit.
-    const flow = (await page.evaluate(`(() => {
-      const f = document.querySelector("main figure.pflow");
+    // The stages (src/redesign/proofFlow.ts; Max's mockup, 21 Nov): a strip of the eight stages and a list, both choosing
+    // the one panel in sight; each panel shows the wall's tiles for its stage as the wall's file has them, each at least
+    // 44 px high and inside the screen, its four links (a record, a log and a source file on GitHub, /verify), its limits
+    // and its link to the section that proves it; the one-cent stage among them. Then the architecture: four parts, each
+    // with the wall's evidence as links.
+    const stg = (await page.evaluate(`(async () => {
+      const f = document.querySelector("main section.pstage");
       if (!f) return null;
-      const steps = [...f.querySelectorAll("li.pf-step details.pf-x")];
-      const track = [...f.querySelectorAll("ol.pf-track a")].map((a) => { const r = a.getBoundingClientRect(), href = a.getAttribute("href") || ""; return { href, to: !!document.getElementById(href.slice(1)), h: r.height }; });
-      const open = steps.filter((d) => d.open).length;
-      steps.forEach((d) => { d.open = true; });
-      const tiles = [...f.querySelectorAll("li.pf-e")].map((li) => { const a = li.querySelector("a"), r = a.getBoundingClientRect(); return { key: li.getAttribute("data-flow"), rec: li.getAttribute("data-rec") || "", fig: (li.querySelector(".pf-f") || {}).textContent || "", href: a.getAttribute("href"), h: r.height, left: r.left, right: r.right }; });
-      const more = steps.map((d) => { const a = d.querySelector("a.pf-more"); return a ? !!document.getElementById((a.getAttribute("href") || "").slice(1)) : false; });
-      const limits = steps.map((d) => d.querySelectorAll(".pf-lim li").length);
-      const cent = !!f.querySelector("details#pf-cent a.pf-try[href='books#cent']");
-      steps.forEach((d) => { d.open = false; });
-      return { n: steps.length, open, track, tiles, more, limits, cent, width: f.getBoundingClientRect().width };
-    })()`)) as { n: number; open: number; track: { href: string; to: boolean; h: number }[]; tiles: { key: string; rec: string; fig: string; href: string; h: number; left: number; right: number }[]; more: boolean[]; limits: number[]; cent: boolean; width: number } | null;
-    if (!flow) fail(`${tag}: no evidence flow`);
-    else {
-      if (flow.n !== FLOW_STEPS.length || flow.open) fail(`${tag}: the flow has ${flow.n} steps (${FLOW_STEPS.length} expected), ${flow.open} open on load`);
-      if (flow.track.length !== flow.n || flow.track.some((x) => !x.to || x.h < 44)) fail(`${tag}: the overview does not link every step, or a link is under 44 px (${JSON.stringify(flow.track)})`);
-      const all = new Map(wall.groups.flatMap((g) => g.tiles).map((t) => [t.key, t] as const));
-      const keys = FLOW_STEPS.flatMap((x) => x.keys.filter((k) => all.has(k)));
-      if (flow.tiles.length !== keys.length) fail(`${tag}: ${flow.tiles.length} tiles in the flow, ${keys.length} expected`);
-      for (const t of flow.tiles) {
-        const r = all.get(t.key);
-        if (!r || r.fig !== t.fig || recordHref(r) !== t.href || !t.rec) fail(`${tag}: flow tile ${t.key} not as its record says (${JSON.stringify(t)})`);
-        else if (t.h < 44 || t.left < 0 || t.right > w + 0.5) fail(`${tag}: flow tile ${t.key} under 44 px or outside the screen (${JSON.stringify(t)})`);
+      const tabs = [...f.querySelectorAll('[role="tab"]')], rows = [...f.querySelectorAll(".ps-row > a.ps-sel")], chipsL = [...f.querySelectorAll(".ps-row > a.ps-chip")].map((a) => ({ href: a.getAttribute("href"), fig: a.textContent, h: a.getBoundingClientRect().height })), panels = [...f.querySelectorAll(".ps-panel")];
+      const shown = () => panels.filter((p) => p.getBoundingClientRect().height > 0).map((p) => p.id);
+      const first = shown();
+      const seen = [], tiles = [], links = [], bad = [];
+      for (let i = 0; i < tabs.length; i++) {
+        (i % 2 ? rows[i] : tabs[i]).click();
+        await new Promise((r) => setTimeout(r, 30));
+        const s = shown(); seen.push(s.join(","));
+        const p = document.getElementById(tabs[i].getAttribute("aria-controls"));
+        if (tabs[i].getAttribute("aria-selected") !== "true" || !rows[i].parentElement.classList.contains("on")) bad.push(p.id);
+        p.querySelectorAll("details").forEach((d) => { d.open = true; });
+        for (const li of p.querySelectorAll("li.pp-c")) { const a = li.querySelector("a"), r = a.getBoundingClientRect(); tiles.push({ key: li.getAttribute("data-flow"), rec: li.getAttribute("data-rec") || "", fig: (li.querySelector(".pf-f") || {}).textContent || "", href: a.getAttribute("href"), h: r.height, left: r.left, right: r.right }); }
+        links.push({ id: p.id, b: [...p.querySelectorAll("a.pp-b")].map((a) => ({ href: a.getAttribute("href"), h: a.getBoundingClientRect().height })), limits: p.querySelectorAll(".pf-lim li").length, more: !!document.getElementById((p.querySelector("a.pf-more").getAttribute("href") || "").slice(1)) });
+        p.querySelectorAll("details").forEach((d) => { d.open = false; });
       }
-      if (flow.more.some((x) => !x) || flow.limits.some((x) => x < 1)) fail(`${tag}: a step without its limits or its link to a section on the page`);
-      if (!flow.cent) fail(`${tag}: no one-cent step with its link to the books' one-cent demo`);
-      if (w >= 2560 && flow.width < 900) fail(`${tag}: the flow is a narrow column (${flow.width} px)`);
+      tabs[0].click();
+      const tabH = tabs.map((t) => t.getBoundingClientRect().height), rowH = rows.map((t) => t.getBoundingClientRect().height);
+      const cent = !!f.querySelector("#pf-cent a.pf-try[href='books#cent']"), nf = !!f.querySelector("a.pf-nf[href='security#not-finished']");
+      const arch = document.querySelector("main figure.parch");
+      const chips = arch ? [...arch.querySelectorAll("li[data-arch]")].map((li) => { const a = li.querySelector("a"), r = a.getBoundingClientRect(); return { key: li.getAttribute("data-arch"), href: a.getAttribute("href"), fig: (a.querySelector("b") || {}).textContent || "", h: r.height, left: r.left, right: r.right }; }) : [];
+      return { n: panels.length, first, seen, bad, tiles, links, tabH, rowH, cent, nf, chips, chipsL, width: f.getBoundingClientRect().width };
+    })()`)) as { n: number; first: string[]; seen: string[]; bad: string[]; tiles: { key: string; rec: string; fig: string; href: string; h: number; left: number; right: number }[]; links: { id: string; b: { href: string; h: number }[]; limits: number; more: boolean }[]; tabH: number[]; rowH: number[]; cent: boolean; nf: boolean; chips: { key: string; href: string; fig: string; h: number; left: number; right: number }[]; chipsL: { href: string; fig: string; h: number }[]; width: number } | null;
+    if (!stg) fail(`${tag}: no stages`);
+    else {
+      if (stg.n !== FLOW_STEPS.length || stg.first.join() !== FLOW_STEPS[0]!.id) fail(`${tag}: ${stg.n} stages (${FLOW_STEPS.length} expected), in sight on load: ${stg.first.join()}`);
+      if (stg.seen.join("|") !== FLOW_STEPS.map((x) => x.id).join("|") || stg.bad.length) fail(`${tag}: the strip and the list do not choose one panel each (${JSON.stringify(stg.seen)}; not marked: ${stg.bad.join()})`);
+      if ([...stg.tabH, ...stg.rowH].some((x) => x < 44)) fail(`${tag}: a tab or a row under 44 px`);
+      const all = new Map(wall.groups.flatMap((g) => g.tiles).map((t) => [t.key, t] as const));
+      // Each row's figure is a link of its own, to the head tile's record (no dead zones).
+      const heads = FLOW_STEPS.map((x) => x.keys.map((k) => all.get(k)).find(Boolean)!);
+      if (stg.chipsL.length !== heads.length || stg.chipsL.some((c, i) => c.href !== recordHref(heads[i]!) || c.fig !== heads[i]!.fig || c.h < 44)) fail(`${tag}: a stage's figure is not a 44 px link to its record (${JSON.stringify(stg.chipsL)})`);
+      const keys = FLOW_STEPS.flatMap((x) => x.keys.filter((k) => all.has(k)));
+      if (stg.tiles.length !== keys.length) fail(`${tag}: ${stg.tiles.length} tiles in the stages, ${keys.length} expected`);
+      for (const t of stg.tiles) {
+        const r = all.get(t.key);
+        if (!r || r.fig !== t.fig || recordHref(r) !== t.href || !t.rec) fail(`${tag}: stage tile ${t.key} not as its record says (${JSON.stringify(t)})`);
+        else if (t.h < 44 || t.left < 0 || t.right > w + 0.5) fail(`${tag}: stage tile ${t.key} under 44 px or outside the screen (${JSON.stringify(t)})`);
+      }
+      const repo = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/";
+      for (const l of stg.links) {
+        const hrefs = l.b.map((x) => x.href);
+        if (hrefs.length !== 4 || !hrefs[0]!.startsWith(repo) || !/\.md$/.test(hrefs[1]!) || !/\/src\/.+\.ts$/.test(hrefs[2]!) || hrefs[3] !== "verify" || l.b.some((x) => x.h < 44)) fail(`${tag}: ${l.id}'s four links are not a record, a log, a source file and /verify, each 44 px (${JSON.stringify(l.b)})`);
+        if (l.limits < 1 || !l.more) fail(`${tag}: ${l.id} without its limits or its link to a section on the page`);
+      }
+      if (!stg.cent || !stg.nf) fail(`${tag}: no one-cent stage with its link to the books' one-cent demo, or no "What is not finished"`);
+      if (w >= 2560 && stg.width < 900) fail(`${tag}: the stages are a narrow column (${stg.width} px)`);
+      if (stg.chips.length < 10) fail(`${tag}: the architecture has ${stg.chips.length} evidence chips`);
+      for (const c of stg.chips) {
+        const r = all.get(c.key);
+        if (!r || r.fig !== c.fig || recordHref(r) !== c.href) fail(`${tag}: architecture chip ${c.key} not as its record says (${JSON.stringify(c)})`);
+        else if (c.h < 44 || c.left < 0 || c.right > w + 0.5) fail(`${tag}: architecture chip ${c.key} under 44 px or outside the screen (${JSON.stringify(c)})`);
+      }
     }
-    await page.evaluate(() => document.querySelector("main figure.pflow")?.scrollIntoView({ block: "end" }));
-    for (let i = 0; i < 8; i++) { await page.mouse.wheel(0, 300); await page.waitForTimeout(120); }
-    await page.waitForTimeout(1200);
-    const lit = (await page.evaluate(`(() => { const s = [...document.querySelectorAll("main figure.pflow li.pf-step")]; return [s.filter((x) => x.classList.contains("lit")).length, s.length]; })()`)) as [number, number];
-    if (lit[0] !== lit[1]) fail(`${tag}: ${lit[0]} of ${lit[1]} steps lit after scrolling past the flow`);
     await page.evaluate(() => scrollTo(0, 0));
     // The questions' nav sits under the site's header, never behind it, once the reader is in a section.
     await page.evaluate(() => document.getElementById("q-ai")?.scrollIntoView());
@@ -103,6 +125,7 @@ for (const [w, h] of [[360, 800], [390, 844], [1440, 900], [2560, 1440], [3840, 
       await page.evaluate(() => document.querySelectorAll("main .pq-nav").forEach((e) => { (e as HTMLElement).style.position = "static"; }));
       // The sticky header would sit over a tall element's shot: hidden for the picture only (CSSOM, allowed by the CSP).
       await page.evaluate(() => document.querySelectorAll("header, .top, nav.top").forEach((e) => { (e as HTMLElement).style.visibility = "hidden"; }));
+      await page.locator("#stages").screenshot({ path: join(shots, `proof-stages-${w}-${scheme}.png`) });
       await page.locator("#architecture").screenshot({ path: join(shots, `proof-map-${w}-${scheme}.png`) });
       await page.locator("#evidence").screenshot({ path: join(shots, `proof-wall-${w}-${scheme}.png`) });
       await page.evaluate(() => scrollTo(0, 0));
@@ -112,16 +135,17 @@ for (const [w, h] of [[360, 800], [390, 844], [1440, 900], [2560, 1440], [3840, 
     await context.close();
   }
 }
-// Under prefers-reduced-motion: nothing moves, and every connector of the flow is lit from the start.
+// Under prefers-reduced-motion: nothing in the stages or the architecture moves, and the stages still choose a panel.
 {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, reducedMotion: "reduce" });
   const page = await context.newPage();
   await page.goto(`${base}/proof`, { waitUntil: "load" });
-  const still = (await page.evaluate(`(() => { const f = document.querySelector("main figure.pflow"); if (!f) return null; return { js: f.classList.contains("js"), moving: [...f.querySelectorAll("*")].filter((e) => getComputedStyle(e).animationName !== "none").length, dark: [...f.querySelectorAll(".pf-light")].filter((e) => getComputedStyle(e).transform !== "none").length }; })()`)) as { js: boolean; moving: number; dark: number } | null;
-  if (!still || still.js || still.moving || still.dark) fail(`reduced motion: the flow moves or a connector is dark (${JSON.stringify(still)})`);
+  await page.locator('main section.pstage [role="tab"]').nth(4).click();
+  const still = (await page.evaluate(`(() => { const f = document.querySelector("main section.pstage"), a = document.querySelector("main figure.parch"); if (!f || !a) return null; return { moving: [...f.querySelectorAll("*"), ...a.querySelectorAll("*")].filter((e) => getComputedStyle(e).animationName !== "none").length, shown: [...f.querySelectorAll(".ps-panel")].filter((p) => p.getBoundingClientRect().height > 0).map((p) => p.id).join() }; })()`)) as { moving: number; shown: string } | null;
+  if (!still || still.moving || still.shown !== FLOW_STEPS[4]!.id) fail(`reduced motion: the stages or the architecture move, or the strip does not choose (${JSON.stringify(still)})`);
   await page.evaluate(() => document.querySelectorAll("header, .top, nav.top").forEach((e) => { (e as HTMLElement).style.visibility = "hidden"; }));
   await page.locator("#architecture").screenshot({ path: join(shots, "proof-map-1440-reduced-motion.png") });
-  if (!failed) console.log("ok    /proof evidence flow under reduced motion: still, every connector lit");
+  if (!failed) console.log("ok    /proof stages and architecture under reduced motion: still");
   await context.close();
 }
 await browser.close();

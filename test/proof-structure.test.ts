@@ -28,7 +28,7 @@ describe("the question sections", () => {
   it("put a tile no block names in its wall group's section, so a new record is never dropped", () => {
     const w: EvidenceWall = { ...wall, groups: [...wall.groups, { id: "ev-attacked", title: "x", tiles: [tile("brand-new-check")] }] };
     const p = placeTiles(w).find((x) => x.blocks.some((b) => b.tiles.some((t) => t.key === "brand-new-check")))!;
-    expect(p.q.id).toBe("q-built");
+    expect(p.q.id).toBe("q-security"); // 21 Nov, later: the attacks have their own category, "Security and red team"
   });
 
   it("show the newest held-out eval round, whatever its number, and the older ones as superseded", () => {

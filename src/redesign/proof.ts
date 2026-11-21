@@ -41,7 +41,8 @@ import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { WORST_CASE_CSS, worstCaseCardHtml } from "./worstCaseCard.js";
 import { EVIDENCE_WALL_CSS, PROOF_INDEX_DOC, committedWall } from "./evidenceWall.js";
 import { FLOW_CSS, FLOW_JS, flowHtml } from "./proofFlow.js";
-import { PROOF_QUESTIONS_CSS, placeTiles, questionHtml, questionNavHtml, type QExtras, type QuestionId } from "./proofQuestions.js";
+import { PROOF_QUESTIONS_CSS, PROOF_QUESTIONS_JS, placeTiles, questionHtml, questionNavHtml, type QExtras, type QuestionId } from "./proofQuestions.js";
+import { PROOF_TOP_CSS, PROOF_WAVE_JS, archHtml, proofHeroHtml } from "./proofArch.js";
 import { PROOF_CHARTS_CSS, chartHtml, coverageChart, evalChart, liveRunsChart, redTeamChart, refusalsChart } from "./proofCharts.js";
 import { ASSET_VERSIONS, versioned, type VersionedAsset } from "../ui/assetVersions.js";
 
@@ -69,7 +70,8 @@ details.deep section.band { padding: 8px 0 20px; border-top: 0; } details.deep s
 .proofp .pwatch a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 650; font-size: 15px; text-decoration: none; }
 .proofp .pwatch a:hover { text-decoration: underline; }
 .proofp .plead { margin: 0 0 18px; font-size: 16.5px; line-height: 1.5; color: var(--muted); max-width: 46em; }
-.proofp > .wrap { max-width: 1120px; }
+.proofp .wrap { max-width: 1280px; }
+@media (min-width: 2000px) { .proofp .wrap { max-width: 1680px; } }
 .proofp [id] { scroll-margin-top: 80px; }
 .runline { margin: 26px 0 10px; }
 .split { margin: 0 0 14px; font-size: clamp(17px, 1.8vw, 21px); font-weight: 650; max-width: 46em; }
@@ -560,7 +562,7 @@ const COMMANDS_CSS = `
 `;
 
 /** The one line under the heading (the owner, 13 Nov: "the proof is what we need"). */
-export const PROOF_LEAD = "What ran live, when, and how to check each run yourself. Sandbox and testnet, test money.";
+export const PROOF_LEAD = "What ran live, when, and how to verify it yourself. Sandbox and testnet, test money.";
 
 export function proofCardsHtml(cards: SummaryCard[]): string {
   if (!cards.length) return "";
@@ -694,17 +696,6 @@ export function proofPage(run: AgentRun = agentRun()): string {
   const VR = latestVerificationReport();
   const olderReports = VR ? readdirSync(new URL("../../docs/evidence/", import.meta.url)).filter((f) => /^verification-\d{4}-\d{2}-\d{2}\.json$/.test(f) && `docs/evidence/${f}` !== VR).sort().reverse() : [];
   const extras: Record<QuestionId, QExtras> = {
-    "q-limits": {
-      lead: band("refusals on record"),
-      charts: [chartHtml(redTeamChart()), chartHtml(refusalsChart())],
-      after: guaranteesHtml(),
-      history: [`<div class="pq-old" data-rec="${esc(run.file)}"><h3>${esc(`The main run, ${shortDay(run.recordedAt)}: every stop and every Face ID decision, and the first red team`)}</h3>${moreCards(run)}</div>`],
-    },
-    "q-ai": {
-      lead: band("Claude calls"),
-      charts: [chartHtml(evalChart())],
-      folds: [deep("The worst case: an AI that always says pay", worstCaseCardHtml())],
-    },
     "q-live": {
       lead: band("sandbox and testnet runs", AWX_CALLS_LABEL, "Alta testnet transactions"),
       charts: [chartHtml(liveRunsChart(groups, recordsOf(groups.flatMap((g) => g.runs)).split(" ").filter(Boolean)))],
@@ -722,6 +713,22 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <p class="split">${esc(SPLIT_LINE)}</p>
   <div class="nums">${nums.map(tile).join("")}</div></div>`],
     },
+    "q-approvals": {},
+    "q-limits": {
+      lead: band("refusals on record"),
+      charts: [chartHtml(refusalsChart())],
+      after: guaranteesHtml(),
+      history: [`<div class="pq-old" data-rec="${esc(run.file)}"><h3>${esc(`The main run, ${shortDay(run.recordedAt)}: every stop and every Face ID decision, and the first red team`)}</h3>${moreCards(run)}</div>`],
+    },
+    "q-books": {},
+    "q-ai": {
+      lead: band("Claude calls"),
+      charts: [chartHtml(evalChart())],
+      folds: [deep("The worst case: an AI that always says pay", worstCaseCardHtml())],
+    },
+    "q-security": {
+      charts: [chartHtml(redTeamChart())],
+    },
     "q-built": {
       lead: band("tests passing"),
       charts: [chartHtml(coverageChart())],
@@ -735,12 +742,15 @@ export function proofPage(run: AgentRun = agentRun()): string {
     },
   };
   const sections = wall ? placeTiles(wall).map((p) => questionHtml(p, extras[p.q.id])).join("\n") : "";
-  const body = `<main class="proofp"><div class="wrap">
-  <h1>Proof</h1>
-  <p class="plead">${esc(PROOF_LEAD)}</p>
+  // 21 Nov (Max, his mockup): the heading over the wave with four figures; the eight stages, each with what was verified
+  // and its links; how it fits together; then the evidence by category, every figure a drawing; the business, the
+  // archive and the utility links last.
+  const body = `<main class="proofp">
+  ${proofHeroHtml(PROOF_LEAD, wall, `<p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>`)}
+  <div class="wrap">
   ${flowHtml(wall)}
+  ${archHtml(wall)}
   ${questionNavHtml()}
-  <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>
   <div class="pqs" id="evidence">
   ${sections}
   </div>
@@ -751,7 +761,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: PROOF_DESCRIPTION, tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS + PFACTS_CSS + EVIDENCE_WALL_CSS + FLOW_CSS + PROOF_QUESTIONS_CSS + PROOF_CHARTS_CSS + COMMANDS_CSS, body, js: `${JS}\n${FLOW_JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
+    title: "Purser · Proof", description: PROOF_DESCRIPTION, tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS + PFACTS_CSS + EVIDENCE_WALL_CSS + FLOW_CSS + PROOF_QUESTIONS_CSS + PROOF_CHARTS_CSS + COMMANDS_CSS + PROOF_TOP_CSS, body, js: `${JS}\n${FLOW_JS}\n${PROOF_QUESTIONS_JS}\n${PROOF_WAVE_JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }
