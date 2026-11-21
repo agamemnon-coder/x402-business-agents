@@ -1031,12 +1031,12 @@ async function guestPass() {
     ok(await p.locator(".ov-k a.ovk").count() === 4 && await p.locator(".ov-cash svg.chart path.line").count() === 1 && await p.locator(".ov-inv").count() === 1 && await p.locator(".ov-feed li").count() >= 1 && await p.locator(".ov-pts a.ov-pt").count() === 4, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
     // 21 Nov (Max): the header's globe in the background with the stack on it: only what is connected with a recorded run
     // (seven, each a green ping and a name a screen reader hears), nothing "coming"; never under the headline or the figures.
-    const stack = await p.evaluate(() => { const r = (s: string) => document.querySelector(s)!.getBoundingClientRect(); const cs = [...document.querySelectorAll(".ovs li.ovs-c")];
+    // (A string, not a function: the check runs under tsx, whose named helpers the page does not have.)
+    const stack = await p.evaluate(`(() => { const r = (s) => document.querySelector(s).getBoundingClientRect(); const cs = [...document.querySelectorAll(".ovs li.ovs-c")];
       const h = r(".ov-h"), sub = r(".ov-sub"), k = r(".ov-k"), g = r(".ovg");
-      const apart = (a: DOMRect, b: DOMRect) => a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
-      return { n: cs.length, green: cs.every((c) => c.classList.contains("on") && !!c.querySelector(".ovs-p")), named: cs.every((c) => /: connected \((sandbox |testnet )?run recorded\)$/.test(c.querySelector(".vh")?.textContent ?? "")),
-        clear: cs.every((c) => { const b = c.getBoundingClientRect(); return apart(b, h) && apart(b, sub) && apart(b, k); }) && g.bottom <= k.top + 1 };
-    });
+      const apart = (a, b) => a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
+      return { n: cs.length, green: cs.every((c) => c.classList.contains("on") && !!c.querySelector(".ovs-p")), named: cs.every((c) => /: connected \\((sandbox |testnet )?run recorded\\)$/.test(c.querySelector(".vh")?.textContent ?? "")),
+        clear: cs.every((c) => { const b = c.getBoundingClientRect(); return apart(b, h) && apart(b, sub) && apart(b, k); }) && g.bottom <= k.top + 1 }; })()`) as { n: number; green: boolean; named: boolean; clear: boolean };
     ok(stack.n === 7 && stack.green && stack.named && stack.clear, `${tag}: the stack round the globe: seven connected with a recorded run, each named, clear of the words and the figures (${JSON.stringify(stack)})`);
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);

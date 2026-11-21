@@ -165,7 +165,7 @@ const GLOBE_JS = `
   function land(lon, lat) { for (var k = 0; k < LAND.length; k++) { var b = boxes[k]; if (lon < b[0] || lon > b[2] || lat < b[1] || lat > b[3]) continue; if (inside(LAND[k], lon, lat)) return true; } return false; }
   var still = matchMedia("(prefers-reduced-motion: reduce)").matches, dark = matchMedia("(prefers-color-scheme: dark)");
   var pts = [], W = 0, H = 0, dpr = 1, raf = 0, seen = true, t0 = 0, lastF = 0, emaF = 0, nF = 0, lastD = 0, ink = [180, 168, 255], acc = "#a398ff";
-  var cx = 0, cy = 0, R = 0, lite = false, at = null, body = null, rim = null, col = "", sampled = 0;
+  var cx = 0, cy = 0, R = 0, lite = false, at = null, body = null, rim = null, col = "", sampled = 0, bk = []; for (var q0 = 0; q0 < 32; q0++) bk.push([]);
   function theme() { var cs = getComputedStyle(document.documentElement), a = (cs.getPropertyValue("--accent") || "").trim(); acc = a || acc;
     var m = /^#([0-9a-f]{6})$/i.exec(acc); if (m) { var n = parseInt(m[1], 16); ink = [n >> 16 & 255, n >> 8 & 255, n & 255]; }
     lite = !dark.matches && document.documentElement.getAttribute("data-theme") !== "dark"; if (document.documentElement.getAttribute("data-theme") === "light") lite = true; }
@@ -197,7 +197,9 @@ const GLOBE_JS = `
     lastD = 0; }
   function frame(now) {
     raf = 0;
-    if (lastF && now - lastF < 1000) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 400 || (++nF > 12 && emaF > 70)) still = true; } lastF = now;
+    // A device too slow for it (frames slower than 14 a second on average, after the first two seconds of the page) gets
+    // the globe still; one long gap (the page loading, a tab coming back) is not a slow device.
+    if (lastF && now - lastF < 400 && now > 2000) { var dtF = now - lastF; emaF = emaF ? emaF * 0.92 + dtF * 0.08 : dtF; if (++nF > 45 && emaF > 70) still = true; } lastF = now;
     if (!still && lastD && now - lastD < 33) { go(); return; } lastD = now;
     if (!t0) t0 = now; var el = still ? 0 : now - t0;
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
@@ -206,17 +208,19 @@ const GLOBE_JS = `
     // The atmosphere, then the sphere's body (it covers the wave behind it), the dots, then a lit rim.
     g.fillStyle = at; g.beginPath(); g.arc(cx, cy, R * 1.16, 0, Math.PI * 2); g.fill();
     g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
-    var cr = Math.cos(rot), sr = Math.sin(rot), tl = 0.42, ct = Math.cos(tl), st = Math.sin(tl), hi = "rgba(236,232,255,";
+    // The dots in 2 x 16 buckets of colour and alpha: one path and one fill per bucket, no colour string per dot.
+    var cr = Math.cos(rot), sr = Math.sin(rot), tl = 0.42, ct = Math.cos(tl), st = Math.sin(tl);
+    for (var q = 0; q < 32; q++) bk[q].length = 0;
     for (var i = 0; i < pts.length; i++) {
       var p = pts[i], x = p[0] * cr + p[2] * sr, z0 = -p[0] * sr + p[2] * cr, y = p[1] * ct - z0 * st, z = p[1] * st + z0 * ct;
       if (z <= 0.02) continue;
-      var sx = cx - x * R, sy = cy - y * R;
       var lim = 1 - z, a = p[3] ? (lite ? 0.35 + 0.5 * z : 0.4 + 0.6 * z) * (0.75 + 0.25 * p[4]) : (lite ? 0.1 : 0.12) * z;
       a *= 1 + lim * lim * (p[3] ? 0.9 : 1.6);
       var s = p[3] ? (wide ? 0.95 : 0.8) * (0.6 + 0.5 * z) : 0.6;
-      g.fillStyle = (p[3] && z > 0.55 && !lite ? hi : col) + (a > 1 ? 1 : a).toFixed(2) + ")";
-      g.fillRect(sx - s, sy - s, s * 2, s * 2);
+      bk[(p[3] && z > 0.55 && !lite ? 16 : 0) + (a >= 1 ? 15 : (a * 16) | 0)].push(cx - x * R - s, cy - y * R - s, s * 2);
     }
+    for (q = 0; q < 32; q++) { var B = bk[q]; if (!B.length) continue; g.fillStyle = (q >= 16 ? "rgba(236,232,255," : col) + (((q & 15) + 0.5) / 16).toFixed(3) + ")"; g.beginPath();
+      for (var j = 0; j < B.length; j += 3) g.rect(B[j], B[j + 1], B[j + 2], B[j + 2]); g.fill(); }
     g.strokeStyle = rim; g.lineWidth = wide ? 2 : 1.4; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
     // The pings: pinned to the turning globe, a soft pulse, a small label on a dark plate (none on a very small globe).
     var pulse = still ? 0.5 : (el % 2400) / 2400;
