@@ -4,19 +4,37 @@
 //     address keyed with the day's salt (cloud/src/try/start.ts addressKey): no address is stored;
 //   - for everyone: ask_per_day questions a UTC day (a switch with a default);
 //   - Claude: only while both switches `claude` (the demo's kill switch) and `ask` are on, and each live answer first
-//     reserves its worst case under three caps, in micro-dollars: cap_day_micros_ask (the chat's day), cap_ask_addr_micros
-//     (one address's day) and cap_all_micros (the demo key's all time, shared with /try), with the actions in flight
-//     counted against max_inflight. A missing cap is 0: nothing is spent until the owner sets it. Settled at its real cost.
+//     reserves its worst case (every round of the agent at its longest prompt and its full output, ./model.ts) under
+//     three caps, in micro-dollars: cap_day_micros_ask (the chat's day), cap_ask_addr_micros (one address's day) and
+//     cap_all_micros (the demo key's all time, shared with /try), with the actions in flight counted against
+//     max_inflight. A missing cap is 0: nothing is spent until the owner sets it. Settled at its real cost.
 // What is kept: hourly counts by kind (ask_tally), nothing else. No question, answer or address is stored or logged.
 import { bump, withinRate } from "../auth.js";
 import { expireStale } from "../engine/spend.js";
 import { addressKey, addressPrefix48 } from "../try/start.js";
 import { num, on, readSwitches, type Switches } from "../try/switches.js";
 import type { Sql } from "../store.js";
+import { HISTORY_TURN_MAX, HISTORY_TURNS, QUESTION_MAX, SYSTEM, TOP_K } from "./core.js";
+import { ASK_LONG_PROMPT, ASK_MAX_ROUNDS, ASK_MAX_ROUNDS_FILE, ASK_MAX_TOKENS, askCostMicros } from "./model.js";
+import { ASK_TOOLS, TOOL_RESULT_MAX, TOOLS_PER_QUESTION } from "./tools.js";
 
 export const ASK_PER_MINUTE = 6;
-/** The most one live answer may cost (micro-USD at list price): Haiku, about 6,000 tokens in and ASK_MAX_TOKENS out is under 1,000. */
-export const ASK_ACTION_MICROS = 2_500;
+/** A file's share of the prompt at most, in tokens (counted by the API before the question is asked). */
+export const ASK_FILE_TOKENS_MAX = 40_000;
+/**
+ * The longest prompt a round can have without a file, in tokens, counted generously (3 characters a token): the rules,
+ * the tools, the conversation's turns, the passages, the question, every tool result a question may read, and what
+ * Claude wrote in the rounds before.
+ */
+export const ASK_PROMPT_MAX_TOKENS = Math.ceil((SYSTEM.length + JSON.stringify(ASK_TOOLS).length + HISTORY_TURNS * HISTORY_TURN_MAX + TOP_K * 1_300 + QUESTION_MAX + TOOLS_PER_QUESTION * (TOOL_RESULT_MAX + 200)) / 3) + ASK_MAX_ROUNDS * ASK_MAX_TOKENS;
+/** One round's worst case: its whole prompt written to the cache (the dearest input) and its full output. */
+export const roundWorstMicros = (promptTokens: number) => askCostMicros({ input: 0, cache_read: 0, cache_write: promptTokens, output: ASK_MAX_TOKENS });
+/** A question's worst case: every round at its longest. `fileTokens`: a file's tokens on top. */
+export const questionWorstMicros = (fileTokens = 0) => (fileTokens ? ASK_MAX_ROUNDS_FILE : ASK_MAX_ROUNDS) * roundWorstMicros(ASK_PROMPT_MAX_TOKENS + fileTokens);
+/** The most one live answer without a file may cost (micro-USD at list price), reserved before it starts. */
+export const ASK_ACTION_MICROS = questionWorstMicros(0);
+// Every prompt stays under the price step for long prompts, so the worst case above holds.
+if (ASK_PROMPT_MAX_TOKENS + ASK_FILE_TOKENS_MAX >= ASK_LONG_PROMPT) throw new Error("Ask Purser's prompt could pass the long-prompt price");
 /** The tenant id an answer's reservation is held under in try_resv (no company is involved). */
 export const ASK_RESV = "ask";
 
@@ -39,14 +57,21 @@ export async function askDayOpen(sql: Sql, s: Switches, now: Date): Promise<bool
   return (await bump(sql, "ask-day", day, 1)) <= num(s, "ask_per_day");
 }
 
+/** Whether Claude answers on this deployment now: its model is set and the switches claude and ask are on (caps aside). */
+export async function askLive(env: { sql: Sql; askModel?: unknown }): Promise<boolean> {
+  if (!env.askModel) return false;
+  const s = await askSwitches(env.sql);
+  return on(s, "claude") && on(s, "ask");
+}
+
 /** The switches, or none when the table cannot be read (fail closed: no Claude, the default limits). */
 export const askSwitches = async (sql: Sql): Promise<Switches> => { try { return await readSwitches(sql); } catch { return {}; } };
 
 export interface AskReservation { micros: number; settle(actual: number): Promise<void> }
 export type Reserved = { ok: true; reservation: AskReservation } | { ok: false; reason: "switch_off" | "budget" | "busy" };
 
-/** One live answer's worst case reserved under the chat's day, the address's day and all time, in one batch. */
-export async function reserveAnswer(sql: Sql, s: Switches, ip: string, now: Date): Promise<Reserved> {
+/** One live answer's worst case (`micros`) reserved under the chat's day, the address's day and all time, in one batch. */
+export async function reserveAnswer(sql: Sql, s: Switches, ip: string, now: Date, micros = ASK_ACTION_MICROS): Promise<Reserved> {
   if (!on(s, "claude") || !on(s, "ask")) return { ok: false, reason: "switch_off" };
   const day = now.toISOString().slice(0, 10);
   const addr = await addressKey(sql, ip, now);
@@ -57,7 +82,6 @@ export async function reserveAnswer(sql: Sql, s: Switches, ip: string, now: Date
   ];
   if (caps.some((c) => c.cap <= 0)) return { ok: false, reason: "budget" };
   await expireStale(sql, now);
-  const micros = ASK_ACTION_MICROS;
   const id = crypto.randomUUID();
   await sql.batch([
     {
@@ -79,8 +103,9 @@ export async function reserveAnswer(sql: Sql, s: Switches, ip: string, now: Date
     ok: true,
     reservation: {
       micros,
+      // Settled at what it cost, even past the reservation (the route stops a question before that can happen).
       async settle(actual: number) {
-        const used = Math.min(micros, Math.max(0, Math.ceil(actual)));
+        const used = Math.max(0, Math.ceil(actual));
         await sql.batch([
           ...caps.map((c) => ({ sql: "UPDATE try_spend SET micros = micros - ? WHERE scope = ? AND EXISTS (SELECT 1 FROM try_resv WHERE id = ? AND state = 'open')", params: [micros - used, c.scope, id] })),
           { sql: "UPDATE try_resv SET state = 'settled', micros = ? WHERE id = ? AND state = 'open'", params: [used, id] },
@@ -94,9 +119,10 @@ export async function reserveAnswer(sql: Sql, s: Switches, ip: string, now: Date
 
 export const ASK_TALLY_SCHEMA = "CREATE TABLE IF NOT EXISTS ask_tally (hour TEXT NOT NULL, kind TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (hour, kind))";
 /** asked: a question reached the route. live: Claude answered. docs: the docs answered (Claude off, capped, failing).
- *  refused_money, refused_data, refused_injection: code answered. limited: an address limit. trimmed: a sentence was
- *  left out by the checks. stopped: an answer was stopped whole. */
-export const ASK_KINDS = ["asked", "live", "docs", "refused_money", "refused_data", "refused_injection", "limited", "trimmed", "stopped"] as const;
+ *  refused_money, refused_data (before 21 Nov), refused_injection: code answered. limited: an address limit. trimmed: a
+ *  sentence was left out by the checks. stopped: an answer was stopped whole. records: code answered from the demo
+ *  company's records (no model). tool_calls: the agent's reads. files: questions with a file attached (never the file). */
+export const ASK_KINDS = ["asked", "live", "docs", "refused_money", "refused_data", "refused_injection", "limited", "trimmed", "stopped", "records", "tool_calls", "files"] as const;
 export type AskKind = (typeof ASK_KINDS)[number];
 
 const ready = new WeakMap<Sql, Promise<void>>();

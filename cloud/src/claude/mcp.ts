@@ -49,8 +49,8 @@ export interface McpCtx {
 type Json = Record<string, unknown>;
 /** A resource a result points to (MCP resource_link, 2025-06-18 and later): the client may read it with resources/read. */
 export interface Link { uri: string; name: string; title?: string; description?: string; mimeType?: string }
-interface ToolResult { content: ({ type: "text"; text: string } | ({ type: "resource_link" } & Link))[]; structuredContent?: Json; isError?: boolean; links?: Link[] }
-interface Tool {
+export interface ToolResult { content: ({ type: "text"; text: string } | ({ type: "resource_link" } & Link))[]; structuredContent?: Json; isError?: boolean; links?: Link[] }
+export interface Tool {
   name: string;
   title: string;
   description: string;
@@ -180,7 +180,8 @@ function bookLines(company: string, name: string, r: Record<string, unknown>): [
   return [`${company}: trial balance at ${dayWords(r.to as string)}, ${plural(rows.length, "account")}.`, r as Json, []];
 }
 
-const READ_TOOLS: Tool[] = [
+/** The reading tools, every one read only (Ask Purser's agent runs these over the demo company, cloud/src/ask/tools.ts). */
+export const READ_TOOLS: Tool[] = [
   {
     name: "company_overview",
     title: "Company overview",

@@ -46,6 +46,7 @@ import { tryEngineRoutes } from "./try/engineRoutes.js";
 import { tryExtraEngineRoutes } from "./try/extraEngineRoutes.js";
 import { tryNegotiateRoutes, type NegotiateClaude } from "./try/negotiateRoutes.js";
 import { askRoutes } from "./ask/routes.js";
+import { askLive } from "./ask/limits.js";
 import { ASK_BUTTON_PATH, ASK_PATH, askButtonResponse, askPageResponse } from "./ask/page.js";
 import type { AskModel } from "./ask/model.js";
 import { tryError, tryRoutes } from "./try/routes.js";
@@ -1017,7 +1018,8 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
       return new Response(SECURITY_TXT, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "max-age=3600", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" } });
     }
     // Ask Purser's page and its button module (cloud/src/ask/page.ts), on every deployment.
-    if ((req.method === "GET" || req.method === "HEAD") && (url.pathname === ASK_PATH || url.pathname === ASK_BUTTON_PATH)) return url.pathname === ASK_PATH ? askPageResponse(url) : askButtonResponse();
+    // The page says plainly whether Claude answers here now (its model set, the switches claude and ask on).
+    if ((req.method === "GET" || req.method === "HEAD") && (url.pathname === ASK_PATH || url.pathname === ASK_BUTTON_PATH)) return url.pathname === ASK_PATH ? askPageResponse(url, await askLive(env)) : askButtonResponse();
     // The console (cloud/src/console.ts): the browser pages, everything outside /v1.
     if (!url.pathname.startsWith("/v1/") && !isClaudePath(url.pathname) && !isDiscoveryPath(url.pathname)) return consoleResponse(req, url, env);
     // A browser request that changes something must come from the console's own origin: a page elsewhere cannot make a
