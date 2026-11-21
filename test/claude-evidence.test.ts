@@ -114,7 +114,7 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     expect(cards.map((c) => c[1])).toEqual(["sourcing", "support", "treasury"]);
   });
 
-  // 21 Nov (the owner: "the newest held-out eval as one tile: v16, 8 vs 77"): in sight under the agents, read from the
+  // 21 Nov (the owner: "the newest held-out eval as one tile: v16, 8 vs 77"; v17, 14 vs 88, since): in sight under the agents, read from the
   // newest held-out record, the same figure as the evidence wall's tile for that eval.
   it("shows the newest held-out eval as one tile, from its record and as the evidence wall says it", () => {
     const h = newestHeldOut()!;

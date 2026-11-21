@@ -227,7 +227,7 @@ export function modelName(model: string | undefined, family: string): string {
 }
 
 /**
- * The newest held-out eval as one tile (the owner, 21 Nov: "v16, 8 vs 77"): what code holds when the model is wrong. A
+ * The newest held-out eval as one tile (the owner, 21 Nov: "v16, 8 vs 77"; since 21 Nov v17, 14 vs 88): what code holds when the model is wrong. A
  * script that always says pay stands in the model's place; Purser's rules against a payer with no rules, on the same
  * held-out invoices. From its record (newestHeldOut, src/redesign/claudeEvidence.ts); empty without one.
  */
