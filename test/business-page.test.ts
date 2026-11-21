@@ -7,8 +7,9 @@ import { describe, expect, it } from "vitest";
 import { CONTACT_EMAIL } from "../src/config/brand.js";
 import { PRICING, PRICING_LINE, euro } from "../src/config/pricing.js";
 import { BUSINESS_PAGE, BUSINESS_CSP, ONE_PAGER_CSP, ONE_PAGER_PAGE } from "../src/servers/dashboard.js";
-import { CALC_DEFAULTS, CALC_JS, CALC_NOTE, FOUNDING_CTA, FOUNDING_NAME, FOUNDING_TERMS, FOUNDING_TEXT, GO_LIVE_DOC, PILOT_MAIL, POSITION, PRINT_JS, calc, calcEuro, calcHours, faqs, type CalcIn } from "../src/redesign/business.js";
+import { FIRST_TARGET, FIRST_TARGET_NOTE, PILOT_AGREEMENT, CALC_DEFAULTS, CALC_JS, CALC_NOTE, FOUNDING_CTA, FOUNDING_NAME, FOUNDING_TERMS, FOUNDING_TEXT, GO_LIVE_DOC, PILOT_MAIL, POSITION, PRINT_JS, calc, calcEuro, calcHours, faqs, type CalcIn } from "../src/redesign/business.js";
 import { existsSync } from "node:fs";
+import { repoHref } from "../src/redesign/productPage.js";
 import { START_STEPS } from "../src/redesign/home.js";
 import { residency } from "../src/redesign/privacy.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -57,6 +58,12 @@ describe("the calculator", () => {
     const t = text(main(BUSINESS_PAGE));
     expect(t).toContain(CALC_NOTE);
     expect(t).toContain("Your numbers (example inputs; replace them)");
+    // Max, 21 Nov: a scenario with the visitor's inputs, never a proven saving; all six inputs editable.
+    expect(CALC_NOTE.startsWith("Scenario with your inputs, not a measured saving.")).toBe(true);
+    expect(t).toContain("Scenario for a year");
+    expect(t).not.toMatch(/your estimate|proven saving|you will save/i);
+    expect(BUSINESS_PAGE.match(/<input id="c-[a-z]+" name="[a-zA-Z]+" type="number"/g)).toHaveLength(6);
+    expect(BUSINESS_PAGE).not.toMatch(/<input[^>]*\b(readonly|disabled)\b/);
     expect(t).toContain("(your guess)");
     expect(t).toContain("Without the fee per payout, which has no rate set.");
     // No money lost is assumed for the visitor: the default is nothing.
@@ -86,7 +93,8 @@ describe("what the pages claim", () => {
       for (const re of bad) expect({ name, found: re.exec(t)?.[0] ?? null }).toEqual({ name, found: null });
       expect(t).toMatch(/No customers, pilots or revenue yet\./);
       expect(t).toMatch(/No partnership or endorsement (is )?claimed/i);
-      expect(t).toMatch(/a hypothesis/);
+      // The first target group is a starting point, not a proven segment (Max, 21 Nov).
+      expect(t).toMatch(/not a proven market segment/);
     }
   });
 
@@ -100,7 +108,10 @@ describe("what the pages claim", () => {
     const z = Object.fromEntries(residency().map((r) => [r.id, r]));
     expect([z.db!.zone, z.docs!.zone, z.engine!.zone, z.ai!.zone]).toEqual(["eu", "eu", "open", "out"]);
     expect(faqs().find((f) => f.id === "data")!.a).toMatch(/not pinned to a region yet/);
-    expect(faqs().find((f) => f.id === "liable")!.a).toMatch(/none is signed yet/);
+    // Max, 21 Nov: pilots only under a written agreement, no real payments before the production checks.
+    expect(faqs().find((f) => f.id === "liable")!.a).toContain(PILOT_AGREEMENT);
+    expect(faqs().find((f) => f.id === "liable")!.links.map(([h]) => h)).toContain(repoHref(GO_LIVE_DOC));
+    expect(PILOT_AGREEMENT).toBe("Pilots run only under a written agreement: scope, responsibilities, liability, privacy and access are agreed in writing beforehand. No real payments before the production checks are met.");
     // How long: the "Try it" step's own tag on Home, no other duration.
     expect(faqs().find((f) => f.id === "start")!.a).toContain(START_STEPS[0]!.tag);
   });
@@ -134,10 +145,18 @@ describe("the 30-Day Founding Partner Pilot (Max, 21 Nov)", () => {
 
   it("states eligibility, scope and terms, promises no production payments before go-live, and claims no validated pricing", () => {
     expect(FOUNDING_TERMS.map((x) => x.id)).toEqual(["eligibility", "scope", "after"]);
-    for (const want of ["No credit card.", "No automatic conversion or billing.", "limited availability", "Selected businesses", "one clearly scoped financial workflow", "No production payments until the go-live requirements are met.", "Nothing is billed.", "You choose whether to move to an existing paid plan.", "not a permanent free offer", "Not yet validated with customers."]) expect({ want, found: t.includes(want) }).toEqual({ want, found: true });
+    for (const want of ["No credit card.", "No automatic conversion or billing.", "limited availability", "a registered company, an authorised financial approver", "one clearly described workflow, and a suitable test environment", "Only under a written agreement", "No real payments before the production checks are met.", "one clearly scoped financial workflow", "Nothing is billed.", "You choose whether to move to an existing paid plan.", "not a permanent free offer", "Not yet validated with customers."]) expect({ want, found: t.includes(want) }).toEqual({ want, found: true });
     expect(existsSync(new URL(`../${GO_LIVE_DOC}`, import.meta.url))).toBe(true);
     expect(BUSINESS_PAGE).toContain(`${GO_LIVE_DOC}" target="_blank" rel="noopener">The go-live requirements ↗</a>`);
     expect(t).not.toMatch(/\b(validated|proven) (pricing|prices)\b|\blive payments\b|\bproduction-ready\b/i);
+  });
+
+  it("presents the first target group as a starting point, not a proven segment, and lets other companies register interest", () => {
+    expect(FIRST_TARGET).toMatch(/^Our first target group: EU companies of 20 to 200 employees using Airwallex/);
+    expect(FIRST_TARGET_NOTE).toBe("A starting point, not a proven market segment. Other companies can still register interest.");
+    expect(t).toContain("not a proven market segment");
+    expect(BUSINESS_PAGE).toContain(`<a href="${PILOT_MAIL}">Other companies can still register interest</a>`);
+    expect(text(main(ONE_PAGER_PAGE))).toContain(FIRST_TARGET_NOTE);
   });
 
   it("says the one-line position as the lead, on /business and on the one-pager", () => {

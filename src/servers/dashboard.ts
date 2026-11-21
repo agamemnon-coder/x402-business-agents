@@ -381,6 +381,8 @@ export const FILM_WATCH_CSP = filmWatchCsp(FILM_WATCH_PAGE, filmId() !== null, c
 export const PROOF_CSP = cspFor(PROOF_PAGE);
 /** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */
 /** 21 Nov (Max): the plans, beside the 30-Day Founding Partner Pilot, are on /business; /pricing (gone since 13 Nov) lands there. */
+// Max, 21 Nov: keep the 302, so every price has one central source (/business, from src/config/pricing.ts). /pricing
+// may later become its own SEO landing page; until then it only redirects.
 export const PRICING_HOME = "/business#pricing";
 export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": "/replay", "/overview": "/home", "/tour": "/home", "/pricing": PRICING_HOME };
 /** Addresses retired for good, answered 301 so old links keep working: /judge (it became the product tour, then went with it, 13 Nov). */

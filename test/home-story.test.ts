@@ -13,7 +13,7 @@ import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
 import {
   AGENTS_HEAD, CLOUD_EYEBROW, HOME_SUB, PROOF_BUTTON, PROOF_HEAD, REASSURE, ROSTER_NOTE, ROSTER_RECORDS, START, START_HEAD, STOP_DRILL_DOC, STOP_DRILL_RECORD,
   AI_CONNECT_URL, AI_HEAD, AI_STEPS, AI_SUB, TOUR_BUTTON, TOUR_HEAD, VERIFY_BUTTON, WHATS_REAL, agentRoster, agentTiles, homePage, proofRows, proofTiles, stopDrillFacts,
-  CONNECT_CLAUDE, GITHUB_BUTTON, REPO_URL,
+  CONNECT_CLAUDE, GITHUB_BUTTON, REPO_URL, BUSINESS_BUTTON, BUSINESS_HREF,
 } from "../src/redesign/home.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { MONEY_FLOW_RECORDS, moneyFlowFacts } from "../src/redesign/moneyFlow.js";
@@ -67,9 +67,11 @@ describe("Home, 21 Nov: one short story", () => {
     }
   });
 
-  it("has two buttons in the hero, the judge tour (primary) and Try, Connect Claude and GitHub under the AI block, then the proof's two at its row; nothing else is a button", () => {
+  it("has two buttons in the hero, the judge tour (primary) and Try, Connect Claude and GitHub under the AI block, then the proof's two at its row, and For companies under the steps to a pilot; nothing else is a button", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [decode(m[1]!), text(m[2]!)]);
-    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TOUR_START_HREF, TOUR_BUTTON], [TRY_URL, START], [AI_CONNECT_URL, CONNECT_CLAUDE], [REPO_URL, GITHUB_BUTTON], ["proof", PROOF_BUTTON], ["/verify", VERIFY_BUTTON]]);
+    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TOUR_START_HREF, TOUR_BUTTON], [TRY_URL, START], [AI_CONNECT_URL, CONNECT_CLAUDE], [REPO_URL, GITHUB_BUTTON], ["proof", PROOF_BUTTON], ["/verify", VERIFY_BUTTON], [BUSINESS_HREF, BUSINESS_BUTTON]]);
+    // Max, 21 Nov: a clearly visible route from Home to /business, under the three steps to a pilot (not a primary button).
+    expect([BUSINESS_HREF, BUSINESS_BUTTON]).toEqual(["business", "For companies: pilot and plans"]);
     // Max, 21 Nov: "add a connect to GitHub and Claude".
     expect([CONNECT_CLAUDE, GITHUB_BUTTON]).toEqual(["Connect Claude", "The code on GitHub"]);
     expect([TOUR_BUTTON, START]).toEqual(["Start the judge tour", "Try it"]);
@@ -209,9 +211,11 @@ describe("Home, 21 Nov: one short story", () => {
   // 21 Nov (Max: "Make it clean, tighter"): 880 → 620. The parts as built: the hero with the product card (the card
   // alone is about 70 words of values from its record), the band's names, the AI flow (the owner, 21 Nov: "Works where
   // your AI already works"), four agents, four proof tiles, the tour's seven stops and the three steps (612 as built).
-  it("A11: stays within 620 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(620);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(620);
+  // 21 Nov (Max: "a clearly visible route from Home to /business"): 620 → 630 for the button "For companies: pilot and
+  // plans" under the three steps to a pilot (625 as built).
+  it("A11: stays within 630 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(630);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(630);
   });
 });
 

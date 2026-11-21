@@ -44,15 +44,21 @@ export const FOUNDING_POINTS: readonly string[] = [
   "Sandbox and test money until the go-live requirements are met.",
 ];
 export const FOUNDING_TERMS: readonly { id: string; title: string; line: string }[] = [
-  { id: "eligibility", title: "Eligibility", line: "Selected businesses: a registered company with a person who approves payments (a CFO, a fractional CFO or an accountant) and one workflow to bring." },
-  { id: "scope", title: "Scope", line: "One financial workflow, agreed at onboarding, such as paying supplier invoices. No production payments until the go-live requirements are met." },
+  { id: "eligibility", title: "Eligibility", line: "Selected businesses with four things: a registered company, an authorised financial approver (a CFO, a fractional CFO or an accountant), one clearly described workflow, and a suitable test environment." },
+  { id: "scope", title: "Scope", line: "Only under a written agreement: the workflow (such as paying supplier invoices), responsibilities, liability, privacy and access, agreed in writing beforehand. No real payments before the production checks are met." },
   { id: "after", title: "After 30 days", line: "Nothing is billed. You choose whether to move to an existing paid plan. Early access for design partners, not a permanent free offer." },
 ];
 export const BUSINESS_H1 = "Let AI agents pay. Keep the CFO in control.";
 export const BUSINESS_LEAD = POSITION;
 export const ONE_PAGER_PATH = "one-pager";
 /** Said wherever the calculator's result is: it is the visitor's own arithmetic, not a result Purser has seen. */
-export const CALC_NOTE = "Your inputs, our arithmetic: an estimate, not a result. No company has used Purser for a month yet, so no figure here is measured.";
+/** Max, 21 Nov: the outcome is a scenario with the visitor's inputs, never a proven saving. */
+export const CALC_NOTE = "Scenario with your inputs, not a measured saving. No company has used Purser for a month yet, so no figure here is measured.";
+/** Max, 21 Nov: a pilot runs only under a written agreement, and no real payment comes before the production checks. */
+export const PILOT_AGREEMENT = "Pilots run only under a written agreement: scope, responsibilities, liability, privacy and access are agreed in writing beforehand. No real payments before the production checks are met.";
+/** Max, 21 Nov: the first target group, said as a starting point and not as a proven segment. */
+export const FIRST_TARGET = "Our first target group: EU companies of 20 to 200 employees using Airwallex, paying suppliers and software in several currencies, with a CFO, a fractional CFO or an accountant.";
+export const FIRST_TARGET_NOTE = "A starting point, not a proven market segment. Other companies can still register interest.";
 /** The "Try it" step's own tag on Home ("2 minutes · deleted after 24 h"). */
 const TRY_TAG = START_STEPS[0]!.tag;
 
@@ -87,7 +93,7 @@ export function faqs(): Faq[] {
   if (z.db !== "eu" || z.docs !== "eu" || z.engine !== "open" || z.ai !== "out") throw new Error("/business: where the data lives no longer reads as /privacy has it");
   return [
     { id: "wrong", q: "What if the AI is wrong?", a: "It only proposes. Code checks every invoice and every payment against the limits the CFO signed; anything over them waits for the CFO's Face ID. If an agent tries anyway, the rail refuses: in test runs Airwallex declined a card charge over its limit, and Alta refused an over-cap payment on chain.", links: [["proof", "The proof"], ["security", "Security"]] },
-    { id: "liable", q: "Who is liable for a payment?", a: "Your company stays the payer, from its own Airwallex account: Purser is never in the flow of funds. Each payment carries the CFO's signature over its exact terms, and a receipt anyone can verify. Liability terms would be set in a pilot agreement; none is signed yet.", links: [["verify", "Verify a receipt"]] },
+    { id: "liable", q: "Who is liable for a payment?", a: `Your company stays the payer, from its own Airwallex account: Purser is never in the flow of funds. Each payment carries the CFO's signature over its exact terms, and a receipt anyone can verify. ${PILOT_AGREEMENT}`, links: [["verify", "Verify a receipt"], [repoHref(GO_LIVE_DOC), "The production checks"]] },
     { id: "data", q: "Where is my data?", a: "Purser Cloud's database and documents are in the EU (western Europe, EU jurisdiction); each company's engine and its logs are not pinned to a region yet. Claude and e-mail or WhatsApp alerts leave the EU only when switched on. Access, export and erasure are built in.", links: [["privacy", "Privacy"]] },
     { id: "bank", q: "Do I change banks?", a: "No. Purser works on your company's own Airwallex account, today with an API key you create there. Connecting by signing in at Airwallex is built, not live yet.", links: [["airwallex", "Airwallex"]] },
     { id: "cost", q: "What does it cost?", a: `The ${FOUNDING_NAME} is free, with no credit card and no automatic billing. After it, the plans: ${PRICING_LINE} ${PRICING_LEAD} These prices are not yet validated with customers.`, links: [["#pricing", "The plans"]] },
@@ -196,6 +202,7 @@ export const BUSINESS_CSS = `.bz-hd { margin-top: 14px; } .bz-hd .eyebrow { marg
 .bz-who h3 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 17px; }
 .bz-who p { margin: 0; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
 .bz-who small { color: var(--muted); font-size: 14px; line-height: 1.4; }
+.bz-who small a { color: var(--accent); font-weight: 650; }
 /* The calculator. */
 .bz-calc { display: grid; gap: 16px; padding: 20px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 @media (min-width: 860px) { .bz-calc { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
@@ -286,7 +293,7 @@ export function calcHtml(i: CalcIn = CALC_DEFAULTS): string {
     ${row("o-price", `${PRICING.starter.name} plan for that volume`, calcEuro(o.price))}
     ${row("o-net", "Difference a month", calcEuro(o.net))}
     ${row("o-risk", "Losses stopped a year (your guess)", calcEuro(o.risk))}
-    ${row("o-year", "Your estimate for a year", calcEuro(o.year), "tot")}
+    ${row("o-year", "Scenario for a year", calcEuro(o.year), "tot")}
   </dl>
   <div class="bz-bars" aria-hidden="true"><div hidden><span>${esc("Time back")}</span><span class="b"><i id="b-value"></i></span></div><div hidden><span>${esc("Plan price")}</span><span class="b"><i class="p" id="b-price"></i></span></div></div>
   <small>${esc("Without the fee per payout, which has no rate set.")}</small></div>
@@ -302,7 +309,7 @@ export function businessPage(): string {
   const options = `<ul class="bz-opt">${OPTIONS.map((o) => `<li class="${o.us ? "us" : ""}" id="opt-${o.id}"><b>${icon(o.icon, 20)}${esc(o.title)}</b><p>${esc(o.line)}</p></li>`).join("")}</ul>`;
   const outcomes = `<ul class="bz-out">${OUTCOMES.map((o) => `<li><span class="ic">${icon(o.icon, 20)}</span><b>${esc(o.title)}</b><p>${esc(o.line)}</p><div class="links">${siteLink(o.href, o.label)}</div></li>`).join("")}</ul>`;
   const who = `<div class="bz-who">
-  <article class="card" id="ideal"><h3><span class="ic">${icon("building-2", 20)}</span>${esc("Built for")}</h3><p>${esc("EU companies of 20 to 200 people, already on Airwallex, paying suppliers and software in several currencies, with a CFO, a fractional CFO or an accountant.")}</p><small>${esc("Our first target: a hypothesis, not a finding.")}</small></article>
+  <article class="card" id="ideal"><h3><span class="ic">${icon("building-2", 20)}</span>${esc("First target group")}</h3><p>${esc(FIRST_TARGET.replace(/^Our first target group: /, ""))}</p><small>${esc(FIRST_TARGET_NOTE.split(". ")[0]!)}. <a href="${esc(PILOT_MAIL)}">${esc("Other companies can still register interest")}</a>.</small></article>
   <article class="card" id="firms"><h3><span class="ic">${icon("users", 20)}</span>${esc("For accounting firms")}</h3><p>${esc("The accountant's role reads the books, invoices and audit trail; it cannot approve or pay. Books filed in Moneybird; Xero, QuickBooks Online and Exact Online exports.")}</p><small>${esc("Moneybird in its sandbox; the exports are files, not live links.")}</small></article>
   <article class="card" id="on-airwallex"><h3><span class="ic">${icon("landmark", 20)}</span>${esc("Built on Airwallex")}</h3><p>${esc("Money stays in the company's own Airwallex account; Purser is never in the flow of funds. Its fee rides on the payout.")}</p><small>${esc("Run in Airwallex's sandbox. No partnership or endorsement claimed.")}</small></article>
 </div>`;
@@ -322,7 +329,7 @@ export function businessPage(): string {
   <p class="bz-sub">${esc(`${PRICING_LEAD} Not yet validated with customers.`)}</p>
   <div class="bz-ctas"><a class="btn" href="${esc(TRY_URL)}">${icon("zap", 18)}${esc(`Try it first (${TRY_TAG.split(" · ")[0]})`)}</a><a class="btn" href="${ONE_PAGER_PATH}">${icon("file-text", 18)}${esc("The one-pager")}</a></div>
 </section>`;
-  const faq = `<div class="bz-faq">${faqs().map((f) => `<details id="faq-${f.id}"><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p><div class="links">${f.links.map(([h, l]) => siteLink(h, l)).join("")}</div></details>`).join("")}</div>`;
+  const faq = `<div class="bz-faq">${faqs().map((f) => `<details id="faq-${f.id}"><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p><div class="links">${f.links.map(([h, l]) => (/^https:/.test(h) ? outLink(h, l) : siteLink(h, l))).join("")}</div></details>`).join("")}</div>`;
   const body = `${sectionHead("today", "The problem", "Today it is no agents, or blind trust.")}
   ${options}
   ${sectionHead("outcome", "What changes", "Agents do the routine. You keep the say.")}
@@ -416,7 +423,7 @@ export function onePagerPage(): string {
     </div>
     <section><h2>${esc("Shown in sandboxes and on testnet, test money")}</h2>${proofChips()}</section>
     <div class="two">
-      <section><h2>${esc("Who it is for")}</h2><p>${esc("EU companies of 20 to 200 people already on Airwallex, paying suppliers and software in several currencies, with a CFO, a fractional CFO or an accountant (our first target, a hypothesis). Accounting firms: an accountant reads each client's books and cannot pay.")}</p></section>
+      <section><h2>${esc("Who it is for")}</h2><p>${esc(`${FIRST_TARGET} ${FIRST_TARGET_NOTE} Accounting firms: an accountant reads each client's books and cannot pay.`)}</p></section>
       <section><h2>${esc("Your data and your bank")}</h2><p>${esc(faqs().find((f) => f.id === "data")!.a)} ${esc("Your money stays in your own Airwallex account; Purser is never in the flow of funds.")}</p></section>
     </div>
     <section><h2>${esc(`${FOUNDING_CTA}: the ${FOUNDING_NAME}`)}</h2><p>${esc(`${FOUNDING_TEXT} Free for 30 days, limited availability, for selected businesses. ${FOUNDING_POINTS.join(" ")} At the end you choose whether to move to a paid plan; nothing is billed.`)}</p><ol class="s">${PILOT_STEPS.map((s) => `<li><b>${esc(s.title)}</b><br>${esc(s.line)}</li>`).join("")}</ol></section>

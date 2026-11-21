@@ -943,7 +943,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // (test/site-v4.test.ts), "More" marked, no text under 14 px in a card, and the calculator answering the visitor's own
     // numbers with the page's own arithmetic (calc, src/redesign/business.ts), never "NaN". /one-pager's button shows
     // once its script runs.
-    for (const [path, budget] of [["/business", 840], ["/one-pager", 660]] as const) {
+    // 21 Nov: /business 860 after Max's six decisions (the written agreement, eligibility, first target group, scenario).
+    for (const [path, budget] of [["/business", 860], ["/one-pager", 660]] as const) {
       const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
       if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
       await look(page, `${path} ${tag}`, w);

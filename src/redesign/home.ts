@@ -464,11 +464,18 @@ export const START_STEPS: readonly StartStep[] = [
   { icon: "layout-dashboard", title: "Look around", text: "Purser Cloud with its demo company, as a guest. No sign-up.", tag: "Read only", links: [{ href: CLOUD_GUEST_URL, label: "Open the console", external: true }] },
   { icon: "rocket", title: PILOT_BUTTON, text: "We set up your company and send a starter key; you add your passkey.", tag: "Test money · no real payments yet", links: [{ href: CLOUD_SETUP_URL, label: "Set up with a starter key", external: true }], pilot: true },
 ];
+/**
+ * The route from Home to /business (Max, 21 Nov: "a clearly visible route from Home to the commercial value
+ * proposition", not only More and the footer): one button under the three steps, where the pilot is; outside the hero.
+ */
+export const BUSINESS_BUTTON = "For companies: pilot and plans";
+export const BUSINESS_HREF = "business";
 export function startHtml(partnerUrl: string = DESIGN_PARTNER_URL): string {
   const link = (l: StartStep["links"][number]) => `<a href="${esc(l.href)}"${l.external ? ' target="_blank" rel="noopener"' : ""}>${esc(l.label)}${icon(l.external ? "external-link" : "arrow-right", 16)}</a>`;
   return `<p class="eyebrow">${esc(START_EYEBROW)}</p>
   <h2 class="e-h" id="h-start">${esc(START_HEAD)}</h2>
-  <ol class="steps3">${START_STEPS.map((st, i) => `<li class="reveal${st.pilot ? " pilot" : ""}"><span class="si">${icon(st.icon, 24)}<em>${i + 1}</em></span><b class="st">${esc(st.title)}</b><p>${esc(st.text)}</p><span class="tagline">${esc(st.tag)}</span><div class="go">${st.links.map(link).join("")}${st.pilot ? designPartnerHtml(partnerUrl) : ""}</div></li>`).join("")}</ol>`;
+  <ol class="steps3">${START_STEPS.map((st, i) => `<li class="reveal${st.pilot ? " pilot" : ""}"><span class="si">${icon(st.icon, 24)}<em>${i + 1}</em></span><b class="st">${esc(st.title)}</b><p>${esc(st.text)}</p><span class="tagline">${esc(st.tag)}</span><div class="go">${st.links.map(link).join("")}${st.pilot ? designPartnerHtml(partnerUrl) : ""}</div></li>`).join("")}</ol>
+  <div class="e-more"><a class="btn big" href="${BUSINESS_HREF}">${icon("building-2", 18)}${esc(BUSINESS_BUTTON)}${icon("arrow-right", 18)}</a></div>`;
 }
 
 /**
