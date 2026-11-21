@@ -24,6 +24,166 @@ connected, not connected, or not available yet). What the platform registers onc
 costs, reviews): [owner-setup.md](owner-setup.md). Invoices by e-mail from Gmail or Outlook:
 [email-forwarding.md](email-forwarding.md). QuickBooks bills, planned: [quickbooks-plan.md](quickbooks-plan.md).
 
+## At a glance
+
+![Built with Airwallex, Alta (formerly Metal) and Claude](../assets/logos/built-with.png)
+
+The sponsors' services are the money rails (Airwallex, Alta (formerly Metal), Visa through Airwallex's Airi) and the
+model (Claude, by Anthropic). Everything else on this page connects to Purser itself: it reads, proposes, receives the
+books or carries a message, and none of it moves money.
+
+### Works with
+
+<table>
+<tr>
+<td><b>Money rails</b></td>
+<td align="center"><img src="../../src/ui/logos/airwallex-306x42.png" alt="Airwallex" height="18"><br><sub>Airwallex</sub></td>
+<td align="center"><img src="../../src/ui/logos/alta.svg" alt="Alta (formerly Metal)" height="28"><br><sub>Alta (formerly Metal)</sub></td>
+<td align="center"><b>Visa</b><br><sub>via Airwallex Airi</sub></td>
+<td align="center"><b>T:0</b><br><sub>outside ledger</sub></td>
+</tr>
+<tr>
+<td><b>AI and agents</b></td>
+<td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/logos/claude-logo-ivory.svg"><img src="../assets/logos/claude-logo-slate.svg" alt="Claude" height="22"></picture><br><sub>Claude</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-modelcontextprotocol.svg" alt="MCP" height="24"><br><sub>MCP</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/chatgpt.svg" alt="ChatGPT" height="24"><br><sub>ChatGPT</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-cursor.svg" alt="Cursor" height="24"><br><sub>Cursor</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/vscode.svg" alt="VS Code" height="24"><br><sub>VS Code</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-googlegemini.svg" alt="Gemini" height="24"><br><sub>Gemini CLI</sub></td>
+</tr>
+<tr>
+<td><b>Books and ERP</b></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-xero.svg" alt="Xero" height="24"><br><sub>Xero</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-quickbooks.svg" alt="QuickBooks" height="24"><br><sub>QuickBooks</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/exact.svg" alt="Exact" height="24"><br><sub>Exact Online</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/moneybird.svg" alt="Moneybird" height="24"><br><sub>Moneybird</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-odoo.svg" alt="Odoo" height="24"><br><sub>Odoo</sub></td>
+<td align="center"><b>BC</b><br><sub>Business Central</sub></td>
+</tr>
+<tr>
+<td><b>Messages and mail</b></td>
+<td align="center"><img src="../../src/ui/logos/brands/slack.svg" alt="Slack" height="24"><br><sub>Slack</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/microsoft-teams.svg" alt="Microsoft Teams" height="24"><br><sub>Microsoft Teams</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-whatsapp.svg" alt="WhatsApp" height="24"><br><sub>WhatsApp</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/gmail.svg" alt="Gmail" height="24"><br><sub>Gmail</sub></td>
+</tr>
+<tr>
+<td><b>Build on it</b></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-zapier.svg" alt="Zapier" height="24"><br><sub>Zapier</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-make.svg" alt="Make" height="24"><br><sub>Make</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-python.svg" alt="Python" height="24"><br><sub>Python SDK</sub></td>
+<td align="center"><img src="../../src/ui/logos/brands/si-typescript.svg" alt="TypeScript" height="24"><br><sub>TypeScript SDK</sub></td>
+<td align="center"><b>n8n</b><br><sub>node, not published</sub></td>
+<td align="center"><b>Peppol</b> · <b>ISO 20022</b><br><sub>files</sub></td>
+</tr>
+</table>
+
+Each mark is the file on record, unchanged: sources and hashes in [src/ui/logos/README.md](../../src/ui/logos/README.md)
+and [docs/assets/logos/SOURCES.md](../assets/logos/SOURCES.md); permissions in
+[logo-permissions.md](../evidence/logo-permissions.md). Visa and T:0 are named in text (the owner's decision for Visa
+outside Purser Cloud's Connections page; no T:0 mark on file); so are the connections whose mark is not cleared for this
+page. A mark names a service Purser connects to: never "certified", "endorsed", "approved by" or "partner of".
+
+### Where each one stands
+
+The labels in the tables further down are the catalogue's. This table adds one stricter question: **is there a dated
+run on record?**
+
+| Badge | Means |
+|---|---|
+| ![LIVE](badges/live.svg) | Ran against the real service (or its sandbox or testnet), with a dated record linked. |
+| ![READY](badges/ready.svg) | Code done and tested against stand-ins; waits for credentials or a first recorded run. |
+| ![PARTIAL](badges/partial.svg) | Code exists, but a named piece is missing. |
+| ![LISTED](badges/listed.svg) | Named only; nothing built yet. |
+
+| Partner | Status | Catalogue label | Proof, or what is missing |
+|---|---|---|---|
+| Airwallex | ![LIVE](badges/live.svg) | sandbox | [Soak, 20 Nov](../runs/2026-11-20-airwallex-soak.md): 30 supplier payments, 5 negative controls refused; [API coverage, 19 Nov](../runs/2026-11-19-airwallex-coverage.md). Check: `npm run health`. |
+| Alta (testnet) | ![LIVE](badges/live.svg) | testnet | [Series, 19 Nov](../runs/2026-11-19-alta-series.md): 21 mandate-checked payments, 3 refused on chain; [refusals, 20 Nov](../runs/2026-11-20-alta-refusals.md). Check: `npm run health`. |
+| Visa via Airwallex Airi | ![LIVE](badges/live.svg) | sandbox | [vic-5, 14 Nov](../runs/2026-11-14-vic-5.md): Airi's test card, terms hash read back, credential reuse refused. Check: `npm run airi:vic-5 -- --dry`. |
+| Claude (MCP connector) | ![LIVE](badges/live.svg) | live | Added in the Claude iOS app on 13 Nov ([how it was verified](../connect-claude.md#which-clients-were-verified-and-how)). |
+| Claude (models in Purser) | ![LIVE](badges/live.svg) | not a catalogue row | [Payables agents' evals, 20 Nov](../runs/2026-11-20-claude-ap-evals.md): Haiku, Sonnet and Opus, 62 of 62 cases each. |
+| T:0 | ![LIVE](badges/live.svg) | sandbox | [Read-back, 14 Nov](../runs/2026-11-14-t0-readback.md): 95 entries, every account to the cent; [at every payment, 20 Nov](../runs/2026-11-20-partner-rails.md). Check: `npm run t0 -- accounts`. |
+| Moneybird | ![LIVE](badges/live.svg) | built, run once in a sandbox | [Sandbox administration, 12 Nov](../runs/2026-11-12-moneybird-sandbox.md): read back, 0 differences. |
+| Agent API (local MCP) | ![LIVE](badges/live.svg) | sandbox | [An outside agent, 29 Oct](../runs/2026-10-29-agent-api.md). |
+| ChatGPT, Cursor, VS Code, Gemini CLI, Windsurf | ![READY](badges/ready.svg) | built, not tested live | Nothing to build: one try per client with the demo token, then a record ([setup per client](../connect-claude.md)). |
+| Airwallex sandbox in Code Mode (MCP) | ![READY](badges/ready.svg) | built, not tested live | Tested against a stand-in gateway; no live read on record ([codemode.md](../codemode.md)). |
+| Read API (REST), Webhooks, Full export | ![READY](badges/ready.svg) | live | Served by Purser Cloud; no dated outside run on record yet ([connections.md](../connections.md)). |
+| A2A Agent Card | ![READY](badges/ready.svg) | built, not tested live | Served at `/.well-known/agent.json`; no agent has read it on record. |
+| TypeScript and Python SDKs | ![READY](badges/ready.svg) | built, not tested live | Tested in-process ([TypeScript](#typescript-sdk), [Python](#python-sdk)); no run against a deployed cloud on record. |
+| Zapier and Make | ![READY](badges/ready.svg) | built, not tested live | Recipes on the HTTP modules ([no-code.md](no-code.md)); not run in Zapier or Make. |
+| n8n | ![PARTIAL](badges/partial.svg) | built, not tested live | The node's code exists; it is not built or published ([n8n](#n8n)). |
+| Xero | ![READY](badges/ready.svg) | format export; built, not tested live | CSV export, the runner's API and the Purser Cloud connect; needs Xero's OAuth app ([owner-setup.md](owner-setup.md#16-xero)). |
+| QuickBooks Online | ![PARTIAL](badges/partial.svg) | format export; built, not tested live | CSV export and the connect flow; sending bills is planned ([quickbooks-plan.md](quickbooks-plan.md)). |
+| Exact Online | ![READY](badges/ready.svg) | format export; built, not tested live | CSV export, connect and the runner's connector; needs Exact's app ([erp.md](../erp.md#exact-online)). |
+| Business Central and Odoo | ![READY](badges/ready.svg) | built, not tested live | The runner's connectors; need a sandbox or trial ([erp.md](../erp.md)). |
+| Slack and Microsoft Teams | ![READY](badges/ready.svg) | built, not tested live | Needs a company's own webhook URL; no real channel has received a post ([setup](#slack-and-microsoft-teams-approval-notifications)). |
+| WhatsApp and e-mail alerts | ![READY](badges/ready.svg) | built, not tested live | Needs Twilio's WhatsApp sandbox or a Resend key ([cloud.md](../cloud.md#approval-alerts)). |
+| Gmail and Outlook (invoices by e-mail) | ![PARTIAL](badges/partial.svg) | built, not tested live | No mail domain routed yet; checks of incoming mail (SPF, DKIM, DMARC) not built ([email-forwarding.md](email-forwarding.md)). |
+| Google Workspace and Microsoft 365 | ![READY](badges/ready.svg) | built, not tested live | The runner's polling; needs the owner's OAuth apps ([workplace.md](workplace.md)). |
+| Sign in with Google, Microsoft and Apple | ![READY](badges/ready.svg) | built, not tested live | Tested against a stand-in provider; needs the platform's OAuth apps ([owner-setup.md](owner-setup.md#12-sign-in-with-google)). |
+| Peppol invoices (UBL) and ISO 20022 | ![READY](badges/ready.svg) | built, not tested live; format export | Files only, nothing to connect: `npm run peppol:check -- <file.xml>`, `npm run iso20022`. |
+| Peppol network | ![LISTED](badges/listed.svg) | planned | Needs a certified Access Point, the owner's choice ([peppol.md](peppol.md#receiving-over-peppol-the-owners-step)). |
+
+### How it fits together
+
+```mermaid
+flowchart LR
+  agent["AI agent<br/>Claude, any MCP client, the API"] -->|reads, proposes| purser["Purser<br/>the CFO's policy and limits"]
+  purser -->|above the limit| passkey["CFO's passkey<br/>Face ID on the exact terms"]
+  passkey -->|signed terms| purser
+  purser --> awx["Airwallex<br/>transfers, cards, FX"]
+  purser --> alta["Alta, formerly Metal<br/>mandates and x402 on testnet"]
+  purser --> airi["Visa via Airwallex Airi<br/>a credential for one purchase"]
+  awx --> ledger["Purser's ledger"]
+  alta --> ledger
+  airi --> ledger
+  ledger --> t0["T:0"]
+  ledger --> books["Xero, QuickBooks, Exact,<br/>Moneybird, Odoo, Business Central"]
+  ledger --> msgs["Slack, Teams, WhatsApp, e-mail"]
+```
+
+No arrow from an agent, a key or an integration reaches a rail without passing Purser's policy, and above the limit only
+the CFO's passkey opens it ([the rule](#connect-purser-to-anything)).
+
+### Connect in 5 minutes
+
+Sandbox, testnet and test cards only: no real card, no real money. Keys go into the environment (a runner's `.env`, which
+git ignores) or into a Worker as a secret, from `worker/`: `npx wrangler secret put <NAME> --config <its wrangler file>`
+(the prompt asks for the value). Never into git, code or a chat.
+
+#### Airwallex
+
+1. Open a sandbox account ([Airwallex's sandbox guide](https://www.airwallex.com/docs/developer-tools/sandbox-environment/sandbox-environment-overview)).
+2. In the sandbox web app, make a scoped API key: Read or Write per resource, no more than [the scoped key](../airwallex.md#the-scoped-key) lists.
+3. Set `AIRWALLEX_CLIENT_ID` and `AIRWALLEX_API_KEY` in the runner's environment.
+4. `npm run health`. Working: `ok    airwallex sandbox: EUR …` (the balances). The whole story: [run-it.md](../run-it.md).
+
+#### Alta (formerly Metal)
+
+1. In the [Alta testnet console](https://console-testnet.metalntwx.com), make an RPC endpoint; fund test accounts from
+   the faucet ([Alta's guide](https://docs.metalntwx.com/build/prepare/fund-a-test-account)).
+2. Set `METAL_RPC_URL` (the URL is the credential) and `METAL_ENDPOINT_SECRET`.
+3. `npm run health`. Working: `ok    metal chain id: 63825`, `ok    metal finality`, `ok    x402 facilitator: ready`.
+4. Mandates and payments: [metal-award.md](../metal-award.md).
+
+#### Visa via Airwallex Airi
+
+1. Install Airwallex's [airi-cli](https://github.com/airwallex/airi-cli) and sign in with `airi-cli auth login`.
+2. Add only Airi's test card. The Airwallex sandbox keys from above go alongside.
+3. `npm run airi:vic-5 -- --dry`: the whole flow on labelled stand-ins, no network. Working: every check ok, marked STAND-IN.
+4. Live preflight (3 read-only Airi calls, no purchase): `KIT11_AIRI_RAIL=on VIC5_GO=yes npm run airi:vic-5 -- preflight`.
+   Details: [visa-award.md](../visa-award.md).
+
+#### Claude
+
+1. In Claude: Settings, Connectors, *Add custom connector*; paste `https://<your-purser-cloud>/mcp`.
+2. Sign in with a connector token (Purser Cloud, Connections, Connect your AI) or the demo company's `purser-demo-read-only`.
+3. Ask "What needs my attention?". Working: Purser's read tools answer with the company's books. Claude Code:
+   `claude mcp add --transport http purser <address>/mcp`. Every client: [connect-claude.md](../connect-claude.md).
+4. Optional, Claude inside Purser (reading invoices, the agents): `KIT11_ANTHROPIC_API_KEY` in the runner's environment;
+   `npm run health` then says `ok    claude api key: set`.
+
 ## Payment rails
 
 Money moves only on these, and only within the limits the CFO signed or after the CFO's Face ID on the exact terms. T:0
