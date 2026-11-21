@@ -22,7 +22,7 @@ import { TRY_URL, esc, icon } from "./ui.js";
 
 /** The question the page asks, and Purser's answer (Max, 21 Nov). */
 export const BUSINESS_QUESTION = "Would you trust an AI agent with your company's money?";
-export const BUSINESS_ANSWER = "With Purser, you can: agents do the routine, the rails hold the limits, and the CFO signs the exact terms with Face ID.";
+export const BUSINESS_ANSWER = "Agents do the routine, the rails hold the limits, and the CFO signs the exact terms with Face ID.";
 export const PROOF_CTA = "See the proof";
 
 /** The demo as the recorded /try runs have it: the invoice, what the agent paid alone, the signed amount, the refused change. */
@@ -65,7 +65,7 @@ export function approvalCardHtml(d: DemoFacts): string {
 <div class="bzc-top"><span class="bzc-wait">${icon("clock", 14)}${esc("Waiting for the CFO")}</span><span class="bzc-tag">${esc("Sandbox · test money")}</span></div>
 <p class="bzc-sup"><span class="bzc-ic" aria-hidden="true">${icon("file-check", 18)}</span><span><b>${esc(d.supplier)}</b><small>${esc(`Invoice ${d.number}`)}</small></span></p>
 <p class="bzc-amt">${esc(d.amount)}</p>
-<ul class="bzc-ck"><li>${icon("check", 14)}${esc("Payee, amount, due date, account")}</li><li>${icon("check", 14)}${esc(`Over the agent's limit: it paid ${d.alone} alone`)}</li></ul>
+<ul class="bzc-ck"><li>${icon("check", 14)}${esc("Payee, amount, due date, account")}</li><li>${icon("check", 14)}${esc("Over the agent's limit, so it waits for the CFO")}</li></ul>
 <div class="bzc-face" aria-hidden="true"><span class="bzc-fi">${icon("scan-face", 26)}</span><span>${esc("Approve with Face ID")}</span></div>
 <p class="bzc-sha">${esc(`Signs sha256 ${d.signed}… of the exact terms`)}</p>
 <figcaption id="bzcard-c">${esc("From the recorded /try run.")} ${rec(d.recs.run)}</figcaption>
