@@ -47,6 +47,18 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const fail = (what: string) => o.fail(`${o.name}: ${what}`);
   await page.goto(o.url, { waitUntil: "load" });
 
+  // P0 visual trust: the Airwallex mark must be an actual loaded image, not a broken
+  // placeholder on either the desktop header or the separate mobile badge.
+  // This checks loaded pixels, not just that a URL was written into the DOM.
+  const airwallexMarks = await page.locator("header.top .awx-badge img, .awx-row .awx-badge img").evaluateAll((imgs) =>
+    imgs.filter((im) => im.getClientRects().length > 0).map((im) => {
+      const el = im as HTMLImageElement;
+      return { src: el.currentSrc || el.src, complete: el.complete, width: el.naturalWidth, height: el.naturalHeight };
+    })
+  );
+  if (airwallexMarks.length !== 1 || airwallexMarks.some((im) => !im.complete || im.width <= 0 || im.height <= 0))
+    fail(`the visible Airwallex logo is broken: ${JSON.stringify(airwallexMarks)}`);
+
   // One story: the hero's two buttons, Try then Proof (the product tour was first for part of 13 Nov, then removed), the
   // first in the first screen with its one line under it.
   const ctas = await page.locator("main .e-hero .ctas a.btn").evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").trim() })));
