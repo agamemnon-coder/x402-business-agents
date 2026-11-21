@@ -51,7 +51,7 @@ main.ent section + section { border-top: 1px solid var(--border); }
 main.ent section.e-hero { position: relative; padding: 80px 0 72px; overflow: hidden; }
 .e-hero::before { content: ""; position: absolute; inset: -30% -10% auto 40%; height: 120%; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%); pointer-events: none; }
 .e-hero .wrap { position: relative; display: grid; gap: 48px; align-items: center; }
-@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 520px); gap: 56px; } }
+@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 48px; } .e-hero .h-hero { font-size: clamp(44px, 4vw, 56px); } }
 .e-hero p.cloud { margin: 0 0 18px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); letter-spacing: .06em; }
 .e-hero .h-hero { font-size: clamp(42px, 5.6vw, 64px); line-height: 1.02; letter-spacing: -.035em; font-weight: 790; } .e-hero .h-hero span { display: block; }
 @media (min-width: 1040px) { .e-hero .h-hero span { white-space: nowrap; } }
@@ -289,8 +289,9 @@ export const AI_STEPS: readonly AiStep[] = [
   { key: "books", icon: "database", title: "The books", what: "Booked, read back", tags: ["T:0"] },
 ];
 export function aiFlowHtml(): string {
-  const step = (s: AiStep, i: number) => `<li class="af-n af-${s.key}"><span class="af-i">${icon(s.icon, 20)}</span><b>${esc(s.title)}</b><small>${esc(s.what)}</small>${s.marks ? `<span class="af-m">${s.marks.map((m) => `<img src="assets/${m.file}" alt="${esc(m.name)}" width="24" height="24" decoding="async">`).join("")}<em>+ any</em></span>` : ""}${s.tags ? `<span class="af-t chip">${s.tags.map((t) => `<i>${esc(t)}</i>`).join("")}</span>` : ""}${i < AI_STEPS.length - 1 ? '<span class="af-c" aria-hidden="true"><span></span></span>' : ""}</li>`;
-  return `<h2 class="e-h" id="h-ai">${esc(AI_HEAD)}</h2>
+  const step = (s: AiStep, i: number) => `<li class="af-n af-${s.key}"><span class="af-i">${icon(s.icon, 20)}</span><b>${esc(s.title)}</b><small>${esc(s.what)}</small>${s.marks ? `<span class="af-m">${s.marks.map((m) => `<img src="assets/${m.file}" alt="${esc(m.name)}" width="24" height="24" decoding="async">`).join("")}<em>+ any</em></span>` : ""}${s.tags ? `<span class="af-t">${s.tags.map((t) => `<i>${esc(t)}</i>`).join("")}</span>` : ""}${i < AI_STEPS.length - 1 ? '<span class="af-c" aria-hidden="true"><span></span></span>' : ""}</li>`;
+  return `<p class="eyebrow">${esc("How it works")}</p>
+  <h2 class="e-h" id="h-ai">${esc(AI_HEAD)}</h2>
   <p class="e-sub">${esc(AI_SUB)}</p>
   <ol class="aflow" aria-label="${esc("From your AI to your books: your AI proposes, Purser holds the limits and you sign above them, the money moves, the books are booked")}">${AI_STEPS.map(step).join("")}</ol>
   <p class="af-fine">${esc("Any MCP client:")} <code>${esc(PURSER_CLOUD_MCP.replace(/^https:\/\//, ""))}</code> ${esc("(demo company, read only). Airwallex sandbox reader: built, not yet run live.")} <a href="${esc(AI_CONNECT_URL)}" target="_blank" rel="noopener">${esc("Set-up for each AI")}${icon("external-link", 14)}</a></p>`;

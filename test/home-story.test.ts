@@ -205,7 +205,7 @@ describe("Home, 21 Nov: one short story", () => {
 
   // 21 Nov (Max: "Make it clean, tighter"): 880 → 620. The parts as built: the hero with the product card (the card
   // alone is about 70 words of values from its record), the band's names, the AI flow (the owner, 21 Nov: "Works where
-  // your AI already works"), four agents, four proof tiles, the tour's seven stops and the three steps (609 as built).
+  // your AI already works"), four agents, four proof tiles, the tour's seven stops and the three steps (612 as built).
   it("A11: stays within 620 visible words", () => {
     expect(visibleWords(ON)).toBeLessThanOrEqual(620);
     expect(visibleWords(OFF)).toBeLessThanOrEqual(620);
