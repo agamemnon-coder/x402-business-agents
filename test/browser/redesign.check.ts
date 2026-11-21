@@ -192,7 +192,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
         closed: [...document.querySelectorAll("main details")].every((d) => !d.open) };
     })()`)) as { first: boolean; top: number; parts: number; land: boolean; qs: string; promises: number; inQ1: boolean; rows: number; closed: boolean };
     if (!sum.first || sum.top < 0 || sum.top >= h || sum.parts < 10 || !sum.land) fail(`/proof ${tag}: not the lead and the architecture under the heading on the first screen, each part a link that lands (${JSON.stringify(sum)})`);
-    if (sum.qs !== "q-limits,q-ai,q-live,q-built,q-verify" || sum.rows < 10 || !sum.closed) fail(`/proof ${tag}: not the five questions in order, the live runs listed and every fold closed on load (${JSON.stringify(sum)})`);
+    if (sum.qs !== "q-live,q-approvals,q-limits,q-books,q-ai,q-security,q-built,q-verify" || sum.rows < 10 || !sum.closed) fail(`/proof ${tag}: not the five questions in order, the live runs listed and every fold closed on load (${JSON.stringify(sum)})`);
     if (!sum.inQ1 || sum.promises !== 7) fail(`/proof ${tag}: the seven guarantees are not in sight in the first question's section (${sum.promises} promises)`);
     await page.locator("main details#details > summary").click();
     const order = (await page.evaluate(`(() => {
