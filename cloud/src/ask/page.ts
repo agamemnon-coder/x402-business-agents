@@ -24,7 +24,7 @@ export const ASK_BUTTON_PATH = "/ask/button.js";
 export const ASK_PAGE_COPY = {
   title: "Ask Purser",
   lede: "A read-only finance copilot: it answers from Purser's docs and the demo company's records, citing each source.",
-  statusLive: "Claude connected · live",
+  statusLive: "Claude · live",
   statusDocs: "Docs-only mode: live AI answers aren't switched on here yet.",
   helloHead: "Your read-only finance copilot",
   helloText: "Ask about Purser, or about the demo company's invoices, payments and books.",
@@ -109,8 +109,10 @@ export const ASK_PAGE_COPY = {
   fab: "Ask Purser",
   // 21 Nov (Max: "jury mode, so a jury can ask something"): the floating panel's empty state for a visitor, a juror or a
   // guest in the demo company; a person signed in to their own company keeps the four console actions (ASK_ACTIONS).
-  juryHead: "Ask Purser anything",
-  juryLine: "For the jury: read-only, test money, every answer cites its source.",
+  // 21 Nov (Max: "the agent still looks like 2022 design: Claude-modern, enterprise, clean"): a soft greeting and one
+  // muted line, the honesty kept (read-only, test money, cited).
+  juryHead: "How can I help?",
+  juryLine: "Read-only · test money · every answer cites its source",
 } as const;
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
@@ -161,6 +163,9 @@ const ICON: Record<string, string[]> = {
   eye: ["M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0", "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"],
   down: ["m6 9 6 6 6-6"],
   ext: ["M15 3h6v6", "M10 14 21 3", "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"],
+  // Purser's feather alone (the mark's strokes without its tile), monochrome in currentColor (21 Nov, Max: "Claude-modern").
+  feather: ["M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z", "M16 8 2 22", "M17.5 15H9"],
+  arrow: ["M5 12h14", "m12 5 7 7-7 7"],
 };
 /** The empty state's four actions (21 Nov, Max's mockups): each asks one question the agent answers from its reads. */
 export const ASK_ACTIONS: { icon: string; label: string; q: string }[] = [
@@ -480,34 +485,105 @@ body.page:not(.empty) canvas.pw-wave { opacity: .28; transition: opacity .5s; }
 `;
 
 /**
- * The floating panel's empty state (/ask?embed=1; 21 Nov, Max: "the suggestions render ugly: bullets, grey boxes, icons
- * glued to text"). The panel has none of the app's style (APP_CSS), so its welcome and its question cards are styled
- * here: no bullets, rounded cards on the surface, the icon on its own tile, hover and focus states. Jury mode shows the
+ * The floating panel's empty state (/ask?embed=1). The panel has none of the app's style (APP_CSS), so its welcome and
+ * its questions are styled here. 21 Nov (Max: "the agent still looks like 2022 design: make it look Claude-modern,
+ * enterprise, clean"): no logo tile, a soft greeting and one muted line, the questions as one quiet list (a monochrome
+ * icon and the words, a hairline frame, a hover tint and an arrow), no purple tiles or chunky cards. Jury mode shows the
  * questions about Purser (.jury), a person in their own company the console's four actions (.co).
  */
 const EMBED_CSS = `
-body.embed .hello { align-items: stretch; gap: 6px; padding: 18px 2px 8px; }
-body.embed .hello .lg { align-self: flex-start; display: inline-grid; padding: 7px; border-radius: 14px; background: var(--accent-soft); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 14px 32px -16px var(--glow, rgba(129,95,250,.55)); }
-body.embed .hello .lg svg { display: block; width: 34px; height: 34px; }
-body.embed .hello h2 { font-size: 21px; letter-spacing: -.02em; margin: 10px 0 0; }
-body.embed .hello p { font-size: 14px; line-height: 1.5; }
-body.embed .hello .scope { align-self: flex-start; }
+body.embed .hello { align-items: stretch; gap: 4px; padding: 32px 4px 8px; }
+body.embed .hello h2 { font-size: 22px; line-height: 1.3; letter-spacing: -.02em; margin: 0; font-weight: 600; color: var(--text); }
+body.embed .hello p { font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+body.embed .hello .scope { align-self: flex-start; padding: 0; border: 0; background: none; font-size: 12.5px; font-weight: 500; color: var(--faint); }
 body.embed:not(.own-co) .co-only, body.embed:not(.own-co) .acts.co, body.embed.own-co .acts.jury { display: none; }
-body.embed .acts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; width: 100%; }
+body.embed .acts { list-style: none; margin: 24px 0 0; padding: 4px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; width: 100%; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
 body.embed .acts li { margin: 0; min-width: 0; list-style: none; }
-body.embed .acts button { width: 100%; min-height: 52px; display: flex; align-items: center; gap: 12px; padding: 9px 12px 9px 10px; border: 1px solid var(--border); border-radius: 14px; background: color-mix(in srgb, var(--surface) 55%, var(--bg)); color: var(--text); font: 550 14px/1.35 Inter, system-ui, -apple-system, sans-serif; letter-spacing: -.005em; text-align: left; cursor: pointer; overflow-wrap: anywhere; transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
-body.embed .acts button svg { flex: none; box-sizing: content-box; width: 16px; height: 16px; padding: 7px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
-body.embed .acts button span { min-width: 0; }
-body.embed .acts button::after { content: "→"; margin-left: auto; padding-left: 4px; color: var(--faint); flex: none; transition: transform .15s ease, color .15s ease; }
-body.embed .acts button:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); box-shadow: 0 8px 22px -14px var(--glow, rgba(129,95,250,.6)); }
-body.embed .acts button:hover::after { color: var(--accent); transform: translateX(2px); }
-body.embed .acts button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-@media (min-width: 400px) {
-  body.embed .acts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  body.embed .acts button { min-height: 64px; align-items: flex-start; }
-  body.embed .acts button::after { content: none; }
-}
-@media (prefers-reduced-motion: reduce) { body.embed .acts button, body.embed .acts button::after { transition: none; } body.embed .acts button:hover::after { transform: none; } }
+body.embed .acts button { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text); font: 450 14px/1.4 Inter, system-ui, -apple-system, sans-serif; letter-spacing: -.005em; text-align: left; cursor: pointer; overflow-wrap: anywhere; transition: background-color .15s ease, color .15s ease; }
+body.embed .acts button svg { flex: none; color: var(--faint); transition: color .15s ease; }
+body.embed .acts button span { min-width: 0; flex: 1; }
+body.embed .acts button::after { content: "→"; flex: none; color: var(--faint); opacity: 0; transform: translateX(-4px); transition: opacity .15s ease, transform .15s ease; }
+body.embed .acts button:hover, body.embed .acts button:focus-visible { background: var(--hover); }
+body.embed .acts button:hover svg { color: var(--text); }
+body.embed .acts button:hover::after, body.embed .acts button:focus-visible::after { opacity: 1; transform: none; }
+body.embed .acts button:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) { body.embed .acts button, body.embed .acts button svg, body.embed .acts button::after { transition: none; } body.embed .acts button::after { transform: none; } }
+body.embed .composer { padding: 8px 12px 12px; }
+body.embed .foot { text-align: center; }
+`;
+
+/**
+ * The calm assistant look (21 Nov, Max: "Claude-modern, enterprise, clean"), on the panel and the app alike, after their
+ * own style: a slim header (the feather alone, the name in medium weight, the status as a dot and a few muted words, ghost
+ * icon buttons of 32 px), the answers as plain text with their sources as small chips, the question as a quiet bubble,
+ * and one refined composer (a hairline box with a focus ring, the paperclip inside on the left, a round send button in
+ * the accent only once there is something to send). Inter, an 8 px rhythm, the site's tokens light and dark; transitions
+ * short and none for a reduced-motion preference.
+ */
+const MODERN_CSS = `
+:root { --line: color-mix(in srgb, var(--border) 75%, transparent); --hover: color-mix(in srgb, var(--text) 5%, transparent); --ring: color-mix(in srgb, var(--accent) 55%, transparent); --bubble: color-mix(in srgb, var(--text) 6%, var(--surface)); --on-bubble: var(--text); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --line: color-mix(in srgb, var(--border) 80%, transparent); --hover: color-mix(in srgb, var(--text) 7%, transparent); --bubble: color-mix(in srgb, var(--text) 9%, var(--surface)); --on-bubble: var(--text); } }
+:root[data-theme="dark"] { --line: color-mix(in srgb, var(--border) 80%, transparent); --hover: color-mix(in srgb, var(--text) 7%, transparent); --bubble: color-mix(in srgb, var(--text) 9%, var(--surface)); --on-bubble: var(--text); }
+/* Header */
+.bar { min-height: 52px; padding: 8px 8px 8px 16px; gap: 8px; border-bottom: 1px solid var(--line); }
+.bar .logo { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; color: var(--text); border-radius: 0; }
+.bar .grow { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 0; }
+.bar h1, h1 { font-size: 15px; line-height: 1.3; letter-spacing: -.01em; font-weight: 600; }
+.status { display: inline-flex; align-items: center; gap: 6px; width: auto; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; font-size: 12px; font-weight: 450; line-height: 1.3; color: var(--muted); }
+.dot, .dot:not(.docs) { width: 6px; height: 6px; background: var(--ok); box-shadow: none; animation: none; }
+.dot.docs { background: var(--warn); box-shadow: none; }
+.ib { width: 32px; height: 32px; border-radius: 8px; color: var(--muted); transition: background-color .15s ease, color .15s ease; }
+.ib:hover { background: var(--hover); color: var(--text); }
+.ib svg { width: 16px; height: 16px; }
+.ib:focus-visible, .send:focus-visible, .chip:focus-visible, a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* The conversation */
+.scroll { padding: 8px 16px 16px; }
+.chat { gap: 24px; padding-top: 16px; }
+.msg.you { max-width: 85%; }
+.msg.you .txt { background: var(--bubble); color: var(--on-bubble); border-radius: 18px 18px 6px 18px; padding: 8px 14px; font-size: 14.5px; line-height: 1.5; }
+.msg.bot { grid-template-columns: 24px minmax(0, 1fr); column-gap: 12px; }
+.msg.bot > .av { display: grid; place-items: center; width: 24px; height: 24px; margin-top: 1px; border: 1px solid var(--line); border-radius: 50%; color: var(--text); padding: 0; }
+.msg.bot > .who { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: -1px; }
+.body { font-size: 14.5px; line-height: 1.6; color: var(--text); }
+.body p { margin: 0 0 12px; } .body ul, .body ol { margin: 0 0 12px; padding-left: 20px; } .body li { margin: 4px 0; }
+.body strong { font-weight: 600; }
+.body a { color: var(--text); text-decoration: underline; text-decoration-color: var(--ring); text-underline-offset: 2px; }
+.cite { min-width: 16px; height: 16px; border-radius: 5px; font-weight: 600; font-size: 10px; color: var(--muted); background: var(--hover); border: 1px solid var(--line); transition: background-color .15s ease, color .15s ease; }
+.body a.cite { text-decoration: none; color: var(--muted); }
+.body a.cite:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.thinking { font-size: 13.5px; }
+.steps, .msg.bot > .steps { border: 0; border-left: 1px solid var(--line); border-radius: 0; background: none; padding: 0 0 0 12px; margin: 2px 0 12px; font-size: 12.5px; gap: 4px; }
+.step .sl { font-weight: 500; }
+.meta { margin-top: 12px; gap: 8px; }
+.mh { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--faint); }
+.meta ol { gap: 6px; }
+.src { min-height: 26px; padding: 2px 10px 2px 3px; gap: 6px; border: 1px solid var(--line); border-radius: 8px; background: transparent; font-size: 12px; color: var(--muted); transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
+.src b { min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; background: var(--hover); color: var(--muted); font-size: 10.5px; font-weight: 600; }
+a.src:hover { border-color: color-mix(in srgb, var(--text) 25%, var(--line)); background: var(--hover); color: var(--text); }
+.how, .note { font-size: 12px; color: var(--faint); }
+/* The composer */
+.composer { padding: 8px 16px 12px; border-top: 0; background: transparent; }
+.box { gap: 4px; padding: 10px 8px 8px 14px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: 0 1px 2px rgba(15, 12, 30, .04), 0 4px 16px -8px rgba(15, 12, 30, .10); transition: border-color .15s ease, box-shadow .15s ease; }
+.box:focus-within { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent), 0 4px 16px -8px rgba(15, 12, 30, .10); }
+textarea { padding: 2px 0 4px; font: 400 15px/1.5 Inter, system-ui, -apple-system, sans-serif; }
+@media (pointer: coarse) { textarea { font-size: 16px; } }
+.row { gap: 4px; }
+.clip { margin-left: -6px; }
+.send { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; transition: background-color .15s ease, color .15s ease, transform .15s ease; }
+.send svg { width: 16px; height: 16px; }
+.send:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 86%, #000); }
+.send:disabled { opacity: 1; background: var(--hover); color: var(--faint); }
+.att { border-color: var(--line); border-radius: 10px; }
+.foot { margin: 8px 4px 0; font-size: 11px; line-height: 1.45; color: var(--faint); }
+.ctxbar { border-top: 1px solid var(--line); padding: 8px 16px 0; }
+.qa button, .qa a { min-height: 32px; border-color: var(--line); border-radius: 999px; background: transparent; font-weight: 500; transition: background-color .15s ease, border-color .15s ease; }
+.qa button:hover, .qa a:hover { background: var(--hover); border-color: var(--border); }
+.qa .qa-go { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+/* The app's welcome: the feather alone, no glowing tile. */
+.hello.app .lg { display: inline-grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); box-shadow: none; color: var(--text); }
+.hello.app .lg svg { width: 24px; height: 24px; }
+.hello.app h2 { font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .ib, .send, .box, .src, .cite, .qa button, .qa a { transition: none; } }
 `;
 
 // The page's script: plain JavaScript, raw (no TS escapes), with the copy and the settings put in where it says so.
@@ -579,7 +655,7 @@ function draw(box, text, sources) {
     } else { list = null; const p = el('p'); inline(p, line, sources); box.append(p); }
   }
 }
-function avatar() { const t = $('mark'); const s = t.content.firstElementChild.cloneNode(true); s.setAttribute('width', '26'); s.setAttribute('height', '26'); const d = el('div', 'av'); d.append(s); return d; }
+function avatar() { const t = $('mark'); const s = t.content.firstElementChild.cloneNode(true); const d = el('div', 'av'); d.append(s); return d; }
 function fileLine(name) { const f = el('span', 'fileline'); const ic = $('fileicon').content.firstElementChild.cloneNode(true); f.append(ic, el('span', null, name)); return f; }
 function bubble(role, text, file, cards) {
   const m = el('div', 'msg ' + (role === 'user' ? 'you' : 'bot'));
@@ -922,20 +998,20 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
   const app = !o.embed;
   const script = SCRIPT.replace("__CONTEXT__", () => CONTEXT_JS).replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ embed: o.embed, ctx, site: SITE_ORIGIN, max: QUESTION_MAX, maxBytes: ATTACH_MAX_BYTES, types: ATTACH_TYPES, hosts: ["github.com/agamemnon-coder/x402-business-agents", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "youtu.be/"] }));
   // The status: "Claude connected · live" only when Claude answers here now; else docs-only mode, said as plainly.
-  const bar = `<header class="bar">${app ? `<button class="ib menu-b" id="menu-b" type="button" aria-label="${esc(C.menu)}" aria-controls="side" aria-expanded="false">${icon("menu")}</button>` : ""}${askMarkSvg(32, "logo")}<div class="grow"><h1>${esc(C.title)}</h1><p class="status"><span class="dot${live ? "" : " docs"}" id="sdot" aria-hidden="true"></span><span id="stext">${esc(live ? C.statusLive : C.statusDocs)}</span></p></div>`
+  const bar = `<header class="bar">${app ? `<button class="ib menu-b" id="menu-b" type="button" aria-label="${esc(C.menu)}" aria-controls="side" aria-expanded="false">${icon("menu")}</button>` : ""}<span class="logo" aria-hidden="true">${icon("feather", 18)}</span><div class="grow"><h1>${esc(C.title)}</h1><p class="status"><span class="dot${live ? "" : " docs"}" id="sdot" aria-hidden="true"></span><span id="stext">${esc(live ? C.statusLive : C.statusDocs)}</span></p></div>`
     + (app ? `<button class="ib pt" id="ptog" type="button" aria-controls="detail" aria-expanded="false" aria-label="${esc(C.canRead)}" title="${esc(C.canRead)}">${icon("layers", 18)}</button>` : `<button class="ib" id="reset" type="button" aria-label="${esc(C.newChat)}" title="${esc(C.newChat)}">${icon("plus")}</button>`)
     + (o.embed ? `<a class="ib" href="${ASK_PATH}" target="_blank" rel="noopener" aria-label="${esc(C.full)}" title="${esc(C.full)}">${icon("out", 17)}</a><button class="ib" id="close" type="button" aria-label="${esc(C.close)}" title="${esc(C.close)}">${icon("x")}</button>` : "")
     + `</header>`;
   // The empty state (21 Nov, Max's mockups): the mark, one question, one line, the read-only chip and four actions.
-  const actButtons = ASK_ACTIONS.map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}">${icon(x.icon, 17)}${esc(x.label)}</button></li>`).join("");
+  const actButtons = ASK_ACTIONS.map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}">${icon(x.icon, 16)}<span>${esc(x.label)}</span></button></li>`).join("");
   // In the floating panel (embed), jury mode (21 Nov, Max): six questions about Purser for a visitor, a juror or a guest
   // in the demo company; signed in to their own company, the four actions above. The script switches on the context.
   const own = o.embed && !!ctx && !ctx.demo;
-  const juryButtons = ASK_JURY.map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}">${icon(x.icon, 17)}<span>${esc(x.q)}</span></button></li>`).join("");
+  const juryButtons = ASK_JURY.map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}">${icon(x.icon, 16)}<span>${esc(x.q)}</span></button></li>`).join("");
   const helloBlock = o.embed
-    ? `<section class="hello app" id="hello" aria-labelledby="hh"><span class="lg">${askMarkSvg(44)}</span><h2 id="hh">${esc(own ? C.helpHead : C.juryHead)}</h2><p id="hl">${esc(own ? C.helpLine : C.juryLine)}</p><p class="scope co-only">${esc(C.scope)}</p>`
+    ? `<section class="hello app" id="hello" aria-labelledby="hh"><h2 id="hh">${esc(own ? C.helpHead : C.juryHead)}</h2><p id="hl">${esc(own ? C.helpLine : C.juryLine)}</p><p class="scope co-only">${esc(C.scope)}</p>`
       + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="acts jury">${juryButtons}</ul><ul class="acts co">${actButtons}</ul></section>`
-    : `<section class="hello app" id="hello" aria-labelledby="hh"><span class="lg">${askMarkSvg(44)}</span><h2 id="hh">${esc(C.helpHead)}</h2><p>${esc(C.helpLine)}</p><p class="scope">${esc(C.scope)}</p>`
+    : `<section class="hello app" id="hello" aria-labelledby="hh"><span class="lg">${icon("feather", 26)}</span><h2 id="hh">${esc(C.helpHead)}</h2><p>${esc(C.helpLine)}</p><p class="scope">${esc(C.scope)}</p>`
       + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="acts">${actButtons}</ul></section>`;
   // The sidebar (a wide screen; a menu on a narrow one): New chat, the pages, the conversations kept in this browser only,
   // and the company: the demo company, said once and quietly.
@@ -962,7 +1038,7 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="${esc(C.lede)}">
 <title>${esc(C.title)} · Purser</title>
-<style nonce="${n}">${CSS}${ASK_MARK_CSS}${o.embed ? EMBED_CSS : SITE_HEADER_CSS + APP_CSS}</style></head><body class="${o.embed ? "embed" : "page empty"}${ctx ? " has-ctx" : ""}${own ? " own-co" : ""}">
+<style nonce="${n}">${CSS}${ASK_MARK_CSS}${o.embed ? EMBED_CSS : SITE_HEADER_CSS + APP_CSS}${MODERN_CSS}</style></head><body class="${o.embed ? "embed" : "page empty"}${ctx ? " has-ctx" : ""}${own ? " own-co" : ""}">
 ${o.embed ? "" : `${WAVE_CANVAS_HTML}<a class="skip" href="#q">Skip to the question box</a>${header("cloud", TRY_HEADER_LINKS)}`}
 <main id="main" class="app">
 <div class="shell">${app ? side : ""}
@@ -971,7 +1047,7 @@ ${o.embed ? "" : `${WAVE_CANVAS_HTML}<a class="skip" href="#q">Skip to the quest
 ${ctxBar(ctx, o.embed)}
 ${composer}</section>${app ? detailPanel : ""}</div>
 </main>
-<template id="mark">${askMarkSvg(26)}</template><template id="fileicon">${icon("file", 14)}</template>${icons}
+<template id="mark">${icon("feather", 14)}</template><template id="fileicon">${icon("file", 14)}</template>${icons}
 <p class="sr" id="say" role="status" aria-live="polite"></p>
 <script type="module" nonce="${n}">${script}${app ? `\n${ASK_WAVE_JS}` : ""}</script>
 </body></html>`;
@@ -1010,9 +1086,9 @@ body>#pask-fab .mk-bg{fill:transparent}body>#pask-fab .mk-ink{stroke:#fff}
 body>#pask-fab::after{content:attr(data-tip);position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);padding:6px 10px;border-radius:8px;background:#0d0b1a;color:#eef1f6;border:1px solid rgba(167,139,250,.35);font:600 12.5px/1.2 Inter,system-ui,-apple-system,sans-serif;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s ease}
 @media (hover:hover){body>#pask-fab:hover::after{opacity:1}}body>#pask-fab:focus-visible::after{opacity:1}
 body>#pask-fab[aria-expanded="true"]::after{opacity:0}
-#pask-panel{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(74px,calc(env(safe-area-inset-bottom) + 74px));z-index:2147483001;width:min(440px,calc(100vw - 32px));height:min(680px,calc(100vh - 106px));border-radius:20px;overflow:hidden;border:1px solid rgba(162,145,253,.4);background:#fff;box-shadow:0 28px 80px -18px rgba(76,46,179,.5),0 4px 14px rgba(11,18,32,.12)}
+#pask-panel{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(74px,calc(env(safe-area-inset-bottom) + 74px));z-index:2147483001;width:min(440px,calc(100vw - 32px));height:min(680px,calc(100vh - 106px));border-radius:16px;overflow:hidden;border:1px solid rgba(14,11,26,.1);background:#fff;box-shadow:0 24px 64px -16px rgba(14,11,26,.28),0 2px 8px rgba(14,11,26,.08)}
 #pask-panel iframe{display:block;width:100%;height:100%;border:0;background:transparent}
-@media (prefers-color-scheme: dark){#pask-panel{background:#100e18;border-color:#27233a}}
+@media (prefers-color-scheme: dark){#pask-panel{background:#100e18;border-color:rgba(255,255,255,.09);box-shadow:0 24px 64px -16px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.3)}}
 @media (max-width:560px){#pask-panel{inset:0;width:100%;height:100%;border-radius:0;border:0}#pask-fab{width:44px;height:44px;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom))}body>#pask-fab svg{width:28px;height:28px}}
 @media (prefers-reduced-motion: reduce){#pask-fab,#pask-fab::after{transition:none}#pask-fab:hover{transform:none}}
 #pask-space{display:block;height:calc(64px + env(safe-area-inset-bottom));pointer-events:none}

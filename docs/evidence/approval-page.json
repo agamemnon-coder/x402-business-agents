@@ -29,7 +29,7 @@
       "name": "cloud-console",
       "path": "/",
       "served_by": "cloud",
-      "sha256": "c156dc2e46e37526a10b20c24449b1e9bc7e7ef809252bfce8e9fac54c49b1d7",
+      "sha256": "cd95ae73e6746fd0923cf44b5588999440f53447e32f8ac9685c796dd8130d24",
       "csp": "default-src 'none'; script-src 'nonce-NONCE' 'self'; style-src 'nonce-NONCE'; img-src 'self' data: blob: https://kit11.max-31b.workers.dev; font-src 'self'; connect-src 'self'; frame-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"
     }
   ]
