@@ -78,3 +78,14 @@ describe("The integrations band", () => {
     expect(home.indexOf('<section class="e-band"')).toBeLessThan(home.indexOf('<section class="e-agents"'));
   });
 });
+
+describe("The band's coming-next line (21 Nov, Max: show that these are coming)", () => {
+  it("names only connections the hub lists, none of them in the band itself, under the label Coming next", async () => {
+    const { BAND_NEXT, BAND_NEXT_LABEL } = await import("../src/redesign/integrations.js");
+    const cat = connectionsCatalogue("https://cloud.example");
+    const text = [...cat.connections, ...cat.money].map((c) => `${c.name} ${c.what}`).join(" | ");
+    for (const n of BAND_NEXT) expect({ n, onHub: text.includes(n) }).toEqual({ n, onHub: true });
+    for (const n of BAND_NEXT) expect(BAND.map((b) => b.name)).not.toContain(n);
+    expect(logoBandHtml()).toContain(`<p class="lb-next"><span class="lb-next-h">${BAND_NEXT_LABEL}</span>`);
+  });
+});
