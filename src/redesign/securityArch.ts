@@ -188,6 +188,24 @@ export const ARCH_CSS = `.ar { padding: 18px; display: grid; gap: 14px; min-widt
   .ar-flow > li::before { left: 24px; } .ar-node { left: 17px; } .ar-dot { left: 18.5px; }
   .ar-tb > div::before { left: -28px; }
 }
+/* 21 Nov (Max: "security page is still not upgraded"; on a phone, less text): the panel in /proof's look, and under
+   700 px each control a chip with its name, linked to its code as before (what it does is on the wider screen). */
+.ar { border-radius: 22px; background: radial-gradient(70% 60% at 50% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%), var(--surface); }
+@media (max-width: 699px) {
+  .ar { padding: 16px 12px; border-radius: 18px; }
+  .ar .ar-sub { font-size: 15px; }
+  .ar-flow > li { padding-left: 30px; }
+  .ar-flow > li::before { left: 10px; } .ar-node { left: 3px; } .ar-dot { left: 4.5px; }
+  .ar-card { padding: 12px; gap: 10px; border-radius: 14px; }
+  .ar h3 { font-size: 16.5px; }
+  .ar .ar-line { font-size: 15px; line-height: 1.45; }
+  .ar-ctl ul { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ar-ctl a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 999px; }
+  .ar-ctl a .i { margin-top: 0; }
+  .ar-ctl a span { display: none; }
+  .ar-tb > div::before { left: -20px; }
+  .ar-tb p { margin-left: 6px; }
+}
 ${motionCss()}
 @media (prefers-reduced-motion: reduce) {
   .ar-card { animation: none !important; }
