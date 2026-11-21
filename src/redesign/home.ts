@@ -407,7 +407,7 @@ export const PAYABLES_WHO: Readonly<Record<(typeof PAYABLES_STEPS)[number], stri
 export function agentTiles(stop: StopFacts | null = stopDrillFacts()): AgentTile[] {
   const words = ["no", "one", "two", "three", "four", "five"];
   return [
-    { id: "sourcing", icon: "package", title: "Sourcing and negotiation", text: "Buys data per query on its own card. Two agents negotiate a deal; code holds the limits, you sign it.", href: NEGOTIATE_URL, link: NEGOTIATE_BUTTON, external: true },
+    { id: "sourcing", icon: "package", title: "Sourcing and negotiation", text: "Buys data per query over x402, under its Alta mandate. Two agents negotiate a deal; code holds the limits, you sign it.", href: NEGOTIATE_URL, link: NEGOTIATE_BUTTON, external: true },
     { id: "payables", icon: "receipt", title: "Payables", text: "Reads, checks and books each supplier invoice. Above the limit you sign the exact terms with a passkey.", href: TRY_URL, link: "Try it", steps: PAYABLES_STEPS },
     { id: "treasury", icon: "landmark", title: "Treasury", text: `Watches spending, sweeps earnings to Airwallex, pays in EUR after your sign-off.${stop ? ` One signed stop froze all ${words[stop.agents] ?? stop.agents} agents' cards in ${stop.seconds} s${stop.passes > 1 ? ` (${words[stop.passes] ?? stop.passes} passes)` : ""}.` : ""}`, href: stop ? `${REPO_BLOB}${STOP_DRILL_DOC}` : "agents/treasury", link: stop ? "The stop drill" : "Its run", external: !!stop, ...(stop ? { rec: STOP_DRILL_RECORD } : {}) },
     { id: "support", icon: "headphones", title: "Support", text: "Refunds customers when a dispute holds, inside its own card limit and its mandate on Alta.", href: "agents/support", link: "Its run" },
@@ -495,7 +495,7 @@ export interface StartStep { icon: string; title: string; text: string; tag: str
 export const START_STEPS: readonly StartStep[] = [
   { icon: "zap", title: "Try it now", text: "Your own test company: an agent proposes, you sign with a passkey.", tag: "2 minutes · deleted after 24 h", links: [{ href: TRY_URL, label: "Open /try" }] },
   { icon: "layout-dashboard", title: "Explore the console", text: "Purser Cloud with its demo company, as a guest. No sign-up.", tag: "Read only", links: [{ href: CLOUD_GUEST_URL, label: "Open the console", external: true }] },
-  { icon: "rocket", title: PILOT_BUTTON, text: "We set up your company and send a starter key; you add your passkey.", tag: "Test money · no real payments yet", links: [{ href: CLOUD_SETUP_URL, label: "Set up with a starter key", external: true }], pilot: true },
+  { icon: "rocket", title: PILOT_BUTTON, text: "We set up your company and send a starter key; you add your passkey.", tag: "Test money · no real payments yet", links: [{ href: CLOUD_SETUP_URL, label: "Have a starter key?", external: true }], pilot: true },
 ];
 /**
  * The route from Home to /business (Max, 21 Nov: "a clearly visible route from Home to the commercial value
