@@ -64,9 +64,9 @@ function ovAgo(at,now){const s=Math.max(0,(now-Date.parse(at))/1000);if(s<3600)r
 function ovGlobe(){
   const c=el('canvas','ovg-c');c.setAttribute('aria-hidden','true');
   const logo=(k)=>{const L=typeof BRAND_LOGOS!=='undefined'&&BRAND_LOGOS[k];if(!L)return null;const i=el('img','');i.src=L.uri;i.alt='';return i};
-  const chip=(cls,kids)=>el('span','ovg-chip '+cls,kids);
+  const chip=(cls,kids)=>{const a=el('a','ovg-chip '+cls,kids);a.href=OV_SITE+'/'+({'p-awx':'airwallex','p-cl':'claude','p-vi':'visa','p-al':'alta'})[cls];a.target='_blank';a.rel='noopener';return a};
   const box=el('div','ovg',[c,chip('p-awx',[logo('airwallex')||el('b','','Airwallex')]),chip('p-cl',[logo('claude'),el('b','','Claude')]),chip('p-vi',[el('b','visa','VISA'),el('span','','Airi')]),chip('p-al',[logo('alta')||el('b','','Alta')])]);
-  box.setAttribute('aria-label',t('cs.ov2.globe'));box.setAttribute('role','img');
+  box.setAttribute('aria-label',t('cs.ov2.globe'));box.setAttribute('role','group');
   requestAnimationFrame(()=>ovGlobeRun(c));
   return box}
 function ovGlobeRun(c){
@@ -118,9 +118,9 @@ async function overviewNext(){
   const rows=[...wait,...todo].slice(0,5).map((i)=>{const s=st(i);const r=el('a','ov-tr',[el('span','ov-sup',[el('span','ov-si',ic('landmark')),el('span','',[el('b','',i.vendor||''),el('small','mono',i.invoice_no||i.id)])]),el('span','ov-amt',[el('b','num',ma(i.currency,i.total)),i.due_date?el('small','ov-due',t('cs.ov2.t_due')+' '+dday(i.due_date)):null]),
       el('span','ov-chks',[chk(!!i.read_by,t('cs.ov2.c_read')),chk(!(i.findings||[]).length,t('cs.ov2.c_policy')),chk(i.status!=='waiting_cfo',i.status==='waiting_cfo'?t('cs.ov2.c_over'):t('cs.ov2.c_limits'))]),el('span','ov-st '+s[0],s[1])]);r.href='#/invoices/'+encodeURIComponent(i.id);return r});
   const table=cardLink(el('section','card dcard rise ov-inv',[el('div','dh',[el('h2','',[t('cs.ov2.wait_h'),wait.length+todo.length?el('span','ov-n',String(wait.length+todo.length)):null]),el('p','',t('cs.ov2.wait_sub'))]),
-    rows.length?el('div','ov-tbl',[el('div','ov-th',[el('span','',t('cs.ov2.t_sup')),el('span','',t('cs.ov2.t_amt')),el('span','',t('cs.ov2.t_chk')),el('span','',t('cs.ov2.t_st'))]),...rows]):chartEmpty(t('cs.ov.nothing_waits'))]),'#/invoices',t('cs.ov2.all_inv'));
+    rows.length?el('div','ov-tbl',[el('div','ov-th',[el('span','',t('cs.ov2.t_sup')),el('span','',t('cs.ov2.t_amt')),el('span','',t('cs.ov2.t_chk')),el('span','',t('cs.ov2.t_st'))]),...rows]):chartEmpty(t('cs.ov.nothing_waits')),open.length?Object.assign(el('a','ov-tfoot',[el('span','',t('cs.ov.payables')),el('b','num',cur(open[0].currency)+' '+cents(sumOf(open))),el('span','',t('cs.ov2.n_inv_sup',{n:open.length,s:sup})),ic('chevron-right')]),{href:'#/invoices?f=open'}):null]),'#/invoices',t('cs.ov2.all_inv'));
   const go=el('a','btn primary ov-go',[ic('scan-face'),t('cs.next.faceid_go')]);go.href=wait[0]?'#/invoices/'+encodeURIComponent(wait[0].id):'#/invoices?f=waiting_cfo';
-  const approve=el('section','card dcard rise ov-appr',[el('div','ov-ah',[el('span','ov-ai',ic('scan-face')),el('div','',[el('h2','',t('cs.ov2.appr_h')),el('p','',t('cs.ov2.appr_sub'))])]),wait[0]?el('div','ov-aw',[el('span','ov-awl',[ic('clock'),t('status.waiting_cfo')]),el('span','ov-awi',[el('b','',wait[0].vendor||''),el('b','num',ma(wait[0].currency,wait[0].total))]),el('small','mono',wait[0].invoice_no||wait[0].id)]):null,go,el('p','fine',t('cs.ov2.appr_fine'))]);
+  const approve=el('section','card dcard rise ov-appr',[el('div','ov-ah',[el('span','ov-ai',ic('scan-face')),el('div','',[el('h2','',t('cs.ov2.appr_h')),el('p','',t('cs.ov2.appr_sub'))])]),wait[0]?Object.assign(el('a','ov-aw',[el('span','ov-awl',[ic('clock'),t('status.waiting_cfo')]),el('span','ov-awi',[el('b','',wait[0].vendor||''),el('b','num',ma(wait[0].currency,wait[0].total))]),el('small','mono',wait[0].invoice_no||wait[0].id)]),{href:'#/invoices/'+encodeURIComponent(wait[0].id)}):null,go,el('p','fine',t('cs.ov2.appr_fine'))]);
   // The flow beside the cash, with 7, 30 or 90 days; the whole plot answers on hover.
   const wide=innerWidth>=1100,full=view().clientWidth||960,cw=Math.round(wide?full*5/12-60:full-40);
   const cv=el('div','cv'),seg=el('div','ov-seg');let span=30;
@@ -128,9 +128,10 @@ async function overviewNext(){
   [7,30,90].forEach((d)=>{const b=el('button','ov-sb',d+'D');b.type='button';b.dataset.d=String(d);b.onclick=()=>{span=d;draw()};seg.append(b)});draw();
   const cash=el('section','card dcard rise ov-cash',[el('div','dh withseg',[el('div','',[el('h2','',t('cs.dash.cash_title')),el('p','',D&&D.since?t('cs.op.weeks_sub',{cur:cur(C),date:dday(D.since)}):t('cs.dash.net_none'))]),seg]),cv]);
   const flow=payFlow(items,(BK&&BK.bookings)||{},dups,C);
-  // What happened, newest first, in the records' words.
+  // What happened, newest first, in the records' words; each row opens the invoice it names, or the agents' decisions.
+  const feedHref=(f)=>{const i=items.find((x)=>(x.invoice_no&&f.text.includes(x.invoice_no))||f.text.includes(x.id));return i?'#/invoices/'+encodeURIComponent(i.id):'#/agents'};
   const feed=((D&&D.feed)||[]).slice(0,5);
-  const act=cardLink(el('section','card dcard rise ov-act',[el('div','dh',[el('h2','',t('cs.ov2.act_h'))]),feed.length?el('ul','ov-feed',feed.map((f)=>el('li','f-'+f.tone,[el('span','ov-fi',ic(f.tone==='ok'?'circle-check':f.tone==='bad'?'octagon-x':f.tone==='wait'?'scan-face':'circle-dot')),el('span','ov-ft',[el('b','',f.who),el('span','',f.text)]),el('time','',ovAgo(f.at,now))]))):chartEmpty(t('cs.agents.no_decisions'))]),'#/agents',sw('to_agents'));
+  const act=cardLink(el('section','card dcard rise ov-act',[el('div','dh',[el('h2','',t('cs.ov2.act_h'))]),feed.length?el('ul','ov-feed',feed.map((f)=>el('li','f-'+f.tone,Object.assign(el('a','',[el('span','ov-fi',ic(f.tone==='ok'?'circle-check':f.tone==='bad'?'octagon-x':f.tone==='wait'?'scan-face':'circle-dot')),el('span','ov-ft',[el('b','',f.who),el('span','',f.text)]),el('time','',ovAgo(f.at,now))]),{href:feedHref(f)})))):chartEmpty(t('cs.agents.no_decisions'))]),'#/agents',sw('to_agents'));
   // Connected and verified: each partner as this deployment runs it, each to its proof on the site.
   const logo=(k)=>{const L=typeof BRAND_LOGOS!=='undefined'&&BRAND_LOGOS[k];if(!L)return null;const i=el('img','');i.src=L.uri;i.alt='';return i};
   const tile=(k,name,status,href,mark)=>{const a=el('a','ov-pt',[el('span','ov-pm',mark),el('span','',[el('b','',name),el('span','ov-ps',[status,' ',ic('circle-check')])])]);a.href=OV_SITE+href;a.target='_blank';a.rel='noopener';return a};
@@ -185,7 +186,7 @@ canvas.pw-wave { z-index: -1; }
 .ov-sub { margin: 10px 0 0; color: var(--muted); font-size: 16px; max-width: 34em; }
 .ovg { grid-column: span 5; position: relative; height: 240px; }
 .ovg-c { position: absolute; inset: -20px -10px -30px -10px; width: calc(100% + 20px); height: calc(100% + 50px); pointer-events: none; }
-.ovg-chip { position: absolute; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.6); background: rgba(255,255,255,.94); color: #14112a; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: 13px; box-shadow: 0 10px 30px -14px rgba(0,0,0,.6); white-space: nowrap; }
+.ovg-chip:hover { transform: translateY(-1px); } .ovg-chip { text-decoration: none; transition: transform .2s; position: absolute; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.6); background: rgba(255,255,255,.94); color: #14112a; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: 13px; box-shadow: 0 10px 30px -14px rgba(0,0,0,.6); white-space: nowrap; }
 .ovg-chip img { height: 16px; width: auto; display: block; } .ovg-chip.p-awx img { height: 13px; }
 .ovg-chip b.visa, .ov-pm b.visa { font-style: italic; font-weight: 900; letter-spacing: .02em; color: #f2f4ff; background: #1a1f71; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
 .ovg-chip span { color: #4a4660; font-size: 12px; }
@@ -205,6 +206,8 @@ svg.ovspark polyline { stroke: var(--accent); stroke-width: 2; stroke-linecap: r
 svg.ovspark.pos polyline { stroke: var(--ok); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ok) 55%, transparent)); }
 /* Invoices waiting for you: a table on a fixed grid of columns. */
 .ov-n { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-left: 8px; padding: 0 6px; border-radius: 999px; background: var(--accent); color: var(--btn-ink, #fff); font-size: 12px; vertical-align: 2px; }
+.ov-inv { display: flex; flex-direction: column; }
+a.ov-tfoot { margin-top: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 12px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; text-decoration: none; } a.ov-tfoot b { color: var(--text); } a.ov-tfoot .ic { margin-left: auto; } a.ov-tfoot:hover { color: var(--text); }
 .ov-tbl { display: grid; grid-template-columns: minmax(140px, 1fr) max-content minmax(150px, 1.15fr) max-content; column-gap: 16px; }
 .ov-th, a.ov-tr { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; padding: 10px 12px; }
 .ov-th { font-size: 12px; color: var(--faint); font-weight: 600; border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent); }
@@ -223,7 +226,8 @@ a.ov-tr:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .ov-ah { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 14px; align-items: center; } .ov-ah h2 { margin: 0; font-size: 18px; } .ov-ah p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
 .ov-ai { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--sunken)); } .ov-ai svg { width: 28px; height: 28px; }
 a.btn.ov-go { justify-content: center; height: 48px; margin-top: auto; }
-.ov-aw { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 70%, transparent); }
+a.ov-aw:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.ov-aw { color: inherit; text-decoration: none; display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 70%, transparent); }
 .ov-awl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; color: var(--accent); } .ov-awl .ic svg { width: 13px; height: 13px; }
 .ov-awi { display: flex; justify-content: space-between; gap: 10px; font-size: 14.5px; } .ov-awi b:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ov-aw small { color: var(--faint); font-size: 12px; }
 /* The cash beside the flow: 7, 30 or 90 days. */
@@ -233,7 +237,7 @@ a.btn.ov-go { justify-content: center; height: 48px; margin-top: auto; }
 .ov-sb.on { background: var(--accent); color: var(--btn-ink, #fff); }
 /* Recent activity and the partners. */
 .ov-feed { list-style: none; margin: 0; padding: 0; display: grid; }
-.ov-feed li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--border); }
+.ov-feed li { border-top: 1px solid var(--border); } .ov-feed li > a { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 6px; margin: 0 -6px; border-radius: 10px; color: inherit; text-decoration: none; } .ov-feed li > a:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .ov-fi { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--sunken); color: var(--muted); } .f-ok .ov-fi { color: var(--ok); } .f-bad .ov-fi { color: var(--bad); } .f-wait .ov-fi { color: var(--accent); }
 .ov-fi svg { width: 15px; height: 15px; } .ov-ft { display: grid; min-width: 0; font-size: 13.5px; } .ov-ft b { font-size: 13px; } .ov-ft span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-feed time { font-size: 12px; color: var(--faint); white-space: nowrap; }
