@@ -44,7 +44,8 @@ const DECISION = (() => {
 /** Every text that says where the product lives or who can use it: [name, text]. */
 const STATUS_TEXTS: [string, string][] = [
   ["README.md, Built after the kit", README_SECTION],
-  ["README.md, Links", section(read("README.md"), /^## Links/)],
+  // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": the links are the foot of "More", which has no heading of its own any more.
+  ["README.md, More (its links)", section(read("README.md"), /^## More/)],
   ["llms.txt, After the kit", LLMS_LINE],
   ["docs/after-the-kit.md", AFTER_KIT],
   ["docs/README.md", read("docs/README.md")],

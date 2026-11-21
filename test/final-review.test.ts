@@ -59,8 +59,11 @@ describe("the final review (13 Nov)", () => {
     const readme = readmeFull();
     const sec = (h: string) => readme.slice(readme.indexOf(`## ${h}`), readme.indexOf("\n## ", readme.indexOf(`## ${h}`) + 5));
     for (const f of ["docs/runs/2026-11-07-vic-1.md", "docs/runs/2026-11-13-vic-4.md"]) expect(sec("Visa Award")).toContain(`](${f})`);
-    for (const f of ["docs/runs/2026-11-03-main-run.md", "docs/runs/2026-11-12-faceid-onchain.md"]) expect(sec("Metal Award")).toContain(`](${f})`);
-    expect(sec("Metal Award")).toContain("testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
+    // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": the Metal Award is a bold lead under "Built with", no heading of its own; its paragraph is the same.
+    const metal = readme.split("\n").find((l) => l.startsWith("**Metal Award.** ")) ?? "";
+    for (const f of ["docs/runs/2026-11-03-main-run.md", "docs/runs/2026-11-12-faceid-onchain.md"]) expect(metal).toContain(`](${f})`);
+    expect(readme.indexOf(metal)).toBeGreaterThan(readme.indexOf("\n## Built with\n"));
+    expect(metal).toContain("testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
     expect(read("docs/demo/main-run.json")).toContain("0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
     expect(sec("Visa Award")).toContain("Visa TAP is an extra, not part of the entry.");
   });
@@ -74,7 +77,8 @@ describe("the final review (13 Nov)", () => {
       ...["stats", "terminal-verify", "system-map"].flatMap((n) => [`${n}-dark.svg`, `${n}-light.svg`]) /* 15 Nov (readme-wow): drawn by scripts/readme-wow-svg.ts */,
       "proof-strip-dark.svg", "proof-strip-light.svg" /* 17 Nov (owner): the proof strip under the title, drawn by scripts/readme-proof-strip.ts */,
       "refusal.webp" /* 19 Nov: the refusal clip, captured live on /try by scripts/readme-refusal-webp.ts */, "promo.webp" /* 16 Nov (Max): the animated payment story at 30 fps, rendered from scripts/readme-promo.html with the live /try run's values */,
-      "evidence-map-dark.svg", "evidence-map-light.svg" /* 19 Nov 2026 (the owner): the animated evidence map under the demo, drawn by npm run evidence:wall (src/redesign/evidenceMap.ts) */];
+      /* 19 Nov 2026 (the owner): the animated evidence map under the demo; gone, 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings" */
+      ...["demo-light.svg", "demo-dark.svg", "demo-narrow-light.svg", "demo-narrow-dark.svg", "step-try.svg", "step-proof.svg"] /* 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": drawn by scripts/readme-demo-svg.ts from a recorded /try walk */];
     const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif|png|svg))"/g)].map((m) => m[1]!);
     const script = read("scripts/readme-shots.ts");
     expect(shots.length).toBeGreaterThanOrEqual(13); // the banner, the 2x2 gallery, Home's picture and the partner pages

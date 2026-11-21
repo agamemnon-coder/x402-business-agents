@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { APPROVAL_OUT, RECEIPT, TAMPERED_OUT, WOW_FILES, statFigures, wowSvgs } from "../scripts/readme-wow-svg.js";
+import { readmeFull } from "./readmeFull.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const ARCH = ["docs/assets/readme/architecture-dark.svg", "docs/assets/readme/architecture-light.svg"];
@@ -17,8 +18,11 @@ describe("the README's animated SVGs", () => {
     const drawn = wowSvgs();
     expect(Object.keys(drawn).sort()).toEqual([...WOW_FILES].sort());
     for (const f of WOW_FILES) expect({ f, same: read(f) === drawn[f] }).toEqual({ f, same: true });
-    const readme = read("README.md");
+    // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": the stat strip moved from the README's "At a glance" (gone) to the gallery (docs/gallery.md), so each
+    // picture is looked for in the README with the docs it links in place of a section.
+    const readme = readmeFull();
     for (const f of [...WOW_FILES, ...ARCH]) expect({ f, shown: readme.includes(`"${f}"`) }).toEqual({ f, shown: true });
+    expect(read("README.md")).not.toContain("stats-light.svg");
   });
 
   it("have no script, no external link, an animation that reduced motion stops, and stay small", () => {

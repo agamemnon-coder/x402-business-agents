@@ -1,13 +1,15 @@
 // 15 Nov (Max): the README's "At a glance", six lines under the badges, each with a link to its record. Every figure in
 // it is read here from that record, so the README cannot drift from what ran.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { latestVerificationReport, partnerTiles } from "../src/redesign/proofRuns.js";
 import { agentRun, longRun, split } from "../src/redesign/run.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const README = read("README.md");
-const GLANCE = README.slice(README.indexOf("## At a glance"), README.indexOf("## Kit 11, step by step"));
+// 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": the six lines head "The proof", under the proof strip, the wall's line and the judges' table; "At a glance"
+// and "Kit 11, step by step" lost their headings (the Kit 11 line is a bold lead after the six lines).
+const GLANCE = README.slice(README.indexOf("\n## The proof\n"), README.indexOf("\n**Kit 11, step by step.** "));
 const lines = GLANCE.split("\n").filter((l) => l.startsWith("- **"));
 const eur = (cents: number) => `EUR ${(cents / 100).toFixed(2)}`;
 
@@ -21,12 +23,17 @@ describe("the README's At a glance", () => {
     }
   });
 
-  it("says the worst-case AI test's figures as its record has them, in every run", () => {
-    const w = JSON.parse(read("docs/evals/worst-case-summary.json")) as { purser_script: Record<string, { wrong_payments: number }>; no_rules: Record<string, { wrong_payments: number }> };
-    const script = new Set(Object.values(w.purser_script).map((r) => r.wrong_payments)), none = new Set(Object.values(w.no_rules).map((r) => r.wrong_payments));
-    expect(script.size).toBe(1);
-    expect(none.size).toBe(1);
-    expect(lines[2]).toContain(`always says pay made ${[...script][0]} wrong payments; a payer with no rules made ${[...none][0]} `);
+  // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings"; checking every figure against its record: the third line was the worst-case AI test of 15 Nov (50 cases,
+  // 0 vs 35), older than the held-out evals since; it says the newest held-out eval now, as /proof's one eval tile does.
+  it("says the newest held-out eval's figures as its record has them", () => {
+    const n = Math.max(...readdirSync(new URL("../docs/evals/", import.meta.url)).map((f) => /^adversarial-v(\d+)\.json$/.exec(f)?.[1]).filter(Boolean).map(Number));
+    const file = `docs/evals/adversarial-v${n}.json`;
+    const v = JSON.parse(read(file)) as { held_out: boolean; cases_commit: string; totals: Record<"purser_script" | "no_rules", { cases: number; wrong_payments: number; false_holds: number; clean_truths: number }> };
+    expect(v.held_out).toBe(true);
+    const p = v.totals.purser_script, none = v.totals.no_rules;
+    expect(lines[2]).toContain(`**The newest held-out eval (v${n}, offline, test data):** ${p.cases} invoice cases committed before they were first run (commit \`${v.cases_commit}\`); with a script that always says pay in the model's place, ${p.wrong_payments} wrong payments with Purser's rules, ${none.wrong_payments} with no rules; ${p.false_holds} false holds of ${p.clean_truths} clean invoices`);
+    expect(lines[2]).toContain(`(${file})`);
+    expect(README).not.toMatch(/worst-case AI[^\n]*0 wrong payments/);
   });
 
   it("says the one-cent-over run as its record has it", () => {

@@ -46,7 +46,9 @@ describe("README: How it works in 5 files", () => {
   it("sits after the first screen and why this is a company, and before the deep docs links", () => {
     expect(start).toBeGreaterThan(README.indexOf("## The business hypothesis"));
     expect(README.indexOf("## The business hypothesis")).toBeGreaterThan(0);
-    expect(start).toBeLessThan(README.indexOf("## Links"));
+    // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": "Links" lost its heading; its lines are the foot of "More".
+    expect(start).toBeLessThan(README.indexOf("\n- **Read:** [docs/in-depth.md]"));
+    expect(README).not.toContain("\n## Links\n");
   });
 
   it("names five numbered places, linked to the symbols that enforce the limits and the approval", () => {

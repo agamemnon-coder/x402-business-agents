@@ -10,7 +10,6 @@ import { liveTryRecords, liveTryTotals, nearestRank, type LiveTryRecord } from "
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { tileHtml } from "../src/redesign/proofQuestions.js";
-import { README_MAP_FILES, evidenceMapSvgFile, readmeMapLine } from "../src/redesign/evidenceMap.js";
 import { countOf } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 
@@ -223,19 +222,17 @@ describe("llms.txt's evidence section", () => {
 });
 
 describe("the README's wall line and the partner pages' strips", () => {
-  it("the README carries the wall's line under the judge path: its figures the wall's own (npm run evidence:wall)", () => {
+  it("the README carries the wall's line under the proof strip: its figures the wall's own (npm run evidence:wall)", () => {
     const readme = read("README.md"), line = readmeWallLine(committedWall());
     expect(readme).toContain(`\n\n${line}\n`);
-    expect(withReadmeWallLine(readme, line, readmeMapLine(committedWall()))).toBe(readme);
-    // The map's two pictures are what the wall's file draws now, with nothing external and a still frame for reduced motion.
-    for (const theme of ["light", "dark"] as const) {
-      const svg = read(README_MAP_FILES[theme]);
-      expect(svg).toBe(evidenceMapSvgFile(theme, committedWall()));
-      expect(svg).not.toMatch(/<script|href=|@import|url\(|<image/i);
-      expect(svg).toContain("@media (prefers-reduced-motion: reduce)");
-    }
-    expect(readme).toContain(readmeMapLine(committedWall()));
-    expect(readme.indexOf(line)).toBeGreaterThan(readme.indexOf("**1. [Watch the demo"));
+    expect(withReadmeWallLine(readme, line)).toBe(readme);
+    // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": the evidence map left the README (and its two SVG files went); the wall's line moved from under the demo's
+    // thumbnail to under the proof strip, at the head of "The proof". The map itself stays on /proof.
+    expect(readme).not.toContain("evidence-map-");
+    expect(existsSync(new URL("../docs/assets/readme/evidence-map-light.svg", import.meta.url))).toBe(false);
+    const lines = readme.split("\n");
+    expect(lines[lines.indexOf(line) - 2]).toContain("docs/assets/readme/proof-strip-light.svg");
+    expect(readme.indexOf(line)).toBeGreaterThan(readme.indexOf("\n## The proof\n"));
     for (const k of README_WALL_KEYS) expect(line).toContain(tile(committedWall()!, k).fig);
   });
 

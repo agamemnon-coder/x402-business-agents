@@ -73,19 +73,19 @@ export function readmeWallLine(w: EvidenceWall | null = committedWall()): string
   return `${README_WALL_PREFIX}${parts.join(" · ")} · [every figure, with its record](${SITE}/proof#${WALL_ID}) · [the index of /proof's figures](${PROOF_INDEX_DOC})`;
 }
 /**
- * The README with its evidence block under the demo's thumbnail: the map's picture (readmeMapLine in ./evidenceMap.ts),
- * then the wall's line; an old copy of either is taken out first, wherever it was.
+ * The README with the wall's line under the proof strip, at the head of its "The proof" section; an old copy of the line
+ * is taken out first, wherever it was. 21 Nov 2026 (Max: "tags and logo on top, a small demo, the 3 steps; the second
+ * architecture animation can go; far fewer headings"): the line moved down from under the demo's thumbnail, and the
+ * evidence map that stood above it is gone from the README (an old copy of its picture is taken out too).
  */
 export const README_MAP_PREFIX = '<a href="https://kit11.max-31b.workers.dev/proof#evidence"><picture>';
-export function withReadmeWallLine(readme: string, line: string = readmeWallLine(), mapLine?: string): string {
+export function withReadmeWallLine(readme: string, line: string = readmeWallLine()): string {
   let lines = readme.split("\n");
   const drop = (i: number) => { lines.splice(i, 1); if (lines[i] === "" && lines[i - 1] === "") lines.splice(i, 1); };
   for (const prefix of [README_WALL_PREFIX, README_MAP_PREFIX]) { const i = lines.findIndex((l) => l.startsWith(prefix)); if (i >= 0) drop(i); }
-  const thumb = lines.findIndex((l) => l.includes("docs/assets/readme/demo-thumb.jpg"));
-  const judge = lines.findIndex((l) => l.startsWith("**1. [Watch the demo"));
-  const at = thumb >= 0 ? thumb : judge;
+  const at = lines.findIndex((l) => l.includes("docs/assets/readme/proof-strip-light.svg"));
   if (at < 0) return readme;
-  lines = [...lines.slice(0, at + 1), "", ...(mapLine ? [mapLine, ""] : []), line, ...(lines[at + 1] === "" ? [] : [""]), ...lines.slice(at + 1)];
+  lines = [...lines.slice(0, at + 1), "", line, ...(lines[at + 1] === "" ? [] : [""]), ...lines.slice(at + 1)];
   return lines.join("\n");
 }
 
