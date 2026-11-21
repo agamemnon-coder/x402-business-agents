@@ -46,6 +46,24 @@ describe("the card design", () => {
     expect(html).toContain('class="acard p-lagoon');
     expect(html).toContain("Sonnet 5.5");
   });
+  // 21 Nov (Max: "blue with gold and the Purser logo, sleek"): one family of navy metal cards; Purser's feather is the mark
+  // until the company sets its own; an agent without a card is the same family, matte ("bare"), and says so; no chip, no
+  // number, no network on it; a simulated card stays labelled.
+  it("draws Purser's feather until the company sets a mark, and a cardless agent as a matte card that says so", () => {
+    const base = { company: "Northwind Outdoor (demo company)", demo: true, agent: "checker", name: "Checker agent", role: "x", status: "off", model: "claude-haiku-5-5" };
+    const bare = cardFaceHtml({ ...base, card: null }, cleanDesign(null));
+    expect(bare).toContain('class="ac-pf"');
+    expect(bare).toMatch(/class="acard p-graphite bare/);
+    expect(bare).toContain("No card of its own");
+    expect(bare).not.toMatch(/ac-chip|ac-net|ac-tag|••••/);
+    const own = cardFaceHtml({ ...base, card: null }, cleanDesign({ initials: "NW" }));
+    expect(own).toContain('<span class="ac-mark">NW</span>');
+    expect(own).not.toContain("ac-pf");
+    const paid = cardFaceHtml({ ...base, agent: "support", status: "active", card: { last4: "2361", currency: "EUR", per_purchase: null, per_month: "150.00", spent_month: "38.00", month: "2026-11" } }, cleanDesign(null));
+    expect(paid).not.toContain(" bare");
+    expect(paid).toContain('<span class="ac-tag">Simulated</span>');
+    expect(paid).toContain('<span class="ac-net txt">Visa</span>');
+  });
 });
 
 let c: TestCloud, t: TestTenant, seq = 0;

@@ -224,10 +224,11 @@ export function png(w: number, h: number, pixel: (x: number, y: number) => [numb
   const ihdr = cat(be(w), be(h), Uint8Array.of(8, 2, 0, 0, 0));
   return cat(Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a), chunk("IHDR", ihdr), chunk("IDAT", cat(...blocks, be(adler32(raw)))), chunk("IEND", new Uint8Array(0)));
 }
-const NAVY: [number, number, number] = [16, 24, 40], MINT: [number, number, number] = [56, 189, 148];
-/** The mark: a navy square with a mint bar, as the console's. */
-const mark = (s: number) => png(s, s, (x, y) => (x > s * 0.25 && x < s * 0.75 && y > s * 0.4 && y < s * 0.6 ? MINT : NAVY));
-const logo = (w: number, h: number) => png(w, h, (x, y) => (x < h && y > h * 0.3 && y < h * 0.7 && x > h * 0.2 ? MINT : NAVY));
+// 21 Nov (Max): the pass in the agents' card family (cloud/src/agentCardArt.ts): midnight navy with gold.
+const NAVY: [number, number, number] = [12, 24, 56], GOLD: [number, number, number] = [233, 196, 106];
+/** The mark: a navy square with a gold bar, in the cards' colours. */
+const mark = (s: number) => png(s, s, (x, y) => (x > s * 0.25 && x < s * 0.75 && y > s * 0.4 && y < s * 0.6 ? GOLD : NAVY));
+const logo = (w: number, h: number) => png(w, h, (x, y) => (x < h && y > h * 0.3 && y < h * 0.7 && x > h * 0.2 ? GOLD : NAVY));
 
 // ---- The pass ----
 
@@ -255,7 +256,7 @@ export function passJson(cfg: Pick<PassConfig, "passTypeId" | "teamId" | "organi
   return {
     formatVersion: 1, passTypeIdentifier: cfg.passTypeId, teamIdentifier: cfg.teamId, serialNumber: serial,
     organizationName: cfg.organization, description: `${d.name}: the agent's card at ${d.company}`.slice(0, 120), logoText: "Purser",
-    foregroundColor: "rgb(255, 255, 255)", backgroundColor: `rgb(${NAVY.join(", ")})`, labelColor: `rgb(${MINT.join(", ")})`,
+    foregroundColor: "rgb(255, 255, 255)", backgroundColor: `rgb(${NAVY.join(", ")})`, labelColor: `rgb(${GOLD.join(", ")})`,
     sharingProhibited: true, ...(d.status === "revoked" ? { voided: true } : {}),
     generic: {
       primaryFields: [{ key: "agent", label: "AGENT", value: d.name }],
