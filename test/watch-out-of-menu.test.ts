@@ -40,7 +40,8 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
   it("in both definitions: the redesign's header and the older pages' navigation", () => {
     for (const [name, nav] of [["src/redesign/ui.ts", navs(header(null))[0]!], ["src/ui/nav.ts", navHtml(null)]] as const) {
       expect({ name, first: items(nav).slice(0, 3) }).toEqual({ name, first: ["Home", "Try", "Proof"] });
-      expect({ name, max: items(nav).length <= 5 }).toEqual({ name, max: true });
+      // 21 Nov, redesign (owner): "Business" is a tab of its own before "Cloud": Home, Try, Proof, Business, Cloud, More.
+      expect({ name, max: items(nav).length <= 6 }).toEqual({ name, max: true });
       expect({ name, watch: /watch/i.test(nav) }).toEqual({ name, watch: false });
     }
     expect(NAV_MAIN.map(([key]) => key).slice(0, 3)).toEqual(["home", "try", "proof"]);
@@ -58,7 +59,8 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
         const main = navs(html).find((n) => /aria-label="Main"/.test(n));
         if (!main) continue;
         expect({ build, name, first: items(main).slice(0, 3) }).toEqual({ build, name, first: ["Home", "Try", "Proof"] });
-        expect({ build, name, max: items(main).length <= 5 }).toEqual({ build, name, max: true });
+        // 21 Nov, redesign (owner): six items with "Business".
+        expect({ build, name, max: items(main).length <= 6 }).toEqual({ build, name, max: true });
       }
       // The pages a juror opens all carry the menu.
       for (const name of ["home", "try", "proof", "watch", "metal", "airwallex", "visa", "claude", "notFound"]) expect({ build, name, menu: navs((pages as unknown as Record<string, string>)[name]!).some((n) => /aria-label="Main"/.test(n)) }).toEqual({ build, name, menu: true });
@@ -68,8 +70,9 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
   it("Home does not name or link the replay, in either build", () => {
     for (const [build, html] of [["with /try/sign", ON.home!], ["without", OFF.home!]] as const) {
       expect({ build, link: /href="\/?(watch|replay|live|demo)\b[^"]*"/.exec(html)?.[0] ?? null }).toEqual({ build, link: null });
+      // 21 Nov, redesign: the hero's "Watch the demo" is the same film (FILM_URL) as the tour's first stop.
       // The walkthrough on YouTube is not the replay: since 21 Nov the judge tour's first stop, "Watch the demo" (the film), is the only "Watch" Home says.
-      expect({ build, word: /\bWatch\b|\breplay/i.exec(text(noScript(html)).replace(TOUR_STOPS[0]!.title, " "))?.[0] ?? null }).toEqual({ build, word: null });
+      expect({ build, word: /\bWatch\b|\breplay/i.exec(text(noScript(html)).split(TOUR_STOPS[0]!.title).join(" "))?.[0] ?? null }).toEqual({ build, word: null });
     }
   });
 
@@ -126,7 +129,8 @@ describe("/replay answers, as a replay under Proof (it was /watch until the film
   });
 
   it("marks the Proof tab, and nothing on it calls the replay live", () => {
-    const main = navs(html).find((n) => /aria-label="Main"/.test(n))!;
+    // 21 Nov, redesign: the phone's sheet (.pm-m) repeats the tabs and is left out.
+    const main = navs(html).find((n) => /aria-label="Main"/.test(n))!.replace(/<div class="pm-m">[\s\S]*?<\/div>/g, "");
     expect([...main.matchAll(/<a [^>]*aria-current="page"[^>]*>([^<]+)<\/a>/g)].map((m) => m[1])).toEqual(["Proof"]);
     // The one "live" on the page is the world's own: Northwind sells live stock data. Nothing says the replay is live.
     const words = text(noScript(html)).replace(/live stock data/g, " ");

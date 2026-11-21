@@ -25,8 +25,11 @@ describe("Purser's mark: the header's, in every icon", () => {
     const num = (re: RegExp, s: string) => Number(re.exec(s)![1]);
     const k = 64 / 30, svg = markSvg();
     expect(ref).toContain(`fill="${MARK_INK}"`);
-    expect(TOKENS).toContain(`--text: ${MARK_INK};`);
-    expect(HEADER_CSS).toContain(".brand .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--text); color: var(--bg);");
+    // 21 Nov, redesign (Max: "logo back to black and white"): the header's tile is its own black (light theme) or white
+    // (dark theme) token, --mk-bg, with --text as the fallback; the icons keep their near-black ink on the white feather.
+    expect(/:root \{[\s\S]*?--mk-bg:\s*#000000;/.test(TOKENS)).toBe(true);
+    expect(parseInt(MARK_INK.slice(1, 3), 16) + parseInt(MARK_INK.slice(3, 5), 16) + parseInt(MARK_INK.slice(5, 7), 16)).toBeLessThan(3 * 0x20);
+    expect(HEADER_CSS).toContain(".brand .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--mk-bg, var(--text)); color: var(--mk-ink, var(--bg));");
     expect(header("home")).toContain('<span class="mk"><svg class="i" viewBox="0 0 24 24"');
     // The same geometry, scaled: corner radius, the feather's offset and its scale.
     expect(num(/rx="([\d.]+)"/, svg)).toBeCloseTo(num(/rx="([\d.]+)"/, ref) * k, 3);

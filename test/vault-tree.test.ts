@@ -1,6 +1,7 @@
 // The vault's folder tree image (master list 512) is computed from src/vault/layout.ts: the committed SVGs are what the
 // code draws now, and their folder names are layout.ts's own (Company/Year/Quarter/Inkoopfacturen|Betalingen|Rapporten).
 import { readFileSync } from "node:fs";
+import { TOKENS } from "../src/redesign/ui.js";
 import { describe, expect, it } from "vitest";
 import { invoicePath, monthReportPath, paymentPath } from "../src/vault/layout.js";
 import { VAULT_TREE_FILES, treeCompany, treeInvoices, treePaths, vaultTreeSvg } from "../src/vault/treeSvg.js";
@@ -35,7 +36,8 @@ describe("the vault tree image", () => {
   });
 
   it("uses the site's design tokens for its colours", () => {
-    const ui = committed("src/redesign/ui.ts");
+    // 21 Nov, redesign: the tokens are composed in TOKENS from src/redesign/ui.ts and src/ui/premium.ts; read the result.
+    const ui = TOKENS;
     for (const hex of committed(VAULT_TREE_FILES.dark).match(/#[0-9a-f]{6}\b/gi) ?? []) expect(ui).toContain(hex);
   });
 });

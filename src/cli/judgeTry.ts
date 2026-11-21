@@ -30,9 +30,9 @@ const NOTE_CSS = ".judge-offline{box-sizing:border-box;margin:12px auto 0;max-wi
  * test/judge-try.test.ts checks that each is on the hosted page, so a change of the page's words cannot slip past.
  */
 export const OFFLINE_WORDS: readonly (readonly [hosted: string, offline: string])[] = [
-  ["Claude reads and checks every supplier invoice.", "Claude reads and checks every supplier invoice (in this offline copy, code reads it)."],
-  // Site audit, 20 Nov: the start's fine line opens with the sandbox disclosure (cloud/src/try/presentMode.ts V2_COPY).
-  ["Sandbox demo: test money, no real settlement · Purser's real engine · deleted after 24 hours", "Offline copy: test money, simulated bank, no real settlement · Purser's real engine · nothing leaves this computer"],
+  // 21 Nov, redesign: the start card's reader row already says "Claude, or Purser's code: said as it runs", so it needs no
+  // offline word; its fine line is the one sandbox disclosure (cloud/src/try/presentMode.ts V2_COPY start.fine).
+  ['"fine":"Sandbox · test money · deleted after 24 hours"', '"fine":"Offline copy · test money · simulated bank · nothing leaves this computer"'],
   ["Test money only · Airwallex sandbox", "Test money only · simulated bank (offline)"],
   ["Claude reads the PDF; code checks what it read.", "In this offline copy code reads the PDF (no Claude call) and checks what it read."],
   ["'Claude reads the PDF'", "'code reads the PDF (offline: no Claude)'"],
@@ -43,7 +43,7 @@ export const OFFLINE_WORDS: readonly (readonly [hosted: string, offline: string]
 ];
 
 /** The hosted site's pages and files this server has too (src/cli/judge.ts): the page's links to them stay on this computer. */
-const SITE = /https:\/\/kit11\.max-31b\.workers\.dev\/(home|proof|books|airwallex|alta|visa|security|docs|claude|runs|verify|assets\/logo-airwallex\.png)(?=\\?")/g;
+const SITE = /https:\/\/kit11\.max-31b\.workers\.dev\/(home|proof|books|airwallex|alta|visa|security|docs|claude|runs|verify|assets\/logo-airwallex\.png)(?=\\?"|#)/g; // 21 Nov: /try's key numbers link a /proof step (#pf-…)
 
 /**
  * The hosted page, offline: one line above the steps that says this is the offline copy (OFFLINE_TRY_NOTE), its style

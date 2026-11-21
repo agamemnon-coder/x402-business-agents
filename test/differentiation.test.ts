@@ -120,7 +120,9 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // 20 Nov (the owner): Purser Cloud named first, over the heading; the hero's third button is the pilot.
     // 21 Nov (Max: "it's for companies in general"; "a judge tour on the homepage"): Purser Cloud for companies, the
     // heading, the idea, the judge tour and Try, the sandbox line.
-    expect(t.startsWith(`Purser Cloud, for companies AI agents spend. You sign off. ${HOME_SUB} Start the judge tour Try it Sandbox demo: test money, no real settlement.`)).toBe(true);
+    // 21 Nov, redesign (Max): the eyebrow, the heading, the idea, three figures from the evidence wall and the three buttons
+    // (Try it first); the sandbox disclosure moved into the Workflow card's label ("Recorded /try runs · sandbox").
+    expect(t.startsWith(`Purser Cloud · for companies AI agents spend. You sign off. ${HOME_SUB} 262 checks passed 132 sandbox transfers 48 attacks stopped Try it Watch the demo Start a pilot Workflow Recorded /try runs · sandbox`)).toBe(true);
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);
