@@ -32,6 +32,7 @@ import { NEGOTIATE_URL, PURSER_CLOUD_MCP, PURSER_CLOUD_URL } from "../ui/more.js
 import { MONEY_FLOW_RECORDS, moneyFlowFacts, type MoneyFlowFacts } from "./moneyFlow.js";
 import { LOGO_BAND_CSS, LOGO_BAND_JS, logoBandHtml } from "./integrations.js";
 import { TOUR_ID, TOUR_MAP_CSS, TOUR_START_HREF, tourMapHtml } from "./tour.js";
+import { HERO_CARD_CSS, HERO_CARD_JS, heroCardHtml } from "./heroCard.js";
 
 /** The hub of every connection Purser has, each labelled, with a quickstart (docs/integrations/README.md); in Home's footer. */
 export const CONNECT_HUB_DOC = "docs/integrations/README.md", CONNECT_HUB_LABEL = "Connect to anything";
@@ -39,9 +40,13 @@ export const CONNECT_HUB_DOC = "docs/integrations/README.md", CONNECT_HUB_LABEL 
 const CSS = `/* Home, 21 Nov: six parts on an 8 px grid, 1120 px wide, neutral greys and one accent; one heading per part. */
 main.ent .wrap { max-width: 1120px; }
 main.ent section { padding: 104px 0; }
-main.ent section + section { border-top: 1px solid var(--border); }
-.eyebrow { margin: 0 0 10px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
-.e-h { margin: 0; font-size: clamp(30px, 3.4vw, 44px); line-height: 1.1; font-weight: 770; letter-spacing: -.025em; max-width: 20em; }
+main.ent section + section { border-top: 0; background-image: linear-gradient(90deg, transparent, var(--border) 18%, var(--border) 82%, transparent); background-size: 100% 1px; background-repeat: no-repeat; }
+.eyebrow { margin: 0 0 14px; font: 600 12.5px/1.4 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+.eyebrow:not(.cloud)::before { content: ""; display: inline-block; width: 22px; height: 1px; margin-right: 12px; vertical-align: .3em; background: linear-gradient(90deg, transparent, currentColor); }
+.e-cen .eyebrow:not(.cloud)::after { content: ""; display: inline-block; width: 22px; height: 1px; margin-left: 12px; vertical-align: .3em; background: linear-gradient(90deg, currentColor, transparent); }
+.e-h { margin: 0; font-size: clamp(30px, 3.6vw, 48px); line-height: 1.06; font-weight: 760; letter-spacing: -.035em; max-width: 20em; background: linear-gradient(180deg, var(--text) 40%, color-mix(in srgb, var(--text) 74%, var(--bg))) 0 0 / 100% 1.06em repeat-y; -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* One surface for every card on Home: a hairline border, a lit top edge, the same radius. */
+ul.agents > li, ul.prow a, ol.steps3 > li:not(.pilot), .af-n:not(.af-purser) { background: linear-gradient(180deg, color-mix(in srgb, var(--text) 2%, var(--surface)), var(--surface)); box-shadow: var(--hi), 0 1px 2px rgba(16, 24, 40, .05), 0 24px 48px -36px rgba(0, 0, 0, .5); }
 .e-sub { margin: 14px 0 0; font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 36em; }
 .e-cen { text-align: center; } .e-cen .e-h, .e-cen .e-sub { margin-left: auto; margin-right: auto; }
 .btn.big { height: 54px; font-size: 16.5px; padding: 0 24px; gap: 8px; }
@@ -50,11 +55,20 @@ main.ent section + section { border-top: 1px solid var(--border); }
 /* 1. The hero: words on the left, the product card on the right, on a soft glow. */
 main.ent section.e-hero { position: relative; padding: 80px 0 72px; overflow: hidden; }
 .e-hero::before { content: ""; position: absolute; inset: -30% -10% auto 40%; height: 120%; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%); pointer-events: none; }
-.e-hero .wrap { position: relative; display: grid; gap: 48px; align-items: center; }
-@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 48px; } .e-hero .h-hero { font-size: clamp(44px, 4vw, 56px); } }
-.e-hero p.cloud { margin: 0 0 18px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); letter-spacing: .06em; }
+/* The hero's ground: a faint grid that fades out toward the words, a vignette at the foot. */
+.e-hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--text) 4%, transparent) 0 1px, transparent 1px 88px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--text) 4%, transparent) 0 1px, transparent 1px 88px);
+  -webkit-mask-image: radial-gradient(60% 50% at 75% 18%, #000, transparent 75%); mask-image: radial-gradient(60% 50% at 75% 18%, #000, transparent 75%); }
+.e-hero .h-hero span + span { filter: drop-shadow(0 6px 28px color-mix(in srgb, var(--accent) 30%, transparent)); }
+/* The product card in a frame of its own: a pane of glass on the floor, lit from below. */
+.e-hero .show { position: relative; padding: 18px 18px 6px; border-radius: 28px; background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, transparent), color-mix(in srgb, var(--surface) 82%, transparent)); border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent), 0 50px 120px -50px color-mix(in srgb, var(--accent) 60%, transparent), 0 30px 60px -36px rgba(0, 0, 0, .45); }
+.e-hero .show::before { content: ""; position: absolute; left: 12%; right: 12%; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 70%, #fff), transparent); }
+.e-hero .show .hf-card { background: var(--bg); }
+.e-hero .wrap { position: relative; display: grid; gap: 8px; align-items: center; grid-template-areas: "copy" "hx" "show"; }
+.e-hero .copy { grid-area: copy; } .e-hero .hx { grid-area: hx; } .e-hero .show { grid-area: show; width: 100%; max-width: 780px; justify-self: center; }
+@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 560px); grid-template-areas: "copy hx" "show show"; column-gap: 32px; row-gap: 32px; } }
+.e-hero p.cloud { margin: 0 0 22px; display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: color-mix(in srgb, var(--accent-soft) 80%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); box-shadow: 0 0 24px -6px var(--glow); letter-spacing: .14em; }
 .e-hero .h-hero { font-size: clamp(42px, 5.6vw, 64px); line-height: 1.02; letter-spacing: -.035em; font-weight: 790; } .e-hero .h-hero span { display: block; }
-@media (min-width: 1040px) { .e-hero .h-hero span { white-space: nowrap; } }
+@media (min-width: 1040px) { .e-hero .h-hero { font-size: clamp(52px, 4.6vw, 68px); } .e-hero .h-hero span { white-space: nowrap; } }
 .e-hero .h-hero span + span { background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, var(--a-support))); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .e-hero .what { margin: 22px 0 0; font-size: 19.5px; line-height: 1.5; color: var(--muted); max-width: 30em; }
 .ctas { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
@@ -498,6 +512,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const awx = awxRun(), facts = heroDemoFacts(awx);
   const rows = proofRows(run, awx);
   const mf = moneyFlowFacts();
+  const roster = agentRoster(awx);
   const body = `<main class="ent">
 <section class="e-hero"><div class="wrap">
   <div class="copy">
@@ -507,6 +522,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <div class="ctas"><a class="btn primary big tour" href="${esc(TOUR_START_HREF)}" data-tour-start>${icon("route", 18)}${esc(TOUR_BUTTON)}</a><a class="btn big ghost start" href="${TRY_URL}">${esc(START)}${icon("arrow-right", 18)}</a></div>
     <p class="reassure">${icon("shield-check", 16)}${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
   </div>
+  ${heroCardHtml(roster)}
   <div class="show">${heroFlowHtml()}
     <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
 </div></section>
@@ -553,7 +569,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ];
   return page({
     // Final jury, 13 Nov: / and /home serve this page; /home is its one canonical address.
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + HERO_FLOW_CSS + LOGO_BAND_CSS + AI_CSS + TOUR_MAP_CSS, body, js: JS + LOGO_BAND_JS, stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + HERO_CARD_CSS + HERO_FLOW_CSS + LOGO_BAND_CSS + AI_CSS + TOUR_MAP_CSS, body, js: JS + HERO_CARD_JS + LOGO_BAND_JS, stage: false,
     // 20 Nov (the owner: "Purser connects to everything and everyone, findable"): the hub of every connection, in the footer.
     links: [[`${REPO_BLOB}${CONNECT_HUB_DOC}`, CONNECT_HUB_LABEL]],
     real,
