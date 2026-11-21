@@ -56,7 +56,7 @@ export const ARCH_ID = "architecture";
 export const ARCH_TITLE = "How it fits together";
 export const ARCH_NODES: readonly ArchNode[] = [
   { id: "pa-agent", title: "Agent", who: "Reads the invoice with Claude and proposes", icon: "bot", parts: [["Claude", "claude"]], keys: ["claude-main", /^eval-v\d+$/], href: "#q-ai", tone: "claude" },
-  { id: "pa-purser", title: "Purser", who: "Code decides what may move", icon: "feather", parts: [["Policy", "#pf-policy"], ["Exact terms", "#signed"], ["Passkey", "#pf-passkey"]], keys: ["alta-series-refused", "tamper-matrix", "try-cent"], href: "#q-approvals", tone: "accent" },
+  { id: "pa-purser", title: "Purser", who: "Its rules check what may move", icon: "feather", parts: [["Policy", "#pf-policy"], ["Exact terms", "#signed"], ["Passkey", "#pf-passkey"]], keys: ["alta-series-refused", "tamper-matrix", "try-cent"], href: "#q-approvals", tone: "accent" },
   { id: "pa-rails", title: "Rails", who: "Move the signed payment", icon: "arrow-left-right", parts: [["Airwallex", "#pl-airwallex"], ["Alta", "#pl-alta"], ["Visa via Airi", "#pl-visa"]], keys: ["soak-paid", "alta-payments", "visa-airi"], href: "#q-live", tone: "awx" },
   { id: "pa-books", title: "Books", who: "Journal entries, matched to the cent", icon: "book-open", parts: [["T:0", "#pl-t0"]], keys: ["t0-readback", "awx-statement"], href: "#q-books", tone: "ink" },
 ];
