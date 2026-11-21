@@ -34,7 +34,7 @@ const lastResults = (r: Req): string => {
  * Payer (reads the rails and the due date, then proposes the first rail on the due date's today). Each answer carries
  * a request id.
  */
-function standInClaude() {
+function standInClaude(o: { checker?: "pay" | "ask_cfo"; payOnDue?: boolean } = {}) {
   const seen: Req[] = [];
   let n = 0;
   const create = async (r: Req) => {
@@ -45,7 +45,7 @@ function standInClaude() {
     const use = (name: string, input: unknown): Block => ({ type: "tool_use", id: `tu_${n}_${name}`, name, input });
     let content: Block[];
     if (tools.has("decide")) {
-      content = turn === 0 ? [use("supplier_on_file", {})] : [use("decide", { action: "pay", reason: "Bergtex is on file and the bank details match; the totals add up.", findings: [] })];
+      content = turn === 0 ? [use("supplier_on_file", {})] : [use("decide", { action: o.checker ?? "pay", reason: "Bergtex is on file and the bank details match; the totals add up.", findings: [] })];
     } else if (tools.has("code_invoice")) {
       if (turn === 0) content = [use("invoice_lines", {}), use("vat_codes", {})];
       else {
@@ -61,10 +61,12 @@ function standInClaude() {
         const t = lastResults(r);
         const rail = /\bbank_swift\b/.test(t) && !/\bbank_local\b/.test(t) ? "bank_swift" : "bank_local";
         const today = /\btoday is (\d{4}-\d{2}-\d{2})/i.exec(t)?.[1] ?? /(\d{4}-\d{2}-\d{2})/.exec(t)?.[1] ?? new Date().toISOString().slice(0, 10);
+        // A Payer that waits for the due date (21 Nov: one way a walk's in-limit invoice went to the CFO instead).
+        const due = [...t.matchAll(/(\d{4}-\d{2}-\d{2})/g)].map((m) => m[1]!).sort().at(-1);
         // The locked quote's currency when there is one (the engine plans the conversion when EUR alone would go under its floor).
         const sells = /\bsells? ([A-Z]{3})\b/.exec(t)?.[1] ?? /\bfrom ([A-Z]{3})\b/.exec(t)?.[1];
         const from = sells && sells !== "EUR" ? sells : "EUR";
-        content = [use("propose_payment", { rail, pay_on: today, pay_currency: from, reason: `Pay today from ${from} on the locked quote, so every balance stays above its floor.` })];
+        content = [use("propose_payment", { rail, pay_on: o.payOnDue && due ? due : today, pay_currency: from, reason: `Pay today from ${from} on the locked quote, so every balance stays above its floor.` })];
       }
     } else {
       content = [{ type: "text", text: "nothing to do" }];
@@ -194,9 +196,39 @@ describe("the payables agents in the cloud engine (task A6)", () => {
     const q = await h.propose(big.invoice!.id);
     expect(q).toMatchObject({ ok: true, proposal: { status: "PENDING_APPROVAL" } });
     expect((q as { alone?: unknown }).alone).toBeUndefined();
+    // Above the limit nothing was declined: the CFO signs, as for every company.
+    expect((q as { alone_declined?: unknown }).alone_declined).toBeUndefined();
+    expect(decided(db, "ap.alone_declined")).toHaveLength(0);
     expect(decided(db, "ap.payer_proposed").at(-1)!.fields).toMatchObject({ outcome: "ask_cfo", overridden_by: "above_alone_limit" });
     expect(h.invoice(big.invoice!.id)!.status).toBe("waiting_cfo");
   });
+
+  // 21 Nov: walk 2 of docs/runs/2026-11-21-phone-try had its EUR 120.00 invoice, within the limit, sent to the CFO while
+  // code's checks said pay, and neither the pay answer nor the record could say which agent had not. Now the answer and
+  // an event (ap.alone_declined) say who did not say pay, and why; the payment still waits for the CFO, as designed.
+  for (const [what, o, by, why] of [
+    ["the Checker asks the CFO", { checker: "ask_cfo" as const }, "checker", /the Checker agent's decision, as code enforced it, is ask cfo, not pay/],
+    ["the Payer proposes the due date", { payOnDue: true }, "payer", /the Payer agent proposed a later day, so code's own plan was filed today/],
+  ] as const) {
+    it(`within the limit, when ${what}, the payment goes to the CFO and the answer says who did not say pay`, async () => {
+      const s = standInClaude(o);
+      const { access: a } = access({ client: s.client });
+      const { db, host: h } = host(a, { aloneLimit: { ...TRY_ALONE_LIMIT } });
+      await h.seed();
+      const small = SAMPLE_SOURCES.find((x) => x.key === ALONE_SAMPLE)!;
+      const up = await h.upload({ bytes: await samplePdf(small), filename: small.filename });
+      expect(up.invoice).toMatchObject({ total: "120.00", alone_limit: { within: true } });
+      const p = await h.propose(up.invoice!.id);
+      expect(p).toMatchObject({ ok: true, proposal: { status: "PENDING_APPROVAL" }, alone_declined: { by } });
+      expect((p as { alone?: unknown }).alone).toBeUndefined();
+      expect(String((p as { alone_declined: { why: string } }).alone_declined.why)).toMatch(why);
+      const ev = decided(db, "ap.alone_declined");
+      expect(ev).toHaveLength(1);
+      expect(ev[0]!.fields).toMatchObject({ by });
+      expect(String(ev[0]!.fields.why)).toMatch(why);
+      expect(h.invoice(up.invoice!.id)!.status).toBe("waiting_cfo");
+    });
+  }
 
   it("with the switch off, nothing is sent: code decides, labelled, and the status says code", async () => {
     const s = standInClaude();

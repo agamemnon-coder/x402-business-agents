@@ -23,7 +23,7 @@ import { fromCents } from "../lib/money.js";
 import { cashCheck } from "./cashCheck.js";
 import { aloneLimit } from "../world/settings.js";
 import { invoiceCase } from "./checks.js";
-import { codeRequires } from "./checkerCore.js";
+import { codeRequires, limitRule } from "./checkerCore.js";
 import { CHECKER_DECISION } from "./checkerAgent.js";
 import { readDoc } from "./docStore.js";
 import { PAY_LATER, paymentCase, payerGate, runPayer, type EarlyPayer } from "./payerAgent.js";
@@ -101,6 +101,15 @@ async function preparePayment(db: DB, id: string, now: Date): Promise<{ inv: ApI
 
 /** A payment approved by code within the CFO's limit to pay alone (payAlone): who decided, and code's rule in words. */
 export interface PaidAlone { limit: string; by: "agents" | "code"; why: string }
+/**
+ * Why a payment within the company's limit to pay alone was left for the CFO instead (21 Nov: walk 2 of
+ * docs/runs/2026-11-21-phone-try had its EUR 120.00 invoice, within the limit, sent to the CFO, and neither the answer
+ * nor the record could say which of the deciders had not said pay). `by` is who did not: code's own checks, the Checker
+ * agent, the Payer agent, the cash check, or code's last check of the filed terms; `why` in words. Written to the audit
+ * log as ap.alone_declined and returned with the proposal, so the page and a recorded walk can say it.
+ */
+export interface AloneDeclined { by: "code" | "checker" | "payer" | "cash" | "limit"; why: string }
+export const ALONE_DECLINED = "ap.alone_declined";
 
 /**
  * Whether the payment just filed for this invoice is one the agent pays alone, and if so approves it (owner, 16 Nov).
@@ -110,28 +119,36 @@ export interface PaidAlone { limit: string; by: "agents" | "code"; why: string }
  * the Payer's enforced proposal, filed as proposed; no text in the document that tries to steer its reader; then code
  * checks the filed terms against the limit once more (approveWithinLimit). Anything short of that leaves the payment waiting for the CFO's Face ID, as before.
  */
-function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, payer: { alone(): boolean } | null, now: Date): PaidAlone | null {
+function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, payer: { alone(): boolean; last?(): { next: string; source: string; enforced: { outcome: string; why: string } } | null } | null, now: Date): PaidAlone | AloneDeclined | null {
   const limit = aloneLimit(db);
   if (!limit) return null;
+  const top = `${limit.currency} ${limit.amount}`;
+  // Over the limit, the CFO signs as for every company: nothing was declined.
+  if (limitRule(limit, inv.currency, inv.total).rule !== null) return null;
   // Text in the document that tries to steer its reader is only a warning to code's checks (src/ap/checkerCore.ts), but an
   // invoice that carries it is never paid without a person: the CFO signs it, whatever the agents said.
-  if (inv.findings.some((f) => f.code === "instructions_in_document")) return null;
+  if (inv.findings.some((f) => f.code === "instructions_in_document")) return { by: "code", why: "the document carries text that tries to steer its reader, so a person signs it" };
   const c = invoiceCase(db, inv.reading, text, { docSha: inv.doc_sha256, now, selfId: inv.id });
   const need = codeRequires(c, inv.findings);
-  if (need.action !== "pay") return null;
+  if (need.action !== "pay") return { by: "code", why: `code's checks require ${need.action.replace(/_/g, " ")}` };
   if (payer) {
     const checked = db.prepare("SELECT json_extract(payload_json, '$.outcome') AS outcome FROM audit_log WHERE event = ? AND subject = ? ORDER BY seq DESC LIMIT 1").get(CHECKER_DECISION, inv.id) as { outcome: string | null } | undefined;
-    if (checked?.outcome !== "pay" || !payer.alone()) return null;
+    if (checked?.outcome !== "pay") return { by: "checker", why: checked?.outcome ? `the Checker agent's decision, as code enforced it, is ${checked.outcome.replace(/_/g, " ")}, not pay` : "no Checker agent decision is on record for this invoice" };
+    if (!payer.alone()) {
+      const last = payer.last?.() ?? null;
+      const said = !last ? "the Payer agent's plan did not reach code" : last.next === "pay_later" ? "the Payer agent proposed a later day, so code's own plan was filed today" : last.next === "hold" ? `code held the Payer agent's proposal: ${last.enforced.why}` : "the Payer agent's proposal was off the engine's plan, so code's own plan was filed";
+      return { by: "payer", why: `${said}; ${last?.source === "fallback" ? "the Payer agent did not propose (code's plan stood in), and " : ""}only the Payer agent's own proposal, enforced as pay today, is paid alone` };
+    }
   }
   // The cash check (src/ap/cashCheck.ts): the agent pays alone only from the invoice's own currency, and only when that
   // balance stays at or above its floor once this payment and what is spoken for are out. The filed terms carry the
   // plan's own figures; a plan that converts another currency is the CFO's to sign, never the agent's alone.
-  if (cashHoldsFiled(db, proposalId, inv, now)) return null;
-  const top = `${limit.currency} ${limit.amount}`;
+  if (cashHoldsFiled(db, proposalId, inv, now)) return { by: "cash", why: "code's cash check holds it: paying it alone would take a balance below its floor, or it needs a conversion" };
   const why = `within the ${top} the CFO lets the agent pay alone: ${payer ? "the Checker agent decided pay and the Payer agent proposed it, and code's checks agree" : "code's checks found nothing that stops it"}`;
   const ok = approveWithinLimit(db, { proposalId, limit, rule: why, agent: "payer" }, now);
-  return ok.ok ? { limit: top, by: payer ? "agents" : "code", why } : null;
+  return ok.ok ? { limit: top, by: payer ? "agents" : "code", why } : { by: "limit", why: `code's last check of the filed terms against the ${top} limit did not pass: ${ok.reason}` };
 }
+const isPaidAlone = (x: PaidAlone | AloneDeclined | null): x is PaidAlone => !!x && "limit" in x;
 
 /**
  * Whether the cash check holds the payment just filed (an invoice payment's terms: its balances before, its floor and
@@ -153,7 +170,7 @@ function cashHoldsFiled(db: DB, proposalId: string, inv: ApInvoiceRow, now: Date
   return view.outcome === "hold";
 }
 
-export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id: string, now = new Date(), reader?: Asker, agents: PayAgents = {}): Promise<PayOutcome & { alone?: PaidAlone }> {
+export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id: string, now = new Date(), reader?: Asker, agents: PayAgents = {}): Promise<PayOutcome & { alone?: PaidAlone; declined?: AloneDeclined }> {
   const { inv, text, plan } = await preparePayment(db, id, now);
   // KIT11_AP_AGENTS=on: the engine plans as always, then the Payer agent proposes the rail, the day and the currency on
   // that plan, and code enforces it (src/ap/payerAgent.ts). The plan is filed only when the enforced proposal pays today
@@ -166,8 +183,11 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
     // An earlier "planned for a later day" no longer describes it once it is filed.
     const later = inv.findings.some((f) => f.code === PAY_LATER);
     // Within the CFO's limit, approved by code for the agent to pay alone (the caller runs it); else filed for the CFO.
-    const alone = payAlone(db, inv, text, out.proposal.proposal_id, payer, now);
-    setStatus(db, id, "waiting_cfo", "treasury", { proposal_id: out.proposal.proposal_id, reason: alone ? `approved by code ${alone.why}; the agent pays it, no signature` : "payment filed for the CFO's Face ID", ...(later ? { findings: inv.findings.filter((f) => f.code !== PAY_LATER) } : {}) }, now);
+    const decided = payAlone(db, inv, text, out.proposal.proposal_id, payer, now);
+    const alone = isPaidAlone(decided) ? decided : null;
+    const declined = decided && !alone ? (decided as AloneDeclined) : null;
+    if (declined) audit(db, "treasury", ALONE_DECLINED, id, { invoice_id: id, proposal_id: out.proposal.proposal_id, by: declined.by, why: declined.why.slice(0, 600) }, now);
+    setStatus(db, id, "waiting_cfo", "treasury", { proposal_id: out.proposal.proposal_id, reason: alone ? `approved by code ${alone.why}; the agent pays it, no signature` : declined ? `within the limit to pay alone, filed for the CFO's Face ID: ${declined.why}`.slice(0, 600) : "payment filed for the CFO's Face ID", ...(later ? { findings: inv.findings.filter((f) => f.code !== PAY_LATER) } : {}) }, now);
     if (alone) return { ...out, alone };
     // Opus's advisory note goes with the proposal the CFO sees (its explanation; never part of the signed terms).
     const noted = await writeReviewNote(db, reader, id, now);
@@ -175,7 +195,7 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
     // Purser's code when no model wrote it (screenshot pass S3).
     const source = noted.review_by?.startsWith("claude:") ? noted.review_by.slice("claude:".length) : "no model";
     db.prepare("UPDATE proposals SET explanation = ? WHERE proposal_id = ? AND explanation IS NULL").run(`[${source}] NOTE: ${noted.review_note ?? ""}`, out.proposal.proposal_id);
-    return out;
+    return declined ? { ...out, declined } : out;
   }
   // Not planned (the reserve is short, a quote refused, a duplicate found late): the invoice stays as it is, with the reason.
   // Only over the status this call read (red team round 4: of two "pay" calls at once, the loser wrote its stale "ready"

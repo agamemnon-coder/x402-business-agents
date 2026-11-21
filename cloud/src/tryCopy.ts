@@ -1148,6 +1148,9 @@ export const LIVE = {
     "proposal.approved": "You approved the exact terms {method}.",
     "proposal.approved_plain": "You approved the exact terms.",
     "proposal.within_limit": "Within your limit, Purser's code approved the exact terms. The agent pays it, with no signature.",
+    // 21 Nov: within the limit, but one of the deciders did not say pay (src/ap/pay.ts payAlone): it waits for the CFO.
+    "ap.alone_declined_why": "Within your limit, but not paid alone: {declined}. It waits for your signature.",
+    "ap.alone_declined": "Within your limit, but not paid alone: not every decider said pay. It waits for your signature.",
     "proposal.rejected": "You rejected the payment {method}. Nothing is paid.",
     "proposal.rejected_plain": "You rejected the payment. Nothing is paid.",
     "proposal.cosigned": "The first of two signatures is in. A second person must sign too.",

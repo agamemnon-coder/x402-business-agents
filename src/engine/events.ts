@@ -163,6 +163,9 @@ const EVENTS: Record<string, Pick> = {
     early: p.early === true ? true : undefined,
     enforced: p.plan_stands === true ? masked(`${firstSentence(p.plan_stands_why, 110) ?? "off the plan"}; code's own plan goes to the CFO's Face ID`, 200) : firstSentence(p.why, 160),
   }),
+  // 21 Nov: a payment within the limit to pay alone that went to the CFO instead (src/ap/pay.ts payAlone): who did not
+  // say pay (code, checker, payer, cash, limit) and why, masked, so a page and a recorded walk can say it.
+  "ap.alone_declined": (p) => ({ by: typeof p.by === "string" ? p.by : undefined, why: masked(p.why, 240) }),
   // The passkey (src/passkey).
   "passkey.enrolment_opened": NONE,
   "passkey.pending": NONE,
