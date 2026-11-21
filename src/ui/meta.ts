@@ -17,14 +17,16 @@ export { SITE_URL };
  * line large, one small line and the payment's path to Face ID; since 14 Nov "Built on" and the official Airwallex logo.
  * The file name carries the version (OG_FILE, served by the Worker beside the old /assets/og.png): a new name is a new
  * address, so LinkedIn, Slack and the rest fetch the new image instead of the one they cached. No square version.
+ * 21 Nov (Max: "the preview banner looks dated"): the new design, dark with the site's purple particle wave, "Payment
+ * operations for AI agents.", the Built on Airwallex badge on a white pill and a quiet "Test money only"; og-1121.png.
  */
-export const OG_FILE = "og-1114.png";
+export const OG_FILE = "og-1121.png";
 export const OG_IMAGE = `${SITE_URL}/assets/${OG_FILE}`;
 export const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
 /** Every page's preview says the same (the owner, 13 Nov: a long, page-by-page description looked messy in a chat). */
 export const OG_TITLE = `Purser · ${HERO} Built on Airwallex.`;
 export const OG_DESCRIPTION = "Your AI agents pay suppliers; above their limit, each payment needs your Face ID. Built on Airwallex.";
-export const OG_ALT = `Purser. ${HERO} Every payment above its limit waits for your Face ID or a passkey. Built on Airwallex.`;
+export const OG_ALT = "Purser. Payment operations for AI agents. Agents pay suppliers within your rules. The CFO signs with Face ID. Built on Airwallex. Test money only.";
 /** The one tagline (Q8): the film's line and Home's heading. */
 export const TAGLINE_LINE = HERO;
 /** What a page says about itself when it says nothing of its own. */

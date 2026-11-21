@@ -25,7 +25,7 @@ One badge, "Built on" and the official Airwallex logo (`src/ui/logos/airwallex.p
 in the console's footer (on a phone, signed out: in the console's app bar; on /try's start: over the band's empty
 top, so the first screen keeps its card). A white pill in both themes (the file is a dark wordmark with no light version), the logo
 14 px high, below Purser's 30 px mark. The link preview (`built-on-airwallex-og.png`, the same file as
-`../social-preview.png` and `src/ui/brand/og.png`, served as `/assets/og-1114.png`) says it too. "Built on" only: no
+`../social-preview.png` and `src/ui/brand/og.png`, served as `/assets/og-1121.png` since 21 Nov, the new design with the badge on a white pill) says it too. "Built on" only: no
 partnership or endorsement implied. Screenshots, rendered locally before the deploy:
 
 | File | What |

@@ -14,7 +14,7 @@
 // (src/cli/visuals.ts writes a light and a dark file of each); on the site the SVG takes the page's tokens and its
 // class rules go into the page's one stylesheet (VISUAL_CSS), so the pages keep their hash-based CSP.
 
-import { esc, icon } from "../redesign/ui.js";
+import { esc } from "../redesign/ui.js";
 import { paletteCss, type Theme } from "./tokens.js";
 import type { RailRefusal } from "./facts.js";
 
@@ -322,89 +322,108 @@ export function refusalsSvg(items: RailRefusal[], href: (path: string) => string
 
 export const SOCIAL_SIZE = { width: 1200, height: 630 } as const;
 export const SOCIAL_SENTENCE = "AI agents spend company money only within limits the CFO signs with Face ID.";
-/** The one line on the link preview (the owner, 13 Nov: the mark, the name and this line, nothing else). */
-export const SOCIAL_LINE = "AI agents spend. You sign off.";
+/** The one line on the link preview (21 Nov, Max: "the banner looks dated"; the new direction's line). */
+export const SOCIAL_LINE = ["Payment operations", "for AI agents."] as const;
 /** Purser's mark (a feather, the favicon's), as 24-unit paths. */
 const MARK_PATHS = ["M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z", "M16 8 2 22", "M17.5 15H9"];
 
-/** The small line under it: what the line means, as docs/security.md says it ("nothing above the limits is paid"). */
-export const SOCIAL_SUB = ["Every payment above its limit", "waits for your Face ID or a passkey."] as const;
+/** The small line under it: what Purser does, as docs/security.md says it ("nothing above the limits is paid"). */
+export const SOCIAL_SUB = ["Agents pay suppliers within your rules.", "The CFO signs with Face ID."] as const;
+/** The quiet tag, top right: everything Purser runs is test money. */
+export const SOCIAL_TEST = "Test money only";
 /**
  * "Built on" and the official Airwallex logo (the owner, 14 Nov: the product is built on Airwallex, and the link preview
- * should say so). The file is src/ui/logos/airwallex.png, unaltered, drawn at `h` px high (its own proportions, 2435 ×
- * 334), lower than Purser's 60 px mark. The other partners are on the site's "Works with" line, not on the card.
+ * should say so). Since 21 Nov the badge is the site header's: a white pill with "Built on" and the file
+ * src/ui/logos/airwallex-306x42.png, unaltered (never recoloured), drawn `height` px high in its own proportions
+ * (306 × 42), lower than Purser's 64 px mark. The other partners are on the site's "Works with" line, not on the card.
  */
-export const SOCIAL_BUILT_ON = { x: 72, y: 528, label: "Built on", logo: "src/ui/logos/airwallex.png", w: 2435, h: 334, height: 34 } as const;
+export const SOCIAL_BUILT_ON = { x: 72, y: 526, label: "Built on", logo: "src/ui/logos/airwallex-306x42.png", w: 306, h: 42, height: 28 } as const;
+
+/** A small deterministic random (the wave's particles are the same on every build, so the file is reproducible). */
+function rng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 /**
- * The link preview and the repository's social preview (the owner, 13 Nov: readable at thumbnail size). 1200×630, on
- * the site's light tokens and in its type: the mark and the name, the one line large in two lines, one small line, and
- * on the right a small version of the payment's path (the agent asks, the payment is above its limit, Face ID, then
- * paid or never paid), drawn with the site's own icons, and the "Built with" line in words.
+ * The site's purple particle wave (src/ui/wave.ts draws it live on a canvas), as dots: two twisting ribbons of particles
+ * rising to the right, brightest where a ribbon turns edge-on, faint behind the words on the left.
+ */
+function socialWave(W: number): string {
+  const r = rng(1121), dots: string[] = [];
+  const ribbon = (lines: number, base: (x: number) => number, spread: number, twist: number, phase: number, gain: number) => {
+    for (let k = 0; k < lines; k++) {
+      const u = k / (lines - 1) - 0.5;
+      for (let x = -4 + ((k * 3.7) % 9); x <= W + 4; x += 9) {
+        const tw = Math.cos(x * twist + phase);
+        const y = base(x) + u * spread * tw;
+        const edge = 1 - Math.abs(tw); // edge-on: the lines crowd, the ribbon glows
+        const fade = 0.1 + 0.9 * smooth(500, 960, x);
+        const a = Math.min(1, gain * fade * (0.28 + 0.72 * edge) * (0.75 + 0.5 * r()));
+        if (a < 0.05) continue;
+        const rad = (0.7 + 1.3 * edge * r() + 0.35 * fade).toFixed(2);
+        const col = edge > 0.82 && r() > 0.55 ? "#f3efff" : k % 3 === 0 ? "#c4b5fd" : k % 3 === 1 ? "#a78bfa" : "#8b5cf6";
+        dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad}" fill="${col}" opacity="${a.toFixed(2)}"/>`);
+      }
+    }
+  };
+  ribbon(20, (x) => 600 - 0.22 * x + 40 * Math.sin(x * 0.0062 + 0.4), 170, 0.0056, 0.9, 1.25);
+  ribbon(11, (x) => 680 - 0.27 * x + 30 * Math.sin(x * 0.008 + 2.1), 90, 0.0074, 2.6, 0.8);
+  // A few loose particles above the ribbons, as on the site.
+  for (let i = 0; i < 70; i++) {
+    const x = 640 + r() * 560, y = 40 + r() * 420, a = 0.12 + 0.45 * r() * smooth(640, 1100, x);
+    dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(0.6 + r() * 1.1).toFixed(2)}" fill="#ddd6fe" opacity="${a.toFixed(2)}"/>`);
+  }
+  return `<g class="s-wave">${dots.join("")}</g>`;
+}
+
+/**
+ * The link preview and the repository's social preview (21 Nov, Max: "the preview banner looks dated"; readable at
+ * thumbnail size). 1200×630 in the new design: near-black navy with the site's purple particle wave, the mark and the
+ * name, the line large in two lines, one small line, the "Built on Airwallex" badge on a white pill and a quiet
+ * "Test money only" tag.
  */
 export function socialSvg(_site?: string, logo?: string): string {
   const { width: W, height: H } = SOCIAL_SIZE;
-  // "Built on" in words, then the logo file as an <image> (a data: URI of the file's own bytes), its baseline-centred box.
+  // The badge: a white pill, "Built on" in words, then the logo file as an <image> (a data: URI of the file's own bytes).
   const builtOn = (href: string) => {
-    const b = SOCIAL_BUILT_ON, lw = Math.round((b.height * b.w) / b.h);
-    return `<text class="s-bw" x="${b.x}" y="${b.y + 9}">${esc(b.label)}</text><image href="${href}" x="${b.x + 104}" y="${b.y - b.height / 2 - 2}" width="${lw}" height="${b.height}" preserveAspectRatio="xMidYMid meet"><title>Airwallex</title></image>`;
+    const b = SOCIAL_BUILT_ON, lw = Math.round((b.height * b.w) / b.h), ph = 58, tx = b.x + 26, lx = tx + 96, pw = lx + lw + 26 - b.x;
+    return `<rect class="s-pill" x="${b.x}" y="${b.y}" width="${pw}" height="${ph}" rx="${ph / 2}"/><text class="s-bw" x="${tx}" y="${b.y + ph / 2 + 7}">${esc(b.label)}</text><image href="${href}" x="${lx}" y="${b.y + (ph - b.height) / 2}" width="${lw}" height="${b.height}" preserveAspectRatio="xMidYMid meet"><title>Airwallex</title></image>`;
   };
-  const ic = (name: string, x: number, y: number, size: number, cls: string) => `<g class="${cls}">${icon(name, size).replace('<svg class="i"', `<svg class="i" x="${x}" y="${y}"`)}</g>`;
-  // The path, right: a card with three steps and two endings.
-  const cx = 756, cy = 64, cw = 372, ch = 502, nx = cx + 28, nw = cw - 56, nh = 74;
-  const step = (y: number, name: string, label: string, sub: string, hot = false) => [
-    `<rect class="${hot ? "s-node s-hot" : "s-node"}" x="${nx}" y="${y}" width="${nw}" height="${nh}" rx="18"/>`,
-    `<rect class="${hot ? "s-ic s-ic-hot" : "s-ic"}" x="${nx + 16}" y="${y + 16}" width="42" height="42" rx="12"/>`,
-    ic(name, nx + 25, y + 25, 24, hot ? "s-g-hot" : "s-g"),
-    text(nx + 74, y + 33, [label], "s-n", 0),
-    text(nx + 74, y + 58, [sub], "s-ns", 0),
-  ].join("");
-  const ys = [cy + 30, cy + 30 + nh + 34, cy + 30 + 2 * (nh + 34)];
-  const link = (y: number) => `<path class="s-link" d="M${nx + 37} ${y + nh + 4} L${nx + 37} ${y + nh + 30}"/>`;
-  const ey = ys[2]! + nh + 34, ew = (nw - 14) / 2, eh = 110;
-  const ending = (x: number, ok: boolean) => [
-    `<rect class="${ok ? "s-ok" : "s-bad"}" x="${x}" y="${ey}" width="${ew}" height="${eh}" rx="18"/>`,
-    ic(ok ? "circle-check" : "octagon-x", x + 16, ey + 14, 26, ok ? "s-g-ok" : "s-g-bad"),
-    text(x + 16, ey + 68, [ok ? "Signed" : "Not signed"], ok ? "s-e s-e-ok" : "s-e s-e-bad", 0),
-    text(x + 16, ey + 94, [ok ? "Paid" : "Never paid"], "s-es", 0),
-  ].join("");
-  // Face ID's two endings: down into "Signed", and across, then down into "Not signed".
-  const midY = ys[2]! + nh + 17, right = nx + ew + 14 + 37;
-  const fork = `<path class="s-link" d="M${nx + 37} ${ys[2]! + nh + 4} L${nx + 37} ${ey - 4}"/><path class="s-link" d="M${nx + 37} ${midY} L${right} ${midY} L${right} ${ey - 4}"/>`;
+  const tagW = 196, tagX = W - 72 - tagW;
   const out = [
     `<rect class="s-bg" x="0" y="0" width="${W}" height="${H}"/>`,
     `<rect class="s-glow" x="0" y="0" width="${W}" height="${H}"/>`,
-    `<rect class="s-mark" x="72" y="64" width="60" height="60" rx="16"/>`,
-    `<g class="s-feather" transform="translate(84 76) scale(1.5)">${MARK_PATHS.map((d) => `<path d="${d}"/>`).join("")}</g>`,
-    text(150, 106, ["Purser"], "s-name", 0),
-    text(72, 268, ["AI agents spend."], "s-line", 0),
-    text(72, 358, ["You sign off."], "s-line s-line2", 0),
-    text(72, 428, [...SOCIAL_SUB], "s-sub", 40),
+    `<rect class="s-glow2" x="0" y="0" width="${W}" height="${H}"/>`,
+    socialWave(W),
+    `<rect class="s-veil" x="0" y="0" width="${W}" height="${H}"/>`,
+    `<rect class="s-mark" x="72" y="64" width="64" height="64" rx="17"/>`,
+    `<g class="s-feather" transform="translate(83 75) scale(1.75)">${MARK_PATHS.map((d) => `<path d="${d}"/>`).join("")}</g>`,
+    text(156, 111, ["Purser"], "s-name", 0),
+    `<rect class="s-tag" x="${tagX}" y="76" width="${tagW}" height="40" rx="20"/>`,
+    `<circle class="s-tagdot" cx="${tagX + 24}" cy="96" r="5"/>`,
+    text(tagX + 40, 102, [SOCIAL_TEST], "s-tagt", 0),
+    text(72, 282, [SOCIAL_LINE[0]], "s-line", 0),
+    text(72, 370, [SOCIAL_LINE[1]], "s-line s-line2", 0),
+    text(72, 434, [...SOCIAL_SUB], "s-sub", 42),
     ...(logo ? [builtOn(logo)] : []),
-    `<rect class="s-card" x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="28"/>`,
-    link(ys[0]!), link(ys[1]!), fork,
-    step(ys[0]!, "bot", "The agent asks to pay", "by card or by transfer"),
-    step(ys[1]!, "sliders-horizontal", "Above its limit", "checked by code"),
-    step(ys[2]!, "scan-face", "Face ID or a passkey", "you sign the exact terms", true),
-    ending(nx, true), ending(nx + ew + 14, false),
   ];
-  const css = `.pv .s-bg { fill: #f7f8fa; } .pv .s-glow { fill: url(#s-grad); }
-.pv .s-mark { fill: #0b1220; }
-.pv .s-feather path { fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.pv .s-name { font-size: 38px; font-weight: 760; letter-spacing: -.025em; fill: #0b1220; }
-.pv .s-line { font-size: 80px; font-weight: 800; letter-spacing: -.04em; fill: #0b1220; } .pv .s-line2 { fill: #4f46e5; }
-.pv .s-sub { font-size: 31px; font-weight: 520; letter-spacing: -.01em; fill: #3b4456; }
-.pv .s-bw { font-size: 26px; font-weight: 600; letter-spacing: -.01em; fill: #3b4456; }
-.pv .s-card { fill: #ffffff; stroke: #e3e6ec; stroke-width: 1.5; filter: drop-shadow(0 18px 40px rgba(16, 24, 40, .10)); }
-.pv .s-node { fill: #f1f3f7; } .pv .s-hot { fill: #eef0ff; stroke: #4f46e5; stroke-width: 2.5; }
-.pv .s-ic { fill: #ffffff; } .pv .s-ic-hot { fill: #4f46e5; }
-.pv .s-g { color: #4f46e5; } .pv .s-g-hot { color: #ffffff; } .pv .s-g-ok { color: #0b7d43; } .pv .s-g-bad { color: #c5363c; }
-.pv .s-n { font-size: 21px; font-weight: 700; letter-spacing: -.01em; fill: #0b1220; } .pv .s-ns { font-size: 17px; font-weight: 500; fill: #586174; }
-.pv .s-link { fill: none; stroke: #c9cfda; stroke-width: 3; stroke-linecap: round; }
-.pv .s-ok { fill: #e6f6ee; stroke: #0b7d43; stroke-width: 2; } .pv .s-bad { fill: #fdecec; stroke: #c5363c; stroke-width: 2; }
-.pv .s-e { font-size: 21px; font-weight: 750; } .pv .s-e-ok { fill: #0b7d43; } .pv .s-e-bad { fill: #c5363c; }
-.pv .s-es { font-size: 17px; font-weight: 600; fill: #0b1220; }`;
-  const grad = `<defs><radialGradient id="s-grad" cx="88%" cy="18%" r="75%"><stop offset="0" stop-color="#e4e7ff" stop-opacity=".9"/><stop offset="1" stop-color="#f7f8fa" stop-opacity="0"/></radialGradient></defs>`;
-  return svg({ w: W, h: H, id: "social", title: "Purser", desc: `Purser. ${SOCIAL_LINE} ${SOCIAL_SUB.join(" ")}${logo ? " Built on Airwallex." : ""}`, body: `${grad}
-${out.join("\n")}`, standalone: "light" }).replace("</style>", `\n${css}</style>`);
+  const css = `.pv .s-bg { fill: url(#s-bgg); } .pv .s-glow { fill: url(#s-grad); } .pv .s-glow2 { fill: url(#s-grad2); } .pv .s-veil { fill: url(#s-veil); }
+.pv .s-mark { fill: #ffffff; }
+.pv .s-feather path { fill: none; stroke: #0b0a14; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+.pv .s-name { font-size: 40px; font-weight: 760; letter-spacing: -.025em; fill: #ffffff; }
+.pv .s-line { font-size: 84px; font-weight: 800; letter-spacing: -.042em; fill: #ffffff; } .pv .s-line2 { fill: #b9a9ff; }
+.pv .s-sub { font-size: 31px; font-weight: 500; letter-spacing: -.012em; fill: #c3c6d8; }
+.pv .s-pill { fill: #ffffff; }
+.pv .s-bw { font-size: 21px; font-weight: 650; letter-spacing: -.01em; fill: #14121f; }
+.pv .s-tag { fill: rgba(255, 255, 255, .05); stroke: rgba(255, 255, 255, .2); stroke-width: 1.5; }
+.pv .s-tagdot { fill: #fbbf24; }
+.pv .s-tagt { font-size: 18px; font-weight: 600; letter-spacing: -.005em; fill: #b4b8cc; }`;
+  const grad = `<defs><linearGradient id="s-bgg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b0a1a"/><stop offset=".55" stop-color="#08070f"/><stop offset="1" stop-color="#0d0a22"/></linearGradient>`
+    + `<radialGradient id="s-grad" cx="82%" cy="78%" r="62%"><stop offset="0" stop-color="#6d4aff" stop-opacity=".42"/><stop offset=".55" stop-color="#4c1d95" stop-opacity=".16"/><stop offset="1" stop-color="#08070f" stop-opacity="0"/></radialGradient>`
+    + `<radialGradient id="s-grad2" cx="8%" cy="0%" r="55%"><stop offset="0" stop-color="#3b2f8f" stop-opacity=".35"/><stop offset="1" stop-color="#08070f" stop-opacity="0"/></radialGradient>`
+    + `<linearGradient id="s-veil" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#08070f" stop-opacity=".55"/><stop offset=".5" stop-color="#08070f" stop-opacity=".12"/><stop offset=".72" stop-color="#08070f" stop-opacity="0"/></linearGradient></defs>`;
+  return svg({ w: W, h: H, id: "social", title: "Purser", desc: `Purser. ${SOCIAL_LINE.join(" ")} ${SOCIAL_SUB.join(" ")}${logo ? " Built on Airwallex." : ""} ${SOCIAL_TEST}.`, body: `${grad}
+${out.join("\n")}`, standalone: "dark" }).replace("</style>", `\n${css}</style>`);
 }
