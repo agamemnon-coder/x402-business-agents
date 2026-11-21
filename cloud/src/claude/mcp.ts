@@ -463,12 +463,6 @@ const PROPOSE_TOOLS: Tool[] = [
   },
 ];
 
-/** The tools Code Mode (/mcp/codemode, ./codemode.ts) turns into its typed API: the read tools only, for every token.
- *  Proposing is never offered there, not even to a token made to propose. */
-export function codeModeTools(): readonly Tool[] {
-  return READ_TOOLS.filter((t) => t.readOnly);
-}
-
 /** The tools this caller's token gives: reading always; proposing only with a token made to propose, never in the demo. */
 export function toolsFor(caller: Caller): Tool[] {
   return caller.purpose === "claude-propose" ? [...READ_TOOLS, ...PROPOSE_TOOLS] : READ_TOOLS;

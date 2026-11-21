@@ -4788,29 +4788,6 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
-  "/mcp/codemode":
-    post:
-      operationId: postMcpCodemode
-      tags:
-        - Site
-      summary: "Purser's read tools in Code Mode (docs/codemode.md): two tools, search giving the typed TypeScript API generated from the read tools and execute running the model's code against it in a fresh Cloudflare Dynamic Worker (no network, no secrets, this company's books only, read only, limited). Never proposes, approves or pays. A Claude connector token (or an access token from /oauth/token) as Authorization: Bearer; not the demo company's public token."
-      security:
-        - bearer:
-            - read
-      x-purser-needs: read
-      responses:
-        "200":
-          description: OK
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "429":
-          $ref: "#/components/responses/RateLimited"
   "/connect-ai":
     get:
       operationId: getConnectAi

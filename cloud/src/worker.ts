@@ -27,7 +27,6 @@ import { resendEmail, type AlertProviders } from "./alerts.js";
 import { forRequest } from "./hostOrigin.js";
 import type { AwxReadBinding } from "./awxLive.js";
 import type { AwxReadPort } from "./claude/awxCodemode.js";
-import { workerLoaderExecutor, type CodeLoader } from "./claude/codemode.js";
 import type { CardsPort } from "./agentCards.js";
 import { passConfigFrom } from "./walletPass.js";
 
@@ -138,11 +137,6 @@ export interface Bindings {
   AWX_CARDS?: CardsPort;
   /** kit11's Airwallex gateway (AwxGateway entrypoint, a service binding): /mcp/airwallex reads the sandbox through it (GET only). */
   AWX_GATEWAY?: AwxReadPort;
-  /**
-   * The Worker Loader binding (Cloudflare Dynamic Workers, worker_loaders in wrangler): Code Mode at /mcp/codemode runs
-   * each piece of model-written code in a fresh isolate from it (cloud/src/claude/codemode.ts). Unbound: no code runs.
-   */
-  LOADER?: CodeLoader;
 }
 
 /** What approval alerts are sent with: Twilio for WhatsApp and Resend for e-mail, each only when all its settings are there. */
@@ -198,7 +192,7 @@ function envOf(b: Bindings): CloudEnv {
     // caps decide at run time. The secrets are handed over only so no answer can ever contain them.
     ...(b.ENGINE_CLAUDE === "on" && b.KIT11_ANTHROPIC_API_KEY ? { askModel: claudeAskModel(b.KIT11_ANTHROPIC_API_KEY) } : {}),
     askSecrets: [b.SESSION_SECRET, ...(b.KIT11_ANTHROPIC_API_KEY ? [b.KIT11_ANTHROPIC_API_KEY] : [])],
-    edge: { stats: b.STATS !== "off" }, production: true, ...(b.APPROVAL_KEY_COOLING_HOURS && /^\d{1,4}$/.test(b.APPROVAL_KEY_COOLING_HOURS) ? { approvalKeyCoolingHours: Number(b.APPROVAL_KEY_COOLING_HOURS) } : {}), ...(connect ? { connect } : {}), ...(oidc ? { oidc } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}), ...(b.AWX_GATEWAY ? { awxGateway: b.AWX_GATEWAY } : {}), ...(b.LOADER ? { codemode: workerLoaderExecutor(b.LOADER) } : {}) };
+    edge: { stats: b.STATS !== "off" }, production: true, ...(b.APPROVAL_KEY_COOLING_HOURS && /^\d{1,4}$/.test(b.APPROVAL_KEY_COOLING_HOURS) ? { approvalKeyCoolingHours: Number(b.APPROVAL_KEY_COOLING_HOURS) } : {}), ...(connect ? { connect } : {}), ...(oidc ? { oidc } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}), ...(b.AWX_GATEWAY ? { awxGateway: b.AWX_GATEWAY } : {}) };
 }
 
 export default {
