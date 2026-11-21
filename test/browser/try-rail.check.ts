@@ -88,7 +88,7 @@ function sideChecks(g: Geo, tag: string) {
 function moduleChecks(g: Geo, tag: string) {
   // 19 Nov 2026 (live review): this cloud has no model key, so Purser's code reads and decides; the rail names the roles
   // ("Reader", "Checker", "Payer") and says code did the work in this run, never "Reader agent: Claude reads the PDF".
-  for (const w of ["Live engine", "Claude", "Reader", "Checker", "Payer", "Under the hood", "Airwallex", "Alta", "Visa Intelligent Commerce"]) ok(g.text.includes(w), `${tag}: the rail shows "${w}"`);
+  for (const w of ["Live engine", "Claude", "Reader", "Checker", "Payer", "Under the hood", "Airwallex", "Alta", "Visa Intelligent Commerce"]) ok(g.text.toLowerCase().includes(w.toLowerCase()), `${tag}: the rail shows "${w}"`); // its headings are upper case
   ok(!/Claude reads the PDF/.test(g.text), `${tag}: the rail does not say Claude reads the PDF (code read it in this run)`);
   ok(g.visa && /rgb\(255, 255, 255\)/.test(g.visa.bg), `${tag}: Visa Intelligent Commerce in a white pill (${g.visa?.bg})`);
 }
@@ -214,7 +214,8 @@ function moduleChecks(g: Geo, tag: string) {
   const g = await geo(page);
   const body = await page.evaluate(() => document.body.innerText);
   ok(!/\d+ calls? this run/.test(g.text) && !/\d+ calls?\b/.test(g.text.split("\n").slice(0, 3).join(" ")), `capped 1280: the rail counts no Claude call (${g.text.replace(/\s+/g, " ").slice(0, 120)})`);
-  ok(/Not asked in this run/.test(g.text), "capped 1280: the rail says Claude was not asked in this run");
+  // 21 Nov 2026 (Max): a strength, never an absence: Purser's code read it, its rules decide.
+  ok(/Purser’s code read the invoice in this run/.test(g.text) && /Purser's rules · no AI needed/.test(g.text) && !/no Claude call|Not asked/i.test(g.text), "capped 1280: the rail says Purser's code read it and its rules decide, no \"no Claude call\"");
   ok(!/Haiku/.test(g.text), "capped 1280: no agent run that never reached Claude is listed as a Haiku call");
   ok(/what Purser’s code read/.test(g.text) && !/what Claude read/.test(g.text), "capped 1280: the code window says what Purser's code read");
   ok(!/Claude reads the PDF/.test(g.text), "capped 1280: the agents module does not say Claude reads the PDF");
@@ -258,7 +259,7 @@ function moduleChecks(g: Geo, tag: string) {
   await page.getByRole("button", { name: /Send to CFO for approval/ }).waitFor({ timeout: 60_000 });
   await page.waitForTimeout(1200);
   const g = await geo(page);
-  ok(/1 call this run/.test(g.text) && /Reader agent/.test(g.text) && /Claude reads the PDF/.test(g.text), `live 1280: one Claude call counted and the live words kept (${g.text.replace(/\s+/g, " ").slice(0, 120)})`);
+  ok(/1 Claude call this run/.test(g.text) && /Reader agent/.test(g.text) && /Claude reads the PDF/.test(g.text), `live 1280: one Claude call counted and the live words kept (${g.text.replace(/\s+/g, " ").slice(0, 120)})`);
   ok(await page.locator(".pv-paused").count() === 0, "live 1280: no \"paused\" notice when Claude read the invoice");
   ok(/The AI agent read the invoice and checked it\./.test(await page.evaluate(() => document.body.innerText)), "live 1280: the step's line says the AI agent read it");
   await page.screenshot({ path: join(shots, "live-1280-work.png") });

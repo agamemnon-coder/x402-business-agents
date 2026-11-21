@@ -797,11 +797,12 @@ function pollStart(onEvents,onSlow){P.on=true;P.inflight=true;P.final=false;P.re
 function pollDone(){P.inflight=false;P.final=true;if(P.on&&!P.busy&&!P.waiting)pollLater(1000)}
 function pollStop(){P.on=false;P.waiting=false;clearTimeout(pollTimer);pollTimer=null}
 // 15 Nov (owner: "cost per invoice"): what Claude cost for this invoice, measured: the engine's own events for its calls
-// (claude.read, agent.run: cost_usd_micros and the model) while this invoice is filed and approved. Never estimated: no
+// (claude.read, agent.run, and a billed claude.fallback since 21 Nov: cost_usd_micros and the model) while this invoice
+// is filed and approved. Never estimated: no
 // event with a cost, no figure.
 const modelName=(m)=>{const mm=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2})(?!\d))?/.exec(typeof m==='string'?m:'');return mm?'Claude '+mm[1][0].toUpperCase()+mm[1].slice(1)+' '+mm[2]+(mm[3]?'.'+mm[3]:''):''};
 function costSeen(items){if(!S.cost||typeof S.cost!=='object')return;let moved=false;
-  for(const e of items){const f=e&&e.fields;if(!f||(e.event!=='claude.read'&&e.event!=='agent.run'))continue;const c=Number(f.cost_usd_micros);if(!(isFinite(c)&&c>0))continue;
+  for(const e of items){const f=e&&e.fields;if(!f||(e.event!=='claude.read'&&e.event!=='agent.run'&&e.event!=='claude.fallback'))continue;const c=Number(f.cost_usd_micros);if(!(isFinite(c)&&c>0))continue;
     S.cost.micros=(Number(S.cost.micros)||0)+c;const n=modelName(f.model);if(n&&S.cost.models.indexOf(n)<0)S.cost.models.push(n);moved=true}
   if(moved)save()}
 async function pollTick(){

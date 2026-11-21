@@ -69,7 +69,14 @@ function requestIdSeen(): { middleware: Middleware[]; id: (res: unknown) => stri
 }
 
 /** The roles as a page names them: the reader classifies, reads, or writes the review note. */
-const ROLE_WORD: Record<Role, string> = { classify: "classify", act: "read", review: "review" };
+/** What an answered call was billed: its model, request id, token usage and cost at list price (null: no known price). */
+interface Billed { answered_by: string; request_id: string | null; usage: { input: number; output: number; cache_read: number; cache_write: number }; cost_usd_micros: number | null }
+function billedOf(res: { model: string; usage: { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null } }, requestId: string | null): Billed {
+  const usage = { input: res.usage.input_tokens, output: res.usage.output_tokens, cache_read: res.usage.cache_read_input_tokens ?? 0, cache_write: res.usage.cache_creation_input_tokens ?? 0 };
+  return { answered_by: res.model, request_id: requestId, usage, cost_usd_micros: callCostMicros(res.model, usage) };
+}
+
+const ROLE_WORD: Record<Role, string> ={ classify: "classify", act: "read", review: "review" };
 
 export class ClaudeReader {
   /** `models` swaps the model for a role; the model benchmark (src/evals/bench.ts) and the demo's engine (cloud/src/engine/claudeAccess.ts, Haiku for speed) pass one. */
@@ -107,9 +114,11 @@ export class ClaudeReader {
   ): Promise<Read<z.infer<S>>> {
     const model = this.models[a.role] ?? MODELS[a.role];
     const inputSha = sha256Hex(a.document);
-    const useFallback = (note: string): Read<z.infer<S>> => {
+    // 21 Nov 2026: a call Claude answered whose answer was not used (a refusal, no reading, the wrong shape) is billed
+    // all the same: its request id, usage and cost go in the fallback's row, so the /try meter counts it.
+    const useFallback = (note: string, billed?: Billed): Read<z.infer<S>> => {
       const value = fallback();
-      audit(this.db, a.actor, "claude.fallback", a.task, { model, input_sha256: inputSha, note, output: value as never });
+      audit(this.db, a.actor, "claude.fallback", a.task, { model, input_sha256: inputSha, note, output: value as never, ...(billed ?? {}) });
       return { value, source: "fallback", model: null, note };
     };
     if (!this.client) return useFallback("no KIT11_ANTHROPIC_API_KEY");
@@ -135,11 +144,13 @@ export class ClaudeReader {
       }, { middleware: rid.middleware });
       const latencyMs = this.clock() - started;
       const requestId = rid.id(res);
-      if (res.stop_reason === "refusal") return useFallback(`refused (${res.stop_details?.category ?? "no category"})`);
-      if (res.parsed_output == null) return useFallback(`no parsed output (stop_reason ${res.stop_reason})`);
+      const billed = billedOf(res, requestId);
+      const unused = (note: string) => { this.opts.budget?.spend(billed.cost_usd_micros ?? go.worst); return useFallback(note, billed); };
+      if (res.stop_reason === "refusal") return unused(`refused (${res.stop_details?.category ?? "no category"})`);
+      if (res.parsed_output == null) return unused(`no parsed output (stop_reason ${res.stop_reason})`);
       // Checked again here, not only by the SDK: a reading of the wrong shape is never used.
       const fits = a.schema.safeParse(res.parsed_output);
-      if (!fits.success) return useFallback(`the reading does not fit its schema (${fits.error.issues[0]?.path.join(".") || "root"})`);
+      if (!fits.success) return unused(`the reading does not fit its schema (${fits.error.issues[0]?.path.join(".") || "root"})`);
       const usage = {
         input: res.usage.input_tokens, output: res.usage.output_tokens,
         cache_read: res.usage.cache_read_input_tokens ?? 0, cache_write: res.usage.cache_creation_input_tokens ?? 0,
@@ -170,9 +181,11 @@ export class ClaudeReader {
   ): Promise<Read<z.infer<S>>> {
     const model = this.models[a.role] ?? MODELS[a.role];
     const inputSha = sha256Hex(Buffer.from(a.pdf).toString("base64"));
-    const useFallback = (note: string): Read<z.infer<S>> => {
+    // 21 Nov 2026: a call Claude answered whose answer was not used (a refusal, no reading, the wrong shape) is billed
+    // all the same: its request id, usage and cost go in the fallback's row, so the /try meter counts it.
+    const useFallback = (note: string, billed?: Billed): Read<z.infer<S>> => {
       const value = fallback();
-      audit(this.db, a.actor, "claude.fallback", a.task, { model, input_sha256: inputSha, note, output: value as never });
+      audit(this.db, a.actor, "claude.fallback", a.task, { model, input_sha256: inputSha, note, output: value as never, ...(billed ?? {}) });
       return { value, source: "fallback", model: null, note };
     };
     if (!this.client) return useFallback("no KIT11_ANTHROPIC_API_KEY");
@@ -201,10 +214,12 @@ export class ClaudeReader {
       }, { middleware: rid.middleware });
       const latencyMs = this.clock() - started;
       const requestId = rid.id(res);
-      if (res.stop_reason === "refusal") return useFallback(`refused (${res.stop_details?.category ?? "no category"})`);
-      if (res.parsed_output == null) return useFallback(`no parsed output (stop_reason ${res.stop_reason})`);
+      const billed = billedOf(res, requestId);
+      const unused = (note: string) => { this.opts.budget?.spend(billed.cost_usd_micros ?? go.worst); return useFallback(note, billed); };
+      if (res.stop_reason === "refusal") return unused(`refused (${res.stop_details?.category ?? "no category"})`);
+      if (res.parsed_output == null) return unused(`no parsed output (stop_reason ${res.stop_reason})`);
       const fits = a.schema.safeParse(res.parsed_output);
-      if (!fits.success) return useFallback(`the reading does not fit its schema (${fits.error.issues[0]?.path.join(".") || "root"})`);
+      if (!fits.success) return unused(`the reading does not fit its schema (${fits.error.issues[0]?.path.join(".") || "root"})`);
       const usage = {
         input: res.usage.input_tokens, output: res.usage.output_tokens,
         cache_read: res.usage.cache_read_input_tokens ?? 0, cache_write: res.usage.cache_creation_input_tokens ?? 0,

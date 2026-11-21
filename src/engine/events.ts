@@ -104,7 +104,8 @@ const EVENTS: Record<string, Pick> = {
   "payee.added": copy("currency"),
   // Claude (src/claude): which model, whether its answer or the fallback was used, the request and its cost.
   "claude.read": (p) => ({ source: "claude", model: p.model, request_id: p.request_id, cost_usd_micros: p.cost_usd_micros }),
-  "claude.fallback": (p) => ({ source: "fallback", model: p.model }),
+  // 21 Nov 2026: a call Claude answered but whose answer was not used still cost: its request id and cost, when it had them.
+  "claude.fallback": (p) => ({ source: "fallback", model: p.model, request_id: p.request_id, cost_usd_micros: p.cost_usd_micros }),
   "claude.rejected": copy("model"),
   "document.injection_flagged": NONE,
   // A call on its way: written just before it is sent (by the reader with its role, by an agent with its turn). It says

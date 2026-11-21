@@ -72,7 +72,7 @@ describe("who read the invoice in this run, from the engine's own events (19 Nov
     for (const kind of ["public", "present"] as const) {
       const { script } = presentExtra(kind);
       expect(script).toContain(`const readerOf=${readerOf.toString()};`);
-      expect(script).toContain("INJ.since=INJ.max;INJ.flag=false;EVT.length=0;forgetRead()}}");
+      expect(script).toContain("INJ.since=INJ.max;INJ.flag=false;EVT.length=0;forgetRead();FILED.seq=INJ.max;");
       expect(script).toContain("const forgetRead=()=>{READ.by='';READ.sure=false;READ.why='';keepRead()};");
       // A new test company forgets it too.
       expect(script).toContain("CALLS.clear();keepCalls();forgetRead()");
