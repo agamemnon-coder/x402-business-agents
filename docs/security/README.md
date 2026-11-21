@@ -12,8 +12,8 @@ Every security measure Purser has taken, each with its figure and its committed 
 
 Test money only: the Airwallex sandbox and the Alta (formerly Metal) testnet. Nothing here is a certificate: no auditor
 has tested these controls, and no third-party penetration test has been run ([what is not in place
-yet](../controls.md#not-in-place-summary)). The same list, drawn with the architecture it protects, is on
-[/security](https://kit11.max-31b.workers.dev/security#done); `test/security-page.test.ts` holds the figures here to
+yet](../controls.md#not-in-place-summary)). The same figures, by category and with the architecture they protect, are on
+[/security](https://kit11.max-31b.workers.dev/security#categories); `test/security-page.test.ts` holds the figures here to
 the page, and the page to the records.
 
 ## How a payment is guarded
