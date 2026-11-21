@@ -49,7 +49,7 @@ describe("renewal instructions before a key expires (V2.3.3)", () => {
     expect(await warnExpiringKeys(c.env.sql, c.clock.now)).toBeGreaterThanOrEqual(1);
     ev = await ownerEvents("key.expiring");
     expect(ev.filter((e) => JSON.parse(e.detail_json).key_id === ownersKey).map((e) => JSON.parse(e.detail_json).days_left)).toEqual([14, 3]);
-    expect(JSON.stringify(ev)).not.toContain(t.key.split("_")[2]!);
+    expect(JSON.stringify(ev)).not.toContain(t.key.split("_").slice(2).join("_"));
     // The owners read it in the console's security events.
     const list = await c.req("GET", "/v1/security/events", { key: t.key });
     expect((list.json.items as { kind: string }[]).some((i) => i.kind === "key.expiring")).toBe(true);
