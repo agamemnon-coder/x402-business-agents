@@ -23,6 +23,7 @@ import { browserName, gotoLoaded, launchBrowser } from "./support/browser.js";
 import { proofRuns, TAP_LINK } from "../../src/redesign/proofRuns.js";
 import { startJudge } from "../../src/cli/judge.js";
 import { checkHome } from "./homeStory.js";
+import { TOUR_START_HREF } from "../../src/redesign/tour.js";
 import { CHROME, checkTaps } from "./tapTargets.js";
 import { ICC_RUN_EXTRA_WORDS, iccRecordIn } from "../../src/redesign/iccBlock.js";
 import { METAL_CSP } from "../../src/servers/dashboard.js";
@@ -983,9 +984,12 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/status" && liveAt >= 0) await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status ${tag}: the page's script never finished reading /health`));
       await look(page, `${path} ${tag}`, w);
       const body = await page.locator("main").innerText();
-      const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      // The integrations band's moving copy (21 Nov, src/redesign/integrations.ts) repeats its names for the loop, hidden
+      // from screen readers: not counted, as test/saas-status-docs.test.ts does not count it.
+      const dup = (await page.locator("main .lb-dup").allInnerTexts()).join(" ");
+      const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length - dup.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = path === "/docs" ? 190 /* +5, jury scan 14 Nov: the demo token labelled "Public, read-only demo token (demo company only)"; 14 Nov (Max: less text on /docs): 185, as test/saas-status-docs.test.ts; before: 210 since the review of 12 Nov; +35, 13 Nov: the "Connect your AI" card; +35, jury 13 Nov: Purser Cloud as a guest in it (test/saas-status-docs.test.ts) */ : 90;
+      const budget = path === "/docs" ? 250 /* +60, 21 Nov (Max: "logos of the companies you can integrate with, as a moving band, on the homepage (and on /docs)"; the owner: "briefly on /docs"): the band, its line and one line on Airwallex in ChatGPT, as test/saas-status-docs.test.ts */ /* 190:  +5, jury scan 14 Nov: the demo token labelled "Public, read-only demo token (demo company only)"; 14 Nov (Max: less text on /docs): 185, as test/saas-status-docs.test.ts; before: 210 since the review of 12 Nov; +35, 13 Nov: the "Connect your AI" card; +35, jury 13 Nov: Purser Cloud as a guest in it (test/saas-status-docs.test.ts) */ : 90;
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       // /status left "More" on 12 Nov (src/ui/more.ts): a page not in the menu marks nothing there.
@@ -1089,7 +1093,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // +110, Metal Award 15 Nov: /alta opens with three facts (refused on chain, two passkey owners, the anchor), each with its tx and record, and the main run's count.
       // +17, 15 Nov: /alta says why the Sourcing cap is higher after #24.
       // 340 since 21 Nov (the owner, Max: "That has to go at the top, not so much text."): the block is folded; 720 before.
-      if (words > 340 + 32) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 340 plus the frame`); // frame +4, 20 Nov (the owner): the footer's last line, "Pilot or partnership?" and the address (4 words; 750 as built); // +13, 19 Nov (the owner): the opening facts from the 19 Nov series and anchor (745 as built); +70, 19 Nov (the owner): the "Live on Alta" strip (728 as built); +7, 15 Nov: the /alta cap line (#390), 660 as built in CI
+      if (words > 340 + 33) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 340 plus the frame`); // frame +1, 21 Nov (Max: "simple and tight"): the menu's "Cloud" tab; // frame +4, 20 Nov (the owner): the footer's last line, "Pilot or partnership?" and the address (4 words; 750 as built); // +13, 19 Nov (the owner): the opening facts from the 19 Nov series and anchor (745 as built); +70, 19 Nov (the owner): the "Live on Alta" strip (728 as built); +7, 15 Nov: the /alta cap line (#390), 660 as built in CI
       // 21 Nov (the owner: "not so much text"): the block sits in the fold of the separate runs on Alta; opened as a reader opens it.
       await page.evaluate(() => { const d = document.querySelector("#invoice-token")?.closest("details"); if (d) (d as HTMLDetailsElement).open = true; });
       const block = page.locator("#invoice-token");
@@ -1364,7 +1368,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // them) land on Home, so an old link still opens the site.
     if (judgeBase) {
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
+      // 21 Nov: the hero's primary button starts the judge tour; its second opens the hands-on demo.
+      if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TOUR_START_HREF) fail(`/ (Home, with /try/sign) ${tag}: the first button does not start the judge tour`);
+      if ((await page.locator("main .e-hero a.btn.start").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the Try button does not lead to the hands-on demo`);
       if (await page.locator('a[href="tour"], a[href="pricing"], a[href*="judge"]').count()) fail(`/ (Home, with /try/sign) ${tag}: a link to /tour, /pricing or /judge is back`);
       if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
       await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });

@@ -46,7 +46,7 @@ export const TOUR_STOPS: readonly TourStop[] = [
   { title: "Watch the demo", sub: "3:15, on YouTube", look: "The whole loop in three minutes: agents propose, the CFO signs, the rails enforce.", icon: "play", href: FILM_URL, external: true },
   { title: "Try it", sub: "Your own test company", look: "Approve a payment with a passkey, then change one cent and see the signature break.", icon: "zap", href: TRY_URL, external: true },
   { title: "Purser Cloud", sub: "The console, as a guest", look: "The product a company runs: invoices, agents, approvals and connections, read only.", icon: "layout-dashboard", href: TOUR_CLOUD_URL, external: true },
-  { title: "Agents on Alta", sub: "Mandates on chain", look: "Each agent pays over x402 under its own mandate; over its cap, Alta refuses on chain.", icon: "link-2", href: "alta", key: "metal" },
+  { title: "Agents on Alta", sub: "Mandates on chain", look: "Each agent pays per request under its own mandate; over its cap, Alta refuses on chain.", icon: "link-2", href: "alta", key: "metal" },
   { title: "Cards via Visa", sub: "One credential, one purchase", look: "Visa Intelligent Commerce through Airwallex Airi (sandbox): a reused credential is refused.", icon: "credit-card", href: "visa", key: "visa" },
   { title: "Books on T:0", sub: "A real ledger, read back", look: "The balance sheet, T:0 booking each payment, and the one-cent demo.", icon: "database", href: "books", key: "books" },
   { title: "Proof", sub: "Every run, with its record", look: "Every figure on the site, each one tap from the run record it is read from.", icon: "file-check", href: "proof", key: "proof" },

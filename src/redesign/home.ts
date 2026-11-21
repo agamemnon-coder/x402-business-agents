@@ -289,7 +289,7 @@ export const AI_STEPS: readonly AiStep[] = [
   { key: "books", icon: "database", title: "The books", what: "Booked, read back", tags: ["T:0"] },
 ];
 export function aiFlowHtml(): string {
-  const step = (s: AiStep, i: number) => `<li class="af-n af-${s.key}"><span class="af-i">${icon(s.icon, 20)}</span><b>${esc(s.title)}</b><small>${esc(s.what)}</small>${s.marks ? `<span class="af-m">${s.marks.map((m) => `<img src="assets/${m.file}" alt="${esc(m.name)}" width="24" height="24" decoding="async">`).join("")}<em>+ any</em></span>` : ""}${s.tags ? `<span class="af-t">${s.tags.map((t) => `<i>${esc(t)}</i>`).join("")}</span>` : ""}${i < AI_STEPS.length - 1 ? '<span class="af-c" aria-hidden="true"><span></span></span>' : ""}</li>`;
+  const step = (s: AiStep, i: number) => `<li class="af-n af-${s.key}"><span class="af-i">${icon(s.icon, 20)}</span><b>${esc(s.title)}</b><small>${esc(s.what)}</small>${s.marks ? `<span class="af-m">${s.marks.map((m) => `<img src="assets/${m.file}" alt="${esc(m.name)}" width="24" height="24" decoding="async">`).join("")}<em>+ any</em></span>` : ""}${s.tags ? `<span class="af-t chip">${s.tags.map((t) => `<i>${esc(t)}</i>`).join("")}</span>` : ""}${i < AI_STEPS.length - 1 ? '<span class="af-c" aria-hidden="true"><span></span></span>' : ""}</li>`;
   return `<h2 class="e-h" id="h-ai">${esc(AI_HEAD)}</h2>
   <p class="e-sub">${esc(AI_SUB)}</p>
   <ol class="aflow" aria-label="${esc("From your AI to your books: your AI proposes, Purser holds the limits and you sign above them, the money moves, the books are booked")}">${AI_STEPS.map(step).join("")}</ol>
