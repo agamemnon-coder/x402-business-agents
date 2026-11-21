@@ -12,6 +12,7 @@
 // the canvas is not drawn at all and a still violet gradient stands in. The card's lights are CSS (opacity and
 // transform), still and all lit under reduced motion.
 
+import { readFileSync } from "node:fs";
 import { committedWall, type EvidenceWall } from "./evidenceWall.js";
 import { esc, icon } from "./ui.js";
 
@@ -35,19 +36,42 @@ export function heroStatsHtml(stats: HeroStat[] = heroStats()): string {
   return stats.length ? `<ul class="hstats">${stats.map((s) => `<li data-rec="${esc(s.rec)}"><b>${esc(s.value)}</b><span>${esc(s.words)}</span></li>`).join("")}</ul>` : "";
 }
 
-/** The Workflow card's four steps, in the owner's words. */
+/**
+ * The Workflow card (the owner, 21 Nov: "way more details, more flow"): the four steps in the owner's words, each with
+ * one detail from one recorded /try run on the public deployment, run 1 of docs/runs/2026-11-21-phone-try (an iPhone
+ * profile, a software test passkey, the Airwallex sandbox): the invoice's amount, why it went to the CFO (the run paid
+ * the smaller invoice by itself and asked the CFO to sign this one), the signed terms' SHA-256, the transfer's path at
+ * Airwallex; and, aside, the one-cent change that was refused with nothing paid. No figure is typed in: without the
+ * record the steps stand without details.
+ */
+export const WORKFLOW_RECORD = "docs/runs/2026-11-21-phone-try/summary.json";
 export const WORKFLOW_HEAD = "Workflow";
-export const WORKFLOW_TAG = "Sample flow · sandbox";
+export const WORKFLOW_TAG = "Recorded /try run · sandbox";
 export const WORKFLOW_STEPS: readonly { icon: string; title: string }[] = [
   { icon: "bot", title: "Agent proposes a payment" },
   { icon: "shield-check", title: "Purser checks policy & risk" },
   { icon: "scan-face", title: "CFO authorizes with Face ID" },
   { icon: "landmark", title: "Payment executed via Airwallex" },
 ];
-export function workflowHtml(): string {
-  return `<div class="wf" role="group" aria-labelledby="wf-k">
+interface TryRun { ok?: boolean; airwallex?: { amount: string; approval_sha256: string; path: { status: string }[] }[]; approval?: { approval_sha256: string; equals_transfer_metadata?: boolean }; refusal?: { outcome: string; changed?: string[]; transfers_before?: number; transfers_after?: number } }
+export interface WorkflowFacts { details: [string, string, string, string]; refused: string | null }
+const money = (a: string) => { const m = /^([A-Z]{3}) (\d+)\.(\d{2})$/.exec(a); return m ? `${m[1]} ${Number(m[2]).toLocaleString("en-GB")}.${m[3]}` : a; };
+/** The details as run 1 of the record holds them, or null when any piece is missing. */
+export function workflowFacts(rec: { runs?: TryRun[] } | null = (() => { try { return JSON.parse(readFileSync(new URL(`../../${WORKFLOW_RECORD}`, import.meta.url), "utf8")) as { runs?: TryRun[] }; } catch { return null; } })()): WorkflowFacts | null {
+  const run = rec?.runs?.find((r) => r.ok && r.approval && r.airwallex?.length);
+  const signed = run?.airwallex?.find((t) => t.approval_sha256 === run.approval?.approval_sha256);
+  if (!run || !signed || !run.approval?.equals_transfer_metadata) return null;
+  const path = signed.path.map((p) => p.status);
+  if (path[path.length - 1] !== "PAID") return null;
+  const r = run.refusal;
+  const refused = r?.outcome === "refused" && r.changed?.includes("amount") && r.transfers_before === r.transfers_after ? "One cent changed after signing: refused, nothing paid" : null;
+  return { details: [`An invoice of ${money(signed.amount)}`, "Over the agent's limit: to the CFO", `Test passkey signed the exact terms · sha256 ${signed.approval_sha256.slice(0, 8)}…`, `Airwallex sandbox: ${path.join(" → ")}`], refused };
+}
+export function workflowHtml(f: WorkflowFacts | null = workflowFacts()): string {
+  return `<div class="wf" role="group" aria-labelledby="wf-k"${f ? ` data-rec="${WORKFLOW_RECORD}"` : ""}>
   <div class="wf-head"><p class="wf-k" id="wf-k">${esc(WORKFLOW_HEAD)}</p><span class="wf-tag">${esc(WORKFLOW_TAG)}</span></div>
-  <ol class="wf-steps">${WORKFLOW_STEPS.map((s, i) => `<li class="wf-s wf-s${i}"><span class="wf-i">${icon(s.icon, 18)}</span><span class="wf-t"><b>${esc(s.title)}</b></span><span class="wf-ok">${icon("check", 14)}</span></li>`).join("")}</ol>
+  <ol class="wf-steps">${WORKFLOW_STEPS.map((s, i) => `<li class="wf-s wf-s${i}"><span class="wf-i">${icon(s.icon, 18)}</span><span class="wf-t"><b>${esc(s.title)}</b>${f ? `<small>${esc(f.details[i]!)}</small>` : ""}</span><span class="wf-ok">${icon("check", 14)}</span></li>`).join("")}</ol>
+  ${f?.refused ? `<p class="wf-no">${icon("ban", 15)}<span>${esc(f.refused)}</span></p>` : ""}
 </div>`;
 }
 
@@ -90,13 +114,24 @@ ol.wf-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px;
 .wf-i { position: relative; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: var(--grad); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 8px 22px -8px var(--glow); }
 .wf-t { display: grid; gap: 1px; min-width: 0; }
 .wf-t b { font-size: 15px; font-weight: 650; letter-spacing: -.01em; line-height: 1.3; }
-.wf-t small { font-size: 13px; color: var(--muted); line-height: 1.3; }
+.wf-t small { font-size: 12.5px; color: var(--muted); line-height: 1.35; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .wf-ok { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--ok); }
+/* The connector between two steps, and the pulse that runs down it. */
+.wf-s + .wf-s::after { content: ""; position: absolute; left: 35px; top: -15px; width: 4px; height: 4px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px 2px var(--accent); opacity: 0; }
+p.wf-no { margin: 14px 0 0; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--bad) 45%, var(--glass-line)); background: color-mix(in srgb, var(--bad) 8%, transparent); color: var(--text); font-size: 13.5px; font-weight: 600; }
+p.wf-no .i { color: var(--bad); flex: none; }
+@media (max-width: 640px) { .wf { padding: 18px 16px 16px; } .wf-s { grid-template-columns: 36px minmax(0, 1fr) 20px; gap: 12px; padding: 11px 12px; } .wf-i { width: 36px; height: 36px; border-radius: 10px; } .wf-s + .wf-s::before { left: 29px; } .wf-s + .wf-s::after { left: 28px; } .wf-t b { font-size: 14.5px; } ol.wf-steps { gap: 12px; } .wf-s + .wf-s::before { top: -13px; height: 14px; } }
+/* Each step lights in turn: its icon, the pulse into it, its tick, its detail (wiped in, never faded, so the words keep
+   their contrast in every frame); the refusal last. Still and all lit under reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
-${[0, 1, 2, 3].map((i) => `  .wf-s${i} .wf-i, .wf-s${i}::before { animation: wf-lit${i} ${LOOP}s ease-in-out infinite; } .wf-s${i} .wf-ok { animation: wf-ok${i} ${LOOP}s ease-in-out infinite; }`).join("\n")}
+${[0, 1, 2, 3].map((i) => `  .wf-s${i} .wf-i { animation: wf-lit${i} ${LOOP}s ease-in-out infinite; } .wf-s${i} .wf-ok { animation: wf-ok${i} ${LOOP}s ease-in-out infinite; } .wf-s${i} small { animation: wf-in${i} ${LOOP}s ease-out infinite; }${i ? ` .wf-s${i}::after { animation: wf-pulse${i} ${LOOP}s ease-in-out infinite; }` : ""}`).join("\n")}
+  p.wf-no { animation: wf-no ${LOOP}s ease-out infinite; }
 }
-${[0, 1, 2, 3].map((i) => { const a = 6 + i * 20; return `@keyframes wf-lit${i} { 0%, ${a}% { opacity: .35; filter: saturate(.2); } ${a + 6}%, 92% { opacity: 1; filter: none; } 100% { opacity: .35; filter: saturate(.2); } }
-@keyframes wf-ok${i} { 0%, ${a + 4}% { opacity: 0; transform: scale(.6); } ${a + 10}%, 92% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(.6); } }`; }).join("\n")}
+${[0, 1, 2, 3].map((i) => { const a = 4 + i * 18; return `@keyframes wf-lit${i} { 0%, ${a}% { opacity: .35; filter: saturate(.2); } ${a + 5}%, 94% { opacity: 1; filter: none; } 100% { opacity: .35; filter: saturate(.2); } }
+@keyframes wf-ok${i} { 0%, ${a + 4}% { opacity: 0; transform: scale(.6); } ${a + 9}%, 94% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(.6); } }
+@keyframes wf-in${i} { 0%, ${a + 2}% { clip-path: inset(0 100% 0 0); } ${a + 9}%, 94% { clip-path: inset(0 0 0 0); } 100% { clip-path: inset(0 100% 0 0); } }
+@keyframes wf-pulse${i} { 0%, ${a - 5}% { opacity: 0; transform: translateY(0); } ${a - 4}% { opacity: 1; } ${a}% { opacity: 1; transform: translateY(12px); } ${a + 1}%, 100% { opacity: 0; transform: translateY(12px); } }`; }).join("\n")}
+@keyframes wf-no { 0%, 78% { clip-path: inset(0 100% 0 0); } 84%, 94% { clip-path: inset(0 0 0 0); } 100% { clip-path: inset(0 100% 0 0); } }
 `;
 
 /** The wave: points on three layers along a ribbon that rises from the bottom left to the top right. */

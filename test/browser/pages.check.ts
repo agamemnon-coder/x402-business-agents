@@ -111,8 +111,9 @@ async function look(page: Page, name: string, width: number): Promise<void> {
     if (!n || !n.offsetParent) return null;
     const d = n.querySelector(":scope > details.pmore");
     const items = [...n.querySelectorAll(":scope > a, :scope > details > summary")];
-    const tops = items.map((e) => e.getBoundingClientRect().top);
-    const out = { items: items.map((e) => e.textContent.trim()), more: d ? [...d.querySelectorAll(".pmenu a")].map((a) => a.textContent.trim()) : null,
+    // A phone shows the brand, Try and the menu (the sheet repeats the tabs, .pm-m); the row is measured on what is drawn.
+    const tops = items.filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().top);
+    const out = { items: items.map((e) => e.textContent.trim()), more: d ? [...d.querySelectorAll(".pmenu a:not(.pm-t)")].map((a) => a.textContent.trim()) : null,
       rows: Math.round(Math.max(...tops) - Math.min(...tops)), right: Math.round(n.getBoundingClientRect().right), left: Math.round(n.getBoundingClientRect().left),
       open: d ? d.open : null, menu: null, shown: null };
     if (d) {
@@ -120,7 +121,7 @@ async function look(page: Page, name: string, width: number): Promise<void> {
       const was = d.open; d.open = true;
       const r = d.querySelector(".pmenu").getBoundingClientRect();
       out.menu = { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) };
-      out.shown = [...d.querySelectorAll(".pmenu a")].every((a) => { const b = a.getBoundingClientRect(); return b.width > 0 && b.height >= 24 && b.left >= 0; });
+      out.shown = [...d.querySelectorAll(".pmenu a")].filter((a) => !a.classList.contains("pm-t") || a.getClientRects().length).every((a) => { const b = a.getBoundingClientRect(); return b.width > 0 && b.height >= 24 && b.left >= 0; });
       d.open = was;
     }
     return out;
@@ -177,7 +178,7 @@ async function moreByKeyboard(page: Page, name: string): Promise<void> {
   const summary = page.locator('nav[aria-label="Main"] > details.pmore > summary');
   const state = async () => (await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = document.activeElement; return { open: d.open, focus: a ? (a.textContent || "").trim() : "", inMenu: !!(a && a.closest(".pmenu")) }; })()`)) as { open: boolean; focus: string; inMenu: boolean };
   // From the tab before it (Proof), one Tab reaches "More".
-  await page.locator('nav[aria-label="Main"] > a').last().focus();
+  await page.locator('nav[aria-label="Main"] > a:visible').last().focus();
   await page.keyboard.press("Tab");
   const reached = await state();
   if (reached.focus !== MORE_LABEL || reached.open) fail(`${name}: Tab after the four tabs does not reach "More" (focus on "${reached.focus}")`);
@@ -188,7 +189,9 @@ async function moreByKeyboard(page: Page, name: string): Promise<void> {
   if (!opened.open) fail(`${name}: Enter on "More" does not open it`);
   await page.keyboard.press("Tab");
   const first = await state();
-  if (!first.inMenu || first.focus !== moreLinks()[0]!.label) fail(`${name}: Tab from the open "More" does not land on its first link (focus on "${first.focus}")`);
+  // A phone's sheet opens with the tabs (Product: Home first); elsewhere the dropdown opens with More's first page.
+  const firstLink = await page.evaluate(`[...document.querySelectorAll('nav[aria-label="Main"] .pmenu a')].find((a) => a.getClientRects().length)?.textContent.trim() ?? ""`) as string;
+  if (!first.inMenu || first.focus !== firstLink || ![moreLinks()[0]!.label, "Home"].includes(firstLink)) fail(`${name}: Tab from the open "More" does not land on its first link (focus on "${first.focus}")`);
   await summary.focus();
   await page.keyboard.press("Enter");
   if ((await state()).open) fail(`${name}: Enter on the open "More" does not close it`);

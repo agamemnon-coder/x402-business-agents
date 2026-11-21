@@ -14,7 +14,7 @@ import { START_STEPS } from "../src/redesign/home.js";
 import { residency } from "../src/redesign/privacy.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
-import { moreLinks, footerLinks } from "../src/ui/more.js";
+import { moreLinks, footerLinks, tabLabel, tabLinks } from "../src/ui/more.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 
 const text = (html: string) => html.replace(/<script\b[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\b[^>]*>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/\s+/g, " ");
@@ -169,8 +169,11 @@ describe("the 30-Day Founding Partner Pilot (Max, 21 Nov)", () => {
 describe("served as the site serves its pages", () => {
   const bundle = buildPages() as Pages;
 
-  it("is listed first under More and in the footer (/one-pager is linked from /business, not listed)", () => {
-    expect(moreLinks().map((l) => l.href)[0]).toBe("business");
+  // 21 Nov (the owner's concept, "expose Business prominently"): a tab of its own, "Business", before "Cloud".
+  it("is a tab of its own (Business) and first in the footer (/one-pager is linked from /business, not listed)", () => {
+    expect(tabLinks().map((l) => [l.href, tabLabel(l)])[0]).toEqual(["business", "Business"]);
+    expect(moreLinks().map((l) => l.href)).not.toContain("business");
+    expect(footerLinks().map((l) => l.href)[0]).toBe("business");
     expect(footerLinks().some((l) => l.href === "business")).toBe(true);
     expect([...moreLinks(), ...footerLinks()].some((l) => l.href === "one-pager")).toBe(false);
     expect(BUSINESS_PAGE).toContain('href="one-pager"');

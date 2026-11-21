@@ -219,11 +219,11 @@ describe("Home, 21 Nov: one short story", () => {
   // your AI already works"), four agents, four proof tiles, the tour's seven stops and the three steps (612 as built).
   // 21 Nov (Max: "a clearly visible route from Home to /business"): 620 → 630 for the button "For companies: pilot and
   // plans" under the three steps to a pilot (625 as built).
-  // 21 Nov (the owner's concept, "dark violet premium enterprise fintech"): 630 → 675 for three figures from the
+  // 21 Nov (the owner's concept, "dark violet premium enterprise fintech"): 630 → 675; then 710 (Max: "way more details, more flow"): each Workflow step's detail from the recorded /try run and its one-cent refusal. 630 → 675 for three figures from the
   // evidence wall under the idea, the Workflow card's four steps and its label, and the hero's Watch and Pilot buttons.
-  it("A11: stays within 675 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(675);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(675);
+  it("A11: stays within 710 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(710);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(710);
   });
 });
 

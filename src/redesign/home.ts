@@ -166,11 +166,19 @@ p.ask a:hover { text-decoration: underline; }
   ul.agents > li.reveal.pre:nth-child(4), ul.prow > li.reveal.pre:nth-child(4) { transition-delay: .24s; }
 }
 @media (max-width: 640px) {
-  main.ent section { padding: 64px 0; } main.ent section.e-hero { padding: 36px 0 56px; } main.ent section.e-band { padding: 28px 0 24px; }
-  .e-hero p.cloud { margin-bottom: 14px; padding: 4px 10px; font-size: 12px; }
-  .e-hero .what { font-size: 18px; margin-top: 18px; }
-  .ctas { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 26px; }
+  main.ent section { padding: 64px 0; } main.ent section.e-hero { padding: 22px 0 48px; } main.ent section.e-band { padding: 28px 0 24px; }
+  /* A phone (Max, 21 Nov): a compact hero, Try large, the other two small side by side, the Workflow card early. */
+  .e-hero .wrap { gap: 28px; }
+  .e-hero p.cloud { margin-bottom: 14px; padding: 5px 11px; font-size: 11px; letter-spacing: .14em; }
+  .e-hero .h-hero { font-size: clamp(34px, 9.6vw, 40px); }
+  .e-hero .what { font-size: 16px; line-height: 1.45; margin-top: 12px; }
+  ul.hstats { margin-top: 16px; } ul.hstats b { font-size: 24px; }
+  .ctas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 18px; }
   .ctas .btn { width: 100%; justify-content: center; }
+  .ctas .btn.primary { grid-column: 1 / -1; }
+  .ctas .btn.ghost { height: 44px; min-height: 44px; padding: 0 10px; font-size: 14.5px; gap: 6px; }
+  main.ent .e-hero .ctas .btn.ghost { min-height: 44px; }
+  .reassure { margin-top: 12px; font-size: 13.5px; }
   .e-sub { font-size: 16.5px; }
   ul.agents { margin-top: 32px; } ul.agents > li { padding: 20px; }
   ul.prow { margin-top: 32px; } ul.prow .pv { font-size: 26px; }

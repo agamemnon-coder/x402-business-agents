@@ -25,6 +25,7 @@ const DARK = String.raw`
   --glass:rgba(17,21,34,.66); --glass-line:rgba(180,168,255,.14);
   --grad-text:linear-gradient(100deg,#f0edff 0%,#c3b8ff 40%,#a398ff 70%,#d8b4fe 100%);
   --btn-bg:linear-gradient(112deg,#c6baff 0%,#a297ff 60%,#8f85fc 100%); --btn-ink:#100d25; --btn-line:#b4a8ff;
+  --mk-bg:linear-gradient(180deg,#1f2335,#0c0e18); --mk-line:rgba(255,255,255,.16);
   color-scheme:dark;`;
 
 export const PREMIUM_TOKENS = String.raw`:root {
@@ -40,6 +41,8 @@ export const PREMIUM_TOKENS = String.raw`:root {
   --grad:linear-gradient(135deg,#7c3aed 0%,#6d28d9 55%,#5b21b6 100%);
   --grad-text:linear-gradient(100deg,#7c3aed,#a855f7 55%,#6d28d9);
   --btn-bg:var(--grad); --btn-ink:#ffffff; --btn-line:transparent;
+  /* The Purser mark: ink, monochrome, business-like (the owner: "not too purple"); violet stays an accent. */
+  --mk-bg:linear-gradient(180deg,#24203a,#0e0b1a); --mk-line:transparent;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
   --r-sm:12px; --r:20px; --r-lg:28px; --gut:16px;
   --s1:8px; --s2:16px; --s3:24px; --s4:40px; --s5:64px; --s6:104px;
@@ -98,20 +101,19 @@ main.ent .e-start .card {border-color:color-mix(in srgb,var(--accent) 18%,var(--
 /**
  * Purser Cloud's console, after all its own view styles (cloud/src/console.ts). No change to data or permissions, and
  * no markup: cards on one surface with a lit edge, the KPI figures large, chart lines, bars and rings that glow in their
- * colour, the sidebar's current page lit, a faint field of points at the top (moved by transform; still under reduced
- * motion).
+ * colour, the sidebar's current page lit, a faint still field of points at the top. Calm on purpose (the owner: purple
+ * effects must not dominate financial screens): nothing here moves.
  */
 export const CONSOLE_PREMIUM_CSS = String.raw`
 .signed-in main { position:relative; isolation:isolate; min-height:80vh; overflow-x:clip; background:
   radial-gradient(ellipse 70% 37% at 82% 3%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 72%),
   linear-gradient(180deg,color-mix(in srgb,var(--accent) 5%,var(--bg)),var(--bg) 430px); }
-.signed-in main::before {content:"";position:absolute;z-index:0;pointer-events:none;left:-180px;right:0;top:-36px;height:456px;opacity:.3;
+.signed-in main::before {content:"";position:absolute;z-index:0;pointer-events:none;left:-180px;right:0;top:-36px;height:456px;opacity:.18;
   background-image:radial-gradient(circle,color-mix(in srgb,var(--accent) 70%,transparent) .8px,transparent 1.2px);
   background-size:18px 18px;
   -webkit-mask-image:radial-gradient(ellipse 70% 75% at 75% 0%,#000 4%,transparent 90%);mask-image:radial-gradient(ellipse 70% 75% at 75% 0%,#000 4%,transparent 90%);}
-@media (prefers-reduced-motion:no-preference) { .signed-in main::before { animation:console-particles 45s linear infinite; will-change:transform; } }
 .signed-in main > .wrap {position:relative;z-index:1;}
-@keyframes console-particles {from{transform:translate3d(0,0,0)}to{transform:translate3d(180px,36px,0)}}
+.abrand .mk { background:var(--mk-bg); color:#fff; border:1px solid var(--mk-line); box-shadow:inset 0 1px 0 rgba(255,255,255,.14); }
 /* One surface for every card. */
 .card, .auth { border-radius:16px; border-color:color-mix(in srgb,var(--accent) 13%,var(--border)); background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 3%,var(--surface)),var(--surface)); box-shadow:var(--hi),0 1px 2px rgba(16,24,40,.05),0 22px 44px -34px rgba(0,0,0,.55); }
 .signed-in .card.next.hero, .signed-in .card.nyou {background:linear-gradient(130deg,color-mix(in srgb,var(--accent) 18%,var(--surface)),var(--surface) 58%);border-color:color-mix(in srgb,var(--accent) 38%,var(--border));}
@@ -128,11 +130,11 @@ export const CONSOLE_PREMIUM_CSS = String.raw`
 .dcard .dh h2 { font-size:16.5px; letter-spacing:-.015em; }
 /* Charts: lines, bars and rings glow in their colour; the grid steps back. */
 svg.chart .grid { stroke:color-mix(in srgb,var(--border) 70%,transparent); }
-svg.chart .line { stroke-width:2.5; filter:drop-shadow(0 0 3px color-mix(in srgb,var(--accent) 90%,transparent)) drop-shadow(0 0 14px color-mix(in srgb,var(--accent) 55%,transparent)); }
+svg.chart .line { stroke-width:2.25; filter:drop-shadow(0 0 4px color-mix(in srgb,var(--accent) 55%,transparent)); }
 svg.chart .end { filter:drop-shadow(0 0 6px color-mix(in srgb,var(--accent) 80%,transparent)); }
-svg.chart .b.cfo, svg.chart .b.fout { filter:drop-shadow(0 0 10px color-mix(in srgb,var(--accent) 60%,transparent)); }
+svg.chart .b.cfo, svg.chart .b.fout { filter:drop-shadow(0 0 6px color-mix(in srgb,var(--accent) 35%,transparent)); }
 svg.chart .b.fin { filter:drop-shadow(0 0 8px color-mix(in srgb,var(--fin,var(--ok)) 40%,transparent)); }
-svg.ring .seg { filter:drop-shadow(0 0 6px color-mix(in srgb,currentColor 55%,transparent)); }
+svg.ring .seg { filter:drop-shadow(0 0 4px color-mix(in srgb,currentColor 35%,transparent)); }
 svg.ring .seg.c0 { color:var(--c0); } svg.ring .seg.c1 { color:var(--c1); } svg.ring .seg.c2 { color:var(--c2); } svg.ring .seg.c3 { color:var(--c3); } svg.ring .seg.c4 { color:var(--c4); }
 .sbars .strk { height:8px; }
 .sbars .sf { box-shadow:0 0 12px -2px color-mix(in srgb,var(--accent) 70%,transparent); }

@@ -77,7 +77,7 @@ describe("How to start, on Home", () => {
 
   it("is Try, the console as a guest, and the pilot, each to the address that serves it", () => {
     // 21 Nov (Max: "The steps need to be prettier; it's the small details"): three steps, an icon, one line, one tag each.
-    expect(START_STEPS.map((s) => [s.icon, s.title])).toEqual([["zap", "Try it"], ["layout-dashboard", "Look around"], ["rocket", "Run a pilot"]]);
+    expect(START_STEPS.map((s) => [s.icon, s.title])).toEqual([["zap", "Try it now"], ["layout-dashboard", "Explore the console"], ["rocket", "Run a pilot"]]);
     expect(START_STEPS.flatMap((s) => s.links.map((l) => l.href))).toEqual([TRY_URL, CLOUD_GUEST_URL, CLOUD_SETUP_URL]);
     expect([CLOUD_GUEST_URL, CLOUD_SETUP_URL]).toEqual([`${PURSER_CLOUD_URL}#/guest`, `${PURSER_CLOUD_URL}#/start`]);
     // The console answers both routes (cloud/src/console.ts): the guest route and the first run with a starter key.
