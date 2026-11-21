@@ -83,6 +83,10 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   const b=btn(T.button,true);
   const label=(words,glyph)=>b.replaceChildren(...[words,glyph?icon('arrow-right',18):null].filter(Boolean));label(T.button,true);
   const trailer=el('a','trailer',[el('span','play',icon('play',12)),T.trailer]);trailer.href=C.trailer.url;trailer.target='_blank';trailer.rel='noopener';
+  // An opt-in guided path already exists (?tour=1); make it discoverable without
+  // changing the primary CTA, sandbox behavior, or payment execution.
+  const guided=el('a','guided',C.guide.label);
+  guided.href=location.pathname+'?tour=1';
   const logos=el('ul','logos');
   for(const l of LOGOS){
     const img=el('img');img.src=l.src;img.alt=l.alt;img.width=l.w;img.height=l.h;img.decoding='async';img.className='lg lg-'+l.key;
@@ -94,7 +98,7 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   }
   const partners=el('div','partners',[el('p','pl',T.worksWith),logos,el('p','pn',T.runs_note)]);
   // Proof in numbers (15 Nov, owner): the recorded runs' figures, each linked to its record, and the suite's count.
-  box.append(eyebrow,text,flow,el('div','cta',[b,trailer]),el('p','fine',T.fine),partners,proofBand());
+  box.append(eyebrow,text,flow,el('div','cta',[b,trailer,guided]),el('p','fine',T.fine),partners,proofBand());
   b.addEventListener('click',async()=>{
     b.disabled=true;label(T.starting,false);
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
