@@ -50,4 +50,32 @@ describe("the charts", () => {
     expect(CHARTS_JS).toContain("if(!parts.length)return chartEmpty(t('cs.ch.none'));");
     expect(CHARTS_JS).toContain("if(!D||!D.cash||!D.cash.length)return el('section','card dcard chempty-card'");
   });
+  // 21 Nov, the owner: "if I go over something with my cursor I want it to show me the numbers… no dead zones".
+  it("answer the pointer, the keyboard and touch on every chart, with no dead zone", () => {
+    expect(CHARTS_JS).toContain("function chartPoint(o){");
+    for (const ev of ["'pointermove'", "'pointerleave'", "'click'", "'focus'", "'blur'", "'keydown'"]) expect({ ev, there: CHARTS_JS.includes(`root.addEventListener(${ev}`) }).toEqual({ ev, there: true });
+    for (const k of ["ArrowRight", "ArrowLeft", "Home", "End", "Enter", "Escape"]) expect(CHARTS_JS).toContain(`'${k}'`);
+    // One tab stop, a live region a screen reader hears, the tooltip hidden from it (its words are said once).
+    expect(CHARTS_JS).toContain("root.tabIndex=0");
+    expect(CHARTS_JS).toContain("say.setAttribute('aria-live','polite')");
+    expect(CHARTS_JS).toContain("tip.setAttribute('aria-hidden','true')");
+    // Every chart binds it: the cash line (a crosshair), both column charts, both rings, the spend bars, the due bar.
+    const all = html.slice(html.indexOf("<script"));
+    for (const f of ["function cashChart(", "function weekChart(", "function invoiceRing(", "function spendBars(", "function segbar(", "function flowChart(", "function donut("]) {
+      const at = all.indexOf(f);
+      const body = all.slice(at, all.indexOf("\nfunction", at + 1));
+      expect({ f, binds: body.includes("chartPoint({root:") }).toEqual({ f, binds: true });
+    }
+    // A line answers anywhere on its plot (the nearest day), a column over its full height, a ring at every angle.
+    expect(all).toContain("class:'xh'");
+    expect(CHARTS_JS).toContain("function ringPick(g,fr,cx,cy)");
+    expect(all).toContain("sv('rect',{x:l+step*k,y:tp,width:step,height:H-tp-b,class:'hit'})");
+    // No native title tooltip left on a column or a ring part to show a second, different box.
+    expect(all).not.toContain("const col=sv('g',{class:'col'},[sv('title'");
+    // A datum opens its list: a week or a day in Transactions (which reads its filters from the address), a state in Invoices.
+    expect(CHARTS_JS).toContain("const txWeek=(w)=>'#/transactions?from='+w+'&to='+plusDays(w,6);");
+    expect(all).toContain("async function transactionsView(q0){");
+    expect(all).toContain("href:(i)=>'#/invoices?f='+F[parts[i][0]]");
+    expect(CHARTS_CSS).toContain(".chi:focus-visible");
+  });
 });

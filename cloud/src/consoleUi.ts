@@ -50,7 +50,7 @@ async function overviewView(){
   const main=Object.entries(per).sort((a,b)=>b[1]-a[1])[0];const days=(d)=>Math.round((Date.parse(d)-Date.parse(today))/86400000);
   const b=[0,0,0,0];for(const i of opn){if(!main||i.currency!==main[0])continue;const n=i.due_date?days(i.due_date):99999;b[n<=0?0:n<=7?1:n<=30?2:3]+=toCents(i.total)}
   const lab=['cs.due.late','cs.due.d7','cs.due.d30','cs.due.later'];
-  const due=el('section','card dcard rise due',[el('div','dh',[el('h2','',t('cs.due.title'))]),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title')):el('p','lede',t('cs.due.none')),
+  const due=el('section','card dcard rise due',[el('div','dh',[el('h2','',t('cs.due.title'))]),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title'),()=>'#/invoices?f=open'):el('p','lede',t('cs.due.none')),
     Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);cardLink(due,'#/invoices?f=open',sw('to_inv'));
   const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
   // 22 Nov (the owner: "calm, and everything connected"): what needs you, the figures, how invoices flow to payment, the

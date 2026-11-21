@@ -23,6 +23,7 @@ import { NEGOTIATE_PATH, negotiatePageResponse } from "./try/negotiatePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { NAV_GROUPS, SHELL_CSS, SHELL_JS, SHELL_WORDS } from "./consoleShell.js";
 import { CHARTS_CSS, CHARTS_JS } from "./consoleCharts.js";
+import { COMPANY_CSS, COMPANY_JS } from "./consoleCompany.js";
 import { WALLET_CSS, WALLET_JS } from "./agentWallet.js";
 import { AWX_CSS, AWX_JS } from "./awxActUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
@@ -731,10 +732,18 @@ function tile(label,icon,value,extra,tone){const t=el('div','card tile'+(tone?' 
 const initials=(n)=>{const w=String(n||'?').replace(/\([^)]*\)/g,' ').replace(/[^\p{L}\p{N} ]/gu,' ').trim().split(/\s+/).filter(Boolean);return (((w[0]||'?')[0]||'?')+((w[1]||'')[0]||'')).toUpperCase()};
 const av=(n)=>{const a=el('span','av2',initials(n));a.setAttribute('aria-hidden','true');return a};
 // A labelled bar in one hue (dataviz rule: one hue, light to dark, every part named with its value, never colour alone).
-function segbar(parts,label){const tot=parts.reduce((n,p)=>n+Math.max(0,p.v),0);const bar=el('div','seg');bar.setAttribute('role','img');bar.setAttribute('aria-label',label+': '+parts.map(p=>p.l+' '+p.t).join(', '));
-  parts.forEach((p,i)=>{if(p.v<=0||!tot)return;const s=el('span','s'+i);s.style.width=(p.v/tot*100).toFixed(2)+'%';s.title=p.l+': '+p.t;bar.append(s)});
+function segbar(parts,label,href){const tot=parts.reduce((n,p)=>n+Math.max(0,p.v),0);const bar=el('div','seg');bar.setAttribute('role','img');bar.setAttribute('aria-label',label+': '+parts.map(p=>p.l+' '+p.t).join(', '));
+  const at=[];parts.forEach((p,i)=>{if(p.v<=0||!tot)return;const s=el('span','s'+i);s.style.width=(p.v/tot*100).toFixed(2)+'%';bar.append(s);at.push([i,s])});
   if(!tot)bar.classList.add('empty');
-  return el('div','segwrap',[bar,el('ul','legend',parts.map((p,i)=>el('li',p.v>0?'':'zero',[el('i','s'+i),el('span','',p.l),el('b','num',p.t)])))])}
+  const items=parts.map((p,i)=>el('li',p.v>0?'':'zero',[el('i','s'+i),el('span','',p.l),el('b','num',p.t)]));
+  // The bar answers along its whole length and a band above and below it; each legend entry lights its part.
+  const hit=el('div','seghit',[bar]);
+  if(at.length)chartPoint({root:hit,n:parts.length,start:at[0][0],at:(x)=>{let k=at[0][0];for(const [i,s] of at)if(x>=s.getBoundingClientRect().left-1)k=i;return k},
+    anchor:(i)=>{const s=(at.find((a)=>a[0]===i)||at[0])[1].getBoundingClientRect(),b=bar.getBoundingClientRect();return at.some((a)=>a[0]===i)?{x:s.left+s.width/2,y:b.top}:{x:b.left,y:b.top}},
+    mark:(i)=>{for(const [k,s] of at){s.classList.toggle('hot',k===i);s.classList.toggle('dim',i>=0&&k!==i)}},legend:items,
+    tip:(i)=>({h:parts[i].l,rows:[{k:'s'+i,l:t('cs.ch.amount'),v:parts[i].t},{l:t('cs.ch.share'),v:tot?Math.round(Math.max(0,parts[i].v)/tot*100)+'%':'0%'}]}),
+    href:href?(i)=>href(i):null});
+  return el('div','segwrap',[hit,el('ul','legend',items)])}
 const meter=(v,max)=>{const m=el('span','meter');const f=el('span','');f.style.width=(max>0&&v>0?Math.max(2,v/max*100):0).toFixed(1)+'%';m.append(f);m.setAttribute('aria-hidden','true');return m};
 const toCents=(v)=>{const m=/^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(v||''));if(!m)return 0;const c=Number(m[2])*100+Number((m[3]||'').padEnd(2,'0'));return m[1]?-c:c};
 // --- The start screen's dashboard (GET /v1/dashboard): every figure counted by the cloud from the company's own rows.
@@ -765,37 +774,58 @@ function cashChart(D,W){
   const line=pts.map((p,k)=>(k?'L':'M')+X(k).toFixed(1)+' '+Y(p.v).toFixed(1)).join(' ');
   g.append(sv('path',{d:line+' L'+X(pts.length-1).toFixed(1)+' '+Y(0).toFixed(1)+' L'+X(0).toFixed(1)+' '+Y(0).toFixed(1)+' Z',class:'area',fill:'url(#cashfill)'}),sv('path',{d:line,class:'line',pathLength:1}));
   for(const k of [0,Math.floor((pts.length-1)/2),pts.length-1])if(pts[k])g.append(sv('text',{x:X(k),y:H-6,class:'ax','text-anchor':k===0?'start':k===pts.length-1?'end':'middle'},[document.createTextNode(dday(pts[k].d))]));
-  // One hover target per day, its words in a title (the day, what came in and went out, where cash stood).
-  pts.forEach((p,k)=>{const w=(W-l-r)/Math.max(1,pts.length-1);g.append(sv('rect',{x:X(k)-w/2,y:tp,width:w,height:H-tp-b,class:'hit'},[sv('title',{},[document.createTextNode(dday(p.d)+': '+t('cs.dash.in')+' '+amt(D,p.i)+' · '+t('cs.dash.out')+' '+amt(D,p.o)+' · '+t('cs.dash.net')+' '+amt(D,p.v))])]))});
+  // The whole plot answers the pointer: a crosshair snaps to the nearest day, its figures in the chart's tooltip.
   const e=pts[pts.length-1];if(e)g.append(sv('circle',{cx:X(pts.length-1),cy:Y(e.v),r:4.5,class:'end'}));
+  const xh=sv('line',{x1:0,x2:0,y1:tp,y2:H-b,class:'xh'}),xd=sv('circle',{cx:0,cy:0,r:4.5,class:'xd'});g.append(xh,xd);
+  chartPoint({root:g,n:pts.length,start:pts.length-1,
+    at:(cx)=>Math.max(0,Math.min(pts.length-1,Math.round((svgX(g,W,cx)-l)/Math.max(1,W-l-r)*(pts.length-1)))),
+    anchor:(i)=>svgAt(g,W,H,X(i),Y(pts[i].v)),
+    mark:(i)=>{g.classList.toggle('xon',i>=0);if(i<0)return;for(const a of ['x1','x2'])xh.setAttribute(a,X(i).toFixed(1));xd.setAttribute('cx',X(i).toFixed(1));xd.setAttribute('cy',Y(pts[i].v).toFixed(1))},
+    tip:(i)=>{const p=pts[i];return {h:dday(p.d),rows:[{k:'cash',l:cw('net_so_far'),v:amt(D,p.v)},{k:'fin',l:t('cs.dash.in'),v:amt(D,p.i)},{k:'fout',l:t('cs.dash.out'),v:amt(D,p.o)}]}},
+    href:(i)=>pts[i].i||pts[i].o?txDay(pts[i].d):null});
   return g}
 // Payments per week: CFO-approved and within an agent's own limit, as counts (the amounts differ too much to share a scale).
 function weekChart(D,W){
   const ws=D.approvals.weeks;const H=200,l=10,b=26,tp=18;const max=Math.max(1,...ws.map(w=>w.cfo+w.alone));const bw=Math.min(46,(W-l*2)/Math.max(1,ws.length)*0.6),step=(W-l*2)/Math.max(1,ws.length);
   const g=sv('svg',{viewBox:'0 0 '+W+' '+H,width:W,height:H,class:'chart',role:'img','aria-label':t('cs.dash.appr_title')});
   ws.forEach((w,k)=>{const x=l+step*k+(step-bw)/2,h=(n)=>n/max*(H-tp-b);const yc=H-b-h(w.cfo),ya=yc-h(w.alone);
-    const tip=dday(w.week)+': '+w.cfo+' '+t('cs.dash.appr_cfo')+' ('+amt(D,toCents(w.cfo_amount))+') · '+w.alone+' '+t('cs.dash.appr_alone')+' ('+amt(D,toCents(w.alone_amount))+')';
-    const col=sv('g',{class:'col'},[sv('title',{},[document.createTextNode(tip)])]);
+    const col=sv('g',{class:'col'},[sv('rect',{x:l+step*k,y:0,width:step,height:H-b,class:'hit'})]);
     if(w.cfo)col.append(sv('rect',{x,y:yc,width:bw,height:h(w.cfo),rx:3,class:'b cfo'}));
     if(w.alone)col.append(sv('rect',{x,y:ya,width:bw,height:h(w.alone),rx:3,class:'b alone'}));
     col.append(sv('text',{x:x+bw/2,y:ya-5,class:'val','text-anchor':'middle'},[document.createTextNode(String(w.cfo+w.alone))]),sv('text',{x:x+bw/2,y:H-8,class:'ax','text-anchor':'middle'},[document.createTextNode(dday(w.week))]));
     g.append(col)});
+  if(ws.length)chartPoint({root:g,n:ws.length,start:ws.length-1,at:(cx)=>Math.max(0,Math.min(ws.length-1,Math.floor((svgX(g,W,cx)-l)/step))),
+    anchor:(i)=>{const w=ws[i];return svgAt(g,W,H,l+step*i+step/2,H-b-(w.cfo+w.alone)/max*(H-tp-b))},mark:(i)=>colMark(g,i),
+    tip:(i)=>{const w=ws[i];return {h:t('cs.ch.week_of',{day:dday(w.week)}),rows:[{k:'cfo',l:t('cs.dash.appr_cfo'),v:w.cfo+' · '+amt(D,toCents(w.cfo_amount))},{k:'alone',l:t('cs.dash.appr_alone'),v:w.alone+' · '+amt(D,toCents(w.alone_amount))}]}},
+    href:(i)=>ws[i].cfo+ws[i].alone?txWeek(ws[i].week):null});
   return g}
 // Invoices by state: a ring of their counts, the total in its middle, and a legend with each count and amount.
 function invoiceRing(D){
   const I=D.invoices;const parts=[['paid','cs.dash.inv_paid'],['waiting_cfo','cs.dash.inv_waiting'],['needs_vendor','cs.dash.inv_vendor'],['open','cs.dash.inv_open'],['stopped','cs.dash.inv_stopped']].filter(([k])=>I[k]&&I[k].count);
   const tot=parts.reduce((n,[k])=>n+I[k].count,0);const g=sv('svg',{viewBox:'0 0 120 120',width:132,height:132,class:'ring',role:'img','aria-label':t('cs.dash.inv_title')+': '+parts.map(([k,l])=>t(l)+' '+I[k].count).join(', ')});
-  g.append(sv('circle',{cx:60,cy:60,r:46,class:'track'}));let off=0;
-  parts.forEach(([k],i)=>{const f=I[k].count/(tot||1)*100;g.append(sv('circle',{cx:60,cy:60,r:46,pathLength:100,class:'seg r'+i,'stroke-dasharray':(f-1.2).toFixed(2)+' '+(100-f+1.2).toFixed(2),'stroke-dashoffset':(25-off).toFixed(2)}));off+=f});
+  g.append(sv('circle',{cx:60,cy:60,r:46,class:'track'}));let off=0;const fr=[];
+  parts.forEach(([k],i)=>{const f=I[k].count/(tot||1)*100;fr.push(f);g.append(sv('circle',{cx:60,cy:60,r:46,pathLength:100,class:'seg r'+i,'stroke-dasharray':(f-1.2).toFixed(2)+' '+(100-f+1.2).toFixed(2),'stroke-dashoffset':(25-off).toFixed(2)}));off+=f});
   g.append(sv('text',{x:60,y:60,class:'rt','text-anchor':'middle'},[document.createTextNode(String(tot))]),sv('text',{x:60,y:78,class:'rs','text-anchor':'middle'},[document.createTextNode(t('cs.dash.inv_count'))]));
-  const lg=el('ul','rlegend',parts.map(([k,l],i)=>el('li','',[el('i','r'+i),el('span','',t(l)),el('b','num',String(I[k].count)),el('small','num',amt(D,toCents(I[k].amount)))])));
-  return el('div','ringwrap',[g,el('div','',[lg,I.duplicates_stopped?el('p','fine',t('cs.dash.inv_dup',{n:I.duplicates_stopped})):null])])}
+  const items=parts.map(([k,l],i)=>el('li','',[el('i','r'+i),el('span','',t(l)),el('b','num',String(I[k].count)),el('small','num',amt(D,toCents(I[k].amount)))]));
+  // Each state opens its invoices: paid, waiting for Face ID, needing a person (a new supplier), open, stopped.
+  const F={paid:'paid',waiting_cfo:'waiting_cfo',needs_vendor:'act',open:'open',stopped:'blocked'};
+  if(parts.length)chartPoint({root:g,n:parts.length,at:(x,y)=>ringPick(g,fr,x,y),anchor:(i)=>ringAnchor(g,fr,i),mark:(i)=>ringMark(g,i),legend:items,
+    tip:(i)=>{const [k,l]=parts[i];return {h:t(l),rows:[{k:'r'+i,l:t('cs.dash.inv_count'),v:String(I[k].count)+' · '+Math.round(I[k].count/(tot||1)*100)+'%'},{l:t('cs.ch.amount'),v:amt(D,toCents(I[k].amount))}]}},
+    href:(i)=>'#/invoices?f='+F[parts[i][0]]});
+  return el('div','ringwrap',[g,el('div','',[el('ul','rlegend',items),I.duplicates_stopped?el('p','fine',t('cs.dash.inv_dup',{n:I.duplicates_stopped})):null])])}
 // Spend by who started it: one bar each, its amount and how many payments; Airwallex's declines said, never counted.
 // The demo company's declines are its demo data's, so a guest reads "declined (simulated)" (judge run, 13 Nov).
 function spendBars(D){
-  const max=Math.max(1,...D.spend.map(s=>toCents(s.amount)));
-  return el('ul','sbars',D.spend.map((s,i)=>{const f=el('span','sf');f.style.width=Math.max(1.5,toCents(s.amount)/max*100).toFixed(1)+'%';
-    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t(s.count===1?'cs.dash.n_payments_1':'cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null]),s.parts?el('span','ss sp',t('cs.dash.spend_parts',{inbox:s.parts.inbox.count,inbox_amt:amt(D,toCents(s.parts.inbox.amount)),outside:s.parts.outside.count,outside_amt:amt(D,toCents(s.parts.outside.amount)),fees:amt(D,toCents(s.parts.fees))})):null])}))}
+  const max=Math.max(1,...D.spend.map(s=>toCents(s.amount)));const tot=D.spend.reduce((n,s)=>n+toCents(s.amount),0)||1;
+  const rows=D.spend.map((s,i)=>{const f=el('span','sf');f.style.width=Math.max(1.5,toCents(s.amount)/max*100).toFixed(1)+'%';
+    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t(s.count===1?'cs.dash.n_payments_1':'cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null]),s.parts?el('span','ss sp',t('cs.dash.spend_parts',{inbox:s.parts.inbox.count,inbox_amt:amt(D,toCents(s.parts.inbox.amount)),outside:s.parts.outside.count,outside_amt:amt(D,toCents(s.parts.outside.amount)),fees:amt(D,toCents(s.parts.fees))})):null])});
+  const ul=el('ul','sbars',rows);
+  // Every row answers the pointer across its whole height; supplier invoices open the paid invoices, an agent its record.
+  if(rows.length)chartPoint({root:ul,n:rows.length,at:(x,y)=>{let k=0;rows.forEach((r,j)=>{if(y>=r.getBoundingClientRect().top-7)k=j});return k},
+    anchor:(i)=>{const r=rows[i].querySelector('.sf').getBoundingClientRect();return {x:r.right,y:r.top}},mark:(i)=>rows.forEach((r,k)=>{r.classList.toggle('hot',k===i);r.classList.toggle('dim',i>=0&&k!==i)}),
+    tip:(i)=>{const s=D.spend[i];return {h:tk('cs.dash.spend.'+s.key,s.label),rows:[{k:'bar',l:t('cs.ch.amount'),v:amt(D,toCents(s.amount))},{l:t('cs.ch.share'),v:Math.round(toCents(s.amount)/tot*100)+'%'},{l:t('cs.ch.payments'),v:String(s.count)}].concat(s.declined?[{l:t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined}),v:''}]:[])}},
+    href:(i)=>{const k=D.spend[i].key;return k==='invoices'?'#/invoices?f=paid':k==='other'?'#/transactions':'#/agents?a='+encodeURIComponent(k)}});
+  return ul}
 function feedList(D){
   return el('ol','feed',D.feed.map(f=>el('li','f-'+f.tone,[el('span','fd'),el('div','',[el('div','fw',[el('b','',f.who),el('time','',dday(f.at))]),el('p','',f.text)])])))}
 function dashBlock(D){
@@ -1208,16 +1238,19 @@ async function drawPdf(src,box,name){
 // --- Transactions --------------------------------------------------------------------------------------------------
 const RAILS=[['',t('cs.every_rail')],...['airwallex_transfer','airwallex_fx','airwallex_card','airwallex_airi','airwallex_receipt','metal','metal_clearing'].map(k=>[k,t('tx.rail.'+k)])];
 const RECS=[['',t('tx.every_state')],['matched',t('rec.matched')],['missing_booking',t('rec.missing_booking')],['missing_rail_record',t('cs.no_rail_record')],['amount_mismatch',t('cs.amounts_differ')]];
-async function transactionsView(){
+async function transactionsView(q0){
   title(t('nav.transactions'));
-  const q=new URLSearchParams();
+  // A chart's link opens this list already filtered (a week, a day, a rail): the filters below show what is applied.
+  const q=new URLSearchParams();const iso=/^\d{4}-\d{2}-\d{2}$/;
+  if(q0&&q0.get){const r=q0.get('rail'),f=q0.get('from'),to=q0.get('to');if(r&&RAILS.some(([k])=>k&&k===r))q.set('rail',r);if(f&&iso.test(f))q.set('from',f);if(to&&iso.test(to))q.set('to',to)}
   const sel=(opts,key)=>{const s=el('select','field');for(const [v,l] of opts){const o=el('option','',l);o.value=v;s.append(o)}s.onchange=()=>{if(s.value)q.set(key,s.value);else q.delete(key);load()};return s};
   const curIn=el('input','field');curIn.placeholder='EUR';curIn.maxLength=4;curIn.onchange=()=>{const v=curIn.value.trim().toUpperCase();if(/^[A-Z]{3,4}$/.test(v))q.set('currency',v);else q.delete('currency');load()};
   const from=el('input','field');from.type='date';from.setAttribute('aria-label','From date');from.onchange=()=>{if(from.value)q.set('from',from.value);else q.delete('from');load()};
   const to=el('input','field');to.type='date';to.setAttribute('aria-label','To date');to.onchange=()=>{if(to.value)q.set('to',to.value);else q.delete('to');load()};
   const csv=btn('CSV','','download');csv.onclick=()=>download('/v1/transactions/export.csv?'+q.toString(),'transactions.csv').catch(e=>{if(!(e instanceof Expired))list.before(note(e.message,'bad'))});
   const tiles=el('div','tiles');const list=el('div','card list');
-  const filters=el('div','form-row',[el('div','',[el('label','',t('rail')),sel(RAILS,'rail')]),el('div','',[el('label','',t('tx.state')),sel(RECS,'reconciliation')]),el('div','',[el('label','',t('tx.currency')),curIn]),el('div','',[el('label','',t('cs.from')),from]),el('div','',[el('label','',t('cs.to')),to])]);
+  const railSel=sel(RAILS,'rail');railSel.value=q.get('rail')||'';from.value=q.get('from')||'';to.value=q.get('to')||'';
+  const filters=el('div','form-row',[el('div','',[el('label','',t('rail')),railSel]),el('div','',[el('label','',t('tx.state')),sel(RECS,'reconciliation')]),el('div','',[el('label','',t('tx.currency')),curIn]),el('div','',[el('label','',t('cs.from')),from]),el('div','',[el('label','',t('cs.to')),to])]);
   view().replaceChildren(head(t('nav.transactions'),t('cs.tx_lede'),[csv]),tiles,filters,el('section','section',[list]));
   async function load(){
     const [s,p]=await Promise.all([api('/v1/transactions/summary?'+q.toString()),api('/v1/transactions?limit=200&'+q.toString())]);
@@ -1927,16 +1960,15 @@ svg.chart .ax { font: 500 12px Inter, system-ui, sans-serif; fill: var(--faint);
 svg.chart .val { font: 650 12px Inter, system-ui, sans-serif; fill: var(--text); }
 svg.chart .line { fill: none; stroke: var(--accent); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
 svg.chart .end { fill: var(--surface); stroke: var(--accent); stroke-width: 2.5; }
-svg.chart .hit { fill: transparent; } svg.chart .hit:hover { fill: rgba(16, 24, 40, .04); }
+svg.chart .hit { fill: transparent; }
 svg.chart .b.cfo { fill: var(--accent); } svg.chart .b.alone { fill: color-mix(in srgb, var(--accent) 30%, var(--surface)); }
 .klegend { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0; padding: 0; font-size: 12.5px; color: var(--muted); }
 .klegend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
 .klegend i.cfo { background: var(--accent); } .klegend i.alone { background: color-mix(in srgb, var(--accent) 30%, var(--surface)); }
 .ringwrap { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-svg.ring { flex: none; transform: rotate(-90deg); }
+svg.ring { flex: none; }
 svg.ring .track, svg.ring .seg { fill: none; stroke-width: 13; }
 svg.ring .track { stroke: var(--sunken); }
-svg.ring text { transform: rotate(90deg); transform-origin: 60px 60px; }
 svg.ring .rt { font: 700 26px Inter, system-ui, sans-serif; fill: var(--text); }
 svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint); }
 .r0 { stroke: var(--ok); } .r1 { stroke: var(--accent); } .r2 { stroke: #d08a1c; } .r3 { stroke: #98a1ae; } .r4 { stroke: var(--bad); }
@@ -2043,7 +2075,7 @@ const nonce = () => {
 const T0_CLOSE = t0CloseLine();
 
 /** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
-const USED = keysUsedIn(SCRIPT + SHELL_JS + UI_JS + CHARTS_JS + WALLET_JS + AWX_UI_JS + AWX_JS + BODY);
+const USED = keysUsedIn(SCRIPT + SHELL_JS + UI_JS + CHARTS_JS + COMPANY_JS + WALLET_JS + AWX_UI_JS + AWX_JS + BODY);
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain, whether the cloud runs an engine). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
@@ -2052,13 +2084,13 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + UI_JS + CHARTS_JS + WALLET_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + UI_JS + CHARTS_JS + COMPANY_JS + WALLET_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${WALLET_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}
 ${ASK_BUTTON_JS}</script>
