@@ -360,20 +360,21 @@ export async function pushOnce(db: DB, sink: BookkeepingSink | undefined, event:
   if (!sink || entries.length === 0) return false;
   // The event is claimed before the push, in one write (round 3 review, 17 Nov: two syncs at once both pushed). A claim
   // reads "pushing:<when>"; one a stopped process left over ten minutes ago is taken over.
+  const claim = `${CLAIM}${now.toISOString()}`;
   const stale = `${CLAIM}${new Date(now.getTime() - CLAIM_MS).toISOString()}`;
   const claimed = db.transaction(() => {
     db.prepare("DELETE FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ? AND pushed_at LIKE 'pushing:%' AND pushed_at < ?").run(inv.id, event, sink.name, stale);
-    return db.prepare("INSERT OR IGNORE INTO ap_sink_events (invoice_id, event, sink, pushed_at) VALUES (?, ?, ?, ?)").run(inv.id, event, sink.name, `${CLAIM}${now.toISOString()}`).changes === 1;
+    return db.prepare("INSERT OR IGNORE INTO ap_sink_events (invoice_id, event, sink, pushed_at) VALUES (?, ?, ?, ?)").run(inv.id, event, sink.name, claim).changes === 1;
   }).immediate();
   if (!claimed) return false;
   const failed = await pushToSink(sink, entries, inv);
   if (failed) {
-    db.prepare("DELETE FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ? AND pushed_at LIKE 'pushing:%'").run(inv.id, event, sink.name);
+    db.prepare("DELETE FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ? AND pushed_at = ?").run(inv.id, event, sink.name, claim);
     audit(db, "system", "ap.sink_failed", inv.id, { sink: failed, event }, now);
     return false;
   }
-  db.prepare("UPDATE ap_sink_events SET pushed_at = ? WHERE invoice_id = ? AND event = ? AND sink = ?").run(now.toISOString(), inv.id, event, sink.name);
-  return true;
+  return db.prepare("UPDATE ap_sink_events SET pushed_at = ? WHERE invoice_id = ? AND event = ? AND sink = ? AND pushed_at = ?")
+    .run(now.toISOString(), inv.id, event, sink.name, claim).changes === 1;
 }
 
 const CLAIM = "pushing:";
