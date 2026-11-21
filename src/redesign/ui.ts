@@ -81,18 +81,20 @@ export const TOKENS = `@font-face { font-family: Inter; src: url(assets/${versio
   --a-sourcing: #2563eb; --a-support: #9333ea; --a-treasury: #0e7490;
   --shadow: 0 1px 2px rgba(16,24,40,.05), 0 12px 32px -12px rgba(16,24,40,.12);
   --r: 22px; --gut: 16px; color-scheme: light;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+  --hi: inset 0 1px 0 rgba(255,255,255,.8); --glow: rgba(79,70,229,.22);
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0a0c11; --surface: #12151d; --sunken: #191d27; --border: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #858fa1;
+  --bg: #08090e; --surface: #10131b; --sunken: #171b25; --border: #242a38; --text: #eef1f6; --muted: #a4adbd; --faint: #858fa1;
   --accent: #8b85ff; --accent-soft: #23224a; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c; --on-bad: #1a0607;
   --metal: #2dd4bf; --metal-soft: #0f2a28; --awx: #ff8a4c; --awx-soft: #33200f; --claude: #ef9a76; --claude-soft: #33221b;
-  --a-sourcing: #60a5fa; --a-support: #c084fc; --a-treasury: #22d3ee; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -12px rgba(0,0,0,.6); color-scheme: dark;
+  --a-sourcing: #60a5fa; --a-support: #c084fc; --a-treasury: #22d3ee; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -12px rgba(0,0,0,.6); --hi: inset 0 1px 0 rgba(255,255,255,.05); --glow: rgba(139,133,255,.35); color-scheme: dark;
 } }
 :root[data-theme="dark"] {
-  --bg: #0a0c11; --surface: #12151d; --sunken: #191d27; --border: #262b37; --text: #eef1f6; --muted: #a4adbd; --faint: #858fa1;
+  --bg: #08090e; --surface: #10131b; --sunken: #171b25; --border: #242a38; --text: #eef1f6; --muted: #a4adbd; --faint: #858fa1;
   --accent: #8b85ff; --accent-soft: #23224a; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c; --on-bad: #1a0607;
   --metal: #2dd4bf; --metal-soft: #0f2a28; --awx: #ff8a4c; --awx-soft: #33200f; --claude: #ef9a76; --claude-soft: #33221b;
-  --a-sourcing: #60a5fa; --a-support: #c084fc; --a-treasury: #22d3ee; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -12px rgba(0,0,0,.6); color-scheme: dark;
+  --a-sourcing: #60a5fa; --a-support: #c084fc; --a-treasury: #22d3ee; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -12px rgba(0,0,0,.6); --hi: inset 0 1px 0 rgba(255,255,255,.05); --glow: rgba(139,133,255,.35); color-scheme: dark;
 }
 `;
 
@@ -128,7 +130,7 @@ export const CSS = `${TOKENS}
 @media (min-width: 720px) { :root { --gut: 32px; } }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 400 17px/1.55 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+body { margin: 0; background: radial-gradient(1400px 560px at 50% -240px, color-mix(in srgb, var(--accent) 8%, transparent), transparent 72%) no-repeat, var(--bg); color: var(--text); font: 400 17px/1.55 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 a { color: inherit; }
 /* Words for screen readers and search engines only (a link's full name, a section's heading), not shown. */
 .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -136,17 +138,20 @@ a { color: inherit; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 var(--gut); }
 ${HEADER_CSS}
 /* Type. */
-h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
-.h-hero { font-size: clamp(38px, 5.4vw, 64px); font-weight: 780; }
-.h-sec { font-size: clamp(28px, 3.4vw, 40px); font-weight: 750; }
+h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; text-wrap: balance; }
+.h-hero { font-size: clamp(38px, 5.4vw, 64px); font-weight: 780; letter-spacing: -.035em; }
+.h-sec { font-size: clamp(28px, 3.4vw, 40px); font-weight: 750; letter-spacing: -.03em; }
 .lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--muted); line-height: 1.5; margin: 0; }
-.eyebrow { font-size: 14px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 0 0 10px; }
+.eyebrow { font: 600 14px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin: 0 0 10px; }
 /* Buttons and pills. */
 .btn { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 999px; font: 650 16px/1 Inter, system-ui, sans-serif; text-decoration: none; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap; }
-.btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.btn { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease; }
+.btn:hover { border-color: color-mix(in srgb, var(--text) 30%, var(--border)); }
+.btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); box-shadow: var(--hi), 0 10px 28px -12px var(--glow), 0 2px 6px -2px rgba(0,0,0,.25); }
+.btn.primary:hover { box-shadow: var(--hi), 0 14px 34px -12px var(--glow), 0 2px 6px -2px rgba(0,0,0,.25); }
 .btn:focus-visible, a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .pill.run { background: var(--accent-soft); color: var(--accent); white-space: normal; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); }
+.card { background: linear-gradient(180deg, color-mix(in srgb, var(--text) 1.5%, var(--surface)), var(--surface)); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--hi), var(--shadow); }
 /* Agent avatar. */
 .av { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; flex: none; }
 .av .i { width: 22px; height: 22px; }
