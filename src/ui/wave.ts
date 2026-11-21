@@ -137,7 +137,7 @@ export const waveScript = (o: WaveOptions): string => `
   function build() {
     W = c.clientWidth; H = c.clientHeight;
     var phone = W < 700, z = scale() || 1;
-    dpr = Math.min((window.devicePixelRatio || 1) * z, (phone ? 1.75 : 2) * Math.max(1, z));
+    dpr = Math.min((window.devicePixelRatio || 1) * z, 1.5 * Math.max(1, z)); // 21 Nov (Max): lighter, 1.5 at most
     c.width = Math.max(1, Math.round(W * dpr)); c.height = Math.max(1, Math.round(H * dpr));
     var k = Math.max(0.35, Math.min(1.2, (W * H) / (1440 * 860))) * ${o.density ?? 1};
     var rows = [Math.round((phone ? 34 : 66) * Math.sqrt(k)), Math.round((phone ? 32 : 60) * Math.sqrt(k)), Math.round((phone ? 12 : 20) * Math.sqrt(k))];
@@ -155,9 +155,11 @@ export const waveScript = (o: WaveOptions): string => `
   }
   var mx = 9, my = 9, px = 9, py = 9, ripples = [], box = null;
   // 21 Nov: a slow device (or a software-rendered headless browser) holds the last frame still instead of starving the page.
-  var lastF = 0, emaF = 0, nF = 0;
+  var lastF = 0, emaF = 0, nF = 0, lastD = 0;
   function frame(now) {
     raf = 0;
+    // 21 Nov (Max): at most 30 frames a second; a slow drift needs no more, and the page keeps its breath.
+    if (lastD && now - lastD < 32 && now - lastD > 0) { go(); return; } lastD = now;
     // A gap over a second is a tab or window coming back (frames pause while hidden), never a slow device: it does not count.
     if (lastF && now - lastF < 1000) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 400 || (++nF > 12 && emaF > 60)) still = true; } lastF = now;
     var t = (now - t0) / 1000, D = dark();
@@ -225,11 +227,11 @@ function wave2d() {
   function build() {
     W = c.clientWidth; H = c.clientHeight; z = scale() || 1;
     var phone = W < 700;
-    // Sharp on every screen: the screen's own pixel ratio, capped at 3 (2 on a phone).
-    dpr = Math.min((window.devicePixelRatio || 1) * z, (phone ? 2 : 3) * Math.max(1, z));
+    // The screen's own pixel ratio, capped at 1.5 (21 Nov, Max: the animation must be light).
+    dpr = Math.min((window.devicePixelRatio || 1) * z, 1.5 * Math.max(1, z));
     c.width = Math.max(1, Math.round(W * dpr)); c.height = Math.max(1, Math.round(H * dpr));
     // As many points as the area holds, fewer on a small screen (a phone keeps its 60 frames a second).
-    var k = Math.max(0.3, Math.min(1.15, (W * H) / (1440 * 820))) * (phone ? 0.8 : 1);
+    var k = Math.max(0.3, Math.min(1.15, (W * H) / (1440 * 820))) * (phone ? 0.6 : 0.75);
     D = dark();
     sprites = D
       ? { far: sprite("124,92,246", 0.05, 0.4), mid: sprite("176,160,255", 0.08, 0.32), near: sprite("246,244,255", 0.12, 0.26), warm: sprite("232,121,249", 0.06, 0.36), haze: sprite("139,92,246", 0.02, 0.3), lens: sprite("255,255,255", 0.04, 0.24) }
@@ -251,9 +253,11 @@ function wave2d() {
   // The ribbon's centre line at u (no rows), for the crest's haze and the lens light.
   function crest(R, L, u, t) { return H * (R.y0 + (R.y1 - R.y0) * u) + H * L.amp * (Math.sin(u * 6.2 + t * 0.45 + L.ph) + 0.3 * Math.sin(u * 13 - t * 0.3 + L.ph)); }
   // 21 Nov: a slow device (or a software-rendered headless browser) holds the last frame still instead of starving the page.
-  var lastF = 0, emaF = 0, nF = 0;
+  var lastF = 0, emaF = 0, nF = 0, lastD = 0;
   function frame(now) {
     raf = 0;
+    // 21 Nov (Max): at most 30 frames a second; a slow drift needs no more, and the page keeps its breath.
+    if (lastD && now - lastD < 32 && now - lastD > 0) { go(); return; } lastD = now;
     // A gap over a second is a tab or window coming back (frames pause while hidden), never a slow device: it does not count.
     if (lastF && now - lastF < 1000) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 400 || (++nF > 12 && emaF > 60)) still = true; } lastF = now;
     var t = (now - t0) / 1000;
