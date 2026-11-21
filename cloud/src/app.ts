@@ -47,6 +47,7 @@ import { tryExtraEngineRoutes } from "./try/extraEngineRoutes.js";
 import { tryNegotiateRoutes, type NegotiateClaude } from "./try/negotiateRoutes.js";
 import { askRoutes } from "./ask/routes.js";
 import { askLive } from "./ask/limits.js";
+import { demoWaiting } from "./ask/tools.js";
 import { ASK_BUTTON_PATH, ASK_PATH, askButtonResponse, askPageResponse } from "./ask/page.js";
 import type { AskModel } from "./ask/model.js";
 import { tryError, tryRoutes } from "./try/routes.js";
@@ -1039,7 +1040,7 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
     }
     // Ask Purser's page and its button module (cloud/src/ask/page.ts), on every deployment.
     // The page says plainly whether Claude answers here now (its model set, the switches claude and ask on).
-    if ((req.method === "GET" || req.method === "HEAD") && (url.pathname === ASK_PATH || url.pathname === ASK_BUTTON_PATH)) return url.pathname === ASK_PATH ? askPageResponse(url, await askLive(env)) : askButtonResponse();
+    if ((req.method === "GET" || req.method === "HEAD") && (url.pathname === ASK_PATH || url.pathname === ASK_BUTTON_PATH)) return url.pathname === ASK_PATH ? askPageResponse(url, await askLive(env), url.searchParams.get("embed") === "1" ? null : await demoWaiting({ sql: env.sql, ...(env.blobs ? { blobs: env.blobs } : {}), origin: env.origin ?? "" })) : askButtonResponse();
     // An agent's card on a phone, by its signed link (./agentPhoneCard.ts): read only, no script.
     if ((req.method === "GET" || req.method === "HEAD") && url.pathname.startsWith("/card/")) return phoneCardResponse(url, env, now);
     // The console (cloud/src/console.ts): the browser pages, everything outside /v1.

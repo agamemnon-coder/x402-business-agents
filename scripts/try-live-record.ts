@@ -186,7 +186,7 @@ try {
   // nonces taken out (the same build gives the same hash; 19 Nov, purser-try was redeployed during the mega run).
   site_build.try_page_sha256 = await page.request.get(`${BASE}/try`).then(async (r) => createHash("sha256").update((await r.text()).replace(/nonce[-=]["']?[A-Za-z0-9+/=_-]+/g, "nonce")).digest("hex"), () => null);
   const startAns = answer(page, /^\/v1\/try\/start$/);
-  let t = await press(page, /Launch the live transfer demo/);
+  let t = await press(page, /Start the live demo|Launch the live transfer demo/);
   const st = await startAns;
   ok(st.status() === 201, `start: a test company (${st.status()})`);
   await page.getByRole("button", { name: /A small invoice inside the agent's limit/ }).first().waitFor({ timeout: 60_000 });
@@ -332,7 +332,7 @@ try {
   if (passkey === "cdp-virtual-authenticator") await (await ctx.newCDPSession(p2)).send("WebAuthn.enable");
   await p2.goto(`${BASE}/try`, { waitUntil: "load" });
   const st2 = answer(p2, /^\/v1\/try\/start$/);
-  await press(p2, /Launch the live transfer demo/);
+  await press(p2, /Start the live demo|Launch the live transfer demo/);
   ok((await st2).status() === 201, "cash sample: a test company of its own");
   await press(p2, /Inside the limit — but cash says wait/);
   ok(/480\.00/.test(await p2.locator(".samples button[aria-pressed=true]").first().innerText()), "cash sample: the EUR 480.00 invoice is picked");

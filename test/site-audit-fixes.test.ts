@@ -15,7 +15,8 @@ import { ASSET_VERSIONS, DAY_CACHE, IMMUTABLE_CACHE } from "../src/ui/assetVersi
 import { AIRWALLEX_LOGO_FILE, AIRWALLEX_LOGO_ORIGINAL, AIRWALLEX_LOGO_PATH, AIRWALLEX_LOGO_SIZE, AIRWALLEX_LOGO_SRC, builtOnBadge } from "../src/ui/builtOn.js";
 import { LOGOS as SITE_LOGOS } from "../src/servers/dashboard.js";
 import { AIRWALLEX_LOGO_DATA_URL } from "../cloud/src/awxLogo.gen.js";
-import { LOGOS as TRY_LOGOS, V2_COPY, presentExtra } from "../cloud/src/try/presentMode.js";
+import { LOGOS as TRY_LOGOS, presentExtra } from "../cloud/src/try/presentMode.js";
+import { START } from "../cloud/src/tryCopy.js";
 import { pageResponse } from "../worker/src/core.js";
 
 const BASE = "https://relay.example.test";
@@ -36,12 +37,13 @@ describe("6.3: a short sandbox disclosure beside the primary demo button", () =>
     }
   });
 
-  it("/try's first screen: the fine line under its one primary button says it first", () => {
-    expect(V2_COPY.start.fine.startsWith("Sandbox demo: test money, no real settlement")).toBe(true);
+  it("/try's first screen: the fine line under its card says it first", () => {
+    // 21 Nov (Max, mockup 175): one start for every /try; its tiny line under the card.
+    expect(START.fine.startsWith("Sandbox · test money")).toBe(true);
   });
 
   it("names no partner as endorsing, and says no banned word", () => {
-    for (const s of [SANDBOX_NOTE, V2_COPY.start.fine]) expect(s).not.toMatch(/endorse|certified|approved by|partner of|stand-in/i);
+    for (const s of [SANDBOX_NOTE, START.fine]) expect(s).not.toMatch(/endorse|certified|approved by|partner of|stand-in/i);
   });
 });
 

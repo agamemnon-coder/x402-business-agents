@@ -61,6 +61,8 @@ export interface ToolRun {
   step: { tool: string; label: string; detail: string; ok: boolean };
   /** New sources the result adds (search_docs's passages, or the demo company's record it read). */
   sources: { title: string; url: string; kind: "doc" | "data"; chunk?: AskChunk }[];
+  /** The demo company's record as data (a book tool's structuredContent), for the answer's cards (./cards.ts). */
+  data?: unknown;
 }
 
 const SEARCH: ToolDef = {
@@ -156,7 +158,7 @@ export async function runAskTool(ctx: ToolCtx, name: string, input: unknown, n: 
     const r = await tool.run({ origin: ctx.origin, caller: { tenantId: DEMO_TENANT, kind: "session", principal: "ask-purser", scopes: new Set(["read"]), user: null, purpose: "ask-purser" } as never, db, now: new Date(DEMO_END), company: DEMO_NAME, engine: null, demo: true }, parsed.data);
     const title = `Demo company · ${tool.title}`;
     if (r.isError) return { text: clip(textOf(r).split("\n")[0] ?? "That read found nothing."), isError: true, step: { tool: name, ...sum(args, undefined), detail: "nothing found", ok: false }, sources: [] };
-    return { text: `${head(title)}${clip(textOf(r))}\n</source>`, isError: false, step: { tool: name, ...sum(parsed.data, r.structuredContent), ok: true }, sources: [{ title, url: consoleUrl, kind: "data" }] };
+    return { text: `${head(title)}${clip(textOf(r))}\n</source>`, isError: false, step: { tool: name, ...sum(parsed.data, r.structuredContent), ok: true }, sources: [{ title, url: consoleUrl, kind: "data" }], ...(r.structuredContent ? { data: r.structuredContent } : {}) };
   } catch {
     return fail(`${name} could not be read right now. Answer with what you have, and say what you could not read.`);
   }
@@ -210,3 +212,12 @@ export function localRead(question: string, context: AskContext | null = null): 
 
 /** A tool's result as a visitor reads it: the lines inside its <source>, without the tags. */
 export const resultForPeople = (text: string) => text.replace(/<source[^>]*>\n?/g, "").replace(/<\/source>/g, "").trim();
+
+/** How many of the demo company's invoices and proposals wait for the CFO (the sidebar's badge on /ask), or null. */
+export async function demoWaiting(ctx: ToolCtx): Promise<number | null> {
+  try {
+    const r = await runAskTool(ctx, "pending_approvals", {}, 1);
+    const d = r.data as { invoices?: unknown[]; proposals?: unknown[] } | undefined;
+    return r.isError || !d ? null : (d.invoices?.length ?? 0) + (d.proposals?.length ?? 0);
+  } catch { return null; }
+}

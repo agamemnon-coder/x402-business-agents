@@ -30,7 +30,7 @@ try {
   const settle = async (ms = 1500) => { await page.waitForLoadState("networkidle").catch(() => undefined); await page.waitForTimeout(ms); };
 
   await gotoLoaded(page, `${judge.url}/try`);
-  await click(/Launch the live transfer demo/);
+  await click(/Start the live demo|Launch the live transfer demo/);
   await click(/A small invoice inside the agent's limit/);
   await click(/Give it to the AI agent/);
   await page.getByRole("button", { name: "See the agent pay it" }).waitFor({ timeout: 60_000 });

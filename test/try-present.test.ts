@@ -180,9 +180,9 @@ describe("recording mode", () => {
       const tour = await (await c.fetch(`${ORIGIN}/try?tour=1`)).text();
       // 16 Nov (Max): the product frame and its words are /try itself (and ?v=2, ?present=0, ?present=1); the release's
       // page, negotiation included, stays at ?v=1 and with the jury tour.
-      for (const page of [on, off, v2, plain]) { expect(page).toContain("pv-side"); expect(page).toContain("How Purser works"); expect(page).toContain("AI agents prepare the transfer. Your passkey releases the funds."); } // 17 Nov (jury): "passkey", as the buttons say
+      for (const page of [on, off, v2, plain]) { expect(page).toContain("pv-side"); expect(page).toContain("How Purser works"); expect(page).toContain("Try an AI payment end-to-end."); } // 21 Nov (Max, mockup 175): one start for /try and ?v=1; the frame is what differs
       for (const page of [off, v2, plain]) expect(page).not.toContain("document.body.classList.add('present');");
-      for (const page of [v1, tour]) { expect(page).not.toContain("pv-side"); expect(page).not.toContain("AI agents prepare the transfer."); }
+      for (const page of [v1, tour]) { expect(page).not.toContain("pv-side"); expect(page).not.toContain("How Purser works"); }
     } finally { c.close(); }
   });
 });

@@ -29,11 +29,11 @@ describe("/try's first screen", () => {
   it("says in the headline what the visit does, and that any passkey works, in words that hold on every device", async () => {
     const { START } = await import("../cloud/src/tryCopy.js");
     // 15 Nov (Max): the concept in the headline, AI agents and Face ID; the step under it names the other devices' words.
-    expect(START.heading).toBe("AI agents pay your suppliers. You approve the big ones with Face ID.");
-    expect(START.eyebrow).toBe("Live demo · about 2 minutes"); // 21 Nov (Max: the start as the live demo's own screen)
-    expect(START.flow.map((f) => f.name)).toEqual(["Read", "Check", "You approve"]);
-    expect(START.flow[2]!.line).toBe("With Face ID or a fingerprint.");
-    // The trailer on YouTube, one quiet link beside the button (14 Nov, owner).
-    expect(START.trailer).toBe("Watch the 3-minute demo");
+    // 21 Nov (Max, mockup 175: "the only purpose of this page is the demo"): one short headline; the card's rows say any
+    // passkey works ("Your passkey signs the exact terms").
+    expect(START.heading).toBe("Try an AI payment end-to-end.");
+    expect(START.eyebrow).toBe("Live demo · Sandbox");
+    expect(START.steps).toEqual(["Read", "Check", "Approve", "Pay"]);
+    expect(START.card.rows[2]!.r).toBe("Your passkey signs the exact terms");
   });
 });
