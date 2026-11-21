@@ -59,7 +59,7 @@ export const ASK_PAGE_COPY = {
   counter: "characters left",
   testMoney: ASK_COPY.testMoney,
   helpHead: "How can Purser help today?",
-  helpLine: "Your read-only finance agent: invoices, payments, approvals and evidence.",
+  helpLine: "Ask about invoices, approvals, policy or evidence.",
   canRead: "I can work with",
   nav: "Ask Purser",
   navInvoices: "Invoices",
@@ -118,14 +118,15 @@ const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 type El = [tag: string, attrs: Record<string, string>];
 /** The mark on a 32 grid, as elements: drawn as markup on the page and as DOM by the button (one source for both). */
 export const ASK_MARK: El[] = [
-  // 21 Nov (Max: "a proper agent mark, not a chat bubble"): an ink square, a white orbit with a gap and a white core
-  // (the agent), and one violet point on the orbit (live). Monochrome but for that point.
-  ["rect", { width: "32", height: "32", rx: "9", fill: "#0b1220" }],
-  ["rect", { x: ".5", y: ".5", width: "31", height: "31", rx: "8.5", fill: "none", stroke: "#ffffff", "stroke-opacity": ".16" }],
-  ["path", { d: "M22.6 11.4A8 8 0 1 0 24 16", fill: "none", stroke: "#ffffff", "stroke-width": "2.2", "stroke-linecap": "round" }],
-  ["circle", { cx: "16", cy: "16", r: "3.1", fill: "#ffffff" }],
-  ["circle", { cx: "23.4", cy: "13.2", r: "2.8", fill: "#a5a1ff" }],
+  // 21 Nov (Max: "the company's own Purser logo, the same mark as in the site header, in a rounded tile"): the feather on
+  // the header's tile, in the theme's mark colours (classes, so the page's CSP needs no style attribute).
+  ["rect", { class: "mk-bg", width: "32", height: "32", rx: "9", fill: "#000000" }],
+  ...[
+    "M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z", "M16 8 2 22", "M17.5 15H9",
+  ].map((d): El => ["path", { class: "mk-ink", d, transform: "translate(5.6 5.6) scale(.86)", fill: "none", stroke: "#ffffff", "stroke-width": "2.2", "stroke-linecap": "round", "stroke-linejoin": "round" }]),
 ];
+/** The mark's colours from the theme (the site header's --mk-bg and --mk-ink), on every page that draws it. */
+export const ASK_MARK_CSS = ".mk-bg{fill:var(--mk-bg,#000)}.mk-ink{stroke:var(--mk-ink,#fff)}";
 const svgOf = (els: El[], size: number, viewBox: string, cls = "") =>
   `<svg${cls ? ` class="${cls}"` : ""} width="${size}" height="${size}" viewBox="${viewBox}" aria-hidden="true" focusable="false">${els.map(([t, a]) => `<${t} ${Object.entries(a).map(([k, v]) => `${k}="${v}"`).join(" ")}/>`).join("")}</svg>`;
 export const askMarkSvg = (size = 32, cls = "") => svgOf(ASK_MARK, size, "0 0 32 32", cls);
@@ -153,16 +154,17 @@ const ICON: Record<string, string[]> = {
   layers: ["m12.8 2.2a2 2 0 0 0-1.6 0L2.6 6.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0l8.6-3.9a1 1 0 0 0 0-1.8Z", "m2 12 8.6 3.9a2 2 0 0 0 1.6 0L21 12", "m2 17 8.6 3.9a2 2 0 0 0 1.6 0L21 17"],
   face: ["M3 7V5a2 2 0 0 1 2-2h2", "M17 3h2a2 2 0 0 1 2 2v2", "M21 17v2a2 2 0 0 1-2 2h-2", "M7 21H5a2 2 0 0 1-2-2v-2", "M8 14s1.5 2 4 2 4-2 4-2", "M9 9h.01", "M15 9h.01"],
   menu: ["M4 6h16", "M4 12h16", "M4 18h16"],
+  spark: ["M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.13 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"],
   eye: ["M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0", "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"],
   down: ["m6 9 6 6 6-6"],
   ext: ["M15 3h6v6", "M10 14 21 3", "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"],
 };
 /** The empty state's four actions (21 Nov, Max's mockups): each asks one question the agent answers from its reads. */
 export const ASK_ACTIONS: { icon: string; label: string; q: string }[] = [
-  { icon: "file", label: "Review invoices", q: "Which invoices wait for the CFO's Face ID?" },
-  { icon: "swap", label: "Check a payment", q: "Show the latest payments and transactions." },
-  { icon: "books", label: "Reconcile books", q: "How do the demo company's books stand?" },
-  { icon: "shield", label: "Show proof", q: "How can I verify a payment myself?" },
+  { icon: "file", label: "Which invoices wait for the CFO?", q: "Which invoices wait for the CFO's Face ID?" },
+  { icon: "check", label: "Check an invoice against policy", q: "How is an invoice checked against the CFO's policy?" },
+  { icon: "layers", label: "Show invoice evidence", q: "What evidence does Purser keep for a paid invoice?" },
+  { icon: "spark", label: "Explain a policy or approval rule", q: "When may an agent pay alone, and when must the CFO approve?" },
 ];
 /** What the agent can read (./tools.ts), as the rail shows it: an icon and a few words each. */
 const READS: [string, string][] = [["docs", "Purser's docs"], ["file", "Invoices"], ["swap", "Payments"], ["books", "Books & VAT"], ["wallet", "Cash"], ["clock", "Waiting for the CFO"], ["shield", "CFO's policy"], ["bot", "Agents & limits"], ["trail", "Audit trails"], ["chain", "Run records"]];
@@ -344,7 +346,9 @@ body.page .shell { display: grid; grid-template-columns: minmax(0, 1fr); backgro
 .side .convos h2 { margin: 0 4px; font-size: 13px; font-weight: 700; color: var(--text); }
 .side .convos .kept { margin: 2px 4px 8px; font-size: 11.5px; color: var(--faint); }
 .side ol.cv { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.side ol.cv button { width: 100%; text-align: left; min-height: 38px; padding: 6px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: 500 13.5px/1.35 Inter, system-ui, sans-serif; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side { min-width: 0; overflow-x: hidden; }
+.side ol.cv li { min-width: 0; }
+.side ol.cv button { display: block; width: 100%; max-width: 100%; text-align: left; min-height: 38px; padding: 6px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: 500 13.5px/1.35 Inter, system-ui, sans-serif; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side ol.cv button:hover, .side ol.cv button[aria-current="true"] { background: var(--sunken); color: var(--text); }
 .side ol.cv li.none { padding: 6px 10px; font-size: 12.5px; color: var(--faint); }
 .side details.co { margin-top: auto; border-top: 1px solid var(--border); padding-top: 10px; }
@@ -434,6 +438,24 @@ body.page .shell { display: grid; grid-template-columns: minmax(0, 1fr); backgro
 @media (max-width: 899px) { body.page .side.open { display: flex; position: fixed; inset: 0 30% 0 0; z-index: 40; background: var(--surface); box-shadow: var(--shadow); } }
 @media (max-width: 1239px) { body.page .detail.open { display: flex; position: fixed; inset: 0 0 0 auto; width: min(400px, 100%); z-index: 41; background: var(--surface); box-shadow: var(--shadow); } }
 @media (prefers-reduced-motion: reduce) { canvas.pw-wave { display: none; } }
+/* 21 Nov (Max, mockup 180): the empty state on the wave at good strength (no detail panel, the question box centred under
+   the four cards); once a conversation exists, the wave quiet behind it and the box at the foot. */
+body.page.empty .detail { display: none !important; }
+@media (min-width: 1240px) { body.page.empty .shell { grid-template-columns: 248px minmax(0, 1fr); } }
+body.page.empty .shell { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; border-color: transparent; box-shadow: none; }
+body.page.empty .side { background: var(--glass, var(--surface)); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border: 1px solid var(--glass-line, var(--border)); border-radius: 18px; }
+body.page.empty .convo > .bar { background: transparent; border-bottom-color: transparent; }
+body.page.empty .convo > .scroll { flex: none; overflow: visible; margin-top: auto; }
+body.page.empty .convo > .composer { width: 100%; max-width: 720px; margin: 0 auto auto; border-top: 0; background: transparent; }
+body.page.empty .composer .box { background: var(--glass, var(--surface)); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+body.page.empty canvas.pw-wave { opacity: 1; -webkit-mask-image: none; mask-image: none; }
+body.page:not(.empty) canvas.pw-wave { opacity: .28; transition: opacity .5s; }
+.hello .acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 660px; margin-top: 22px; }
+.hello .acts button { width: 100%; min-height: 56px; justify-content: flex-start; text-align: left; padding: 0 16px; border-radius: 14px; background: color-mix(in srgb, var(--surface) 80%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.hello .acts li:first-child button { background: color-mix(in srgb, var(--surface) 80%, transparent); color: var(--text); border-color: var(--border); }
+.hello .acts button svg { flex: none; }
+@media (max-width: 560px) { .hello .acts { grid-template-columns: minmax(0, 1fr); } }
+.hello .lg svg { width: 52px; height: 52px; }
 `;
 
 // The page's script: plain JavaScript, raw (no TS escapes), with the copy and the settings put in where it says so.
@@ -516,6 +538,24 @@ function bubble(role, text, file, cards) {
   } else { m.append(avatar(), el('span', 'who', C.purser)); const b = el('div', 'body'); m.append(b); draw(b, text, []); if (Array.isArray(cards) && cards.length) { const box = el('div', 'cards'); for (const c of cards) box.append(renderCard(c)); m.append(box); } }
   chat.append(m);
   return m;
+}
+// The first question (21 Nov, Max: the hero goes, the thread grows from the question box as it moves to the foot): the
+// empty state fades and slides up, the box glides from the centre to its place, the thread rises in. Reduced motion: at once.
+function leaveEmpty() {
+  const b = document.body;
+  if (!b.classList.contains('empty')) { hello.hidden = true; return; }
+  let calm = true; try { calm = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  const comp = form, before = comp.getBoundingClientRect().top;
+  const swap = () => {
+    hello.hidden = true; b.classList.remove('empty'); hello.classList.remove('leaving');
+    if (calm || !comp.animate) return;
+    const after = comp.getBoundingClientRect().top;
+    comp.animate([{ transform: 'translateY(' + (before - after) + 'px)' }, { transform: 'none' }], { duration: 350, easing: 'cubic-bezier(.2,.7,.2,1)' });
+    chat.animate([{ opacity: 0, transform: 'translateY(28px)' }, { opacity: 1, transform: 'none' }], { duration: 350, easing: 'cubic-bezier(.2,.7,.2,1)' });
+  };
+  if (calm || !hello.animate) { swap(); return; }
+  hello.classList.add('leaving');
+  hello.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-18px)' }], { duration: 220, easing: 'ease-in', fill: 'forwards' }).finished.then(swap, swap);
 }
 // ---- 21 Nov (Max's mockups): the answer's cards, the step tracker, the follow-ups and the invoice's detail panel ----
 // Every value is the demo company's record as the agent's read returned it (./cards.ts), put on the page as text.
@@ -615,7 +655,7 @@ function loadConvo(c) {
   CONVO = c.id; try { sessionStorage.setItem('purser.ask.convo', CONVO); } catch (e) {}
   chat.textContent = ''; closeDetail();
   for (const t of history) bubble(t.role, t.text, typeof t.file === 'string' ? t.file : null, t.cards);
-  hello.hidden = history.length > 0; save(); drawConvos(); $('side') && $('side').classList.remove('open'); scroll();
+  hello.hidden = history.length > 0; document.body.classList.toggle('empty', !history.length && !CFG.embed); save(); drawConvos(); $('side') && $('side').classList.remove('open'); scroll();
 }
 function meta(m, sources, cited, mode, note, reason) {
   const box = el('div', 'meta');
@@ -693,7 +733,7 @@ async function ask(question) {
   if (!question || busy) return;
   const file = pending;
   busy = true; ready(); q.value = ''; counter(); grow(); clearFile(); fileError('');
-  hello.hidden = true;
+  leaveEmpty();
   bubble('user', question, file && file.name);
   const m = el('div', 'msg bot'); m.setAttribute('aria-busy', 'true');
   m.append(avatar(), el('span', 'who', C.purser));
@@ -783,7 +823,7 @@ function drawCtx() {
 drawCtx();
 addEventListener('message', (e) => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.type !== 'purser-ask:context') return; CTX = parseCtx(e.data.ctx); drawCtx(); });
 const reset = $('reset');
-if (reset) reset.addEventListener('click', () => { history = []; save(); CONVO = ''; try { sessionStorage.removeItem('purser.ask.convo'); } catch (e) {} chat.textContent = ''; hello.hidden = false; say.textContent = ''; clearFile(); fileError(''); closeDetail(); drawConvos(); q.focus(); });
+if (reset) reset.addEventListener('click', () => { history = []; save(); CONVO = ''; try { sessionStorage.removeItem('purser.ask.convo'); } catch (e) {} chat.textContent = ''; hello.hidden = false; if (!CFG.embed) document.body.classList.add('empty'); say.textContent = ''; clearFile(); fileError(''); closeDetail(); drawConvos(); q.focus(); });
 drawConvos();
 // The menu on a narrow screen; ⌘K (Ctrl+K) to the question box; the composer's plus opens the four actions.
 const side = $('side'), menuB = $('menu-b');
@@ -798,7 +838,7 @@ if (close) close.addEventListener('click', bye);
 if (CFG.embed) document.addEventListener('keydown', (e) => { if (e.key === 'Escape') bye(); });
 // The conversation of this tab, if it had one.
 try { const old = JSON.parse(sessionStorage.getItem(KEY) || '[]'); if (Array.isArray(old)) for (const t of old) if (t && (t.role === 'user' || t.role === 'assistant') && typeof t.text === 'string') { history.push(t); bubble(t.role, t.text, typeof t.file === 'string' ? t.file : null, t.cards); } } catch (e) {}
-if (history.length) { hello.hidden = true; scroll(); }
+if (history.length) { hello.hidden = true; document.body.classList.remove('empty'); scroll(); }
 ready();
 const pre = new URLSearchParams(location.search).get('q');
 if (pre && pre.length <= CFG.max) ask(pre);
@@ -855,8 +895,8 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="${esc(C.lede)}">
 <title>${esc(C.title)} · Purser</title>
-<style nonce="${n}">${CSS}${o.embed ? "" : SITE_HEADER_CSS + APP_CSS}</style></head><body class="${o.embed ? "embed" : "page"}${ctx ? " has-ctx" : ""}">
-${o.embed ? "" : `${WAVE_CANVAS_HTML}<a class="skip" href="#q">Skip to the question box</a>${header(null, TRY_HEADER_LINKS)}`}
+<style nonce="${n}">${CSS}${ASK_MARK_CSS}${o.embed ? "" : SITE_HEADER_CSS + APP_CSS}</style></head><body class="${o.embed ? "embed" : "page empty"}${ctx ? " has-ctx" : ""}">
+${o.embed ? "" : `${WAVE_CANVAS_HTML}<a class="skip" href="#q">Skip to the question box</a>${header("cloud", TRY_HEADER_LINKS)}`}
 <main id="main" class="app">
 <div class="shell">${app ? side : ""}
 <section class="convo">${bar}
@@ -869,7 +909,7 @@ ${composer}</section>${app ? detailPanel : ""}</div>
 <script type="module" nonce="${n}">${script}${app ? `\n${ASK_WAVE_JS}` : ""}</script>
 </body></html>`;
 }
-const ASK_WAVE_JS = waveScript({ selector: "canvas.pw-wave", placement: "page", intensity: 0.8 });
+const ASK_WAVE_JS = waveScript({ selector: "canvas.pw-wave", placement: "hero", intensity: 1.15 });
 
 /** The page's policy: its own nonce, this origin only, and framed only by this origin (the button's panel). */
 export const askCsp = (n: string) =>
@@ -902,7 +942,7 @@ if (!document.getElementById('pask-fab')) {
 @media (prefers-color-scheme: dark){#pask-panel{background:#100e18;border-color:#27233a}}
 @media (max-width:560px){#pask-panel{inset:0;width:100%;height:100%;border-radius:0;border:0}#pask-fab .pask-t{display:none}#pask-fab{padding:0 7px}}
 @media (prefers-reduced-motion: reduce){#pask-fab{transition:none}#pask-fab:hover{transform:none}}
-@media print{#pask-fab,#pask-panel{display:none}}\`;
+@media print{#pask-fab,#pask-panel{display:none}}${ASK_MARK_CSS}\`;
   document.head.append(st);
   const fab = document.createElement('button');
   fab.id = 'pask-fab'; fab.type = 'button';

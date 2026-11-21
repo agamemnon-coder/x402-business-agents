@@ -167,7 +167,7 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   const page = await ctx.newPage();
   watch(page, "ask 360");
   await page.goto(`${ORIGIN}/ask`);
-  await page.getByRole("button", { name: "Review invoices" }).click(); // asks "Which invoices wait for the CFO's Face ID?"
+  await page.getByRole("button", { name: "Which invoices wait for the CFO?" }).click(); // asks "Which invoices wait for the CFO's Face ID?"
   await page.locator(".msg.bot:not([aria-busy]) .meta").waitFor({ timeout: 15_000 });
   const bot = page.locator(".msg.bot").last();
   const stepText = await bot.locator(".steps .step.done").first().innerText().catch(() => "");
@@ -210,9 +210,11 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   const page = await ctx.newPage();
   watch(page, "ask app 1440");
   await page.goto(`${ORIGIN}/ask`);
-  ok((await page.locator(".side .badge").textContent())?.trim() === "1" && await page.locator(".side").isVisible() && await page.locator("#detail").isVisible(), "the sidebar shows Approvals with its count, and the panel what the agent can read");
-  await page.getByRole("button", { name: "Review invoices" }).click();
+  // The empty state (mockup 180): the sidebar and the four cards on the wave, no detail panel until a conversation exists.
+  ok((await page.locator(".side .badge").textContent())?.trim() === "1" && await page.locator(".side").isVisible() && !(await page.locator("#detail").isVisible()) && (await page.locator("#hello .acts button").count()) === 4, "the empty state: Approvals with its count, the four cards, no panel yet");
+  await page.getByRole("button", { name: "Which invoices wait for the CFO?" }).click();
   await page.locator(".msg.bot:not([aria-busy]) .icard").waitFor({ timeout: 15_000 });
+  ok(await page.locator("#detail").isVisible() && !(await page.locator("#hello").isVisible()) && !(await page.evaluate(() => document.body.classList.contains("empty"))), "after the first question: the empty state gone, the panel of what the agent can read beside the thread");
   const row = await page.locator(".icard li").first().innerText();
   ok(/Bergtex Textil GmbH/.test(row) && /BTX-2026-24/.test(row) && /EUR 1,309\.00/.test(row) && !/Alpine|4,320/.test(await page.locator("main").innerText()), `the card is the demo company's own record (${row.replace(/\s+/g, " ")})`);
   const track = await page.locator(".msg.bot .track li").evaluateAll((ls) => ls.map((l) => l.className));
@@ -246,7 +248,7 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   await dialog.waitFor({ timeout: 5_000 });
   ok((await fab.getAttribute("aria-expanded")) === "true", "the button says the dialog is open");
   const frame = page.frameLocator("#pask-panel iframe");
-  await frame.getByRole("button", { name: "Show proof" }).click();
+  await frame.getByRole("button", { name: "Show invoice evidence" }).click();
   await frame.locator(".msg.bot:not([aria-busy]) .meta").waitFor({ timeout: 15_000 });
   ok((await frame.locator(".msg.bot").innerText()).includes("test money"), "a question asked inside the dialog is answered");
   await sane(page, "console with the dialog");
