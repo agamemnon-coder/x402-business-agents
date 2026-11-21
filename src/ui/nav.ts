@@ -43,7 +43,9 @@ ${MORE_CSS}
    under about 450 px), the header wraps and the tabs take a line of their own, as Try's did under 400 px. */
 @media (max-width: 520px) { header.top { flex-wrap: wrap !important; } header.top nav.pnav.pnav > a { padding: 8px 10px !important; font-size: 15px !important; } .pnav .pmore > summary { padding: 8px 8px 8px 10px; } }
 @media (max-width: 460px) { .pnav { gap: 0 !important; } header.top nav.pnav.pnav > a { padding: 8px 8px !important; font-size: 14.5px !important; } .pnav .pmore > summary { padding: 8px 6px 8px 8px; font-size: 14.5px; } }
-@media (max-width: 380px) { header.top nav.pnav.pnav > a { padding: 8px 7px !important; } .pnav .pmore > summary { padding: 8px 5px 8px 7px; } }
+@media (max-width: 380px) { header.top nav.pnav.pnav > a { padding: 8px 6px !important; } .pnav .pmore > summary { padding: 8px 4px 8px 6px; } }
+/* 21 Nov: with "Business" a sixth item, the row and the More menu fit 360 px (pages check). */
+@media (max-width: 370px) { header.top nav.pnav.pnav > a { padding: 8px 5px !important; font-size: 14px !important; } .pnav .pmore > summary { padding: 8px 3px 8px 5px; font-size: 14px; } .pnav .pmore .pmenu { right: 0 !important; max-width: calc(100vw - 24px); } }
 @media (max-width: 340px) { header.top nav.pnav.pnav > a { padding: 8px 5px !important; font-size: 14px !important; } .pnav .pmore > summary { padding: 8px 4px 8px 5px; font-size: 14px; gap: 2px; } }
 @media (max-width: 430px) { .pnav > a, .pnav summary { display: inline-flex !important; align-items: center; min-height: 44px; } }`;
 
