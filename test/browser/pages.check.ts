@@ -788,7 +788,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/claude") {
         const c = await page.evaluate(`(() => {
           // The wide drawing, or on phones the plain figures (final jury, 13 Nov), whichever shows: one of them.
-          const shown = [...document.querySelectorAll("#split > svg, #split > .sbars")].filter((s) => s.getBoundingClientRect().width > 0);
+          const shown = [...document.querySelectorAll("#split > svg, #split > .sbars, #split > a > svg, #split > a > .sbars")].filter((s) => s.getBoundingClientRect().width > 0);
           const r = shown[0] ? shown[0].getBoundingClientRect() : null, h1 = document.querySelector("h1").getBoundingClientRect();
           return { drawings: shown.length, width: r ? Math.round(r.width) : 0, below: r ? r.top >= h1.bottom : false, top: r ? Math.round(r.top + window.scrollY) : -1,
             agents: document.querySelectorAll("main .cag").length, tiles: document.querySelectorAll("main .ctile").length, bars: document.querySelectorAll("main .cmr svg.bar").length };
