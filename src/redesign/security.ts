@@ -159,6 +159,8 @@ ul.sxstats a:hover, ul.sxstats a:focus-visible { border-color: color-mix(in srgb
 .sec-lim .nf h2 { font-size: 17px; font-weight: 700; } .sec-lim .nf h2 .ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: var(--sunken); color: var(--accent); flex: none; }
 .sec-lim .nf ul { font-size: 15.5px; line-height: 1.45; }
 .sec-lim .nf details.jq { margin-top: auto; }
+.sec-lim a.pf, .sec-lim ul.pl a.pf, .sec-lim .nf .links a { display: inline-flex; align-items: center; min-height: 44px; }
+.sec-lim details.fold > summary { min-height: 44px; }
 .sec-lim .nf .jq details { margin-top: 6px; } .sec-lim .nf .jq summary { min-height: 44px; display: flex; align-items: center; }`;
 
 /** The limits of this build: what is not in place yet (with its sources), and what is not finished (#not-finished). */

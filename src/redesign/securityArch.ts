@@ -153,7 +153,7 @@ export const ARCH_CSS = `.ar { padding: 18px; display: grid; gap: 14px; min-widt
 .ar h3 { margin: 0; font-size: 17.5px; line-height: 1.3; letter-spacing: -.01em; }
 .ar .ar-line { margin: 0; font-size: 15.5px; line-height: 1.5; overflow-wrap: anywhere; }
 .ar-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.ar-rules a { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 2px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 14.5px; font-weight: 600; text-decoration: none; }
+.ar-rules a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; box-sizing: border-box; padding: 2px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 14.5px; font-weight: 600; text-decoration: none; }
 .ar-rules a .i { color: var(--accent); }
 .ar-rules a:hover { border-color: var(--accent); }
 .ar-locks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
@@ -173,6 +173,7 @@ export const ARCH_CSS = `.ar { padding: 18px; display: grid; gap: 14px; min-widt
 .ar-ctl a .i { color: var(--accent); flex: none; }
 .ar-ctl a b { font-size: 14.5px; font-weight: 650; line-height: 1.3; }
 .ar .links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.ar .links a.pf { min-height: 44px; }
 .ar-tb { padding-top: 12px; padding-bottom: 12px; }
 .ar-tb > div { position: relative; display: flex; align-items: center; }
 .ar-tb > div::before { content: ""; position: absolute; left: -20px; right: 0; top: 50%; border-top: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent); }

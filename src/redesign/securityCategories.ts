@@ -48,7 +48,7 @@ export function securityCategories(o: CategoryInputs): SecCategory[] {
     if (!i) throw new Error(`/security: no evidence item ${id}`);
     return i;
   };
-  const opa: EvItem = { id: "c-opa", fig: opaCases(), label: "policy cases on which the OPA (Rego) export and Purser's code decide the same", note: "An export, not a second engine: Purser enforces in its own code and at the rails. The test runs every case through both, in CI on every change; the count as the doc states it.", tag: "ci", rec: OPA_DOC, also: [repoHref(OPA_TEST), OPA_TEST.split("/").pop()!] };
+  const opa: EvItem = { id: "c-opa", fig: opaCases(), label: "policy cases where the OPA (Rego) export decides as Purser's code", note: "An export, not a second engine: Purser enforces in its own code and at the rails. The test runs every case through both, in CI on every change; the count as the doc states it.", tag: "ci", rec: OPA_DOC, also: [repoHref(OPA_TEST), OPA_TEST.split("/").pop()!] };
   return [
     {
       id: "c-approval", icon: "scan-face", nav: "Approval", title: "Approval and signatures",
@@ -209,8 +209,9 @@ ul.sc-pts a:hover, ul.sc-pts a:focus-visible { border-color: var(--accent); }
 .sc-folds > details.fold { flex: 1 1 100%; margin: 0; }
 .sc-folds > details.fold > summary { min-height: 44px; }
 .sc ul.pl li b { font-variant-numeric: tabular-nums; }
-.sc a.pf { min-height: 0; }
 section.sc .cichk { margin: 6px 0 10px; }
+section.sc .cichk code { font-size: 14px; }
+.sc ul.pl a.pf { display: inline-flex; min-height: 44px; }
 @media (max-width: 560px) {
   section.sc { padding: 16px 14px 6px; border-radius: 18px; gap: 10px; }
   .sc-ic { width: 40px; height: 40px; border-radius: 12px; }
