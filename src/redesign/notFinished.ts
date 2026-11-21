@@ -59,6 +59,6 @@ export function notFinishedHtml(): string {
 
 /** The README's and JUDGES.md's block: the title in bold and the five lines, the docs linked relative to `base`. */
 export function notFinishedMarkdown(base = ""): string {
-  const md = (x: (typeof NOT_FINISHED)[number]) => (x.doc ? x.line.replace(new RegExp(`\\b${x.doc.replace(/[./]/g, "\\$&")}\\b`), `[${x.doc}](${base}${x.doc})`) + (x.line.includes(x.doc) ? "" : ` ([${x.doc}](${base}${x.doc}))`) : x.line);
+  const md = (x: (typeof NOT_FINISHED)[number]) => (x.doc ? x.line.replace(new RegExp(`\\b${x.doc.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}\\b`), `[${x.doc}](${base}${x.doc})`) + (x.line.includes(x.doc) ? "" : ` ([${x.doc}](${base}${x.doc}))`) : x.line);
   return [`**${NOT_FINISHED_TITLE}:**`, "", ...NOT_FINISHED.map((x) => `- ${md(x)}`)].join("\n");
 }
