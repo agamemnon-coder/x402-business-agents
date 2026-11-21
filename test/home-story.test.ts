@@ -178,7 +178,7 @@ describe("Home, 21 Nov: one short story", () => {
 
   it("names no TAP and no awards; the one Watch is the tour's first stop, the film on YouTube", () => {
     for (const html of [ON, OFF]) {
-      const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ").replace(/<script>[\s\S]*?<\/script>/g, " ");
+      const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ").replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ");
       expect(rest.match(/\bWatch\b/g)).toEqual(["Watch"]);
       expect(mainOf(html)).toContain(`<a href="${FILM_URL}" target="_blank" rel="noopener">`);
       expect(rest).not.toMatch(/href="watch"/);
@@ -315,7 +315,7 @@ describe("The judge tour, on Home and its stops", () => {
     const marker = 'K = "purser.tour"';
     for (const key of ["home", "metal", "visa", "books", "proof"]) {
       expect({ key, bar: pages[key]!.includes(marker) }).toEqual({ key, bar: true });
-      expect(pages[key]!.match(/<script>/g)).toHaveLength(1);
+      expect(pages[key]!.match(/<script\b[^>]*>/gi)).toHaveLength(1);
       expect(pages.csp[key]).toMatch(/script-src 'sha256-/);
       expect(pages[key]).toContain("aside.tbar {");
     }
