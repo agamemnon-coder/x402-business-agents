@@ -166,7 +166,7 @@ export function altaFactsHtml(facts: AltaFact[], payments: { count: number; list
  */
 export function altaTilesHtml(facts: AltaFact[]): string {
   if (!facts.length) return "";
-  const li = (f: AltaFact) => `<li class="card" id="fact-${f.id}" data-rec="${esc(f.record[0]!)}"><h2>${icon(ICON[f.id], 16)}${esc(f.title)}</h2><span class="at-v">${esc(f.fig)}</span><p>${esc(f.short)}</p>
+  const li = (f: AltaFact) => `<li class="card" id="fact-${f.id}" data-rec="${esc(f.record[0]!)}"><h2>${icon(ICON[f.id], 16)}${esc(f.title)}</h2><a class="at-v" href="${esc(`${REPO_BLOB}${shown(f.record[0]!)}`)}" title="${esc(shown(f.record[0]!))}" target="_blank" rel="noopener">${esc(f.fig)}</a><p>${esc(f.short)}</p>
 <p class="alinks">${f.links.map((l) => `<a href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)} ↗</a>`).join("")}${f.record.slice(0, 1).map(recordLink).join("")}</p></li>`;
   return `<section class="afacts atiles" id="${ALTA_FACTS_ID}" aria-label="${esc("Three facts on Alta testnet")}"><ol>${facts.map(li).join("")}</ol></section>`;
 }
@@ -176,6 +176,14 @@ export const ALTA_TILES_CSS = `.atiles { margin: 0; }
 .atiles li { gap: 2px; padding: 12px 16px 4px; }
 .atiles h2 { font-size: 13px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); }
 .atiles h2 svg { color: var(--metal); }
+/* Each tile leads to its record (21 Nov, Max: "no dead zones, and every figure goes somewhere"): the figure is the link,
+   and it covers the card; the explorer links and the record's own link stay above it. */
+.atiles li { position: relative; }
+.atiles a.at-v { display: flex; align-items: center; min-height: 44px; color: inherit; text-decoration: none; outline: none; }
+.atiles a.at-v::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.atiles li .alinks a { position: relative; z-index: 1; }
+.atiles li:has(a.at-v:hover), .atiles li:has(a.at-v:focus-visible) { border-color: var(--metal); }
+.atiles li:has(a.at-v:focus-visible) { outline: 2px solid var(--metal); outline-offset: 2px; }
 .atiles .at-v { font-size: clamp(28px, 3vw, 36px); font-weight: 780; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .atiles p { font-size: 14.5px; }
 @media (max-width: 760px) { .atiles ol { grid-template-columns: minmax(0, 1fr); gap: 8px; }
