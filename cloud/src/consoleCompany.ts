@@ -42,6 +42,10 @@ export const CO_WORDS = {
     cl_can_1: "Read invoices, payments and the books", cl_can_2: "Explain a payment and its audit trail", cl_can_3: "See what waits for the CFO",
     cl_cannot_1: "Approve or pay", cl_cannot_2: "Change a limit", cl_cannot_3: "Write to the books",
     cl_setup: "Set up or add a token", cl_try: "Ask it: \"What needs my attention?\"",
+    // The Airwallex tab
+    awx_reading: "Reading the sandbox…", awx_lede_demo: "What Airwallex does here: money, FX, payouts, the agents' cards and webhooks. Read live from the sandbox behind Purser's recorded runs, not the demo's simulated month.",
+    awx_lede_co: "What Airwallex does here: money, FX, payouts, the agents' cards and webhooks. Read live from the sandbox behind Purser's recorded runs, not your company's own account.",
+    awx_tags: "Test money · read only · every id in full", awx_more: "More from Airwallex", awx_more_sub: "Its ledger, payees, receiving accounts and the API calls Purser made.", awx_down_h: "The Airwallex sandbox did not answer",
     // Settings
     you_h: "You", signed_in_with: "Signed in with", passkey: "Passkey", ends: "Session", policy_h: "Approval policy",
     policy_sub: "How Purser holds every payment.", policy_rules: "Every supplier payment: the CFO's Face ID over its exact terms", policy_agents: "Agents: their own card, within its limits",
@@ -74,6 +78,9 @@ export const CO_WORDS = {
     cl_can_1: "Facturen, betalingen en de boeken lezen", cl_can_2: "Een betaling en het spoor ervan uitleggen", cl_can_3: "Zien wat op de CFO wacht",
     cl_cannot_1: "Goedkeuren of betalen", cl_cannot_2: "Een limiet wijzigen", cl_cannot_3: "In de boeken schrijven",
     cl_setup: "Instellen of een token toevoegen", cl_try: "Vraag hem: \"Wat vraagt mijn aandacht?\"",
+    awx_reading: "De sandbox wordt gelezen…", awx_lede_demo: "Wat Airwallex hier doet: geld, valuta, uitbetalingen, de kaarten van de agents en webhooks. Live gelezen uit de sandbox achter de vastgelegde runs van Purser, niet de gesimuleerde maand van de demo.",
+    awx_lede_co: "Wat Airwallex hier doet: geld, valuta, uitbetalingen, de kaarten van de agents en webhooks. Live gelezen uit de sandbox achter de vastgelegde runs van Purser, niet de eigen rekening van je bedrijf.",
+    awx_tags: "Testgeld · alleen lezen · elk id volledig", awx_more: "Meer van Airwallex", awx_more_sub: "Het grootboek, begunstigden, ontvangstrekeningen en de API-aanroepen van Purser.", awx_down_h: "De Airwallex-sandbox antwoordde niet",
     you_h: "Jij", signed_in_with: "Aangemeld met", passkey: "Passkey", ends: "Sessie", policy_h: "Goedkeuringsbeleid",
     policy_sub: "Hoe Purser elke betaling vasthoudt.", policy_rules: "Elke leveranciersbetaling: de Face ID van de CFO over de exacte voorwaarden", policy_agents: "Agents: hun eigen kaart, binnen de limieten",
     policy_agents_n: "{n} agentkaarten met limieten", policy_see: "Bekijk de limieten van de agents",
