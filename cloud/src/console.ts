@@ -1827,8 +1827,9 @@ function platformView(){
   view().replaceChildren(el('div','head',[el('div','',[el('h1','',t('cs.pf.title')),el('p','lede',t('cs.pf.lede'))]),el('div','tools',[gate])]),out);
 }
 
-/** Judge panel, 15 Nov: a guest lands on what waits for the CFO's approval (the Invoices tab, Waits for Face ID), not on the overview or the sign-in. */
-const GUEST_LANDING='#/invoices?f=waiting_cfo';
+/** 21 Nov (Max): opening Purser Cloud lands on the Overview, for a guest (the demo company) as for a signed-in owner; what
+ * waits for the CFO's Face ID is one click away from it. Deep links (#/invoices?f=waiting_cfo …) still open where they point. */
+const GUEST_LANDING='#/overview';
 /** Try as guest: a read-only session for the demo company (POST /v1/auth/guest), then its pending approvals. From a link, a failure is said on the sign-in. */
 async function guestIn(fromButton){
   try{const r=await api('/v1/auth/guest',{method:'POST',token:'-'});S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:r.tenant,guest:true};save(S);ME=null;go(GUEST_LANDING)}
