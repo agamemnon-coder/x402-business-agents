@@ -114,7 +114,7 @@ function placeAsk(){const f=$('#pask-fab'),slot=$('#ask-slot');if(!f||!slot)retu
   if(inBar&&f.parentElement!==slot)slot.append(f);else if(!inBar&&f.parentElement===slot)document.body.append(f)}
 PHONE.addEventListener('change',placeAsk);setTimeout(placeAsk,0);
 // The group a page belongs to, for its header's eyebrow.
-function groupWords(){const tab=(location.hash.split('/')[1]||'').split('?')[0];const g=groupOf(tab);return g&&g[1].length>1?sw('b_'+g[0]):''}
+function groupWords(){const tab=(location.hash.split('/')[1]||'').split('?')[0];const g=groupOf(tab);return g&&g[1].length>1?sw('g_'+g[0]):''}
 // Rise in on the next frame; reduced motion shows everything at once (CSS).
 const riseIn=(root)=>requestAnimationFrame(()=>{for(const n of (root||view()).querySelectorAll('.rise'))n.classList.add('in')});
 // A card's link to the page its figures come from, in its header.
@@ -359,6 +359,7 @@ a.as-more { display: inline-flex; align-items: center; gap: 2px; padding-top: 10
 @media (max-width: 760px) { a.as-row { grid-template-columns: 34px minmax(0, 1fr) 16px; } a.as-row > .as-bar { grid-column: 2; grid-row: 3; } a.as-row > .as-d { grid-column: 2; grid-row: 2; } a.as-row > .ic { grid-column: 3; grid-row: 1 / span 3; } a.as-row > .as-av { grid-row: 1 / span 3; } }
 /* The Agents page: the roster. */
 .roster { margin: 0 0 30px; }
+@media (max-width: 640px) { .roster .sec-h p { display: none; } }
 .sec-h { margin: 4px 0 14px; } .sec-h h2 { margin: 0; font-size: 19px; letter-spacing: -.01em; } .sec-h p { margin: 4px 0 0; max-width: 80ch; }
 .rs-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 0 0 16px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--border); }
 .rs-stat { display: grid; gap: 2px; padding: 14px 16px; background: var(--surface); } .rs-stat b { font-size: 22px; font-weight: 700; letter-spacing: -.02em; } .rs-stat span { font-size: 12.5px; color: var(--muted); }
@@ -393,4 +394,7 @@ details.rs-how summary .ic { transition: transform .2s; } details.rs-how[open] s
 .rs-hb { display: grid; gap: 8px; margin-top: 8px; font-size: 13px; } .rs-hb p { margin: 0; }
 ul.rs-code { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; } ul.rs-code a { font-size: 12.5px; color: var(--accent); overflow-wrap: anywhere; }
 .agents-passes-h { margin-top: 8px; }
+/* The passes stand at their own height: a card with its payment token below does not stretch the one beside it. */
+.agents.wallet { align-items: start; }
+.wagent:not(.open) button.wpass { flex: none; }
 `;
