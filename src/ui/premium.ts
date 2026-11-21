@@ -142,6 +142,13 @@ svg.ring .seg.c0 { color:var(--c0); } svg.ring .seg.c1 { color:var(--c1); } svg.
   .signed-in .apptabs .ng { font-family:var(--mono); font-weight:600; letter-spacing:.14em; }
 }
 .signed-out .auth {border-color:color-mix(in srgb,var(--accent) 28%,var(--border));box-shadow:0 35px 95px -45px var(--glow);}
+/* The demo company's line (Max, 21 Nov: "the yellow banner has to go"): its words as they are, quiet and neutral, one line;
+   "Leave the demo" a plain link. */
+.demo-ribbon { color: var(--faint); }
+.demo-ribbon .dr { background: transparent; border: 0; padding: 0; gap: 8px; font-size: 12.5px; color: var(--faint); }
+.demo-ribbon .dr .i { color: var(--faint); opacity: .8; }
+.demo-ribbon a, .demo-ribbon a:hover { background: none; padding: 0 0 0 4px; color: var(--muted); font-weight: 600; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--muted) 45%, transparent); text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
+.demo-ribbon a:hover { color: var(--text); }
 /* The demo company (Max, 21 Nov: "one quiet disclosure"): the ribbon and the company's own line say it; no loose chip, no timer. */
 body:has(#demo:not([hidden])) #testchip, body:has(#demo:not([hidden])) .appbar #who .we { display:none; }
 .signed-out main {background:radial-gradient(ellipse 50% 65% at 20% 44%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 80%),var(--bg);}

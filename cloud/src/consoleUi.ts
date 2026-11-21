@@ -25,6 +25,8 @@ function timeline(D,shown){
   more.onclick=()=>{const open=more.getAttribute('aria-expanded')!=='true';rows.forEach((r,k)=>{if(k>=shown)r.hidden=!open});more.setAttribute('aria-expanded',String(open));more.replaceChildren(ic('chevron-down'),open?t('cs.ov.show_less'):t('cs.ov.show_newest',{n:rows.length}))};
   return el('div','',[ol,more])}
 async function overviewView(){
+  // 21 Nov (Max): the Overview on twelve columns with the partners' globe (cloud/src/consoleOverviewPlus.ts).
+  if(typeof overviewNext==='function')return overviewNext();
   title(t('cs.nav.overview'));
   const soft=(p)=>api(p).catch((e)=>{if(e instanceof Expired)throw e;return null});
   const [m,x,all,D,AG,BK]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200'),soft('/v1/dashboard'),soft('/v1/agents'),soft('/v1/books/bookings')]);shell();

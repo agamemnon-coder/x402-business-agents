@@ -129,7 +129,7 @@ aside.tbar :focus-visible { outline: 3px solid var(--accent); outline-offset: 2p
   html.touring body { padding-bottom: 196px; }
 }
 @media (prefers-reduced-motion: no-preference) { aside.tbar:not([hidden]) { animation: tb-in .45s cubic-bezier(.2, .7, .2, 1) both; } }
-@keyframes tb-in { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes tb-in { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
 `;
 
 /**

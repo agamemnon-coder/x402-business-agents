@@ -139,7 +139,9 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
     await tryLink.click();
     await page.waitForURL((u) => u.pathname === "/try", { timeout: 12_000 });
     const response = await page.request.get(page.url());
-    if (response.status() !== 200 || !/test money/i.test(await response.text()))
+    // The site's /try says "test money"; the /try/sign bundle's /try is the hands-on agent demo, which says "no money
+    // exists" (src/relay). Either way the page must say plainly that no real money moves.
+    if (response.status() !== 200 || !/test money|no money exists/i.test(await response.text()))
       fail(`the Try CTA landed on an invalid demo response: ${response.status()}`);
     await page.goto(o.url, { waitUntil: "load" });
   }
