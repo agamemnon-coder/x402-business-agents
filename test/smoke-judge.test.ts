@@ -77,7 +77,7 @@ describe("smoke:judge, a walk's checks", () => {
 describe("smoke:judge, the headroom", () => {
   const ops: Ops = {
     claude: { switch: "on", spent_today_by_pool: { public: { micros: 2_000_000, cap_micros: 10_000_000 }, jury: { micros: 0, cap_micros: 5_000_000 } }, all_time: { micros: 60_000_000, cap_micros: 100_000_000 } },
-    switches: { max_inflight: "20", starts_per_address_hour: "50", starts_per_day_public: "300", tokens: "1 tokens" },
+    switches: { max_inflight: "20", starts_per_address_hour: "50", starts_per_day_public: "300", cap_action_micros: "50000", cap_addr_micros: "3000000", tokens: "1 tokens" },
     visitors: { last_day: { started: 120 } },
   };
 
@@ -87,16 +87,19 @@ describe("smoke:judge, the headroom", () => {
     expect(lines).toContain("Claude today, jury: USD 0.00 of USD 5.00; USD 5.00 left, about 1,000 walks");
     expect(lines).toContain("Claude all time: USD 60.00 of USD 100.00; USD 40.00 left, about 8,000 walks");
     expect(lines).toContain("Claude actions in flight at once (max_inflight): 20 (ceiling 20)");
+    expect(lines).toContain("Claude actions at once that the caps allow: 60 from one network (cap_addr USD 3.00 / cap_action USD 0.05), 160 in the public pool today");
     expect(lines.at(-1)).toBe(`Airwallex sandbox payouts a UTC day (code, AWX_PAYOUT_DAY): ${AWX_PAYOUT_DAY}, 2 a walk; this run used 4, so at most ${(AWX_PAYOUT_DAY - 4) / 2} more walks with payouts today (others' walks count too)`);
     expect(warnings).toEqual([]);
   });
 
   it("warns when a capacity switch is too tight for 20 judges, or Claude is off", () => {
-    const tight: Ops = { ...ops, claude: { ...ops.claude, switch: "off" }, switches: { max_inflight: "4" } };
+    const tight: Ops = { ...ops, claude: { ...ops.claude, switch: "off" }, switches: { max_inflight: "4", cap_action_micros: "500000", cap_addr_micros: "3000000" } };
     const { lines, warnings } = headroom(tight, 5_000, 0);
     expect(lines).toContain("public starts per network an hour: 5 (default) (ceiling 50); a day: 300 (default)");
     expect(warnings).toEqual([
       "the claude switch is off: /try reads with Purser's code, not Claude",
+      "cap_addr_micros / cap_action_micros allows 6 Claude actions at once from one network: judges on one Wi-Fi need about 12; lower cap_action_micros (a walk's action costs under USD 0.01)",
+      "the public pool's day cap left allows 16 Claude actions at once; 20 judges need about 12 at the peak",
       "max_inflight is 4: 20 judges at once need about 12; set it to 20 (POST /v1/try/admin)",
       "starts_per_address_hour is 5: 20 judges on one network need 40 (2 a walk); set it to 50, or give them a jury link",
     ]);

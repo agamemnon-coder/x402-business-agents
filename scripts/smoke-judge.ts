@@ -118,8 +118,18 @@ export function headroom(ops: Ops | null, walkMicros: number | null, payoutsUsed
     };
     const inflight = cap("max_inflight"), perAddr = cap("starts_per_address_hour"), perDay = cap("starts_per_day_public");
     lines.push(`Claude actions in flight at once (max_inflight): ${inflight.v} (ceiling ${inflight.ceiling})`);
+    // Each action holds its whole ceiling (cap_action_micros) against every cap until it settles (cloud/src/engine/
+    // spend.ts), so a cap allows at most (what it has left) / (the action's ceiling) actions at once, whatever they cost.
+    const action = cap("cap_action_micros").v, addr = cap("cap_addr_micros").v;
+    const pub = c.spent_today_by_pool?.public;
+    if (action > 0) {
+      const perNet = Math.floor(addr / action), perPool = pub ? Math.floor(Math.max(0, pub.cap_micros - (pub.micros ?? 0)) / action) : null;
+      lines.push(`Claude actions at once that the caps allow: ${perNet} from one network (cap_addr ${usd(addr)} / cap_action ${usd(action)})${perPool === null ? "" : `, ${perPool} in the public pool today`}`);
+      if (perNet < 12) warnings.push(`cap_addr_micros / cap_action_micros allows ${perNet} Claude actions at once from one network: judges on one Wi-Fi need about 12; lower cap_action_micros (a walk's action costs under USD 0.01)`);
+      if (perPool !== null && perPool < 20) warnings.push(`the public pool's day cap left allows ${perPool} Claude actions at once; 20 judges need about 12 at the peak`);
+    }
     lines.push(`public starts per network an hour: ${perAddr.v}${perAddr.set ? "" : " (default)"} (ceiling ${perAddr.ceiling}); a day: ${perDay.v}${perDay.set ? "" : " (default)"}`);
-    // 20 judges at once: about 10 actions in flight at the peak (docs/runs/2026-11-21-try-capacity.md).
+    // 20 judges starting in the same minute: about 12 Claude actions in flight (docs/runs/2026-11-21-try-capacity.md).
     if (inflight.v < 12) warnings.push(`max_inflight is ${inflight.v}: 20 judges at once need about 12; set it to 20 (POST /v1/try/admin)`);
     // Judges behind one network (a venue's Wi-Fi): each walk starts 2 companies.
     if (perAddr.v < 40) warnings.push(`starts_per_address_hour is ${perAddr.v}: 20 judges on one network need 40 (2 a walk); set it to 50, or give them a jury link`);
