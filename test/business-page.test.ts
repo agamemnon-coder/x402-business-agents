@@ -235,7 +235,7 @@ describe("the visuals (21 Nov)", () => {
     expect(run.runs.some((r) => r.airwallex?.some((x) => x.amount === "EUR 120.00"))).toBe(true);
     for (const s of demoSteps(d)) {
       expect(existsSync(new URL(`../${s.rec}`, import.meta.url))).toBe(true);
-      expect(BUSINESS_PAGE).toMatch(new RegExp(`id="${s.id}"[\\s\\S]*?href="[^"]*${s.rec.replace(/[./]/g, "\\$&")}"`));
+      expect(BUSINESS_PAGE).toMatch(new RegExp(`id="${s.id}"[\\s\\S]*?href="[^"]*${s.rec.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}"`));
     }
     expect(BUSINESS_PAGE.match(/<li data-stat="[a-z-]+" data-rec="[^"]+">/g)).toHaveLength(HERO_FIGURES.length);
   });
