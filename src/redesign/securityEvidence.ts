@@ -58,7 +58,8 @@ export function wallTile(key: string, w: EvidenceWall | null = committedWall()):
 }
 /** The record a tile links to, as a repository path: its own link when that is a file here, else its first record. */
 const tileRec = (t: WallTile) => (t.href.startsWith(BLOB) ? t.href.slice(BLOB.length) : t.rec.split(" ")[0]!);
-const fromWall = (id: string, key: string, w: EvidenceWall | null, extra: Partial<EvItem> = {}): EvItem => {
+/** An item from a tile of the committed wall: its figure, words, tag and record, as the wall has them. */
+export const fromWall = (id: string, key: string, w: EvidenceWall | null, extra: Partial<EvItem> = {}): EvItem => {
   const t = wallTile(key, w);
   return { id, fig: t.fig, label: t.label, note: t.note, tag: t.tag, rec: tileRec(t), wall: key, ...extra };
 };
