@@ -78,15 +78,11 @@ try {
       const wide = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ok(wide <= 0, `${name}: /proof is no wider than the screen (${wide}px over)`);
       if (shots) await page.locator("#awx-live").screenshot({ path: join(shots, `proof-awx-live-${state}-${name}.png`) });
+      // 21 Nov: Home is one short story; the live Airwallex badge lives on /proof (checked above). Home leads there.
       await page.goto(`${base}/home`);
-      const img = page.locator(".h-axl img");
-      await img.scrollIntoViewIfNeeded();
-      await page.waitForFunction(() => { const i = document.querySelector<HTMLImageElement>(".h-axl img"); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10_000 });
-      ok(await img.isVisible(), `${name}: Home shows the badge image`);
-      ok((await page.getAttribute(".h-axl a", "href")) === "proof#awx-live", `${name}: Home's badge links to /proof's block`);
+      ok((await page.locator('main a[href="proof"]').count()) >= 1, `${name}: Home links to /proof, where the live badge is`);
       const hw = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ok(hw <= 0, `${name}: Home is no wider than the screen (${hw}px over)`);
-      if (shots && state === "live") await page.locator(".e-hero .copy").screenshot({ path: join(shots, `home-awx-badge-${name}.png`) });
       ok(errors.length === 0, `${name}: no console or CSP errors${errors.length ? ": " + errors.join(" | ") : ""}`);
       await ctx.close();
     }
