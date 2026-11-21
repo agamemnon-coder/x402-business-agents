@@ -16,7 +16,11 @@ import { esc } from "./ui.js";
 export const FLOW_ID = "architecture";
 export const FLOW_CAPTION = "Open a step for its evidence, status and limits. Test money; a sandbox PAID is simulated.";
 export const FLOW_LIMITS_HEAD = "Limits of this evidence";
-export const FLOW_PARTIAL = "Not all: read its note";
+export const FLOW_PROVES_HEAD = "What it proves";
+export const FLOW_NOT_PROVED_HEAD = "What it does not prove";
+/** What is not finished yet (the review, 21 Nov: a visible link; the anchor is /security's until its own section lands). */
+export const FLOW_NOT_FINISHED = { label: "What is not finished", href: "security#not-finished" } as const;
+export const FLOW_PARTIAL = "Fewer than all: read its note";
 
 type Tone = "claude" | "ok" | "accent" | "awx" | "ink" | "bad";
 export interface FlowStep {
@@ -39,6 +43,8 @@ export interface FlowStep {
   tone: Tone;
   /** A refusal leaves the path here: nothing moves. */
   refusal?: string;
+  /** What the evidence proves, said before its limits (the one-cent step). */
+  proves?: readonly string[];
   /** A page where the reader tries it themselves. */
   tryIt?: { label: string; href: string };
 }
@@ -54,7 +60,7 @@ export const FLOW_STEPS: readonly FlowStep[] = [
     id: "pf-checks", title: "Checks", who: "Purser's code", line: "Code, not the model, holds what fails.",
     does: "Code checks cash on hand, duplicates, the supplier's bank details and lines planted for the AI; what fails is held for a person, whatever the model said.",
     keys: ["try-held", "hostile-model", "red-team"], href: "#pq-ai", hrefLabel: "Claude decides, code enforces", tone: "ok",
-    limits: ["The red team is a full re-run of known attacks, not held out.", "Hostile tool calls that stood within the rules were let through, as the ledger shows."],
+    limits: ["The red team is our own scripted attacks, re-run in full: internal and not held out, not an independent penetration test.", "Hostile tool calls that stood within the rules were let through, as the ledger shows."],
   },
   {
     id: "pf-policy", title: "Policy", who: "The CFO's limits, in code", line: "Within the limit the agent pays alone; above it, the CFO.",
@@ -75,7 +81,8 @@ export const FLOW_STEPS: readonly FlowStep[] = [
     does: "Change the amount by one cent after the CFO signed, and the hash no longer matches: the payment is refused before it reaches the rail. Change one cent in the books, and the balance sheet no longer balances.",
     keys: ["try-cent", "soak-negatives", "card-cent", "try-refusal"], href: "#pq-refused", hrefLabel: "Refused before money moved", tone: "bad",
     refusal: "One cent off: refused, nothing moves.", tryIt: { label: "Change one cent yourself, in the books", href: "books#cent" },
-    limits: ["On the public /try a virtual test passkey signed; the walks are on test money.", "Card declines are simulated charges in the Airwallex sandbox.", "The books demo changes a cent in your browser only."],
+    proves: ["Terms changed after the signature are refused before any money-moving call: the signed hash no longer matches.", "Books changed by a cent no longer balance, and the check says where."],
+    limits: ["It does not prove the first terms were right: the CFO signed what was shown.", "On the public /try a virtual test passkey signed; the walks are on test money.", "Card declines are simulated charges in the Airwallex sandbox.", "The books demo changes a cent in your browser only."],
   },
   {
     id: "pf-rail", title: "Rail", who: "Airwallex · Alta · Visa via Airi", line: "Moves the signed payment and carries its hash.",
@@ -116,7 +123,16 @@ export function flowSteps(w: EvidenceWall | null = committedWall()): PlacedStep[
   return FLOW_STEPS.map((step) => ({ step, tiles: step.keys.flatMap((k) => (tiles.has(k) ? [tiles.get(k)!] : [])) }));
 }
 
-const evidence = (t: WallTile) => `<li class="pf-e${t.tone ? ` ${t.tone}` : ""}${partial(t.fig) ? " part" : ""}" data-flow="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}"${target(t.href)}><b class="pf-f">${esc(t.fig)}</b><span class="pf-l">${esc(t.label)}</span><span class="pf-k"><span class="pf-tag ${t.tag}">${esc(TAG_WORDS[t.tag])}</span>${partial(t.fig) ? `<span class="pf-part">${esc(FLOW_PARTIAL)}</span>` : ""}<time class="pf-d">${esc(tileDay(t))}</time><span class="pf-r" aria-hidden="true">${isExternal(t.href) ? "↗" : "→"}</span></span></a><small class="pf-note">${esc(t.note)}</small></li>`;
+/**
+ * A tile's link, to its record: a tile whose link is the folder of every run (docs/runs) links its newest record's
+ * file instead (the review, 21 Nov: "link the summary.json records"); any other link as the wall has it.
+ */
+export function recordHref(t: WallTile): string {
+  if (!/\/tree\/main\/docs\/runs\/?$/.test(t.href)) return t.href;
+  const recs = t.rec.split(/\s+/).filter((r) => /^docs\/runs\/.+\.(json|md)$/.test(r)).sort();
+  return recs.length ? t.href.replace(/\/tree\/main\/docs\/runs\/?$/, `/blob/main/${recs.at(-1)!}`) : t.href;
+}
+const evidence = (t: WallTile) => `<li class="pf-e${t.tone ? ` ${t.tone}` : ""}${partial(t.fig) ? " part" : ""}" data-flow="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(recordHref(t))}"${target(t.href)}><b class="pf-f">${esc(t.fig)}</b><span class="pf-l">${esc(t.label)}</span><span class="pf-k"><span class="pf-tag ${t.tag}">${esc(TAG_WORDS[t.tag])}</span>${partial(t.fig) ? `<span class="pf-part">${esc(FLOW_PARTIAL)}</span>` : ""}<time class="pf-d">${esc(tileDay(t))}</time><span class="pf-r" aria-hidden="true">${isExternal(t.href) ? "↗" : "→"}</span></span></a><small class="pf-note">${esc(t.note)}</small></li>`;
 
 function stepHtml(p: PlacedStep, extra = ""): string {
   const s = p.step, head = p.tiles[0];
@@ -128,7 +144,8 @@ function stepHtml(p: PlacedStep, extra = ""): string {
 <p class="pf-does"><b>${esc(s.line)}</b> ${esc(s.does)}</p>
 ${s.refusal ? `<p class="pf-ref">${esc(s.refusal)}</p>` : ""}
 <ul class="pf-ev">${p.tiles.map(evidence).join("")}</ul>
-<div class="pf-lim"><h4>${esc(FLOW_LIMITS_HEAD)}</h4><ul>${s.limits.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></div>
+${s.proves ? `<div class="pf-lim pf-pro"><h4>${esc(FLOW_PROVES_HEAD)}</h4><ul>${s.proves.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></div>` : ""}
+<div class="pf-lim"><h4>${esc(s.proves ? FLOW_NOT_PROVED_HEAD : FLOW_LIMITS_HEAD)}</h4><ul>${s.limits.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></div>
 ${s.tryIt ? `<a class="pf-try" href="${esc(s.tryIt.href)}">${esc(s.tryIt.label)} <span aria-hidden="true">→</span></a>` : ""}
 <a class="pf-more" href="${esc(s.href)}">${esc(s.hrefLabel)} <span aria-hidden="true">→</span></a>${extra}
 </div></details></li>`;
@@ -141,13 +158,13 @@ export function flowHtml(w: EvidenceWall | null = committedWall()): string {
   const tiles = new Map<string, WallTile>(w!.groups.flatMap((g) => g.tiles.map((t) => [t.key, t] as const)));
   const base = FLOW_BASE.keys.flatMap((k) => (tiles.has(k) ? [tiles.get(k)!] : []));
   const track = `<ol class="pf-track" aria-label="${esc("The steps of one payment")}">${steps.map((p) => `<li class="${p.step.tone}"><a href="#${esc(p.step.id)}"><span class="pf-n" aria-hidden="true"></span>${esc(p.step.title)}</a></li>`).join("")}</ol>`;
-  const baseRow = base.length ? `<div class="pf-base"><p class="pf-bh"><a href="${FLOW_BASE.href}">${esc(FLOW_BASE.title)} <span aria-hidden="true">→</span></a></p><ul>${base.map((t) => `<li data-flow="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}"${target(t.href)}><b>${esc(t.fig)}</b> ${esc(t.label)}</a></li>`).join("")}</ul></div>` : "";
+  const baseRow = base.length ? `<div class="pf-base"><p class="pf-bh"><a href="${FLOW_BASE.href}">${esc(FLOW_BASE.title)} <span aria-hidden="true">→</span></a></p><ul>${base.map((t) => `<li data-flow="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(recordHref(t))}"${target(t.href)}><b>${esc(t.fig)}</b> ${esc(t.label)}</a></li>`).join("")}</ul></div>` : "";
   return `<figure class="pflow" id="${FLOW_ID}" aria-labelledby="pf-cap" data-rec="${WALL_FILE}">
 ${track}
 <ol class="pf-steps">
 ${steps.map((p, i) => stepHtml(p, i === steps.length - 1 ? baseRow : "")).join("\n")}
 </ol>
-<figcaption id="pf-cap">${esc(FLOW_CAPTION)}</figcaption></figure>`;
+<figcaption id="pf-cap">${esc(FLOW_CAPTION)} <a class="pf-nf" href="${FLOW_NOT_FINISHED.href}">${esc(FLOW_NOT_FINISHED.label)} <span aria-hidden="true">→</span></a></figcaption></figure>`;
 }
 
 /**
@@ -251,6 +268,8 @@ export const FLOW_CSS = `
 .pflow .pf-base li a b { color: var(--text); font-variant-numeric: tabular-nums; }
 .pflow .pf-base li a:hover, .pflow .pf-base li a:focus-visible { border-color: var(--accent); color: var(--text); }
 .pflow figcaption { margin: 10px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--muted); }
+.pflow figcaption a.pf-nf { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; color: var(--accent); font-weight: 650; text-decoration: none; }
+.pflow .pf-lim.pf-pro { background: var(--ok-soft); }
 @media (max-width: 760px) {
   .pflow { padding: 14px 12px 12px; border-radius: 16px; }
   .pflow ol.pf-track { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -12px; padding-right: 12px; }

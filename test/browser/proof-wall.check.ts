@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { startJudge } from "../../src/cli/judge.js";
 import { committedWall } from "../../src/redesign/evidenceWall.js";
 import { browserName, launchBrowser } from "./support/browser.js";
-import { FLOW_STEPS } from "../../src/redesign/proofFlow.js";
+import { FLOW_STEPS, recordHref } from "../../src/redesign/proofFlow.js";
 
 const args = process.argv.slice(2);
 const liveAt = args.indexOf("--live");
@@ -79,7 +79,7 @@ for (const [w, h] of [[360, 800], [390, 844], [1440, 900], [2560, 1440], [3840, 
       if (flow.tiles.length !== keys.length) fail(`${tag}: ${flow.tiles.length} tiles in the flow, ${keys.length} expected`);
       for (const t of flow.tiles) {
         const r = all.get(t.key);
-        if (!r || r.fig !== t.fig || r.href !== t.href || !t.rec) fail(`${tag}: flow tile ${t.key} not as its record says (${JSON.stringify(t)})`);
+        if (!r || r.fig !== t.fig || recordHref(r) !== t.href || !t.rec) fail(`${tag}: flow tile ${t.key} not as its record says (${JSON.stringify(t)})`);
         else if (t.h < 44 || t.left < 0 || t.right > w + 0.5) fail(`${tag}: flow tile ${t.key} under 44 px or outside the screen (${JSON.stringify(t)})`);
       }
       if (flow.more.some((x) => !x) || flow.limits.some((x) => x < 1)) fail(`${tag}: a step without its limits or its link to a section on the page`);

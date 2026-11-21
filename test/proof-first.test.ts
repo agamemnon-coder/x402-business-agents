@@ -13,7 +13,7 @@ import { CFO_VIEW_LINK, CFO_VIEW_URL, FILM_LINK, FILM_URL, PROOF_SENTENCES, SPLI
 import { AWX_CONTROLS_ID, AWX_HASH_ID, awxCardId, cardControlRows, cardsReadback, hashTravel, transferReadback } from "../src/redesign/airwallexProof.js";
 import { QUESTIONS } from "../src/redesign/proofQuestions.js";
 import { evalRounds } from "../src/redesign/proofCharts.js";
-import { FLOW_CSS, FLOW_JS, FLOW_STEPS, flowHtml, flowSteps, partial } from "../src/redesign/proofFlow.js";
+import { FLOW_CSS, FLOW_JS, FLOW_STEPS, flowHtml, flowSteps, partial, recordHref } from "../src/redesign/proofFlow.js";
 import { committedWall } from "../src/redesign/evidenceWall.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { proofLeads, reliabilityFix, RELIABILITY_CASE } from "../src/redesign/proofLead.js";
@@ -294,7 +294,7 @@ describe("/proof tells one story (the owner, 21 Nov): the architecture, then the
       // Every key a step names is a tile of the wall, and every one is drawn as the wall has it, with its record.
       expect({ id: p.step.id, missing: p.step.keys.filter((k) => !all.has(k)) }).toEqual({ id: p.step.id, missing: [] });
       expect(p.tiles.length).toBeGreaterThan(0);
-      for (const t of p.tiles) expect(fig).toContain(`data-flow="${t.key}" data-rec="${t.rec}"><a href="${t.href.replace(/&/g, "&amp;")}"`);
+      for (const t of p.tiles) expect(fig).toContain(`data-flow="${t.key}" data-rec="${t.rec}"><a href="${recordHref(t).replace(/&/g, "&amp;")}"`);
       // Its section is on the page, once; its limits are said.
       expect({ id: p.step.id, ids: html.split(` id="${p.step.href.slice(1)}"`).length - 1 }).toEqual({ id: p.step.id, ids: 1 });
       expect(p.step.limits.length).toBeGreaterThan(0);
@@ -306,8 +306,14 @@ describe("/proof tells one story (the owner, 21 Nov): the architecture, then the
     expect(partial("All 132")).toBe(false);
     expect(partial("3 of 3")).toBe(false);
     for (const t of flowSteps().flatMap((p) => p.tiles).filter((x) => partial(x.fig))) expect(fig).toMatch(new RegExp(`<li class="pf-e[^"]* part" data-flow="${t.key}"`));
-    // The one-cent step, with a way to try it in the books.
+    // The one-cent step, with a way to try it in the books, and what it proves and does not prove (the review, 21 Nov).
     expect(fig).toContain('<a class="pf-try" href="books#cent">');
+    expect(fig).toMatch(/<details class="pf-x" id="pf-cent">[\s\S]*?<h4>What it proves<\/h4>[\s\S]*?<h4>What it does not prove<\/h4>/);
+    // A tile whose link is the folder of every run links its newest record instead; what is not finished is linked.
+    const folder = flowSteps().flatMap((p) => p.tiles).find((t) => /\/tree\/main\/docs\/runs$/.test(t.href));
+    if (folder) expect(recordHref(folder)).toMatch(/\/blob\/main\/docs\/runs\/.+\.(json|md)$/);
+    expect(fig).not.toMatch(/href="[^"]*\/tree\/main\/docs\/runs"/);
+    expect(fig).toContain('<a class="pf-nf" href="security#not-finished">What is not finished');
     // Motion only when allowed; the light needs the script, which does nothing under reduced motion.
     expect(FLOW_CSS).toContain("@media (prefers-reduced-motion: no-preference)");
     expect(FLOW_CSS).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ [^}]*animation: none/);
