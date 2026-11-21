@@ -189,7 +189,7 @@ p.wf-note { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
 p.wf-note a { color: var(--accent); font-weight: 650; display: inline-flex; align-items: center; min-height: 44px; }
 /* The pulse that runs from one step into the next. */
 .wf-s + .wf-s::after { content: ""; position: absolute; left: 28px; top: -8px; width: 4px; height: 4px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px 2px var(--accent); opacity: 0; }
-@media (max-width: 640px) { .wf { padding: 16px 14px 6px; } .wf-d { padding-left: 12px; } .wf-head { flex-wrap: wrap; } }
+@media (max-width: 640px) { .wf { padding: 16px 14px 6px; } .wf-d { padding-left: 12px; } .wf-head { flex-wrap: wrap; } .wf-inv small { white-space: normal; } }
 /* Each step lights in turn: its icon, the pulse into it, its tick, its chip and detail (wiped in, never faded, so the
    words keep their contrast in every frame); the rail fills; the refusal last. Still and all lit under reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
