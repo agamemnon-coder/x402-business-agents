@@ -67,9 +67,14 @@ describe("while a page loads", () => {
   });
 });
 
-describe("the tabs on a phone", () => {
-  it("fade at the right edge, so a cut tab reads as a row that scrolls on", () => {
+describe("the pages on a phone", () => {
+  // 22 Nov (the owner: on his iPhone the nine pages were a grid of words): a bottom tab bar of the five groups, and a
+  // group's pages side by side under the top bar; the old rows of words are gone.
+  it("are five groups in a bottom tab bar, not a grid of words", () => {
     const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "in.cloud.test" });
-    expect(html).toContain(".appbar nav.apptabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image:");
+    expect(html).toContain('<nav class="btabs" id="btabs"');
+    expect(html).toContain('<nav class="subnav" id="subnav" hidden></nav>');
+    expect(html).not.toContain("grid-template-columns: repeat(3, auto)");
+    expect(html).not.toContain(".appbar nav.apptabs { -webkit-mask-image:");
   });
 });

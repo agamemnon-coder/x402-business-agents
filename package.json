@@ -44,6 +44,7 @@
     "charts": "tsx scripts/repo-charts.ts",
     "finance:svg": "tsx scripts/finance-svg.ts",
     "readme:strip": "tsx scripts/readme-proof-strip.ts",
+    "readme:demo": "tsx scripts/readme-demo-svg.ts",
     "test-count": "tsx scripts/test-count.ts",
     "site:check": "tsx scripts/site-check.ts",
     "site:quality": "tsx scripts/site-quality.ts",

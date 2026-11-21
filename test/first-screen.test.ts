@@ -5,12 +5,13 @@
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, README_WHAT, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, KIT11_RUN_LINE, README_WHAT, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
 import { CLOUD_EYEBROW, FILM_BUTTON, HOME_SUB, PILOT_BUTTON, REASSURE, START, START_ID, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { loadRecord } from "../src/redesign/run.js";
 import { readmeFull } from "./readmeFull.js";
+import { readmeDemoLine, readmeStepLines } from "../scripts/readme-demo-svg.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 /** Text as read: tags, Markdown emphasis and link targets gone, entities decoded, white space single. */
@@ -27,14 +28,11 @@ const anchors = (md: string) => [...md.matchAll(/^#+ (.+)$/gm)].map((m) => m[1]!
 const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wise|Stripe|Mastercard|Coinbase|Google|Visa)\b/;
 
 // The README's banner (13 Nov, evening, owner): drawn from scripts/readme-banner.html, dark and light; Home's own
-// picture (hero-*.webp) moved to the gallery.
+// picture (hero-*.webp) moved to the gallery. 21 Nov 2026 (Max: the logo on top): the banner went to the gallery too.
 const BANNER = `<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/banner-dark.png"><img src="docs/assets/readme/banner-light.png" alt="Purser: AI agents spend. You sign off. Passkey on the exact terms · Limits enforced in 3 layers · Books matched to the cent" width="100%"></picture></a>`;
 
 const README_BUILT_ON = "**Built on Airwallex.** Purser calls Airwallex's API for a card per agent with the CFO's limits (Issuing), FX quotes inside the signed terms, transfers that carry the hash the CFO signed, the payee's bank check, Airwallex's own approval as a second lock, and signed webhooks (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).";
 
-/** The README's three links under the idea (15 Nov): Try, the film, and the offline check in the README itself. 18 Nov: the demo in the submission (3:15) replaces the film there; the film stays under "Watch it". 19 Nov 2026 (README tightened for the judges): the judges' path, numbered, the demo first, then its thumbnail. 20 Nov 2026 (owner): live links to /try and /proof, named, on the first screen. */
-const README_LINKS = "**1. [Watch the demo (3:15)](https://youtu.be/gEUm8RlhZac) · 2. [Try it live on /try (2 min, test money)](https://kit11.max-31b.workers.dev/try) · 3. [See every proof on /proof](https://kit11.max-31b.workers.dev/proof) · 4. [Verify a payment (3 commands)](#verify-it-yourself-in-3-commands)**";
-const README_THUMB = '<a href="https://youtu.be/gEUm8RlhZac"><img src="docs/assets/readme/demo-thumb.jpg" alt="Purser: the demo on YouTube (3:15)" width="100%"></a>';
 /** 19 Nov 2026: what Purser is and why the repository has its name, in one sentence, before any proof (the words of "For judges: 3 minutes" and "One engine, two jobs"). */
 const README_IS = '**What it is:** the control layer between a company\'s AI agents and its money on Airwallex and Alta (formerly Metal): one engine runs agents that pay supplier invoices and agents that buy and sell data over x402, hence the repository\'s name, x402-business-agents, after Starter Kit 11 ("x402 Business Agents"), the hackathon brief it was built for.';
 
@@ -48,22 +46,28 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(WHAT_IT_IS).not.toMatch(/cannot break|can't break|every limit|holds? no keys?/i);
   });
 
-  it("opens the README under its title with the pitch once, the judges' path (the demo, /try, /proof) and one row per sponsor track, all on the first screen (owner, 20 Nov)", () => {
+  it("opens the README with the logo, the title, one row of badges, the pitch, the small demo, the three steps and one row per sponsor track (Max, 21 Nov)", () => {
     const lines = README.split("\n");
     // 20 Nov 2026 (owner: "judges process many repos and videos; without scrolling, the top must show what Purser does,
-    // the 3:15 demo, live links to /try and /proof, and which proof belongs to which sponsor track"): the title, the
-    // pitch, the judges' path, then a three-row table of the sponsor tracks (Airwallex, Visa, Alta (formerly Metal)),
-    // each with what ran live and one link to its record. Checked at a 1440 × 900 GitHub view: these end about 620 px
-    // down. Everything that pushed them below the first screen (the banner and the animated flow, the badges, the
-    // thumbnail, the evidence map) comes after them, inside the same centred top; the six-row proof table went (its
-    // rows are the track table's, the judges' table's, At a glance's and the invariants').
-    expect(lines.slice(0, 8)).toEqual(['<div align="center">', "", `# Purser · ${HERO}`, "", `**${README_WHAT}**`, "", README_LINKS, ""]);
-    const tracks = lines.slice(8, 13);
+    // the 3:15 demo, live links to /try and /proof, and which proof belongs to which sponsor track").
+    // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far
+    // fewer headings". In the centred top, in this order: the Purser mark (the logo), the title, one compact row of
+    // badges (test/readme-badges.test.ts), the pitch, the small demo (scripts/readme-demo-svg.ts, one recorded /try walk),
+    // the three steps (the video's thumbnail and two step cards, then the same three as numbered links), and a
+    // four-row table of the sponsor tracks (Airwallex, Visa via Airi, Alta (formerly Metal), T:0), each with what ran live
+    // and one link to its record. The evidence map, the wall's line, the three badge rows, the judges' table, the
+    // submission line, the banner with the animated flow and the proof strip left the top: the map and the flow
+    // altogether (the flow and the banner to the gallery), the rest to "The proof" below.
+    const [pictures, links] = readmeStepLines();
+    expect(lines.slice(0, 16)).toEqual(['<div align="center">', "", lines[2]!, "", `# Purser · ${HERO}`, "", lines[6]!, "", `**${README_WHAT}**`, "", readmeDemoLine(), "", pictures, "", links, ""]);
+    expect(lines[2]!.includes('srcset="docs/assets/brand/purser-mark-dark.svg"><img src="docs/assets/brand/purser-mark.svg" alt="Purser"')).toBe(true);
+    expect(lines[6]!.startsWith("[![CI](")).toBe(true);
+    const tracks = lines.slice(16, 22);
     expect(tracks[0]).toBe("| Sponsor track | What ran live (test money) | Record |");
     expect(tracks[1]).toBe("|---|---|---|");
-    expect(tracks.slice(2).map((l) => /^\| \*\*([^*]+)\*\*/.exec(l)?.[1])).toEqual(["Airwallex", "Visa", "Alta (formerly Metal)"]);
+    expect(tracks.slice(2).map((l) => /^\| \*\*([^*]+)\*\*/.exec(l)?.[1])).toEqual(["Airwallex", "Visa", "Alta (formerly Metal)", "T:0"]);
     const trackLinks = tracks.slice(2).map((l) => [...l.split(" | ").at(-1)!.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1]!));
-    expect(trackLinks).toEqual([["docs/runs/airwallex-transfer-approval-2026-11-06.json"], ["docs/runs/2026-11-14-vic-5.md"], ["docs/runs/2026-11-03-main-run.md"]]);
+    expect(trackLinks).toEqual([["docs/runs/airwallex-transfer-approval-2026-11-06.json"], ["docs/runs/2026-11-14-vic-5.md"], ["docs/runs/2026-11-03-main-run.md"], ["docs/runs/2026-11-14-t0-readback.md"]]);
     for (const f of trackLinks.flat()) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
     // Each row's figures are its record's.
     const awx = JSON.parse(read("docs/runs/airwallex-transfer-approval-2026-11-06.json")) as { read_at: string; run: string; transfer: { transfer_amount: number; transfer_currency: string; transfer_method: string; created_at: string; metadata: { approval_sha256: string } } };
@@ -76,59 +80,59 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(read("docs/runs/2026-11-14-vic-5.md")).toMatch(/PURSER_CREDENTIAL_ALREADY_USED[\s\S]*PURSER_CREDENTIAL_AMOUNT_MISMATCH|PURSER_CREDENTIAL_AMOUNT_MISMATCH[\s\S]*PURSER_CREDENTIAL_ALREADY_USED/);
     const m = metalStory(loadRecord().record);
     expect(tracks[4]).toContain(`Main run, 3 Nov: x402 agents buy and sell data under on-chain mandates, ${m.payments.total} Alta payments; purchase #${m.refusal!.seq}, over its mandate, refused on chain by Alta itself`);
+    const t0 = JSON.parse(read("docs/runs/2026-11-14-t0-readback.json")) as { read_at: string; close_check: { agrees: boolean; expected: number; matched: number; how: string } };
+    expect(t0.close_check).toMatchObject({ agrees: true, how: "accounts" });
+    expect(t0.close_check.matched).toBe(t0.close_check.expected);
+    expect(tracks[5]).toContain(`${Number(t0.read_at.slice(8, 10))} Nov: all ${t0.close_check.matched} of the main run's journal entries read back from T:0, every account matching Purser's books to the cent`);
     expect(tracks.join("\n").replaceAll("Alta (formerly Metal)", "")).not.toMatch(/\bMetal\b/); // "Alta (formerly Metal)", never Metal alone
-    // Then, below the first screen, inside the centred top: the demo's thumbnail, the evidence map and the wall's line
-    // (npm run evidence:wall puts them under the thumbnail), the three badge rows, what Purser is, the judges' table, the
-    // submission line, the banner with the animated flow, the proof strip.
-    expect(lines.slice(13, 20)).toEqual(["", README_THUMB, "", lines[16]!, "", lines[18]!, ""]);
-    expect(lines[16]!.startsWith('<a href="https://kit11.max-31b.workers.dev/proof#evidence"><picture>')).toBe(true);
-    expect(lines[18]!.startsWith("**Evidence wall, from the records:** ")).toBe(true);
-    const badges = lines.findIndex((l) => l.startsWith("**Build & quality**<br>[![CI]")); // 19 Nov 2026: three rows, each after its bold label
-    expect(badges).toBe(20);
-    expect([0, 1, 2].map((i) => lines[badges + i]!.match(/\[!\[/g)?.length)).toEqual([5, 5, 8]);
-    expect(lines.slice(23, 26)).toEqual(["", README_IS, ""]);
-    const judges = lines.slice(26, 33);
+    // "Alta (formerly Metal)" at the first mention of Alta (here, the badge row's).
+    expect(README.indexOf("Alta (formerly Metal)")).toBe(README.indexOf("Alta"));
+    expect(lines.slice(22, 25)).toEqual(["", "</div>", ""]);
+    // Under the centred top: the test-money alert, what Purser is, the glossary folded, then "The proof".
+    expect(lines.slice(25, 31)).toEqual(["> [!IMPORTANT]", lines[26]!, "", README_IS, "", "<details><summary><b>Words used here</b></summary>"]);
+    expect(lines[26]).toMatch(/^> \*\*Test money only\.\*\* Live: .* Simulated: /);
+    const glossary = lines.slice(32, lines.indexOf("</details>", 31));
+    expect(glossary.filter((l) => l).map((l) => /^- \*\*([^*]+):\*\* /.exec(l)?.[1])).toEqual(["VIC, Airi", "T:0", "/try/sign", "Purser Cloud"]);
+    expect(README).not.toContain("> [!TIP]");
+    expect(README).not.toContain("The strongest proof, one click each");
+    // "The proof": the proof strip, the wall's line, the judges' table, the six lines of At a glance
+    // (test/readme-glance.test.ts), the Kit 11 line, one engine two jobs, what stood at the submission.
+    const proof = lines.indexOf("## The proof");
+    expect(proof).toBeGreaterThan(lines.indexOf("</details>", 31));
+    const judges = lines.slice(lines.findIndex((l) => l.startsWith("| **For judges:**")));
     expect(judges[0]!.startsWith("| **For judges:** the four things every entry shows, and where every id is |")).toBe(true);
     expect(judges.slice(2, 7).map((l) => /^\| \*\*([^:]+):/.exec(l)?.[1])).toEqual(["User", "Airwallex action", "Financial context", "Controls", "Proof"]);
     expect(judges[2]).toContain("[for the CFO](docs/finance-value.md)");
     expect(judges[6]).toContain("](docs/in-depth.md#what-ran-live-one-id-per-rail)");
-    expect(lines[34]!.startsWith("**What stood at the submission:** the tag `v1.0-submission` (8 Nov)")).toBe(true);
-    expect(lines[34]).toContain("(entered for the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award)");
-    // The banner (13 Nov, evening, owner) and the animated flow (15 Nov, Max), one line, at the foot of the centred top.
-    expect(lines[36]!.startsWith(`${BANNER}<br><picture>`)).toBe(true);
-    for (const f of ["docs/assets/readme/banner-dark.png", "docs/assets/readme/banner-light.png", "docs/assets/readme/hero-dark.webp", "docs/assets/readme/hero-light.webp"]) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
-    const partners = lines.findIndex((l) => l.startsWith('<a href="https://kit11.max-31b.workers.dev/proof"><picture>') && l.includes("proof-strip-light.svg"));
-    expect(partners).toBe(38);
-    expect(lines.slice(39, 42)).toEqual(["", "</div>", ""]);
-    // Under the centred top: the test-money alert, a short glossary, then "At a glance".
-    const glance = lines.indexOf("## At a glance");
-    expect(lines.slice(42, glance)).toEqual(["> [!IMPORTANT]", lines[43]!, "", "**Words used here:**", ...lines.slice(46, 50), ""]);
-    expect(lines[43]).toMatch(/^> \*\*Test money only\.\*\* Live: .* Simulated: /);
-    expect(lines.slice(46, 50).map((l) => /^- \*\*([^*]+):\*\* /.exec(l)?.[1])).toEqual(["VIC, Airi", "T:0", "/try/sign", "Purser Cloud"]);
-    expect(README).not.toContain("> [!TIP]");
-    expect(README).not.toContain("The strongest proof, one click each");
-    const kit = lines.indexOf("## Kit 11, step by step");
-    expect(lines.slice(glance + 1, kit).filter((l) => l.startsWith("- **"))).toHaveLength(6);
+    const howItWorks = lines.indexOf("## How it works");
+    const submission = lines.findIndex((l) => l.startsWith("**What stood at the submission:** the tag `v1.0-submission` (8 Nov)"));
+    expect(submission).toBeGreaterThan(proof);
+    expect(submission).toBeLessThan(howItWorks);
+    expect(lines[submission]).toContain("(entered for the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award)");
+    const kit = lines.findIndex((l) => l.startsWith(`**Kit 11, step by step.** ${KIT11_RUN_LINE}`));
+    expect(kit).toBeGreaterThan(proof);
+    expect(kit).toBeLessThan(66);
+    expect(lines.slice(proof + 1, kit).filter((l) => l.startsWith("- **"))).toHaveLength(6);
     expect(README_WHAT).toBe(HOME_SUB);
-    expect(kit).toBeLessThan(66); // 66 since 20 Nov 2026 (the owner's first screen: the six-row proof table gone, the five-line tracks table in; 62 as built); 68 before
-    // "Built on Airwallex" (14 Nov, factual, no partnership implied) opens "Airwallex at the centre", word for word.
-    const centre = lines.indexOf("## Airwallex at the centre");
-    expect(lines.slice(centre + 1, centre + 3)).toEqual(["", README_BUILT_ON]);
+    // The banner (13 Nov, evening, owner) and the animated flow (15 Nov, Max), one line, now in the gallery.
+    expect(README).not.toContain("banner-light.png");
+    expect(readmeFull()).toContain(`${BANNER}<br><picture>`);
+    for (const f of ["docs/assets/readme/banner-dark.png", "docs/assets/readme/banner-light.png", "docs/assets/readme/hero-dark.webp", "docs/assets/readme/hero-light.webp"]) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
+    // "Built on Airwallex" (14 Nov, factual, no partnership implied) follows the partners' table in "Built with", word for word.
+    const built = lines.indexOf("## Built with");
+    expect(lines.indexOf(README_BUILT_ON)).toBeGreaterThan(built);
+    expect(lines.indexOf(README_BUILT_ON)).toBeLessThan(lines.indexOf("## Verify it yourself in 3 commands"));
     expect(read("docs/submission/long-description.md").split("\n").slice(0, 3)).toEqual(["# Purser: the long description", "", README_BUILT_ON.replace("(docs/airwallex.md)", "(../airwallex.md)")]);
     expect(README_BUILT_ON).not.toMatch(/partner|endors|certif|official|approved/i);
-    // Under the Kit 11 table: the sentence every juror repeated, then the live demo's line, then the quick start.
-    const live = lines.findIndex((l) => l.startsWith("**Live demo: "));
-    expect(lines.slice(live - 3, live)).toEqual(["", DIFFERENTIATORS[0], ""]);
-    expect(lines[live]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
-    expect(lines.slice(live + 1, live + 3)).toEqual(["", "## Verify it yourself in 3 commands"]);
-    // 19 Nov 2026 (README tightened for the judges): one "How it works"; the sections that only pointed to a doc (the
-    // gallery, Enterprise and the rest) are rows of one "More" table; "Not signed is never paid" says it holds above the limit.
-    const order = ["## Verify it yourself in 3 commands", "## Where things are", "## Watch it", "## How it works", "**Above your limit: not signed, never paid.**", "## Built with", "## More"].map((h) => lines.indexOf(h));
-    expect(order.every((x, i) => x > badges && (i === 0 || x > order[i - 1]!))).toBe(true);
+    // The sentence every juror repeated opens "How it works".
+    expect(lines.slice(howItWorks + 1, howItWorks + 4)).toEqual(["", DIFFERENTIATORS[0], ""]);
+    // Seven sections, in this order.
+    const order = ["## The proof", "## How it works", "**Above your limit: not signed, never paid.**", "## Built with", "## Verify it yourself in 3 commands", "## Try it in 2 minutes", "## The business hypothesis", "## More"].map((h) => lines.indexOf(h));
+    expect(order.every((x, i) => x > 22 && (i === 0 || x > order[i - 1]!))).toBe(true);
     // The rails that ran live, said once under the three proofs; the three commands shown once, in their own section.
     expect(lines.some((l) => l.startsWith("**Run live on test money** (Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude): the main run of 3 November"))).toBe(true);
     expect(README.split("npm run judge -- --check").length - 1).toBe(1);
-    // 20 Nov (owner): the demo is the video; the film and the trailer only as one quiet line under it.
+    // 20 Nov (owner): the demo is the video; the film and the trailer only as one quiet line, in "More".
     expect(README).toContain("\nEarlier videos: [the film, under the hood (3:29)](https://youtu.be/PNLuqhRzVfE) · [the trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only\n");
     expect(README.split("youtu.be/PNLuqhRzVfE").length - 1).toBe(1);
     expect(README).toContain("**[The demo (3:15)](https://youtu.be/gEUm8RlhZac)**");

@@ -25,7 +25,11 @@ describe("the README's shape (jury panel, 12 Nov)", () => {
     // 14 Nov (Max, the README and repo upgrade): two rows, the project's badges and one row of the partners.
     // 17 Nov (owner: "one calm, branded set"): one row, the live CI and CodeQL badges; the rest is the proof strip.
     // 17 Nov, later (owner: keep all the badges, grouped): three rows (build, partners, proof), then the strip.
-    expect(lines.filter((l) => /\[!\[[^\]]*\]\(https:\/\/(img\.shields\.io|github\.com\/[^)]*badge)/.test(l))).toHaveLength(3);
+    // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": two rows: one compact row of the key badges under the title, and "Quality & security" under the quick start.
+    expect(lines.filter((l) => /\[!\[[^\]]*\]\(https:\/\/(img\.shields\.io|github\.com\/[^)]*badge)/.test(l))).toHaveLength(2);
+    // Far fewer headings: seven sections (fifteen, with two subsections, until 21 Nov), no subsection.
+    expect(lines.filter((l) => /^## /.test(l))).toEqual(["## The proof", "## How it works", "## Built with", "## Verify it yourself in 3 commands", "## Try it in 2 minutes", "## The business hypothesis", "## More"]);
+    expect(lines.filter((l) => /^#{3,} /.test(l))).toEqual([]);
     expect(lines.indexOf("## The business hypothesis")).toBeGreaterThan(0);
     // Within the first 60 lines until 13 Nov; the README upgrade put the one-line diagram, the judges' 3 minutes and the
     // table of what is live above it, so within the first 90.

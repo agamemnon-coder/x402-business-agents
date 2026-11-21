@@ -1119,7 +1119,8 @@ export const LIVE = {
     "payee.adopted": "The supplier's account was already at the simulated bank. None was added.",
     "payee.added": "The supplier's account was added at the simulated bank.",
     "claude.read": "Answered live. Its answer was used.",
-    "claude.fallback": "Read by Purser's code. No model answer was used.",
+    // 21 Nov 2026 (Max): a strength, not an absence.
+    "claude.fallback": "Read by Purser's code. Its rules check it the same way.",
     "claude.rejected": "Its answer did not pass Purser's check and was not used.",
     "claude.asking": "asking…",
     "claude.capped_why": "Claude was not asked: {cap}. Purser's code read and decided.",

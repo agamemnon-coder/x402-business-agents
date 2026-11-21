@@ -83,12 +83,18 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // 18 Nov: the demo in the submission (3:15) replaces the film in the links line; the film stays under "Watch it".
     // 19 Nov 2026 (README tightened for the judges): the links line is the judges' numbered path, the demo first.
     // 20 Nov 2026 (owner): /try and /proof named in it, /proof added.
-    expect(top.startsWith(`${README_WHAT} 1. Watch the demo (3:15) · 2. Try it live on /try (2 min, test money) · 3. See every proof on /proof · 4. Verify a payment (3 commands)`)).toBe(true);
-    expect(readme.indexOf(DIFFERENTIATORS[0])).toBeGreaterThan(readme.indexOf("## Kit 11, step by step"));
+    // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": the pitch, then the small demo (a picture, its words in its alt), the three steps' pictures, then the
+    // three steps as numbered links; "Verify a payment (3 commands)" is lower, its own section. The sentence every juror
+    // repeated opens "How it works", after the Kit 11 line (now a bold lead in "The proof", no heading of its own).
+    expect(top.replace(/&nbsp;/g, " ").replace(/\s+/g, " ").startsWith(`${README_WHAT} 1 · Watch the demo (3:15) · 2 · Try it live on /try (2 min, test money) · 3 · See the proof on /proof`)).toBe(true);
+    expect(readme.indexOf(DIFFERENTIATORS[0])).toBeGreaterThan(readme.indexOf("**Kit 11, step by step.**"));
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
     // (TRY_IT's 2 minutes), the film (the tour's button went with the tour, 13 Nov, evening).
     // Since 13 Nov (the enterprise README): the live demo's line under the badges, in TRY_IT's 2 minutes.
-    expect(readme).toContain(`a test company of your own on test money, in ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}`);
+    // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": the live demo's line went (the steps on top name /try); TRY_IT's 2 minutes are in the second step and in
+    // the heading of "Try it in 2 minutes".
+    expect(readme).toContain(`(${TRY_IT.replace(/^Try it in /, "").replace(/ minutes\.$/, "")} min, test money)`);
+    expect(readme).toContain(`\n## ${TRY_IT.replace(/\.$/, "")}\n`);
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
     // Since 13 Nov, evening (owner), the product tour is gone: the README links no /tour anywhere.

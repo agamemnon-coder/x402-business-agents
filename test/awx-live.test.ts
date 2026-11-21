@@ -431,7 +431,8 @@ describe("the tab's look: the official logo, the Overview card", () => {
   it("puts the live card on the Overview, labelled apart from the demo month, and the logo in the console's script", async () => {
     const { consolePage } = await import("../cloud/src/console.js");
     const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
-    expect(html).toContain("nx,!items.length&&!m.demo?startCard(m):null,awlOverview(),dash]");
+    // 22 Nov: under the company's own figures, before the inbox line (cloud/src/consoleShell.ts groups the Overview).
+    expect(html).toContain("nodes.push(awlOverview());");
     expect(html).toContain("const AWL_LOGO=\"data:image/png;base64,");
     expect(html).not.toContain("__AWL_LOGO__");
     const { MESSAGES } = await import("../src/ui/i18n.js");

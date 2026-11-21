@@ -4,6 +4,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FLOW_FILES, flowAmounts, flowSvg } from "../scripts/readme-flow-svg.js";
+import { readmeFull } from "./readmeFull.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
@@ -26,7 +27,10 @@ describe("the README's animated flow", () => {
     for (const t of ["light", "dark"] as const) for (const x of [a.paid, a.changed, "Airwallex card controls", "Alta mandate", "CFO passkey", "SHA-256 of the exact terms", "signature no longer matches"]) expect(read(FLOW_FILES[t])).toContain(x);
   });
 
-  it("sits under the banner in the README, dark and light", () => {
-    expect(read("README.md")).toContain('<br><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero/flow-dark.svg"><img src="docs/assets/hero/flow-light.svg"');
+  // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings": the README opens with the logo, the tags, the small demo (scripts/readme-demo-svg.ts) and the three steps;
+  // the banner and this flow moved to the gallery (docs/gallery.md), still one line.
+  it("sits under the banner in the gallery, dark and light", () => {
+    expect(read("README.md")).not.toContain("docs/assets/hero/flow-light.svg");
+    expect(readmeFull()).toContain('<br><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero/flow-dark.svg"><img src="docs/assets/hero/flow-light.svg"');
   });
 });

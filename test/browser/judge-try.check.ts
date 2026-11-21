@@ -2,12 +2,12 @@
 // internet runs it: launch, the EUR 120.00 invoice paid by the agent alone, the EUR 1,850.00 invoice sent to the CFO and
 // approved with the passkey, the one-cent change refused, the result, and the proof downloaded and verified by the
 // repo's own verifier (src/cli/verifyBundle.ts); then, in a second tab, the EUR 480.00 invoice inside the limit that code's
-// cash check holds (17 Nov): its financial context on screen and no payout made. On the way: the offline label, "no Claude call" and the simulated bank
+// cash check holds (17 Nov): its financial context on screen and no payout made. On the way: the offline label, "Purser's rules · no AI needed" and the simulated bank
 // are on screen, and no request leaves localhost.
 //   npx tsx test/browser/judge-try.check.ts [screenshot dir] [--at http://localhost:4311]   (default: a judge started here)
 //   npx tsx test/browser/judge-try.check.ts [screenshot dir] --at https://kit11.max-31b.workers.dev --live
 //     the live site as a judge opens it (17 Nov): the same flow, with Claude on and test money; the offline label and
-//     "no Claude call" are not asked for, and every request must stay on the site's own host instead of localhost.
+//     "Purser's rules · no AI needed" are not asked for, and every request must stay on the site's own host instead of localhost.
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -58,7 +58,8 @@ try {
   await click(/Give it to the AI agent/);
   await page.getByRole("button", { name: "See the agent pay it" }).waitFor({ timeout: 60_000 });
   await page.waitForTimeout(800);
-  if (!live) ok(/no Claude call/i.test(await text(page)), "EUR 120.00: the page says no Claude call read it");
+  // 21 Nov 2026 (Max: "'No Claude call yet' makes it look fake"): offline, the page says Purser's rules decide, as a strength.
+  if (!live) ok(/Purser's rules · no AI needed/.test(await text(page)) && !/no Claude call/i.test(await text(page)), "EUR 120.00: the page says Purser's rules decided, no AI needed");
   // Max, 19 Nov 2026: offline, live Claude does not run; the step itself says so, not only the rail.
   if (!live) ok(await page.locator("#main .screen.work .pv-paused").isVisible(), "EUR 120.00: the reading step's notice says live Claude did not read it");
   ok(await page.getByText("Checks passed. Approved by your policy.").isVisible(), "EUR 120.00: within the limit, approved by the policy");

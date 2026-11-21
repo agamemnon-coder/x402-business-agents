@@ -84,11 +84,9 @@ interface Layout { variant: "wide" | "tall"; vw: number; vh: number; boxes: Box[
 const T = 6; // seconds a loop
 const MOVE = 0.8; // the share of a loop the dot moves (then it fades)
 const DELAY = { ok: 0, bad: 2, hold: 4 } as const;
-/** The drawing's sizes: /proof's (PAGE), or the README's larger type (README_MAP), from which every box is laid out. */
+/** The drawing's sizes (/proof's, PAGE), from which every box is laid out. */
 export interface Metrics { titleCharW: number; pad: number; lh: { title: number; sub: number; badge: number }; size: { title: number; sub: number; badge: number }; mw: number; rw: number; gap: number; pillMin: number; railGap: number; charW: number; dot: number; halo: number }
 const PAGE: Metrics = { titleCharW: 0.5, pad: 10, lh: { title: 18, sub: 14, badge: 14 }, size: { title: 14, sub: 11.5, badge: 11.5 }, mw: 128, rw: 170, gap: 30, pillMin: 50, railGap: 8, charW: 0.49, dot: 10, halo: 16 };
-/** The README's drawing: about 1,250 units wide, shown at GitHub's ~900 px, so its smallest text (20 units, with the 12-unit margin) reads at 14 px or more. */
-export const README_MAP: Metrics = { titleCharW: 0.55, pad: 13, lh: { title: 28, sub: 25, badge: 25 }, size: { title: 22, sub: 20, badge: 20 }, mw: 150, rw: 200, gap: 24, pillMin: 62, railGap: 10, charW: 0.5, dot: 14, halo: 22 };
 const PAD = PAGE.pad;
 
 /** A box's height: its title, its sub-line(s), its badge pill. */
@@ -285,45 +283,6 @@ ${P}.em-dot.halo { stroke: var(--surface); stroke-width: ${M.halo}; }
 `;
 }
 
-/** The colours of the site's two themes (src/redesign/ui.ts TOKENS), for a picture that cannot read them. */
-const THEME: Record<"light" | "dark", Record<string, string>> = {
-  light: { surface: "#ffffff", border: "#d5d9e1", text: "#0b1220", muted: "#586174", accent: "#4f46e5", "accent-soft": "#eef0ff", ok: "#0b7d43", "ok-soft": "#e6f6ee", bad: "#c5363c", held: "#b45309", awx: "#ad4a0c", "awx-soft": "#fdf0e7", metal: "#0b7a70", "metal-soft": "#e3f5f2", claude: "#a84d2b", "claude-soft": "#fbefe9" },
-  dark: { surface: "#12151d", border: "#2f3542", text: "#eef1f6", muted: "#a4adbd", accent: "#8b85ff", "accent-soft": "#23224a", ok: "#3ccf82", "ok-soft": "#12291e", bad: "#ff6b70", held: "#fbbf24", awx: "#ff8a4c", "awx-soft": "#33200f", metal: "#2dd4bf", "metal-soft": "#0f2a28", claude: "#ef9a76", "claude-soft": "#33221b" },
-};
-export const README_MAP_FILES = { light: "docs/assets/readme/evidence-map-light.svg", dark: "docs/assets/readme/evidence-map-dark.svg" } as const;
-
-/** The README's words for the drawing (its alt text): the path and every figure on it, from the same data. */
-export function evidenceMapAlt(w: EvidenceWall | null = committedWall()): string {
-  const m = evidenceMap(w);
-  if (!m) return "";
-  // Short (the README's word budget): each step's title and its badge, the two branches, what is simulated.
-  const step = (n: MapNode) => `${n.title}${n.badge ? ` (${n.badge})` : ""}`;
-  return `Animated money path: ${[...m.main.slice(0, 4), ...m.rails, ...m.main.slice(4)].map(step).join("; ")}.${m.refused?.badge ? ` Refused: ${m.refused.badge}.` : ""}${m.held?.badge ? ` Held: ${m.held.badge}.` : ""}${m.checks.length ? ` ${CHECKS_TITLE}: ${m.checks.map(step).join("; ")}.` : ""} Test money.`;
-}
-
-/** The README's line with the map: light and dark pictures, linked to the wall on /proof, the path and figures as its alt. */
-export function readmeMapLine(w: EvidenceWall | null = committedWall()): string {
-  const alt = evidenceMapAlt(w);
-  if (!alt) return "";
-  return `<a href="https://kit11.max-31b.workers.dev/proof#evidence"><picture><source media="(prefers-color-scheme: dark)" srcset="${README_MAP_FILES.dark}"><img src="${README_MAP_FILES.light}" alt="${esc(alt)}" width="100%"></picture></a>`;
-}
-
-/**
- * The map as a picture for the README (npm run evidence:wall writes both files): the wide drawing in README_MAP's sizes,
- * the theme's colours and a system font inside, CSS keyframes inside, nothing external; under prefers-reduced-motion the
- * dots stay hidden.
- */
-export function evidenceMapSvgFile(theme: "light" | "dark", w: EvidenceWall | null = committedWall()): string {
-  const m = evidenceMap(w);
-  if (!m) return "";
-  const l = wide(m, README_MAP);
-  const vars = Object.entries(THEME[theme]).map(([k, v]) => `--${k}: ${v};`).join(" ");
-  const style = `<style>
-svg.em-wide { ${vars} font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-${mapRules("", README_MAP, [l])}</style>`;
-  const head = `<title>${esc("Purser: the money path and its evidence")}</title><desc>${esc(evidenceMapAlt(w))}</desc>${style}`;
-  // Cropped to the drawing, with a margin of 12 units (about 9 px at GitHub's width) on every side.
-  const M0 = 12, out = svg(l, README_MAP, { links: false, head, root: `xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d"` })
-    .replace(`viewBox="0 0 ${l.vw} ${l.vh}" width="${l.vw}" height="${l.vh}"`, `viewBox="${-M0} ${-M0} ${l.vw + 2 * M0} ${l.vh + 2 * M0}" width="${l.vw + 2 * M0}" height="${l.vh + 2 * M0}"`);
-  return `${out.replace("<title>", '<title id="t">').replace("<desc>", '<desc id="d">')}\n`;
-}
+// 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far
+// fewer headings". The README's picture of this map (README_MAP, evidenceMapSvgFile, readmeMapLine and its two SVG files)
+// went with it; the README's demo is scripts/readme-demo-svg.ts. The map itself stays on /proof.

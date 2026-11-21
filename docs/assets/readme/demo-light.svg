@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 338" width="960" height="338" role="img" aria-labelledby="t d">
+<title id="t">Purser: one payment on /try, signed and paid; one cent changed, refused</title>
+<desc id="d">Animated, one recorded walk through /try (21 Nov, test money): invoice BTX-2026-21 from Bergtex Textil GmbH, EUR 1,850.00, comes in; Claude (claude-haiku-5-5) reads “Total due EUR 1,850.00”; Purser's checks pass (not paid before, bank on file, known supplier) and flag the amount as over 2× the usual EUR 870.00; above the agent's EUR 500.00 limit the CFO signs the SHA-256 of the exact terms with a passkey; paid, the Airwallex sandbox transfer PAID (settlement simulated). Then the same approval with one cent changed (EUR 1,850.01): refused, nothing paid. Over all the /try walks of 19 to 21 Nov: 66 of 67 one-cent changes refused. Drawn from docs/runs/2026-11-21-phone-try/run-1.json and docs/evidence/evidence-wall.json by scripts/readme-demo-svg.ts.</desc>
+<style>
+text{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+.in{animation:in .5s cubic-bezier(.2,.7,.3,1) both}@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.tick{animation:in .35s ease-out both}
+.fill{transform-box:fill-box;transform-origin:left center;animation:grow 3.6s linear .3s both}.fill.v{transform-origin:center top;animation-name:growv}
+@keyframes grow{from{transform:scaleX(0)}to{transform:none}}@keyframes growv{from{transform:scaleY(0)}to{transform:none}}
+.cent{animation:blink .45s ease-in-out 4.55s 3 both}@keyframes blink{50%{opacity:.15}}
+@media (prefers-reduced-motion:reduce){.in,.tick,.fill,.fill.v,.cent{animation:none}}
+</style>
+<rect x="0.5" y="0.5" width="959" height="337" rx="14" fill="#ffffff" stroke="#d1d9e0"/>
+<g class="in" style="animation-delay:0s"><rect x="14" y="16" width="28" height="28" rx="8.4" fill="#0b1220"/><g transform="translate(20.53 22.53) scale(0.62)" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></g>
+<text x="52" y="35" font-size="15" font-weight="700" fill="#1f2328">Purser<tspan dx="8" font-weight="400" fill="#59636e">one payment on /try, as recorded</tspan></text>
+<rect x="799.55" y="18.5" width="145.95" height="23" rx="11.5" fill="none" stroke="#9a6700"/><text x="872.53" y="34" font-size="11.5" font-weight="600" fill="#9a6700" text-anchor="middle">Test money · sandbox</text></g>
+<g class="in" style="animation-delay:0.3s"><rect x="14.5" y="60.5" width="177.4" height="157" rx="10" fill="#f6f8fa" stroke="#d1d9e0"/>
+<circle cx="37" cy="85" r="11" fill="#8250df"/><text x="37" y="89.5" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+<text x="55" y="90" font-size="15" font-weight="650" fill="#1f2328">Invoice in</text><text x="27" y="118" font-size="13" fill="#59636e">BTX-2026-21</text><text x="27" y="139" font-size="13" fill="#59636e">Bergtex Textil GmbH</text><text x="27" y="160" font-size="17" font-weight="650" fill="#1f2328">EUR 1,850.00</text></g>
+<path class="in" style="animation-delay:0.7s" d="M195.4 130l4 5-4 5" fill="none" stroke="#8250df" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<g class="in" style="animation-delay:1.05s"><rect x="202.9" y="60.5" width="177.4" height="157" rx="10" fill="#f6f8fa" stroke="#d1d9e0"/>
+<circle cx="225.4" cy="85" r="11" fill="#8250df"/><text x="225.4" y="89.5" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+<text x="243.4" y="90" font-size="15" font-weight="650" fill="#1f2328">Claude reads</text><text x="215.4" y="118" font-size="13" fill="#59636e">claude-haiku-5-5, live</text><text x="215.4" y="139" font-size="13" fill="#59636e">“Total due</text><text x="215.4" y="160" font-size="17" font-weight="650" fill="#1f2328">EUR 1,850.00”</text></g>
+<path class="in" style="animation-delay:1.45s" d="M383.8 130l4 5-4 5" fill="none" stroke="#8250df" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<g class="in" style="animation-delay:1.8s"><rect x="391.3" y="60.5" width="177.4" height="157" rx="10" fill="#f6f8fa" stroke="#d1d9e0"/>
+<circle cx="413.8" cy="85" r="11" fill="#8250df"/><text x="413.8" y="89.5" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+<text x="431.8" y="90" font-size="15" font-weight="650" fill="#1f2328">Purser’s checks</text><text x="403.8" y="118" font-size="13" fill="#1a7f37" class="tick" style="animation-delay:2.15s">✓ not paid before</text><text x="403.8" y="139" font-size="13" fill="#1a7f37" class="tick" style="animation-delay:2.33s">✓ bank on file</text><text x="403.8" y="160" font-size="13" fill="#1a7f37" class="tick" style="animation-delay:2.51s">✓ known supplier</text><text x="403.8" y="181" font-size="13" fill="#9a6700">! over 2× the usual</text><text x="403.8" y="202" font-size="13" fill="#9a6700">   EUR 870.00, flagged</text></g>
+<path class="in" style="animation-delay:2.2s" d="M572.2 130l4 5-4 5" fill="none" stroke="#8250df" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<g class="in" style="animation-delay:2.55s"><rect x="579.7" y="60.5" width="177.4" height="157" rx="10" fill="#f6f8fa" stroke="#d1d9e0"/>
+<circle cx="602.2" cy="85" r="11" fill="#8250df"/><text x="602.2" y="89.5" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">4</text>
+<text x="620.2" y="90" font-size="15" font-weight="650" fill="#1f2328">CFO signs</text><text x="592.2" y="118" font-size="13" fill="#59636e">above the agent’s</text><text x="592.2" y="139" font-size="13" fill="#59636e">EUR 500.00 limit:</text><text x="592.2" y="160" font-size="13" fill="#59636e">a passkey signs the</text><text x="592.2" y="181" font-size="13" fill="#59636e">SHA-256 of the terms</text><text x="592.2" y="202" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace" font-size="12" fill="#59636e">0c4ce29d…db4b1</text></g>
+<path class="in" style="animation-delay:2.95s" d="M760.6 130l4 5-4 5" fill="none" stroke="#8250df" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<g class="in" style="animation-delay:3.3s"><rect x="768.1" y="60.5" width="177.4" height="157" rx="10" fill="#dafbe1" stroke="#1a7f37"/>
+<circle cx="790.6" cy="85" r="11" fill="#1a7f37"/><text x="790.6" y="89.5" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">5</text>
+<text x="808.6" y="90" font-size="15" font-weight="650" fill="#1f2328">Paid</text><text x="780.6" y="118" font-size="13" fill="#59636e">Airwallex sandbox</text><text x="780.6" y="139" font-size="13" font-weight="600" fill="#1a7f37">transfer PAID</text><text x="780.6" y="160" font-size="13" fill="#59636e">settlement simulated</text></g>
+<rect x="14" y="232" width="932" height="4" rx="2" fill="#e6eaef"/><rect class="fill" x="14" y="232" width="932" height="4" rx="2" fill="#8250df" style="animation-duration:3.6s"/>
+<g class="in" style="animation-delay:4.05s"><path d="M668.4 218V250" stroke="#cf222e" stroke-width="1.5" stroke-dasharray="3 3"/>
+<rect x="14.5" y="250.5" width="931" height="57" rx="10" fill="#ffebe9" stroke="#cf222e"/>
+<circle cx="40" cy="279" r="11" fill="#cf222e"/><path d="M35.5 274.5l9 9m0-9l-9 9" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+<text x="60" y="274" font-size="14" font-weight="650" fill="#1f2328">One cent changed after signing: EUR 1,850.0<tspan class="cent" fill="#cf222e">1</tspan></text>
+<text x="60" y="293" font-size="12.5" fill="#59636e">its terms hash to <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace" font-size="12">92082182…a8e03</tspan>, not to the signed <tspan font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace" font-size="12">0c4ce29d…db4b1</tspan></text>
+<text x="928" y="285" font-size="16" font-weight="700" fill="#cf222e" text-anchor="end">Refused · nothing paid</text></g>
+<text class="in" style="animation-delay:4.35s" x="14" y="327" font-size="11.5" fill="#656d76">One recorded walk, 21 Nov: docs/runs/2026-11-21-phone-try/run-1.json · over all the /try walks of 19 to 21 Nov: 66 of 67 one-cent changes refused · test money only</text>
+</svg>

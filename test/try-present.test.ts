@@ -132,7 +132,7 @@ describe("recording mode", () => {
     for (const kind of ["public", "present"] as const) expect(presentExtra(kind).script).toMatch(/CALLS\.clear\(\);keepCalls\(\)/);
   });
   it("redraws the rail's Airwallex line when the transfer's status changes (16 Nov live run: SCHEDULED beside a PAID card)", () => {
-    for (const kind of ["public", "present"] as const) expect(presentExtra(kind).script).toContain("aloneRun(),awx&&awx.status||'']);if(rail.dataset.k===key)return;");
+    for (const kind of ["public", "present"] as const) expect(presentExtra(kind).script).toContain("aloneRun(),awx&&awx.status||'',MT.why]);if(rail.dataset.k===key)return;");
   });
   it("ends with this run's proof to download and the command to check it, a Share that says what it did, and no sticky step bar (16 Nov, Max)", () => {
     const html = tryPage("n0nce", cfg, presentExtra("public"), V2_COPY as unknown as Record<string, Record<string, unknown>>);

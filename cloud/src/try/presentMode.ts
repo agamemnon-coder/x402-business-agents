@@ -171,10 +171,10 @@ export const PRESENT_GUIDE = {
  * tryCopy's own (WORK.readingCode).
  */
 export const PRESENT_GUIDE_CODE = {
-  invoice: { k: "Step 1 of 4", t: "A supplier's invoice arrives.", d: "Pick one. In this run Purser's code reads it and checks it: Claude is not asked." },
-  reading: { k: "Step 1 of 4", t: WORK.readingCode, d: "Claude is not asked in this run, so Purser's code reads the PDF and checks it. Each step below is the engine's own event, as it happens." },
+  invoice: { k: "Step 1 of 4", t: "A supplier's invoice arrives.", d: "Pick one. In this run Purser's code reads it and its rules check it: no AI needed for these checks." },
+  reading: { k: "Step 1 of 4", t: WORK.readingCode, d: "In this run Purser's code reads the PDF and its rules check it. Each step below is the engine's own event, as it happens." },
   workInj: { k: "Step 1 of 4", t: "Purser's code caught a hidden instruction in the invoice.", d: "It was ignored: an invoice can't order a payment. It is checked like any other and still needs the CFO." },
-  work: { k: "Step 1 of 4", t: "Purser's code read the invoice and checked it.", d: "Claude was not asked in this run. It is above the agent's limit, so it can't be paid alone: it goes to the CFO." },
+  work: { k: "Step 1 of 4", t: "Purser's code read the invoice and checked it.", d: "Purser's rules checked it: no AI needed. It is above the agent's limit, so it can't be paid alone: it goes to the CFO." },
 } as const;
 
 /** A note that tries to give the AI orders (the engine's own flag, document.injection_flagged): said, never hidden. */
@@ -198,8 +198,8 @@ export const PRESENT_VERIFY = {
   /** 19 Nov 2026 (live review): the first line when Purser's code read the invoice in this run (tryCopy's own words). */
   code: {
     h: LIVE.ev["claude.fallback"]!.split(". ")[0]!,
-    p: "Claude was not asked in this run, so no model answer was used: Purser's code read the invoice and its rules checked it. When Claude reads, each call is logged with its model, time, cost and Anthropic's request id.",
-    run: "This run: {n} Claude calls, {cost}.", none: "This run: no Claude call.",
+    p: "In this run Purser's code read the invoice and its rules checked it: no AI was needed for these steps. When Claude reads, each call is logged with its model, time, cost and Anthropic's request id.",
+    run: "This run: {n} Claude calls, {cost}.", none: "This run: Purser's rules only, no AI needed.",
   },
 } as const;
 
@@ -255,9 +255,13 @@ export const PRESENT_SHELL = {
   tag: "Test money · sandbox",
   nav: ["Inbox", "Approvals", "Payments", "Books", "Agents"],
   usage: "Claude · this run",
-  none: "No Claude call yet",
+  /**
+   * 21 Nov 2026 (Max: "'No Claude call yet · code' makes it look fake"): before Claude's first call, a pending state, not
+   * an absence; when Purser's code reads and decides, a strength. The labels themselves are claudeMeter's and stepNote's.
+   */
+  none: "Claude is next",
   /** 19 Nov 2026: when Purser's code read the invoice in this run. */
-  noneCode: "No Claude call in this run",
+  noneCode: "Purser's rules · no AI needed",
   calls: "calls", call: "call",
   user: "CFO",
   userSub: "Signs with a passkey",
@@ -597,7 +601,9 @@ body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; fon
 .pv-cap .d { grid-column: 2; margin-top: 3px; color: var(--muted); font: 500 15.5px/1.45 Inter, system-ui, sans-serif; }
 .pv-cap.refused { border-color: color-mix(in srgb, var(--bad) 55%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--bad) 16%, var(--surface)), var(--surface) 70%); }
 .pv-cap.refused .k { background: var(--bad); }
-.pv-cap.books .k, .pv-cap.done .k { background: var(--ok); color: #04130d; }
+/* 21 Nov 2026: white on the light theme's dark green ("DONE" was near-black on it, about 3:1); near-black on the dark theme's bright green. */
+.pv-cap.books .k, .pv-cap.done .k { background: var(--ok); color: #fff; }
+@media (prefers-color-scheme: dark) { .pv-cap.books .k, .pv-cap.done .k { color: #04130d; } }
 .pv-cap.books { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--ok) 12%, var(--surface)), var(--surface) 70%); }
 .pv-cap.approve .k { background: #f5b544; color: #241500; }
 .pv-cap.approve { border-color: color-mix(in srgb, #f5b544 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, #f5b544 12%, var(--surface)), var(--surface) 70%); }
@@ -724,6 +730,9 @@ body.pv-shell.pv-staged .pv-rail { display: block; }
 .pv-m-claude .sp { color: #d97757; }
 .pv-m-claude .tot { font: 760 26px/1.1 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 .pv-m-claude .sub { margin-top: 2px; color: var(--muted); font-size: 12px; }
+.pv-m-claude .why { margin: 6px 0 0; color: var(--text); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.pv-m-claude .step { margin: 6px 0 0; padding: 6px 8px; border-radius: 8px; background: var(--ok-soft); color: var(--ok); font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+.pv-m-claude .step b { font-weight: 700; }
 .pv-m-claude details { margin-top: 8px; }
 .pv-m-claude summary { cursor: pointer; color: var(--accent); font-size: 12px; font-weight: 650; }
 .pv-m-claude ol { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
@@ -745,6 +754,9 @@ body.pv-shell.pv-staged .pv-rail { display: block; }
 .pv-m-agents li.done::before { background: var(--ok); border-color: var(--ok); }
 .pv-m-agents li.cur::before { border-color: var(--accent); background: var(--accent); }
 .pv-m-agents li.wait::before { border-color: #f5b544; }
+/* 21 Nov 2026 (owner: "be critical"): the page's own .wait (a flex row, 12 px above) and .done (19 px type, 16 px below)
+   reached these rows: the waiting agent sat on one line and a gap opened under a finished one. */
+.pv-m-agents li.done, .pv-m-agents li.wait, .pv-m-agents li.cur, .pv-m-agents li.bad { display: block; margin: 0; color: inherit; font-size: inherit; font-weight: inherit; line-height: inherit; }
 .pv-m-agents li.bad::before { background: var(--bad); border-color: var(--bad); }
 .pv-m-agents li.bad span { color: var(--bad); }
 .pv-m-rails ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -892,6 +904,10 @@ body.pv-shell .screen.company > details.fin-hood { display: block !important; }
 .fin-hood { margin: 10px 0 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
 .fin-hood > summary { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; cursor: pointer; list-style: none; color: var(--text); font-size: 15px; font-weight: 650; }
 .fin-hood > summary::-webkit-details-marker { display: none; }
+/* 21 Nov 2026 (owner, iPhone): the page's touch rule for summaries (.screen:not(.start) details > summary, padding 12px 0)
+   outranked the padding above, so the title and its "+" ran flush against the box. The box keeps its own. */
+.screen:not(.start) details.fin-hood > summary { padding: 12px 16px; line-height: 1.3; }
+.fin-hood > summary::after { flex: none; padding-left: 4px; }
 .fin-hood > summary::after { content: "+"; margin-left: auto; color: var(--muted); font-size: 20px; font-weight: 500; }
 .fin-hood[open] > summary::after { content: "−"; }
 .fin-hood-b { padding: 0 16px 16px; }
@@ -940,6 +956,9 @@ export const callSaid = (event: string, f: Record<string, unknown>): { req: stri
  */
 export const claudeCall = (event: string, f: Record<string, unknown>): { n: number } | null => {
   if (event === "claude.read") return { n: 1 };
+  // 21 Nov 2026: a reading Claude answered but that was not used (a refusal, the wrong shape) was billed: one call, when
+  // the event carries the answer's request id and its cost.
+  if (event === "claude.fallback") return typeof f.request_id === "string" && /^req_/.test(f.request_id) && Number(f.cost_usd_micros) > 0 ? { n: 1 } : null;
   if (event !== "agent.run") return null;
   const ms = typeof f.claude_ms === "string" ? f.claude_ms.split(",").filter((x) => /^\d+$/.test(x)).length : 0;
   if (ms > 0) return { n: ms };
@@ -963,6 +982,58 @@ export const readerOf = (event: string, f: Record<string, unknown>): { by: "clau
   return null;
 };
 
+/**
+ * 21 Nov 2026 (Max: "'No Claude call yet · code' makes it look fake", and "6 calls at $0.0019 at the approved step: I
+ * think it uses more than we say"): the Claude meter of this run, from the calls the page counted (claudeCall: one entry
+ * per claude.read or agent.run event, `n` the API requests it holds, `cost` its micro-USD at list price as the engine
+ * priced it from the call's own usage, src/claude/pricing.ts). `how` is who reads in this run ("code" when Purser's code
+ * does). Three states, never an absence: calls made (their cost, their number, the model), Purser's code deciding (a
+ * strength), or Claude next (pending). `head` is the rail's line; `why` the explanation a tap opens, every call counted
+ * by who made it ("9 Claude calls: Reader 3, Treasury 2, Checker 2, Payer 2."). Self-contained: the page runs its text.
+ */
+export const claudeMeter = (calls: { who: string; n?: number; cost: number; model?: string }[], how: string): { n: number; micros: number; head: string; why: string } => {
+  const n = calls.reduce((x, c) => x + (Number(c.n) || 1), 0);
+  const micros = calls.reduce((x, c) => x + (Number(c.cost) || 0), 0);
+  // No named function inside: under tsx (npm run judge) a named one is wrapped in a helper the page does not have.
+  const usd = "$" + (micros / 1e6).toFixed(4);
+  const calls1 = n + " Claude call" + (n === 1 ? "" : "s");
+  if (!n) {
+    return how === "code"
+      ? { n, micros, head: "Purser's rules · no AI needed", why: "Purser's code reads this invoice and its rules check it: no AI needed for these checks. Every limit, check and signature works the same." }
+      : { n, micros, head: "Claude is next", why: "Claude is called when the agent reads the invoice. Each call then shows here with its model and its cost." };
+  }
+  const by: [string, number][] = [];
+  for (const c of calls) {
+    const k = Number(c.n) || 1;
+    const at = by.findIndex((b) => b[0] === c.who);
+    if (at >= 0) by[at]![1] += k; else by.push([c.who, k]);
+  }
+  const models = calls.map((c) => c.model || "").filter((m, i, a) => m !== "" && a.indexOf(m) === i);
+  return {
+    n, micros, head: usd + " · " + calls1,
+    why: calls1 + ": " + by.map((b) => b[0] + " " + b[1]).join(", ") + ". "
+      + (models.length ? "Claude " + models.join(", Claude ") + "; e" : "E") + "ach call priced from its own token usage (input, output and cache) at Anthropic's list price: " + usd + " in all.",
+  };
+};
+
+/**
+ * 21 Nov 2026 (Max: "when a step is decided by Purser's code, say so as a strength"): what decides the step on screen
+ * (guideKey's names), beside the run's Claude meter. `how` as in claudeMeter; `n` the Claude calls so far. Invoice and
+ * Read are Claude's when it reads (pending until it has answered); Check, Sign, Paid and the one-cent change are Purser's
+ * rules in every run. Empty for a screen with no step. Self-contained: the page runs its text.
+ */
+export const stepNote = (g: string, how: string, n: number): string => {
+  const code = how === "code";
+  if (g === "invoice") return code ? "Purser's code reads it · no AI needed" : "Next: Claude reads the invoice you pick";
+  if (g === "reading") return code ? "Purser's code reads the PDF · no AI needed" : n ? "Claude is reading the invoice" : "Claude is next: it reads the PDF";
+  if (g === "work" || g === "workInj" || g === "workAlone") return (code || !n ? "" : "Read by Claude · ") + "Purser's rules check it · no AI needed for this check";
+  if (g === "workCash") return "Purser's rules hold it · no AI needed for this check";
+  if (g === "approve") return "Your passkey signs · Purser's rules check it, no AI needed";
+  if (g === "books" || g === "booksAlone") return "Purser's rules pay and book it · no AI needed";
+  if (g === "pay" || g === "refused") return "Purser's rules check the signature · no AI needed";
+  return "";
+};
+
 const SHARED = String.raw`
 // --- Shared by recording mode and the public page: the app shell, Claude's usage per call, "How Purser works". ---
 const mk=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids==null?[]:kids))e.append(k instanceof Node?k:document.createTextNode(String(k)));return e};
@@ -972,6 +1043,8 @@ const callSaid=__CALL_SAID__;const SAID=new Map();
 // 19 Nov 2026 (live review): a call counts only when Claude answered (claudeCall); who read the invoice in this run is
 // the engine's own word (readerOf), else the start's mode; and why live Claude did not read it (claude.capped's reason).
 const claudeCall=__CLAUDE_CALL__;const readerOf=__READER_OF__;const pausedNotice=__PAUSED_NOTICE__;
+// 21 Nov 2026 (Max): the meter's three states and what decides each step (claudeMeter, stepNote).
+const claudeMeter=__CLAUDE_METER__;const stepNote=__STEP_NOTE__;
 const nCalls=(cs)=>cs.reduce((x,c)=>x+(Number(c.n)||1),0);
 const READ={by:'',sure:false,why:''};
 try{const r=JSON.parse(sessionStorage.getItem('purser.read')||'null');if(r&&(r.by==='claude'||r.by==='code')){READ.by=r.by;READ.sure=!!r.sure;READ.why=typeof r.why==='string'&&Object.prototype.hasOwnProperty.call(PC.caps,r.why)?r.why:''}}catch(e){}
@@ -997,18 +1070,25 @@ rail.append(railHead,mk('div','pv-rail-b',[capMeta,rClaude,rAgents,rHood,rRails]
 try{const kept=JSON.parse(sessionStorage.getItem('purser.calls')||'[]');if(Array.isArray(kept))for(const [k,v] of kept)if(typeof k==='number'&&v&&typeof v==='object')CALLS.set(k,v)}catch(e){}
 const keepCalls=()=>{try{sessionStorage.setItem('purser.calls',JSON.stringify([...CALLS.entries()].slice(-40)))}catch(e){}};
 const PAYAT={seq:-1,tried:false};
+// 21 Nov 2026 (Max: "Read by Claude · Haiku 5.5 · $0.0001" was the first of the reader's calls only): the engine's last
+// event before this invoice was filed, kept across a reload, so the invoice's reading counts all of its own calls; and who reads
+// is learnt from this run's filings only (the test company's seeded invoice, read by the parser before the visitor came,
+// made the live page credit code before Claude had even been asked).
+const FILED={seq:-1};try{const v=Number(sessionStorage.getItem('purser.filed'));if(Number.isFinite(v)&&v>=0)FILED.seq=v}catch(e){}
 // The engine's own flag on a document that tries to give orders (document.injection_flagged), since the last filing.
 const INJ={since:-1,flag:false,max:0};
 const EVT=[];
 function noteEvent(e){if(e&&typeof e.seq==='number'&&e.seq>INJ.since&&!EVT.some((x)=>x.seq===e.seq)){EVT.push({seq:e.seq,event:String(e.event||''),f:e.fields&&typeof e.fields==='object'?e.fields:{}});EVT.sort((a,b)=>a.seq-b.seq);if(EVT.length>60)EVT.splice(0,EVT.length-60)}
-  if(e&&typeof e.seq==='number'){if(e.seq>INJ.max)INJ.max=e.seq;if(e.event==='document.injection_flagged'&&e.seq>INJ.since)INJ.flag=true;if(e.seq>INJ.since)noteRead(e,e.fields&&typeof e.fields==='object'?e.fields:{})}}
-function noteFiling(p,m){if(m==='POST'&&/^\/v1\/engine\/(compose$|samples\/)/.test(p)){INJ.since=INJ.max;INJ.flag=false;EVT.length=0;forgetRead()}}
+  if(e&&typeof e.seq==='number'){if(e.seq>INJ.max)INJ.max=e.seq;if(e.event==='document.injection_flagged'&&e.seq>INJ.since)INJ.flag=true;if(e.seq>INJ.since&&FILED.seq>=0&&e.seq>FILED.seq)noteRead(e,e.fields&&typeof e.fields==='object'?e.fields:{})}}
+function noteFiling(p,m){if(m==='POST'&&/^\/v1\/engine\/(compose$|samples\/)/.test(p)){INJ.since=INJ.max;INJ.flag=false;EVT.length=0;forgetRead();FILED.seq=INJ.max;try{sessionStorage.setItem('purser.filed',String(FILED.seq))}catch(e){}}}
 const usd=(m)=>'$'+(m/1e6).toFixed(4);
 const title=(s)=>String(s||'').replace(/[^a-z0-9 _-]/gi,'').replace(/[_-]+/g,' ').replace(/\b\w/g,(c)=>c.toUpperCase());
 const modelName=(m)=>{const x=/^claude-([a-z]+)-(\d+)-(\d+)/.exec(String(m||''));return x?title(x[1])+' '+x[2]+'.'+x[3]:''};
 // One Claude call from the engine's own events (claude.read: the invoice reader; agent.run: an agent's run).
 function takeSaid(e,f){const s=callSaid(String(e.event||''),f);if(!s)return;SAID.set(s.req,s.said);for(const c of CALLS.values())if(c.req===s.req&&c.said!==s.said){c.said=s.said;keepCalls()}}
-function takeCall(e,f){takeSaid(e,f);const cc=claudeCall(String(e.event||''),f);if(cc&&!CALLS.has(e.seq)){const c=Number(f.cost_usd_micros);if(isFinite(c)&&c>=0)CALLS.set(e.seq,{who:e.event==='claude.read'?PC.shell.reader:title(f.agent),n:cc.n,model:modelName(f.model),cost:c,ms:Number(f.latency_ms)||0,req:typeof f.request_id==='string'&&/^req_[A-Za-z0-9]{6,64}$/.test(f.request_id)?f.request_id:'',tin:Number(f.input_tokens)||0,tout:Number(f.output_tokens)||0});keepCalls()}}
+function takeCall(e,f){takeSaid(e,f);const cc=claudeCall(String(e.event||''),f);if(cc&&!CALLS.has(e.seq)){const c=Number(f.cost_usd_micros);if(isFinite(c)&&c>=0)CALLS.set(e.seq,{who:e.event==='claude.read'||e.event==='claude.fallback'?PC.shell.reader:title(f.agent),n:cc.n,model:modelName(f.model),cost:c,ms:Number(f.latency_ms)||0,req:typeof f.request_id==='string'&&/^req_[A-Za-z0-9]{6,64}$/.test(f.request_id)?f.request_id:'',tin:Number(f.input_tokens)||0,tout:Number(f.output_tokens)||0});keepCalls()}}
+// The reading of the invoice on screen: every reader call since it was filed, with its model, how many and their cost.
+function readerNow(){const rs=[...CALLS.entries()].filter(([s,c])=>s>FILED.seq&&c.who===PC.shell.reader).map(([,c])=>c);if(!rs.length)return null;return {n:nCalls(rs),cost:rs.reduce((x,c)=>x+c.cost,0),model:(rs.find((c)=>c.model)||{}).model||'',ms:rs.reduce((x,c)=>x+(Number(c.ms)||0),0)}}
 const SHELL=new URLSearchParams(location.search).get('shell')!=='0';
 const SH=PC.shell;let useBox=null;
 // "How Purser works": the flow in five steps, and the whole system's map (the README's), as a card over the page.
@@ -1060,27 +1140,27 @@ function guideKey(){const m=document.getElementById('main');if(!m)return '';cons
 // "Under the hood": the step's real flow in a few lines, this run's own values filled in as they appear.
 const HOOD={fp:'',amount:'',payee:'',iban:'',due:'',open:innerWidth>=1200};
 const hoodBox=mk('div','pv-hood');
-function hoodLines(g,m){const C=[...CALLS.values()];const rd=C.find((c)=>c.who===PC.shell.reader);const n=nCalls(C);const code=readerIs()==='code';const readNote=rd?'':code?'what Purser’s code read · Claude not asked':'what Claude read';const usdS=(x)=>usd(x);
+function hoodLines(g,m){const C=[...CALLS.values()];const rd=readerNow();const n=nCalls(C);const code=readerIs()==='code';const readNote=rd?'':code?'what Purser’s code read · no AI needed':'what Claude read';const rdN=(x)=>x.n>1?'· '+x.n+' calls ':'';const usdS=(x)=>usd(x);
   const q=(v)=>v?'"'+v+'"':'…';const L=[];const c=(code,note,cls)=>L.push({code,note,cls});
   let st={};try{st=JSON.parse(sessionStorage.getItem('purser.try')||'{}')||{}}catch(e){}
   const pr=st.proof&&typeof st.proof==='object'?st.proof:null;const sha=(st.proposal&&typeof st.proposal.terms_sha256==='string'?st.proposal.terms_sha256:'')||(pr&&pr.terms_sha256)||'';
   const s12=(x)=>typeof x==='string'&&x?x.slice(0,12)+'…':'…';
   const inv=()=>{const o={};for(const r of m.querySelectorAll('.screen.work .card.inv dl > div')){const k=(r.children[0]||{}).textContent||'';const v=((r.children[1]||{}).textContent||'').trim();if(/Supplier/.test(k))o.supplier=v;if(/Invoice number/.test(k))o.number=v;if(/Amount/.test(k))o.amount=v;if(/Due/.test(k))o.due=v}return o};
   const amt=(v)=>{const mm=/([A-Z]{3})\s*([\d,]+\.\d{2})/.exec(v||'');return mm?{cur:mm[1],n:mm[2].replace(/,/g,'')}:null};
-  if(g==='invoice'){c('invoice = inbox.receive(pdf)','a supplier\'s invoice arrives');if(code)c('reading = parser.read(pdf)','Purser’s code reads it: Claude is not asked in this run');else c('agent = claude.agent("payables")','an AI agent picks it up')}
-  else if(g==='reading'){const lab={'ap.received':'inbox.receive(pdf) → sha256 of the file','claude.asking':'claude.read(invoice) …','claude.read':'claude.read(invoice) ✓','claude.capped':'claude.read(invoice) → not asked','claude.fallback':'parser.read(invoice) ✓','document.injection_flagged':'findInjections(text) → found, ignored','agent.tool':'agent.check()','agent.run':'agent.decide()','ap.checker_decided':'checker.decide() ✓','ap.coded':'ledger.code(invoice) ✓','ap.payer_proposed':'payer.propose() ✓','fx.rate_checked':'treasury.rate() ✓','airwallex.quote':'airwallex.quote() ✓','invoice.escalated':'escalate(CFO)','invoice.fraud_suspected':'fraud check → held','ap.status':'invoice.status()','proposal.within_limit':'approveWithinLimit() → policy ✓','transfer.created':'transfer.created ✓','proposal.executed':'proposal.executed ✓'};
+  if(g==='invoice'){c('invoice = inbox.receive(pdf)','a supplier\'s invoice arrives');if(code)c('reading = parser.read(pdf)','Purser’s code reads it · no AI needed for this check');else c('agent = claude.agent("payables")','an AI agent picks it up')}
+  else if(g==='reading'){const lab={'ap.received':'inbox.receive(pdf) → sha256 of the file','claude.asking':'claude.read(invoice) …','claude.read':'claude.read(invoice) ✓','claude.capped':'budget.check() → code reads','claude.fallback':'parser.read(invoice) ✓','document.injection_flagged':'findInjections(text) → found, ignored','agent.tool':'agent.check()','agent.run':'agent.decide()','ap.checker_decided':'checker.decide() ✓','ap.coded':'ledger.code(invoice) ✓','ap.payer_proposed':'payer.propose() ✓','fx.rate_checked':'treasury.rate() ✓','airwallex.quote':'airwallex.quote() ✓','invoice.escalated':'escalate(CFO)','invoice.fraud_suspected':'fraud check → held','ap.status':'invoice.status()','proposal.within_limit':'approveWithinLimit() → policy ✓','transfer.created':'transfer.created ✓','proposal.executed':'proposal.executed ✓'};
     const seen=[];for(const e of EVT){const l=lab[e.event];if(!l)continue;const tool=e.event==='agent.tool'&&typeof e.f.tool==='string'?'agent.'+e.f.tool+'()':l;const last=seen[seen.length-1];if(last&&last.code===tool){last.k++;continue}
-      const who=e.event==='claude.capped'?'Claude not asked: '+(PC.caps[e.f.reason]||'its live budget is used'):e.event==='claude.fallback'?'Purser’s code read it':e.event==='agent.run'&&!claudeCall('agent.run',e.f)?'Claude not asked · code decides':typeof e.f.model==='string'?modelName(e.f.model):'';seen.push({code:tool,k:1,note:e.event==='claude.read'&&rd?(rd.model||'Claude')+(rd.ms?' · '+(rd.ms/1000).toFixed(1)+' s':'')+' · '+usdS(rd.cost):who,cls:e.event==='document.injection_flagged'?'bad':/✓/.test(tool)?'ok':''})}
+      const who=e.event==='claude.capped'?'Purser’s code reads it: '+(PC.caps[e.f.reason]||'its live budget is used'):e.event==='claude.fallback'?'Purser’s code read it':e.event==='agent.run'&&!claudeCall('agent.run',e.f)?'Purser’s rules decide · no AI needed':typeof e.f.model==='string'?modelName(e.f.model):'';const ec=Number(e.f.cost_usd_micros);seen.push({code:tool,k:1,note:e.event==='claude.read'&&typeof e.f.model==='string'&&Number.isFinite(ec)?modelName(e.f.model)+' · '+usdS(ec):who,cls:e.event==='document.injection_flagged'?'bad':/✓/.test(tool)?'ok':''})}
     for(const x of seen.slice(-7))c(x.code+(x.k>1?' ×'+x.k:''),x.note,x.cls);if(!seen.length)c('waiting for the engine…','the first step arrives in a moment');c('▍','','cur')}
   else if(g==='work'||g==='workInj'){const o=inv();const a=amt(o.amount);
-    c('reading = '+JSON.stringify({supplier:o.supplier||'…',invoice:o.number||'…',amount:a?a.n:'…',currency:a?a.cur:'…',due:o.due||'…'}),rd?'Claude '+(rd.model?'· '+rd.model+' ':'')+(rd.ms?'· '+(rd.ms/1000).toFixed(1)+' s ':'')+'· '+usdS(rd.cost):readNote);
+    c('reading = '+JSON.stringify({supplier:o.supplier||'…',invoice:o.number||'…',amount:a?a.n:'…',currency:a?a.cur:'…',due:o.due||'…'}),rd?'Claude '+(rd.model?'· '+rd.model+' ':'')+rdN(rd)+(rd.ms?'· '+(rd.ms/1000).toFixed(1)+' s ':'')+'· '+usdS(rd.cost):readNote);
     if(g==='workInj')c('findInjections(text) → 1 found','an order to the AI: logged, ignored','bad');
     c('checks = [notPaidBefore ✓, ibanOnFile ✓, knownSupplier ✓]','code checks it, not the AI','ok');
     if(a&&PC.limit)c('amount <= agent_limit  →  '+a.n+' <= '+PC.limit+'  →  '+(Number(a.n)<=Number(PC.limit)?'true':'false'),Number(a.n)<=Number(PC.limit)?'the agent may pay it alone':'above the limit: the CFO decides',Number(a.n)<=Number(PC.limit)?'ok':'warn');
     else c('limitRule(amount) → ask_cfo','above the agent’s limit: the CFO decides','warn');
-    if(n)c('// '+n+' Claude call'+(n===1?'':'s')+' so far · '+usdS(C.reduce((x,y)=>x+y.cost,0)),'');else if(code)c('// no Claude call in this run','')}
+    if(n)c('// '+n+' Claude call'+(n===1?'':'s')+' so far · '+usdS(C.reduce((x,y)=>x+y.cost,0)),'');else if(code)c('// Purser’s rules · no AI needed for this check','')}
   else if(g==='workAlone'){const o=inv();const a=amt(o.amount);
-    c('reading = '+JSON.stringify({supplier:o.supplier||'…',invoice:o.number||'…',amount:a?a.n:'…',currency:a?a.cur:'…'}),rd?'Claude '+(rd.model?'· '+rd.model+' ':'')+'· '+usdS(rd.cost):readNote);
+    c('reading = '+JSON.stringify({supplier:o.supplier||'…',invoice:o.number||'…',amount:a?a.n:'…',currency:a?a.cur:'…'}),rd?'Claude '+(rd.model?'· '+rd.model+' ':'')+rdN(rd)+'· '+usdS(rd.cost):readNote);
     c('checks = [notPaidBefore ✓, ibanOnFile ✓, knownSupplier ✓]','code checks it, not the AI','ok');
     if(a)c('amount <= agent_limit  →  '+a.n+' <= '+PC.limit+'  →  true','inside the limit','ok');
     c('approveWithinLimit(terms) → method: "policy"','your policy approves it; no person, no signature','ok');c('payer.pay(terms)','the agent pays it now, on its own')}
@@ -1131,18 +1211,19 @@ function railDraw(){const g=cap.dataset.k||'';const calls=[...CALLS.entries()].s
   if(g==='refused')PAYAT.tried=true;
   const N=nCalls(calls.map(([,c])=>c));const code=readerIs()==='code';
   const extra=PAYAT.seq>=0?nCalls(calls.filter(([s])=>s>PAYAT.seq).map(([,c])=>c)):-1;
-  railHead.querySelector('.sum').textContent=N?usd(tot)+' · '+N+(N===1?' call':' calls'):code?'no Claude call · code read it':'no Claude call yet';
+  const MT=claudeMeter(calls.map(([,c])=>c),readerIs());const note=stepNote(g,readerIs(),N);railHead.querySelector('.sum').textContent=MT.head;railHead.title=MT.why;
   // The Airwallex transfer's status is in the key: "Sandbox: move to PAID" changes it after the paid screen is drawn.
   let st={};try{st=JSON.parse(sessionStorage.getItem('purser.try')||'{}')||{}}catch(e){}const awx=st.awx&&typeof st.awx==='object'?st.awx:null;
-  const key=JSON.stringify([g,N,tot,extra,PAYAT.tried,code,INJ.flag,aloneRun(),awx&&awx.status||'']);if(rail.dataset.k===key)return;rail.dataset.k=key;
+  const key=JSON.stringify([g,N,tot,extra,PAYAT.tried,code,INJ.flag,aloneRun(),awx&&awx.status||'',MT.why]);if(rail.dataset.k===key)return;rail.dataset.k=key;
   // 1. Claude: the run's cumulative cost, its calls, each with model, tokens, time and Anthropic's request id.
-  const list=mk('ol','',calls.slice(-10).reverse().map(([,c])=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.tin||c.tout?(c.tin+c.tout)+' tokens':'',c.ms?(c.ms/1000).toFixed(1)+' s':'',c.req?c.req.slice(0,10)+'…'+c.req.slice(-4):''].filter(Boolean).join(' · ')),...((c.said||SAID.get(c.req))?[mk('span','w',String(c.said||SAID.get(c.req)))]:[])])));
+  const list=mk('ol','',calls.slice(-10).reverse().map(([,c])=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')+((Number(c.n)||1)>1?' · '+c.n+' calls':'')),mk('span','c',usd(c.cost)),mk('span','m',[c.tin||c.tout?(c.tin+c.tout)+' tokens':'',c.ms?(c.ms/1000).toFixed(1)+' s':'',c.req?c.req.slice(0,10)+'…'+c.req.slice(-4):''].filter(Boolean).join(' · ')),...((c.said||SAID.get(c.req))?[mk('span','w',String(c.said||SAID.get(c.req)))]:[])])));
   const det=mk('details','',[mk('summary','','Each call'),list]);
-  rClaude.replaceChildren(mk('h3','',[mk('span','sp','✦'),'Claude · live cost & calls']),mk('div','tot',calls.length?usd(tot):'$0.0000'),mk('div','sub',N?N+(N===1?' call':' calls')+' this run':code?'Not asked in this run: Purser’s code read the invoice':'No Claude call yet'),...(calls.length?[det]:[]),...(PAYAT.tried&&extra>=0?[mk('p','x'+(extra===0?' ok':''),extra===0?'0 extra calls · blocked locally by SHA-256':extra+' extra calls since the change')]:[]));
+  // 21 Nov 2026 (Max): the total, then why: every call counted by who made it; or the step's own state, never an absence.
+  rClaude.replaceChildren(mk('h3','',[mk('span','sp','✦'),'Claude · live cost & calls']),mk('div','tot',N?usd(tot):MT.head),mk('div','sub',N?N+(N===1?' Claude call':' Claude calls')+' this run':code?'Purser’s code read the invoice in this run':'Claude is called when the agent reads'),mk('p','why',MT.why),...(note?[mk('p','step',[mk('b','','This step: '),note])]:[]),...(calls.length?[det]:[]),...(PAYAT.tried&&extra>=0?[mk('p','x'+(extra===0?' ok':''),extra===0?'0 extra calls · blocked locally by SHA-256':extra+' extra calls since the change')]:[]));
   // 2. Agents and the mandate: who acts now, and whether the agent may pay alone.
   // 19 Nov 2026: when Purser's code read the invoice and no agent reached Claude, the roles say code did the work.
   const agentsRan=calls.some(([,c])=>c.who!==PC.shell.reader);
-  const al=g==='workAlone'||g==='booksAlone';const S3=[code?['Reader','Purser’s code read the PDF; Claude not asked']:['Reader agent','Claude reads the PDF'],code&&!agentsRan?['Checker','Purser’s code checks, limits, signature']:['Checker agent','checks, limits, signature'],code&&!agentsRan?['Payer','Purser’s code pays and books']:['Payer agent','pays; the Coder agent books']];
+  const al=g==='workAlone'||g==='booksAlone';const S3=[code?['Reader','Purser’s code read the PDF · no AI needed']:['Reader agent','Claude reads the PDF'],code&&!agentsRan?['Checker','Purser’s code checks, limits, signature']:['Checker agent','checks, limits, signature'],code&&!agentsRan?['Payer','Purser’s code pays and books']:['Payer agent','pays; the Coder agent books']];
   const state=(i)=>{if(g==='reading')return i===0?'cur':'';if(g==='work'||g==='workInj')return i===0?'done':i===1?'cur':'';if(g==='workAlone')return i<2?'done':'cur';if(g==='workCash')return i<2?'done':'';if(g==='approve')return i===0?'done':i===1?'wait':'';
     if(g==='books'||g==='booksAlone'||g==='done')return 'done';if(g==='pay')return i===1?'cur':'done';if(g==='refused')return i===1?'bad':'done';return ''};
   const mode=g==='workCash'?mk('span','mode warn','Inside EUR '+PC.limit+' · held by the cash floor'):al?mk('span','mode ok','Auto-pay ≤ EUR '+PC.limit):g&&g!=='invoice'&&g!=='reading'?mk('span','mode warn','Above EUR '+PC.limit+' · CFO passkey required'):mk('span','mode','Auto-pay ≤ EUR '+PC.limit+' · above it, CFO passkey');
@@ -1177,7 +1258,8 @@ function v2(){
   const h1=m.querySelector(':scope > h1');if(h1&&m.querySelector('.screen.start')&&!h1.querySelector('.pv-grad')){const t=h1.textContent||'';const i=t.indexOf('. ');if(i>0&&i<t.length-2)h1.replaceChildren(t.slice(0,i+2),mk('span','pv-grad',t.slice(i+2)))}
   const st=m.querySelector('.screen.start');if(st&&!st.querySelector('.pp'))st.append(partners(true));
   for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pp'))(sc.querySelector('.fin-hood-b')||sc).append(partners(true));
-  {const ch=m.querySelector('.screen.work .card.inv .slot .chip');const rd=[...CALLS.values()].find((c)=>c.who===PC.shell.reader);if(ch&&rd&&!ch.querySelector('.pv-rd')){const sp=ch.querySelector(':scope > span:not(.mono)');if(sp)sp.textContent='Read by Claude'+(rd.model?' · '+rd.model:'');const mo=ch.querySelector('.mono');if(mo)mo.hidden=true;ch.append(mk('span','pv-rd',[rd.ms?(rd.ms/1000).toFixed(1)+' s':'',rd.ms?' · ':'',usd(rd.cost)].join('')))}}
+  // 21 Nov 2026 (Max): the badge counts every call of this invoice's reading (it showed the first one only).
+  {const ch=m.querySelector('.screen.work .card.inv .slot .chip');const rd=readerNow();if(ch&&rd){const t=[rd.n>1?rd.n+' calls':'',rd.ms?(rd.ms/1000).toFixed(1)+' s':'',usd(rd.cost)].filter(Boolean).join(' · ');let pr=ch.querySelector('.pv-rd');if(!pr||pr.textContent!==t){const sp=ch.querySelector(':scope > span:not(.mono):not(.pv-rd)');if(sp)sp.textContent='Read by Claude'+(rd.model?' · '+rd.model:'');const mo=ch.querySelector('.mono');if(mo)mo.hidden=true;if(!pr){pr=mk('span','pv-rd','');ch.append(pr)}pr.textContent=t}}}
   for(const dt of m.querySelectorAll('.screen.approve .receipt dt'))if(/^(Conversion|Sign before)$/.test((dt.textContent||'').trim())&&!dt.hidden){dt.hidden=true;const dd=dt.nextElementSibling;if(dd&&dd.tagName==='DD')dd.hidden=true;const row=dt.parentElement;if(row&&row.tagName==='DIV'&&row.children.length===2)row.hidden=true}
   {const sh=m.querySelector('.screen.approve .receipt.sheet');if(sh&&INJ.flag&&!m.querySelector('.screen.approve .pv-warn')){const w=mk('div','pv-warn small',[mk('b','',PC.inj.h2),mk('p','',PC.inj.p2)]);const box=sh.parentElement;if(box)box.before(w)}}
   // The Airwallex card on Paid: a transfer waiting in Airwallex's own approval workflow is the second lock, said so; the
@@ -1281,7 +1363,7 @@ window.fetch=async(input,init)=>{
       const at=Date.now();
       res.clone().json().then((j)=>{
         if(!j||typeof j!=='object')return;
-        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.awx=false;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear();keepCalls();forgetRead()}
+        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.awx=false;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear();keepCalls();forgetRead();FILED.seq=-1;try{sessionStorage.removeItem('purser.filed')}catch(e){}}
         else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);takeCall(e,f);noteEvent(e);}}}
         else{
           let sent=null;try{sent=JSON.parse(String(init&&init.body||'null'))}catch(e){}
@@ -1399,7 +1481,7 @@ window.fetch=async(input,init)=>{
   const res=await real(input,init);
   try{const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;
     if(res.ok&&(p==='/v1/try/start'||p==='/v1/engine/events'))res.clone().json().then((j)=>{if(!j||typeof j!=='object')return;
-      if(p==='/v1/try/start'){CALLS.clear();keepCalls();forgetRead()}else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number'){takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});noteEvent(e)}
+      if(p==='/v1/try/start'){CALLS.clear();keepCalls();forgetRead();FILED.seq=-1;try{sessionStorage.removeItem('purser.filed')}catch(e){}}else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number'){takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});noteEvent(e)}
       drawUse()}).catch(()=>{});
   }catch(e){}
   return res;
@@ -1419,6 +1501,6 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };
-  const body = (kind === "public" ? PUBLIC_SCRIPT : SCRIPT).replace("__SHARED__", () => SHARED.replace("__CALL_SAID__", () => callSaid.toString()).replace("__CLAUDE_CALL__", () => claudeCall.toString()).replace("__READER_OF__", () => readerOf.toString()).replace("__PAUSED_NOTICE__", () => pausedNotice.toString()));
+  const body = (kind === "public" ? PUBLIC_SCRIPT : SCRIPT).replace("__SHARED__", () => SHARED.replace("__CALL_SAID__", () => callSaid.toString()).replace("__CLAUDE_CALL__", () => claudeCall.toString()).replace("__READER_OF__", () => readerOf.toString()).replace("__PAUSED_NOTICE__", () => pausedNotice.toString()).replace("__CLAUDE_METER__", () => claudeMeter.toString()).replace("__STEP_NOTE__", () => stepNote.toString()));
   return { css: CSS, script: body.replace("__PRESENT_CFG__", () => json(cfg)) };
 }

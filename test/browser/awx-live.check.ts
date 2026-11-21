@@ -85,8 +85,8 @@ try {
     await page.goto(`${ORIGIN}/#/guest`);
     // Judge panel, 15 Nov: a guest lands on what waits for approval.
     await page.waitForFunction(() => location.hash === "#/invoices?f=waiting_cfo" && document.body.classList.contains("signed-in"));
-    // The tab, as a person reaches it (on a phone the menu wraps to a second row).
-    await page.click("#tabs a[data-tab='airwallex']");
+    // The tab, as a person reaches it: the sidebar on a laptop; on a phone the bottom bar's Rails, whose first page it is (22 Nov).
+    await page.click(w < 1024 ? "#btabs a[data-group='rails']" : "#tabs a[data-tab='airwallex']");
     await page.waitForFunction(() => document.querySelectorAll(".awcard").length === 10 && [...document.querySelectorAll(".awcard .awstamp")].every((s) => s.textContent!.trim() !== ""), null, { timeout: 15_000 });
     const states = await page.$$eval(".awcard", (cs) => cs.map((c) => [(c as HTMLElement).dataset.view, c.querySelector(".awlive") ? "live" : c.querySelector(".awbad") ? "unavailable" : "loading"]));
     const st = Object.fromEntries(states);
@@ -126,7 +126,7 @@ try {
     if (shots) await page.locator(".aw-events").evaluate((e) => e.scrollIntoView({ block: "center" })); // clear of the sticky header
     if (shots) await page.locator(".aw-events").screenshot({ path: join(shots, `console-awx-events-recorded-${name}.png`) });
     // The Overview's live card, apart from the demo month.
-    await page.click("#tabs a[data-tab='overview']");
+    await page.click(w < 1024 ? "#btabs a[data-group='overview']" : "#tabs a[data-tab='overview']");
     await page.waitForSelector(".awov .awlive", { timeout: 15_000 });
     await page.waitForTimeout(1300);
     const ov = await page.$eval(".awov", (c) => c.textContent ?? "");
