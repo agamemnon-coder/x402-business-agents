@@ -3,6 +3,7 @@
 // <script> per page, so the pages keep the dashboard's hash-based CSP. Icons are Lucide (src/ui/icons.ts) plus a few
 // drawn here in the same style.
 
+import { PREMIUM_CSS } from "../ui/premium.js";
 import { formerlyMetal } from "../ui/formerly.js";
 import { MOTION_CSS, SITE_MOTION_CSS } from "../ui/motion.js";
 import { ICONS, type Icon } from "../ui/icons.js";
@@ -556,7 +557,8 @@ ${previewTags().join("\n")}
 <title>${esc(pageTitle(o.title))}</title>
 <style>${CSS}
 ${MOTION_CSS}${SITE_MOTION_CSS}
-${o.css}</style>
+${o.css}
+${PREMIUM_CSS}</style>
 </head>
 <body>
 ${header(o.tab)}
