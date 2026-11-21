@@ -60,7 +60,7 @@ for (const [w, h] of [[360, 800], [390, 844], [1440, 900], [2560, 1440], [3840, 
     const stg = (await page.evaluate(`(async () => {
       const f = document.querySelector("main section.pstage");
       if (!f) return null;
-      const tabs = [...f.querySelectorAll('[role="tab"]')], rows = [...f.querySelectorAll(".ps-row > a")], panels = [...f.querySelectorAll(".ps-panel")];
+      const tabs = [...f.querySelectorAll('[role="tab"]')], rows = [...f.querySelectorAll(".ps-row > a.ps-sel")], chipsL = [...f.querySelectorAll(".ps-row > a.ps-chip")].map((a) => ({ href: a.getAttribute("href"), fig: a.textContent, h: a.getBoundingClientRect().height })), panels = [...f.querySelectorAll(".ps-panel")];
       const shown = () => panels.filter((p) => p.getBoundingClientRect().height > 0).map((p) => p.id);
       const first = shown();
       const seen = [], tiles = [], links = [], bad = [];
@@ -80,14 +80,17 @@ for (const [w, h] of [[360, 800], [390, 844], [1440, 900], [2560, 1440], [3840, 
       const cent = !!f.querySelector("#pf-cent a.pf-try[href='books#cent']"), nf = !!f.querySelector("a.pf-nf[href='security#not-finished']");
       const arch = document.querySelector("main figure.parch");
       const chips = arch ? [...arch.querySelectorAll("li[data-arch]")].map((li) => { const a = li.querySelector("a"), r = a.getBoundingClientRect(); return { key: li.getAttribute("data-arch"), href: a.getAttribute("href"), fig: (a.querySelector("b") || {}).textContent || "", h: r.height, left: r.left, right: r.right }; }) : [];
-      return { n: panels.length, first, seen, bad, tiles, links, tabH, rowH, cent, nf, chips, width: f.getBoundingClientRect().width };
-    })()`)) as { n: number; first: string[]; seen: string[]; bad: string[]; tiles: { key: string; rec: string; fig: string; href: string; h: number; left: number; right: number }[]; links: { id: string; b: { href: string; h: number }[]; limits: number; more: boolean }[]; tabH: number[]; rowH: number[]; cent: boolean; nf: boolean; chips: { key: string; href: string; fig: string; h: number; left: number; right: number }[]; width: number } | null;
+      return { n: panels.length, first, seen, bad, tiles, links, tabH, rowH, cent, nf, chips, chipsL, width: f.getBoundingClientRect().width };
+    })()`)) as { n: number; first: string[]; seen: string[]; bad: string[]; tiles: { key: string; rec: string; fig: string; href: string; h: number; left: number; right: number }[]; links: { id: string; b: { href: string; h: number }[]; limits: number; more: boolean }[]; tabH: number[]; rowH: number[]; cent: boolean; nf: boolean; chips: { key: string; href: string; fig: string; h: number; left: number; right: number }[]; chipsL: { href: string; fig: string; h: number }[]; width: number } | null;
     if (!stg) fail(`${tag}: no stages`);
     else {
       if (stg.n !== FLOW_STEPS.length || stg.first.join() !== FLOW_STEPS[0]!.id) fail(`${tag}: ${stg.n} stages (${FLOW_STEPS.length} expected), in sight on load: ${stg.first.join()}`);
       if (stg.seen.join("|") !== FLOW_STEPS.map((x) => x.id).join("|") || stg.bad.length) fail(`${tag}: the strip and the list do not choose one panel each (${JSON.stringify(stg.seen)}; not marked: ${stg.bad.join()})`);
       if ([...stg.tabH, ...stg.rowH].some((x) => x < 44)) fail(`${tag}: a tab or a row under 44 px`);
       const all = new Map(wall.groups.flatMap((g) => g.tiles).map((t) => [t.key, t] as const));
+      // Each row's figure is a link of its own, to the head tile's record (no dead zones).
+      const heads = FLOW_STEPS.map((x) => x.keys.map((k) => all.get(k)).find(Boolean)!);
+      if (stg.chipsL.length !== heads.length || stg.chipsL.some((c, i) => c.href !== recordHref(heads[i]!) || c.fig !== heads[i]!.fig || c.h < 44)) fail(`${tag}: a stage's figure is not a 44 px link to its record (${JSON.stringify(stg.chipsL)})`);
       const keys = FLOW_STEPS.flatMap((x) => x.keys.filter((k) => all.has(k)));
       if (stg.tiles.length !== keys.length) fail(`${tag}: ${stg.tiles.length} tiles in the stages, ${keys.length} expected`);
       for (const t of stg.tiles) {

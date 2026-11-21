@@ -317,7 +317,8 @@ describe("/proof tells one story (Max, 21 Nov, his mockup): the head, the stages
       for (const t of p.tiles) expect(panel).toContain(`data-flow="${t.key}" data-rec="${t.rec}"><a href="${recordHref(t).replace(/&/g, "&amp;")}"`);
       // The list's row: its line and its chip are the head tile's, the chip green when it is all of its whole.
       const h = p.tiles[0]!;
-      expect(sec).toContain(`<span class="ps-chip${whole(h.fig) ? " all" : ""}" data-rec="${h.rec}">${h.fig}</span>`);
+      // The chip is a link of its own, to the head tile's record (Max, 21 Nov: no dead zones; every figure to its source).
+      expect(sec).toMatch(new RegExp(`<a class="ps-chip${whole(h.fig) ? " all" : ""}" href="${recordHref(h).replace(/&/g, "&amp;").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"[^>]* data-rec="${h.rec.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"[^>]*>${h.fig}</a>`));
       // Its section is on the page, once; its limits are said, in a fold.
       expect({ id: p.step.id, ids: html.split(` id="${p.step.href.slice(1)}"`).length - 1 }).toEqual({ id: p.step.id, ids: 1 });
       expect(p.step.limits.length).toBeGreaterThan(0);
@@ -366,6 +367,11 @@ describe("/proof tells one story (Max, 21 Nov, his mockup): the head, the stages
       for (const t of tiles) expect(fig).toContain(`<li data-arch="${t.key}" data-rec="${t.rec}"><a href="${recordHref(t).replace(/&/g, "&amp;")}"`);
     }
     expect(fig).toMatch(/Airwallex[\s\S]*Alta[\s\S]*Visa via Airi[\s\S]*T:0/);
+    // Every part is a link (no dead zones), to a section or a stage on this page, or to /claude.
+    for (const n of ARCH_NODES) for (const [name, href] of n.parts) {
+      expect(fig).toContain(`<li><a href="${href}">${name}</a></li>`);
+      if (href.startsWith("#")) expect({ href, ids: html.split(` id="${href.slice(1)}"`).length - 1 }).toEqual({ href, ids: 1 });
+    }
     expect(PROOF_TOP_CSS).toContain("@media (prefers-reduced-motion: no-preference)");
     expect(PROOF_TOP_CSS).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ [^}]*animation: none/);
     // The site's wave behind the heading (src/ui/wave.ts), in the page's one script.

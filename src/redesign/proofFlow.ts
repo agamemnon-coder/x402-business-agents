@@ -201,7 +201,8 @@ export function flowHtml(w: EvidenceWall | null = committedWall()): string {
   const tab = (p: PlacedStep) => `<a role="tab" class="${p.step.tone}" id="pt-${esc(p.step.id)}" href="#${esc(p.step.id)}" aria-controls="${esc(p.step.id)}" aria-selected="${p.step.id === first}"${p.step.id === first ? "" : ' tabindex="-1"'}><span class="ps-n" aria-hidden="true"></span>${esc(p.step.title)}</a>`;
   const row = (p: PlacedStep) => {
     const h = p.tiles[0];
-    return `<li class="ps-row ${p.step.tone}${p.step.id === first ? " on" : ""}"><a href="#${esc(p.step.id)}" data-stage="${esc(p.step.id)}"><span class="ps-dot" aria-hidden="true"></span><span class="ps-t"><span class="ps-n" aria-hidden="true"></span>${esc(p.step.title)}</span>${h ? `<span class="ps-line">${esc(h.label.charAt(0).toUpperCase() + h.label.slice(1))}</span><span class="ps-chip${whole(h.fig) ? " all" : ""}" data-rec="${esc(h.rec || WALL_FILE)}">${esc(h.fig)}</span>` : ""}</a></li>`;
+    // The row chooses the stage; its figure is a link of its own, to the head tile's record (Max, 21 Nov: no dead zones).
+    return `<li class="ps-row ${p.step.tone}${p.step.id === first ? " on" : ""}"><a class="ps-sel" href="#${esc(p.step.id)}" data-stage="${esc(p.step.id)}"><span class="ps-dot" aria-hidden="true"></span><span class="ps-t"><span class="ps-n" aria-hidden="true"></span>${esc(p.step.title)}</span>${h ? `<span class="ps-line">${esc(h.label.charAt(0).toUpperCase() + h.label.slice(1))}</span>` : ""}</a>${h ? `<a class="ps-chip${whole(h.fig) ? " all" : ""}" href="${esc(recordHref(h))}" title="${esc(h.note)}" data-rec="${esc(h.rec || WALL_FILE)}"${target(h.href)}>${esc(h.fig)}</a>` : ""}</li>`;
   };
   return `<section class="pstage" id="${FLOW_ID}" aria-labelledby="ps-h" data-rec="${WALL_FILE}">
 <h2 class="vh" id="ps-h">${esc("The stages of one payment")}</h2>
@@ -224,7 +225,7 @@ ${steps.map(panelHtml).join("\n")}
 export const FLOW_JS = `
 (function () {
   var root = document.querySelector("section.pstage"); if (!root) return;
-  var tabs = [].slice.call(root.querySelectorAll('[role="tab"]')), rows = [].slice.call(root.querySelectorAll(".ps-row > a")), panels = [].slice.call(root.querySelectorAll(".ps-panel"));
+  var tabs = [].slice.call(root.querySelectorAll('[role="tab"]')), rows = [].slice.call(root.querySelectorAll(".ps-row > a.ps-sel")), panels = [].slice.call(root.querySelectorAll(".ps-panel"));
   if (!panels.length) return;
   root.classList.add("js");
   var ids = panels.map(function (p) { return p.id; });
@@ -278,18 +279,19 @@ export const FLOW_CSS = `
 ol.ps-list { position: relative; list-style: none; margin: 0; padding: 10px 12px 10px 40px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); counter-reset: psl; display: grid; gap: 6px; }
 ol.ps-list::before { content: ""; position: absolute; left: 21px; top: 34px; bottom: 34px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, var(--border), color-mix(in srgb, var(--accent) 40%, var(--border)), var(--border)); }
 .ps-row { position: relative; }
-.ps-row > a { display: grid; grid-template-columns: 14.5em minmax(0, 1fr) auto; align-items: center; gap: 4px 16px; min-height: 52px; padding: 8px 12px 8px 14px; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--sunken) 40%, var(--surface)); color: inherit; text-decoration: none; transition: border-color .2s, background .2s; }
-.ps-row > a:hover { border-color: color-mix(in srgb, var(--pc) 45%, var(--border)); }
+.ps-row > a.ps-sel { display: grid; grid-template-columns: 14.5em minmax(0, 1fr); align-items: center; gap: 4px 16px; min-height: 56px; padding: 8px 128px 8px 14px; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--sunken) 40%, var(--surface)); color: inherit; text-decoration: none; transition: border-color .2s, background .2s; }
+.ps-row > a.ps-sel:hover { border-color: color-mix(in srgb, var(--pc) 45%, var(--border)); }
 .ps-row > a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ps-row.on > a { border-color: var(--accent); background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, var(--surface)), color-mix(in srgb, var(--accent) 6%, var(--surface))); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+.ps-row.on > a.ps-sel { border-color: var(--accent); background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, var(--surface)), color-mix(in srgb, var(--accent) 6%, var(--surface))); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
 .ps-dot { position: absolute; left: -24px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: var(--surface); border: 2px solid color-mix(in srgb, var(--muted) 70%, transparent); transition: all .3s; }
 .ps-row.on .ps-dot { left: -26px; width: 16px; height: 16px; margin-top: -8px; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 18px color-mix(in srgb, var(--accent) 60%, transparent); }
 .ps-t { display: inline-flex; align-items: center; gap: 8px; font-size: 16.5px; font-weight: 740; letter-spacing: -.01em; white-space: nowrap; }
 .ps-list .ps-n { background: transparent; width: auto; height: auto; color: var(--muted); font-size: 15px; }
 .ps-list .ps-n::before { counter-increment: psl; content: counter(psl) "."; }
 .ps-line { font-size: 14px; line-height: 1.35; color: var(--muted); min-width: 0; }
-.ps-chip { justify-self: end; font-size: 16.5px; font-weight: 780; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; padding: 4px 12px; border-radius: 10px; background: var(--sunken); color: var(--text); }
+.ps-chip { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box; text-decoration: none; font-size: 16.5px; font-weight: 780; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; padding: 4px 12px; border-radius: 10px; background: var(--sunken); color: var(--text); }
 .ps-chip.all { background: var(--ok-soft); color: var(--ok); }
+.ps-chip:hover, .ps-chip:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
 /* The panel: the chosen stage, what was verified, the four links. */
 .ps-panels { position: sticky; top: 84px; }
 .ps-panel { display: none; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); border-radius: 22px; scroll-margin-top: 90px;
@@ -335,7 +337,7 @@ details.pp-lim > .pf-lim { margin-top: 8px; }
 .pstage a.pf-more:hover { text-decoration: underline; }
 .ps-cap { margin: 10px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--muted); }
 .ps-cap a.pf-nf { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; color: var(--accent); font-weight: 650; text-decoration: none; }
-@media (max-width: 1180px) { .ps-row > a { grid-template-columns: minmax(0, 1fr) auto; } .ps-line { grid-column: 1; grid-row: 2; } .ps-chip { grid-row: 1 / span 2; grid-column: 2; } }
+@media (max-width: 1180px) { .ps-row > a.ps-sel { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 899px) {
   .ps-body { grid-template-columns: minmax(0, 1fr); }
   .ps-panels { position: static; }
@@ -344,7 +346,7 @@ details.pp-lim > .pf-lim { margin-top: 8px; }
 @media (max-width: 560px) {
   ol.ps-list { padding: 8px 8px 8px 30px; border-radius: 16px; } ol.ps-list::before { left: 15px; }
   .ps-dot { left: -21px; } .ps-row.on .ps-dot { left: -23px; }
-  .ps-row > a { padding: 8px 10px; gap: 2px 10px; } .ps-t { font-size: 15.5px; } .ps-line { font-size: 13px; } .ps-chip { font-size: 15px; padding: 3px 9px; }
+  .ps-row > a.ps-sel { padding: 8px 104px 8px 10px; gap: 2px 10px; } .ps-t { font-size: 15.5px; } .ps-line { font-size: 13px; } .ps-chip { font-size: 15px; padding: 3px 9px; }
   .ps-panel { padding: 16px 14px; border-radius: 18px; } .pp-btns { gap: 8px; } .pp-b { padding: 0 10px; gap: 8px; font-size: 14px; }
   .pp-ic { width: 46px; height: 46px; } .pp-h h3 { font-size: 21px; }
 }

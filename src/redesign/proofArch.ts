@@ -51,14 +51,14 @@ export const PROOF_WAVE_JS = waveScript({ selector: "canvas.px-wave", placement:
 
 // ── The architecture ────────────────────────────────────────────────────────────────────────────────────────────────
 
-export interface ArchNode { id: string; title: string; who: string; icon: string; parts: readonly string[]; keys: readonly (string | RegExp)[]; href: string; tone: "claude" | "accent" | "awx" | "ink" }
+export interface ArchNode { id: string; title: string; who: string; icon: string; parts: readonly (readonly [string, string])[]; keys: readonly (string | RegExp)[]; href: string; tone: "claude" | "accent" | "awx" | "ink" }
 export const ARCH_ID = "architecture";
 export const ARCH_TITLE = "How it fits together";
 export const ARCH_NODES: readonly ArchNode[] = [
-  { id: "pa-agent", title: "Agent", who: "Reads the invoice with Claude and proposes", icon: "bot", parts: ["Claude"], keys: ["claude-main", /^eval-v\d+$/], href: "#q-ai", tone: "claude" },
-  { id: "pa-purser", title: "Purser", who: "Code decides what may move", icon: "feather", parts: ["Policy", "Exact terms", "Passkey"], keys: ["alta-series-refused", "tamper-matrix", "try-cent"], href: "#q-approvals", tone: "accent" },
-  { id: "pa-rails", title: "Rails", who: "Move the signed payment", icon: "arrow-left-right", parts: ["Airwallex", "Alta", "Visa via Airi"], keys: ["soak-paid", "alta-payments", "visa-airi"], href: "#q-live", tone: "awx" },
-  { id: "pa-books", title: "Books", who: "Journal entries, matched to the cent", icon: "book-open", parts: ["T:0"], keys: ["t0-readback", "awx-statement"], href: "#q-books", tone: "ink" },
+  { id: "pa-agent", title: "Agent", who: "Reads the invoice with Claude and proposes", icon: "bot", parts: [["Claude", "claude"]], keys: ["claude-main", /^eval-v\d+$/], href: "#q-ai", tone: "claude" },
+  { id: "pa-purser", title: "Purser", who: "Code decides what may move", icon: "feather", parts: [["Policy", "#pf-policy"], ["Exact terms", "#signed"], ["Passkey", "#pf-passkey"]], keys: ["alta-series-refused", "tamper-matrix", "try-cent"], href: "#q-approvals", tone: "accent" },
+  { id: "pa-rails", title: "Rails", who: "Move the signed payment", icon: "arrow-left-right", parts: [["Airwallex", "#pl-airwallex"], ["Alta", "#pl-alta"], ["Visa via Airi", "#pl-visa"]], keys: ["soak-paid", "alta-payments", "visa-airi"], href: "#q-live", tone: "awx" },
+  { id: "pa-books", title: "Books", who: "Journal entries, matched to the cent", icon: "book-open", parts: [["T:0", "#pl-t0"]], keys: ["t0-readback", "awx-statement"], href: "#q-books", tone: "ink" },
 ];
 /** Under the drawing: what re-checks all of it. */
 export const ARCH_BASE = { title: "Anyone can re-check it", keys: ["verify-all", "anchor"], href: "#q-verify" } as const;
@@ -80,7 +80,7 @@ export function archHtml(w: EvidenceWall | null = committedWall()): string {
   if (!w?.groups.length) return "";
   const node = (n: ArchNode, i: number) => `${i ? `<div class="pa-wire" aria-hidden="true"><span></span><span></span><span></span></div>` : ""}<div class="pa-node ${n.tone}" id="${esc(n.id)}">
 <a class="pa-head" href="${esc(n.href)}"><span class="pa-ic" aria-hidden="true">${picon(n.icon, 22)}</span><span class="pa-tt"><b>${esc(n.title)}</b><small>${esc(n.who)}</small></span></a>
-<ul class="pa-parts">${n.parts.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
+<ul class="pa-parts">${n.parts.map(([p, h]) => `<li><a href="${esc(h)}">${esc(p)}</a></li>`).join("")}</ul>
 ${n.id === "pa-purser" ? `<p class="pa-ref"><span aria-hidden="true">${picon("ban", 14)}</span>${esc(ARCH_REFUSED)}</p>` : ""}
 <ul class="pa-ev">${archTiles(n, w).map(chip).join("")}</ul>
 </div>`;
@@ -143,7 +143,8 @@ ul.pstats a:hover, ul.pstats a:focus-visible { border-color: color-mix(in srgb, 
 .pa-tt { display: flex; flex-direction: column; min-width: 0; }
 .pa-tt b { font-size: 18px; font-weight: 760; letter-spacing: -.01em; } .pa-tt small { font-size: 13px; line-height: 1.3; color: var(--muted); }
 ul.pa-parts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-ul.pa-parts li { font-size: 12.5px; font-weight: 650; padding: 4px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--pc) 35%, var(--border)); color: var(--text); background: var(--surface); }
+ul.pa-parts a { display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box; font-size: 12.5px; font-weight: 650; padding: 0 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--pc) 35%, var(--border)); color: var(--text); background: var(--surface); text-decoration: none; }
+ul.pa-parts a:hover, ul.pa-parts a:focus-visible { border-color: var(--pc); color: var(--pc); }
 .pa-ref { margin: 0; display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: 12.5px; font-weight: 700; color: var(--bad); padding: 3px 10px; border-radius: 999px; border: 1px dashed color-mix(in srgb, var(--bad) 60%, transparent); background: var(--bad-soft); }
 ul.pa-ev { list-style: none; margin: auto 0 0; padding: 0; display: grid; gap: 6px; }
 ul.pa-ev a { display: flex; align-items: baseline; text-align: left; gap: 6px; min-height: 44px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: color-mix(in srgb, var(--sunken) 55%, var(--surface)); color: var(--muted); font-size: 12.5px; line-height: 1.3; text-decoration: none; box-sizing: border-box; }

@@ -277,6 +277,9 @@ html.pq-anim section.pq:not(.in) .ew-v.bar .ar, html.pq-anim section.pq:not(.in)
   section.pq .pq-ic { width: 40px; height: 40px; }
 }
 @media (min-width: 2000px) { section.pq ul.ew-ts { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); } section.pq .ew-f { font-size: 28px; } section.pq .ew-l { font-size: 14.5px; } }
+/* Charts answer the pointer everywhere (Max, 21 Nov: no dead zones): the bar under it stands out, its <title> tells its number. */
+section.pq .pchart svg .pc-m { cursor: help; transition: opacity .15s; }
+section.pq .pchart svg:hover .pc-m { opacity: .5; } section.pq .pchart svg .pc-m:hover { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { section.pq *, .pq-nav * { animation: none !important; transition: none !important; } }
 `;
 
