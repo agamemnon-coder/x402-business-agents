@@ -9,7 +9,9 @@ import { PRICING, PRICING_LINE, euro } from "../src/config/pricing.js";
 import { BUSINESS_PAGE, BUSINESS_CSP, ONE_PAGER_CSP, ONE_PAGER_PAGE } from "../src/servers/dashboard.js";
 import { FIRST_TARGET, FIRST_TARGET_NOTE, PILOT_AGREEMENT, CALC_DEFAULTS, CALC_JS, CALC_NOTE, FOUNDING_CTA, FOUNDING_NAME, FOUNDING_TERMS, FOUNDING_TEXT, GO_LIVE_DOC, PILOT_MAIL, POSITION, PRINT_JS, calc, calcEuro, calcHours, faqs, type CalcIn } from "../src/redesign/business.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { BUSINESS_ANSWER, BUSINESS_QUESTION, BZ_LAYERS, BZ_RUNS_ON, HERO_FIGURES, demoFacts, demoSteps, plusCent, tryCta } from "../src/redesign/businessVisuals.js";
+import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { repoHref } from "../src/redesign/productPage.js";
 import { START_STEPS } from "../src/redesign/home.js";
 import { residency } from "../src/redesign/privacy.js";
@@ -207,5 +209,47 @@ describe("served as the site serves its pages", () => {
     expect(ONE_PAGER_PAGE).toMatch(/@media print \{[\s\S]*header\.top, \.awx-row, footer\.foot, \.op-bar, \.noprint \{ display: none !important; \}/);
     // The button needs its script (window.print), so it is hidden until the script shows it.
     expect(ONE_PAGER_PAGE).toContain('<button class="btn primary" id="print" type="button" hidden>');
+  });
+});
+
+// 21 Nov (Max: "the business page looks simple and amateur — make it simple but with more visuals and the
+// infra/architecture; we made a clear demo: would you trust the agent with your money?"): the question and its answer,
+// one primary button to /try and one to /proof, the demo as a diagram read from the recorded /try runs, each step linked
+// to its record, the figures from the evidence wall, and the architecture with every part linked to what holds it.
+describe("the visuals (21 Nov)", () => {
+  const d = demoFacts();
+  it("asks the question and answers it, with one primary button to /try naming the recorded amount, and one to /proof", () => {
+    const t = text(main(BUSINESS_PAGE));
+    expect(t).toContain(BUSINESS_QUESTION);
+    expect(t).toContain(BUSINESS_ANSWER);
+    expect(BUSINESS_PAGE).toContain(`<h1 id="bzh-h">${BUSINESS_QUESTION}</h1>`);
+    expect(tryCta(d)).toBe("Try it: EUR 1,850.00 waits for the CFO");
+    const hero = /<section class="bzh"[\s\S]*?<\/section>/.exec(BUSINESS_PAGE)![0];
+    expect([...hero.matchAll(/<a class="btn ([a-z ]+)" href="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["primary big", "/try"], ["big ghost", "proof"]]);
+    expect(t).toContain("Founding Partner Pilot · test money only");
+  });
+
+  it("draws the demo from the recorded /try runs, each step linked to its record, and the hero's figures from the wall", () => {
+    expect([d.amount, d.alone, d.cent, plusCent(d.amount)]).toEqual(["EUR 1,850.00", "EUR 120.00", "EUR 0.01", "EUR 1,850.01"]);
+    const run = JSON.parse(readFileSync(new URL(`../${d.recs.run}`, import.meta.url), "utf8")) as { runs: { airwallex?: { amount: string }[] }[] };
+    expect(run.runs.some((r) => r.airwallex?.some((x) => x.amount === "EUR 120.00"))).toBe(true);
+    for (const s of demoSteps(d)) {
+      expect(existsSync(new URL(`../${s.rec}`, import.meta.url))).toBe(true);
+      expect(BUSINESS_PAGE).toMatch(new RegExp(`id="${s.id}"[\\s\\S]*?href="[^"]*${s.rec.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}"`));
+    }
+    expect(BUSINESS_PAGE.match(/<li data-stat="[a-z-]+" data-rec="[^"]+">/g)).toHaveLength(HERO_FIGURES.length);
+  });
+
+  it("shows the architecture's four layers and where it runs, each part linked to a page, code or doc that exists", () => {
+    expect(BZ_LAYERS.map((l) => l.name)).toEqual(["CFO & company", "Purser engine", "Rails", "Proof & books"]);
+    for (const [, href] of BZ_LAYERS.flatMap((l) => l.parts)) {
+      const path = href.startsWith(REPO_BLOB) ? href.slice(REPO_BLOB.length) : null;
+      if (path) expect({ path, there: existsSync(new URL(`../${path}`, import.meta.url)) }).toEqual({ path, there: true });
+    }
+    const wr = readFileSync(new URL("../cloud/wrangler.jsonc", import.meta.url), "utf8");
+    for (const want of ["d1_databases", "durable_objects", "r2_buckets"]) expect(wr).toContain(want);
+    expect(BZ_RUNS_ON.map(([n]) => n)).toEqual(["Cloudflare Workers", "Durable Objects", "D1", "R2"]);
+    // The Rego is a tested mirror of the policy, never read by Purser: said "also in", not "enforced by".
+    expect(text(BUSINESS_PAGE)).toContain("CFO policy also in OPA/Rego");
   });
 });

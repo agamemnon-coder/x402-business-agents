@@ -12,7 +12,9 @@
 //   - "never in the flow of funds" is docs/airwallex-platform.md's; the checks are src/ap/checkerCore.ts's (docs/claims.md).
 // The first target customer and the accounting-firm channel are hypotheses (docs/business/model.md) and say so. Built on
 // Airwallex; no partnership or endorsement is claimed. No competitor, customer, quote or founder is named.
-// One small script: the calculator (textContent only, nothing parsed as markup), and /one-pager's print button.
+// 21 Nov (Max: "simple and amateur — more visuals and the infra/architecture"): the page now opens with the demo's
+// question over the wave, the demo as a diagram and the architecture (./businessVisuals.ts); the problem/outcome cards
+// went (OPTIONS and OUTCOMES stay for /one-pager). One script: the wave, then the calculator (textContent only, nothing parsed as markup), and /one-pager's print button.
 
 import { CONTACT_EMAIL } from "../config/brand.js";
 import { PRICING, PRICING_LINE, euro } from "../config/pricing.js";
@@ -20,7 +22,8 @@ import { SITE_URL } from "../ui/siteUrl.js";
 import { CLOUD_SETUP_URL, START_STEPS, proofTiles, type ProofTile } from "./home.js";
 import { PRICING_LEAD } from "./pricing.js";
 import { residency } from "./privacy.js";
-import { foldHtml, outLink, productPage, repoHref, siteLink } from "./productPage.js";
+import { PRODUCT_CSS, foldHtml, outLink, repoHref, siteLink } from "./productPage.js";
+import { BUSINESS_VISUAL_CSS, BUSINESS_WAVE_JS, bzArchHtml, businessHeroHtml, demoFacts, demoHtml } from "./businessVisuals.js";
 import { TRY_URL, esc, icon, page } from "./ui.js";
 
 /** The pilot's mail: the footer's contact address, with a subject. */
@@ -81,10 +84,10 @@ export const OUTCOMES: readonly { icon: string; title: string; line: string; hre
 
 /** The pilot, as Purser Cloud starts a company today (docs/cloud.md). */
 export const PILOT_STEPS: readonly { icon: string; title: string; line: string }[] = [
-  { icon: "mail", title: "Write to us", line: "Tell us how your company pays suppliers today." },
-  { icon: "building-2", title: "We set up your company", line: "In Purser Cloud, with a starter key for its owner." },
-  { icon: "scan-face", title: "Add your passkey", line: "Face ID on your phone. Suppliers' invoices go to your company's inbox address." },
-  { icon: "zap", title: "Run your workflow, 30 days", line: "Agents propose, the CFO signs, the books fill. On test money." },
+  { icon: "mail", title: "Write to us", line: "Tell us how you pay suppliers today." },
+  { icon: "building-2", title: "We set up your company", line: "In Purser Cloud, with a starter key." },
+  { icon: "scan-face", title: "Add your passkey", line: "Face ID on the CFO's phone." },
+  { icon: "zap", title: "Run your workflow, 30 days", line: "Agents propose, the CFO signs. Test money." },
 ];
 
 /** The buyer's first questions, each answered from what is built, with where to check it. */
@@ -182,21 +185,7 @@ export const BUSINESS_CSS = `.bz-hd { margin-top: 14px; } .bz-hd .eyebrow { marg
 .bz-ctas { display: flex; flex-wrap: wrap; gap: 10px; }
 .bz-ctas .btn { white-space: normal; height: auto; min-height: 48px; padding: 10px 20px; line-height: 1.25; }
 .bz-ctas .btn .i { flex: none; }
-/* Today's options. */
-.bz-opt { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 760px) { .bz-opt { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.bz-opt li { display: grid; gap: 8px; align-content: start; padding: 18px; border-radius: 18px; border: 1.5px dashed var(--border); background: var(--surface); min-width: 0; }
-.bz-opt li b { display: flex; align-items: center; gap: 10px; font-size: 17px; }
-.bz-opt li p { margin: 0; font-size: 15.5px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
-.bz-opt li .i { color: var(--bad); flex: none; }
-.bz-opt li.us { border: 1.5px solid transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--accent), var(--ok)) border-box; box-shadow: 0 18px 40px -28px rgba(79, 70, 229, .6); }
-.bz-opt li.us p { color: var(--text); } .bz-opt li.us .i { color: var(--ok); }
-/* Outcomes. */
-.bz-out { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
-.bz-out li { display: grid; gap: 6px; align-content: start; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); min-width: 0; }
 .bz-out .ic, .bz-who .ic, .bz-steps .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
-.bz-out b { font-size: 16px; line-height: 1.3; }
-.bz-out p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
 /* The proof tiles (Home's, from the run records). */
 .bz-proof { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
 .bz-proof a { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; background: var(--sunken); color: inherit; text-decoration: none; min-height: 44px; min-width: 0; }
@@ -205,14 +194,16 @@ export const BUSINESS_CSS = `.bz-hd { margin-top: 14px; } .bz-hd .eyebrow { marg
 .bz-proof .v { font-size: 20px; font-weight: 760; letter-spacing: -.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .bz-proof .t { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 .bz-proof .g { justify-self: start; font-size: 14px; font-weight: 650; color: var(--muted); background: var(--surface); border-radius: 999px; padding: 1px 8px; margin-top: 4px; }
-/* Who it is for. */
-.bz-who { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 860px) { .bz-who { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.bz-who article { display: grid; gap: 8px; align-content: start; padding: 18px; min-width: 0; }
-.bz-who h3 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 17px; }
+/* Who it is for: three cards, an icon each. */
+ul.bz-who { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 860px) { ul.bz-who { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.bz-who li { display: grid; gap: 6px; align-content: start; padding: 18px; min-width: 0; }
+.bz-who b { font-size: 17px; }
 .bz-who p { margin: 0; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
 .bz-who small { color: var(--muted); font-size: 14px; line-height: 1.4; }
 .bz-who small a { color: var(--accent); font-weight: 650; }
+details.bz-tf > summary { min-height: 44px; }
+details.bz-tf .bz-terms { margin: 6px 0 8px; }
 /* The calculator. */
 .bz-calc { display: grid; gap: 16px; padding: 20px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 @media (min-width: 860px) { .bz-calc { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
@@ -324,13 +315,17 @@ export function calcHtml(i: CalcIn = CALC_DEFAULTS): string {
 }
 
 export function businessPage(): string {
-  const options = `<ul class="bz-opt">${OPTIONS.map((o) => `<li class="${o.us ? "us" : ""}" id="opt-${o.id}"><b>${icon(o.icon, 20)}${esc(o.title)}</b><p>${esc(o.line)}</p></li>`).join("")}</ul>`;
-  const outcomes = `<ul class="bz-out">${OUTCOMES.map((o) => `<li><span class="ic">${icon(o.icon, 20)}</span><b>${esc(o.title)}</b><p>${esc(o.line)}</p><div class="links">${siteLink(o.href, o.label)}</div></li>`).join("")}</ul>`;
-  const who = `<div class="bz-who">
-  <article class="card" id="ideal"><h3><span class="ic">${icon("building-2", 20)}</span>${esc("First target group")}</h3><p>${esc(FIRST_TARGET.replace(/^Our first target group: /, ""))}</p><small>${esc(FIRST_TARGET_NOTE.split(". ")[0]!)}. <a href="${esc(PILOT_MAIL)}">${esc("Other companies can still register interest")}</a>.</small></article>
-  <article class="card" id="firms"><h3><span class="ic">${icon("users", 20)}</span>${esc("For accounting firms")}</h3><p>${esc("The accountant's role reads the books, invoices and audit trail; it cannot approve or pay. Books filed in Moneybird; Xero, QuickBooks Online and Exact Online exports.")}</p><small>${esc("Moneybird in its sandbox; the exports are files, not live links.")}</small></article>
-  <article class="card" id="on-airwallex"><h3><span class="ic">${icon("landmark", 20)}</span>${esc("Built on Airwallex")}</h3><p>${esc("Money stays in the company's own Airwallex account; Purser is never in the flow of funds. Its fee rides on the payout.")}</p><small>${esc("Run in Airwallex's sandbox. No partnership or endorsement claimed.")}</small></article>
-</div>`;
+  // 21 Nov (Max: "the business page looks simple and amateur — make it simple but with more visuals and the
+  // infra/architecture; we made a clear demo: would you trust the agent with your money?"): /proof's and /security's
+  // design language (./businessVisuals.ts). The question and its answer over the wave, the demo's approval card and four
+  // figures from the evidence wall; the demo as one diagram, each step to its record; the architecture and where it
+  // runs; then who it is for, the pilot, the plans, the calculator and the questions, tighter and with less text.
+  const d = demoFacts();
+  const who = `<ul class="bz-who">
+  <li class="card" id="ideal"><span class="ic">${icon("building-2", 20)}</span><b>${esc("First target group")}</b><p>${esc("EU companies of 20 to 200 employees on Airwallex, with a CFO, a fractional CFO or an accountant.")}</p><small>${esc(FIRST_TARGET_NOTE.split(". ")[0]!)}. <a href="${esc(PILOT_MAIL)}">${esc("Other companies can still register interest")}</a>.</small></li>
+  <li class="card" id="firms"><span class="ic">${icon("users", 20)}</span><b>${esc("Accounting firms")}</b><p>${esc("The accountant reads the books and audit trail; cannot approve or pay.")}</p></li>
+  <li class="card" id="on-airwallex"><span class="ic">${icon("landmark", 20)}</span><b>${esc("Built on Airwallex")}</b><p>${esc("Money stays in your own Airwallex account; Purser is never in the flow of funds.")}</p></li>
+</ul>`;
   const steps = `<ol class="bz-steps">${PILOT_STEPS.map((s, i) => `<li><span class="ic">${icon(s.icon, 20)}<em>${i + 1}</em></span><b>${esc(s.title)}</b><p>${esc(s.line)}</p></li>`).join("")}</ol>`;
   const pilot = `<section class="card bz-pilot" aria-labelledby="pilot">
   <div class="bz-fp">
@@ -339,40 +334,42 @@ export function businessPage(): string {
       <a class="btn primary" href="${esc(PILOT_MAIL)}">${icon("mail", 18)}${esc(FOUNDING_CTA)}</a></div>
     ${steps}
   </div>
-  <dl class="bz-terms">${FOUNDING_TERMS.map((t) => `<div id="t-${t.id}"><dt>${esc(t.title)}</dt><dd>${esc(t.line)}</dd></div>`).join("")}</dl>
-  <div class="links">${outLink(repoHref(GO_LIVE_DOC), "The go-live requirements")}</div>
+  <details class="fold bz-tf"><summary>${esc("Eligibility, scope and terms")}</summary><dl class="bz-terms">${FOUNDING_TERMS.map((t) => `<div id="t-${t.id}"><dt>${esc(t.title)}</dt><dd>${esc(t.line)}</dd></div>`).join("")}</dl>
+  <div class="links">${outLink(repoHref(GO_LIVE_DOC), "The go-live requirements")}</div></details>
 </section>`;
   const plans = `<section class="card bz-pilot" aria-labelledby="pricing">
   ${priceHtml()}
   <p class="bz-sub">${esc(`${PRICING_LEAD} Not yet validated with customers.`)}</p>
-  <div class="bz-ctas"><a class="btn" href="${esc(TRY_URL)}">${icon("zap", 18)}${esc(`Try it first (${TRY_TAG.split(" · ")[0]})`)}</a><a class="btn" href="${ONE_PAGER_PATH}">${icon("file-text", 18)}${esc("The one-pager")}</a></div>
+  <div class="bz-ctas"><a class="btn" href="${ONE_PAGER_PATH}">${icon("file-text", 18)}${esc("The one-pager")}</a></div>
 </section>`;
   const one = (f: Faq) => `<details id="faq-${f.id}"><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p><div class="links">${f.links.map(([h, l]) => (/^https:/.test(h) ? outLink(h, l) : siteLink(h, l))).join("")}</div></details>`;
   // The judges' questions (review, 21 Nov) in one fold of their own, so the buyer's questions stay the ones in sight.
   const judges = faqs().filter((f) => JUDGE_FAQ.includes(f.id));
   const faq = `<div class="bz-faq">${faqs().filter((f) => !JUDGE_FAQ.includes(f.id)).map(one).join("")}${judges.length ? `<details id="faq-judges"><summary>${esc("Questions judges ask")}</summary>${judges.map(one).join("")}</details>` : ""}</div>`;
-  const body = `${sectionHead("today", "The problem", "Today it is no agents, or blind trust.")}
-  ${options}
-  ${sectionHead("outcome", "What changes", "Agents do the routine. You keep the say.")}
-  ${outcomes}
-  ${proofChips()}
+  const body = `<main class="bzp">
+${businessHeroHtml({ label: BUSINESS_LABEL, position: BUSINESS_LEAD, d })}
+<div class="wrap">
+  ${demoHtml(d, TRY_TAG)}
+  ${bzArchHtml()}
   ${sectionHead("who", "Who it is for", "Finance teams on Airwallex, and their accountants.")}
   ${who}
-  ${sectionHead("h-calc", "Calculator", "What could it save you?")}
-  ${calcHtml()}
   ${sectionHead("pilot", "Founding Partner Pilot", FOUNDING_CTA)}
   <p class="bz-sub bz-ft">${esc(FOUNDING_TEXT)}</p>
   ${pilot}
   ${sectionHead("pricing", "Plans", "After the pilot, if you choose.")}
   ${plans}
+  ${sectionHead("h-calc", "Calculator", "What could it save you?")}
+  ${calcHtml()}
   ${sectionHead("faq", "Questions", "What a buyer asks first.")}
-  ${faq}`;
-  return productPage({
-    key: "business", title: "For companies", h1: BUSINESS_H1, label: BUSINESS_LABEL, lead: BUSINESS_LEAD, body, css: BUSINESS_CSS, js: CALC_JS,
-    description: "Purser for companies: let AI agents pay suppliers and buy software while the CFO approves the exact terms with Face ID. Who it is for, a calculator for your own numbers, the pilot and its pilot prices, and a buyer's questions answered.",
-    source: "Source: src/config/pricing.ts (pilot prices), the run records behind the proof tiles, cloud/wrangler.jsonc (where data lives), docs/cloud.md (how a pilot company starts) and docs/airwallex-platform.md.",
+  ${faq}
+</div></main>`;
+  return page({
+    title: "For companies", tab: "business", css: `${PRODUCT_CSS}\n${BUSINESS_CSS}\n${BUSINESS_VISUAL_CSS}`, body, js: `${BUSINESS_WAVE_JS}\n${CALC_JS}`, stage: false,
+    description: "Would you trust an AI agent with your company's money? Purser: agents do the routine, the rails hold the limits, the CFO signs the exact terms with Face ID. The demo, the architecture, the pilot and its pilot prices, and a buyer's questions answered.",
+    source: "Source: the recorded /try runs (docs/runs/2026-11-13-try-sample.json, docs/runs/2026-11-21-phone-try/summary.json), docs/evidence/evidence-wall.json and the records each figure links, src/config/pricing.ts (pilot prices), cloud/wrangler.jsonc (where it runs and where data lives), docs/cloud.md (how a pilot company starts) and docs/airwallex-platform.md.",
     real: [
       "Test money only: sandboxes and testnet. No customers, pilots or revenue yet.",
+      "The demo's card and diagram are drawn from the recorded /try runs; the approval card is a picture of that run, not a button.",
       CALC_NOTE,
       "The first target customer and the accounting-firm channel are hypotheses. Built on Airwallex; no partnership or endorsement is claimed.",
     ],

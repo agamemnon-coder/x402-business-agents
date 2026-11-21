@@ -155,11 +155,10 @@ export const waveScript = (o: WaveOptions): string => `
   }
   var mx = 9, my = 9, px = 9, py = 9, ripples = [], box = null;
   // 21 Nov: a slow device (or a software-rendered headless browser) holds the last frame still instead of starving the page.
-  var lastF = 0, emaF = 0, nF = 0, lastD = 0;
+  var lastF = 0, emaF = 0, nF = 0;
   function frame(now) {
     raf = 0;
-    // 21 Nov (Max): at most 30 frames a second; a slow drift needs no more, and the page keeps its breath.
-    if (lastD && now - lastD < 32 && now - lastD > 0) { go(); return; } lastD = now;
+    // 21 Nov, later (Max: "30 fps feels slow"): every frame again; the lighter pixel ratio and point count keep it smooth.
     // A gap over a second is a tab or window coming back (frames pause while hidden), never a slow device: it does not count.
     if (lastF && now - lastF < 1000) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 400 || (++nF > 12 && emaF > 60)) still = true; } lastF = now;
     var t = (now - t0) / 1000, D = dark();
@@ -253,11 +252,10 @@ function wave2d() {
   // The ribbon's centre line at u (no rows), for the crest's haze and the lens light.
   function crest(R, L, u, t) { return H * (R.y0 + (R.y1 - R.y0) * u) + H * L.amp * (Math.sin(u * 6.2 + t * 0.45 + L.ph) + 0.3 * Math.sin(u * 13 - t * 0.3 + L.ph)); }
   // 21 Nov: a slow device (or a software-rendered headless browser) holds the last frame still instead of starving the page.
-  var lastF = 0, emaF = 0, nF = 0, lastD = 0;
+  var lastF = 0, emaF = 0, nF = 0;
   function frame(now) {
     raf = 0;
-    // 21 Nov (Max): at most 30 frames a second; a slow drift needs no more, and the page keeps its breath.
-    if (lastD && now - lastD < 32 && now - lastD > 0) { go(); return; } lastD = now;
+    // 21 Nov, later (Max: "30 fps feels slow"): every frame again; the lighter pixel ratio and point count keep it smooth.
     // A gap over a second is a tab or window coming back (frames pause while hidden), never a slow device: it does not count.
     if (lastF && now - lastF < 1000) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 400 || (++nF > 12 && emaF > 60)) still = true; } lastF = now;
     var t = (now - t0) / 1000;

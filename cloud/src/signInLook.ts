@@ -18,12 +18,14 @@ export const SIGNIN_CSS = `
 /* The console's own page-wide wave waits for the signed-in pages: here the panel has its own. */
 .signed-out canvas.pw-wave { display: none; }
 .signed-out .hero canvas { position: absolute; pointer-events: none; }
-/* 21 Nov (Max: "it looks really on each other"): the words keep a clean area. The globe is placed by its script in the
-   largest space clear of them, above the wave (its body hides the wave behind it); the wave runs low, under the words. */
-.signed-out .hero canvas.si-globe { inset: 0; width: 100%; height: 100%; z-index: -1; }
-.signed-out .hero canvas.si-wave { left: 0; right: 0; bottom: 0; width: 100%; height: 28%; z-index: -2;
+/* 21 Nov (Max, later: "put the globe behind everything"): the globe is a large, dim backdrop behind the words, whole in
+   the panel (never clipped), above the wave (its body hides the wave behind it). Its script lays a soft scrim of the
+   panel's ground behind the words (contrast AA on any dot behind them), then the two pings, their labels clear of the words. */
+.signed-out .hero canvas.si-globe { inset: 0; width: 100%; height: 100%; z-index: -2; }
+.signed-out .hero canvas.si-wave { left: 0; right: 0; bottom: 0; width: 100%; height: 28%; z-index: -3;
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 45%); mask-image: linear-gradient(180deg, transparent, #000 45%); }
 .signed-out .side { position: relative; display: flex; flex-direction: column; align-items: flex-start; max-width: 520px; margin: 0; padding: 0 0 0 clamp(8px, 3vw, 56px); }
+
 .signed-out .side .side-mk { order: -1; display: grid; place-items: center; width: 64px; height: 64px; margin: 0 0 22px; border-radius: 18px; color: var(--text);
   border: 1px solid var(--glass-line, color-mix(in srgb, var(--accent) 30%, var(--border))); background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 34%, var(--surface)), color-mix(in srgb, var(--accent) 12%, var(--surface)));
   box-shadow: 0 12px 34px -14px color-mix(in srgb, var(--accent) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, .12); }
@@ -151,9 +153,11 @@ const PLACES: readonly (readonly [number, number, string, boolean])[] = [
 
 /**
  * The globe: dots on a sphere (land bright, sea faint), rocking slowly round the Atlantic so both pings stay in view, a
- * glow at its rim. It is placed where the words are not: the largest circle that keeps clear of the panel's text (the
- * mark, the heading, the line and the three points), measured on every resize. 30 frames a second at most, gradients
- * made once per size, paused off screen and in a hidden tab; still under reduced motion or on a device too slow for it.
+ * glow at its rim. 21 Nov (Max): behind everything, a large dim backdrop behind the words (not beside them): the largest
+ * whole circle round a point a little right of the panel's middle, its sphere drawn at about half strength; the pings
+ * at full strength, their labels placed clear of the words (the mark, the heading, the line and the three points,
+ * measured on every resize) or not drawn. Every frame (no 30 fps cap since 21 Nov), gradients made once per size, the
+ * pixel ratio at most 1.5, paused off screen and in a hidden tab; still under reduced motion or on a device too slow.
  */
 const GLOBE_JS = `
 (function () {
@@ -163,11 +167,12 @@ const GLOBE_JS = `
   var boxes = LAND.map(function (p) { var b = [999, 999, -999, -999]; p.forEach(function (q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }); return b; });
   function inside(p, x, y) { var o = false; for (var i = 0, j = p.length - 1; i < p.length; j = i++) { var a = p[i], b = p[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) o = !o; } return o; }
   function land(lon, lat) { for (var k = 0; k < LAND.length; k++) { var b = boxes[k]; if (lon < b[0] || lon > b[2] || lat < b[1] || lat > b[3]) continue; if (inside(LAND[k], lon, lat)) return true; } return false; }
-  var still = matchMedia("(prefers-reduced-motion: reduce)").matches, dark = matchMedia("(prefers-color-scheme: dark)");
-  var pts = [], W = 0, H = 0, dpr = 1, raf = 0, seen = true, t0 = 0, lastF = 0, emaF = 0, nF = 0, lastD = 0, ink = [180, 168, 255], acc = "#a398ff";
+  var DIM = 0.5, still = matchMedia("(prefers-reduced-motion: reduce)").matches, dark = matchMedia("(prefers-color-scheme: dark)");
+  var pts = [], W = 0, H = 0, dpr = 1, raf = 0, seen = true, t0 = 0, lastF = 0, emaF = 0, nF = 0, txt = [], ink = [180, 168, 255], acc = "#a398ff", ground = [8, 10, 18], scrim = null, sx = 0, sy = 0, sk = 1, srw = 0;
   var cx = 0, cy = 0, R = 0, lite = false, at = null, body = null, rim = null, col = "", sampled = 0, bk = []; for (var q0 = 0; q0 < 32; q0++) bk.push([]);
   function theme() { var cs = getComputedStyle(document.documentElement), a = (cs.getPropertyValue("--accent") || "").trim(); acc = a || acc;
     var m = /^#([0-9a-f]{6})$/i.exec(acc); if (m) { var n = parseInt(m[1], 16); ink = [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+    var bm = /^#([0-9a-f]{6})$/i.exec((cs.getPropertyValue("--bg") || "").trim()); if (bm) { var bn = parseInt(bm[1], 16); ground = [bn >> 16 & 255, bn >> 8 & 255, bn & 255]; }
     lite = !dark.matches && document.documentElement.getAttribute("data-theme") !== "dark"; if (document.documentElement.getAttribute("data-theme") === "light") lite = true; }
   function sample(n) {
     pts = []; sampled = n; var gold = Math.PI * (3 - Math.sqrt(5));
@@ -175,38 +180,39 @@ const GLOBE_JS = `
       var lat = Math.asin(y) * 180 / Math.PI, lon = Math.atan2(z, x) * 180 / Math.PI, l = land(lon, lat);
       if (l || i % 4 === 0) pts.push([x, y, z, l ? 1 : 0, (i * 9301 + 49297) % 233280 / 233280]); }
   }
-  // The largest circle (with its glow) clear of the words: a coarse grid of centres, each as large as its nearest word allows.
+  // The words' boxes (for the labels), and the globe: the largest whole circle (with its glow) round a point a little
+  // right of the middle, behind the words.
   function place() {
-    var cr = c.getBoundingClientRect(), side = c.parentElement, rs = [], mg = W >= 700 ? 14 : 6;
-    if (side) side.querySelectorAll(".side-mk, .side h2, .side > p, .side li").forEach(function (e) { var r = e.getBoundingClientRect(); if (r.width && r.height) rs.push([r.left - cr.left - mg, r.top - cr.top - mg, r.right - cr.left + mg, r.bottom - cr.top + mg]); });
-    var best = [W * 0.7, H * 0.5, 0], gap = W >= 700 ? 10 : 4, k = W >= 700 ? 1.16 : 1.08;
-    for (var i = 1; i < 40; i++) for (var j = 1; j < 30; j++) {
-      var x = W * i / 40, y = H * j / 30, m = Math.min(x - gap, W - gap - x, y - gap, H - gap - y);
-      for (var q = 0; q < rs.length && m > best[2] * k; q++) { var b = rs[q], dx = Math.max(b[0] - x, 0, x - b[2]), dy = Math.max(b[1] - y, 0, y - b[3]); m = Math.min(m, Math.sqrt(dx * dx + dy * dy)); }
-      var r = Math.min(m / k, W >= 700 ? 280 : 200); if (r + x * 0.004 > best[2] + best[0] * 0.004) best = [x, y, r];
-    }
-    cx = best[0]; cy = best[1]; R = Math.max(0, best[2]);
+    var cr = c.getBoundingClientRect(), side = c.parentElement, mg = W >= 700 ? 10 : 4; txt = [];
+    if (side) side.querySelectorAll(".side-mk, .side h2, .side > p, .side li").forEach(function (e) { var r = e.getBoundingClientRect(); if (r.width && r.height) txt.push([r.left - cr.left - mg, r.top - cr.top - mg, r.right - cr.left + mg, r.bottom - cr.top + mg]); });
+    var gap = W >= 700 ? 8 : 3, k = 1.16;
+    cx = W * (W >= 700 ? 0.56 : 0.74); cy = H * (W >= 700 ? 0.54 : 0.5);
+    R = Math.max(0, Math.min(W >= 700 ? 440 : 260, (Math.min(cx, W - cx, cy, H - cy) - gap) / k));
   }
   function size() { var r = c.getBoundingClientRect(); dpr = Math.min(1.5, window.devicePixelRatio || 1); W = Math.max(1, r.width); H = Math.max(1, r.height);
     c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); theme(); place();
-    var n = Math.max(2500, Math.min(26000, Math.round(4 * Math.PI * R * R / 6))); if (Math.abs(n - sampled) > sampled * 0.15) sample(n);
+    var n = Math.max(2500, Math.min(20000, Math.round(4 * Math.PI * R * R / 7))); if (Math.abs(n - sampled) > sampled * 0.15) sample(n);
     col = "rgba(" + ink[0] + "," + ink[1] + "," + ink[2] + ",";
     at = g.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.16); at.addColorStop(0, col + (lite ? ".22)" : ".38)")); at.addColorStop(1, col + "0)");
     body = g.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R); body.addColorStop(0, lite ? "rgba(255,255,255,.75)" : "rgba(30,26,72,.92)"); body.addColorStop(1, lite ? "rgba(236,232,252,.92)" : "rgba(10,10,28,.96)");
+    // The scrim: an ellipse of the panel's ground round the words (drawn after the sphere, before the pings).
+    scrim = null; if (txt.length) { var U = [1e9, 1e9, -1e9, -1e9]; txt.forEach(function (T) { U[0] = Math.min(U[0], T[0]); U[1] = Math.min(U[1], T[1]); U[2] = Math.max(U[2], T[2]); U[3] = Math.max(U[3], T[3]); });
+      var rw = (U[2] - U[0]) / 2 + (W >= 700 ? 70 : 24), rh = (U[3] - U[1]) / 2 + (W >= 700 ? 50 : 18), gc = "rgba(" + ground.join(",") + ",";
+      sx = (U[0] + U[2]) / 2; sy = (U[1] + U[3]) / 2; sk = rh / rw; srw = rw; scrim = g.createRadialGradient(0, 0, 0, 0, 0, rw);
+      scrim.addColorStop(0, gc + ".8)"); scrim.addColorStop(0.62, gc + ".55)"); scrim.addColorStop(1, gc + "0)"); }
     rim = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); rim.addColorStop(0, col + (lite ? ".7)" : ".95)")); rim.addColorStop(0.55, col + ".05)"); rim.addColorStop(1, col + ".25)");
-    lastD = 0; }
+  }
   function frame(now) {
     raf = 0;
     // A device too slow for it (frames slower than 14 a second on average, after the first two seconds of the page) gets
     // the globe still; one long gap (the page loading, a tab coming back) is not a slow device.
     if (lastF && now - lastF < 400 && now > 2000) { var dtF = now - lastF; emaF = emaF ? emaF * 0.92 + dtF * 0.08 : dtF; if (++nF > 45 && emaF > 70) still = true; } lastF = now;
-    if (!still && lastD && now - lastD < 33) { go(); return; } lastD = now;
     if (!t0) t0 = now; var el = still ? 0 : now - t0;
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     if (R < 16) return;
-    var wide = R >= 90, rot = -2.85 + 0.5 * Math.sin(el * 0.00009);
-    // The atmosphere, then the sphere's body (it covers the wave behind it), the dots, then a lit rim.
-    g.fillStyle = at; g.beginPath(); g.arc(cx, cy, R * 1.16, 0, Math.PI * 2); g.fill();
+    var wide = R >= 90, rot = -2.85 - 0.42 + 0.16 * Math.sin(el * 0.00009);
+    // The atmosphere, then the sphere's body (it covers the wave behind it), the dots, then a lit rim: all dim (a backdrop).
+    g.globalAlpha = DIM; g.fillStyle = at; g.beginPath(); g.arc(cx, cy, R * 1.16, 0, Math.PI * 2); g.fill();
     g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
     // The dots in 2 x 16 buckets of colour and alpha: one path and one fill per bucket, no colour string per dot.
     var cr = Math.cos(rot), sr = Math.sin(rot), tl = 0.42, ct = Math.cos(tl), st = Math.sin(tl);
@@ -221,7 +227,8 @@ const GLOBE_JS = `
     }
     for (q = 0; q < 32; q++) { var B = bk[q]; if (!B.length) continue; g.fillStyle = (q >= 16 ? "rgba(236,232,255," : col) + (((q & 15) + 0.5) / 16).toFixed(3) + ")"; g.beginPath();
       for (var j = 0; j < B.length; j += 3) g.rect(B[j], B[j + 1], B[j + 2], B[j + 2]); g.fill(); }
-    g.strokeStyle = rim; g.lineWidth = wide ? 2 : 1.4; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = rim; g.lineWidth = wide ? 2 : 1.4; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
+    if (scrim) { g.save(); g.translate(sx, sy); g.scale(1, sk); g.fillStyle = scrim; g.fillRect(-srw, -srw, srw * 2, srw * 2); g.restore(); }
     // The pings: pinned to the turning globe, a soft pulse, a small label on a dark plate (none on a very small globe).
     var pulse = still ? 0.5 : (el % 2400) / 2400;
     g.font = "600 " + (R >= 140 ? 12 : 11) + "px Inter, system-ui, sans-serif"; g.textBaseline = "middle"; var placed = [];
@@ -234,11 +241,23 @@ const GLOBE_JS = `
       g.globalAlpha = fade; var glow = 8; g.fillStyle = "rgba(" + rgb + ",.25)"; g.beginPath(); g.arc(vx, vy, glow * 0.7, 0, Math.PI * 2); g.fill();
       g.fillStyle = "rgb(" + rgb + ")"; g.beginPath(); g.arc(vx, vy, 3, 0, Math.PI * 2); g.fill();
       if (R >= 70) {
-        // Beside the dot (away from the rim), else below or above it: never on another label.
-        var w = g.measureText(P[2]).width + 14, left = vx > cx + R * 0.2, tries = [[left ? vx - 12 - w : vx + 12, vy], [vx - w / 2, vy + 20], [vx - w / 2, vy - 20]], lx = 0, ly = 0;
-        for (var u = 0; u < tries.length; u++) { lx = Math.max(4, Math.min(W - w - 4, tries[u][0])); ly = tries[u][1]; var hit = false;
-          for (var v = 0; v < placed.length; v++) { var o = placed[v]; if (lx < o[0] + o[2] + 4 && lx + w + 4 > o[0] && Math.abs(ly - o[1]) < 24) hit = true; } if (!hit) break; }
-        placed.push([lx, ly, w]); w -= 14;
+        // Beside the dot (away from the rim), else on its other side, below or above it: never on another label, never
+        // under the words (a label with no clear place is not drawn; its dot still is).
+        var w = g.measureText(P[2]).width + 14, left = vx > cx + R * 0.2, tries = [[left ? vx - 12 - w : vx + 12, vy], [left ? vx + 12 : vx - 12 - w, vy], [vx - w / 2, vy + 20], [vx - w / 2, vy - 20]], lx = 0, ly = 0, ok = false;
+        // Under the words: just right of them on the dot's line, else lower down, with a thin line back to the dot.
+        var tr = 0; for (var v1 = 0; v1 < txt.length; v1++) if (vy + 10 > txt[v1][1] && vy - 10 < txt[v1][3]) tr = Math.max(tr, txt[v1][2]);
+        if (tr) tries.push([tr + 6, vy]); for (var d = 2; d <= 10; d++) tries.push([vx - w / 2, vy + 22 * d]);
+        for (var u = 0; u < tries.length && !ok; u++) { lx = Math.max(4, Math.min(W - w - 4, tries[u][0])); ly = Math.max(14, Math.min(H - 14, tries[u][1])); var hit = false;
+          for (var v = 0; v < placed.length; v++) { var o = placed[v]; if (lx < o[0] + o[2] + 4 && lx + w + 4 > o[0] && Math.abs(ly - o[1]) < 24) hit = true; }
+          for (var v2 = 0; v2 < txt.length && !hit; v2++) { var T = txt[v2]; if (lx < T[2] && lx + w > T[0] && ly - 10 < T[3] && ly + 10 > T[1]) hit = true; }
+          ok = !hit; }
+        if (!ok) { g.globalAlpha = 1; continue; }
+        placed.push([lx, ly, w]);
+        if (Math.abs(ly - vy) > 24 || lx > vx + 20 || lx + w < vx - 20) { var ax = Math.max(lx, Math.min(lx + w, vx)), ay = ly > vy + 10 ? ly - 10 : ly < vy - 10 ? ly + 10 : ly; if (ax === vx || ay !== ly) { ay = ly > vy ? ly - 10 : ly + 10; } else { ax = lx > vx ? lx : lx + w; }
+          // The line starts clear of the words it would cross (the dot may sit under them; the line never runs over them).
+          var bx = vx, by = vy; for (var v3 = 0; v3 < txt.length; v3++) { var T3 = txt[v3]; if (vx > T3[0] && vx < T3[2] && vy > T3[1] && vy < T3[3]) { if (ay === ly && lx > vx) bx = T3[2]; else if (lx + w < vx) bx = T3[0]; else by = ly > vy ? T3[3] : T3[1]; } }
+          g.strokeStyle = "rgba(" + rgb + ",.55)"; g.lineWidth = 1; g.beginPath(); g.moveTo(bx, by); g.lineTo(ax, ay); g.stroke(); }
+        w -= 14;
         g.fillStyle = lite ? "rgba(255,255,255,.85)" : "rgba(12,10,32,.72)"; g.beginPath();
         if (g.roundRect) g.roundRect(lx, ly - 10, w + 14, 20, 10); else g.rect(lx, ly - 10, w + 14, 20); g.fill();
         g.fillStyle = lite ? "#2a2250" : "rgba(240,236,255,.95)"; g.fillText(P[2], lx + 7, ly + 0.5);

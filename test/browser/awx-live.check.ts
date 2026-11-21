@@ -83,8 +83,8 @@ try {
     page.on("console", (m) => { if (m.type() === "error" && !/status of 429/.test(m.text())) errors.push(m.text()); });
     page.on("pageerror", (e) => errors.push(String(e)));
     await page.goto(`${ORIGIN}/#/guest`);
-    // Judge panel, 15 Nov: a guest lands on what waits for approval.
-    await page.waitForFunction(() => location.hash === "#/invoices?f=waiting_cfo" && document.body.classList.contains("signed-in"));
+    // 21 Nov (Max): a guest lands on the Overview.
+    await page.waitForFunction(() => location.hash === "#/overview" && document.body.classList.contains("signed-in"));
     // The tab, as a person reaches it: the sidebar on a laptop; on a phone the bottom bar's Rails, whose first page it is (22 Nov).
     await page.click(w < 1024 ? "#btabs a[data-group='rails']" : "#tabs a[data-tab='airwallex']");
     await page.waitForFunction(() => document.querySelectorAll(".awcard").length === 10 && [...document.querySelectorAll(".awcard .awstamp")].every((s) => s.textContent!.trim() !== ""), null, { timeout: 15_000 });

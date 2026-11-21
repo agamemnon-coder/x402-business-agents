@@ -52,4 +52,8 @@ export function builtOnBadge(o: { href?: string; cls?: string; src?: string } = 
 export const BUILT_ON_CSS = `.awx-badge { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 4px 9px; border-radius: 999px; background: #ffffff; border: 1px solid #e3e6ec; color: #3b4456; font: 600 11px/1 Inter, system-ui, -apple-system, sans-serif; letter-spacing: 0; text-decoration: none; white-space: nowrap; }
 .awx-badge img { display: block; height: ${LOGO_HEIGHT}px; width: auto; min-width: ${LOGO_WIDTH}px; overflow: hidden; font: 800 12px/12px Inter, system-ui, -apple-system, sans-serif; letter-spacing: -.02em; color: #f2512f; }
 a.awx-badge:hover { border-color: #c9cfda; }
+/* 21 Nov (Max: "the big white tag next to Purser is still too much"): in a header the pill goes; "Built on" is quiet text and only the logo, which has no light version, sits on a small white chip. */
+header .awx-badge, .awx-app .awx-badge, .awx-row .awx-badge { background: transparent; border: 0; padding: 2px 0; gap: 6px; color: var(--muted, #8b93a7); font-weight: 500; }
+header .awx-badge img, .awx-app .awx-badge img, .awx-row .awx-badge img { box-sizing: content-box; height: 10px; min-width: 0; width: auto; padding: 3px 6px; border-radius: 6px; background: #ffffff; }
+header a.awx-badge:hover, .awx-app a.awx-badge:hover, .awx-row a.awx-badge:hover { color: var(--text, #e8eaf0); }
 a.awx-badge:focus-visible { outline: 2px solid var(--accent, #6d28d9); outline-offset: 2px; }`;

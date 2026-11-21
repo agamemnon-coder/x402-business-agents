@@ -420,7 +420,8 @@ describe("a file the visitor attaches", () => {
     // A figure from a text file is a known figure: it passes the check.
     expect(a.text).toContain("1850.00");
     const tables = await c.env.sql.all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'");
-    for (const t of tables) expect(JSON.stringify(await c.env.sql.all(`SELECT * FROM "${t.name}"`)), t.name).not.toMatch(/Quokka|5521/);
+    // The marker's word only: its digits alone can turn up in a hex hash (a rate bucket's key held "5521" once, 21 Nov).
+    for (const t of tables) expect(JSON.stringify(await c.env.sql.all(`SELECT * FROM "${t.name}"`)), t.name).not.toMatch(/Quokka/);
     expect((await askCounts(c.env.sql, "2026-11-08T00")).files).toBeGreaterThan(0);
   });
 

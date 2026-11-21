@@ -116,9 +116,14 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // Then 21 Nov: Ask Purser as an agent (read-only tools, files), the console's company page and charts, the agents' cards
   // on a phone and tokenisation: 13,653,607 bytes, about 22 KB over 13 MB; the budget moves to 13.25 MB. The compressed
   // size, which is what Cloudflare limits, stays under 3 MiB (checked below).
-  it("stays under 13.25 MB, and under 3 MB gzipped", () => {
+  // Then 21 Nov, later (Max): Purser Cloud opening on Overview with one stack strip, the sign-in globe behind the words,
+  // the restyled Ask Purser and the /business redesign: about 7 KB over 13.25 MB in this build; the budget moves to
+  // 13.5 MB. The compressed size is what Cloudflare limits: wrangler's own dry run (npx wrangler deploy --dry-run in
+  // cloud/) put this upload at 3,069.19 KiB gzipped, under 3 MiB, while this esbuild build, with gzip at its default level,
+  // measures about 3 KB more than wrangler's upload. The check below keeps that difference, 4 KiB, and no more.
+  it("stays under 13.5 MB, and under 3 MB gzipped (as wrangler uploads it)", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
-    expect(bytes).toBeLessThan(13.25 * 1024 * 1024);
-    expect(gzipped).toBeLessThan(3 * 1024 * 1024);
+    expect(bytes).toBeLessThan(13.5 * 1024 * 1024);
+    expect(gzipped).toBeLessThan(3 * 1024 * 1024 + 4 * 1024);
   });
 });

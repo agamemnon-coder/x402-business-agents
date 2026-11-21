@@ -302,6 +302,9 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   const sent: unknown[] = [];
   page.on("request", (r) => { if (r.url().endsWith("/v1/ask") && r.method() === "POST") { try { sent.push(JSON.parse(r.postData() ?? "{}")); } catch { /* not JSON */ } } });
   await page.goto(`${ORIGIN}/#/guest`);
+  // 21 Nov (Max): a guest lands on the Overview now; the invoice list is one step on.
+  await page.waitForFunction(() => location.hash.startsWith("#/overview"), undefined, { timeout: 15_000 });
+  await page.evaluate(() => { location.hash = "#/invoices?f=waiting_cfo"; });
   await page.waitForFunction(() => location.hash.startsWith("#/invoices"), undefined, { timeout: 15_000 });
   const link = page.locator('#view a[href^="#/invoices/"]').first();
   await link.waitFor({ timeout: 15_000 });
