@@ -16,13 +16,8 @@ const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "u
 /** Each name in the band, and the hub's connection that carries it (by its name, and the word in its name or its text). */
 const HUB: Record<string, [connection: string, word: string]> = {
   Airwallex: ["Airwallex", "Airwallex"], "Alta (formerly Metal)": ["Alta (formerly Metal)", "Alta"], "Visa · Airwallex Airi": ["Visa via Airwallex Airi", "Visa"],
-  Claude: ["MCP server (Connect any AI)", "Claude"], "T:0": ["T:0 (outside ledger)", "T:0"], ChatGPT: ["MCP server (Connect any AI)", "ChatGPT"],
-  Cursor: ["MCP server (Connect any AI)", "Cursor"], "VS Code": ["MCP server (Connect any AI)", "VS Code"], Gemini: ["MCP server (Connect any AI)", "Gemini"],
-  MCP: ["MCP server (Connect any AI)", "MCP"], QuickBooks: ["QuickBooks Online", "QuickBooks"], Exact: ["Exact Online (CSV)", "Exact"],
-  Moneybird: ["Moneybird (API)", "Moneybird"],
-  "Microsoft Teams": ["Slack and Microsoft Teams messages", "Microsoft Teams"], WhatsApp: ["Approval alerts (e-mail, WhatsApp, Slack, Teams)", "WhatsApp"],
-  Gmail: ["Invoices by e-mail (forwarded from Gmail or Outlook)", "Gmail"], Zapier: ["Zapier and Make (HTTP modules)", "Zapier"], Make: ["Zapier and Make (HTTP modules)", "Make"],
-  Python: ["TypeScript and Python SDKs", "Python"], TypeScript: ["TypeScript and Python SDKs", "TypeScript"],
+  Claude: ["MCP server (Connect any AI)", "Claude"], "T:0": ["T:0 (outside ledger)", "T:0"], Moneybird: ["Moneybird (API)", "Moneybird"],
+  "Purser MCP server": ["MCP server (Connect any AI)", "MCP"],
 };
 
 describe("The integrations band", () => {
