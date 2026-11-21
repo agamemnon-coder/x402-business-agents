@@ -26,60 +26,21 @@ costs, reviews): [owner-setup.md](owner-setup.md). Invoices by e-mail from Gmail
 
 ## At a glance
 
-![Built with Airwallex, Alta (formerly Metal) and Claude](../assets/logos/built-with.png)
-
 The sponsors' services are the money rails (Airwallex, Alta (formerly Metal), Visa through Airwallex's Airi) and the
 model (Claude, by Anthropic). Everything else on this page connects to Purser itself: it reads, proposes, receives the
 books or carries a message, and none of it moves money.
 
-### Works with
+### The active stack
 
-<table>
-<tr>
-<td><b>Money rails</b></td>
-<td align="center"><img src="../../src/ui/logos/airwallex-306x42.png" alt="Airwallex" height="18"><br><sub>Airwallex</sub></td>
-<td align="center"><img src="../../src/ui/logos/alta.svg" alt="Alta (formerly Metal)" height="28"><br><sub>Alta (formerly Metal)</sub></td>
-<td align="center"><b>Visa</b><br><sub>via Airwallex Airi</sub></td>
-<td align="center"><b>T:0</b><br><sub>outside ledger</sub></td>
-</tr>
-<tr>
-<td><b>AI and agents</b></td>
-<td align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/logos/claude-logo-ivory.svg"><img src="../assets/logos/claude-logo-slate.svg" alt="Claude" height="22"></picture><br><sub>Claude</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-modelcontextprotocol.svg" alt="MCP" height="24"><br><sub>MCP</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/chatgpt.svg" alt="ChatGPT" height="24"><br><sub>ChatGPT</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-cursor.svg" alt="Cursor" height="24"><br><sub>Cursor</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/vscode.svg" alt="VS Code" height="24"><br><sub>VS Code</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-googlegemini.svg" alt="Gemini" height="24"><br><sub>Gemini CLI</sub></td>
-</tr>
-<tr>
-<td><b>Books and ERP</b></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-quickbooks.svg" alt="QuickBooks" height="24"><br><sub>QuickBooks</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/exact.svg" alt="Exact" height="24"><br><sub>Exact Online</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/moneybird.svg" alt="Moneybird" height="24"><br><sub>Moneybird</sub></td>
-<td align="center"><b>BC</b><br><sub>Business Central</sub></td>
-</tr>
-<tr>
-<td><b>Messages and mail</b></td>
-<td align="center"><img src="../../src/ui/logos/brands/microsoft-teams.svg" alt="Microsoft Teams" height="24"><br><sub>Microsoft Teams</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-whatsapp.svg" alt="WhatsApp" height="24"><br><sub>WhatsApp</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/gmail.svg" alt="Gmail" height="24"><br><sub>Gmail</sub></td>
-</tr>
-<tr>
-<td><b>Build on it</b></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-zapier.svg" alt="Zapier" height="24"><br><sub>Zapier</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-make.svg" alt="Make" height="24"><br><sub>Make</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-python.svg" alt="Python" height="24"><br><sub>Python SDK</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-typescript.svg" alt="TypeScript" height="24"><br><sub>TypeScript SDK</sub></td>
-<td align="center"><b>n8n</b><br><sub>node, not published</sub></td>
-<td align="center"><b>Peppol</b> · <b>ISO 20022</b><br><sub>files</sub></td>
-</tr>
-</table>
+<img src="../assets/integrations/active-stack.png" alt="The active stack, each with a dated run on record: Airwallex (sandbox: payments, cards, webhooks), Alta, formerly Metal (testnet: mandates on chain), Claude by Anthropic (live: the models and the MCP connector), Visa via Airwallex Airi (sandbox: test card, passkey per purchase), T:0 (sandbox: the books, read back) and Moneybird (sandbox: run once)" width="100%">
+
+Six services, each with a dated run on record (the proof is in the table below). Everything else on this page is built
+or planned and **not active yet**: it joins the stack once it has run live against the real service.
 
 Each mark is the file on record, unchanged: sources and hashes in [src/ui/logos/README.md](../../src/ui/logos/README.md)
 and [docs/assets/logos/SOURCES.md](../assets/logos/SOURCES.md); permissions in
-[logo-permissions.md](../evidence/logo-permissions.md). Visa and T:0 are named in text (the owner's decision for Visa
-outside Purser Cloud's Connections page; no T:0 mark on file); so are the connections whose mark is not cleared for this
-page. A mark names a service Purser connects to: never "certified", "endorsed", "approved by" or "partner of".
+[logo-permissions.md](../evidence/logo-permissions.md). Visa and T:0 are named in text. A mark names a service Purser
+connects to: never "certified", "endorsed", "approved by" or "partner of".
 
 ### Where each one stands
 
@@ -103,6 +64,11 @@ run on record?**
 | T:0 | ![LIVE](badges/live.svg) | sandbox | [Read-back, 14 Nov](../runs/2026-11-14-t0-readback.md): 95 entries, every account to the cent; [at every payment, 20 Nov](../runs/2026-11-20-partner-rails.md). Check: `npm run t0 -- accounts`. |
 | Moneybird | ![LIVE](badges/live.svg) | built, run once in a sandbox | [Sandbox administration, 12 Nov](../runs/2026-11-12-moneybird-sandbox.md): read back, 0 differences. |
 | Agent API (local MCP) | ![LIVE](badges/live.svg) | sandbox | [An outside agent, 29 Oct](../runs/2026-10-29-agent-api.md). |
+
+<details><summary><b>Not active yet</b>: built or planned, each with what it still needs</summary>
+
+| Partner | Status | Catalogue label | Proof, or what is missing |
+|---|---|---|---|
 | ChatGPT, Cursor, VS Code, Gemini CLI, Windsurf | ![READY](badges/ready.svg) | built, not tested live | Nothing to build: one try per client with the demo token, then a record ([setup per client](../connect-claude.md)). |
 | Airwallex sandbox in Code Mode (MCP) | ![READY](badges/ready.svg) | built, not tested live | Tested against a stand-in gateway; no live read on record ([codemode.md](../codemode.md)). |
 | Read API (REST), Webhooks, Full export | ![READY](badges/ready.svg) | live | Served by Purser Cloud; no dated outside run on record yet ([connections.md](../connections.md)). |
@@ -122,6 +88,8 @@ run on record?**
 | Peppol invoices (UBL) and ISO 20022 | ![READY](badges/ready.svg) | built, not tested live; format export | Files only, nothing to connect: `npm run peppol:check -- <file.xml>`, `npm run iso20022`. |
 | Peppol network | ![LISTED](badges/listed.svg) | planned | Needs a certified Access Point, the owner's choice ([peppol.md](peppol.md#receiving-over-peppol-the-owners-step)). |
 
+</details>
+
 ### How it fits together
 
 ```mermaid
@@ -135,9 +103,8 @@ flowchart LR
   awx --> ledger["Purser's ledger"]
   alta --> ledger
   airi --> ledger
-  ledger --> t0["T:0"]
-  ledger --> books["QuickBooks, Exact,<br/>Moneybird, Business Central"]
-  ledger --> msgs["Teams, WhatsApp, e-mail"]
+  ledger --> t0["T:0 (sandbox)"]
+  ledger --> books["Moneybird (sandbox)"]
 ```
 
 No arrow from an agent, a key or an integration reaches a rail without passing Purser's policy, and above the limit only
