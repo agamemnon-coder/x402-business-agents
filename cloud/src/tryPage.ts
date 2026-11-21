@@ -40,6 +40,7 @@ import { WHY_JS } from "./try/why.js";
 import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
 import SUITE from "../../docs/assets/test-summary.json" with { type: "json" };
 import { RUN_JS, RUN_UI_JS, START_CSS, START_JS, START_LOGOS, STEP_PROOF, TOUR_JS } from "./try/run.js";
+import { JUDGE_DEMO_CSS } from "./try/judgePolish.js";
 import { PROOF_FIGURES } from "./try/proof.gen.js";
 import { WORST_CASE_DOC, WORST_CASE_HEADLINE, WORST_CASE_LINE } from "../../src/evals/worstCase.js";
 import { TOKENS } from "../../src/redesign/ui.js";
@@ -2176,7 +2177,7 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?
 <meta name="description" content="${escAttr(TRY_DESCRIPTION)}">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}${START_CSS}${DID_CSS}${SITE_HEADER_CSS}${VIS_CSS}${NEG_CSS}${extra ? extra.css : ""}</style></head><body>
+<style nonce="${n}">${CSS}${START_CSS}${DID_CSS}${SITE_HEADER_CSS}${VIS_CSS}${NEG_CSS}${extra ? extra.css : ""}${JUDGE_DEMO_CSS}</style></head><body>
 ${siteHeader("try")}
 <main id="main"></main>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
@@ -2204,6 +2205,8 @@ export function tryPageResponse(_req: Request, url: URL, env: CloudEnv): Respons
   // ?present=1 is recording mode on top. The release's page, its negotiation and the jury tour included, stays at ?v=1
   // (and ?tour=1).
   const q = url.searchParams;
-  const mode = q.get("present") === "1" ? "present" as const : q.get("v") === "1" || q.get("tour") === "1" ? null : "public" as const;
+  // ?tour=1 is the same public product frame as /try; it only adds the opt-in guided overlay.
+  // ?v=1 explicitly remains the legacy page for historical recording compatibility.
+  const mode = q.get("present") === "1" ? "present" as const : q.get("v") === "1" ? null : "public" as const;
   return new Response(tryPage(n, { origin: env.origin, rpId: env.rpId }, mode ? presentExtra(mode) : undefined, mode ? (V2_COPY as unknown as Record<string, Record<string, unknown>>) : undefined), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n), link: TRY_CANONICAL_LINK } });
 }
