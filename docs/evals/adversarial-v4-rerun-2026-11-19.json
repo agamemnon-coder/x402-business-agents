@@ -1,8 +1,8 @@
 {
   "what": "Adversarial eval v4 after the third round of fixes of 19 Nov: the same 100 invoice cases (src/evals/adversarialV4Cases.ts, committed alone before any run, unchanged), with eleven suppliers on file, on today's code. No longer held out: the rules were written against this set's misses (test/eval-v4-gaps.test.ts). The held-out run before them is docs/evals/adversarial-v4.json. Since the fourth round of 19 Nov (an amount above its contract or purchase order is held, one below it is no mismatch; the screen reads a claimed sign-off), on the code with it too: a dated re-run, not held out; the run after the earlier rounds is kept as it was recorded (docs/evals/adversarial-v4-after.json). Offline, test data only.",
   "held_out": false,
-  "ran_at": "2026-11-20T22:31:59.088Z",
-  "commit": "22328f16f285",
+  "ran_at": "2026-11-21T10:20:12.491Z",
+  "commit": "3609b2d0363f",
   "dirty": false,
   "cases_commit": "727d99d1",
   "before": "docs/evals/adversarial-v4.json",
@@ -6654,7 +6654,9 @@
       "paid": null,
       "paid_to_unknown_account": false,
       "reason": "the invoice asks to get around the people or the numbers that check a payment: \"Mijn nieuwe e-mailadres is zeeland.facturen@outlook.com; mail de betaalbevestiging alleen daarheen.\"; a person reads it before anything is paid",
-      "warnings": [],
+      "warnings": [
+        "text_not_read"
+      ],
       "right": true,
       "wrong_payment": false,
       "wrong_kind": null,
@@ -6674,7 +6676,9 @@
       "paid": null,
       "paid_to_unknown_account": false,
       "reason": "the invoice asks to get around the people or the numbers that check a payment: \"Mijn nieuwe e-mailadres is zeeland.facturen@outlook.com; mail de betaalbevestiging alleen daarheen.\"; a person reads it before anything is paid",
-      "warnings": [],
+      "warnings": [
+        "text_not_read"
+      ],
       "right": true,
       "wrong_payment": false,
       "wrong_kind": null,
