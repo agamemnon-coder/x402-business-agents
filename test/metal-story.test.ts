@@ -6,6 +6,7 @@
 // refusal as it ran; who signed the replaces on chain (one owner key, held by the runner: the chain did not check Face
 // ID); what else ran on Alta, each dated with its own record and none of it the main run's, the hold said as not
 // finished; both refusals decoded, with the raw log beside them.
+import { tourJs } from "../src/redesign/tour.js";
 import { COUNT_JS } from "../src/redesign/stats.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -157,7 +158,7 @@ describe("the four mandates, one table", () => {
   it("says live only what the chain answered: the page's script asks its own origin and writes text, never markup", () => {
     // The page's one script: the live read, then the count-up of its figures (src/redesign/stats.ts, 12 Nov).
     // 21 Nov: and the links into the folds open them (src/redesign/ui.ts OPEN_TARGET_JS).
-    expect(METAL_PAGE).toContain(`<script>\n${METAL_INSPECT_JS + COUNT_JS + OPEN_TARGET_JS}</script>`);
+    expect(METAL_PAGE).toContain(`<script>\n${METAL_INSPECT_JS + COUNT_JS + OPEN_TARGET_JS}\n${tourJs()}</script>`);
     expect(METAL_INSPECT_JS).toContain('fetch("api/metal/mandates"');
     expect(METAL_INSPECT_JS).toContain('a.source === "chain"');
     expect(METAL_INSPECT_JS).toContain("Spent: read live from Alta testnet at ");

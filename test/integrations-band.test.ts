@@ -15,7 +15,7 @@ import { buildPages } from "../src/relay/assets.js";
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 /** Each name in the band, and the hub's connection that carries it (by its name, and the word in its name or its text). */
 const HUB: Record<string, [connection: string, word: string]> = {
-  Airwallex: ["Airwallex", "Airwallex"], "Alta (formerly Metal)": ["Alta (formerly Metal)", "Alta"], Visa: ["Visa via Airwallex Airi", "Visa"],
+  Airwallex: ["Airwallex", "Airwallex"], "Alta (formerly Metal)": ["Alta (formerly Metal)", "Alta"], "Visa · Airwallex Airi": ["Visa via Airwallex Airi", "Visa"],
   Claude: ["MCP server (Connect any AI)", "Claude"], "T:0": ["T:0 (outside ledger)", "T:0"], ChatGPT: ["MCP server (Connect any AI)", "ChatGPT"],
   Cursor: ["MCP server (Connect any AI)", "Cursor"], "VS Code": ["MCP server (Connect any AI)", "VS Code"], Gemini: ["MCP server (Connect any AI)", "Gemini"],
   MCP: ["MCP server (Connect any AI)", "MCP"], Xero: ["Xero", "Xero"], QuickBooks: ["QuickBooks Online", "QuickBooks"], Exact: ["Exact Online (CSV)", "Exact"],
@@ -51,7 +51,7 @@ describe("The integrations band", () => {
       expect(`data:image/svg+xml,${encodeURIComponent(f.body.toString("utf8"))}`.length).toBeGreaterThan(0);
       expect(decodeURIComponent(BRAND_LOGOS[key]!.uri.slice("data:image/svg+xml,".length))).toBe(f.body.toString("utf8"));
     }
-    expect(BAND.filter((b) => !b.file).map((b) => b.name)).toEqual(["Visa", "T:0"]);
+    expect(BAND.filter((b) => !b.file).map((b) => b.name)).toEqual(["Visa · Airwallex Airi", "T:0"]);
     expect(logoBandHtml()).not.toMatch(/logo-visa|brand-visa/);
     expect(LOGO_BAND_CSS).toMatch(/\.lb-i \{[^}]*background: #ffffff/);
     expect(LOGO_BAND_CSS).not.toMatch(/filter:|mix-blend-mode|opacity/);

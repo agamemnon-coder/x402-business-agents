@@ -39,7 +39,7 @@ const asset = (f: string) => `assets/${f in ASSET_VERSIONS ? versioned(f as Vers
 export const BAND: readonly BandItem[] = [
   { name: "Airwallex", file: "logo-airwallex.png", wordmark: true, w: 306, h: 42 },
   { name: "Alta (formerly Metal)", file: "logo-alta.svg", wordmark: true, w: 475, h: 250 },
-  { name: "Visa" },
+  { name: "Visa · Airwallex Airi" },
   { name: "Claude", file: "logo-claude-slate.svg", wordmark: true, w: 184, h: 40 },
   { name: "T:0" },
   { name: "ChatGPT", file: brandFile("chatgpt") },

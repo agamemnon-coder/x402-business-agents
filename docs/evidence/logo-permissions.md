@@ -56,7 +56,7 @@ Connections page, under the permission recorded for that page on 20 November: th
 already on the site, and the Connections page's drawings of ChatGPT, Cursor, VS Code, Gemini, MCP, Xero, QuickBooks,
 Exact, Moneybird, Odoo, Slack, Microsoft Teams, WhatsApp, Gmail, Zapier, Make, Python and TypeScript, served as
 `/assets/brand-<name>.svg` (the very drawings of `cloud/src/brandLogos.gen.ts`). Each sits on a white tile beside its name,
-unfiltered and not recoloured; nothing says "certified", "endorsed", "approved by" or "partner of". Visa and T:0 stay text
+unfiltered and not recoloured; never "certified", "endorsed", "approved by" or "partner of". Visa and T:0 stay text
 (the decision of 14 November above for Visa outside the Connections page; no T:0 mark on file). The line under the band
 says each connection carries its own label (live, sandbox, testnet, a format export, or built and not yet run live) and
 links the hub that gives it (docs/integrations/README.md).
