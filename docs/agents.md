@@ -85,7 +85,7 @@ the Airwallex id, and the run has its own trace.
 **Why the agent's own card, not a single-use task card.** Packwise is a monthly subscription: a single-use card would be
 closed after the first charge and decline next month's. The agent's own card is already limited at Airwallex (software
 merchants only, a limit per purchase and per month, frozen by a pause or the emergency stop). Single-use task cards stay
-for one-off purchases (Ask Purser).
+for one-off purchases (task cards, [docs/ask-purser.md](ask-purser.md)).
 
 Code: `src/agents/railChoice.ts`; wired into `npm run cards -- scenario` when `KIT11_AGENTS=on`. Tests:
 `test/rail-choice.test.ts` (fake client). Evals with real models (`sourcing-rails`, `sourcing-rails-declined`, 10 runs

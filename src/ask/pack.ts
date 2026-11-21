@@ -20,7 +20,7 @@ export const ASK_SOURCES: readonly { path: string; label: string; max: number }[
   { path: "docs/fraud-and-injection.md", label: "Fraud and prompt injection", max: 6 },
   { path: "docs/integrations/README.md", label: "Integrations", max: 16 },
   { path: "docs/connect-claude.md", label: "Connect Claude", max: 10 },
-  { path: "docs/ask-purser.md", label: "Ask Purser (task cards)", max: 6 },
+  { path: "docs/ask-purser.md", label: "Task cards (one sentence, one card)", max: 6 },
   { path: "docs/business/model.md", label: "Business model and pilot pricing", max: 10 },
   { path: "docs/enterprise.md", label: "Enterprise", max: 4 },
   { path: "docs/see-it.md", label: "See it", max: 6 },

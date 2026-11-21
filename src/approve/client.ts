@@ -2111,7 +2111,8 @@ async function policyPage(): Promise<void> {
   ask.maxLength = 500;
   ask.rows = 2;
   ask.placeholder = "For example: book a flight to Berlin on 12 November, at most €250.";
-  const askLabel = el("label", "policy-label", ["Ask Purser"]);
+  // "Task card", not "Ask Purser" (review, 21 Nov: that name is now the chat on Purser Cloud, cloud/src/ask/).
+  const askLabel = el("label", "policy-label", ["Task card"]);
   askLabel.setAttribute("for", "ask");
   const askSend = el("button", "secondary", ["Ask"]) as HTMLButtonElement;
   askSend.type = "button";
