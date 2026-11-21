@@ -27,6 +27,7 @@ import { tapRun, type AgentRun, type RunRecord } from "./run.js";
 import { countOf, esc, icon } from "./ui.js";
 import { VISUAL_CSS, visualsHtml } from "./airwallexVisual.js";
 import { trailLinkHtml } from "./awxTrailLink.js";
+import { committedWall, type EvidenceWall } from "./evidenceWall.js";
 
 // 13 Nov: the payee check, the batch transfer and the ledger reconciliation joined once the switch-on run showed them
 // live in the flow (SWITCH_ON_FILE below); a record that does not show one leaves it with the built ones.
@@ -495,10 +496,19 @@ export function flaggedHtml(tiles: ProductTile[] = flaggedTiles()): string {
  * ledger reconciliation are features of Airwallex's APIs, not products. So: "Nine Airwallex features in use, plus Airi
  * (beta)"; `short` for a list line ("9 Airwallex features plus Airi (beta)").
  */
-export function tilesCountWords(tiles: ProductTile[], short = false): string {
-  const n = tiles.filter((t) => t.key !== "airi").length, airi = tiles.some((t) => t.key === "airi");
+export function tilesCountWords(tiles: ProductTile[], short = false, also: readonly string[] = []): string {
+  // Review, 21 Nov: a feature in use whose figure is a tile of the evidence wall's Airwallex strip, not a product tile
+  // (Spend: invoices made bills, 19 Nov), is counted too, so the count and the strip agree.
+  const n = tiles.filter((t) => t.key !== "airi").length + also.length, airi = tiles.some((t) => t.key === "airi");
   const word = WORDS[n] ?? String(n);
   return short ? `${n} Airwallex features${airi ? " plus Airi (beta)" : ""}` : `${word[0]!.toUpperCase()}${word.slice(1)} Airwallex features in use${airi ? ", plus Airi (beta)" : ""}`;
+}
+
+/** The Airwallex features in use shown on the evidence wall's Airwallex strip but not as a product tile: Spend's bills. */
+export const AWX_WALL_FEATURES: Readonly<Record<string, string>> = { "spend-bills": "Spend" };
+export function wallFeatures(w: EvidenceWall | null = committedWall()): string[] {
+  const keys = new Set((w?.groups ?? []).flatMap((g) => g.tiles.map((t) => t.key)));
+  return Object.entries(AWX_WALL_FEATURES).filter(([k]) => keys.has(k)).map(([, name]) => name);
 }
 
 /** The tiles that have their facts, in the fixed order. */
@@ -627,7 +637,7 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
   ].join("");
   const flagged = flaggedTiles();
   return `<main class="pp awxp"><div class="wrap">
-  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `${tilesCountWords(tiles)}${flagged.length ? `; ${WORDS[flagged.length] ?? flagged.length} more tested live on 12 Nov` : ""}` : "Purser on Airwallex")}</h1></div>
+  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `${tilesCountWords(tiles, false, wallFeatures())}${flagged.length ? `; ${WORDS[flagged.length] ?? flagged.length} more tested live on 12 Nov` : ""}` : "Purser on Airwallex")}</h1></div>
   ${visualsHtml(tiles, flagged)}
   ${tilesHtml(tiles)}
   ${flaggedHtml(flagged)}

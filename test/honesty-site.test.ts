@@ -127,7 +127,9 @@ describe("2. What's real?, on each page its own", () => {
   it("the main run's pages keep the main run's lines", () => {
     const pages = buildPages();
     for (const [name, html] of Object.entries({ home: pages.home!, watch: pages.watch!, proof: pages.proof!, metal: pages.metal, airwallex: pages.airwallex!, claude: pages.claude! })) {
-      expect({ name, main: real(html).includes(MAIN), setup: real(html).includes(WORLD_SETUP) }).toEqual({ name, main: true, setup: true });
+      // Review, 21 Nov: on a page whose main never names Alta (/watch), the first mention is this footer's.
+      const r = real(html).replace("Alta (formerly Metal)", "Alta");
+      expect({ name, main: r.includes(MAIN), setup: r.includes(WORLD_SETUP) }).toEqual({ name, main: true, setup: true });
     }
     // /visa is the Airi run's page since 12 Nov (jury panel): its "What's real?" is that run's own line and its record,
     // with no paragraph of the main run (the main run's TAP-signed buy sits in the page's one closed TAP fold, with its source).
