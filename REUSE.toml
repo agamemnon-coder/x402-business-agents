@@ -28,7 +28,7 @@ SPDX-License-Identifier = "ISC AND MIT"
 
 # Other companies' logos, unchanged, and the files that embed or compose them: not licensed here (see the licence text).
 [[annotations]]
-path = ["src/ui/logos/*.png", "src/ui/logos/*.svg", "src/ui/logos/brands/*.svg", "docs/assets/logos/*.svg", "docs/assets/logos/built-with.png", "cloud/src/awxLogo.gen.ts", "cloud/src/try/logos.gen.ts", "cloud/src/brandLogos.gen.ts"]
+path = ["src/ui/logos/*.png", "src/ui/logos/*.svg", "src/ui/logos/brands/*.svg", "docs/assets/logos/*.svg", "docs/assets/logos/built-with.png", "docs/assets/integrations/active-stack.png", "cloud/src/awxLogo.gen.ts", "cloud/src/try/logos.gen.ts", "cloud/src/brandLogos.gen.ts"]
 precedence = "override"
 SPDX-FileCopyrightText = "The respective trademark owners: Airwallex, Alta (formerly Metal), Anthropic, Apple, Cloudflare, Cursor, Exact, Google, Intuit, Make, Meta (WhatsApp), Microsoft, Moneybird, n8n, Odoo, OpenAI, OpenAPI Initiative, Python Software Foundation, Salesforce (Slack), Visa, Windsurf, Xero, Zapier, the Model Context Protocol project, and Microsoft (TypeScript); the Simple Icons drawings (si-*.svg) are CC0-1.0 (simple-icons@16.37.0)"
 SPDX-License-Identifier = "LicenseRef-Trademark-Permission"

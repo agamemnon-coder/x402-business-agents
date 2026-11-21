@@ -18,7 +18,7 @@ import { ASK_TOOLS, localRead } from "../cloud/src/ask/tools.js";
 import { checkAttachment } from "../cloud/src/ask/attach.js";
 import { MODELS } from "../src/claude/reader.js";
 import { callCostMicros, PRICES } from "../src/claude/pricing.js";
-import { askCsp, ASK_ACTIONS, ASK_BUTTON_JS, ASK_PAGE_COPY } from "../cloud/src/ask/page.js";
+import { askCsp, ASK_ACTIONS, ASK_BUTTON_JS, ASK_JURY, ASK_PAGE_COPY } from "../cloud/src/ask/page.js";
 import { isTryEngineRequest } from "../worker/src/tryEngine.js";
 import { ORIGIN, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -101,6 +101,19 @@ describe("the knowledge pack", () => {
     expect(retrieve("How does Face ID approval work?").some((x) => /passkey|face id/i.test(x.text))).toBe(true);
     expect(retrieve("How do I verify a payment myself?").some((x) => /verify/i.test(x.title + x.text))).toBe(true);
     expect(retrieve("zebra quantum lasagna")).toEqual([]);
+  });
+  // 21 Nov (Max: "jury mode"): every question the floating panel offers a juror finds passages that are about it.
+  it("finds passages for each of the panel's jury questions", () => {
+    const about: Record<string, RegExp> = {
+      [ASK_JURY[0]!.q]: /agents?\b[\s\S]*\b(limit|CFO)/i,
+      [ASK_JURY[1]!.q]: /simulat/i,
+      [ASK_JURY[2]!.q]: /passkey|face id/i,
+      [ASK_JURY[3]!.q]: /limit/i,
+      [ASK_JURY[4]!.q]: /proof|evidence|verif/i,
+      [ASK_JURY[5]!.q]: /Airwallex/,
+    };
+    expect(Object.keys(about)).toEqual(ASK_JURY.map((x) => x.q));
+    for (const [q, re] of Object.entries(about)) expect(retrieve(q).some((x) => re.test(x.title + " " + x.text)), q).toBe(true);
   });
 });
 
@@ -510,6 +523,23 @@ describe("the page and its button", () => {
       expect(html).toContain('id="file"');
       expect(html).toContain(ASK_PAGE_COPY.statusDocs);
     }
+  });
+  it("opens the floating panel in jury mode for a visitor or a guest, and with the console's actions in a company's own pages", async () => {
+    // 21 Nov (Max: "jury mode, so a jury can ask something"): six questions about Purser, the honesty lines kept.
+    for (const q of ["", "&ctx=invoices&demo=1"]) {
+      const html = await (await c.fetch(`${ORIGIN}/ask?embed=1${q}`)).text();
+      expect(html).toContain(`<h2 id="hh">${ASK_PAGE_COPY.juryHead}</h2>`);
+      expect(html).toContain(ASK_PAGE_COPY.juryLine);
+      expect(html).not.toContain(" own-co");
+      for (const x of ASK_JURY) expect(html).toContain(`data-q="${x.q.replace(/'/g, "&#39;")}"`);
+      expect(html).toContain(ASK_PAGE_COPY.privacy);
+    }
+    const own = await (await c.fetch(`${ORIGIN}/ask?embed=1&ctx=invoices`)).text();
+    expect(own).toMatch(/<body class="embed has-ctx own-co">/);
+    expect(own).toContain(`<h2 id="hh">${ASK_PAGE_COPY.helpHead}</h2>`);
+    // The launcher: the logo alone, named "Ask Purser".
+    expect(ASK_BUTTON_JS).toContain("fab.setAttribute('aria-label', C.fab)");
+    expect(ASK_BUTTON_JS).not.toContain("pask-t");
   });
   it("serves the button module and includes it on the console; the site passes /ask through", async () => {
     const r = await c.fetch(`${ORIGIN}/ask/button.js`);

@@ -107,7 +107,10 @@ export const ASK_PAGE_COPY = {
   ownCompany: "your company: Ask Purser reads the demo company only",
   quick: "Quick actions",
   fab: "Ask Purser",
-  fabHint: "Questions? Ask Purser",
+  // 21 Nov (Max: "jury mode, so a jury can ask something"): the floating panel's empty state for a visitor, a juror or a
+  // guest in the demo company; a person signed in to their own company keeps the four console actions (ASK_ACTIONS).
+  juryHead: "Ask Purser anything",
+  juryLine: "For the jury: read-only, test money, every answer cites its source.",
 } as const;
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
@@ -165,6 +168,18 @@ export const ASK_ACTIONS: { icon: string; label: string; q: string }[] = [
   { icon: "check", label: "Check an invoice against policy", q: "How is an invoice checked against the CFO's policy?" },
   { icon: "layers", label: "Show invoice evidence", q: "What evidence does Purser keep for a paid invoice?" },
   { icon: "spark", label: "Explain a policy or approval rule", q: "When may an agent pay alone, and when must the CFO approve?" },
+];
+/**
+ * The floating panel's questions for a visitor or a juror (21 Nov, Max: "jury mode"), each answerable from the knowledge
+ * pack (test/cloud-ask.test.ts checks that retrieval finds passages on it). Asked as written.
+ */
+export const ASK_JURY: { icon: string; q: string }[] = [
+  { icon: "spark", q: "What does Purser do, in 30 seconds?" },
+  { icon: "layers", q: "What is live and what is simulated?" },
+  { icon: "face", q: "How does the CFO's Face ID approval work?" },
+  { icon: "shield", q: "What stops an agent from overpaying?" },
+  { icon: "check", q: "Show me the proof for a payment" },
+  { icon: "chain", q: "Which partners does Purser use, and how?" },
 ];
 /** What the agent can read (./tools.ts), as the rail shows it: an icon and a few words each. */
 const READS: [string, string][] = [["docs", "Purser's docs"], ["file", "Invoices"], ["swap", "Payments"], ["books", "Books & VAT"], ["wallet", "Cash"], ["clock", "Waiting for the CFO"], ["shield", "CFO's policy"], ["bot", "Agents & limits"], ["trail", "Audit trails"], ["chain", "Run records"]];
@@ -462,6 +477,37 @@ body.page:not(.empty) canvas.pw-wave { opacity: .28; transition: opacity .5s; }
 .hello .acts button svg { flex: none; }
 @media (max-width: 560px) { .hello .acts { grid-template-columns: minmax(0, 1fr); } }
 .hello .lg svg { width: 52px; height: 52px; }
+`;
+
+/**
+ * The floating panel's empty state (/ask?embed=1; 21 Nov, Max: "the suggestions render ugly: bullets, grey boxes, icons
+ * glued to text"). The panel has none of the app's style (APP_CSS), so its welcome and its question cards are styled
+ * here: no bullets, rounded cards on the surface, the icon on its own tile, hover and focus states. Jury mode shows the
+ * questions about Purser (.jury), a person in their own company the console's four actions (.co).
+ */
+const EMBED_CSS = `
+body.embed .hello { align-items: stretch; gap: 6px; padding: 18px 2px 8px; }
+body.embed .hello .lg { align-self: flex-start; display: inline-grid; padding: 7px; border-radius: 14px; background: var(--accent-soft); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 14px 32px -16px var(--glow, rgba(129,95,250,.55)); }
+body.embed .hello .lg svg { display: block; width: 34px; height: 34px; }
+body.embed .hello h2 { font-size: 21px; letter-spacing: -.02em; margin: 10px 0 0; }
+body.embed .hello p { font-size: 14px; line-height: 1.5; }
+body.embed .hello .scope { align-self: flex-start; }
+body.embed:not(.own-co) .co-only, body.embed:not(.own-co) .acts.co, body.embed.own-co .acts.jury { display: none; }
+body.embed .acts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; width: 100%; }
+body.embed .acts li { margin: 0; min-width: 0; list-style: none; }
+body.embed .acts button { width: 100%; min-height: 52px; display: flex; align-items: center; gap: 12px; padding: 9px 12px 9px 10px; border: 1px solid var(--border); border-radius: 14px; background: color-mix(in srgb, var(--surface) 55%, var(--bg)); color: var(--text); font: 550 14px/1.35 Inter, system-ui, -apple-system, sans-serif; letter-spacing: -.005em; text-align: left; cursor: pointer; overflow-wrap: anywhere; transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
+body.embed .acts button svg { flex: none; box-sizing: content-box; width: 16px; height: 16px; padding: 7px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
+body.embed .acts button span { min-width: 0; }
+body.embed .acts button::after { content: "→"; margin-left: auto; padding-left: 4px; color: var(--faint); flex: none; transition: transform .15s ease, color .15s ease; }
+body.embed .acts button:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); box-shadow: 0 8px 22px -14px var(--glow, rgba(129,95,250,.6)); }
+body.embed .acts button:hover::after { color: var(--accent); transform: translateX(2px); }
+body.embed .acts button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (min-width: 400px) {
+  body.embed .acts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.embed .acts button { min-height: 64px; align-items: flex-start; }
+  body.embed .acts button::after { content: none; }
+}
+@media (prefers-reduced-motion: reduce) { body.embed .acts button, body.embed .acts button::after { transition: none; } body.embed .acts button:hover::after { transform: none; } }
 `;
 
 // The page's script: plain JavaScript, raw (no TS escapes), with the copy and the settings put in where it says so.
@@ -818,6 +864,9 @@ let CTX = parseCtx(CFG.ctx);
 const ctxbar = $('ctxbar');
 function drawCtx() {
   document.body.classList.toggle('has-ctx', !!CTX);
+  // Jury mode (the floating panel): a visitor or a guest in the demo company sees the questions about Purser; a person in
+  // their own company sees the console's four actions.
+  if (CFG.embed) { const own = !!CTX && !CTX.demo; document.body.classList.toggle('own-co', own); $('hh').textContent = own ? C.helpHead : C.juryHead; $('hl').textContent = own ? C.helpLine : C.juryLine; }
   if (!ctxbar) return;
   ctxbar.hidden = !CTX; if (!CTX) return;
   $('ctxl').textContent = ctxLabel(CTX); $('ctxd').textContent = '· ' + (CTX.demo ? C.demoCompany : C.ownCompany);
@@ -879,8 +928,15 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
     + `</header>`;
   // The empty state (21 Nov, Max's mockups): the mark, one question, one line, the read-only chip and four actions.
   const actButtons = ASK_ACTIONS.map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}">${icon(x.icon, 17)}${esc(x.label)}</button></li>`).join("");
-  const helloBlock = `<section class="hello app" id="hello" aria-labelledby="hh"><span class="lg">${askMarkSvg(44)}</span><h2 id="hh">${esc(C.helpHead)}</h2><p>${esc(C.helpLine)}</p><p class="scope">${esc(C.scope)}</p>`
-    + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="acts">${actButtons}</ul></section>`;
+  // In the floating panel (embed), jury mode (21 Nov, Max): six questions about Purser for a visitor, a juror or a guest
+  // in the demo company; signed in to their own company, the four actions above. The script switches on the context.
+  const own = o.embed && !!ctx && !ctx.demo;
+  const juryButtons = ASK_JURY.map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}">${icon(x.icon, 17)}<span>${esc(x.q)}</span></button></li>`).join("");
+  const helloBlock = o.embed
+    ? `<section class="hello app" id="hello" aria-labelledby="hh"><span class="lg">${askMarkSvg(44)}</span><h2 id="hh">${esc(own ? C.helpHead : C.juryHead)}</h2><p id="hl">${esc(own ? C.helpLine : C.juryLine)}</p><p class="scope co-only">${esc(C.scope)}</p>`
+      + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="acts jury">${juryButtons}</ul><ul class="acts co">${actButtons}</ul></section>`
+    : `<section class="hello app" id="hello" aria-labelledby="hh"><span class="lg">${askMarkSvg(44)}</span><h2 id="hh">${esc(C.helpHead)}</h2><p>${esc(C.helpLine)}</p><p class="scope">${esc(C.scope)}</p>`
+      + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="acts">${actButtons}</ul></section>`;
   // The sidebar (a wide screen; a menu on a narrow one): New chat, the pages, the conversations kept in this browser only,
   // and the company: the demo company, said once and quietly.
   const nav: [string, string, string, string][] = [["chat", C.nav, ASK_PATH, ""], ["file", C.navInvoices, "/#/invoices", ""], ["swap", C.navPayments, "/#/transactions", ""], ["check", C.navApprovals, "/#/invoices?f=waiting_cfo", o.waiting ? String(o.waiting) : ""], ["layers", C.navEvidence, `${SITE_ORIGIN}/proof`, ""]];
@@ -906,7 +962,7 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="${esc(C.lede)}">
 <title>${esc(C.title)} · Purser</title>
-<style nonce="${n}">${CSS}${ASK_MARK_CSS}${o.embed ? "" : SITE_HEADER_CSS + APP_CSS}</style></head><body class="${o.embed ? "embed" : "page empty"}${ctx ? " has-ctx" : ""}">
+<style nonce="${n}">${CSS}${ASK_MARK_CSS}${o.embed ? EMBED_CSS : SITE_HEADER_CSS + APP_CSS}</style></head><body class="${o.embed ? "embed" : "page empty"}${ctx ? " has-ctx" : ""}${own ? " own-co" : ""}">
 ${o.embed ? "" : `${WAVE_CANVAS_HTML}<a class="skip" href="#q">Skip to the question box</a>${header("cloud", TRY_HEADER_LINKS)}`}
 <main id="main" class="app">
 <div class="shell">${app ? side : ""}
@@ -933,7 +989,7 @@ export const askCsp = (n: string) =>
  * Its style carries the page's nonce (read from its own tag, else from the page's nonce'd script).
  */
 export const ASK_BUTTON_JS = `{ // Ask Purser's button (cloud/src/ask/page.ts): one floating button; the chat opens in a dialog, framed from this page's own origin (the site passes /ask through).
-const C = ${json({ fab: ASK_PAGE_COPY.fab, hint: ASK_PAGE_COPY.fabHint, close: ASK_PAGE_COPY.close, title: ASK_PAGE_COPY.title })};
+const C = ${json({ fab: ASK_PAGE_COPY.fab, close: ASK_PAGE_COPY.close, title: ASK_PAGE_COPY.title })};
 const ORIGIN = location.origin;
 const NAV = ${ASK_NAV.toString()}, KINDS = ${json(ASK_CONTEXT_KINDS)}, CID = ${CONTEXT_ID.toString()};
 // The page the person views, as the host page says it (data-ask-kind, data-ask-id, data-ask-demo on <body>), checked.
@@ -944,27 +1000,36 @@ if (!document.getElementById('pask-fab')) {
   const st = document.createElement('style');
   if (nonce) st.nonce = nonce;
   st.textContent = \`
-#pask-fab{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:2147483000;display:inline-flex;align-items:center;gap:9px;min-height:46px;padding:0 16px 0 7px;border-radius:999px;border:1px solid rgba(255,255,255,.28);background:linear-gradient(125deg,#c4b8ff,#8f82f7);color:#120d2f;font:650 14.5px/1.2 Inter,system-ui,-apple-system,sans-serif;letter-spacing:-.005em;box-shadow:0 10px 32px -8px rgba(129,95,250,.5),inset 0 1px rgba(255,255,255,.42);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
-#pask-fab:hover{transform:translateY(-1px);box-shadow:0 14px 40px -8px rgba(129,95,250,.6),inset 0 1px rgba(255,255,255,.42)}#pask-fab:focus-visible{outline:3px solid #a78bfa;outline-offset:3px}
+#pask-fab{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:2147483000;box-sizing:border-box;display:inline-grid;place-items:center;width:46px;height:46px;padding:0;margin:0;border-radius:50%;border:1px solid rgba(167,139,250,.5);background:radial-gradient(120% 120% at 30% 20%,#2b2457 0%,#120f26 58%,#0a0915 100%);color:#fff;cursor:pointer;box-shadow:0 0 0 4px rgba(129,95,250,.12),0 10px 28px -8px rgba(129,95,250,.65),inset 0 1px rgba(255,255,255,.16);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;-webkit-tap-highlight-color:transparent}
+#pask-fab:hover{transform:translateY(-1px);border-color:rgba(196,184,255,.8);box-shadow:0 0 0 5px rgba(129,95,250,.18),0 14px 34px -8px rgba(129,95,250,.8),inset 0 1px rgba(255,255,255,.2)}
+#pask-fab:focus-visible{outline:3px solid #a78bfa;outline-offset:3px}
 #pask-fab svg{flex:none;display:block}
-#pask-fab[aria-expanded="true"]{background:linear-gradient(125deg,#d4cbff,#a69aff)}
+body>#pask-fab svg{width:30px;height:30px}
+body>#pask-fab .mk-bg{fill:transparent}body>#pask-fab .mk-ink{stroke:#fff}
+#pask-fab[aria-expanded="true"]{border-color:rgba(196,184,255,.85);box-shadow:0 0 0 5px rgba(129,95,250,.22),0 10px 28px -8px rgba(129,95,250,.7)}
+body>#pask-fab::after{content:attr(data-tip);position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);padding:6px 10px;border-radius:8px;background:#0d0b1a;color:#eef1f6;border:1px solid rgba(167,139,250,.35);font:600 12.5px/1.2 Inter,system-ui,-apple-system,sans-serif;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s ease}
+@media (hover:hover){body>#pask-fab:hover::after{opacity:1}}body>#pask-fab:focus-visible::after{opacity:1}
+body>#pask-fab[aria-expanded="true"]::after{opacity:0}
 #pask-panel{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(74px,calc(env(safe-area-inset-bottom) + 74px));z-index:2147483001;width:min(440px,calc(100vw - 32px));height:min(680px,calc(100vh - 106px));border-radius:20px;overflow:hidden;border:1px solid rgba(162,145,253,.4);background:#fff;box-shadow:0 28px 80px -18px rgba(76,46,179,.5),0 4px 14px rgba(11,18,32,.12)}
 #pask-panel iframe{display:block;width:100%;height:100%;border:0;background:transparent}
 @media (prefers-color-scheme: dark){#pask-panel{background:#100e18;border-color:#27233a}}
-@media (max-width:560px){#pask-panel{inset:0;width:100%;height:100%;border-radius:0;border:0}#pask-fab .pask-t{display:none}#pask-fab{padding:0 7px}}
-@media (prefers-reduced-motion: reduce){#pask-fab{transition:none}#pask-fab:hover{transform:none}}
-@media print{#pask-fab,#pask-panel{display:none}}${ASK_MARK_CSS}\`;
+@media (max-width:560px){#pask-panel{inset:0;width:100%;height:100%;border-radius:0;border:0}#pask-fab{width:44px;height:44px;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom))}body>#pask-fab svg{width:28px;height:28px}}
+@media (prefers-reduced-motion: reduce){#pask-fab,#pask-fab::after{transition:none}#pask-fab:hover{transform:none}}
+#pask-space{display:block;height:calc(64px + env(safe-area-inset-bottom));pointer-events:none}
+@media (max-width:1023px){.signed-in>#pask-space{display:none}}
+@media print{#pask-fab,#pask-panel,#pask-space{display:none}}${ASK_MARK_CSS}\`;
   document.head.append(st);
   const fab = document.createElement('button');
   fab.id = 'pask-fab'; fab.type = 'button';
   fab.setAttribute('aria-haspopup', 'dialog'); fab.setAttribute('aria-expanded', 'false'); fab.setAttribute('aria-controls', 'pask-panel');
-  fab.title = C.hint;
+  fab.dataset.tip = C.fab;
   const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
   for (const [k, v] of [['width', '32'], ['height', '32'], ['viewBox', '0 0 32 32'], ['aria-hidden', 'true'], ['focusable', 'false']]) svg.setAttribute(k, v);
   for (const [tag, a] of ${json(ASK_MARK)}) { const e = document.createElementNS(NS, tag); for (const k of Object.keys(a)) e.setAttribute(k, a[k]); svg.append(e); }
+  // 21 Nov (Max: "keep Purser very small, only the logo in the bottom right"): a round button with the feather alone; its
+  // name is "Ask Purser" (aria-label), its hover tip the same words.
   fab.append(svg);
-  const t = document.createElement('span'); t.className = 'pask-t'; t.textContent = C.fab; fab.append(t);
-  fab.setAttribute('aria-label', C.hint);
+  fab.setAttribute('aria-label', C.fab);
   let panel = null;
   const close = () => {
     if (!panel || panel.hidden) return;
@@ -996,7 +1061,9 @@ if (!document.getElementById('pask-fab')) {
     if (e.data.type === 'purser-ask:navigate' && f && e.source === f.contentWindow && typeof e.data.hash === 'string' && NAV.test(e.data.hash)) { close(); location.hash = e.data.hash; }
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
-  document.body.append(fab);
+  // Room at the page's foot, so the button never covers its last line (the footer's "Test money only" on a phone).
+  const space = document.createElement('div'); space.id = 'pask-space'; space.setAttribute('aria-hidden', 'true');
+  document.body.append(space, fab);
 }
 }
 `;

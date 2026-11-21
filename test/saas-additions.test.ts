@@ -172,7 +172,8 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
   const lines = section.split("\n").filter((l) => l.trim());
   const html = securityPage();
   // 21 Nov: the control cards left /security; the answer is the "When the approver is away" card's fold.
-  const card = /<article class="pc card[^"]*" id="s-away">[\s\S]*?<\/article>/.exec(html)?.[0] ?? "";
+  // 21 Nov (Max: "security page is still not upgraded"): since the categories, a fold of "Approval and signatures".
+  const card = /<section class="card sc[^"]*" id="c-approval"[\s\S]*?<\/section>/.exec(html)?.[0] ?? "";
   const fold = /<details class="fold" id="unavailable"><summary>([^<]+)<\/summary><ul class="pl">([\s\S]*?)<\/ul><\/details>/.exec(card);
 
   it("docs/security.md answers both questions in at most five lines, and says plainly what is not built", () => {

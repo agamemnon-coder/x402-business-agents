@@ -302,9 +302,13 @@ export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
 /** /airwallex/calls (15 Nov): every Airwallex sandbox API call in the run records (src/redesign/awxTrailPage.ts); no script, a style-only policy. */
 export const AWX_CALLS_PAGE = awxCallsPage();
 export const AWX_CALLS_CSP = styleOnlyCsp(AWX_CALLS_PAGE);
-/** /security (12 Nov), the product page under "More" (src/ui/more.ts): no script, so a style-only policy. /pricing went on 13 Nov (owner). */
+/**
+ * /security (12 Nov), the product page under "More" (src/ui/more.ts). Since 21 Nov (Max: "security page is still not
+ * upgraded") one inline script, the wave behind its heading (src/ui/wave.ts), so its hash and the style's; nothing
+ * else. /pricing went on 13 Nov (owner).
+ */
 export const SECURITY_PAGE = securityPage();
-export const SECURITY_CSP = styleOnlyCsp(SECURITY_PAGE);
+export const SECURITY_CSP = SECURITY_PAGE.includes("<script>") ? styleAndScriptCsp(SECURITY_PAGE) : styleOnlyCsp(SECURITY_PAGE);
 /** /docs, "Docs and API" (12 Nov), under "More" too (src/redesign/docs.ts): no script, so a style-only policy. */
 export const DOCS_PAGE = docsPage();
 // /docs carries one small script since 14 Nov: the copy buttons (src/redesign/runs.ts COPY_JS).

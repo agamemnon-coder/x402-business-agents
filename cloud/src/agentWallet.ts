@@ -23,7 +23,7 @@
 // sw) and cloud/src/consoleUi.ts, and uses their el, ic, btn, t, tk, cur, cents, toCents, day, dday, MONTHS, OUTCOME, RM,
 // NL, api, Expired and BRAND_LOGOS (cloud/src/connectionsView.ts).
 
-import { ALTA_AGENTS, CARD_ART_CSS, CARD_PRESETS, DEFAULT_STYLE, LOGO_MAX, PRESET_NAMES } from "./agentCardArt.js";
+import { ALTA_AGENTS, CARD_ART_CSS, CARD_PRESETS, DEFAULT_STYLE, FEATHER_D, LOGO_MAX, PRESET_NAMES } from "./agentCardArt.js";
 
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
@@ -44,7 +44,7 @@ const DK_W={en:{
   phone_h:'{name} on your phone',wal_btn:'Add to Apple Wallet',wal_busy:'Making the pass…',wal_fail:'The pass could not be made: {why}',
   wal_wait:'Apple Wallet: waiting for the pass certificate',wal_nocard:'Apple Wallet: only for an agent with a card',
   qr_h:'Scan to open this card on your phone',qr_sub:'A read-only view in the same design: what it spent, its limits, its status. It cannot pay or change anything. Works until {d}.',
-  qr_busy:'Making the link…',qr_fail:'The link could not be made: {why}',copy:'Copy link',copied:'Copied',logo_local:'Your uploaded logo stays in this browser; the phone shows your initials.',
+  qr_busy:'Making the link…',qr_fail:'The link could not be made: {why}',copy:'Copy link',copied:'Copied',logo_local:'Your uploaded logo stays in this browser; the phone shows your initials, or Purser\'s mark.',
   design:'Card design',design_sub:'Your company\'s look on every agent\'s card. Design only: no limit, card or payment changes.',
   d_color:'Company colour',d_color_all:'Use it on every card',d_mark:'Mark on the cards',d_initials:'Initials',d_logo:'Logo',d_upload:'Upload a logo (PNG, JPEG or WebP)',d_remove:'Remove the logo',
   d_logo_big:'That image is too large even after resizing; try a simpler one.',d_logo_bad:'That file is not an image this page can read.',
@@ -64,7 +64,7 @@ nl:{
   phone_h:'{name} op je telefoon',wal_btn:'Toevoegen aan Apple Wallet',wal_busy:'Pas wordt gemaakt…',wal_fail:'De pas kon niet worden gemaakt: {why}',
   wal_wait:'Apple Wallet: wacht op het pascertificaat',wal_nocard:'Apple Wallet: alleen voor een agent met een kaart',
   qr_h:'Scan om deze kaart op je telefoon te openen',qr_sub:'Een alleen-lezen weergave in hetzelfde ontwerp: wat hij uitgaf, zijn limieten, zijn status. Hij kan niets betalen of wijzigen. Werkt tot {d}.',
-  qr_busy:'Link wordt gemaakt…',qr_fail:'De link kon niet worden gemaakt: {why}',copy:'Link kopiëren',copied:'Gekopieerd',logo_local:'Je geüploade logo blijft in deze browser; de telefoon toont je initialen.',
+  qr_busy:'Link wordt gemaakt…',qr_fail:'De link kon niet worden gemaakt: {why}',copy:'Link kopiëren',copied:'Gekopieerd',logo_local:'Je geüploade logo blijft in deze browser; de telefoon toont je initialen, of het merk van Purser.',
   design:'Kaartontwerp',design_sub:'De uitstraling van je bedrijf op de kaart van elke agent. Alleen ontwerp: geen limiet, kaart of betaling verandert.',
   d_color:'Bedrijfskleur',d_color_all:'Gebruik hem op elke kaart',d_mark:'Merk op de kaarten',d_initials:'Initialen',d_logo:'Logo',d_upload:'Upload een logo (PNG, JPEG of WebP)',d_remove:'Logo verwijderen',
   d_logo_big:'Die afbeelding is ook verkleind te groot; probeer een eenvoudigere.',d_logo_bad:'Dat bestand is geen afbeelding die deze pagina kan lezen.',
@@ -83,7 +83,7 @@ const dkLogo=(k)=>BRAND_LOGOS[k]?BRAND_LOGOS[k].uri:null;
 const modelShort=(m)=>String(m).replace(/^claude-([a-z]+)-(\d+)-(\d+).*$/,(_,n,a,b)=>n.charAt(0).toUpperCase()+n.slice(1)+' '+a+'.'+b);
 // A few line icons the console's set lacks, drawn as DOM (never markup from data).
 const DK_IC={phone:['M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z','M12 18h.01'],palette:['M12 22a10 10 0 1 1 10-10c0 2.8-2.2 4-4 4h-1.5a1.5 1.5 0 0 0-1 2.6A1.5 1.5 0 0 1 14.4 21 9.7 9.7 0 0 1 12 22z','M7.5 10.5h.01','M10.5 7h.01','M15 7.5h.01'],
-  nfc:['M8.5 7.5a6 6 0 0 1 0 9','M12 5a9.5 9.5 0 0 1 0 14','M15.5 2.5a13 13 0 0 1 0 19'],pause:['M8 5v14','M16 5v14'],upload:['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4','M17 8l-5-5-5 5','M12 3v12']};
+  nfc:['M8.5 7.5a6 6 0 0 1 0 9','M12 5a9.5 9.5 0 0 1 0 14','M15.5 2.5a13 13 0 0 1 0 19'],pause:['M8 5v14','M16 5v14'],upload:['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4','M17 8l-5-5-5 5','M12 3v12'],feather:` + json(FEATHER_D) + String.raw`};
 function dkIc(name,cls){const NS='http://www.w3.org/2000/svg';const s=document.createElementNS(NS,'svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('fill','none');s.setAttribute('stroke','currentColor');s.setAttribute('stroke-width','2');s.setAttribute('stroke-linecap','round');s.setAttribute('stroke-linejoin','round');s.setAttribute('aria-hidden','true');if(cls)s.setAttribute('class',cls);
   for(const d of DK_IC[name]||[]){const p=document.createElementNS(NS,'path');p.setAttribute('d',d);s.append(p)}const w=el('span','ic');w.append(s);return w}
 
@@ -113,9 +113,10 @@ function isLight(hex){const n=parseInt(hex.slice(1),16);const lin=(c)=>{const s=
 // x: {id,name,status,statusText,last4,currency,spent,cap,model,demo,frozen}
 function cardFace(x){
   const preset=styleOf(x.id);
-  const face=el('div','acard p-'+preset+(preset==='brand'&&DESIGN.color&&isLight(DESIGN.color)?' ink':'')+(x.frozen?' frozen':'')+(x.status==='off'?' dim':''));
+  const face=el('div','acard p-'+preset+(preset==='brand'&&DESIGN.color&&isLight(DESIGN.color)?' ink':'')+(x.last4?'':' bare')+(x.frozen?' frozen':'')+(x.status==='off'?' dim':''));
   if(DESIGN.color)face.style.setProperty('--brand',DESIGN.color);
-  const mark=el('span','ac-mark',DESIGN.logo?dkImg(DESIGN.logo,''):(DESIGN.initials||initialsOf(companyName())));
+  // 21 Nov (Max): Purser's feather on every card until the company sets its own initials or logo.
+  const mark=el('span','ac-mark',DESIGN.logo?dkImg(DESIGN.logo,''):DESIGN.initials?DESIGN.initials:dkIc('feather','ac-pf'));
   const C=x.currency?cur(x.currency)+' ':'';
   let meter=el('div','');
   if(x.spent!==null&&x.cap>0){const bar=el('span','ac-bar'+(x.spent>=x.cap?' full':''));const f=el('span','');bar.append(f);f.dataset.w=Math.min(100,x.spent/x.cap*100).toFixed(1);
@@ -232,7 +233,7 @@ function openPhone(x,ctx){
   const d=dialog('dk-phone',dw('phone_h',{name:x.face.name}),[el('div','dk-pc',cardFace(x.face)),wal,out,el('h3','',dw('qr_h')),qr]);
   fillMeters(d);
   const styles={};styles[x.r.id]=styleOf(x.r.id);
-  api('/v1/agents/'+encodeURIComponent(x.r.id)+'/phone-card/link',{method:'POST',body:{design:{styles,color:DESIGN.color,initials:DESIGN.initials||initialsOf(companyName())}}}).then((r)=>{
+  api('/v1/agents/'+encodeURIComponent(x.r.id)+'/phone-card/link',{method:'POST',body:{design:{styles,color:DESIGN.color,initials:DESIGN.initials}}}).then((r)=>{
     const q=el('img','dk-qri');q.alt=dw('qr_h');q.width=200;q.height=200;q.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(r.qr_svg);
     const copy=btn(dw('copy'),'mini','copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(r.url);copy.replaceChildren(ic('circle-check'),dw('copied'))}catch(e){}};
     const open=el('a','mini ext',[ic('external-link')]);open.href=r.url;open.target='_blank';open.rel='noopener noreferrer';open.setAttribute('aria-label',dw('phone_h',{name:x.face.name}));
@@ -255,7 +256,7 @@ function openDesign(items){
   col.oninput=()=>{DESIGN.color=col.value.toLowerCase();changed()};
   const all=btn(dw('d_color_all'),'mini','');all.onclick=()=>{DESIGN.color=col.value.toLowerCase();for(const x of items)DESIGN.styles[x.r.id]='brand';changed();drawStyles()};
   // Mark: initials or a logo
-  const ini=el('input','field dk-ini');ini.maxLength=3;ini.value=DESIGN.initials||initialsOf(companyName());ini.setAttribute('aria-label',dw('d_initials'));ini.autocapitalize='characters';
+  const ini=el('input','field dk-ini');ini.maxLength=3;ini.value=DESIGN.initials||'';ini.placeholder=initialsOf(companyName());ini.setAttribute('aria-label',dw('d_initials'));ini.autocapitalize='characters';
   ini.oninput=()=>{const v=ini.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);ini.value=v;DESIGN.initials=v||null;changed()};
   const file=el('input','dk-file');file.type='file';file.accept='image/png,image/jpeg,image/webp';file.setAttribute('aria-label',dw('d_upload'));
   file.onchange=async()=>{const f=file.files&&file.files[0];if(!f)return;try{DESIGN.logo=await shrinkLogo(f);msg.textContent='';changed();drawMark()}catch(e){msg.textContent=e.message}file.value=''};
@@ -270,7 +271,7 @@ function openDesign(items){
       b.onclick=()=>{DESIGN.styles[x.r.id]=p;changed();drawStyles();const n=styles.querySelector('[data-a="'+x.r.id+'"] .dk-sw.on');if(n)n.focus()};opts.append(b)}
     g.dataset.a=x.r.id;g.append(opts);return g}));drawStyles();
   const pv=el('div','dk-pv');const preview=()=>{const x=items[0];if(x)pv.replaceChildren(cardFace(x.face));fillMeters(pv)};preview();
-  const reset=btn(dw('d_reset'),'ghost2','');reset.onclick=()=>{DESIGN={v:1,color:null,initials:null,logo:null,styles:{}};col.value='#4f46e5';ini.value=initialsOf(companyName());changed();drawMark();drawStyles()};
+  const reset=btn(dw('d_reset'),'ghost2','');reset.onclick=()=>{DESIGN={v:1,color:null,initials:null,logo:null,styles:{}};col.value='#4f46e5';ini.value='';changed();drawMark();drawStyles()};
   const save=DESIGN_MODE==='company'?btn(dw('d_save'),'primary','check'):null;
   if(save)save.onclick=async()=>{save.disabled=true;msg.textContent=dw('d_saving');try{const r=await api('/v1/card-design',{method:'POST',body:DESIGN});DESIGN=Object.assign(DESIGN,r.design);msg.textContent=dw('d_saved')}catch(e){if(e instanceof Expired)return;msg.textContent=dw('d_save_fail',{why:e.message})}finally{save.disabled=false}};
   const done=btn(dw('d_done'),save?'':'primary','');
@@ -328,7 +329,7 @@ export const WALLET_CSS = CARD_ART_CSS + `
 @keyframes dk-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 button.dk-face { appearance: none; -webkit-appearance: none; display: block; width: 100%; padding: 0; margin: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; border-radius: 16px; -webkit-tap-highlight-color: transparent; }
 button.dk-face:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-button.dk-face:hover .acard { box-shadow: 0 1px 2px rgba(16,24,40,.16), 0 22px 40px -16px rgba(16,24,40,.6); }
+button.dk-face:hover .acard { box-shadow: 0 1px 1px rgba(2,6,23,.35), 0 26px 44px -18px rgba(2,8,30,.85), 0 0 0 1px rgba(233,196,106,.25); }
 .dk-line { appearance: none; border: 0; background: none; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 2px 4px; margin: 0; font-size: 13.5px; color: var(--muted); text-align: left; border-radius: 6px; min-height: 28px; }
 .dk-line > span:first-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dk-line .ic svg { width: 14px; height: 14px; } .dk-line:hover { color: var(--text); }
 .dk-acts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 2px; }
@@ -394,11 +395,11 @@ button.dk-sw { width: 28px; height: 19px; border-radius: 5px; border: 0; cursor:
 button.dk-sw.on { outline: 2px solid var(--text); outline-offset: 2px; }
 button.dk-sw:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .dk-sw.p-aurora, .dk-sw.p-lagoon, .dk-sw.p-midnight, .dk-sw.p-ember, .dk-sw.p-graphite, .dk-sw.p-rose, .dk-sw.p-citrus, .dk-sw.p-sky, .dk-sw.p-bullion, .dk-sw.p-brand { --brand: #4f46e5; }
-.dk-sw.p-aurora { background: linear-gradient(135deg, #312e81, #7c3aed 60%, #0891b2); } .dk-sw.p-lagoon { background: linear-gradient(135deg, #022c22, #0d9488); }
-.dk-sw.p-midnight { background: linear-gradient(135deg, #0b1020, #1e3a8a); } .dk-sw.p-ember { background: linear-gradient(135deg, #431407, #d97706); }
-.dk-sw.p-graphite { background: linear-gradient(135deg, #09090b, #3f3f46); } .dk-sw.p-rose { background: linear-gradient(135deg, #500724, #be185d); }
-.dk-sw.p-citrus { background: linear-gradient(135deg, #1a2e05, #4d7c0f); } .dk-sw.p-sky { background: linear-gradient(135deg, #082f49, #0284c7); }
-.dk-sw.p-bullion { background: linear-gradient(135deg, #1c1917, #a16207); } .dk-sw.p-brand { background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 45%, #000), var(--brand)); }
+/* 21 Nov (Max): one family of navy metal cards; a swatch is the agent's accent on it, at the card's edge. */
+.dk-sw[class*=" p-"] { background: linear-gradient(90deg, var(--acc, #e9c46a) 0 4px, transparent 4px), radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--acc, #e9c46a) 35%, transparent), transparent 70%), linear-gradient(140deg, #13265a, #060d24); box-shadow: inset 0 0 0 1px rgba(233,196,106,.6); }
+.dk-sw.p-aurora { --acc: #a78bfa; } .dk-sw.p-lagoon { --acc: #2dd4bf; } .dk-sw.p-midnight { --acc: #60a5fa; } .dk-sw.p-ember { --acc: #fb923c; } .dk-sw.p-graphite { --acc: #cbd5e1; }
+.dk-sw.p-rose { --acc: #fb7185; } .dk-sw.p-citrus { --acc: #a3e635; } .dk-sw.p-sky { --acc: #38bdf8; } .dk-sw.p-bullion { --acc: #e9c46a; }
+.dk-sw.p-brand { background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 45%, #000), var(--brand)); }
 .dk-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); } .dk-foot > span { flex: 1; }
 .dk-dn { margin: 0; display: flex; gap: 6px; align-items: flex-start; }
 @media (max-width: 640px) {

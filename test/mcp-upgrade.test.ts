@@ -384,7 +384,8 @@ describe("/connect-ai: a tab per client, exact configs, one-click links", () => 
     const html = await r.text();
     expect(html).not.toMatch(/<script/i);
     for (const name of ["Claude", "ChatGPT", "Cursor", "VS Code", "Gemini CLI", "Windsurf"]) expect(html).toContain(`>${name}</label>`);
-    expect(html).toMatch(/No AI can approve, pay, change a limit or write to the books/);
+    // 21 Nov (jury check): the rule as the code has it: the demo token reads; a propose token files, never approves.
+    expect(html).toMatch(/No AI approves money\.<\/b> The demo token reads only\. A connector token made to propose can file a payment proposal, never approve one/);
     const tabs = clientTabs(ORIGIN);
     for (const t of tabs) for (const s of t.snippets) {
       expect(s.code).toContain(`${ORIGIN}/mcp`);

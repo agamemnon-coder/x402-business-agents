@@ -21,7 +21,7 @@ import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { ASK_COPY } from "../../cloud/src/ask/core.js";
 import type { AskModel, Block } from "../../cloud/src/ask/model.js";
-import { ASK_ACTIONS, ASK_PAGE_COPY as C } from "../../cloud/src/ask/page.js";
+import { ASK_ACTIONS, ASK_JURY, ASK_PAGE_COPY as C } from "../../cloud/src/ask/page.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -245,6 +245,10 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   const fab = page.locator("#pask-fab");
   await fab.waitFor({ timeout: 10_000 });
   ok(await fab.isVisible(), "the console shows the Ask Purser button");
+  // 21 Nov (Max: "keep Purser very small, only the logo in the bottom right"): a round button, its name "Ask Purser".
+  const fb = await fab.boundingBox();
+  ok(fb !== null && fb.width <= 48 && fb.height <= 48 && fb.x + fb.width > 1440 - 80 && fb.y + fb.height > 900 - 80, `the button is the small logo in the bottom right (${fb?.width}x${fb?.height} at ${fb?.x},${fb?.y})`);
+  ok((await fab.getAttribute("aria-label")) === C.fab && (await fab.innerText()).trim() === "", "its name is Ask Purser; it shows the logo only");
   ok((await fab.getAttribute("aria-haspopup")) === "dialog" && (await fab.getAttribute("aria-expanded")) === "false", "the button says it opens a dialog");
   await shot(page, "4-console-1440-dark-button");
   await fab.focus();
@@ -253,7 +257,11 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   await dialog.waitFor({ timeout: 5_000 });
   ok((await fab.getAttribute("aria-expanded")) === "true", "the button says the dialog is open");
   const frame = page.frameLocator("#pask-panel iframe");
-  await frame.getByRole("button", { name: "Show invoice evidence" }).click();
+  // Jury mode (21 Nov, Max): signed out, the panel offers the questions about Purser, styled as cards (no bullets).
+  await frame.getByRole("heading", { name: C.juryHead }).waitFor({ timeout: 10_000 });
+  ok(await frame.locator("#hello .acts.jury button").count() === ASK_JURY.length && !(await frame.locator("#hello .acts.co").isVisible()), "the panel's empty state is jury mode: the questions about Purser, not the console's actions");
+  ok(await frame.locator("#hello .acts.jury li").first().evaluate((li) => getComputedStyle(li).listStyleType === "none" && getComputedStyle(li.querySelector("button")!).borderRadius !== "0px"), "its questions are cards, without bullets");
+  await frame.getByRole("button", { name: ASK_JURY[2]!.q }).click();
   await frame.locator(".msg.bot:not([aria-busy]) .meta").waitFor({ timeout: 15_000 });
   ok((await frame.locator(".msg.bot").innerText()).includes("test money"), "a question asked inside the dialog is answered");
   await sane(page, "console with the dialog");
@@ -275,7 +283,7 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   await page.locator("#pask-fab").click();
   const box = await page.locator("#pask-panel").boundingBox();
   ok(box !== null && box.width >= 389 && box.height >= 840, `on a phone the dialog fills the screen (${box?.width}x${box?.height})`);
-  await page.frameLocator("#pask-panel iframe").getByRole("heading", { name: C.title }).waitFor();
+  await page.frameLocator("#pask-panel iframe").getByRole("heading", { name: C.title, level: 1 }).waitFor();
   await shot(page, "6-console-390-dialog");
   await page.frameLocator("#pask-panel iframe").getByRole("button", { name: C.close }).click();
   await page.waitForTimeout(200);

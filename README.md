@@ -86,6 +86,21 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 **Above your limit: not signed, never paid.**
 
+```mermaid
+flowchart LR
+  I["Invoice or purchase<br/>(PDF, card, x402)"] --> RD["Reader<br/>Claude reads it"]
+  RD --> CK["Checker<br/>Purser's code: duplicates,<br/>bank details, payee"]
+  CK --> PO{"CFO policy<br/>(code, also exported<br/>as OPA/Rego)"}
+  PO -- "within the agent's limit<br/>e.g. EUR 120.00" --> PAY["Agent pays alone"]
+  PO -- "above it<br/>e.g. EUR 1,850.00" --> FID["CFO signs the SHA-256<br/>of the exact terms<br/>(passkey, Face ID)"]
+  FID --> HC{"Before paying:<br/>terms still match<br/>the signed hash?"}
+  HC -- "yes" --> PAY
+  HC -- "one cent changed" --> X["Payment refused.<br/>Nothing was paid."]
+  PAY --> RAIL["Rails, each with its own limit<br/>Airwallex sandbox · Alta testnet<br/>· Visa via Airwallex Airi"]
+  RAIL --> BK["Books<br/>T:0 · Moneybird (sandboxes)"]
+  BK --> LOG["Hash-chained audit log"] --> ANC["Head anchored on Alta testnet<br/>npm run verify-all"]
+```
+
 - **A passkey signs the exact terms.** The approval is a signature over the SHA-256 of the terms; change one cent and it no longer verifies. The owner's real approval of 7 November is checked offline by `npm run verify-approval` ([record](docs/runs/2026-11-07-awx-1.md)).
 - **Limits are enforced in 3 layers: Purser's code, Airwallex's card controls and Alta's on-chain mandate.** Airwallex itself declined an agent's card over the CFO's limit ([record](docs/runs/2026-11-07-awx-1.md)); Alta refused a purchase over the mandate on chain ([record](docs/runs/2026-11-03-main-run.md)). The mandates: [/api/metal/mandates](https://kit11.max-31b.workers.dev/api/metal/mandates), a live read from Alta testnet, or the recorded 12 Nov snapshot when the chain does not answer (the answer says which).
 - **The audit chain is anchored on chain.** Every event goes into a hash-chained log; its head is in a value-0 Alta testnet transaction, and `npm run verify-anchor` prints MATCH ([record](docs/runs/2026-11-13-anchor.md); run live again on 15 Nov: MATCH, [record](docs/runs/2026-11-15-anchor-verified.md)).
@@ -137,15 +152,6 @@ sequenceDiagram
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/deployment-dark.svg"><img src="docs/assets/readme/deployment-light.svg" alt="Where Purser runs: the browser with the passkey, two Cloudflare Workers, the test rails and models outside, and CI" width="100%"></picture>
 
-```mermaid
-flowchart LR
-  A["Claude agent<br/>proposes a payment"] --> P["CFO policy<br/>Purser's code"]
-  P -- "within the limit" --> R["Airwallex · Alta · Visa via Airi<br/>each with its own limit"]
-  P -- "above it" --> F["CFO's passkey<br/>Face ID on iPhone<br/>signs the exact terms"]
-  F --> R
-  R --> B["Books<br/>posted to T:0 and Moneybird (sandboxes)"]
-  B --> L["Hash-chained audit log"] --> N["Its head anchored on Alta testnet<br/>npm run verify-anchor"]
-```
 
 
 </details>

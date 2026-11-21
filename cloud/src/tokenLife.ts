@@ -181,6 +181,8 @@ export const TOKEN_LIFE_CSS = `
 .tl-sub { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
 .tl-body { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 24px; align-items: center; }
 .tl-cardw { display: grid; gap: 8px; min-width: 0; }
+/* 21 Nov: the card family's labels are outlined pills; two side by side here (sandbox, the test card's last four) stay inside the card. */
+.tl-card .ac-foot { gap: 5px; } .tl-card .ac-tag { letter-spacing: .03em; padding: 2px 4px; } .tl-card .ac-tag + .ac-tag { margin-left: 0; }
 .tl-fine { margin: 0; font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; align-items: flex-start; } .tl-fine .ic svg { width: 14px; height: 14px; }
 .tl-track { list-style: none; margin: 0; padding: 0; position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .tl-rail { position: absolute; left: 22px; right: 22px; top: 21px; height: 3px; border-radius: 3px; background: var(--border); overflow: visible; }

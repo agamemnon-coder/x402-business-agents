@@ -85,7 +85,7 @@ describe("the refused payment: signed beside asked", () => {
     expect(kit.tamperRows(signed, { ...signed, amount: "2000.00", iban_last4: "1111" }, null, labels, fmt)).toEqual([["Amount", "EUR 1850.00", "EUR 2000.00"], ["Account ending", "…3000", "…1111"]]);
   });
   it("says it plainly", () => {
-    expect(`${TAMPER.refused}: ${TAMPER.head}`).toBe("Blocked: nothing was paid.");
+    expect(`${TAMPER.refused} ${TAMPER.head}`).toBe("Payment refused. Nothing was paid."); // 21 Nov (owner)
     expect(TAMPER.rule).toBe("Your approval covers only the exact payment you saw. Anything else is blocked.");
     // "Read back" is said nowhere: the transfer's status is read back, its metadata is not.
     expect(TAMPER.signAwx).toBe("You approved with your passkey{via}, not a click. A digital fingerprint of what you approved travels with the Airwallex test transfer.");
@@ -96,7 +96,7 @@ describe("the refused payment: signed beside asked", () => {
   it("the page draws the reason first and folds the stamp, the layers and the fingerprints under Show the proof", () => {
     const html = tryPage("n0nce", { origin: "https://purser-try.example", rpId: "purser-try.example" });
     // 15 Nov (owner: "it glows red"): one red word, the diff, the rule that held and the signature line; no shake.
-    expect(html).toContain("const card=el('section','why refuse card refusal',[el('p','head',el('span','',[el('span','no',X.refused),': '+X.head])),diff,el('p','rule',X.rule),el('p','sigl',fill(awx?X.signAwx:X.signSim,{via:method()===C.method.other?'':' ('+method()+')'}))]);");
+    expect(html).toContain("const card=el('section','why refuse card refusal',[el('p','head',el('span','',[el('span','no',X.refused),' '+X.head])),diff,el('p','rule',X.rule),el('p','sigl',fill(awx?X.signAwx:X.signSim,{via:method()===C.method.other?'':' ('+method()+')'}))]);");
     expect(html).toContain("const li=el('li','',[el('span','dk',k),el('s','old',a),el('span','arr',' → '),el('mark','new',b)]);");
     expect(html).not.toMatch(/card refusal shake|animation: glow/);
     expect(html).toContain("const proof=el('details','',[el('summary','',X.proof),el('p','stamp',Y.stamp)]);");

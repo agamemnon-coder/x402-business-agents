@@ -76,7 +76,7 @@ ${t.note ? `<p class="note">${esc(t.note)}</p>` : ""}</section>`).join("");
 ${[["Get them", q.shell], ["TypeScript: which invoices wait for the CFO", q.ts], ["Python: the same question", q.py]].map(([l, c]) => `<p class="label">${esc(l!)}</p><pre tabindex="0"><code>${esc(c!)}</code></pre>`).join("")}</section>`;
   const show = tabs.map((t) => `#t-${t.id}:checked~.tabs label[for=t-${t.id}]{background:var(--ink);color:#fff;border-color:var(--ink)}#t-${t.id}:checked~.panels #p-${t.id}{display:block}`).join("");
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Connect your AI to Purser</title><meta name="description" content="Connect Claude, ChatGPT, Cursor, VS Code, Gemini CLI or Windsurf to Purser over MCP. Read only: no AI approves or pays.">${ICON_LINKS}${PREVIEW_TAGS}
+<title>Connect your AI to Purser</title><meta name="description" content="Connect Claude, ChatGPT, Cursor, VS Code, Gemini CLI or Windsurf to Purser over MCP. Your AI reads; with a token made to propose it files proposals. No AI approves or pays: the CFO's limits and Face ID decide.">${ICON_LINKS}${PREVIEW_TAGS}
 <style nonce="${nonce}">
 :root{color-scheme:light;--ink:#0b1220;--muted:#586174;--line:#e3e6ec;--bg:#f7f8fa;--accent:#4f46e5}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -98,7 +98,7 @@ ${show}
 </style></head><body><main><div class="brand"><img src="/favicon.svg" alt="" width="32" height="32">Purser</div>
 <h1>Connect your AI to Purser</h1>
 <p class="lede">Your AI reads your books in Purser over MCP: invoices, payments, cash, VAT, what waits for approval and the CFO's policy.</p>
-<p class="rule"><b>Read only.</b> No AI can approve, pay, change a limit or write to the books. Every payment needs the CFO's Face ID in Purser Cloud.</p>
+<p class="rule"><b>No AI approves money.</b> The demo token reads only. A connector token made to propose can file a payment proposal, never approve one: above the CFO's limit only the CFO's Face ID in Purser Cloud approves it; within a pay-alone limit the CFO set (off unless set), Purser's own policy pays it.</p>
 <div class="facts"><div><b>Server</b><code>${esc(`${origin}/mcp`)}</code></div><div><b>Transport</b><span>Streamable HTTP (MCP 2026-07-28, and 2025-11-25 back to 2024-11-05)</span></div>
 <div><b>Sign-in</b><span>OAuth 2.1 with PKCE, or a bearer header with your connector token (Purser Cloud: Connections, Connect your AI).</span></div>
 <div><b>Demo token</b><span><code>${esc(DEMO_CONNECTOR_TOKEN)}</code> reads the demo company: made-up data, no real money.</span></div></div>

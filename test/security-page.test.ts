@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { committedWall } from "../src/redesign/evidenceWall.js";
 import { evidenceWall } from "../src/redesign/evidenceWallData.js";
 import { ARCH_BOUNDARIES, ARCH_CSS, ARCH_LAYERS, archFiles, archHtml } from "../src/redesign/securityArch.js";
-import { EVIDENCE_CSS, evidenceHtml, evidenceItems, formalModel, itemHref, securityEvidence, wallTile } from "../src/redesign/securityEvidence.js";
+import { EVIDENCE_CSS, evidenceItems, formalModel, itemHref, securityEvidence, wallTile } from "../src/redesign/securityEvidence.js";
 import { securityPage } from "../src/redesign/security.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
@@ -26,14 +26,15 @@ describe("/security: served, one h1, every link reaches something that exists", 
   const pages = buildPages() as Pages;
   const html = pages.security!;
 
-  it("responds 200 with its own style-only policy, and has exactly one h1", async () => {
+  // 21 Nov (Max: "security page is still not upgraded"): one script, the site's wave behind the heading, hashed.
+  it("responds 200 with its own policy (the wave's script and the style, by hash), and has exactly one h1", async () => {
     const res = pageResponse(new Request("https://x.test/security"), pages)!;
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
-    expect(res.headers.get("content-security-policy")).toMatch(/^default-src 'none'; style-src 'sha256-[A-Za-z0-9+/=]+';/);
+    expect(res.headers.get("content-security-policy")).toMatch(/^default-src 'none'; script-src 'sha256-[A-Za-z0-9+/=]+'; style-src 'sha256-[A-Za-z0-9+/=]+';/);
     const body = await res.text();
     expect((body.match(/<h1\b/g) ?? []).length).toBe(1);
-    expect(scriptBlocks(body)).toEqual([]);
+    expect(scriptBlocks(body)).toHaveLength(1);
     expect(body).not.toMatch(/\sstyle="/);
   });
 
@@ -46,11 +47,13 @@ describe("/security: served, one h1, every link reaches something that exists", 
   });
 
   it("links to pages of this site that the site serves", () => {
-    const section = (id: string) => new RegExp(`<section class="card [a-z]+" id="${id}"[\\s\\S]*?</section>`).exec(html)?.[0] ?? "";
-    const local = [...`${section("arch")}${section("done")}`.matchAll(/href="([^"]+)"/g)].map((m) => decode(m[1]!)).filter((h) => !/^https?:/.test(h));
+    // 21 Nov (Max): every link in <main>, the hero, the architecture and the six categories.
+    const main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? "";
+    const local = [...main.matchAll(/href="([^"]+)"/g)].map((m) => decode(m[1]!)).filter((h) => !/^https?:/.test(h));
     expect(local.length).toBeGreaterThan(3);
     for (const h of local) {
       const path = `/${h.replace(/^\//, "").replace(/#.*$/, "")}`;
+      if (h.startsWith("#")) { expect({ h, here: main.includes(`id="${h.slice(1)}"`) }).toEqual({ h, here: true }); continue; }
       expect({ h, status: pageResponse(new Request(`https://x.test${path}`), pages)?.status }).toEqual({ h, status: 200 });
     }
   });
@@ -114,10 +117,14 @@ describe("What we did, with evidence: every figure from the wall or its own reco
 
   it("lists the sixteen measures, each with a figure, where it ran and its record", () => {
     expect(items.map((i) => i.id)).toEqual(["e-zerotrust", "e-hostile", "e-redteam", "e-chaos", "e-fuzz", "e-tamper", "e-formal", "e-mutation", "e-scan", "e-pinned", "e-stride", "e-mapping", "e-requirements", "e-openssf", "e-continuity", "e-report"]);
-    const html = evidenceHtml();
-    for (const i of items) expect(html).toContain(`<li id="${i.id}"><a class="ev-a" href="${itemHref(i)}" target="_blank" rel="noopener"><div class="ev-top"><b class="ev-fig">`);
-    expect(securityPage()).toContain(html);
-    expect(securityPage().indexOf('id="done"')).toBeGreaterThan(securityPage().indexOf('id="arch"'));
+    // 21 Nov (Max: "security page is still not upgraded"): each measure is a tile of one of the six categories, the
+    // whole tile one link to its record, once on the page; the categories come after the architecture.
+    const page = securityPage();
+    for (const i of items) {
+      expect(page).toContain(`<li id="${i.id}"><a class="sc-t" href="${itemHref(i)}" target="_blank" rel="noopener" data-rec="${i.rec}">`);
+      expect({ id: i.id, n: page.split(`<li id="${i.id}">`).length - 1 }).toEqual({ id: i.id, n: 1 });
+    }
+    expect(page.indexOf('id="c-approval"')).toBeGreaterThan(page.indexOf('id="arch"'));
   });
 
   it("takes the wall's figures as the wall has them, and the wall is its records' (evidenceWallData)", () => {
@@ -171,7 +178,9 @@ describe("What we did, with evidence: every figure from the wall or its own reco
   });
 
   it("says where each ran, claims nothing it did not run, and keeps the site's word rules", () => {
-    const text = textOf(`${archHtml()} ${evidenceHtml()}`);
+    // 21 Nov (Max: "security page is still not upgraded"): the page as it stands up to its limits (the hero, the
+    // architecture and the six categories with every fold); the limits, with the judges' questions, are held elsewhere.
+    const page = securityPage(), text = textOf(page.slice(page.indexOf("<main"), page.indexOf('id="limits"')));
     expect(items.filter((i) => i.tag === "doc").map((i) => i.id)).toEqual(["e-stride", "e-mapping", "e-requirements", "e-continuity", "e-report"]);
     expect(text).toContain("Test money only.");
     expect(text).not.toMatch(/stand-in|unsafe-inline/i);

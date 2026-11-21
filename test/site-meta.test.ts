@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FILM_URL, HERO } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
-import { OG_DESCRIPTION, OG_IMAGE, OG_IMAGE_SIZE, OG_TITLE, previewTags, withMeta } from "../src/ui/meta.js";
+import { OG_DESCRIPTION, OG_IMAGE, OG_IMAGE_SIZE, OG_ALT, OG_TITLE, previewTags, withMeta } from "../src/ui/meta.js";
 import { tryPage } from "../cloud/src/tryPage.js";
 import { consolePage } from "../cloud/src/console.js";
 import { SOCIAL_BUILT_ON } from "../src/visuals/svg.js";
@@ -32,7 +32,7 @@ describe("every page's head (Q5)", () => {
       expect({ name, missing }).toEqual({ name, missing: [] });
       expect({ name, relative: /og:image" content="(?!https:)/.test(h) }).toEqual({ name, relative: false });
     }
-    expect(OG_IMAGE).toBe("https://kit11.max-31b.workers.dev/assets/og-1114.png");
+    expect(OG_IMAGE).toBe("https://kit11.max-31b.workers.dev/assets/og-1121.png"); // 21 Nov (Max): the new banner, a new address
   });
 
   // The owner, 13 Nov: the preview in a chat looked messy (a cropped image, a long description). Every page of the site
@@ -61,16 +61,16 @@ describe("every page's head (Q5)", () => {
       '<meta property="og:site_name" content="Purser">',
       '<meta property="og:title" content="Purser · AI agents spend. You sign off. Built on Airwallex.">',
       '<meta property="og:description" content="Your AI agents pay suppliers; above their limit, each payment needs your Face ID. Built on Airwallex.">',
-      '<meta property="og:image" content="https://kit11.max-31b.workers.dev/assets/og-1114.png">',
+      '<meta property="og:image" content="https://kit11.max-31b.workers.dev/assets/og-1121.png">',
       '<meta property="og:image:type" content="image/png">',
       '<meta property="og:image:width" content="1200">',
       '<meta property="og:image:height" content="630">',
-      '<meta property="og:image:alt" content="Purser. AI agents spend. You sign off. Every payment above its limit waits for your Face ID or a passkey. Built on Airwallex.">',
+      '<meta property="og:image:alt" content="Purser. Payment operations for AI agents. Agents pay suppliers within your rules. The CFO signs with Face ID. Built on Airwallex. Test money only.">',
       '<meta name="twitter:card" content="summary_large_image">',
       '<meta name="twitter:title" content="Purser · AI agents spend. You sign off. Built on Airwallex.">',
       '<meta name="twitter:description" content="Your AI agents pay suppliers; above their limit, each payment needs your Face ID. Built on Airwallex.">',
-      '<meta name="twitter:image" content="https://kit11.max-31b.workers.dev/assets/og-1114.png">',
-      '<meta name="twitter:image:alt" content="Purser. AI agents spend. You sign off. Every payment above its limit waits for your Face ID or a passkey. Built on Airwallex.">',
+      '<meta name="twitter:image" content="https://kit11.max-31b.workers.dev/assets/og-1121.png">',
+      '<meta name="twitter:image:alt" content="Purser. Payment operations for AI agents. Agents pay suppliers within your rules. The CFO signs with Face ID. Built on Airwallex. Test money only.">',
     ]);
     expect(previewTags({ url: "https://kit11.max-31b.workers.dev/home" })).toContain('<meta property="og:url" content="https://kit11.max-31b.workers.dev/home">');
     for (const t of previewTags()) { const c = /content="([^"]*)"/.exec(t)![1]!; if (/\.png|assets\//.test(c)) expect({ t, absolute: c.startsWith("https://") }).toEqual({ t, absolute: true }); }
@@ -79,7 +79,10 @@ describe("every page's head (Q5)", () => {
     expect(og.length).toBeLessThan(300 * 1024);
     // What the card says, in the site's words: the one line large, the small line, the payment's path and the row.
     const svg = readFileSync(new URL("../docs/assets/social-preview.svg", import.meta.url), "utf8");
-    for (const words of ["AI agents spend.", "You sign off.", "Every payment above its limit", "waits for your Face ID or a passkey.", "Face ID or a passkey", "Never paid", "Built on"]) expect({ words, in: svg.includes(`>${words}<`) }).toEqual({ words, in: true });
+    // 21 Nov (Max: "the banner looks dated"): the new design's line, its small line, the badge and the quiet tag.
+    for (const words of ["Purser", "Payment operations", "for AI agents.", "Agents pay suppliers within your rules.", "The CFO signs with Face ID.", "Built on", "Test money only"]) expect({ words, in: svg.includes(`>${words}<`) }).toEqual({ words, in: true });
+    // The alt text says what the image says.
+    for (const words of ["Payment operations for AI agents.", "Agents pay suppliers within your rules.", "The CFO signs with Face ID.", "Built on Airwallex.", "Test money only."]) expect(OG_ALT).toContain(words);
     // 14 Nov (owner): "Built on" and the official Airwallex logo, the file's own bytes (no recolour, no crop), smaller
     // than Purser's 60 px mark; no other partner on the card.
     const logo = readFileSync(new URL(`../${SOCIAL_BUILT_ON.logo}`, import.meta.url)).toString("base64");
