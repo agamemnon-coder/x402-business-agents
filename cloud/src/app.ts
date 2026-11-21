@@ -61,6 +61,8 @@ import type { AwxReadPort } from "./claude/awxCodemode.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
 import { partnerRailsOf } from "./partnerRails.js";
 import { walletPassFor, walletPassLink, walletPassByLink, type PassConfig } from "./walletPassRoutes.js";
+import { designOf, negotiationPreview, phoneCardLink, phoneCardResponse, saveDesign } from "./agentPhoneCard.js";
+import { cleanDesign } from "./agentCardArt.js";
 import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, latestEdgeRun, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
 import { ALWAYS_STEP_UP_ROUTES, freshPasskey, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
@@ -739,6 +741,24 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/agents/{id}/wallet-pass", summary: "The agent card as an Apple Wallet pass (application/vnd.apple.pkpass): the agent's name, its card's limits and last four, its status. Only when the owner configured passes (PASS_TYPE_ID, TEAM_ID and the signing certificate); 404 otherwise or for an agent without a card.", need: "read", run: async (c) => (await walletPassFor(c.env.walletPass, c.env.sql, c.caller!.tenantId, c.params[0]!, c.env.origin, wallClock(c))) ?? err(404, "no wallet pass for this agent") },
   { method: "POST", path: "/v1/agents/{id}/wallet-pass/link", summary: "A link to the agent card's Apple Wallet pass that works for 5 minutes without a header (for Safari's Add to Apple Wallet). 404 when passes are not configured or the agent has no card.", need: "read", run: async (c) => { const r = await walletPassLink(c.env.walletPass, c.env.sql, c.env.sessionSecret, c.caller!.tenantId, c.params[0]!, c.env.origin, wallClock(c)); return r ? json(201, r) : err(404, "no wallet pass for this agent"); } },
   { method: "GET", path: "/v1/wallet-pass/{link}", summary: "An agent card's Apple Wallet pass by the 5-minute link POST /v1/agents/{id}/wallet-pass/link made (signed; nothing else is needed). 404 when the link is wrong or past its time, or passes are not configured.", need: "public", run: async (c) => (await walletPassByLink(c.env.walletPass, c.env.sql, c.env.sessionSecret, c.params[0]!, c.env.origin, wallClock(c))) ?? err(404, "no such wallet pass link") },
+  // The agents' cards on a phone and the company's card design (./agentPhoneCard.ts): cosmetic, read only regarding money.
+  { method: "GET", path: "/v1/card-design", summary: "The company's card design for the Agents page: its colour, initials or a small logo, and a designed preset per agent; cosmetic only. Also whether this caller may save it (an owner or admin, never the demo company's guest).", need: "read", run: async (c) => {
+    let canSave = !isDemoTenant(c.caller!.tenantId);
+    try { need(c.caller!, "admin"); } catch { canSave = false; }
+    const d = isDemoTenant(c.caller!.tenantId) ? { design: cleanDesign(null), updated_at: null } : await designOf(c.env.sql, c.caller!.tenantId);
+    return json(200, { ...d, can_save: canSave });
+  } },
+  { method: "POST", path: "/v1/card-design", summary: "Save the company's card design: { color (#rrggbb or null), initials (1 to 3 of A-Z, 0-9, or null), logo (a PNG, JPEG or WebP data URL of at most 48 KB, or null), styles ({agent: preset}) }. Cosmetic only: it changes no limit, card or payment. Anything not valid is dropped. Not for the demo company.", need: "admin", run: async (c) => {
+    if (isDemoTenant(c.caller!.tenantId)) return err(403, "the demo company's card design stays in each guest's browser");
+    const b = await body(c, z.record(z.string(), z.unknown()), 80_000);
+    return json(200, { design: await saveDesign(c.env.sql, c.caller!.tenantId, c.caller!.principal, b, c.now) });
+  } },
+  { method: "GET", path: "/v1/negotiation/recorded", summary: "The Sourcing agent's recorded negotiation for the Agents page: an early-payment discount with a simulated supplier's agent, four turns written in advance (not a live model call), each checked by the CFO's rails in code now; the turn the rails refuse says why.", need: "read", run: async (c) => json(200, await negotiationPreview(c.now.toISOString().slice(0, 10))) },
+  { method: "POST", path: "/v1/agents/{id}/phone-card/link", summary: "A link to a read-only view of the agent's card for a phone (its name, last four, limits, spent and status; no way to act), working for 7 days, and its QR code as SVG. The body may carry the design the console shows ({ styles, color, initials }; cosmetic). 404 for an agent the company's records do not name.", need: "read", run: async (c) => {
+    const b = c.req.headers.get("content-type")?.startsWith("application/json") ? await body(c, z.record(z.string(), z.unknown()), 8_000) : {};
+    const r = await phoneCardLink(c.env.sql, c.env.sessionSecret, c.caller!.tenantId, c.params[0]!, c.env.origin, wallClock(c), b.design ?? null);
+    return r ? json(201, r) : err(404, "no such agent in this company's records");
+  } },
   { method: "GET", path: "/v1/tokenisation", summary: "Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it.", need: "read", run: async () => json(200, tokenisation()) },
   { method: "GET", path: "/v1/airwallex-live/{view}", summary: "The live Airwallex tab, read-only, from the Airwallex sandbox (test money) through the site Worker's gateway: balances, accounts, financial, rates, transfers, beneficiaries, issuing, calls, events (the webhooks Airwallex sent the site, signature verified: type, object id and time only), or reconcile (Purser's ledger of the recorded awx-1 run against Airwallex's financial transactions). Each answer says when it was read, or why the sandbox is unavailable.", need: "read", run: async (c) => {
     const view = c.params[0]!;
@@ -1020,6 +1040,8 @@ async function route(req: Request, env: CloudEnv, audit: Audit): Promise<Respons
     // Ask Purser's page and its button module (cloud/src/ask/page.ts), on every deployment.
     // The page says plainly whether Claude answers here now (its model set, the switches claude and ask on).
     if ((req.method === "GET" || req.method === "HEAD") && (url.pathname === ASK_PATH || url.pathname === ASK_BUTTON_PATH)) return url.pathname === ASK_PATH ? askPageResponse(url, await askLive(env)) : askButtonResponse();
+    // An agent's card on a phone, by its signed link (./agentPhoneCard.ts): read only, no script.
+    if ((req.method === "GET" || req.method === "HEAD") && url.pathname.startsWith("/card/")) return phoneCardResponse(url, env, now);
     // The console (cloud/src/console.ts): the browser pages, everything outside /v1.
     if (!url.pathname.startsWith("/v1/") && !isClaudePath(url.pathname) && !isDiscoveryPath(url.pathname)) return consoleResponse(req, url, env);
     // A browser request that changes something must come from the console's own origin: a page elsewhere cannot make a

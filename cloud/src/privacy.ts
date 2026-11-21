@@ -208,7 +208,7 @@ export async function offboardTenant(sql: Sql, a: { tenantId: string; by: string
 }
 
 /** Tables made on first use that also hold a company's rows: purged with it (each may not exist yet). */
-const LAZY_TENANT_TABLES = ["sessions", "recovery_requests", "export_links_used", "storage_use"] as const;
+const LAZY_TENANT_TABLES = ["sessions", "recovery_requests", "export_links_used", "storage_use", "card_designs"] as const;
 
 /**
  * The scheduled job: closed companies past their retention day are removed, rows and documents; a tombstone stays.

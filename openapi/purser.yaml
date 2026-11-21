@@ -2393,6 +2393,103 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/card-design":
+    get:
+      operationId: getV1CardDesign
+      tags:
+        - Company
+      summary: "The company's card design for the Agents page: its colour, initials or a small logo, and a designed preset per agent; cosmetic only. Also whether this caller may save it (an owner or admin, never the demo company's guest)."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    post:
+      operationId: postV1CardDesign
+      tags:
+        - Company
+      summary: "Save the company's card design: { color (#rrggbb or null), initials (1 to 3 of A-Z, 0-9, or null), logo (a PNG, JPEG or WebP data URL of at most 48 KB, or null), styles ({agent: preset}) }. Cosmetic only: it changes no limit, card or payment. Anything not valid is dropped. Not for the demo company."
+      security:
+        - bearer:
+            - admin
+      x-purser-needs: admin
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/negotiation/recorded":
+    get:
+      operationId: getV1NegotiationRecorded
+      tags:
+        - Company
+      summary: "The Sourcing agent's recorded negotiation for the Agents page: an early-payment discount with a simulated supplier's agent, four turns written in advance (not a live model call), each checked by the CFO's rails in code now; the turn the rails refuse says why."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/agents/{id}/phone-card/link":
+    post:
+      operationId: postV1AgentsByIdPhoneCardLink
+      tags:
+        - Company
+      summary: "A link to a read-only view of the agent's card for a phone (its name, last four, limits, spent and status; no way to act), working for 7 days, and its QR code as SVG. The body may carry the design the console shows ({ styles, color, initials }; cosmetic). 404 for an agent the company's records do not name."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/tokenisation":
     get:
       operationId: getV1Tokenisation

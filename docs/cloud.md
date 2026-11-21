@@ -135,6 +135,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/agents/{id}/wallet-pass` | read | The agent card as an Apple Wallet pass (.pkpass): name, limits, the card's last four, status. 404 unless the owner configured passes. |
 | `POST /v1/agents/{id}/wallet-pass/link` | read | A 5-minute link to that pass, for Safari's Add to Apple Wallet. |
 | `GET /v1/wallet-pass/{link}` | anyone | The pass by that link (a MAC over company, agent and expiry); 404 when wrong, expired or not configured. |
+| `POST /v1/agents/{id}/phone-card/link` | read | A 7-day link to a read-only view of the agent's card on a phone (`/card/{link}`: name, last four, limits, spent, status; no script, no way to act) and its QR as SVG. |
+| `GET /v1/card-design` | read | The company's card design (colour, initials or a small logo, a preset per agent; cosmetic only) and whether this caller may save it. |
+| `POST /v1/card-design` | admin | Saves that design; anything not valid is dropped (a logo is a PNG, JPEG or WebP of at most 48 KB). Never for the demo company. |
+| `GET /v1/negotiation/recorded` | read | The Sourcing agent's recorded negotiation (written in advance, the CFO's rails checked now), turn by turn, for the Agents page. |
 | `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
 | `GET /v1/cards` | read | The agents' live Airwallex sandbox cards (test money): last four digits only, live status, limits against the CFO policy, newest authorizations with their ids; whether card actions are on (`awx_cards`) and today's caps. |
 | `GET /v1/cards/scope` | anyone | Whether the sandbox key may use Airwallex Issuing: `ok`, `forbidden`, `no_key`, `no_gateway` or `unavailable`, with why in fixed codes (`why`: the gateway's code or `rpc_failed`; `http_status`; Airwallex's `awx_code`). One read a minute at most, for everyone; no card data. |
