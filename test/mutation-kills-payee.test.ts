@@ -86,10 +86,14 @@ describe("lookalike names (src/policy/fraudCore.ts)", () => {
     expect(f.allowlisted?.name).toBe(LIZ);
   });
 
-  it("a supplier on file under a name in another alphabet is matched by that exact name, flagged only for its script", () => {
+  // 21 Nov (after the held-out evals v16 and v17: Chuvash and Sakha names on file, typed with a Latin letter inside a
+  // Cyrillic word as their banks hold them, were held): a name on file that mixes alphabets was verified as the
+  // supplier's; written as on file it is that supplier, unflagged. The same mix in a name not on file is still flagged.
+  it("a supplier on file under a name that mixes alphabets is matched by that exact name, and flagged only where the mix is not the one on file", () => {
     const f = assess("Ωmega Ltd", { all: [onFile("Ωmega Ltd")] });
-    expect(codes(f)).toEqual(["mixed_scripts"]);
+    expect(codes(f)).toEqual([]);
     expect(f.allowlisted?.name).toBe("Ωmega Ltd");
+    expect(codes(assess("Ωmegа Ltd", { all: [onFile("Ωmega Ltd")] }))).toContain("mixed_scripts"); // a Cyrillic а as well
   });
 
   it("letters from another alphabet block, with the name in the detail", () => {

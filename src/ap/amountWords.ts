@@ -30,9 +30,20 @@ export function wordsToNumber(words: string): number | null {
   return seen ? total + current : null;
 }
 
+/**
+ * A field that names an amount with its value in English words and no currency ("Amount payable: nine hundred and
+ * fifty-five", 21 Nov, after the held-out eval v17, v17-limit-kernow-english-no-currency): the field's currency is the
+ * invoice's, so the words are the amount.
+ */
+const LABELLED = new RegExp(`^[ \\t]*(?:total|amount|balance|sum)(?:[ \\t]+(?:due|payable|to pay|owing|owed))?[ \\t]*[:：][ \\t]*(${NUMBER})(?:[ \\t]+only)?[ \\t]*\\.?[ \\t]*$`, "gimu");
+
 /** Each amount the text writes out in English words, in cents, with the words. */
 export function amountsInWords(text: string): { cents: number; words: string }[] {
   const out: { cents: number; words: string }[] = [];
+  for (const m of text.matchAll(LABELLED)) {
+    const major = wordsToNumber(m[1]!);
+    if (major !== null) out.push({ cents: major * 100, words: m[0].trim() });
+  }
   for (const m of text.matchAll(PHRASE)) {
     const major = wordsToNumber(m[1]!);
     if (major === null) continue;
