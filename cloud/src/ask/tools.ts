@@ -51,7 +51,7 @@ const SUMMARY: Record<string, Summary> = {
   run_records: () => ({ label: "Read the run records", detail: "3 records" }),
 };
 
-export interface ToolCtx { sql: Sql; blobs?: Blobs; origin: string }
+export interface ToolCtx { sql: Sql; blobs?: Blobs; origin: string; now?: Date }
 export interface ToolRun {
   /** For Claude: the result as text, its source number first. */
   text: string;
@@ -135,7 +135,8 @@ export async function runAskTool(ctx: ToolCtx, name: string, input: unknown, n: 
       const text = found.map((c, i) => `<source n="${n + i}" title="${c.title.replace(/"/g, "'")}" url="${c.url}">\n${c.text.replace(/<\/?source/gi, "")}\n</source>`).join("\n");
       return { text, isError: false, step: { tool: name, ...sum(args, { found }), ok: true }, sources: found.map((c) => ({ title: c.title, url: c.url, kind: "doc" as const, chunk: c })) };
     }
-    if (ctx.blobs) await ensureDemoCompany(ctx.sql, ctx.blobs, new Date(DEMO_END));
+    // The demo company, made on first use as a guest's sign-in makes it (and read as of its last day, as /mcp reads it).
+    if (ctx.blobs) await ensureDemoCompany(ctx.sql, ctx.blobs, ctx.now ?? new Date());
     const db = new TenantDb(ctx.sql, DEMO_TENANT);
     const head = (title: string) => `<source n="${n}" title="${title}" kind="data">\n${DEMO_NAME}: ${DEMO_LABEL}.\n`;
     const consoleUrl = `${ctx.origin.replace(/\/$/, "")}/`;

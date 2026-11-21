@@ -97,7 +97,7 @@ export function askRoutes<C extends AskCtx>(kit: { json(status: number, body: un
       let chunks = retrieve(screen.question, TOP_K);
       if (chunks.length < 2 && lastUser) chunks = retrieve(`${screen.question} ${lastUser.slice(0, 300)}`, TOP_K);
       const records = localRead(screen.question);
-      const toolCtx = { sql, ...(c.env.blobs ? { blobs: c.env.blobs } : {}), origin: c.env.origin ?? "" };
+      const toolCtx = { sql, ...(c.env.blobs ? { blobs: c.env.blobs } : {}), origin: c.env.origin ?? "", now: c.now };
       // Nothing in the docs, no file and nothing to read: "I don't know", without asking the model.
       if (!chunks.length && !file && !records) { await askTally(sql, "docs", c.now); return fixed(c, "docs", ASK_COPY.unknown, pub(retrieve("Purser in one minute what it is", 2)), !!c.env.askModel); }
 
