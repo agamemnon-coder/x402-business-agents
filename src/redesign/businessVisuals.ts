@@ -97,7 +97,7 @@ export interface DemoStep { id: string; tone: "in" | "check" | "ok" | "cfo" | "b
 export function demoSteps(d: DemoFacts): DemoStep[] {
   return [
     { id: "d-in", tone: "in", icon: "file-check", k: "1 · Invoice in", title: d.supplier, line: `${d.amount}, read by Claude as data.`, rec: d.recs.invoice },
-    { id: "d-check", tone: "check", icon: "shield-check", k: "2 · Agent checks", title: "Code decides, not the model", line: "Payee, amount, due date, account, the CFO's limits.", rec: d.recs.invoice },
+    { id: "d-check", tone: "check", icon: "shield-check", k: "2 · Agent checks", title: "The rules check it, not the model", line: "Payee, amount, due date, account, the CFO's limits.", rec: d.recs.invoice },
     { id: "d-alone", tone: "ok", icon: "check", k: "3a · Within the limit", title: `${d.alone} paid alone`, line: "Routine bills, inside the agent's limit.", rec: d.recs.run },
     { id: "d-cfo", tone: "cfo", icon: "scan-face", k: "3b · Over the limit", title: `${d.amount} to the CFO's Face ID`, line: "The CFO signs the exact terms; Airwallex pays.", rec: d.recs.run },
     { id: "d-cent", tone: "bad", icon: "octagon-x", k: "4 · One cent changed", title: "Payment refused", line: `${plusCent(d.amount)} after signing: the hash breaks. Nothing paid.`, rec: d.recs.run },
@@ -122,7 +122,7 @@ ${node(s[0]!)}${wire()}${node(s[1]!)}${wire(" fork")}
 export interface BzLayer { id: string; tone: "person" | "engine" | "rails" | "proof"; icon: string; name: string; line: string; parts: readonly (readonly [string, string])[] }
 export const BZ_LAYERS: readonly BzLayer[] = [
   { id: "l-cfo", tone: "person", icon: "building-2", name: "CFO & company", line: "Sets the limits and signs what goes over them.", parts: [["CFO's passkey (Face ID)", "security#arch"], ["Company policy", repoHref("policy/example-policy.json")], ["Accountant: reads, cannot pay", "books"]] },
-  { id: "l-engine", tone: "engine", icon: "feather", name: "Purser engine", line: "Agents propose, code decides.", parts: [["Agents propose (Claude)", "claude"], ["Code decides: limits, payees, duplicates, cash", repoHref("src/policy/rules.ts")], ["CFO policy also in OPA/Rego", repoHref("docs/policy-opa.md")]] },
+  { id: "l-engine", tone: "engine", icon: "feather", name: "Purser engine", line: "Agents propose; Purser's rules enforce the limits.", parts: [["Agents propose (Claude)", "claude"], ["Rules enforce: limits, payees, duplicates, cash", repoHref("src/policy/rules.ts")], ["CFO policy also in OPA/Rego", repoHref("docs/policy-opa.md")]] },
   { id: "l-rails", tone: "rails", icon: "arrow-left-right", name: "Rails", line: "Each rail holds its own lock.", parts: [["Airwallex sandbox", "airwallex"], ["Alta testnet", "alta"], ["Visa via Airwallex Airi, sandbox", "visa"]] },
   { id: "l-proof", tone: "proof", icon: "file-check", name: "Proof & books", line: "Every step on record, every payment booked.", parts: [["Hash-chained log, anchored on Alta", repoHref("src/audit/log.ts")], ["T:0 books", "books"], ["Moneybird (sandbox)", repoHref("docs/moneybird.md")]] },
 ];

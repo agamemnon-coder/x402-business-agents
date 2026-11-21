@@ -116,9 +116,12 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // Then 21 Nov: Ask Purser as an agent (read-only tools, files), the console's company page and charts, the agents' cards
   // on a phone and tokenisation: 13,653,607 bytes, about 22 KB over 13 MB; the budget moves to 13.25 MB. The compressed
   // size, which is what Cloudflare limits, stays under 3 MiB (checked below).
-  it("stays under 13.25 MB, and under 3 MB gzipped", () => {
+  // Then 21 Nov, later (Max): Purser Cloud opening on Overview with one stack strip, the sign-in globe behind the words,
+  // the restyled Ask Purser and the /business redesign: about 7 KB over 13.25 MB in this build; the budget moves to
+  // 13.5 MB. The compressed size, which is what Cloudflare limits, stays under 3 MiB (checked below).
+  it("stays under 13.5 MB, and under 3 MB gzipped", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
-    expect(bytes).toBeLessThan(13.25 * 1024 * 1024);
+    expect(bytes).toBeLessThan(13.5 * 1024 * 1024);
     expect(gzipped).toBeLessThan(3 * 1024 * 1024);
   });
 });
