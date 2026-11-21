@@ -950,7 +950,9 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
       // 17 Nov: the one inside the limit that code's cash check holds, right after them, first of the held group (19 Nov
       // 2026, live review: it is held too, so the group's heading comes before it).
       const cashK=(s)=>s.key==='cash';
-      const items=[...all.filter(paid).sort((a,b)=>(a.key==='within'?0:1)-(b.key==='within'?0:1)),...all.filter(cashK),...all.filter((s)=>!paid(s)&&!cashK(s))];
+      // 21 Nov (owner): a new visitor starts on Bergtex Textil GmbH, BTX-2026-21, EUR 1,850.00 (above the agent's limit:
+      // the CFO's approval), picked; the EUR 120.00 one the agent pays alone stays right under it as its own example.
+      const items=[...all.filter(paid).sort((a,b)=>(a.key==='clean'?0:1)-(b.key==='clean'?0:1)),...all.filter(cashK),...all.filter((s)=>!paid(s)&&!cashK(s))];
       if(!items.length){
         // Calmly, with a retry that reads them again; a kept tap is dropped, the button stays off.
         queued=false;gate();
@@ -1788,7 +1790,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     // The signature line says what is so for this payment: the hash in the Airwallex sandbox transfer's metadata only when
     // this payment made one (its note names the same signed hash), else the simulated bank's own check.
     const awx=!!(S.awx&&S.awx.source==='airwallex-sandbox'&&S.proposal&&S.awx.terms_sha256===S.proposal.terms_sha256);
-    const card=el('section','why refuse card refusal',[el('p','head',el('span','',[el('span','no',X.refused),': '+X.head])),diff,el('p','rule',X.rule),el('p','sigl',fill(awx?X.signAwx:X.signSim,{via:method()===C.method.other?'':' ('+method()+')'}))]);
+    const card=el('section','why refuse card refusal',[el('p','head',el('span','',[el('span','no',X.refused),' '+X.head])),diff,el('p','rule',X.rule),el('p','sigl',fill(awx?X.signAwx:X.signSim,{via:method()===C.method.other?'':' ('+method()+')'}))]);
     card.setAttribute('role','status');
     const proof=el('details','',[el('summary','',X.proof),el('p','stamp',Y.stamp)]);
     if(sig.verified===false){const why=typeof sig.reason==='string'&&/\s/.test(sig.reason.trim())?sig.reason.trim():Y.signatureOff;proof.append(el('p','layer',fill(Y.signature,{reason:why})))}
