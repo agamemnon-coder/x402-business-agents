@@ -27,8 +27,8 @@ export const AIRWALLEX_LOGO_FILE = "src/ui/logos/airwallex-306x42.png";
 export const AIRWALLEX_LOGO_ORIGINAL = "src/ui/logos/airwallex.png";
 /** The served file's own size (306 × 42; the original is 2435 × 334): the badge shows it at LOGO_HEIGHT px high, the width kept in proportion. */
 export const AIRWALLEX_LOGO_SIZE = { width: 306, height: 42 } as const;
-/** Smaller than Purser's mark in the header (a 30 px tile). */
-export const LOGO_HEIGHT = 14;
+/** Smaller than Purser's mark in the header (a 30 px tile); 21 Nov (Max): 12 px, the badge read too large beside the brand. */
+export const LOGO_HEIGHT = 12;
 const LOGO_WIDTH = Math.round((LOGO_HEIGHT * AIRWALLEX_LOGO_SIZE.width) / AIRWALLEX_LOGO_SIZE.height);
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -49,7 +49,7 @@ export function builtOnBadge(o: { href?: string; cls?: string; src?: string } = 
  * The badge's style, the same in light and dark: a white pill (the logo has no light version), dark words, a hairline.
  * Self-contained (no page token), so the site and Purser Cloud draw it alike.
  */
-export const BUILT_ON_CSS = `.awx-badge { display: inline-flex; align-items: center; gap: 7px; flex: none; padding: 5px 11px; border-radius: 999px; background: #ffffff; border: 1px solid #e3e6ec; color: #3b4456; font: 600 12px/1 Inter, system-ui, -apple-system, sans-serif; letter-spacing: 0; text-decoration: none; white-space: nowrap; }
-.awx-badge img { display: block; height: ${LOGO_HEIGHT}px; width: auto; min-width: ${LOGO_WIDTH}px; overflow: hidden; font: 800 14px/14px Inter, system-ui, -apple-system, sans-serif; letter-spacing: -.02em; color: #f2512f; }
+export const BUILT_ON_CSS = `.awx-badge { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 4px 9px; border-radius: 999px; background: #ffffff; border: 1px solid #e3e6ec; color: #3b4456; font: 600 11px/1 Inter, system-ui, -apple-system, sans-serif; letter-spacing: 0; text-decoration: none; white-space: nowrap; }
+.awx-badge img { display: block; height: ${LOGO_HEIGHT}px; width: auto; min-width: ${LOGO_WIDTH}px; overflow: hidden; font: 800 12px/12px Inter, system-ui, -apple-system, sans-serif; letter-spacing: -.02em; color: #f2512f; }
 a.awx-badge:hover { border-color: #c9cfda; }
 a.awx-badge:focus-visible { outline: 2px solid var(--accent, #6d28d9); outline-offset: 2px; }`;

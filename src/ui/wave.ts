@@ -158,7 +158,8 @@ export const waveScript = (o: WaveOptions): string => `
   var lastF = 0, emaF = 0, nF = 0;
   function frame(now) {
     raf = 0;
-    if (lastF) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 300 || (++nF > 10 && emaF > 50)) still = true; } lastF = now;
+    // A gap over a second is a tab or window coming back (frames pause while hidden), never a slow device: it does not count.
+    if (lastF && now - lastF < 1000) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 400 || (++nF > 12 && emaF > 60)) still = true; } lastF = now;
     var t = (now - t0) / 1000, D = dark();
     px += (mx - px) * 0.08; py += (my - py) * 0.08;
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
@@ -183,7 +184,7 @@ export const waveScript = (o: WaveOptions): string => `
   if (still) { frame(performance.now()); return; }
   go();
   if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { seen = es[0].isIntersecting; if (seen) go(); else stop(); }).observe(c);
-  document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else go(); });
+  document.addEventListener("visibilitychange", function () { lastF = 0; if (document.hidden) stop(); else go(); });
   // The pointer or a finger, in the canvas's clip space; nothing here takes a click, a tap or a scroll.
   function at(x, y) { if (!box) box = c.getBoundingClientRect(); return [((x - box.left) / box.width) * 2 - 1, 1 - ((y - box.top) / box.height) * 2]; }
   function move(x, y) { var p = at(x, y); if (p[1] < -1 || p[1] > 1) { mx = my = 9; return; } mx = p[0]; my = p[1]; if (px > 2) { px = mx; py = my; } }
@@ -253,7 +254,8 @@ function wave2d() {
   var lastF = 0, emaF = 0, nF = 0;
   function frame(now) {
     raf = 0;
-    if (lastF) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 300 || (++nF > 10 && emaF > 50)) still = true; } lastF = now;
+    // A gap over a second is a tab or window coming back (frames pause while hidden), never a slow device: it does not count.
+    if (lastF && now - lastF < 1000) { var dtF = now - lastF; emaF = emaF ? emaF * 0.9 + dtF * 0.1 : dtF; if (dtF > 400 || (++nF > 12 && emaF > 60)) still = true; } lastF = now;
     var t = (now - t0) / 1000;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, W, H);
@@ -306,7 +308,7 @@ function wave2d() {
   go();
   if ("ResizeObserver" in window) new ResizeObserver(function () { build(); }).observe(c); else addEventListener("resize", build);
   if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { seen = es[0].isIntersecting; if (seen) go(); else stop(); }).observe(c);
-  document.addEventListener("visibilitychange", function () { if (document.hidden) stop(); else go(); });
+  document.addEventListener("visibilitychange", function () { lastF = 0; if (document.hidden) stop(); else go(); });
   darkQ.addEventListener && darkQ.addEventListener("change", build);
   // Under reduced motion the script returns at its start: the canvas is not drawn and the still gradient stands.
   // Where the pointer or a finger is, in the canvas's own pixels; nothing here prevents a click, a tap or a scroll.

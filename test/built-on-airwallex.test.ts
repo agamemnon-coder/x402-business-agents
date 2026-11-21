@@ -29,7 +29,7 @@ const headerOf = (html: string) => /<header class="top">[\s\S]*?<\/header>\n<asi
 describe("the Built on Airwallex badge", () => {
   it("is one component: the words, the official logo at a fixed height below Purser's 30 px mark, no endorsement words", () => {
     const b = builtOnBadge({ href: "airwallex" });
-    expect(b).toBe(`<a class="awx-badge" href="airwallex" title="Built on Airwallex"><span class="awx-l">Built on</span><img src="${AIRWALLEX_LOGO_SRC}" alt="Airwallex" width="102" height="14"></a>`);
+    expect(b).toBe(`<a class="awx-badge" href="airwallex" title="Built on Airwallex"><span class="awx-l">Built on</span><img src="${AIRWALLEX_LOGO_SRC}" alt="Airwallex" width="87" height="12"></a>`);
     expect(LOGO_HEIGHT).toBeLessThan(30);
     expect(b).not.toMatch(/partner|endorse|certified|official|approved|powered/i);
     // The same look in light and dark: a white pill (the file is a dark wordmark with no light version), never a filter.

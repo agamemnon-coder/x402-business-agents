@@ -70,12 +70,12 @@ function ovGlobe(){
   requestAnimationFrame(()=>ovGlobeRun(c));
   return box}
 function ovGlobeRun(c){
-  const g=c.getContext('2d');if(!g)return;let still=RM(),lastF=0,emaF=0,nF=0;let raf=0,seen=true,px=0,py=0,mx=0,my=0;
-  const N=innerWidth<700?700:1500,pts=[];for(let i=0;i<N;i++){const y=1-(i+0.5)/N*2,r=Math.sqrt(1-y*y),a=i*2.399963;pts.push([Math.cos(a)*r,y,Math.sin(a)*r])}
+  const g=c.getContext('2d');if(!g)return;let still=RM(),lastF=0,emaF=0,nF=0,lastD=0;let raf=0,seen=true,px=0,py=0,mx=0,my=0;
+  const N=innerWidth<700?520:1000,pts=[];for(let i=0;i<N;i++){const y=1-(i+0.5)/N*2,r=Math.sqrt(1-y*y),a=i*2.399963;pts.push([Math.cos(a)*r,y,Math.sin(a)*r])}
   const spr=(()=>{const s=document.createElement('canvas');s.width=s.height=32;const x=s.getContext('2d'),gr=x.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(235,228,255,1)');gr.addColorStop(.25,'rgba(167,139,250,.85)');gr.addColorStop(1,'rgba(124,92,255,0)');x.fillStyle=gr;x.fillRect(0,0,32,32);return s})();
-  function size(){const r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);c.width=Math.max(1,Math.round(r.width*d));c.height=Math.max(1,Math.round(r.height*d));g.setTransform(d,0,0,d,0,0);return r}
+  function size(){const r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,1.5);c.width=Math.max(1,Math.round(r.width*d));c.height=Math.max(1,Math.round(r.height*d));g.setTransform(d,0,0,d,0,0);return r}
   let R=size();
-  function frame(now){raf=0;if(lastF){const dtF=now-lastF;emaF=emaF?emaF*0.9+dtF*0.1:dtF;if(dtF>300||(++nF>10&&emaF>50))still=true}lastF=now;const W=R.width,H=R.height,cx=W*0.58,cy=H*0.62,rad=Math.min(W*0.42,H*0.62),t=now/1000;
+  function frame(now){raf=0;if(lastF&&now-lastF<1000){const dtF=now-lastF;emaF=emaF?emaF*0.9+dtF*0.1:dtF;if(dtF>400||(++nF>12&&emaF>60))still=true}lastF=now;if(now-lastD<33){go();return}lastD=now;const W=R.width,H=R.height,cx=W*0.58,cy=H*0.62,rad=Math.min(W*0.42,H*0.62),t=now/1000;
     px+=(mx-px)*0.06;py+=(my-py)*0.06;g.clearRect(0,0,W,H);g.globalCompositeOperation=document.documentElement.getAttribute('data-theme')==='light'||!matchMedia('(prefers-color-scheme: dark)').matches?'source-over':'lighter';
     const halo=g.createRadialGradient(cx,cy,rad*0.2,cx,cy,rad*1.35);halo.addColorStop(0,'rgba(124,92,255,0.22)');halo.addColorStop(1,'rgba(124,92,255,0)');g.fillStyle=halo;g.fillRect(0,0,W,H);
     const ry=t*0.12+px*0.4,rx=-0.35+py*0.25,cs=Math.cos(ry),sn=Math.sin(ry),cxr=Math.cos(rx),sxr=Math.sin(rx);
@@ -89,7 +89,7 @@ function ovGlobeRun(c){
   frame(performance.now());if(still)return;
   if('IntersectionObserver' in window)new IntersectionObserver((es)=>{seen=es[0].isIntersecting;if(seen)go()}).observe(c);
   if('ResizeObserver' in window)new ResizeObserver(()=>{R=size()}).observe(c);
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)go()});
+  document.addEventListener('visibilitychange',()=>{lastF=0;if(!document.hidden)go()});
   addEventListener('pointermove',(e)=>{if(e.pointerType!=='mouse')return;mx=(e.clientX/innerWidth-0.5)*2;my=(e.clientY/innerHeight-0.5)*2},{passive:true})}
 async function overviewNext(){
   title(t('cs.nav.overview'));
@@ -157,7 +157,7 @@ function overviewPlus(D){
 /** The site's wave behind the whole console, strongest under the header, faint behind the cards. */
 export const CONSOLE_WAVE_JS = `
 (function () { if (document.querySelector("canvas.pw-wave")) return; var c = document.createElement("canvas"); c.className = "pw-wave"; c.setAttribute("aria-hidden", "true"); document.body.prepend(c); })();
-${waveScript({ selector: "canvas.pw-wave", placement: "page", density: 0.8, intensity: 1.35 })}`;
+${waveScript({ selector: "canvas.pw-wave", placement: "page", density: 0.6, intensity: 1.35 })}`;
 
 export const OVERVIEW_PLUS_CSS = `
 ${WAVE_CANVAS_CSS}
