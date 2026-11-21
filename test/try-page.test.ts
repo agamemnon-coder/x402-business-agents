@@ -646,3 +646,24 @@ describe("P0 — signed one-cent attack stays in the interactive /try journey", 
     expect(COPY.TAMPER.rule).toContain("Anything else is blocked");
   });
 });
+
+
+// Judge experience: the optional guided overlay must use the same product UI as /try,
+// not a legacy look that makes the presentation seem like two different products.
+describe("jury demo — guided tour and refusal presentation", () => {
+  it("serves guided /try with the same public V2 product copy and an opt-in tour", async () => {
+    const response = await c.fetch(`${ORIGIN}/try?tour=1`);
+    expect(response.status).toBe(200);
+    const page = await response.text();
+    expect(page).toContain("AI agents prepare the transfer. Your passkey releases the funds.");
+    expect(page).toContain("get('tour')==='1'");
+    expect(page).toContain("location.pathname+'?tour=1'");
+    expect(page).toContain(".screen.pay .refusal");
+    expect(page).toContain("prefers-reduced-motion:reduce");
+  });
+
+  it("retains a real server-side one-cent refusal and supports reduced motion", () => {
+    expect(script).toContain("await payCall(pid,body)");
+    expect(script).toContain("if(o==='refused')");
+  });
+});
