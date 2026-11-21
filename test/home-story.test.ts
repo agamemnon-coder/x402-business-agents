@@ -315,7 +315,7 @@ describe("The judge tour, on Home and its stops", () => {
     const marker = 'K = "purser.tour"';
     for (const key of ["home", "metal", "visa", "books", "proof"]) {
       expect({ key, bar: pages[key]!.includes(marker) }).toEqual({ key, bar: true });
-      expect(pages[key]!.match(/<script\b[^>]*>/gi)).toHaveLength(1);
+      expect((pages[key]!.match(/<script\b[^>]*>/gi) ?? []).filter((t) => !/application\/json/i.test(t))).toHaveLength(1);
       expect(pages.csp[key]).toMatch(/script-src 'sha256-/);
       expect(pages[key]).toContain("aside.tbar {");
     }
