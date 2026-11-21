@@ -94,7 +94,7 @@ describe("Home, 21 Nov: one short story", () => {
     for (const html of [ON, OFF]) {
       expect(mainOf(html)).not.toContain('<p class="reassure">');
       const wf = text(/<div class="wf"[\s\S]*?<p class="wf-note">/.exec(mainOf(html))![0]);
-      expect(wf).toContain("Recorded /try runs · sandbox");
+      expect(wf).toContain("Sandbox · no account needed"); // 21 Nov, later (owner): no account needed, said on the label
       expect(wf).toContain("Paid · Airwallex sandbox, test money");
     }
   });
@@ -117,7 +117,7 @@ describe("Home, 21 Nov: one short story", () => {
       for (const where of [/<span class="wf-c wf-paid">[\s\S]*?<\/span>/, /<li class="reveal p-cent"[\s\S]*?<\/li>/]) expect(text(where.exec(t)![0])).toMatch(/test money/i);
       // The Workflow says where its payment ran, and that its passkey was a test passkey.
       const wf = text(/<div class="wf"[\s\S]*?<p class="wf-note">/.exec(t)![0]);
-      expect(wf).toContain("Recorded /try runs · sandbox");
+      expect(wf).toContain("Sandbox · no account needed"); // 21 Nov, later (owner): no account needed, said on the label
       expect(wf).toContain("Paid · Airwallex sandbox");
       expect(wf).toContain("test passkey");
       // Every proof tile says where it ran.

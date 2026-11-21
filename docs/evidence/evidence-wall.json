@@ -843,6 +843,78 @@
           "asOf": "2026-11-21"
         }
       ]
+    },
+    {
+      "id": "ev-load",
+      "title": "Under load",
+      "tiles": [
+        {
+          "key": "try-at-once",
+          "fig": "10",
+          "label": "visitors on the public /try at once: no 429, no 5xx",
+          "note": "436 API calls, started within 446 ms. 4 of the 10 walks passed every step; 6 stopped when 6 sandbox payouts asked in the same seconds timed out; the record says why, and the fix.",
+          "tag": "sandbox",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-try-capacity.md",
+          "rec": "docs/runs/2026-11-21-try-concurrent/concurrency.json",
+          "asOf": "2026-11-21"
+        },
+        {
+          "key": "try-at-once-poll",
+          "fig": "0.40 s",
+          "label": "engine answer with 10 visitors at once (median)",
+          "note": "p95 0.79 s over 160 event polls; a new test company: median 1.7 s, p95 3.3 s. Timed in each browser.",
+          "tag": "sandbox",
+          "tone": "",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-21-try-capacity.md",
+          "rec": "docs/runs/2026-11-21-try-concurrent/concurrency.json",
+          "asOf": "2026-11-21"
+        },
+        {
+          "key": "clearing-rate",
+          "fig": "4.15 a second",
+          "label": "payments paid through Alta's clearing, 16 wallets at once",
+          "note": "2,000 paid in 482.5 s; each: median 1.9 s, p95 8.5 s, p99 14.2 s. Test money.",
+          "tag": "testnet",
+          "tone": "metal",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-clearing-load.md",
+          "rec": "docs/runs/2026-11-19-clearing-load.json",
+          "asOf": "2026-11-19"
+        },
+        {
+          "key": "soak-latency",
+          "fig": "3.1 s",
+          "label": "Airwallex sandbox: create to PAID, soak payments (median)",
+          "note": "p95 3.5 s over 60 payments, 2 soaks; PAID by the sandbox's simulation: API round trips, not settlement. 687 requests: 0 answered 429, 0 not 2xx.",
+          "tag": "sandbox",
+          "tone": "awx",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-20-airwallex-soak.md",
+          "rec": "docs/runs/2026-11-19-airwallex-soak.json docs/runs/2026-11-19-airwallex-soak.md docs/runs/2026-11-20-airwallex-soak.json docs/runs/2026-11-20-airwallex-soak.md",
+          "asOf": "2026-11-20"
+        },
+        {
+          "key": "holds-at-once",
+          "fig": "128",
+          "label": "payments at once from 8 processes: no budget, cap or shared total passed",
+          "note": "Three agents' atomic spend holds on one database; run in CI on every change.",
+          "tag": "ci",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/holds-concurrency.test.ts",
+          "rec": "test/holds-concurrency.test.ts",
+          "asOf": null
+        },
+        {
+          "key": "try-load-local",
+          "fig": "All 50",
+          "label": "visitors at once started a test company, local /try: no 5xx, no 429",
+          "note": "One local wrangler dev process, not the deployed site; no Claude. The limits held; no deployed latency.",
+          "tag": "test",
+          "tone": "ok",
+          "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-try-load.md",
+          "rec": "docs/runs/2026-11-12-try-load.md",
+          "asOf": "2026-11-12"
+        }
+      ]
     }
   ]
 }

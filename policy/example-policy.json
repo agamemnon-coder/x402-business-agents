@@ -1,0 +1,12 @@
+{
+  "aloneLimit": { "currency": "EUR", "amount": "500.00" },
+  "cashFloors": { "EUR": "25000.00", "USD": "3000.00" },
+  "payLate": null,
+  "agentPurchase": {
+    "aloneMaxCents": 2000,
+    "alonePerDay": 3,
+    "hardCapCents": 20000,
+    "currencies": ["EUR"],
+    "merchants": ["https://kit11.max-31b.workers.dev"]
+  }
+}

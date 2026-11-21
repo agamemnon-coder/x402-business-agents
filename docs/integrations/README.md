@@ -53,16 +53,13 @@ books or carries a message, and none of it moves money.
 </tr>
 <tr>
 <td><b>Books and ERP</b></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-xero.svg" alt="Xero" height="24"><br><sub>Xero</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/si-quickbooks.svg" alt="QuickBooks" height="24"><br><sub>QuickBooks</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/exact.svg" alt="Exact" height="24"><br><sub>Exact Online</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/moneybird.svg" alt="Moneybird" height="24"><br><sub>Moneybird</sub></td>
-<td align="center"><img src="../../src/ui/logos/brands/si-odoo.svg" alt="Odoo" height="24"><br><sub>Odoo</sub></td>
 <td align="center"><b>BC</b><br><sub>Business Central</sub></td>
 </tr>
 <tr>
 <td><b>Messages and mail</b></td>
-<td align="center"><img src="../../src/ui/logos/brands/slack.svg" alt="Slack" height="24"><br><sub>Slack</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/microsoft-teams.svg" alt="Microsoft Teams" height="24"><br><sub>Microsoft Teams</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/si-whatsapp.svg" alt="WhatsApp" height="24"><br><sub>WhatsApp</sub></td>
 <td align="center"><img src="../../src/ui/logos/brands/gmail.svg" alt="Gmail" height="24"><br><sub>Gmail</sub></td>
@@ -139,8 +136,8 @@ flowchart LR
   alta --> ledger
   airi --> ledger
   ledger --> t0["T:0"]
-  ledger --> books["Xero, QuickBooks, Exact,<br/>Moneybird, Odoo, Business Central"]
-  ledger --> msgs["Slack, Teams, WhatsApp, e-mail"]
+  ledger --> books["QuickBooks, Exact,<br/>Moneybird, Business Central"]
+  ledger --> msgs["Teams, WhatsApp, e-mail"]
 ```
 
 No arrow from an agent, a key or an integration reaches a rail without passing Purser's policy, and above the limit only
@@ -325,6 +322,36 @@ route is in the code but not in the document, or the other way round, or when th
 
 Safety boundary: each operation names the scope it needs (`x-purser-needs`). Proposing needs `propose`. Approving needs
 `approve`, which no key can hold: a signed-in CFO's own passkey over the exact terms.
+
+## SDK quickstart: which invoices wait for the CFO
+
+Both clients run from a clone of the repository: not published to npm or PyPI. They take an API key with the read
+scope (an owner makes it in Purser Cloud); the demo token works at `/mcp` only. Both snippets run against Purser Cloud
+in-process in `test/sdk-quickstart.test.ts`, and `/connect-ai` shows the same.
+
+```sh
+git clone https://github.com/agamemnon-coder/x402-business-agents purser && cd purser
+export PURSER_URL=https://purser.example.com
+export PURSER_API_KEY=pck_...   # a key with the read scope; never in code
+```
+
+```ts
+// quickstart.ts, in the clone: npx tsx quickstart.ts
+import { Purser } from "./sdk/typescript/src/index.js";
+const purser = Purser.fromEnv();
+for (const i of await purser.listPayableInvoices())
+  if (i.proposal?.status === "PENDING_APPROVAL") console.log(i.id, i.vendor, i.currency, i.total, "waits for the CFO");
+```
+
+```python
+# quickstart.py, in the clone: python3 quickstart.py
+import sys; sys.path.insert(0, "sdk/python")
+from purser import Purser
+purser = Purser.from_env()
+for i in purser.list_payable_invoices():
+    if (i.get("proposal") or {}).get("status") == "PENDING_APPROVAL":
+        print(i["id"], i["vendor"], i["currency"], i["total"], "waits for the CFO")
+```
 
 ## TypeScript SDK
 

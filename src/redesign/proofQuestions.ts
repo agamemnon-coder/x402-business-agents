@@ -30,6 +30,8 @@ export const QUESTIONS: readonly Question[] = [
       { id: "pl-alta", title: "Alta", keys: ["alta-payments", "alta-series-paid", "alta-merkle", "clearing-load"] },
       { id: "pl-visa", title: "Visa via Airwallex's Airi", keys: ["visa-airi"] },
       { id: "pq-try", title: "The public /try, timed", keys: ["try-journeys", "try-sign-paid", "try-autopay", "try-refusal"] },
+      // 21 Nov, later (owner: show what competitors advertise): performance and concurrency, each from its record.
+      { id: "pq-load", title: "Under load", keys: ["try-at-once", "try-at-once-poll", "clearing-rate", "soak-latency", "holds-at-once", "try-load-local"] },
     ],
   },
   {
@@ -80,7 +82,7 @@ export const QUESTIONS: readonly Question[] = [
 /** Where a tile no block names goes: its wall group's section. */
 /** Tiles told on another page only: the TAP interop run is on /visa (Max's last round, item 2). */
 export const NEVER_ON_PROOF: ReadonlySet<string> = new Set(["tap-interop"]);
-const GROUP_HOME: Record<string, QuestionId> = { "ev-rails": "q-live", "ev-forged": "q-approvals", "ev-ai": "q-ai", "ev-attacked": "q-security", "ev-built": "q-verify", "ev-quality": "q-built", "ev-scale": "q-live" };
+const GROUP_HOME: Record<string, QuestionId> = { "ev-rails": "q-live", "ev-forged": "q-approvals", "ev-ai": "q-ai", "ev-attacked": "q-security", "ev-built": "q-verify", "ev-quality": "q-built", "ev-scale": "q-live", "ev-load": "q-live" };
 
 /** The newest held-out eval tile on /proof (the highest N of the eval-vN tiles shown), or null. */
 export function newestEvalKey(w: EvidenceWall): string | null {

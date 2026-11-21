@@ -150,7 +150,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(README).not.toContain("Text names only");
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/gEUm8RlhZac");
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(280);
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(310); // 310 since 21 Nov 2026 (owner: show what competitors advertise): the SDK quickstart under "Try it in 2 minutes", +26 lines (305 as built)
   });
 
   it("opens Home under its heading with the idea, three figures, Try as the one primary button, Watch and Pilot, one sandbox line", () => {
