@@ -111,8 +111,10 @@ describe("the site after v4", () => {
     // Status 90 since 12 Nov: the status lines (empty until /health is read) and the five latest live runs.
     // Status 115 since 19 Nov: the hourly checks' card, its heading, the as-built line with no number and its link (91 as built).
     Object.assign(budget, { docs: 280 /* +10, review 12 Nov: the KIT note; +35, 13 Nov: the "Connect your AI" card; +35, jury 13 Nov: Purser Cloud as a guest in that card, its link and its folded steps' header (274 as built) */, status: 115 });
-    // Privacy 120 since 20 Nov (outside audit, finding 3.4): four short cards, each one sentence, the detail folded.
-    Object.assign(budget, { privacy: 120 });
+    // Privacy 340 since 21 Nov (Max: "It must be better and prettier. Make clear, with GDPR etc., that we are EU compliant"):
+    // where the data lives, the rights with their routes, the retention lanes and the services with their locations as
+    // the inventory states them, and the company line (335 as built). 120 since 20 Nov (outside audit, finding 3.4): four short cards.
+    Object.assign(budget, { privacy: 340 });
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -131,10 +133,10 @@ describe("the site after v4", () => {
     for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html.split(pages.client).join(" ")).replace(hostile || "\u0000", " ").replace(tile, " "))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
-  it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Security, Docs, then Airwallex, Alta, Visa, Claude, T:0", () => {
+  it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Security, Docs, Books, Privacy, then Airwallex, Alta, Visa, Claude (T:0 on Books since 21 Nov)", () => {
     // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
     // 13 Nov, evening (owner): the product tour and Pricing are out.
-    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Privacy", "privacy"], ["Airwallex", "airwallex"], ["Alta", "alta"], ["Visa", "visa"], ["Claude", "claude"], ["T:0", "t0"]]);
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Privacy", "privacy"], ["Airwallex", "airwallex"], ["Alta", "alta"], ["Visa", "visa"], ["Claude", "claude"]]);
     // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
     // left out until it is registered; then the menu must list it).
     // 12 Nov: Purser Cloud is its own deployment (an absolute link), served there, not by this Worker.
