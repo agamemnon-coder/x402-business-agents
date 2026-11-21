@@ -111,7 +111,7 @@ export function visaMeetsHtml(): string {
 <ul class="vs-rows">${rows.map((r) => `<li class="vs-row ${r.ok ? "vs-ok" : "vs-no"}"><span class="vs-k">${esc(area(r.key))}</span><span class="vs-t">${esc(r.text)}</span><span class="vs-r">${r.recs}</span></li>`).join("")}</ul></section>`;
 }
 
-/** The finding the judge found buried: reusing a credential, Purser refused it; the sandbox did not. */
+/** The finding the judge found buried: reusing a credential, Purser refused it; the sandbox leaves reuse to the integrator (review, 21 Nov: said so, not "the sandbox did not"). */
 export function visaReuseHtml(): string {
   const f = visaStoryFacts();
   if (!f) return "";
@@ -119,7 +119,7 @@ export function visaReuseHtml(): string {
   const then = f.reuse.filter((x) => x.then?.negative_test);
   if (now.length !== 2 || then.length !== 2) return "";
   const accepted = then.every((x) => (x.then!.negative_test!.airwallex?.outcome ?? "") === "SUCCEEDED");
-  return `<section class="card vs vs-reuse" id="${VISA_REUSE_ID}"><h2>${esc("A reused credential: Purser refused it, the sandbox did not")}</h2>
+  return `<section class="card vs vs-reuse" id="${VISA_REUSE_ID}"><h2>${esc("A reused credential: reuse left to the integrator; Purser enforces it")}</h2>
 <div class="vs-two"><div><p class="vs-lt">${esc(`Airi/Airwallex sandbox (${day(f.v3!.started_at)})`)}</p><p>${esc(accepted ? "Another amount, then a second use: both accepted (SUCCEEDED)." : "Another amount, then a second use: see the record.")}</p>${recLink(md(VIC3_PREV_FILE))}</div>
 <div><p class="vs-lt">${esc(`Purser (${day(f.v4.started_at)})`)}</p><p>${esc(`Both refused before any Airwallex call: ${now.map((x) => x.now!.outcome!.code).join(", ")}.`)}</p>${recLink(md(VIC3_RUN_FILE))}</div></div></section>`;
 }

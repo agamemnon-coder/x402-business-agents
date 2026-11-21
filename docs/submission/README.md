@@ -6,7 +6,7 @@ The text of Purser's entry, block by block as it goes into the form, each figure
 
 | At a glance | Record |
 |---|---|
-| **Description: 3,972 characters**, under the 4,000 `test/submission.test.ts` holds it to | [the Description](#description) |
+| **Description: 3,964 characters**, under the 4,000 `test/submission.test.ts` holds it to | [the Description](#description) |
 | **Entered for** the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award | [rules.md](../rules.md) · [evidence/README.md](../evidence/README.md) |
 | Every run figure from **the main run of 3 November** | [main-run.json](../demo/main-run.json) · [run log](../runs/2026-11-03-main-run.md) · [`src/submission/facts.ts`](../../src/submission/facts.ts) |
 
@@ -31,7 +31,7 @@ For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign
 
 ## Description
 
-Characters: **3,972** (the text between the markers, as pasted; 3,998 if the form counts each line break as two).
+Characters: **3,964** (the text between the markers, as pasted; 3,990 if the form counts each line break as two).
 The form's own limit is not known; `test/submission.test.ts` checks this count and keeps the text under 4,000, even
 with CRLF line breaks. Alta (formerly Metal) at the first mention; the award keeps the hackathon's name, the Metal
 Award. The long text, with Airwallex, Alta, Claude, the controls and the other live tests in full:
@@ -72,7 +72,7 @@ Award. The long text, with Airwallex, Alta, Claude, the controls and the other l
 - Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and all 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex.
 - Alta (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey).
 - Claude: all 24 decisions in the main run by Claude, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment now passes every run, and the next run (rel-1b) passed every step.
-- Visa Intelligent Commerce via Airwallex's Airi (sandbox, 4 runs 7–14 Nov, 6 paid): above Purser's limit only after Face ID; a reused credential refused by Purser before any call (14 Nov), which the sandbox had accepted (12 Nov).
+- Visa Intelligent Commerce via Airwallex's Airi (sandbox, 4 runs 7–14 Nov, 6 paid): above Purser's limit only after Face ID; a reused credential refused by Purser before any call (14 Nov); reuse is left to the integrator.
 
 **After the kit.** Airwallex held a test-passkey payout; a person approved; PAID (simulated). Purser Cloud: a public test preview (test companies, simulated bank; Agents and Tokenisation tabs).
 

@@ -20,7 +20,7 @@ import { VISA_BUILT_ON, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS, VISA_VIC_BUI
 import { buildPages } from "../src/relay/assets.js";
 import { AIRI_RUN_FILE, AIRI_SCRIPTED, AIRI_SUMMARY, airiAsker, airiRun, airiSummaryLine } from "../src/redesign/airiRun.js";
 import { homePage } from "../src/redesign/home.js";
-import { ICC_LINE, VISA_ENTRY_LINE, VISA_H1, VISA_LEAD, VISA_TAP_HEADING, VISA_TITLE, airwallexPage, assertVicFirst, visaLatestLabel, visaPage, visaRunLabel } from "../src/redesign/partners.js";
+import { ICC_LINE, VISA_BRIEF, VISA_BRIEF_LINE, VISA_ENTRY_LINE, VISA_H1, VISA_LEAD, VISA_TAP_HEADING, VISA_TITLE, airwallexPage, assertVicFirst, visaLatestLabel, visaPage, visaRunLabel } from "../src/redesign/partners.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { loadRecord, ownTap, tapRun } from "../src/redesign/run.js";
 import { MAIN_RUN_REAL, esc } from "../src/redesign/ui.js";
@@ -140,7 +140,10 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
     // One h1, the first heading of the page.
     expect(html.match(/<h1\b/g)).toHaveLength(1);
     expect(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]>/.exec(main)![0]).toBe(`<h1>${esc(VISA_H1)}</h1>`);
-    expect(VISA_H1).toMatch(/Visa Intelligent Commerce via Airwallex Airi \(sandbox\)/);
+    // Review, 21 Nov: the heading leads with the track; the brief is cited for VIC, word for word as the matrix quotes it.
+    expect(VISA_H1).toBe("Visa track: agent card payments via Airwallex Airi (sandbox, test card)");
+    expect(readFileSync(new URL(`../${VISA_BRIEF.doc}`, import.meta.url), "utf8")).toContain(`"Visa --> Trusted Access Protocol (TAP), ${VISA_BRIEF.quote} + Slack support"`);
+    expect(main.replace(/&quot;/g, '"')).toContain(VISA_BRIEF_LINE);
     expect(`${VISA_H1} ${VISA_LEAD}`).not.toMatch(/TAP|sign/i);
     // The label beside it is the Airi run's, from its record: its date and "Airwallex sandbox · test card · test money".
     expect(visaRunLabel(airiRun()!)).toBe(`7 Nov · ${String(rec.label).split(", ").join(" · ")}`);

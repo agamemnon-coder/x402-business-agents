@@ -245,7 +245,15 @@ export function visaLabels(run: AgentRun, tap: NonNullable<ReturnType<typeof tap
 /** /visa's title and its large heading (jury panel, 12 Nov): the Airi run by its name. */
 /** Partner scan, 14 Nov: the full name of what Purser used, and that it is the sandbox. */
 export const VISA_TITLE = "Visa Intelligent Commerce via Airwallex Airi (sandbox)";
-export const VISA_H1 = VISA_TITLE;
+/** Review, 21 Nov: the heading leads with the track and what ran (agent card payments via Airi, sandbox, test card). */
+export const VISA_H1 = "Visa track: agent card payments via Airwallex Airi (sandbox, test card)";
+/**
+ * Why VIC via Airi is the Visa track's tooling, from the hackathon brief as docs/requirements-matrix.md quotes it (row V2:
+ * "Visa --> Trusted Access Protocol (TAP), Visa Intelligence Commerce (VIC) + Slack support"), and Visa's answer of
+ * 5 Nov in the hackathon Slack (VIC or ICC only; docs/evidence/README.md).
+ */
+export const VISA_BRIEF = { doc: "docs/requirements-matrix.md", anchor: "#6-visa-award", quote: "Visa Intelligence Commerce (VIC)" } as const;
+export const VISA_BRIEF_LINE = `The hackathon brief names Visa Intelligent Commerce as Visa tooling ("${VISA_BRIEF.quote}", row V2); Purser uses it through Airwallex's Airi.`;
 /**
  * The story in one line, right under the heading, true of the run's three purchases: Purser's policy came before any
  * request to Airi (within the limit it passed; above it the CFO signed first; the disallowed merchant got no credential).
@@ -394,7 +402,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   <div class="phd">${LOGO.visa}<span class="pill run" data-rec="${esc([AIRI_RUN_FILE, ...(vic3 ? [VIC3_RUN_FILE] : [])].join(" "))}">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   ${hero ? `${hero}
   ${visaArchHtml()}
-  <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
+  <p class="vbasis">${esc(VISA_BRIEF_LINE)} <a class="pf" href="${esc(`${REPO_BLOB}${VISA_BRIEF.doc}${VISA_BRIEF.anchor}`)}" target="_blank" rel="noopener">${esc("The brief, quoted")} ↗</a><br>${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   <div class="folds card vfolds"><details class="fold" id="visa-facts"><summary>${esc("The run's three facts, and the evidence tiles")}</summary>${top}</details>
   <details class="fold" id="visa-try"><summary>${esc("Try Purser's check on this credential")}</summary>${scene}</details>
   <details class="fold" id="visa-not-yet-fold"><summary>${esc("What is not proven yet")}</summary>${visaNotYetHtml()}</details>` : `${top}

@@ -75,7 +75,7 @@ describe("/visa, the reuse finding and the four runs", () => {
   it("sets the sandbox's answer (vic-3) beside Purser's refusal (vic-4)", () => {
     for (const f of ["F1", "F2"]) expect(step(v3, f).negative_test.airwallex.outcome).toBe("SUCCEEDED");
     const s = text(section(VISA_REUSE_ID));
-    expect(s).toContain("A reused credential: Purser refused it, the sandbox did not");
+    expect(s).toContain("A reused credential: reuse left to the integrator; Purser enforces it");
     expect(s).toContain("both accepted (SUCCEEDED)");
     expect(s).toContain("PURSER_CREDENTIAL_AMOUNT_MISMATCH, PURSER_CREDENTIAL_ALREADY_USED");
   });
