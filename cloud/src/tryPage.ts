@@ -2188,11 +2188,16 @@ function startSample(): { vendor: string; invoice_no: string; money: string; due
 
 /** The site's wave behind /try (21 Nov, Max: "the same high flow background"): full on the start in dark, quieter after it and in light. */
 const TRY_WAVE_CSS = `${WAVE_CANVAS_CSS}
-canvas.pw-wave { z-index: -1; }
+/* 21 Nov (Max: "the same high flow background, high quality"): Home's wave at full strength behind the start, the glass
+   card readable over it; Home's violet glows under it. Quieter once the run has started. */
+canvas.pw-wave { z-index: -1; opacity: 1; height: min(100%, 1100px); -webkit-mask-image: linear-gradient(180deg, #000 82%, transparent); mask-image: linear-gradient(180deg, #000 82%, transparent); }
+body:has(.screen.start)::after { content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none; background:
+  radial-gradient(60% 55% at 85% 30%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
+  radial-gradient(45% 40% at 10% 90%, color-mix(in srgb, var(--accent-ink, var(--accent)) 20%, transparent), transparent 70%); }
 body:not(:has(.screen.start)) canvas.pw-wave { opacity: .3; }
 @media (prefers-color-scheme: light) { canvas.pw-wave { opacity: .45; } }
 :root[data-theme="light"] canvas.pw-wave { opacity: .45; }`;
-export const TRY_WAVE_JS = waveScript({ selector: "canvas.pw-wave", placement: "page" });
+export const TRY_WAVE_JS = waveScript({ selector: "canvas.pw-wave", placement: "hero", intensity: 1.15 });
 
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }, over?: Record<string, Record<string, unknown>>): string {
   const copy = { limitAmount: TRY_ALONE_LIMIT.amount, limitCurrency: TRY_ALONE_LIMIT.currency, run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRY_VIDEO.url, label: TRY_VIDEO.label }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: { ...START, sample: startSample() }, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL }, cash: CASH };
