@@ -6,6 +6,7 @@
 // manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
 
 import { CONSOLE_PREMIUM_CSS } from "../../src/ui/premium.js";
+import { CONSOLE_WAVE_JS, OVERVIEW_PLUS_CSS, OVERVIEW_PLUS_JS } from "./consoleOverviewPlus.js";
 import { ASK_BUTTON_JS } from "./ask/page.js";
 import { SIGNIN_CSS } from "./signInLook.js";
 import { PREVIEW_TAGS } from "./brand.js";
@@ -2092,7 +2093,7 @@ const nonce = () => {
 const T0_CLOSE = t0CloseLine();
 
 /** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
-const USED = keysUsedIn(SCRIPT + SHELL_JS + UI_JS + CHARTS_JS + COMPANY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + BODY);
+const USED = keysUsedIn(SCRIPT + SHELL_JS + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS + COMPANY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + BODY);
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain, whether the cloud runs an engine). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
@@ -2101,15 +2102,16 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + UI_JS + CHARTS_JS + COMPANY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS + COMPANY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_PREMIUM_CSS}${SIGNIN_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_PREMIUM_CSS}${SIGNIN_CSS}${OVERVIEW_PLUS_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}
+${CONSOLE_WAVE_JS}
 ${ASK_BUTTON_JS}</script>
 </body></html>`;
 }

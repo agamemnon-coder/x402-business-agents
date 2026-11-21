@@ -105,17 +105,12 @@ main.ent .e-start .card {border-color:color-mix(in srgb,var(--accent) 18%,var(--
  * effects must not dominate financial screens): nothing here moves.
  */
 export const CONSOLE_PREMIUM_CSS = String.raw`
-.signed-in main { position:relative; isolation:isolate; min-height:80vh; overflow-x:clip; background:
-  radial-gradient(ellipse 70% 37% at 82% 3%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 72%),
-  linear-gradient(180deg,color-mix(in srgb,var(--accent) 5%,var(--bg)),var(--bg) 430px); }
-.signed-in main::before {content:"";position:absolute;z-index:0;pointer-events:none;left:-180px;right:0;top:-36px;height:456px;opacity:.18;
-  background-image:radial-gradient(circle,color-mix(in srgb,var(--accent) 70%,transparent) .8px,transparent 1.2px);
-  background-size:18px 18px;
-  -webkit-mask-image:radial-gradient(ellipse 70% 75% at 75% 0%,#000 4%,transparent 90%);mask-image:radial-gradient(ellipse 70% 75% at 75% 0%,#000 4%,transparent 90%);}
+/* The site's wave runs behind the whole console (cloud/src/consoleOverviewPlus.ts); the page lets it show between cards. */
+.signed-in main { position:relative; min-height:80vh; overflow-x:clip; background: transparent; }
 .signed-in main > .wrap {position:relative;z-index:1;}
 .abrand .mk { background:var(--mk-bg); color:var(--mk-ink); border:0; box-shadow:none; }
 /* One surface for every card. */
-.card, .auth { border-radius:16px; border-color:color-mix(in srgb,var(--accent) 13%,var(--border)); background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 3%,var(--surface)),var(--surface)); box-shadow:var(--hi),0 1px 2px rgba(16,24,40,.05),0 22px 44px -34px rgba(0,0,0,.55); }
+.card, .auth { border-radius:16px; border-color:color-mix(in srgb,var(--accent) 13%,var(--border)); background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 4%,color-mix(in srgb,var(--surface) 90%,transparent)),color-mix(in srgb,var(--surface) 92%,transparent)); box-shadow:var(--hi),0 1px 2px rgba(16,24,40,.05),0 22px 44px -34px rgba(0,0,0,.55); }
 .signed-in .card.next.hero, .signed-in .card.nyou {background:linear-gradient(130deg,color-mix(in srgb,var(--accent) 18%,var(--surface)),var(--surface) 58%);border-color:color-mix(in srgb,var(--accent) 38%,var(--border));}
 .next.hero .nic { box-shadow:0 8px 24px -8px var(--glow); }
 .signed-in .btn.primary,.auth .btn.primary {background:var(--btn-bg);border-color:var(--btn-line);color:var(--btn-ink);box-shadow:0 7px 26px var(--glow);}
@@ -147,9 +142,10 @@ svg.ring .seg.c0 { color:var(--c0); } svg.ring .seg.c1 { color:var(--c1); } svg.
   .signed-in .apptabs .ng { font-family:var(--mono); font-weight:600; letter-spacing:.14em; }
 }
 .signed-out .auth {border-color:color-mix(in srgb,var(--accent) 28%,var(--border));box-shadow:0 35px 95px -45px var(--glow);}
+/* The demo company (Max, 21 Nov: "one quiet disclosure"): the ribbon and the company's own line say it; no loose chip, no timer. */
+body:has(#demo:not([hidden])) #testchip, body:has(#demo:not([hidden])) .appbar #who .we { display:none; }
 .signed-out main {background:radial-gradient(ellipse 50% 65% at 20% 44%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 80%),var(--bg);}
 @media (prefers-color-scheme:light) { :root:not([data-theme="dark"]) svg.chart .line { filter:drop-shadow(0 2px 4px color-mix(in srgb,var(--accent) 35%,transparent)); } }
 :root[data-theme="light"] svg.chart .line { filter:drop-shadow(0 2px 4px color-mix(in srgb,var(--accent) 35%,transparent)); }
-@media(max-width:760px) {.signed-in main::before{opacity:.12;}}
-@media print {.signed-in main::before{display:none;} .card, .auth, svg.chart .line, svg.chart .b, svg.ring .seg { box-shadow:none; filter:none; }}
+@media print {.card, .auth, svg.chart .line, svg.chart .b, svg.ring .seg { box-shadow:none; filter:none; }}
 `;

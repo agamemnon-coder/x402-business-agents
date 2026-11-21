@@ -40,7 +40,7 @@ export const waveScript = (o: WaveOptions): string => `
     "  if (id < 2.5) {",
     "    float X = (u - 0.5) * 5.0, ph = id * 2.17;",
     "    float base = id < 0.5 ? -1.05 + 0.75 * u - 0.35 * sin(u * 3.1) : id < 1.5 ? -1.45 + 2.3 * u * u : 0.85 - 0.45 * u;",
-    "    float Y = base + 0.2 * sin(X * 1.25 + t * 0.33 + ph) + 0.07 * sin(X * 3.1 - t * 0.47 + ph * 1.7);",
+    "    float Y = base + 0.2 * sin(X * 1.25 + t * 0.33 + ph) + 0.07 * sin(X * 3.1 - t * 0.47 + ph * 1.7) + (place > 0.5 ? 0.95 : 0.0);",
     "    float Z = 1.7 + 1.0 * sin(X * 0.75 + t * 0.21 + ph) + (id > 1.5 ? 1.4 : 0.0) - (id < 0.5 ? 0.9 * (1.0 - u) * (1.0 - u) : id < 1.5 ? 0.8 * u * u : 0.0);",
     "    float th = X * 1.05 + t * 0.38 + ph + 0.7 * sin(X * 0.6 + t * 0.17 + ph);",
     "    float wd = (id > 1.5 ? 0.55 : 1.5) * (0.7 + 0.3 * sin(X * 0.9 + ph + t * 0.1));",
