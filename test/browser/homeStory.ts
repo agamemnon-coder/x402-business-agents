@@ -14,7 +14,8 @@
 // phone the first two screens show one date, the card's due date, and say "test money". On a wide screen the heading's
 // two sentences are two lines. Every expected value is read from the records, not typed here.
 import type { Page } from "playwright";
-import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
+import { FLOW, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
+import { WORKFLOW_RECORD, workflowFacts } from "../../src/redesign/heroWave.js";
 import { agentRoster, agentTiles, BUSINESS_HREF, PILOT_CTA, proofTiles, START, TOUR_BUTTON, WATCH_BUTTON, WHATS_REAL } from "../../src/redesign/home.js";
 import { FILM_URL } from "../../src/config/brand.js";
 import { BAND } from "../../src/redesign/integrations.js";
@@ -52,16 +53,16 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   if (await page.locator('main a[href="watch"], [data-stage]').count()) fail("a Watch link or a replay stage is in Home's main part");
 
   // The card: once, named by its record, its five steps, and every value the record holds.
-  const card = page.locator("main figure.hf");
-  if ((await card.count()) !== 1) fail(`Home shows ${await card.count()} product cards, not one`);
-  if ((await card.getAttribute("data-rec")) !== TRY_SAMPLE_RECORD) fail(`the card does not name its record ${TRY_SAMPLE_RECORD}`);
-  const steps = (await card.locator(".hf-steps > li").allInnerTexts()).map(squash);
-  if (JSON.stringify(steps) !== JSON.stringify([...FLOW_STEPS])) fail(`the card's steps are ${JSON.stringify(steps)}, not ${JSON.stringify(FLOW_STEPS)}`);
-  const shown = squash(await card.locator(".hf-card").textContent() ?? "");
-  const want = [FLOW.supplier, `Invoice ${FLOW.number}`, FLOW.amount, FLOW.due, FLOW.account, READER_CHIP, "Signed with a passkey", "fingerprint of the terms", ...FLOW.ledger.flatMap((l) => [l.code, l.name, l.debit || l.credit])];
-  for (const v of want) if (!shown.includes(v)) fail(`the card does not show "${v}" from ${TRY_SAMPLE_RECORD}`);
-  if ((await card.locator(".hf-pill span[title]").getAttribute("title")) !== `SHA-256 of the signed terms: ${FLOW.hash}`) fail(`the card's tooltip does not hold the hash ${FLOW.hash} from ${TRY_SAMPLE_RECORD}`);
-  if (await card.locator(".hf-card").evaluate((e) => getComputedStyle(e).display) !== "grid") fail("the card lost its style");
+  // The Workflow card (Max, 21 Nov: one demo): /try's sample invoice and each step's state, from both records.
+  const card = page.locator("main .e-hero .wf");
+  if ((await card.count()) !== 1) fail(`Home shows ${await card.count()} Workflow cards, not one`);
+  if ((await card.getAttribute("data-rec")) !== `${TRY_SAMPLE_RECORD} ${WORKFLOW_RECORD}`) fail(`the card does not name its records ${TRY_SAMPLE_RECORD} ${WORKFLOW_RECORD}`);
+  if (await page.locator("main figure.hf, main .e-start").count()) fail("the old product card or How to start is still on Home");
+  const f = workflowFacts()!;
+  const shown = squash(await card.textContent() ?? "");
+  const want = [FLOW.supplier, `Invoice ${FLOW.number}`, FLOW.amount, FLOW.due, READER_CHIP, ...f.steps.map((st) => st.chip), f.refused!.chip, ...FLOW.ledger.flatMap((l) => [l.code, l.name, l.debit || l.credit])];
+  for (const v of want) if (!shown.includes(v)) fail(`the card does not show "${v}" from its records`);
+  if (await card.evaluate((e) => getComputedStyle(e).display) === "none") fail("the card is not shown");
   const box = async () => { const b = await card.boundingBox(); return b ? `${Math.round(b.width)}x${Math.round(b.height)}@${Math.round(b.x)}` : "none"; };
   await page.waitForTimeout(1200);
   const s0 = await box();
@@ -175,11 +176,11 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   try {
     await still.goto(o.url, { waitUntil: "load" });
     await still.waitForTimeout(800);
-    const hidden = await still.locator("main figure.hf").evaluate((f) => [".hf-reader", ".hf-check", ".hf-pill", ".hf-paid", ".hf-l0", ".hf-l1", ".hf-l2"].filter((s) => { const e = f.querySelector(s); return !e || +getComputedStyle(e).opacity < 0.99 || getComputedStyle(e).visibility === "hidden"; }));
+    const hidden = await still.locator("main .wf").evaluate((f) => [".wf-s0 .wf-c", ".wf-s1 .wf-c", ".wf-s2 .wf-c", ".wf-s3 .wf-c", ".wf-s4 .wf-c", ".wf-no .wf-t", ".wf-s4 .wf-ok"].filter((s) => { const e = f.querySelector(s); return !e || +getComputedStyle(e).opacity < 0.99 || getComputedStyle(e).visibility === "hidden" || getComputedStyle(e).clipPath !== "none"; }));
     if (hidden.length) fail(`with reduced motion the card is not one still frame of its final state (${hidden.join(", ")} not shown)`);
-    const a = await still.locator("main figure.hf").boundingBox();
+    const a = await still.locator("main .wf").boundingBox();
     await still.waitForTimeout(1500);
-    const b = await still.locator("main figure.hf").boundingBox();
+    const b = await still.locator("main .wf").boundingBox();
     if (JSON.stringify(a) !== JSON.stringify(b)) fail("with reduced motion the card still moves");
     const moving = await still.evaluate(() => [...document.querySelectorAll("main .lband *, main .e-hero .copy *")].filter((e) => getComputedStyle(e).animationName !== "none").length);
     if (moving) fail(`with reduced motion ${moving} part(s) of the hero or the band still animate`);

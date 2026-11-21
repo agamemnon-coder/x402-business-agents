@@ -288,15 +288,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // Home as one story (home-story, 12 Nov; enterprise pass and jury pass): two buttons, the product card with its
     // record's values, the stat row from the records, no request, the sizes, the screens (test/browser/homeStory.ts).
     // The CFO's view is linked from Proof's head (checked below), not from Home.
-    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, shot: async (n) => { await page.locator("main figure.hf").screenshot({ path: join(shots, `home-${n}-${tag}.png`) }); } });
+    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, shot: async (n) => { await page.locator("main .e-hero .wf").screenshot({ path: join(shots, `home-${n}-${tag}.png`) }); } });
     await page.goto(`${base}/home`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
-    // At phone width: nothing in the hero or its card overlaps or is cut off (judges #12), and the card shows its final
-    // state, with no empty block waiting for the animation (review, 13 Nov).
+    // At phone width: nothing in the hero or its card overlaps or is cut off (judges #12).
     if (w <= 430) {
-      await noOverlap(page, `/ (Home) ${tag}`, ["main .e-hero .copy", "main .e-hero .ctas", "main .hf", "main .hf-card", "main .hf-side", "main .hf-inv dl"]);
-      const still = await page.evaluate(() => [...document.querySelectorAll(".hf-card *")].filter((e) => getComputedStyle(e).animationName !== "none").length);
-      if (still) fail(`/ (Home) ${tag}: ${still} parts of the product card still animate below 600 px`);
+      // The Workflow card (Max, 21 Nov) animates on a phone too, its steps folded to one line each, nothing overlapping.
+      await noOverlap(page, `/ (Home) ${tag}`, ["main .e-hero .copy", "main .e-hero .ctas", "main .wf", "main .wf-inv", "main .wf-s > details > summary"]);
     }
 
     // Tap targets on a phone (jury review, 12 Nov: menu links 37 px): every link, button and fold header of the shared
