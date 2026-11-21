@@ -901,30 +901,19 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = 1640; // /security 1640 since 19 Nov (the owner: enterprise grade): the architecture with its controls and "What we did, with evidence" (test/site-v4.test.ts); 705 since 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words), 694 as built; 590 since 14 Nov: +5 for "Alta (formerly Metal)" at the first mention (587 as built); 585 since the merge of the final jury (13 Nov): main's 555 plus 30: the line under the heading names the three attack tests; 555 since 13 Nov evening: the optional second key's card (Max: MFA as an option); 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
+      const budget = 1300; // /security 1300 since 21 Nov (Max: "We still have a lot of old things on the new page"): the layers diagram, its charts and the eleven cards out, the zero-trust and hostile-model items in "What we did" (1236 as built); 1640 since 19 Nov (the owner: enterprise grade): the architecture with its controls and "What we did, with evidence" (test/site-v4.test.ts); 705 since 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words), 694 as built; 590 since 14 Nov: +5 for "Alta (formerly Metal)" at the first mention (587 as built); 585 since the merge of the final jury (13 Nov): main's 555 plus 30: the line under the heading names the three attack tests; 555 since 13 Nov evening: the optional second key's card (Max: MFA as an option); 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
       const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead, main .notyet")].filter((e) => (e.offsetParent || getComputedStyle(e).position === "fixed") && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
       for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
       if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
-      const cards = await page.locator("main article.pc.card").count();
       {
-        // Nine controls and "Not yet" since the owner's request (12 Nov 15:55), and the optional second key (13 Nov): eleven
-        // cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
-        if (cards !== 11 || (await page.locator("main article.pc.card details.fold").count()) !== 12 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not eleven cards, each with its detail folded`);
-        // 12 Nov (jury check): "not prevented (detected after)".
-        if (!/Red team: \d+ attacks, \d+ stopped before anything moved, \d+ not prevented \(detected after\)\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
-        // The first link is Try (since #188 the hands-on demo, TRY_URL); since 12 Nov the second is Face ID on chain.
-        if (!/^(\/?try(\/sign)?|https:\/\/purser-try\.max-31b\.workers\.dev\/try)$/.test((await page.locator("#s-sign .links a").first().getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
-        // 13 Nov (the owner: diagrams and graphs, animated): six layers in one row from 900 px, else one column; four pulses
-        // moving along the track (CSS only), standing still for a reader who asks for reduced motion; the two charts.
-        const viz = await page.evaluate(`(() => { const ol = document.querySelector("#layers .zlayers"); const li = [...(ol ? ol.children : [])]; const tops = new Set(li.map((e) => Math.round(e.getBoundingClientRect().top))); return { layers: li.length, rows: tops.size, pulses: [...document.querySelectorAll("#layers .zp")].map((e) => getComputedStyle(e).animationName), cells: document.querySelectorAll("#where table.zheat tbody td").length, legend: document.querySelectorAll("#hostile .zlegend li").length }; })()`) as { layers: number; rows: number; pulses: string[]; cells: number; legend: number };
-        if (viz.layers !== 6 || viz.rows !== (w >= 900 ? 1 : 6) || viz.pulses.join() !== Array(4).fill(w >= 900 ? "zx" : "zy").join() || viz.cells !== 35 || viz.legend !== 3) fail(`/security ${tag}: not six layers ${w >= 900 ? "in one row" : "in a column"} with four moving pulses, or a chart is missing (${JSON.stringify(viz)})`);
-        await page.emulateMedia({ reducedMotion: "reduce" });
-        const still = await page.evaluate(`[...document.querySelectorAll("#layers .zp")].map((e) => getComputedStyle(e).animationName + "/" + getComputedStyle(e).opacity).join()`) as string;
-        await page.emulateMedia({ reducedMotion: null });
-        if (still !== Array(4).fill("none/1").join()) fail(`/security ${tag}: the pulses still move, or are hidden, under reduced motion (${still})`);
+        // 21 Nov (the owner: "we still have a lot of old things on the new page"): the architecture, the evidence, the two
+        // limits cards ("If the approver is unavailable" folded in the first, #unavailable) and the CI checks; nothing open.
+        if ((await page.locator("#arch").count()) !== 1 || (await page.locator("section.ev").count()) !== 1 || (await page.locator("main article.pc.card").count()) !== 2 || (await page.locator("#s-away details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not the architecture, the evidence and the two limits cards, folded`);
+        if (!/attacks on the payment path stopped/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body) || !/Checked on every change/.test(body)) fail(`/security ${tag}: the lead's attack figures, the "Not yet" line or the CI checks are missing`);
+        if (/#layers|zheat/.test(await page.content()) || /Red team: \d+ attacks/.test(body)) fail(`/security ${tag}: an old block is back (the layers diagram, its charts or the October red-team rounds)`);
       }
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
       await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
@@ -1041,22 +1030,33 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await broken.screenshot({ path: join(shots, `status-unread-${tag}.png`), fullPage: true });
       await broken.close();
     }
-    // /t0 (owner, 12 Nov): Purser's books in T:0's ledger. At most 150 words in sight (the strip aside), labelled as the
-    // T:0 sandbox with test data, nothing wider than the screen, every tap target 44 px on a phone, the strip in its footer.
+    // /books (21 Nov, the owner: "merge them: the books page, with T:0 in it"; /t0 answers 301 here): labelled as a test
+    // company with test money, the PDF in sight, the one-cent demo that turns the checks red and back, T:0's section with
+    // its label, the strip in the footer, nothing wider than the screen, every tap target 44 px on a phone.
     {
-      await page.goto(`${base}/t0`, { waitUntil: "load" });
-      await look(page, `/t0 ${tag}`, w);
+      const res = await page.goto(`${base}/t0`, { waitUntil: "load" });
+      if (!res || !/\/books$/.test(new URL(page.url()).pathname)) fail(`/t0 ${tag}: does not land on /books (${page.url()})`);
+      await look(page, `/books ${tag}`, w);
       const pt = await page.evaluate(() => document.body.innerText);
       const strip = await page.locator("footer .builton").innerText().catch(() => "");
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length - strip.split(/\s+/).filter((x) => /\w/.test(x)).length;
-      // 185 since the partner review (14 Nov): the "Independent ledger check" tile (184 as built); 205 since the partner
-      // scan the same evening: its "Run the close check" button, toggle and note (205 on screen as built); 210 with the line that says what T:0 is.
-      // The frame +4 since 20 Nov (the owner): the footer's last line, "Pilot or partnership?" and the address (236 at 768 px).
-      if (words > 210 + 29) fail(`/t0 ${tag}: ${words} words on screen, budget 210 plus the frame`);
-      if (!pt.includes("T:0 sandbox, test data")) fail(`/t0 ${tag}: not labelled as the T:0 sandbox with test data`);
-      if (!/^Built on\s/.test(strip.trim()) || !/T:0: \d+ journal entries/.test(strip)) fail(`/t0 ${tag}: no Built on strip in the footer`);
-      if (w < 500) await tapTargets(page, `/t0 ${tag}`);
-      await page.screenshot({ path: join(shots, `t0-${tag}.png`), fullPage: true });
+      // 1080 since 21 Nov (Max: "When you open the tab you should see more: everything sorted into your balance sheet,
+      // and a PDF" and "merge them"): the books, the demo, the rails and T:0 on one page (about 1,030 as built).
+      if (words > 1080) fail(`/books ${tag}: ${words} words on screen, budget 1080`);
+      if (!pt.includes("Test company · test money") || !pt.includes("T:0 sandbox, test data") || !pt.includes("Demo · in your browser only")) fail(`/books ${tag}: a label is missing`);
+      if (!(await page.locator(".bk-doc a.btn[download]").isVisible())) fail(`/books ${tag}: the PDF is not in sight`);
+      if (!/^Built on\s/.test(strip.trim()) || !/T:0: \d+ journal entries/.test(strip)) fail(`/books ${tag}: no Built on strip in the footer`);
+      await page.click("#cent [data-d='1']");
+      const red = await page.locator("#cent ul.lgd-checks li.no").count();
+      await page.click("#cent [data-reset]");
+      const green = await page.locator("#cent ul.lgd-checks li.no").count();
+      if (red !== 3 || green !== 0) fail(`/books ${tag}: one cent does not turn the three checks red, or Reset does not clear them (${red}, ${green})`);
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      const still = await page.evaluate(`[...document.querySelectorAll("#how li.lg-ln i")].map((e) => getComputedStyle(e).animationName).join()`) as string;
+      await page.emulateMedia({ reducedMotion: null });
+      if (still !== "none,none") fail(`/books ${tag}: the flow still moves under reduced motion (${still})`);
+      if (w < 500) await tapTargets(page, `/books ${tag}`);
+      await page.screenshot({ path: join(shots, `books-page-${tag}.png`), fullPage: true });
     }
     // /metal in its other state: with a run record of the invoice token (12 Nov). The page the judge serves has the
     // block only once a live run is recorded; here the same page is built with a record made on the in-memory chain
