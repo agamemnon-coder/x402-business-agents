@@ -26,8 +26,10 @@ function visibleWords(html: string): number {
   let main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? html;
   for (let prev = ""; prev !== main;) { prev = main; main = main.replace(/<svg\b[^>]*>(?:(?!<svg\b)[\s\S])*?<\/svg>/g, " "); }
   // Tag names in any case, and an end tag with spaces or attributes in it (</SCRIPT >), as a browser reads them.
-  const text = main.replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ")
-    .replace(/<details\b[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>[\s\S]*?<\/details>/g, " $1 ").replace(/<[^>]+>/g, " ");
+  main = main.replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ");
+  // Folds nest (21 Nov: /alta's main run sits in one fold with its own folds inside): the innermost first, as site-v4 does.
+  for (let prev = ""; prev !== main;) { prev = main; main = main.replace(/<details\b[^>]*>\s*<summary[^>]*>((?:(?!<details\b)[\s\S])*?)<\/summary>(?:(?!<details\b)[\s\S])*?<\/details>/g, " $1 "); }
+  const text = main.replace(/<[^>]+>/g, " ");
   return text.replace(/&amp;/g, "&").split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
 }
 const textOf = (html: string) => html.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();

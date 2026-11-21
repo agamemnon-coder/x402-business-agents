@@ -48,7 +48,7 @@ h2.csec { font-size: clamp(21px, 2.1vw, 26px); font-weight: 750; letter-spacing:
 .cagents { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 760px) { .cagents { grid-template-columns: minmax(0, 1fr); } }
 .cag { padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
-.cag .top { display: flex; align-items: center; gap: 10px; }
+.cag { min-width: 0; } .cag .top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; } .cag .fam { white-space: nowrap; }
 .cag .ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--claude-soft); color: var(--claude); flex: none; }
 .cag h3 { margin: 0; font-size: 17px; font-weight: 720; }
 .cag .fam { margin-left: auto; }
