@@ -259,7 +259,8 @@ describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, o
     expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa TAP|Visa Award|\bTAP\b|\bawards?\b/);
     // Visa judge, 14 Nov: TAP is shown openly on /visa, in its own section headed as outside the entry (no longer a
     // closed fold); outside that section TAP is named only in the agent identity row that points to it.
-    const v = String(pages.visa), at = v.search(/<section class="card vs vs-tap" id="visa-tap"[^>]*>/), end = v.indexOf('id="visa-not-yet"');
+    // 21 Nov (Max: "less text on /visa"): the TAP section may sit after "not yet" now; it ends at its own </section>.
+    const v = String(pages.visa), at = v.search(/<section class="card vs vs-tap" id="visa-tap"[^>]*>/), more = v.indexOf('id="visa-tap-more"'), end = more > at ? v.indexOf("</details>", more) : v.indexOf("</section>", at); // its fold "The TAP run in full" is part of it
     expect(at).toBeGreaterThan(0);
     const section = v.slice(at, end);
     expect(section).toContain(VISA_TAP_STATUS);

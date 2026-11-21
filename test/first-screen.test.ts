@@ -59,10 +59,12 @@ describe("the first screen (section D, 6 Nov)", () => {
     // submission line, the banner with the animated flow and the proof strip left the top: the map and the flow
     // altogether (the flow and the banner to the gallery), the rest to "The proof" below.
     const [pictures, links] = readmeStepLines();
-    expect(lines.slice(0, 16)).toEqual(['<div align="center">', "", lines[2]!, "", `# Purser · ${HERO}`, "", lines[6]!, "", `**${README_WHAT}**`, "", readmeDemoLine(), "", pictures, "", links, ""]);
+    // 21 Nov, later (Max): the second row of badges right under the first.
+    expect(lines.slice(0, 18)).toEqual(['<div align="center">', "", lines[2]!, "", `# Purser · ${HERO}`, "", lines[6]!, "", lines[8]!, "", `**${README_WHAT}**`, "", readmeDemoLine(), "", pictures, "", links, ""]);
+    expect(lines[8]!.startsWith("[![CodeQL]")).toBe(true);
     expect(lines[2]!.includes('srcset="docs/assets/brand/purser-mark-dark.svg"><img src="docs/assets/brand/purser-mark.svg" alt="Purser"')).toBe(true);
     expect(lines[6]!.startsWith("[![CI](")).toBe(true);
-    const tracks = lines.slice(16, 22);
+    const tracks = lines.slice(18, 24);
     expect(tracks[0]).toBe("| Sponsor track | What ran live (test money) | Record |");
     expect(tracks[1]).toBe("|---|---|---|");
     expect(tracks.slice(2).map((l) => /^\| \*\*([^*]+)\*\*/.exec(l)?.[1])).toEqual(["Airwallex", "Visa", "Alta (formerly Metal)", "T:0"]);
@@ -87,11 +89,11 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(tracks.join("\n").replaceAll("Alta (formerly Metal)", "")).not.toMatch(/\bMetal\b/); // "Alta (formerly Metal)", never Metal alone
     // "Alta (formerly Metal)" at the first mention of Alta (here, the badge row's).
     expect(README.indexOf("Alta (formerly Metal)")).toBe(README.indexOf("Alta"));
-    expect(lines.slice(22, 25)).toEqual(["", "</div>", ""]);
+    expect(lines.slice(24, 27)).toEqual(["", "</div>", ""]);
     // Under the centred top: the test-money alert, what Purser is, the glossary folded, then "The proof".
-    expect(lines.slice(25, 31)).toEqual(["> [!IMPORTANT]", lines[26]!, "", README_IS, "", "<details><summary><b>Words used here</b></summary>"]);
-    expect(lines[26]).toMatch(/^> \*\*Test money only\.\*\* Live: .* Simulated: /);
-    const glossary = lines.slice(32, lines.indexOf("</details>", 31));
+    expect(lines.slice(27, 33)).toEqual(["> [!IMPORTANT]", lines[28]!, "", README_IS, "", "<details><summary><b>Words used here</b></summary>"]);
+    expect(lines[28]).toMatch(/^> \*\*Test money only\.\*\* Live: .* Simulated: /);
+    const glossary = lines.slice(34, lines.indexOf("</details>", 33));
     expect(glossary.filter((l) => l).map((l) => /^- \*\*([^*]+):\*\* /.exec(l)?.[1])).toEqual(["VIC, Airi", "T:0", "/try/sign", "Purser Cloud"]);
     expect(README).not.toContain("> [!TIP]");
     expect(README).not.toContain("The strongest proof, one click each");

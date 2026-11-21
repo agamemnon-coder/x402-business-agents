@@ -753,7 +753,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   // /assets/logo-*; alt is the partner's name; each on its own white tile (CSS), never filtered.
   // Airwallex left this row on 14 Nov (owner): it is the platform, shown by the header's "Built on Airwallex" badge
   // (src/ui/builtOn.ts); the others work with it.
-  const partners = [["", VISA_WORKS_WITH, 0, 0, "visa"], ["logo-alta.svg", "Alta (formerly Metal)", 475, 250, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""], ["", "T:0", 0, 0, "books#t0"]] as const;
+  const partners = [["", VISA_WORKS_WITH, 0, 0, "visa"], ["logo-alta.svg", "Alta (formerly Metal)", 475, 250, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""], ["", "T:0", 0, 0, "t0"]] as const;
   // 19 Nov (the owner: "we use T:0 too"): T:0, the outside ledger, as text on its tile like Visa (no T:0 mark is on file).
   // 14 Nov (owner): Visa as text on its tile, no logo image. Alta (formerly Metal, renamed 14 Nov): its header wordmark, shown with the Alta team's OK (docs/evidence/logo-permissions.md).
   const body = `<main class="ent">

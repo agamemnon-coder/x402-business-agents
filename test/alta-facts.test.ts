@@ -100,10 +100,10 @@ describe("/alta: the three facts", () => {
 
   it("draws the tiles from the same facts: one figure each, its few words, the same explorer links (21 Nov)", () => {
     const facts = altaFacts();
-    expect(facts.map((f) => [f.id, f.fig])).toEqual([["refused", "3 of 3"], ["owners", "2 of 2"], ["anchor", "731"]]);
+    expect(facts.map((f) => [f.id, f.fig])).toEqual([["refused", "All 3"], ["owners", "Both"], ["anchor", "731"]]);
     const html = altaTilesHtml(facts);
     for (const f of facts) for (const l of f.links) expect(html).toContain(`href="${l.href}"`);
-    expect(text(html)).toContain("3 of 3 attempts outside the mandate, refused on chain (19 Nov)");
+    expect(text(html)).toContain("All 3 attempts outside the mandate, refused on chain (19 Nov)");
     expect(text(html)).toContain("731 records sealed in one transaction; verify-anchor: MATCH (19 Nov)");
     expect(altaTilesHtml([])).toBe("");
   });

@@ -78,7 +78,7 @@ export function altaFacts(i: AltaFactsInput = {
     out.push({ id: "refused", title: "Refused on chain",
       text: `${day(ran)}: ${paid.length} payments inside the agent's mandate, ${total} test USD in all. Alta refused ${refused.length === 3 ? "all 3" : refused.length} attempts outside it on chain (${refused.map((x) => x.reason).join(", ")}); nothing moved.`,
       links: refused.map((x) => ({ label: REASON_LINK[x.reason!] ?? "tx", href: `${EXPLORER}/tx/${txOf(x)}` })),
-      fig: `${refused.length} of ${tried.length}`, short: `attempts outside the mandate, refused on chain (${day(ran)})`,
+      fig: refused.length === tried.length ? `All ${tried.length}` : `${refused.length} of ${tried.length}`, short: `attempts outside the mandate, refused on chain (${day(ran)})`,
       // The run log (the first record's .md) tells both passes, each step with its transaction: one link for the two.
       record: [SERIES_RECORDS[0]] });
   }
@@ -104,7 +104,7 @@ export function altaFacts(i: AltaFactsInput = {
       links.push({ label: "one: tx", href: `${EXPLORER}/tx/${txOf(alone)}` });
       record.push(OWNERS_RECORD);
     }
-    out.push({ id: "owners", title: "Two passkey owners", text, links, record, fig: "2 of 2", short: links.length > 1 ? "passkeys to change a cap; one alone is refused on chain" : "passkeys signed the cap change" });
+    out.push({ id: "owners", title: "Two passkey owners", text, links, record, fig: "Both", short: links.length > 1 ? "passkeys to change a cap; one alone is refused on chain" : "passkeys signed the cap change" });
   }
 
   // The fresh anchor of 19 Nov, which pins the series' records too; verify-anchor's MATCH as the run log prints it.
