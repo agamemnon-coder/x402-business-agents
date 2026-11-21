@@ -40,7 +40,7 @@ const DK_W={en:{
   tick:'Newest decisions',pause:'Pause',play:'Play',
   details:'Details',phone:'Add to phone',nego:'Watch a negotiation',
   no_card:'No card of its own',code_only:'Code only',spent:'{spent}',of:'of {cap} this month',simulated:'Simulated',
-  close:'Close',job_h:'What it does',model_h:'Model',limit_h:'Limit',code_h:'Where it lives in code',sw:'Turned on in the runner with {sw}=on',
+  close:'Close',job_h:'What it does',model_h:'Model',ran:'This company\'s records show it run with {m}',limit_h:'Limit',code_h:'Where it lives in code',sw:'Turned on in the runner with {sw}=on',
   phone_h:'{name} on your phone',wal_btn:'Add to Apple Wallet',wal_busy:'Making the pass…',wal_fail:'The pass could not be made: {why}',
   wal_wait:'Apple Wallet: waiting for the pass certificate',wal_nocard:'Apple Wallet: only for an agent with a card',
   qr_h:'Scan to open this card on your phone',qr_sub:'A read-only view in the same design: what it spent, its limits, its status. It cannot pay or change anything. Works until {d}.',
@@ -60,7 +60,7 @@ nl:{
   tick:'Nieuwste beslissingen',pause:'Pauze',play:'Afspelen',
   details:'Details',phone:'Op je telefoon',nego:'Bekijk een onderhandeling',
   no_card:'Geen eigen kaart',code_only:'Alleen code',spent:'{spent}',of:'van {cap} deze maand',simulated:'Gesimuleerd',
-  close:'Sluiten',job_h:'Wat hij doet',model_h:'Model',limit_h:'Limiet',code_h:'Waar hij in de code staat',sw:'Aan in de runner met {sw}=on',
+  close:'Sluiten',job_h:'Wat hij doet',model_h:'Model',ran:'De gegevens van dit bedrijf tonen hem met {m}',limit_h:'Limiet',code_h:'Waar hij in de code staat',sw:'Aan in de runner met {sw}=on',
   phone_h:'{name} op je telefoon',wal_btn:'Toevoegen aan Apple Wallet',wal_busy:'Pas wordt gemaakt…',wal_fail:'De pas kon niet worden gemaakt: {why}',
   wal_wait:'Apple Wallet: wacht op het pascertificaat',wal_nocard:'Apple Wallet: alleen voor een agent met een kaart',
   qr_h:'Scan om deze kaart op je telefoon te openen',qr_sub:'Een alleen-lezen weergave in hetzelfde ontwerp: wat hij uitgaf, zijn limieten, zijn status. Hij kan niets betalen of wijzigen. Werkt tot {d}.',
@@ -151,7 +151,8 @@ function deckAgents(recs,CV,demo){
     const statusText=rec?tk('cs.agents.status.'+rec.status,rec.status):lc?(lc.status==='ACTIVE'?t('cs.cards.active'):t('cs.cards.frozen')):(r.switch?sw('st_switch'):sw('st_code'));
     const spent=c&&c.per_month&&c.spent_month!==null&&c.spent_month!==undefined?toCents(c.spent_month):null;
     return {r,rec,live,face:{id:r.id,name:rec?rec.name:r.name,status,statusText,last4:(lc&&lc.last4)||(c&&c.last4)||null,currency:c?c.currency:null,spent,cap:c&&c.per_month?toCents(c.per_month):0,
-      model:(rec&&rec.models&&rec.models[0])||r.model,demo,frozen:lc?lc.status!=='ACTIVE':status!=='active'&&!!rec},at:!!(rec||live)}});
+      // The model its code sets (the roster, held to the code by a test); the drawer adds what the records show ran.
+      model:r.model||(rec&&rec.models&&rec.models[0])||null,ran:rec&&rec.models||[],demo,frozen:lc?lc.status!=='ACTIVE':status!=='active'&&!!rec},at:!!(rec||live)}});
   // Those at work in this company first, each group in the roster's order.
   return [...all.filter((x)=>x.at),...all.filter((x)=>!x.at)]}
 
@@ -208,7 +209,8 @@ function openDrawer(x,ctx){
   const r=x.r,rec=x.rec;
   const face=cardFace(x.face);
   const acts=el('div','dk-acts',[rec?phoneBtn(x,ctx):null,r.see?(()=>{const a=el('a','btn ghost2',[ic('play'),r.see.label==='Watch a negotiation'?dw('nego'):r.see.label]);a.href=r.see.href;return a})():null]);
-  const facts=el('dl','dk-facts',[el('dt','',dw('model_h')),el('dd','',[r.model||x.face.model?el('span','dk-mod',[dkLogo('claude')?dkImg(dkLogo('claude'),'Claude'):null,el('span','mono',x.face.model||r.model)]):el('span','sub',dw('code_only')),r.model_note?el('span','sub',r.model_note):null]),
+  const facts=el('dl','dk-facts',[el('dt','',dw('model_h')),el('dd','',[r.model||x.face.model?el('span','dk-mod',[dkLogo('claude')?dkImg(dkLogo('claude'),'Claude'):null,el('span','mono',x.face.model)]):el('span','sub',dw('code_only')),r.model_note?el('span','sub',r.model_note):null,
+      x.face.ran.some((m)=>m!==x.face.model)?el('span','sub',dw('ran',{m:x.face.ran.join(', ')})):null]),
     r.limit&&!(rec&&rec.card)?el('dt','',dw('limit_h')):null,r.limit&&!(rec&&rec.card)?el('dd','',r.limit):null]);
   const blocks=rec?agentRecord(rec,ctx.demo,x.live,ctx.CV):x.live&&ctx.CV?[liveCardPanel(x.live,ctx.CV)]:[];
   const tok=rec&&ctx.P?partnerTokenBlock(ctx.P,rec.id):null;

@@ -70,7 +70,7 @@ export async function phoneCardData(sql: Sql, tenantId: string, agent: string): 
   const a = ((await agentsOf(new TenantDb(sql, tenantId))).agents as AgentRec[]).find((x) => x.id === agent);
   if (!company || !a) return null;
   const roster = ROSTER.find((r) => r.id === agent);
-  return { company: company.name, demo: isDemoTenant(tenantId), agent, name: a.name, role: a.role, status: a.status, model: a.models[0] ?? roster?.model ?? null, card: a.card };
+  return { company: company.name, demo: isDemoTenant(tenantId), agent, name: a.name, role: a.role, status: a.status, model: roster?.model ?? a.models[0] ?? null, card: a.card };
 }
 
 /** The design the console showed, from the link's query: each part checked, anything else dropped. */
