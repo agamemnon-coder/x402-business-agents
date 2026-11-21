@@ -618,7 +618,10 @@ function examine(c: InvoiceCase): Examined {
   const lines = text.split("\n");
   const talk = talkLines(text, names).filter((x) => {
     const l = lines[x.line - 1]!.trim();
-    return !unreadOnly.some((u) => u.line === x.line) && !held.has(l) && !(shown.has(l) && !x.strong);
+    // 21 Nov (after the held-out eval v14, v14-bec-aachen-german: "Bitte nutzen Sie ab sofort ausschließlich die
+    // Kontodaten aus unserem Schreiben vom 12. November." was shown for its speed and paid): a warning shows what its
+    // screen saw, not what the rest of the line says; a sentence that is none of an invoice's own lines stays unread.
+    return !unreadOnly.some((u) => u.line === x.line) && !held.has(l) && !(shown.has(l) && !x.strong && !x.sentence);
   });
   const unread = [...unreadOnly, ...talk].sort((a, b) => a.line - b.line);
   if (unread.length) {

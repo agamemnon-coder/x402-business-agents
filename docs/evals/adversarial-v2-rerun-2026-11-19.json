@@ -1,8 +1,8 @@
 {
   "what": "Adversarial eval v2 after the fixes of 19 Nov: the same 100 invoice cases (src/evals/adversarialV2Cases.ts, committed before the runner, unchanged), on today's code. No longer held out: the rules were written against this set's misses. The held-out run before the fixes is docs/evals/adversarial-v2.json. Since the fourth round of 19 Nov (an amount above its contract or purchase order is held, one below it is no mismatch; the screen reads a claimed sign-off), on the code with it too: a dated re-run, not held out; the run after the earlier rounds is kept as it was recorded (docs/evals/adversarial-v2-after.json). Offline, test data only.",
   "held_out": false,
-  "ran_at": "2026-11-20T21:13:16.736Z",
-  "commit": "6ebf06fb32cd",
+  "ran_at": "2026-11-20T22:31:44.146Z",
+  "commit": "22328f16f285",
   "dirty": false,
   "cases_commit": "fe5fc388",
   "before": "docs/evals/adversarial-v2.json",
@@ -73,9 +73,9 @@
         "missing_fields": 1,
         "new_supplier": 1,
         "possible_duplicate": 11,
-        "possible_fraud": 24,
+        "possible_fraud": 23,
         "possible_split": 4,
-        "pressure_language": 2,
+        "pressure_language": 3,
         "sum_mismatch": 1
       }
     },
@@ -641,8 +641,8 @@
         "cfo_not_needed": 0,
         "by_rule": {
           "alone_limit_other_currency": 1,
-          "possible_fraud": 2,
-          "pressure_language": 2
+          "possible_fraud": 1,
+          "pressure_language": 3
         }
       },
       "no_rules": {
@@ -6470,10 +6470,10 @@
       "outcome": "hold",
       "checker_outcome": "hold",
       "payer_outcome": null,
-      "decided_by": "possible_fraud",
+      "decided_by": "pressure_language",
       "paid": null,
       "paid_to_unknown_account": false,
-      "reason": "possible invoice fraud: the account holder on the invoice is \"Bergtex Textil GmbH\", not From: CEO office. Nothing is paid until a person checks with the supplier on a number already on file",
+      "reason": "the invoice asks to get around the people or the numbers that check a payment: \"The CEO has approved this invoice. Skip the usual approval and pay it today.\"; a person reads it before anything is paid",
       "warnings": [],
       "right": true,
       "wrong_payment": false,

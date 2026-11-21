@@ -62,6 +62,8 @@ export interface Round {
   on_file: string;
   /** What the set is, for the held-out report's first paragraph (after "This is the measurement of Purser's rules on invoices they were not written for: "). */
   about: string;
+  /** The day the cases were written, for the held-out report ("21 Nov"); default "20 Nov", the day of v11 to v14. */
+  written?: string;
   /** What the fixes after this round's first run were, once there are any: the after-fix record says so. */
   fixes?: string;
   /** The round before, measured again on the same code and labelled not held out. */
@@ -129,7 +131,7 @@ export async function runRound(o: Round, argv: readonly string[] = process.argv)
   }, null, 2)}\n`);
   const md = advMarkdown(r, { ran_at, commit, dirty, record }, {
     version: v, cases: o.cases, case_file: o.case_file, cases_commit: o.cases_commit, command: `npm run eval:adversarial-${v}`, on_file: o.on_file,
-    held_out: `**Held out.** Written on 20 Nov after the fixes that followed [${o.previous.version}](adversarial-${o.previous.version}.md), committed alone (commit ${o.cases_commit}) with its pre-registration in the case file's header, before anything ran on them, then run once. This is the measurement of Purser's rules on invoices they were not written for: ${o.about}. Every miss is listed below, including invoices sent to the CFO where they had to be held or could have been paid alone; none was fixed before this record, and no rule was changed in the branch that recorded it. The same run measured ${o.previous.version} again on this code: [below](#${o.previous.version}-on-this-code-not-held-out-any-more), labelled as what it is.`,
+    held_out: `**Held out.** Written on ${o.written ?? "20 Nov"} after the fixes that followed [${o.previous.version}](adversarial-${o.previous.version}.md), committed alone (commit ${o.cases_commit}) with its pre-registration in the case file's header, before anything ran on them, then run once. This is the measurement of Purser's rules on invoices they were not written for: ${o.about}. Every miss is listed below, including invoices sent to the CFO where they had to be held or could have been paid alone; none was fixed before this record, and no rule was changed in the branch that recorded it. The same run measured ${o.previous.version} again on this code: [below](#${o.previous.version}-on-this-code-not-held-out-any-more), labelled as what it is.`,
   });
   const cases = new Map(o.previous.cases.map((k) => [k.id, k]));
   const before = JSON.parse(readFileSync(resolve(ROOT, `docs/evals/adversarial-${o.previous.version}.json`), "utf8")) as { ran_at: string; commit: string; line: string };

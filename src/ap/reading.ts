@@ -6,7 +6,7 @@
 // with what the parser reads there: a model that followed a planted line, or invented a number, is not used.
 
 import { z } from "zod";
-import { skeleton } from "../policy/fraudCore.js";
+import { namesACompany, skeleton } from "../policy/fraudCore.js";
 import { asksToPay, isInformation } from "../policy/multilingual.js";
 import { plainDigits, plainNumerals } from "../policy/numerals.js";
 import { oneEncoding } from "../policy/scripts.js";
@@ -452,6 +452,19 @@ function accountOf(text: string, iban: string, bic: string): Pick<ApReading, "ac
   return { account_number: iban ? "" : number, ...routing, bank_country: country };
 }
 
+/**
+ * The issuer's name among the document's first lines. 21 Nov (after the held-out eval v15, v15-clean-hearadh-tagline: a
+ * tagline above the name, "Handwoven in the Outer Hebrides since 1921", was read as the supplier and the invoice held as
+ * another holder): before the invoice's heading, the first line that names a company (a legal form, in any script) and
+ * is neither a field nor an address (no colon, no figure); else, as before, the first line with letters that is no heading.
+ */
+function vendorLine(ls: readonly string[]): string {
+  const head = ls.findIndex((l) => HEADING.test(cleanText(l)));
+  const named = ls.slice(0, head >= 0 ? head : Math.min(ls.length, 6))
+    .find((l) => /\p{L}/u.test(l) && !/[:：\p{Nd}]/u.test(l) && namesACompany(cleanText(l)));
+  return named ?? ls.find((l) => /\p{L}/u.test(l) && !HEADING.test(cleanText(l))) ?? "";
+}
+
 /** Everything the document's own lines say, without a model. Never throws. */
 export function parseApFallback(text: string): ApReading {
   const ls = lines(text ?? "");
@@ -477,7 +490,7 @@ export function parseApFallback(text: string): ApReading {
   const iban = ibanIn(bankText);
   const bic = firstMatch(bankText, /\b(?:BIC|SWIFT(?:\/BIC)?(?:\s+code)?)\s*:?\s*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b/).toUpperCase();
   return {
-    vendor: cleanText(ls.find((l) => /\p{L}/u.test(l) && !HEADING.test(cleanText(l))) ?? ""),
+    vendor: cleanText(vendorLine(ls)),
     vat_id: firstMatch(text, /\b(?:VAT(?:\s*(?:ID|number|no\.?|reg\.?\s*no\.?))?|BTW(?:-nummer|\s*nr\.?|-id)?|USt-?IdNr\.?|UID)\s*:?\s*([A-Z]{2}[A-Z0-9]{8,12})\b/).toUpperCase(),
     invoice_no: invoiceNo,
     issue_date: issued,

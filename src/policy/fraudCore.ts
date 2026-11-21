@@ -2,7 +2,7 @@
 // /try/sign runs the very same code as the runner. The caller gives the allowlist and the SHA-256 of the invoice's
 // IBAN (Node's crypto in fraud.ts, WebCrypto in the Worker).
 
-import { BANK_CHANGE_ANY, BANK_DETAILS_CHANGED_ANY, BANK_UNCHANGED_ANY, bypassInAnyLanguage, CHANGE_NEGATED_ANY, fold, MESSENGER, PAY_ANY, PAY_OR_DETAILS_ANY, walletIn } from "./multilingual.js";
+import { BANK_CHANGE_ANY, BANK_DETAILS_CHANGED_ANY, BANK_UNCHANGED_ANY, bypassInAnyLanguage, CHANGE_NEGATED_ANY, fold, MESSENGER, PAY_ANY, PAY_OR_DETAILS_ANY, UNCHANGED_FORMS, walletIn } from "./multilingual.js";
 import { asciiSpelling, canonicalName, mixedScriptWord, plainAscii, romanFold, scriptsIn, toLatin, toLatinVariants, transliterable, withoutTypography } from "./scripts.js";
 
 export type FraudCode =
@@ -85,6 +85,17 @@ const LEGAL_FORMS: readonly string[][] = [
   // 20 Nov (after the held-out eval v11, v11-look-conamara-teo: "Olann Chonamara Teo." for "Olann Chonamara Teoranta"):
   // Ireland's Irish-language forms, written out and as companies abbreviate them.
   ["teoranta"], ["teo"], ["cuideachta", "teoranta"], ["cpt"],
+  // 21 Nov (after the held-out eval v15, v15-look-harare-private-limited: "Machira eHarare (Private) Limited" for "(Pvt)
+  // Ltd" on file was held as another holder): a form is the same form written out or abbreviated. The forms above that
+  // were held in one spelling only, in the other: Private and Pvt (Zimbabwe, India, Pakistan, Sri Lanka), Proprietary
+  // (Pty), Sendirian Berhad (Sdn Bhd), and the long forms of the abbreviations above.
+  ["pvt"], ["private"], ["proprietary"], ["sdn", "bhd"], ["bhd"], ["sendirian", "berhad"], ["berhad"],
+  ["public", "limited", "company"], ["limited", "liability", "company"], ["limited", "liability", "partnership"], ["limited", "partnership"],
+  ["gesellschaft", "mit", "beschrankter", "haftung"], ["aktiengesellschaft"], ["kommanditgesellschaft"],
+  ["besloten", "vennootschap"], ["naamloze", "vennootschap"], ["societe", "anonyme"], ["sociedad", "anonima"], ["sociedad", "limitada"],
+  ["societe", "a", "responsabilite", "limitee"], ["societa", "a", "responsabilita", "limitata"], ["societa", "per", "azioni"], ["sociedade", "limitada"],
+  ["aktiebolag"], ["aktieselskab"], ["aksjeselskap"], ["anpartsselskab"], ["osakeyhtio"],
+  ["spolocnost", "s", "rucenim", "obmedzenym"], ["spolecnost", "s", "rucenim", "omezenym"], ["spolka", "z", "ograniczona", "odpowiedzialnoscia"],
   // "& Co.", "and Co."
   ["&"], ["and"],
 ];
@@ -403,7 +414,7 @@ const BANK_UNCHANGED = /\b(unchanged|not (been )?changed|remain(s)? (the same|un
 /** "Unchanged" in every language the lists know, over a folded line. */
 const UNCHANGED_ANY = new RegExp(`${BANK_UNCHANGED_ANY.source}|${BANK_UNCHANGED.source}`, "iu");
 /** The same, or a word of change negated: what is not an announcement of other bank details (for the concept rule). */
-const UNCHANGED_OR_NEGATED = new RegExp(`${UNCHANGED_ANY.source}|${CHANGE_NEGATED_ANY.source}`, "iu");
+const UNCHANGED_OR_NEGATED = new RegExp([UNCHANGED_ANY.source, CHANGE_NEGATED_ANY.source, ...UNCHANGED_FORMS.map((re) => re.source)].join("|"), "iu");
 /**
  * Words that push for speed (19 Nov, adversarial eval v3: on their own they held a courtesy "placed today", a line item
  * "Urgent courier delivery", a confidentiality footer and a supplier's own final notice). Shown to the person who

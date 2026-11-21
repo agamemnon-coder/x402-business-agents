@@ -175,7 +175,7 @@ function columns(c: Chart): { svg: string; h: number } {
         const v = r.values[s.key]!, yTop = y(base + v), yBot = y(base);
         // A 2 px surface gap between stacked parts; the top part keeps rounded corners.
         const h = Math.max(0, yBot - yTop - (j ? 2 : 0));
-        out.push(`<rect class="pc-m pc-${s.cls}" x="${r1(x0)}" y="${r1(yTop)}" width="${r1(bw)}" height="${r1(h)}" rx="${j === parts.length - 1 ? Math.min(4, bw / 4) : 0}"><title>${esc(`${r.cat}${r.sub ? `, ${r.sub}` : ""}: ${v} ${s.label}`)}</title></rect>`);
+        out.push(`<rect class="pc-m pc-${s.cls}" x="${r1(x0)}" y="${r1(yTop)}" width="${r1(bw)}" height="${r1(h)}" rx="${j === parts.length - 1 ? r1(Math.min(4, bw / 4)) : 0}"><title>${esc(`${r.cat}${r.sub ? `, ${r.sub}` : ""}: ${v} ${s.label}`)}</title></rect>`);
         base += v;
       });
       const total = sum(r);
@@ -184,7 +184,7 @@ function columns(c: Chart): { svg: string; h: number } {
       const n = c.series.length, w = (bw - (n - 1) * 2) / n;
       c.series.forEach((s, j) => {
         const v = r.values[s.key] ?? 0, x = x0 + j * (w + 2);
-        out.push(`<rect class="pc-m pc-${s.cls}" x="${r1(x)}" y="${r1(y(v))}" width="${r1(w)}" height="${r1(Math.max(0, y(0) - y(v)))}" rx="${Math.min(4, w / 4)}"><title>${esc(`${r.cat}${r.sub ? `, ${r.sub}` : ""}: ${v}${c.unit ?? ""} ${s.label}`)}</title></rect>`);
+        out.push(`<rect class="pc-m pc-${s.cls}" x="${r1(x)}" y="${r1(y(v))}" width="${r1(w)}" height="${r1(Math.max(0, y(0) - y(v)))}" rx="${r1(Math.min(4, w / 4))}"><title>${esc(`${r.cat}${r.sub ? `, ${r.sub}` : ""}: ${v}${c.unit ?? ""} ${s.label}`)}</title></rect>`);
         if (w >= 12) out.push(`<text class="pc-val" x="${r1(x + w / 2)}" y="${r1(y(v) - 4)}" text-anchor="middle">${esc(`${v}${c.unit && c.unit !== "%" ? c.unit : ""}`)}</text>`);
       });
     }
