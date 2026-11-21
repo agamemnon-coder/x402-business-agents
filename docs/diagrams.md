@@ -11,12 +11,17 @@ rail pays under its own limit, and the books and the audit log record it.
 
 ```mermaid
 flowchart LR
-  A["Claude agent<br/>proposes a payment"] --> P["CFO policy<br/>Purser's code"]
-  P -- "within the limit" --> R["Airwallex · Alta · Visa via Airi<br/>each with its own limit"]
-  P -- "above it" --> F["CFO's passkey<br/>Face ID on iPhone<br/>signs the exact terms"]
-  F --> R
-  R --> B["Books<br/>posted to T:0 and Moneybird (sandboxes)"]
-  B --> L["Hash-chained audit log"] --> N["Its head anchored on Alta testnet<br/>npm run verify-anchor"]
+  I["Invoice or purchase<br/>(PDF, card, x402)"] --> RD["Reader<br/>Claude reads it"]
+  RD --> CK["Checker<br/>Purser's code: duplicates,<br/>bank details, payee"]
+  CK --> PO{"CFO policy<br/>(code, also exported<br/>as OPA/Rego)"}
+  PO -- "within the agent's limit<br/>e.g. EUR 120.00" --> PAY["Agent pays alone"]
+  PO -- "above it<br/>e.g. EUR 1,850.00" --> FID["CFO signs the SHA-256<br/>of the exact terms<br/>(passkey, Face ID)"]
+  FID --> HC{"Before paying:<br/>terms still match<br/>the signed hash?"}
+  HC -- "yes" --> PAY
+  HC -- "one cent changed" --> X["Payment refused.<br/>Nothing was paid."]
+  PAY --> RAIL["Rails, each with its own limit<br/>Airwallex sandbox · Alta testnet<br/>· Visa via Airwallex Airi"]
+  RAIL --> BK["Books<br/>T:0 · Moneybird (sandboxes)"]
+  BK --> LOG["Hash-chained audit log"] --> ANC["Head anchored on Alta testnet<br/>npm run verify-all"]
 ```
 
 ## 1. Architecture: who holds which limit
