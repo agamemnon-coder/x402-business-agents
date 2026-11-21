@@ -181,7 +181,7 @@ async function walk(width: number, live: boolean): Promise<void> {
   await gotoLoaded(page, `${ORIGIN}/try`);
   await page.waitForTimeout(600);
   await shot("0-start");
-  await click(/Launch the live transfer demo/);
+  await click(/Start the live demo|Launch the live transfer demo/);
   await page.locator(".samples button[aria-pressed]").first().waitFor({ timeout: 30_000 });
   await page.waitForTimeout(800);
   {

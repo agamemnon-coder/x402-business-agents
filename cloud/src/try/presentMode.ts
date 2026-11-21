@@ -64,20 +64,7 @@ export const PRESENT_HOW = {
  * over the page's copy key by key (tryPage's over), so plain /try keeps the release's words and its negotiation.
  */
 export const V2_COPY = {
-  start: {
-    eyebrow: "Live demo · about 2 minutes",
-    heading: "AI agents prepare the transfer. Your passkey releases the funds.",
-    text: "Claude reads and checks every supplier invoice. Inside your limits, the agents pay on their own. Above them, nothing moves until you approve the exact payment with your passkey. Change one cent afterwards and it is blocked.",
-    flow: [
-      { name: "Claude reads the invoice", line: "Supplier, amount, bank account, due date: checked against what is on file." },
-      { name: "Your rules decide", line: "Inside your limits the agent pays. Above them, it asks you." },
-      { name: "You sign the exact payment", line: "Your passkey on this amount, this supplier, this account. Not a budget." },
-    ],
-    flowEnd: "Changed by one cent: blocked",
-    button: "Launch the live transfer demo",
-    // Site audit, 20 Nov (finding 6.3): the sandbox disclosure first, right under the primary button.
-    fine: "Sandbox demo: test money, no real settlement · Purser's real engine · deleted after 24 hours",
-  },
+  // 21 Nov (Max: "the only purpose of this page is the demo and some key numbers"): the start's words are tryCopy's START.
   approve: {
     heading: "Approve the transfer.",
     sheet: "Locked payment terms",
@@ -1256,7 +1243,7 @@ function v2(){
   {const p=String(k<0?0:Math.min(k,PC.stages.length-1)/(PC.stages.length-1));if(!stagesWereIn&&LASTP!==null&&LASTP!==p){stages.style.setProperty('--p',LASTP);void stages.offsetWidth}if(stages.style.getPropertyValue('--p')!==p)stages.style.setProperty('--p',p);LASTP=p}
   const m=document.getElementById('main');if(!m)return;
   const h1=m.querySelector(':scope > h1');if(h1&&m.querySelector('.screen.start')&&!h1.querySelector('.pv-grad')){const t=h1.textContent||'';const i=t.indexOf('. ');if(i>0&&i<t.length-2)h1.replaceChildren(t.slice(0,i+2),mk('span','pv-grad',t.slice(i+2)))}
-  const st=m.querySelector('.screen.start');if(st&&!st.querySelector('.pp'))st.append(partners(true));
+  // 21 Nov (Max: "this is too much"): no partners' cards on the start; the key numbers link the partners' proof.
   for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pp'))(sc.querySelector('.fin-hood-b')||sc).append(partners(true));
   // 21 Nov 2026 (Max): the badge counts every call of this invoice's reading (it showed the first one only).
   {const ch=m.querySelector('.screen.work .card.inv .slot .chip');const rd=readerNow();if(ch&&rd){const t=[rd.n>1?rd.n+' calls':'',rd.ms?(rd.ms/1000).toFixed(1)+' s':'',usd(rd.cost)].filter(Boolean).join(' · ');let pr=ch.querySelector('.pv-rd');if(!pr||pr.textContent!==t){const sp=ch.querySelector(':scope > span:not(.mono):not(.pv-rd)');if(sp)sp.textContent='Read by Claude'+(rd.model?' · '+rd.model:'');const mo=ch.querySelector('.mono');if(mo)mo.hidden=true;if(!pr){pr=mk('span','pv-rd','');ch.append(pr)}pr.textContent=t}}}

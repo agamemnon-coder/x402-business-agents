@@ -96,7 +96,7 @@ function moduleChecks(g: Geo, tag: string) {
 // 1. Public /try at 1280: the agent pays the EUR 120.00 invoice alone.
 {
   const { ctx, page } = await open("/try", 1280, 800);
-  await page.getByRole("button", { name: /Launch the live transfer demo/ }).click();
+  await page.getByRole("button", { name: /Start the live demo|Launch the live transfer demo/ }).click();
   await page.waitForTimeout(1500);
   await page.getByRole("button", { name: /A small invoice inside the agent's limit/ }).first().click();
   await page.getByRole("button", { name: /File this invoice|Give it to the AI agent/ }).click();
@@ -137,7 +137,7 @@ function moduleChecks(g: Geo, tag: string) {
 // 2. Recording mode at 1280 without the phone frame.
 {
   const { ctx, page } = await open("/try?present=1&phone=0", 1280, 800);
-  await page.getByRole("button", { name: /Launch the live transfer demo/ }).click();
+  await page.getByRole("button", { name: /Start the live demo|Launch the live transfer demo/ }).click();
   await page.waitForTimeout(1500);
   await page.getByRole("button", { name: /A small invoice inside the agent's limit/ }).first().click();
   await page.waitForTimeout(800);
@@ -151,10 +151,10 @@ function moduleChecks(g: Geo, tag: string) {
 {
   const { ctx, page } = await open("/try", 390, 844);
   // 19 Nov 2026 (live review: the button started at y≈926 on a 390 x 844 phone): the main button is on the first screen.
-  const launch = await page.getByRole("button", { name: /Launch the live transfer demo/ }).boundingBox();
+  const launch = await page.getByRole("button", { name: /Start the live demo|Launch the live transfer demo/ }).boundingBox();
   ok(launch && launch.y >= 0 && launch.y + launch.height <= 844, `390 x 844: "Launch the live transfer demo" is on the first screen (bottom ${launch ? Math.round(launch.y + launch.height) : "none"} ≤ 844)`);
   await page.screenshot({ path: join(shots, "phone-390-start.png") });
-  await page.getByRole("button", { name: /Launch the live transfer demo/ }).click();
+  await page.getByRole("button", { name: /Start the live demo|Launch the live transfer demo/ }).click();
   await page.waitForTimeout(1500);
   let g = await geo(page);
   ok(g.rail?.shown && !g.rail.side && !g.rail.open, "390: the rail is a closed drawer in the page");
@@ -205,7 +205,7 @@ function moduleChecks(g: Geo, tag: string) {
   });
   await gotoLoaded(page, `${ORIGIN}/try`);
   await page.waitForTimeout(800);
-  await page.getByRole("button", { name: /Launch the live transfer demo/ }).click();
+  await page.getByRole("button", { name: /Start the live demo|Launch the live transfer demo/ }).click();
   await page.locator(".samples button[aria-pressed]").first().waitFor({ timeout: 30_000 });
   await page.getByRole("button", { name: /A supplier's invoice/ }).first().click();
   await page.getByRole("button", { name: /File this invoice|Give it to the AI agent/ }).click();
@@ -252,7 +252,7 @@ function moduleChecks(g: Geo, tag: string) {
   });
   await gotoLoaded(page, `${ORIGIN}/try`);
   await page.waitForTimeout(800);
-  await page.getByRole("button", { name: /Launch the live transfer demo/ }).click();
+  await page.getByRole("button", { name: /Start the live demo|Launch the live transfer demo/ }).click();
   await page.locator(".samples button[aria-pressed]").first().waitFor({ timeout: 30_000 });
   await page.getByRole("button", { name: /A supplier's invoice/ }).first().click();
   await page.getByRole("button", { name: /File this invoice|Give it to the AI agent/ }).click();

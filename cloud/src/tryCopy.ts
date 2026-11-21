@@ -37,40 +37,31 @@ export const BAND = {
  * endorsement implied". "Face ID" in the headline is the device's word on an iPhone; the steps say any passkey works.
  */
 export const START = {
-  eyebrow: "Live demo · about 2 minutes",
-  /** "Your passkey": true on every device (Face ID, Touch ID, a fingerprint or Windows Hello is the device's own word). */
-  heading: "AI agents pay your suppliers. You approve the big ones with Face ID.",
-  text: "Change one cent after you approve, and the payment is blocked.",
-  /** The three steps as a picture, each a word and one short line; then what a one-cent change gets. */
-  flow: [
-    { name: "Read", line: "AI agents read the invoice." },
-    { name: "Check", line: "Your rules check it." },
-    { name: "You approve", line: "With Face ID or a fingerprint." },
-  ],
-  flowEnd: "One cent changed: blocked",
   /**
-   * 21 Nov (the new direction: "clearly distinguish autonomous payments within limits from passkey approvals above
-   * limits"): after Check the flow forks in two lanes. The first is the agent paying alone up to the test company's limit
-   * (TRY_ALONE_LIMIT); the second is flow[2], the passkey. Each lane has a short tag. Test money, said in the fork.
+   * 21 Nov (Max: "the only purpose of this page is the demo and some key numbers, so make it central"; mockup 175): a
+   * pill, a short headline and one line; one centred card that is the demo (its steps, the engine's sample invoice, the
+   * checks it will run, the button that starts the real run); three key numbers from the evidence wall; one tiny line.
    */
-  lanes: {
-    alone: { tag: "Within your limit", name: "Pays on its own", line: `Up to ${ALONE}, the agent pays alone.` },
-    face: { tag: "Above your limit" },
-    note: "Test money only: no real payment is made.",
+  eyebrow: "Live demo · Sandbox",
+  heading: "Try an AI payment end-to-end.",
+  text: "An AI agent reads a supplier's invoice, you approve it with Face ID, then change one cent and Purser blocks it.",
+  /** The card's stepper (the run's four stages: the page's own step rail follows the same names). */
+  steps: ["Read", "Check", "Approve", "Pay"],
+  /** The card: the sample's line, then the rows of what the run will do, each as it is before the start. */
+  card: {
+    invoice: "Invoice", due: "Due",
+    rows: [
+      { h: "Read the invoice", r: "Claude, or Purser's code: said as it runs" },
+      { h: "Check it against your policy", r: `Above your ${ALONE} limit: needs your approval` },
+      { h: "Approve with Face ID", r: "Your passkey signs the exact terms" },
+      { h: "Change one cent (test)", r: "Purser blocks it: nothing moves" },
+    ],
   },
-  /** The one-cent step, marked as the real check the visit reaches mid-way (Max, 21 Nov: "keep it prominent"). */
-  centTag: "The real check, mid-demo",
-  /**
-   * 21 Nov (Max: "an app start screen, distinct from Home: right, the sample invoice you'll use"): the first sample the
-   * engine offers (cloud/src/engine/samples.gen.ts, "clean"), as a card; its figures are put in by tryPage.ts.
-   */
-  card: { title: "Your first invoice", label: "Sample invoice · test", due: "Due", steps: ["Read by the agents", "Checked by your rules", "Above your limit: you sign", "Then change one cent: refused"] },
-  /** 21 Nov (Max: "one primary button, Start the live demo"). */
   button: "Start the live demo",
-  /** Under the button, small. */
-  fine: "The real product · test money · deleted after 24 hours",
-  /** Beside the button, quiet: the trailer on YouTube (TRAILER_URL, src/config/brand.ts). */
-  trailer: "Watch the 3-minute demo",
+  /** Under the card, small. */
+  fine: "Sandbox · test money · deleted after 24 hours",
+  /** The key numbers (from docs/evidence/evidence-wall.json, put in by tryPage.ts), each a link to its proof. */
+  keys: "Key numbers, from the records",
   /** The partners' row: their official logos (Visa named in text), then the note. */
   worksWith: "Works with",
   formerly: "(formerly Metal)",
@@ -822,13 +813,14 @@ const PAY_FIELDS = [PROPOSAL_FIELDS.amount, INVOICE.currency, PROPOSAL_FIELDS.ac
 const FORM_WORDS = [INVOICE.supplier, INVOICE.payee, INVOICE.invoiceNo, INVOICE.amount, INVOICE.currency, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.note, INVOICE.trick];
 
 /** The start's fork (21 Nov): the two lanes' words and the test-money line under them. */
-const LANE_WORDS = [START.lanes.alone.tag, START.lanes.alone.name, START.lanes.alone.line, START.lanes.face.tag, START.lanes.note, START.centTag, START.card.title, START.card.label, START.card.due, ...START.card.steps];
+/** The start's card (21 Nov, mockup 175): its steps, its labels and its rows. */
+const LANE_WORDS = [...START.steps, START.card.invoice, START.card.due, ...START.card.rows.flatMap((r) => [r.h, r.r]), START.keys];
 export const VISIBLE = {
   start: [
-    [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), ...LANE_WORDS, START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, ...PROOF_WORDS],
-    [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), ...LANE_WORDS, START.flowEnd, START.starting, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, ...PROOF_WORDS],
-    [START.eyebrow, START.heading, START.failed, ...START.flow.flatMap((f) => [f.name, f.line]), ...LANE_WORDS, START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, ...PROOF_WORDS],
-    [START.eyebrow, START.heading, START.runs, ...START.flow.flatMap((f) => [f.name, f.line]), ...LANE_WORDS, START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, ...PROOF_WORDS],
+    [START.eyebrow, START.heading, START.text, ...LANE_WORDS, START.button, START.fine],
+    [START.eyebrow, START.heading, START.text, ...LANE_WORDS, START.starting, START.fine],
+    [START.eyebrow, START.heading, START.failed, ...LANE_WORDS, START.button, START.fine],
+    [START.eyebrow, START.heading, START.runs, ...LANE_WORDS, START.button, START.fine],
   ],
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
@@ -1034,7 +1026,7 @@ export const VISIBLE = {
 // 16 Nov (owner: the agent pays alone up to EUR 500.00 in a test company): "Ready to pay" says who signs in fewer words
 // (-8: "work 2", "work 12", "work 15", "work 16"); "work 17" is an invoice within the limit, which the agent pays on its
 // own; "invoice 6" carries the sample inside the limit (+9). Each pinned at its count.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 244, "start 1": 241, "start 2": 243, "start 3": 237 /* +29, 21 Nov (Max: "an app start screen: right, the sample invoice you'll use"): the sample invoice's card (its title, label, due and four steps) and the one-cent step's tag; the button is "Start the live demo" */ /* +26 each, 21 Nov (the new direction): the fork, paying alone within the limit and the passkey above it, and "Test money only: no real payment is made." */ /* -1 each, 20 Nov (owner): "Watch the 3-minute demo" for the trailer link */, "pay 7": 103, "pay 8": 153, "invoice 4": 60, "invoice 5": 61, "books 0": 88 /* +13, 17 Nov (jury): why the fee is what it is */, "books 1": 81 /* +13, 17 Nov (jury): why the fee */, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 101 /* -2, 17 Nov (jury): the cash sample's line says "Cash says wait", as its result does; +8, 17 Nov: the cash sample's line; */ /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it; +9, 16 Nov: the sample inside the agent's limit; +7, 16 Nov (owner): "Held on purpose" over the four Purser stops */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 109, "pay 1": 60, "pay 2": 64, "pay 3": 64, "pay 4": 88, "pay 5": 59, "pay 6": 69, "pay 9": 103, "work 2": 90, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 93, "invoice 7": 67, "pay 10": 166, "company 5": 201 , "work 7": 57, "work 16": 211, "books 7": 86 /* +13, 17 Nov (jury): why the fee; */ /* 16 Nov (owner): paid by the agent, two words fewer than books 0 */, "work 17": 87 /* +3, 16 Nov (owner): "Checks passed. Approved by your policy." in place of "Ready to pay." */, "work 18": 155 /* 17 Nov: inside the limit, held by the cash check (CASH): the figures' labels, the rule, what was not sent, what would make it payable */ };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 95, "start 1": 92, "start 2": 84, "start 3": 78 /* -149, 21 Nov (Max: "this is too much"; mockup 175): the pill, the headline, one line, the card that is the demo and the tiny line; the partners' row, the proof band and the trailer left the start */ /* +29, 21 Nov (Max: "an app start screen: right, the sample invoice you'll use"): the sample invoice's card (its title, label, due and four steps) and the one-cent step's tag; the button is "Start the live demo" */ /* +26 each, 21 Nov (the new direction): the fork, paying alone within the limit and the passkey above it, and "Test money only: no real payment is made." */ /* -1 each, 20 Nov (owner): "Watch the 3-minute demo" for the trailer link */, "pay 7": 103, "pay 8": 153, "invoice 4": 60, "invoice 5": 61, "books 0": 88 /* +13, 17 Nov (jury): why the fee is what it is */, "books 1": 81 /* +13, 17 Nov (jury): why the fee */, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 101 /* -2, 17 Nov (jury): the cash sample's line says "Cash says wait", as its result does; +8, 17 Nov: the cash sample's line; */ /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it; +9, 16 Nov: the sample inside the agent's limit; +7, 16 Nov (owner): "Held on purpose" over the four Purser stops */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 109, "pay 1": 60, "pay 2": 64, "pay 3": 64, "pay 4": 88, "pay 5": 59, "pay 6": 69, "pay 9": 103, "work 2": 90, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 93, "invoice 7": 67, "pay 10": 166, "company 5": 201 , "work 7": 57, "work 16": 211, "books 7": 86 /* +13, 17 Nov (jury): why the fee; */ /* 16 Nov (owner): paid by the agent, two words fewer than books 0 */, "work 17": 87 /* +3, 16 Nov (owner): "Checks passed. Approved by your policy." in place of "Ready to pay." */, "work 18": 155 /* 17 Nov: inside the limit, held by the cash check (CASH): the figures' labels, the rule, what was not sent, what would make it payable */ };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

@@ -51,6 +51,8 @@ import { presentExtra, V2_COPY } from "./try/presentMode.js";
 import { VIS_CSS, visScript } from "./try/visuals.js";
 import { NEG_CSS, NEG_TRY_JS, negKitJs } from "./try/negotiateKit.js";
 import { SAMPLES } from "./engine/samples.gen.js";
+import WALL from "../../docs/evidence/evidence-wall.json" with { type: "json" };
+import { WAVE_CANVAS_CSS, WAVE_CANVAS_HTML, waveScript } from "../../src/ui/wave.js";
 
 /**
  * Recorded real runs on the site (kit11, package.json's homepage): its /runs, for when the demo is busy or paused, and
@@ -2160,6 +2162,20 @@ const TESTS_HREF = "https://github.com/agamemnon-coder/x402-business-agents/blob
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 /** extra: the app shell and "How Purser works" (cloud/src/try/presentMode.ts); recording mode's too with /try?present=1. */
 /** over: the v2 preview's words (cloud/src/try/presentMode.ts V2_COPY), merged over the copy key by key; none on plain /try. */
+/**
+ * The start's key numbers (21 Nov, Max: "some key numbers"): three tiles of the evidence wall
+ * (docs/evidence/evidence-wall.json), each its figure as the wall has it, a few words, and a link to its proof.
+ */
+const KEY_TILES: [string, string, string][] = [
+  ["verify-all", "checks re-run from the records, 0 failed", "/proof#pf-verify"],
+  ["try-transfers", "Airwallex sandbox payouts PAID from /try", "/airwallex"],
+  ["red-team", "scripted attacks stopped before money moved", "/proof#pf-checks"],
+];
+export function keyNumbers(): { key: string; fig: string; label: string; href: string }[] {
+  const tiles = new Map((WALL as { groups: { tiles: { key: string; fig: string }[] }[] }).groups.flatMap((g) => g.tiles.map((t) => [t.key, t] as const)));
+  return KEY_TILES.flatMap(([key, label, path]) => { const t = tiles.get(key); return t ? [{ key, fig: t.fig, label, href: `${SITE_ORIGIN}${path}` }] : []; });
+}
+
 /** The start's card: the first sample the engine offers, its supplier, number, amount and due day as the page writes them. */
 function startSample(): { vendor: string; invoice_no: string; money: string; due: string } | null {
   const r = SAMPLES.find((x) => x.key === "clean")?.row;
@@ -2169,6 +2185,14 @@ function startSample(): { vendor: string; invoice_no: string; money: string; due
   const due = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${r.due_date}T12:00:00Z`));
   return { vendor: r.vendor, invoice_no: r.invoice_no, money, due };
 }
+
+/** The site's wave behind /try (21 Nov, Max: "the same high flow background"): full on the start in dark, quieter after it and in light. */
+const TRY_WAVE_CSS = `${WAVE_CANVAS_CSS}
+canvas.pw-wave { z-index: -1; }
+body:not(:has(.screen.start)) canvas.pw-wave { opacity: .3; }
+@media (prefers-color-scheme: light) { canvas.pw-wave { opacity: .45; } }
+:root[data-theme="light"] canvas.pw-wave { opacity: .45; }`;
+export const TRY_WAVE_JS = waveScript({ selector: "canvas.pw-wave", placement: "page" });
 
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }, over?: Record<string, Record<string, unknown>>): string {
   const copy = { limitAmount: TRY_ALONE_LIMIT.amount, limitCurrency: TRY_ALONE_LIMIT.currency, run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRY_VIDEO.url, label: TRY_VIDEO.label }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: { ...START, sample: startSample() }, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL }, cash: CASH };
@@ -2180,18 +2204,20 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__NEG__", () => `${negKitJs()}\n${NEG_TRY_JS}`).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__AGENT_TRACE__", () => AGENT_TRACE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL))
-    .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\nconst TESTS_HREF=${json(TESTS_HREF)};\nconst PROOF_FIGS=${json(PROOF_FIGURES)};\nconst BAND_LINE=${json(BAND_LINE)};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
+    .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\nconst TESTS_HREF=${json(TESTS_HREF)};\nconst PROOF_FIGS=${json(PROOF_FIGURES)};\nconst BAND_LINE=${json(BAND_LINE)};\nconst KEYNUMS=${json(keyNumbers())};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="${escAttr(TRY_DESCRIPTION)}">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}${START_CSS}${DID_CSS}${SITE_HEADER_CSS}${VIS_CSS}${NEG_CSS}${extra ? extra.css : ""}</style></head><body>
+<style nonce="${n}">${CSS}${START_CSS}${DID_CSS}${SITE_HEADER_CSS}${VIS_CSS}${NEG_CSS}${extra ? extra.css : ""}${TRY_WAVE_CSS}</style></head><body>
+${WAVE_CANVAS_HTML}
 ${siteHeader("try")}
 <main id="main"></main>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
 ${extra ? `<script type="module" nonce="${n}">${extra.script}</script>\n` : ""}<script type="module" nonce="${n}">${script}
+${TRY_WAVE_JS}
 ${visScript(json)}</script>
 </body></html>`;
 }
