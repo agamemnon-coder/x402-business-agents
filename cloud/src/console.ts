@@ -454,10 +454,10 @@ a.st-step:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--bord
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
 ${siteHeader(null)}
-<div class="appbar"><div class="wrap"><a class="abrand" href="#/overview" aria-label="Purser Cloud"><span class="mk">${svg("feather", 16)}</span></a><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><span class="ng" data-sg="money">${escAttr(SHELL_WORDS.en.g_money)}</span><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><span class="ng" data-sg="agents">${escAttr(SHELL_WORDS.en.g_agents)}</span><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><span class="ng" data-sg="rails">${escAttr(SHELL_WORDS.en.g_rails)}</span><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/connections" data-tab="connections" data-t="cs.nav.connections">${tr("en", "cs.nav.connections")}</a><span class="ng sep" aria-hidden="true"></span><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<div class="appbar"><div class="wrap"><a class="abrand" href="#/overview" aria-label="Purser Cloud"><span class="mk">${svg("feather", 16)}</span></a><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><span class="ng" data-sg="money">${escAttr(SHELL_WORDS.en.g_money)}</span><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><span class="ng" data-sg="agents">${escAttr(SHELL_WORDS.en.g_agents)}</span><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><span class="ng" data-sg="rails">${escAttr(SHELL_WORDS.en.g_rails)}</span><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/claude" data-tab="claude" hidden>Claude</a><a href="#/connections" data-tab="connections" data-t="cs.nav.connections">${tr("en", "cs.nav.connections")}</a><span class="ng sep" aria-hidden="true"></span><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="awx-app">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: AIRWALLEX_LOGO_SRC })}</span><span class="spacer"></span>
-<span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><span id="ask-slot"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
-<span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
+<span class="who-am-i"><span class="cosw" id="cosw"><a class="co" id="co" href="#/company"></a><button type="button" class="co-more" id="co-more" aria-haspopup="menu" aria-expanded="false" aria-controls="co-menu" aria-label="Switch company" hidden>${svg("chevron-down", 16)}</button><span class="co-menu" id="co-menu" role="menu" aria-label="Switch company" hidden></span></span><span id="who"></span><span id="ask-slot"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
+<span class="test" id="testchip" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
 <div class="demo-ribbon" id="demo" hidden><div class="wrap"><p class="dr">${svg("flask", 14)}<span class="dr-full" data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><span class="dr-short">${SHELL_WORDS.en.demo_short}</span><a href="#/sign-in" id="demo-out"><span class="lw" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</span><span class="lv">${SHELL_WORDS.en.demo_leave}</span></a></p></div></div>
 <div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${(["cs.side.1", "cs.side.2", "cs.side.3"] as const).map((k) => `<li>${svg("circle-check", 18)}<span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div></div>
 <main><div class="wrap subnav-wrap"><nav class="subnav" id="subnav" hidden></nav></div><div class="wrap" id="view" aria-live="polite"></div></main>
@@ -548,15 +548,9 @@ const go=(h)=>{if(location.hash===h)route();else location.hash=h};
 
 function shell(){
   document.body.className=S?'signed-in':'signed-out';
-  if(S){const left=Math.max(0,Math.round((S.exp-Date.now())/60000));const n=ME&&ME.user&&ME.user.display_name?ME.user.display_name:'',c=ME&&ME.tenant?ME.tenant.name:'',e=t('cs.ends_in',{n:left});const w=$('#who');
-    // Who, the company and the session's time left; a narrow header drops the company, then the time (both stay in the title).
-    w.replaceChildren(el('span','wn',n),el('span','we',(n?' · ':'')+e));w.title=[n,c,e].filter(Boolean).join(' · ');
-    // The company this session is in, and its Airwallex account as Airwallex last reported it (a platform runs several).
-    const co=$('#co'),aw=ME&&ME.airwallex;co.replaceChildren();if(c){const cx=/^(.+?)(\s+\([^)]*\))$/.exec(c);co.append(el('span','av',c.trim().charAt(0).toUpperCase()),el('span','cn',cx?[cx[1],el('span','cx',cx[2])]:c));
-      // The demo company has no account of its own: its chip says what its rows are (jury, 13 Nov: "No Airwallex account
-      // yet" read against rows paid on Airwallex rails).
-      co.append(ME&&ME.demo?el('span','aw demo',[el('i',''),el('span','aww',t('cs.demo.chip'))]):aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
-      co.title=[n,c,aw?'Airwallex '+(aw.account_id||'')+' · '+tk('cs.awx.status.'+aw.status,aw.status):''].filter(Boolean).join(' · ')}}
+  // 21 Nov: the company block (its page and the switcher), one session block, test money once in the header strip.
+  if(S){sessionBlock();companyBlock();if(ME){rememberCompany(ME);connState().catch(()=>{})}}
+  placeTest();
   // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
   // Demo from the first paint: a guest session says so when it is stored (S.guest), before /v1/me answers.
   const dm=$('#demo');if(dm){const on=!!(S&&(ME?ME.demo:S.guest));dm.hidden=!on;document.body.classList.toggle('demo',on);footLine()}
@@ -865,7 +859,7 @@ const engineStale=()=>{ENG.p=null};
 // 13 Nov), else the console's.
 var ENG_ON=false;
 function footLine(){$('#foot').textContent=ENG_ON?t('cs.eng.foot'):document.body.classList.contains('demo')?t('cs.demo.line'):t('cs.foot')}
-function engineChip(on){ENG_ON=!!on;const c=$('.appbar .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');footLine()}
+function engineChip(on){ENG_ON=!!on;const c=$('#testchip');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');footLine()}
 
 // The panel "At work": the engine's events as lines (src/ui/engineEvents.ts), newest first, six in view and the rest
 // folded. Its state belongs to the page, not to a view, so any view can mount it (workPanel()): the seq read up to, the
@@ -1355,7 +1349,7 @@ async function claudeCard(m,owner){
     if(!live.length){list.replaceChildren(el('p','sub',t('cs.claude.none')));return}
     const ul=el('ul','plain tokens');
     for(const x of live){const rv=btn(t('cs.revoke'),'danger','x');
-      rv.onclick=async()=>{if(!confirm(t('cs.claude.revoke_q',{name:x.name})))return;rv.disabled=true;try{await api('/v1/claude/connectors/'+encodeURIComponent(x.id),{method:'DELETE'});out.replaceChildren();await draw()}catch(e){if(!(e instanceof Expired)){rv.disabled=false;out.replaceChildren(note(e.message,'bad'))}}};
+      rv.onclick=async()=>{if(!confirm(t('cs.claude.revoke_q',{name:x.name})))return;rv.disabled=true;try{await api('/v1/claude/connectors/'+encodeURIComponent(x.id),{method:'DELETE'});out.replaceChildren();await draw();connState(true).catch(()=>{})}catch(e){if(!(e instanceof Expired)){rv.disabled=false;out.replaceChildren(note(e.message,'bad'))}}};
       ul.append(el('li','',[el('b','',data('key',x.name)),' ',el('span','pill'+(x.can_propose?' warn':''),x.can_propose?t('cs.claude.proposes'):t('cs.claude.reads')),el('span','sub',' '+t('cs.expires')+' '+day(x.expires_at)+(x.last_used_at?' · '+t('cs.claude.last_used',{when:stamp(x.last_used_at)}):'')),' ',rv]))}
     list.replaceChildren(ul);
   }
@@ -1364,7 +1358,7 @@ async function claudeCard(m,owner){
   const lab=el('label','check',[prop,' ',t('cs.claude.propose')]);lab.htmlFor='claude-propose';
   const mk=btn(t('cs.claude.make'),'primary','key-round');mk.id='claude-make';
   mk.onclick=async()=>{if(!name.value.trim())return;mk.disabled=true;
-    try{const r=await api('/v1/claude/connectors',{method:'POST',body:{name:name.value.trim(),propose:prop.checked}});name.value='';prop.checked=false;await draw();
+    try{const r=await api('/v1/claude/connectors',{method:'POST',body:{name:name.value.trim(),propose:prop.checked}});name.value='';prop.checked=false;await draw();connState(true).catch(()=>{});
       out.replaceChildren(el('div','once',[el('b','',t('cs.shown_once')),t('cs.copy_now'),el('code','cmd',r.token),el('div','row2',[copyBtn(r.token)]),el('b','',t('cs.claude.code')),el('code','cmd',codeCmd(r.token)),el('div','row2',[copyBtn(codeCmd(r.token))])]))}
     catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'))}finally{mk.disabled=false}};
   kids.push(el('h2','sub-h',t('cs.claude.tokens')),list,el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[mk])]),lab,out,note(t('cs.claude.keeps')));
@@ -1593,12 +1587,14 @@ async function settingsView(q){
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),m.inbox?note(t('cs.inbox.forward')):null,fwd,langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
   const ids=m.kind==='session'&&!m.demo?await identitiesCard(m).catch(()=>null):null;
   const sessions=m.kind==='session'&&!m.demo?await sessionsCard().catch(()=>null):null;
-  // 21 Nov: every connection (AI, chat, alerts, accounting, the catalogue) moved to its own page; Settings points there.
-  const toCx=el('a','card panel cx-pointer',[el('span','cx-mark ic-mark g-ai',[ic('link-2')]),el('div','',[el('b','',t('cs.cxp.pointer')),el('p','sub',t('cs.cxp.pointer_sub'))]),ic('chevron-right')]);toCx.href='#/connections';
-  if(!owner){const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(...[head(t('cs.nav.settings')),company,sessions,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,toCx].filter(Boolean));scrollToAt(q);return}
+  // 21 Nov (the owner): Connections has its own tab, so Settings no longer repeats it. Settings holds you, the company,
+  // the approval policy in short, notifications, API and MCP access, then people and keys, and the danger zone.
+  const [policy,notify]=await Promise.all([policyCard().catch((e)=>{if(e instanceof Expired)throw e;return null}),notifyCard(m).catch((e)=>{if(e instanceof Expired)throw e;return null})]);
+  const you=youCard(m),access=accessCard(m),danger=dangerCard(m);
+  if(!owner){const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(...[head(t('cs.nav.settings')),el('div','split2 set2',[you,company].filter(Boolean)),el('div','split2 set2',[policy,access].filter(Boolean)),sessions,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,danger].filter(Boolean));scrollToAt(q);return}
   const people=el('div','card panel');people.id='people';const keys=el('div','card panel');keys.id='keys';const dataCard=el('div','card panel');dataCard.id='data';
   const security=m.kind==='session'&&!m.demo?await securityCard():null;
-  view().replaceChildren(...[head(t('cs.nav.settings'),t('cs.settings_lede')),toCx,company,security,sessions,ids,el('div','split2',[people,keys]),dataCard,offboardingCard(m)].filter(Boolean));
+  view().replaceChildren(...[head(t('cs.nav.settings'),t('cs.settings_lede')),el('div','split2 set2',[you,company].filter(Boolean)),el('div','split2 set2',[policy,notify].filter(Boolean)),access,security,sessions,ids,el('div','split2',[people,keys]),dataCard,offboardingCard(m),danger].filter(Boolean));
   // An invite: a one-time link to this console (the secret after the #, so opening it sends it to no server) and its
   // QR code, for 30 minutes and one passkey. The owner passes it on; nothing is mailed.
   const invites=el('div','');
@@ -1855,7 +1851,7 @@ async function route(){
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
     // 14 Nov: Invoices has its tab back (the invoices only); Books holds the ledger, the VAT overview and the exports.
-    const pages={'/overview':overviewView,'/agents':agentsView,'/invoices':invoicesView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/airwallex':airwallexView,'/connections':connectionsView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
+    const pages={'/company':companyView,'/claude':claudeView,'/overview':overviewView,'/agents':agentsView,'/invoices':invoicesView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/airwallex':airwallexView,'/connections':connectionsView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
     if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
     await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}

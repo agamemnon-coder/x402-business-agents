@@ -245,7 +245,7 @@ await page.goto(`${ORIGIN}/#/settings`);
 await page.waitForSelector("text=API keys");
 await settle();
 await shot("10-instellingen");
-ok(await page.locator("a.cx-pointer[href='#/connections']").count() === 1, "Settings points to the Connections page");
+ok(await page.locator("a.cx-pointer").count() === 0 && await page.locator(".set-danger").count() === 1, "Settings no longer repeats Connections (its own tab) and ends on the danger zone");
 // Connections (21 Nov, its own tab): one card per connection with its honest label; where each stands for this company;
 // a button only where the console really connects it; the cards that connect below.
 await page.goto(`${ORIGIN}/#/connections`);
@@ -604,12 +604,13 @@ async function engineUpload(E: EnginePass) {
   await p.goto(`${E.origin}/#/invoices`);
   await p.waitForSelector("#work");
   await p.waitForSelector("#eng-file", { state: "attached" });
-  // 12 Nov: the test-money chip sits in the console's own bar (.appbar) under the site's header (cloud/src/siteHeader.ts).
-  ok((await p.textContent(".appbar .test .tl"))?.trim() === "Engine: test money", "engine pass: the header's test-money chip reads \"Engine: test money\"");
+  // 21 Nov: on a laptop the one test-money chip sits in the header strip, beside "Built on Airwallex"; the sidebar no
+  // longer repeats it (cloud/src/consoleCompany.ts, placeTest). On a phone it is in the top bar (below).
+  ok((await p.textContent("#testchip .tl"))?.trim() === "Engine: test money", "engine pass: the header's test-money chip reads \"Engine: test money\"");
   ok(/stand-in bank.*Nothing is sent to Airwallex/.test((await p.textContent("#foot")) ?? ""), "engine pass: the footer says the engine pays on a stand-in bank and nothing goes to Airwallex");
-  ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute(".appbar .test", "title")) ?? ""), "engine pass: the chip's title says the stand-in bank, no real money, nothing sent to Airwallex");
-  ok((await p.$$(".appbar .test")).length === 1 && (await p.$$("header .test")).length === 0, "engine pass: one chip in the header, not two");
-  ok(await p.isVisible(".appbar .test"), "engine pass: signed in, the test-money chip is visible");
+  ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute("#testchip", "title")) ?? ""), "engine pass: the chip's title says the stand-in bank, no real money, nothing sent to Airwallex");
+  ok((await p.locator(".test").count()) === 1 && (await p.locator("header.top #testchip").count()) === 1, "engine pass: one chip, in the header strip, not two");
+  ok(await p.isVisible("#testchip"), "engine pass: signed in, the test-money chip is visible");
 
   await p.setInputFiles("#eng-file", { name: "bergtex-BTX-2026-21.pdf", mimeType: "application/pdf", buffer: E.pdf });
   ok(await p.isDisabled("#view .drop.eng button"), "engine pass: while the upload runs its button is disabled");

@@ -190,9 +190,11 @@ describe("the console of a cloud with an engine", () => {
     expect(js).toContain("f.setAttribute('sandbox','allow-scripts')");
     expect(js).toContain("PDF_MAX_BYTES");
     // A page of its own, reached from links: the menu keeps its nine items (13 Nov: Agents and Tokenisation joined it;
-    // 14 Nov: Invoices and Books are two tabs again, and Airwallex, live from the sandbox, joined; 21 Nov: Connections).
+    // 14 Nov: Invoices and Books are two tabs again, and Airwallex, live from the sandbox, joined; 21 Nov: Connections,
+    // and Claude, a tab that shows only once the company has connected it: cloud/src/consoleCompany.ts).
     expect(js).toContain("'/archive':archiveView");
-    expect(html.match(/data-tab="/g)).toHaveLength(9);
+    expect(html.match(/data-tab="/g)).toHaveLength(10);
+    expect(html).toContain('<a href="#/claude" data-tab="claude" hidden>Claude</a>');
     expect(html).not.toMatch(/<nav[^>]*>[^]*#\/archive[^]*<\/nav>/);
     expect(js).toContain("a.href='#/archive'");
   });
