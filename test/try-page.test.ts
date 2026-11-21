@@ -202,7 +202,7 @@ describe("the frame and the start", () => {
   it("keeps the start's words: the headline, the line under it, the button, test money deleted after 24 h, and the partners", () => {
     // 21 Nov (Max: "the only purpose of this page is the demo and some key numbers"; "this is too much"): the partners'
     // row left the start (their proof is on /proof, /airwallex, /alta and /visa, linked from the key numbers).
-    expect(COPY.START.fine).toBe("Sandbox · test money · deleted after 24 hours");
+    expect(COPY.START.fine).toBe("Sandbox · test money · no account needed · deleted after 24 hours");
     expect(COPY.START.text).toBe("An AI agent reads a supplier's invoice, you approve it with Face ID, then change one cent and Purser blocks it.");
     expect(COPY.START.card.rows.map((r) => r.h)).toEqual(["Read the invoice", "Check it against your policy", "Approve with Face ID", "Change one cent (test)"]);
     // EUR 1,850.00 is above the agent's limit: the check row says so, never "within limits".

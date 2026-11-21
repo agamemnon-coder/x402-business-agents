@@ -8,6 +8,7 @@
 import { DEMO_CONNECTOR_TOKEN } from "../auth.js";
 import { ICON_LINKS, PREVIEW_TAGS } from "../brand.js";
 import { randomToken } from "../crypto.js";
+import { REPO_URL, sdkQuickstart } from "./sdkQuickstart.js";
 
 /** The MCP reference in the repository: tools, annotations, error codes, the safety model and how a proposal reaches the CFO. */
 export const MCP_REFERENCE = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/mcp.md";
@@ -70,6 +71,9 @@ ${t.links.length ? `<p class="links">${t.links.map((l) => `<a class="btn" href="
 <ol>${t.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
 ${t.snippets.map((s) => `<p class="label">${esc(s.label)}</p><pre tabindex="0"><code>${esc(s.code)}</code></pre>`).join("")}
 ${t.note ? `<p class="note">${esc(t.note)}</p>` : ""}</section>`).join("");
+  const q = sdkQuickstart(origin);
+  const sdk = `<section class="sdk" id="sdk"><h2>From code: the SDKs</h2><p class="intro">TypeScript (<code>sdk/typescript</code>) and Python (<code>sdk/python</code>), no dependencies. They run from a clone of <a href="${esc(REPO_URL)}" rel="noopener">the repository</a>: not published to npm or PyPI. They take an API key with the read scope (an owner makes it in Purser Cloud); the demo token works at /mcp only. Neither can approve.</p>
+${[["Get them", q.shell], ["TypeScript: which invoices wait for the CFO", q.ts], ["Python: the same question", q.py]].map(([l, c]) => `<p class="label">${esc(l!)}</p><pre tabindex="0"><code>${esc(c!)}</code></pre>`).join("")}</section>`;
   const show = tabs.map((t) => `#t-${t.id}:checked~.tabs label[for=t-${t.id}]{background:var(--ink);color:#fff;border-color:var(--ink)}#t-${t.id}:checked~.panels #p-${t.id}{display:block}`).join("");
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Connect your AI to Purser</title><meta name="description" content="Connect Claude, ChatGPT, Cursor, VS Code, Gemini CLI or Windsurf to Purser over MCP. Read only: no AI approves or pays.">${ICON_LINKS}${PREVIEW_TAGS}
@@ -87,6 +91,7 @@ input[type=radio]:focus-visible~.tabs label{outline:none}
 ol{padding-left:20px;margin:0 0 12px}li{margin:0 0 6px}.label{font-weight:650;margin:12px 0 6px;font-size:14px}
 pre{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 10px}
 .btn{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border-radius:12px;background:var(--accent);color:#fff;font-weight:650;text-decoration:none;margin:0 8px 8px 0}
+.sdk{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 18px 8px;margin-top:18px}.sdk h2{margin:0 0 4px;font-size:20px}
 .note{color:var(--muted);font-size:14px;margin:8px 0 12px}.rule{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin:0 0 18px}
 footer{color:var(--muted);font-size:13px;margin-top:20px}
 ${show}
@@ -98,6 +103,7 @@ ${show}
 <div><b>Sign-in</b><span>OAuth 2.1 with PKCE, or a bearer header with your connector token (Purser Cloud: Connections, Connect your AI).</span></div>
 <div><b>Demo token</b><span><code>${esc(DEMO_CONNECTOR_TOKEN)}</code> reads the demo company: made-up data, no real money.</span></div></div>
 ${radios}<nav class="tabs" aria-label="Clients">${labels}</nav><div class="panels">${panels}</div>
+${sdk}
 <footer><a href="${esc(MCP_REFERENCE)}" rel="noopener">The MCP reference</a>: every tool, its annotations, the error codes and how a proposal reaches the CFO. Each tab follows that client's own documentation as read on 13 Nov 2026. Purser has been tried live in Claude's iOS app and with the MCP Inspector; the other clients are described from their docs.</footer>
 </main></body></html>`;
   return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300", "x-content-type-options": "nosniff", "referrer-policy": "same-origin",

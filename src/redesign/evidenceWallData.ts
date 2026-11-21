@@ -480,6 +480,49 @@ function quality(): WallTile[] {
   return out;
 }
 
+/**
+ * Under load (21 Nov, later; the owner: "show clearly what we have that competitors advertise"): performance and
+ * concurrency, each figure read from its record, a latency only where the record measured one. 10 visitors on the
+ * public /try at once (docs/runs/2026-11-21-try-concurrent/concurrency.json, told in docs/runs/2026-11-21-try-capacity.md;
+ * its file is not a summary.json, so the walks of record never add it up), Alta's clearing load test of 19 Nov, the
+ * Airwallex soaks' create-to-PAID times (each payment's own, nearest rank over all of them), 128 spend holds at once
+ * (test/holds-concurrency.test.ts, run in CI) and the local /try load test of 12 Nov.
+ */
+function underLoad(): WallTile[] {
+  const out: WallTile[] = [];
+  /** Nearest rank, as the soak records compute theirs. */
+  const rank = (xs: readonly number[], p: number) => [...xs].sort((a, b) => a - b)[Math.ceil(p * xs.length) - 1]!;
+  const CC = "docs/runs/2026-11-21-try-concurrent/concurrency.json", CAP = "docs/runs/2026-11-21-try-capacity.md";
+  type Route = { n: number; p50: number; p95: number };
+  const cc = json(CC) as { visitors?: number; ok?: number; failed?: { failures: string[] }[]; started_within_ms?: number; started_at?: string; http?: { calls: number; statuses: Record<string, number>; s429: unknown[]; s5xx: unknown[] }; airwallex?: { not_sent?: Record<string, number> }; routes_ms?: Record<string, Route> } | null;
+  if (cc?.visitors && cc.http && cc.started_at) {
+    const h = cc.http, stopped = cc.failed?.length ?? 0, timedOut = cc.airwallex?.not_sent?.timeout ?? 0;
+    const why = stopped ? `; ${fmt(stopped)} stopped${timedOut ? ` when ${fmt(timedOut)} sandbox payouts asked in the same seconds timed out` : ""}; the record says why, and the fix` : "";
+    if (!h.s429.length && !h.s5xx.length) out.push({ key: "try-at-once", fig: fmt(cc.visitors), label: "visitors on the public /try at once: no 429, no 5xx", note: `${fmt(h.calls)} API calls, started within ${fmt(cc.started_within_ms ?? 0)} ms. ${cc.ok === cc.visitors ? "Every walk" : `${fmt(cc.ok ?? 0)} of the ${fmt(cc.visitors)} walks`} passed every step${why}.`, tag: "sandbox", tone: "ok", href: blob(CAP), rec: CC });
+    const ev = cc.routes_ms?.["GET /v1/engine/events"], st = cc.routes_ms?.["POST /v1/try/start"];
+    if (ev) out.push({ key: "try-at-once-poll", fig: secs(ev.p50), label: `engine answer with ${fmt(cc.visitors)} visitors at once (median)`, note: `p95 ${secs(ev.p95)} over ${fmt(ev.n)} event polls${st ? `; a new test company: median ${secs(st.p50)}, p95 ${secs(st.p95)}` : ""}. Timed in each browser.`, tag: "sandbox", tone: "", href: blob(CAP), rec: CC });
+  }
+  const CL = "docs/runs/2026-11-19-clearing-load.json";
+  const cl = json(CL) as { ran_at?: string; payers?: number; attempted?: number; paid?: number; seconds?: number; throughput_per_second?: number; latency_ms?: { p50: number; p95: number; p99: number } } | null;
+  if (cl?.throughput_per_second && cl.paid && cl.ran_at) out.push({ key: "clearing-rate", fig: `${cl.throughput_per_second} a second`, label: `payments paid through Alta's clearing, ${fmt(cl.payers ?? 0)} wallets at once`, note: `${fmt(cl.paid)} paid in ${cl.seconds} s${cl.latency_ms ? `; each: median ${secs(cl.latency_ms.p50)}, p95 ${secs(cl.latency_ms.p95)}, p99 ${secs(cl.latency_ms.p99)}` : ""}. Test money.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-clearing-load.md"), rec: CL });
+  const sk = soaks();
+  const times = sk.flatMap((x) => (x.rec.payments as { create_to_paid_ms?: number | null }[]).map((p) => p.create_to_paid_ms).filter((n): n is number => typeof n === "number"));
+  const http = sk.map((x) => (x.rec.summary as { http?: { requests: number; status_429: number; non_2xx: unknown[] } }).http);
+  if (times.length && http.every(Boolean)) {
+    const req = http.reduce((n, x) => n + x!.requests, 0), s429 = http.reduce((n, x) => n + x!.status_429, 0), bad = http.reduce((n, x) => n + x!.non_2xx.length, 0);
+    out.push({ key: "soak-latency", fig: secs(rank(times, 0.5)), label: "Airwallex sandbox: create to PAID, soak payments (median)", note: `p95 ${secs(rank(times, 0.95))} over ${fmt(times.length)} payments, ${sk.length === 1 ? "one soak" : `${sk.length} soaks`}; PAID by the sandbox's simulation: API round trips, not settlement. ${fmt(req)} requests: ${fmt(s429)} answered 429, ${fmt(bad)} not 2xx.`, tag: "sandbox", tone: "awx", href: blob(sk.at(-1)!.log), rec: sk.flatMap((x) => [x.file, x.log]).join(" ") });
+  }
+  const HC = "test/holds-concurrency.test.ts";
+  const hc = has(HC) ? readFileSync(new URL(HC, ROOT), "utf8") : "";
+  const procs = /const PROCS = (\d+), PER_PROC = (\d+);/.exec(hc);
+  if (procs) out.push({ key: "holds-at-once", fig: fmt(Number(procs[1]) * Number(procs[2])), label: `payments at once from ${procs[1]} processes: no budget, cap or shared total passed`, note: "Three agents' atomic spend holds on one database; run in CI on every change.", tag: "ci", tone: "ok", href: blob(HC), rec: HC, asOf: null });
+  const TL = "docs/runs/2026-11-12-try-load.md";
+  const tl = has(TL) ? readFileSync(new URL(TL, ROOT), "utf8") : "";
+  const local = /\*\*Result:\*\* on a local `wrangler dev`[^\n]*?(\d+) of (\d+) visitors started a test company[^\n]*?No answer was a 5xx or a 429/.exec(tl);
+  if (local) out.push({ key: "try-load-local", fig: whole(Number(local[1]), Number(local[2])), label: "visitors at once started a test company, local /try: no 5xx, no 429", note: "One local wrangler dev process, not the deployed site; no Claude. The limits held; no deployed latency.", tag: "test", tone: "ok", href: blob(TL), rec: TL });
+  return out;
+}
+
 function scale(w: ReturnType<typeof walks>): WallTile[] {
   if (!w) return [];
   const t = w.t, st = (k: string) => t.steps[k];
@@ -515,6 +558,7 @@ export function evidenceWall(records: LiveTryRecord[] = wallWalks()): EvidenceWa
     { id: "ev-built", title: "Built to last", tiles: built() },
     { id: "ev-quality", title: "Quality and supply chain", tiles: quality() },
     { id: "ev-scale", title: "The public /try, timed", tiles: scale(w) },
+    { id: "ev-load", title: "Under load", tiles: underLoad() },
   ].filter((g) => g.tiles.length)
     // 21 Nov (the owner: "every figure shows its date"): each tile's day, the newest of the records it names, unless the
     // tile says its own (a tile whose later record read nothing).
