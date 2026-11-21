@@ -24,9 +24,10 @@ describe("the evidence wall's file", () => {
     expect(read(WALL_FILE)).toBe(evidenceWallFile());
   });
 
-  it("has seven groups, each tile with a figure, a line, a tag, a record that exists and a link to it", () => {
+  // 21 Nov, later (owner: show what competitors advertise): an eighth group, "Under load", performance and concurrency.
+  it("has eight groups, each tile with a figure, a line, a tag, a record that exists and a link to it", () => {
     const w = committedWall()!;
-    expect(w.groups.map((g) => g.title)).toEqual(["Live on the rails", "Cannot be forged", "AI under control", "Attacked and broken on purpose", "Built to last", "Quality and supply chain", "The public /try, timed"]);
+    expect(w.groups.map((g) => g.title)).toEqual(["Live on the rails", "Cannot be forged", "AI under control", "Attacked and broken on purpose", "Built to last", "Quality and supply chain", "The public /try, timed", "Under load"]);
     const keys = tiles(w).map((t) => t.key);
     expect(new Set(keys).size).toBe(keys.length);
     for (const t of tiles(w)) {

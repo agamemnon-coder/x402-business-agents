@@ -25,7 +25,7 @@ export const TAG_WORDS: Record<WallTag, string> = { sandbox: "Sandbox", testnet:
 /** The wall's legend, in sight above the tiles: what the tags mean, and what was simulated everywhere. */
 export const WALL_LEGEND = "Sandbox and testnet: live runs, test money; a sandbox PAID is simulated. Test world: offline evals and attacks on this computer. Tap a tile for its record.";
 /** The groups' names in the wall's sticky nav. */
-export const WALL_NAV: Record<string, string> = { "ev-rails": "Live on the rails", "ev-forged": "Cannot be forged", "ev-ai": "AI under control", "ev-attacked": "Attacked on purpose", "ev-built": "Built to last", "ev-quality": "Quality", "ev-scale": "/try timed" };
+export const WALL_NAV: Record<string, string> = { "ev-rails": "Live on the rails", "ev-forged": "Cannot be forged", "ev-ai": "AI under control", "ev-attacked": "Attacked on purpose", "ev-built": "Built to last", "ev-quality": "Quality", "ev-scale": "/try timed", "ev-load": "Under load" };
 /** The partner whose colour the tile carries, if one. */
 export type WallTone = "awx" | "metal" | "claude" | "ok" | "";
 export interface WallTile { key: string; fig: string; label: string; note: string; tag: WallTag; tone: WallTone; href: string; rec: string; /** Not on /proof (a partner page's strip shows it). */ offProof?: boolean; /** The day of the newest record the tile names (src/proof/recordDate.ts), or null when none says one (a figure recomputed from the records at each build). */ asOf?: string | null }
