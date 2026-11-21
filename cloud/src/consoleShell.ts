@@ -19,7 +19,7 @@ import { REPO_BLOB, ROSTER } from "./agentRoster.js";
 /** The frame's words, English and Dutch. */
 export const SHELL_WORDS = {
   en: {
-    g_money: "Money", g_agents: "Agents & tokens", g_rails: "Connected",
+    g_money: "Payments", g_agents: "Agents", g_rails: "Integrations",
     b_overview: "Overview", b_money: "Money", b_agents: "Agents", b_rails: "Connected", b_settings: "Settings",
     sections: "Sections", in_group: "Pages in {group}",
     demo_short: "Demo company · made-up data · test money", demo_leave: "Leave",
@@ -42,7 +42,7 @@ export const SHELL_WORDS = {
     t_sourcing: "Sourcing", t_payables: "Payables", t_treasury: "Treasury", t_customers: "Customers", t_books: "Books",
   },
   nl: {
-    g_money: "Geld", g_agents: "Agents & tokens", g_rails: "Gekoppeld",
+    g_money: "Betalingen", g_agents: "Agents", g_rails: "Integraties",
     b_overview: "Overzicht", b_money: "Geld", b_agents: "Agents", b_rails: "Gekoppeld", b_settings: "Instellingen",
     sections: "Onderdelen", in_group: "Pagina's in {group}",
     demo_short: "Demobedrijf · verzonnen gegevens · testgeld", demo_leave: "Verlaten",

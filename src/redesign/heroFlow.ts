@@ -72,7 +72,7 @@ export function heroFlowHtml(): string {
         <p class="hf-pill"><b>Signed with a passkey</b> · <span title="${esc(`SHA-256 of the signed terms: ${f.hash}`)}">fingerprint of the terms</span></p>
       </div>
       <div class="hf-paid">
-        <p class="hf-paid-h"><span>${icon("check", 14)}</span><b>Paid</b><small>simulated bank</small></p>
+        <p class="hf-paid-h"><span>${icon("check", 14)}</span><b>Paid</b><small>simulated bank · its payout also sent to the Airwallex sandbox</small></p>
         <table class="hf-led"><tbody>${f.ledger.map((l, i) => `<tr class="hf-l${i}"><th>${esc(l.code)}</th><td${l.code === AP_ACCOUNTS.foreignVat && VAT_THEN ? ` title="${esc(VAT_THEN)}"` : ""}>${esc(l.name)}</td><td>${esc(l.debit || l.credit)}<small>${l.debit ? "Dr" : "Cr"}</small></td></tr>`).join("")}</tbody></table>
       </div>
     </div>

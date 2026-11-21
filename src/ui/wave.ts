@@ -34,22 +34,41 @@ export const waveScript = (o: WaveOptions): string => `
     "uniform vec4 r0, r1, r2;",
     "varying float vA; varying vec3 vC;",
     "float rip(vec4 r, vec2 p) { if (r.w < 0.5) return 0.0; float d = length((p - r.xy) * vec2(asp, 1.0)); float rad = r.z * 0.9; return exp(-(d - rad) * (d - rad) / 0.004) * (1.0 - r.z / 2.2); }",
-    "void main() {",
-    "  float id = floor(a.z), sd = fract(a.z), u = a.x, w = a.y;",
-    "  vec3 P; float edge, fold, near = 0.0;",
-    "  if (id < 2.5) {",
+    "varying float vK;",
+    "vec3 rib(float id, float u, float w, out float th) {",
     "    float X = (u - 0.5) * 5.0, ph = id * 2.17;",
     "    float base = id < 0.5 ? -1.05 + 0.75 * u - 0.35 * sin(u * 3.1) : id < 1.5 ? -1.45 + 2.3 * u * u : 0.85 - 0.45 * u;",
     "    float Y = base + 0.2 * sin(X * 1.25 + t * 0.33 + ph) + 0.07 * sin(X * 3.1 - t * 0.47 + ph * 1.7) + (place > 0.5 ? 0.95 : 0.0);",
     "    float Z = 1.7 + 1.0 * sin(X * 0.75 + t * 0.21 + ph) + (id > 1.5 ? 1.4 : 0.0) - (id < 0.5 ? 0.9 * (1.0 - u) * (1.0 - u) : id < 1.5 ? 0.8 * u * u : 0.0);",
-    "    float th = X * 1.05 + t * 0.38 + ph + 0.7 * sin(X * 0.6 + t * 0.17 + ph);",
+    "    th = X * 1.05 + t * 0.38 + ph + 0.7 * sin(X * 0.6 + t * 0.17 + ph);",
     "    float wd = (id > 1.5 ? 0.55 : 1.5) * (0.7 + 0.3 * sin(X * 0.9 + ph + t * 0.1));",
-    "    P = vec3(X, Y + w * wd * sin(th), Z + w * wd * cos(th));",
+    "    return vec3(X, Y + w * wd * sin(th), Z + w * wd * cos(th));",
+    "}",
+    "float h1(float x) { return fract(sin(x * 91.7) * 43758.5453); }",
+    "void main() {",
+    "  float id = floor(a.z), sd = fract(a.z), u = a.x, w = a.y;",
+    "  vec3 P; float edge, fold, near = 0.0, kind = 0.0, th = 0.0;",
+    "  if (id < 2.5) {",
+    "    P = rib(id, u, w, th);",
     "    edge = pow(abs(w), 10.0) * (w > 0.0 ? 1.0 : 0.45);",
     "    fold = 0.25 / (0.25 + abs(sin(th)));",
-    "  } else {",
+    "  } else if (id < 3.5) {",
     "    P = vec3((u - 0.5) * 5.4 + 0.25 * sin(t * 0.05 + sd * 40.0), (w * 1.6) + 0.15 * sin(t * 0.07 + sd * 20.0), 0.6 + sd * 2.4);",
     "    edge = 0.0; fold = 0.0; near = 1.0;",
+    "  } else if (id < 4.5) {",
+    "    // Sparkles: star-like points along and just above the two main crests, drifting slowly with the flow.",
+    "    float rid = h1(sd) < 0.6 ? 0.0 : 1.0, uu = fract(u + t * (0.004 + 0.006 * h1(sd * 3.0)));",
+    "    P = rib(rid, uu, 0.96 + 0.08 * h1(sd * 5.0), th);",
+    "    P.y += 0.03 + 0.22 * h1(sd * 7.0) * h1(sd * 11.0);",
+    "    edge = 1.0; fold = 1.0; kind = 1.0;",
+    "  } else if (id < 5.5) {",
+    "    // Dust: fine still points across the dark.",
+    "    P = vec3((u - 0.5) * 6.0, w * 2.2, 2.0 + 3.0 * h1(sd * 13.0));",
+    "    edge = 0.0; fold = 0.0; kind = 2.0;",
+    "  } else {",
+    "    // Flares: a few white highlights on the main crest, where the ribbons meet the light.",
+    "    P = rib(h1(sd) < 0.5 ? 0.0 : 1.0, fract(u + t * 0.003), 1.0, th);",
+    "    edge = 1.0; fold = 1.0; kind = 3.0;",
     "  }",
     "  float zz = P.z + 1.6;",
     "  vec2 q = vec2(P.x * 1.9 / zz + par.x * (2.0 / zz), (P.y * 1.9 / zz) * sy + par.y * (2.0 / zz));",
@@ -68,6 +87,18 @@ export const waveScript = (o: WaveOptions): string => `
     "  a0 *= place < 0.5 ? 1.0 - 0.72 * calm : 0.25 + 0.75 * smoothstep(-0.2, 0.75, q.y);",
     "  a0 *= inten;",
     "  float sz = near > 0.5 ? (8.0 + 22.0 * fract(sd * 13.0)) : (2.1 + 1.8 * edge + 2.6 * hot) * (2.8 / zz);",
+    "  if (kind > 0.5) {",
+    "    float tw = 0.5 + 0.5 * sin(t * (1.5 + 4.0 * h1(sd * 17.0)) + sd * 60.0); tw = tw * tw;",
+    "    if (kind < 1.5) { float big = h1(sd * 19.0); sz = 2.0 + 6.0 * big * big + (big > 0.9 ? 12.0 : 0.0); a0 = (0.55 + 0.45 * tw) * (big > 0.9 ? 0.85 : 1.3); }",
+    "    else if (kind < 2.5) { sz = 1.3; a0 = 0.25 + 0.35 * tw; }",
+    "    else { sz = 46.0 + 18.0 * tw; a0 = 0.75 + 0.25 * tw; }",
+    "    a0 *= inten * (1.0 - 0.72 * calm) * (lite > 0.5 ? 0.6 : 1.0);",
+    "    if (glow > 0.5) { gl_PointSize = 0.0; vA = 0.0; vC = vec3(0.0); vK = 0.0; return; }",
+    "    gl_PointSize = sz * dpr; vA = a0; vK = kind;",
+    "    vC = lite > 0.5 ? vec3(0.45, 0.2, 0.9) : (kind < 2.5 ? mix(vec3(0.85, 0.8, 1.0), vec3(1.0), 0.6) : vec3(1.0, 0.97, 1.0));",
+    "    return;",
+    "  }",
+    "  vK = 0.0;",
     "  if (glow > 0.5) { bool crestG = hot > 0.25; if (near > 0.5 || (!crestG && fract(sd * 31.0) > 0.12)) { gl_PointSize = 0.0; vA = 0.0; vC = vec3(0.0); return; } sz *= crestG ? 11.0 : 9.0; a0 *= crestG ? 0.022 : 0.045; }",
     "  gl_PointSize = sz * dpr;",
     "  vec3 vio = vec3(0.47, 0.30, 1.0), ind = vec3(0.28, 0.22, 0.92), mag = vec3(0.92, 0.30, 1.0), wht = vec3(1.0, 0.98, 1.0);",
@@ -75,17 +106,25 @@ export const waveScript = (o: WaveOptions): string => `
     "  col = mix(col, mag, smoothstep(0.45, 0.95, abs(q.x)) * 0.85 + (near > 0.5 ? 0.3 : 0.0));",
     "  col = mix(col, wht, clamp(hot * 1.4, 0.0, 1.0));",
     "  if (lite > 0.5) { col = mix(col * 0.75, vec3(0.42, 0.16, 0.85), 0.35); a0 *= 0.75; }",
-    "  vA = a0; vC = col;",
+    "  vA = a0; vC = col; vK = 0.0;",
     "}"].join("\\n");
   var FS = [
     "precision mediump float;",
-    "varying float vA; varying vec3 vC;",
-    "void main() { vec2 p = gl_PointCoord - 0.5; float d = length(p) * 2.0; if (d > 1.0) discard; float k = pow(1.0 - d, 1.6); float al = min(1.0, vA * k); gl_FragColor = vec4(vC * al, al); }"].join("\\n");
-  function sh(type, src) { var x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); return gl.getShaderParameter(x, gl.COMPILE_STATUS) ? x : null; }
+    "varying float vA; varying vec3 vC; varying float vK;",
+    "void main() {",
+    "  vec2 p = gl_PointCoord - 0.5; float d = length(p) * 2.0; if (d > 1.0) discard;",
+    "  float k = pow(1.0 - d, 1.6);",
+    "  // A star: a bright core, a soft halo; a flare adds a faint four-point cross.",
+    "  if (vK > 0.5) { k = exp(-d * d * 28.0) + 0.3 * exp(-d * d * 5.0); if (vK > 2.5) k += 0.55 * (exp(-abs(p.x) * 60.0) * exp(-abs(p.y) * 5.0) + exp(-abs(p.y) * 60.0) * exp(-abs(p.x) * 5.0)); }",
+    "  float al = min(1.0, vA * k); gl_FragColor = vec4(vC * al, al);",
+    "}"].join("\\n");
+  // A canvas that held a WebGL context cannot give a 2D one: the 2D wave draws on a fresh copy.
+  function fresh() { var c2 = c.cloneNode(false); c.parentNode.replaceChild(c2, c); wave2d(); }
+  function sh(type, src) { var x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); if (gl.getShaderParameter(x, gl.COMPILE_STATUS)) return x; if (window.console) console.warn("wave: " + gl.getShaderInfoLog(x)); return null; }
   var vs = sh(gl.VERTEX_SHADER, VS), fs = sh(gl.FRAGMENT_SHADER, FS);
-  if (!vs || !fs) { wave2d(); return; }
+  if (!vs || !fs) { fresh(); return; }
   var pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
-  if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { wave2d(); return; }
+  if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { fresh(); return; }
   gl.useProgram(pr);
   var U = {}; ["t", "asp", "dpr", "glow", "lite", "sy", "inten", "place", "m", "par", "r0", "r1", "r2"].forEach(function (n) { U[n] = gl.getUniformLocation(pr, n); });
   var buf = gl.createBuffer(), N = 0, W = 0, H = 0, dpr = 1, raf = 0, seen = true, t0 = performance.now() - 30000;
@@ -103,9 +142,12 @@ export const waveScript = (o: WaveOptions): string => `
     var k = Math.max(0.35, Math.min(1.2, (W * H) / (1440 * 860))) * ${o.density ?? 1};
     var rows = [Math.round((phone ? 34 : 66) * Math.sqrt(k)), Math.round((phone ? 32 : 60) * Math.sqrt(k)), Math.round((phone ? 12 : 20) * Math.sqrt(k))];
     var cols = [Math.round((phone ? 220 : 540) * Math.sqrt(k)), Math.round((phone ? 200 : 500) * Math.sqrt(k)), Math.round((phone ? 120 : 300) * Math.sqrt(k))];
-    var bokeh = phone ? 40 : 110, out = [], n = 0;
+    var bokeh = phone ? 40 : 110, spark = phone ? 160 : 420, dust = phone ? 160 : 420, flare = 5, out = [], n = 0;
     for (var r = 0; r < 3; r++) for (var j = 0; j < rows[r]; j++) for (var i = 0; i < cols[r]; i++) { out.push(i / (cols[r] - 1) + (rnd(n) - 0.5) * 0.002, j / (rows[r] - 1) * 2 - 1, r + rnd(n * 3.1) * 0.999); n++; }
     for (var b = 0; b < bokeh; b++) { out.push(rnd(b * 5.7), rnd(b * 9.1) * 2 - 1, 3 + rnd(b * 2.3) * 0.999); n++; }
+    for (var e = 0; e < spark; e++) { out.push(rnd(e * 3.3 + 1), 0, 4 + rnd(e * 7.7 + 2) * 0.999); n++; }
+    for (var f = 0; f < dust; f++) { out.push(rnd(f * 2.9 + 5), rnd(f * 4.3 + 6) * 2 - 1, 5 + rnd(f * 6.1 + 3) * 0.999); n++; }
+    for (var g2 = 0; g2 < flare; g2++) { out.push((g2 + 0.5) / flare, 0, 6 + rnd(g2 * 8.9 + 4) * 0.999); n++; }
     N = n;
     gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(out), gl.STATIC_DRAW);
     var loc = gl.getAttribLocation(pr, "a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 3, gl.FLOAT, false, 0, 0);

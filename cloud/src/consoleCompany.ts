@@ -159,7 +159,7 @@ async function connState(force){
     CONN.claude=live.length?{demo:false,live:live.length,last:live.map((x)=>x.last_used_at).filter(Boolean).sort().pop()||null,items:live}:null}catch(e){if(e instanceof Expired)throw e;CONN.claude=null}}
   else CONN.claude=null;
   connTabs();return CONN}
-function connTabs(){const a=document.querySelector('#tabs a[data-tab=claude]');if(a)a.hidden=!CONN.claude;navSync()}
+function connTabs(){const a=document.querySelector('#tabs a[data-tab=claude]');if(a){a.hidden=!CONN.claude;if(CONN.claude)a.dataset.on='1';else delete a.dataset.on}navSync()}
 // --- The Company page ---------------------------------------------------------------------------------------------
 async function companyView(){
   const m=await me();title(cw('co_h'));shell();
