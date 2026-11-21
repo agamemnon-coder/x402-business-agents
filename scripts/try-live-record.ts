@@ -366,6 +366,9 @@ try {
   failures.push(`stopped: ${String((e as Error).message ?? e).split("\n")[0]}`);
   // What the page showed when the walk stopped (its words only, no screenshot), to say why.
   page_says.when_stopped = mainPage ? await text(mainPage).then((x) => x.replace(/\s+/g, " ").trim().slice(-1500), () => null) : null;
+  // 21 Nov: the engine's events of a walk that stopped before they were read, so the record says why (the phone series'
+  // walk 2 stopped when the EUR 120.00 invoice went to the CFO instead of being paid alone, with no events to say why).
+  if (mainPage && !mainEvents.length) mainEvents = await events(mainPage).catch(() => []);
   console.log("STOPPED", e);
 } finally {
   await ctx?.close().catch(() => undefined);

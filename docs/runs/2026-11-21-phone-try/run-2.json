@@ -1,0 +1,303 @@
+{
+ "what": "One walk through the public /try on https://kit11.max-31b.workers.dev, recorded by scripts/try-live-record.ts (19 Nov 2026). A fresh /try test company each run; test money only; payouts to the Airwallex sandbox.",
+ "run": 2,
+ "profile": "phone-iphone",
+ "viewport": {
+  "width": 393,
+  "height": 659
+ },
+ "color_scheme": "light",
+ "browser": {
+  "name": "chromium",
+  "version": "153.0.8010.12"
+ },
+ "passkey": "cdp-virtual-authenticator",
+ "started_at": "2026-11-21T01:03:11.771Z",
+ "finished_at": "2026-11-21T01:05:24.040Z",
+ "ok": false,
+ "failures": [
+  "EUR 120.00: paid by the agent alone (PENDING_APPROVAL)",
+  "stopped: page.waitForResponse: Timeout 120000ms exceeded while waiting for event \"response\""
+ ],
+ "steps_ms": {
+  "start_ms": 2380,
+  "read_120_ms": 6896,
+  "autopay_ms": 3758
+ },
+ "page_says": {
+  "when_stopped": "Skip to the demo Home Try Proof More 1 Agent checks 2 CFO signs 3 Paid 4 Tamper test STEP 2 OF 4 You are the CFO. Approve this exact payment. Your passkey (Face ID on iPhone) locks the amount, the supplier and the bank account. Nothing moves before. Live engine $0.0013 · 6 calls Approve the transfer. AWAITING CFO APPROVAL PAYMENT TERMS · YOUR PASSKEY LOCKS THEM Payee Bergtex Textil GmbH IBAN DE89 3704 0044 0532 0130 00 BIC COBADEFFXXX Invoice number BTX-2026-23 EUR 120.00 Due 8 Jan 2027 Bank fee at most EUR 20.00 Your passkey seals these exact terms Create your approval passkey Don't sign Coder agent · Claude Haiku 5.5 · 6200 expense, VAT from the invoice, booked by Purser's code: Bergtex invoice BTX-2026-23 charges 19% VAT (EUR 19.16) on a net of EUR 100.84, and no Purser VAT code reproduces that rate, so the VAT code is left null for…. Purser's code enforced: VAT at 19%: no Dutch purchase code applies; booked to 1515 (not reclaimable in the Dutch return), without a VAT code, for the accountant to check."
+ },
+ "site_build": {
+  "try_page_sha256": "7a8a7cb6491147a884d72540041feb93a8436b4df7928725da759f0f8a3897f5"
+ },
+ "bundle": {},
+ "held": {},
+ "answers": [
+  {
+   "at": "2026-11-21T01:03:16.199Z",
+   "method": "POST",
+   "path": "/v1/try/start",
+   "status": 201,
+   "tab": "main",
+   "body": {
+    "tenant": "t_try_e2c3c7ee2beadfe5",
+    "expires_at": "2026-11-22T01:03:14.825Z",
+    "session_expires_at": "2026-11-21T01:18:14.825Z",
+    "company": {
+     "name": "North Sea Ropes (test)"
+    },
+    "pool": "public",
+    "mode": {
+     "claude": "live",
+     "agents": "live",
+     "rail_awx": "off"
+    }
+   }
+  },
+  {
+   "at": "2026-11-21T01:03:23.675Z",
+   "method": "POST",
+   "path": "/v1/engine/samples/within",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "kind": "invoice",
+    "sha256": "ea2c5054c59c8e86b1275521dfced77fc99f9b9721297d62175373670aab4a9a",
+    "invoice": {
+     "id": "AP-0002",
+     "status": "ready",
+     "status_words": "Ready to pay",
+     "payable": true,
+     "vendor": "Bergtex Textil GmbH",
+     "invoice_no": "BTX-2026-23",
+     "currency": "EUR",
+     "total": "120.00",
+     "due_date": "2027-01-08",
+     "read_by": "claude:claude-haiku-5-5",
+     "issue_date": "2026-11-09",
+     "paid_at": null,
+     "received_at": "2026-11-21T01:03:17.370Z",
+     "findings": [],
+     "checks_passed": [
+      "not_paid_before",
+      "bank_on_file",
+      "known_supplier"
+     ],
+     "doc_sha256": "ea2c5054c59c8e86b1275521dfced77fc99f9b9721297d62175373670aab4a9a",
+     "proposal": null,
+     "alone_limit": {
+      "currency": "EUR",
+      "amount": "500.00",
+      "within": true
+     }
+    },
+    "cash": {
+     "currency": "EUR",
+     "balance": "35000.00",
+     "committed": "8500.00",
+     "in_flight": "0.00",
+     "spoken_for": "8500.00",
+     "available": "26500.00",
+     "floor": "25000.00",
+     "amount": "120.00",
+     "fee_reserve": "20.00",
+     "need": "140.00",
+     "after": "26360.00",
+     "short_by": "0.00",
+     "due_date": "2027-01-08",
+     "days_to_due": 48,
+     "outcome": "pay",
+     "rule": null,
+     "why": "EUR 120.00 is within the EUR 500.00 the agent may pay alone, and every balance stays above its floor",
+     "decided_by": "code"
+    }
+   }
+  },
+  {
+   "at": "2026-11-21T01:03:27.736Z",
+   "method": "POST",
+   "path": "/v1/engine/invoices/AP-0002/pay",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "proposal": {
+     "id": "P-0001",
+     "kind": "invoice_payment",
+     "status": "PENDING_APPROVAL",
+     "terms_sha256": "16b5e528385e79f550ea432f96b8bd53591d63980b6fb244bf6e065cd9cdcf6b",
+     "facts": [
+      [
+       "Amount",
+       "EUR 120.00"
+      ],
+      [
+       "Payee",
+       "Bergtex Textil GmbH, IBAN …3000"
+      ],
+      [
+       "On the invoice",
+       "“Total due EUR 120.00”"
+      ],
+      [
+       "Reason",
+       "Goods purchased"
+      ],
+      [
+       "Invoice",
+       "BTX-2026-23 · Bergtex Textil GmbH, reference BTX-2026-23"
+      ],
+      [
+       "Method",
+       "SWIFT, BIC COBADEFFXXX"
+      ],
+      [
+       "Bank fee (stand-in bank, test money)",
+       "at most EUR 20.00, held back (the real fee is recorded)"
+      ],
+      [
+       "Conversion",
+       "none: paid from the EUR balance"
+      ]
+     ],
+     "warnings": []
+    }
+   }
+  }
+ ],
+ "calls": [
+  {
+   "at": "2026-11-21T01:03:16.199Z",
+   "method": "POST",
+   "path": "/v1/try/start",
+   "status": 201,
+   "ms": 1504,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:16.511Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=0&limit=200",
+   "status": 200,
+   "ms": 316,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:16.520Z",
+   "method": "GET",
+   "path": "/v1/engine/samples",
+   "status": 200,
+   "ms": 328,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:16.568Z",
+   "method": "GET",
+   "path": "/v1/engine/suppliers",
+   "status": 200,
+   "ms": 363,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:16.634Z",
+   "method": "GET",
+   "path": "/v1/engine",
+   "status": 200,
+   "ms": 437,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:18.451Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=8&limit=200",
+   "status": 200,
+   "ms": 334,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:19.790Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=10&limit=200",
+   "status": 200,
+   "ms": 336,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:21.157Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=12&limit=200",
+   "status": 200,
+   "ms": 362,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:22.504Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=24&limit=200",
+   "status": 200,
+   "ms": 342,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:23.675Z",
+   "method": "POST",
+   "path": "/v1/engine/samples/within",
+   "status": 200,
+   "ms": 6557,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:23.840Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=24&limit=200",
+   "status": 200,
+   "ms": 332,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:25.205Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=31&limit=200",
+   "status": 200,
+   "ms": 360,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:27.736Z",
+   "method": "POST",
+   "path": "/v1/engine/invoices/AP-0002/pay",
+   "status": 200,
+   "ms": 4053,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:28.165Z",
+   "method": "GET",
+   "path": "/v1/engine",
+   "status": 200,
+   "ms": 424,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:28.540Z",
+   "method": "GET",
+   "path": "/v1/engine/proposals/P-0001/terms",
+   "status": 200,
+   "ms": 374,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T01:03:28.881Z",
+   "method": "GET",
+   "path": "/v1/engine/suppliers",
+   "status": 200,
+   "ms": 340,
+   "tab": "main"
+  }
+ ],
+ "console_errors": [],
+ "outside_requests": [],
+ "events": {
+  "main": [],
+  "cash": []
+ }
+}

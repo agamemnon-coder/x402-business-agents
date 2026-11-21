@@ -1,0 +1,357 @@
+{
+ "what": "One walk through the public /try on https://kit11.max-31b.workers.dev, recorded by scripts/try-live-record.ts (19 Nov 2026). A fresh /try test company each run; test money only; payouts to the Airwallex sandbox.",
+ "run": 5,
+ "profile": "desktop",
+ "viewport": {
+  "width": 1440,
+  "height": 900
+ },
+ "color_scheme": "light",
+ "browser": {
+  "name": "chromium",
+  "version": "153.0.8010.12"
+ },
+ "passkey": "cdp-virtual-authenticator",
+ "started_at": "2026-11-21T00:01:05.666Z",
+ "finished_at": "2026-11-21T00:03:26.021Z",
+ "ok": false,
+ "failures": [
+  "stopped: page.waitForResponse: Timeout 120000ms exceeded while waiting for event \"response\""
+ ],
+ "steps_ms": {
+  "start_ms": 5484,
+  "read_120_ms": 5701,
+  "autopay_ms": 12152
+ },
+ "page_says": {
+  "when_stopped": "fee: the simulated bank's flat SWIFT fee, taken from what the Airwallex sandbox charged Simulated bank only: not sent to Airwallex Airwallex took too long. The payment was made on the simulated bank only. Booked in your accounts The books balance. Show the bookkeeping entries Try an invoice above EUR 500 → Coder agent · Claude Haiku 5.5 · 6200 expense, VAT from the invoice, booked by Purser's code: Linen fabric from Bergtex Textil GmbH (invoice BTX-2026-23) is coded to account 6200 in line with the supplier's earlier invoice, on the default cost centre. Purser's code enforced: VAT at 19%: no Dutch purchase code applies; booked to 1515 (not reclaimable in the Dutch return), without a VAT code, for the accountant to check. Live engine $0.0017 · 8 calls Test money only · Airwallex sandbox How it works ✦ CLAUDE · LIVE COST & CALLS $0.0017 8 calls this run Each call AGENTS & MANDATE Auto-pay ≤ EUR 500.00 Reader agent Claude reads the PDF Checker agent checks, limits, signature Payer agent pays; the Coder agent books Under the hood Hide the code audit: proposal.within_limit { method: \"policy\", limit: \"EUR 500.00\" } // approved by your rules, not a person transfer → PAID // test money, simulated bank ledger.append(entry) · 7 entries // booked, hash-chained to the log invoice.status = \"paid\" PARTNER RAILS Airwallex sandbox · standing by Alta (formerly Metal) on-chain mandate limits · recorded run Visa Intelligent Commerce via Airwallex Airi one credential per purchase · recorded runs"
+ },
+ "site_build": {
+  "try_page_sha256": "7a8a7cb6491147a884d72540041feb93a8436b4df7928725da759f0f8a3897f5"
+ },
+ "bundle": {},
+ "held": {},
+ "answers": [
+  {
+   "at": "2026-11-21T00:01:18.641Z",
+   "method": "POST",
+   "path": "/v1/try/start",
+   "status": 201,
+   "tab": "main",
+   "body": {
+    "tenant": "t_try_019fcd42c8ca66cb",
+    "expires_at": "2026-11-22T00:01:15.979Z",
+    "session_expires_at": "2026-11-21T00:16:15.979Z",
+    "company": {
+     "name": "Tulip Sailcloth (test)"
+    },
+    "pool": "public",
+    "mode": {
+     "claude": "live",
+     "agents": "live",
+     "rail_awx": "off"
+    }
+   }
+  },
+  {
+   "at": "2026-11-21T00:01:25.302Z",
+   "method": "POST",
+   "path": "/v1/engine/samples/within",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "kind": "invoice",
+    "sha256": "ea2c5054c59c8e86b1275521dfced77fc99f9b9721297d62175373670aab4a9a",
+    "invoice": {
+     "id": "AP-0002",
+     "status": "ready",
+     "status_words": "Ready to pay",
+     "payable": true,
+     "vendor": "Bergtex Textil GmbH",
+     "invoice_no": "BTX-2026-23",
+     "currency": "EUR",
+     "total": "120.00",
+     "due_date": "2027-01-08",
+     "read_by": "claude:claude-haiku-5-5",
+     "issue_date": "2026-11-09",
+     "paid_at": null,
+     "received_at": "2026-11-21T00:01:20.662Z",
+     "findings": [],
+     "checks_passed": [
+      "not_paid_before",
+      "bank_on_file",
+      "known_supplier"
+     ],
+     "doc_sha256": "ea2c5054c59c8e86b1275521dfced77fc99f9b9721297d62175373670aab4a9a",
+     "proposal": null,
+     "alone_limit": {
+      "currency": "EUR",
+      "amount": "500.00",
+      "within": true
+     }
+    },
+    "cash": {
+     "currency": "EUR",
+     "balance": "35000.00",
+     "committed": "8500.00",
+     "in_flight": "0.00",
+     "spoken_for": "8500.00",
+     "available": "26500.00",
+     "floor": "25000.00",
+     "amount": "120.00",
+     "fee_reserve": "20.00",
+     "need": "140.00",
+     "after": "26360.00",
+     "short_by": "0.00",
+     "due_date": "2027-01-08",
+     "days_to_due": 48,
+     "outcome": "pay",
+     "rule": null,
+     "why": "EUR 120.00 is within the EUR 500.00 the agent may pay alone, and every balance stays above its floor",
+     "decided_by": "code"
+    }
+   }
+  },
+  {
+   "at": "2026-11-21T00:01:38.150Z",
+   "method": "POST",
+   "path": "/v1/engine/invoices/AP-0002/pay",
+   "status": 200,
+   "tab": "main",
+   "body": {
+    "proposal": {
+     "id": "P-0001",
+     "kind": "invoice_payment",
+     "status": "EXECUTED",
+     "terms_sha256": "a6c546997c9719f3626c52ab39c79874831ccec230084d151d2e58d98f33df31",
+     "facts": [
+      [
+       "Amount",
+       "EUR 120.00"
+      ],
+      [
+       "Payee",
+       "Bergtex Textil GmbH, IBAN …3000"
+      ],
+      [
+       "On the invoice",
+       "“Total due EUR 120.00”"
+      ],
+      [
+       "Reason",
+       "Goods purchased"
+      ],
+      [
+       "Invoice",
+       "BTX-2026-23 · Bergtex Textil GmbH, reference BTX-2026-23"
+      ],
+      [
+       "Method",
+       "SWIFT, BIC COBADEFFXXX"
+      ],
+      [
+       "Bank fee (stand-in bank, test money)",
+       "at most EUR 20.00, held back (the real fee is recorded)"
+      ],
+      [
+       "Conversion",
+       "none: paid from the EUR balance"
+      ]
+     ],
+     "warnings": []
+    },
+    "alone": {
+     "limit": "EUR 500.00",
+     "by": "agents",
+     "why": "within the EUR 500.00 the CFO lets the agent pay alone: the Checker agent decided pay and the Payer agent proposed it, and code's checks agree"
+    },
+    "settled": {
+     "invoice_status": "paid",
+     "transfer_status": "PAID",
+     "ledger_entries": 7,
+     "vault_added": [
+      "Tulip Sailcloth (test)/2026/2026-Q4/Purchase invoices/Bergtex Textil GmbH/2026-11-02 BTX-2026-17 EUR 1620.00.pdf",
+      "Tulip Sailcloth (test)/2026/2026-Q4/Purchase invoices/Bergtex Textil GmbH/2026-11-09 BTX-2026-23 EUR 120.00.pdf",
+      "Tulip Sailcloth (test)/2026/2026-Q4/Payments/2026-11-21 Bergtex Textil GmbH BTX-2026-23.pdf",
+      "Tulip Sailcloth (test)/2026/Leveranciers 2026-11-21.pdf"
+     ],
+     "fed": true,
+     "error": null
+    },
+    "airwallex_payout": {
+     "source": "simulated",
+     "reason": "timeout",
+     "terms_sha256": "a6c546997c9719f3626c52ab39c79874831ccec230084d151d2e58d98f33df31"
+    }
+   }
+  }
+ ],
+ "calls": [
+  {
+   "at": "2026-11-21T00:01:18.641Z",
+   "method": "POST",
+   "path": "/v1/try/start",
+   "status": 201,
+   "ms": 3327,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:19.196Z",
+   "method": "GET",
+   "path": "/v1/engine/samples",
+   "status": 200,
+   "ms": 455,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:19.217Z",
+   "method": "GET",
+   "path": "/v1/engine",
+   "status": 200,
+   "ms": 487,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:19.467Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=0&limit=200",
+   "status": 200,
+   "ms": 578,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:19.468Z",
+   "method": "GET",
+   "path": "/v1/engine/suppliers",
+   "status": 200,
+   "ms": 609,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:21.607Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=8&limit=200",
+   "status": 200,
+   "ms": 354,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:23.411Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=10&limit=200",
+   "status": 200,
+   "ms": 743,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:25.302Z",
+   "method": "POST",
+   "path": "/v1/engine/samples/within",
+   "status": 200,
+   "ms": 5007,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:25.303Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=18&limit=200",
+   "status": 200,
+   "ms": 788,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:26.782Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=31&limit=200",
+   "status": 200,
+   "ms": 398,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:38.150Z",
+   "method": "POST",
+   "path": "/v1/engine/invoices/AP-0002/pay",
+   "status": 200,
+   "ms": 12802,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:38.814Z",
+   "method": "GET",
+   "path": "/v1/engine/invoices",
+   "status": 200,
+   "ms": 399,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:38.816Z",
+   "method": "GET",
+   "path": "/v1/ledger/entries?limit=200",
+   "status": 200,
+   "ms": 476,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:38.816Z",
+   "method": "GET",
+   "path": "/v1/transactions?limit=200",
+   "status": 200,
+   "ms": 480,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:38.816Z",
+   "method": "GET",
+   "path": "/v1/payments?limit=200",
+   "status": 200,
+   "ms": 491,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:38.964Z",
+   "method": "GET",
+   "path": "/v1/engine/events?after=31&limit=200",
+   "status": 200,
+   "ms": 678,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:38.964Z",
+   "method": "GET",
+   "path": "/v1/engine/vault",
+   "status": 200,
+   "ms": 767,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:38.964Z",
+   "method": "GET",
+   "path": "/v1/engine/invoices",
+   "status": 200,
+   "ms": 809,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:40.148Z",
+   "method": "GET",
+   "path": "/v1/engine/vault/file?path=Tulip%20Sailcloth%20(test)%2F2026%2F2026-Q4%2FPurchase%20invoices%2FBergtex%20Textil%20GmbH%2F2026-11-09%20BTX-2026-23%20EUR%20120.00.pdf",
+   "status": 200,
+   "ms": 1011,
+   "tab": "main"
+  },
+  {
+   "at": "2026-11-21T00:01:40.148Z",
+   "method": "GET",
+   "path": "/v1/engine/vault/file?path=Tulip%20Sailcloth%20(test)%2F2026%2F2026-Q4%2FPayments%2F2026-11-21%20Bergtex%20Textil%20GmbH%20BTX-2026-23.pdf",
+   "status": 200,
+   "ms": 1056,
+   "tab": "main"
+  }
+ ],
+ "console_errors": [],
+ "outside_requests": [],
+ "events": {
+  "main": [],
+  "cash": []
+ }
+}

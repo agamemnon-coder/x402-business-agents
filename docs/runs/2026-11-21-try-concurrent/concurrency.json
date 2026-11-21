@@ -1,0 +1,403 @@
+{
+ "what": "10 visitors on the public /try at once, each scripts/try-live-record.ts in its own process (scripts/try-concurrent.ts); test money only.",
+ "started_at": "2026-11-21T00:01:04.952Z",
+ "finished_at": "2026-11-21T00:03:26.055Z",
+ "stagger_ms": 0,
+ "exits": [
+  1,
+  0,
+  0,
+  1,
+  1,
+  1,
+  0,
+  1,
+  1,
+  0
+ ],
+ "records_written": 10,
+ "client_load1": [
+  {
+   "at": "2026-11-21T00:01:09.958Z",
+   "load1": 0
+  },
+  {
+   "at": "2026-11-21T00:01:14.964Z",
+   "load1": 2
+  },
+  {
+   "at": "2026-11-21T00:01:19.984Z",
+   "load1": 3.92
+  },
+  {
+   "at": "2026-11-21T00:01:25.083Z",
+   "load1": 5.29
+  },
+  {
+   "at": "2026-11-21T00:01:30.084Z",
+   "load1": 6.55
+  },
+  {
+   "at": "2026-11-21T00:01:35.087Z",
+   "load1": 6.99
+  },
+  {
+   "at": "2026-11-21T00:01:40.227Z",
+   "load1": 8.35
+  },
+  {
+   "at": "2026-11-21T00:01:45.229Z",
+   "load1": 9.52
+  },
+  {
+   "at": "2026-11-21T00:01:50.240Z",
+   "load1": 10.6
+  },
+  {
+   "at": "2026-11-21T00:01:55.247Z",
+   "load1": 11.19
+  },
+  {
+   "at": "2026-11-21T00:02:00.247Z",
+   "load1": 10.3
+  },
+  {
+   "at": "2026-11-21T00:02:05.248Z",
+   "load1": 11.72
+  },
+  {
+   "at": "2026-11-21T00:02:10.249Z",
+   "load1": 11.98
+  },
+  {
+   "at": "2026-11-21T00:02:15.254Z",
+   "load1": 12.46
+  },
+  {
+   "at": "2026-11-21T00:02:20.256Z",
+   "load1": 13.31
+  },
+  {
+   "at": "2026-11-21T00:02:25.264Z",
+   "load1": 14.4
+  },
+  {
+   "at": "2026-11-21T00:02:30.265Z",
+   "load1": 13.25
+  },
+  {
+   "at": "2026-11-21T00:02:35.268Z",
+   "load1": 12.19
+  },
+  {
+   "at": "2026-11-21T00:02:40.272Z",
+   "load1": 11.21
+  },
+  {
+   "at": "2026-11-21T00:02:45.276Z",
+   "load1": 11.28
+  },
+  {
+   "at": "2026-11-21T00:02:50.281Z",
+   "load1": 10.45
+  },
+  {
+   "at": "2026-11-21T00:02:55.286Z",
+   "load1": 9.61
+  },
+  {
+   "at": "2026-11-21T00:03:00.288Z",
+   "load1": 9.25
+  },
+  {
+   "at": "2026-11-21T00:03:05.292Z",
+   "load1": 9.31
+  },
+  {
+   "at": "2026-11-21T00:03:10.297Z",
+   "load1": 8.56
+  },
+  {
+   "at": "2026-11-21T00:03:15.302Z",
+   "load1": 7.87
+  },
+  {
+   "at": "2026-11-21T00:03:20.304Z",
+   "load1": 7.56
+  },
+  {
+   "at": "2026-11-21T00:03:25.304Z",
+   "load1": 8.32
+  }
+ ],
+ "visitors": 10,
+ "ok": 4,
+ "failed": [
+  {
+   "run": 1,
+   "failures": [
+    "stopped: page.waitForResponse: Timeout 120000ms exceeded while waiting for event \"response\""
+   ]
+  },
+  {
+   "run": 4,
+   "failures": [
+    "stopped: page.waitForResponse: Timeout 120000ms exceeded while waiting for event \"response\""
+   ]
+  },
+  {
+   "run": 5,
+   "failures": [
+    "stopped: page.waitForResponse: Timeout 120000ms exceeded while waiting for event \"response\""
+   ]
+  },
+  {
+   "run": 6,
+   "failures": [
+    "stopped: page.waitForResponse: Timeout 120000ms exceeded while waiting for event \"response\""
+   ]
+  },
+  {
+   "run": 8,
+   "failures": [
+    "stopped: page.waitForResponse: Timeout 120000ms exceeded while waiting for event \"response\""
+   ]
+  },
+  {
+   "run": 9,
+   "failures": [
+    "stopped: page.waitForResponse: Timeout 120000ms exceeded while waiting for event \"response\""
+   ]
+  }
+ ],
+ "span_s": 141,
+ "started_within_ms": 446,
+ "http": {
+  "calls": 436,
+  "statuses": {
+   "200": 422,
+   "201": 14
+  },
+  "s429": [],
+  "s5xx": []
+ },
+ "claude": {
+  "reads": 28,
+  "by_claude": 28,
+  "not_by_claude": {},
+  "agent_runs": 32,
+  "agent_runs_done": 32,
+  "capped": {},
+  "cost_usd_micros": 21325
+ },
+ "airwallex": {
+  "payouts_asked": 14,
+  "sent_to_sandbox": 8,
+  "paid": 8,
+  "not_sent": {
+   "timeout": 6
+  }
+ },
+ "routes_ms": {
+  "GET /v1/engine": {
+   "n": 26,
+   "p50": 498,
+   "p95": 1778,
+   "max": 1890
+  },
+  "GET /v1/engine/events": {
+   "n": 160,
+   "p50": 400,
+   "p95": 790,
+   "max": 2068
+  },
+  "GET /v1/engine/invoices": {
+   "n": 36,
+   "p50": 493,
+   "p95": 1007,
+   "max": 1475
+  },
+  "GET /v1/engine/proposals/{id}/terms": {
+   "n": 12,
+   "p50": 392,
+   "p95": 1928,
+   "max": 1928
+  },
+  "GET /v1/engine/samples": {
+   "n": 18,
+   "p50": 690,
+   "p95": 2430,
+   "max": 2430
+  },
+  "GET /v1/engine/suppliers": {
+   "n": 22,
+   "p50": 609,
+   "p95": 2037,
+   "max": 2871
+  },
+  "GET /v1/engine/vault": {
+   "n": 14,
+   "p50": 724,
+   "p95": 1217,
+   "max": 1217
+  },
+  "GET /v1/engine/vault/file": {
+   "n": 28,
+   "p50": 481,
+   "p95": 1011,
+   "max": 1056
+  },
+  "GET /v1/ledger/entries": {
+   "n": 18,
+   "p50": 641,
+   "p95": 1414,
+   "max": 1414
+  },
+  "GET /v1/payments": {
+   "n": 14,
+   "p50": 458,
+   "p95": 541,
+   "max": 541
+  },
+  "GET /v1/transactions": {
+   "n": 14,
+   "p50": 501,
+   "p95": 983,
+   "max": 983
+  },
+  "POST /v1/engine/invoices/{id}/pay": {
+   "n": 14,
+   "p50": 10941,
+   "p95": 14285,
+   "max": 14285
+  },
+  "POST /v1/engine/passkey/finish": {
+   "n": 4,
+   "p50": 549,
+   "p95": 640,
+   "max": 640
+  },
+  "POST /v1/engine/passkey/start": {
+   "n": 4,
+   "p50": 503,
+   "p95": 542,
+   "max": 542
+  },
+  "POST /v1/engine/proposals/{id}/approve": {
+   "n": 4,
+   "p50": 505,
+   "p95": 883,
+   "max": 883
+  },
+  "POST /v1/engine/proposals/{id}/pay": {
+   "n": 8,
+   "p50": 638,
+   "p95": 3898,
+   "max": 3898
+  },
+  "POST /v1/engine/proposals/{id}/payout/simulate": {
+   "n": 8,
+   "p50": 2553,
+   "p95": 2837,
+   "max": 2837
+  },
+  "POST /v1/engine/samples/{name}": {
+   "n": 18,
+   "p50": 5670,
+   "p95": 8274,
+   "max": 8274
+  },
+  "POST /v1/try/start": {
+   "n": 14,
+   "p50": 1732,
+   "p95": 3327,
+   "max": 3327
+  }
+ },
+ "steps_ms": {
+  "start_ms": {
+   "n": 10,
+   "p50": 4989,
+   "p95": 6114,
+   "max": 6114
+  },
+  "read_120_ms": {
+   "n": 10,
+   "p50": 6338,
+   "p95": 7402,
+   "max": 7402
+  },
+  "autopay_ms": {
+   "n": 10,
+   "p50": 12152,
+   "p95": 14098,
+   "max": 14098
+  },
+  "autopay_awx_paid_ms": {
+   "n": 4,
+   "p50": 12296,
+   "p95": 15571,
+   "max": 15571
+  },
+  "read_1850_ms": {
+   "n": 4,
+   "p50": 7553,
+   "p95": 9007,
+   "max": 9007
+  },
+  "sign_ms": {
+   "n": 4,
+   "p50": 686,
+   "p95": 937,
+   "max": 937
+  },
+  "cfo_to_approved_ms": {
+   "n": 4,
+   "p50": 7994,
+   "p95": 9397,
+   "max": 9397
+  },
+  "sign_to_pay_answer_ms": {
+   "n": 4,
+   "p50": 4155,
+   "p95": 5208,
+   "max": 5208
+  },
+  "pay_ms": {
+   "n": 4,
+   "p50": 3011,
+   "p95": 3898,
+   "max": 3898
+  },
+  "sign_to_paid_on_screen_ms": {
+   "n": 4,
+   "p50": 5551,
+   "p95": 6719,
+   "max": 6719
+  },
+  "sign_to_awx_paid_ms": {
+   "n": 4,
+   "p50": 6867,
+   "p95": 7587,
+   "max": 7587
+  },
+  "refusal_ms": {
+   "n": 4,
+   "p50": 711,
+   "p95": 830,
+   "max": 830
+  },
+  "verify_ms": {
+   "n": 4,
+   "p50": 216,
+   "p95": 354,
+   "max": 354
+  },
+  "hold_ms": {
+   "n": 4,
+   "p50": 5768,
+   "p95": 7051,
+   "max": 7051
+  }
+ }
+}
