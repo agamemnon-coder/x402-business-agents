@@ -167,12 +167,11 @@ export const ARCH_CSS = `.ar { padding: 18px; display: grid; gap: 14px; min-widt
 .ar-refuse { justify-self: start; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 14px; font-weight: 650; color: var(--bad); background: var(--bad-soft); }
 .ar-ctl { display: grid; gap: 6px; align-content: start; min-width: 0; }
 .ar-ctl > p { margin: 0; font-size: 14px; font-weight: 700; color: var(--muted); }
-.ar-ctl ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.ar-ctl a { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 8px; align-items: start; padding: 8px 10px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text); text-decoration: none; min-height: 44px; }
-.ar-ctl a:hover { border-color: var(--accent); }
-.ar-ctl a .i { color: var(--accent); margin-top: 2px; grid-row: span 2; }
-.ar-ctl a b { font-size: 15px; line-height: 1.35; }
-.ar-ctl a span { font-size: 14px; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere; }
+.ar-ctl ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.ar-ctl a { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; box-sizing: border-box; padding: 0 14px 0 11px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--text); text-decoration: none; }
+.ar-ctl a:hover, .ar-ctl a:focus-visible { border-color: var(--accent); }
+.ar-ctl a .i { color: var(--accent); flex: none; }
+.ar-ctl a b { font-size: 14.5px; font-weight: 650; line-height: 1.3; }
 .ar .links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .ar-tb { padding-top: 12px; padding-bottom: 12px; }
 .ar-tb > div { position: relative; display: flex; align-items: center; }
@@ -189,7 +188,7 @@ export const ARCH_CSS = `.ar { padding: 18px; display: grid; gap: 14px; min-widt
   .ar-tb > div::before { left: -28px; }
 }
 /* 21 Nov (Max: "security page is still not upgraded"; on a phone, less text): the panel in /proof's look, and under
-   700 px each control a chip with its name, linked to its code as before (what it does is on the wider screen). */
+   700 px the layers tighter. */
 .ar { border-radius: 22px; background: radial-gradient(70% 60% at 50% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%), var(--surface); }
 @media (max-width: 699px) {
   .ar { padding: 16px 12px; border-radius: 18px; }
@@ -199,10 +198,7 @@ export const ARCH_CSS = `.ar { padding: 18px; display: grid; gap: 14px; min-widt
   .ar-card { padding: 12px; gap: 10px; border-radius: 14px; }
   .ar h3 { font-size: 16.5px; }
   .ar .ar-line { font-size: 15px; line-height: 1.45; }
-  .ar-ctl ul { display: flex; flex-wrap: wrap; gap: 6px; }
-  .ar-ctl a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 999px; }
-  .ar-ctl a .i { margin-top: 0; }
-  .ar-ctl a span { display: none; }
+  .ar-ctl a { padding: 0 12px 0 10px; }
   .ar-tb > div::before { left: -20px; }
   .ar-tb p { margin-left: 6px; }
 }
@@ -212,7 +208,8 @@ ${motionCss()}
   .ar-dot { animation: none !important; display: none; }
 }`;
 
-const ctlHtml = (c: ArchControl) => `<li><a href="${esc(repoHref(c.code))}" target="_blank" rel="noopener">${icon("shield-check", 16)}<b>${esc(c.name)}</b><span>${esc(c.does)}</span></a></li>`;
+// 21 Nov (Max: "far less text"): each control a chip, its name linked to its code; what it does is the chip's title.
+const ctlHtml = (c: ArchControl) => `<li><a href="${esc(repoHref(c.code))}" target="_blank" rel="noopener" title="${esc(c.does)}">${icon("shield-check", 16)}<b>${esc(c.name)}</b></a></li>`;
 
 function layerHtml(l: ArchLayer): string {
   const rules = l.rules ? `<ul class="ar-rules" aria-label="Purser's rules">${l.rules.map((r) => `<li><a href="${esc(repoHref(r.code))}" target="_blank" rel="noopener">${icon("check", 14)}${esc(r.name)}</a></li>`).join("")}</ul>` : "";

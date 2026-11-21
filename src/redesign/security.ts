@@ -203,4 +203,4 @@ ${heroHtml(securityLead(groups), cats)}
 }
 
 /** Under the categories' nav: what a tile is and what its tag says. */
-export const LEGEND = "Each figure links its committed record; its tag says where it ran: a sandbox or testnet run, a test world on our own computer, CI, an outside programme, or a document. Test money only.";
+export const LEGEND = "Tap a figure for its committed record; its tag says where it ran. Test money only.";
