@@ -14,7 +14,7 @@ import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
 import { AWX_PAGE_LABEL } from "../../src/redesign/airwallexProducts.js";
-import { CLOUD_TAB_LABEL, MORE_LABEL, moreLinks, tabLinks } from "../../src/ui/more.js";
+import { MORE_LABEL, moreLinks, tabLabel, tabLinks } from "../../src/ui/more.js";
 import { agentTools } from "../../src/redesign/docs.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -67,7 +67,7 @@ const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}
 // Watch is a tab only once the film is set (src/config/film.ts WATCH_IN_MENU).
 // 13 Nov (owner): "Judge" is out of the menu again; the product tour and Pricing went the same evening.
 // 21 Nov (Max: "simple and tight"): Home, Try, Proof, Cloud (Purser Cloud, src/ui/more.ts tabLinks), then More.
-const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), ...tabLinks().map(() => CLOUD_TAB_LABEL), MORE_LABEL], more: moreLinks().map((l) => l.label) });
+const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), ...tabLinks().map(tabLabel), MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
@@ -1397,7 +1397,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     if (judgeBase) {
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
       // 21 Nov: the hero's primary button starts the judge tour; its second opens the hands-on demo.
-      if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TOUR_START_HREF) fail(`/ (Home, with /try/sign) ${tag}: the first button does not start the judge tour`);
+      if ((await page.locator("main .e-tour a.btn[data-tour-start]").getAttribute("href")) !== TOUR_START_HREF) fail(`/ (Home, with /try/sign) ${tag}: the judge tour's button does not start the judge tour`);
       if ((await page.locator("main .e-hero a.btn.start").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the Try button does not lead to the hands-on demo`);
       if (await page.locator('a[href="tour"], a[href="pricing"], a[href*="judge"]').count()) fail(`/ (Home, with /try/sign) ${tag}: a link to /tour, /pricing or /judge is back`);
       if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);

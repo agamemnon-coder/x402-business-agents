@@ -52,4 +52,4 @@ export function builtOnBadge(o: { href?: string; cls?: string; src?: string } = 
 export const BUILT_ON_CSS = `.awx-badge { display: inline-flex; align-items: center; gap: 7px; flex: none; padding: 5px 11px; border-radius: 999px; background: #ffffff; border: 1px solid #e3e6ec; color: #3b4456; font: 600 12px/1 Inter, system-ui, -apple-system, sans-serif; letter-spacing: 0; text-decoration: none; white-space: nowrap; }
 .awx-badge img { display: block; height: ${LOGO_HEIGHT}px; width: auto; }
 a.awx-badge:hover { border-color: #c9cfda; }
-a.awx-badge:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }`;
+a.awx-badge:focus-visible { outline: 2px solid var(--accent, #6d28d9); outline-offset: 2px; }`;

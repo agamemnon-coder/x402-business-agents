@@ -13,7 +13,7 @@ import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
 import {
   AGENTS_HEAD, CLOUD_EYEBROW, HOME_SUB, PROOF_BUTTON, PROOF_HEAD, REASSURE, ROSTER_NOTE, ROSTER_RECORDS, START, START_HEAD, STOP_DRILL_DOC, STOP_DRILL_RECORD,
   AI_CONNECT_URL, AI_HEAD, AI_STEPS, AI_SUB, TOUR_BUTTON, TOUR_HEAD, VERIFY_BUTTON, WHATS_REAL, agentRoster, agentTiles, homePage, proofRows, proofTiles, stopDrillFacts,
-  CONNECT_CLAUDE, GITHUB_BUTTON, REPO_URL, BUSINESS_BUTTON, BUSINESS_HREF,
+  CONNECT_CLAUDE, GITHUB_BUTTON, REPO_URL, BUSINESS_BUTTON, BUSINESS_HREF, PILOT_CTA, START_ID, WATCH_BUTTON,
 } from "../src/redesign/home.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { MONEY_FLOW_RECORDS, moneyFlowFacts } from "../src/redesign/moneyFlow.js";
@@ -50,31 +50,35 @@ const SAMPLE = JSON.parse(read(TRY_SAMPLE_RECORD)) as { mode: { reader: string; 
 const DRILL = JSON.parse(read(STOP_DRILL_RECORD)) as { test_money: boolean; cards: unknown[]; passes: { stopped: unknown; timings: { fully_blocked_ms: number } | null; steps: { id: string; pass: boolean; facts: { changed?: string[]; failure_reason?: string } | null }[] }[] };
 
 describe("Home, 21 Nov: one short story", () => {
-  it("is six parts in this order, each with one heading at most: the hero, the band, the agents, the proof, the judge tour, how to start", () => {
+  // The owner's concept (21 Nov): "How to start" right under the hero, then the rest of the story.
+  it("is seven parts in this order, each with one heading at most: the hero, how to start, the band, the AI flow, the agents, the proof, the judge tour", () => {
     for (const html of [ON, OFF]) {
       const main = mainOf(html);
-      expect(main.match(/<section\b[^>]*>/g)).toEqual(['<section class="e-hero">', '<section class="e-band" aria-label="Integrations">', '<section class="e-ai" id="ai" aria-labelledby="h-ai">', '<section class="e-agents" aria-labelledby="h-agents">', '<section class="e-proof" aria-labelledby="h-proof">', '<section class="e-tour" id="tour" aria-labelledby="h-tour">', '<section class="e-start" id="start" aria-labelledby="h-start">']);
+      expect(main.match(/<section\b[^>]*>/g)).toEqual(['<section class="e-hero">', '<section class="e-start" id="start" aria-labelledby="h-start">', '<section class="e-band" aria-label="Integrations">', '<section class="e-ai" id="ai" aria-labelledby="h-ai">', '<section class="e-agents" aria-labelledby="h-agents">', '<section class="e-proof" aria-labelledby="h-proof">', '<section class="e-tour" id="tour" aria-labelledby="h-tour">']);
       expect(main.match(/<h[1-6]\b/g)).toEqual(["<h1", "<h2", "<h2", "<h2", "<h2", "<h2"]);
-      expect([...main.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)].map((m) => text(m[1]!))).toEqual([AI_HEAD, AGENTS_HEAD, PROOF_HEAD, TOUR_HEAD, START_HEAD]);
+      expect([...main.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)].map((m) => text(m[1]!))).toEqual([START_HEAD, AI_HEAD, AGENTS_HEAD, PROOF_HEAD, TOUR_HEAD]);
       expect(text(/<h1[\s\S]*?<\/h1>/.exec(main)![0])).toBe(HERO);
-      const at = ['<p class="eyebrow cloud">', '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<div class="ctas">', '<p class="reassure">', '<figure class="hf"', '<p class="hf-note">', '<div class="lband"', '<ol class="aflow"', '<ul class="agents">', '<ul class="prow">', '<ol class="tmap">', '<ol class="steps3">', '<p class="ask">'].map((s) => ({ s, i: main.indexOf(s) }));
+      const at = ['<p class="eyebrow cloud">', '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<ul class="hstats">', '<div class="ctas">', '<p class="reassure">', '<div class="wf"', '<figure class="hf"', '<p class="hf-note">', '<ol class="steps3">', '<p class="ask">', '<div class="lband"', '<ol class="aflow"', '<ul class="agents">', '<ul class="prow">', '<ol class="tmap">'].map((s) => ({ s, i: main.indexOf(s) }));
       expect(at.filter((x) => x.i < 0)).toEqual([]);
       expect(at.map((x) => x.i)).toEqual([...at.map((x) => x.i)].sort((a, b) => a - b));
       // Max, 21 Nov: "'Purser Cloud for finance teams': it's for companies in general."
       expect(text(/<p class="eyebrow cloud">[\s\S]*?<\/p>/.exec(main)![0])).toBe(CLOUD_EYEBROW);
-      expect(CLOUD_EYEBROW).toBe("Purser Cloud, for companies");
+      // The owner's concept (21 Nov): "PURSER CLOUD · FOR COMPANIES" (capitals by its style).
+      expect(CLOUD_EYEBROW).toBe("Purser Cloud · for companies");
       expect(main).not.toMatch(/finance teams/i);
     }
   });
 
-  it("has two buttons in the hero, the judge tour (primary) and Try, Connect Claude and GitHub under the AI block, then the proof's two at its row, and For companies under the steps to a pilot; nothing else is a button", () => {
+  // The owner's concept (21 Nov): "clear Try / Demo / Pilot actions" in the hero; the judge tour's button under its map.
+  it("has three buttons in the hero, Try (primary), Watch the demo and Start a pilot, For companies under the steps to a pilot, Connect Claude and GitHub under the AI block, the proof's two at its row, and the judge tour's under its map; nothing else is a button", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [decode(m[1]!), text(m[2]!)]);
-    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TOUR_START_HREF, TOUR_BUTTON], [TRY_URL, START], [AI_CONNECT_URL, CONNECT_CLAUDE], [REPO_URL, GITHUB_BUTTON], ["proof", PROOF_BUTTON], ["/verify", VERIFY_BUTTON], [BUSINESS_HREF, BUSINESS_BUTTON]]);
+    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, WATCH_BUTTON], [`#${START_ID}`, PILOT_CTA], [BUSINESS_HREF, BUSINESS_BUTTON], [AI_CONNECT_URL, CONNECT_CLAUDE], [REPO_URL, GITHUB_BUTTON], ["proof", PROOF_BUTTON], ["/verify", VERIFY_BUTTON], [TOUR_START_HREF, TOUR_BUTTON]]);
     // Max, 21 Nov: a clearly visible route from Home to /business, under the three steps to a pilot (not a primary button).
     expect([BUSINESS_HREF, BUSINESS_BUTTON]).toEqual(["business", "For companies: pilot and plans"]);
     // Max, 21 Nov: "add a connect to GitHub and Claude".
     expect([CONNECT_CLAUDE, GITHUB_BUTTON]).toEqual(["Connect Claude", "The code on GitHub"]);
-    expect([TOUR_BUTTON, START]).toEqual(["Start the judge tour", "Try it"]);
+    expect([START, WATCH_BUTTON, PILOT_CTA, TOUR_BUTTON]).toEqual(["Try it", "Watch the demo", "Start a pilot", "Start the judge tour"]);
+    for (const html of [ON, OFF]) expect(section(html, "e-tour")).toContain(`<a class="btn big tour" href="${TOUR_START_HREF}" data-tour-start>`);
     for (const html of [ON, OFF]) expect(mainOf(html).match(/class="btn primary/g)).toHaveLength(1);
     expect(homePage(undefined, { verifyUrl: "" })).not.toContain(VERIFY_BUTTON);
     expect(mainOf(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!)).toBe(mainOf(ON));
@@ -178,11 +182,13 @@ describe("Home, 21 Nov: one short story", () => {
     }
   });
 
-  it("names no TAP and no awards; the one Watch is the tour's first stop, the film on YouTube", () => {
+  // The owner's concept (21 Nov): the hero's "Watch the demo" joins the tour's first stop; both open the film on YouTube.
+  it("names no TAP and no awards; Watch twice, the hero's button and the tour's first stop, both the film on YouTube", () => {
     for (const html of [ON, OFF]) {
       const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ").replace(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi, " ");
-      expect(rest.match(/\bWatch\b/g)).toEqual(["Watch"]);
+      expect(rest.match(/\bWatch\b/g)).toEqual(["Watch", "Watch"]);
       expect(mainOf(html)).toContain(`<a href="${FILM_URL}" target="_blank" rel="noopener">`);
+      expect(mainOf(html)).toContain(`<a class="btn big ghost watch" href="${FILM_URL}" target="_blank" rel="noopener">`);
       expect(rest).not.toMatch(/href="watch"/);
       expect(rest).not.toMatch(/TAP\b|Visa TAP|single-use Visa/);
     }
@@ -213,9 +219,11 @@ describe("Home, 21 Nov: one short story", () => {
   // your AI already works"), four agents, four proof tiles, the tour's seven stops and the three steps (612 as built).
   // 21 Nov (Max: "a clearly visible route from Home to /business"): 620 → 630 for the button "For companies: pilot and
   // plans" under the three steps to a pilot (625 as built).
-  it("A11: stays within 630 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(630);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(630);
+  // 21 Nov (the owner's concept, "dark violet premium enterprise fintech"): 630 → 675 for three figures from the
+  // evidence wall under the idea, the Workflow card's four steps and its label, and the hero's Watch and Pilot buttons.
+  it("A11: stays within 675 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(675);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(675);
   });
 });
 

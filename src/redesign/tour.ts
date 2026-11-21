@@ -74,7 +74,7 @@ ol.tmap { list-style: none; margin: 40px 0 0; padding: 0; display: grid; gap: 10
 @media (min-width: 1100px) { ol.tmap { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; position: relative; } ol.tmap::before { content: ""; position: absolute; left: 7%; right: 7%; top: 39px; height: 2px; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 20%, var(--border))); border-radius: 2px; } }
 ol.tmap a { position: relative; display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 72px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); text-decoration: none; transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
 ol.tmap a > .i { color: var(--faint); }
-ol.tmap a:hover, ol.tmap a:focus-visible { border-color: var(--accent); box-shadow: 0 10px 28px -18px rgba(79, 70, 229, .55); }
+ol.tmap a:hover, ol.tmap a:focus-visible { border-color: var(--accent); box-shadow: 0 10px 28px -18px var(--glow); }
 ol.tmap .tm-n { position: relative; width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
 ol.tmap .tm-n em { position: absolute; right: -6px; top: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; display: grid; place-items: center; background: var(--text); color: var(--bg); font: 700 11.5px/1 Inter, system-ui, sans-serif; font-style: normal; }
 ol.tmap b { display: block; font-size: 16px; font-weight: 720; letter-spacing: -.01em; }
@@ -86,14 +86,14 @@ ol.tmap small { display: block; margin-top: 2px; font-size: 13.5px; line-height:
   ol.tmap a:hover, ol.tmap a:focus-visible { background: var(--surface); }
   ol.tmap b { font-size: 15px; }
 }
-ol.tmap li.on a { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 14px 32px -18px rgba(79, 70, 229, .6); background: var(--surface); }
+ol.tmap li.on a { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 14px 32px -18px var(--glow); background: var(--surface); }
 ol.tmap li.on .tm-n { background: var(--accent); color: var(--surface); border-color: var(--accent); }
 ol.tmap li.done .tm-n { background: color-mix(in srgb, var(--ok) 14%, var(--surface)); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); }
 @media (prefers-reduced-motion: no-preference) {
   ol.tmap a:hover { transform: translateY(-2px); }
   ol.tmap li.on .tm-n { animation: tm-pulse 2.4s ease-in-out infinite; }
 }
-@keyframes tm-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, .45); } 50% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); } }
+@keyframes tm-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 50% { box-shadow: 0 0 0 8px transparent; } }
 `;
 
 /** The bar's style: on every page of the tour, shown only while a tour runs (html.touring). */

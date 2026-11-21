@@ -18,7 +18,7 @@
 
 import { readFileSync } from "node:fs";
 import { VISA_REUSE_ID } from "./visaStory.js";
-import { CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, DESIGN_PARTNER_URL, designPartnerHtml, BUSINESS_CASE_LINK, BUSINESS_DOCS, HERO, IDEA, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { FILM_URL, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, DESIGN_PARTNER_URL, designPartnerHtml, BUSINESS_CASE_LINK, BUSINESS_DOCS, HERO, IDEA, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -32,7 +32,7 @@ import { NEGOTIATE_URL, PURSER_CLOUD_MCP, PURSER_CLOUD_URL } from "../ui/more.js
 import { MONEY_FLOW_RECORDS, moneyFlowFacts, type MoneyFlowFacts } from "./moneyFlow.js";
 import { LOGO_BAND_CSS, LOGO_BAND_JS, logoBandHtml } from "./integrations.js";
 import { TOUR_ID, TOUR_MAP_CSS, TOUR_START_HREF, tourMapHtml } from "./tour.js";
-import { HERO_CARD_CSS, HERO_CARD_JS, heroCardHtml } from "./heroCard.js";
+import { HERO_WAVE_CSS, HERO_WAVE_HTML, HERO_WAVE_JS, heroStatsHtml, workflowHtml } from "./heroWave.js";
 
 /** The hub of every connection Purser has, each labelled, with a quickstart (docs/integrations/README.md); in Home's footer. */
 export const CONNECT_HUB_DOC = "docs/integrations/README.md", CONNECT_HUB_LABEL = "Connect to anything";
@@ -46,39 +46,39 @@ main.ent section + section { border-top: 0; background-image: linear-gradient(90
 .e-cen .eyebrow:not(.cloud)::after { content: ""; display: inline-block; width: 22px; height: 1px; margin-left: 12px; vertical-align: .3em; background: linear-gradient(90deg, currentColor, transparent); }
 .e-h { margin: 0; font-size: clamp(30px, 3.6vw, 48px); line-height: 1.06; font-weight: 760; letter-spacing: -.035em; max-width: 20em; background: linear-gradient(180deg, var(--text) 40%, color-mix(in srgb, var(--text) 74%, var(--bg))) 0 0 / 100% 1.06em repeat-y; -webkit-background-clip: text; background-clip: text; color: transparent; }
 /* One surface for every card on Home: a hairline border, a lit top edge, the same radius. */
-ul.agents > li, ul.prow a, ol.steps3 > li:not(.pilot), .af-n:not(.af-purser) { background: linear-gradient(180deg, color-mix(in srgb, var(--text) 2%, var(--surface)), var(--surface)); box-shadow: var(--hi), 0 1px 2px rgba(16, 24, 40, .05), 0 24px 48px -36px rgba(0, 0, 0, .5); }
+ul.agents > li, ul.prow a, ol.steps3 > li:not(.pilot), .af-n:not(.af-purser) { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 4%, var(--surface)), var(--surface)); border-color: var(--border); box-shadow: var(--hi), 0 1px 2px rgba(16, 24, 40, .05), 0 24px 48px -36px rgba(0, 0, 0, .5); }
 .e-sub { margin: 14px 0 0; font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 36em; }
 .e-cen { text-align: center; } .e-cen .e-h, .e-cen .e-sub { margin-left: auto; margin-right: auto; }
 .btn.big { height: 54px; font-size: 16.5px; padding: 0 24px; gap: 8px; }
-.btn.ghost { background: transparent; } .btn.ghost:hover { border-color: var(--text); }
+.btn.ghost:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-line)); }
 
-/* 1. The hero: words on the left, the product card on the right, on a soft glow. */
-main.ent section.e-hero { position: relative; padding: 80px 0 72px; overflow: hidden; }
-.e-hero::before { content: ""; position: absolute; inset: -30% -10% auto 40%; height: 120%; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%); pointer-events: none; }
-/* The hero's ground: a faint grid that fades out toward the words, a vignette at the foot. */
-.e-hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--text) 4%, transparent) 0 1px, transparent 1px 88px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--text) 4%, transparent) 0 1px, transparent 1px 88px);
-  -webkit-mask-image: radial-gradient(60% 50% at 75% 18%, #000, transparent 75%); mask-image: radial-gradient(60% 50% at 75% 18%, #000, transparent 75%); }
-.e-hero .h-hero span + span { filter: drop-shadow(0 6px 28px color-mix(in srgb, var(--accent) 30%, transparent)); }
-/* The product card in a frame of its own: a pane of glass on the floor, lit from below. */
-.e-hero .show { position: relative; padding: 18px 18px 6px; border-radius: 28px; background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, transparent), color-mix(in srgb, var(--surface) 82%, transparent)); border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent), 0 50px 120px -50px color-mix(in srgb, var(--accent) 60%, transparent), 0 30px 60px -36px rgba(0, 0, 0, .45); }
-.e-hero .show::before { content: ""; position: absolute; left: 12%; right: 12%; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 70%, #fff), transparent); }
+/* 1. The hero: the words, three figures and three buttons on the left; the Workflow card on the right; the product card
+   from one /try run under both; the violet wave behind (src/redesign/heroWave.ts). */
+main.ent section.e-hero { position: relative; padding: 88px 0 80px; overflow: hidden; }
+.e-hero .h-hero span + span { filter: drop-shadow(0 6px 28px color-mix(in srgb, var(--accent) 35%, transparent)); }
+/* The product card in a frame of its own: a pane of glass, lit from below. */
+.e-hero .show { position: relative; padding: 18px 18px 6px; border-radius: var(--r-lg); background: var(--glass); border: 1px solid var(--glass-line); box-shadow: var(--hi), 0 50px 120px -50px var(--glow), 0 30px 60px -36px rgba(0, 0, 0, .45); }
+.e-hero .show::before { content: ""; position: absolute; left: 12%; right: 12%; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
 .e-hero .show .hf-card { background: var(--bg); }
-.e-hero .wrap { position: relative; display: grid; gap: 8px; align-items: center; grid-template-areas: "copy" "hx" "show"; }
-.e-hero .copy { grid-area: copy; } .e-hero .hx { grid-area: hx; } .e-hero .show { grid-area: show; width: 100%; max-width: 780px; justify-self: center; }
-@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 560px); grid-template-areas: "copy hx" "show show"; column-gap: 32px; row-gap: 32px; } }
-.e-hero p.cloud { margin: 0 0 22px; display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: color-mix(in srgb, var(--accent-soft) 80%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); box-shadow: 0 0 24px -6px var(--glow); letter-spacing: .14em; }
-.e-hero .h-hero { font-size: clamp(42px, 5.6vw, 64px); line-height: 1.02; letter-spacing: -.035em; font-weight: 790; } .e-hero .h-hero span { display: block; }
-@media (min-width: 1040px) { .e-hero .h-hero { font-size: clamp(52px, 4.6vw, 68px); } .e-hero .h-hero span { white-space: nowrap; } }
-.e-hero .h-hero span + span { background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, var(--a-support))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.e-hero .wrap { position: relative; display: grid; gap: 40px; align-items: center; grid-template-areas: "copy" "wf" "show"; }
+.e-hero .copy { grid-area: copy; } .e-hero .wf { grid-area: wf; width: 100%; max-width: 480px; justify-self: center; } .e-hero .show { grid-area: show; width: 100%; max-width: 820px; justify-self: center; margin-top: 24px; }
+@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 440px); grid-template-areas: "copy wf" "show show"; column-gap: 56px; row-gap: 48px; } .e-hero .wf { justify-self: end; } .e-hero .show { margin-top: 32px; } }
+.e-hero p.cloud { margin: 0 0 24px; display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: var(--glass); border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent); box-shadow: 0 0 28px -8px var(--glow); letter-spacing: .16em; }
+.e-hero p.cloud::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.e-hero .h-hero { font-size: clamp(42px, 5.6vw, 64px); line-height: 1.02; letter-spacing: -.04em; font-weight: 790; } .e-hero .h-hero span { display: block; }
+@media (min-width: 1040px) { .e-hero .h-hero { font-size: clamp(54px, 5vw, 72px); } .e-hero .h-hero span { white-space: nowrap; } }
+.e-hero .h-hero span + span { background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .e-hero .what { margin: 22px 0 0; font-size: 19.5px; line-height: 1.5; color: var(--muted); max-width: 30em; }
+.e-tourgo { margin-top: 28px; }
 .ctas { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
 .reassure { margin: 16px 0 0; display: flex; align-items: center; gap: 8px; font-size: 14.5px; color: var(--muted); }
 .reassure .i { color: var(--ok); }
 .e-hero .show { min-width: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .e-hero .copy > * { animation: h-up .7s cubic-bezier(.2, .7, .2, 1) both; }
-  .e-hero .copy > :nth-child(2) { animation-delay: .06s; } .e-hero .copy > :nth-child(3) { animation-delay: .12s; } .e-hero .copy > :nth-child(4) { animation-delay: .18s; } .e-hero .copy > :nth-child(5) { animation-delay: .24s; }
+  .e-hero .copy > :nth-child(2) { animation-delay: .06s; } .e-hero .copy > :nth-child(3) { animation-delay: .12s; } .e-hero .copy > :nth-child(4) { animation-delay: .18s; } .e-hero .copy > :nth-child(5) { animation-delay: .24s; } .e-hero .copy > :nth-child(6) { animation-delay: .3s; }
   .e-hero .show { animation: h-card 1s cubic-bezier(.2, .7, .2, 1) .15s both; }
+  .e-hero .wf { animation: h-card 1s cubic-bezier(.2, .7, .2, 1) .1s both; }
 }
 @keyframes h-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes h-card { from { opacity: 0; transform: translateY(24px) scale(.98); } to { opacity: 1; transform: none; } }
@@ -133,8 +133,8 @@ ul.prow .tag { margin-left: auto; padding: 2px 8px; border-radius: 999px; backgr
 ol.steps3 { list-style: none; margin: 56px 0 0; padding: 0; display: grid; gap: 16px; position: relative; }
 @media (min-width: 900px) { ol.steps3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; } }
 ol.steps3 > li { position: relative; display: flex; flex-direction: column; align-items: flex-start; padding: 28px 24px 22px; border: 1px solid var(--border); border-radius: 22px; background: var(--surface); box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
-ol.steps3 > li.pilot { border-color: transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--accent), var(--a-support), var(--a-treasury)) border-box; border: 1.5px solid transparent; box-shadow: 0 24px 48px -28px rgba(79, 70, 229, .55); }
-ol.steps3 .si { position: relative; width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, var(--a-support))); box-shadow: 0 10px 24px -12px rgba(79, 70, 229, .8); }
+ol.steps3 > li.pilot { border-color: transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--accent), var(--a-support), var(--a-treasury)) border-box; border: 1.5px solid transparent; box-shadow: 0 24px 48px -28px var(--glow); }
+ol.steps3 .si { position: relative; width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: var(--grad); box-shadow: 0 10px 24px -12px var(--glow); }
 ol.steps3 .si em { position: absolute; right: -8px; top: -8px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--text); border: 1px solid var(--border); font: 750 12.5px/1 Inter, system-ui, sans-serif; font-style: normal; }
 ol.steps3 b.st { margin: 20px 0 6px; font-size: 20px; font-weight: 750; letter-spacing: -.015em; }
 ol.steps3 p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
@@ -177,7 +177,7 @@ p.ask a:hover { text-decoration: underline; }
   ol.steps3 .si { grid-row: 1 / span 4; width: 48px; height: 48px; border-radius: 14px; } ol.steps3 .si .i { width: 22px; height: 22px; }
   ol.steps3 b.st { margin: 2px 0 4px; font-size: 18px; } ol.steps3 .tagline { justify-self: start; } ol.steps3 .go { padding-top: 8px; }
   .e-hero::before { inset: -10% -40% auto 20%; height: 60%; opacity: .7; }
-  .e-more .btn { flex: 1 1 100%; justify-content: center; }
+  .e-more .btn { flex: 1 1 100%; justify-content: center; white-space: normal; height: auto; min-height: 54px; padding-top: 12px; padding-bottom: 12px; text-align: center; line-height: 1.25; }
 }`;
 
 /**
@@ -243,11 +243,18 @@ export function homeHeadingHtml(): string {
  * sentence opens the README (test/first-screen.test.ts holds the two equal).
  */
 export const HOME_SUB = IDEA;
-/** Purser Cloud first (the owner, 20 Nov); 21 Nov (Max: "it's for companies in general"), not only finance teams. */
-export const CLOUD_EYEBROW = "Purser Cloud, for companies";
-/** The hero's two buttons (21 Nov): the judge tour first (src/redesign/tour.ts), then the hands-on demo (TRY_URL). */
+/** Purser Cloud first (the owner, 20 Nov); 21 Nov (Max: "it's for companies in general"), not only finance teams; the
+ * owner's concept (21 Nov): "PURSER CLOUD · FOR COMPANIES", in capitals by its style. */
+export const CLOUD_EYEBROW = "Purser Cloud · for companies";
+/**
+ * The hero's three buttons (the owner's concept, 21 Nov: "clear Try / Demo / Pilot actions"): the hands-on demo
+ * (TRY_URL, the one primary), the film, and the three steps to a pilot on this page. The judge tour's button
+ * (src/redesign/tour.ts) moved to the judge tour's own part, under its map.
+ */
 export const TOUR_BUTTON = "Start the judge tour";
 export const START = "Try it";
+export const WATCH_BUTTON = "Watch the demo";
+export const PILOT_CTA = "Start a pilot";
 // Site audit, 20 Nov (finding 6.3): a short sandbox disclosure beside the buttons.
 export const SANDBOX_NOTE = "Sandbox demo: test money, no real settlement.";
 /** The line under the buttons, with /try/sign in the bundle or not (both keys kept for the callers). */
@@ -322,7 +329,7 @@ ol.aflow { list-style: none; margin: 48px 0 0; padding: 0; display: grid; gap: 1
 .af-n b { margin-top: 12px; font-size: 18px; font-weight: 740; letter-spacing: -.01em; }
 .af-n small { font-size: 14.5px; color: var(--muted); line-height: 1.4; }
 .af-i { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
-.af-purser { border-color: transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--accent), var(--a-support)) border-box; border: 1.5px solid transparent; box-shadow: 0 18px 40px -24px rgba(79, 70, 229, .6); }
+.af-purser { border-color: transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--accent), var(--a-support)) border-box; border: 1.5px solid transparent; box-shadow: 0 18px 40px -24px var(--glow); }
 .af-purser .af-i { background: var(--text); color: var(--bg); }
 .af-m { margin-top: 10px; display: flex; align-items: center; gap: 6px; }
 .af-m img { width: 30px; height: 30px; padding: 5px; box-sizing: border-box; border-radius: 9px; background: #ffffff; border: 1px solid #e4e7ec; }
@@ -342,7 +349,7 @@ ol.aflow { list-style: none; margin: 48px 0 0; padding: 0; display: grid; gap: 1
 @media (prefers-reduced-motion: no-preference) and (min-width: 900px) { .af-c span { animation-name: af-across; } }
 @keyframes af-down { 0% { transform: translateY(0); } 60%, 100% { transform: translateY(20px); } }
 @keyframes af-across { 0% { transform: translateX(0); } 60%, 100% { transform: translateX(46px); } }
-@keyframes af-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, .45); } 50% { box-shadow: 0 0 0 9px rgba(79, 70, 229, 0); } }
+@keyframes af-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 50% { box-shadow: 0 0 0 9px transparent; } }
 p.af-fine { margin: 24px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--faint); max-width: 60em; }
 p.af-fine code { font-family: var(--mono, ui-monospace, monospace); font-size: 12.5px; color: var(--muted); }
 p.af-fine a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; }
@@ -474,8 +481,8 @@ export const CLOUD_GUEST_URL = `${PURSER_CLOUD_URL}#/guest`;
 export const CLOUD_SETUP_URL = `${PURSER_CLOUD_URL}#/start`;
 export interface StartStep { icon: string; title: string; text: string; tag: string; links: { href: string; label: string; external?: boolean }[]; pilot?: boolean }
 export const START_STEPS: readonly StartStep[] = [
-  { icon: "zap", title: "Try it", text: "Your own test company: an agent proposes, you sign with a passkey.", tag: "2 minutes · deleted after 24 h", links: [{ href: TRY_URL, label: "Open /try" }] },
-  { icon: "layout-dashboard", title: "Look around", text: "Purser Cloud with its demo company, as a guest. No sign-up.", tag: "Read only", links: [{ href: CLOUD_GUEST_URL, label: "Open the console", external: true }] },
+  { icon: "zap", title: "Try it now", text: "Your own test company: an agent proposes, you sign with a passkey.", tag: "2 minutes · deleted after 24 h", links: [{ href: TRY_URL, label: "Open /try" }] },
+  { icon: "layout-dashboard", title: "Explore the console", text: "Purser Cloud with its demo company, as a guest. No sign-up.", tag: "Read only", links: [{ href: CLOUD_GUEST_URL, label: "Open the console", external: true }] },
   { icon: "rocket", title: PILOT_BUTTON, text: "We set up your company and send a starter key; you add your passkey.", tag: "Test money · no real payments yet", links: [{ href: CLOUD_SETUP_URL, label: "Set up with a starter key", external: true }], pilot: true },
 ];
 /**
@@ -512,19 +519,23 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const awx = awxRun(), facts = heroDemoFacts(awx);
   const rows = proofRows(run, awx);
   const mf = moneyFlowFacts();
-  const roster = agentRoster(awx);
   const body = `<main class="ent">
-<section class="e-hero"><div class="wrap">
+<section class="e-hero">${HERO_WAVE_HTML}<div class="wrap">
   <div class="copy">
-    <p class="eyebrow cloud">${icon("layout-dashboard", 14)}${esc(CLOUD_EYEBROW)}</p>
+    <p class="eyebrow cloud">${esc(CLOUD_EYEBROW)}</p>
     ${homeHeadingHtml()}
     <p class="what">${esc(HOME_SUB)}</p>
-    <div class="ctas"><a class="btn primary big tour" href="${esc(TOUR_START_HREF)}" data-tour-start>${icon("route", 18)}${esc(TOUR_BUTTON)}</a><a class="btn big ghost start" href="${TRY_URL}">${esc(START)}${icon("arrow-right", 18)}</a></div>
+    ${heroStatsHtml()}
+    <div class="ctas"><a class="btn primary big start" href="${TRY_URL}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost watch" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(WATCH_BUTTON)}</a><a class="btn big ghost pilot" href="#${START_ID}">${esc(PILOT_CTA)}</a></div>
     <p class="reassure">${icon("shield-check", 16)}${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
   </div>
-  ${heroCardHtml(roster)}
+  ${workflowHtml()}
   <div class="show">${heroFlowHtml()}
     <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
+</div></section>
+<section class="e-start" id="${START_ID}" aria-labelledby="h-start"><div class="wrap">
+  ${startHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
+  ${askHtml()}
 </div></section>
 <section class="e-band" aria-label="Integrations"><div class="wrap">
   ${logoBandHtml()}
@@ -549,10 +560,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <h2 class="e-h" id="h-tour">${esc(TOUR_HEAD)}</h2>
   <p class="e-sub">${esc(TOUR_SUB)}</p>
   ${tourMapHtml()}
-</div></section>
-<section class="e-start" id="${START_ID}" aria-labelledby="h-start"><div class="wrap">
-  ${startHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
-  ${askHtml()}
+  <div class="e-more e-tourgo"><a class="btn big tour" href="${esc(TOUR_START_HREF)}" data-tour-start>${icon("route", 18)}${esc(TOUR_BUTTON)}</a></div>
 </div></section>
 </main>`;
   // The full list behind the card's note: what the card is (one /try run), the cent and the partners' tiles, the main run.
@@ -569,7 +577,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ];
   return page({
     // Final jury, 13 Nov: / and /home serve this page; /home is its one canonical address.
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + HERO_CARD_CSS + HERO_FLOW_CSS + LOGO_BAND_CSS + AI_CSS + TOUR_MAP_CSS, body, js: JS + HERO_CARD_JS + LOGO_BAND_JS, stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + HERO_WAVE_CSS + HERO_FLOW_CSS + LOGO_BAND_CSS + AI_CSS + TOUR_MAP_CSS, body, js: JS + HERO_WAVE_JS + LOGO_BAND_JS, stage: false,
     // 20 Nov (the owner: "Purser connects to everything and everyone, findable"): the hub of every connection, in the footer.
     links: [[`${REPO_BLOB}${CONNECT_HUB_DOC}`, CONNECT_HUB_LABEL]],
     real,

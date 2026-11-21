@@ -29,7 +29,7 @@ describe("6.3: a short sandbox disclosure beside the primary demo button", () =>
     for (const html of [homePage(), homePage(undefined, { trySign: true })]) {
       const m = mainOf(html);
       // 21 Nov: the hero's primary button starts the judge tour; the sandbox line, after its shield icon, is right under both.
-      expect(m).toMatch(new RegExp(`<div class="ctas"><a class="btn primary big tour"[\\s\\S]*?</div>\\s*<p class="reassure"><svg[^>]*>[\\s\\S]*?</svg>${SANDBOX_NOTE}</p>`));
+      expect(m).toMatch(new RegExp(`<div class="ctas"><a class="btn primary big start"[\\s\\S]*?</div>\\s*<p class="reassure"><svg[^>]*>[\\s\\S]*?</svg>${SANDBOX_NOTE}</p>`));
       expect(REASSURE).toEqual({ sign: SANDBOX_NOTE, world: SANDBOX_NOTE });
     }
   });

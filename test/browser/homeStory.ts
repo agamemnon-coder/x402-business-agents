@@ -15,9 +15,10 @@
 // two sentences are two lines. Every expected value is read from the records, not typed here.
 import type { Page } from "playwright";
 import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
-import { agentRoster, agentTiles, proofTiles, START, TOUR_BUTTON, WHATS_REAL } from "../../src/redesign/home.js";
+import { agentRoster, agentTiles, PILOT_CTA, proofTiles, START, START_ID, TOUR_BUTTON, WATCH_BUTTON, WHATS_REAL } from "../../src/redesign/home.js";
+import { FILM_URL } from "../../src/config/brand.js";
 import { BAND } from "../../src/redesign/integrations.js";
-import { TOUR_START_HREF, TOUR_STOPS } from "../../src/redesign/tour.js";
+import { TOUR_STOPS } from "../../src/redesign/tour.js";
 
 /** The text in sight above a line of the page (document px): no hidden step, no closed fold, no script. */
 const SEEN_ABOVE = (limit: number) => `(() => {
@@ -38,10 +39,13 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   await page.goto(o.url, { waitUntil: "load" });
   await page.evaluate(() => { try { sessionStorage.removeItem("purser.tour"); } catch { /* no storage */ } });
 
-  // The hero's two buttons: the judge tour, then Try; one primary; the sandbox line in the first screen.
+  // The hero's three buttons (the owner's concept, 21 Nov): Try (the one primary), Watch the demo, Start a pilot; the
+  // sandbox line in the first screen. The judge tour's button is under its map.
   const ctas = await page.locator("main .e-hero .ctas a.btn").evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").trim() })));
-  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([TOUR_START_HREF, o.tryHref])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${TOUR_START_HREF} and ${o.tryHref}`);
-  if (ctas[0]?.text !== TOUR_BUTTON || ctas[1]?.text !== START) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${TOUR_BUTTON}" and "${START}"`);
+  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, FILM_URL, `#${START_ID}`])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref}, ${FILM_URL} and #${START_ID}`);
+  if (JSON.stringify(ctas.map((c) => c.text)) !== JSON.stringify([START, WATCH_BUTTON, PILOT_CTA])) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}", "${WATCH_BUTTON}" and "${PILOT_CTA}"`);
+  if ((await page.locator("main .e-hero .ctas a.btn.primary").getAttribute("href")) !== o.tryHref) fail("the hero's primary button is not Try");
+  if ((await page.locator(`main .e-tour a.btn[data-tour-start]`).count()) !== 1 || (await page.locator(`main .e-tour a.btn[data-tour-start]`).innerText()).trim() !== TOUR_BUTTON) fail(`the judge tour's part has no "${TOUR_BUTTON}" button`);
   if ((await page.locator("main .e-hero .ctas a.btn.primary").count()) !== 1) fail("the hero has not exactly one primary button");
   const first = await page.locator("main p.reassure").boundingBox();
   if (!first || first.y + first.height > o.height) fail("the first button and its sandbox line are not in the first screen");
@@ -121,9 +125,9 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
     if (lines.length !== 2 || lines.some((l) => l.rects !== 1) || lines[0]!.top >= lines[1]!.top || lines[0]!.text !== "AI agents spend.") fail(`the heading does not break after "spend." (${JSON.stringify(lines)})`);
   }
 
-  // The judge tour: the first button starts it at stop 1, on Home's map, with the bar.
+  // The judge tour: its button under the map starts it at stop 1, on Home's map, with the bar.
   await page.evaluate(() => window.scrollTo(0, 0));
-  const start = page.locator("main .e-hero .ctas a.btn.primary");
+  const start = page.locator("main .e-tour a.btn[data-tour-start]");
   await (o.touch ? start.tap() : start.click());
   await page.waitForLoadState("load");
   await page.waitForTimeout(500);

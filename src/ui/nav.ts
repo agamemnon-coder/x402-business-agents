@@ -3,7 +3,7 @@
 // each page by src/servers/dashboard.ts before the page's CSP hash is taken; "More" is a <details> element, so it needs
 // no script. Colours come from the page's own tokens, with fallbacks for pages that name them differently.
 
-import { CLOUD_TAB_LABEL, MORE_CSS, moreHtml, tabLinks } from "./more.js";
+import { MORE_CSS, moreHtml, tabLabel, tabLinks } from "./more.js";
 
 import { WATCH_IN_MENU } from "../config/film.js";
 
@@ -16,7 +16,7 @@ export const NAV_MAIN: [NavKey, string, string][] = ([
   ["try", "Try", "/try"],
   ["proof", "Proof", "proof"],
   // 21 Nov (Max: "simple and tight"): Purser Cloud, the product, is a tab of its own (src/ui/more.ts tabLinks).
-  ...tabLinks().map((l) => [l.key, CLOUD_TAB_LABEL, l.href]),
+  ...tabLinks().map((l) => [l.key, tabLabel(l), l.href]),
 ] as [NavKey, string, string][]).filter(([k]) => k !== "watch" || WATCH_IN_MENU);
 
 /** Which tab a page belongs to: the detail pages and the dashboard sit under Proof. */

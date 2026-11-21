@@ -30,6 +30,8 @@ describe("the site's header, byte for byte as before", () => {
     expect(sha(CSS)).toBe(snap.cssSha256);
     expect(sha(NAV_CSS)).toBe(snap.navCssSha256);
     expect(sha(MORE_CSS)).toBe(snap.moreCssSha256);
+    // 21 Nov (the owner's concept): header, More, nav and every hash renewed: dark violet tokens, the brand mark in violet,
+    // and "Business" (/business) a tab of its own before "Cloud", out of More.
     // 21 Nov: cssSha256 and pageSha256 renewed (the premium pass): the shared CSS's dark surfaces, mono eyebrows, the
     // cards' lit edge and the primary button's glow; header(), HEADER_CSS, NAV_CSS and MORE_CSS are byte for byte as before.
     // 21 Nov: header, More and pageSha256 renewed: "For companies" (/business) leads the More menu and the footer.
