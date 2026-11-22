@@ -14,7 +14,7 @@ import { publicClient, usdzBalance } from "../metal/chain.js";
 import { activeMandate, mandateSpent } from "../metal/mandate.js";
 import { livePull, type Puller } from "../metal/pull.js";
 import { checkpoint } from "../policy/saga.js";
-import { heldCents, releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
+import { heldCents, releaseHold, reserveSpend, settleHold, stopRefusal } from "../policy/holds.js";
 import { extractTerms } from "@metalntwx/metal-pay/mandates";
 import { capRefusal } from "../policy/rules.js";
 import { velocityGate } from "../policy/velocity.js";
@@ -146,7 +146,7 @@ async function sweepUnder(db: DB, paymentId: string, amountCents: number, to: Ad
   // chain would move the spend the replace carries.
   const inFlight = row.outcome === "PENDING" || row.outcome === "HELD";
   const refusal = inFlight
-    ? capRefusal(db, "treasury", amountCents) ?? replaceHoldRefusal(db, "treasury") ?? velocityGate(db, "treasury", "metal", amountCents, new Date(), paymentId)
+    ? stopRefusal(db, "treasury", "metal", "sweep") ?? capRefusal(db, "treasury", amountCents) ?? replaceHoldRefusal(db, "treasury") ?? velocityGate(db, "treasury", "metal", amountCents, new Date(), paymentId)
     : reserveSpend(db, { agent: "treasury", rail: "metal", cents: amountCents, ref: paymentId, payee: "sweep" });
   if (refusal) {
     // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its

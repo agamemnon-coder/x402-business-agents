@@ -936,6 +936,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       return out(`Airwallex refused attempt ${str(p.attempt)} of the ${str(p.amount)} payout (${why}). ${next}`, "info");
     }
     case "transfer.left_open": return out(`Airwallex refused the ${str(p.amount)} payout ${str(p.attempts)} times, but it could not be shown that nothing exists under its request_id (${str(p.reason)}); the payout stays under way until a person checks it`, "refusal");
+    case "transfer.held_before_create": return out(`The payment was not sent: ${str(p.reason)}. It was checked again just before the ${str(p.before) === "conversion" ? "conversion" : "payout"} was created; nothing was paid`, "refusal");
     case "transfer.retry_stopped": return out(`The payout's retries stopped after attempt ${str(p.after_attempt)}: ${str(p.reason)}; nothing was paid`, "refusal");
     case "transfer.refused": {
       const why = `${str(p.code)}${str(p.trace_id) ? `, trace ${str(p.trace_id)}` : ""}`;
@@ -1180,7 +1181,7 @@ export const REFUSAL_EVENTS = new Set([
   "upstream.refused", "upstream.in_doubt", "sale.settle_failed", "claude.rejected", "proposal.rejected", "proposal.failed",
   "proposal.needs_reapproval", "proposal.expired", "approval.too_late", "refund.refused", "refund.held", "sweep.refused",
   "sweep.held", "invoice.escalated", "dispute.escalated", "invoice.fraud_suspected", "document.injection_flagged", "transfer.fee_over_ceiling", "passkey.refused", "passkey.enrol_refused",
-  "transfer.refused", "transfer.retry_stopped", "transfer.row_conflict", "transfer.found_after_close", "transfer.payee_unconfirmed", "transfer.left_open",
+  "transfer.refused", "transfer.retry_stopped", "transfer.held_before_create", "transfer.row_conflict", "transfer.found_after_close", "transfer.payee_unconfirmed", "transfer.left_open",
   "card.charge_declined", "card.charge_reversed", "sale.prepaid_undelivered", "velocity.tripped", "reconcile.difference",
   "execution.blocked",
 ]);
@@ -1208,6 +1209,7 @@ export const REFUSAL_WHAT: Record<string, string> = {
   "transfer.fee_over_ceiling": "Fee above ceiling",
   "transfer.refused": "Payout refused by Airwallex",
   "transfer.retry_stopped": "Payout retries stopped",
+  "transfer.held_before_create": "Payout stopped before it was sent",
   "transfer.row_conflict": "Alarm: payout row changed",
   "transfer.found_after_close": "Alarm: closed payout found at Airwallex",
   "transfer.payee_unconfirmed": "Alarm: payee not confirmed",

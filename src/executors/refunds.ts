@@ -3,7 +3,7 @@
 // pays a payment id at most once, so a retry after a crash reports the first outcome instead of paying again.
 
 import { originJson, parseOrigin, withOrigin } from "../provenance/origin.js";
-import { releaseHold, reserveSpend, settleHold } from "../policy/holds.js";
+import { releaseHold, reserveSpend, settleHold, stopRefusal } from "../policy/holds.js";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -71,7 +71,7 @@ async function refundUnder(
   // An open mandate replace of the support mandate holds both (dry-179): it carries the spend as it was proposed.
   const inFlight = !!existing && (existing.outcome === "PENDING" || existing.outcome === "HELD");
   const refusal = inFlight
-    ? capRefusal(db, "support", r.amount_cents) ?? replaceHoldRefusal(db, "support") ?? velocityGate(db, "support", "metal", r.amount_cents, new Date(), paymentId)
+    ? stopRefusal(db, "support", "metal", "customer") ?? capRefusal(db, "support", r.amount_cents) ?? replaceHoldRefusal(db, "support") ?? velocityGate(db, "support", "metal", r.amount_cents, new Date(), paymentId)
     : reserveSpend(db, { agent: "support", rail: "metal", cents: r.amount_cents, ref: paymentId, payee: "customer" });
   if (refusal) {
     // A pull already sent (PENDING) or held may still settle on chain: refuse to send anything now, but keep its state.
