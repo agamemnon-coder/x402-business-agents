@@ -121,6 +121,8 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
         // Single use in code: Airwallex itself accepts a reused quote under a new request_id.
         db.prepare("UPDATE fx_quotes SET used_by_conversion = ? WHERE quote_id = ? AND (used_by_conversion IS NULL OR used_by_conversion = ?)").run(c.request_id, c.quote_id, c.request_id);
         const found = retry ? await rail.findConversionByRequestId(c.request_id) : undefined;
+        // Nothing converted yet: a hold set since the execution began (the emergency stop, a pause, a revocation) stops it.
+        if (!found) refuseIfHeld(db, terms, sha, "conversion", false, now());
         const made = found ?? await rail.createConversion({
           requestId: c.request_id,
           quote: { quoteId: c.quote_id, buyCurrency: c.buy_currency, sellCurrency: c.sell_currency, buyAmountCents: toCents(c.buy_amount), sellAmountCents: toCents(c.sell_amount), clientRate: c.client_rate, validFrom: "", validTo: c.valid_to },
@@ -183,7 +185,8 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
   }
 }
 
-/** Why nothing may be paid now (the holds and the agent's identity, checked before every create), or null. */
+/** Why nothing may be paid now (the holds and the agent's identity), or null: checked when the execution begins and again
+ *  immediately before every create at Airwallex (refuseIfHeld), the conversion and the payout, and after each fee retry's wait. */
 export function holdReason(db: DB, t: InvoicePaymentTerms, at: Date): string | null {
   if (!counterpartyAllowed(db, t.beneficiary_name)) return `${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`;
   if (frozen(db)) return "the CFO pulled the emergency stop; nothing is paid until it is lifted";
@@ -192,6 +195,26 @@ export function holdReason(db: DB, t: InvoicePaymentTerms, at: Date): string | n
   // The treasury agent's identity (B5): still active, and allowed to pay a bank beneficiary in euros over Airwallex.
   const denied = authorize(db, "treasury", { rail: "airwallex", currency: "EUR", payee: "beneficiaries" }, at);
   return denied ? `${denied}; nothing is paid` : null;
+}
+
+/**
+ * Refuses the next create when a hold is set now (holdReason): nothing is sent, and the refusal is audited
+ * (transfer.held_before_create). A payout row this run wrote and never sent (`closeRow`) is closed as CANCELLED, so it
+ * never counts as money under way; a row from an earlier run stays SUBMITTING (Airwallex may hold its first send). The
+ * caller's catch releases the payment's holds and records the proposal FAILED.
+ */
+function refuseIfHeld(db: DB, t: InvoicePaymentTerms, sha: string, before: "conversion" | "transfer", closeRow: boolean, at: Date): void {
+  const held = holdReason(db, t, at);
+  if (!held) return;
+  db.transaction(() => {
+    if (closeRow) {
+      db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = 'held_by_purser', failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")
+        .run(`not sent: ${held}`.slice(0, 300), at.toISOString(), t.transfer_request_id);
+    }
+    const ref = before === "transfer" ? t.transfer_request_id : t.conversion?.request_id ?? t.transfer_request_id;
+    audit(db, "awx-executor", "transfer.held_before_create", ref, { before, reason: held, proposal_id: t.proposal_id, request_id: ref, amount: `EUR ${t.amount}`, approval_sha256: sha }, at);
+  })();
+  throw new Error(held);
 }
 
 /** The approved payee must still be the supplier's active account (a bank-detail change applied meanwhile replaces it). */
@@ -242,24 +265,31 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   }
   if (!existing) {
     // Written before the call: the partial unique index allows one live payout per invoice. Its hold goes in the same
-    // transaction, under the payout lock: from now on the SUBMITTING row counts it.
-    await exclusive(() => db.transaction(() => {
-      db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at, origin_json) VALUES (?, ?, ?, 'EUR', 'SWIFT', ?, 'SUBMITTING', ?, ?, ?)")
-        .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee_max, sha, new Date().toISOString(), originJson());
-      // Purser's fee stays spoken for from here until it is settled, in the write that ends the hold (as a supplier payment's).
-      const fee = (t as PlatformFields).platform_fee;
-      if (fee) {
-        db.prepare(`INSERT OR IGNORE INTO platform_fees (request_id, proposal_id, payout_request_id, amount, currency, destination, fee_transfer_id, status, approval_sha256, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, NULL, 'DUE', ?, ?)`).run(fee.request_id, t.proposal_id, t.transfer_request_id, fee.amount, fee.currency, fee.to_account, sha, new Date().toISOString());
-      }
-      releasePayout(db, t.transfer_request_id);
-    }).immediate());
+    // transaction, under the payout lock: from now on the SUBMITTING row counts it. A hold set since the execution
+    // began (the emergency stop, a pause, a revocation, a blocked payee) stops it before anything is written.
+    await exclusive(() => {
+      refuseIfHeld(db, t, sha, "transfer", false, now());
+      db.transaction(() => {
+        db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at, origin_json) VALUES (?, ?, ?, 'EUR', 'SWIFT', ?, 'SUBMITTING', ?, ?, ?)")
+          .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee_max, sha, new Date().toISOString(), originJson());
+        // Purser's fee stays spoken for from here until it is settled, in the write that ends the hold (as a supplier payment's).
+        const fee = (t as PlatformFields).platform_fee;
+        if (fee) {
+          db.prepare(`INSERT OR IGNORE INTO platform_fees (request_id, proposal_id, payout_request_id, amount, currency, destination, fee_transfer_id, status, approval_sha256, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, NULL, 'DUE', ?, ?)`).run(fee.request_id, t.proposal_id, t.transfer_request_id, fee.amount, fee.currency, fee.to_account, sha, new Date().toISOString());
+        }
+        releasePayout(db, t.transfer_request_id);
+      }).immediate();
+    });
   }
   // A crash here: the row is written, nothing was sent. The re-run is a resend (it may never close the row); a row left
   // SUBMITTING with nothing behind it is closed by the CFO's `npm run reconcile -- --close-unsent` (src/finance/closeUnsent.ts).
   await checkpoint("transfer:after-insert");
   // Only the call that wrote the row sends the first create; any other path here is a resend under the same request_id.
   const firstSend = !existing;
+  // Immediately before the create, the holds once more (outside audit, 22 November: the runner executes approved
+  // payments in the background, so the CFO's emergency stop or a revocation can land after beginExecution).
+  refuseIfHeld(db, t, sha, "transfer", firstSend, now());
   const create = req(t, sha);
   let tr: Transfer;
   let adopted: boolean;

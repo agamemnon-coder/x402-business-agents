@@ -74,7 +74,12 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
       // The one let-through's hold was made past the cap checks (holdBeyondCap): it never stands for a normal payment.
       if (existing.reason === LET_THROUGH_HOLD) return `hold_conflict: ${r.ref} is the let-through's hold`;
       if (existing.reason === RECORD_PULL_HOLD) return `hold_conflict: ${r.ref} is a record pull's hold`;
-      return existing.agent === r.agent && existing.cents === r.cents ? null : `hold_conflict: ${r.ref} is held for another payment`;
+      if (existing.agent !== r.agent || existing.cents !== r.cents) return `hold_conflict: ${r.ref} is held for another payment`;
+      // A SETTLED ref is a payment already in the ledger: the same payment again, nothing new is sent (idempotent). A
+      // HELD ref is a payment not yet made (a resume after a crash): what may still stop it is asked again, the emergency
+      // stop, the agent's pause and velocity stop and its identity (outside audit, 22 November: a refund resumed after a
+      // crash was paid despite the stop). The hold stays HELD and counting; the restart's recoverHolds resolves it.
+      return existing.status === "HELD" ? stopRefusal(db, r.agent, r.rail, r.payee, now) : null;
     }
     const agent = r.agent;
     const ours = (AGENTS as string[]).includes(agent);
@@ -106,6 +111,22 @@ export function reserveSpend(db: DB, r: SpendRequest): string | null {
     else db.prepare("INSERT INTO holds (ref, agent, rail, cents, status, created_at, updated_at, policy_version, origin_json) VALUES (?, ?, ?, ?, 'HELD', ?, ?, ?, ?)").run(r.ref, agent, r.rail, r.cents, ts, ts, policy, originJson());
     return null;
   }).immediate();
+}
+
+/**
+ * What stops an agent's payment whatever its amount, read-only: its identity (revoked, expired, or not allowed this rail,
+ * currency or payee), then the CFO's emergency stop, the agent's pause and its velocity stop. Asked again right before a
+ * payment already reserved (a resume, a retry of a pull in flight, the next refund of a batch) is sent. Null when none.
+ */
+export function stopRefusal(db: DB, agent: SpendRequest["agent"], rail: HoldRail, payee: Payee | undefined, now = new Date()): string | null {
+  const denied = authorize(db, agent, { rail, currency: rail === "metal" ? "USDZ" : "EUR", payee }, now);
+  if (denied) return denied;
+  const ours = (AGENTS as string[]).includes(agent);
+  if (rail === "metal") return ours ? capRefusal(db, agent as Agent, 0) : null;
+  if (frozen(db)) return `frozen_by_cfo: the CFO stopped every agent payment (emergency stop); the ${agent} agent buys nothing until the CFO lifts it with Face ID`;
+  if (paused(db, agent)) return `paused_by_cfo: the ${agent} agent is paused by the CFO; it buys nothing until the CFO resumes it with Face ID`;
+  if (stopped(db, agent)) return `stopped_by_velocity: the ${agent} agent was stopped automatically (velocity limit); it buys nothing until the CFO lifts the stop with Face ID`;
+  return null;
 }
 
 /** The mandate's cap per payment, as the last bind or replace on chain set it. */

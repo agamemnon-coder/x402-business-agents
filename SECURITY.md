@@ -71,7 +71,7 @@ In scope:
 Out of scope: the partners' own systems (the Airwallex sandbox, Alta testnet, Airi, T:0, Moneybird): report those to
 them. Denial of service against the hosted test preview, and anything that needs a real person's device or account.
 
-Supported: `main`. There are no other release branches; the tags (`v1.0-submission`, and `v1.1-submission` once the owner creates it) are kept as they were submitted.
+Supported: `main`. There are no other release branches. The submission tags are lightweight tags on GitHub, each naming a commit: `v1.0-submission` names `b704672c0` (8 November) and `v1.1-submission` names `a1807f2ef` (15 November, the merge of #400). An earlier annotated `v1.1-submission` tag made on the maintainer's machine named `c431a4689` (also 15 November, #358); it is not the tag on GitHub. Release tags: see [docs/releasing.md](docs/releasing.md) (only `v1.4.0` is signed).
 
 The threat model is [docs/security.md](docs/security.md); the controls are [docs/controls.md](docs/controls.md).
 

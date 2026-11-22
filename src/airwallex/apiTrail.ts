@@ -340,7 +340,7 @@ export function trailRuns(): TrailRun[] {
       return { kind: "transfer", label: `late failure: transfer ${str(t.transfer_id)} (${pid ?? "?"}, ${str(t.invoice_no)})`, carried, signed: s, recomputed: null, match: !!s && s === carried,
         how: "approval_sha256 against the terms hash the labelled virtual test passkey signed (the run's proposals)" };
     });
-    runs.push({ key: "late-failure-1117", iso: str(calls[0]?.at)!, title: "A payout that does not stay paid: PAID, then FAILED by the sandbox's simulation", record: "docs/runs/2026-11-17-airwallex-late-failure.json", alsoReads: [], calls, checks });
+    runs.push({ key: "late-failure-1117", iso: str(calls[0]?.at)!, title: "A payout that does not stay paid: PAID, then CANCELLED (simulated late failure)", record: "docs/runs/2026-11-17-airwallex-late-failure.json", alsoReads: [], calls, checks });
   }
 
   // 19 Nov: each paid invoice as a bill in Airwallex Spend (npm run airwallex-bills). The record itemises its calls; the

@@ -100,6 +100,8 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
             hold(db, proposalId, c.request_id, c.sell_currency, toCents(c.sell_amount));
           });
         }
+        // Nothing converted yet: a hold set since the execution began (the emergency stop, a pause, a revocation) stops it.
+        refuseIfHeld(db, terms, sha, "conversion", false, now());
         try {
           const made = await rail.createConversionAny({
             requestId: c.request_id, approvalSha256: sha,
@@ -126,7 +128,7 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
       conversionId = conv.conversionId;
     }
 
-    const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submit(db, rail, terms, sha, proposalId), now);
+    const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submit(db, rail, terms, sha, proposalId, now), now);
     noteApplicationFee(db, terms as PlatformFields, transfer);
     const final = sim ? await step(db, proposalId, 3, "settle", transfer.id, () => settleInSandbox(db, rail, sim, transfer), now) : transfer;
     recordFee(db, final, terms, sha);
@@ -144,7 +146,8 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
   }
 }
 
-/** Why nothing may be paid now, or null: the CFO's holds, the treasury agent's stops, and the approved payee still on file. */
+/** Why nothing may be paid now, or null: the CFO's holds, the treasury agent's stops, and the approved payee still on file.
+ *  Checked when the execution begins and again immediately before every create at Airwallex (refuseIfHeld). */
 function holdReason(db: DB, t: SupplierPaymentTerms, at: Date): string | null {
   if (!counterpartyAllowed(db, t.beneficiary_name)) return `${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`;
   if (frozen(db)) return "the CFO pulled the emergency stop; nothing is paid until it is lifted";
@@ -160,6 +163,25 @@ function holdReason(db: DB, t: SupplierPaymentTerms, at: Date): string | null {
   return null;
 }
 
+/**
+ * Refuses the next create at Airwallex when a hold is set now (holdReason), as the invoice payment's does: nothing is
+ * sent, the refusal is audited (transfer.held_before_create), and a payout row this run wrote and never sent
+ * (`closeRow`) is closed as CANCELLED. The caller's catch releases the holds and records the proposal FAILED.
+ */
+function refuseIfHeld(db: DB, t: SupplierPaymentTerms, sha: string, before: "conversion" | "transfer", closeRow: boolean, at: Date): void {
+  const held = holdReason(db, t, at);
+  if (!held) return;
+  db.transaction(() => {
+    if (closeRow) {
+      db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = 'held_by_purser', failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")
+        .run(`not sent: ${held}`.slice(0, 300), at.toISOString(), t.transfer_request_id);
+    }
+    const ref = before === "transfer" ? t.transfer_request_id : t.conversion?.request_id ?? t.transfer_request_id;
+    audit(db, "awx-executor", "transfer.held_before_create", ref, { before, reason: held, proposal_id: t.proposal_id, request_id: ref, amount: `${t.currency} ${t.amount}`, approval_sha256: sha }, at);
+  })();
+  throw new Error(held);
+}
+
 /** This payout's own transfer: our request_id, amount, currency and payee. */
 function isThis(found: Transfer, t: SupplierPaymentTerms): boolean {
   return found.requestId === t.transfer_request_id && found.amountCents === toCents(t.amount) && found.currency === t.currency
@@ -172,7 +194,7 @@ const codeOf = (e: unknown) => (e instanceof AirwallexError ? e.code : (e as { c
 /** A documented refusal at create (HTTP 400 at Airwallex; the stand-in throws the same codes without a status). */
 const refusedAtCreate = (e: unknown) => REFUSED_AT_CREATE.has(codeOf(e)) && (!(e instanceof AirwallexError) || e.status === 400);
 
-async function submit(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: string, proposalId: string): Promise<Transfer> {
+async function submit(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: string, proposalId: string, now: () => Date): Promise<Transfer> {
   const at = () => new Date().toISOString();
   const existing = transferRow(db, t);
   if (existing?.transfer_id) return rail.getTransfer(existing.transfer_id);
@@ -192,6 +214,9 @@ async function submit(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: st
   // Nothing at Airwallex under this request_id: the floor on fresh balances, and the row written, as one step.
   await exclusive(async () => {
     const fresh = await rail.balancesAll();
+    // After the fresh balance read: a hold set since the execution began (the emergency stop, a pause, a revocation, a
+    // blocked payee) stops it before anything is written (outside audit, 22 November).
+    refuseIfHeld(db, t, sha, "transfer", false, now());
     if (freeCents(db, fresh, t.currency, t.transfer_request_id, proposalId) - payoutCents(t) < 0) throw floorError(t);
     db.transaction(() => {
       if (!existing) {
@@ -209,6 +234,9 @@ async function submit(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: st
   });
   // Only the call that wrote the row sends the first create; any other is a resend under the same request_id.
   const firstSend = !existing;
+  // Immediately before the create, the holds once more: the runner executes approved payments in the background, so
+  // the CFO's emergency stop or a revocation can land at any point after beginExecution.
+  refuseIfHeld(db, t, sha, "transfer", firstSend, now());
   let tr: Transfer;
   try {
     tr = await rail.createPayoutTransfer({

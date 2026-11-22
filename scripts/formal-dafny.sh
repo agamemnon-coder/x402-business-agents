@@ -73,13 +73,22 @@ echo "formal:dafny: ${summary} ($(( $(date +%s) - start )) s, Dafny ${version})"
 # The committed record and badge (docs/evidence/formal-proofs.json, docs/badges/dafny.json) state this summary.
 cd "$HERE"
 verified="$(echo "$summary" | sed -E 's/.* with ([0-9]+) verified, 0 errors$/\1/')"
+# The lemmas and files the record names are counted from the proofs themselves, never written by hand (outside audit,
+# 22 November: the record said 59 lemmas, the files hold 61). test/formal-dafny-record.test.ts counts them the same way.
+files="$(ls "$SPEC_DIR"/*.dfy | wc -l | tr -d ' ')"
+lemmas="$(cat "$SPEC_DIR"/*.dfy | grep -cE '^\s*(ghost\s+)?lemma\s' || true)"
 if [ "${1:-}" = "--write" ]; then
-  node -e 'const fs=require("fs");const p="docs/evidence/formal-proofs.json";const r=JSON.parse(fs.readFileSync(p,"utf8"));r.verifier=process.argv[1];r.totals.verified=Number(process.argv[2]);r.totals.errors=0;fs.writeFileSync(p,JSON.stringify(r,null,2)+"\n")' "$summary" "$verified"
+  node -e 'const fs=require("fs");const p="docs/evidence/formal-proofs.json";const r=JSON.parse(fs.readFileSync(p,"utf8"));r.verifier=process.argv[1];r.totals.verified=Number(process.argv[2]);r.totals.errors=0;r.totals.lemmas=Number(process.argv[3]);r.totals.files=Number(process.argv[4]);fs.writeFileSync(p,JSON.stringify(r,null,2)+"\n")' "$summary" "$verified" "$lemmas" "$files"
   npx tsx scripts/badges.ts > /dev/null
   echo "formal:dafny: wrote the record and the badge (${verified} verified, 0 errors)"
 else
   record="$(node -e 'console.log(JSON.parse(require("fs").readFileSync("docs/evidence/formal-proofs.json","utf8")).verifier)')"
   badge="$(node -e 'console.log(JSON.parse(require("fs").readFileSync("docs/badges/dafny.json","utf8")).message)')"
+  counted="$(node -e 'const t=JSON.parse(require("fs").readFileSync("docs/evidence/formal-proofs.json","utf8")).totals;console.log(`${t.lemmas} ${t.files}`)')"
+  if [ "$counted" != "${lemmas} ${files}" ]; then
+    echo "formal:dafny: the record counts \"${counted}\" (lemmas files), but formal/dafny holds ${lemmas} lemmas in ${files} files; run scripts/formal-dafny.sh --write and commit" >&2
+    exit 1
+  fi
   if [ "$record" != "$summary" ] || [ "$badge" != "${verified} verified, 0 errors" ]; then
     echo "formal:dafny: the record says \"${record}\" and the badge \"${badge}\", but the verifier printed \"${summary}\"; run scripts/formal-dafny.sh --write and commit" >&2
     exit 1

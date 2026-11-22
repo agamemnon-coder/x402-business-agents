@@ -63,6 +63,8 @@ export const MONEY_EVENTS = new Set([
   "transfer.adopted", "fx.adopted", "credit.adopted", "transfer.refused", "refund.already_paid", "refund.already_held", "upstream.in_doubt", "refund.deferred", "sweep.deferred",
   // A transfer create Airwallex refused for its fee configuration, retried under the same request_id (each attempt).
   "transfer.retry", "transfer.retry_stopped", "transfer.left_open",
+  // A hold set after the execution began (the emergency stop, a revocation) stopped the create: nothing was sent.
+  "transfer.held_before_create",
   // An alarm on a payout: Airwallex holds a transfer the ledger's row does not show (src/executors/invoicePayment.ts).
   "transfer.row_conflict",
   // A payout row with no transfer behind it, closed by the CFO's command after a look-up (src/finance/closeUnsent.ts).

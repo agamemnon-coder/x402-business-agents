@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, DESIGN_PARTNER_URL, FILM_URL, HERO, SECOND_APPROVER } from "../src/config/brand.js";
 import { BOOKED, FLOW, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
-import { WORKFLOW_NOTE, WORKFLOW_RECORD, workflowFacts } from "../src/redesign/heroWave.js";
+import { WORKFLOW_NOTE, WORKFLOW_RECORD, heroStats, workflowFacts } from "../src/redesign/heroWave.js";
 import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
 import {
   AGENTS_HEAD, CLOUD_EYEBROW, HOME_SUB, PROOF_BUTTON, PROOF_HEAD, REASSURE, ROSTER_NOTE, ROSTER_RECORDS, START, STOP_DRILL_DOC, STOP_DRILL_RECORD,
@@ -135,7 +135,8 @@ describe("Home, 21 Nov: one short story", () => {
       expect(text(/<p class="wf-note">[\s\S]*?<\/p>/.exec(main)![0])).toBe(`${WORKFLOW_NOTE} ${WHATS_REAL}`);
       expect(main).toContain(`<a href="#real" data-real>${WHATS_REAL}</a>`);
       // 21 Nov (jury check): the due date says which run it is from, since /try's sample today has a later one.
-      expect(text(outsideFold(main)).match(DATE)).toEqual([SAMPLE.invoice.due, "13 Nov"]);
+      // Outside audit, 22 November: each hero figure says its record's day beside it ("262 checks passed, 20 Nov").
+      expect(text(outsideFold(main)).match(DATE)).toEqual([...heroStats().flatMap((s) => (s.day ? [s.day] : [])), SAMPLE.invoice.due, "13 Nov"]);
     }
     expect(ON).toContain('document.querySelectorAll("[data-real]")');
   });

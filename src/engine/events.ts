@@ -217,6 +217,7 @@ const EVENTS: Record<string, Pick> = {
   "transfer.left_open": NONE,
   "transfer.retry": NONE,
   "transfer.retry_stopped": NONE,
+  "transfer.held_before_create": NONE,
   "transfer.payee_unconfirmed": NONE,
   "transfer.row_conflict": NONE,
   "transfer.follow_failed": NONE,

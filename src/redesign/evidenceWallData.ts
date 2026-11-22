@@ -132,9 +132,17 @@ function rails(w: ReturnType<typeof walks>): WallTile[] {
     out.push({ key: "alta-merkle", fig: whole(proven, am.leaves), label: "signed Airwallex payments in one Alta transaction, each with a proof", note: `One Merkle root on chain; each proof checks offline${am.anchored_at ? `; ${day(am.anchored_at)}` : ""}.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-11-19-alta-merkle.md"), rec: AM });
   }
   const LF = "docs/runs/2026-11-17-airwallex-late-failure.json";
-  const lf = json(LF) as { transfers?: unknown[]; audit?: { ts: string }[]; calls?: { by_endpoint?: { endpoint: string; calls: number }[] } } | null;
+  const lf = json(LF) as { transfers?: { status?: string; failure_type?: string | null }[]; audit?: { ts: string; event?: string; payload?: { asked?: string; event?: string } }[]; calls?: { by_endpoint?: { endpoint: string; calls: number }[] } } | null;
   const created = lf?.calls?.by_endpoint?.find((e) => e.endpoint === "POST /transfers/create")?.calls;
-  if (lf?.transfers?.length && created === lf.transfers.length) out.push({ key: "late-failure", fig: whole(lf.transfers.length, lf.transfers.length), label: "PAID, then FAILED: back to a person", note: `PAID and FAILED by the sandbox's simulation${lf.audit?.[0] ? `, ${day(lf.audit[0].ts)}` : ""}.`, tag: "sandbox", tone: "awx", href: blob(LF), rec: LF });
+  // What Airwallex read back, not what the simulation was asked for (outside audit, 22 November: the tile said FAILED;
+  // the sandbox was asked for FAILED, and a GET of each transfer read it back CANCELLED, payout.transfer.cancelled).
+  const readBack = [...new Set((lf?.transfers ?? []).map((t) => t.status))];
+  const asked = [...new Set((lf?.audit ?? []).filter((a) => a.event === "late_failure.fail_accepted").map((a) => a.payload?.asked))].filter(Boolean);
+  const awxEvent = [...new Set((lf?.audit ?? []).filter((a) => a.event === "late_failure.webhook_stand_in").map((a) => a.payload?.event))].filter(Boolean);
+  const why = [...new Set((lf?.transfers ?? []).map((t) => t.failure_type))].filter(Boolean);
+  if (lf?.transfers?.length && created === lf.transfers.length && readBack.length === 1 && readBack[0]) {
+    out.push({ key: "late-failure", fig: whole(lf.transfers.length, lf.transfers.length), label: `PAID, then ${readBack[0]} (simulated late failure): back to a person`, note: `Airwallex read each back ${readBack[0]}${awxEvent.length ? ` (${[...awxEvent, ...why].join(", ")})` : ""}${asked.length ? ` after the sandbox's simulation was asked for ${asked.join(" or ")}` : ""}${lf.audit?.[0] ? `, ${day(lf.audit[0].ts)}` : ""}.`, tag: "sandbox", tone: "awx", href: blob(LF), rec: LF });
+  }
   const COV = "docs/evidence/airwallex-api-coverage.json";
   const cov = json(COV) as { totals?: { endpoints: number; live: number } } | null;
   if (cov?.totals?.live) out.push({ key: "awx-endpoints", fig: String(cov.totals.live), label: `Airwallex endpoints live, of ${cov.totals.endpoints}`, note: "Each with the first record that holds a call to it.", tag: "sandbox", tone: "awx", href: blob("docs/evidence/airwallex-api-coverage.md"), rec: COV });
@@ -393,9 +401,12 @@ function built(): WallTile[] {
     const lastRun = loads[loads.length - 1]!.r;
     out.push({ key: "clearing-load", fig: whole(paid, tried), label: "payments through Alta's clearing, load test", note: `${loads.length} runs, ${day(lastRun.ran_at)}; the last: ${whole(lastRun.paid, lastRun.attempted).toLowerCase()} paid.`, tag: "testnet", tone: "metal", href: blob("docs/runs/2026-10-30-clearing-load.md"), rec: loads.map((x) => x.f).join(" ") });
   }
+  // The jobs of ci.yml, each run on every push to main and every pull request (test/ci-checks.test.ts reads ci.yml);
+  // GitHub's CodeQL code scanning is not one of them, so it is named apart (outside audit, 22 November).
   const jobs = ciJobs();
-  const scans = jobs.filter((j) => /gitleaks|Semgrep|code scanning|npm audit/i.test(j.what)).length;
-  out.push({ key: "ci", fig: String(jobs.length), label: "CI jobs on every change", note: `${scans} of them scan for security: gitleaks, Semgrep, CodeQL, npm audit.`, tag: "ci", tone: "", href: CI_RUNS_URL, rec: ".github/workflows/ci.yml" });
+  const scanners = [["npm audit", /npm audit/], ["gitleaks", /gitleaks/], ["Semgrep", /Semgrep/]] as const;
+  const scans = scanners.filter(([, re]) => jobs.some((j) => re.test(j.what)));
+  out.push({ key: "ci", fig: String(jobs.length), label: "CI jobs on every change", note: `${scans.length} of them scan for security: ${scans.map(([n]) => n).join(", ")}; GitHub's CodeQL code scanning runs beside them.`, tag: "ci", tone: "", href: CI_RUNS_URL, rec: ".github/workflows/ci.yml" });
   return out;
 }
 
