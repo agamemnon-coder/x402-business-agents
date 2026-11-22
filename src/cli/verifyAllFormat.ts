@@ -24,7 +24,10 @@ export function wallFigures(html: string): Map<string, string> {
     const end = html.indexOf("</li>", from);
     // 22 Nov: a figure may carry spans ("14 → 0", the blind run in amber, the rerun in green); its text is the figure.
     const fig = /<b class="ew-f">([\s\S]*?)<\/b>/.exec(html.slice(from, end < 0 ? undefined : end));
-    const text = fig?.[1]!.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&");
+    // Strip tags until none is left, then any stray angle bracket, so no "<script" can survive (CodeQL, 22 Nov).
+    let text = fig?.[1] ?? "";
+    for (let prev = ""; prev !== text; ) { prev = text; text = text.replace(/<[^<>]*>/g, ""); }
+    text = text.replace(/[<>]/g, "").replace(/&amp;/g, "&");
     if (text && !out.has(m[1]!)) out.set(m[1]!, text);
   }
   return out;
