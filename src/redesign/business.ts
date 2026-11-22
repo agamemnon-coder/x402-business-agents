@@ -14,7 +14,8 @@
 // Airwallex; no partnership or endorsement is claimed. No competitor, customer, quote or founder is named.
 // 21 Nov (Max: "simple and amateur — more visuals and the infra/architecture"): the page now opens with the demo's
 // question over the wave, the demo as a diagram and the architecture (./businessVisuals.ts); the problem/outcome cards
-// went (OPTIONS and OUTCOMES stay for /one-pager). One script: the wave, then the calculator (textContent only, nothing parsed as markup), and /one-pager's print button.
+// went (OPTIONS and OUTCOMES stay for /one-pager). 22 Nov (Max: "far too much text, make it a tight, animated visual"):
+// the demo animated, the architecture one strip, the pilot and plans two compact cards, the calculator and questions folded. One script: the wave, then the calculator (textContent only, nothing parsed as markup), and /one-pager's print button.
 
 import { CONTACT_EMAIL } from "../config/brand.js";
 import { PRICING, PRICING_LINE, euro } from "../config/pricing.js";
@@ -179,13 +180,12 @@ export const CALC_JS = `(function () {
 /** /one-pager's button: the browser's own print dialog, where "Save as PDF" is. */
 export const PRINT_JS = `(function () { var b = document.getElementById("print"); if (b) { b.hidden = false; b.addEventListener("click", function () { window.print(); }); } })();`;
 
-export const BUSINESS_CSS = `.bz-hd { margin-top: 14px; } .bz-hd .eyebrow { margin-bottom: 4px; }
-.bz-h { margin: 6px 0 0; font-size: clamp(22px, 2.6vw, 28px); font-weight: 760; letter-spacing: -.02em; line-height: 1.2; }
+export const BUSINESS_CSS = `.bz-h { margin: 6px 0 0; font-size: clamp(22px, 2.6vw, 28px); font-weight: 760; letter-spacing: -.02em; line-height: 1.2; }
 .bz-sub { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; max-width: 46em; }
 .bz-ctas { display: flex; flex-wrap: wrap; gap: 10px; }
 .bz-ctas .btn { white-space: normal; height: auto; min-height: 48px; padding: 10px 20px; line-height: 1.25; }
 .bz-ctas .btn .i { flex: none; }
-.bz-out .ic, .bz-who .ic, .bz-steps .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+.bz-out .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
 /* The proof tiles (Home's, from the run records). */
 .bz-proof { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
 .bz-proof a { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; background: var(--sunken); color: inherit; text-decoration: none; min-height: 44px; min-width: 0; }
@@ -194,14 +194,6 @@ export const BUSINESS_CSS = `.bz-hd { margin-top: 14px; } .bz-hd .eyebrow { marg
 .bz-proof .v { font-size: 20px; font-weight: 760; letter-spacing: -.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .bz-proof .t { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 .bz-proof .g { justify-self: start; font-size: 14px; font-weight: 650; color: var(--muted); background: var(--surface); border-radius: 999px; padding: 1px 8px; margin-top: 4px; }
-/* Who it is for: three cards, an icon each. */
-ul.bz-who { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 860px) { ul.bz-who { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.bz-who li { display: grid; gap: 6px; align-content: start; padding: 18px; min-width: 0; }
-.bz-who b { font-size: 17px; }
-.bz-who p { margin: 0; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
-.bz-who small { color: var(--muted); font-size: 14px; line-height: 1.4; }
-.bz-who small a { color: var(--accent); font-weight: 650; }
 details.bz-tf > summary { min-height: 44px; }
 details.bz-tf .bz-terms { margin: 6px 0 8px; }
 /* The calculator. */
@@ -227,30 +219,30 @@ details.bz-tf .bz-terms { margin: 6px 0 8px; }
 .bz-bars span.b i { display: block; height: 100%; width: 0; border-radius: 6px; background: var(--ok); transition: width .3s ease; }
 .bz-bars span.b i.p { background: var(--accent); }
 .bz-res small { color: var(--muted); font-size: 14px; line-height: 1.4; }
-/* The pilot: four steps on a line, then the prices. */
-.bz-pilot { display: grid; gap: 14px; padding: 20px; min-width: 0; }
-ol.bz-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); counter-reset: st; }
-@media (min-width: 860px) { ol.bz-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-ol.bz-steps li { position: relative; display: grid; gap: 6px; align-content: start; padding: 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); min-width: 0; }
-ol.bz-steps li .ic { position: relative; }
-ol.bz-steps li .ic em { position: absolute; right: -9px; top: -9px; width: 22px; height: 22px; border-radius: 50%; background: var(--text); color: var(--bg); font: 700 14px/22px Inter, system-ui, sans-serif; text-align: center; font-style: normal; }
-ol.bz-steps b { font-size: 16px; } ol.bz-steps p { margin: 0; font-size: 14.5px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+/* 22 Nov: the pilot and the plans, two compact cards side by side; the calculator and the questions folded under them. */
+.bz-two { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 960px) { .bz-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); align-items: stretch; } }
+.bz-pilot { display: grid; gap: 12px; align-content: start; padding: 20px; min-width: 0; }
+.bz-pilot .bz-h { margin: 0; }
+.bz-fpc { border: 1.5px solid transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--accent), var(--ok)) border-box; box-shadow: 0 18px 40px -28px rgba(79, 70, 229, .6); }
+.bz-fpc .pill { justify-self: start; }
+.bz-fpc .v { margin: 0; font-size: 15px; color: var(--muted); } .bz-fpc .v b { color: var(--text); }
+.bz-fpc .btn, .bz-pilot .bz-ctas .btn { justify-self: start; white-space: normal; height: auto; min-height: 48px; padding: 10px 20px; line-height: 1.25; }
+.bz-fpc details p { margin: 6px 0; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
+.bz-fpc details a { color: var(--accent); font-weight: 650; }
+.bz-more { display: grid; gap: 8px; }
+details.bz-fold { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 0 16px; }
+details.bz-fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 56px; font-weight: 700; font-size: 17px; }
+details.bz-fold > summary::-webkit-details-marker { display: none; }
+details.bz-fold > summary::after { content: "+"; font-size: 22px; color: var(--accent); flex: none; } details.bz-fold[open] > summary::after { content: "−"; }
+details.bz-fold > .bz-calc, details.bz-fold > .bz-faq { margin-bottom: 16px; }
+details.bz-fold > p.bz-sub { margin-bottom: 12px; }
 .bz-price { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
 .bz-price div { padding: 14px 16px; border-radius: 14px; background: var(--sunken); display: grid; gap: 2px; min-width: 0; }
 .bz-price b { font-size: 14px; color: var(--muted); font-weight: 650; }
 .bz-price span.v { font-size: 24px; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .bz-price span.v small { font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
 .bz-price small.d { font-size: 14px; color: var(--muted); }
-/* The Founding Partner Pilot: its card beside the onboarding steps, then eligibility, scope and terms. */
-.bz-ft { font-size: 17px; color: var(--text); }
-.bz-fp { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 960px) { .bz-fp { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); align-items: start; } .bz-fp ol.bz-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.bz-fpc { display: grid; gap: 10px; align-content: start; padding: 20px; border-radius: 18px; border: 1.5px solid transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--accent), var(--ok)) border-box; box-shadow: 0 18px 40px -28px rgba(79, 70, 229, .6); min-width: 0; }
-.bz-fpc .pill { justify-self: start; }
-.bz-fpc b.n { font-size: 18px; letter-spacing: -.01em; }
-.bz-fpc .v { font-size: 34px; font-weight: 780; letter-spacing: -.03em; line-height: 1.05; }
-.bz-fpc .v small { font-size: 15px; font-weight: 600; letter-spacing: 0; color: var(--muted); }
-.bz-fpc .btn { justify-self: start; white-space: normal; height: auto; min-height: 48px; padding: 10px 20px; line-height: 1.25; }
 .bz-terms { margin: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
 .bz-terms div { padding: 14px 16px; border-radius: 14px; background: var(--sunken); min-width: 0; }
 .bz-terms dt { font-size: 14px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
@@ -262,9 +254,8 @@ ol.bz-steps b { font-size: 16px; } ol.bz-steps p { margin: 0; font-size: 14.5px;
 .bz-faq summary::-webkit-details-marker { display: none; }
 .bz-faq summary::after { content: "+"; font-size: 20px; color: var(--accent); flex: none; } .bz-faq details[open] summary::after { content: "−"; }
 .bz-faq details p { margin: 0 0 8px; font-size: 15.5px; line-height: 1.5; overflow-wrap: anywhere; }
-.bz-faq .links { padding-bottom: 12px; }`;
-
-const sectionHead = (id: string, eyebrow: string, title: string) => `<div class="bz-hd"><p class="eyebrow">${esc(eyebrow)}</p><h2 class="bz-h" id="${id}">${esc(title)}</h2></div>`;
+.bz-faq .links { padding-bottom: 12px; }
+ol.bz-onb { margin: 6px 0; padding-left: 20px; display: grid; gap: 4px; font-size: 15px; line-height: 1.45; }`;
 
 /** Home's proof tiles (every value from a run record), as compact chips; links made relative to the page. */
 export function proofChips(tiles: ProofTile[] = proofTiles()): string {
@@ -315,53 +306,45 @@ export function calcHtml(i: CalcIn = CALC_DEFAULTS): string {
 }
 
 export function businessPage(): string {
-  // 21 Nov (Max: "the business page looks simple and amateur — make it simple but with more visuals and the
-  // infra/architecture; we made a clear demo: would you trust the agent with your money?"): /proof's and /security's
-  // design language (./businessVisuals.ts). The question and its answer over the wave, the demo's approval card and four
-  // figures from the evidence wall; the demo as one diagram, each step to its record; the architecture and where it
-  // runs; then who it is for, the pilot, the plans, the calculator and the questions, tighter and with less text.
+  // 21 Nov (Max: "the business page looks simple and amateur — more visuals and the infra/architecture"), then 22 Nov
+  // (Max: "far too much text, make it a tight, animated visual"): the question and its one-line answer over the wave,
+  // the demo's approval card and four figures from the evidence wall; the demo as one animated diagram, each step to its
+  // record; the architecture as one strip of chips; the pilot and the plans as two compact cards; the calculator and the
+  // questions folded. The honesty lines stay, most of them inside the folds.
   const d = demoFacts();
-  const who = `<ul class="bz-who">
-  <li class="card" id="ideal"><span class="ic">${icon("building-2", 20)}</span><b>${esc("First target group")}</b><p>${esc("EU companies of 20 to 200 employees on Airwallex, with a CFO, a fractional CFO or an accountant.")}</p><small>${esc(FIRST_TARGET_NOTE.split(". ")[0]!)}. <a href="${esc(PILOT_MAIL)}">${esc("Other companies can still register interest")}</a>.</small></li>
-  <li class="card" id="firms"><span class="ic">${icon("users", 20)}</span><b>${esc("Accounting firms")}</b><p>${esc("The accountant reads the books and audit trail; cannot approve or pay.")}</p></li>
-  <li class="card" id="on-airwallex"><span class="ic">${icon("landmark", 20)}</span><b>${esc("Built on Airwallex")}</b><p>${esc("Money stays in your own Airwallex account; Purser is never in the flow of funds.")}</p></li>
-</ul>`;
-  const steps = `<ol class="bz-steps">${PILOT_STEPS.map((s, i) => `<li><span class="ic">${icon(s.icon, 20)}<em>${i + 1}</em></span><b>${esc(s.title)}</b><p>${esc(s.line)}</p></li>`).join("")}</ol>`;
-  const pilot = `<section class="card bz-pilot" aria-labelledby="pilot">
-  <div class="bz-fp">
-    <div class="bz-fpc" id="founding"><span class="pill run">${esc("Early access · for design partners")}</span><b class="n">${esc(FOUNDING_NAME)}</b><span class="v">${esc("Free")} <small>${esc("for 30 days")}</small></span>
-      <ul class="ticks">${FOUNDING_POINTS.map((l) => `<li>${icon("check", 16)}<span>${esc(l)}</span></li>`).join("")}</ul>
-      <a class="btn primary" href="${esc(PILOT_MAIL)}">${icon("mail", 18)}${esc(FOUNDING_CTA)}</a></div>
-    ${steps}
-  </div>
-  <details class="fold bz-tf"><summary>${esc("Eligibility, scope and terms")}</summary><dl class="bz-terms">${FOUNDING_TERMS.map((t) => `<div id="t-${t.id}"><dt>${esc(t.title)}</dt><dd>${esc(t.line)}</dd></div>`).join("")}</dl>
+  const pilot = `<section class="card bz-pilot bz-fpc" id="founding" aria-labelledby="pilot">
+  <span class="pill run">${esc("Early access · for design partners")}</span>
+  <h2 class="bz-h" id="pilot">${esc(FOUNDING_CTA)}</h2>
+  <p class="v"><b>${esc(FOUNDING_NAME)}</b> · ${esc("Free for 30 days · no credit card")}</p>
+  <a class="btn primary" href="${esc(PILOT_MAIL)}">${icon("mail", 18)}${esc("Write to us")}</a>
+  <details class="fold bz-tf"><summary>${esc("Who it is for, eligibility and terms")}</summary>
+  <p>${esc(FOUNDING_TEXT)}</p>
+  <p id="ideal">${esc(`${FIRST_TARGET} ${FIRST_TARGET_NOTE.split(". ")[0]!}.`)} <a href="${esc(PILOT_MAIL)}">${esc("Other companies can still register interest")}</a>.</p>
+  <p id="firms">${esc("Accounting firms: the accountant reads the books and audit trail; cannot approve or pay. Money stays in your own Airwallex account; Purser is never in the flow of funds.")}</p>
+  <ul class="ticks">${FOUNDING_POINTS.map((l) => `<li>${icon("check", 16)}<span>${esc(l)}</span></li>`).join("")}</ul>
+  <ol class="bz-onb">${PILOT_STEPS.map((s) => `<li><b>${esc(s.title)}</b> ${esc(s.line)}</li>`).join("")}</ol>
+  <dl class="bz-terms">${FOUNDING_TERMS.map((t) => `<div id="t-${t.id}"><dt>${esc(t.title)}</dt><dd>${esc(t.line)}</dd></div>`).join("")}</dl>
   <div class="links">${outLink(repoHref(GO_LIVE_DOC), "The go-live requirements")}</div></details>
 </section>`;
   const plans = `<section class="card bz-pilot" aria-labelledby="pricing">
+  <h2 class="bz-h" id="pricing">${esc("After the pilot, if you choose.")}</h2>
   ${priceHtml()}
-  <p class="bz-sub">${esc(`${PRICING_LEAD} Not yet validated with customers.`)}</p>
-  <div class="bz-ctas"><a class="btn" href="${ONE_PAGER_PATH}">${icon("file-text", 18)}${esc("The one-pager")}</a></div>
+  <p class="bz-sub">${esc(`${PRICING_LEAD} Not yet validated with customers.`)} <a href="${ONE_PAGER_PATH}">${esc("The one-pager")}</a></p>
 </section>`;
   const one = (f: Faq) => `<details id="faq-${f.id}"><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p><div class="links">${f.links.map(([h, l]) => (/^https:/.test(h) ? outLink(h, l) : siteLink(h, l))).join("")}</div></details>`;
   // The judges' questions (review, 21 Nov) in one fold of their own, so the buyer's questions stay the ones in sight.
   const judges = faqs().filter((f) => JUDGE_FAQ.includes(f.id));
   const faq = `<div class="bz-faq">${faqs().filter((f) => !JUDGE_FAQ.includes(f.id)).map(one).join("")}${judges.length ? `<details id="faq-judges"><summary>${esc("Questions judges ask")}</summary>${judges.map(one).join("")}</details>` : ""}</div>`;
   const body = `<main class="bzp">
-${businessHeroHtml({ label: BUSINESS_LABEL, position: BUSINESS_LEAD, d })}
+${businessHeroHtml({ label: BUSINESS_LABEL, d })}
 <div class="wrap">
-  ${demoHtml(d, TRY_TAG)}
+  ${demoHtml(d)}
   ${bzArchHtml()}
-  ${sectionHead("who", "Who it is for", "Finance teams on Airwallex, and their accountants.")}
-  ${who}
-  ${sectionHead("pilot", "Founding Partner Pilot", FOUNDING_CTA)}
-  <p class="bz-sub bz-ft">${esc(FOUNDING_TEXT)}</p>
-  ${pilot}
-  ${sectionHead("pricing", "Plans", "After the pilot, if you choose.")}
-  ${plans}
-  ${sectionHead("h-calc", "Calculator", "What could it save you?")}
-  ${calcHtml()}
-  ${sectionHead("faq", "Questions", "What a buyer asks first.")}
-  ${faq}
+  <div class="bz-two">${pilot}${plans}</div>
+  <div class="bz-more">
+  <details class="bz-fold" id="calc-fold"><summary id="h-calc">${esc("Calculator: what could it save you?")}</summary>${calcHtml()}</details>
+  <details class="bz-fold" id="faq"><summary>${esc("Questions a buyer asks")}</summary><p class="bz-sub">${esc(POSITION)}</p>${faq}</details>
+  </div>
 </div></main>`;
   return page({
     title: "For companies", tab: "business", css: `${PRODUCT_CSS}\n${BUSINESS_CSS}\n${BUSINESS_VISUAL_CSS}`, body, js: `${BUSINESS_WAVE_JS}\n${CALC_JS}`, stage: false,

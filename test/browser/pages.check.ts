@@ -950,7 +950,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // numbers with the page's own arithmetic (calc, src/redesign/business.ts), never "NaN". /one-pager's button shows
     // once its script runs.
     // 21 Nov: /business 860 after Max's six decisions (the written agreement, eligibility, first target group, scenario).
-    for (const [path, budget] of [["/business", 860], ["/one-pager", 660]] as const) {
+    // 22 Nov (Max: "far too much text, make it a tight, animated visual"): /business 380, the calculator folded.
+    for (const [path, budget] of [["/business", 380], ["/one-pager", 660]] as const) {
       const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
       if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
       await look(page, `${path} ${tag}`, w);
@@ -962,6 +963,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead")].filter((e) => e.offsetParent && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
       for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
       if (path === "/business") {
+        await page.locator("#calc-fold > summary").click();
         await page.fill("#c-invoices", "400");
         await page.fill("#c-risk", "20000");
         const want = calc({ ...CALC_DEFAULTS, invoices: 400, atRisk: 20000 });

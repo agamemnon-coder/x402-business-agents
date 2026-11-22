@@ -240,6 +240,23 @@ describe("the visuals (21 Nov)", () => {
     expect(BUSINESS_PAGE.match(/<li data-stat="[a-z-]+" data-rec="[^"]+">/g)).toHaveLength(HERO_FIGURES.length);
   });
 
+  // 22 Nov (Max: "far too much text, make it a tight, animated visual"): the demo is one animated diagram, a few words a
+  // step; the pulse and the steps' light run on a loop in CSS only, and stand still under prefers-reduced-motion.
+  it("animates the demo as one diagram of a few words a step, still under reduced motion, the rest folded", () => {
+    const words = (x: string) => x.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+    for (const s of demoSteps(d)) expect({ id: s.id, k: words(s.k) <= 5, title: words(s.title) <= 7, sentence: /\.\s|\.$/.test(s.title) }).toEqual({ id: s.id, k: true, title: true, sentence: false });
+    const flow = /<ol class="bzd-flow">[\s\S]*?<\/section>/.exec(BUSINESS_PAGE)![0];
+    expect(flow.match(/<li class="bzd-w [a-z0-9]+" aria-hidden="true"><span><\/span><\/li>/g)).toHaveLength(3);
+    expect(flow).not.toMatch(/<p class="bzd-l">/);
+    for (const k of ["bzd-lit", "bzd-ic", "bzd-down"]) expect(BUSINESS_PAGE).toMatch(new RegExp(`@keyframes ${k} \\{`));
+    expect(BUSINESS_PAGE).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\n {2}\.bzd-n \{ animation: bzd-lit 10s/);
+    expect(BUSINESS_PAGE).toContain("@media (prefers-reduced-motion: reduce) { .bzd *, .bzh *, .bza * { animation: none !important; transition: none !important; } }");
+    expect(BUSINESS_PAGE).not.toMatch(/\sstyle="/);
+    expect(BUSINESS_PAGE.match(/<h1\b/g)).toHaveLength(1);
+    for (const id of ["calc-fold", "faq"]) expect(BUSINESS_PAGE).toContain(`<details class="bz-fold" id="${id}">`);
+    expect(BUSINESS_PAGE).toMatch(/<details class="fold bz-tf"><summary>Who it is for, eligibility and terms<\/summary>/);
+  });
+
   it("shows the architecture's four layers and where it runs, each part linked to a page, code or doc that exists", () => {
     expect(BZ_LAYERS.map((l) => l.name)).toEqual(["CFO & company", "Purser engine", "Rails", "Proof & books"]);
     for (const [, href] of BZ_LAYERS.flatMap((l) => l.parts)) {
