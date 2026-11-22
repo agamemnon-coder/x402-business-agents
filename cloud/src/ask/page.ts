@@ -244,19 +244,29 @@ function save() { try { sessionStorage.setItem(KEY, JSON.stringify(history.slice
 function setLive(live) { statusDot.className = 'dot' + (live ? '' : ' docs'); statusText.textContent = live ? C.statusLive : C.statusDocs; }
 const kb = (n) => n < 1024 ? n + ' B' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
 
-// A citation [n]: a chip linking to its passage (a record of the demo company is a chip, not a link).
-function cite(n, sources) {
+// The citations as the reader sees them (outside audit, 22 Nov: one source read as "6"): numbered 1, 2, 3 in the order
+// the answer first uses them, not by the passage's place in the list the model read. Each still links to its own passage.
+function citeOrder(text, sources) {
+  const order = new Map();
+  for (const x of text.matchAll(/\[(\d{1,2})\]/g)) { const n = Number(x[1]); if (sources[n - 1] && !order.has(n)) order.set(n, order.size + 1); }
+  return order;
+}
+// The answer's text with its citations renumbered so (kept in the conversation, which is drawn later without its sources).
+function renumbered(text, sources) { const order = citeOrder(text, sources); return text.replace(/\[(\d{1,2})\]/g, (m, n) => (order.has(Number(n)) ? '[' + order.get(Number(n)) + ']' : m)); }
+// A citation [n]: a chip linking to its passage (a record of the demo company is a chip, not a link), shown as its number in order of use.
+function cite(n, sources, order) {
   const s = sources[n - 1];
   if (!s) return document.createTextNode('[' + n + ']');
+  const shown = String((order && order.get(n)) || n);
   const docLink = s.kind !== 'data' && okHost(s.url);
-  const a = el(docLink ? 'a' : 'span', 'cite' + (s.kind === 'data' ? ' data' : ''), String(n));
-  if (docLink) { a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; a.setAttribute('aria-label', 'Source ' + n + ': ' + s.title + ' (opens in a new tab)'); }
-  else { a.setAttribute('role', 'note'); a.setAttribute('aria-label', 'Source ' + n + ': ' + s.title); }
+  const a = el(docLink ? 'a' : 'span', 'cite' + (s.kind === 'data' ? ' data' : ''), shown);
+  if (docLink) { a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; a.setAttribute('aria-label', 'Source ' + shown + ': ' + s.title + ' (opens in a new tab)'); }
+  else { a.setAttribute('role', 'note'); a.setAttribute('aria-label', 'Source ' + shown + ': ' + s.title); }
   a.title = s.title;
   return a;
 }
 // One line of an answer as text: citations [n] as chips, **bold**, ` + "`code`" + String.raw`, and links to Purser's own sites as links.
-function inline(parent, text, sources) {
+function inline(parent, text, sources, order) {
   const re = /\[(\d{1,2})\]|\*\*([^*\n]{1,120})\*\*|` + "`([^`\\n]{1,80})`" + String.raw`|https?:\/\/[^\s)<>\]]+/g;
   let at = 0, m;
   while ((m = re.exec(text))) {
@@ -264,7 +274,7 @@ function inline(parent, text, sources) {
     if (m[1]) {
       // A citation keeps the punctuation after it on its line ("code [1]." never breaks before the full stop).
       const punct = /^[.,;:!?)]+/.exec(text.slice(m.index + m[0].length));
-      const nw = el('span', 'nw'); nw.append(cite(Number(m[1]), sources));
+      const nw = el('span', 'nw'); nw.append(cite(Number(m[1]), sources, order));
       if (punct) { nw.append(punct[0]); re.lastIndex += punct[0].length; }
       parent.append(nw);
       at = re.lastIndex; continue;
@@ -283,6 +293,7 @@ function inline(parent, text, sources) {
 // The answer's text as paragraphs, "- " lists and "1. " steps.
 function draw(box, text, sources) {
   box.textContent = '';
+  const order = citeOrder(text, sources);
   let list = null, kind = '';
   for (const raw of text.split(/\n+/)) {
     const line = raw.trim();
@@ -292,8 +303,8 @@ function draw(box, text, sources) {
     if (item) {
       const k = bullet ? 'ul' : 'ol';
       if (!list || kind !== k) { list = el(k); kind = k; box.append(list); }
-      const li = el('li'); inline(li, line.slice(item[0].length), sources); list.append(li);
-    } else { list = null; const p = el('p'); inline(p, line, sources); box.append(p); }
+      const li = el('li'); inline(li, line.slice(item[0].length), sources, order); list.append(li);
+    } else { list = null; const p = el('p'); inline(p, line, sources, order); box.append(p); }
   }
 }
 function avatar() { const t = $('mark'); const s = t.content.firstElementChild.cloneNode(true); const d = el('div', 'av'); d.append(s); return d; }
@@ -432,13 +443,14 @@ function meta(m, sources, cited, mode, note, reason) {
   if (shown.length) {
     box.append(el('span', 'mh', cited.length ? C.sources : C.related));
     const ol = el('ol');
-    for (const s of shown) {
+    for (const [i, s] of shown.entries()) {
       const li = el('li');
       const link = s.kind !== 'data' && okHost(s.url);
       const a = el(link ? 'a' : 'span', 'src' + (s.kind === 'data' ? ' data' : ''));
       if (link) { a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; }
       a.title = s.title;
-      a.append(el('b', null, String(s.n)), el('span', null, s.title + (s.kind === 'data' ? ' (' + C.demo + ')' : '')));
+      // Numbered as the answer's chips are: the order of use (cited is in that order), not the passage's place.
+      a.append(el('b', null, String(i + 1)), el('span', null, s.title + (s.kind === 'data' ? ' (' + C.demo + ')' : '')));
       li.append(a); ol.append(li);
     }
     box.append(ol);
@@ -544,7 +556,7 @@ async function ask(question) {
     if (!done) throw new Error(C.error);
     draw(body, text, sources);
     meta(m, sources, done.cited || [], done.mode, done.note, done.reason);
-    history.push({ role: 'user', text: question, file: file ? file.name : null }, { role: 'assistant', text: text.slice(0, 1200), ...(cards.length ? { cards } : {}) });
+    history.push({ role: 'user', text: question, file: file ? file.name : null }, { role: 'assistant', text: renumbered(text, sources).slice(0, 1200), ...(cards.length ? { cards } : {}) });
     save(); keepConvo();
     say.textContent = C.purser + ': ' + text.replace(/\[(\d{1,2})\]/g, '').replace(/\*\*/g, '');
     // A long answer: its question at the top of the view, so it reads from its start.
