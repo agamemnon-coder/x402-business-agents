@@ -7,6 +7,7 @@
 // its one style block), so every width is an SVG attribute, never a style attribute. The colours of the marks are the
 // page's own: Claude and Face ID validated as a pair in both themes (dataviz validator, 13 Nov), code in neutral grey.
 
+import { heldOutLine, heldOutTitle } from "./heldOutWords.js";
 import { AGENT_EVALS, HOLDOUTS_RECORD, INJECTION_LINE, SWEEP_RECORD, VARIATION_RECORD, ZERO_TRUST_REPORT, HOSTILE_EVAL, modelLines, passedWords, type ClaudeEvidence, type HeldOut, type ModelLine } from "./claudeEvidence.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { countOf, esc, icon } from "./ui.js";
@@ -246,17 +247,25 @@ export function modelName(model: string | undefined, family: string): string {
 }
 
 /**
- * The newest held-out eval as one tile (the owner, 21 Nov: "v16, 8 vs 77"; since 21 Nov v17, 14 vs 88): what code holds when the model is wrong. A
- * script that always says pay stands in the model's place; Purser's rules against a payer with no rules, on the same
- * held-out invoices. From its record (newestHeldOut, src/redesign/claudeEvidence.ts); empty without one.
+ * The newest held-out eval as one tile (the owner, 21 Nov: "v16, 8 vs 77"; v17, 14 vs 88): what code holds when the model is wrong. A
+ * script that always says pay stands in the model's place, on held-out invoices. 22 Nov (the owner: "14 → 0"): the
+ * blind run's wrong payments, then the same cases after the fixes that followed, which is no longer blind; no rules in
+ * the line. From the two records (newestHeldOut, src/redesign/claudeEvidence.ts; words in ./heldOutWords.ts); without
+ * the rerun, the blind run against no rules as before; empty without a record.
  */
 export function heldOutTile(h: HeldOut | null): string {
   if (!h) return "";
-  return `<section class="chold card" id="held-out" data-rec="${esc(h.file)}" aria-labelledby="ch-h"><a class="ch-fig" href="${esc(`${REPO_BLOB}${h.md}`)}" target="_blank" rel="noopener"><span class="ch-v"><b>${h.purser}</b> <span>vs</span> <b class="no">${h.noRules}</b></span>
+  const a = h.after;
+  if (!a) return `<section class="chold card" id="held-out" data-rec="${esc(h.file)}" aria-labelledby="ch-h"><a class="ch-fig" href="${esc(`${REPO_BLOB}${h.md}`)}" target="_blank" rel="noopener"><span class="ch-v"><b class="was">${h.purser}</b> <span>vs</span> <b class="no">${h.noRules}</b></span>
 <span class="ch-k"><span>${esc("Purser's rules")}</span><span>${esc("no rules")}</span></span></a>
-<div class="ch-t"><h2 id="ch-h">${esc(`Newest held-out eval (v${h.version}): wrong payments on ${h.cases} invoices`)}</h2>
-<p>${esc(`If the model always said pay, Purser's rules would let ${h.purser} wrong payments out; with no rules, ${h.noRules}. ${h.falseHolds} false holds of ${h.clean} clean invoices. Cases committed before the run; offline, test data.`)}</p>
-<p class="r">${link(h.md, "record")}</p></div></section>`;
+<div class="ch-t"><h2 id="ch-h">${esc(heldOutTitle(h))}</h2>
+<p>${esc(`With a model that always says pay, Purser's rules let ${h.purser} wrong payments through; with no rules, ${h.noRules}. ${h.falseHolds} false holds of ${h.clean} clean invoices. Cases committed before the run; offline, test data.`)}</p>
+<p class="r">${link(h.file, "record")}</p></div></section>`;
+  return `<section class="chold card" id="held-out" data-rec="${esc(`${h.file} ${a.file}`)}" aria-labelledby="ch-h"><a class="ch-fig" href="${esc(`${REPO_BLOB}${h.md}`)}" target="_blank" rel="noopener"><span class="ch-v"><b class="was">${h.purser}</b> <span>→</span> <b class="now">${a.wrong}</b></span>
+<span class="ch-k"><span>${esc("blind run")}</span><span>${esc("after the fixes")}</span></span></a>
+<div class="ch-t"><h2 id="ch-h">${esc(heldOutTitle(h))}</h2>
+<p>${esc(heldOutLine({ version: h.version, cases: h.cases, blind: h.purser, blindPastCfo: h.pastCfo, noRules: h.noRules, after: a.wrong, afterFalseHolds: a.falseHolds }))}</p>
+<p class="r">${link(h.file, "the blind run")} ${link(a.file, "the rerun")}</p></div></section>`;
 }
 
 export const HELD_OUT_CSS = `.chold { padding: 18px 20px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 24px; align-items: center; }
@@ -267,10 +276,11 @@ export const HELD_OUT_CSS = `.chold { padding: 18px 20px; display: grid; grid-te
 .chold .r a { position: relative; z-index: 1; }
 .chold:has(a.ch-fig:hover), .chold:has(a.ch-fig:focus-visible) { border-color: var(--claude); } .chold:has(a.ch-fig:focus-visible) { outline: 2px solid var(--claude); outline-offset: 2px; }
 .ch-v { font-size: clamp(40px, 5vw, 56px); font-weight: 800; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ch-v b { color: var(--ok); } .ch-v b.no { color: var(--bad); } .ch-v span { font-size: .45em; color: var(--muted); font-weight: 650; letter-spacing: 0; }
+.chold { --amb: #a15c00; } @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chold { --amb: #ffb547; } } :root[data-theme="dark"] .chold { --amb: #ffb547; }
+.ch-v b { color: var(--ok); } .ch-v b.was { color: var(--amb); } .ch-v b.no { color: var(--bad); } .ch-v span { font-size: .45em; color: var(--muted); font-weight: 650; letter-spacing: 0; }
 .ch-k { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 650; color: var(--muted); }
 .ch-t { display: grid; gap: 4px; min-width: 0; } .ch-t h2 { margin: 0; font-size: 17px; line-height: 1.3; } .ch-t p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--muted); }
-.ch-t .r a.pf { min-height: 44px; display: inline-flex; align-items: center; }`;
+.ch-t .r { display: flex; flex-wrap: wrap; gap: 0 16px; } .ch-t .r a.pf { min-height: 44px; display: inline-flex; align-items: center; }`;
 
 /**
  * "Claude in the product today" (review, 21 Nov): where Claude runs in what is built now, each with its label and its

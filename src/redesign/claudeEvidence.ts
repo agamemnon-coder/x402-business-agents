@@ -102,16 +102,26 @@ export const claudeEvidence = (): ClaudeEvidence => ({
  * highest docs/evals/adversarial-v<N>.json marked held_out, read as the evidence wall reads it (src/redesign/
  * evidenceWallData.ts): wrong payments with Purser's rules and a script that always says pay in the model's place,
  * against a payer with no rules, on the same held-out invoices. Null when no such record is on this build.
+ * 22 Nov (the owner: "14 vs 88" read as Purser against no rules; it is the blind run, and its gaps are fixed): with
+ * the run after the fixes that followed (docs/evals/adversarial-v<N>-after.json, not held out, its "before" this
+ * record), when there is one, so the tile says blind run → after the fixes, both from their records.
  */
-export interface HeldOut { version: number; file: string; md: string; cases: number; purser: number; noRules: number; falseHolds: number; clean: number; ranAt: string }
+export interface HeldOutAfter { file: string; wrong: number; pastCfo: number; falseHolds: number; ranAt: string }
+export interface HeldOut { version: number; file: string; md: string; cases: number; purser: number; pastCfo: number; noRules: number; falseHolds: number; clean: number; ranAt: string; after: HeldOutAfter | null }
+type AdvTotals = { cases: number; wrong_payments: number; wrong_past_cfo?: number; false_holds: number; clean_truths: number };
 export function newestHeldOut(versions: number[] = Array.from({ length: 40 }, (_, i) => i + 1)): HeldOut | null {
   for (const v of [...versions].sort((a, b) => b - a)) {
     const file = `docs/evals/adversarial-v${v}.json`;
-    let j: { held_out?: boolean; ran_at?: string; totals?: Record<"purser_script" | "no_rules", { cases: number; wrong_payments: number; false_holds: number; clean_truths: number }> };
+    let j: { held_out?: boolean; ran_at?: string; totals?: Record<"purser_script" | "no_rules", AdvTotals> };
     try { j = JSON.parse(read(file) ?? ""); } catch { continue; }
     const p = j.totals?.purser_script, n = j.totals?.no_rules;
     if (!j.held_out || !p || !n || !j.ran_at || p.cases !== n.cases) continue;
-    return { version: v, file, md: file.replace(/\.json$/, ".md"), cases: p.cases, purser: p.wrong_payments, noRules: n.wrong_payments, falseHolds: p.false_holds, clean: p.clean_truths, ranAt: j.ran_at };
+    const afterFile = `docs/evals/adversarial-v${v}-after.json`;
+    type After = { held_out?: boolean; before?: string; ran_at?: string; totals?: Record<"purser_script", AdvTotals> };
+    const a = ((): After | null => { try { return JSON.parse(read(afterFile) ?? "") as After; } catch { return null; } })();
+    const ap = a && a.held_out === false && a.before === file && a.ran_at ? a.totals?.purser_script : undefined;
+    const after = ap && ap.cases === p.cases ? { file: afterFile, wrong: ap.wrong_payments, pastCfo: ap.wrong_past_cfo ?? 0, falseHolds: ap.false_holds, ranAt: a!.ran_at! } : null;
+    return { version: v, file, md: file.replace(/\.json$/, ".md"), cases: p.cases, purser: p.wrong_payments, pastCfo: p.wrong_past_cfo ?? 0, noRules: n.wrong_payments, falseHolds: p.false_holds, clean: p.clean_truths, ranAt: j.ran_at, after };
   }
   return null;
 }

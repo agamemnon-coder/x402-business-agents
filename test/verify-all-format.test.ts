@@ -39,5 +39,7 @@ describe("verify-all reads every evidence-wall tile on the pages as built", () =
     }
     expect(wallFigures('<li data-wall="a"><a href="x"><span class="ew-v"><svg></svg></span><b class="ew-f">1 &amp; 2</b></a></li><li data-wall="b">no figure</li><li data-wall="c"><a><b class="ew-f">3</b></a></li>'))
       .toEqual(new Map([["a", "1 & 2"], ["c", "3"]]));
+    // 22 Nov: the newest held-out eval's figure carries spans for its two colours; its text is still the wall's figure.
+    expect(wallFigures('<li data-wall="eval-v17"><a><b class="ew-f"><span class="ew-was">14</span> → <span class="ew-now">0</span></b></a></li>')).toEqual(new Map([["eval-v17", "14 → 0"]]));
   });
 });

@@ -534,9 +534,9 @@
         },
         {
           "key": "eval-v17",
-          "fig": "14 vs 88",
-          "label": "wrong payments on 146 held-out invoices (eval v17): Purser vs no rules",
-          "note": "Cases committed with their pre-registration before the run (commit d83b80a3b); a script always says pay. 5 false holds of 67; 18 sent to the CFO that had to be held, 23 that could have been paid alone. Fixed since, no longer held out: 0 wrong payments, 0 false holds. Offline.",
+          "fig": "14 → 0",
+          "label": "wrong payments on 146 held-out invoices (eval v17): blind run → after the fixes",
+          "note": "The blind run, with a model that always says pay, found 14 payments Purser's rules let through (none past the CFO; 88 with no rules). Those 14 gaps are fixed: the same 146 cases now give 0 wrong payments and 0 false holds. That rerun is no longer blind; the next held-out set (v18) is the real test. Cases committed with their pre-registration before the blind run (commit d83b80a3b); it had 5 false holds of 67; 18 sent to the CFO that had to be held, 23 that could have been paid alone. Offline.",
           "tag": "test",
           "tone": "claude",
           "href": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/adversarial-v17.md",

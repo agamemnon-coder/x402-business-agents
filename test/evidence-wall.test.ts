@@ -378,14 +378,19 @@ describe("the evidence of 19 Nov: attacked and broken on purpose, quality and su
     }
     const v17 = json<AdvCfo & { totals: { purser_script: { cases: number } } }>("docs/evals/adversarial-v17.json");
     expect(v17.held_out).toBe(true);
-    expect(tile(w(), "eval-v17").fig).toBe(`${v17.totals.purser_script.wrong_payments} vs ${v17.totals.no_rules.wrong_payments}`);
-    expect(tile(w(), "eval-v17").label).toBe(`wrong payments on ${v17.totals.purser_script.cases} held-out invoices (eval v17): Purser vs no rules`);
+    // 22 Nov (the owner: "14 → 0"): the blind run's wrong payments → the same cases after the fixes that followed (not
+    // held out), both from their records; no rules, false holds and the CFO's share in the note.
+    const v17a = json<Adv & { before: string; totals: { purser_script: { cases: number } } }>("docs/evals/adversarial-v17-after.json");
+    expect([v17a.held_out, v17a.before, v17a.totals.purser_script.cases]).toEqual([false, "docs/evals/adversarial-v17.json", v17.totals.purser_script.cases]);
+    expect(tile(w(), "eval-v17").fig).toBe(`${v17.totals.purser_script.wrong_payments} → ${v17a.totals.purser_script.wrong_payments}`);
+    expect(tile(w(), "eval-v17").label).toBe(`wrong payments on ${v17.totals.purser_script.cases} held-out invoices (eval v17): blind run → after the fixes`);
+    expect(tile(w(), "eval-v17").rec).toBe("docs/evals/adversarial-v17.json docs/evals/adversarial-v17-after.json");
+    expect(tile(w(), "eval-v17").note).toContain(`found ${v17.totals.purser_script.wrong_payments} payments Purser's rules let through`);
+    expect(tile(w(), "eval-v17").note).toContain(`; ${v17.totals.no_rules.wrong_payments} with no rules)`);
+    expect(tile(w(), "eval-v17").note).toContain(`now give ${v17a.totals.purser_script.wrong_payments} wrong payments and ${v17a.totals.purser_script.false_holds} false holds`);
+    expect(tile(w(), "eval-v17").note).toContain("That rerun is no longer blind; the next held-out set (v18) is the real test.");
     expect(tile(w(), "eval-v17").note).toContain(`(commit ${v17.cases_commit})`);
     expect(tile(w(), "eval-v17").note).toContain(`${v17.totals.purser_script.false_holds} false holds of ${v17.totals.purser_script.clean_truths}; ${v17.totals.purser_script.to_cfo_not_held} sent to the CFO that had to be held, ${v17.totals.purser_script.cfo_not_needed} that could have been paid alone`);
-    // Its fixes followed (21 Nov): the figure stays the held-out one; the after-fix run is said in the note as not held out.
-    const v17a = json<Adv>("docs/evals/adversarial-v17-after.json");
-    expect(v17a.held_out).toBe(false);
-    expect(tile(w(), "eval-v17").note).toContain(`Fixed since, no longer held out: ${v17a.totals.purser_script.wrong_payments} wrong payments, ${v17a.totals.purser_script.false_holds} false holds`);
     expect(tiles(w()).filter((x) => /^eval-v\d+$/.test(x.key) && !x.offProof).map((x) => x.key)).toEqual(["eval-v17"]);
     const sq = json<{ lighthouse: { path: string; preset: string; median: { performance: number; accessibility: number } }[] }>("docs/evidence/site-quality.json").lighthouse;
     expect(tile(w(), "site-quality").fig).toBe(String(Math.min(...sq.map((x) => x.median.accessibility))));

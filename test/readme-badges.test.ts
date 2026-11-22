@@ -60,10 +60,12 @@ describe("README badges", () => {
     expect(lines.indexOf(qualityLine)).toBe(10);
     const n = Math.max(...readdirSync(new URL("../docs/evals/", import.meta.url)).map((f) => /^adversarial-v(\d+)\.json$/.exec(f)?.[1]).filter(Boolean).map(Number));
     const ev = JSON.parse(readFileSync(new URL(`../docs/evals/adversarial-v${n}.json`, import.meta.url), "utf8")) as { held_out: boolean; totals: Record<"purser_script" | "no_rules", { wrong_payments: number }> };
-    expect(ev.held_out).toBe(true);
-    const evalName = `Held-out eval v${n}, offline: ${ev.totals.purser_script.wrong_payments} vs ${ev.totals.no_rules.wrong_payments} wrong payments`;
+    const after = JSON.parse(readFileSync(new URL(`../docs/evals/adversarial-v${n}-after.json`, import.meta.url), "utf8")) as { held_out: boolean; totals: Record<"purser_script", { wrong_payments: number }> };
+    expect([ev.held_out, after.held_out]).toEqual([true, false]);
+    // 22 Nov (the owner: "14 → 0"): the blind run → the same cases after the fixes, each from its record.
+    const evalName = `Held-out eval v${n}, offline: ${ev.totals.purser_script.wrong_payments} → ${after.totals.purser_script.wrong_payments} wrong payments`;
     expect(names(qualityLine).slice(3)).toEqual(["CodeQL", "License: MIT", "REUSE 3.3: compliant", "Releases: Sigstore-signed", "TLA+ model: 1,102,845 states, 0 errors", "Dafny: verified", evalName, "MCP server: read, propose only"]);
-    expect(qualityLine).toContain(`-${ev.totals.purser_script.wrong_payments}_vs_${ev.totals.no_rules.wrong_payments}_wrong_payments-`);
+    expect(qualityLine).toContain(`-${ev.totals.purser_script.wrong_payments}_%E2%86%92_${after.totals.purser_script.wrong_payments}_wrong_payments-`);
     expect(qualityLine).toContain(`](docs/evals/adversarial-v${n}.md)`);
     expect(readme).not.toMatch(/worst-case AI[^\n]*0 wrong payments|worst--case_AI/);
     expect(topLine).toContain("[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)");

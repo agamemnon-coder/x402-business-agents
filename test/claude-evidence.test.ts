@@ -114,22 +114,35 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     expect(cards.map((c) => c[1])).toEqual(["sourcing", "support", "treasury"]);
   });
 
-  // 21 Nov (the owner: "the newest held-out eval as one tile: v16, 8 vs 77"; v17, 14 vs 88, since): in sight under the agents, read from the
-  // newest held-out record, the same figure as the evidence wall's tile for that eval.
-  it("shows the newest held-out eval as one tile, from its record and as the evidence wall says it", () => {
+  // 21 Nov (the owner: "the newest held-out eval as one tile: v16, 8 vs 77"): in sight under the agents, read from the
+  // newest held-out record. 22 Nov (the owner: "14 → 0"): the blind run's wrong payments, then the same cases after the
+  // fixes that followed (not blind), each from its record and both linked; the same figure as the evidence wall's tile.
+  it("shows the newest held-out eval as one tile: blind run → after the fixes, from the two records, both linked", () => {
     const h = newestHeldOut()!;
-    const r = read(h.file);
-    const j = JSON.parse(r) as { held_out: boolean; totals: { purser_script: { cases: number; wrong_payments: number; false_holds: number; clean_truths: number }; no_rules: { wrong_payments: number } } };
+    type T = { cases: number; wrong_payments: number; wrong_past_cfo: number; false_holds: number; clean_truths: number };
+    const j = JSON.parse(read(h.file)) as { held_out: boolean; totals: { purser_script: T; no_rules: { wrong_payments: number } } };
     expect(j.held_out).toBe(true);
-    expect([h.purser, h.noRules, h.cases, h.falseHolds, h.clean]).toEqual([j.totals.purser_script.wrong_payments, j.totals.no_rules.wrong_payments, j.totals.purser_script.cases, j.totals.purser_script.false_holds, j.totals.purser_script.clean_truths]);
+    expect([h.purser, h.pastCfo, h.noRules, h.cases, h.falseHolds, h.clean]).toEqual([j.totals.purser_script.wrong_payments, j.totals.purser_script.wrong_past_cfo, j.totals.no_rules.wrong_payments, j.totals.purser_script.cases, j.totals.purser_script.false_holds, j.totals.purser_script.clean_truths]);
     // No newer held-out round is on this build.
     expect(existsSync(new URL(`../docs/evals/adversarial-v${h.version + 1}.json`, import.meta.url))).toBe(false);
+    const afterFile = `docs/evals/adversarial-v${h.version}-after.json`;
+    const a = JSON.parse(read(afterFile)) as { held_out: boolean; before: string; totals: { purser_script: T } };
+    expect([a.held_out, a.before, a.totals.purser_script.cases]).toEqual([false, h.file, h.cases]);
+    expect(h.after).toMatchObject({ file: afterFile, wrong: a.totals.purser_script.wrong_payments, pastCfo: a.totals.purser_script.wrong_past_cfo, falseHolds: a.totals.purser_script.false_holds });
     const wall = committedWall()!.groups.flatMap((g) => g.tiles).find((t) => t.key === `eval-v${h.version}`)!;
-    expect(wall.fig).toBe(`${h.purser} vs ${h.noRules}`);
+    expect(wall.fig).toBe(`${j.totals.purser_script.wrong_payments} → ${a.totals.purser_script.wrong_payments}`);
     const tile = /<section class="chold card" id="held-out"[\s\S]*?<\/section>/.exec(main)![0];
-    expect(tile).toContain(`data-rec="${h.file}"`);
-    expect(text(tile).replace(/\s+/g, " ")).toContain(`${h.purser} vs ${h.noRules} Purser's rules no rules Newest held-out eval (v${h.version}): wrong payments on ${h.cases} invoices`);
-    expect(text(tile)).toContain("If the model always said pay");
+    expect(tile).toContain(`data-rec="${h.file} ${afterFile}"`);
+    expect(tile).toContain(`<b class="was">${j.totals.purser_script.wrong_payments}</b>`);
+    expect(tile).toContain(`<b class="now">${a.totals.purser_script.wrong_payments}</b>`);
+    expect(tile).toContain(`href="${REPO_BLOB}${h.file}"`);
+    expect(tile).toContain(`href="${REPO_BLOB}${afterFile}"`);
+    const t = text(tile).replace(/\s+/g, " ");
+    expect(t).toContain(`${j.totals.purser_script.wrong_payments} → ${a.totals.purser_script.wrong_payments} blind run after the fixes Held-out eval v${h.version}: ${h.cases} adversarial invoices`);
+    expect(t).toContain(`The blind run, with a model that always says pay, found ${j.totals.purser_script.wrong_payments} payments Purser's rules let through (${j.totals.purser_script.wrong_past_cfo === 0 ? "none" : j.totals.purser_script.wrong_past_cfo} past the CFO; ${j.totals.no_rules.wrong_payments} with no rules).`);
+    if (a.totals.purser_script.wrong_payments === 0) expect(t).toContain(`Those ${j.totals.purser_script.wrong_payments} gaps are fixed: the same ${h.cases} cases now give 0 wrong payments and ${a.totals.purser_script.false_holds} false holds.`);
+    expect(t).toContain(`That rerun is no longer blind; the next held-out set (v${h.version + 1}) is the real test.`);
+    expect(t).not.toMatch(/ vs |always said pay/);
     expect(main.indexOf('id="held-out"')).toBeGreaterThan(main.indexOf('id="agents"'));
     expect(main.indexOf('id="held-out"')).toBeLessThan(main.indexOf("<details"));
   });

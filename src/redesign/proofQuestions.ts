@@ -137,7 +137,7 @@ export const tileDay = (t: WallTile) => (t.asOf ? shortDay(t.asOf) : "as built")
  * never from a number typed here: a whole ("All 60", "Both") a closed ring; "65 of 67", or a count whose words say
  * "of 72", a ring that far round; a percentage a meter; "11 vs 72" two bars; anything else an icon of its kind.
  */
-export type FigShape = { kind: "ring"; f: number } | { kind: "meter"; f: number } | { kind: "pair"; a: number; b: number } | { kind: "icon"; name: string };
+export type FigShape = { kind: "ring"; f: number } | { kind: "meter"; f: number } | { kind: "pair"; a: number; b: number } | { kind: "drop"; a: number; b: number } | { kind: "icon"; name: string };
 const num = (s: string) => Number(s.replace(/,/g, ""));
 export function figShape(t: Pick<WallTile, "fig" | "label" | "tag">): FigShape {
   const f = t.fig.trim();
@@ -151,6 +151,9 @@ export function figShape(t: Pick<WallTile, "fig" | "label" | "tag">): FigShape {
   if (m) return { kind: "meter", f: Math.min(1, Number(m[1]) / 100) };
   m = /^([\d,]+) vs ([\d,]+)$/.exec(f);
   if (m) return { kind: "pair", a: num(m[1]!), b: num(m[2]!) };
+  // 22 Nov: a blind run → the rerun after its fixes (the newest held-out eval).
+  m = /^([\d,]+) → ([\d,]+)$/.exec(f);
+  if (m) return { kind: "drop", a: num(m[1]!), b: num(m[2]!) };
   if (/\d s$/.test(f)) return { kind: "icon", name: "clock" };
   if (/^(?:EUR|USD|GBP) /.test(f)) return { kind: "icon", name: "coins" };
   if (/^#/.test(f)) return { kind: "icon", name: "hash" };
@@ -165,6 +168,10 @@ export function figVisual(t: Pick<WallTile, "fig" | "label" | "tag">): string {
     return `<span class="ew-v ring${s.f >= 1 ? " full" : ""}" aria-hidden="true"><svg viewBox="0 0 40 40" width="40" height="40"><circle class="tr" cx="20" cy="20" r="${R}"/><circle class="ar" cx="20" cy="20" r="${R}" stroke-dasharray="${on} ${Math.round(C * 100) / 100}" transform="rotate(-90 20 20)"/>${s.f >= 1 ? `<path class="ck" d="M14 20.5l4 4 8-8.5"/>` : ""}</svg></span>`;
   }
   if (s.kind === "meter") return `<span class="ew-v bar" aria-hidden="true"><svg viewBox="0 0 100 8" width="100" height="8" preserveAspectRatio="none"><rect class="tr" x="0" y="0" width="100" height="8" rx="4"/><rect class="ar" x="0" y="0" width="${Math.round(s.f * 1000) / 10}" height="8" rx="4"/></svg></span>`;
+  if (s.kind === "drop") {
+    const top = Math.max(s.a, s.b, 1), w = (n: number) => Math.max(2, Math.round((n / top) * 1000) / 10);
+    return `<span class="ew-v pair drop" aria-hidden="true"><svg viewBox="0 0 100 18" width="100" height="18" preserveAspectRatio="none"><rect class="wa" x="0" y="0" width="${w(s.a)}" height="7" rx="3.5"/><rect class="ar" x="0" y="11" width="${w(s.b)}" height="7" rx="3.5"/></svg></span>`;
+  }
   if (s.kind === "pair") {
     const top = Math.max(s.a, s.b, 1), w = (n: number) => Math.max(2, Math.round((n / top) * 1000) / 10);
     return `<span class="ew-v pair" aria-hidden="true"><svg viewBox="0 0 100 18" width="100" height="18" preserveAspectRatio="none"><rect class="ar" x="0" y="0" width="${w(s.a)}" height="7" rx="3.5"/><rect class="nb" x="0" y="11" width="${w(s.b)}" height="7" rx="3.5"/></svg></span>`;
@@ -172,9 +179,15 @@ export function figVisual(t: Pick<WallTile, "fig" | "label" | "tag">): string {
   return `<span class="ew-v ic" aria-hidden="true">${picon(s.name, 20)}</span>`;
 }
 
+/** A tile's figure as text; "14 → 0" with the blind run's figure in amber and the rerun's in green (22 Nov). */
+const figText = (fig: string) => {
+  const m = /^([\d,]+) → ([\d,]+)$/.exec(fig.trim());
+  return m ? `<span class="ew-was">${esc(m[1]!)}</span> → <span class="ew-now">${esc(m[2]!)}</span>` : esc(fig);
+};
+
 /** One tile, as the wall draws it, with its day beside its tag, and its figure as a small drawing. */
 export function tileHtml(t: WallTile): string {
-  return `<li class="ew-t${t.tone ? ` ${t.tone}` : ""}" data-wall="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}" title="${esc(t.note)}"${isExternal(t.href) ? ' target="_blank" rel="noopener"' : ""}>${figVisual(t)}<b class="ew-f">${esc(t.fig)}</b><span class="ew-l">${esc(t.label)}</span><span class="ew-k"><span class="ew-tag ${t.tag}">${esc(TAG_WORDS[t.tag])}</span><time class="ew-d"${t.asOf ? ` datetime="${esc(t.asOf)}"` : ""}>${esc(tileDay(t))}</time><span class="ew-r" aria-hidden="true">${isExternal(t.href) ? "↗" : "→"}</span></span></a></li>`;
+  return `<li class="ew-t${t.tone ? ` ${t.tone}` : ""}" data-wall="${esc(t.key)}"${t.rec ? ` data-rec="${esc(t.rec)}"` : ""}><a href="${esc(t.href)}" title="${esc(t.note)}"${isExternal(t.href) ? ' target="_blank" rel="noopener"' : ""}>${figVisual(t)}<b class="ew-f">${figText(t.fig)}</b><span class="ew-l">${esc(t.label)}</span><span class="ew-k"><span class="ew-tag ${t.tag}">${esc(TAG_WORDS[t.tag])}</span><time class="ew-d"${t.asOf ? ` datetime="${esc(t.asOf)}"` : ""}>${esc(tileDay(t))}</time><span class="ew-r" aria-hidden="true">${isExternal(t.href) ? "↗" : "→"}</span></span></a></li>`;
 }
 
 /** A tile as a line in a fold: its figure, its words, its note, its day and its record. */
@@ -275,6 +288,8 @@ section.pq .ew-v.bar svg, section.pq .ew-v.pair svg { display: block; width: 100
 section.pq .ew-v.bar svg { height: 8px; } section.pq .ew-v.pair svg { height: 18px; }
 section.pq .ew-v.bar .tr { fill: color-mix(in srgb, var(--pc) 16%, var(--sunken)); stroke: none; }
 section.pq .ew-v.bar .ar, section.pq .ew-v.pair .ar { fill: var(--pc); stroke: none; }
+section.pq { --amb: #a15c00; } @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) section.pq { --amb: #ffb547; } } :root[data-theme="dark"] section.pq { --amb: #ffb547; }
+section.pq .ew-v.drop .wa { fill: var(--amb); } section.pq .ew-v.drop .ar { fill: var(--ok); } section.pq .ew-f .ew-was { color: var(--amb); } section.pq .ew-f .ew-now { color: var(--ok); }
 section.pq .ew-v.pair .nb { fill: color-mix(in srgb, var(--faint) 55%, transparent); }
 html.pq-anim section.pq .ew-v.ring .ar { transition: stroke-dashoffset 1.1s cubic-bezier(.3,.7,.2,1); }
 html.pq-anim section.pq:not(.in) .ew-v.ring .ar { stroke-dashoffset: ${Math.round(2 * Math.PI * 15 * 100) / 100}; }
