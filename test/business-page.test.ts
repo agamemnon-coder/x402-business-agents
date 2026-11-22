@@ -19,7 +19,7 @@ import { pageResponse, type Pages } from "../worker/src/core.js";
 import { moreLinks, footerLinks, tabLabel, tabLinks } from "../src/ui/more.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 
-const text = (html: string) => html.replace(/<script\b[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\b[^>]*>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/\s+/g, " ");
+const text = (html: string) => html.replace(/<script\b[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\b[^>]*>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const main = (html: string) => /<main[\s\S]*<\/main>/.exec(html)![0];
 
 /** The browser's builder, run as the page runs it (no form in the document: it only defines itself). */

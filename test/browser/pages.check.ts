@@ -969,7 +969,12 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         await page.fill('#pilot-form [name="company"]', f.company);
         await page.fill('#pilot-form [name="email"]', f.email);
         await page.selectOption('#pilot-form [name="invoices"]', f.invoices);
-        const got = await page.evaluate(`(() => ({ ok: document.getElementById("pilot-form").checkValidity(), mail: globalThis.__purserPilot && globalThis.__purserPilot.build(${JSON.stringify(f)}) }))()`) as { ok: boolean; mail: string };
+        // The form's values go in as an argument, never as code built from a string (CodeQL, 22 Nov).
+        type PilotWin = { document: { getElementById(id: string): { checkValidity(): boolean } }; __purserPilot?: { build(x: typeof f): string } };
+        const got = await page.evaluate((form) => {
+          const w = globalThis as unknown as PilotWin;
+          return { ok: w.document.getElementById("pilot-form").checkValidity(), mail: w.__purserPilot ? w.__purserPilot.build(form) : "" };
+        }, f);
         if (!got.ok || got.mail !== pilotMailto(f)) fail(`/business ${tag}: the filled pilot form does not validate or build the page's mail (${JSON.stringify(got)})`);
       } else if (!(await page.locator("#print").isVisible())) fail(`/one-pager ${tag}: no "Save as PDF" button`);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
