@@ -22,6 +22,7 @@ import { apiTrail } from "../airwallex/apiTrail.js";
 export const AWX_CALLS_LABEL = "Airwallex sandbox API calls in the run records";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
+import { shortDay } from "../proof/recordDate.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const read = (p: string) => readFileSync(new URL(p, ROOT), "utf8");
@@ -42,12 +43,16 @@ function filesIn(dir: string, re: RegExp): string[] {
 const RECORDS = () => [...filesIn("docs/runs", /\.json$/), ...filesIn("docs/demo", /\.json$/)];
 
 export const TEST_SUMMARY = "docs/assets/test-summary.json";
-export interface TestSummary { total: number; passed: number; failed: number; skipped: number; files: number; commit: string }
+/** The last full run's summary; `date` is the day of its commit (outside audit, 22 November: show the count's day). */
+export interface TestSummary { total: number; passed: number; failed: number; skipped: number; files: number; commit: string; date?: string }
 
 export function testSummary(): TestSummary | null {
   const s = json(TEST_SUMMARY) as Partial<TestSummary> | null;
   return s && Number.isSafeInteger(s.passed) && Number.isSafeInteger(s.total) && typeof s.commit === "string" ? (s as TestSummary) : null;
 }
+
+/** The day of the last full run, as the pages write it beside the count ("20 Nov"), or null when the summary has none. */
+export const testsDay = (t: TestSummary): string | null => (t.date && /^\d{4}-\d{2}-\d{2}$/.test(t.date) ? shortDay(t.date) : null);
 
 const isRec = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const num = (v: unknown) => (typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : 0);
@@ -103,7 +108,7 @@ export function scaleFigures(): ScaleFigures {
 }
 
 /** A figure: its few words in sight, and in its link's title what exactly it counts and where. */
-export interface ScaleStat { n: number; label: string; title: string; icon: string; href: string; external?: boolean; tone?: "ok" | "bad" }
+export interface ScaleStat { n: number; label: string; title: string; icon: string; href: string; external?: boolean; tone?: "ok" | "bad"; /** The day of the record, written after the label ("tests passing, 20 Nov"). */ asOf?: string | null }
 
 const CI_URL = "https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain";
 
@@ -112,7 +117,7 @@ const CI_URL = "https://github.com/agamemnon-coder/x402-business-agents/actions/
  * read as 4 failed, when the 4 were skipped).
  */
 export const testsTitle = (t: TestSummary): string =>
-  `${fmt(t.passed)} tests passed${t.failed ? `, ${fmt(t.failed)} failed` : ""}${t.skipped ? `, ${fmt(t.skipped)} skipped` : ""}, in the last full run, on commit ${t.commit} (${TEST_SUMMARY}); CI runs them on every push`;
+  `${fmt(t.passed)} tests passed${t.failed ? `, ${fmt(t.failed)} failed` : ""}${t.skipped ? `, ${fmt(t.skipped)} skipped` : ""}, in the last full run, on commit ${t.commit}${testsDay(t) ? ` of ${testsDay(t)}` : ""} (${TEST_SUMMARY}); CI runs them on every push`;
 
 /**
  * The band's figures, each with its words and its link; a figure whose source is missing drops out. Jury, 17 Nov: the
@@ -120,7 +125,7 @@ export const testsTitle = (t: TestSummary): string =>
  */
 export function scaleStats(f: ScaleFigures = scaleFigures()): ScaleStat[] {
   const out: ScaleStat[] = [];
-  if (f.tests && f.tests.passed > 0) out.push({ n: f.tests.passed, label: "tests passing", title: testsTitle(f.tests), icon: "shield-check", href: CI_URL, external: true, tone: "ok" });
+  if (f.tests && f.tests.passed > 0) out.push({ n: f.tests.passed, label: "tests passing", asOf: testsDay(f.tests), title: testsTitle(f.tests), icon: "shield-check", href: CI_URL, external: true, tone: "ok" });
   if (f.liveRuns) out.push({ n: f.liveRuns, label: "sandbox and testnet runs", title: "Every run with the partners' sandboxes or Alta's testnet, each with its record; rehearsals, control tests and partial runs not counted", icon: "calendar-range", href: "runs" });
   if (f.airwallexCalls.calls) out.push({ n: f.airwallexCalls.calls, label: AWX_CALLS_LABEL, title: `Airwallex sandbox API calls in ${f.airwallexCalls.records} committed run records, each listed on /airwallex/calls with what came back`, icon: "landmark", href: "airwallex/calls" });
   if (f.metalTx) out.push({ n: f.metalTx, label: "Alta testnet transactions, all runs", title: "Distinct transactions linked to Alta's testnet explorer from the run records and run logs", icon: "link-2", href: "alta" });
@@ -145,7 +150,7 @@ const fmt = (n: number) => n.toLocaleString("en-GB");
 export function scaleBandHtml(stats: ScaleStat[] = scaleStats(), label = "What ran, in numbers", o: { strip?: boolean } = {}): string {
   if (!stats.length) return "";
   // /proof (the owner, 13 Nov: "enterprise level"): one metrics strip, a figure and its label per column, no icons.
-  return `<ul class="scale"${o.strip ? ' data-look="strip"' : ""} aria-label="${esc(label)}">${stats.map((s) => `<li${s.tone ? ` class="${s.tone}"` : ""} data-rec="${esc(SCALE_SOURCES)}"><a href="${esc(s.href)}" title="${esc(s.title)}"${s.external ? ' target="_blank" rel="noopener"' : ""}>${o.strip ? "" : `<span class="sk-ic">${icon(s.icon, 18)}</span>`}<b><span data-count="${s.n}" data-dec="0">${esc(fmt(s.n))}</span></b><small>${esc(s.label)}${s.external ? " ↗" : ""}</small></a></li>`).join("")}</ul>`;
+  return `<ul class="scale"${o.strip ? ' data-look="strip"' : ""} aria-label="${esc(label)}">${stats.map((s) => `<li${s.tone ? ` class="${s.tone}"` : ""} data-rec="${esc(SCALE_SOURCES)}"><a href="${esc(s.href)}" title="${esc(s.title)}"${s.external ? ' target="_blank" rel="noopener"' : ""}>${o.strip ? "" : `<span class="sk-ic">${icon(s.icon, 18)}</span>`}<b><span data-count="${s.n}" data-dec="0">${esc(fmt(s.n))}</span></b><small>${esc(s.label)}${s.asOf ? esc(`, ${s.asOf}`) : ""}${s.external ? " ↗" : ""}</small></a></li>`).join("")}</ul>`;
 }
 
 /** Where the band's figures come from, as the block names them (data-rec). */

@@ -28,7 +28,7 @@ const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", 
 interface VitestReport { numTotalTests: number; numPassedTests: number; numFailedTests: number; numPendingTests: number; numTodoTests: number; testResults: unknown[] }
 // The summary also says what it is a run of: the full suite (not the coverage run), the command, and the machine this
 // runs on (`--env "<text>"` to describe it instead), so the count can never be read as another run's.
-interface TestSummary { total: number; passed: number; failed: number; skipped: number; files: number; commit: string; scope?: string; command?: string; environment?: string }
+interface TestSummary { total: number; passed: number; failed: number; skipped: number; files: number; commit: string; date?: string; scope?: string; command?: string; environment?: string }
 const SUMMARY = "docs/assets/test-summary.json";
 const reportPath = arg("--tests"), check = process.argv.includes("--check");
 const report = reportPath ? JSON.parse(read(reportPath)) as VitestReport : null;
@@ -36,6 +36,8 @@ const machine = () => `${os.type()} ${os.release()} ${os.arch()}, ${os.cpus().le
 const summary: TestSummary | null = report
   ? { total: report.numTotalTests, passed: report.numPassedTests, failed: report.numFailedTests, skipped: report.numPendingTests + report.numTodoTests, files: report.testResults.length,
       commit: execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim(),
+      // The day of that commit, which the pages show beside the count (outside audit, 22 November).
+      date: execFileSync("git", ["log", "-1", "--format=%cs", "HEAD"], { encoding: "utf8" }).trim(),
       scope: RUN_SCOPE, command: RUN_COMMAND, environment: arg("--env") ?? machine() }
   : existsSync(SUMMARY) ? JSON.parse(read(SUMMARY)) as TestSummary : null;
 

@@ -1211,6 +1211,7 @@ export const LIVE = {
     "transfer.left_open": "It is not clear yet whether the payment was sent. The next run looks first.",
     "transfer.retry": "Sending the payment did not work. It is tried again while the approved terms allow it.",
     "transfer.retry_stopped": "The payment is not tried again: a check said no.",
+    "transfer.held_before_create": "The payment was not sent: a stop set after it began was checked just before sending.",
     "transfer.payee_unconfirmed": "It was not confirmed who receives the payment. A person checks it.",
     "transfer.row_conflict": "Two records point at one payment. A person checks it.",
     "transfer.follow_failed": "Where the payment stands could not be read. It is read again later.",

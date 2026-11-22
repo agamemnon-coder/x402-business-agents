@@ -289,6 +289,24 @@ for (const limit of ["500.00", "0.00", "0.01", "000500.00", "999999999.99", "100
 add("alone/no limit", { aloneLimit: null, cashFloors: {}, payLate: null }, { kind: "pay_alone", amount: "1.00", currency: "EUR" }, {});
 
 const generated = cases.length - generatedStart;
+const payerEval = cases.filter((k) => k.name.startsWith("payer-eval/")).length;
+
+// The figure docs/policy-opa.md states (outside audit, 22 November: "23,459 OPA cases" rested on prose only; this
+// harness asserted more than 5,000). The cases are built deterministically (the sweep is seeded), so their counts per set
+// are held here exactly, without OPA, and run everywhere; the write-up is held to the same numbers.
+describe("the cases OPA and Purser are compared on (no OPA needed)", () => {
+  const COUNTS = { payerEval: 67, adversarial: 19_979, generated: 3_413, total: 23_459 };
+  it("are exactly the sets docs/policy-opa.md names", () => {
+    expect({ payerEval, adversarial, generated, total: cases.length }).toEqual(COUNTS);
+    expect(payerEval + adversarial + generated).toBe(cases.length);
+  });
+  it("docs/policy-opa.md states the same counts", () => {
+    const doc = readFileSync("docs/policy-opa.md", "utf8");
+    const n = (x: number) => x.toLocaleString("en-GB");
+    expect(doc).toContain(`**${n(COUNTS.total)} cases**`);
+    for (const x of [COUNTS.payerEval, COUNTS.adversarial, COUNTS.generated]) expect(doc).toMatch(new RegExp(`^\\| ${n(x)} \\|`, "m"));
+  });
+});
 
 // ── The test ──
 

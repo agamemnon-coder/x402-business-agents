@@ -80,6 +80,15 @@ export const QUESTIONS: readonly Question[] = [
     blocks: [{ id: "pq-recheck", title: "Re-checked from the records", keys: ["verify-all", "anchor", "try-proofs", "try-verify"] }],
   },
 ];
+/**
+ * The /proof anchor where a wall tile is shown: the block that names it (a tile can sit in another section than its wall
+ * group's: the red team's tile is in group ev-ai but shown under "Attacked and broken on purpose", #pq-attacked), else its
+ * wall group's section. Outside audit, 22 November: Home's "48 attacks stopped" linked to #q-ai, which does not show 48.
+ */
+export function tileAnchor(key: string, group: string): string {
+  const block = QUESTIONS.flatMap((q) => q.blocks).find((b) => b.keys.some((k) => (typeof k === "string" ? k === key : k.test(key))));
+  return block?.id ?? PROOF_SECTION_OF_GROUP[group] ?? group;
+}
 /** Where a tile no block names goes: its wall group's section. */
 /** Tiles told on another page only: the TAP interop run is on /visa (Max's last round, item 2). */
 export const NEVER_ON_PROOF: ReadonlySet<string> = new Set(["tap-interop"]);

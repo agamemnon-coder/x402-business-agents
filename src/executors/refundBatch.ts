@@ -7,7 +7,8 @@ import type { Terms } from "../lib/terms.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { refundSale } from "./refunds.js";
 import type { Puller } from "../metal/pull.js";
-import { step } from "../policy/saga.js";
+import { step, stepDone } from "../policy/saga.js";
+import { stopRefusal } from "../policy/holds.js";
 
 export interface RefundBatchTerms extends Terms {
   kind: "refund_batch";
@@ -30,6 +31,13 @@ export async function executeRefundBatch(db: DB, proposalId: string, pull?: Pull
     // One step per refund in the step log; a refund a crash interrupted is pulled again under its own payment id,
     // which metal-agent pays at most once.
     for (const [i, r] of terms.refunds.entries()) {
+      // Before each refund not yet finished (also on a resume after a crash): the emergency stop, the support agent's
+      // pause and velocity stop and its identity, asked again (outside audit, 22 November). Stopped, the batch fails here:
+      // nothing more is pulled, what was already pulled keeps its state, and a re-run after the stop is lifted continues.
+      if (stepDone(db, proposalId, `refund ${r.sale_id}`) === null) {
+        const stop = stopRefusal(db, "support", "metal", "customer");
+        if (stop) throw new Error(`${stop}; refund ${r.payment_id} is not pulled`);
+      }
       results.push(await step(db, proposalId, i + 1, `refund ${r.sale_id}`, r.payment_id, () =>
         refundSale(db, { sale_id: Number(r.sale_id), amount_cents: toCents(r.amount), to: r.to as Address, dispute_id: terms.dispute_id, proposal_id: proposalId }, { pull }), undefined, (x) => x.outcome === "PAID" || x.outcome === "HELD"));
     }

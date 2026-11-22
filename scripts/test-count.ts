@@ -5,6 +5,7 @@
 // docs/submission/demo-day.md, so no count is typed by hand, and completes the summary with what it is a run of (its
 // scope, command and machine, below). test/test-count.test.ts fails when they differ.
 //   npm run test-count            (writes them)
+import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -13,6 +14,8 @@ const ROOT = resolve(import.meta.dirname, "..");
 export const SUMMARY = "docs/assets/test-summary.json";
 export interface Summary {
   total: number; passed: number; failed: number; skipped: number; files: number; commit: string;
+  /** The day of the commit the run was on (YYYY-MM-DD; since 22 Nov, so the pages show the count's day beside it). */
+  date?: string;
   /** What the count is a run of, how it was made and on what machine (since 20 Nov; `described` fills them in). */
   scope?: string; command?: string; environment?: string;
 }
@@ -25,16 +28,30 @@ export const summary = (root = ROOT): Summary => JSON.parse(readFileSync(resolve
 export const RUN_SCOPE = "the full suite: every test file vitest.config.ts includes, without coverage; not the coverage run, which is recorded separately in docs/evidence/coverage.json";
 export const RUN_COMMAND = "npx vitest run --reporter=json --outputFile.json=<file>, then npm run readme-draft -- --tests <file> and npm run test-count";
 export const ENV_NOT_RECORDED = "not recorded: this summary was written before it recorded the machine the run was on";
-/** The summary with its scope, command and machine; values it already holds are kept. */
-export const described = (s: Summary): Summary => ({ ...s, scope: s.scope ?? RUN_SCOPE, command: s.command ?? RUN_COMMAND, environment: s.environment ?? ENV_NOT_RECORDED });
+/** The day of a commit (its committer date, YYYY-MM-DD), or undefined when git cannot say. */
+export function commitDay(commit: string, root = ROOT): string | undefined {
+  try {
+    const d = execFileSync("git", ["log", "-1", "--format=%cs", commit], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : undefined;
+  } catch {
+    return undefined;
+  }
+}
+/** The summary with its day, scope, command and machine; values it already holds are kept (the day: its commit's). */
+export const described = (s: Summary, day: (commit: string) => string | undefined = commitDay): Summary => {
+  const date = s.date ?? day(s.commit);
+  const { total, passed, failed, skipped, files, commit, ...rest } = s;
+  return { total, passed, failed, skipped, files, commit, ...(date ? { date } : {}), ...rest, scope: s.scope ?? RUN_SCOPE, command: s.command ?? RUN_COMMAND, environment: s.environment ?? ENV_NOT_RECORDED };
+};
+const dayWords = (d: string | undefined) => (d ? `, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${d}T12:00:00Z`))}` : "");
 export const summaryJson = (s: Summary) => `${JSON.stringify(s, null, 2)}\n`;
 
 /** The README's words for the count: "**N tests passing**, S skipped, in F files". */
-export const readmeLine = (s: Summary) => `**${s.passed} tests passing**, ${s.skipped} skipped, in ${s.files} files (the last full run, on commit \`${s.commit}\`: [summary](docs/assets/test-summary.json))`;
+export const readmeLine = (s: Summary) => `**${s.passed} tests passing**, ${s.skipped} skipped, in ${s.files} files (the last full run, on commit \`${s.commit}\`${dayWords(s.date)}: [summary](docs/assets/test-summary.json))`;
 export const claimsValue = (s: Summary) => `${s.passed} passing, ${s.skipped} skipped (they run only on local D1, \`npm run test:d1\`), in ${s.files} files, on commit \`${s.commit}\` (${SUMMARY})`;
 
 const RE = {
-  line: /\*\*\d+ tests (?:passing\*\*, \d+ skipped, in \d+ files \(the last full run, on commit `[0-9a-f]+`: \[summary\]\(docs\/assets\/test-summary\.json\)\)|in \d+ files, all passing\*\*)/,
+  line: /\*\*\d+ tests (?:passing\*\*, \d+ skipped, in \d+ files \(the last full run, on commit `[0-9a-f]+`(?:, \d{1,2} [A-Z][a-z]{2} \d{4})?: \[summary\]\(docs\/assets\/test-summary\.json\)\)|in \d+ files, all passing\*\*)/,
   claims: /^\| Tests \| [^|]+ \|/m,
   demo: /`npm run verify`; \d+ tests \|/,
 };

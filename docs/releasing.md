@@ -106,9 +106,12 @@ Two independent signatures, each with a documented way to check it:
   `slsa-verifier verify-artifact x402-business-agents-<tag>.tar.gz --provenance-path
   x402-business-agents-<tag>.slsa3.intoto.jsonl --source-uri github.com/agamemnon-coder/x402-business-agents
   --source-tag <tag>`. Every step, offline bundles included: [security/README.md](security/README.md#verify-a-release).
-- **The tag** is signed by the maintainer's key (from `v1.2.0`): `git fetch --tags && git tag -v v1.2.0` with the
-  maintainer's public key imported from `https://github.com/agamemnon-coder.gpg` (GPG), or with an allowed-signers
-  file for an SSH key (`git config gpg.ssh.allowedSignersFile`). The private key stays on the maintainer's machine.
+- **The tag**: `v1.4.0` is the first signed tag, an annotated tag signed with the maintainer's SSH key. Check it with
+  `git fetch --tags && git tag -v v1.4.0` and an allowed-signers file holding the maintainer's public SSH key
+  (`git config gpg.ssh.allowedSignersFile <file>`; the key is the signing key on the maintainer's GitHub account). The
+  private key stays on the maintainer's machine. The earlier release tags, `v1.2.0` to `v1.3.2`, are lightweight tags
+  (a name for a commit, no tag object), so they carry no signature: for those, the Sigstore attestation and the SLSA
+  provenance above are what bind the release to its commit. From `v1.4.0` on, every release tag is signed.
 
 ## Supported versions and upgrading
 

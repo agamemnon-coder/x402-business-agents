@@ -457,7 +457,7 @@ function extraRuns(): RunRow[] {
   // 17 Nov: a payout that does not stay paid (npm run late-failure). The failure is the sandbox's simulation, and a GET of
   // each transfer stood in for the webhook; the books taking a payment back did not run (nothing was booked as paid).
   type Lf = {
-    audit: { ts: string; event: string; payload: { from?: string } }[]; transfers: { transfer_id: string; invoice_no: string; amount: string; currency: string; failure_type: string | null }[];
+    audit: { ts: string; event: string; payload: { from?: string } }[]; transfers: { transfer_id: string; invoice_no: string; amount: string; currency: string; status?: string; failure_type: string | null }[];
     ap_invoices: { status: string }[]; sink_csv: string[]; budget: { approved: number }; calls: { total: number; by_endpoint: { endpoint: string; calls: number }[] };
   };
   const LF_FILE = "docs/runs/2026-11-17-airwallex-late-failure.json";
@@ -473,7 +473,7 @@ function extraRuns(): RunRow[] {
     out.push({
       key: "late-failure-1", iso: last, date: day(first), kind: "sandbox", partners: ["Airwallex"],
       name: "A payout that does not stay paid",
-      line: `${t.length === 2 ? "Two" : t.length} payouts of ${amount} went PAID, then FAILED by the sandbox's simulation. ${both[0]!.toUpperCase()}${both.slice(1)} invoices to a person, none sent again; a test passkey signed.`,
+      line: `${t.length === 2 ? "Two" : t.length} payouts of ${amount} went PAID, then ${[...new Set(t.map((x) => x.status ?? "FAILED"))].join(" or ")} as read back (a simulated late failure). ${both[0]!.toUpperCase()}${both.slice(1)} invoices to a person, none sent again; a test passkey signed.`,
       title: "Payout returned after PAID", rails: "Airwallex sandbox (SWIFT transfers), test passkey",
       what: `Two Stockline Data GmbH invoices (${t.map((x) => x.invoice_no.split(" · ")[0]).join(", ")}; ${amount} each) came in through the payables inbox, read by the parser (no model), each signed by a labelled virtual test passkey (not a person's Face ID). Purser's sandbox executor took each transfer to PAID through the simulation endpoint, which then moved ${both} to FAILED from ${from} (${[...new Set(t.map((x) => x.failure_type))].join(", ")}); Airwallex cancelled them. A GET of each transfer stood in for the webhook: Purser asked Airwallex again, recorded the return and sent the invoices to a person.`,
       checks: `${created} transfers created, none sent again; ${review} invoices needs_review. Not run live: the books taking a payment back${booked ? "" : `, as none was booked before it failed (the journal holds the ${accrued} accruals only)`}; tested only. ${lf.calls.total} Airwallex calls, within the budget of ${lf.budget.approved}.`,

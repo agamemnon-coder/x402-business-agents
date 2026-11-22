@@ -14,7 +14,7 @@ production code side by side.
 |---|---|
 | Proofs | [`formal/dafny/`](../../formal/dafny): `Text.dfy`, `Money.dfy`, `Limit.dfy`, `Jcs.dfy`, `Utf8.dfy`, `Terms.dfy`, `Reference.dfy` |
 | Verifier | **`Dafny program verifier finished with 172 verified, 0 errors`** (about 25 to 70 s, 2 cores) |
-| What 172 counts | Dafny's verification tasks: every lemma (59), every function's well-formedness and termination, and the two `by method` implementations proven equal to their functions. Not a count of theorems |
+| What 172 counts | Dafny's verification tasks: every lemma (61), every function's well-formedness and termination, and the two `by method` implementations proven equal to their functions. Not a count of theorems |
 | Nothing assumed inside | no `assume`, `{:axiom}`, `{:verify false}`, `{:extern}` or body-less lemma; `scripts/formal-dafny.sh` refuses to run if one appears, and fails on any verifier warning |
 | Tool | Dafny 4.11.0+fcb2042d6d043a2634f0854338c08feeaaaf4ae2 with its bundled Z3 4.12.1, from the official release `dafny-4.11.0-x64-ubuntu-22.04.zip`, SHA-256 `a46a9ff7cdd720f7955854c78e95df13f4cfe6b80691b05f8654fe19e8267179` (pinned in `scripts/formal-dafny.sh`) |
 | Link to the code | [`test/formal-dafny-differential.test.ts`](../../test/formal-dafny-differential.test.ts): about 57,500 comparisons per run (fresh random inputs each run), **0 differences** |

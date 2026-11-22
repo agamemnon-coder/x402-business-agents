@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 156" width="960" height="156" role="img" aria-labelledby="t d">
 <title id="t">Purser: proof from the records</title>
-<desc id="d">From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 111 decisions, live. 10,239 tests passing; 262 checks passed, 0 failed; 48 of 48 attacks stopped before money moved, 0 caught after (the red team's full re-run, 20 Nov, not held out, test world). 0 attacks got through. Drawn from the records by scripts/readme-proof-strip.ts.</desc>
+<desc id="d">From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 111 decisions, live. 10,239 tests passing (20 Nov); 262 checks passed, 0 failed (20 Nov); 48 of 48 attacks stopped before money moved, 0 caught after (the red team's full re-run, 20 Nov, not held out, test world). 0 attacks got through. Drawn from the records by scripts/readme-proof-strip.ts.</desc>
 <style>
 text{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
 .in{animation:in .5s cubic-bezier(.2,.7,.3,1) both}@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -31,11 +31,11 @@ text{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helveti
 <text x="816.54" y="53" font-size="11.5" fill="#9198a1">111 decisions, live</text></g>
 <g class="in" style="animation-delay:0.5s"><rect x="168.5" y="72.5" width="253" height="69" rx="9" fill="#151b23" stroke="#3d444d"/>
 <text x="182" y="103" fill="#e6edf3"><tspan font-size="25" font-weight="650" letter-spacing="-0.4">10,239</tspan><tspan dx="7" font-size="13" font-weight="600" fill="#9198a1">tests passing</tspan></text>
-<text x="182" y="121" font-size="11.5" fill="#8b949e">0 failed, 5 skipped · test-summary.json</text>
+<text x="182" y="121" font-size="11.5" fill="#8b949e">20 Nov · 0 failed, 5 skipped · test-summary.json</text>
 <rect x="182" y="128" width="226" height="4" rx="2" fill="#262c36"/><g class="grow"><rect x="182" y="128" width="225.89" height="4" fill="#4493f8"/><rect x="407.89" y="128" width="0.11" height="4" fill="#262c36"/></g></g>
 <g class="in" style="animation-delay:0.58s"><rect x="430.5" y="72.5" width="253" height="69" rx="9" fill="#151b23" stroke="#3d444d"/>
 <text x="444" y="103" fill="#e6edf3"><tspan font-size="25" font-weight="650" letter-spacing="-0.4">262</tspan><tspan dx="7" font-size="13" font-weight="600" fill="#9198a1">checks passed</tspan></text>
-<text x="444" y="121" font-size="11.5" fill="#8b949e">0 failed, 3 could not run · verify-all</text>
+<text x="444" y="121" font-size="11.5" fill="#8b949e">20 Nov · 0 failed, 3 could not run · verify-all</text>
 <rect x="444" y="128" width="226" height="4" rx="2" fill="#262c36"/><g class="grow"><rect x="444" y="128" width="223.44" height="4" fill="#4493f8"/><rect x="667.44" y="128" width="2.56" height="4" fill="#262c36"/></g></g>
 <g class="in" style="animation-delay:0.66s"><rect x="692.5" y="72.5" width="253" height="69" rx="9" fill="#151b23" stroke="#3d444d"/>
 <text x="706" y="103" fill="#e6edf3"><tspan font-size="25" font-weight="650" letter-spacing="-0.4">48 of 48</tspan><tspan dx="7" font-size="13" font-weight="600" fill="#9198a1">attacks stopped</tspan></text>

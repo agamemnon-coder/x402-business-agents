@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, DESIGN_PARTNER_URL, FILM_URL, HERO, SECOND_APPROVER } from "../src/config/brand.js";
 import { BOOKED, FLOW, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
-import { WORKFLOW_NOTE, WORKFLOW_RECORD, workflowFacts } from "../src/redesign/heroWave.js";
+import { WORKFLOW_NOTE, WORKFLOW_RECORD, heroStats, workflowFacts } from "../src/redesign/heroWave.js";
 import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
 import {
   AGENTS_HEAD, CLOUD_EYEBROW, HOME_SUB, PROOF_BUTTON, PROOF_HEAD, REASSURE, ROSTER_NOTE, ROSTER_RECORDS, START, STOP_DRILL_DOC, STOP_DRILL_RECORD,
@@ -75,7 +75,7 @@ describe("Home, 21 Nov: one short story", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [decode(m[1]!), text(m[2]!)]);
     for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, WATCH_BUTTON], [BUSINESS_HREF, PILOT_CTA], [AI_CONNECT_URL, CONNECT_CLAUDE], [REPO_URL, GITHUB_BUTTON], [BUSINESS_HREF, BUSINESS_BUTTON], ["proof", PROOF_BUTTON], ["/verify", VERIFY_BUTTON], [TOUR_START_HREF, TOUR_BUTTON]]);
     // Max, 21 Nov: a clearly visible route from Home to /business, under the three steps to a pilot (not a primary button).
-    expect([BUSINESS_HREF, BUSINESS_BUTTON]).toEqual(["business", "For companies: pilot and plans"]);
+    expect([BUSINESS_HREF, BUSINESS_BUTTON]).toEqual(["business", "For companies: the 30-day pilot"]);
     // Max, 21 Nov: "add a connect to GitHub and Claude".
     expect([CONNECT_CLAUDE, GITHUB_BUTTON]).toEqual(["Connect Claude", "The code on GitHub"]);
     expect([START, WATCH_BUTTON, PILOT_CTA, TOUR_BUTTON]).toEqual(["Try it", "Watch the demo", "Start a pilot", "Start the judge tour"]);
@@ -135,7 +135,8 @@ describe("Home, 21 Nov: one short story", () => {
       expect(text(/<p class="wf-note">[\s\S]*?<\/p>/.exec(main)![0])).toBe(`${WORKFLOW_NOTE} ${WHATS_REAL}`);
       expect(main).toContain(`<a href="#real" data-real>${WHATS_REAL}</a>`);
       // 21 Nov (jury check): the due date says which run it is from, since /try's sample today has a later one.
-      expect(text(outsideFold(main)).match(DATE)).toEqual([SAMPLE.invoice.due, "13 Nov"]);
+      // Outside audit, 22 November: each hero figure says its record's day beside it ("262 checks passed, 20 Nov").
+      expect(text(outsideFold(main)).match(DATE)).toEqual([...heroStats().flatMap((s) => (s.day ? [s.day] : [])), SAMPLE.invoice.due, "13 Nov"]);
     }
     expect(ON).toContain('document.querySelectorAll("[data-real]")');
   });

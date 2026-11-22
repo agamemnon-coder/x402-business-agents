@@ -27,7 +27,7 @@ import { CHROME, checkTaps } from "./tapTargets.js";
 import { ICC_RUN_EXTRA_WORDS, iccRecordIn } from "../../src/redesign/iccBlock.js";
 import { METAL_CSP } from "../../src/servers/dashboard.js";
 import { committedWall } from "../../src/redesign/evidenceWall.js";
-import { CALC_DEFAULTS, calc, calcEuro } from "../../src/redesign/business.js";
+import { PILOT_VOLUMES, pilotMailto } from "../../src/redesign/business.js";
 
 const args = process.argv.slice(2);
 const liveAt = args.indexOf("--live");
@@ -946,11 +946,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
     }
     // /business, "For companies" (21 Nov), first under "More", and /one-pager, its printable sheet: within their budgets
-    // (test/site-v4.test.ts), "More" marked, no text under 14 px in a card, and the calculator answering the visitor's own
-    // numbers with the page's own arithmetic (calc, src/redesign/business.ts), never "NaN". /one-pager's button shows
-    // once its script runs.
+    // (test/site-v4.test.ts), the "Business" tab marked, no text under 14 px in a card, and (since 22 Nov) the pilot's form
+    // held back empty and building the page's own mail filled. /one-pager's button shows once its script runs.
     // 21 Nov: /business 860 after Max's six decisions (the written agreement, eligibility, first target group, scenario).
-    for (const [path, budget] of [["/business", 860], ["/one-pager", 660]] as const) {
+    // 22 Nov (Max: "far too much text"; then "still too much"): /business 150, the question, one line, one visual and the form.
+    for (const [path, budget] of [["/business", 150], ["/one-pager", 660]] as const) {
       const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
       if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
       await look(page, `${path} ${tag}`, w);
@@ -962,13 +962,20 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead")].filter((e) => e.offsetParent && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
       for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
       if (path === "/business") {
-        await page.fill("#c-invoices", "400");
-        await page.fill("#c-risk", "20000");
-        const want = calc({ ...CALC_DEFAULTS, invoices: 400, atRisk: 20000 });
-        const got = await page.evaluate(() => ({ price: document.getElementById("o-price")?.textContent, year: document.getElementById("o-year")?.textContent, bars: document.querySelectorAll(".bz-bars > div:not([hidden])").length }));
-        if (got.price !== calcEuro(want.price) || got.year !== calcEuro(want.year) || got.bars !== 2) fail(`/business ${tag}: the calculator does not answer 400 invoices with the page's arithmetic (${JSON.stringify(got)})`);
-        await page.fill("#c-minutes", "");
-        if (/NaN|undefined/.test(await page.locator(".bz-res").innerText())) fail(`/business ${tag}: an empty input shows NaN`);
+        // 22 Nov: the pilot's form. Empty, the browser holds it back; filled, it builds the page's own mail (pilotMailto).
+        if (await page.evaluate(`document.getElementById("pilot-form").checkValidity()`)) fail(`/business ${tag}: the empty pilot form passes validation`);
+        const f = { name: "Ada Jansen", company: "Northwind B.V.", email: "ada@northwind.example", invoices: PILOT_VOLUMES[1]!, message: "" };
+        await page.fill('#pilot-form [name="name"]', f.name);
+        await page.fill('#pilot-form [name="company"]', f.company);
+        await page.fill('#pilot-form [name="email"]', f.email);
+        await page.selectOption('#pilot-form [name="invoices"]', f.invoices);
+        // The form's values go in as an argument, never as code built from a string (CodeQL, 22 Nov).
+        type PilotWin = { document: { getElementById(id: string): { checkValidity(): boolean } }; __purserPilot?: { build(x: typeof f): string } };
+        const got = await page.evaluate((form) => {
+          const w = globalThis as unknown as PilotWin;
+          return { ok: w.document.getElementById("pilot-form").checkValidity(), mail: w.__purserPilot ? w.__purserPilot.build(form) : "" };
+        }, f);
+        if (!got.ok || got.mail !== pilotMailto(f)) fail(`/business ${tag}: the filled pilot form does not validate or build the page's mail (${JSON.stringify(got)})`);
       } else if (!(await page.locator("#print").isVisible())) fail(`/one-pager ${tag}: no "Save as PDF" button`);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
     }
@@ -1417,7 +1424,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
-      // 21 Nov (Max): /pricing lands on the plans on /business, beside the 30-Day Founding Partner Pilot.
+      // 21 Nov (Max): /pricing lands on /business, the 30-Day Founding Partner Pilot (no anchor since 22 Nov).
       for (const [old, to] of [["/tour", "/home"], ["/pricing", "/business"], ["/judge", "/home"]] as const) {
         await page.goto(`${judgeBase}${old}`, { waitUntil: "load" });
         if (new URL(page.url()).pathname !== to) fail(`${old} ${tag}: did not land on ${to} (${page.url()})`);
