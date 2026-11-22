@@ -5,6 +5,10 @@
 //   npm run changelog -- --ref <ref>      (another end; default origin/main when it exists, else HEAD: on a branch that
 //                                          merged main in, HEAD's first parents skip main's later merges)
 // Needs the full history (a shallow clone has too few commits): `git fetch --unshallow --tags` first in CI.
+// A release's changelog ends at its tag (`npm run changelog` is --since v1.3.2 --ref v1.4.0): one generated inside the
+// release pull request, before it merged, cannot list that pull request's own merge (outside audit, 22 November: the
+// v1.4.0 notes said 10 pull requests; v1.3.2..v1.4.0 holds 11, #476 being the release's own). Regenerate it once the tag
+// exists; test/repo-charts.test.ts compares the count with git when the tags are there.
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";

@@ -122,7 +122,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // heading, the idea, the judge tour and Try, the sandbox line.
     // 21 Nov, redesign (Max): the eyebrow, the heading, the idea, three figures from the evidence wall and the three buttons
     // (Try it first); the sandbox disclosure moved into the Workflow card's label ("Sandbox · no account needed" since 21 Nov, later).
-    expect(t.startsWith(`Purser Cloud · for companies AI agents spend. You sign off. ${HOME_SUB} 262 checks passed 132 sandbox transfers 48 attacks stopped Try it Watch the demo Start a pilot Workflow Sandbox · no account needed`)).toBe(true); // 21 Nov, later (owner): the label says no account is needed; the card's note says the runs are recorded
+    expect(t.startsWith(`Purser Cloud · for companies AI agents spend. You sign off. ${HOME_SUB} 262 checks passed 20 Nov 132 sandbox transfers 21 Nov 48 attacks stopped 20 Nov Try it Watch the demo Start a pilot Workflow Sandbox · no account needed`)).toBe(true); // 21 Nov, later (owner): the label says no account is needed; the card's note says the runs are recorded
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);

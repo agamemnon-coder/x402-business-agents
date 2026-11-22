@@ -158,7 +158,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect([START, WATCH_BUTTON, PILOT_CTA]).toEqual(["Try it", "Watch the demo", "Start a pilot"]);
     // The owner's concept (21 Nov): three figures from the records under the idea, then Try (primary), Watch the demo and
     // Start a pilot; the judge tour's button is under its map (test/home-story.test.ts).
-    expect(t.startsWith(`${CLOUD_EYEBROW} ${HERO} ${HOME_SUB} ${heroStats().map((s) => `${s.value} ${s.words}`).join(" ")} ${START} ${WATCH_BUTTON} ${PILOT_CTA} ${WORKFLOW_HEAD}`)).toBe(true);
+    expect(t.startsWith(`${CLOUD_EYEBROW} ${HERO} ${HOME_SUB} ${heroStats().map((s) => `${s.value} ${s.words}${s.day ? ` ${s.day}` : ""}`).join(" ")} ${START} ${WATCH_BUTTON} ${PILOT_CTA} ${WORKFLOW_HEAD}`)).toBe(true);
     // Max, 21 Nov: no line under the buttons; the Workflow card beside them says sandbox and test money.
     expect(hero(HOME)).not.toContain(REASSURE.sign);
     expect(heroStats()).toHaveLength(3);

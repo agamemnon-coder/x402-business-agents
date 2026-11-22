@@ -5,6 +5,7 @@
   "skipped": 5,
   "files": 969,
   "commit": "c9cce6545",
+  "date": "2026-11-20",
   "scope": "the full suite: every test file vitest.config.ts includes, without coverage; not the coverage run, which is recorded separately in docs/evidence/coverage.json",
   "command": "npx vitest run --testTimeout=60000 --reporter=json --outputFile.json=<file>, then npm run readme-draft -- --tests <file> and npm run test-count",
   "environment": "Linux 6.18.44-fc-v726 x64, 4 CPUs, Node v22.22.0"

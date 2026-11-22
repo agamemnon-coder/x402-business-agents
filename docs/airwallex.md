@@ -18,7 +18,7 @@ All calls go to the Airwallex sandbox (`https://api.sandbox.airwallex.com/api/v1
 | 10 Nov | Payment acceptance: an invoice paid by test card | [log](runs/2026-11-10-payment-acceptance-sandbox.md) |
 | 10 Nov | Two locks: Airwallex's approval workflow | [log](runs/2026-11-10-airwallex-two-locks.md) |
 | 12 Nov | Two locks: approved, then PAID | [log](runs/2026-11-12-airwallex-two-locks-paid.md) |
-| 17 Nov | A payout that does not stay paid: PAID, then FAILED by the sandbox's simulation | [record](runs/2026-11-17-airwallex-late-failure.json) |
+| 17 Nov | A payout that does not stay paid: PAID, then CANCELLED (simulated late failure) | [record](runs/2026-11-17-airwallex-late-failure.json) |
 | 19 Nov | Paid invoices as bills in Airwallex Spend (accounts payable) | [log](runs/2026-11-19-airwallex-bills.md), [record](runs/2026-11-19-airwallex-bills.json) |
 
 Runs of 29 and 30 October are cited only where no later run shows the step, each with its date. Every live run: [docs/runs/README.md](runs/README.md).

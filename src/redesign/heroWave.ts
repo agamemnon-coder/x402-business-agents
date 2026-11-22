@@ -18,7 +18,8 @@ import { waveScript } from "../ui/wave.js";
 import { FLOW, READER_CHIP, TRY_SAMPLE_RECORD } from "./heroFlow.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
-import { proofSection } from "./proofSections.js";
+import { tileAnchor } from "./proofQuestions.js";
+import { shortDay } from "../proof/recordDate.js";
 // 21 Nov (jury check): the sample card names the run its figures come from, since /try's sample today has a later due date.
 export const RUN_DAY = (/(\d{4})-(\d{2})-(\d{2})/.exec(TRY_SAMPLE_RECORD) ?? []).slice(2, 4).reverse().map(Number).join(" ").replace(/ 11$/, " Nov");
 
@@ -28,10 +29,11 @@ export const HERO_STATS: readonly { key: string; words: string }[] = [
   { key: "try-transfers", words: "sandbox transfers" },
   { key: "red-team", words: "attacks stopped" },
 ];
-export interface HeroStat { value: string; words: string; rec: string; href: string; source: string }
+export interface HeroStat { value: string; words: string; rec: string; href: string; source: string; /** The day of the tile's newest record ("20 Nov"), shown beside the words. */ day: string | null }
 /**
- * The figures as the wall holds them ("All 48" reads "48"); a tile the wall lacks drops out. Each links to its group of
- * the wall on /proof, and says where it comes from on hover (Max, 21 Nov: "show its provenance, link each to /proof").
+ * The figures as the wall holds them ("All 48" reads "48"); a tile the wall lacks drops out. Each links to the block of
+ * /proof that shows its tile (tileAnchor), says its record's day beside it (outside audit, 22 November: "262 checks
+ * passed" had no date), and says where it comes from on hover (Max, 21 Nov: "show its provenance, link each to /proof").
  */
 export function heroStats(w: EvidenceWall | null = committedWall()): HeroStat[] {
   const tiles = new Map((w?.groups ?? []).flatMap((g) => g.tiles.map((t) => [t.key, { t, group: g.id }] as const)));
@@ -40,11 +42,12 @@ export function heroStats(w: EvidenceWall | null = committedWall()): HeroStat[] 
     const value = hit?.t.fig.replace(/^All\s+/, "").trim();
     if (!hit || !value || !/^\d[\d,]*$/.test(value)) return [];
     const { t, group } = hit;
-    return [{ value, words: s.words, rec: t.rec, href: `proof#${proofSection(group)}`, source: `${t.fig} ${t.label}${t.asOf ? ` (${t.asOf})` : ""}. Record: ${t.rec}` }];
+    const day = t.asOf ? shortDay(t.asOf) : null;
+    return [{ value, words: s.words, day, rec: t.rec, href: `proof#${tileAnchor(t.key, group)}`, source: `${t.fig} ${t.label}${day ? ` (${day})` : ""}. Record: ${t.rec}` }];
   });
 }
 export function heroStatsHtml(stats: HeroStat[] = heroStats()): string {
-  return stats.length ? `<ul class="hstats">${stats.map((s) => `<li data-rec="${esc(s.rec)}"><a href="${esc(s.href)}" title="${esc(s.source)}"><b>${esc(s.value)}</b><span>${esc(s.words)}</span></a></li>`).join("")}</ul>` : "";
+  return stats.length ? `<ul class="hstats">${stats.map((s) => `<li data-rec="${esc(s.rec)}"><a href="${esc(s.href)}" title="${esc(s.source)}"><b>${esc(s.value)}</b><span>${esc(s.words)}${s.day ? `<small>${esc(s.day)}</small>` : ""}</span></a></li>`).join("")}</ul>` : "";
 }
 
 /**
@@ -151,6 +154,7 @@ ul.hstats a:hover span, ul.hstats a:focus-visible span { color: var(--text); tex
 ul.hstats li:first-child { padding-left: 0; border-left: 0; }
 ul.hstats b { font-size: clamp(26px, 2.6vw, 34px); line-height: 1.05; font-weight: 760; letter-spacing: -.03em; font-variant-numeric: tabular-nums; background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; }
 ul.hstats span { font-size: 13.5px; line-height: 1.35; color: var(--muted); }
+ul.hstats small { display: block; font-size: 12px; opacity: .85; }
 @media (max-width: 420px) { ul.hstats li { padding: 0 10px; } ul.hstats span { font-size: 12.5px; } }
 
 /* The Workflow card: glass over the wave, the invoice on top, five steps lit in turn, the refusal last. */

@@ -3,6 +3,7 @@
 // needs the full history, so here it only has to exist with its source said. The changelog's parser and grouping are
 // checked on sample merge lines. Breaks when a record changes and `npm run charts` was not run, or a chart loses its
 // source line.
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -70,6 +71,17 @@ describe("the changelog", () => {
       const n = (body!.match(/^- /gm) ?? []).length;
       expect({ group, line: new RegExp(`^- ${group!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: ${n}\\b`, "m").test(notes) }).toEqual({ group, line: true });
     }
+  });
+
+  // Outside audit, 22 November: generated inside the release pull request, the changelog missed that pull request's own
+  // merge (#476). It ends at the release tag; with the tags in this clone, its count is git's.
+  it("counts every pull request merged between the two tags, the release's own included (when the tags are here)", () => {
+    const tags = (() => { try { return execFileSync("git", ["tag", "--list", "v1.3.2", "v1.4.0"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean); } catch { return []; } })();
+    if (tags.length < 2) return; // a shallow clone without the tags: nothing to compare with
+    const merges = execFileSync("git", ["log", "--merges", "--first-parent", "--format=%s", "v1.3.2..v1.4.0"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter((l) => l.startsWith("Merge pull request #"));
+    const md = readFileSync(join(ROOT, "CHANGELOG.md"), "utf8");
+    expect(Number(/, (\d+) in all/.exec(md)![1])).toBe(merges.length);
+    for (const m of merges) expect(md).toContain(`[#${/#(\d+)/.exec(m)![1]}]`);
   });
 
   it("is committed, generated, and lists every pull request it counts", () => {
