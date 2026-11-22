@@ -384,10 +384,10 @@ export const FILM_WATCH_PAGE = filmWatchPage();
 export const FILM_WATCH_CSP = filmWatchCsp(FILM_WATCH_PAGE, filmId() !== null, cspFor, styleOnlyCsp);
 export const PROOF_CSP = cspFor(PROOF_PAGE);
 /** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */
-/** 21 Nov (Max): the plans, beside the 30-Day Founding Partner Pilot, are on /business; /pricing (gone since 13 Nov) lands there. */
-// Max, 21 Nov: keep the 302, so every price has one central source (/business, from src/config/pricing.ts). /pricing
-// may later become its own SEO landing page; until then it only redirects.
-export const PRICING_HOME = "/business#pricing";
+/** 21 Nov (Max): /pricing (gone since 13 Nov) lands on /business, the 30-Day Founding Partner Pilot. */
+// Max, 21 Nov: keep the 302. Since 22 Nov /business is only the pilot's sign-up (the plans are on /one-pager, from
+// src/config/pricing.ts), so /pricing lands on /business itself, no anchor.
+export const PRICING_HOME = "/business";
 export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": "/replay", "/overview": "/home", "/tour": "/home", "/pricing": PRICING_HOME };
 /** Addresses retired for good, answered 301 so old links keep working: /judge (it became the product tour, then went with it, 13 Nov). */
 // 14 Nov: Metal is now Alta; /metal answers 301 to /alta (old links, the README, the form and the walkthrough point there).
@@ -517,7 +517,7 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     res.setHeader("Content-Security-Policy", CLAUDE_CSP);
     res.type("html").send(CLAUDE_PAGE);
   });
-  // 13 Nov (owner): /tour is gone and lands on Home; /pricing lands on the plans on /business since 21 Nov (Max).
+  // 13 Nov (owner): /tour is gone and lands on Home; /pricing lands on /business since 21 Nov (Max; no anchor since 22 Nov).
   app.get("/tour", (_req, res) => { res.redirect(302, "/home"); });
   app.get("/pricing", (_req, res) => { res.redirect(302, PRICING_HOME); });
   app.get("/security", (_req, res) => {

@@ -331,7 +331,7 @@ Not validated with customers yet: 2 finance conversations (a CFO and a bank fina
 - **What does "all 48 attacks stopped" mean?** The red team's re-run of 20 Nov: our own scripted attacks, with no model, in a throwaway test world. All 48 were stopped before anything moved. It is an internal test, not an independent penetration test.
 - **What does the one-cent test prove, and what not?** It proves that an approval signed over one set of terms is refused for any other: the amount changed by one cent after the CFO signed, refused on the signed hash before any transfer was made (test money, on /try). It does not prove who holds the passkey, that it was Face ID, or anything about a route outside Purser.
 
-Also on [/security](https://kit11.max-31b.workers.dev/security#judge-questions) and [/business](https://kit11.max-31b.workers.dev/business).
+Also on [/security](https://kit11.max-31b.workers.dev/security#judge-questions).
 
 </details>
 

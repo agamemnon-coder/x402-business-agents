@@ -1,21 +1,15 @@
-// /business, "For companies" (21 Nov; Max: "we are technically strong, now we must make it commercially strong"), and
-// /one-pager, its printable sales sheet. One page a business owner can act on: the problem, what changes, who it is
-// for, a calculator for the visitor's own numbers, the pilot (what you get, how it starts, what it costs, whom to write
-// to) and the questions a buyer asks first. Nothing is invented:
-//   - every price is read from src/config/pricing.ts (pilot prices; nothing is on sale yet, as /pricing said);
-//   - the calculator only does arithmetic on what the visitor types: the defaults are example inputs, labelled so, and
-//     no figure is a customer's (there are none) or a measured saving;
-//   - the proof tiles are Home's, read from the run records (src/redesign/home.ts proofTiles);
+// /business, "For companies", and /one-pager, its printable sales sheet. Since 22 Nov (Max: "far too much text"; then
+// "still too much, the demo duplicates Home"), /business is only the question, one line, one small animated visual
+// (./businessVisuals.ts) and the pilot's sign-up form, which opens the visitor's own mail app with the fields filled in
+// (pilotMailto, PILOT_JS): no network request, nothing stored. /one-pager keeps the whole story on one A4 page.
+// Nothing is invented:
+//   - every price on /one-pager is read from src/config/pricing.ts (pilot prices; nothing is on sale yet);
+//   - its proof tiles are Home's, read from the run records (src/redesign/home.ts proofTiles);
 //   - where the data lives is /privacy's own reading of the Workers' configs (src/redesign/privacy.ts residency);
-//   - the pilot steps are how Purser Cloud starts a company today (docs/cloud.md: POST /v1/admin/tenants hands over a
-//     starter key; the owner makes a passkey at #/start); test money only;
+//   - the pilot steps are how Purser Cloud starts a company today (docs/cloud.md); test money only;
 //   - "never in the flow of funds" is docs/airwallex-platform.md's; the checks are src/ap/checkerCore.ts's (docs/claims.md).
 // The first target customer and the accounting-firm channel are hypotheses (docs/business/model.md) and say so. Built on
 // Airwallex; no partnership or endorsement is claimed. No competitor, customer, quote or founder is named.
-// 21 Nov (Max: "simple and amateur — more visuals and the infra/architecture"): the page now opens with the demo's
-// question over the wave, the demo as a diagram and the architecture (./businessVisuals.ts); the problem/outcome cards
-// went (OPTIONS and OUTCOMES stay for /one-pager). 22 Nov (Max: "far too much text, make it a tight, animated visual"):
-// the demo animated, the architecture one strip, the pilot and plans two compact cards, the calculator and questions folded. One script: the wave, then the calculator (textContent only, nothing parsed as markup), and /one-pager's print button.
 
 import { CONTACT_EMAIL } from "../config/brand.js";
 import { PRICING, PRICING_LINE, euro } from "../config/pricing.js";
@@ -23,8 +17,8 @@ import { SITE_URL } from "../ui/siteUrl.js";
 import { CLOUD_SETUP_URL, START_STEPS, proofTiles, type ProofTile } from "./home.js";
 import { PRICING_LEAD } from "./pricing.js";
 import { residency } from "./privacy.js";
-import { PRODUCT_CSS, foldHtml, outLink, repoHref, siteLink } from "./productPage.js";
-import { BUSINESS_VISUAL_CSS, BUSINESS_WAVE_JS, bzArchHtml, businessHeroHtml, demoFacts, demoHtml } from "./businessVisuals.js";
+import { repoHref, siteLink } from "./productPage.js";
+import { BUSINESS_LINE, BUSINESS_QUESTION, BUSINESS_VISUAL_CSS, demoFacts, pilotVisualHtml } from "./businessVisuals.js";
 import { TRY_URL, esc, icon, page } from "./ui.js";
 
 /** The pilot's mail: the footer's contact address, with a subject. */
@@ -48,18 +42,9 @@ export const FOUNDING_POINTS: readonly string[] = [
   "Direct access to the team: your feedback shapes the product.",
   "Sandbox and test money until the go-live requirements are met.",
 ];
-export const FOUNDING_TERMS: readonly { id: string; title: string; line: string }[] = [
-  { id: "eligibility", title: "Eligibility", line: "Selected businesses with four things: a registered company, an authorised financial approver (a CFO, a fractional CFO or an accountant), one clearly described workflow, and a suitable test environment." },
-  { id: "scope", title: "Scope", line: "Only under a written agreement: the workflow (such as paying supplier invoices), responsibilities, liability, privacy and access, agreed in writing beforehand. No real payments before the production checks are met." },
-  // Review, 21 Nov: nothing is on sale yet (PRICING_LEAD), so not "an existing paid plan".
-  { id: "after", title: "After 30 days", line: "Nothing is billed. You choose whether to move to a paid plan, if one is offered then. Early access for design partners, not a permanent free offer." },
-];
 export const BUSINESS_H1 = "Let AI agents pay. Keep the CFO in control.";
 export const BUSINESS_LEAD = POSITION;
 export const ONE_PAGER_PATH = "one-pager";
-/** Said wherever the calculator's result is: it is the visitor's own arithmetic, not a result Purser has seen. */
-/** Max, 21 Nov: the outcome is a scenario with the visitor's inputs, never a proven saving. */
-export const CALC_NOTE = "Scenario with your inputs, not a measured saving. No company has used Purser for a month yet, so no figure here is measured.";
 /** Max, 21 Nov: a pilot runs only under a written agreement, and no real payment comes before the production checks. */
 export const PILOT_AGREEMENT = "Pilots run only under a written agreement: scope, responsibilities, liability, privacy and access are agreed in writing beforehand. No real payments before the production checks are met.";
 /** Max, 21 Nov: the first target group, said as a starting point and not as a proven segment. */
@@ -67,13 +52,6 @@ export const FIRST_TARGET = "Our first target group: EU companies of 20 to 200 e
 export const FIRST_TARGET_NOTE = "A starting point, not a proven market segment. Other companies can still register interest.";
 /** The "Try it" step's own tag on Home ("2 minutes · deleted after 24 h"). */
 const TRY_TAG = START_STEPS[0]!.tag;
-
-/** Today's two options and Purser, side by side. */
-export const OPTIONS: readonly { id: string; icon: string; title: string; line: string; us?: true }[] = [
-  { id: "none", icon: "ban", title: "No agents", line: "Safe, but every invoice is read, checked and paid by hand." },
-  { id: "blind", icon: "triangle-alert", title: "Blind trust", line: "A shared card or a limit in a prompt, found out at month end." },
-  { id: "purser", icon: "shield-check", title: "Purser", line: "Agents do the routine, the rails hold the limits, the CFO signs the rest.", us: true },
-];
 
 /** What changes for the company, each with where it is shown. */
 export const OUTCOMES: readonly { icon: string; title: string; line: string; href: string; label: string }[] = [
@@ -91,10 +69,8 @@ export const PILOT_STEPS: readonly { icon: string; title: string; line: string }
   { icon: "zap", title: "Run your workflow, 30 days", line: "Agents propose, the CFO signs. Test money." },
 ];
 
-/** The buyer's first questions, each answered from what is built, with where to check it. */
+/** The buyer's first questions, each answered from what is built, with where to check it (the README carries the judges' ones word for word; /one-pager its "data" answer). */
 export interface Faq { id: string; q: string; a: string; links: [string, string][] }
-/** The judges' questions among the FAQ (review, 21 Nov), folded together on /business. */
-export const JUDGE_FAQ: readonly string[] = ["bypass", "moat", "tools", "airwallex"];
 export function faqs(): Faq[] {
   // /privacy's reading of the configs: the database and the documents in the EU, the engine not pinned yet, AI and alerts opt-in.
   const z = Object.fromEntries(residency().map((r) => [r.id, r.zone]));
@@ -104,88 +80,22 @@ export function faqs(): Faq[] {
     { id: "liable", q: "Who is liable for a payment?", a: `Your company stays the payer, from its own Airwallex account: Purser is never in the flow of funds. Each payment carries the CFO's signature over its exact terms, and a receipt anyone can verify. ${PILOT_AGREEMENT}`, links: [["verify", "Verify a receipt"], [repoHref(GO_LIVE_DOC), "The production checks"]] },
     { id: "data", q: "Where is my data?", a: "Purser Cloud's database and documents are in the EU (western Europe, EU jurisdiction); each company's engine and its logs are not pinned to a region yet. Claude and e-mail or WhatsApp alerts leave the EU only when switched on. Access, export and erasure are built in.", links: [["privacy", "Privacy"]] },
     { id: "bank", q: "Do I change banks?", a: "No. Purser works on your company's own Airwallex account, today with an API key you create there. Connecting by signing in at Airwallex is built, not live yet.", links: [["airwallex", "Airwallex"]] },
-    { id: "cost", q: "What does it cost?", a: `The ${FOUNDING_NAME} is free, with no credit card and no automatic billing. After it, the plans: ${PRICING_LINE} ${PRICING_LEAD} These prices are not yet validated with customers.`, links: [["#pricing", "The plans"]] },
+    { id: "cost", q: "What does it cost?", a: `The ${FOUNDING_NAME} is free, with no credit card and no automatic billing. After it, the plans: ${PRICING_LINE} ${PRICING_LEAD} These prices are not yet validated with customers.`, links: [["one-pager", "The plans"]] },
     // Review, 21 Nov: the questions a judge asks that the page did not answer yet. Short, and only what is built or
     // stated as a hypothesis; no other company named.
     { id: "bypass", q: "Can an agent bypass Purser?", a: "Only routes connected to Purser are protected. An agent pays through the routes Purser governs (the company's Airwallex account, through Purser, and the agents' Alta mandates); a wallet, card or key it can reach outside Purser is not governed by it.", links: [["security#not-finished", "What is not finished"]] },
     { id: "moat", q: "What is the moat if the code is open source?", a: "The code is MIT: anyone may run it. What a company would pay for is the hosted service: the rails kept current with Airwallex and Alta, the CFO's policy, passkeys and audit log operated for it, and support. A hypothesis, not tested with customers.", links: [[repoHref("docs/business/model.md"), "The business model"]] },
     { id: "tools", q: "Why not an existing spend or AP tool?", a: "They control a person with a card, or review an invoice after it is paid. Purser sits before the payment for an AI agent: code holds the agent's limit, and above it the CFO signs the exact terms, which the rail then carries.", links: [["proof", "The proof"]] },
     { id: "airwallex", q: "Why isn't this just Airwallex?", a: "Purser runs on Airwallex and uses its own controls. It adds what sits on top for agents: one CFO policy across Airwallex and Alta, a passkey over the exact terms before the API call, and a hash-chained audit log.", links: [["airwallex", "Airwallex"]] },
-    { id: "start", q: "How long does it take to start?", a: `Try it yourself first: ${TRY_TAG}. A Founding Partner pilot starts with a defined onboarding: we set up your company and send a starter key, you add your passkey, and we scope one workflow with you. Then it runs for 30 days.`, links: [[TRY_URL, "Try it"], ["#pilot", "The pilot"]] },
+    { id: "start", q: "How long does it take to start?", a: `Try it yourself first: ${TRY_TAG}. A Founding Partner pilot starts with a defined onboarding: we set up your company and send a starter key, you add your passkey, and we scope one workflow with you. Then it runs for 30 days.`, links: [[TRY_URL, "Try it"], ["business#pilot", "The pilot"]] },
   ];
 }
-
-/** The calculator's inputs: the defaults are example inputs, for the visitor to replace. */
-export interface CalcIn { invoices: number; minutes: number; hourly: number; share: number; atRisk: number; caught: number }
-export const CALC_DEFAULTS: CalcIn = { invoices: PRICING.starter.invoicesIncluded, minutes: 10, hourly: 45, share: 50, atRisk: 0, caught: 50 };
-export const CALC_FIELDS: readonly { key: keyof CalcIn; id: string; label: string; unit: string; max: number; step: number }[] = [
-  { key: "invoices", id: "c-invoices", label: "Supplier invoices a month", unit: "", max: 100000, step: 10 },
-  { key: "minutes", id: "c-minutes", label: "Minutes per invoice by hand today", unit: "min", max: 600, step: 1 },
-  { key: "hourly", id: "c-hourly", label: "Cost of an hour of that work", unit: "€", max: 1000, step: 5 },
-  { key: "share", id: "c-share", label: "Share the agents could handle", unit: "%", max: 100, step: 5 },
-  { key: "atRisk", id: "c-risk", label: "Lost a year to duplicates, errors or fraud", unit: "€", max: 100000000, step: 100 },
-  { key: "caught", id: "c-caught", label: "Of that, the share stopped before payment (your guess)", unit: "%", max: 100, step: 5 },
-];
-export interface CalcOut { hours: number; value: number; price: number; net: number; risk: number; year: number }
-/**
- * The arithmetic, here for the page as built and in CALC_JS for the browser (test/business-page.test.ts runs both on
- * the same inputs). Prices from src/config/pricing.ts: Starter's monthly price, its included invoices, then each extra.
- * The fee per payout has no rate set, so it is left out (said under the result).
- */
-export function calc(i: CalcIn): CalcOut {
-  const n = (v: number, max: number) => (Number.isFinite(v) ? Math.min(Math.max(v, 0), max) : 0);
-  const inv = n(i.invoices, 100000), min = n(i.minutes, 600), hr = n(i.hourly, 1000), share = n(i.share, 100), atRisk = n(i.atRisk, 100000000), caught = n(i.caught, 100);
-  const hours = (inv * min * share) / 100 / 60, value = hours * hr;
-  const { monthlyCents, invoicesIncluded, extraInvoiceCents } = PRICING.starter;
-  const price = (monthlyCents + Math.max(0, Math.ceil(inv) - invoicesIncluded) * extraInvoiceCents) / 100;
-  const net = value - price, risk = (atRisk * caught) / 100;
-  return { hours, value, price, net, risk, year: net * 12 + risk };
-}
-/** A euro amount as the calculator shows it: whole euros, a minus sign for less than nothing. */
-export const calcEuro = (x: number) => `${x < 0 ? "−" : ""}€${Math.round(Math.abs(x)).toLocaleString("en-US")}`;
-export const calcHours = (x: number) => (Math.round(x * 10) / 10).toLocaleString("en-US");
-
-/** The browser's copy of calc() and its formatting, with the prices passed in from the price list (never typed). */
-export const CALC_JS = `(function () {
-  var P = ${JSON.stringify({ m: PRICING.starter.monthlyCents, inc: PRICING.starter.invoicesIncluded, x: PRICING.starter.extraInvoiceCents })};
-  function n(v, max) { return isFinite(v) ? Math.min(Math.max(v, 0), max) : 0; }
-  function calc(i) {
-    var inv = n(i.invoices, 100000), min = n(i.minutes, 600), hr = n(i.hourly, 1000), share = n(i.share, 100), atRisk = n(i.atRisk, 100000000), caught = n(i.caught, 100);
-    var hours = (inv * min * share) / 100 / 60, value = hours * hr;
-    var price = (P.m + Math.max(0, Math.ceil(inv) - P.inc) * P.x) / 100;
-    var net = value - price, risk = (atRisk * caught) / 100;
-    return { hours: hours, value: value, price: price, net: net, risk: risk, year: net * 12 + risk };
-  }
-  function eur(x) { return (x < 0 ? "\\u2212" : "") + "\\u20ac" + Math.round(Math.abs(x)).toLocaleString("en-US"); }
-  function hrs(x) { return (Math.round(x * 10) / 10).toLocaleString("en-US"); }
-  globalThis.__purserCalc = { calc: calc, eur: eur, hrs: hrs };
-  var form = document.getElementById("calc");
-  if (!form) return;
-  var keys = ${JSON.stringify(CALC_FIELDS.map((f) => [f.key, f.id]))};
-  function set(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
-  function bar(id, part, whole) { var el = document.getElementById(id); if (el) { el.style.width = (whole > 0 ? Math.max(2, Math.round(100 * part / whole)) : 0) + "%"; el.parentNode.parentNode.hidden = false; } }
-  function update() {
-    var i = {};
-    keys.forEach(function (k) { var el = document.getElementById(k[1]); i[k[0]] = el ? parseFloat(el.value) : 0; });
-    var o = calc(i);
-    set("o-hours", hrs(o.hours)); set("o-value", eur(o.value)); set("o-price", eur(o.price)); set("o-net", eur(o.net)); set("o-risk", eur(o.risk)); set("o-year", eur(o.year));
-    var top = Math.max(o.value, o.price);
-    bar("b-value", o.value, top); bar("b-price", o.price, top);
-  }
-  form.addEventListener("input", update);
-  form.addEventListener("submit", function (e) { e.preventDefault(); });
-  update();
-})();`;
 
 /** /one-pager's button: the browser's own print dialog, where "Save as PDF" is. */
 export const PRINT_JS = `(function () { var b = document.getElementById("print"); if (b) { b.hidden = false; b.addEventListener("click", function () { window.print(); }); } })();`;
 
-export const BUSINESS_CSS = `.bz-h { margin: 6px 0 0; font-size: clamp(22px, 2.6vw, 28px); font-weight: 760; letter-spacing: -.02em; line-height: 1.2; }
-.bz-sub { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; max-width: 46em; }
-.bz-ctas { display: flex; flex-wrap: wrap; gap: 10px; }
-.bz-ctas .btn { white-space: normal; height: auto; min-height: 48px; padding: 10px 20px; line-height: 1.25; }
-.bz-ctas .btn .i { flex: none; }
-.bz-out .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+/** /one-pager's shared parts: its notes, the proof tiles and the plans. */
+export const BUSINESS_CSS = `.bz-sub { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; max-width: 46em; }
 /* The proof tiles (Home's, from the run records). */
 .bz-proof { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
 .bz-proof a { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; background: var(--sunken); color: inherit; text-decoration: none; min-height: 44px; min-width: 0; }
@@ -194,68 +104,12 @@ export const BUSINESS_CSS = `.bz-h { margin: 6px 0 0; font-size: clamp(22px, 2.6
 .bz-proof .v { font-size: 20px; font-weight: 760; letter-spacing: -.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .bz-proof .t { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 .bz-proof .g { justify-self: start; font-size: 14px; font-weight: 650; color: var(--muted); background: var(--surface); border-radius: 999px; padding: 1px 8px; margin-top: 4px; }
-details.bz-tf > summary { min-height: 44px; }
-details.bz-tf .bz-terms { margin: 6px 0 8px; }
-/* The calculator. */
-.bz-calc { display: grid; gap: 16px; padding: 20px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
-@media (min-width: 860px) { .bz-calc { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
-.bz-calc .note { grid-column: 1 / -1; margin: 0; font-size: 14.5px; line-height: 1.45; border-left: 4px solid var(--accent); padding: 2px 0 2px 10px; }
-.bz-in { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
-.bz-in legend { font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 0; margin-bottom: 4px; }
-.bz-in label { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; font-size: 15px; line-height: 1.35; }
-.bz-in .f { display: inline-flex; align-items: center; gap: 6px; }
-.bz-in input { width: 7.5em; min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: 600 16px/1 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
-.bz-in .u { color: var(--muted); font-size: 14px; min-width: 2.2em; }
-@media (max-width: 420px) { .bz-in label { grid-template-columns: minmax(0, 1fr); } }
-.bz-res { display: grid; gap: 10px; align-content: start; padding: 16px; border-radius: 16px; background: var(--sunken); min-width: 0; }
-.bz-res dl { margin: 0; display: grid; gap: 8px; }
-.bz-res dl div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; font-size: 15px; line-height: 1.35; }
-.bz-res dd { margin: 0; font-weight: 720; font-variant-numeric: tabular-nums; }
-.bz-res dl div.tot { border-top: 1px solid var(--border); padding-top: 8px; font-size: 17px; }
-.bz-res dl div.tot dd { font-size: 22px; color: var(--accent); }
-.bz-bars { display: grid; gap: 6px; }
-.bz-bars div { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 8px; align-items: center; font-size: 14px; color: var(--muted); }
-.bz-bars span.b { height: 12px; border-radius: 6px; background: var(--surface); overflow: hidden; }
-.bz-bars span.b i { display: block; height: 100%; width: 0; border-radius: 6px; background: var(--ok); transition: width .3s ease; }
-.bz-bars span.b i.p { background: var(--accent); }
-.bz-res small { color: var(--muted); font-size: 14px; line-height: 1.4; }
-/* 22 Nov: the pilot and the plans, two compact cards side by side; the calculator and the questions folded under them. */
-.bz-two { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 960px) { .bz-two { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); align-items: stretch; } }
-.bz-pilot { display: grid; gap: 12px; align-content: start; padding: 20px; min-width: 0; }
-.bz-pilot .bz-h { margin: 0; }
-.bz-fpc { border: 1.5px solid transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(135deg, var(--accent), var(--ok)) border-box; box-shadow: 0 18px 40px -28px rgba(79, 70, 229, .6); }
-.bz-fpc .pill { justify-self: start; }
-.bz-fpc .v { margin: 0; font-size: 15px; color: var(--muted); } .bz-fpc .v b { color: var(--text); }
-.bz-fpc .btn, .bz-pilot .bz-ctas .btn { justify-self: start; white-space: normal; height: auto; min-height: 48px; padding: 10px 20px; line-height: 1.25; }
-.bz-fpc details p { margin: 6px 0; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
-.bz-fpc details a { color: var(--accent); font-weight: 650; }
-.bz-more { display: grid; gap: 8px; }
-details.bz-fold { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 0 16px; }
-details.bz-fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 56px; font-weight: 700; font-size: 17px; }
-details.bz-fold > summary::-webkit-details-marker { display: none; }
-details.bz-fold > summary::after { content: "+"; font-size: 22px; color: var(--accent); flex: none; } details.bz-fold[open] > summary::after { content: "−"; }
-details.bz-fold > .bz-calc, details.bz-fold > .bz-faq { margin-bottom: 16px; }
-details.bz-fold > p.bz-sub { margin-bottom: 12px; }
 .bz-price { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
 .bz-price div { padding: 14px 16px; border-radius: 14px; background: var(--sunken); display: grid; gap: 2px; min-width: 0; }
 .bz-price b { font-size: 14px; color: var(--muted); font-weight: 650; }
 .bz-price span.v { font-size: 24px; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .bz-price span.v small { font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
-.bz-price small.d { font-size: 14px; color: var(--muted); }
-.bz-terms { margin: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
-.bz-terms div { padding: 14px 16px; border-radius: 14px; background: var(--sunken); min-width: 0; }
-.bz-terms dt { font-size: 14px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
-.bz-terms dd { margin: 0; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
-/* Questions. */
-.bz-faq { display: grid; gap: 8px; }
-.bz-faq details { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 0 16px; }
-.bz-faq summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; font-weight: 680; font-size: 16px; line-height: 1.35; }
-.bz-faq summary::-webkit-details-marker { display: none; }
-.bz-faq summary::after { content: "+"; font-size: 20px; color: var(--accent); flex: none; } .bz-faq details[open] summary::after { content: "−"; }
-.bz-faq details p { margin: 0 0 8px; font-size: 15.5px; line-height: 1.5; overflow-wrap: anywhere; }
-.bz-faq .links { padding-bottom: 12px; }
-ol.bz-onb { margin: 6px 0; padding-left: 20px; display: grid; gap: 4px; font-size: 15px; line-height: 1.45; }`;
+.bz-price small.d { font-size: 14px; color: var(--muted); }`;
 
 /** Home's proof tiles (every value from a run record), as compact chips; links made relative to the page. */
 export function proofChips(tiles: ProofTile[] = proofTiles()): string {
@@ -280,81 +134,107 @@ export function priceHtml(): string {
 </div>`;
 }
 
-export function calcHtml(i: CalcIn = CALC_DEFAULTS): string {
-  const o = calc(i);
-  const field = (f: (typeof CALC_FIELDS)[number]) => `<label for="${f.id}"><span>${esc(f.label)}</span><span class="f"><input id="${f.id}" name="${f.key}" type="number" inputmode="decimal" min="0" max="${f.max}" step="${f.step}" value="${i[f.key]}"><span class="u">${esc(f.unit)}</span></span></label>`;
-  const row = (id: string, label: string, value: string, cls = "") => `<div${cls ? ` class="${cls}"` : ""}><dt>${esc(label)}</dt><dd id="${id}">${esc(value)}</dd></div>`;
-  return `<form class="card bz-calc" id="calc" aria-labelledby="h-calc" novalidate>
-  <p class="note">${esc(CALC_NOTE)}</p>
-  <fieldset class="bz-in"><legend>${esc("Your numbers (example inputs; replace them)")}</legend>${CALC_FIELDS.map(field).join("")}</fieldset>
-  <div class="bz-res" aria-live="polite"><dl>
-    ${row("o-hours", "Hours back a month", calcHours(o.hours))}
-    ${row("o-value", "Value of that time a month", calcEuro(o.value))}
-    ${row("o-price", `${PRICING.starter.name} plan for that volume`, calcEuro(o.price))}
-    ${row("o-net", "Difference a month", calcEuro(o.net))}
-    ${row("o-risk", "Losses stopped a year (your guess)", calcEuro(o.risk))}
-    ${row("o-year", "Scenario for a year", calcEuro(o.year), "tot")}
-  </dl>
-  <div class="bz-bars" aria-hidden="true"><div hidden><span>${esc("Time back")}</span><span class="b"><i id="b-value"></i></span></div><div hidden><span>${esc("Plan price")}</span><span class="b"><i class="p" id="b-price"></i></span></div></div>
-  <small>${esc("Without the fee per payout, which has no rate set.")}</small></div>
-  ${foldHtml("How it is worked out", [
-    esc("Hours back = invoices × minutes × share ÷ 60."),
-    esc(`${PRICING.starter.name} = ${euro(PRICING.starter.monthlyCents)} a month for up to ${PRICING.starter.invoicesIncluded} invoices, then ${euro(PRICING.starter.extraInvoiceCents)} each.`),
-    esc("A year = (value of the time − price) × 12 + losses × your share."),
-  ])}
-</form>`;
+/** The pilot form's choices for invoices a month. */
+export const PILOT_VOLUMES: readonly string[] = ["<100", "100–500", "500–2,000", "2,000+"];
+export const PILOT_SUBJECT = "Purser Founding Partner Pilot";
+export const PILOT_APPLY = "Apply for the pilot";
+export const PILOT_FORM_NOTE = "Opens your email app with your details filled in; nothing is stored.";
+/** What the visitor fills in. */
+export interface PilotForm { name: string; company: string; email: string; invoices: string; message?: string }
+const one = (v: unknown, n: number) => String(v ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, n);
+const msg = (v: unknown) => String(v ?? "").replace(/\r\n?/g, "\n").trim().slice(0, 2000);
+/**
+ * The mail the form opens: to the footer's contact address, subject "Purser Founding Partner Pilot: <Company>", the
+ * fields listed in the body. Every value is percent-encoded (no header can be added) and single fields are one line.
+ * PILOT_JS is the browser's copy (test/business-page.test.ts runs both on the same inputs).
+ */
+export function pilotMailto(f: PilotForm): string {
+  const subject = `${PILOT_SUBJECT}: ${one(f.company, 200)}`;
+  const body = [`Name: ${one(f.name, 200)}`, `Company: ${one(f.company, 200)}`, `Work email: ${one(f.email, 200)}`, `Invoices per month: ${one(f.invoices, 40)}`, `Message: ${msg(f.message) || "-"}`].join("\n");
+  return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
+/** The page's one script: the same builder, then location.href on submit (after the browser's own validation). Nothing parsed as markup, no request. */
+export const PILOT_JS = `(function () {
+  var TO = ${JSON.stringify(CONTACT_EMAIL)}, SUBJECT = ${JSON.stringify(PILOT_SUBJECT)};
+  function one(v, n) { return String(v == null ? "" : v).replace(/[\\r\\n]+/g, " ").trim().slice(0, n); }
+  function msg(v) { return String(v == null ? "" : v).replace(/\\r\\n?/g, "\\n").trim().slice(0, 2000); }
+  function build(f) {
+    var subject = SUBJECT + ": " + one(f.company, 200);
+    var body = ["Name: " + one(f.name, 200), "Company: " + one(f.company, 200), "Work email: " + one(f.email, 200), "Invoices per month: " + one(f.invoices, 40), "Message: " + (msg(f.message) || "-")].join("\\n");
+    return "mailto:" + TO + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  }
+  globalThis.__purserPilot = { build: build };
+  var form = document.getElementById("pilot-form");
+  if (!form) return;
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!form.reportValidity()) return;
+    function v(n) { var el = form.elements.namedItem(n); return el ? el.value : ""; }
+    location.href = build({ name: v("name"), company: v("company"), email: v("email"), invoices: v("invoices"), message: v("message") });
+  });
+})();`;
+
+const PAGE_CSS = `main.bzp { padding: 0 0 32px; }
+.bzp .wrap { max-width: 1120px; }
+.bzp > .wrap { display: grid; gap: 22px; }
+.bzh { position: relative; isolation: isolate; padding: 36px 0 8px; }
+.bzh::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(50% 80% at 85% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%); }
+.bzh-g { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); align-items: center; }
+@media (min-width: 940px) { .bzh-g { grid-template-columns: minmax(0, 1.3fr) minmax(430px, .8fr); gap: 40px; } }
+.bzh-pill { margin: 0; }
+.bzh h1 { font-size: clamp(34px, 4.6vw, 60px); font-weight: 780; letter-spacing: -.03em; line-height: 1.04; margin: 12px 0 14px; max-width: 14em; }
+.bzh-a { margin: 0; font-size: clamp(18px, 1.8vw, 22px); font-weight: 600; line-height: 1.4; color: var(--muted); max-width: 32em; }
+/* The sign-up form. */
+.bzf { padding: 24px; display: grid; gap: 16px; min-width: 0; scroll-margin-top: 120px; }
+.bzf h2 { margin: 0; font-size: clamp(21px, 2.2vw, 26px); font-weight: 760; letter-spacing: -.02em; }
+form.bzf-g { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) { form.bzf-g { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bzf-g label { display: grid; gap: 6px; font-size: 15px; font-weight: 650; min-width: 0; }
+.bzf-g label small { font-weight: 500; color: var(--muted); font-size: 14px; }
+.bzf-g .wide, .bzf-g .act { grid-column: 1 / -1; }
+.bzf-g input, .bzf-g select, .bzf-g textarea { box-sizing: border-box; width: 100%; min-height: 48px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: 500 16px/1.4 Inter, system-ui, sans-serif; }
+.bzf-g textarea { min-height: 96px; resize: vertical; }
+.bzf-g input:focus-visible, .bzf-g select:focus-visible, .bzf-g textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.bzf-g .act { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.bzf-g .act .btn { white-space: normal; height: auto; min-height: 52px; padding: 12px 24px; font-size: 16px; }
+.bzf-g .act p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.4; }
+.bzf-g .act a { color: var(--accent); font-weight: 650; }
+@media (max-width: 560px) { .bzh { padding-top: 20px; } .bzf { padding: 18px 14px; } .bzf-g .act .btn { width: 100%; justify-content: center; } }`;
 
 export function businessPage(): string {
-  // 21 Nov (Max: "the business page looks simple and amateur — more visuals and the infra/architecture"), then 22 Nov
-  // (Max: "far too much text, make it a tight, animated visual"): the question and its one-line answer over the wave,
-  // the demo's approval card and four figures from the evidence wall; the demo as one animated diagram, each step to its
-  // record; the architecture as one strip of chips; the pilot and the plans as two compact cards; the calculator and the
-  // questions folded. The honesty lines stay, most of them inside the folds.
+  // 22 Nov (Max: "far too much text"; then "still too much, the demo duplicates Home"): the question, one line, one small
+  // animated visual and the pilot's sign-up form. Nothing else: the demo, the figures, the plans and the questions are
+  // on Home, /proof and /one-pager.
   const d = demoFacts();
-  const pilot = `<section class="card bz-pilot bz-fpc" id="founding" aria-labelledby="pilot">
-  <span class="pill run">${esc("Early access · for design partners")}</span>
-  <h2 class="bz-h" id="pilot">${esc(FOUNDING_CTA)}</h2>
-  <p class="v"><b>${esc(FOUNDING_NAME)}</b> · ${esc("Free for 30 days · no credit card")}</p>
-  <a class="btn primary" href="${esc(PILOT_MAIL)}">${icon("mail", 18)}${esc("Write to us")}</a>
-  <details class="fold bz-tf"><summary>${esc("Who it is for, eligibility and terms")}</summary>
-  <p>${esc(FOUNDING_TEXT)}</p>
-  <p id="ideal">${esc(`${FIRST_TARGET} ${FIRST_TARGET_NOTE.split(". ")[0]!}.`)} <a href="${esc(PILOT_MAIL)}">${esc("Other companies can still register interest")}</a>.</p>
-  <p id="firms">${esc("Accounting firms: the accountant reads the books and audit trail; cannot approve or pay. Money stays in your own Airwallex account; Purser is never in the flow of funds.")}</p>
-  <ul class="ticks">${FOUNDING_POINTS.map((l) => `<li>${icon("check", 16)}<span>${esc(l)}</span></li>`).join("")}</ul>
-  <ol class="bz-onb">${PILOT_STEPS.map((s) => `<li><b>${esc(s.title)}</b> ${esc(s.line)}</li>`).join("")}</ol>
-  <dl class="bz-terms">${FOUNDING_TERMS.map((t) => `<div id="t-${t.id}"><dt>${esc(t.title)}</dt><dd>${esc(t.line)}</dd></div>`).join("")}</dl>
-  <div class="links">${outLink(repoHref(GO_LIVE_DOC), "The go-live requirements")}</div></details>
-</section>`;
-  const plans = `<section class="card bz-pilot" aria-labelledby="pricing">
-  <h2 class="bz-h" id="pricing">${esc("After the pilot, if you choose.")}</h2>
-  ${priceHtml()}
-  <p class="bz-sub">${esc(`${PRICING_LEAD} Not yet validated with customers.`)} <a href="${ONE_PAGER_PATH}">${esc("The one-pager")}</a></p>
-</section>`;
-  const one = (f: Faq) => `<details id="faq-${f.id}"><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p><div class="links">${f.links.map(([h, l]) => (/^https:/.test(h) ? outLink(h, l) : siteLink(h, l))).join("")}</div></details>`;
-  // The judges' questions (review, 21 Nov) in one fold of their own, so the buyer's questions stay the ones in sight.
-  const judges = faqs().filter((f) => JUDGE_FAQ.includes(f.id));
-  const faq = `<div class="bz-faq">${faqs().filter((f) => !JUDGE_FAQ.includes(f.id)).map(one).join("")}${judges.length ? `<details id="faq-judges"><summary>${esc("Questions judges ask")}</summary>${judges.map(one).join("")}</details>` : ""}</div>`;
+  const field = (name: string, label: string, attrs: string) => `<label><span>${esc(label)}</span><input name="${name}" ${attrs} required></label>`;
   const body = `<main class="bzp">
-${businessHeroHtml({ label: BUSINESS_LABEL, d })}
+<section class="bzh" aria-labelledby="bzh-h"><div class="wrap"><div class="bzh-g">
+<div><p class="bzh-pill"><span class="pill note">${icon("info", 14)}${esc(BUSINESS_LABEL)}</span></p>
+<h1 id="bzh-h">${esc(BUSINESS_QUESTION)}</h1>
+<p class="bzh-a">${esc(BUSINESS_LINE)}</p></div>
+${pilotVisualHtml(d)}
+</div></div></section>
 <div class="wrap">
-  ${demoHtml(d)}
-  ${bzArchHtml()}
-  <div class="bz-two">${pilot}${plans}</div>
-  <div class="bz-more">
-  <details class="bz-fold" id="calc-fold"><summary id="h-calc">${esc("Calculator: what could it save you?")}</summary>${calcHtml()}</details>
-  <details class="bz-fold" id="faq"><summary>${esc("Questions a buyer asks")}</summary><p class="bz-sub">${esc(POSITION)}</p>${faq}</details>
-  </div>
+<section class="card bzf" id="pilot" aria-labelledby="bzf-h">
+<h2 id="bzf-h">${esc(FOUNDING_NAME)}</h2>
+<form class="bzf-g" id="pilot-form" aria-labelledby="bzf-h">
+${field("name", "Name", 'type="text" autocomplete="name" maxlength="200"')}
+${field("company", "Company", 'type="text" autocomplete="organization" maxlength="200"')}
+${field("email", "Work email", 'type="email" autocomplete="email" maxlength="200"')}
+<label><span>${esc("Invoices per month")}</span><select name="invoices" required><option value="">${esc("Choose")}</option>${PILOT_VOLUMES.map((v) => `<option>${esc(v)}</option>`).join("")}</select></label>
+<label class="wide"><span>${esc("Message")} <small>${esc("(optional)")}</small></span><textarea name="message" rows="3" maxlength="2000"></textarea></label>
+<div class="act"><button class="btn primary" type="submit">${icon("mail", 18)}${esc(PILOT_APPLY)}</button><p>${esc(PILOT_FORM_NOTE)}<br>${esc("or")} <a href="${esc(PILOT_MAIL)}">${esc("email us directly")}</a> · <a href="${ONE_PAGER_PATH}">${esc("the one-pager")}</a></p></div>
+</form>
+</section>
 </div></main>`;
   return page({
-    title: "For companies", tab: "business", css: `${PRODUCT_CSS}\n${BUSINESS_CSS}\n${BUSINESS_VISUAL_CSS}`, body, js: `${BUSINESS_WAVE_JS}\n${CALC_JS}`, stage: false,
-    description: "Would you trust an AI agent with your company's money? Purser: agents do the routine, the rails hold the limits, the CFO signs the exact terms with Face ID. The demo, the architecture, the pilot and its pilot prices, and a buyer's questions answered.",
-    source: "Source: the recorded /try runs (docs/runs/2026-11-13-try-sample.json, docs/runs/2026-11-21-phone-try/summary.json), docs/evidence/evidence-wall.json and the records each figure links, src/config/pricing.ts (pilot prices), cloud/wrangler.jsonc (where it runs and where data lives), docs/cloud.md (how a pilot company starts) and docs/airwallex-platform.md.",
+    title: "For companies", tab: "business", css: `${BUSINESS_VISUAL_CSS}\n${PAGE_CSS}`, body, js: PILOT_JS, stage: false,
+    description: "Would you trust an AI agent with your company's money? Apply for Purser's 30-day Founding Partner Pilot: agents pay the routine, your CFO signs the rest with Face ID. Test money only.",
+    source: "Source: the recorded /try runs (docs/runs/2026-11-21-phone-try/summary.json) for the visual's amounts; the form only opens the visitor's own mail app (src/redesign/business.ts pilotMailto).",
     real: [
       "Test money only: sandboxes and testnet. No customers, pilots or revenue yet.",
-      "The demo's card and diagram are drawn from the recorded /try runs; the approval card is a picture of that run, not a button.",
-      CALC_NOTE,
-      "The first target customer and the accounting-firm channel are hypotheses. Built on Airwallex; no partnership or endorsement is claimed.",
+      "The form sends nothing itself and stores nothing: it opens your own email app with the fields filled in.",
+      `${FIRST_TARGET_NOTE} Built on Airwallex; no partnership or endorsement is claimed.`,
     ],
   });
 }

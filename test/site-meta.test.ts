@@ -162,7 +162,7 @@ describe("the submission pack (Q6, Q7)", () => {
     // tests; the soaks' row and every figure on /proof traced (test/proof-trace.test.ts). The inner quotes are escaped:
     // unescaped, they ended the string and the file failed to load (the file-level FAIL after the sigcheck merge).
     // 21 Nov: the /business row (the Founding Partner Pilot) checked first; the 20 Nov rows follow it unchanged.
-    expect(claims).toContain("Last checked on 21 November 2026 (the row on /business and /one-pager and /pricing's redirect");
+    expect(claims).toContain("Last checked on 22 November 2026 (the row on /business and /one-pager and /pricing's redirect");
     expect(claims).toContain("on 20 November the red-team rows, against the full re-run of 20 Nov");
     expect(claims).toContain("the rows on roles and the approval key's life, and \"Execution re-checks the passkey signature\", against their tests; the Airwallex soaks' row, against both soak records, by their tests; every figure on /proof against the record the page names, by `test/proof-trace.test.ts`, listed in `docs/evidence/proof-index.md`; on 19 November the rows of the fourth round of fixes and the red-team re-run, against their records, by their tests; on 18 November every figure by `npm run verify-all`, 188 checks pass; before that the Alta rows on 15 November, against their run records, and the rest on 14 November)"); // 19 Nov: the fourth round of fixes and the red-team re-run; 18 Nov: re-checked by verify-all during judging
     expect(claims).toContain("The sections below were checked on 7 November 2026");

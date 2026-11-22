@@ -1,6 +1,6 @@
 // "What is not finished" and the judges' questions (review, 21 Nov; src/redesign/notFinished.ts): the same five lines in
 // the README (near the top), in JUDGES.md and on /security (#not-finished, the anchor /proof links), the README's
-// "Questions judges ask" word for word as /security and /business answer them, and JUDGES.md linked from the README's top.
+// "Questions judges ask" word for word as /security answers them (the rest from src/redesign/business.ts faqs()), and JUDGES.md linked from the README's top.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { faqs } from "../src/redesign/business.js";
@@ -45,7 +45,7 @@ describe("the judges' questions", () => {
     expect(a).toContain(r.blocked === r.attempts ? `All ${r.attempts} were stopped` : `${r.blocked} of ${r.attempts}`);
     expect(judgeQuestions().find((q) => q.id === "asvs")!.a).toMatch(/^No: the document is a self-assessment, not a certification and not an audit\./);
   });
-  it("are in the README word for word, as /security and /business answer them", () => {
+  it("are in the README word for word, as /security and faqs() (src/redesign/business.ts) have them", () => {
     const b = Object.fromEntries(faqs().map((f) => [f.id, f]));
     const j = Object.fromEntries(judgeQuestions().map((f) => [f.id, f]));
     for (const q of [j.bypass!, b.moat!, b.tools!, b.airwallex!, j.asvs!, j.redteam!, j.cent!]) expect(README).toContain(`- **${q.q}** ${q.a}`);

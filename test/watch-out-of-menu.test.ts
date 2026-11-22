@@ -77,8 +77,8 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
   });
 
   it("the product tour and Pricing are gone (13 Nov, evening, owner): their old addresses land on Home", () => {
-    // 21 Nov (Max): /pricing lands on the plans on /business, beside the 30-Day Founding Partner Pilot.
-    for (const [path, to] of [["/tour", "/home"], ["/pricing", "/business#pricing"]]) {
+    // 21 Nov (Max): /pricing lands on /business, the 30-Day Founding Partner Pilot (no anchor since 22 Nov).
+    for (const [path, to] of [["/tour", "/home"], ["/pricing", "/business"]]) {
       const r = pageResponse(new Request(`https://kit11.max-31b.workers.dev${path}`), ON);
       expect({ path, status: r?.status, to: r?.headers.get("location") }).toEqual({ path, status: 302, to });
     }

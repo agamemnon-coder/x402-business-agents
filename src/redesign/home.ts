@@ -506,7 +506,7 @@ export const START_STEPS: readonly StartStep[] = [
  * The route from Home to /business (Max, 21 Nov: "a clearly visible route from Home to the commercial value
  * proposition", not only More and the footer): one button under the three steps, where the pilot is; outside the hero.
  */
-export const BUSINESS_BUTTON = "For companies: pilot and plans";
+export const BUSINESS_BUTTON = "For companies: the 30-day pilot";
 export const BUSINESS_HREF = "business";
 
 /**

@@ -75,7 +75,7 @@ describe("Home, 21 Nov: one short story", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [decode(m[1]!), text(m[2]!)]);
     for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, WATCH_BUTTON], [BUSINESS_HREF, PILOT_CTA], [AI_CONNECT_URL, CONNECT_CLAUDE], [REPO_URL, GITHUB_BUTTON], [BUSINESS_HREF, BUSINESS_BUTTON], ["proof", PROOF_BUTTON], ["/verify", VERIFY_BUTTON], [TOUR_START_HREF, TOUR_BUTTON]]);
     // Max, 21 Nov: a clearly visible route from Home to /business, under the three steps to a pilot (not a primary button).
-    expect([BUSINESS_HREF, BUSINESS_BUTTON]).toEqual(["business", "For companies: pilot and plans"]);
+    expect([BUSINESS_HREF, BUSINESS_BUTTON]).toEqual(["business", "For companies: the 30-day pilot"]);
     // Max, 21 Nov: "add a connect to GitHub and Claude".
     expect([CONNECT_CLAUDE, GITHUB_BUTTON]).toEqual(["Connect Claude", "The code on GitHub"]);
     expect([START, WATCH_BUTTON, PILOT_CTA, TOUR_BUTTON]).toEqual(["Try it", "Watch the demo", "Start a pilot", "Start the judge tour"]);

@@ -126,8 +126,10 @@ describe("the site after v4", () => {
     // questions (can an agent bypass Purser, the moat, an existing tool, why not just Airwallex) and the fee's 1% cap
     // (882 as built). 360 since 22 Nov (Max: "far too much text, make it a tight, animated visual"): the hero, the demo as
     // one animated diagram of a few words a step, the architecture as one strip of chips, the pilot and the plans as two
-    // compact cards, the pilot's terms, the calculator and the questions folded (349 as built).
-    Object.assign(budget, { business: 360, onePager: 640 });
+    // compact cards, the pilot's terms, the calculator and the questions folded (349 as built). 120 since 22 Nov, later
+    // (Max: "still too much, the demo duplicates Home"): the question, one line, one small animated visual and the pilot's
+    // sign-up form (93 as built).
+    Object.assign(budget, { business: 120, onePager: 640 });
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
