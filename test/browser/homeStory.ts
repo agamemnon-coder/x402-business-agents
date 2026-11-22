@@ -15,7 +15,7 @@
 // two sentences are two lines. Every expected value is read from the records, not typed here.
 import type { Page } from "playwright";
 import { FLOW, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
-import { RUN_DAY, WORKFLOW_RECORD, workflowFacts } from "../../src/redesign/heroWave.js";
+import { heroStats, RUN_DAY, WORKFLOW_RECORD, workflowFacts } from "../../src/redesign/heroWave.js";
 import { agentRoster, agentTiles, BUSINESS_HREF, PILOT_CTA, proofTiles, START, TOUR_BUTTON, WATCH_BUTTON, WHATS_REAL } from "../../src/redesign/home.js";
 import { FILM_URL } from "../../src/config/brand.js";
 import { BAND } from "../../src/redesign/integrations.js";
@@ -117,7 +117,9 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
     await page.evaluate(() => window.scrollTo(0, 0));
     const seen = await page.evaluate(SEEN_ABOVE(2 * o.height)) as string;
     const dates = seen.match(/\b\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: \d{4})?|\b20\d\d-\d\d-\d\d/g) ?? [];
-    if (dates.some((d) => d !== FLOW.due && d !== RUN_DAY)) fail(`the first two screens show the dates ${JSON.stringify(dates)}, not only ${FLOW.due} and ${RUN_DAY}`);
+    // 22 Nov (outside audit): each hero figure now says its record's day ("262 checks passed · 20 Nov"), so those days are allowed too.
+    const allowed = new Set<string>([FLOW.due, RUN_DAY, ...heroStats().flatMap((h) => (h.day ? [h.day] : []))]);
+    if (dates.some((d) => !allowed.has(d))) fail(`the first two screens show the dates ${JSON.stringify(dates)}, not only ${JSON.stringify([...allowed])}`);
     if (!/test money/i.test(seen)) fail('the first two screens do not say "test money"');
   }
   // The heading's two sentences are two lines, each unbroken, where the layout is two columns.
