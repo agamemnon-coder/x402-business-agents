@@ -23,6 +23,7 @@ import { t0CloseFacts } from "./t0CloseTile.js";
 import { T0_JOURNAL_RECORD, t0Journal } from "./t0Page.js";
 import { T0_READBACK_FILE } from "../accounting/t0Readback.js";
 import { newestDate } from "../proof/recordDate.js";
+import { heldOutLine } from "./heldOutWords.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const has = (p: string) => existsSync(new URL(p, ROOT));
@@ -311,7 +312,7 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
   // cannot read to the CFO, committed alone with their pre-registration before the run (src/cli/adversarialV9.ts). Kept
   // as recorded; beside it the run after the fixes that followed it, no longer held out. Off /proof: v10 is newer.
   const V9 = "docs/evals/adversarial-v9.json", V9_AFTER = "docs/evals/adversarial-v9-after.json";
-  type AdvCfo = Record<"purser_script" | "no_rules", { cases: number; wrong_payments: number; false_holds: number; clean_truths: number; to_cfo_not_held: number; cfo_not_needed: number }>;
+  type AdvCfo = Record<"purser_script" | "no_rules", { cases: number; wrong_payments: number; false_holds: number; clean_truths: number; wrong_past_cfo?: number; to_cfo_not_held: number; cfo_not_needed: number }>;
   const v9 = json(V9) as { held_out?: boolean; cases_commit?: string; totals?: AdvCfo } | null;
   const v9a = json(V9_AFTER) as { held_out?: boolean; totals?: AdvCfo } | null;
   if (v9?.held_out && v9.totals?.purser_script && v9.totals.no_rules && v9a && !v9a.held_out && v9a.totals?.purser_script) {
@@ -331,6 +332,12 @@ function ai(w: ReturnType<typeof walks>): WallTile[] {
     const ra = json(after) as { held_out?: boolean; totals?: AdvCfo } | null;
     if (!r?.totals?.purser_script || !r.totals.no_rules) continue;
     const p = r.totals.purser_script, n = r.totals.no_rules, a = ra && !ra.held_out ? ra.totals?.purser_script : undefined;
+    // 22 Nov (the owner: "14 → 0"): the newest round, with its rerun after the fixes, reads blind run → after the
+    // fixes (the rerun no longer blind); no rules goes in the line. Older rounds stay as they were recorded on the wall.
+    if (v === newest && a && a.cases === p.cases) {
+      out.push({ key: `eval-v${v}`, fig: `${p.wrong_payments} → ${a.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v${v}): blind run → after the fixes`, note: `${heldOutLine({ version: v, cases: p.cases, blind: p.wrong_payments, blindPastCfo: p.wrong_past_cfo ?? 0, noRules: n.wrong_payments, after: a.wrong_payments, afterFalseHolds: a.false_holds }).replace(/ Offline, test data\.$/, "")} Cases committed with their pre-registration before the blind run (commit ${r.cases_commit}); it had ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}; ${p.to_cfo_not_held} sent to the CFO that had to be held, ${p.cfo_not_needed} that could have been paid alone. Offline.`, tag: "test", tone: "claude", href: blob(`docs/evals/adversarial-v${v}.md`), rec: `${rec} ${after}` });
+      continue;
+    }
     out.push({ ...(v === newest ? {} : { offProof: true }), key: `eval-v${v}`, fig: `${p.wrong_payments} vs ${n.wrong_payments}`, label: `wrong payments on ${p.cases} held-out invoices (eval v${v}): Purser vs no rules`, note: `Cases committed with their pre-registration before the run (commit ${r.cases_commit}); a script always says pay. ${p.false_holds} false hold${p.false_holds === 1 ? "" : "s"} of ${p.clean_truths}; ${p.to_cfo_not_held} sent to the CFO that had to be held, ${p.cfo_not_needed} that could have been paid alone.${a ? ` Fixed since, no longer held out: ${a.wrong_payments} wrong payments, ${a.false_holds} false holds.` : ""} Offline.`, tag: "test", tone: "claude", href: blob(`docs/evals/adversarial-v${v}.md`), rec: a ? `${rec} ${after}` : rec });
   }
 

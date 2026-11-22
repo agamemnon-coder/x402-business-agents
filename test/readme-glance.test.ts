@@ -25,14 +25,19 @@ describe("the README's At a glance", () => {
 
   // 21 Nov 2026, Max: "tags and logo on top, a small demo, the 3 steps; the second architecture animation can go; far fewer headings"; checking every figure against its record: the third line was the worst-case AI test of 15 Nov (50 cases,
   // 0 vs 35), older than the held-out evals since; it says the newest held-out eval now, as /proof's one eval tile does.
-  it("says the newest held-out eval's figures as its record has them", () => {
+  // 22 Nov (the owner: "14 → 0"): the blind run, then the same cases after the fixes that followed (not blind), each from its record.
+  it("says the newest held-out eval's figures as its two records have them", () => {
     const n = Math.max(...readdirSync(new URL("../docs/evals/", import.meta.url)).map((f) => /^adversarial-v(\d+)\.json$/.exec(f)?.[1]).filter(Boolean).map(Number));
-    const file = `docs/evals/adversarial-v${n}.json`;
-    const v = JSON.parse(read(file)) as { held_out: boolean; cases_commit: string; totals: Record<"purser_script" | "no_rules", { cases: number; wrong_payments: number; false_holds: number; clean_truths: number }> };
-    expect(v.held_out).toBe(true);
-    const p = v.totals.purser_script, none = v.totals.no_rules;
-    expect(lines[2]).toContain(`**The newest held-out eval (v${n}, offline, test data):** ${p.cases} invoice cases committed before they were first run (commit \`${v.cases_commit}\`); with a script that always says pay in the model's place, ${p.wrong_payments} wrong payments with Purser's rules, ${none.wrong_payments} with no rules; ${p.false_holds} false holds of ${p.clean_truths} clean invoices`);
-    expect(lines[2]).toContain(`(${file})`);
+    const file = `docs/evals/adversarial-v${n}.json`, afterFile = `docs/evals/adversarial-v${n}-after.json`;
+    type T = { cases: number; wrong_payments: number; wrong_past_cfo: number; false_holds: number; clean_truths: number };
+    const v = JSON.parse(read(file)) as { held_out: boolean; cases_commit: string; totals: Record<"purser_script" | "no_rules", T> };
+    const a = JSON.parse(read(afterFile)) as { held_out: boolean; before: string; totals: Record<"purser_script", T> };
+    expect([v.held_out, a.held_out, a.before]).toEqual([true, false, file]);
+    const p = v.totals.purser_script, none = v.totals.no_rules, ap = a.totals.purser_script;
+    expect(ap.cases).toBe(p.cases);
+    expect(lines[2]).toContain(`**The newest held-out eval (v${n}, offline, test data):** ${p.cases} adversarial invoices, committed before they were first run (commit \`${v.cases_commit}\`). The blind run, with a model that always says pay, found ${p.wrong_payments} payments Purser's rules let through (${p.wrong_past_cfo === 0 ? "none" : p.wrong_past_cfo} past the CFO; ${none.wrong_payments} with no rules), and ${p.false_holds} false holds of ${p.clean_truths} clean invoices`);
+    expect(lines[2]).toContain(`Those ${p.wrong_payments} gaps are fixed: the same ${p.cases} cases now give ${ap.wrong_payments} wrong payments and ${ap.false_holds} false holds ([the rerun](${afterFile})). That rerun is no longer blind; the next held-out set (v${n + 1}) is the real test.`);
+    expect(lines[2]).toContain(`[the blind run](${file})`);
     expect(README).not.toMatch(/worst-case AI[^\n]*0 wrong payments/);
   });
 
