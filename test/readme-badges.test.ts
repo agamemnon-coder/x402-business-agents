@@ -39,10 +39,18 @@ describe("README badges", () => {
     // Sandbox or testnet for a partner: at least one live run of that partner in the run records (the tiles on /proof count them).
     const live = Object.fromEntries(partnerTiles().map((t) => [t.name, t.runs]));
     for (const n of ["Airwallex", "Alta", "Visa via Airi", "T:0"]) expect({ n, runs: (live[n] ?? 0) > 0 }).toEqual({ n, runs: true });
-    // The tests: a dynamic badge on the last full run (test-summary.json); coverage: a shields endpoint badge read from
-    // the committed JSON (src/proof/badges.ts, test/badges.test.ts), naming its own, separate coverage run.
-    expect(qualityLine).toContain("query=%24.passed&label=tests%2C%20last%20full%20run&suffix=%20passing");
-    expect(qualityLine).toContain("(https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fbadges%2Fcoverage.json&style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)");
+    // The tests and coverage (and Dafny below): static badges whose text is the committed record's, word for word (24 Nov:
+    // shields.io could no longer fetch raw.githubusercontent.com, so badges read from the repository at view time showed
+    // as broken images). The test count is the last full run's (test-summary.json); coverage names its own, separate run.
+    const enc = (t: string) => encodeURIComponent(t.replace(/-/g, "--").replace(/_/g, "__"));
+    const summary = JSON.parse(readFileSync(new URL("../docs/assets/test-summary.json", import.meta.url), "utf8")) as { passed: number };
+    const covBadge = JSON.parse(readFileSync(new URL("../docs/badges/coverage.json", import.meta.url), "utf8")) as { label: string; message: string };
+    const dafnyBadge = JSON.parse(readFileSync(new URL("../docs/badges/dafny.json", import.meta.url), "utf8")) as { label: string; message: string };
+    expect(qualityLine).toContain(`(https://img.shields.io/badge/${enc("tests, last full run")}-${enc(`${summary.passed} passing`)}-16a34a?style=flat-square&labelColor=1f2937)](docs/assets/test-summary.json)`);
+    expect(qualityLine).toContain(`(https://img.shields.io/badge/${enc(covBadge.label)}-${enc(covBadge.message)}-16a34a?style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)`);
+    expect(readme).toContain(`(https://img.shields.io/badge/${enc(dafnyBadge.label)}-${enc(dafnyBadge.message)}-16a34a?style=flat-square)`);
+    // No badge asks shields.io to fetch a file from the repository at view time.
+    expect(readme).not.toMatch(/img\.shields\.io\/(endpoint|badge\/dynamic)/);
     expect(existsSync(new URL("../docs/badges/coverage.json", import.meta.url))).toBe(true);
     const cov = JSON.parse(readFileSync(new URL("../docs/evidence/coverage.json", import.meta.url), "utf8")) as { run: { commit: string; result: { passed: number; failed: number; skipped: number } } };
     const r = cov.run.result;
@@ -84,7 +92,11 @@ describe("README badges", () => {
     expect(formal).toContain("**1,102,845 distinct states**");
     expect(formal).toContain("**No error.**");
     expect(qualityLine).toContain("(docs/evidence/formal-model.md)");
-    expect(qualityLine).toContain("[![Dafny: verified](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/agamemnon-coder/x402-business-agents/main/docs/badges/dafny.json&style=flat-square)](docs/evidence/formal-proofs.md)");
+    {
+      const enc = (t: string) => encodeURIComponent(t.replace(/-/g, "--").replace(/_/g, "__"));
+      const d = JSON.parse(readFileSync(new URL("../docs/badges/dafny.json", import.meta.url), "utf8")) as { label: string; message: string };
+      expect(qualityLine).toContain(`[![Dafny: verified](https://img.shields.io/badge/${enc(d.label)}-${enc(d.message)}-16a34a?style=flat-square)](docs/evidence/formal-proofs.md)`);
+    }
     // The proof strip heads "The proof", under the centred top.
     const stripAt = lines.findIndex((l) => l.startsWith('<a href="https://kit11.max-31b.workers.dev/proof"><picture>'));
     expect(stripAt).toBe(lines.indexOf("## The proof") + 2);
