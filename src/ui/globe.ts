@@ -74,7 +74,7 @@ export const globeScript = (o: GlobeOptions): string => `
   // The arcs: from the first green place to each other, a great circle lifted off the sphere in the middle.
   var ARCS = [], O = PLACES.filter(function (p) { return p[3]; })[0];
   if (O) PLACES.forEach(function (p) { if (p === O) return; var a = unit(O[0], O[1]), b = unit(p[0], p[1]), d = Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]))), pts = [];
-    for (var i = 0; i <= 48; i++) { var t = i / 48, sa = Math.sin((1 - t) * d) / Math.sin(d), sb = Math.sin(t * d) / Math.sin(d), h = 1 + 0.32 * Math.sin(Math.PI * t); pts.push([(a[0] * sa + b[0] * sb) * h, (a[1] * sa + b[1] * sb) * h, (a[2] * sa + b[2] * sb) * h]); }
+    for (var i = 0; i <= 48; i++) { var t = i / 48, sa = Math.sin((1 - t) * d) / Math.sin(d), sb = Math.sin(t * d) / Math.sin(d), h = 1 + 0.5 * Math.sin(Math.PI * t); pts.push([(a[0] * sa + b[0] * sb) * h, (a[1] * sa + b[1] * sb) * h, (a[2] * sa + b[2] * sb) * h]); }
     ARCS.push(pts); });
   var still = matchMedia("(prefers-reduced-motion: reduce)").matches, dark = matchMedia("(prefers-color-scheme: dark)");
   var pts = [], W = 0, H = 0, dpr = 1, raf = 0, seen = true, t0 = 0, lastF = 0, emaF = 0, nF = 0, txt = [], ink = [167, 139, 250], lite = false;
@@ -160,7 +160,7 @@ export const globeScript = (o: GlobeOptions): string => `
       if (R >= 80 && P[2]) {
         // Outward from the globe's middle first, then the other side, below, above; never on words or another label.
         var w = g.measureText(P[2]).width + 16, out = vx >= cx, tries = [[out ? vx + 12 : vx - 12 - w, vy], [out ? vx - 12 - w : vx + 12, vy], [vx - w / 2, vy + 22], [vx - w / 2, vy - 22]], lx = 0, ly = 0, fit = false;
-        for (var u = 0; u < tries.length && !fit; u++) { lx = Math.max(4, Math.min(W - w - 4, tries[u][0])); ly = Math.max(14, Math.min(H - 14, tries[u][1])); var hit = false;
+        for (var u = 0; u < tries.length && !fit; u++) { lx = Math.max(12, Math.min(W - w - 12, tries[u][0])); ly = Math.max(14, Math.min(H - 14, tries[u][1])); var hit = false;
           for (var v1 = 0; v1 < placed.length; v1++) { var o2 = placed[v1]; if (lx < o2[0] + o2[2] + 4 && lx + w + 4 > o2[0] && Math.abs(ly - o2[1]) < 24) hit = true; }
           for (var v2 = 0; v2 < txt.length && !hit; v2++) { var T = txt[v2]; if (lx < T[2] && lx + w > T[0] && ly - 11 < T[3] && ly + 11 > T[1]) hit = true; }
           fit = !hit; }

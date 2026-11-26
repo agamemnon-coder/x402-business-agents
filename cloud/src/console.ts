@@ -635,7 +635,7 @@ function signInView(){
   b.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note(t('cs.slug_rule'),'bad'));return}
     b.disabled=true;try{await signIn(s,status);try{localStorage.setItem('purser.cloud.slug',s)}catch(e){}go('#/overview')}catch(e){if(!(e instanceof Expired))status.replaceChildren(note(e.name==='NotAllowedError'?t('cs.passkey_cancelled'):e.message,'bad'))}finally{b.disabled=false}};
   slug.onkeydown=(e)=>{if(e.key==='Enter')b.click()};
-  view().replaceChildren(card);slug.focus();
+  view().replaceChildren(card);slug.focus({preventScroll:true});
 }
 
 // --- A passkey made and enrolled: two prompts, one to make it, one to prove it by signing the enrolment's secret ----
