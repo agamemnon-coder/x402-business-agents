@@ -132,6 +132,8 @@ interface PlatformTerms {
   amount?: unknown;
   currency?: unknown;
   paying_account?: { id?: unknown } | null;
+  /** The paying legal entity's own account (src/policy/entities.ts), when the company holds several entities. */
+  funding_account?: { id?: unknown } | null;
   platform_fee?: { amount?: unknown; currency?: unknown; bps?: unknown; to_account?: unknown } | null;
 }
 
@@ -147,7 +149,10 @@ export function checkPayingAccount(db: DB, t: PlatformTerms, rail: { payingAccou
   const bound = boundAccount(db, now, env, "nothing is paid");
   const expected = bound?.account_id ?? null;
   if (signed !== expected) throw new Error(`the terms were signed for payment from ${signed ?? own}, but the company's bound account is ${expected ?? own}; nothing is paid`);
-  if (acting !== expected) throw new Error(`the terms were signed for payment from ${signed ?? own}, but this runner pays from ${acting ?? own}; nothing is paid`);
+  // A legal entity's payment (src/policy/entities.ts) is made from that entity's own account, the one the CFO signed
+  // for: the rail must act for it (x-on-behalf-of), never for another entity's account or the company's default one.
+  const funding = typeof t.funding_account?.id === "string" ? t.funding_account.id : null;
+  if (acting !== (funding ?? expected)) throw new Error(`the terms were signed for payment from ${funding ?? signed ?? own}, but this runner pays from ${acting ?? own}; nothing is paid`);
   const fee = t.platform_fee;
   if (fee) {
     if (!bound || !platformFeeOn(env)) throw new Error("the terms carry a Purser fee, but Purser's fee is switched off; nothing is paid");

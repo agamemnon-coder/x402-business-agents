@@ -26,6 +26,8 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   // Supplier payouts: less held back for the fee loosens; any other funding currency is a change for Face ID.
   if (c.key.startsWith("fee_reserve.")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
+  // Which legal entity an agent may pay from (src/policy/entities.ts): allowing one loosens, blocking it tightens.
+  if (c.key.startsWith("pay_from.")) return c.from !== "allowed" && c.to === "allowed";
   if (c.key === "freeze" || c.key.startsWith("stop.") || c.key.startsWith("pause.")) return c.from === "on" && c.to !== "on";
   return true;
 }

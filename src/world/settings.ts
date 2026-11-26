@@ -6,7 +6,10 @@ import { WINDOW_MAX_DAYS, WINDOW_MIN_DAYS } from "../config/checkNumbers.js";
 import { FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
 import type { PolicyKey } from "../policy/rules.js";
 
-export type SettingKey = "sell_price" | "upstream_price" | "ridgeline_price" | "stockline_price_rise" | "ridgeline_maintenance_until" | "sourcing.buy_policy" | "usd_floor" | "eur_floor" | "eur_obligations" | "payout.funding_currency" | "fx.max_markup_bps" | "ap.alone_eur" | "ap.split_days" | "ap.twin_days" | "ap.near_twin_days" | PlatformSettingKey | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | WorldOptionKey | PolicyKey;
+export type SettingKey = "sell_price" | "upstream_price" | "ridgeline_price" | "stockline_price_rise" | "ridgeline_maintenance_until" | "sourcing.buy_policy" | "usd_floor" | "eur_floor" | "eur_obligations" | "payout.funding_currency" | "fx.max_markup_bps" | "ap.alone_eur" | "ap.split_days" | "ap.twin_days" | "ap.near_twin_days" | PlatformSettingKey | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | WorldOptionKey | PolicyKey | EntitySettingKey;
+
+/** A legal entity of the company and its funding account (src/policy/entities.ts registerEntity). */
+export type EntitySettingKey = `entity.${string}`;
 
 /** A world's own options, set once on a fresh world (npm run world -- setup), read by code; no agent tool writes them. */
 /** Purser as an Airwallex platform (docs/airwallex-platform.md). */

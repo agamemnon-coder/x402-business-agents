@@ -38,13 +38,22 @@ export function aloneLimitRecord(db: DB, beforeSeq = Number.MAX_SAFE_INTEGER): A
     return valid(payload.value) && payload.label === SYSTEM_DEFAULT_LABEL ? { currency: "EUR", amount: payload.value, source: { kind: "system_default", label: SYSTEM_DEFAULT_LABEL }, seq: last.seq } : null;
   }
   if (last.event !== "policy.changed" || !valid(payload.to) || typeof payload.proposal_id !== "string") return null;
-  const p = db.prepare("SELECT kind, status, terms_json FROM proposals WHERE proposal_id = ?").get(payload.proposal_id) as { kind: string; status: string; terms_json: string } | undefined;
-  if (!p || p.kind !== "policy_change" || p.status !== "EXECUTED") return null;
-  let to: unknown;
-  try { to = (JSON.parse(p.terms_json) as { kind?: unknown; changes?: { key?: unknown; to?: unknown }[] }).changes?.find((c) => c.key === ALONE_KEY)?.to; } catch { return null; }
-  if (to !== payload.to) return null;
-  const a = db.prepare("SELECT method FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(payload.proposal_id) as { method: string } | undefined;
-  return a?.method === "passkey" ? { currency: "EUR", amount: payload.to, source: { kind: "signed", proposal_id: payload.proposal_id }, seq: last.seq } : null;
+  return signedPolicyChange(db, payload.proposal_id, ALONE_KEY, payload.to) ? { currency: "EUR", amount: payload.to, source: { kind: "signed", proposal_id: payload.proposal_id }, seq: last.seq } : null;
+}
+
+/**
+ * Whether policy_change `proposalId` set `key` to exactly `to`, ran (EXECUTED) and was approved with a passkey: the CFO
+ * signed that value. Reads the ledger only. Also the rule for which legal entity an agent may pay from
+ * (src/policy/entities.ts).
+ */
+export function signedPolicyChange(db: DB, proposalId: string, key: string, to: string): boolean {
+  const p = db.prepare("SELECT kind, status, terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { kind: string; status: string; terms_json: string } | undefined;
+  if (!p || p.kind !== "policy_change" || p.status !== "EXECUTED") return false;
+  let signed: unknown;
+  try { signed = (JSON.parse(p.terms_json) as { kind?: unknown; changes?: { key?: unknown; to?: unknown }[] }).changes?.find((c) => c.key === key)?.to; } catch { return false; }
+  if (signed !== to) return false;
+  const a = db.prepare("SELECT method FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId) as { method: string } | undefined;
+  return a?.method === "passkey";
 }
 
 /** The limit in force now: the record's, and only while the setting still holds that value. */

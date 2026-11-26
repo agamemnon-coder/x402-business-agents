@@ -28,6 +28,7 @@ import { originJson } from "../provenance/origin.js";
 import { freeCents, type PlatformFields, type SupplierPaymentTerms } from "../payouts/plan.js";
 import { platformFeeOn } from "../airwallex/platform.js";
 import { checkPayingAccount } from "../airwallex/binding.js";
+import { entityRefusal } from "../policy/entities.js";
 import { REFUSED_AT_CREATE } from "./invoicePayment.js";
 
 const hold = holdPayout;
@@ -157,6 +158,9 @@ function holdReason(db: DB, t: SupplierPaymentTerms, at: Date): string | null {
   // this currency over Airwallex (red team round 3: a revoked agent still paid suppliers).
   const denied = authorize(db, "treasury", { rail: "airwallex", currency: t.currency, payee: "beneficiaries" }, at);
   if (denied) return `${denied}; nothing is paid`;
+  // The paying legal entity (src/policy/entities.ts), as for Kit 11's payments.
+  const entity = entityRefusal(db, t, "treasury");
+  if (entity) return `${entity}; nothing is paid`;
   const b = db.prepare("SELECT status, currency FROM beneficiaries WHERE beneficiary_id = ?").get(t.beneficiary_id) as { status: string; currency: string } | undefined;
   if (!b || b.status !== "ACTIVE") return `the approved account of ${t.beneficiary_name} is no longer the one on file; nothing is paid (a new proposal pays it)`;
   if (b.currency !== t.currency) return `the approved account receives ${b.currency}, not ${t.currency}; nothing is paid`;

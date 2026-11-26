@@ -12,9 +12,10 @@ import { cardLimitsFrom } from "./cardRules.js";
 import { airiRailOn, airiRuleDefs } from "../airi/policy.js";
 import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
 import { FEE_BPS_CAP, platformFeeOn } from "../airwallex/platform.js";
+import { payFromRule, payFromRules } from "./entities.js";
 
 export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | "approval.second_key_eur" | "approval.second_key_new_payee" | "approval.second_key_bank_changed" | "approval.second_key_new_country" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
-  | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps" | "ap.alone_eur";
+  | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps" | "ap.alone_eur" | `pay_from.${string}`;
 
 export interface Rule {
   key: PolicyKey;
@@ -134,6 +135,8 @@ export const ALONE_RULE: Rule = {
 export function ruleFor(db: DB, key: string): Rule | undefined {
   if (key === "platform.fee_bps") return PLATFORM_FEE_RULE;
   if (key === ALONE_RULE.key) return ALONE_RULE;
+  // Which legal entity an agent may pay from (src/policy/entities.ts): only for an entity the company holds.
+  if (key.startsWith("pay_from.")) return payFromRule(db, key) ?? undefined;
   return payoutRule(key) ?? rules(db).find((r) => r.key === key);
 }
 
@@ -162,7 +165,8 @@ export function rules(db: DB): Rule[] {
   const platform = platformFeeOn() || db.prepare("SELECT 1 FROM settings WHERE key = 'platform.fee_bps'").get() ? [PLATFORM_FEE_RULE] : [];
   // The limit to pay alone (ap.alone_eur): shown once it is set (a test company's default, or one the CFO signed).
   const alone = db.prepare("SELECT 1 FROM settings WHERE key = 'ap.alone_eur'").get() ? [ALONE_RULE] : [];
-  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform, ...alone];
+  // Which legal entity each agent may pay from: one rule per entity and agent, once the company holds entities.
+  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform, ...alone, ...payFromRules(db)];
 }
 
 /**

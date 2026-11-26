@@ -21,6 +21,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { checkPayingAccount } from "../airwallex/binding.js";
+import { entityRefusal } from "../policy/entities.js";
 import { applicationFeeOf, noteApplicationFee, takePlatformFee } from "./supplierPayment.js";
 import type { PlatformFields, SupplierPaymentTerms } from "../payouts/plan.js";
 import { partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
@@ -194,7 +195,11 @@ export function holdReason(db: DB, t: InvoicePaymentTerms, at: Date): string | n
   if (paused(db, "treasury")) return "the treasury agent is paused by the CFO; nothing is paid until the CFO resumes it with Face ID";
   // The treasury agent's identity (B5): still active, and allowed to pay a bank beneficiary in euros over Airwallex.
   const denied = authorize(db, "treasury", { rail: "airwallex", currency: "EUR", payee: "beneficiaries" }, at);
-  return denied ? `${denied}; nothing is paid` : null;
+  if (denied) return `${denied}; nothing is paid`;
+  // The paying legal entity (src/policy/entities.ts): still one the CFO lets this agent pay from, funded from its own
+  // account; a company without entities passes untouched.
+  const entity = entityRefusal(db, t, "treasury");
+  return entity ? `${entity}; nothing is paid` : null;
 }
 
 /**
