@@ -325,6 +325,8 @@ describe("the agent: read-only tools over the docs and the demo company", () => 
     const steps = a.events.filter((e) => e.type === "step");
     expect(steps.map((e) => e.state)).toEqual(["run", "done"]);
     expect(steps[1]).toMatchObject({ tool: "pending_approvals", label: "Read what waits for the CFO", ok: true });
+    // The terminal view (26 Nov) shows each call with its input as plain words: this one had none.
+    expect(steps[1]!.args).toBe("");
     expect(String(steps[1]!.detail)).toMatch(/^\d+ waiting$/);
     const src = a.events.find((e) => e.type === "source")!.source as { n: number; kind: string; title: string };
     expect(src).toMatchObject({ kind: "data", title: "Demo company · What waits for the CFO's approval" });
@@ -533,6 +535,10 @@ describe("the page and its button", () => {
       expect(html).toContain('<ul class="cx" aria-label="Reads from">');
       for (const c of ASK_CONNECTIONS) expect(html).toContain(`title="${c.name}: `);
       for (const c of ASK_CONNECTIONS.filter((x) => x.key !== "claude")) expect(c.what).toMatch(/read only/);
+      // The terminal (26 Nov, Max: "also have a terminal"): a toggle and a pane that shows this chat's tool calls as text;
+      // it has no input of its own, so nothing typed there can run.
+      expect(html).toContain('id="tterm" type="button" aria-pressed="false" aria-controls="term"');
+      expect(/<section class="term" id="term"[\s\S]*?<\/section>/.exec(html)![0]).not.toMatch(/<input|<textarea|contenteditable/);
       expect(html).not.toContain("Try asking");
       expect(html).toContain('id="file"');
       expect(html).toContain(ASK_PAGE_COPY.statusDocs);
