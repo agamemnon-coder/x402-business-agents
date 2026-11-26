@@ -27,7 +27,7 @@ import { ASK_TOOLS, localRead, resultForPeople, runAskTool, TOOLS_PER_QUESTION, 
 /** A tool's input as the terminal view shows it ("id=AP-0005 status=waiting_cfo"): plain keys and short scalar values only, as text. */
 const argWords = (input: unknown): string => !input || typeof input !== "object" ? "" : Object.entries(input as Record<string, unknown>)
   .filter(([k, v]) => /^[a-z_]{1,24}$/.test(k) && ["string", "number", "boolean"].includes(typeof v))
-  .slice(0, 4).map(([k, v]) => `${k}=${String(v).replace(/[\u0000-\u001f\u007f]/g, " ").slice(0, 40)}`).join(" ");
+  .slice(0, 4).map(([k, v]) => `${k}=${String(v).replace(/\p{Cc}/gu, " ").slice(0, 40)}`).join(" ");
 
 export const ASK_ROUTE = "POST /v1/ask";
 /** The body at most: a question, the last turns, and a 5 MB file as base64. */
