@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Purser alongside Airwallex AgentOS
+
+**AgentOS reads and prepares, and leaves transfers and FX to people; Purser governs that step with the CFO's passkey.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Not an official integration; no partnership with Airwallex](https://img.shields.io/badge/official_integration-no_%C2%B7_no_partnership-f43f5e?style=flat-square&labelColor=1f2937)](#purser-alongside-airwallex-agentos)&nbsp;[![Purser has not been run against AgentOS live](https://img.shields.io/badge/run_with_AgentOS_live-not_yet-f59e0b?style=flat-square&labelColor=1f2937)](#what-is-checked-and-what-needs-live-access-or-airwallex)&nbsp;[![route_money_out: read-only, files nothing](https://img.shields.io/badge/route__money__out-read--only_%C2%B7_files_nothing-8b5cf6?style=flat-square&labelColor=1f2937)](#the-tool-built-for-this-route_money_out)&nbsp;[![Money out: the CFO's Face ID over the exact terms](https://img.shields.io/badge/money_out-the_CFO%27s_Face_ID_over_the_exact_terms-8b5cf6?style=flat-square&labelColor=1f2937)](#who-does-what)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[What AgentOS is](#what-agentos-is) · [Who does what](#who-does-what) · [route_money_out](#the-tool-built-for-this-route_money_out) · [Both in one client](#running-both-in-one-client) · [A worked flow](#a-worked-flow) · [A second lock](#airwallexs-own-approval-as-a-second-lock) · [What is checked](#what-is-checked-and-what-needs-live-access-or-airwallex)
+
+</div>
 
 Airwallex AgentOS lets an agent in Claude, Cursor or Codex read an Airwallex account and prepare work in it. It leaves
 transfers, payouts and FX conversions to people. Purser handles exactly that step: the agent proposes, Purser checks
@@ -102,6 +114,29 @@ and checked. `route_money_out` connects the two. It is a read-only tool that eve
 - **The invoices that fit**, with each one's next tool.
 - **How Purser would approve and pay it**, in one sentence.
 
+```mermaid
+flowchart LR
+  ASK["kind, invoice_id, payee,<br/>amount, currency"] --> R{"route_money_out<br/>read-only"}
+  R --> P["propose<br/>call propose_invoice_payment"]
+  R --> W["waiting_cfo<br/>do not file it again"]
+  R --> NS["new_supplier<br/>the CFO approves the supplier first"]
+  R --> H["held<br/>a person looks first"]
+  R --> PD["paid<br/>do not pay it again"]
+  R --> CH["choose<br/>ask the user which"]
+  R --> NI["needs_invoice<br/>nothing can be filed"]
+  R --> NP["not_in_purser<br/>a person, in Airwallex's app"]
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  class R purser
+  class P,PD ok
+  class W,NS,H,CH wait
+  class NI stop
+  class NP rails
+```
+
 It never files, approves or moves anything. The code is in [`cloud/src/claude/mcp.ts`](../cloud/src/claude/mcp.ts).
 
 Two more changes make the hand-off reliable:
@@ -162,6 +197,27 @@ itself always reads a production account.
    books it, and keeps the audit trail. "Using Purser, explain the payment to Bergtex" then shows the proof.
 5. "Convert USD 10,000 to EUR." `route_money_out` answers `not_in_purser`: Purser buys currency only inside a supplier
    payment it files. A conversion on its own stays with a person in Airwallex's app, as AgentOS says.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as You
+  participant AO as AgentOS
+  participant P as Purser /mcp
+  participant C as The CFO
+  U->>AO: are we short of EUR this week?
+  AO-->>U: balances, obligations, indicative rates
+  U->>AO: pay Bergtex's invoice
+  AO-->>U: refused: its hard gate
+  rect rgba(139, 92, 246, 0.14)
+    U->>P: using Purser, route the payment
+    P-->>U: route propose, AP-…
+    U->>P: propose_invoice_payment
+    P-->>U: filed, nothing paid until the CFO approves
+  end
+  C->>P: Face ID over the exact terms
+  P-->>U: paid and booked, explain_payment shows the proof
+```
 
 ## Airwallex's own approval as a second lock
 
