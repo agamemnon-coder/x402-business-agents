@@ -4,7 +4,7 @@
 
 import { fourEyes } from "../policy/fourEyes.js";
 import { createHash, createHmac } from "node:crypto";
-import { buildSnapshot, parseReview, PAYEE_NAMES, type Pending, type Snapshot } from "../dashboard/snapshot.js";
+import { buildSnapshot, parseReview, PAYEE_NAMES, policySimulation, type Pending, type Snapshot } from "../dashboard/snapshot.js";
 import type { DB } from "../db/open.js";
 import { canonicalTerms, type Terms } from "../lib/terms.js";
 import { openWindow } from "../passkey/ledger.js";
@@ -33,6 +33,11 @@ export interface RelayProposal {
    * (code accepted its plan; the CFO decides). Absent when code made the plan.
    */
   agent_advice?: { agent: string; model: string | null; recommends: boolean; text: string; verdict?: string };
+  /**
+   * A policy change only: what would have happened had it been in force over the last 30 days (src/policy/simulate.ts,
+   * a read-only replay). Signed by the runner with the rest of the state; never part of the terms the passkey signs.
+   */
+  simulation?: string;
 }
 
 export interface RelayEnrolment {
@@ -150,6 +155,7 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
       proposal_id: p.proposal_id, kind: p.kind, group, canonical, terms_sha256: p.terms_sha256, expires_at: p.expires_at,
       created_by: p.created_by, created_at: p.created_at, review: parseReview(p.explanation), warnings,
       ...(advice ? { agent_advice: advice } : {}),
+      ...policySimulation(db, p, now),
       ...(twoPeople ? { four_eyes: { approved_by: (db.prepare("SELECT person FROM cosignatures WHERE proposal_id = ? ORDER BY created_at").all(p.proposal_id) as { person: string }[]).map((x) => x.person) } } : {}),
     };
   });

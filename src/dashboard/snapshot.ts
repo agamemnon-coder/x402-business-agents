@@ -20,6 +20,7 @@ import { callCostMicros } from "../claude/pricing.js";
 import { formatUnits } from "viem";
 import { quarantineReason } from "../policy/quarantine.js";
 import { cardLimits, frozen, policyValue } from "../policy/rules.js";
+import { simulationLine } from "../policy/simulate.js";
 import { policyAllowsCard, wantCardStatus } from "../policy/cards.js";
 import { stopReason } from "../policy/velocity.js";
 import { lastReconciliation } from "../finance/reconcile.js";
@@ -78,6 +79,11 @@ export interface Pending {
   expired: boolean;
   terms_sha256: string;
   review: { model: string | null; recommendation: string; text: string } | null;
+  /**
+   * A policy change only: what would have happened had it been in force over the last 30 days (src/policy/simulate.ts),
+   * one line. Shown beside the change, never part of the terms the passkey signs.
+   */
+  simulation?: string;
 }
 
 export interface Decision {
@@ -380,6 +386,13 @@ export function summarize(kind: string, termsJson: string): string {
     return changes.map((c) => `${str(c.label)}: ${str(c.from) || "no extra limit"} → ${str(c.to) || "no extra limit"}`).join("; ");
   }
   return kindTitle(kind);
+}
+
+/** A waiting policy change's replay over the last 30 days (src/policy/simulate.ts), as the field the page shows; read-only. */
+export function policySimulation(db: DB, p: { kind: string; terms_json: string }, now: Date): { simulation?: string } {
+  if (p.kind !== "policy_change") return {};
+  const line = simulationLine(db, p.terms_json, now);
+  return line ? { simulation: line } : {};
 }
 
 /** Passkey labels that are virtual test passkeys by this repository's convention; their words are signerLabel's. */
@@ -1255,6 +1268,7 @@ export function buildSnapshot(db: DB, now = new Date()): Snapshot {
       proposal_id: p.proposal_id, kind: p.kind, title: kindTitle(p.kind), summary: summarize(p.kind, p.terms_json),
       created_by: p.created_by, created_at: p.created_at, expires_at: p.expires_at, expired: Date.parse(p.expires_at) <= now.getTime(),
       terms_sha256: p.terms_sha256, review: parseReview(p.explanation),
+      ...policySimulation(db, p, now),
     }))
     .sort((a, b) => Number(a.expired) - Number(b.expired));
 

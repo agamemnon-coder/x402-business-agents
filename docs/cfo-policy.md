@@ -20,6 +20,17 @@ at once. `npm run policy` shows the policy and proposes changes from a terminal 
 0.03 --reason "…"`), to approve on the phone or the laptop page. Every change is a `policy.changed` row in the audit
 log; the dashboard shows the policy limit beside each mandate's cap.
 
+### What would have happened (the policy simulator)
+
+Before signing, the CFO sees what the change would have done to the recent payments. `npm run policy -- simulate
+<key>=<value> ... [--since YYYY-MM-DD]` replays the period's supplier payments (the last 30 days by default) under the
+policy now and with the change, with Purser's own decision code, and lists each payment that would change: now paid
+alone, now needing the CFO, or now refused, with why. Example: `npm run policy -- simulate ap.alone_eur=1000.00
+"counterparty:Bergtex Textil GmbH=blocked"` (`none` removes an optional limit). A waiting policy change shows the same
+one line on the runner's dashboard and on the phone's approval page ("If this had been in force since …: N payments
+would have …"); it is not part of the terms the passkey signs. The replay writes nothing and calls nothing; what it
+cannot know (an agent's judgement) is in [governance.md](governance.md#before-the-cfo-signs-a-policy-change-what-would-have-happened).
+
 ## The Agents page
 
 The dashboard's **Agents** tab (`?agents`, also in the recorded run as `?recorded&agents`) shows each agent on one

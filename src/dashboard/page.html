@@ -911,6 +911,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       nodes.push(el("div", "ask" + (advisedNo ? " advise-reject" : ""), [
         el("div", "what", [icon(/card|policy/.test(p.kind) ? "sliders-horizontal" : p.kind === "invoice_payment" ? "landmark" : "file-check"), (p.kind === "invoice_payment" ? "Bank transfer · SWIFT, not a card · " : "") + p.title + " · from " + agentName(p.created_by).toLowerCase()]),
         txt("div", "title", plain(p.summary)),
+        // A policy change: Purser's replay of the last 30 days' payments under it (src/policy/simulate.ts), not part of what is signed.
+        p.simulation ? txt("p", "review", p.simulation + " A read-only replay of past payments; not part of what you sign.") : null,
         p.review ? txt("p", "review", (p.review.model ? "Opus, advisory: " : "Review: ") + p.review.text) : null,
         el("div", "row", [review, exp]),
       ]));

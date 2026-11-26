@@ -84,6 +84,32 @@ The same path, one payment at a time (animated, drawn from the code's own steps)
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/payment-life-wide-dark.svg"><img src="assets/payment-life-wide-light.svg" alt="One payment's life: invoice, read by Claude, checked by Purser's code, the exact terms hashed, signed by the CFO's Face ID, checked again by the rail's own control, paid, booked. Sandbox and testnet runs, test money." width="100%"></picture>
 
+## Before the CFO signs a policy change: what would have happened
+
+Purser replays the recent supplier payments under the proposed rules before the CFO signs them, and says what would
+have gone differently: `simulatePolicyChange` ([src/policy/simulate.ts](../src/policy/simulate.ts)). It reads the
+period's invoice and supplier payments from the ledger and runs Purser's own decision code twice, under the policy in
+force and under the proposed one: the executors' holds (a blocked payee, the paying entity, the emergency stop, a
+stopped or paused agent: refused), then what `approveWithinLimit` checks before code pays alone (the limit to pay
+alone in integer cents, four eyes, the second key, the anomaly hold over the payee's history as it stood then: the
+CFO). Each payment gets its before and after, and the counts: would now need the CFO, would now be paid alone, would
+now be refused, unchanged.
+
+- **Where it shows:** `npm run policy -- simulate ap.alone_eur=1000.00 [--since 2026-11-01]` (each payment that would
+  change, with why; the last 30 days by default); after `npm run policy -- set`; on the runner's dashboard and on the
+  phone's approval page beside a waiting policy change ("If this had been in force since 2026-10-27: 2 payments would
+  have been paid alone instead of by the CFO; 14 unchanged (16 replayed).").
+- **Not signed:** the line sits beside the change. The passkey signs the same terms hash as before; the phone shows the
+  line under "Purser's replay of past payments, not part of what you sign" (signed by the runner's display key with
+  the rest of the relayed state, like the Opus review).
+- **Read-only and deterministic:** SELECTs only, no rail, no model, no audit row. The test checks the ledger file is
+  byte-identical after a run ([test/policy-simulate.test.ts](../test/policy-simulate.test.ts)).
+- **What it cannot replay:** an agent's judgement. A payment filed outside the payables inbox stays with the CFO (only
+  an inbox invoice is ever paid alone), as does one the Checker, the Payer, the cash check or a task mandate declined,
+  or one whose invoice carries a finding that sends it to the CFO. A payment that went to the CFO only because it was
+  above the limit is assumed to pass the agents and the cash check under a higher limit: "would have been paid alone"
+  means Purser's rules would have allowed it.
+
 ## What is not done
 
 Said plainly, so no row above reads as more than it is.
