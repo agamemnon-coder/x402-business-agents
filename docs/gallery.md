@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Gallery
+
+**Purser in pictures: the site, the phone, the console and four animations, light or dark as your GitHub is.**
+
+[![Pictures from the site and the records](https://img.shields.io/badge/pictures-from_the_site_and_the_records-8b5cf6?style=flat-square&labelColor=1f2937)](#gallery)&nbsp;[![Four animations, CSS only, still under reduced motion](https://img.shields.io/badge/animations-4_%C2%B7_CSS_only_%C2%B7_still_under_reduced_motion-0ea5e9?style=flat-square&labelColor=1f2937)](#animations)&nbsp;[![Light and dark, as your GitHub is](https://img.shields.io/badge/themes-light_%C2%B7_dark-10b981?style=flat-square&labelColor=1f2937)](#gallery)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[The pictures](#gallery) · [Animations](#animations) · [See it](see-it.md) · [Charts](charts.md) · [/try](https://kit11.max-31b.workers.dev/try)
+
+</div>
 
 Moved from the [README](../README.md) on 15 November, to keep it short.
 
@@ -18,3 +30,16 @@ Moved from the [README](../README.md) on 15 November, to keep it short.
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/stats-dark.svg"><img src="assets/readme/stats-light.svg" alt="Four figures from the records: 10,239 tests passing in the last full run (docs/assets/test-summary.json); 24 Claude decisions and 86 Alta payments in the main run of 3 November; 0 wrong payments in the worst-case AI test" width="100%"></picture>
 
 *Four figures from the records: the last full test run, and the main run of 3 November (Claude's decisions and the Alta payments in that run; the worst-case AI test of 15 Nov). Newer figures: the proof strip and /proof's evidence wall.*
+
+## Animations
+
+Drawn from their records by `npm run docs:anim` ([scripts/docs-anim.ts](../scripts/docs-anim.ts)); still for a
+reader who asks for reduced motion.
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/money-path-dark.svg"><img src="assets/anim/money-path-light.svg" alt="Animated: one payment's path. An AI agent proposes; Purser's checks in code; above the limit the CFO's passkey (Face ID) signs the exact terms; the rail's own control (Airwallex, Alta); then the books. Each step can stop the payment. Test money only." width="100%"></picture>
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/one-cent-dark.svg"><img src="assets/anim/one-cent-light.svg" alt="Animated: one changed cent breaks the signature. EUR 1,850.00 to Bergtex Textil GmbH hashes to f168e40f…ec5d, which the CFO's passkey signed: paid. The same signature sent with EUR 1,850.01 hashes to aa4e2b59…0aca: refused. The /try samples of 15 Nov 2026, test money." width="100%"></picture>
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/hash-chain-dark.svg"><img src="assets/anim/hash-chain-light.svg" alt="Animated: the books as a hash chain. Entries 3 to 6 of the /try payment, each hash over the previous one; change one entry and every hash after it breaks. Test money." width="100%"></picture>
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/emergency-stop-dark.svg"><img src="assets/anim/emergency-stop-light.svg" alt="Animated: the emergency stop. One Face ID sets freeze; every agent payment is refused and every agent card is set INACTIVE at Airwallex, so a charge declines CARD_INACTIVE. Tested against stand-ins; CARD_INACTIVE checked live on a single card; the full stop has not been pulled live end to end." width="100%"></picture>
