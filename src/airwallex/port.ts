@@ -100,6 +100,8 @@ export interface NewTransfer {
   approvalSha256: string;
   /** Purser as a platform: its fee, taken by Airwallex with this payout (application_fee_options). */
   applicationFee?: ApplicationFee;
+  /** A payment of negotiated terms (src/negotiate): the agreement's SHA-256, sent in metadata beside approval_sha256. */
+  agreementSha256?: string;
 }
 
 /**

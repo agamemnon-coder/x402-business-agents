@@ -100,6 +100,7 @@
     "airwallex:card-drill": "tsx src/cli/airwallexCardDrill.ts",
     "airwallex:stop-drill": "tsx src/cli/airwallexStopDrill.ts",
     "airwallex:governance-live": "tsx src/cli/airwallexGovernanceLive.ts",
+    "airwallex:money-loop-live": "tsx src/cli/moneyLoopLive.ts",
     "audit:checkpoint-drill": "tsx src/cli/auditCheckpointDrill.ts",
     "airwallex:replay": "tsx src/cli/airwallexReplay.ts",
     "tamper-matrix": "tsx src/cli/tamperMatrix.ts",

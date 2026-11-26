@@ -26,7 +26,7 @@ import { checkPayingAccount } from "../airwallex/binding.js";
 import { entityRefusal } from "../policy/entities.js";
 import { applicationFeeOf, noteApplicationFee, takePlatformFee } from "./supplierPayment.js";
 import type { PlatformFields, SupplierPaymentTerms } from "../payouts/plan.js";
-import { partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
+import { negotiationOf, partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
 import { sameLedgerInvoice } from "../lib/invoiceKey.js";
 import { eurInFlightCents } from "../policy/available.js";
 import { exclusive, heldPayoutCents, holdPayout, releasePayout } from "../policy/payoutLock.js";
@@ -417,6 +417,7 @@ function recordTransfer(db: DB, t: InvoicePaymentTerms, tr: Transfer, sha: strin
 const req = (t: InvoicePaymentTerms, sha: string): NewTransfer => ({
   requestId: t.transfer_request_id, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: "EUR", sourceCurrency: "EUR",
   reference: t.reference, reason: t.reason, approvalSha256: sha, ...applicationFeeOf(t as unknown as PlatformFields),
+  ...(negotiationOf(t) ? { agreementSha256: negotiationOf(t)!.agreement_sha256 } : {}),
 });
 
 /**

@@ -1,11 +1,38 @@
 import { CONFUSABLES, skeleton } from "../policy/fraudCore.js";
 
+/** Any dash, with the spaces around it: one "-" in an invoice number as compared. */
+const DASH = /\s*[‐-―−﹘﹣－-]\s*/g;
+
 /**
  * An invoice number as a duplicate check compares it: Unicode-normalised, invisible format characters (zero-width
  * spaces, soft hyphens) removed, upper case, any dash as "-", no spaces around it.
  */
 export function invoiceKey(invoiceNo: string): string {
-  return invoiceNo.normalize("NFKC").replace(/\p{Cf}/gu, "").toUpperCase().replace(/\s*[‐-―−﹘﹣－-]\s*/g, "-").replace(/\s+/g, "");
+  return invoiceNo.normalize("NFKC").replace(/\p{Cf}/gu, "").toUpperCase().replace(DASH, "-").replace(/\s+/g, "");
+}
+
+/**
+ * A payment reference's words, normalised as invoiceKey normalises a number (Unicode, invisible characters, upper case,
+ * any dash as "-") but split wherever a character cannot be part of an invoice number (spaces, punctuation other than
+ * "-" and "/"), with a dash or slash at a word's ends dropped. Review of 26 Nov: a reference names an invoice only as a
+ * whole word, so "NW-1077" never names NW-10.
+ */
+export function referenceTokens(reference: string): string[] {
+  return reference.normalize("NFKC").replace(/\p{Cf}/gu, "").toUpperCase().replace(DASH, "-")
+    .split(/[^\p{L}\p{N}/-]+/u).map((t) => t.replace(/^[-/]+|[-/]+$/g, "")).filter(Boolean);
+}
+
+/** Whether a payment reference names this invoice number as a whole word. */
+export const referenceNames = (reference: string, invoiceNo: string): boolean => referenceTokens(reference).includes(invoiceKey(invoiceNo));
+
+/**
+ * A word of the reference shaped like one of these invoice numbers (the same letters before its first "-" or "/", and
+ * a digit) that is none of them: "NW-1077" when NW-10 and NW-11 are on file. Null when there is none.
+ */
+export function unknownInvoiceWord(reference: string, invoiceNos: readonly string[]): string | null {
+  const keys = new Set(invoiceNos.map(invoiceKey));
+  const prefixes = new Set([...keys].map((k) => /^[\p{L}]+[-/]/u.exec(k)?.[0]).filter((x): x is string => !!x));
+  return referenceTokens(reference).find((t) => !keys.has(t) && /\p{N}/u.test(t) && [...prefixes].some((p) => t.startsWith(p))) ?? null;
 }
 
 /** A decimal digit of any script ("٢", "२", "２") as its value, or null. Unicode keeps each script's 0-9 in one run of ten. */

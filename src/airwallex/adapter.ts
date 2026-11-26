@@ -260,7 +260,7 @@ export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
     const r = await this.api.call<AwxTransfer>("POST", "/transfers/create", {
       request_id: t.requestId, beneficiary_id: t.beneficiaryId, transfer_amount: fromCents(t.amountCents), transfer_currency: t.currency,
       source_currency: t.sourceCurrency, transfer_method: "SWIFT", reference: t.reference, reason: t.reason,
-      metadata: { approval_sha256: t.approvalSha256 }, ...feeOptions(t.applicationFee),
+      metadata: { approval_sha256: t.approvalSha256, ...(t.agreementSha256 ? { agreement_sha256: t.agreementSha256 } : {}) }, ...feeOptions(t.applicationFee),
     });
     return toTransfer(r);
   }

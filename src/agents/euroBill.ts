@@ -135,6 +135,45 @@ export interface InvoicePaymentTerms extends Terms {
   // Purser as a platform adds paying_account and, with its fee on, platform_fee (PlatformFields in src/payouts/plan.ts;
   // absent otherwise, hash unchanged).
   // The payables inbox adds document_total_line and document_currency (see proposeInvoicePayment's `document`).
+  // A payment of terms Purser's Sourcing agent negotiated (src/negotiate) adds `negotiation` (NegotiatedPayment): the
+  // agreement's SHA-256 and what it changed, signed with the rest, and sent to Airwallex in the transfer's metadata
+  // beside approval_sha256 (negotiationOf). Absent otherwise (hash unchanged).
+}
+
+/** The negotiated terms a payment pays (src/negotiate/rails.ts Agreement): the invoice as issued and the agreed deal. */
+export type NegotiatedPayment = {
+  agreement_sha256: string;
+  /** The last signed offer's SHA-256, the head of the offers chain inside the agreement. */
+  transcript_sha256: string;
+  original_invoice_no: string;
+  original_amount: string;
+  agreed_amount: string;
+  discount: string;
+  pay_by: string;
+};
+
+/** The negotiated terms signed payment terms carry, or null (src/negotiate). */
+export const negotiationOf = (t: object): NegotiatedPayment | null => {
+  const n = (t as { negotiation?: unknown }).negotiation;
+  return n && typeof n === "object" && typeof (n as NegotiatedPayment).agreement_sha256 === "string" ? (n as NegotiatedPayment) : null;
+};
+
+/**
+ * Why a negotiated payment's invoice is not the agreement, or null: the invoice must carry the agreement's reference
+ * (its number and the first 8 hex of the hash), exactly the agreed amount in EUR, and a due date no later than the
+ * agreed pay-by day; the discount must be what the invoice as issued less the agreed amount leaves.
+ */
+export function negotiationProblem(inv: Pick<Invoice, "invoice_no" | "amount" | "currency" | "due_date" | "reference">, n: NegotiatedPayment): string | null {
+  if (!/^[0-9a-f]{64}$/.test(n.agreement_sha256) || !/^[0-9a-f]{64}$/.test(n.transcript_sha256)) return "the negotiated terms carry no agreement hash";
+  const ref = `${n.original_invoice_no}-${n.agreement_sha256.slice(0, 8)}`;
+  if (inv.invoice_no !== ref && inv.reference !== ref) return `the invoice ${inv.invoice_no} does not carry the agreement's reference ${ref}`;
+  if (inv.currency !== "EUR") return `the agreement is in EUR, the invoice in ${inv.currency}`;
+  if (inv.amount !== n.agreed_amount) return `the invoice asks EUR ${inv.amount}, the agreement EUR ${n.agreed_amount}; only the agreed amount is paid`;
+  let off: number;
+  try { off = toCents(n.original_amount) - toCents(n.agreed_amount); } catch { return "the negotiated amounts are not money"; }
+  if (!(off > 0) || fromCents(off) !== n.discount) return `the agreement's discount ${n.discount} is not the invoice as issued (EUR ${n.original_amount}) less the agreed EUR ${n.agreed_amount}`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(n.pay_by) || inv.due_date > n.pay_by) return `the invoice is due ${inv.due_date}, after the agreed pay-by day ${n.pay_by}`;
+  return null;
 }
 
 /**
@@ -193,8 +232,10 @@ export async function proposeInvoicePayment(
   gate?: PlanGate,
   /** The legal entity that pays (src/policy/entities.ts), when the company holds several; `rail` acts for its account. */
   payFrom?: string,
+  /** The negotiated terms this invoice pays (src/negotiate), checked against it before any Airwallex call and signed. */
+  negotiated?: NegotiatedPayment,
 ): Promise<InvoiceOutcome> {
-  const refWrong = referenceProblem(inv.reference);
+  const refWrong = referenceProblem(inv.reference) ?? (negotiated ? negotiationProblem(inv, negotiated) : null);
   if (refWrong) {
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: refWrong }, now);
     return { kind: "escalated", reason: refWrong };
@@ -355,7 +396,8 @@ export async function proposeInvoicePayment(
     balances_before: { eur_available: fromCents(s.eurAvailableCents), usd_available: fromCents(s.usdAvailableCents) },
     floors: { eur_floor: fromCents(s.eurFloorCents), eur_obligations: fromCents(s.eurObligationsCents), usd_floor: fromCents(s.usdFloorCents) },
     after: { eur_free: fromCents(Math.max(0, plan.freeEurCents + (quote?.buyAmountCents ?? 0) - plan.needEurCents)), usd_available: fromCents(usdAfter) },
-    evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(invoiceText) }],
+    evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(invoiceText) }, ...(negotiated ? [{ type: "negotiated_terms", ref: negotiated.original_invoice_no, sha256: negotiated.agreement_sha256 }] : [])],
+    ...(negotiated ? { negotiation: { ...negotiated } } : {}),
     ...(pp.paying ? { paying_account: pp.paying } : {}),
     // The paying legal entity and its own funding account, signed with the rest (absent for a single-entity company).
     ...(entity.fields ?? {}),

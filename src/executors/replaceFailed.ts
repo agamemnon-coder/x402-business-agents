@@ -17,7 +17,7 @@
 import { createHash } from "node:crypto";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import type { AirwallexRail, PayoutRail, SandboxSim, Transfer } from "../airwallex/port.js";
-import type { InvoicePaymentTerms } from "../agents/euroBill.js";
+import { negotiationOf, type InvoicePaymentTerms } from "../agents/euroBill.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
@@ -54,6 +54,8 @@ export function replacementRequestId(original: string): string {
 }
 
 const DONE = new Set(["FAILED", "CANCELLED"]);
+/** The failure type of a replacement row Purser closed before its create because a hold was set. */
+const HELD = "held_by_purser";
 /** A person's or Airwallex's own stop that is not a payment failure: approval rejected, recalled or blocked. */
 const NOT_A_FAILURE = new Set(["APPROVAL_REJECTED", "APPROVAL_RECALLED", "APPROVAL_BLOCKED"]);
 const codeOf = (e: unknown) => (e instanceof AirwallexError ? e.code : (e as { code?: string }).code) ?? "";
@@ -95,6 +97,8 @@ async function replace(db: DB, rail: ReplaceRail, sim: SandboxSim | null, propos
   // Replaced before: never a second replacement. One whose outcome is not known yet is looked up by its own request_id.
   const prior = db.prepare("SELECT request_id, transfer_id, status, failure_type FROM transfers WHERE replaces_request_id = ?").get(original) as Row | undefined;
   if (prior) {
+    // Held by Purser right before its create (below): nothing was sent under it, and it is never tried again by code.
+    if (!prior.transfer_id && prior.status === "CANCELLED" && prior.failure_type === HELD) return stop("held", `the replacement ${prior.request_id} was held by Purser before its create; nothing was sent, and it is not tried again (a new proposal pays it)`);
     if (!prior.transfer_id) {
       let found: Transfer | undefined;
       try { found = await rail.findTransferByRequestIdStrict(prior.request_id); } catch { found = undefined; }
@@ -121,7 +125,8 @@ async function replace(db: DB, rail: ReplaceRail, sim: SandboxSim | null, propos
   if (first.status !== "CANCELLED") return stop(NOT_A_FAILURE.has(first.status) ? "cancelled_not_failed" : "not_failed", `Airwallex has it ${first.status}, not failed`);
 
   // Every hold the executor checks, then the floor on fresh balances, before anything is written.
-  const held = kind === "supplier_payment" ? supplierHold(db, t as SupplierPaymentTerms, now()) : invoiceHold(db, t as InvoicePaymentTerms, now()) ?? payeeReason(db, t as InvoicePaymentTerms);
+  const holdNow = () => (kind === "supplier_payment" ? supplierHold(db, t as SupplierPaymentTerms, now()) : invoiceHold(db, t as InvoicePaymentTerms, now()) ?? payeeReason(db, t as InvoicePaymentTerms));
+  const held = holdNow();
   if (held) return stop("held", held);
   const fee = kind === "supplier_payment" ? (t as SupplierPaymentTerms).fee_reserve : (t as InvoicePaymentTerms).fee_max;
   const written = await exclusive(async (): Promise<string | null> => {
@@ -143,10 +148,22 @@ async function replace(db: DB, rail: ReplaceRail, sim: SandboxSim | null, propos
   });
   if (written) return stop(written.startsWith("replaced already") ? "replaced_once" : "floor", written);
 
+  // Review of 26 Nov: the holds again right before the create, so one set during the floor's round-trip (the emergency
+  // stop, a pause, a revocation) stops it. The written row is closed as never sent, and the replacement is spent.
+  const heldAtCreate = holdNow();
+  if (heldAtCreate) {
+    db.transaction(() => {
+      db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = ?, failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")
+        .run(HELD, `not sent: ${heldAtCreate}`.slice(0, 300), now().toISOString(), newId);
+      audit(db, "awx-executor", "transfer.held_before_create", newId, { before: "transfer", reason: heldAtCreate.slice(0, 300), proposal_id: proposalId, request_id: newId, replaces: original, amount: `${t.currency} ${t.amount}`, approval_sha256: sha }, now());
+    })();
+    return stop("held", heldAtCreate);
+  }
+
   let made: Transfer;
   try {
     made = kind === "invoice_payment"
-      ? await rail.createTransfer({ requestId: newId, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: "EUR", sourceCurrency: "EUR", reference: t.reference, reason: t.reason, approvalSha256: sha })
+      ? await rail.createTransfer({ requestId: newId, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: "EUR", sourceCurrency: "EUR", reference: t.reference, reason: t.reason, approvalSha256: sha, ...(negotiationOf(t) ? { agreementSha256: negotiationOf(t)!.agreement_sha256 } : {}) })
       : await rail.createPayoutTransfer({ requestId: newId, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: t.currency, sourceCurrency: t.currency, method: (t as SupplierPaymentTerms).method, reference: t.reference, reason: t.reason, approvalSha256: sha });
   } catch (e) {
     if (REFUSED_AT_CREATE.has(codeOf(e)) && (!(e instanceof AirwallexError) || e.status === 400) && !(e instanceof AirwallexAmbiguous)) {
