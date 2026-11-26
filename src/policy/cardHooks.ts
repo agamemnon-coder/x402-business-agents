@@ -2,8 +2,14 @@
 // it checks Airwallex's HMAC again with its own copy of the secret, then records the event once. A card transaction
 // is booked; any other object (a card, a payout, a conversion, a deposit) is checked against the ledger
 // (airwallexEvents.ts). A webhook only ever records what Airwallex decided; it cannot approve, pay or change anything.
+// A webhook whose signature does not hold here is recorded too (26 Nov), as WEBHOOK_REFUSED with its source and the
+// reason only: never its body, id or headers (text anyone could have written). The relay checked the same signature
+// with its own copy of the secret and slows an address that keeps failing (worker/src/core.ts, HF1), so one reaching
+// the runner means the two secrets differ or the relay passed on what it should not have: a monitoring and incident
+// signal (docs/compliance/incident-response.md), shown in the compliance evidence under PC-14.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { toCardTransaction } from "../airwallex/issuing.js";
@@ -25,11 +31,18 @@ export function hookSignatureOk(h: RelayedHook, secret: string): boolean {
   return got.length === want.length && timingSafeEqual(got, want);
 }
 
+/** The audit event of a relayed webhook whose signature the runner refused. */
+export const WEBHOOK_REFUSED = "airwallex.webhook_refused";
+
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Handles one relayed event and says what happened, in a line for the runner's log. Never throws. */
 export function handleAirwallexHook(db: DB, h: RelayedHook, secret: string, now = new Date()): string {
-  if (!hookSignatureOk(h, secret)) return `webhook ${String(h.id).slice(0, 40)}: bad signature, ignored`;
+  if (!hookSignatureOk(h, secret)) {
+    // Never throws: a ledger that cannot take the row still gets the runner's log line.
+    try { audit(db, "system", WEBHOOK_REFUSED, null, { source: "airwallex", reason: "bad signature" }, now); } catch { /* the line below says it */ }
+    return `webhook ${String(h.id).slice(0, 40)}: bad signature, ignored`;
+  }
   let event: unknown;
   try {
     event = JSON.parse(h.body);
