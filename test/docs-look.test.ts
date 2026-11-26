@@ -14,7 +14,7 @@ const read = (p: string) => readFileSync(`${ROOT}${p}`, "utf8");
 const exists = (p: string) => existsSync(`${ROOT}${p}`);
 
 /** The pages redesigned in the house style, each with the centred header. */
-export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md", "docs/architecture.md", "docs/how-it-works.md"];
+export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md", "docs/architecture.md", "docs/how-it-works.md", "docs/security.md"];
 /** Pages that carry the house-style badges but keep a header of their own (docs/README.md: test/readme-headers.test.ts). */
 const BADGED = [...STYLED, "docs/README.md"];
 
