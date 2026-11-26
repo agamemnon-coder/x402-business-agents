@@ -1,7 +1,32 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Decisions
+
+**Decisions taken while working without Max present: what was decided, why, and what it costs if it turns out wrong.**
+
+[![Decisions D1 to D30](https://img.shields.io/badge/decisions-D1_to_D30-8b5cf6?style=flat-square&labelColor=1f2937)](#29-october-2026)&nbsp;[![Each decision says what, why, and what it costs if wrong](https://img.shields.io/badge/each_says-what_%C2%B7_why_%C2%B7_if_wrong-0ea5e9?style=flat-square&labelColor=1f2937)](#29-october-2026)&nbsp;[![Max can overrule any of them](https://img.shields.io/badge/the_owner-can_overrule_any-f59e0b?style=flat-square&labelColor=1f2937)](#29-october-2026)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[29 October](#29-october-2026) · [30 October](#30-october-2026-night) · [D14 Kit 11's names](#d14-the-agents-carry-kit-11s-names-word-for-word-31-october) · [D24 Who decided](#d24-who-decided-recorded-at-the-source-max-2-november) · [D27 Visa](#d27-visa-tap-is-not-eligible-the-entry-is-metal-only-max-5-november) · [D30 Worst case](#d30-the-worst-case-counts-the-task-cards-12-november)
+
+</div>
 
 Decisions taken while working without Max present (master prompt of 29 October). Each entry says what was decided,
 why, and what it costs if it turns out wrong. Max can overrule any of them.
+
+```mermaid
+timeline
+  title The decisions, by the day in their headings
+  29 Oct 2026 : D1 to D5 : the name, the parties, the runs
+  30 Oct 2026, night : D6 to D11 : the red team, velocity limits, the books wait
+  31 Oct 2026 : D12 to D16 : the Dispute desk, Kit 11's names, Face ID on chain
+  1 Nov 2026 : D17 to D23, D25 : the rail choice, real agents, MFA, /try, TAP
+  2 Nov 2026 : D24, D26 : who decided, the API budget
+  5 Nov 2026 : D27 : Visa, TAP not eligible
+  7 Nov 2026 : D28 : Visa, the VIC run counts
+  12 Nov 2026 : D29, D30 : the small-company product, the worst case
+```
 
 ## 29 October 2026
 
