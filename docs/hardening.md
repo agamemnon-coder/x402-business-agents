@@ -1,8 +1,32 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Hardening log (30 October to the freeze on 4 November)
+
+**Tests, chaos, lint, red team, an independent review and the supply chain, 30 October to 4 November; each finding closed with a commit and a test.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Findings: 20; 19 fixed, 1 checked and accepted](https://img.shields.io/badge/findings-20_%C2%B7_19_fixed%2C_1_accepted-10b981?style=flat-square&labelColor=1f2937)](#findings)&nbsp;[![High severity: 1](https://img.shields.io/badge/high-1-f43f5e?style=flat-square&labelColor=1f2937)](#findings)&nbsp;[![Medium severity: 6](https://img.shields.io/badge/medium-6-f59e0b?style=flat-square&labelColor=1f2937)](#findings)&nbsp;[![Code that moves money not changed before the Friday runs](https://img.shields.io/badge/money_code-frozen_before_the_Friday_runs-8b5cf6?style=flat-square&labelColor=1f2937)](#measured)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Measured](#measured) · [Findings](#findings) · [The fresh review](#fresh-security-review-of-buildnext-30-october) · [Security](security.md) · [Controls](controls.md)
+
+</div>
 
 Max's plan of 30 October: tests, chaos, lint, red team, an independent review, supply chain, and the list before
 going public. Each finding gets a row; a row is closed only with a commit and a test. Code that moves money is not
 changed before the Friday runs: those fixes land after run 2.
+
+```mermaid
+%%{init: {"themeVariables": {"pie1": "#0ea5e9", "pie2": "#f59e0b", "pie3": "#10b981", "pie4": "#f43f5e"}}}%%
+pie showData
+  title Findings by severity
+  "low" : 9
+  "medium" : 6
+  "info" : 4
+  "high" : 1
+```
+
+<sub>Record: [the two findings tables on this page](hardening.md#findings), counted by `test/docs-charts.test.ts`: 20 findings, HF1 to HF14 and R1 to R6; 19 fixed, 1 checked and accepted (HF12).</sub>
 
 ## Measured
 

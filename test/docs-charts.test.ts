@@ -54,4 +54,18 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`of ${rows.length} rows, Code ${n.Code}, Person ${n.Person} (one person or two), Chain ${n.Chain}, Airwallex ${n.Airwallex}; a row can name several.`);
     expect(md).toContain(`/badge/risks-${rows.length}_%C2%B7_each_with_a_control_and_a_test-`);
   });
+
+  it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
+    const md = read("docs/hardening.md");
+    const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
+    for (const r of rows) expect({ id: r[0], cells: r.length }).toEqual({ id: r[0], cells: 4 });
+    const sev = (s: string) => rows.filter((r) => r[2]!.split(" ")[0] === s).length;
+    const fixed = rows.filter((r) => r[3]!.startsWith("fixed")).length, accepted = rows.filter((r) => r[3]!.startsWith("checked, accepted")).map((r) => r[0]);
+    expect(sev("low") + sev("medium") + sev("info") + sev("high")).toBe(rows.length);
+    for (const s of ["low", "medium", "info", "high"]) expect(md).toContain(`  "${s}" : ${sev(s)}\n`);
+    expect(md).toContain(`${rows.length} findings, HF1 to HF14 and R1 to R6; ${fixed} fixed, ${accepted.length} checked and accepted (${accepted.join(", ")}).`);
+    expect(md).toContain(`/badge/findings-${rows.length}_%C2%B7_${fixed}_fixed%2C_${accepted.length}_accepted-`);
+    expect(md).toContain(`/badge/high-${sev("high")}-`);
+    expect(md).toContain(`/badge/medium-${sev("medium")}-`);
+  });
 });
