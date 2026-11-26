@@ -14,6 +14,7 @@ import type { DB } from "../db/open.js";
 import { redactJson, redactSecrets } from "../lib/redact.js";
 import { randomBytes } from "node:crypto";
 import { parseOrigin, withOrigin } from "../provenance/origin.js";
+import { toolRefusal } from "../policy/principals.js";
 import { apiInputSchema } from "./toolSchema.js";
 
 export interface ToolResult {
@@ -225,8 +226,14 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
       let out: ToolResult;
       let error = false;
       const toolStarted = clock();
+      // Least privilege (src/policy/principals.ts AGENT_TOOLS): a tool not on the agent's list never runs, even when code
+      // handed it over; the refusal is audited (principal.tool_refused).
+      const denied = tool ? toolRefusal(db, spec.agent, use.name, { via: "agent loop", task: spec.task }) : null;
       if (!tool) {
         out = { text: `There is no tool called ${use.name}.`, blocked: "unknown tool" };
+        error = true;
+      } else if (denied) {
+        out = { text: `${denied}; nothing was done`, blocked: "least privilege" };
         error = true;
       } else {
         const fits = tool.input.safeParse(use.input);

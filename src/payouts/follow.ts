@@ -15,6 +15,7 @@ import type { PayoutRail, Transfer } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { takePlatformFee } from "../executors/supplierPayment.js";
+import { recordRationale } from "./rationale.js";
 import { RETURNED_AFTER_PAID } from "./feeKept.js";
 import type { PlatformFields, SupplierPaymentTerms } from "./plan.js";
 
@@ -34,12 +35,32 @@ const FINAL = new Set(["PAID", "FAILED", "CANCELLED"]);
 
 export interface Followed { proposal_id: string; payout: string; fee: string | null }
 
-export async function followPayouts(db: DB, rail: PayoutRail, now = new Date()): Promise<Followed[]> {
-  const rows = db.prepare(`SELECT p.proposal_id, p.terms_json, p.terms_sha256, t.transfer_id, t.status FROM proposals p
-    JOIN transfers t ON t.request_id = json_extract(p.terms_json, '$.transfer_request_id')
-    WHERE p.kind IN ('supplier_payment', 'invoice_payment') AND p.status = 'EXECUTED' AND t.transfer_id IS NOT NULL ORDER BY p.proposal_id`).all() as
-    { proposal_id: string; terms_json: string; terms_sha256: string; transfer_id: string; status: string }[];
+export interface FollowOptions {
+  /**
+   * Replaces a payout Airwallex failed for good, once, on the same approved terms: src/executors/replaceFailed.ts
+   * (replaceFailedHook), handed in by a runner that switched it on (KIT11_REPLACE_FAILED_PAYOUT=on, src/cli/payables.ts).
+   * Not imported here, so the Cloud engine's bundle does not carry it. Absent: a failed payout waits for a person.
+   * Returns what came of it, in a word.
+   */
+  replaceFailed?: (proposalId: string) => Promise<string>;
+}
+
+/** The request_id of the payout that now stands for this one: its replacement when it has one, else itself. */
+export function liveRequestId(db: DB, requestId: string): string {
+  const r = db.prepare("SELECT request_id FROM transfers WHERE replaces_request_id = ?").get(requestId) as { request_id: string } | undefined;
+  return r?.request_id ?? requestId;
+}
+
+export async function followPayouts(db: DB, rail: PayoutRail, now = new Date(), opts: FollowOptions = {}): Promise<Followed[]> {
+  // Each executed payment's payout, and its replacement when a failed one was replaced (followed the same way).
+  const rows = db.prepare(`SELECT p.proposal_id, p.terms_json, p.terms_sha256, t.transfer_id, t.status, t.replaces_request_id FROM proposals p
+    JOIN transfers t ON t.request_id = json_extract(p.terms_json, '$.transfer_request_id') OR t.replaces_request_id = json_extract(p.terms_json, '$.transfer_request_id')
+    WHERE p.kind IN ('supplier_payment', 'invoice_payment') AND p.status = 'EXECUTED' AND t.transfer_id IS NOT NULL ORDER BY p.proposal_id, t.rowid`).all() as
+    { proposal_id: string; terms_json: string; terms_sha256: string; transfer_id: string; status: string; replaces_request_id: string | null }[];
   const out: Followed[] = [];
+  const replaceOn = !!opts.replaceFailed;
+  const failedFirst: string[] = [];
+  const moved = new Set<string>();
   for (const r of rows) {
     const terms = JSON.parse(r.terms_json) as SupplierPaymentTerms & PlatformFields;
     const fee = terms.platform_fee;
@@ -65,12 +86,15 @@ export async function followPayouts(db: DB, rail: PayoutRail, now = new Date()):
             }, now);
           }
           status = fresh.status;
+          moved.add(r.proposal_id);
         }
       } catch (e) {
         audit(db, "awx-executor", "transfer.follow_failed", r.transfer_id, { error: (e as Error).message.slice(0, 200) }, now);
         continue;
       }
     }
+    // A first payout failed for good: handed to the hook after the loop, which replaces it once or leaves it to a person.
+    if (replaceOn && !r.replaces_request_id && (status === "FAILED" || status === "CANCELLED")) failedFirst.push(r.proposal_id);
     if (!fee) continue;
     const row = feeRow();
     if (status === "FAILED" || status === "CANCELLED") {
@@ -87,5 +111,8 @@ export async function followPayouts(db: DB, rail: PayoutRail, now = new Date()):
     // The fee went with the payout (application_fee_options): here it is only read off the paid payout and booked.
     out.push({ proposal_id: r.proposal_id, payout: status, fee: takePlatformFee(db, terms, r.terms_sha256, r.proposal_id, fresh) });
   }
+  for (const id of failedFirst) out.push({ proposal_id: id, payout: await opts.replaceFailed!(id), fee: null });
+  // The rationale follows the payout's new status (src/payouts/rationale.ts).
+  for (const id of moved) recordRationale(db, id, null, now);
   return out;
 }

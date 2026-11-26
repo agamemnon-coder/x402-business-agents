@@ -27,7 +27,7 @@ const looked: string[] = [];
 const profile: AgentProfile = {
   name: "sourcing", display: "the Sourcing agent", model: "claude-haiku-5-5", goal: "keep stock data fresh at the best price", rules: "Alta enforces your mandate.",
   observe: async () => "Supplier A 0.03, supplier B 0.035.", tickMs: 600_000,
-  tools: () => [{ name: "look", description: "d", input: z.strictObject({}), run: async () => { looked.push("x"); return { text: "looked" }; } }],
+  tools: () => [{ name: "market", description: "d", input: z.strictObject({}), run: async () => { looked.push("x"); return { text: "looked" }; } }],
   fallback: async () => "code kept the buy policy as it was",
 };
 const finish = (s = "Switched to B; told Treasury.") => ({ name: "finish", input: { summary: s } });
@@ -38,7 +38,7 @@ describe("an agent's wake", () => {
     const db = openDb(":memory:");
     publish(db, "supplier.notice", { supplier: "Stockline", new_price: "0.04" }, "sourcing", "system", T0);
     publish(db, "dispute.opened", { customer: "Summit" }, "support", "system", T0);
-    const f = fake([[{ name: "look", input: {} }], [finish()]]);
+    const f = fake([[{ name: "market", input: {} }], [finish()]]);
     const w = await wake(db, profile, { client: f.client, now: T0 });
     expect(w).toMatchObject({ source: "claude", summary: "Switched to B; told Treasury.", events: [1] });
     expect(f.prompts[0]).toMatch(/Supplier A 0\.03/);
@@ -73,7 +73,7 @@ describe("an agent's wake", () => {
     db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('pause.sourcing', 'on', ?)").run(T0.toISOString());
     publish(db, "supplier.notice", { new_price: "0.04" }, "sourcing", "system", T0);
     looked.length = 0;
-    const w = await wake(db, profile, { client: fake([[{ name: "look", input: {} }], [finish()]]).client, now: T0 });
+    const w = await wake(db, profile, { client: fake([[{ name: "market", input: {} }], [finish()]]).client, now: T0 });
     expect(w).toMatchObject({ source: "idle", summary: "the CFO paused this agent" });
     expect(looked).toEqual([]);
     expect(pending(db, "sourcing").events).toHaveLength(1);
@@ -87,13 +87,13 @@ describe("an agent's wake", () => {
       const db = openDb(":memory:");
       publish(db, "supplier.notice", { new_price: "0.04" }, "sourcing", "system", T0);
       looked.length = 0;
-      const stopper: AgentProfile = { ...profile, tools: () => [{ name: "look", description: "d", input: z.strictObject({}), run: async () => {
+      const stopper: AgentProfile = { ...profile, tools: () => [{ name: "market", description: "d", input: z.strictObject({}), run: async () => {
         looked.push("x");
         // The CFO hits the switch while the agent is thinking.
         db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, 'on', ?)").run(key, T0.toISOString());
         return { text: "looked" };
       } }] };
-      const w = await wake(db, stopper, { client: fake([[{ name: "look", input: {} }], [{ name: "look", input: {} }, { name: "send_message", input: { to: "treasury", text: "raise my cap" } }], [finish()]]).client, now: T0 });
+      const w = await wake(db, stopper, { client: fake([[{ name: "market", input: {} }], [{ name: "market", input: {} }, { name: "send_message", input: { to: "treasury", text: "raise my cap" } }], [finish()]]).client, now: T0 });
       expect(looked).toEqual(["x"]);
       expect(db.prepare("SELECT COUNT(*) AS n FROM agent_messages").get()).toEqual({ n: 0 });
       expect(w!.run!.calls.filter((c) => c.blocked).map((c) => c.blocked)).toEqual([key === "freeze" ? "the emergency stop is on" : "the CFO paused this agent", key === "freeze" ? "the emergency stop is on" : "the CFO paused this agent"]);

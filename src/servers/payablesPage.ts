@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { clientI18n, DEFAULT_LANG, localKeys, t, type Lang } from "../ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS as CSS, svg } from "../ui/payablesKit.js";
+import { RATIONALE_WORDS_JS } from "./rationaleWords.js";
 
 export { ICON_SET, svg };
 
@@ -155,6 +156,7 @@ const DETAIL_BODY = (id: string, lang: Lang) => `
 const DETAIL_SCRIPT = `
 const IC=${ICON_SET(["circle-check", "triangle-alert", "octagon-x", "clock", "circle-minus", "file-text", "external-link", "scan-face", "users", "ban", "sparkles", "bot", "info"])};
 ${COMMON}
+${RATIONALE_WORDS_JS}
 const id=$('#d').dataset.id;
 const RES={passed:['circle-check',t('res.passed')],warn:['triangle-alert',t('res.warn')],wait:['clock',t('res.wait')],review:['triangle-alert',t('res.review')],block:['octagon-x',t('res.block')],not_checked:['circle-minus',t('res.not_checked')]};
 const SRC=(k)=>tk('src.'+k,k);
@@ -248,8 +250,15 @@ function render(d){
   // Timeline
   const ol=el('ol','tl');for(const row of d.timeline){const [w,dt]=timelineWords(row);ol.append(el('li','',[el('div','',[el('span','w',w),el('span','at',stamp(row.at))]),dt?el('div','d',cap(dt)):null]))}
   const tl=el('div','card panel',[el('h2','',t('dt.timeline')),ol]);
+  // Why it was paid this way, or refused (src/payouts/rationale.ts): every value is the stored record's, none is written here.
+  const why=d.rationale,ww=why&&rationaleWords(why),W=WHY_LABELS[NL?'nl':'en'];
+  const whyCard=why?el('div','card panel',[el('h2','',[W.why,el('span','cnt',W[why.outcome==='executed'?'executed':why.outcome==='failed'?'failed':'stopped'])]),dl([
+    [W.funding,ww.funding],[W.rail,ww.rail],
+    [W.rule,cap(ww.rule)+(why.rule.policy_version!=null?' · '+W.policy+why.rule.policy_version:'')],
+    [W.approval,why.approval?cap(ww.approval)+' · '+stamp(why.approval.at):W.none],
+    [W.replaced,cap(ww.replacement)],[W.refused,cap(ww.refused)]])]):null;
   const scan=scanCard(d);
-  root.append(head,el('div','banner',[ic('info'),t('dt.banner')]),bar,box,el('div','split',[docv,el('div','stack',[read,scan,checks,noteCard,tl])]));
+  root.append(head,el('div','banner',[ic('info'),t('dt.banner')]),bar,box,el('div','split',[docv,el('div','stack',[read,scan,checks,whyCard,noteCard,tl])]));
   drawPdf(pages).then(p=>{if(scan)scan.fill(p)});
 }
 async function load(){const r=await fetch('/api/payables/invoices/'+encodeURIComponent(id)+'/detail');if(!r.ok){$('#d').replaceChildren(el('p','lede',t('dt.no_invoice',{id})));return}render(await r.json())}

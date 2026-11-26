@@ -34,6 +34,7 @@ import { checkpoint, step } from "../policy/saga.js";
 import { authorize } from "../policy/principals.js";
 import { refuseIfInAwxBatch } from "../policy/awxBatchLink.js";
 import { hashFirst } from "../policy/hashFirst.js";
+import { withRationale } from "../payouts/rationale.js";
 
 export interface InvoicePaymentResult {
   conversionId: string | null;
@@ -62,7 +63,12 @@ export const FEE_RETRY: FeeRetry = { delaysMs: [15_000, 30_000, 60_000, 90_000, 
 /** Airwallex's fee configuration on its side, transient (agent run 1: the same payout paid 5 times that day). */
 export const FEE_RETRY_CODES = AIRWALLEX_FEE_CODES;
 
+/** The payment, then its rationale (src/payouts/rationale.ts), stored from the record whatever the outcome. */
 export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: SandboxSim | null, proposalId: string, now = () => new Date(), feeRetry: FeeRetry = FEE_RETRY): Promise<InvoicePaymentResult> {
+  return withRationale(db, proposalId, now, () => runInvoicePayment(db, rail, sim, proposalId, now, feeRetry));
+}
+
+async function runInvoicePayment(db: DB, rail: AirwallexRail, sim: SandboxSim | null, proposalId: string, now: () => Date, feeRetry: FeeRetry): Promise<InvoicePaymentResult> {
   // Hash first (19 November): terms that no longer hash to what was signed reach nothing outside Purser, not even the
   // balance read below. beginExecution checks again inside its lock.
   hashFirst(db, proposalId);
@@ -196,7 +202,7 @@ export function holdReason(db: DB, t: InvoicePaymentTerms, at: Date): string | n
   if (stopped(db, "treasury")) return "the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop";
   if (paused(db, "treasury")) return "the treasury agent is paused by the CFO; nothing is paid until the CFO resumes it with Face ID";
   // The treasury agent's identity (B5): still active, and allowed to pay a bank beneficiary in euros over Airwallex.
-  const denied = authorize(db, "treasury", { rail: "airwallex", currency: "EUR", payee: "beneficiaries" }, at);
+  const denied = authorize(db, "treasury", { tool: "invoice_payment", rail: "airwallex", currency: "EUR", payee: "beneficiaries" }, at);
   if (denied) return `${denied}; nothing is paid`;
   // The paying legal entity (src/policy/entities.ts): still one the CFO lets this agent pay from, funded from its own
   // account; a company without entities passes untouched.
@@ -236,7 +242,8 @@ async function floorReason(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms):
   return exclusive(() => floorReasonNow(db, rail, t));
 }
 
-async function floorReasonNow(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms): Promise<string | null> {
+/** The same, for a caller that already holds the payout lock (src/executors/replaceFailed.ts). */
+export async function floorReasonNow(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms): Promise<string | null> {
   let s: ReturnType<typeof treasuryState>;
   try {
     s = treasuryState(db, await snapshot(db, rail, `retry:${t.proposal_id}`));

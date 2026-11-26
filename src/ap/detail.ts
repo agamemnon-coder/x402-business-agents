@@ -6,6 +6,7 @@
 import { batchesOf } from "../policy/batchLines.js";
 import type { DB } from "../db/open.js";
 import { payableCurrency } from "../payouts/routes.js";
+import { readRationale, type PaymentRationale } from "../payouts/rationale.js";
 import { readDoc } from "./docStore.js";
 import { documentText } from "./docText.js";
 import { publicInvoice } from "./public.js";
@@ -46,6 +47,8 @@ export interface InvoiceDetail {
   batch: { id: string; status: string; count: string; waiting: boolean } | null;
   /** A scanned invoice: whether its two readings agree, what they differ on, and where on which page each field was read. */
   scan: ScanView | null;
+  /** Why its payment was paid as it was, or refused (src/payouts/rationale.ts): the newest one stored, or null. */
+  rationale: PaymentRationale | null;
 }
 export interface ScanView { agreed: boolean; differ: string[]; readings: number; model: string; boxes: Box[] }
 
@@ -152,6 +155,7 @@ export async function invoiceDetail(db: DB, id: string): Promise<InvoiceDetail |
     actions: actionsFor(inv),
     batch: batchOfInvoice(db, inv.proposal_id),
     scan,
+    rationale: readRationale(db, inv.proposal_id),
   };
 }
 

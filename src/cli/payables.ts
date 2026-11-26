@@ -103,7 +103,9 @@ async function main(): Promise<void> {
   } else if (cmd === "sync") {
     // With Airwallex keys: payouts are followed up there and a paid one's Purser fee taken (src/payouts/follow.ts).
     const awx = await airwallexFromEnv();
-    const paid = await syncPayments(db, { ...deps, ...(awx ? { rail: awx.rail } : {}) });
+    // KIT11_REPLACE_FAILED_PAYOUT=on: a payout Airwallex failed for good is replaced once (src/executors/replaceFailed.ts).
+    const replaceFailed = awx ? (await import("../executors/replaceFailed.js")).replaceFailedHook(db, awx.rail) : null;
+    const paid = await syncPayments(db, { ...deps, ...(awx ? { rail: awx.rail } : {}), ...(replaceFailed ? { replaceFailed } : {}) });
     const checked = await recheck(db, deps);
     for (const x of [...paid, ...checked]) console.log(`${x.id}  ${x.status.replace(/_/g, " ")}`);
     console.log(await fileIntoLocalVault(db));

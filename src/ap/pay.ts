@@ -7,7 +7,7 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { apAgentsOn } from "../config/agents.js";
-import { followPayouts } from "../payouts/follow.js";
+import { followPayouts, liveRequestId, type FollowOptions } from "../payouts/follow.js";
 import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import type { BillsRail } from "../airwallex/bills.js";
 import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
@@ -281,16 +281,19 @@ function bookingProblem(db: DB, proposalId: string, paid: PaidPayout): string | 
  * `bills`: Airwallex Spend Bills (src/ap/billSync.ts). Left out, it follows AIRWALLEX_BILLS (off by default: nothing is
  * called); null turns it off for this sync.
  */
-export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: BookkeepingSink; rail?: PayoutRail; bills?: BillsRail | null } = {}): Promise<ApInvoiceRow[]> {
+export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: BookkeepingSink; rail?: PayoutRail; bills?: BillsRail | null; replaceFailed?: FollowOptions["replaceFailed"] } = {}): Promise<ApInvoiceRow[]> {
   const now = (opts.now ?? (() => new Date()))();
   // With Airwallex at hand: each sent supplier payout is read again, and a PAID one's Purser fee taken (red team 6).
-  if (opts.rail) await followPayouts(db, opts.rail, now);
+  // A payout Airwallex failed for good is replaced once only with the runner's hook (src/executors/replaceFailed.ts).
+  if (opts.rail) await followPayouts(db, opts.rail, now, opts.replaceFailed ? { replaceFailed: opts.replaceFailed } : {});
   // A proposal past its time that nothing has marked yet is expired first, so its invoice is not left waiting forever.
   expireDue(db, now);
   const changed: ApInvoiceRow[] = [];
   for (const inv of apInvoices(db, { status: "waiting_cfo" })) {
     const p = inv.proposal_id ? db.prepare("SELECT status, json_extract(terms_json, '$.transfer_request_id') AS request_id FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { status: string; request_id: string | null } | undefined : undefined;
     if (!p) continue;
+    // A failed payout replaced once on the same approved terms (src/executors/replaceFailed.ts): its replacement stands for it.
+    if (p.request_id) p.request_id = liveRequestId(db, p.request_id);
     // A proposal that failed with its payout still open at Airwallex (a lost answer, not resolved yet) or already paid
     // is not over: the invoice is never offered for payment again while that payout may be live (red team, 8 November).
     const payout = p.request_id ? db.prepare("SELECT status FROM transfers WHERE request_id = ?").get(p.request_id) as { status: string } | undefined : undefined;

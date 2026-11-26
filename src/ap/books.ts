@@ -13,6 +13,7 @@ import { csvCell } from "../lib/csv.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { VAT_CODES, vatOn } from "../ledger/vat.js";
 import { signedTermsRefusal } from "../ledger/termsLock.js";
+import { liveRequestId } from "../payouts/follow.js";
 import type { ApInvoiceRow, StoredCoding } from "./store.js";
 import { apInvoices } from "./store.js";
 import { paymentDay } from "../vault/data.js";
@@ -207,7 +208,9 @@ export function paymentEntries(db: DB, inv: ApInvoiceRow, returned: ReturnedPayo
   // The payout the invoice's signed proposal names, by its request id (code review 13 Nov: by invoice number it could
   // miss the payout, or find another one under the same number). A payout that came back after PAID is booked as it
   // was paid (returnedPayout), then taken back (returnEntries).
-  const requestId = inv.proposal_id ? (db.prepare("SELECT json_extract(terms_json, '$.transfer_request_id') AS request_id FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { request_id: string | null } | undefined)?.request_id : null;
+  const signed = inv.proposal_id ? (db.prepare("SELECT json_extract(terms_json, '$.transfer_request_id') AS request_id FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { request_id: string | null } | undefined)?.request_id : null;
+  // A failed payout replaced once on the same approved terms (src/executors/replaceFailed.ts): the replacement is the payment.
+  const requestId = signed ? liveRequestId(db, signed) : null;
   const t = returned ?? (requestId ? db.prepare("SELECT transfer_id, amount, fee_actual, updated_at FROM transfers WHERE request_id = ? AND status = 'PAID'").get(requestId) as
     { transfer_id: string | null; amount: string; fee_actual: string | null; updated_at: string } | undefined : undefined);
   if (!t) return [];
