@@ -9,6 +9,7 @@ import { openReceivable } from "../src/agents/receivables.js";
 import { trialBalance } from "../src/ledger/reports.js";
 import { agedDebtors, arBucket, dunningDates, draftReminders, issueInvoice, matchPayment, reviewQueue, retireDoneLinks, routeDeposit, toleranceCents, type IncomingPayment } from "../src/receivables/ar.js";
 import { ledgerForecast } from "../src/treasury/advisor.js";
+import { treasuryView } from "../src/treasury/view.js";
 
 const now = new Date("2026-11-26T09:00:00Z");
 const EMAIL = "jane.doe@alpenweg.example";
@@ -176,11 +177,16 @@ describe("privacy and the forecast", () => {
     expect(audit).toContain("NW-1001");
   });
 
-  it("feeds open customer invoices into the treasury forecast as expected cash", async () => {
+  it("feeds open customer invoices into the treasury forecast as expected cash, and the dashboard's view shows both", async () => {
     const { db } = await world();
     matchPayment(db, pay("dep-16", "EUR", 20_000, "NW-1003"), now);
     const f = ledgerForecast(db, "2026-11-26");
     expect(f.currencies.find((c) => c.currency === "EUR")!.in_cents).toBe(121_000 + 10_000);
     expect(f.currencies.find((c) => c.currency === "EUR")!.opening_cents).toBe(20_000);
+    const v = treasuryView(db, now);
+    expect(v.label).toMatch(/forecast/);
+    expect(v.forecast).toEqual(f);
+    expect(v.receivables.aged.rows.map((r) => r.invoice_no)).toEqual(["NW-1001", "NW-1002", "NW-1003"]);
+    expect(v.fx_threshold_eur).toBeNull();
   });
 });
