@@ -96,7 +96,7 @@ const bornOf = async (sql: Sql, tenant: string, now: Date) => {
 export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): EngineRoute<C>[] {
   const { json, err } = kit;
   return [
-    { method: "POST", path: "/v1/try/negotiate", summary: "Agents negotiate (the hands-on demo, a test company only): Purser's Sourcing agent and a simulated supplier's agent, both Claude, negotiate an early-payment discount on a test invoice of Bergtex Textil GmbH (EUR 1,850.00, net 30), at most 4 turns, each through the CFO's rails in code (the most it may pay, the latest pay-by date, nothing beyond the invoice, the payee's bank details unchanged). Answers { mode (live or recorded), label, reason, scene, bounds, rules, turns, outcome, agreement, canonical, sha256, compose, micros }; compose is the invoice POST /v1/engine/compose files for the agreed terms. Claude off, capped or failing: the recorded negotiation, labelled. 3 a company.", need: "admin", run: async (c) => {
+    { method: "POST", path: "/v1/try/negotiate", summary: "Agents negotiate an early-payment discount on a test invoice (a test company only): Purser's Sourcing agent and a simulated supplier's agent, both Claude, at most 4 signed offers, each checked by the CFO's rails and policy in code. Answers the offers, the outcome (agreed, escalated to the CFO, no deal), the agreement and its SHA-256, and compose. Claude off or capped: the recorded negotiation, labelled. 3 a company.", need: "admin", run: async (c) => {
       const tenant = c.caller!.tenantId;
       if (!isTryTenant(tenant)) return err(403, "only a test company of the hands-on demo negotiates here");
       const born = await bornOf(c.env.sql, tenant, c.now);
@@ -161,7 +161,7 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
     // 15 Nov (jury run): the agreed terms filed. On the visitor's own invoice the agreed invoice REPLACES it (one payable,
     // one expense); on the page's seeded scene it is filed as the agreed one. Either way what was negotiated is recorded
     // with it, and the proof file carries it beside the signed terms.
-    { method: "POST", path: "/v1/try/negotiate/agreed", summary: "File a negotiation's agreed terms (a test company only): { agreement_sha256, compose, turns, invoice_id? } with compose as the negotiation answered it. The agreed invoice is filed (as POST /v1/engine/compose) and what was negotiated is recorded with it (the original and agreed amounts, the discount, the agreement's SHA-256, the turns), carried by the proof file beside the signed terms. With invoice_id (the visitor's own invoice) it replaces the original: the original's unsigned payment is superseded and it leaves the books with that reason, its accrual reversed. Only terms that fit the invoice negotiated: the same supplier and account on file, numbered as it plus the agreement's reference, for less, paid no later than it is due. Answers { invoice (the agreed one, ready to sign), superseded (the original, or null) }.", need: "admin", run: async (c) => {
+    { method: "POST", path: "/v1/try/negotiate/agreed", summary: "File a negotiation's agreed (or escalated) terms, { agreement_sha256, compose, turns, invoice_id? } as negotiated: the agreed invoice, ready to sign, replacing invoice_id's. Only terms this company negotiated, filed once. Answers { invoice, superseded }.", need: "admin", run: async (c) => {
       const tenant = c.caller!.tenantId;
       if (!isTryTenant(tenant)) return err(403, "only a test company of the hands-on demo negotiates here");
       const e = c.env.engine?.(tenant);
@@ -205,7 +205,7 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
  */
 export function tryNegotiatePublicRoutes<C extends { now: Date; url?: URL; req: Request }>(kit: { json(status: number, body: unknown): Response }, live: (run: (c: C) => Promise<Response>) => (c: C) => Promise<Response>): { method: "GET"; path: string; summary: string; need: "public"; run: (c: C) => Promise<Response> }[] {
   return [
-    { method: "GET", path: "/v1/try/negotiate/recorded", summary: "The recorded negotiation (public): the seeded scene's four turns, written in advance and labelled as such, checked by the rails live. For a visitor the live path turned away; nothing to sign. ?why=limit|paused|start says why in the page's own words.", need: "public", run: live(async (c) => {
+    { method: "GET", path: "/v1/try/negotiate/recorded", summary: "The recorded negotiation (public), labelled, its rails checked live; nothing to sign. ?why=limit|paused|start.", need: "public", run: live(async (c) => {
       const why = new URL(c.req.url).searchParams.get("why");
       const reason = why && why in RECORDED_WHY ? RECORDED_WHY[why as keyof typeof RECORDED_WHY] : RECORDED_WHY.start;
       const today = c.now.toISOString().slice(0, 10);

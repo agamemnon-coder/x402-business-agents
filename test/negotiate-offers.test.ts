@@ -169,7 +169,8 @@ describe("the saving, computed honestly", () => {
 describe("the AP2-style mapping", () => {
   it("names AP2's intent and cart mandate fields with this deal's values, and says it is not AP2", async () => {
     const { n } = await run(GOOD);
-    const m = n.ap2_style as { note: string; intent_mandate: Record<string, unknown>; cart_mandate: { contents: { id: string; payment_request: { total: { amount: { value: string } } } } } };
+    const a = n.agreement;
+    const m = ap2Style({ supplier: a.supplier, invoice_no: a.invoice_no, currency: a.currency, invoice_amount: a.invoice_amount, amount: a.amount, discount: a.discount, pay_by: a.pay_by, latest: n.bounds.latest_pay_by, reference: n.compose.invoice_no, offer_sha256: n.turns[3]!.offer_sha256, policy: a.policy }) as { note: string; intent_mandate: Record<string, unknown>; cart_mandate: { contents: { id: string; payment_request: { total: { amount: { value: string } } } } } };
     expect(m.note).toMatch(/not AP2-compatible/);
     expect(m.intent_mandate.user_cart_confirmation_required).toBe(true);
     expect(m.cart_mandate.contents.id).toBe(n.compose.invoice_no);

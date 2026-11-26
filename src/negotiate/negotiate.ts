@@ -6,8 +6,8 @@
 // When Claude is unavailable, the page shows the recorded negotiation below, labelled as such, never as a live one;
 // the rails' answers to it are computed live all the same.
 import { SEEDED_SUPPLIERS, supplierKey } from "../config/trySample.js";
-import { agreedInvoiceNo, agreementOf, isAccountOnFile, normIban, agreementSha256, boundsOf, canonicalAgreement, cents, checkPolicy, checkTurn, maskIban, money, policyOf, POLICY_RULES, RULES, savingOf, type Agreement, type Bounds, type PolicyBounds, type PolicyBreach, type Refusal, type Scene } from "./rails.js";
-import { ap2Style, newAgentKey, offerSha256, signOffer, type AgentKey, type Offer, type OfferSignature, type SigningKey } from "./offers.js";
+import { agreedInvoiceNo, agreementOf, isAccountOnFile, normIban, agreementSha256, boundsOf, canonicalAgreement, cents, checkPolicy, checkTurn, maskIban, money, policyOf, RULES, savingOf, type Agreement, type Bounds, type PolicyBounds, type PolicyBreach, type Refusal, type Scene } from "./rails.js";
+import { newAgentKey, offerSha256, signOffer, type AgentKey, type Offer, type OfferSignature, type SigningKey } from "./offers.js";
 import { sha256Hex } from "../lib/terms.js";
 
 export const MAX_TURNS = 4;
@@ -118,9 +118,8 @@ export interface Negotiation {
   scene: Scene;
   bounds: Bounds;
   rules: typeof RULES;
-  /** The CFO's negotiation policy for this invoice, and its rules in words. */
+  /** The CFO's negotiation policy for this invoice (its rules in words: rails.ts POLICY_RULES, on each breach). */
   policy: PolicyBounds;
-  policy_rules: typeof POLICY_RULES;
   /** The negotiation's id (in every offer) and the agents' public keys (the supplier's made by the simulation). */
   id: string;
   keys: { sourcing: AgentKey; supplier: AgentKey };
@@ -135,8 +134,6 @@ export interface Negotiation {
   transcript_sha256: string;
   /** Computed from the invoice and the agreed discount (rails.ts savingOf): test money, never a real saving. */
   saving: ReturnType<typeof savingOf>;
-  /** The deal in the style of AP2's intent and cart mandates (./offers.ts ap2Style): a reading aid, not AP2. */
-  ap2_style: ReturnType<typeof ap2Style>;
   /** The invoice the engine files for the agreed terms (POST /v1/engine/compose), so the passkey signs them. */
   compose: { supplier_key: string; invoice_no: string; amount: string; issue_date: string; due_date: string; iban: string };
   micros: number;
@@ -287,13 +284,11 @@ export async function negotiate(o: { today: string; speak: Speak; mode: "live" |
   const agreement = agreementOf(scene, terms, o.today, { outside: !!escalation, ...(head ? { transcript_sha256: head } : {}) });
   const sha = agreementSha256(agreement);
   const reference = agreedInvoiceNo(scene, sha);
-  const supplierOffer = [...turns].reverse().find((t) => t.who === "supplier")?.offer_sha256 ?? null;
   return {
-    mode: o.mode, label: o.mode === "recorded" ? RECORDED_LABEL : null, reason: null, scene, bounds: b, rules: RULES, policy: pb, policy_rules: POLICY_RULES,
+    mode: o.mode, label: o.mode === "recorded" ? RECORDED_LABEL : null, reason: null, scene, bounds: b, rules: RULES, policy: pb,
     id, keys: { sourcing: publicOf(keys.sourcing), supplier: publicOf(keys.supplier) }, turns,
     outcome: agreed ? "agreed" : escalation ? "escalated" : "no_deal", escalation,
     agreement, canonical: canonicalAgreement(agreement), sha256: sha, transcript_sha256: head, saving: savingOf(agreement),
-    ap2_style: ap2Style({ supplier: scene.supplier.name, invoice_no: scene.invoice_no, currency: scene.currency, invoice_amount: agreement.invoice_amount, amount: agreement.amount, discount: agreement.discount, pay_by: agreement.pay_by, latest: b.latest_pay_by, reference, offer_sha256: supplierOffer, policy: agreement.policy }),
     compose: { supplier_key: supplierKey(scene.supplier.name), invoice_no: reference, amount: agreement.amount, issue_date: o.today, due_date: agreement.pay_by, iban: scene.supplier.iban },
     micros,
   };
