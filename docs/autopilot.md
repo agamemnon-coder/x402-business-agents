@@ -41,6 +41,13 @@ approval of exactly the stored terms), and the tests use a stand-in for it. Even
 that were approved, and nothing above the limit runs without the CFO. When a payment fails, its invoice's next payment
 waits for the CFO: a gate never sends it again.
 
+**A task token.** Where the CFO lets the agent pay alone (a limit to pay alone, `ap.alone_eur`) and scopes it with a task
+mandate (`npm run mandates -- grant`, signed with the passkey), `KIT11_TASK_TOKEN` hands the autopilot the agent's task
+token (`npm run mandates -- token <id>`, shown once). Every payment it then pays alone stands on that token's mandate
+only; one outside it is refused, recorded (`task_mandate.refused` or `task_token.refused`) and waits for the CFO's Face
+ID. `npm run payables -- pay <id>` passes the same token. Only the token's id is written to the audit log, never the
+token. Tested on stand-in rails (`test/task-token-payer.test.ts`); not run against the sandbox.
+
 ## Running it
 
 ```

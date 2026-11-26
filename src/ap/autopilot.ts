@@ -66,6 +66,12 @@ export interface AutopilotDeps {
   /** The outside books (an ERP connector), or none: the bookkeeping sync runs only when one is given. */
   erp?: ErpConnector | null;
   gate?: AloneGate | null;
+  /**
+   * The agent's task token (src/policy/taskTokens.ts; the CFO issues it with npm run mandates -- token <id>, the CLI
+   * reads KIT11_TASK_TOKEN): every payment the agent pays alone stands on that token's task mandate only, and one
+   * outside it waits for the CFO. Absent: as before (the agent's mandates in force, if it has any).
+   */
+  taskToken?: string | null;
   now?: () => Date;
   /** This process, for the lease. */
   owner?: { id: string; pid: number; host: string };
@@ -445,7 +451,7 @@ async function invoices(ctx: Ctx): Promise<number> {
     if (inv.status === "ready" && inv.doc_kind === "invoice" && ctx.deps.rail) {
       const rail = ctx.deps.rail;
       moved += await step(ctx, inv.id, "plan the payment", async () => {
-        const out = await payApInvoice(db, rail, inv.id, ctx.now(), ctx.deps.inbox.reader);
+        const out = await payApInvoice(db, rail, inv.id, ctx.now(), ctx.deps.inbox.reader, ctx.deps.taskToken ? { taskToken: ctx.deps.taskToken } : {});
         if (out.kind !== "proposed") {
           // Blocked by the plan (a fraud signal): a person decides; it is not tried again.
           if (apInvoice(db, inv.id)?.status === "blocked") return { outcome: "waiting for a person", detail: out.reason };

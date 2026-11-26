@@ -52,10 +52,13 @@ async function main(): Promise<number> {
     vault: process.env.KIT11_VAULT === "off" ? null : new LocalSink(process.env.KIT11_VAULT_DIR ?? "data/vault"),
     erp: erpName ? liveConnector(erpName as ConnectorName, process.env) : null,
     gate: null,
+    // The agent's task token, from the environment (never printed): what it pays alone stands on that mandate only.
+    taskToken: process.env.KIT11_TASK_TOKEN || null,
     owner,
   };
   console.log("Every supplier payment waits for the CFO's Face ID: this ledger's policy has no limit for paying alone.");
   if (!awx) console.log("Airwallex sandbox keys are not set: payments are not planned or executed.");
+  if (deps.taskToken) console.log("A task token is set (KIT11_TASK_TOKEN): a payment paid alone stands on its task mandate only.");
   console.log(`Watching ${deps.folders.join(", ")}${deps.vault ? "; filing the vault" : ""}${erpName ? `; syncing the books to ${erpName}` : ""}.`);
   const stop = () => { releaseLease(db, owner.id); db.close(); };
 

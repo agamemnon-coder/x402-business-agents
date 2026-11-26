@@ -98,7 +98,8 @@ async function main(): Promise<void> {
   } else if (cmd === "pay") {
     const awx = await airwallexFromEnv();
     if (!awx) throw new Error("Airwallex sandbox keys are not set; the payment cannot be planned");
-    const out = await payApInvoice(db, awx.rail, args[1] ?? "", new Date(), deps.reader);
+    // KIT11_TASK_TOKEN: the agent's task token (src/policy/taskTokens.ts); paid alone, the payment stands on its mandate only.
+    const out = await payApInvoice(db, awx.rail, args[1] ?? "", new Date(), deps.reader, process.env.KIT11_TASK_TOKEN ? { taskToken: process.env.KIT11_TASK_TOKEN } : {});
     console.log(out.kind === "proposed" ? `${out.proposal.proposal_id}: waits for the CFO's Face ID on the phone` : `not planned: ${out.reason}`);
   } else if (cmd === "sync") {
     // With Airwallex keys: payouts are followed up there and a paid one's Purser fee taken (src/payouts/follow.ts).
