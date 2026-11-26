@@ -158,7 +158,7 @@ function agentStrip(agents){
   const rows=agents.map((a)=>{const c=a.card;const spent=c&&c.per_month&&c.spent_month!==null&&c.spent_month!==undefined?toCents(c.spent_month):null,cap=c&&c.per_month?toCents(c.per_month):0;
     const C=c?cur(c.currency)+' ':'';const bar=el('span','as-bar'+(spent!==null&&spent>=cap?' full':''));const f=el('span','');f.style.width=(spent!==null&&cap>0?Math.min(100,spent/cap*100):0).toFixed(1)+'%';bar.append(f);
     const d=(a.decisions||[])[0];const o=d?(OUTCOME[d.outcome]||OUTCOME.note):null;
-    const r=el('a','as-row',[el('span','as-av h'+passHue(a),ic('bot')),el('span','as-b',[el('b','',a.name),spent!==null?el('span','sub num',sw('act_spent',{spent:C+cents(spent),cap:C+cents(cap)})):el('span','sub',a.role||'')]),
+    const r=el('a','as-row g'+passHue(a),[el('span','as-av h'+passHue(a),ic('bot')),el('span','as-b',[el('b','',a.name),spent!==null?el('span','sub num',sw('act_spent',{spent:C+cents(spent),cap:C+cents(cap)})):el('span','sub',a.role||'')]),
       spent!==null?bar:el('span',''),d?el('span','as-d',[el('span','obadge '+o[1],[ic(o[0]),t('cs.agents.out.'+(OUTCOME[d.outcome]?d.outcome:'note'))]),el('span','as-dt',d.text.replace(/\s*\(code's fallback, no model\)$/,''))]):el('span',''),ic('chevron-right')]);
     r.href='#/agents?a='+encodeURIComponent(a.id);return r});
   const more=el('a','as-more',[sw('act_more',{n:ROSTER.length}),ic('chevron-right')]);more.href='#/agents';
@@ -176,14 +176,10 @@ function openAgentFromQuery(q){const id=q&&q.get&&q.get('a');if(!id)return;
 `;
 
 export const SHELL_CSS = `
-/* --- The frame (cloud/src/consoleShell.ts, 22 Nov) ------------------------------------------------------------------- */
 :root { --side: 248px; --hdr: 65px; --tabbar: 60px; }
 .abrand, .btabs, #ask-slot { display: none; }
 #subnav[hidden] { display: none; }
 .apptabs .ng { display: none; }
-/* 26 Nov (Max: "enterprise grade"): the console is a product, not one of the site's pages. Its own frame: a sidebar
-   from the top (the mark, the company switcher, the grouped pages with their counts, the person at the foot; it
-   collapses to its icons), and a top bar over the page (where you are, the demo's one quiet line, search). */
 .signed-in { --line: color-mix(in srgb, var(--border) 80%, transparent); --hover: color-mix(in srgb, var(--text) 5%, transparent); --top: 0px; }
 .ctop, .abn, .sbx, .crumbs, .kbtn, .signed-in #testchip { display: none; }
 .signed-in #view { font-size: 14px; }
@@ -230,7 +226,6 @@ export const SHELL_CSS = `
   .signed-in #foot, .signed-in .foot-awx { max-width: none; }
   .signed-in main { padding-top: 0; }
   .signed-in main > .wrap { max-width: 1320px; } .signed-in #view { padding-top: 24px; } .subnav-wrap { display: none; }
-  /* The top bar: where you are on the left; the demo's line and search on the right. */
   .signed-in .ctop { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 16px; height: var(--top); padding: 0 var(--gut); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px); }
   .crumbs { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; font-size: 13px; color: var(--muted); white-space: nowrap; }
   .crumbs a { color: var(--muted); text-decoration: none; } .crumbs a:hover { color: var(--text); }
@@ -240,7 +235,6 @@ export const SHELL_CSS = `
   .kbtn .kt { min-width: 96px; text-align: left; }
   .kbtn:hover { color: var(--muted); border-color: color-mix(in srgb, var(--text) 18%, var(--line)); }
   .kbtn kbd { font: 600 11px/1 Inter, system-ui, sans-serif; padding: 3px 5px; border-radius: 4px; background: var(--sunken); color: var(--muted); }
-  /* Collapsed: the icons alone, each named in its title. */
   .sbmin .appbar .wrap { padding-inline: 8px; grid-template-columns: minmax(0, 1fr); }
   .sbmin .abn, .sbmin .apptabs .ng:not(.sep), .sbmin .appbar #co .cn, .sbmin .appbar #co .aw, .sbmin .appbar .co-more, .sbmin .appbar #who .wtx, .sbmin #tabs a[data-n]::after { display: none; }
   .sbmin .abrand { justify-content: center; padding: 0; } .sbmin .sbx { order: 8; justify-self: center; margin-top: 8px; }
@@ -250,7 +244,6 @@ export const SHELL_CSS = `
   .sbmin .appbar #out { border-top: 0; width: auto; }
   .sbmin #tabs a[data-on]::after { position: absolute; top: 6px; right: 10px; margin: 0; width: 6px; height: 6px; }
 }
-/* A phone or a narrow window: a compact top bar (the mark, the company, Ask, sign out), the five groups at the bottom. */
 @media (max-width: 1023px) {
   .signed-in header.top { display: none; }
   .signed-in .appbar { position: sticky; top: 0; z-index: 30; background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); }
@@ -283,7 +276,6 @@ export const SHELL_CSS = `
 }
 @media (min-width: 1024px) { #subnav { display: none !important; } }
 .subnav-wrap:has(#subnav[hidden]) { display: none; }
-/* Search: a dialog of the pages, the current one lit. */
 dialog.kdlg { width: min(560px, calc(100vw - 32px)); margin: 12vh auto auto; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); box-shadow: 0 24px 64px -16px rgba(0,0,0,.45); }
 dialog.kdlg::backdrop { background: rgba(8,10,18,.45); }
 .kq { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); color: var(--faint); }
@@ -293,7 +285,6 @@ ul.kr a { display: flex; align-items: center; gap: 10px; height: 36px; padding: 
 ul.kr a .ic { color: var(--faint); display: inline-flex; } ul.kr small { margin-left: auto; color: var(--faint); font-size: 12px; }
 ul.kr a.on, ul.kr a:hover { background: var(--hover); } ul.kr a.on .ic { color: var(--accent); }
 .kn { padding: 12px 10px; color: var(--muted); font-size: 13.5px; }
-/* The demo company: one quiet line in the top bar (a phone: under its bar), still saying what it is, and the way out. */
 .demo-ribbon { flex: none; color: var(--faint); font-size: 12px; }
 .demo-ribbon .dr { display: inline-flex; align-items: center; gap: 6px; margin: 0; line-height: 1.35; }
 .demo-ribbon .dr .i { width: 13px; height: 13px; flex: none; }
@@ -301,15 +292,12 @@ ul.kr a.on, ul.kr a:hover { background: var(--hover); } ul.kr a.on .ic { color: 
 .demo-ribbon a { margin-left: 4px; color: var(--muted); font-weight: 600; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--muted) 40%, transparent); text-underline-offset: 3px; }
 .demo-ribbon a:hover { color: var(--text); }
 @media (max-width: 1023px) { .signed-in .ctop:has(#demo:not([hidden])) { display: block; padding: 10px 16px 0; } .signed-in main { padding-top: 12px; } }
-/* Page headers: one shape on every page; the top bar says the group. */
 #view > .head { align-items: flex-end; gap: 12px 20px; margin-bottom: 20px; }
 #view > .head .eyebrow { display: block; margin: 0 0 4px; font: 600 11.5px/1.2 Inter, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 @media (min-width: 1024px) { #view > .head .eyebrow { display: none; } }
 .signed-in #view h1 { margin: 0; font-size: 24px; font-weight: 680; letter-spacing: -.022em; line-height: 1.2; }
 #view > .head .lede { margin: 4px 0 0; max-width: 80ch; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
 @media (max-width: 640px) { .signed-in #view h1 { font-size: 22px; } #view > .head { margin-bottom: 16px; } }
-/* Cards, tables and empty states: one language (26 Nov): 12 px radii, hairline borders, a 4/8 rhythm, tabular figures,
-   headers that stay in view while a long list scrolls, a quiet hover, one focus ring. */
 .card.list, .card.panel { overflow: clip; }
 .signed-in :focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; }
 .signed-in .btn { height: 34px; padding: 0 14px; border-radius: 8px; font-size: 13.5px; font-weight: 600; box-shadow: none; }
@@ -362,9 +350,7 @@ ul.kr a.on, ul.kr a:hover { background: var(--hover); } ul.kr a.on .ic { color: 
 .dcard .dh .dlink .ic svg { width: 14px; height: 14px; }
 a.card.kpi { text-decoration: none; color: inherit; transition: border-color .15s, box-shadow .15s, transform .15s; }
 a.card.kpi:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 8px 20px -12px rgba(16,24,40,.25); }
-/* Needs you: the approvals that wait, each a link to its invoice. */
 @media (max-width: 640px) { .ny-h { grid-template-columns: 44px minmax(0, 1fr); } .ny-ic { width: 44px; height: 44px; } .btn.ny-go { grid-column: 1 / -1; justify-content: center; height: 46px; } .ny-t h2 { font-size: 17px; } }
-/* The payments flow: four stages joined by a line that carries a dot from the inbox to paid; the stopped ones apart. */
 ol.pflow { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; position: relative; counter-reset: none; }
 ol.pflow > li { position: relative; min-width: 0; }
 ol.pflow > li:not(:last-child)::before { content: ""; position: absolute; top: 21px; left: 54px; right: -8px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 40%, var(--border)), var(--border)); }
@@ -393,7 +379,6 @@ a.pf-off b { color: var(--text); } a.pf-off .ic { color: var(--bad); display: in
   ol.pflow > li::before, ol.pflow > li::after { display: none; }
   .pf-n { font-size: 21px; }
 }
-/* The agents at work, on the Overview. */
 .astrip { display: grid; margin: 0 0 14px; border-top: 1px solid var(--border); }
 a.as-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(80px, 160px) 16px; gap: 4px 12px; align-items: center; padding: 11px 2px; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; }
 a.as-row > .as-av { grid-row: 1 / span 2; align-self: start; } a.as-row > .as-d { grid-column: 2 / 4; grid-row: 2; } a.as-row > .ic { grid-column: 4; grid-row: 1 / span 2; }
@@ -409,7 +394,6 @@ a.as-row:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transpar
 a.as-more { display: inline-flex; align-items: center; gap: 2px; padding-top: 10px; font-size: 13px; font-weight: 650; color: var(--accent); text-decoration: none; }
 @media (prefers-reduced-motion: no-preference) { .rise .as-bar > span { transform: scaleX(0); transition: transform .6s cubic-bezier(.2, .7, .2, 1) .15s; } .rise.in .as-bar > span { transform: scaleX(1); } }
 @media (max-width: 760px) { a.as-row { grid-template-columns: 34px minmax(0, 1fr) 16px; } a.as-row > .as-bar { grid-column: 2; grid-row: 3; } a.as-row > .as-d { grid-column: 2; grid-row: 2; } a.as-row > .ic { grid-column: 3; grid-row: 1 / span 3; } a.as-row > .as-av { grid-row: 1 / span 3; } }
-/* The Agents page: the roster. */
 @media (max-width: 640px) { .roster .sec-h p { display: none; } }
 @media (max-width: 760px) { .rs-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .rs-h { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
@@ -423,7 +407,6 @@ details.rs-how summary::-webkit-details-marker { display: none; }
 details.rs-how summary .ic { transition: transform .2s; } details.rs-how[open] summary .ic { transform: rotate(180deg); }
 .rs-hb { display: grid; gap: 8px; margin-top: 8px; font-size: 13px; } .rs-hb p { margin: 0; }
 ul.rs-code { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; } ul.rs-code a { font-size: 12.5px; color: var(--accent); overflow-wrap: anywhere; }
-/* The passes stand at their own height: a card with its payment token below does not stretch the one beside it. */
 .agents.wallet { align-items: start; }
 .wagent:not(.open) button.wpass { flex: none; }
 `;

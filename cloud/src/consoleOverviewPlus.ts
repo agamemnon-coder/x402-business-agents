@@ -65,7 +65,7 @@ function opSuppliers(){
     if(!top.length){box.replaceChildren(chartEmpty(t('cs.op.sup_none')));return}
     const max=Math.max(1,...top.map((s)=>s.c));
     box.replaceChildren(el('ul','sbars',top.map((s)=>{const f=el('span','sf');f.style.width=(s.c/max*100).toFixed(1)+'%';
-      const a=el('a','opsrow',[el('div','sl',[el('span','',s.k),el('b','num','EUR '+cents(s.c))]),el('span','strk',[f]),el('span','ss',s.n===1?t('cs.op.sup_1'):t('cs.op.sup_n',{n:s.n}))]);a.href='#/transactions';return el('li','',[a])})));
+      const a=el('a','opsrow m'+hue(s.k),[el('div','sl',[el('span','',[av(s.k),s.k]),el('b','num','EUR '+cents(s.c))]),el('span','strk',[f]),el('span','ss',s.n===1?t('cs.op.sup_1'):t('cs.op.sup_n',{n:s.n}))]);a.href='#/transactions';return el('li','',[a])})));
     requestAnimationFrame(()=>{const c=box.closest('.rise');if(c)c.classList.add('in')});
   }).catch(()=>box.replaceChildren(chartEmpty(t('cs.op.sup_none'))));
   return box}
@@ -80,7 +80,7 @@ function ovSpark(vals,cls){
   if(!vals||vals.length<2)return null;const W=120,H=36,mn=Math.min(...vals),mx=Math.max(...vals),r=(mx-mn)||1;
   const pts=vals.map((v,i)=>(i/(vals.length-1)*W).toFixed(1)+','+(H-3-(v-mn)/r*(H-6)).toFixed(1));
   return sv('svg',{viewBox:'0 0 '+W+' '+H,width:W,height:H,class:'ovspark '+(cls||''),'aria-hidden':'true'},[sv('polyline',{points:pts.join(' '),fill:'none'})])}
-function ovKpi(o){const a=el('a','card ovk rise'+(o.hot?' hot':''),[el('div','ovk-top',[el('span','ovk-i',ic(o.icon)),el('span','ovk-l',o.label),o.spark||null]),el('div','ovk-b',[el('b','num ovk-v',o.value),o.meter||null,o.sub?el('span','ovk-s'+(o.tone?' '+o.tone:''),o.sub):null])]);a.href=o.href;return a}
+function ovKpi(o){const a=el('a','card ovk rise '+o.k+(o.hot?' hot':''),[el('div','ovk-top',[el('span','ovk-i',ic(o.icon)),el('span','ovk-l',o.label),o.spark||null]),el('div','ovk-b',[el('b','num ovk-v',o.value),o.meter||null,o.sub?el('span','ovk-s'+(o.tone?' '+o.tone:''),o.sub):null])]);a.href=o.href;return a}
 // Relative time against the demo world's own day (its records are dated in it), or now for a real company.
 function ovAgo(at,now){const s=Math.max(0,(now-Date.parse(at))/1000);if(s<3600)return t('cs.ov2.ago_m',{n:Math.max(1,Math.round(s/60))});if(s<86400)return t('cs.ov2.ago_h',{n:Math.round(s/3600)});return t('cs.ov2.ago_d',{n:Math.round(s/86400)})}
 // The connected rails (26 Nov, the console redesign): only what is connected with a recorded run (OV_STACK, from the
@@ -133,16 +133,17 @@ async function overviewNext(){
   // The agents' cards: what each spent this month against its monthly limit, in the cards' currency.
   const cards=((AG&&AG.agents)||[]).map((a)=>a.card).filter((c)=>c&&c.per_month&&c.spent_month!==null&&c.spent_month!==undefined);
   const cc=cards.filter((c)=>c.currency===(cards[0]||{}).currency),sp=cc.reduce((n,c)=>n+toCents(c.spent_month),0),capc=cc.reduce((n,c)=>n+toCents(c.per_month),0);
-  const bar=(v,max)=>{const b=el('span','as-bar ovk-m'+(v>=max?' full':''));const f=el('span','');f.style.width=(max>0?Math.min(100,v/max*100):0).toFixed(1)+'%';b.append(f);return b};
+  // One meter, a part per agent in the agent's own colour (consoleColor.ts), each part what that card spent of all the limits.
+  const bar=(v,max)=>{const b=el('span','as-bar ovk-m ovk-st'+(v>=max?' full':''));for(const a of (AG.agents||[]).filter((a)=>cc.includes(a.card))){const f=el('span','g'+passHue(a));f.style.width=(max>0?Math.min(100,toCents(a.card.spent_month)/max*100):0).toFixed(1)+'%';f.title=a.name+': '+cur(a.card.currency)+' '+cents(toCents(a.card.spent_month));b.append(f)}return b};
   const kpis=el('div','ov-row ov-k',[
-    D&&D.money?ovKpi({icon:'wallet',label:sw('k_cash'),value:cur(C)+' '+cents(toCents(D.money.net)),sub:delta!==null?(delta>=0?'+':'−')+Math.abs(delta).toFixed(1)+'% '+t('cs.ov2.vs7'):D.since?t('cs.dash.net_sub',{date:dday(D.since)}):t('cs.dash.net_none'),tone:delta===null?'':delta>=0?'pos':'neg',spark:ovSpark(nets.slice(-30),'pos'),href:'#/transactions'}):null,
-    ovKpi({icon:'scan-face',label:sw('k_wait'),value:String(wait.length),sub:wait.length?cur(wait[0].currency)+' '+cents(sumOf(wait)):t('cs.ov.nothing_waits'),hot:wait.length>0,href:'#/invoices?f=waiting_cfo'}),
-    ovKpi({icon:'circle-check',label:sw('k_paid'),value:cur(C0)+' '+cents(sumOf(pd)),sub:sw('k_paid_sub',{n:pd.length,prev:cur(C0)+' '+cents(sumOf(pp)),month:MONTHS[+pm.slice(5,7)-1]}),href:'#/invoices?f=paid'}),
-    ovKpi({icon:'bot',label:sw('k_spend'),value:cc.length?cur(cc[0].currency)+' '+cents(sp):'—',sub:cc.length?sw('k_spend_sub',{cap:cur(cc[0].currency)+' '+cents(capc),n:cc.length}):sw('k_spend_none'),meter:cc.length?bar(sp,capc):null,href:'#/agents'})].filter(Boolean));
+    D&&D.money?ovKpi({icon:'wallet',label:sw('k_cash'),value:cur(C)+' '+cents(toCents(D.money.net)),sub:delta!==null?(delta>=0?'+':'−')+Math.abs(delta).toFixed(1)+'% '+t('cs.ov2.vs7'):D.since?t('cs.dash.net_sub',{date:dday(D.since)}):t('cs.dash.net_none'),tone:delta===null?'':delta>=0?'pos':'neg',spark:ovSpark(nets.slice(-30),'pos'),href:'#/transactions',k:'k-sky'}):null,
+    ovKpi({icon:'scan-face',label:sw('k_wait'),value:String(wait.length),sub:wait.length?cur(wait[0].currency)+' '+cents(sumOf(wait)):t('cs.ov.nothing_waits'),hot:wait.length>0,href:'#/invoices?f=waiting_cfo',k:'k-vio'}),
+    ovKpi({icon:'circle-check',label:sw('k_paid'),value:cur(C0)+' '+cents(sumOf(pd)),sub:sw('k_paid_sub',{n:pd.length,prev:cur(C0)+' '+cents(sumOf(pp)),month:MONTHS[+pm.slice(5,7)-1]}),href:'#/invoices?f=paid',k:'k-ok'}),
+    ovKpi({icon:'bot',label:sw('k_spend'),value:cc.length?cur(cc[0].currency)+' '+cents(sp):'—',sub:cc.length?sw('k_spend_sub',{cap:cur(cc[0].currency)+' '+cents(capc),n:cc.length}):sw('k_spend_none'),meter:cc.length?bar(sp,capc):null,href:'#/agents',k:'k-ind'})].filter(Boolean));
   // What waits for you, and how it is approved: on the phone, never here.
   const st=(i)=>i.status==='waiting_cfo'?['hot',t('cs.ov2.st_cfo')]:i.status==='needs_vendor'?['warn',t('cs.ov2.st_vendor')]:i.status==='needs_review'?['warn',t('cs.ov2.st_review')]:['ok',t('cs.ov2.st_ready')];
   const chk=(ok,label)=>el('span','ovc '+(ok?'ok':'warn'),[ic(ok?'circle-check':'triangle-alert'),label]);
-  const rows=[...wait,...todo].slice(0,5).map((i)=>{const s=st(i);const r=el('a','ov-tr',[el('span','ov-sup',[el('span','ov-si',ic('landmark')),el('span','',[el('b','',i.vendor||''),el('small','mono',i.invoice_no||i.id)])]),el('span','ov-amt',[el('b','num',ma(i.currency,i.total)),i.due_date?el('small','ov-due',t('cs.ov2.t_due')+' '+dday(i.due_date)):null]),
+  const rows=[...wait,...todo].slice(0,5).map((i)=>{const s=st(i);const r=el('a','ov-tr',[el('span','ov-sup',[av(i.vendor),el('span','',[el('b','',i.vendor||''),el('small','mono',i.invoice_no||i.id)])]),el('span','ov-amt',[el('b','num',ma(i.currency,i.total)),i.due_date?el('small','ov-due',t('cs.ov2.t_due')+' '+dday(i.due_date)):null]),
       el('span','ov-chks',[chk(!!i.read_by,t('cs.ov2.c_read')),chk(!(i.findings||[]).length,t('cs.ov2.c_policy')),chk(i.status!=='waiting_cfo',i.status==='waiting_cfo'?t('cs.ov2.c_over'):t('cs.ov2.c_limits'))]),el('span','ov-st '+s[0],s[1])]);r.href='#/invoices/'+encodeURIComponent(i.id);return r});
   const table=cardLink(el('section','card dcard rise ov-inv',[el('div','dh',[el('h2','',[t('cs.ov2.wait_h'),wait.length+todo.length?el('span','ov-n',String(wait.length+todo.length)):null]),el('p','',t('cs.ov2.wait_sub'))]),
     rows.length?el('div','ov-tbl',[el('div','ov-th',[el('span','',t('cs.ov2.t_sup')),el('span','',t('cs.ov2.t_amt')),el('span','',t('cs.ov2.t_chk')),el('span','',t('cs.ov2.t_st'))]),...rows]):chartEmpty(t('cs.ov.nothing_waits')),open.length?Object.assign(el('a','ov-tfoot',[el('span','',t('cs.ov.payables')),el('b','num',cur(open[0].currency)+' '+cents(sumOf(open))),el('span','',t('cs.ov2.n_inv_sup',{n:open.length,s:sup})),ic('chevron-right')]),{href:'#/invoices?f=open'}):null]),'#/invoices',t('cs.ov2.all_inv'));
@@ -178,17 +179,13 @@ export const OVERVIEW_PLUS_CSS = `
 .opsrow:hover, .opsrow:focus-visible { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .opsrow .sl span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .opsup .sbars .sf { background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #e879f9)); }
-/* The Overview on twelve columns: one gutter, rows whose cards share a height, no hole. */
 .dash.ov2 { display: grid; gap: 20px; margin: 0 0 28px; position: relative; isolation: isolate; }
-/* The purple glow behind the top of the dashboard (Max, 26 Nov: "add the purple glow back"): two soft lights under the
-   header and the figures, strongest in the dark. */
 .dash.ov2::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: -150px; height: 720px; pointer-events: none;
   background: radial-gradient(38% 44% at 27% 40%, color-mix(in srgb, var(--accent) var(--ovg, 38%), transparent), transparent 72%),
     radial-gradient(24% 34% at 80% 36%, color-mix(in srgb, #e879f9 var(--ovg2, 13%), transparent), transparent 72%); }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .dash.ov2 { --ovg: 11%; --ovg2: 6%; } }
 :root[data-theme="light"] .dash.ov2 { --ovg: 11%; --ovg2: 6%; }
 .ov-k a.ovk { background: color-mix(in srgb, var(--surface) 84%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-/* The header and its small "connected" picture. */
 .dash.ov2 > .ov-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px 24px; }
 .ov-head > .tools { flex: none; }
 a.ovn { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; justify-content: flex-end; width: 380px; min-height: 124px; margin: 0; padding: 12px 16px 12px 0; box-sizing: border-box; text-decoration: none; color: inherit;
@@ -211,7 +208,6 @@ canvas.ovn-c { position: absolute; z-index: -1; left: 0; top: 0; width: 100%; he
 @media (max-width: 1279px) { .ov-k > * { grid-column: span 6; } .ov-r75 > *, .ov-r84 > * { grid-column: span 12 !important; } }
 @media (max-width: 760px) { .dash.ov2, .ov-row { gap: 12px; } .ov-row > * { grid-column: span 12 !important; } .ov-row.ov-k > * { grid-column: span 6 !important; }
   a.ovk { padding: 14px; gap: 10px; } a.ovk svg.ovspark { display: none; } a.ovk .ovk-top { align-items: flex-start; } a.ovk .ovk-l { font-size: 12.5px; line-height: 1.25; } a.ovk .ovk-v { font-size: 18px; } a.ovk .ovk-s { font-size: 12px; } }
-/* The connected rails: one row each, the product's own mark on a white tile, never recoloured; its run on the right. */
 .ov-par { display: flex; flex-direction: column; }
 ul.ovs-ms { list-style: none; margin: 0; padding: 0; display: grid; }
 li.ovs-m { border-top: 1px solid var(--line); } li.ovs-m > * { display: block; padding: 8px 6px; margin: 0 -6px; border-radius: 8px; color: inherit; text-decoration: none; }
@@ -226,7 +222,6 @@ li.ovs-m > a:hover { background: var(--hover); }
 .ovs-k b { font-size: 11px; font-weight: 800; color: #1a1f2e; }
 .ovs-k.visa b { font-style: italic; font-weight: 900; color: #1a1f71; }
 .ov-par .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-/* The four figures. */
 a.ovk { display: flex; flex-direction: column; gap: 10px; padding: 16px; text-decoration: none; color: inherit; transition: border-color .12s; }
 a.ovk:hover { border-color: color-mix(in srgb, var(--text) 20%, var(--line)); }
 .ovk-top { display: flex; align-items: center; gap: 8px; min-width: 0; } .ovk-top .ovk-l { flex: 1; min-width: 0; }
@@ -240,7 +235,6 @@ a.ovk.hot .ovk-i { color: var(--accent); }
 .ovk-s { font-size: 12px; color: var(--faint); } .ovk-s.pos { color: var(--ok); } .ovk-s.neg { color: var(--bad); }
 svg.ovspark polyline { stroke: var(--accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 svg.ovspark.pos polyline { stroke: var(--ok); }
-/* Invoices waiting for you: a table on a fixed grid of columns. */
 .ov-n { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-left: 8px; padding: 0 6px; border-radius: 999px; background: var(--accent); color: var(--btn-ink, #fff); font-size: 12px; vertical-align: 2px; }
 .ov-inv { display: flex; flex-direction: column; }
 a.ov-tfoot { margin-top: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 12px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; text-decoration: none; } a.ov-tfoot b { color: var(--text); } a.ov-tfoot .ic { margin-left: auto; } a.ov-tfoot:hover { color: var(--text); }
@@ -257,7 +251,6 @@ a.ov-tr:hover { background: var(--hover); }
 .ov-st { justify-self: start; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 650; border: 1px solid; white-space: nowrap; }
 .ov-st.hot { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); } .ov-st.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); } .ov-st.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
 @media (max-width: 760px) { .ov-tbl { display: block; } .ov-th { display: none; } a.ov-tr { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; } .ov-chks { grid-column: 1 / -1; } }
-/* Approve on your phone: how it is done, never a button that approves here. */
 .ov-appr { display: flex; flex-direction: column; gap: 14px; }
 .ov-ah { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; } .ov-ah h2 { margin: 0; font-size: 14.5px; } .ov-ah p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 .ov-ai { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--sunken)); }
@@ -266,20 +259,16 @@ a.ov-aw:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border
 .ov-aw { color: inherit; text-decoration: none; display: grid; gap: 4px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: color-mix(in srgb, var(--sunken) 45%, var(--surface)); }
 .ov-awl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; color: var(--accent); } .ov-awl .ic svg { width: 13px; height: 13px; }
 .ov-awi { display: flex; justify-content: space-between; gap: 10px; font-size: 14.5px; } .ov-awi b:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ov-aw small { color: var(--faint); font-size: 12px; }
-/* The cash beside the flow: 7, 30 or 90 days. */
 .dh.withseg { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .ov-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--sunken); flex: none; }
 .ov-sb { appearance: none; border: 0; background: none; color: var(--muted); font: 650 12.5px/1 Inter, system-ui, sans-serif; padding: 0 12px; min-height: 32px; border-radius: 999px; cursor: pointer; }
 .ov-sb.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
-/* The agents on the Overview: the name and its spend, the meter under them, then the newest decision. */
 .ov-ag a.as-row { grid-template-columns: 30px minmax(0, 1fr) 16px; } .ov-ag a.as-row > .as-bar { grid-column: 2; grid-row: 2; } .ov-ag a.as-row > .as-d { grid-column: 2; grid-row: 3; } .ov-ag a.as-row > .ic { grid-column: 3; grid-row: 1 / span 3; } .ov-ag .as-av { width: 30px; height: 30px; border-radius: 8px; }
-/* Recent activity. */
 .ov-feed { list-style: none; margin: 0; padding: 0; display: grid; }
 .ov-feed li { border-top: 1px solid var(--line); } .ov-feed li > a { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 6px; margin: 0 -6px; border-radius: 10px; color: inherit; text-decoration: none; } .ov-feed li > a:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .ov-fi { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--sunken); color: var(--muted); } .f-ok .ov-fi { color: var(--ok); } .f-bad .ov-fi { color: var(--bad); } .f-wait .ov-fi { color: var(--accent); }
 .ov-fi svg { width: 15px; height: 15px; } .ov-ft { display: grid; min-width: 0; font-size: 13.5px; } .ov-ft b { font-size: 13px; } .ov-ft span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-feed time { font-size: 12px; color: var(--faint); white-space: nowrap; }
-/* The sidebar: a count of open invoices, and a green dot on a connection only when the company has it. */
 #tabs a[data-n]::after { content: attr(data-n); margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; display: inline-grid; place-items: center; border-radius: 999px; font-size: 11.5px; font-weight: 700; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
 #tabs a[data-on]::after { content: ""; margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); }
 .dash.ov2 > .startc { margin: 0; }

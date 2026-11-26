@@ -174,14 +174,12 @@ function tokenLifeSections(L){
 `;
 
 export const TOKEN_LIFE_CSS = `
-/* One purchase, one token (cloud/src/tokenLife.ts). */
 .tl-hero { padding: 20px; display: grid; gap: 16px; overflow: hidden; background: radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%), var(--surface); }
 .tl-hh { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .tl-hh h2 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
 .tl-sub { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
 .tl-body { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 24px; align-items: center; }
 .tl-cardw { display: grid; gap: 8px; min-width: 0; }
-/* 26 Nov: the token card has its own layout (the agents' cards, cloud/src/agentCardArt.ts, no longer carry these parts). */
 .acard.tl-card { display: grid; grid-template-rows: auto 1fr auto auto auto; gap: 8px; padding: 16px 18px; font-size: 12px; background: linear-gradient(140deg, #1a1838, #09090f 62%, #14122b); }
 .tl-card .ac-top { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
 .tl-card .ac-mark { flex: none; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: rgba(255,255,255,.1); }

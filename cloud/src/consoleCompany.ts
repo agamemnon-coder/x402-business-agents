@@ -254,7 +254,6 @@ function dangerCard(m){
 `;
 
 export const COMPANY_CSS = `
-/* The company and the session (cloud/src/consoleCompany.ts, 21 Nov). */
 .cosw { position: relative; display: inline-flex; align-items: center; gap: 2px; min-width: 0; flex: 0 1 auto; }
 .cosw .co { min-width: 0; }
 .co-more { flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
@@ -275,18 +274,13 @@ export const COMPANY_CSS = `
 .co-it .co-tx span { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; line-height: 1.3; }
 .co-fine { margin: 2px 8px 4px; font-size: 11.5px; color: var(--faint); line-height: 1.35; }
 @media (max-width: 1023px) { .signed-in .who-am-i .cosw { margin-right: auto; } .signed-in .who-am-i .cosw .co { margin-right: 0; } .co-menu { position: fixed; top: 58px; left: 12px; } }
-/* The session block: initials, the person, the countdown. */
 #who .sav, .set-who .sav { flex: none; width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--sunken); color: var(--text); font: 700 11.5px/1 Inter, system-ui, sans-serif; letter-spacing: .02em; }
 #who .wtx { min-width: 0; display: grid; gap: 1px; }
 #who .wn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; color: var(--text); }
 #who .ws { color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #who .ws .we { display: inline; } #who .ws .we.soon { color: var(--warn); font-weight: 600; }
-/* Test money in the header strip: one quiet badge. */
-/* The menu's connected tabs: hidden until the company has the connection. */
 nav.apptabs a[hidden] { display: none !important; }
-/* A card's heading with no line under it keeps its distance from what follows. */
 .dcard .dh:not(:has(p)) { margin-bottom: 12px; }
-/* The Company page. */
 .co-hero { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; min-width: 0; }
 .co-hero > div { min-width: 0; } .co-hero h1 { margin: 0; overflow-wrap: anywhere; } .co-hero .lede { margin: 4px 0 0; color: var(--muted); }
 .co-big { flex: none; width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: var(--accent); color: #fff; font: 700 24px/1 Inter, system-ui, sans-serif; }
@@ -315,14 +309,12 @@ a.co-svc:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--borde
 a.co-svc > span:last-child { min-width: 0; display: grid; } a.co-svc .sub { font-size: 12.5px; overflow-wrap: anywhere; }
 .co-svm { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
 @media (max-width: 640px) { .co-hero { align-items: flex-start; } .co-big { width: 44px; height: 44px; font-size: 19px; border-radius: 12px; } .co-row > b.num { font-size: 13px; } }
-/* Claude's page. */
 ul.cl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 ul.cl-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; } ul.cl-list li .ic { flex: none; display: inline-flex; margin-top: 1px; }
 ul.cl-list.ok li .ic { color: var(--ok); } ul.cl-list.no li .ic { color: var(--bad); }
 .cl-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; } .cl-row code.cmd { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; margin: 0; }
 #view > .dgrid + .cl-addr, #view > .cl-addr + .dcard { margin-top: 16px; }
 .cl-k .kpi b { font-size: 18px; white-space: normal; overflow-wrap: anywhere; }
-/* Settings' new cards. */
 .set-who { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; } .set-who > div { display: grid; min-width: 0; } .set-who b { overflow-wrap: anywhere; }
 .set-danger { border-color: color-mix(in srgb, var(--bad) 30%, var(--border)); }
 .set-danger h2 { color: var(--bad); }

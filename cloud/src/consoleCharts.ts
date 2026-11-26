@@ -167,7 +167,6 @@ function booksCharts(D,items){
 `;
 
 export const CHARTS_CSS = `
-/* Charts (cloud/src/consoleCharts.ts): a categorical palette in light and dark; every part also named with its value. */
 :root { --c0: var(--accent); --c1: #0f9a86; --c2: #d08a1c; --c3: #d4537a; --c4: #8a94a3; --fin: #12a150; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --c1: #2cc9b0; --c2: #f0b24e; --c3: #f17fa0; --c4: #7f8a99; --fin: #3ccf7f; } }
 :root[data-theme="dark"] { --c1: #2cc9b0; --c2: #f0b24e; --c3: #f17fa0; --c4: #7f8a99; --fin: #3ccf7f; }
@@ -176,7 +175,6 @@ svg.ring .seg.c0 { stroke: var(--c0); } svg.ring .seg.c1 { stroke: var(--c1); } 
 svg.ring .rt.sm { font-size: 21px; }
 svg.chart .b.fin { fill: var(--fin); } svg.chart .b.fout { fill: var(--accent); }
 .klegend i.fin { background: var(--fin); } .klegend i.fout { background: var(--accent); }
-/* Reading a chart (21 Nov): one thin tooltip, a crosshair on the line, the part under the pointer lit and the rest dimmed. */
 .dcard { position: relative; }
 .chtip { position: absolute; left: 0; top: 0; z-index: 20; min-width: 150px; max-width: min(280px, calc(100% - 4px)); padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px;
   background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 10px 24px -10px rgba(16,24,40,.28); font-size: 12.5px; line-height: 1.35;

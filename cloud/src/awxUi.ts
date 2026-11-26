@@ -174,9 +174,6 @@ async function airwallexView(){
 `.replace("__AWL_LOGO__", () => JSON.stringify(AIRWALLEX_LOGO_DATA_URL));
 
 export const AWX_UI_CSS = `
-/* The Airwallex tab (14 Nov): live sandbox cards, ids in full with a copy button, tables that scroll inside their card. */
-/* 21 Nov: the tab's focused layout: money and FX side by side, payouts, the agents' cards beside the webhooks, the
-   reconciliation, the rest folded. */
 .awmain { display: grid; gap: 16px; } .awmain[hidden] { display: none; }
 .awmain > .awcard, .awmain > .awgrid, #view .awmain .awcard { margin-top: 0; }
 .awmain .awgrid { margin-top: 0; }
@@ -239,7 +236,6 @@ code.awid { font-size: 12px; word-break: break-all; background: var(--sunken); p
 .awaccts { display: grid; gap: 12px; }
 .awacct { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; min-width: 0; }
 .awah { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-/* The feed keeps 50: the card scrolls inside itself, its header row stays in sight. */
 .aw-events .awscroll { max-height: 460px; overflow-y: auto; }
 .aw-events .awt thead th { position: sticky; top: 0; z-index: 1; }
 .awev { display: inline-grid; gap: 2px; } .awev code { font-size: 12px; color: var(--muted); }
@@ -252,11 +248,9 @@ code.awid { font-size: 12px; word-break: break-all; background: var(--sunken); p
 .awcalls { margin: 4px 0 0; font-size: 15px; } .awcalls b { font-size: 22px; }
 @media (max-width: 900px) { .awgrid.two { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 520px) { .awt { min-width: 560px; } code.awid { font-size: 11px; } }
-/* 14 Nov, the polish: the logo, a live dot that pulses, a skeleton while loading, big figures, the Overview card. */
 .awbrand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
 img.awlogo { height: 22px; width: auto; display: block; }
 img.awlogo.sm { height: 16px; }
-/* 15 Nov: the official file is dark letters; on a dark scheme it sits on a white chip, unaltered (as the site's tiles do). */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) img.awlogo { background: #fff; padding: 4px 8px; border-radius: 6px; box-sizing: content-box; } }
 .awpill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 12.5px; font-weight: 700; letter-spacing: .02em; }
 .awpill i, .awlive i { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; flex: none; }
