@@ -13,6 +13,7 @@ import { sessionToken } from "../auth.js";
 import type { Blobs, Sql } from "../store.js";
 import { TENANT_TABLES, TenantDb } from "../tenant.js";
 import { DEMO_END, SEED_BATCHES } from "./seed.gen.js";
+import { DEMO_MONEY_LOOP } from "./moneyLoop.gen.js";
 
 export const DEMO_TENANT = "t_demo_company";
 export const DEMO_SLUG = "purser-demo";
@@ -37,7 +38,7 @@ export async function ensureDemoCompany(sql: Sql, blobs: Blobs, now: Date): Prom
   const want = seedHead();
   const head = async () => (await sql.first<{ row_hash: string }>("SELECT row_hash FROM audit_rows WHERE tenant_id = ? ORDER BY seq DESC LIMIT 1", [DEMO_TENANT]))?.row_hash ?? null;
   const t = await sql.first<{ id: string }>("SELECT id FROM tenants WHERE id = ?", [DEMO_TENANT]);
-  if (t && (await head()) === want) return;
+  if (t && (await head()) === want) return ensureDemoMoneyLoop(sql, blobs, now);
   const iso = now.toISOString();
   if (!t) {
     await sql.batch([
@@ -54,6 +55,21 @@ export async function ensureDemoCompany(sql: Sql, blobs: Blobs, now: Date): Prom
   } catch (e) {
     // Two first guests at once: the other one's seed won. Anything else is a real failure.
     if ((await head()) !== want) throw e;
+  }
+  await ensureDemoMoneyLoop(sql, blobs, now);
+}
+
+/**
+ * The demo company's Cash & FX and Receivables (./moneyLoop.gen.ts, npm run cloud:money-loop-seed), through the same
+ * sync a runner's push goes through; kept apart from the seed's batches so a company made before it gets it too.
+ */
+async function ensureDemoMoneyLoop(sql: Sql, blobs: Blobs, now: Date): Promise<void> {
+  const current = async () => (await sql.first<{ at: string }>("SELECT at FROM money_loops WHERE tenant_id = ? AND id = 'latest'", [DEMO_TENANT]))?.at === DEMO_MONEY_LOOP.generated_at;
+  if (await current()) return;
+  try {
+    await applySync(new TenantDb(sql, DEMO_TENANT), blobs, SyncBatch.parse({ money_loop: DEMO_MONEY_LOOP }), now, { kind: "key", principal: "" });
+  } catch (e) {
+    if (!(await current())) throw e;
   }
 }
 
