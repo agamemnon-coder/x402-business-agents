@@ -24,6 +24,7 @@ import { LOGO_FILES } from "./try/logos.gen.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { NEGOTIATE_PATH, negotiatePageResponse } from "./try/negotiatePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
+import { RATIONALE_WORDS_JS } from "../../src/servers/rationaleWords.js";
 import { NAV_GROUPS, SHELL_CSS, SHELL_JS, SHELL_WORDS } from "./consoleShell.js";
 import { CHARTS_CSS, CHARTS_JS } from "./consoleCharts.js";
 import { COMPANY_CSS, COMPANY_JS } from "./consoleCompany.js";
@@ -2145,7 +2146,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS + COMPANY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + RATIONALE_WORDS_JS + "\n" + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS + COMPANY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">

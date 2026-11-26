@@ -480,6 +480,7 @@ async function enginePass() {
   await engineSetUp(E);
   await engineApprove(E, proposal);
   await engineProof(E);
+  await engineWhy(E);
   await engineArchive(E);
   await engineClaude(E);
   await engineSecondKey(E, cdpE, internalE);
@@ -896,6 +897,15 @@ const nameOf = (path: string) => path.slice(path.lastIndexOf("/") + 1);
  * ledger chain's head) and archived (the original and the receipt, one opened in the sandboxed frame). Every value is
  * compared to what the API answers; none is typed here.
  */
+/** The paid invoice's page shows why it was paid this way: the payment.rationale record, in the runner's own words. */
+async function engineWhy(E: EnginePass) {
+  const p = E.page;
+  await p.goto(`${E.origin}/#/invoices/${E.invoiceId}`);
+  await p.waitForSelector(".card.why", { timeout: 20_000 });
+  const why = (await p.textContent(".card.why")) ?? "";
+  ok(/^Why it was paid this way/.test(why) && /Paid from/.test(why) && /by passkey \(Face ID\)/.test(why), `why it was paid: the paid invoice's page shows the payment's rationale record in the runner's words (${why.slice(0, 160)})`);
+}
+
 async function engineProof(E: EnginePass) {
   const p = E.page;
   const id = E.invoiceId;
