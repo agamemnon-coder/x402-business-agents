@@ -46,7 +46,8 @@ describe("the context: checked, never a secret", () => {
     expect(parseContext({ kind: "invoice", id: "<b>" , demo: "yes" })).toEqual({ kind: "invoice" });
     for (const bad of [null, "invoice", { kind: "settings" }, { kind: "__proto__" }, { id: "AP-1" }]) expect(parseContext(bad)).toBeNull();
     expect(contextLabel({ kind: "invoice", id: "AP-0042" })).toBe("Invoice AP-0042");
-    expect(contextLabel({ kind: "transactions" })).toBe("The transactions");
+    expect(contextLabel({ kind: "transactions" })).toBe("Transactions");
+    expect(contextLabel({ kind: "overview" })).toBe("Overview");
   });
 
   it("tells the agent what the person views, and whether its tools can read it", () => {
@@ -121,18 +122,23 @@ describe("with Claude: the context reaches the agent as one checked line", () =>
 });
 
 describe("the panel", () => {
+  // 26 Nov (Max: "busy; make it Claude-like"): what the person views is one muted line over the question box with one
+  // quiet link to where the CFO approves; the page's three quick actions are the empty state's suggestions.
   it("draws what the person views and the three quick actions from the button's address, and nothing without a context", async () => {
     const r = await c.req("GET", "/ask?embed=1&ctx=invoice&id=AP-0042&demo=1");
     const html = await r.res.text();
-    const bar = /<div class="ctxbar" id="ctxbar">[\s\S]*?<\/div><\/div>/.exec(html)?.[0] ?? "";
+    const bar = /<div class="ctxbar" id="ctxbar">[\s\S]*?<\/div>/.exec(html)?.[0] ?? "";
     expect(bar).toContain('<b id="ctxl">Invoice AP-0042</b>');
-    expect(bar).toContain("demo company, made-up data");
-    expect([...bar.matchAll(/data-k="([a-z]+)"/g)].map((m) => m[1])).toEqual(["status", "transactions", "decision"]);
-    expect(bar).toContain('<button type="button" class="qa-go">Open where the CFO approves</button>');
+    expect(bar).toContain("· demo data");
+    expect(bar).toContain('<button type="button" class="qa-go" aria-label="Open the page where the CFO approves">Where the CFO approves</button>');
+    expect(bar).not.toContain("data-q=");
+    const sugg = /<ul class="acts ctx" id="sugctx"[^>]*>[\s\S]*?<\/ul>/.exec(html)?.[0] ?? "";
+    expect([...sugg.matchAll(/data-k="([a-z]+)"/g)].map((m) => m[1])).toEqual(["status", "transactions", "decision"]);
+    expect([...sugg.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1])).toEqual(["Check invoice status", "View transactions", "Explain a decision"]);
     expect(html).toContain('<body class="embed has-ctx">');
     // Its policy is the page's own: no style attribute, no other origin.
     expect(r.res.headers.get("content-security-policy")).toBe(askCsp(/'nonce-([^']+)'/.exec(r.res.headers.get("content-security-policy")!)![1]!));
-    expect(bar).not.toMatch(/style=|on[a-z]+=/);
+    expect(bar + sugg).not.toMatch(/style=|on[a-z]+=/);
     for (const q of ["/ask?embed=1", "/ask?embed=1&ctx=settings&id=AP-1", "/ask"]) {
       const h = await (await c.req("GET", q)).res.text();
       expect(h, q).toContain('<div class="ctxbar" id="ctxbar" hidden>');

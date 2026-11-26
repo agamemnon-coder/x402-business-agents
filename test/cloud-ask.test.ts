@@ -102,15 +102,13 @@ describe("the knowledge pack", () => {
     expect(retrieve("How do I verify a payment myself?").some((x) => /verify/i.test(x.title + x.text))).toBe(true);
     expect(retrieve("zebra quantum lasagna")).toEqual([]);
   });
-  // 21 Nov (Max: "jury mode"): every question the floating panel offers a juror finds passages that are about it.
+  // 21 Nov (Max: "jury mode"): every question the floating panel offers a juror finds passages that are about it (three
+  // since 26 Nov: "at most 3 suggestions").
   it("finds passages for each of the panel's jury questions", () => {
     const about: Record<string, RegExp> = {
       [ASK_JURY[0]!.q]: /agents?\b[\s\S]*\b(limit|CFO)/i,
       [ASK_JURY[1]!.q]: /simulat/i,
       [ASK_JURY[2]!.q]: /passkey|face id/i,
-      [ASK_JURY[3]!.q]: /limit/i,
-      [ASK_JURY[4]!.q]: /proof|evidence|verif/i,
-      [ASK_JURY[5]!.q]: /Airwallex/,
     };
     expect(Object.keys(about)).toEqual(ASK_JURY.map((x) => x.q));
     for (const [q, re] of Object.entries(about)) expect(retrieve(q).some((x) => re.test(x.title + " " + x.text)), q).toBe(true);
@@ -520,14 +518,20 @@ describe("the page and its button", () => {
       expect(html).not.toContain("innerHTML");
       // 21 Nov (Max's mockups): four actions in the empty state, no "Try asking" wall; the mark is Ask Purser's own.
       expect(ASK_ACTIONS.map((x) => x.label)).toEqual(["Which invoices wait for the CFO?", "Check an invoice against policy", "Show invoice evidence", "Explain a policy or approval rule"]); // 21 Nov (Max, mockup 180)
-      expect(html.match(/<button class="act" type="button" data-q=/g)!.length).toBeGreaterThanOrEqual(ASK_ACTIONS.length);
+      // The panel (embed) offers at most three suggestions (26 Nov, Max), the page its four actions.
+      const acts = html.match(/<button class="act" type="button" data-q=/g)!.length;
+      if (path === "/ask") expect(acts).toBeGreaterThanOrEqual(ASK_ACTIONS.length);
+      else expect(acts).toBe(ASK_JURY.length);
+      expect(ASK_JURY.length).toBeLessThanOrEqual(3);
       expect(html).not.toContain("Try asking");
       expect(html).toContain('id="file"');
       expect(html).toContain(ASK_PAGE_COPY.statusDocs);
     }
   });
   it("opens the floating panel in jury mode for a visitor or a guest, and with the console's actions in a company's own pages", async () => {
-    // 21 Nov (Max: "jury mode, so a jury can ask something"): six questions about Purser, the honesty lines kept.
+    // 21 Nov (Max: "jury mode, so a jury can ask something"): questions about Purser, the honesty lines kept; 26 Nov
+    // (Max: "at most 3 suggestions"): three, and on a page of Purser Cloud the page's three quick actions instead
+    // (the jury's list is then hidden by the page's style, body.has-ctx).
     for (const q of ["", "&ctx=invoices&demo=1"]) {
       const html = await (await c.fetch(`${ORIGIN}/ask?embed=1${q}`)).text();
       expect(html).toContain(`<h2 id="hh">${ASK_PAGE_COPY.juryHead}</h2>`);
@@ -535,6 +539,9 @@ describe("the page and its button", () => {
       expect(html).not.toContain(" own-co");
       for (const x of ASK_JURY) expect(html).toContain(`data-q="${x.q.replace(/'/g, "&#39;")}"`);
       expect(html).toContain(ASK_PAGE_COPY.privacy);
+      expect(html).toContain(q ? '<body class="embed has-ctx">' : '<body class="embed">');
+      expect(html.match(/data-k="/g)?.length ?? 0).toBe(q ? 3 : 0);
+      for (const honest of ["Read-only", "test money", "nothing stored", "can be wrong"]) expect(ASK_PAGE_COPY.privacy).toContain(honest);
     }
     const own = await (await c.fetch(`${ORIGIN}/ask?embed=1&ctx=invoices`)).text();
     expect(own).toMatch(/<body class="embed has-ctx own-co">/);

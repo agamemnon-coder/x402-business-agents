@@ -1,6 +1,7 @@
 // Ask Purser in context (21 Nov, "Purser Bot as a real financial copilot"): opened from a page of Purser Cloud, the
 // panel knows which page and which record the person is viewing (an invoice's id, a page's kind; never a token, a
-// session, an amount or anything secret) and offers three quick actions that fit it: check an invoice's status, view
+// session, an amount or anything secret) and offers three quick actions that fit it (26 Nov: as the floating panel's
+// suggestions while it is empty, the page itself as one muted line over the question box): check an invoice's status, view
 // the transactions, explain a decision. The context reaches the agent as one line it may read; it is checked here (a
 // kind from a fixed list, an id of letters, digits and _.:- only), so it can carry no instruction.
 //
@@ -28,10 +29,14 @@ const WORDS: Record<AskContextKind, string> = {
   overview: "the overview", invoices: "the invoices", invoice: "invoice", transactions: "the transactions", payment: "payment",
   agents: "the agents and their limits", policy: "the CFO's policy and settings", books: "the books", audit: "the audit archive", proof: "the run records",
 };
-/** What the panel says it is looking at: "Invoice AP-0042", "The transactions". */
+/** Each page's short name, as the panel's one context line shows it (26 Nov, Max: "Viewing: Overview · demo data"). */
+const TITLES: Record<AskContextKind, string> = {
+  overview: "Overview", invoices: "Invoices", invoice: "Invoice", transactions: "Transactions", payment: "Payment",
+  agents: "Agents", policy: "Policy", books: "Books", audit: "Audit archive", proof: "Run records",
+};
+/** What the panel says it is looking at: "Invoice AP-0042", "Transactions". */
 export function contextLabel(c: AskContext): string {
-  const w = c.id && (c.kind === "invoice" || c.kind === "payment") ? `${WORDS[c.kind]} ${c.id}` : WORDS[c.kind];
-  return w.charAt(0).toUpperCase() + w.slice(1);
+  return c.id && (c.kind === "invoice" || c.kind === "payment") ? `${TITLES[c.kind]} ${c.id}` : TITLES[c.kind];
 }
 
 /** The line the agent reads before the question. */
@@ -75,20 +80,22 @@ export function quickActions(c: AskContext | null): { key: QuickKey; label: stri
 
 /** Where the panel may send the console (the person acts there, with their own passkey): a hash, checked. */
 export const ASK_NAV = /^#\/(?:overview|transactions|agents|books|archive|invoices(?:\?f=waiting_cfo)?|invoices\/[A-Za-z0-9][A-Za-z0-9_.:-]{0,63})$/;
-export const OPEN_APPROVAL = "Open where the CFO approves";
+/** The link's words (26 Nov: shorter, one quiet link on the context line); its accessible name says what it does. */
+export const OPEN_APPROVAL = "Where the CFO approves";
+export const OPEN_APPROVAL_LABEL = "Open the page where the CFO approves";
 /** The page where the CFO approves what the person views: the invoice itself, else what waits for the CFO. */
 export const approvalHash = (c: AskContext | null): string | null =>
   !c ? null : c.kind === "invoice" && c.id ? `#/invoices/${c.id}` : c.kind === "invoices" || c.kind === "overview" || c.kind === "policy" ? "#/invoices?f=waiting_cfo" : null;
 
 /** The same, in the page's script (one source: the tables above as data). */
 export const CONTEXT_JS = `
-const QUICK = ${JSON.stringify({ labels: QUICK_LABELS, questions: QUICK_QUESTIONS, words: WORDS, kinds: ASK_CONTEXT_KINDS, open: OPEN_APPROVAL })};
+const QUICK = ${JSON.stringify({ labels: QUICK_LABELS, questions: QUICK_QUESTIONS, titles: TITLES, kinds: ASK_CONTEXT_KINDS, open: OPEN_APPROVAL, openLabel: OPEN_APPROVAL_LABEL })};
 const CTX_ID = ${CONTEXT_ID.toString()};
 function parseCtx(o) {
   if (!o || typeof o !== 'object' || typeof o.kind !== 'string' || !QUICK.kinds.includes(o.kind)) return null;
   const c = { kind: o.kind }; if (typeof o.id === 'string' && CTX_ID.test(o.id)) c.id = o.id; if (o.demo === true || o.demo === '1') c.demo = true; return c;
 }
-function ctxLabel(c) { const w = c.id && (c.kind === 'invoice' || c.kind === 'payment') ? QUICK.words[c.kind] + ' ' + c.id : QUICK.words[c.kind]; return w.charAt(0).toUpperCase() + w.slice(1); }
+function ctxLabel(c) { return c.id && (c.kind === 'invoice' || c.kind === 'payment') ? QUICK.titles[c.kind] + ' ' + c.id : QUICK.titles[c.kind]; }
 function quickOf(c) {
   return ['status', 'transactions', 'decision'].map((key) => {
     const t = QUICK.questions[key], k = c ? t[c.kind] : undefined;
