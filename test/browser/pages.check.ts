@@ -950,9 +950,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // held back empty and building the page's own mail filled. /one-pager's button shows once its script runs.
     // 21 Nov: /business 860 after Max's six decisions (the written agreement, eligibility, first target group, scenario).
     // 22 Nov (Max: "far too much text"; then "still too much"): /business 150, the question, one line, one visual and the form.
-    // 26 Nov (Max: "way too simple and amateur … widgets, animations, architecture"): 570, most of it labels inside the
-    // console, the architecture and the five controls (test/site-v4.test.ts counts the same page at 540).
-    for (const [path, budget] of [["/business", 570], ["/one-pager", 660]] as const) {
+    for (const [path, budget] of [["/business", 150], ["/one-pager", 660]] as const) {
       const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
       if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
       await look(page, `${path} ${tag}`, w);

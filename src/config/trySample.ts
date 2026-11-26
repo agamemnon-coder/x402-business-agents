@@ -20,10 +20,6 @@ const BERGTEX = SEEDED_SUPPLIERS.find((s) => s.key === "bergtex")!;
 /** The clean sample, on file and payable; the others are variations of it, so each tells one thing. The pages'
  * illustration shows this invoice (cloud/src/scene.ts). */
 export const CLEAN: InvoiceFields = { supplier: BERGTEX, invoiceNo: "BTX-2026-21", amountCents: 185_000, issueDate: "2026-11-09", dueDate: "2027-01-08", iban: BERGTEX.iban };
-/** The small sample inside the test company's limit, which the agent pays alone (src/engine/tryWorld.ts ALONE_SAMPLE). */
-export const WITHIN_LIMIT: InvoiceFields = { ...CLEAN, invoiceNo: "BTX-2026-23", amountCents: 12_000 };
-/** The sample with new bank details, which the checks block (src/engine/tryWorld.ts, key "bank"). /business shows both. */
-export const NEW_BANK: InvoiceFields = { ...CLEAN, invoiceNo: "BTX-2026-22", amountCents: 238_000, iban: "DE44500105175407324931" };
 
 /**
  * 17 Nov: the cash sample's context (src/engine/tryWorld.ts CASH_SAMPLE): filing it adds this much, once, to the test

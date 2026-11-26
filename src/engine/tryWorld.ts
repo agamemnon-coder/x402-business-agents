@@ -13,7 +13,7 @@ import { pdfOf } from "../e2e/documents.js";
 import { invoicePdf } from "./invoicePdf.js";
 // The clean sample and the suppliers on file, as data (src/config/trySample.ts): the cloud Worker's illustration
 // shows the clean sample without loading the engine.
-import { CASH_COMMITTED, CLEAN, NEW_BANK, SEEDED_SUPPLIERS, WITHIN_LIMIT, supplierKey, type InvoiceFields } from "../config/trySample.js";
+import { CASH_COMMITTED, CLEAN, SEEDED_SUPPLIERS, supplierKey, type InvoiceFields } from "../config/trySample.js";
 export { CASH_COMMITTED, CLEAN, SEEDED_SUPPLIERS, supplierKey, type InvoiceFields };
 
 export interface Sample {
@@ -82,6 +82,7 @@ export const PAID_SAMPLE = "again";
 export const CLEAN_SAMPLE = "clean";
 /** The sample the agent pays alone: Bergtex's small invoice, EUR 120.00, within the test company's limit (owner, 16 Nov). */
 export const ALONE_SAMPLE = "within";
+const WITHIN_LIMIT: InvoiceFields = { ...CLEAN, invoiceNo: "BTX-2026-23", amountCents: 12_000 };
 /**
  * 17 Nov (judging: "financial context influences what the agent decides"): an invoice inside the agent's limit that the
  * agent does not pay now, because paying it from EUR would take the test company's EUR below its cash floor
@@ -101,7 +102,7 @@ export const SAMPLE_SOURCES: { key: string; title: string; filename: string; tex
   { key: CLEAN_SAMPLE, title: "A supplier's invoice", filename: "bergtex-BTX-2026-21.pdf", text: invoiceText(CLEAN), fields: CLEAN, expect: { kind: "invoice", status: "ready" } },
   { key: PAID_SAMPLE, title: "An invoice you already paid, sent again", filename: "bergtex-BTX-2026-17.pdf", text: invoiceText(PAID_ORIGINAL), fields: PAID_ORIGINAL, expect: { kind: "duplicate_document" } },
   { key: "renumbered", title: "A paid invoice under a new number", filename: "bergtex-BTX-2026-17A.pdf", text: invoiceText({ ...PAID_ORIGINAL, invoiceNo: "BTX-2026-17A" }), fields: { ...PAID_ORIGINAL, invoiceNo: "BTX-2026-17A" }, expect: { kind: "invoice", status: "needs_review", finding: "possible_duplicate" } },
-  { key: "bank", title: "An invoice with new bank details", filename: "bergtex-BTX-2026-22.pdf", text: invoiceText(NEW_BANK), fields: NEW_BANK, expect: { kind: "invoice", status: "blocked", finding: "possible_fraud" } },
+  { key: "bank", title: "An invoice with new bank details", filename: "bergtex-BTX-2026-22.pdf", text: invoiceText({ ...CLEAN, invoiceNo: "BTX-2026-22", amountCents: 238_000, iban: "DE44500105175407324931" }), fields: { ...CLEAN, invoiceNo: "BTX-2026-22", amountCents: 238_000, iban: "DE44500105175407324931" }, expect: { kind: "invoice", status: "blocked", finding: "possible_fraud" } },
   { key: "unknown", title: "An invoice from a new supplier", filename: "zeeland-ZV-4471.pdf", text: NEW_SUPPLIER, expect: { kind: "invoice", status: "needs_vendor", finding: "new_supplier" } },
   // 16 Nov (owner): a small invoice from the supplier on file, to its account on file, inside the agent's limit to pay
   // alone (TRY_ALONE_LIMIT, EUR 500.00): ready like the clean one, and on Pay the agent pays it alone (src/ap/pay.ts payAlone).

@@ -128,12 +128,8 @@ describe("the site after v4", () => {
     // one animated diagram of a few words a step, the architecture as one strip of chips, the pilot and the plans as two
     // compact cards, the pilot's terms, the calculator and the questions folded (349 as built). 120 since 22 Nov, later
     // (Max: "still too much, the demo duplicates Home"): the question, one line, one small animated visual and the pilot's
-    // sign-up form (93 as built). 540 since 26 Nov (Max: "way too simple and amateur … widgets, animations,
-    // architecture"): the headline with the console (its invoice, four checks, the CFO's signature and /try's two other
-    // outcomes), the architecture's five stops, five controls each with its visual and record (the changed cent, the stop,
-    // the cards, the alert as Slack shows it, the ledger's chain), the pilot's four steps and the short form; most of the
-    // words are labels inside the visuals (523 as built).
-    Object.assign(budget, { business: 540, onePager: 640 });
+    // sign-up form (93 as built).
+    Object.assign(budget, { business: 120, onePager: 640 });
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
