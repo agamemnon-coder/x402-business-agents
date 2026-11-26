@@ -105,7 +105,8 @@ describe("the control map", () => {
 describe("the wording", () => {
   const DOCS = ["docs/compliance/README.md", "docs/compliance/controls.md", "docs/compliance/third-parties.md", "docs/compliance/ai-policy.md", "docs/compliance/ai-impact-assessment.md",
     "docs/compliance/instructions-for-use.md", "docs/compliance/incident-response.md", "docs/compliance/exit-plans.md", "docs/compliance/retention.md", "docs/compliance/psd2-sca.md",
-    "docs/compliance/gdpr.md", "docs/compliance/ai-act-classification.md"];
+    "docs/compliance/gdpr.md", "docs/compliance/ai-act-classification.md", "docs/compliance/ai-technical-documentation.md", "docs/compliance/qms.md", "docs/compliance/ai-literacy.md",
+    "docs/compliance/transfers.md", "docs/compliance/templates/dpa.md", "docs/compliance/templates/ict-contract-clauses.md"];
 
   it("maps and gives evidence; it never claims compliance or a certificate", () => {
     expect(HONEST_LINE).toMatch(/independent auditor/);

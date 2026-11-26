@@ -159,4 +159,6 @@ Not subprocessors of company data: ElevenLabs (used only by scripts that voice t
 
 The repository records no data processing agreement or international transfer mechanism (such as the EU Standard
 Contractual Clauses or the EU-US Data Privacy Framework) for any of these. The owner must put them in place, and list the
-subprocessors in each company's agreement, before Purser holds real company data.
+subprocessors in each company's agreement, before Purser holds real company data. A template agreement, with the
+subprocessors from the register, is [docs/compliance/templates/dpa.md](../compliance/templates/dpa.md); the mechanism
+each transfer would need is in [docs/compliance/transfers.md](../compliance/transfers.md).

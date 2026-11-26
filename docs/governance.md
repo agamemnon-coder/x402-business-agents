@@ -209,16 +209,16 @@ customer authentication, the GDPR, eIDAS, NIS2 and ISO/IEC 27001, with what each
 
 | Framework | Requirements | Evidence in ledger | Documented | Gap |
 |---|---|---|---|---|
-| EU AI Act | 20 | 9 | 8 | 3 |
+| EU AI Act | 20 | 9 | 11 | 0 |
 | ISO/IEC 42001:2023 | 14 | 5 | 8 | 1 |
 | SOC 2 | 11 | 8 | 3 | 0 |
 | DORA | 17 | 7 | 8 | 2 |
 | PSD2 SCA | 10 | 6 | 4 | 0 |
-| GDPR | 13 | 2 | 9 | 2 |
+| GDPR | 13 | 2 | 10 | 1 |
 | eIDAS | 4 | 1 | 2 | 1 |
 | NIS2 | 10 | 3 | 5 | 2 |
 | ISO/IEC 27001:2022 | 19 | 7 | 9 | 3 |
-| **All** | 118 | 48 | 56 | 14 |
+| **All** | 118 | 48 | 60 | 10 |
 
 <!-- frameworks:end -->
 

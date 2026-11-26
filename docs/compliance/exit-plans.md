@@ -105,7 +105,8 @@ flowchart LR
 
 **No contract yet: test accounts.** Every provider in the register is used on its standard sandbox, testnet or
 developer terms (DORA Art. 30(1) stays a gap in [controls.md](controls.md)). Before production, a contract with each
-critical or important provider must set out, as DORA Art. 30(2) and (3) list:
+critical or important provider must set out, as DORA Art. 30(2) and (3) list (in full, clause by clause and per
+provider: [templates/ict-contract-clauses.md](templates/ict-contract-clauses.md)):
 
 | Must include | Why for Purser |
 |---|---|
@@ -118,4 +119,4 @@ critical or important provider must set out, as DORA Art. 30(2) and (3) list:
 | Termination rights and minimum notice periods | Time to move under the plans above |
 | Full rights of access, inspection and audit for the entity and its authority | No audit of any provider has been made |
 | Exit strategies with a mandatory transition period | These plans, agreed with the provider |
-| A data processing agreement (GDPR Art. 28) and the transfer mechanism (Chapter V) | No DPA or transfer mechanism is recorded today ([docs/privacy/data-inventory.md](../privacy/data-inventory.md)) |
+| A data processing agreement (GDPR Art. 28) and the transfer mechanism (Chapter V) | No DPA or transfer mechanism is recorded today ([docs/privacy/data-inventory.md](../privacy/data-inventory.md)); a DPA template is [templates/dpa.md](templates/dpa.md), the mechanisms per provider [transfers.md](transfers.md) |
