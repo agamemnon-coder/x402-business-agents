@@ -23,10 +23,11 @@ type Prop = { type?: string; description?: string; examples?: unknown[]; enum?: 
 type Schema = { type: string; properties: Record<string, Prop>; required: string[]; additionalProperties: boolean };
 
 describe("every tool's description, schema and annotations", () => {
-  it("has the fifteen tools in a fixed order: fourteen that read, then the one that proposes and the one that reads a proposal", () => {
-    expect(READS.length).toBe(14);
-    expect(ALL.map((t) => t.name).slice(14)).toEqual(["propose_invoice_payment", "payment_proposal"]);
-    expect(ALL.slice(0, 14).map((t) => t.name)).toEqual(READS.map((t) => t.name));
+  it("has the seventeen tools in a fixed order: fifteen that read (route_money_out last), then the one that proposes and the one that reads a proposal", () => {
+    expect(READS.length).toBe(15);
+    expect(READS.at(-1)!.name).toBe("route_money_out");
+    expect(ALL.map((t) => t.name).slice(15)).toEqual(["propose_invoice_payment", "payment_proposal"]);
+    expect(ALL.slice(0, 15).map((t) => t.name)).toEqual(READS.map((t) => t.name));
   });
 
   for (const t of ALL) {

@@ -1,6 +1,6 @@
 ---
 name: pay-an-invoice
-description: Propose a supplier invoice's payment in Purser for the CFO's approval. Use when the user asks to pay, settle or schedule a supplier invoice, or asks what can be paid. Claude proposes; only the CFO's Face ID approves.
+description: Propose a supplier invoice's payment in Purser for the CFO's approval. Use when the user asks to pay, settle or schedule a supplier invoice, to transfer money to a supplier or convert currency through Purser, or asks what can be paid. Claude proposes; only the CFO's Face ID approves.
 ---
 
 # Proposing an invoice's payment in Purser
@@ -10,6 +10,10 @@ CFO, who approves them with Face ID in Purser Cloud, or lets them expire. Say th
 
 ## Steps
 
+0. When the request comes as a transfer, a payout or a currency conversion (a payee, an amount, a currency), or after
+   another Airwallex tool such as AgentOS said it does not move money, call `route_money_out` first with what you know
+   (`kind`, `payee`, `amount`, `currency`). It names the invoice it would pay and the next tool, or says why nothing can
+   be filed: no invoice yet, or a conversion on its own, which a person makes in Airwallex's own app.
 1. Find the invoice. Call `list_invoices`; filter by `status` when the user names one, for example `needs_vendor` or
    `waiting_cfo`. When the user names a supplier or number, match it in the list. Do not guess an id.
 2. Read it. Call `get_invoice` with its id. Look at its status and checks. An invoice that waits for a new supplier

@@ -26,8 +26,9 @@ export const TOOLS_PER_QUESTION = 10;
 
 export const DEMO_LABEL = "demo company: made-up data from a simulated month, no real money; read only";
 
-/** The demo company's books, as each MCP tool reads them; the proposing tools are never here. */
-const BOOK_TOOLS = READ_TOOLS.filter((t) => t.readOnly);
+/** The demo company's books, as each MCP tool reads them; the proposing tools are never here. Nor is route_money_out
+ *  (where a transfer or FX conversion goes, for an AI connected over MCP): code answers a money question here first. */
+const BOOK_TOOLS = READ_TOOLS.filter((t) => t.readOnly && t.name !== "route_money_out");
 
 /** What the UI shows for a step: "Read invoices", and how much it read. */
 type Summary = (args: Record<string, unknown>, data: Record<string, unknown> | undefined) => { label: string; detail: string };
