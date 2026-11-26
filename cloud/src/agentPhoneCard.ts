@@ -13,7 +13,7 @@
 // The view shows the agent's name, the card's last four (never more), its limits, what it spent and its status. It has no
 // script, no form and no way to act: it pays, freezes and changes nothing. Every value is escaped.
 
-import { CARD_ART_CSS, CARD_PRESETS, cleanDesign, EMPTY_DESIGN, FEATHER_SVG, isLight, modelShort, styleOf, type CardDesign, type CardPreset } from "./agentCardArt.js";
+import { CARD_ART_CSS, CARD_ART_DEFS, CARD_PRESETS, cardSvg, cleanDesign, EMPTY_DESIGN, modelShort, styleOf, type CardDesign, type CardPreset } from "./agentCardArt.js";
 import { REPO_BLOB, ROSTER } from "./agentRoster.js";
 import { recordedNegotiation } from "../../src/negotiate/negotiate.js";
 import { agentsOf } from "./consoleData.js";
@@ -115,13 +115,11 @@ const STATUS: Record<string, string> = { active: "Active", paused: "Paused", rev
  * owner: "far too busy"): on the card only the name, one mark, the last four and the network; the rest is under it. */
 export function cardFaceHtml(d: PhoneCardData, design: CardDesign): string {
   const preset = styleOf(design, d.agent);
-  const light = preset === "brand" && design.color ? isLight(design.color) : false;
   const c = d.card;
-  // 21 Nov (Max): Purser's feather until the company sets its own initials or logo.
-  const mark = design.logo ? `<img src="${esc(design.logo)}" alt="">` : design.initials ? esc(design.initials) : FEATHER_SVG;
-  return `<div class="acard p-${preset}${light ? " ink" : ""}${c && c.last4 ? "" : " bare"}${d.status !== "active" ? " frozen" : ""}" role="img" aria-label="${esc(`${d.name}, ${d.company}: ${c ? `card ending ${c.last4}` : "no card"}, ${STATUS[d.status] ?? d.status}`)}"><span class="ac-shine"></span>
-<div class="ac-top"><b class="ac-name">${esc(d.name)}</b><span class="ac-mark">${mark}</span></div><div></div>
-<div class="ac-bot"><span class="ac-num${c && c.last4 ? "" : " none"}">${c && c.last4 ? `•••• ${esc(c.last4)}` : "No card of its own"}</span>${c && c.last4 ? `<span class="ac-net txt">VISA</span>` : ""}</div></div>`;
+  // 27 Nov (Obsidian): the art is a few <use> of the page's shared shapes (CARD_ART_DEFS); Purser's quill in the medallion
+  // until the company sets its own initials or logo.
+  return `<div class="acard p-${preset}${c && c.last4 ? "" : " bare"}${d.status !== "active" ? " frozen" : ""}" role="img" aria-label="${esc(`${d.name}, ${d.company}: ${c ? `card ending ${c.last4}` : "no card"}, ${STATUS[d.status] ?? d.status}`)}">`
+    + cardSvg({ agent: d.agent, name: d.name, last4: c && c.last4 ? c.last4 : null, logo: design.logo, initials: design.initials }, esc) + `<span class="ac-shine"></span></div>`;
 }
 
 /** Under the card, in small muted words: its status and honesty label, then its month on a thin meter. */
@@ -164,6 +162,7 @@ ${CARD_ART_CSS}${WIDTHS}${brand}
 </style></head><body><main>
 <p class="band">${d.demo ? "Demo company · made-up data · test money" : "Purser · test money · Airwallex sandbox"}</p>
 <h1>${esc(d.company)}</h1>
+${CARD_ART_DEFS}
 ${cardFaceHtml(d, design)}
 ${cardMetaHtml(d)}
 <div class="rows">${rows}</div>

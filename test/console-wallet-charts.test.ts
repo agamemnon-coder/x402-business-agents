@@ -32,7 +32,10 @@ describe("the agents' cards (23 Nov)", () => {
     for (const r of ROSTER) expect(DEFAULT_STYLE[r.id], r.id).toBeDefined();
     for (const k of ["'claude'", "'alta'", "'airwallex'"]) expect(WALLET_JS).toContain(`dkLogo(${k})`);
     expect(WALLET_JS).not.toContain("dkLogo('visa");
-    expect(WALLET_JS).toContain("el('span','ac-net txt','VISA')");
+    expect(WALLET_JS).toContain("pcEl('text',{class:'ac-net txt'");
+    expect(WALLET_JS).toContain("fill:'url(#pc-vs)'},'VISA')");
+    // 27 Nov (Obsidian): the card is drawn as SVG nodes (its words as text, never markup), each agent's relief by its id.
+    expect(WALLET_JS).toContain("const rel=RELIEF[x.id]||'lines';");
     // 26 Nov (the owner: "remove SIMULATED, far too busy"): no badge on the card; the honesty label is under it, as words.
     expect(WALLET_JS).not.toContain("el('span','ac-tag'");
     expect(WALLET_JS).toContain("sim_card:'Simulated card · test money',sbx_card:'Sandbox card · test money'");

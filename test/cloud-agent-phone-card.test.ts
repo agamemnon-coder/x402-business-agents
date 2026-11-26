@@ -60,12 +60,16 @@ describe("the card design", () => {
     expect(bare).toContain("No card of its own");
     expect(bare).not.toMatch(/ac-chip|ac-net|ac-tag|••••/);
     const own = cardFaceHtml({ ...base, card: null }, cleanDesign({ initials: "NW" }));
-    expect(own).toContain('<span class="ac-mark">NW</span>');
+    // 27 Nov (Obsidian): the company's initials take the quill's place in the medallion, in champagne.
+    expect(own).toMatch(/<text class="ac-mark"[^>]*>NW<\/text>/);
     expect(own).not.toContain("ac-pf");
     const paid = cardFaceHtml({ ...base, agent: "support", status: "active", card: { last4: "2361", currency: "EUR", per_purchase: null, per_month: "150.00", spent_month: "38.00", month: "2026-11" } }, cleanDesign(null));
     expect(paid).not.toContain(" bare");
     expect(paid).not.toMatch(/ac-tag|ac-chip|ac-meter|ac-model|Simulated/);
-    expect(paid).toContain('<span class="ac-net txt">VISA</span>');
+    expect(paid).toMatch(/<text class="ac-net txt"[^>]*>VISA<\/text>/);
+    // Obsidian: the art is the page's shared shapes (CARD_ART_DEFS), used by reference; the Support agent's relief is the night sky.
+    expect(paid).toContain('<use href="#pc-rel-night"');
+    expect(paid).toContain('<use href="#pc-chip"');
     const used = { last4: "2361", currency: "EUR", per_purchase: null, per_month: "150.00", spent_month: "38.00", month: "2026-11" };
     expect(cardMetaHtml({ ...base, agent: "support", status: "active", card: used })).toContain('<span class="hon">Simulated card · test money</span>');
     expect(cardMetaHtml({ ...base, demo: false, agent: "support", status: "active", card: used })).toContain('<span class="hon">Sandbox card · test money</span>');
