@@ -1059,10 +1059,13 @@ async function guestPass() {
     // 23 Nov: every agent Purser has (cloud/src/agentRoster.ts) as its own payment card, the three at work here first.
     await p.waitForSelector("button.dk-face .acard");
     const face = p.locator("button.dk-face").first();
-    ok(await p.locator("article.dk-item").count() === 9 && await p.locator("article.dk-item.on").count() === 3 && /EUR/.test((await face.innerText()) ?? ""), `${tag}: Agents shows every agent in Purser as a card, three at work here, with what each spent`);
-    ok(await p.locator(".acard img[alt=Claude]").count() >= 8 && await p.locator(".acard img[alt=Visa]").count() === 0 && await p.locator(".acard .ac-net.txt").count() === 3 && await p.locator('.acard img:not([src^="data:"])').count() === 0, `${tag}: the cards carry the real marks (Claude), the network Visa in text only, none fetched from elsewhere`);
+    // 26 Nov (the owner: "far too busy"): what it spent is under the card, with its status and honesty label as words.
+    ok(await p.locator("article.dk-item").count() === 9 && await p.locator("article.dk-item.on").count() === 3 && /EUR/.test((await p.locator("article.dk-item .dk-meta").first().innerText()) ?? ""), `${tag}: Agents shows every agent in Purser as a card, three at work here, with what each spent under it`);
+    ok(await p.locator("article.dk-item .dk-hon").count() === 3 && /test money/.test(await p.locator("article.dk-item .dk-hon").first().innerText()), `${tag}: each card is labelled under it (a sandbox or simulated card, test money), not with a badge on it`);
+    ok(await p.locator(".acard img").count() === 0 && await p.locator(".acard .ac-tag, .acard .ac-chip, .acard .ac-model, .acard .ac-meter").count() === 0 && await p.locator(".acard .ac-net.txt").count() === 3, `${tag}: on the card only its name, its mark, the last four and the network, Visa, in text`);
     await face.click();
     await p.waitForSelector("dialog.dk-drawer[open] .adec");
+    ok(await p.locator("dialog.dk-drawer[open] .dk-facts img[alt=Claude]").count() >= 1 && await p.locator('dialog.dk-drawer[open] img:not([src^="data:"])').count() === 0, `${tag}: the card's details carry the real marks (Claude), none fetched from elsewhere`);
     ok(await p.locator("dialog.dk-drawer[open] .adec").isVisible(), `${tag}: a card opens the agent's record in a drawer`);
     ok(await p.evaluate(() => { const d = document.querySelector("dialog.dk-drawer[open] .dk-db"); return !!d && d.scrollWidth <= d.clientWidth + 1; }), `${tag}: the drawer: nothing wider than it`);
     await p.keyboard.press("Escape");

@@ -17,7 +17,7 @@ describe("the agents' cards (23 Nov)", () => {
     expect(WALLET_CSS).toContain(CARD_ART_CSS.trim());
   });
   it("show the card's last four only, never a card number, a CVV or a way to move money", () => {
-    expect(WALLET_JS).toContain("'•••• •••• •••• '+x.last4");
+    expect(WALLET_JS).toContain("'•••• '+x.last4"); // 26 Nov (the owner): "•••• 4002", the last four only
     expect(WALLET_JS).not.toMatch(/card_number|cvv|\bpan\b/i);
     // Its only calls: the design (read, and saved by an owner), the phone link, the Wallet pass link, the recorded negotiation.
     const calls = [...WALLET_JS.matchAll(/api\('([^']+)'/g)].map((m) => m[1]).sort();
@@ -32,7 +32,11 @@ describe("the agents' cards (23 Nov)", () => {
     for (const r of ROSTER) expect(DEFAULT_STYLE[r.id], r.id).toBeDefined();
     for (const k of ["'claude'", "'alta'", "'airwallex'"]) expect(WALLET_JS).toContain(`dkLogo(${k})`);
     expect(WALLET_JS).not.toContain("dkLogo('visa");
-    expect(WALLET_JS).toContain("el('span','ac-net txt','Visa')");
+    expect(WALLET_JS).toContain("el('span','ac-net txt','VISA')");
+    // 26 Nov (the owner: "remove SIMULATED, far too busy"): no badge on the card; the honesty label is under it, as words.
+    expect(WALLET_JS).not.toContain("el('span','ac-tag'");
+    expect(WALLET_JS).toContain("sim_card:'Simulated card · test money',sbx_card:'Sandbox card · test money'");
+    expect(WALLET_JS).toContain("x.last4?el('span','dk-hon',honestOf(x)):null");
     for (const p of CARD_PRESETS) expect(CARD_ART_CSS).toContain(`.acard.p-${p} {`);
   });
   it("say plainly when Apple Wallet waits for its certificate, and offer the phone's QR either way", () => {
