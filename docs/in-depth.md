@@ -265,7 +265,7 @@ gives an agent a task of yours: Claude reads it, code applies the CFO's limits, 
   payment reaches Airwallex or Alta. Real: your passkey's signature and the server's check of it, the Airwallex sandbox
   FX quote (read-only), and the Claude agents' calls, each labelled live, or labelled as a fallback when none answered.
 - **Live in the sandbox:** T:0 books: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line ([record](runs/2026-11-10-t0-journal-sandbox.md)).
-- **Built, not yet live (stand-ins only):** the Cardputer hub push and gate (a fake hub in the tests), the emergency stop and `npm run smoke:sandbox`.
+- **Built, not yet live (stand-ins only):** the Cardputer hub push and gate (a fake hub in the tests), freezing every card on an emergency stop, and `npm run smoke:sandbox`. The stop itself, for payments, ran live on the Airwallex sandbox on 26 November ([record](runs/2026-11-26-stop-at-rail-live.md)).
 
 **Other live tests (separate worlds, dated):** awx-1, the Airwallex-only run (7 November, above), the Airi run (Visa Intelligent Commerce via Airwallex's Airi, 7 November, a scripted run, no Claude call, above;
 Airwallex sandbox, test card, test money), the TAP run (2 November), four eyes on chain (two test keys on one machine, not two people), the compliance contract and
