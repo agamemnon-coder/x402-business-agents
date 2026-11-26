@@ -9,6 +9,9 @@ import { mcpTools, type MCPCallToolResultLike, type MCPClientLike } from "@anthr
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { redactSecrets } from "../lib/redact.js";
+import { agentId } from "../platform/externalAgents.js";
+import { IDENTITY_META, signAgentRequest } from "../policy/agentIdentity.js";
+import { readIdentityKey } from "./identityKeys.js";
 
 const name = process.env.KIT11_AGENT ?? "acme-research";
 const goal = process.argv.slice(2).join(" ").trim()
@@ -23,7 +26,14 @@ const { tools } = await mcp.listTools();
 console.log(`${name}: connected to the agent API; tools: ${tools.map((t) => t.name).join(", ")}`);
 
 // Our server always answers with content blocks (never the protocol's older toolResult shape).
-const caller: MCPClientLike = { callTool: async (p) => (await mcp.callTool(p)) as MCPCallToolResultLike };
+// Know your agent: with its signing key on disk (npm run principals -- rotate ext:<name>), each call is signed
+// (src/policy/agentIdentity.ts); without one it goes unsigned, which the server allows unless it requires a signature.
+const signingKey = readIdentityKey(agentId(name));
+const caller: MCPClientLike = {
+  callTool: async (p) => (await mcp.callTool(signingKey
+    ? { ...p, _meta: { [IDENTITY_META]: signAgentRequest(signingKey, { agent: agentId(name), method: "tools/call", target: p.name, body: p.arguments ?? {} }) } }
+    : p)) as MCPCallToolResultLike,
+};
 // Each tool call and its answer is printed as it happens, so the demo shows what the agent did, not what it says.
 // A refusal (isError: a declined charge, say) comes out of run() as a thrown ToolError that holds the result's content
 // (the sentence, then the structured object as JSON; its message joins them). It is printed and thrown on unchanged:

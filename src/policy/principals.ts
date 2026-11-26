@@ -11,6 +11,7 @@ import type { DB } from "../db/open.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
 import { revokeAgentTokens } from "./agentTokenStore.js";
+import { identityHook } from "./identityHook.js";
 
 /** An agent as people read it: "the Support agent" (internal id support), or "agent ext:acme" for an outside one. */
 const who = (id: string) => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : `agent ${id}`);
@@ -95,8 +96,10 @@ export function principal(db: DB, id: string, now = new Date(), create = true): 
   if (row || !create) return row ?? null;
   const outside = id.startsWith("ext:");
   const caps = outside ? DEFAULT_CAPABILITIES.outside! : DEFAULT_CAPABILITIES[id]!;
-  db.prepare("INSERT OR IGNORE INTO principals (principal_id, kind, capabilities_json, status, created_at, updated_at) VALUES (?, ?, ?, 'ACTIVE', ?, ?)")
+  const made = db.prepare("INSERT OR IGNORE INTO principals (principal_id, kind, capabilities_json, status, created_at, updated_at) VALUES (?, ?, ?, 'ACTIVE', ?, ?)")
     .run(id, outside ? "outside" : "internal", JSON.stringify(caps), now.toISOString(), now.toISOString());
+  // Know your agent: its signing key pair, made with it (./agentIdentity.ts); the ledger keeps the public key only.
+  if (made.changes === 1) identityHook.issue?.(db as never, id, now);
   return db.prepare("SELECT * FROM principals WHERE principal_id = ?").get(id) as Row;
 }
 
@@ -143,9 +146,10 @@ const sha = (key: string) => createHash("sha256").update(key).digest("hex");
 
 /**
  * Gives an agent a new key and makes the old one useless. Returns the key for the caller to write to a key file
- * (the CLI does, mode 0600); only its hash stays in the ledger.
+ * (the CLI does, mode 0600); only its hash stays in the ledger. Its signing key pair is replaced with it: the new
+ * private key is returned once too (identity), and only the public key stays in the ledger.
  */
-export function rotatePrincipalKey(db: DB, id: string, by: string, now = new Date()): { key: string; version: number } {
+export function rotatePrincipalKey(db: DB, id: string, by: string, now = new Date()): { key: string; version: number; identity: { key_id: string; private_pem: string } | null } {
   const p = principal(db, id, now);
   if (!p) throw new Error(`${id} is not an agent with an identity`);
   if (p.status !== "ACTIVE") throw new Error(`${id} is revoked; a revoked identity gets no new key`);
@@ -155,8 +159,9 @@ export function rotatePrincipalKey(db: DB, id: string, by: string, now = new Dat
   const key = `pk_${randomBytes(24).toString("base64url")}`;
   const version = p.key_version + 1;
   db.prepare("UPDATE principals SET key_sha256 = ?, key_version = ?, updated_at = ? WHERE principal_id = ?").run(sha(key), version, now.toISOString(), id);
-  audit(db, "human", "principal.key_rotated", id, { by, version }, now);
-  return { key, version };
+  const identity = identityHook.issue?.(db as never, id, now) ?? null;
+  audit(db, "human", "principal.key_rotated", id, { by, version, ...(identity ? { identity_key_id: identity.key_id } : {}) }, now);
+  return { key, version, identity };
 }
 
 /** Whether a presented key is the agent's current one. An agent that never got a key needs none. */

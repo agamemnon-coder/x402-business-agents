@@ -449,6 +449,11 @@ Rate limits, where the docs say them (each asserted in the same test or the test
 - **Each agent's tools** (25 November): every agent principal lists exactly the tools it may call and the money actions
   it may take; anything else is refused in code before it runs and audited (`principal.tool_refused`). The table, held
   to the code by `test/agent-permissions.test.ts`: [security/agent-permissions.md](security/agent-permissions.md).
+- **Know your agent** (26 November): each agent principal has its own Ed25519 signing key (the ledger keeps the public
+  half). A request to the agent API carries a signature over its tool, its body, its time and a nonce, so it can be
+  attributed to one agent key, and a replay is refused (`principal.identity_refused`, with a reason code). The money
+  action records the key id. Behind `PURSER_AGENT_IDENTITY` (default `optional`):
+  [security/agent-identity.md](security/agent-identity.md).
 - **No agent has or can use an owner key** (checked 1 November, `test/no-owner-key.test.ts`), also in autonomous mode:
   the business owner's key file is named only by the owner signer, the pause on chain (both run by the executor after
   the CFO's Face ID), the one-off bootstrap and two CLIs a person runs; no agent, autonomy, Claude or /try module names

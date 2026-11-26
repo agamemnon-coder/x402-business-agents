@@ -7,9 +7,12 @@ import { dirname } from "node:path";
 import { openDb } from "../db/open.js";
 import { keyPath } from "../metal/agentCli.js";
 import { expirePrincipal, listPrincipals, revokePrincipal, rotatePrincipalKey } from "../policy/principals.js";
+import { keepIdentityKeysOnDisk, writeIdentityKey } from "./identityKeys.js";
 
 const [cmd = "list", agent, arg] = process.argv.slice(2);
 const db = openDb();
+// An agent's signing key pair made here (a principal's first) goes to its key file, never to the screen.
+keepIdentityKeysOnDisk();
 const by = process.env.USER ?? "cfo";
 
 if (cmd === "list") {
@@ -24,11 +27,13 @@ if (cmd === "list") {
   expirePrincipal(db, agent, new Date(arg), by);
   console.log(`${agent} ends at ${new Date(arg).toISOString()}.`);
 } else if (cmd === "rotate" && agent) {
-  const { key, version } = rotatePrincipalKey(db, agent, by);
+  const { key, version, identity } = rotatePrincipalKey(db, agent, by);
   const file = keyPath(`principal-${agent.replace(/[^a-z0-9-]/gi, "_")}.key`);
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, `${key}\n`, { mode: 0o600 });
   console.log(`${agent} key v${version} written to ${file} (the old key no longer works). Give the agent KIT11_AGENT_KEY from that file.`);
+  // Its signing key (src/policy/agentIdentity.ts): the private half to its own file; the ledger has the public half.
+  if (identity) console.log(`${agent} signing key ${identity.key_id} written to ${writeIdentityKey(agent, identity.private_pem)} (the old one no longer verifies).`);
 } else {
   console.error('usage: npm run principals -- list | revoke <agent> "<reason>" | expire <agent> <ISO time> | rotate <agent>');
   process.exit(2);
