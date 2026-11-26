@@ -138,7 +138,7 @@ describe("the demo company's balance sheet", () => {
     expect(b.EUR!.result_cents).not.toBe(0);
   });
   it("is shown with the result, and 'Balanced' only when the shown figures add up", () => {
-    expect(html).toContain("row('cs.books.result',v.result_cents)");
+    expect(html).toContain("row('cs.books.result',v.result_cents,'k4')");
     expect(html).toContain("sides.balanced&&v.balanced?");
     expect(html).toContain("const sheetSides=(v)=>{const right=(v.liabilities_cents||0)+(v.equity_cents||0)+(v.result_cents||0)");
   });
@@ -200,7 +200,7 @@ describe("the console", () => {
   // "Purser Cloud is…" box (the older Overview's, no longer drawn) is gone with it, so the phone header stays short.
   it("says on the Overview's header whose figures they are and as of when, with no 'Purser Cloud is…' box", () => {
     expect(html).not.toContain("whatCloud(");
-    expect(html).toContain("const hero=head(t('cs.nav.overview'),sw('as_of',{name:m.tenant.name||'',day:dday(new Date(now).toISOString())}));");
+    expect(html).toContain("const hero=head(t('cs.nav.overview'),sw('as_of',{name:m.tenant.name||'',day:dday(new Date(now).toISOString())}),m.demo?[ovNet()]:null)");
   });
   it("labels the demo's fallback decisions as a simulated month, from its own count (jury, 13 Nov)", async () => {
     expect((await get("/v1/dashboard")).json.agents).toEqual({ decisions: 33, by_fallback: 8 });
