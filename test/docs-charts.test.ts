@@ -76,6 +76,16 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`/badge/connections-${rows.length}_%C2%B7_${n("live")}_live-`);
   });
 
+  it("docs/connect-claude.md: how each client was checked, counted from its table", () => {
+    const md = read("docs/connect-claude.md"), lines = md.split("\n");
+    const at = lines.indexOf("| Client | How it was checked (13 Nov 2026) |");
+    const rows = lines.slice(at + 2, lines.findIndex((l, i) => i > at + 1 && !l.startsWith("|"))).map((l) => l.split(" | ")[1]!);
+    const run = rows.filter((r) => r.startsWith("**Run**")).length, docs = rows.filter((r) => r.startsWith("From ")).length;
+    expect(run + docs).toBe(rows.length);
+    expect(md).toContain(`  "From its own documentation" : ${docs}\n  "Run" : ${run}\n`);
+    expect(md).toContain(`${rows.length} clients; ${run} run (one of them, the Claude iOS app, against a deployed cloud), ${docs} from their own documentation.`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
