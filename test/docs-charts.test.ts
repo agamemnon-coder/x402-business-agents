@@ -112,6 +112,14 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`/badge/promises_in_the_idea-${rows.length}_%C2%B7_${built}_built-`);
   });
 
+  it("docs/assurance.md: the invariants badge and diagram count the table's rows", () => {
+    const md = read("docs/assurance.md");
+    const rows = md.split("\n").filter((l) => l.startsWith("| **"));
+    expect(md).toContain(`/badge/money_invariants-${rows.length}_%C2%B7_code%2C_tests%2C_CI_job%2C_record-`);
+    expect(md).toContain(`  G --> I${rows.length}[`);
+    expect(md).not.toContain(`  G --> I${rows.length + 1}[`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
