@@ -36,14 +36,6 @@ import { executeInvoicePayment } from "../executors/invoicePayment.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex } from "../lib/terms.js";
 import { agreementSha256, agreedInvoiceNo, type Scene } from "../negotiate/rails.js";
-
-/** The signed terms carry the agreed amount and the agreed invoice's number (rails.ts's agreedInvoiceNo), checked here
- *  for the record; the negotiation's own proof (the offer chain, the agreement hash) is checked by /agreed. */
-function signedNamesAgreement(amount: unknown, sha: string, signed: { amount?: unknown; invoice_no?: unknown; reference?: unknown }, scene: Scene): boolean {
-  const ref = agreedInvoiceNo(scene, sha);
-  const no = typeof signed.invoice_no === "string" ? signed.invoice_no.split(" · ")[0] : "";
-  return signed.amount === amount && (no === ref || signed.reference === ref);
-}
 import { recordedNegotiation, type Negotiation } from "../negotiate/negotiate.js";
 import { chained, verifyOffer } from "../negotiate/offers.js";
 import { closeBlocked } from "../policy/approvals.js";
@@ -313,6 +305,12 @@ export function negotiatedInvoiceText(scene: Scene, invoiceNo: string, amount: s
     "Description                                   Amount", `${`Production lot, early payment as agreed (${scene.invoice_no})`.padEnd(46)}${amt}`, "", `Total due                                     ${amt}`, "",
     "Pay by SWIFT to:", `Account name: ${scene.supplier.name}`, `IBAN: ${spaced}`, `BIC: ${scene.supplier.bic}`, `Payment reference: ${invoiceNo}`, "",
   ].join("\n");
+}
+
+/** Whether signed payment terms name this agreement: its amount, and its invoice number (or reference) carrying the hash. */
+export function signedNamesAgreement(amount: string, sha: string, signed: { amount?: unknown; invoice_no?: unknown; reference?: unknown }, scene: Scene): boolean {
+  const ref = agreedInvoiceNo(scene, sha);
+  return signed.amount === amount && (signed.invoice_no === ref || signed.reference === ref);
 }
 
 export const negotiatedPayment = (n: Negotiation): NegotiatedPayment => ({

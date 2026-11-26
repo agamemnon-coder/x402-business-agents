@@ -1,0 +1,455 @@
+{
+  "run": "receivables",
+  "date": "2026-11-26",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "command": "npm run airwallex:money-loop-live -- live receivables",
+  "commit": "9abc1b24bfad65e36a936ab4da760cc4985bd826",
+  "simulated": [
+    "The customers are made up (\"Alpenhof Sport AG (test customer)\", \"Fjordline Outdoor AS (test customer)\", \"Unknown Test Payer GmbH\"). Their payments are the sandbox's deposit simulation (`POST /simulation/deposit/create`): no bank transfer and no card payment took place. Once made, each deposit is Airwallex's own record, read back with `GET /deposits` and matched from what Airwallex answered.",
+    "The overdue invoice is dated 30 days back by the run (issued then, due 6 days ago): nothing waited, and the reminder is drafted for that due date.",
+    "No passkey: money in needs no CFO approval in Purser; nothing here pays anything."
+  ],
+  "budget": {
+    "approved": 30,
+    "max": 40,
+    "used": 10,
+    "logged_requests": 10,
+    "status_429": 0,
+    "unexpected_non_2xx": []
+  },
+  "totals": {
+    "steps": 9,
+    "pass": 9,
+    "fail": 0,
+    "not_judged": 0
+  },
+  "cards": [],
+  "passes": [
+    {
+      "pass_no": 1,
+      "started_at": "2026-11-26T19:53:54.487Z",
+      "ended_at": "2026-11-26T19:54:14.097Z",
+      "stopped": null,
+      "note": "A fresh ledger of its own. Before the runs, 6 read-only calls looked at the sandbox (two probes, logins included: the balances twice, the beneficiaries and the Global Accounts); none moved money or changed anything, and they are not in this record's call table. The three runs (19:53 to 19:54 UTC) ran one after the other on the code committed as `9abc1b24b`. The code that ran includes the review fixes of 26 Nov: the FX executor judges the floor on free money under the payout lock and holds the signed maximum, and checks the stop, pause and the agent's identity again right before the create; a payment reference names an invoice only as a whole word.",
+      "timings": {},
+      "steps": [
+        {
+          "phase": "issue",
+          "id": "ar.issue_linked",
+          "agent": "treasury",
+          "title": "Invoice NW-AR-112601 issued to a test customer (EUR 121.00 with 21% VAT, due in 14 days): booked, and a single-use Airwallex payment link made for exactly it, then read back",
+          "expect": "booked once; the link and its read-back exactly the invoice",
+          "outcome": "NW-AR-112601 EUR 121.00 booked (entry 1); link a0003ca6-d9d0-4baf-be68-40ca37c8abbd; read back: EUR 121.00, reference NW-AR-112601, single use, active",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:53:54.490Z",
+          "ended_at": "2026-11-26T19:53:55.880Z",
+          "ms": 1390,
+          "lines": [
+            1,
+            2,
+            3
+          ],
+          "facts": {
+            "invoice_no": "NW-AR-112601",
+            "amount": "121.00",
+            "entry_id": 1,
+            "link_id": "a0003ca6-d9d0-4baf-be68-40ca37c8abbd",
+            "link_active": true
+          },
+          "error": null
+        },
+        {
+          "phase": "issue",
+          "id": "ar.issue_overdue",
+          "agent": "treasury",
+          "title": "Invoice NW-AR-112602 to another test customer (EUR 60.50, VAT 0%), issued 30 days ago and due 6 days ago; no link",
+          "expect": "booked; no Airwallex call",
+          "outcome": "NW-AR-112602 EUR 60.50 booked, due 2026-11-20; 0 calls",
+          "pass": true,
+          "simulated": "an invoice dated in the past by the run (its dates are written, nothing waited 30 days)",
+          "started_at": "2026-11-26T19:53:55.881Z",
+          "ended_at": "2026-11-26T19:53:55.883Z",
+          "ms": 2,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "money-in",
+          "id": "ar.global_account",
+          "agent": null,
+          "title": "The EUR Global Account money arrives on (GET /global_accounts)",
+          "expect": "one ACTIVE account that receives EUR",
+          "outcome": "3 ACTIVE Global Accounts; EUR: 4e868b5f-2b52-4539-9d8b-14809a65939c",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:53:55.883Z",
+          "ended_at": "2026-11-26T19:53:56.267Z",
+          "ms": 384,
+          "lines": [
+            4
+          ],
+          "facts": {
+            "global_account_id": "4e868b5f-2b52-4539-9d8b-14809a65939c"
+          },
+          "error": null
+        },
+        {
+          "phase": "money-in",
+          "id": "ar.deposits",
+          "agent": null,
+          "title": "Two payments arrive by the sandbox's simulation (POST /simulation/deposit/create): EUR 121.00 with reference NW-AR-112601, and EUR 33.33 with reference GIFT-TEST-1126 (no invoice)",
+          "expect": "two deposits made at Airwallex",
+          "outcome": "65908513-1b9b-4759-9e5c-7cdf381342af EUR 121.00 (NW-AR-112601); 6ebb9a84-0c1d-4005-afda-9882d16af239 EUR 33.33 (GIFT-TEST-1126)",
+          "pass": true,
+          "simulated": "the payer and the money are the sandbox's deposit simulation; the deposits are then Airwallex's own records",
+          "started_at": "2026-11-26T19:53:56.269Z",
+          "ended_at": "2026-11-26T19:53:57.680Z",
+          "ms": 1411,
+          "lines": [
+            5,
+            6
+          ],
+          "facts": {
+            "deposits": [
+              {
+                "deposit_id": "65908513-1b9b-4759-9e5c-7cdf381342af",
+                "amount": "121.00",
+                "reference": "NW-AR-112601"
+              },
+              {
+                "deposit_id": "6ebb9a84-0c1d-4005-afda-9882d16af239",
+                "amount": "33.33",
+                "reference": "GIFT-TEST-1126"
+              }
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "money-in",
+          "id": "ar.readback",
+          "agent": null,
+          "title": "Both deposits read back from Airwallex (GET /deposits for the run's window), again every 15 s until SETTLED (at most 4 reads)",
+          "expect": "both found, SETTLED, with the amount and reference sent",
+          "outcome": "reads: none -> SETTLED+SETTLED; 65908513-1b9b-4759-9e5c-7cdf381342af EUR 121.00 SETTLED reference NW-AR-112601; 6ebb9a84-0c1d-4005-afda-9882d16af239 EUR 33.33 SETTLED reference GIFT-TEST-1126",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:53:57.681Z",
+          "ended_at": "2026-11-26T19:54:13.375Z",
+          "ms": 15694,
+          "lines": [
+            7,
+            8
+          ],
+          "facts": {
+            "reads": [
+              "none",
+              "SETTLED+SETTLED"
+            ],
+            "deposits": [
+              {
+                "id": "65908513-1b9b-4759-9e5c-7cdf381342af",
+                "amount": "121.00",
+                "currency": "EUR",
+                "status": "SETTLED",
+                "reference": "NW-AR-112601",
+                "created_at": "2026-11-26T19:53:56+0000"
+              },
+              {
+                "id": "6ebb9a84-0c1d-4005-afda-9882d16af239",
+                "amount": "33.33",
+                "currency": "EUR",
+                "status": "SETTLED",
+                "reference": "GIFT-TEST-1126",
+                "created_at": "2026-11-26T19:53:57+0000"
+              }
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "match",
+          "id": "ar.match",
+          "agent": "treasury",
+          "title": "Purser matches each deposit as Airwallex read it back (routeDeposit, src/receivables/ar.ts)",
+          "expect": "NW-AR-112601 paid by its reference; the unknown payment to review and suspense (2900), never to revenue",
+          "outcome": "65908513-1b9b-4759-9e5c-7cdf381342af: ar MATCHED (NW-AR-112601: reference names NW-AR-112601); NW-AR-112601 PAID; 6ebb9a84-0c1d-4005-afda-9882d16af239: ar REVIEW (no invoice: amount); review queue 1: EUR 33.33, \"no invoice named and no open invoice is open for exactly this amount\"; suspense EUR 33.33; 0 calls",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:54:13.379Z",
+          "ended_at": "2026-11-26T19:54:13.389Z",
+          "ms": 10,
+          "lines": [],
+          "facts": {
+            "matched": {
+              "deposit_id": "65908513-1b9b-4759-9e5c-7cdf381342af",
+              "outcome": "MATCHED",
+              "invoice_no": "NW-AR-112601",
+              "invoice_status": "PAID"
+            },
+            "review": [
+              {
+                "payment_id": "6ebb9a84-0c1d-4005-afda-9882d16af239",
+                "amount": "33.33",
+                "reason": "no invoice named and no open invoice is open for exactly this amount"
+              }
+            ],
+            "suspense": "33.33"
+          },
+          "error": null
+        },
+        {
+          "phase": "match",
+          "id": "ar.once",
+          "agent": "treasury",
+          "title": "The first deposit routed again (a webhook and a poll that both see it)",
+          "expect": "recorded once: the same outcome, no second booking",
+          "outcome": "MATCHED (NW-AR-112601: reference names NW-AR-112601); ledger entries 4 -> 4; payments recorded 2",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:54:13.395Z",
+          "ended_at": "2026-11-26T19:54:13.398Z",
+          "ms": 3,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "match",
+          "id": "ar.link_off",
+          "agent": "treasury",
+          "title": "The paid invoice's payment link switched off at Airwallex (retireDoneLinks), then read back",
+          "expect": "deactivated: active false read back",
+          "outcome": "retired NW-AR-112601; read back not active",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:54:13.402Z",
+          "ended_at": "2026-11-26T19:54:14.084Z",
+          "ms": 682,
+          "lines": [
+            9,
+            10
+          ],
+          "facts": {
+            "link_id": "a0003ca6-d9d0-4baf-be68-40ca37c8abbd",
+            "active": false
+          },
+          "error": null
+        },
+        {
+          "phase": "dunning",
+          "id": "ar.dunning",
+          "agent": "treasury",
+          "title": "The aged debtors and the reminder drafts as of today (draftReminders): NW-AR-112602 is 6 days late",
+          "expect": "one first-stage reminder drafted for it, stored as DRAFT, never sent; the paid invoice not in the aged list; no Airwallex call",
+          "outcome": "1 draft(s): NW-AR-112602 stage 1 due 2026-11-23; stored DRAFT; aged: NW-AR-112602 EUR 60.50 6 days (0-30); 0 calls",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:54:14.087Z",
+          "ended_at": "2026-11-26T19:54:14.088Z",
+          "ms": 1,
+          "lines": [],
+          "facts": {
+            "drafts": [
+              {
+                "invoice_no": "NW-AR-112602",
+                "stage": 1,
+                "due_on": "2026-11-23"
+              }
+            ],
+            "aged": [
+              {
+                "invoice_no": "NW-AR-112602",
+                "open": "60.50",
+                "days_overdue": 6,
+                "bucket": "0-30"
+              }
+            ]
+          },
+          "error": null
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "n": 1,
+      "pid": 24985,
+      "at": "2026-11-26T19:53:54.495Z",
+      "answered_at": "2026-11-26T19:53:55.077Z",
+      "ms": 582,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "26ad1a0d960440019ed971e054710e24",
+      "code": null,
+      "step": "ar.issue_linked (treasury)"
+    },
+    {
+      "n": 2,
+      "pid": 24985,
+      "at": "2026-11-26T19:53:55.084Z",
+      "answered_at": "2026-11-26T19:53:55.543Z",
+      "ms": 459,
+      "method": "POST",
+      "endpoint": "/pa/payment_links/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "327e8487fdf1475a838307912f1ffa88",
+      "code": null,
+      "step": "ar.issue_linked (treasury)"
+    },
+    {
+      "n": 3,
+      "pid": 24985,
+      "at": "2026-11-26T19:53:55.545Z",
+      "answered_at": "2026-11-26T19:53:55.879Z",
+      "ms": 334,
+      "method": "GET",
+      "endpoint": "/pa/payment_links/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "15898280c6a34821ad6774c0bed6a48f",
+      "code": null,
+      "step": "ar.issue_linked (treasury)"
+    },
+    {
+      "n": 4,
+      "pid": 24985,
+      "at": "2026-11-26T19:53:55.883Z",
+      "answered_at": "2026-11-26T19:53:56.265Z",
+      "ms": 382,
+      "method": "GET",
+      "endpoint": "/global_accounts",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "f779e725a06c409c8cbfb938cf9f44e1",
+      "code": null,
+      "step": "ar.global_account"
+    },
+    {
+      "n": 5,
+      "pid": 24985,
+      "at": "2026-11-26T19:53:56.270Z",
+      "answered_at": "2026-11-26T19:53:56.967Z",
+      "ms": 697,
+      "method": "POST",
+      "endpoint": "/simulation/deposit/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "1eba5a86f4654a949cc3c27fa42a8bd1",
+      "code": null,
+      "step": "ar.deposits"
+    },
+    {
+      "n": 6,
+      "pid": 24985,
+      "at": "2026-11-26T19:53:56.968Z",
+      "answered_at": "2026-11-26T19:53:57.679Z",
+      "ms": 711,
+      "method": "POST",
+      "endpoint": "/simulation/deposit/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "21d4b418a83b491d8a54342a6298628c",
+      "code": null,
+      "step": "ar.deposits"
+    },
+    {
+      "n": 7,
+      "pid": 24985,
+      "at": "2026-11-26T19:53:57.681Z",
+      "answered_at": "2026-11-26T19:53:57.989Z",
+      "ms": 308,
+      "method": "GET",
+      "endpoint": "/deposits",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "c4e95384e27040989c2643ea715fae1f",
+      "code": null,
+      "step": "ar.readback"
+    },
+    {
+      "n": 8,
+      "pid": 24985,
+      "at": "2026-11-26T19:54:13.003Z",
+      "answered_at": "2026-11-26T19:54:13.374Z",
+      "ms": 371,
+      "method": "GET",
+      "endpoint": "/deposits",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "3d1c3cfdf79245fe8a93f7de0d2ee285",
+      "code": null,
+      "step": "ar.readback"
+    },
+    {
+      "n": 9,
+      "pid": 24985,
+      "at": "2026-11-26T19:54:13.405Z",
+      "answered_at": "2026-11-26T19:54:13.762Z",
+      "ms": 357,
+      "method": "POST",
+      "endpoint": "/pa/payment_links/{id}/deactivate",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "a1d73e2e40ed4a54a449831345a239f8",
+      "code": null,
+      "step": "ar.link_off (treasury)"
+    },
+    {
+      "n": 10,
+      "pid": 24985,
+      "at": "2026-11-26T19:54:13.763Z",
+      "answered_at": "2026-11-26T19:54:14.083Z",
+      "ms": 320,
+      "method": "GET",
+      "endpoint": "/pa/payment_links/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "93045700eaac425e81ddcf1f02542cd2",
+      "code": null,
+      "step": "ar.link_off (treasury)"
+    }
+  ],
+  "calls_by_endpoint": [
+    {
+      "endpoint": "POST /authentication/login",
+      "calls": 1
+    },
+    {
+      "endpoint": "POST /pa/payment_links/create",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /pa/payment_links/{id}",
+      "calls": 2
+    },
+    {
+      "endpoint": "GET /global_accounts",
+      "calls": 1
+    },
+    {
+      "endpoint": "POST /simulation/deposit/create",
+      "calls": 2
+    },
+    {
+      "endpoint": "GET /deposits",
+      "calls": 2
+    },
+    {
+      "endpoint": "POST /pa/payment_links/{id}/deactivate",
+      "calls": 1
+    }
+  ],
+  "not_shown": [
+    "A customer paying through the link's hosted checkout page (a card payment): not done; the link is made, read back and switched off.",
+    "A real bank transfer from a customer: the deposits are the sandbox's simulation.",
+    "Partial, short and overpaid payments live: covered by test/receivables-ar.test.ts, not run against the sandbox."
+  ]
+}

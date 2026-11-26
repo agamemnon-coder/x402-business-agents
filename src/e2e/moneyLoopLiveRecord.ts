@@ -8,7 +8,7 @@ import type { LoopRun } from "./moneyLoopLive.js";
 export const LOOP_RECORD_NAME: Record<LoopRun, string> = { "fx-convert": "fx-conversion-live", receivables: "receivables-live", "negotiated-pay": "negotiated-payout-live" };
 
 const PASSKEY = "The approver is a labelled virtual test passkey (\"money-loop virtual test passkey (no person's Face ID)\", src/redteam/authenticator.ts), enrolled as the only passkey of the run's own fresh ledger. Its signatures go through the same verification as a phone's (WebAuthn assertion over the exact terms hash); no person's Face ID was used.";
-const PREP = "Before the runs, 6 read-only calls looked at the sandbox (two probes: the balances twice, the beneficiaries and the Global Accounts, logins included); none moved money or changed anything, and they are not in this record's call table.";
+const PREP = "Before the runs, 6 read-only calls looked at the sandbox (two probes, logins included: the balances twice, the beneficiaries and the Global Accounts); none moved money or changed anything, and they are not in this record's call table. The three runs (19:53 to 19:54 UTC) ran one after the other on the code committed as `9abc1b24b`.";
 const REVIEW = "The code that ran includes the review fixes of 26 Nov: the FX executor judges the floor on free money under the payout lock and holds the signed maximum, and checks the stop, pause and the agent's identity again right before the create; a payment reference names an invoice only as a whole word.";
 
 const FX: Omit<GovRecordMeta, "summary"> = {
@@ -74,7 +74,7 @@ const NEG: Omit<GovRecordMeta, "summary"> = {
   keySteps: ["neg.agree", "neg.verify", "neg.original_refused", "neg.signed", "neg.pay", "neg.readback"],
   notShown: [
     "A live negotiation between two Claude models: the turns are the recorded ones (no model call).",
-    "The transfer's settlement to PAID: not simulated in this run.",
+    "The transfer's settlement to PAID: not simulated in this run (Airwallex answered SCHEDULED at create and PROCESSING at the read-back).",
     "A person's Face ID on a real phone. One run.",
   ],
 };
