@@ -47,6 +47,8 @@ interface Terms {
   account?: string; iban_last4?: string; fee_reserve?: string; fee_max?: string; transfer_request_id: string;
   conversion: null | { quote_id: string; client_rate: string; buy_currency: string; buy_amount: string; sell_currency: string; sell_amount: string };
   balances_before: Record<string, string>; floors: Record<string, string>; paying_account?: { id: string; name: string };
+  /** A company with several legal entities (src/policy/entities.ts): the entity that pays, and its own account. */
+  paying_entity?: { id: string; name: string; country: string }; funding_account?: { id: string; currency: string };
 }
 
 /**
@@ -76,7 +78,8 @@ export function buildRationale(db: DB, proposalId: string, refusal: string | nul
   return {
     proposal_id: proposalId, kind: p.kind, outcome, amount: t.amount, currency: t.currency, payee: t.beneficiary_name, invoice_no: t.invoice_no,
     funding: {
-      account: t.paying_account ? `${t.paying_account.name} (${t.paying_account.id})` : null,
+      account: t.paying_entity && t.funding_account ? `${t.paying_entity.name}, ${t.paying_entity.country} (${t.funding_account.id})`
+        : t.paying_account ? `${t.paying_account.name} (${t.paying_account.id})` : null,
       balance: (euro ? t.balances_before.eur_available : t.balances_before[t.currency]) ?? "", floor: (euro ? t.floors.eur_floor : t.floors[t.currency]) ?? "",
       conversion: c && { sell: `${c.sell_currency} ${c.sell_amount}`, buy: `${c.buy_currency} ${c.buy_amount}`, rate: c.client_rate, quote_id: c.quote_id },
     },
