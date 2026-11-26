@@ -67,6 +67,8 @@
     "principals": "tsx src/cli/principals.ts",
     "audit:export": "tsx src/cli/auditExport.ts",
     "audit:report": "tsx src/cli/auditReport.ts",
+    "audit-pack": "tsx src/cli/auditPack.ts",
+    "verify-audit-pack": "tsx src/cli/verifyAuditPack.ts",
     "verify-log": "tsx src/cli/verifyLog.ts",
     "verify-approval-page": "tsx src/cli/verifyApprovalPage.ts",
     "approval-page-record": "tsx src/cli/approvalPageRecord.ts",
