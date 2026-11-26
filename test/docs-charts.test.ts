@@ -41,4 +41,17 @@ describe("the docs' charts plot their records", () => {
       expect(md).toContain(`/badge/${encodeURIComponent(label).replace(/%20/g, "_")}-${n}_of_${controls}-`);
     expect(md).toContain(`/badge/controls-${controls}_in_the_tables-`);
   });
+
+  it("docs/controls-matrix.md: who enforces, counted from the rows' Enforced by column", () => {
+    const md = read("docs/controls-matrix.md");
+    const rows = md.split("\n").filter((l) => l.startsWith("| ") && !l.startsWith("| Risk")).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
+    for (const r of rows) expect({ row: r[0]!.slice(0, 30), cells: r.length }).toEqual({ row: r[0]!.slice(0, 30), cells: 5 });
+    const by = (re: RegExp) => rows.filter((r) => re.test(r[2]!)).length;
+    const n = { Code: by(/\bcode\b/i), Person: by(/\b(person|people)\b/i), Chain: by(/\bchain\b/i), Airwallex: by(/\bAirwallex\b/) };
+    expect(md).toContain(`title "Who enforces: rows each takes part in, of ${rows.length}"`);
+    expect(md).toContain(`y-axis "Rows" 0 --> ${rows.length}`);
+    expect(md).toContain(`bar [${n.Code}, ${n.Person}, ${n.Chain}, ${n.Airwallex}]`);
+    expect(md).toContain(`of ${rows.length} rows, Code ${n.Code}, Person ${n.Person} (one person or two), Chain ${n.Chain}, Airwallex ${n.Airwallex}; a row can name several.`);
+    expect(md).toContain(`/badge/risks-${rows.length}_%C2%B7_each_with_a_control_and_a_test-`);
+  });
 });
