@@ -4453,7 +4453,7 @@ paths:
       operationId: postV1TryNegotiate
       tags:
         - Hands-on demo
-      summary: "Agents negotiate (the hands-on demo, a test company only): Purser's Sourcing agent and a simulated supplier's agent, both Claude, negotiate an early-payment discount on a test invoice of Bergtex Textil GmbH (EUR 1,850.00, net 30), at most 4 turns, each through the CFO's rails in code (the most it may pay, the latest pay-by date, nothing beyond the invoice, the payee's bank details unchanged). Answers { mode (live or recorded), label, reason, scene, bounds, rules, turns, outcome, agreement, canonical, sha256, compose, micros }; compose is the invoice POST /v1/engine/compose files for the agreed terms. Claude off, capped or failing: the recorded negotiation, labelled. 3 a company."
+      summary: "Agents negotiate an early-payment discount on a test invoice (a test company only): Purser's Sourcing agent and a simulated supplier's agent, both Claude, at most 4 signed offers, each checked by the CFO's rails and policy in code. Answers the offers, the outcome (agreed, escalated to the CFO, no deal), the agreement and its SHA-256, and compose. Claude off or capped: the recorded negotiation, labelled. 3 a company."
       security:
         - bearer:
             - admin
@@ -4476,7 +4476,7 @@ paths:
       operationId: postV1TryNegotiateAgreed
       tags:
         - Hands-on demo
-      summary: "File a negotiation's agreed terms (a test company only): { agreement_sha256, compose, turns, invoice_id? } with compose as the negotiation answered it. The agreed invoice is filed (as POST /v1/engine/compose) and what was negotiated is recorded with it (the original and agreed amounts, the discount, the agreement's SHA-256, the turns), carried by the proof file beside the signed terms. With invoice_id (the visitor's own invoice) it replaces the original: the original's unsigned payment is superseded and it leaves the books with that reason, its accrual reversed. Only terms that fit the invoice negotiated: the same supplier and account on file, numbered as it plus the agreement's reference, for less, paid no later than it is due. Answers { invoice (the agreed one, ready to sign), superseded (the original, or null) }."
+      summary: "File a negotiation's agreed (or escalated) terms, { agreement_sha256, compose, turns, invoice_id? } as negotiated: the agreed invoice, ready to sign, replacing invoice_id's. Only terms this company negotiated, filed once. Answers { invoice, superseded }."
       security:
         - bearer:
             - admin
@@ -4710,7 +4710,7 @@ paths:
       operationId: getV1TryNegotiateRecorded
       tags:
         - Hands-on demo
-      summary: "The recorded negotiation (public): the seeded scene's four turns, written in advance and labelled as such, checked by the rails live. For a visitor the live path turned away; nothing to sign. ?why=limit|paused|start says why in the page's own words."
+      summary: "The recorded negotiation (public), labelled, its rails checked live; nothing to sign. ?why=limit|paused|start."
       security: []
       x-purser-needs: public
       responses:
