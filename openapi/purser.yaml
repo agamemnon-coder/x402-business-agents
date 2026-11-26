@@ -4476,7 +4476,7 @@ paths:
       operationId: postV1TryNegotiateAgreed
       tags:
         - Hands-on demo
-      summary: "File a negotiation's agreed (or escalated) terms, { agreement_sha256, compose, turns, invoice_id? } as negotiated: the agreed invoice, ready to sign, replacing invoice_id's. Only terms this company negotiated, filed once. Answers { invoice, superseded }."
+      summary: "File a negotiation's agreed (or escalated) terms, { agreement_sha256, compose, turns, invoice_id?, agreement, keys, offers } as negotiated: the agreed invoice, ready to sign, replacing invoice_id's. Only terms this company negotiated, filed once; the signed offers must form one chain, each signed by its agent's key, ending at the offer the agreement names (409 broken_chain otherwise). The agreement and the offers' hashes are kept with the invoice and carried in its proof. Answers { invoice, superseded }."
       security:
         - bearer:
             - admin
