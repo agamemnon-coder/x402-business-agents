@@ -65,7 +65,10 @@
   // The engine's modules read import.meta.url, dirname and filename when they load; a Worker's bundle has none.
   "define": { "import.meta.url": "\"file:///purser-cloud/worker.js\"", "import.meta.dirname": "\"/purser-cloud\"", "import.meta.filename": "\"/purser-cloud/worker.js\"" },
   // Packages the engine's import graph names and no Worker can carry: swapped for a file that throws when used.
-  "alias": { "playwright": "./src/engine/stub.ts", "better-sqlite3": "./src/engine/stub.ts" },
+  // fontkit too (26 Nov, the bundle at 3,064 KiB gzipped of Cloudflare's 3,072): pdfkit calls it only to embed a font
+  // file, and every PDF the engine writes uses pdfkit's standard fonts (Helvetica, Courier), which pdfkit lays out from
+  // its own metrics without fontkit. Swapping it drops fontkit and its brotli dictionary from the Worker.
+  "alias": { "playwright": "./src/engine/stub.ts", "better-sqlite3": "./src/engine/stub.ts", "fontkit": "./src/engine/stub.ts" },
   // The engine's schema (src/db/schema.sql, src/db/ledger.sql) as text modules.
   "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
   // pdf.js for the console's invoice view, served through the Worker (run_worker_first: every request meets the Worker's

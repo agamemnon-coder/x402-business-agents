@@ -126,6 +126,8 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // Then the same day, after the Obsidian agent cards (wrangler's dry run 3,048.95 KiB): the console's emergency-stop card
   // and banner (3,050.83 KiB) and the full task-mandate gate in the engine (src/policy/taskMandates.ts and taskTokens.ts,
   // 3,056.04 KiB: 5.21 KiB for the gate). This build measured 3,131,950 bytes gzipped, 17,874 under this check's limit.
+  // Then 26 Nov, at 3,064.88 KiB: fontkit swapped for the stub (the alias): pdfkit reaches it only to embed a font file,
+  // and the engine's PDFs use pdfkit's standard fonts. Wrangler's dry run: 2,882.11 KiB, 182.77 KiB less.
   it("stays under 13.5 MB, and under 3 MB gzipped (as wrangler uploads it)", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
     expect(bytes).toBeLessThan(13.5 * 1024 * 1024);
