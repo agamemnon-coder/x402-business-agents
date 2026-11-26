@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Security controls mapped to SSDF, OWASP LLM Top 10 and DORA
+
+**Purser's existing controls mapped to three public frameworks: a map, not a claim of compliance; every gap named.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Controls mapped: 24](https://img.shields.io/badge/controls_mapped-24-8b5cf6?style=flat-square&labelColor=1f2937)](#the-controls)&nbsp;[![Frameworks: NIST SSDF 1.1, OWASP Top 10 for LLM Applications 2025, EU DORA](https://img.shields.io/badge/frameworks-SSDF_1.1_%C2%B7_OWASP_LLM_2025_%C2%B7_DORA-0ea5e9?style=flat-square&labelColor=1f2937)](#nist-sp-800-218-ssdf-11)&nbsp;[![A map, not a claim of compliance or certification](https://img.shields.io/badge/compliance-mapped%2C_not_certified-f59e0b?style=flat-square&labelColor=1f2937)](#security-controls-mapped-to-ssdf-owasp-llm-top-10-and-dora)&nbsp;[![The gaps, named in one list](https://img.shields.io/badge/gaps-named_in_one_list-f43f5e?style=flat-square&labelColor=1f2937)](#gaps-in-one-list)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+
+[The controls](#the-controls) · [SSDF](#nist-sp-800-218-ssdf-11) · [OWASP LLM Top 10](#owasp-top-10-for-llm-applications-2025) · [DORA](#eu-dora-regulation-eu-20222554) · [Gaps](#gaps-in-one-list) · [Security index](README.md)
+
+</div>
 
 This page maps Purser's existing controls to three public frameworks. It is a map, not a claim of compliance or
 certification: nobody has audited Purser against any of them. Purser is a hackathon project that moves test money
@@ -39,6 +51,18 @@ Frameworks and versions used (ids and names checked on 19 November 2026 against 
 | C22 | Vulnerability disclosure policy and scope | `SECURITY.md` | the document itself |
 | C23 | Incident runbook: emergency stop, leaked key, outages, recovery | `docs/runbook.md` | the document itself |
 | C24 | Licence and copyright of every file on record (REUSE 3.3) | `REUSE.toml`, `LICENSES/`, CI job `reuse` | `reuse lint` (reuse 6.3.0, 19 Nov): compliant, 3,325 of 3,325 files |
+
+```mermaid
+%%{init: {"themeVariables": {"pie1": "#10b981", "pie2": "#f59e0b", "pie3": "#f43f5e", "pie4": "#0ea5e9"}}}%%
+pie showData
+  title The three frameworks' rows by status
+  "mapped" : 29
+  "partial" : 9
+  "gap" : 3
+  "not applicable" : 1
+```
+
+<sub>Record: [the three framework tables below](SECURITY-MAPPING.md#nist-sp-800-218-ssdf-11), counted by `test/docs-charts.test.ts` from their Status column: 42 rows; mapped 29, partial 9, gap 3, not applicable 1.</sub>
 
 ## NIST SP 800-218 (SSDF 1.1)
 

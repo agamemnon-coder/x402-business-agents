@@ -151,6 +151,22 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`/badge/gold_criteria-${n("Met")}_Met_%C2%B7_${n("Unmet")}_Unmet_%C2%B7_${n("N/A")}_N%2FA-`);
   });
 
+  it("docs/security/SECURITY-MAPPING.md: the status chart counts the three framework tables, and the badge the controls", () => {
+    const md = read("docs/security/SECURITY-MAPPING.md");
+    const status: string[] = [];
+    let section = "";
+    for (const l of md.split("\n")) {
+      if (l.startsWith("## ")) section = l;
+      if (!/^## (NIST|OWASP|EU DORA)/.test(section) || !l.startsWith("| ") || /^\| (Practice|Risk|Area) \|/.test(l)) continue;
+      status.push(l.trim().slice(1, -1).split(" | ").at(-1)!.trim());
+    }
+    const n = { mapped: status.filter((s) => s.startsWith("mapped")).length, partial: status.filter((s) => s.startsWith("partial")).length, gap: status.filter((s) => s.startsWith("**gap**")).length, na: status.filter((s) => s === "not applicable").length };
+    expect(n.mapped + n.partial + n.gap + n.na).toBe(status.length);
+    expect(md).toContain(`  "mapped" : ${n.mapped}\n  "partial" : ${n.partial}\n  "gap" : ${n.gap}\n  "not applicable" : ${n.na}\n`);
+    expect(md).toContain(`${status.length} rows; mapped ${n.mapped}, partial ${n.partial}, gap ${n.gap}, not applicable ${n.na}.`);
+    expect(md).toContain(`/badge/controls_mapped-${(md.match(/^\| C\d+ \|/gm) ?? []).length}-`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
