@@ -105,6 +105,7 @@ Every secret the code reads. Crypto-period: the longest a value is used before i
 | `KIT11_RELAY_TOKEN` | The relay bearer as set by hand (else derived) | runner environment | maintainer | with `RELAY_TOKEN` |
 | `KIT11_LOCAL_RELAY_TOKEN` | The bearer of a relay run on this computer | runner environment | maintainer | per run |
 | `KIT11_RUN_TOKEN` | Ties one run's processes together | made per run | the run | one run |
+| `KIT11_TASK_TOKEN` | A task token (`ptask_…`) the autopilot pays on, inside one passkey-signed task mandate; only its SHA-256 is stored (src/policy/taskTokens.ts) | runner environment | the CFO, by issuing it | at most 24 h, never past the mandate |
 | `KIT11_AGENT_KEY` | The agent principal's key (MCP), from `npm run principals -- rotate` | runner environment | maintainer | 90 days, by rotate |
 | `KIT11_KEYS_DIR` | Directory of the runner's key files (wallets on testnet, ICC keys), mode 0600 | owner's disk | maintainer | per key, 1 year |
 | `KIT11_KEYS_ROOT` | Root of the key directories the CLI checks | owner's disk | maintainer | as `KIT11_KEYS_DIR` |
