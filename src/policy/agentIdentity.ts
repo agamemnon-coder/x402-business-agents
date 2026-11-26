@@ -10,8 +10,9 @@
 // request's, the time within five minutes, and last the nonce (never seen before for that key; kept past the window).
 // Each refusal is audited as principal.identity_refused with its reason code.
 //
-// Rollout: PURSER_AGENT_IDENTITY = required | optional | off. optional (the default) checks a proof when there is one
-// and audits a request without one (principal.identity_absent); required refuses it; an unknown value counts as required.
+// Rollout: PURSER_AGENT_IDENTITY = required | optional | off. The runner's agent API (npm run mcp) is required unless the
+// owner sets it (agentApiIdentityMode). optional checks a proof when there is one and audits a request without one
+// (principal.identity_absent); required refuses it; an unknown value counts as required.
 
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes, sign, verify, type KeyObject } from "node:crypto";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
@@ -40,6 +41,14 @@ export function identityMode(env: Record<string, string | undefined> = typeof pr
   const v = env.PURSER_AGENT_IDENTITY?.trim();
   if (!v) return "optional";
   return v === "optional" || v === "off" ? v : "required";
+}
+
+/**
+ * The mode of the runner's own agent API (npm run mcp, the surface outside agents connect to): required unless the owner
+ * sets PURSER_AGENT_IDENTITY to optional or off. In-process harnesses (the lab, the red team, the tests) pass their own.
+ */
+export function agentApiIdentityMode(env: Record<string, string | undefined> = typeof process === "undefined" ? {} : process.env): IdentityMode {
+  return env.PURSER_AGENT_IDENTITY?.trim() ? identityMode(env) : "required";
 }
 
 const sha256 = (b: string | Uint8Array) => createHash("sha256").update(b).digest("hex");

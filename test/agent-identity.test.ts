@@ -4,6 +4,7 @@
 // the principal active. Refusals are audited as principal.identity_refused with a reason code. These tests run the
 // required mode explicitly; optional (the default) verifies a signature when present and audits its absence.
 import { generateKeyPairSync } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
@@ -14,6 +15,7 @@ import { agentApiServer } from "../src/platform/mcpServer.js";
 import { agentId, executeAgentOnboard } from "../src/platform/externalAgents.js";
 import { principal, revokePrincipal, rotatePrincipalKey } from "../src/policy/principals.js";
 import {
+  agentApiIdentityMode,
   currentIdentityKey, heldIdentityKey, IDENTITY_HEADER, identityMode, proofFromHeader, proofHeader, signAgentRequest, verifyAgentIdentity, type IdentityMode,
 } from "../src/policy/agentIdentity.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
@@ -63,6 +65,14 @@ describe("the agents' signing keys", () => {
     expect(identityMode({ PURSER_AGENT_IDENTITY: "required" })).toBe("required");
     expect(identityMode({ PURSER_AGENT_IDENTITY: "off" })).toBe("off");
     expect(identityMode({ PURSER_AGENT_IDENTITY: "Requird" })).toBe("required");
+  });
+
+  it("the runner's agent API (npm run mcp) requires a signed identity unless the owner relaxes it", () => {
+    expect(agentApiIdentityMode({})).toBe("required");
+    expect(agentApiIdentityMode({ PURSER_AGENT_IDENTITY: "" })).toBe("required");
+    expect(agentApiIdentityMode({ PURSER_AGENT_IDENTITY: "optional" })).toBe("optional");
+    expect(agentApiIdentityMode({ PURSER_AGENT_IDENTITY: "off" })).toBe("off");
+    expect(readFileSync("src/cli/mcp.ts", "utf8")).toMatch(/identity:\s*agentApiIdentityMode\(\)/);
   });
 
   it("carries the proof in one HTTP header for an HTTP surface, and reads it back exactly", () => {

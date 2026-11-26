@@ -66,12 +66,14 @@ a card) and `agent.limit_raise_requested` (ask for a higher limit).
 
 ## Rollout
 
-`PURSER_AGENT_IDENTITY`:
+`PURSER_AGENT_IDENTITY`. The runner's agent API (`npm run mcp`, the surface outside agents connect to) is `required`
+when it is unset (`agentApiIdentityMode`, since 26 November); in-process harnesses (the lab, the red team, the tests)
+choose their own mode.
 
-- `optional` (the default): a signature that is present is checked as above, and a bad one is refused. A request with
+- `optional`: a signature that is present is checked as above, and a bad one is refused. A request with
   no signature goes through, and its absence is audited (`principal.identity_absent`), so existing agents keep working
   and the log shows which ones do not sign yet.
-- `required`: a request with no signature is refused (`identity_missing`). Any value other than the three names counts
+- `required` (the agent API's default): a request with no signature is refused (`identity_missing`). Any value other than the three names counts
   as `required`, so a typo fails closed.
 - `off`: no check and no identity audit rows.
 

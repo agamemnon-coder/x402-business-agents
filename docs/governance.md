@@ -83,8 +83,8 @@ One row per principle: where Purser does it, the test that proves it, and the li
 Principle f goes further for agents that reach Purser through the agent API. Since 26 November each request can carry
 the agent's own Ed25519 signature over that request, and the money action records the verified key id. A request sent a
 second time, signed with a rotated key or sent by a revoked agent is refused and audited
-([security/agent-identity.md](security/agent-identity.md); `optional` by default, `required` by setting
-`PURSER_AGENT_IDENTITY`).
+([security/agent-identity.md](security/agent-identity.md); `required` on the runner's agent API by default since 26 November; the owner can relax it with
+`PURSER_AGENT_IDENTITY=optional` or `off`).
 
 The same path, one payment at a time (animated, drawn from the code's own steps):
 
