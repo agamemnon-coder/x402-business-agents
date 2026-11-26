@@ -35,7 +35,7 @@ const env: CloudEnv = {
   sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "a".repeat(48), adminTokenSha256: createHash("sha256").update("ask-check-admin-not-a-secret").digest("hex"),
   rpId: "localhost", origin: ORIGIN, rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 },
   // The Worker's static assets: pdf.js, as npm run cloud:pdfjs copies it (an invoice's page draws its PDF; visit 2c).
-  asset: async (path) => (path === "/assets/pdfjs.mjs" ? new Response(readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")))) : null),
+  asset: async (path) => (path === "/assets/pdfjs.mjs" ? new Response(readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")))) : path === "/assets/inter.woff2" ? new Response(readFileSync("src/ui/inter.woff2"), { headers: { "content-type": "font/woff2" } }) : null),
 };
 // Claude, stood in for: an agent that reads the demo company when the question is about its records (one tool call,
 // then an answer citing the record), else an answer written from the passages the route sent, streamed a few words at a

@@ -193,7 +193,7 @@ export const PILOT_JS = `(function () {
 })();`;
 
 /** Three points under the form, each true of the pilot as it is offered (FOUNDING_POINTS, PILOT_AGREEMENT). */
-export const PILOT_TRUST: readonly [string, string][] = [["flask-conical", "Test money only"], ["credit-card", "No card, no billing"], ["file-check", "Written pilot agreement"]];
+export const PILOT_TRUST: readonly [string, string][] = [["flask-conical", "Test money only"], ["credit-card", "No card, no billing"], ["file-check", "Written agreement"]];
 
 const PAGE_CSS = `main.bzp { padding: 0 0 24px; }
 .bzp .wrap { max-width: 1200px; }
@@ -208,7 +208,7 @@ const PAGE_CSS = `main.bzp { padding: 0 0 24px; }
 .bzx-pill { margin: 0; }
 .bzx h1 { margin: 18px 0 0; font-size: clamp(38px, 5.2vw, 72px); font-weight: 780; letter-spacing: -.042em; line-height: 1; max-width: 11.5em; text-wrap: balance; }
 .bzx-a { margin: 18px 0 0; max-width: 30em; font-size: clamp(17px, 1.45vw, 20px); line-height: 1.5; color: var(--muted); }
-canvas.bz-globe { display: block; width: 100%; height: clamp(250px, 40vh, 420px); margin: 8px 0 0; }
+canvas.bz-globe { display: block; width: min(100%, 460px); height: clamp(250px, 40vh, 440px); margin: 14px 0 0 -24px; }
 /* The form: one quiet card. */
 .bzf { position: relative; padding: 26px; border-radius: 24px; min-width: 0;
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, transparent), color-mix(in srgb, var(--surface) 82%, transparent));
@@ -241,18 +241,19 @@ form.bzf-g { margin: 20px 0 0; display: grid; gap: 14px 12px; grid-template-colu
 .bzf-g .chips input:focus-visible + span { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
 .bzf-g .act { display: grid; gap: 10px; margin-top: 4px; }
 .bzf-g .act .btn { width: 100%; justify-content: center; height: auto; min-height: 52px; padding: 13px 22px; font-size: 16.5px; white-space: normal; }
-.bzf-g .act p { margin: 0; text-align: center; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.bzf-g .act p { margin: 0; text-align: center; font-size: 14px; line-height: 1.5; color: var(--muted); text-wrap: balance; }
 .bzf-g .act a { color: var(--accent); font-weight: 650; }
 .bzf-st { margin: 0; padding: 11px 13px; border-radius: 12px; font-size: 14px; font-weight: 550; line-height: 1.45; }
 .bzf-st.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); }
 .bzf-st.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, transparent); border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); }
 .bzf-st[hidden] { display: none; }
 /* Under the form: three points in one quiet row. */
-ul.bzt { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 20px; }
-ul.bzt li { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 550; color: var(--muted); }
+ul.bzt { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; }
+ul.bzt li { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 550; color: var(--muted); white-space: nowrap; }
+ul.bzt li .i { width: 15px; height: 15px; }
 ul.bzt li .i { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .bzf-g input, .bzf-g select, .bzf-g .chips span { transition: none; } }
-@media (max-width: 979px) { canvas.bz-globe { height: clamp(220px, 58vw, 360px); } .bzx-l { text-align: left; } }
+@media (max-width: 979px) { canvas.bz-globe { width: 100%; margin-left: 0; height: clamp(220px, 58vw, 360px); } }
 @media (max-width: 520px) { .bzf { padding: 20px 16px; border-radius: 20px; } form.bzf-g { grid-template-columns: minmax(0, 1fr); } .bzx h1 { font-size: clamp(34px, 10vw, 44px); } }`;
 
 /** The globe's places: the demo company's (Amsterdam, as on Purser Cloud's sign-in) and San Francisco; no labels here. */

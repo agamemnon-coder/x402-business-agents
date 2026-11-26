@@ -50,7 +50,7 @@ function cloudEnv(origin: string, blobs: string): CloudEnv {
   return { sql: sqliteSql(":memory:"), blobs: dirBlobs(blobs), sessionSecret: "c".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
     rpId: "localhost", origin, mailDomain: "in.purser.test", rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 },
     // The Worker's static assets: pdf.js, as npm run cloud:pdfjs copies it.
-    asset: async (path) => (path === "/assets/pdfjs.mjs" ? new Response(readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")))) : null) };
+    asset: async (path) => (path === "/assets/pdfjs.mjs" ? new Response(readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")))) : path === "/assets/inter.woff2" ? new Response(readFileSync("src/ui/inter.woff2"), { headers: { "content-type": "font/woff2" } }) : null) };
 }
 async function serve(env: CloudEnv, port: number) {
   const s = createServer(async (req, res) => {
