@@ -10,6 +10,7 @@ import type { AddressInfo } from "node:net";
 import { notFoundResponse, pageResponse, Relay, type Sql } from "../../worker/src/core.js";
 import { isTrySignPath, trySignNotFound, TrySignDesk } from "../../worker/src/trySign.js";
 import { METAL_INSPECTOR_PATH, localInspector } from "../../worker/src/metalInspector.js";
+import { isAltaTxPath, localAltaTx } from "../../worker/src/altaTx.js";
 import { AGENT_CARDS_PATH } from "../../worker/src/agentCardsLive.js";
 import type { FxSource } from "../../worker/src/fxQuote.js";
 import type { InvoiceReadSource } from "../try/claude.js";
@@ -39,6 +40,8 @@ export async function startLocalRelay(opts: { port: number; token: string; /** /
   const trySign = pages.trySign ? new TrySignDesk(sqlOver(new Database(":memory:")), { fx: opts.trySignFx ?? null, reader: opts.trySignReader ?? null, advisor: opts.trySignAdvisor ?? null, recorded: opts.trySignRecorded === undefined ? pages.tryAgentsRecorded ?? null : opts.trySignRecorded, rate: pages.exposureRate ?? null }) : null;
   // /metal's inspector, as a local copy answers it: the bundle's recorded read, no chain call (the Worker reads the chain).
   const metal = localInspector(pages.metalRecorded ?? null);
+  // /proof's "Check it on chain": a local copy reads no chain, and says so (the Worker reads it).
+  const altaTx = localAltaTx(pages.altaTxTargets ?? []);
   // Live with Airwallex: no key and no webhook here, so the badge is grey and the feed empty (./awxLiveOffline.ts).
   const awxLive = offlineAwxLive();
   let base = "";
@@ -56,6 +59,7 @@ export async function startLocalRelay(opts: { port: number; token: string; /** /
           const response = pageResponse(request, pages)
             ?? (isTrySignPath(path) ? await (trySign ? trySign.fetch(request) : trySignNotFound()) : null)
             ?? (path === METAL_INSPECTOR_PATH ? await metal.fetch(request) : null)
+            ?? (isAltaTxPath(path) ? await altaTx.fetch(request) : null)
             // /airwallex's live cards: no sandbox key here, said so (worker/src/agentCardsLive.ts).
             ?? (path === AGENT_CARDS_PATH ? Response.json({ source: "unavailable", reason: "no sandbox key on this machine", checked_at: new Date().toISOString() }) : null)
             ?? (awxLive.paths.includes(path) ? await awxLive.fetch(request) : null)

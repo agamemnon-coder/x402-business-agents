@@ -11,6 +11,7 @@ import { normalizeCode } from "../../src/passkey/code.js";
 import { publicHealth, publicStatus, type Health } from "../../src/ops/publicHealth.js";
 import type { RecordedAgents } from "../../src/try/recorded.js";
 import type { MetalRecorded } from "./metalInspector.js";
+import type { AltaTxTarget } from "./altaTx.js";
 import { AWX_EVENTS_PATH, AwxEventFeed } from "./awxEvents.js";
 import { appResponse, type AppFiles } from "./pwa.js";
 import { readSubscription, type PushSend } from "./webPush.js";
@@ -48,6 +49,8 @@ export interface Pages {
   llms?: string;
   /** /metal's mandate inspector: the record's read of 12 November, its answer without a chain call; absent: the inspector answers 503. */
   metalRecorded?: MetalRecorded | null;
+  /** /proof's "Check it on chain" (./altaTx.ts): the Alta testnet transactions named in the committed records, the only ones it reads; absent: none. */
+  altaTxTargets?: AltaTxTarget[];
   /**
    * The content version of each static file, by its path (/assets/<name>): the first 12 hex digits of its bytes' SHA-256,
    * computed at build (src/relay/assets.ts). An answer to "<path>?v=<that version>" is cached for a year; absent in older bundles.
