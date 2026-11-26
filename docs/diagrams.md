@@ -11,17 +11,24 @@ rail pays under its own limit, and the books and the audit log record it.
 
 ```mermaid
 flowchart LR
-  I["Invoice or purchase<br/>(PDF, card, x402)"] --> RD["Reader<br/>Claude reads it"]
-  RD --> CK["Checker<br/>Purser's code: duplicates,<br/>bank details, payee"]
-  CK --> PO{"CFO policy<br/>(code, also exported<br/>as OPA/Rego)"}
-  PO -- "within the agent's limit<br/>e.g. EUR 120.00" --> PAY["Agent pays alone"]
-  PO -- "above it<br/>e.g. EUR 1,850.00" --> FID["CFO signs the SHA-256<br/>of the exact terms<br/>(passkey, Face ID)"]
-  FID --> HC{"Before paying:<br/>terms still match<br/>the signed hash?"}
+  I["Invoice or purchase<br/>(PDF, card, x402)"]:::cash --> RD["Reader<br/>Claude reads it"]:::agent
+  RD --> CK["Checker<br/>Purser's code: duplicates,<br/>bank details, payee"]:::purser
+  CK --> PO{"CFO policy<br/>(code, also exported<br/>as OPA/Rego)"}:::purser
+  PO -- "within the agent's limit<br/>e.g. EUR 120.00" --> PAY["Agent pays alone"]:::paid
+  PO -- "above it<br/>e.g. EUR 1,850.00" --> FID["CFO signs the SHA-256<br/>of the exact terms<br/>(passkey, Face ID)"]:::purser
+  FID --> HC{"Before paying:<br/>terms still match<br/>the signed hash?"}:::purser
   HC -- "yes" --> PAY
-  HC -- "one cent changed" --> X["Payment refused.<br/>Nothing was paid."]
-  PAY --> RAIL["Rails, each with its own limit<br/>Airwallex sandbox · Alta testnet<br/>· Visa via Airwallex Airi"]
-  RAIL --> BK["Books<br/>T:0 · Moneybird (sandboxes)"]
-  BK --> LOG["Hash-chained audit log"] --> ANC["Head anchored on Alta testnet<br/>npm run verify-all"]
+  HC -- "one cent changed" --> X["Payment refused.<br/>Nothing was paid."]:::refused
+  PAY --> RAIL["Rails, each with its own limit<br/>Airwallex sandbox · Alta testnet<br/>· Visa via Airwallex Airi"]:::testmoney
+  RAIL --> BK["Books<br/>T:0 · Moneybird (sandboxes)"]:::proof
+  BK --> LOG["Hash-chained audit log"]:::proof --> ANC["Head anchored on Alta testnet<br/>npm run verify-all"]:::proof
+  classDef purser fill:#6d28d9,stroke:#a78bfa,color:#fff
+  classDef agent fill:#4338ca,stroke:#818cf8,color:#fff
+  classDef paid fill:#047857,stroke:#34d399,color:#fff
+  classDef refused fill:#be123c,stroke:#fb7185,color:#fff
+  classDef testmoney fill:#b45309,stroke:#fbbf24,color:#fff
+  classDef cash fill:#0369a1,stroke:#38bdf8,color:#fff
+  classDef proof fill:#334155,stroke:#94a3b8,color:#fff
 ```
 
 ## 1. Architecture: who holds which limit

@@ -46,9 +46,9 @@ describe("README badges", () => {
     const summary = JSON.parse(readFileSync(new URL("../docs/assets/test-summary.json", import.meta.url), "utf8")) as { passed: number };
     const covBadge = JSON.parse(readFileSync(new URL("../docs/badges/coverage.json", import.meta.url), "utf8")) as { label: string; message: string };
     const dafnyBadge = JSON.parse(readFileSync(new URL("../docs/badges/dafny.json", import.meta.url), "utf8")) as { label: string; message: string };
-    expect(qualityLine).toContain(`(https://img.shields.io/badge/${enc("tests, last full run")}-${enc(`${summary.passed} passing`)}-16a34a?style=flat-square&labelColor=1f2937)](docs/assets/test-summary.json)`);
-    expect(qualityLine).toContain(`(https://img.shields.io/badge/${enc(covBadge.label)}-${enc(covBadge.message)}-16a34a?style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)`);
-    expect(readme).toContain(`(https://img.shields.io/badge/${enc(dafnyBadge.label)}-${enc(dafnyBadge.message)}-16a34a?style=flat-square)`);
+    expect(qualityLine).toContain(`(https://img.shields.io/badge/${enc("tests, last full run")}-${enc(`${summary.passed} passing`)}-059669?style=flat-square&labelColor=1f2937)](docs/assets/test-summary.json)`);
+    expect(qualityLine).toContain(`(https://img.shields.io/badge/${enc(covBadge.label)}-${enc(covBadge.message)}-0284c7?style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)`);
+    expect(readme).toContain(`(https://img.shields.io/badge/${enc(dafnyBadge.label)}-${enc(dafnyBadge.message)}-059669?style=flat-square&labelColor=1f2937)`);
     // No badge asks shields.io to fetch a file from the repository at view time.
     expect(readme).not.toMatch(/img\.shields\.io\/(endpoint|badge\/dynamic)/);
     expect(existsSync(new URL("../docs/badges/coverage.json", import.meta.url))).toBe(true);
@@ -95,7 +95,7 @@ describe("README badges", () => {
     {
       const enc = (t: string) => encodeURIComponent(t.replace(/-/g, "--").replace(/_/g, "__"));
       const d = JSON.parse(readFileSync(new URL("../docs/badges/dafny.json", import.meta.url), "utf8")) as { label: string; message: string };
-      expect(qualityLine).toContain(`[![Dafny: verified](https://img.shields.io/badge/${enc(d.label)}-${enc(d.message)}-16a34a?style=flat-square)](docs/evidence/formal-proofs.md)`);
+      expect(qualityLine).toContain(`[![Dafny: verified](https://img.shields.io/badge/${enc(d.label)}-${enc(d.message)}-059669?style=flat-square&labelColor=1f2937)](docs/evidence/formal-proofs.md)`);
     }
     // The proof strip heads "The proof", under the centred top.
     const stripAt = lines.findIndex((l) => l.startsWith('<a href="https://kit11.max-31b.workers.dev/proof"><picture>'));
