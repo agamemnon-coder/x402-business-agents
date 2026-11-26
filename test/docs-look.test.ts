@@ -14,7 +14,7 @@ const read = (p: string) => readFileSync(`${ROOT}${p}`, "utf8");
 const exists = (p: string) => existsSync(`${ROOT}${p}`);
 
 /** The pages redesigned in the house style, each with the centred header. */
-export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md"];
+export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md"];
 /** Pages that carry the house-style badges but keep a header of their own (docs/README.md: test/readme-headers.test.ts). */
 const BADGED = [...STYLED, "docs/README.md"];
 
@@ -50,7 +50,8 @@ function targets(md: string): string[] {
 /** A shields.io static badge's label and message, decoded from its path ("label-message-colour"). */
 function shields(url: string): { label: string; message: string } {
   const path = /img\.shields\.io\/badge\/([^?)]+)/.exec(url)![1]!;
-  const parts = path.replace(/--/g, "\u0000").split("-").map((p) => decodeURIComponent(p.replace(/\u0000/g, "-").replace(/__/g, "\u0001").replace(/_/g, " ").replace(/\u0001/g, "_")));
+  // Shields reads "--" as "-", "__" as "_" and "_" as a space: split on the single hyphens, then undo each.
+  const parts = path.split(/(?<!-)-(?!-)/).map((p) => decodeURIComponent(p.replace(/--/g, "-").split("__").map((w) => w.replace(/_/g, " ")).join("_")));
   return parts.length >= 3 ? { label: parts[0]!, message: parts[1]! } : { label: "", message: parts[0]! };
 }
 
@@ -91,6 +92,12 @@ describe("the Markdown pages in the README's house style", () => {
     }
     for (const w of md.matchAll(/actions\/workflows\/([^/]+(?:\/codeql)?)\/badge\.svg/g))
       expect({ f, workflow: w[1], there: w[1] === "github-code-scanning/codeql" || exists(`.github/workflows/${w[1]}`) }).toEqual({ f, workflow: w[1], there: true });
+  });
+
+  it("the badge check is not empty: it reads the record figures on CONTRIBUTING.md's badges", () => {
+    const figures = recordFigures();
+    const read_ = [...read("CONTRIBUTING.md").matchAll(/https:\/\/img\.shields\.io\/badge\/[^)\s"]+/g)].map((u) => shields(u[0])).filter((b) => figures.has(b.label));
+    expect(read_.map((b) => b.label).sort()).toEqual([[...figures.keys()].find((k) => k.startsWith("coverage, run on"))!, "tests, last full run"]);
   });
 
   for (const f of BADGED) it(`${f}: every relative link, image and #anchor resolves`, () => {
