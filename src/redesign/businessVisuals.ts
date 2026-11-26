@@ -8,6 +8,11 @@
 // horizon glowing at the foot of the screen, and a few thin routes over it along which a light travels now and then, as
 // payments do. It explains nothing and names nothing: no figure, no place, no logo. CSS and one inline drawing only, no
 // script, no picture; under prefers-reduced-motion it stands still (the routes keep their lights where they stopped).
+//
+// The colours mean what they mean in Purser Cloud's console (cloud/src/consoleColor.ts, Max: "use the colour system on
+// the sign-up page too"): violet Purser and the CFO's approval (--accent), emerald paid (--ok), amber test money
+// (--amb, the console's --warn), sky cash and money moving (--sky), and the agents' own hues (Sourcing indigo, Support
+// teal, Treasury blue: --g0 to --g2). BUSINESS_TONES sets them on the page, light and dark, at the console's values.
 
 /** The headline (Max, 26 Nov: "Ready for the next step?"), and the one line under it: what the pilot is. */
 export const BUSINESS_HEAD = "Ready for the next step?";
@@ -20,12 +25,20 @@ export const BUSINESS_QUESTION = "Would you trust an AI agent with your company'
  * point of the horizon to another. Each carries a light (a short dash) that runs along it once per loop, the loops of
  * different lengths so they never fall into step.
  */
-export const ROUTES: readonly { d: string; s: number; delay: number }[] = [
-  { d: "M150 352 Q520 40 930 300", s: 9, delay: 0 },
-  { d: "M430 322 Q840 70 1300 340", s: 11, delay: 3.5 },
-  { d: "M760 296 Q1010 150 1230 324", s: 7.5, delay: 1.8 },
-  { d: "M40 360 Q300 210 560 312", s: 10, delay: 5.2 },
+export const ROUTES: readonly { d: string; s: number; delay: number; tone: string }[] = [
+  { d: "M150 352 Q520 40 930 300", s: 9, delay: 0, tone: "accent" },
+  { d: "M430 322 Q840 70 1300 340", s: 11, delay: 3.5, tone: "ok" },
+  { d: "M760 296 Q1010 150 1230 324", s: 7.5, delay: 1.8, tone: "sky" },
+  { d: "M40 360 Q300 210 560 312", s: 10, delay: 5.2, tone: "g0" },
+  { d: "M980 330 Q1210 190 1440 300", s: 12, delay: 7, tone: "g1" },
+  { d: "M260 330 Q470 230 700 300", s: 13, delay: 9, tone: "g2" },
 ];
+
+/** The meaning-colours, at Purser Cloud's console values (cloud/src/consoleColor.ts), scoped to the page. */
+const TONES_DARK = "--amb: #ffb547; --sky: #38bdf8; --g0: #818cf8; --g1: #2dd4bf; --g2: #60a5fa;";
+export const BUSINESS_TONES = `.bzp { --amb: #a15c00; --sky: #0369a1; --g0: #4f46e5; --g1: #0f766e; --g2: #1d4ed8; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bzp { ${TONES_DARK} } }
+:root[data-theme="dark"] .bzp { ${TONES_DARK} }`;
 
 export const BUSINESS_SKY_HTML = `<div class="bz-sky" aria-hidden="true"><span class="st s1"></span><span class="st s2"></span><span class="ha"></span><span class="hz"></span>
 <svg class="rt" viewBox="0 0 1440 360" preserveAspectRatio="xMidYMax slice" width="1440" height="360" focusable="false">
@@ -64,9 +77,9 @@ export const BUSINESS_SKY_CSS = `
 .bz-sky .r { fill: none; stroke: color-mix(in srgb, var(--accent) 28%, transparent); stroke-width: 1; stroke-dasharray: 2 6; vector-effect: non-scaling-stroke; }
 /* Each light: a bright head (a round dot) over a soft halo, both one dash long on a path 100 long. */
 .bz-sky .p, .bz-sky .g { fill: none; stroke-linecap: round; stroke-dasharray: .01 100; stroke-dashoffset: 40; vector-effect: non-scaling-stroke; }
-.bz-sky .p { stroke: color-mix(in srgb, var(--accent) 35%, #ffffff); stroke-width: 4.5; }
-.bz-sky .g { stroke: var(--accent); stroke-width: 16; opacity: .28; }
-.bz-sky .p2 { stroke-dashoffset: 70; } .bz-sky .p3 { stroke-dashoffset: 25; } .bz-sky .p4 { stroke-dashoffset: 55; }
+.bz-sky .p { stroke: color-mix(in srgb, var(--t, var(--accent)) 45%, #ffffff); stroke-width: 4.5; }
+.bz-sky .g { stroke: var(--t, var(--accent)); stroke-width: 16; opacity: .3; }
+${ROUTES.map((r, i) => `.bz-sky .p${i + 1} { --t: var(--${r.tone}); stroke-dashoffset: ${[40, 70, 25, 55, 85, 12][i] ?? 40}; }`).join(" ")}
 /* Light: dawn rather than night: violet stars, a pale sphere with the same lit rim. */
 @media (prefers-color-scheme: light) { ${LIGHT_SKY.replace(/\.bz-sky/g, ':root:not([data-theme="dark"]) .bz-sky')} }
 ${LIGHT_SKY.replace(/\.bz-sky/g, ':root[data-theme="light"] .bz-sky')}

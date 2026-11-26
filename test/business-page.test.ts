@@ -11,7 +11,7 @@ import { PRICING, PRICING_LINE, euro } from "../src/config/pricing.js";
 import { BUSINESS_PAGE, BUSINESS_CSP, ONE_PAGER_CSP, ONE_PAGER_PAGE, PRICING_HOME, REDIRECTS } from "../src/servers/dashboard.js";
 import { BUSINESS_HONEST, FIRST_TARGET, FIRST_TARGET_NOTE, PILOT_AGREEMENT, FOUNDING_NAME, FOUNDING_TEXT, GO_LIVE_DOC, PILOT_APPLY, PILOT_FORM_NOTE, PILOT_JS, PILOT_MAIL, PILOT_QUESTIONS, PILOT_VOLUMES, POSITION, PRINT_JS, faqs, pilotMailto, type PilotForm } from "../src/redesign/business.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
-import { BUSINESS_HEAD, BUSINESS_LINE, BUSINESS_QUESTION, BUSINESS_SKY_CSS, ROUTES } from "../src/redesign/businessVisuals.js";
+import { BUSINESS_HEAD, BUSINESS_LINE, BUSINESS_QUESTION, BUSINESS_SKY_CSS, BUSINESS_TONES, ROUTES } from "../src/redesign/businessVisuals.js";
 import { NEXT_STEPS, PAGE_CSS } from "../src/redesign/business.js";
 import { repoHref } from "../src/redesign/productPage.js";
 import { START_STEPS } from "../src/redesign/home.js";
@@ -109,6 +109,11 @@ describe("/business (26 Nov): one screen that is the pilot's registration", () =
     // Everything that moves is switched on only for a reader who has not asked for less motion (the keyframes sit outside).
     expect(BUSINESS_PAGE).toContain(PAGE_CSS);
     expect(PAGE_CSS).toContain(BUSINESS_SKY_CSS);
+    // The meaning-colours of Purser Cloud's console (cloud/src/consoleColor.ts): violet approval, emerald paid, amber test
+    // money, sky money moving, the agents' own hues; each route's light takes one.
+    expect(PAGE_CSS).toContain(BUSINESS_TONES);
+    for (const v of ["--sky: #38bdf8", "--g0: #818cf8", "--g1: #2dd4bf", "--g2: #60a5fa", "--sky: #0369a1", "--g0: #4f46e5"]) expect(BUSINESS_TONES).toContain(v);
+    expect(ROUTES.map((r) => r.tone)).toEqual(["accent", "ok", "sky", "g0", "g1", "g2"]);
     const still = PAGE_CSS.replace(/@media \(prefers-reduced-motion: no-preference\)[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, " ").replace(/@keyframes [\w-]+ \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, " ");
     expect(still).not.toMatch(/(?<![\w-])animation(-name)?\s*:/);
     expect(PAGE_CSS).not.toMatch(/(?<![\w-])filter:\s*blur/);
