@@ -469,6 +469,7 @@ ${siteHeader(null)}
 <span class="test" id="testchip" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
 <div class="demo-ribbon" id="demo" hidden><div class="wrap"><p class="dr">${svg("flask", 14)}<span class="dr-full" data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><span class="dr-short">${SHELL_WORDS.en.demo_short}</span><a href="#/sign-in" id="demo-out"><span class="lw" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</span><span class="lv">${SHELL_WORDS.en.demo_leave}</span></a></p></div></div>
 <div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><span class="side-mk" aria-hidden="true">${svg("feather", 30)}</span><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${([["cs.side.1", "file-check"], ["cs.side.2", "scan-face"], ["cs.side.3", "database"]] as const).map(([k, i]) => `<li><span class="si">${svg(i, 18)}</span><span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div><canvas class="si-globe" aria-hidden="true"></canvas><canvas class="si-wave" aria-hidden="true"></canvas></div>
+<div class="stopbar" id="stopbar" role="status" hidden><div class="wrap"><p>${svg("octagon-x", 16)}<span data-t="cs.stop.bar">${tr("en", "cs.stop.bar")}</span><a href="#/settings?at=estop" data-t="cs.stop.bar_link">${tr("en", "cs.stop.bar_link")}</a></p></div></div>
 <main><div class="wrap subnav-wrap"><nav class="subnav" id="subnav" hidden></nav></div><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
 <p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>
@@ -1426,6 +1427,34 @@ function securityKeyButton(){
   return [add,keyMsg]}
 // The approver's security key on its own card: for a CFO, who has no settings of the company to manage.
 function securityKeyCard(){const [add,keyMsg]=securityKeyButton();return el('div','card panel security',[el('h2','',t('cs.sec.key_h')),el('p','',t('cs.sec.key_lede')),el('div','row2',[add]),keyMsg])}
+// The CFO's emergency stop (POST /v1/engine/emergency-stop, src/policy/emergencyStop.ts): pulled or lifted by one policy
+// change, signed here with the CFO's passkey (Face ID); nothing stops or restarts before that signature. Only who may
+// approve asks (the route's approve scope); the others read the state.
+async function stopCard(){
+  const eng=await engineStatus();const st=eng&&eng.emergency_stop;if(!st)return null;
+  const m=await me();const on=!!st.on;
+  const card=el('div','card panel estop');card.id='estop';
+  const msg=el('div','');msg.setAttribute('role','status');
+  const kids=[el('h2','',t('cs.stop.h')),el('p','',[el('span','pill '+(on?'bad':'ok'),t(on?'cs.stop.is_on':'cs.stop.is_off')),on&&st.since?' '+t('cs.stop.since',{when:stamp(st.since)}):'']),el('p','sub',t('cs.stop.lede'))];
+  if(m.kind!=='session'||!m.scopes.includes('approve')){card.replaceChildren(...kids,note(t('cs.stop.cfo_only')));return card}
+  const ask=btn(t(on?'cs.stop.lift':'cs.stop.pull'),on?'':'danger solid','octagon-x');ask.id='estop-ask';
+  const yes=btn(t(on?'cs.stop.lift_yes':'cs.stop.pull_yes'),on?'primary':'danger solid','scan-face');yes.id='estop-yes';
+  const no=btn(t('cancel'),'','x');no.id='estop-no';
+  const confirmBox=el('div','estop-confirm',[note(t(on?'cs.stop.lift_confirm':'cs.stop.pull_confirm'),'warn'),el('div','row2',[yes,no])]);confirmBox.hidden=true;
+  const flip=(c)=>{confirmBox.hidden=!c;ask.hidden=c;if(c)yes.focus()};
+  ask.onclick=()=>{msg.replaceChildren();flip(true)};no.onclick=()=>flip(false);
+  yes.onclick=async()=>{yes.disabled=no.disabled=true;
+    try{const mine=eng.my_passkey;if(!mine)throw new Error(t('cs.sec.passkey_first'));
+      const p=(await engineCall('/v1/engine/emergency-stop',{method:'POST',body:{on:!on}})).proposal;
+      const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(mine.credential_id)}],userVerification:'required',timeout:120000}});
+      const a=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
+      if(a.status!=='approved'){msg.replaceChildren(note(a.message,'bad'));return}
+      engineStale();const st2=await engineStatus();stopBar(st2);const next=await stopCard();if(next){next.append(note(t(on?'cs.stop.done_off':'cs.stop.done_on'),'ok'));card.replaceWith(next)}}
+    catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{yes.disabled=no.disabled=false}};
+  card.replaceChildren(...kids,el('div','row2',[ask]),confirmBox,msg);
+  return card}
+// The banner on every page while the stop is on (GET /v1/engine's emergency_stop), with the way to the card.
+function stopBar(st){const b=$('#stopbar');if(b)b.hidden=!(S&&st&&st.emergency_stop&&st.emergency_stop.on)}
 // Security (13 Nov): "Ask again before sensitive changes" (off by default; switching it asks for the passkey), and with
 // the engine, a security key as a second key and the CFO's rule for high-risk payments, a policy change signed with Face ID.
 async function securityCard(){
@@ -1605,10 +1634,11 @@ async function settingsView(q){
   // the approval policy in short, notifications, API and MCP access, then people and keys, and the danger zone.
   const [policy,notify]=await Promise.all([policyCard().catch((e)=>{if(e instanceof Expired)throw e;return null}),notifyCard(m).catch((e)=>{if(e instanceof Expired)throw e;return null})]);
   const you=youCard(m),access=accessCard(m),danger=dangerCard(m);
-  if(!owner){const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(...[head(t('cs.nav.settings')),el('div','split2 set2',[you,company].filter(Boolean)),el('div','split2 set2',[policy,access].filter(Boolean)),sessions,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,danger].filter(Boolean));scrollToAt(q);return}
+  const estop=await stopCard().catch((e)=>{if(e instanceof Expired)throw e;return null});
+  if(!owner){const sk=CFG.engine&&m.kind==='session'&&m.scopes.includes('approve')?securityKeyCard():null;view().replaceChildren(...[head(t('cs.nav.settings')),el('div','split2 set2',[you,company].filter(Boolean)),el('div','split2 set2',[policy,access].filter(Boolean)),estop,sessions,note(t('cs.only_owner',{name:m.tenant.name})),ids,sk,danger].filter(Boolean));scrollToAt(q);return}
   const people=el('div','card panel');people.id='people';const keys=el('div','card panel');keys.id='keys';const dataCard=el('div','card panel');dataCard.id='data';
   const security=m.kind==='session'&&!m.demo?await securityCard():null;
-  view().replaceChildren(...[head(t('cs.nav.settings'),t('cs.settings_lede')),el('div','split2 set2',[you,company].filter(Boolean)),el('div','split2 set2',[policy,notify].filter(Boolean)),access,security,sessions,ids,el('div','split2',[people,keys]),dataCard,offboardingCard(m),danger].filter(Boolean));
+  view().replaceChildren(...[head(t('cs.nav.settings'),t('cs.settings_lede')),el('div','split2 set2',[you,company].filter(Boolean)),el('div','split2 set2',[policy,notify].filter(Boolean)),estop,access,security,sessions,ids,el('div','split2',[people,keys]),dataCard,offboardingCard(m),danger].filter(Boolean));
   // An invite: a one-time link to this console (the secret after the #, so opening it sends it to no server) and its
   // QR code, for 30 minutes and one passkey. The owner passes it on; nothing is mailed.
   const invites=el('div','');
@@ -1850,7 +1880,8 @@ async function route(){
   S=load();shell();askContext(path);
   // No timer of the panel "At work" outlives the view it was mounted in.
   workStop();
-  if(CFG.engine){engineChip(true);if(S)engineStatus().then((st)=>engineChip(!!st),()=>{})}
+  // The emergency stop's banner is asked afresh on every page: another person's Face ID may have pulled it meanwhile.
+  if(CFG.engine){engineChip(true);if(S){engineStale();engineStatus().then((st)=>{engineChip(!!st);stopBar(st)},()=>{})}else stopBar(null)}
   const open={'/sign-in':signInView,'/start':startView,'/platform':platformView};
   try{
     if(path==='/enrol')return enrolView(q);
@@ -1958,6 +1989,12 @@ table thead th, .tbl thead th { background: var(--sunken); color: var(--muted); 
 .demo-ribbon span { flex: 1; line-height: 1.4; }
 .demo-ribbon a { font-weight: 650; color: var(--warn); white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
 .signed-out .demo-ribbon { display: none; }
+/* The CFO's emergency stop: its banner on every page while it is on, and its red button in Settings. */
+.stopbar { background: var(--bad); color: #fff; font-size: 14px; font-weight: 600; }
+.stopbar[hidden], .signed-out .stopbar { display: none; }
+.stopbar p { display: flex; align-items: center; gap: 10px; margin: 0; min-height: 44px; padding: 6px 0; line-height: 1.4; }
+.stopbar span { flex: 1; } .stopbar a { color: #fff; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
+.estop .btn.danger.solid { background: var(--bad); border-color: var(--bad); color: #fff; }
 /* The start screen's dashboard (GET /v1/dashboard). */
 .dash { display: grid; gap: 16px; margin: 4px 0 32px; }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
