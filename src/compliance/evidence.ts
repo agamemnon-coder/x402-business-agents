@@ -137,17 +137,50 @@ function summarise(period: { from: string; to: string }, audit: ChainRef, mapped
   };
 }
 
-/**
- * The evidence of the days from..to (inclusive, UTC). Reads the ledger only. Refuses a period that is not one and an
- * audit log that does not verify (periodAuditRows).
- */
-export function buildComplianceEvidence(db: DB, period: { from: string; to: string }, signer: PackSigner): ComplianceEvidence {
+/** The evidence of a period before it is written and signed. */
+function evidenceOf(db: DB, period: { from: string; to: string }) {
   const { start, end, rows, before, beforeHead } = periodAuditRows(db, period);
   const p = { from: period.from, to: period.to };
   const chain: ChainRef = { first_seq: before.length + 1, last_seq: before.length + rows.length, rows: rows.length, before: { seq: before.length, head: beforeHead }, head: rows.length ? rows[rows.length - 1]!.row_hash : beforeHead };
   const controls = CONTROLS.map((c) => controlEvidence(db, c, p, rows, chain, start, end));
   const mapped = mapRequirements(REQUIREMENTS, new Map(controls.map((c) => [c.control, c])));
-  const summary = summarise(p, chain, mapped, controls);
+  return { p, controls, mapped, summary: summarise(p, chain, mapped, controls) };
+}
+
+/** What Purser Cloud's Compliance view shows (cloud/src/compliance.ts): the summary of a period, unsigned, in short. */
+export interface ComplianceSnapshot {
+  generated_at: string;
+  period: { from: string; to: string };
+  audit: { first_seq: number; last_seq: number; rows: number; head: string };
+  frameworks: { framework: FrameworkId; name: string; requirements: number; evidence_in_period: number; no_records_in_period: number; documented: number; gap: number }[];
+  controls: { id: string; name: string; status: ControlEvidence["status"]; records: number }[];
+  gaps: { framework: FrameworkId; clause: string; gap: string }[];
+  note: string;
+}
+
+/**
+ * The snapshot the runner pushes to Purser Cloud (src/cli/cloud.ts push): the evidence summary of the `days` days up to
+ * and including today (UTC), with the map's gaps. Counts only: no row, no subject, no payload. Unsigned: the signed
+ * evidence is the one npm run compliance-evidence writes.
+ */
+export function complianceSnapshot(db: DB, now: Date, days = 30): ComplianceSnapshot {
+  const to = now.toISOString().slice(0, 10);
+  const from = new Date(Date.parse(`${to}T00:00:00Z`) - (days - 1) * 86_400_000).toISOString().slice(0, 10);
+  const { summary: s } = evidenceOf(db, { from, to });
+  return {
+    generated_at: now.toISOString(), period: s.period, audit: { first_seq: s.audit.first_seq, last_seq: s.audit.last_seq, rows: s.audit.rows, head: s.audit.head },
+    frameworks: s.frameworks, controls: s.controls,
+    gaps: REQUIREMENTS.filter((r) => r.status === "gap").map((r) => ({ framework: r.framework, clause: r.clause, gap: r.gap ?? "" })),
+    note: HONEST_LINE,
+  };
+}
+
+/**
+ * The evidence of the days from..to (inclusive, UTC). Reads the ledger only. Refuses a period that is not one and an
+ * audit log that does not verify (periodAuditRows).
+ */
+export function buildComplianceEvidence(db: DB, period: { from: string; to: string }, signer: PackSigner): ComplianceEvidence {
+  const { p, controls, mapped, summary } = evidenceOf(db, period);
   const files: Record<string, string> = {
     "summary.json": json(summary),
     "mapping.json": json({ format: COMPLIANCE_EVIDENCE_FORMAT, period: p, frameworks: FRAMEWORKS, requirements: mapped }),

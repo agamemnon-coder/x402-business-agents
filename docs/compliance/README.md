@@ -60,6 +60,15 @@ What it does not prove: that a control is designed well enough for a framework (
 nothing happened outside the ledger (a webhook with a bad signature, for one, is dropped and logged by the runner, not
 recorded in the ledger), or whose key signed it unless you pin one with `--trust`.
 
+## In Purser Cloud
+
+With every push (`npm run cloud -- push`) the runner also sends the evidence in short for the last 30 days: per
+framework the four counts above, per control its records, and the map's gaps; counts only, no audit row, subject or
+payload ([`src/compliance/evidence.ts`](../../src/compliance/evidence.ts) `complianceSnapshot`). The cloud checks it
+against a strict schema, keeps the newest per company, returns it on `GET /v1/compliance` (read scope, the caller's
+company only) and shows it as text, folded, at the foot of the console's Company page. It is not signed there: the
+signed evidence is the one made and verified on the runner, as above. The demo company has none.
+
 ## An example, on test data
 
 The seeded ledger of `test/support/complianceWorld.ts` (test data: a November with policy changes, two-person
