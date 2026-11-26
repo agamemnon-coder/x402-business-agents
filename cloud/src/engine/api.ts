@@ -89,6 +89,11 @@ export interface EngineApi {
   clearHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
   /** A negotiation's agreed invoice: recorded, and replacing the original when there is one (src/engine/host.ts negotiated). */
   negotiated(replacementId: string, facts: NegotiatedFacts): Promise<{ ok: true; invoice: InvoiceView; superseded: InvoiceView | null } | { ok: false; reason: string }>;
+  /**
+   * A negotiation's agreed terms filed in one engine action: the original asked first, then the agreed invoice composed,
+   * filed and recorded as replacing it; withdrawn again when it cannot be (src/engine/host.ts agreed).
+   */
+  agreed(input: ComposeInput, facts: NegotiatedFacts): Promise<{ ok: true; invoice: InvoiceView; superseded: InvoiceView | null } | { ok: false; code: "not_recorded" | "not_ready"; reason: string; invoice?: InvoiceView } | ComposeRefusal>;
   /** The hands-on demo's Reject of a held invoice (src/engine/host.ts rejectHold). */
   rejectHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
   /** The suppliers the seed put on file (test IBANs). */
@@ -136,4 +141,4 @@ export const EVENTS_PER_SECOND = 2;
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "emergencyStop", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "clearHold", "rejectHold", "negotiated", "payoutSimulate", "exportBatch", "exportPdf", "addSupplier", "proposeBatch", "depositIn", "airwallex"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "emergencyStop", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "clearHold", "rejectHold", "negotiated", "agreed", "payoutSimulate", "exportBatch", "exportPdf", "addSupplier", "proposeBatch", "depositIn", "airwallex"] as const);

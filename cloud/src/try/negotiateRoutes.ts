@@ -187,12 +187,12 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
       const taken = await c.env.sql.first<{ count: number }>("UPDATE rate_hits SET count = 0 WHERE bucket = ? AND window_start = ? AND count = 1 RETURNING count", [key, born]);
       if (!taken) throw new TryRefused(409, "not_the_agreement", "These terms are not an agreement this company negotiated, or they were filed already.");
       const giveBack = () => c.env.sql.run("UPDATE rate_hits SET count = 1 WHERE bucket = ? AND window_start = ?", [key, born]);
-      const out = await e.compose(x);
-      if ("refused" in out) { await giveBack(); return json(400, { error: out.refused.message, code: `invalid_${out.refused.field}`, message: out.refused.message, field: out.refused.field }); }
-      const agreed = out.invoice;
-      if (!agreed || agreed.status !== "ready") { await giveBack(); return json(409, { error: "the agreed invoice was not filed as ready to pay", code: "not_ready", message: "The agreed invoice could not be filed as ready to pay; the original stands. Pay the invoice as issued instead.", ...(agreed ? { invoice: agreed } : {}) }); }
-      const done = await e.negotiated(agreed.id, { original_id: b.invoice_id ?? null, original_invoice_no: sc.invoice_no, original_amount: money(sc.amount_cents), agreement_sha256: b.agreement_sha256, turns: b.turns });
-      if (!done.ok) return json(409, { error: done.reason, code: "not_recorded", message: `The agreed invoice could not replace the original: ${done.reason}.` });
+      // One engine action (src/engine/host.ts agreed): the original asked first, then the agreed invoice filed and recorded
+      // as replacing it, withdrawn again when it cannot be. A bill never has two payable invoices.
+      const done = await e.agreed(x, { original_id: b.invoice_id ?? null, original_invoice_no: sc.invoice_no, original_amount: money(sc.amount_cents), agreement_sha256: b.agreement_sha256, turns: b.turns });
+      if ("refused" in done) { await giveBack(); return json(400, { error: done.refused.message, code: `invalid_${done.refused.field}`, message: done.refused.message, field: done.refused.field }); }
+      if (!done.ok && done.code === "not_ready") { await giveBack(); return json(409, { error: done.reason, code: "not_ready", message: "The agreed invoice could not be filed as ready to pay; the original stands. Pay the invoice as issued instead.", ...(done.invoice ? { invoice: done.invoice } : {}) }); }
+      if (!done.ok) { await giveBack(); return json(409, { error: done.reason, code: "not_recorded", message: `The agreed invoice could not replace the original: ${done.reason}. The original stands; nothing else is payable.` }); }
       return json(200, { invoice: done.invoice, superseded: done.superseded });
     } },
   ];

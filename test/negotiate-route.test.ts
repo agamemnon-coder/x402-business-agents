@@ -252,3 +252,71 @@ describe("only a negotiation that took place files", () => {
     expect(ok.status, JSON.stringify(ok.json)).toBe(200);
   });
 });
+
+// 26 Nov review: /agreed filed the agreed invoice as ready (compose) before it asked whether the original could be
+// replaced (negotiated); when it could not, it answered 409 and left the agreed invoice payable beside the original: two
+// payable invoices for one bill. Now both run as one engine action, the original asked first, and a failure withdraws it.
+describe("an agreement that cannot replace the original files nothing payable", () => {
+  it("the original's payment approved while the agreement is filed: 409, and only the original is payable", async () => {
+    script = LIVE;
+    const s = await visitor();
+    const orig = (await c.req("POST", "/v1/engine/samples/clean", { key: s, body: {} })).json.invoice as { id: string };
+    const proposal = (await c.req("POST", `/v1/engine/invoices/${orig.id}/pay`, { key: s })).json.proposal as { id: string; challenge: string; terms_sha256: string };
+    const n = (await c.req("POST", "/v1/try/negotiate", { key: s, body: { invoice_id: orig.id } })).json as { sha256: string; turns: unknown[]; compose: Record<string, string> };
+    const phone = new FakeAuthenticator();
+    const st = await c.req("POST", "/v1/engine/passkey/start", { key: s });
+    await c.req("POST", "/v1/engine/passkey/finish", { key: s, body: { code: st.json.code, credential: phone.register({ challenge: st.json.challenge as string, origin: ORIGIN, rpId: RP }) } });
+    // The CFO signs the original's payment as issued after the route has looked at the original, while the agreement is
+    // being filed: before the engine's filing action (or, in the old two steps, between the filing and the recording).
+    let signed = false;
+    const sign = async () => {
+      if (signed) return;
+      signed = true;
+      const ap = await c.req("POST", `/v1/engine/proposals/${proposal.id}/approve`, { key: s, body: { terms_sha256: proposal.terms_sha256, credential: phone.sign({ challenge: proposal.challenge, origin: ORIGIN, rpId: RP, counter: 1 }) } });
+      expect(ap.json).toMatchObject({ status: "approved" });
+    };
+    const real = c.env.engine!;
+    c.env.engine = (tenant) => {
+      const e = real(tenant);
+      return new Proxy(e, { get: (t, k) => {
+        if (k === "compose") return async (x: Parameters<typeof e.compose>[0]) => { const out = await e.compose(x); await sign(); return out; };
+        if (k === "agreed") return async (...a: unknown[]) => { await sign(); return (e as unknown as Record<string, (...b: unknown[]) => unknown>).agreed!(...a); };
+        return (t as unknown as Record<string | symbol, unknown>)[k];
+      } });
+    };
+    try {
+      const r = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose } });
+      expect(signed).toBe(true);
+      expect(r.status, JSON.stringify(r.json)).toBe(409);
+      expect(r.json.code).toBe("not_recorded");
+    } finally { c.env.engine = real; }
+    const invoices = (await c.req("GET", "/v1/engine/invoices", { key: s })).json.items as { id: string; invoice_no: string; status: string; payable: boolean }[];
+    // Never a second payable invoice for the bill: the agreed one is not filed, or is withdrawn.
+    expect(invoices.filter((i) => i.invoice_no === n.compose.invoice_no && (i.payable || i.status === "ready"))).toEqual([]);
+    expect(invoices.find((i) => i.id === orig.id)?.status).not.toBe("rejected");
+  });
+
+  it("filed as ready but not recordable: the agreed invoice is withdrawn in the same action, the original stands", async () => {
+    script = LIVE;
+    const s = await visitor();
+    const orig = (await c.req("POST", "/v1/engine/samples/clean", { key: s, body: {} })).json.invoice as { id: string };
+    const n = (await c.req("POST", "/v1/try/negotiate", { key: s, body: { invoice_id: orig.id } })).json as { sha256: string; turns: unknown[]; compose: Record<string, string> };
+    // The recording refuses (facts that are not this agreed invoice's), after the agreed invoice is filed as ready.
+    const real = c.env.engine!;
+    c.env.engine = (tenant) => {
+      const e = real(tenant);
+      return new Proxy(e, { get: (t, k) => k === "agreed"
+        ? async (x: Parameters<typeof e.agreed>[0], f: Parameters<typeof e.agreed>[1]) => e.agreed(x, { ...f, agreement_sha256: "0".repeat(64) })
+        : (t as unknown as Record<string | symbol, unknown>)[k] });
+    };
+    try {
+      const r = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose } });
+      expect(r.status, JSON.stringify(r.json)).toBe(409);
+      expect(r.json.code).toBe("not_recorded");
+    } finally { c.env.engine = real; }
+    const invoices = (await c.req("GET", "/v1/engine/invoices", { key: s })).json.items as { id: string; invoice_no: string; status: string; payable: boolean }[];
+    const agreedOnes = invoices.filter((i) => i.invoice_no === n.compose.invoice_no);
+    expect(agreedOnes).toEqual([expect.objectContaining({ status: "rejected", payable: false })]);
+    expect(invoices.find((i) => i.id === orig.id)).toMatchObject({ status: "ready", payable: true });
+  });
+});
