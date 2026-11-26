@@ -6,7 +6,7 @@
 // manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
 
 import { CONSOLE_PREMIUM_CSS } from "../../src/ui/premium.js";
-import { CONSOLE_WAVE_JS, OVERVIEW_PLUS_CSS, OVERVIEW_PLUS_JS } from "./consoleOverviewPlus.js";
+import { OVERVIEW_PLUS_CSS, OVERVIEW_PLUS_JS } from "./consoleOverviewPlus.js";
 import { ASK_BUTTON_JS } from "./ask/page.js";
 import { SIGNIN_CSS, SIGNIN_JS } from "./signInLook.js";
 import { PREVIEW_TAGS } from "./brand.js";
@@ -43,7 +43,7 @@ import { APP_ICON_LINKS, cloudAppResponse } from "./pwa.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
   "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy",
-  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down", "sparkles", "arrow-right", "zap", "info", "layout-dashboard", "arrow-left-right", "file-check", "settings-2", "play"];
+  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down", "sparkles", "arrow-right", "zap", "info", "layout-dashboard", "arrow-left-right", "file-check", "settings-2", "play", "search"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
@@ -78,7 +78,6 @@ ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /* Signed out the bar keeps the test-money chip alone (the honesty label is on every console page); the pages and the person wait. */
 .signed-out .appbar .apptabs, .signed-out .who-am-i { display: none; }
 .signed-out .appbar .wrap { height: 44px; padding-top: 0; align-content: center; }
-.appbar .test { margin-left: 12px; }
 label.check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; font-size: 14px; line-height: 1.45; }
 label.check input { margin-top: 3px; }
 .appbar .spacer { margin-left: auto; }
@@ -189,7 +188,6 @@ code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; ba
 
 /* Round 2 (10 Nov): denser pages, initials, one-hue bars from the store's own numbers. */
 .appbar .wrap { height: 48px; }
-.appbar .test { padding: 5px 9px; font-size: 12px; }
 .av2 { flex: none; width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--accent-soft); color: var(--accent); font: 700 11px/1 Inter, system-ui, sans-serif; letter-spacing: .02em; }
 .row > .sup { display: flex; align-items: center; gap: 10px; }
 .row .sup .sn { min-width: 0; }
@@ -208,17 +206,7 @@ ul.legend li span { color: var(--muted); }
 ul.legend li.zero { opacity: .55; }
 .meter { display: block; width: 100%; max-width: 220px; height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; margin-top: 6px; }
 .meter > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
-.ovtop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 12px; margin-top: 18px; }
 @media (max-width: 900px) { .ovtop { grid-template-columns: minmax(0, 1fr); } }
-a.next { display: flex; align-items: center; gap: 14px; padding: 18px 20px; text-decoration: none; color: var(--text); }
-a.next.act { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
-a.next .nic { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
-a.next:not(.act) .nic { background: var(--ok-soft); color: var(--ok); }
-a.next > div { min-width: 0; flex: 1; }
-a.next .nl { display: block; color: var(--muted); font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; }
-a.next b { display: block; font-size: 17px; letter-spacing: -.01em; margin-top: 2px; }
-a.next .ns { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
-a.next > .ic { color: var(--faint); }
 .panel.due h2 { margin: 0 0 12px; }
 p.fine { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; }
 .waits { margin-top: 18px; }
@@ -247,7 +235,6 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
 .table td.pn { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 @media (max-width: 640px) {
   .pfgate { align-items: stretch; width: 100%; } .pfin { flex-wrap: wrap; } .pfin .field { width: 100%; flex: 1 1 100%; }
-  a.next { padding: 16px; } a.next b { font-size: 16px; }
   .table.vat th.sh, .table.vat td.sh { display: none; }
 }
 @media (max-width: 900px) {
@@ -257,7 +244,6 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   .who-am-i #who { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
 }
 @media (max-width: 640px) {
-  .appbar .test .tl { display: none; }
   .who-am-i #who { max-width: 52vw; }
   .who-am-i #who .wc { display: none; }
   /* 22 Nov: on a phone the pages are the bottom tab bar's five groups (cloud/src/consoleShell.ts), not a grid of words. */
@@ -464,14 +450,14 @@ a.st-step:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--bord
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
 ${siteHeader(null)}
-<div class="appbar"><div class="wrap"><a class="abrand" href="#/overview" aria-label="Purser Cloud"><span class="mk">${svg("feather", 16)}</span></a><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><span class="ng" data-sg="money">${escAttr(SHELL_WORDS.en.g_money)}</span><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><span class="ng" data-sg="agents">${escAttr(SHELL_WORDS.en.g_agents)}</span><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><span class="ng" data-sg="rails">${escAttr(SHELL_WORDS.en.g_rails)}</span><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/claude" data-tab="claude" hidden>Claude</a><a href="#/connections" data-tab="connections" data-t="cs.nav.connections">${tr("en", "cs.nav.connections")}</a><span class="ng sep" aria-hidden="true"></span><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<div class="appbar"><div class="wrap"><a class="abrand" href="#/overview" aria-label="Purser Cloud"><span class="mk">${svg("feather", 16)}</span><span class="abn">Purser <span>Cloud</span></span></a><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><span class="ng" data-sg="money">${escAttr(SHELL_WORDS.en.g_money)}</span><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><span class="ng" data-sg="agents">${escAttr(SHELL_WORDS.en.g_agents)}</span><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><span class="ng" data-sg="rails">${escAttr(SHELL_WORDS.en.g_rails)}</span><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/claude" data-tab="claude" hidden>Claude</a><a href="#/connections" data-tab="connections" data-t="cs.nav.connections">${tr("en", "cs.nav.connections")}</a><span class="ng sep" aria-hidden="true"></span><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="awx-app">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: AIRWALLEX_LOGO_SRC })}</span><span class="spacer"></span>
 <span class="who-am-i"><span class="cosw" id="cosw"><a class="co" id="co" href="#/company"></a><button type="button" class="co-more" id="co-more" aria-haspopup="menu" aria-expanded="false" aria-controls="co-menu" aria-label="Switch company" hidden>${svg("chevron-down", 16)}</button><span class="co-menu" id="co-menu" role="menu" aria-label="Switch company" hidden></span></span><span id="who"></span><span id="ask-slot"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
+<button type="button" class="sbx" id="sbx" aria-pressed="false">${svg("panel-left", 16)}</button>
 <span class="test" id="testchip" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
-<div class="demo-ribbon" id="demo" hidden><div class="wrap"><p class="dr">${svg("flask", 14)}<span class="dr-full" data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><span class="dr-short">${SHELL_WORDS.en.demo_short}</span><a href="#/sign-in" id="demo-out"><span class="lw" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</span><span class="lv">${SHELL_WORDS.en.demo_leave}</span></a></p></div></div>
 <div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><span class="side-mk" aria-hidden="true">${svg("feather", 30)}</span><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><p class="si-st"><i aria-hidden="true"></i><span data-t="cs.side.status">${tr("en", "cs.side.status")}</span></p><ul>${([["cs.side.1", "file-check"], ["cs.side.2", "scan-face"], ["cs.side.3", "database"]] as const).map(([k, i]) => `<li><span class="si">${svg(i, 18)}</span><span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div><canvas class="si-globe" aria-hidden="true"></canvas><canvas class="si-wave" aria-hidden="true"></canvas></div>
 <div class="stopbar" id="stopbar" role="status" hidden><div class="wrap"><p>${svg("octagon-x", 16)}<span data-t="cs.stop.bar">${tr("en", "cs.stop.bar")}</span><a href="#/settings?at=estop" data-t="cs.stop.bar_link">${tr("en", "cs.stop.bar_link")}</a></p></div></div>
-<main><div class="wrap subnav-wrap"><nav class="subnav" id="subnav" hidden></nav></div><div class="wrap" id="view" aria-live="polite"></div></main>
+<main><div class="ctop"><nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav><div class="demo-ribbon" id="demo" hidden><p class="dr">${svg("flask", 14)}<span class="dr-full" data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><span class="dr-short">${SHELL_WORDS.en.demo_short}</span><a href="#/sign-in" id="demo-out"><span class="lw" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</span><span class="lv">${SHELL_WORDS.en.demo_leave}</span></a></p></div><button type="button" class="kbtn" id="kbtn" aria-haspopup="dialog">${svg("search", 15)}<span class="kt">Search</span><kbd>⌘K</kbd></button></div><div class="wrap subnav-wrap"><nav class="subnav" id="subnav" hidden></nav></div><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
 <p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>
 <p class="foot-awx wrap">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: AIRWALLEX_LOGO_SRC })}</p>
@@ -496,8 +482,8 @@ for(const a of document.querySelectorAll('[data-t]'))a.textContent=(a.classList.
 // The footer is written by footLine once the shell knows the session (jury round 2: a guest saw the sandbox line for
 // ~1.5 s before the demo line); nothing until then.
 document.querySelector('#foot').textContent='';
+document.querySelector('#testchip').title=t('test.title');
 for(const b of [document.querySelector('#out')]){b.title=t('cs.sign_out');b.setAttribute('aria-label',t('cs.sign_out'))}
-document.querySelector('.appbar .test').title=t('test.title');
 const IC=__ICONS__;
 const CFG=JSON.parse(document.querySelector('meta[name=purser-cloud]').content);
 const $=(s)=>document.querySelector(s);
@@ -561,9 +547,9 @@ const go=(h)=>{if(location.hash===h)route();else location.hash=h};
 
 function shell(){
   document.body.className=S?'signed-in':'signed-out';
-  // 21 Nov: the company block (its page and the switcher), one session block, test money once in the header strip.
+  // 21 Nov: the company block (its page and the switcher), one session block. 26 Nov: no test-money pill; the switcher's
+  // workspace line says it (the demo, or the engine's test money).
   if(S){sessionBlock();companyBlock();if(ME){rememberCompany(ME);connState().catch(()=>{})}}
-  placeTest();
   // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
   // Demo from the first paint: a guest session says so when it is stored (S.guest), before /v1/me answers.
   const dm=$('#demo');if(dm){const on=!!(S&&(ME?ME.demo:S.guest));dm.hidden=!on;document.body.classList.toggle('demo',on);footLine()}
@@ -763,7 +749,6 @@ const toCents=(v)=>{const m=/^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(v||''));if
 const SVGNS='http://www.w3.org/2000/svg';
 const sv=(tag,attrs,kids)=>{const e=document.createElementNS(SVGNS,tag);for(const k in attrs||{})e.setAttribute(k,String(attrs[k]));for(const c of [].concat(kids??[]))if(c)e.append(c);return e};
 const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
-function whenSeen(node,fn){if(RM()||!('IntersectionObserver' in window)){fn(true);return}const io=new IntersectionObserver((es)=>{if(es.some(e=>e.isIntersecting)){io.disconnect();fn(false)}},{threshold:.25});io.observe(node)}
 // Jury review, 13 Nov: the count-up showed totals that were not yet the real ones (a hidden tab holds the animation for
 // seconds). Every figure is written once, final, at once; only the cards' rise moves.
 function countUp(node,target,fmt){node.textContent=fmt(target)}
@@ -794,35 +779,6 @@ function cashChart(D,W){
     tip:(i)=>{const p=pts[i];return {h:dday(p.d),rows:[{k:'cash',l:cw('net_so_far'),v:amt(D,p.v)},{k:'fin',l:t('cs.dash.in'),v:amt(D,p.i)},{k:'fout',l:t('cs.dash.out'),v:amt(D,p.o)}]}},
     href:(i)=>pts[i].i||pts[i].o?txDay(pts[i].d):null});
   return g}
-// Payments per week: CFO-approved and within an agent's own limit, as counts (the amounts differ too much to share a scale).
-function weekChart(D,W){
-  const ws=D.approvals.weeks;const H=200,l=10,b=26,tp=18;const max=Math.max(1,...ws.map(w=>w.cfo+w.alone));const bw=Math.min(46,(W-l*2)/Math.max(1,ws.length)*0.6),step=(W-l*2)/Math.max(1,ws.length);
-  const g=sv('svg',{viewBox:'0 0 '+W+' '+H,width:W,height:H,class:'chart',role:'img','aria-label':t('cs.dash.appr_title')});
-  ws.forEach((w,k)=>{const x=l+step*k+(step-bw)/2,h=(n)=>n/max*(H-tp-b);const yc=H-b-h(w.cfo),ya=yc-h(w.alone);
-    const col=sv('g',{class:'col'},[sv('rect',{x:l+step*k,y:0,width:step,height:H-b,class:'hit'})]);
-    if(w.cfo)col.append(sv('rect',{x,y:yc,width:bw,height:h(w.cfo),rx:3,class:'b cfo'}));
-    if(w.alone)col.append(sv('rect',{x,y:ya,width:bw,height:h(w.alone),rx:3,class:'b alone'}));
-    col.append(sv('text',{x:x+bw/2,y:ya-5,class:'val','text-anchor':'middle'},[document.createTextNode(String(w.cfo+w.alone))]),sv('text',{x:x+bw/2,y:H-8,class:'ax','text-anchor':'middle'},[document.createTextNode(dday(w.week))]));
-    g.append(col)});
-  if(ws.length)chartPoint({root:g,n:ws.length,start:ws.length-1,at:(cx)=>Math.max(0,Math.min(ws.length-1,Math.floor((svgX(g,W,cx)-l)/step))),
-    anchor:(i)=>{const w=ws[i];return svgAt(g,W,H,l+step*i+step/2,H-b-(w.cfo+w.alone)/max*(H-tp-b))},mark:(i)=>colMark(g,i),
-    tip:(i)=>{const w=ws[i];return {h:t('cs.ch.week_of',{day:dday(w.week)}),rows:[{k:'cfo',l:t('cs.dash.appr_cfo'),v:w.cfo+' · '+amt(D,toCents(w.cfo_amount))},{k:'alone',l:t('cs.dash.appr_alone'),v:w.alone+' · '+amt(D,toCents(w.alone_amount))}]}},
-    href:(i)=>ws[i].cfo+ws[i].alone?txWeek(ws[i].week):null});
-  return g}
-// Invoices by state: a ring of their counts, the total in its middle, and a legend with each count and amount.
-function invoiceRing(D){
-  const I=D.invoices;const parts=[['paid','cs.dash.inv_paid'],['waiting_cfo','cs.dash.inv_waiting'],['needs_vendor','cs.dash.inv_vendor'],['open','cs.dash.inv_open'],['stopped','cs.dash.inv_stopped']].filter(([k])=>I[k]&&I[k].count);
-  const tot=parts.reduce((n,[k])=>n+I[k].count,0);const g=sv('svg',{viewBox:'0 0 120 120',width:132,height:132,class:'ring',role:'img','aria-label':t('cs.dash.inv_title')+': '+parts.map(([k,l])=>t(l)+' '+I[k].count).join(', ')});
-  g.append(sv('circle',{cx:60,cy:60,r:46,class:'track'}));let off=0;const fr=[];
-  parts.forEach(([k],i)=>{const f=I[k].count/(tot||1)*100;fr.push(f);g.append(sv('circle',{cx:60,cy:60,r:46,pathLength:100,class:'seg r'+i,'stroke-dasharray':(f-1.2).toFixed(2)+' '+(100-f+1.2).toFixed(2),'stroke-dashoffset':(25-off).toFixed(2)}));off+=f});
-  g.append(sv('text',{x:60,y:60,class:'rt','text-anchor':'middle'},[document.createTextNode(String(tot))]),sv('text',{x:60,y:78,class:'rs','text-anchor':'middle'},[document.createTextNode(t('cs.dash.inv_count'))]));
-  const items=parts.map(([k,l],i)=>el('li','',[el('i','r'+i),el('span','',t(l)),el('b','num',String(I[k].count)),el('small','num',amt(D,toCents(I[k].amount)))]));
-  // Each state opens its invoices: paid, waiting for Face ID, needing a person (a new supplier), open, stopped.
-  const F={paid:'paid',waiting_cfo:'waiting_cfo',needs_vendor:'act',open:'open',stopped:'blocked'};
-  if(parts.length)chartPoint({root:g,n:parts.length,side:true,at:(x,y)=>ringPick(g,fr,x,y),anchor:(i)=>ringAnchor(g,fr,i),mark:(i)=>ringMark(g,i),legend:items,
-    tip:(i)=>{const [k,l]=parts[i];return {h:t(l),rows:[{k:'r'+i,l:t('cs.dash.inv_count'),v:String(I[k].count)+' · '+Math.round(I[k].count/(tot||1)*100)+'%'},{l:t('cs.ch.amount'),v:amt(D,toCents(I[k].amount))}]}},
-    href:(i)=>'#/invoices?f='+F[parts[i][0]]});
-  return el('div','ringwrap',[g,el('div','',[el('ul','rlegend',items),I.duplicates_stopped?el('p','fine',t('cs.dash.inv_dup',{n:I.duplicates_stopped})):null])])}
 // Spend by who started it: one bar each, its amount and how many payments; Airwallex's declines said, never counted.
 // The demo company's declines are its demo data's, so a guest reads "declined (simulated)" (judge run, 13 Nov).
 function spendBars(D){
@@ -836,28 +792,6 @@ function spendBars(D){
     tip:(i)=>{const s=D.spend[i];return {h:tk('cs.dash.spend.'+s.key,s.label),rows:[{k:'bar',l:t('cs.ch.amount'),v:amt(D,toCents(s.amount))},{l:t('cs.ch.share'),v:Math.round(toCents(s.amount)/tot*100)+'%'},{l:t('cs.ch.payments'),v:String(s.count)}].concat(s.declined?[{l:t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined}),v:''}]:[])}},
     href:(i)=>{const k=D.spend[i].key;return k==='invoices'?'#/invoices?f=paid':k==='other'?'#/transactions':'#/agents?a='+encodeURIComponent(k)}});
   return ul}
-function feedList(D){
-  return el('ol','feed',D.feed.map(f=>el('li','f-'+f.tone,[el('span','fd'),el('div','',[el('div','fw',[el('b','',f.who),el('time','',dday(f.at))]),el('p','',f.text)])])))}
-function dashBlock(D){
-  if(!D||!D.cash||!D.cash.length)return null;
-  const wide=innerWidth>=980,full=view().clientWidth||960;
-  const cashW=Math.round(wide?full*0.64-40:full-40),weekW=Math.round(wide?full*0.5-44:full-40);
-  const k=el('div','kpis',[
-    kpi(D,t('cs.dash.in'),'arrow-down-left',toCents(D.money.in),t('cs.dash.in_sub'),'pos'),
-    kpi(D,t('cs.dash.out'),'arrow-up-right',toCents(D.money.out),t('cs.dash.out_sub')),
-    kpi(D,t('cs.dash.net'),'wallet',toCents(D.money.net),t('cs.dash.net_sub',{date:dday(D.since)}),toCents(D.money.net)>=0?'pos':'neg'),
-    kpi(D,t('cs.dash.decisions'),'shield-check',D.agents.decisions,D.agents.by_fallback?t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback}):t('cs.dash.decisions_sub'),'',true)]);
-  const g1=el('div','dgrid g1',[dcard('cash',t('cs.dash.cash_title'),t('cs.dash.cash_sub',{cur:cur(D.currency),date:dday(D.since)}),el('div','cv',[cashChart(D,cashW)])),
-    dcard('inv',t('cs.dash.inv_title'),t('cs.dash.inv_sub',{cur:cur(D.currency)}),invoiceRing(D))]);
-  const g2=el('div','dgrid g2',[dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),spendBars(D)),
-    dcard('weeks',t('cs.dash.appr_title'),t('cs.dash.appr_sub'),el('div','',[el('div','cv',[weekChart(D,weekW)]),el('ul','klegend',[el('li','',[el('i','cfo'),t('cs.dash.appr_cfo')]),el('li','',[el('i','alone'),t('cs.dash.appr_alone')])])]))]);
-  const g3=dcard('feedc',t('cs.dash.feed_title'),t('cs.dash.feed_sub'),feedList(D));
-  const box=el('div','dash',[k,g1,g2,g3]);
-  // Every card rises in on the next frame (bars grow, the line draws itself), whether or not it is on the screen yet
-  // (review, 13 Nov: cards waiting to be scrolled to left an empty band of about 850 px between the charts and "Next" at
-  // 1440 px, in a page read whole). Reduced motion: the CSS shows all at once.
-  requestAnimationFrame(()=>{for(const n of box.querySelectorAll('.rise'))n.classList.add('in')});
-  return box}
 
 // --- The engine (test money, on its stand-in bank) -----------------------------------------------------------------
 // Only a page whose config says engine true asks /v1/engine: a cloud with no engine answers 404 there, so its page never
@@ -870,12 +804,12 @@ function engineStatus(){
   if(!ENG.p)ENG.p=api('/v1/engine').catch((e)=>{if(e instanceof Expired)throw e;return null});
   return ENG.p}
 const engineStale=()=>{ENG.p=null};
-// The header's one test-money chip says the engine is there, and in its title what that means.
+// The company switcher's workspace line says the engine is there (test money), and in its title what that means.
 // The footer's one line: the engine's own when it runs (it pays, on a stand-in bank), else the demo company's (jury review,
 // 13 Nov), else the console's.
 var ENG_ON=false;
 function footLine(){$('#foot').textContent=ENG_ON?t('cs.eng.foot'):document.body.classList.contains('demo')?t('cs.demo.line'):t('cs.foot')}
-function engineChip(on){ENG_ON=!!on;const c=$('#testchip');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');footLine()}
+function engineChip(on){ENG_ON=!!on;if(S)companyBlock();footLine()}
 
 // The panel "At work": the engine's events as lines (src/ui/engineEvents.ts), newest first, six in view and the rest
 // folded. Its state belongs to the page, not to a view, so any view can mount it (workPanel()): the seq read up to, the
@@ -1311,9 +1245,6 @@ const RUBRIC=(k)=>tk('cs.rubric.'+k,k);
 // --- Shared pieces of the enterprise pass (13 Nov) -------------------------------------------------------------------
 // A VAT code in words where Purser knows it (cloud/src/tryCopy.ts vat), else the code itself.
 const vatWord=(code)=>tk('cs.vat.'+code,t('cs.vat_code',{code}));
-// What Purser Cloud is, in one line, on the sign-in and at the top of the overview; the demo company says what its data is.
-// The demo company is said by the ribbon and the footer; the card does not say it a third time (jury round 2, 13 Nov).
-function whatCloud(){return el('div','what-cloud',[el('p','',t('cs.what_cloud'))])}
 // A ledger entry's lines as a table (date, entry, account, debit, credit), oldest first.
 function journalTable(items,empty,newest){
   const jl=(td,l)=>{td.dataset.l=l;return td};
@@ -1949,7 +1880,6 @@ main { padding: 32px 0 72px; }
 #view h2 { font-weight: 650; letter-spacing: -.01em; }
 .card, .auth { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
 table thead th, .tbl thead th { background: var(--sunken); color: var(--muted); font-weight: 600; letter-spacing: .02em; }
-.test { background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 30%, var(--surface)); }
 #foot { color: var(--faint); border-top: 1px solid var(--border); padding-top: 18px; }
 .foot-awx { margin-top: 0; padding-bottom: 28px; }
 /* Signed out: a neutral panel beside the card, the Purser mark's colours only. */
@@ -1985,10 +1915,6 @@ table thead th, .tbl thead th { background: var(--sunken); color: var(--muted); 
 .claude ul.tokens li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line, #e5e7eb); }
 .claude ul.tokens li .btn { margin-left: auto; }
 .claude p.others { margin-top: 10px; } .claude p.others a { display: inline-block; padding: 12px 0; font-weight: 600; }
-.demo-ribbon { background: var(--warn-soft); border-bottom: 1px solid color-mix(in srgb, var(--warn) 30%, var(--surface)); color: var(--warn); font-size: 13.5px; }
-.demo-ribbon .wrap { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-top: 6px; padding-bottom: 6px; }
-.demo-ribbon span { flex: 1; line-height: 1.4; }
-.demo-ribbon a { font-weight: 650; color: var(--warn); white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
 .signed-out .demo-ribbon { display: none; }
 /* The CFO's emergency stop: its banner on every page while it is on, and its red button in Settings. */
 .stopbar { background: var(--bad); color: #fff; font-size: 14px; font-weight: 600; }
@@ -2076,8 +2002,6 @@ svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint)
   @keyframes drawline { to { stroke-dashoffset: 0; } }
 }
 /* Enterprise pass (13 Nov): what Purser Cloud is, the Agents and Tokenisation tabs, Invoices & books. */
-.what-cloud { margin: 0 0 18px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--sunken); }
-.what-cloud p { margin: 0; font-weight: 600; color: var(--text); }
 .auth p.what { color: var(--text); }
 .agents { display: grid; gap: 16px; margin: 0 0 16px; }
 .card.agent { padding: 20px; }
@@ -2085,7 +2009,6 @@ svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint)
 .agent .ah h2 { margin: 0; font-size: 18px; }
 .agent .ah p.sub { margin: 2px 0 0; }
 .agent .av { width: 40px; height: 40px; border-radius: 10px; background: var(--sunken); display: grid; place-items: center; color: var(--text); }
-.ast-wrap { text-align: right; }
 .ast { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-weight: 650; font-size: 13px; border: 1px solid var(--border); }
 .ast.active { color: var(--ok); background: var(--ok-soft); border-color: transparent; }
 .ast.paused { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
@@ -2104,12 +2027,8 @@ svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint)
 .tok .th { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .tok .th h2 { margin: 0; display: flex; align-items: center; gap: 6px; }
 .rlabel { display: inline-block; padding: 3px 10px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font-weight: 650; font-size: 12.5px; }
-ol.tsteps { margin: 12px 0; padding-left: 20px; display: grid; gap: 10px; }
-ol.tsteps ul.txs { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; font-size: 14px; }
-ol.tsteps ul.txs li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .tok .ok { color: var(--ok); } .tok .bad { color: var(--bad); }
 .tok code { font-size: 13px; word-break: break-all; }
-.tok ul.viclist { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 6px; overflow-wrap: anywhere; }
 .tok .links { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0 0; }
 a.ext { display: inline-flex; align-items: center; gap: 4px; }
 a.ext .ic svg { width: 13px; height: 13px; }
@@ -2121,7 +2040,6 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
 @media (max-width: 760px) {
   .agrid { grid-template-columns: 1fr; }
   .agent .ah { grid-template-columns: 40px 1fr; }
-  .ast-wrap { grid-column: 1 / -1; text-align: left; }
   .adec ul.feed li { grid-template-columns: 1fr; gap: 0; }
 }
 `;
@@ -2156,7 +2074,6 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
 ${BODY}
 ${CARD_ART_DEFS}
 <script type="module" nonce="${n}">${script}
-${CONSOLE_WAVE_JS}
 ${SIGNIN_JS}
 ${ASK_BUTTON_JS}</script>
 </body></html>`;

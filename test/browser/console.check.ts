@@ -662,13 +662,13 @@ async function engineUpload(E: EnginePass) {
   await p.goto(`${E.origin}/#/invoices`);
   await p.waitForSelector("#work");
   await p.waitForSelector("#eng-file", { state: "attached" });
-  // 21 Nov: on a laptop the one test-money chip sits in the header strip, beside "Built on Airwallex"; the sidebar no
-  // longer repeats it (cloud/src/consoleCompany.ts, placeTest). On a phone it is in the top bar (below).
-  ok((await p.textContent("#testchip .tl"))?.trim() === "Engine: test money", "engine pass: the header's test-money chip reads \"Engine: test money\"");
+  // 26 Nov (Max: "remove the engine test money pill"): no pill in the header; the company switcher's workspace line says
+  // it, with what it means in its title (cloud/src/consoleCompany.ts companyBlock), and the footer says it on every page.
+  await p.waitForFunction(() => (document.querySelector("#co .aw .aww")?.textContent ?? "").trim() === "Engine: test money");
+  ok(await p.locator("header.top #testchip").count() === 0 && !(await p.isVisible("#testchip")), "engine pass: no test-money pill in the header or the bar");
+  ok(await p.isVisible("#co .aw"), "engine pass: the company switcher's workspace line reads \"Engine: test money\", visible");
+  ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute("#co .aw", "title")) ?? ""), "engine pass: its title says the stand-in bank, no real money, nothing sent to Airwallex");
   ok(/stand-in bank.*Nothing is sent to Airwallex/.test((await p.textContent("#foot")) ?? ""), "engine pass: the footer says the engine pays on a stand-in bank and nothing goes to Airwallex");
-  ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute("#testchip", "title")) ?? ""), "engine pass: the chip's title says the stand-in bank, no real money, nothing sent to Airwallex");
-  ok((await p.locator(".test").count()) === 1 && (await p.locator("header.top #testchip").count()) === 1, "engine pass: one chip, in the header strip, not two");
-  ok(await p.isVisible("#testchip"), "engine pass: signed in, the test-money chip is visible");
 
   await p.setInputFiles("#eng-file", { name: "bergtex-BTX-2026-21.pdf", mimeType: "application/pdf", buffer: E.pdf });
   ok(await p.isDisabled("#view .drop.eng button"), "engine pass: while the upload runs its button is disabled");
@@ -699,13 +699,8 @@ async function engineUpload(E: EnginePass) {
   await p.emulateMedia({ colorScheme: "light" });
   const over = await wide();
   ok(over <= 0, `engine pass: the Invoices page at 390 px is no wider than the phone (${over} px over)`);
-  const head = await p.evaluate(() => {
-    // (No named function in here: the bundler would wrap it in a helper the page does not have.)
-    // 12 Nov: the first row of the console's bar (.appbar), beside the company and sign-out; the brand is the site header's now.
-    const chip = document.querySelector(".appbar .test")!.getBoundingClientRect(), brand = document.querySelector(".appbar .who-am-i")!.getBoundingClientRect();
-    return { sameRow: Math.abs(chip.top - brand.top) < 12, inView: chip.right <= window.innerWidth, label: getComputedStyle(document.querySelector(".appbar .test .tl")!).display };
-  });
-  ok(head.sameRow && head.inView && head.label === "none", `engine pass: at 390 px the chip keeps to the header's first row as an icon, as before (${JSON.stringify(head)})`);
+  // 26 Nov: no pill on a phone either; the footer says the engine's test money on every page.
+  ok(!(await p.isVisible("#testchip")) && /stand-in bank/.test((await p.textContent("#foot")) ?? ""), "engine pass: at 390 px no test-money pill; the footer says it");
   await p.setViewportSize({ width: 1440, height: 1000 });
 
   // A file that says it is a PDF but is not one: the engine refuses it, and the page says so in the engine's words.
@@ -1087,21 +1082,19 @@ async function guestPass() {
     await p.evaluate(() => scrollTo(0, 0));
     await p.waitForTimeout(1600);
     // 21 Nov (Max's Overview): on the Overview the demo is said by the header's one quiet pill; the ribbon stays on the other pages.
-    ok((await p.isVisible("#demo") && /Demo company/.test((await p.textContent("#demo")) ?? "")) || /Demo workspace · Simulated data · No real payments/.test((await p.textContent(".ov-pill")) ?? ""), `${tag}: the demo ribbon says what it is`);
-    // 21 Nov (Max's Overview, 12 columns): four KPI links, the waiting table, the cash line, the payment flow, the activity feed and the partners' tiles.
-    ok(await p.locator(".ov-k a.ovk").count() === 4 && await p.locator(".ov-cash svg.chart path.line").count() === 1 && await p.locator(".ov-inv").count() === 1 && await p.locator(".ov-feed li").count() >= 1 && await p.locator(".ov-pts a.ov-pt").count() === 4, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
-    // 21 Nov (Max): the stack is no longer pills on the globe ("it looks ugly"): one quiet strip on the grid under the
-    // headline, one green dot and "7 connected · recorded runs", then seven marks at one height, each named to a screen
-    // reader as connected with a recorded run; nothing "coming"; clear of the headline, the globe and the figures.
-    // (A string, not a function: the check runs under tsx, whose named helpers the page does not have.)
-    const stack = await p.evaluate(`(() => { const r = (s) => document.querySelector(s).getBoundingClientRect(); const cs = [...document.querySelectorAll(".ov-stack li.ovs-m")];
-      const h = r(".ov-h"), sub = r(".ov-sub"), k = r(".ov-k"), g = r(".ovg"), st = r(".ov-stack");
-      const apart = (a, b) => a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
-      const hs = [...cs].map((c) => Math.round(c.querySelector(".ovs-k").getBoundingClientRect().height));
-      return { n: cs.length, dots: document.querySelectorAll(".ov-stack .ovs-dot").length, pills: document.querySelectorAll(".ovg li, .ovs-c").length, head: (document.querySelector(".ovs-h")?.textContent ?? "").trim(),
-        named: cs.every((c) => /: connected \\((sandbox |testnet )?run recorded\\)$/.test(c.querySelector(".vh")?.textContent ?? "")), oneHeight: new Set(hs).size === 1,
-        clear: apart(st, h) && apart(st, sub) && apart(st, k) && apart(st, g) && g.bottom <= k.top + 1 }; })()`) as { n: number; dots: number; pills: number; head: string; named: boolean; oneHeight: boolean; clear: boolean };
-    ok(stack.n === 7 && stack.dots === 1 && stack.pills === 0 && /^7 connected · recorded runs$/.test(stack.head) && stack.named && stack.oneHeight && stack.clear, `${tag}: the connected stack: one strip, one green dot, seven marks at one height, each named, clear of the words, the globe and the figures (${JSON.stringify(stack)})`);
+    // 26 Nov (the console redesign): the demo's one quiet line on every page, the Overview too (in the top bar on a laptop).
+    ok(await p.isVisible("#demo") && /Demo company/.test((await p.textContent("#demo")) ?? ""), `${tag}: the demo ribbon says what it is`);
+    // 26 Nov (Max: "enterprise grade"): the Overview's own header (no landing-page headline, no globe), four figures (cash
+    // position, waiting for the CFO, paid this month, agent spend against limits), the approvals queue, the cash line,
+    // the agents' status, the activity feed, the connected rails and the flow.
+    ok(await p.locator(".ov-k a.ovk").count() === 4 && await p.locator(".ov-cash svg.chart path.line").count() === 1 && await p.locator(".ov-inv").count() === 1 && await p.locator(".ov-feed li").count() >= 1 && await p.locator(".ov-ag a.as-row").count() >= 1 && await p.locator(".pflow-c").count() === 1,
+      `${tag}: the dashboard's figures, queue, cash line, agents, feed and flow`);
+    ok(await p.locator(".ov-hero, .ovg, canvas.pw-wave, canvas.ovg-c").count() === 0 && (await p.textContent("#view h1")) === "Overview", `${tag}: the page's own header, no headline, globe or wave`);
+    // The connected rails: only what is connected with a recorded run, seven rows, each named to a screen reader.
+    const rails = await p.evaluate(`(() => { const cs = [...document.querySelectorAll(".ov-par li.ovs-m")]; const hs = cs.map((c) => Math.round(c.querySelector(".ovs-k").getBoundingClientRect().height));
+      return { n: cs.length, dots: document.querySelectorAll(".ov-par .ovs-dot").length, head: (document.querySelector(".ov-par .dh p")?.textContent ?? "").trim(),
+        named: cs.every((c) => /: connected \\((sandbox |testnet )?run recorded\\)$/.test(c.querySelector(".vh")?.textContent ?? "")), oneHeight: new Set(hs).size === 1 }; })()`) as { n: number; dots: number; head: string; named: boolean; oneHeight: boolean };
+    ok(rails.n === 7 && rails.dots === 7 && /^7 connected · recorded runs$/.test(rails.head) && rails.named && rails.oneHeight, `${tag}: the connected rails: seven, each named, marks at one height (${JSON.stringify(rails)})`);
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
     for (const tab of ["invoices", "transactions", "books", "settings", "connections"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }

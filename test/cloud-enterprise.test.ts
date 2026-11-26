@@ -196,17 +196,17 @@ describe("the console", () => {
     expect(html).not.toContain("l.vat_code?' · '+l.vat_code");
     expect(MESSAGES.en["cs.last_update"]).toBe("Last update from the runner");
   });
-  it("shows the 'Purser Cloud is…' box on Overview only, so the phone header stays short (jury, 13 Nov)", () => {
-    expect(html.match(/(?<!function )whatCloud\(/g)).toHaveLength(1);
-    // 14 Nov: the next action leads the Overview; the box closes it.
-    expect(html).toContain("nodes.push(whatCloud(m));");
+  // 26 Nov (the console redesign): the Overview's own header names the company and the day its figures stand at; the
+  // "Purser Cloud is…" box (the older Overview's, no longer drawn) is gone with it, so the phone header stays short.
+  it("says on the Overview's header whose figures they are and as of when, with no 'Purser Cloud is…' box", () => {
+    expect(html).not.toContain("whatCloud(");
+    expect(html).toContain("const hero=head(t('cs.nav.overview'),sw('as_of',{name:m.tenant.name||'',day:dday(new Date(now).toISOString())}));");
   });
   it("labels the demo's fallback decisions as a simulated month, from its own count (jury, 13 Nov)", async () => {
     expect((await get("/v1/dashboard")).json.agents).toEqual({ decisions: 33, by_fallback: 8 });
     // 14 Nov (judge scan): it names whose month it is, so it is not read against the 3 Nov main run's 24 of 24 by Claude.
     expect(MESSAGES.en["cs.dash.decisions_fallback_demo"]).toBe("{a} by the agents · {n} by code when no model answered, in the demo company's simulated month (not the 3 Nov main run)");
     expect(MESSAGES.en["cs.dash.decisions_fallback_demo"]).not.toMatch(/Claude/);
-    expect(html).toContain("t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback})");
     // 14 Nov: it is the Decisions timeline's subtitle now; each row has an icon for who acted (the rail is Airwallex).
     const feed = (await get("/v1/dashboard")).json.feed as J[];
     expect(feed.find((f) => f.who === "Purser (Airwallex)")?.by).toBe("rail");
