@@ -5,6 +5,12 @@ It shows how the design is ready for them: for each topic, what the rule asks, w
 does, with the proof in this repository. Today Purser runs on test money only: the Airwallex sandbox and Alta (formerly Metal)
 testnet.
 
+For each requirement of the EU AI Act (Arts. 9, 12, 13, 14, 15), ISO/IEC 42001 Annex A, SOC 2 (CC6, CC7, CC8) and
+DORA, the control map ([compliance/controls.md](compliance/controls.md)) names the Purser controls mapped to it, how
+their evidence is derived from the ledger, and the gaps. `npm run compliance-evidence` writes, for a period, the
+records that show each control ran, with a signed manifest; `npm run verify-compliance-evidence` checks it offline
+against the signed audit pack of the same period ([how to run and verify](compliance/README.md)).
+
 Who is who:
 
 - **Airwallex** is the regulated party for the bank side: accounts, card issuing, FX and payouts. Its KYB on the

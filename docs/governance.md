@@ -158,6 +158,11 @@ Said plainly, so no row above reads as more than it is.
 - **No production money and no independent review.** Sandbox, testnet and a test card only; the security assessment
   is a self-assessment ([go-live.md](go-live.md) lists every requirement before real money).
 
+The controls above are mapped to the EU AI Act, ISO/IEC 42001, SOC 2 and DORA, with what each leaves in the ledger and
+the gaps, in [compliance/controls.md](compliance/controls.md); `npm run compliance-evidence` lists the records that show
+each control ran in a period, signed, and `npm run verify-compliance-evidence` checks them offline
+([how to run and verify](compliance/README.md)). Evidence for a mapping, not a certificate of any kind.
+
 Related: [controls-matrix.md](controls-matrix.md) (each risk, its control, its test and its evidence) and
 [requirements-matrix.md](requirements-matrix.md#3-governance-article) (the article against the hackathon build, 29
 October to 7 November). Back to the [README](../README.md).
