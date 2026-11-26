@@ -90,7 +90,7 @@ Built to last:
 - 262 checks passed by verify-all, 0 failed (re-checked; 138 Alta transactions read from the chain; 20 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-20.md
 - 731 records sealed by one anchor transaction (testnet; 5 parts hashed into one head on Alta testnet, 19 Nov; npm run verify-anchor recomputes it): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-anchor.md
 - All 2,000 payments through Alta's clearing, load test of 19 Nov (testnet; 16 wallets at once; 2 lost answers resent, then paid. Runs of 30 Oct: 1,879 of 2,000, then all 2,000; the first lost 121 because the script did not resend): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-19-clearing-load.md
-- 9 CI jobs on every change (CI; 3 of them scan for security: npm audit, gitleaks, Semgrep; GitHub's CodeQL code scanning runs beside them): https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain
+- 10 CI jobs on every change (CI; 3 of them scan for security: npm audit, gitleaks, Semgrep; GitHub's CodeQL code scanning runs beside them): https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain
 
 Quality and supply chain:
 - 100 accessibility score on all 5 public pages, mobile and desktop (public site; Lighthouse 13.6.0, median of 3; lowest performance 92 (/proof, mobile). axe: 0 critical, serious: color-contrast on /. Read-only, 19 Nov): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/site-quality.md

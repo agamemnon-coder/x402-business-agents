@@ -667,7 +667,7 @@
         },
         {
           "key": "ci",
-          "fig": "9",
+          "fig": "10",
           "label": "CI jobs on every change",
           "note": "3 of them scan for security: npm audit, gitleaks, Semgrep; GitHub's CodeQL code scanning runs beside them.",
           "tag": "ci",
