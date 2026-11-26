@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Purser for the finance team
+
+**For a CFO or finance reader: the invoice job step by step, measured cost and time per invoice, the controls, the books, and what is not proven yet.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Worst-case eval, 50 cases: 35 wrong payments for a payer with no rules, 0 for Purser](https://img.shields.io/badge/wrong_payments%2C_worst_case-35_%E2%86%92_0-10b981?style=flat-square&labelColor=1f2937)](#worst-case-before-and-after)&nbsp;[![Claude: about USD 0.05 an invoice over a month of 20 test PDFs](https://img.shields.io/badge/Claude_per_invoice-about_USD_0.05-0ea5e9?style=flat-square&labelColor=1f2937)](#measured-per-invoice)&nbsp;[![T:0 read-back: 9 accounts, 0 differences](https://img.shields.io/badge/T%3A0_read--back-9_accounts_%C2%B7_0_differences-10b981?style=flat-square&labelColor=1f2937)](runs/2026-11-14-t0-readback.md)&nbsp;[![Not validated with customers yet](https://img.shields.io/badge/customers-not_validated_yet-f59e0b?style=flat-square&labelColor=1f2937)](#what-is-not-proven-yet)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[The job](#the-job-step-by-step) · [Measured](#measured-per-invoice) · [Controls](#controls-a-finance-team-already-uses) · [The books](#the-books) · [Worst case](#worst-case-before-and-after) · [Not proven yet](#what-is-not-proven-yet)
+
+</div>
 
 > Supplier invoices in; checked, paid inside the CFO's limits, booked and ready for VAT and month-end. No payment leaves
 > without a rule in code or the CFO's signature over its exact terms.
@@ -19,6 +31,23 @@ Test money only; every figure links its record.
 | Paid | The Payer picks rail (local or SWIFT), day and currency; the Airwallex transfer carries the signed hash | Code enforces | [src/ap/payerCore.ts](../src/ap/payerCore.ts) |
 | Booked | Double-entry, hash-chained: expense, VAT, creditors, fee | Code | [src/ap/books.ts](../src/ap/books.ts) |
 | VAT, month-end | VAT overview by return rubric; the month locks only when an outside ledger agrees | A person closes; code checks | [src/ledger/close.ts](../src/ledger/close.ts) |
+
+```mermaid
+flowchart LR
+  IN["Invoice in<br/>Claude reads the PDF"] --> CK["Checked<br/>the Checker proposes,<br/>code enforces"]
+  CK --> AP{"Above the<br/>agent's limit?"}
+  AP -- "yes" --> CFO["The CFO's passkey<br/>over the exact terms"] --> PAY
+  AP -- "no" --> PAY["Paid<br/>the Payer picks rail, day, currency"]
+  PAY --> BK["Booked<br/>double entry, hash-chained"] --> ME["VAT, month-end<br/>a person closes"]
+  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  class IN sourcing
+  class CK,AP,CFO purser
+  class PAY rails
+  class BK,ME ok
+```
 
 ## Measured per invoice
 
@@ -58,6 +87,17 @@ Offline eval, test data, 50 cases ([worst-case-ai.md](worst-case-ai.md)):
 | Wrong money | EUR 45,528.51, GBP 1,920.00, 306.00 with no currency read | none |
 | Paid past the CFO | 12 | 0 |
 | Sent to the CFO instead of held | 0 | 7 |
+
+```mermaid
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#f43f5e"}}}}%%
+xychart-beta
+  title "Worst case, 50 test cases: a payer with no rules against Purser"
+  x-axis ["Wrong, no rules", "Wrong, Purser", "Past the CFO, no rules", "Past the CFO, Purser"]
+  y-axis "Payments" 0 --> 40
+  bar [35, 0, 12, 0]
+```
+
+<sub>Record: [the table above](finance-value.md#worst-case-before-and-after), from the offline eval in [worst-case-ai.md](worst-case-ai.md), read by `test/docs-charts.test.ts`: wrong payments 35 and 0, paid past the CFO 12 and 0.</sub>
 
 ## What is not proven yet
 

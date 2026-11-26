@@ -131,6 +131,15 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`/badge/precedent_eval%2C_14_Nov-${bars[0]}_%E2%86%92_${bars[1]}_of_${one.summary.with.cases}_%C2%B7_no_gain-`);
   });
 
+  it("docs/finance-value.md: the worst-case chart is the table's", () => {
+    const md = read("docs/finance-value.md");
+    const row = (label: string) => /^\| ([^|]+) \| ([^|]+) \| ([^|]+) \|$/.exec(md.split("\n").find((l) => l.startsWith(`| ${label} |`))!)!;
+    const wrong = row("Wrong payments"), past = row("Paid past the CFO");
+    expect(md).toContain(`  bar [${[wrong[2], wrong[3], past[2], past[3]].map((s) => Number(s!.trim())).join(", ")}]\n`);
+    expect(md).toContain(`wrong payments ${wrong[2]!.trim()} and ${wrong[3]!.trim()}, paid past the CFO ${past[2]!.trim()} and ${past[3]!.trim()}.`);
+    expect(md).toContain(`/badge/wrong_payments%2C_worst_case-${wrong[2]!.trim()}_%E2%86%92_${wrong[3]!.trim()}-`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
