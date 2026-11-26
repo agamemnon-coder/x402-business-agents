@@ -61,7 +61,8 @@ export const LAND: number[][][] = [
  * degrees. The low-precision solar position (the Astronomical Almanac's, good to about 0.01 degrees of declination
  * and half a minute of time this century): the Sun's mean longitude and anomaly, its ecliptic longitude, the
  * obliquity; the declination is the latitude, and the longitude is where the apparent solar time is noon (UTC, less
- * the equation of time). Self-contained on purpose: the page's script is this function's own source.
+ * the equation of time). SUBSOLAR_JS below is the same computation as plain JavaScript for the page's script; a test
+ * holds the two equal (a function's own source text differs between compilers, which would change the page's bytes).
  */
 export function subsolar(ms: number): [number, number] {
   const n = (ms - 946728000000) / 86400000, r = Math.PI / 180;
@@ -71,6 +72,8 @@ export function subsolar(ms: number): [number, number] {
   const eot = ((L - ra + 540) % 360) - 180;
   return [((720 - (((ms % 86400000) + 86400000) % 86400000) / 240000 - eot) % 360) - 180, Math.asin(Math.sin(eps) * Math.sin(lam)) / r];
 }
+/** subsolar() as plain JavaScript for the page's script, written out so the page is byte-identical whatever compiles this file. */
+export const SUBSOLAR_JS = "function (ms) { var n = (ms - 946728000000) / 86400000, r = Math.PI / 180; var L = (280.46 + 0.9856474 * n) % 360, g = (357.528 + 0.9856003 * n) * r; var lam = (L + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * r, eps = (23.439 - 4e-7 * n) * r; var ra = Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam)) / r; var eot = ((L - ra + 540) % 360) - 180; return [((720 - (((ms % 86400000) + 86400000) % 86400000) / 240000 - eot) % 360) - 180, Math.asin(Math.sin(eps) * Math.sin(lam)) / r]; }";
 /** The Sun's height above the horizon at a place and moment, in degrees (no refraction): above 0 is day. */
 export function sunAltitude(lat: number, lon: number, ms: number): number {
   const [sl, sd] = subsolar(ms), r = Math.PI / 180;
@@ -107,7 +110,7 @@ export const globeScript = (o: GlobeOptions): string => `
   var LAND = ${JSON.stringify(LAND)}, PLACES = ${JSON.stringify(o.places)}, ARCL = ${JSON.stringify(o.arcLabel ?? "")}, AVOID = ${JSON.stringify(o.avoid ?? "")}, MAXR = ${o.maxR ?? 320};
   var VIEW = ${JSON.stringify(o.view ?? [-58, 20, 14])}, HOR = ${JSON.stringify(o.horizon ?? null)}, DIM = ${o.dim ?? 1}, LIFT = ${o.lift ?? 0.5}, LABELS = ${o.labels !== false}, LINKS = ${JSON.stringify(o.links ?? "")}, lk = [];
   // Day and night as they are now (subsolar, above): the Sun's direction, again each minute; the cities' lights at night.
-  var SUN = ${subsolar.toString()}, CITY = ${JSON.stringify(CITIES)}, STARS = ${JSON.stringify(o.stars ?? null)}, sunV = [1, 0, 0], sunAt = -1e9, sky = [], off = document.createElement("canvas"), og = off.getContext("2d"), oimg = null, OW = 0, OH = 0;
+  var SUN = ${SUBSOLAR_JS}, CITY = ${JSON.stringify(CITIES)}, STARS = ${JSON.stringify(o.stars ?? null)}, sunV = [1, 0, 0], sunAt = -1e9, sky = [], off = document.createElement("canvas"), og = off.getContext("2d"), oimg = null, OW = 0, OH = 0;
   var boxes = LAND.map(function (p) { var b = [999, 999, -999, -999]; p.forEach(function (q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }); return b; });
   function inside(p, x, y) { var o = false; for (var i = 0, j = p.length - 1; i < p.length; j = i++) { var a = p[i], b = p[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) o = !o; } return o; }
   function land(lon, lat) { for (var k = 0; k < LAND.length; k++) { var b = boxes[k]; if (lon < b[0] || lon > b[2] || lat < b[1] || lat > b[3]) continue; if (inside(LAND[k], lon, lat)) return true; } return false; }

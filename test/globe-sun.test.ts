@@ -1,7 +1,7 @@
 // The globe's day and night (src/ui/globe.ts): the subsolar point and the Sun's height at a place, against known
 // moments (equinox, solstices, the equation of time in early November) and places whose day or night is plain.
 import { describe, expect, it } from "vitest";
-import { globeScript, subsolar, sunAltitude } from "../src/ui/globe.js";
+import { globeScript, SUBSOLAR_JS, subsolar, sunAltitude } from "../src/ui/globe.js";
 
 const at = (iso: string) => Date.parse(iso);
 const AMSTERDAM = [52.37, 4.9] as const, SYDNEY = [-33.87, 151.21] as const, TOKYO = [35.68, 139.69] as const, NEW_YORK = [40.71, -74.01] as const;
@@ -41,9 +41,10 @@ describe("day and night at a place", () => {
 });
 
 describe("the page's script", () => {
-  it("carries the same function, self-contained", () => {
-    const fn = new Function(`return (${subsolar.toString()});`)() as typeof subsolar;
-    for (const iso of ["2026-11-26T00:00:00Z", "2026-11-26T12:00:00Z", "2027-03-01T07:30:00Z"]) expect(fn(at(iso))).toEqual(subsolar(at(iso)));
-    expect(globeScript({ selector: "canvas", places: [] })).toContain("var SUN = function subsolar");
+  it("carries the same computation, written out as plain JavaScript (the same bytes whatever compiles the page)", () => {
+    const fn = new Function(`return (${SUBSOLAR_JS});`)() as typeof subsolar;
+    for (let ms = Date.parse("2026-01-01T00:00:00Z"); ms < Date.parse("2028-01-01T00:00:00Z"); ms += 7 * 3600_000 + 13 * 60_000) expect(fn(ms)).toEqual(subsolar(ms));
+    expect(globeScript({ selector: "canvas", places: [] })).toContain(`var SUN = ${SUBSOLAR_JS},`);
+    expect(globeScript({ selector: "canvas", places: [] })).not.toContain("subsolar(ms)");
   });
 });
