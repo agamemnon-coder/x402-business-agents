@@ -27,7 +27,10 @@ function anchors(md: string): Set<string> {
   for (const line of withoutFences(md).split("\n")) {
     const h = /^#{1,6}\s+(.*?)\s*#*\s*$/.exec(line);
     if (h) {
-      const plain = h[1]!.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/<[^>]+>/g, "").replace(/[*`]/g, "");
+      let plain = h[1]!.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1"), before: string;
+      // Strip tags until none is left (a tag split by another, like "<scr<b>ipt>", leaves none behind), then any stray bracket.
+      do { before = plain; plain = plain.replace(/<[^>]*>/g, ""); } while (plain !== before);
+      plain = plain.replace(/[<>*`]/g, "");
       const base = plain.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, "").trim().replace(/\s/g, "-");
       const k = seen.get(base) ?? 0;
       seen.set(base, k + 1);

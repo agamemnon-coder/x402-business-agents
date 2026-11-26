@@ -348,7 +348,9 @@ export const REQUIREMENTS: readonly Requirement[] = [
 
 export const controlById = (id: string): Control | undefined => CONTROLS.find((c) => c.id === id);
 
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+// A Markdown table cell: a pipe becomes "\\|", GFM's table escape, which also holds inside a code span (where a backslash is
+// literal, so backslashes are left as they are: a regex like "\\." must render as written). Newlines become spaces.
+const cell = (s: string) => s.split("|").join("\\|").split("\n").join(" ");
 const code = (s: string) => `\`${s}\``;
 
 /** A control's evidence source, in words, for the document. */
