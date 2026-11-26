@@ -27,6 +27,10 @@ import SCHEMA from "../../../src/db/schema.sql";
 import { feedCloud } from "../../../src/engine/feed.js";
 import { EngineHost, parserOnly } from "../../../src/engine/host.js";
 import { bankToText, standInBank } from "../../../src/engine/standInBank.js";
+// The full task-mandate gate (src/policy/aloneGate.ts), installed as the runner's ledger installs it (src/db/open.ts):
+// a mandate the CFO signed scopes what the agent pays alone here too, instead of the stand-in that refuses every one.
+// About 5.5 KB gzipped in the Worker's bundle (test/cloud-engine-bundle.test.ts; test/cloud-task-mandates.test.ts).
+import "../../../src/policy/taskMandates.js";
 import { sqlBlobs } from "../blobsSql.js";
 import { d1Sql, r2Blobs, type D1Like, type R2Like } from "../store.js";
 import { TenantDb } from "../tenant.js";

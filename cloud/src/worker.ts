@@ -51,6 +51,8 @@ export interface Bindings {
   BUILT_AT?: string;
   /** Workers static assets (cloud/public, filled by npm run cloud:pdfjs): pdf.js for the console's invoice view. */
   ASSETS?: { fetch(req: Request): Promise<Response> };
+  /** The site Worker (kit11), for its public font: /assets/inter.woff2 is the same file the console uses. */
+  SITE?: { fetch(req: Request): Promise<Response> };
   /** The company engines' Durable Object (cloud/src/engine/object.ts), and the switch that turns the /v1/engine routes on: "test_money". */
   ENGINE?: EngineNamespace;
   ENGINE_MODE?: string;
@@ -185,7 +187,11 @@ function envOf(b: Bindings): CloudEnv {
   const walletPass = passConfigFrom(b);
   return { ...(walletPass ? { walletPass } : {}), sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", ...(b.ADMIN_KEYS ? { adminKeys: b.ADMIN_KEYS } : {}), rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "", ...(b.SECURITY_ALARMS ? { securityAlarms: b.SECURITY_ALARMS } : {}),
     version: b.GIT_SHA ?? b.VERSION ?? "dev", build: { sha: b.GIT_SHA ?? null, built_at: b.BUILT_AT ?? null }, outbound: (url: string, init: RequestInit) => fetch(url, init),
-    ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
+    ...(assets || b.SITE ? { asset: async (path: string) => {
+      // The console's font comes from the site Worker (the same file it serves); everything else from this Worker's assets.
+      if (path === "/assets/inter.woff2" && b.SITE) return b.SITE.fetch(new Request(new URL(path, "https://kit11.site")));
+      return assets ? assets.fetch(new Request(new URL(path, b.ORIGIN))) : new Response("not found", { status: 404 });
+    } } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}), ...(b.TURNSTILE_SECRET ? { turnstileSecret: b.TURNSTILE_SECRET, siteverify: (url: string, init: RequestInit) => fetch(url, init) } : {}) } } : {}) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE && b.HANDS_ON === "on" ? { negotiateClaude: negotiateClaudeOf(sql, b.ENGINE_CLAUDE, b.KIT11_ANTHROPIC_API_KEY) } : {}),
     // Ask Purser (cloud/src/ask/): Claude with the demo's capped key where the engine may call Claude; its switches and

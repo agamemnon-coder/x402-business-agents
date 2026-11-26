@@ -337,6 +337,11 @@ function invoiceDoc(i,entries){
       el('div','pp-title',[el('span','',t('cs.invoice')),el('b','num',r.invoice_no||i.invoice_no||t('no_number'))])]),
     el('div','pp-meta',[meta(t('dt.invoice_date'),day(r.issue_date||i.issue_date)),meta(t('dt.due_date'),day(r.due_date||i.due_date)),meta(t('dt.reference'),r.reference),meta(t('dt.booked_to'),i.gl_account?(i.gl_account+(i.cost_centre?' · '+i.cost_centre:'')):''),meta(t('cs.inv.our_ref'),i.id)]),
     el('div','scroll',el('table','table lines',[el('thead','',el('tr','',[el('th','',t('cs.inv.line')),el('th','r',t('cs.inv.net')),el('th','r',t('cs.inv.vat_amt'))])),tb])),tot])}
+// Why its payment was paid this way, or refused (GET /v1/invoices/{id} rationale: the payment.rationale record as stored),
+// in the runner's own words and labels (src/servers/rationaleWords.ts); null before there is one.
+function whyCard(i){const why=i.rationale;if(!why||!why.funding||!why.rail||!why.rule)return null;const ww=rationaleWords(why),W=WHY_LABELS[L.lang==='nl'?'nl':'en'];
+  return el('div','card panel why',[el('h2','',[W.why,' ',el('span','pill',W[why.outcome==='executed'?'executed':why.outcome==='failed'?'failed':'stopped'])]),dl([[W.funding,ww.funding],[W.rail,ww.rail],
+    [W.rule,cap(ww.rule)+(why.rule.policy_version!=null?' · '+W.policy+why.rule.policy_version:'')],[W.approval,why.approval?cap(ww.approval)+' · '+stamp(why.approval.at):W.none],[W.replaced,cap(ww.replacement)],[W.refused,cap(ww.refused)]])])}
 async function invoiceView(id){
   title(t('cs.invoice'));
   // With an engine, its own view of this invoice too: what it can do with it is the engine's to say, not the read model's.
@@ -371,7 +376,7 @@ async function invoiceView(id){
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')),getDoc]),pages]);
   // The payment card where the person acts, or the proof once paid, first; then the checks, the entries it produced; the
   // panel "At work" last; without an engine, the note that the phone approves. On a phone this column comes first.
-  stack=el('div','stack'+(pay||proof?'':' later'),[pay,proof,eng?awxCard(id):null,checks,jr,pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
+  stack=el('div','stack'+(pay||proof?'':' later'),[pay,proof,eng?awxCard(id):null,whyCard(i),checks,jr,pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
   view().replaceChildren(back,top,trail,el('div','split inv',[el('div','docs',[paper,doc]),stack]));
   readJournal();
   if(pay||proof)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};

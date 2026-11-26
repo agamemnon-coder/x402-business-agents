@@ -356,6 +356,12 @@ one, not stop them all. Now:
   payout row the executor wrote for it is closed, not left counting as money under way),
   `/try`'s mirror of a paid payment at the Airwallex sandbox is not sent (`emergency_stop`), and no agent card is
   issued, unfrozen, raised or tested (`POST /v1/cards/actions` and its signature answer 409); a freeze still goes.
+- **In the console.** Settings has an **Emergency stop** card (`cloud/src/console.ts`, `stopCard`): the state, a red
+  button, then a confirm step that says the stop takes effect only after the CFO's Face ID. The CFO signs the policy
+  change there with the passkey; a person without the approve scope reads the state only. While the stop is on, every
+  console page carries a red banner, asked afresh on each page, and the card offers **Lift the stop** through the
+  same signed path. `test/browser/console.check.ts` (`engineStop`) walks it in Chromium: nothing stops while the
+  signature is still out; signed, the engine says on and the banner shows on other pages; lifted, it is gone.
 - **Proof.** `test/cloud-emergency-stop.test.ts`: through the Cloud's routes and inside a `/try` company's Durable
   Object (`cloud/src/engine/hostWorker.ts`), a stop set between an approval and its send refuses the send with the
   bank's transfers unchanged; an unknown key's signature does not lift it; lifted, the payment approved before it is

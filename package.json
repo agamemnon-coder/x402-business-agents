@@ -67,6 +67,7 @@
     "verify": "tsx src/cli/verify.ts",
     "principals": "tsx src/cli/principals.ts",
     "mandates": "tsx src/cli/mandates.ts",
+    "entities": "tsx src/cli/entities.ts",
     "authority-map": "tsx src/cli/authorityMap.ts",
     "audit:export": "tsx src/cli/auditExport.ts",
     "audit:report": "tsx src/cli/auditReport.ts",

@@ -2,6 +2,7 @@
 // loosens the policy above it needs the passkeys of two different people, the same person twice never counts, and whoever
 // proposed a policy change never approves it. Tightening stays one person and runs at once. Off by default.
 import { beforeEach, describe, expect, it } from "vitest";
+import { describeTerms, policyLoosens } from "../src/approve/client.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executePolicyChange, proposePolicyChange } from "../src/executors/policyChange.js";
 import { fourEyes } from "../src/policy/fourEyes.js";
@@ -113,5 +114,22 @@ describe("segregation of duties for policy changes", () => {
     // Off again: one person loosens, as before.
     const p = propose(db, "ap.alone_eur", "2500.00");
     expect(approveSigned(db, p.proposal_id, now, "max")).toBe("APPROVED");
+  });
+});
+
+describe("the phone's approval page and segregation of duties (src/approve/client.ts)", () => {
+  it("reads switching it off, or raising it, as loosening, as the runner does", () => {
+    for (const [from, to, looser] of [["", "5000.00", false], ["5000.00", "", true], ["5000.00", "8000.00", true], ["5000.00", "2000.00", false]] as const) {
+      const c = { key: POLICY_SOD_KEY, from, to };
+      expect(loosens(c), `${from} -> ${to}`).toBe(looser);
+      expect(policyLoosens(c), `${from} -> ${to}`).toBe(looser);
+    }
+  });
+
+  it("says it plainly: \"Turns off segregation of duties\" when it is switched off", () => {
+    const terms = (to: string) => ({ kind: "policy_change", reason: "test", changes: [{ key: POLICY_SOD_KEY, label: "Two people to loosen the policy above", from: "5000.00", to }] });
+    expect(describeTerms(terms(""), {}).warnings).toEqual(["Turns off segregation of duties: one person alone could then loosen the CFO policy"]);
+    expect(describeTerms(terms("8000.00"), {}).warnings).toEqual(["This loosens Two people to loosen the policy above"]);
+    expect(describeTerms(terms("2000.00"), {}).warnings).toEqual([]);
   });
 });

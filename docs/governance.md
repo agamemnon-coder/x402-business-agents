@@ -95,8 +95,16 @@ Said plainly, so no row above reads as more than it is.
   CFO's passkey. No recorded sandbox run of the hours yet.
 - **Funding from several entities (principle g): built, not yet run live.** The terms the CFO signs name the paying
   entity and its funding account, and an agent pays from an entity only where the CFO signed `pay_from.<entity>.<agent>`
-  allowed ([src/policy/entities.ts](../src/policy/entities.ts)); refusals are tested. No recorded sandbox run with two
-  entities yet, and no screen in Purser Cloud chooses the entity yet.
+  allowed ([src/policy/entities.ts](../src/policy/entities.ts)); refusals are tested. On the runner, entities are kept
+  without editing a setting: `npm run entities -- list`, `add <id> --name "<legal name>" --country NL --account acct_…`
+  (`--currency` where the country does not say it), and `allow <entity> <agent>`, which files `pay_from.<entity>.<agent>`
+  allowed as a policy change that counts only once the CFO approves it with the passkey
+  ([src/cli/entities.ts](../src/cli/entities.ts), [test/entities-cli.test.ts](../test/entities-cli.test.ts)). An
+  invoice's page on the runner names the paying entity and its account from the payment's signed terms, and "Why it was
+  paid this way" says which entity's balance paid. The runner's payables inbox (Pay on an invoice) does not choose an
+  entity yet, and with entities held the planner escalates a payment that names none (`entity_missing`, tested in
+  [test/entities.test.ts](../test/entities.test.ts)). No recorded
+  sandbox run with two entities yet, and no screen in Purser Cloud chooses the entity yet.
 - **No second human approver yet (principle b).** Where a run shows a second approver it is a labelled test passkey,
   not a second person ([main run](runs/2026-11-03-main-run.md)).
 - **An agent may pay alone within its limit (principle d).** The article says a person still approves anything that

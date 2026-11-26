@@ -237,7 +237,9 @@ function render(d){
   const read=el('div','card panel',[el('h2','',[t('dt.read'),el('span','cnt',i.read_by==='parser'?t('dt.read_by_code'):t('dt.read_by',{by:reader(i.read_by)}))]),dl([
     [t('supplier'),i.vendor],[t('dt.vat_id'),r.vat_id],[t('dt.invoice_number'),i.invoice_no],[t('dt.invoice_date'),day(i.issue_date)],[t('dt.due_date'),day(i.due_date)],
     [t('dt.subtotal'),i.subtotal?ma(i.currency,i.subtotal):''],[t('dt.vat'),i.tax?ma(i.currency,i.tax):''],[t('dt.total'),i.total?ma(i.currency,i.total):''],
-    [t('dt.on_invoice'),line,'line'],[t('dt.pay_to'),payTo,'mono'],[t('dt.bank_country'),r.bank_country],[t('dt.reference'),r.reference],[t('dt.booked_to'),i.gl_account?(i.gl_account+(i.gl_rule?' · '+data('gl_rule',i.gl_rule):'')):'']])]);
+    [t('dt.on_invoice'),line,'line'],[t('dt.pay_to'),payTo,'mono'],
+    // A company with several legal entities: which one pays, from its own account, as its payment's signed terms say.
+    [WHY_LABELS[NL?'nl':'en'].entity,d.paying_entity?d.paying_entity.name+' ('+d.paying_entity.country+') · '+d.paying_entity.account+' · '+d.paying_entity.currency:''],[t('dt.bank_country'),r.bank_country],[t('dt.reference'),r.reference],[t('dt.booked_to'),i.gl_account?(i.gl_account+(i.gl_rule?' · '+data('gl_rule',i.gl_rule):'')):'']])]);
   // Checks
   const ul=el('ul','checks');let passed=0;
   for(const c of d.checks){const [icon,word]=RES[c.result];if(c.result==='passed')passed++;const li=el('li','',[el('span','ic res-'+c.result),el('span','t',tk('check.'+c.key,c.title)),el('span','r res-'+c.result,word)]);li.firstChild.innerHTML=IC[icon];c.reasons.forEach((w,k)=>li.append(el('span','why',cap(finding({code:(c.codes||[])[k],detail:w})))));ul.append(li)}

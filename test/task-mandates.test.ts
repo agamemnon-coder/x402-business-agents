@@ -224,7 +224,7 @@ describe("task mandates: enforced where code approves a payment alone", () => {
   });
 });
 
-describe("where the full gate is not carried (the cloud engine's bundle), the stand-in fails closed", () => {
+describe("where the full gate is not loaded, the stand-in fails closed (the Cloud engine loads it: test/cloud-task-mandates.test.ts)", () => {
   it("pays nothing alone once a task mandate is on record or a token is offered, runs no approval naming one, grants none", async () => {
     const { db, phone } = await world();
     const p = { proposal_id: "P-x", kind: "invoice_payment" };
@@ -233,11 +233,11 @@ describe("where the full gate is not carried (the cloud engine's bundle), the st
     expect(failClosed.check(db, p, {}, a, NOW)).toEqual({ ok: true, mandate: null, token: null });
     expect(failClosed.check(db, p, {}, { ...a, taskToken: "ptask_x" }, NOW)).toMatchObject({ ok: false, code: "mandate" });
     expect(failClosed.executionRefusal(db, "payer", undefined, 1e9)).toBeNull();
-    expect(failClosed.executionRefusal(db, "payer", "nov-suppliers", 1e9)).toMatch(/runner only/);
+    expect(failClosed.executionRefusal(db, "payer", "nov-suppliers", 1e9)).toMatch(/gate is not loaded here/);
     await grant(db, phone, "nov-suppliers", NOVEMBER);
     expect(failClosed.check(db, p, {}, a, NOW)).toMatchObject({ ok: false, reason: expect.stringMatching(/^mandate_gate_absent/) });
-    expect(failClosed.executionRefusal(db, "payer", undefined, 1e9)).toMatch(/runner only/);
-    expect(failClosed.validate(canonicalMandate(NOVEMBER))).toMatch(/runner only/);
+    expect(failClosed.executionRefusal(db, "payer", undefined, 1e9)).toMatch(/gate is not loaded here/);
+    expect(failClosed.validate(canonicalMandate(NOVEMBER))).toMatch(/gate is not loaded here/);
     expect(failClosed.values(db)).toEqual([]);
   });
 });

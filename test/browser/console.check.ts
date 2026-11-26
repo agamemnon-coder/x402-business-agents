@@ -480,9 +480,11 @@ async function enginePass() {
   await engineSetUp(E);
   await engineApprove(E, proposal);
   await engineProof(E);
+  await engineWhy(E);
   await engineArchive(E);
   await engineClaude(E);
   await engineSecondKey(E, cdpE, internalE);
+  await engineStop(E);
   ok(errs.length === 0, `engine pass: no console or CSP errors${errs.length ? ` (${errs.join(" | ")})` : ""}`);
   await ctxE.close();
   await engineGuestArchive(origin);
@@ -567,6 +569,50 @@ async function engineSecondKey(E: EnginePass, cdp: CDPSession, internal: string)
   ok(/approved/.test((await p.textContent("#pay .note-ok")) ?? "") && await signs(usb) > usbBefore, "second key: approved once the security key on the USB authenticator signed the same terms");
   await cdp.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId: usb });
   await cdp.send("WebAuthn.setAutomaticPresenceSimulation", { authenticatorId: internal, enabled: true });
+}
+
+/**
+ * The CFO's emergency stop (src/policy/emergencyStop.ts) in Settings: the state, a red button with a confirm step that
+ * says the stop takes effect only after the CFO's Face ID; nothing changes while the signature is still out; once signed,
+ * a banner on every page; lifted the same way, through the same signed path.
+ */
+async function engineStop(E: EnginePass) {
+  const p = E.page;
+  const stopOn = async () => ((await apiAs(E, "/v1/engine")).emergency_stop as { on: boolean } | undefined)?.on;
+  await p.goto(`${E.origin}/#/settings?at=estop`);
+  await p.waitForSelector("#estop #estop-ask", { timeout: 20_000 });
+  const card = (await p.textContent("#estop")) ?? "";
+  ok(/Payments running/.test(card) && /only after the CFO's Face ID/.test(card) && (await p.textContent("#estop-ask"))?.trim() === "Emergency stop", `emergency stop: Settings shows the state, says it takes effect only after the CFO's Face ID, and offers "Emergency stop" (${card.slice(0, 200)})`);
+  ok(await p.evaluate(() => getComputedStyle(document.querySelector("#estop-ask")!).backgroundColor !== getComputedStyle(document.querySelector("#estop")!).backgroundColor), "emergency stop: the button is filled (red), not a plain link");
+  ok(await p.isHidden("#stopbar"), "emergency stop: no banner while the stop is off");
+  await p.click("#estop-ask");
+  ok(await p.isVisible("#estop-yes") && /only once the CFO approves it with Face ID/.test((await p.textContent("#estop .estop-confirm")) ?? ""), "emergency stop: a confirm step first, which says it takes effect only once the CFO approves with Face ID");
+  await p.click("#estop-no");
+  ok(await p.isVisible("#estop-ask") && await p.isHidden("#estop-yes") && await stopOn() === false, "emergency stop: Cancel leaves everything as it was");
+  // The signature held back for a moment: the policy change is filed, the stop is not on yet.
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => { release = r; });
+  await p.route("**/v1/engine/proposals/*/approve", async (r) => { await held; await r.continue(); });
+  await p.click("#estop-ask");
+  const signed = p.waitForRequest((r) => /\/v1\/engine\/proposals\/[^/]+\/approve$/.test(r.url()));
+  await p.click("#estop-yes");
+  await signed;
+  ok(await stopOn() === false && await p.isHidden("#stopbar"), "emergency stop: filed and signed but not yet approved, nothing has stopped");
+  release();
+  await p.waitForSelector("#stopbar:not([hidden])", { timeout: 20_000 });
+  await p.unroute("**/v1/engine/proposals/*/approve");
+  ok(await stopOn() === true && /Face ID/.test((await p.textContent("#stopbar")) ?? ""), "emergency stop: once the CFO's Face ID approved it, the engine says it is on, and a banner says so");
+  await p.goto(`${E.origin}/#/invoices`);
+  await p.waitForTimeout(800);
+  ok(await p.isVisible("#stopbar"), "emergency stop: the banner stays on the other pages");
+  await engineShot(E, "03-emergency-stop", 390, "light");
+  await p.goto(`${E.origin}/#/settings?at=estop`);
+  await p.waitForSelector("#estop #estop-ask", { timeout: 20_000 });
+  ok(/Emergency stop on/.test((await p.textContent("#estop")) ?? "") && (await p.textContent("#estop-ask"))?.trim() === "Lift the stop", "emergency stop: on, Settings offers \"Lift the stop\"");
+  await p.click("#estop-ask");
+  await p.click("#estop-yes");
+  await p.waitForSelector("#stopbar", { state: "hidden", timeout: 20_000 });
+  ok(await stopOn() === false, "emergency stop: lifted through the same signed path, the banner gone");
 }
 
 /**
@@ -851,6 +897,15 @@ const nameOf = (path: string) => path.slice(path.lastIndexOf("/") + 1);
  * ledger chain's head) and archived (the original and the receipt, one opened in the sandboxed frame). Every value is
  * compared to what the API answers; none is typed here.
  */
+/** The paid invoice's page shows why it was paid this way: the payment.rationale record, in the runner's own words. */
+async function engineWhy(E: EnginePass) {
+  const p = E.page;
+  await p.goto(`${E.origin}/#/invoices/${E.invoiceId}`);
+  await p.waitForSelector(".card.why", { timeout: 20_000 });
+  const why = (await p.textContent(".card.why")) ?? "";
+  ok(/^Why it was paid this way/.test(why) && /Paid from/.test(why) && /by passkey \(Face ID\)/.test(why), `why it was paid: the paid invoice's page shows the payment's rationale record in the runner's words (${why.slice(0, 160)})`);
+}
+
 async function engineProof(E: EnginePass) {
   const p = E.page;
   const id = E.invoiceId;

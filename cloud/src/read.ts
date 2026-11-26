@@ -49,7 +49,13 @@ export async function oneInvoice(db: TenantDb, id: string): Promise<unknown | nu
   const r = await db.one<{ id: string; version: number; body_json: string }>("invoices", { id });
   if (!r) return null;
   const history = await db.select<{ version: number; replaced_at: string }>("object_history", { kind: "invoice", id }, { order: ["version"] });
-  return { ...parse(r), id: r.id, version: r.version, earlier_versions: history.map((h) => ({ version: h.version, replaced_at: h.replaced_at })) };
+  const body = parse(r) as Record<string, unknown>;
+  // Why its payment was paid as it was, or refused (src/payouts/rationale.ts): the newest payment.rationale audit row of
+  // its payment, as the runner or the engine stored it; null before there is one.
+  const pid = typeof body.proposal_id === "string" ? body.proposal_id : null;
+  const why = pid ? (await db.select<{ payload_json: string }>("audit_rows", { event: "payment.rationale", subject: pid }, { order: ["seq"], desc: true, limit: 1 }))[0] : undefined;
+  const rationale = ((): unknown => { try { return why ? JSON.parse(why.payload_json) : null; } catch { return null; } })();
+  return { ...body, id: r.id, version: r.version, earlier_versions: history.map((h) => ({ version: h.version, replaced_at: h.replaced_at })), rationale };
 }
 
 export async function invoiceDocument(db: TenantDb, id: string): Promise<{ blob_key: string; filename: string; mime: string } | null> {

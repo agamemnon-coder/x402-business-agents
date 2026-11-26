@@ -6,8 +6,8 @@
 // not carry them.
 
 export const RATIONALE_WORDS_JS = `const WHY_LABELS={
-  en:{why:'Why it was paid this way',funding:'Paid from',rail:'Rail',rule:'Rule',approval:'Approval',replaced:'Replaced',refused:'Refused',policy:'CFO policy v',none:'No approval recorded',executed:'paid or on its way',failed:'failed at Airwallex',stopped:'refused by Purser'},
-  nl:{why:'Waarom zo betaald',funding:'Betaald uit',rail:'Route',rule:'Regel',approval:'Goedkeuring',replaced:'Vervangen',refused:'Geweigerd',policy:'CFO-beleid v',none:'Geen goedkeuring vastgelegd',executed:'betaald of onderweg',failed:'mislukt bij Airwallex',stopped:'geweigerd door Purser'}};
+  en:{why:'Why it was paid this way',entity:'Paying entity',funding:'Paid from',rail:'Rail',rule:'Rule',approval:'Approval',replaced:'Replaced',refused:'Refused',policy:'CFO policy v',none:'No approval recorded',executed:'paid or on its way',failed:'failed at Airwallex',stopped:'refused by Purser'},
+  nl:{why:'Waarom zo betaald',entity:'Betalende entiteit',funding:'Betaald uit',rail:'Route',rule:'Regel',approval:'Goedkeuring',replaced:'Vervangen',refused:'Geweigerd',policy:'CFO-beleid v',none:'Geen goedkeuring vastgelegd',executed:'betaald of onderweg',failed:'mislukt bij Airwallex',stopped:'geweigerd door Purser'}};
 function rationaleWords(r){
   var f=r.funding,c=f.conversion,cur=r.currency,acct=f.account?' of '+f.account:'',rl=r.rail,ru=r.rule,a=r.approval;
   var to=rl.to||"the supplier's account",h=a?' (hash '+a.terms_sha256.slice(0,8)+')':'';

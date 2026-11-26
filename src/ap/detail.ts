@@ -49,6 +49,21 @@ export interface InvoiceDetail {
   scan: ScanView | null;
   /** Why its payment was paid as it was, or refused (src/payouts/rationale.ts): the newest one stored, or null. */
   rationale: PaymentRationale | null;
+  /** The legal entity its payment's signed terms pay from, and that entity's own account (src/policy/entities.ts); null for a single-entity company. */
+  paying_entity: PayingEntity | null;
+}
+export interface PayingEntity { id: string; name: string; country: string; account: string; currency: string }
+
+/** The paying entity and funding account proposal `proposalId`'s terms name, as signed; null when they name none. */
+export function payingEntityOf(db: DB, proposalId: string | null): PayingEntity | null {
+  const row = proposalId ? db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_json: string } | undefined : undefined;
+  if (!row) return null;
+  try {
+    const t = JSON.parse(row.terms_json) as { paying_entity?: { id?: unknown; name?: unknown; country?: unknown }; funding_account?: { id?: unknown; currency?: unknown } };
+    const e = t.paying_entity, f = t.funding_account;
+    if (!e || !f) return null;
+    return { id: String(e.id ?? ""), name: String(e.name ?? ""), country: String(e.country ?? ""), account: String(f.id ?? ""), currency: String(f.currency ?? "") };
+  } catch { return null; }
 }
 export interface ScanView { agreed: boolean; differ: string[]; readings: number; model: string; boxes: Box[] }
 
@@ -156,6 +171,7 @@ export async function invoiceDetail(db: DB, id: string): Promise<InvoiceDetail |
     batch: batchOfInvoice(db, inv.proposal_id),
     scan,
     rationale: readRationale(db, inv.proposal_id),
+    paying_entity: payingEntityOf(db, inv.proposal_id),
   };
 }
 

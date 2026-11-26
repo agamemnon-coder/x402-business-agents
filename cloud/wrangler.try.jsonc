@@ -56,7 +56,10 @@
     { "binding": "AWX_FX", "service": "kit11", "entrypoint": "AwxFx" },
     { "binding": "AWX_READ", "service": "kit11", "entrypoint": "AwxRead" },
     { "binding": "AWX_CARDS", "service": "kit11", "entrypoint": "AwxCards" },
-    { "binding": "AWX_GATEWAY", "service": "kit11", "entrypoint": "AwxGateway" }
+    { "binding": "AWX_GATEWAY", "service": "kit11", "entrypoint": "AwxGateway" },
+    // The site Worker's own public files: the console's font (/assets/inter.woff2, the same bytes the site serves), so
+    // a deploy uploads no new static asset (26 Nov: the asset upload was refused with a 401 from this environment).
+    { "binding": "SITE", "service": "kit11" }
   ],
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],
   // The engine's modules read import.meta.url, dirname and filename when they load; a Worker's bundle has none.
