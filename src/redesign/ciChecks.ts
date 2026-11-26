@@ -24,6 +24,7 @@ export function ciJobs(): CiJob[] {
       ? { job: "test", what: `${t.passed.toLocaleString("en-GB")} tests${testsDay(t) ? ` (${testsDay(t)})` : ""}, plus typecheck, lint and npm audit.`, rec: TEST_SUMMARY, title: testsTitle(t) }
       : { job: "test", what: "The full test suite, plus typecheck, lint and npm audit." },
     { job: "judge", what: "A fresh clone with no keys replays the demo (npm run judge -- --check), then the pages in Chromium." },
+    { job: "try-walk", what: "/try walked end to end in Chromium at three widths, and both proof bundles checked in the browser and in Node." },
     { job: "webkit", what: "The signing page in WebKit, Safari's engine." },
     { job: "firefox", what: "The pages and the signing page in Firefox." },
     { job: "secrets", what: "gitleaks scans the whole git history for keys." },

@@ -118,11 +118,13 @@ const take = async (page: Page, click: () => Promise<void>): Promise<{ name: str
 
   // The one-cent change, with the kept signature: refused, and the refusal has its own proof.
   await page.click(`button.cheat:has-text("${BOOKS.cheat}")`);
-  await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00", undefined, { timeout: 20_000 });
+  // Since 15 Nov the page fills in the one-cent change itself (one cent more than the signed EUR 1,850.00); typed again
+  // here with a comma, as a person might.
+  await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.01", undefined, { timeout: 20_000 });
   await page.fill("#p-amt", "1850,01");
   await page.getByRole("button", { name: PAY.button }).click();
   await page.locator(".why .head").waitFor({ timeout: 30_000 });
-  ok((await page.locator(".why .head").textContent()) === TAMPER.head, "one cent more is refused");
+  ok((await page.locator(".why .head").textContent()) === `${TAMPER.refused} ${TAMPER.head}`, "one cent more is refused");
   const dlRefused = page.locator(".why").getByRole("button", { name: VERIFY_YOURSELF.download });
   ok(await dlRefused.count() === 1, `the refusal offers "${VERIFY_YOURSELF.download}"`);
   await shot(page, "try-refused-proof");

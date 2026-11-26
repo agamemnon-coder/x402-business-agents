@@ -139,6 +139,36 @@ jobs:
         run: npx tsx test/browser/connector.check.ts test-results/connector
       - name: /visa's live credential check and /t0's close check in Chromium (390 and 1440 px)
         run: npx tsx test/browser/partner-live.check.ts test-results/partner-live
+  # 26 Nov: /try's full walk and the proof bundles' check, in their own job beside judge (which already takes ~22 of its
+  # 30 minutes). Neither ran in CI before, so both had gone stale against the page's copy without anyone seeing it.
+  try-walk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Harden the runner (audit outbound calls)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm ci
+      - name: Playwright browsers (cache)
+        id: pw-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium
+      - name: Playwright browsers (download on a cache miss)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 5
+        run: npx playwright install chromium
+      - name: /try walked end to end in Chromium (390, 1024 and 1440 px; samples, approval, Paid, the one-cent refusal, the books)
+        run: npx tsx test/browser/try.check.ts test-results/try
+      - name: The proof bundles from /try (paid and refused) downloaded and checked in Chromium and in Node
+        run: npx tsx test/browser/proof.check.ts test-results/proof
   # Safari's engine, in Playwright's own image (browsers and system libraries preinstalled, version = our lockfile's
   # playwright 1.63.0, pinned by digest, read 6 November 2026): no apt step, so no slow mirror. Playwright's Linux WebKit
   # has no WebAuthn at all (no PublicKeyCredential, no virtual authenticator), so nothing is faked: the check sees the
