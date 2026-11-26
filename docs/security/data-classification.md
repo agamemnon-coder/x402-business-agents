@@ -1,8 +1,31 @@
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Data classification and protection levels
+
+**Every table Purser creates, by protection level, with the requirements each level carries and where they apply.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![203 tables, each once, by protection level](https://img.shields.io/badge/tables-203_%C2%B7_each_once%2C_by_level-8b5cf6?style=flat-square&labelColor=1f2937)](#inventory)&nbsp;[![Secret: 19 tables](https://img.shields.io/badge/Secret-19_tables-f43f5e?style=flat-square&labelColor=1f2937)](#secret)&nbsp;[![Restricted: 130 tables](https://img.shields.io/badge/Restricted-130_tables-f59e0b?style=flat-square&labelColor=1f2937)](#restricted)&nbsp;[![Internal: 54 tables](https://img.shields.io/badge/Internal-54_tables-0ea5e9?style=flat-square&labelColor=1f2937)](#internal)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+
+[Levels](#levels-and-their-requirements) · [Secret](#secret) · [Restricted](#restricted) · [Internal](#internal) · [Public](#public) · [Inventory](#inventory) · [Key management](key-management.md)
+
+</div>
 
 Every table Purser creates, by protection level, with the requirements each level carries and where the architecture applies them. ASVS 4.0.3 V1.8.2 (`docs/security/asvs-l2.md`); V1.8.1 lists the assets. Written on 20 November 2026 by Claude (an AI model) for the maintainer. `test/data-classification.test.ts` reads every `CREATE TABLE` in the D1 migrations, the runner's schema and the Workers' and runner's code, and fails when a table has no row here, when a column that holds personal or financial data or a credential is not named in its row, or when such a table is rated below Restricted. Purser moves test money only; the requirements are written for real data, and where one is not met yet it says so and names the open ASVS row.
 
 ## Levels and their requirements
+
+```mermaid
+%%{init: {"themeVariables": {"pie1": "#f59e0b", "pie2": "#0ea5e9", "pie3": "#f43f5e"}}}%%
+pie showData
+  title The tables by protection level
+  "Restricted" : 130
+  "Internal" : 54
+  "Secret" : 19
+```
+
+<sub>Record: [the inventory below](data-classification.md#inventory), counted by `test/docs-charts.test.ts`: 203 tables, each named once; Restricted 130, Internal 54, Secret 19; none Public.</sub>
 
 ### Secret
 

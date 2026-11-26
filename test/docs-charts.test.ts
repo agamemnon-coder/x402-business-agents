@@ -181,6 +181,22 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`${agents[0]} ${total[0]} (${money[0]} pay or action), ${agents.slice(1).map((a, i) => `${a} ${total[i + 1]} (${money[i + 1]})`).join(", ")}.`);
   });
 
+  it("docs/security/data-classification.md: the levels chart and badges count the inventory's tables", () => {
+    const md = read("docs/security/data-classification.md");
+    const inv = md.slice(md.indexOf("\n## Inventory"));
+    const by = new Map<string, number>();
+    for (const l of inv.split("\n").filter((x) => x.startsWith("| `"))) {
+      const [tables, level] = l.trim().slice(1, -1).split(" | ").map((c) => c.trim());
+      by.set(level!, (by.get(level!) ?? 0) + (tables!.match(/`[^`]+`/g) ?? []).length);
+    }
+    const n = (s: string) => by.get(s) ?? 0, all = [...by.values()].reduce((a, b) => a + b, 0);
+    expect(md).toContain(`  "Restricted" : ${n("Restricted")}\n  "Internal" : ${n("Internal")}\n  "Secret" : ${n("Secret")}\n`);
+    expect(md).toContain(`${all} tables, each named once; Restricted ${n("Restricted")}, Internal ${n("Internal")}, Secret ${n("Secret")}; none Public.`);
+    expect(n("Public")).toBe(0);
+    expect(md).toContain(`/badge/tables-${all}_%C2%B7_each_once%2C_by_level-`);
+    for (const s of ["Secret", "Restricted", "Internal"]) expect(md).toContain(`/badge/${s}-${n(s)}_tables-`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
