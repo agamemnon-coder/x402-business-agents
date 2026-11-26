@@ -8,7 +8,7 @@ type Step = DrillRecord["passes"][number]["steps"][number];
 
 const PASSKEY = "The approver is a labelled virtual test passkey (\"governance-live virtual test passkey (no person's Face ID)\", src/redteam/authenticator.ts), enrolled as the only passkey of the run's own fresh ledger. Its signatures go through the same verification as a phone's (WebAuthn assertion over the exact terms hash); no person's Face ID was used.";
 const RUNNER = "The runner's steps after an approval (executePolicyChange, then syncCardsAfterPolicy) are called by the run once, in order, not by a running `npm run relay` and its every-few-seconds loop.";
-const PREP = "Before the runs, 14 read-only calls checked the sandbox (10 in three probes: the platform's and the connected account's balances, GET /account, which answered `acct_op0_QItiOyWKsYb5pwQihA`, and the connected account's beneficiaries; 4 in the entities run's two stopped attempts, below). None moved money or changed anything; they are not in this record's call table.";
+const PREP = "Before the runs, 14 read-only calls checked the sandbox (10 in three probes: the platform's and the connected account's balances, GET /account, which answered `acct_op0_QItiOyWKsYb5pwQihA`, and the connected account's beneficiaries; 4 in the entities run's two stopped attempts, described in docs/runs/2026-11-26-entities-live.md). None moved money or changed anything; they are not in this record's call table. The runs (11:27 to 11:32 UTC) ran on the code committed right after them as `86d7f6b93`; between the runs and that commit only the records' wording, the stand-in's call counter and two unused imports changed.";
 
 /** The steps' outcomes in one line each, verdict first. */
 const lines = (steps: Step[], ids: string[]) => steps.filter((s) => ids.includes(s.id)).map((s) => `${s.pass === true ? "pass" : s.pass === false ? "FAIL" : "not judged"}, \`${s.id}\`: ${s.outcome}`);
@@ -116,7 +116,7 @@ const REPLACE: Omit<GovRecordMeta, "summary"> = {
   ],
   shows: [
     "Airwallex moved the first transfer from SENT to FAILED and read it back CANCELLED with a failure type; with `KIT11_REPLACE_FAILED_PAYOUT` unset the runner has no replacement hook; switched on, it sent exactly one replacement (one `POST /transfers/create`) under the request_id derived from the first, for the same EUR 1.02, which the sandbox then settled to PAID.",
-    "Asked again, nothing is sent: the hook answers \"asked before\" with no call, and the replacement itself finds the replacement (`already_replaced`) with no POST. Airwallex holds one transfer under each request_id: the first CANCELLED, the replacement PAID.",
+    "Asked again, nothing is sent: the hook answers \"asked before\" with no call, and replaceFailedPayout called directly finds the replacement (`already_replaced`) with one read and no POST. Airwallex holds one transfer under each request_id: the first CANCELLED, the replacement PAID.",
   ],
   keySteps: ["pay.create", "fail.simulated", "fail.readback", "replace.off", "replace.once", "replace.settle", "replace.again", "readback.both"],
   notShown: [

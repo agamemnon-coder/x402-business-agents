@@ -1,0 +1,658 @@
+{
+  "run": "stop-rail",
+  "date": "2026-11-26",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "command": "npm run airwallex:governance-live -- live stop-rail",
+  "commit": "86d7f6b9337611fe1dbcaf2521759a9d2319614b",
+  "simulated": [
+    "The approver is a labelled virtual test passkey (\"governance-live virtual test passkey (no person's Face ID)\", src/redteam/authenticator.ts), enrolled as the only passkey of the run's own fresh ledger. Its signatures go through the same verification as a phone's (WebAuthn assertion over the exact terms hash); no person's Face ID was used.",
+    "The CFO's phone is played by the run: the stop is signed with the phone's own path (processPolicyRequest). The lift is a proposal on the runner approved with the passkey (the phone may not lift it). The runner's steps after an approval (executePolicyChange, then syncCardsAfterPolicy) are called by the run once, in order, not by a running `npm run relay` and its every-few-seconds loop.",
+    "In `stop.lands_at_rail` the run chooses the moment the signed stop is applied: inside the rail's last ask before the transfer create, after the executor's own check let the payment through. The stop itself is the CFO's signed change, applied by executePolicyChange.",
+    "The settlement of the paid payout (SENT, then PAID) is the sandbox's simulation endpoint (`POST /simulation/transfers/{id}/transition`)."
+  ],
+  "budget": {
+    "approved": 60,
+    "max": 80,
+    "used": 20,
+    "logged_requests": 20,
+    "status_429": 0,
+    "unexpected_non_2xx": []
+  },
+  "totals": {
+    "steps": 12,
+    "pass": 12,
+    "fail": 0,
+    "not_judged": 0
+  },
+  "cards": [],
+  "passes": [
+    {
+      "pass_no": 1,
+      "started_at": "2026-11-26T11:28:08.266Z",
+      "ended_at": "2026-11-26T11:28:18.279Z",
+      "stopped": null,
+      "note": "A fresh ledger of its own, on the platform account's own balance (no x-on-behalf-of). Both payouts go to the beneficiary Bergtex Textil GmbH already on file at Airwallex (none created). The routed rail is Purser Cloud's `RoutedRail` with the Airwallex sandbox adapter as its Airwallex bank, an in-memory stand-in as its simulated bank (never used: every action ran `within(\"airwallex\")`), a permissive cap guard, and `railStop` on this ledger. Before the runs, 14 read-only calls checked the sandbox (10 in three probes: the platform's and the connected account's balances, GET /account, which answered `acct_op0_QItiOyWKsYb5pwQihA`, and the connected account's beneficiaries; 4 in the entities run's two stopped attempts, described in docs/runs/2026-11-26-entities-live.md). None moved money or changed anything; they are not in this record's call table. The runs (11:27 to 11:32 UTC) ran on the code committed right after them as `86d7f6b93`; between the runs and that commit only the records' wording, the stand-in's call counter and two unused imports changed.",
+      "timings": {
+        "payout_create_to_paid_ms": 4710
+      },
+      "steps": [
+        {
+          "phase": "setup",
+          "id": "setup.passkey",
+          "agent": null,
+          "title": "Enrol the virtual test passkey (labelled) as this ledger's only approver",
+          "expect": "enrolled and confirmed",
+          "outcome": "pending; confirmed: governance-live virtual test passkey (no person's Face ID)",
+          "pass": true,
+          "simulated": "a virtual test passkey, no person's Face ID",
+          "started_at": "2026-11-26T11:28:08.269Z",
+          "ended_at": "2026-11-26T11:28:08.284Z",
+          "ms": 15,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "setup",
+          "id": "setup.payouts",
+          "agent": "treasury",
+          "title": "Two supplier payouts planned against the sandbox (EUR 1.00 and EUR 1.01 to Bergtex Textil GmbH) and signed with the passkey",
+          "expect": "both APPROVED, not executed",
+          "outcome": "P-0001 APPROVED (EUR 1.00, request_id 2601a7bb-3f94-4e7c-8cfe-826c5697e339); P-0002 APPROVED (EUR 1.01, request_id b808985c-12ce-49fd-ade9-3704b4c773d3)",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey",
+          "started_at": "2026-11-26T11:28:08.285Z",
+          "ended_at": "2026-11-26T11:28:10.636Z",
+          "ms": 2351,
+          "lines": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "facts": {
+            "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+            "payouts": [
+              {
+                "proposal_id": "P-0001",
+                "invoice_no": "BTX-GOV-1126-1",
+                "amount": "EUR 1.00",
+                "transfer_request_id": "2601a7bb-3f94-4e7c-8cfe-826c5697e339",
+                "terms_sha256": "834bc56e05a1f319d9cb92d578ed163e56749c9e48d3a431685957f2ba62dbf2"
+              },
+              {
+                "proposal_id": "P-0002",
+                "invoice_no": "BTX-GOV-1126-2",
+                "amount": "EUR 1.01",
+                "transfer_request_id": "b808985c-12ce-49fd-ade9-3704b4c773d3",
+                "terms_sha256": "8c078418f88c520103b8eecf666ba086cd6a969fb88ff251d6b0d0050af11ac7"
+              }
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "stop",
+          "id": "stop.signed",
+          "agent": null,
+          "title": "The CFO signs the emergency stop on the phone (a policy change, freeze off to on), not yet applied",
+          "expect": "approved by the passkey",
+          "outcome": "C-c62ce97c approved; the stop is not yet applied",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey",
+          "started_at": "2026-11-26T11:28:10.636Z",
+          "ended_at": "2026-11-26T11:28:10.679Z",
+          "ms": 43,
+          "lines": [],
+          "facts": {
+            "proposal_id": "C-c62ce97c"
+          },
+          "error": null
+        },
+        {
+          "phase": "stop",
+          "id": "stop.lands_at_rail",
+          "agent": "treasury",
+          "title": "The second payout (P-0002) is started on the routed rail with the stop off; the signed stop is applied at the instant its transfer create reaches the rail, after the executor's own last check",
+          "expect": "HeldBeforeCreate at the rail: no POST to Airwallex, the payout row closed CANCELLED (held_by_purser), the payment FAILED, the refusal audited (checked: rail)",
+          "outcome": "HeldBeforeCreate: the CFO pulled the emergency stop; nothing is paid until it is lifted; 1 Airwallex calls (0 POST: GET /balances/current); stop on; row CANCELLED held_by_purser; payment FAILED; audited checked: rail",
+          "pass": true,
+          "simulated": "the moment the stop lands is chosen by the run (inside the rail's last ask); the stop itself is the CFO's signed change",
+          "started_at": "2026-11-26T11:28:10.680Z",
+          "ended_at": "2026-11-26T11:28:11.061Z",
+          "ms": 381,
+          "lines": [
+            5
+          ],
+          "facts": {
+            "proposal_id": "P-0002",
+            "request_id": "b808985c-12ce-49fd-ade9-3704b4c773d3",
+            "calls": [
+              "GET /balances/current"
+            ],
+            "posts": 0,
+            "row": {
+              "status": "CANCELLED",
+              "failure_type": "held_by_purser"
+            },
+            "payment": "FAILED",
+            "held_checked": "rail",
+            "caps_spoken_for": true,
+            "caps_released": true
+          },
+          "error": null
+        },
+        {
+          "phase": "stop",
+          "id": "stop.sync",
+          "agent": null,
+          "title": "The runner syncs the cards after the stop (this ledger holds no cards)",
+          "expect": "no card, no call",
+          "outcome": "changed []; 0 calls",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:28:11.062Z",
+          "ended_at": "2026-11-26T11:28:11.063Z",
+          "ms": 1,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "blocked",
+          "id": "blocked.executor",
+          "agent": "treasury",
+          "title": "The first payout (P-0001) is started on the routed rail while the stop is on (executeInvoicePayment)",
+          "expect": "refused by the executor when its execution begins: no POST to Airwallex; the payment stays APPROVED",
+          "outcome": "refused: the CFO pulled the emergency stop; nothing is paid until it is lifted; 1 Airwallex calls (0 POST: GET /balances/current); payment APPROVED",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:28:11.064Z",
+          "ended_at": "2026-11-26T11:28:11.413Z",
+          "ms": 349,
+          "lines": [
+            6
+          ],
+          "facts": {
+            "proposal_id": "P-0001",
+            "calls": [
+              "GET /balances/current"
+            ],
+            "posts": 0,
+            "payment": "APPROVED"
+          },
+          "error": null
+        },
+        {
+          "phase": "blocked",
+          "id": "blocked.rail",
+          "agent": "treasury",
+          "title": "The routed rail asked directly for the first payout's transfer (its signed request_id, payee and amount), the stop on",
+          "expect": "HeldBeforeCreate: nothing sent to Airwallex; the refusal audited (checked: rail)",
+          "outcome": "HeldBeforeCreate: the CFO pulled the emergency stop; nothing is paid until it is lifted; 0 Airwallex calls; audited checked: rail",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:28:11.414Z",
+          "ended_at": "2026-11-26T11:28:11.416Z",
+          "ms": 2,
+          "lines": [],
+          "facts": {
+            "request_id": "2601a7bb-3f94-4e7c-8cfe-826c5697e339",
+            "calls": 0,
+            "held_checked": "rail"
+          },
+          "error": null
+        },
+        {
+          "phase": "blocked",
+          "id": "readback.none",
+          "agent": null,
+          "title": "Airwallex read back by each payout's request_id (GET /transfers?request_id=…)",
+          "expect": "no transfer under either request_id",
+          "outcome": "2601a7bb-3f94-4e7c-8cfe-826c5697e339: no transfer; b808985c-12ce-49fd-ade9-3704b4c773d3: no transfer",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:28:11.416Z",
+          "ended_at": "2026-11-26T11:28:12.243Z",
+          "ms": 827,
+          "lines": [
+            7,
+            8
+          ],
+          "facts": {
+            "2601a7bb-3f94-4e7c-8cfe-826c5697e339": false,
+            "b808985c-12ce-49fd-ade9-3704b4c773d3": false
+          },
+          "error": null
+        },
+        {
+          "phase": "lift",
+          "id": "lift.passkey",
+          "agent": null,
+          "title": "The CFO lifts the stop: a proposal on the runner (freeze on to off), approved with the passkey, applied",
+          "expect": "the stop off",
+          "outcome": "P-0004 approved by the passkey and applied; the stop off",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey",
+          "started_at": "2026-11-26T11:28:12.244Z",
+          "ended_at": "2026-11-26T11:28:12.297Z",
+          "ms": 53,
+          "lines": [],
+          "facts": {
+            "proposal_id": "P-0004"
+          },
+          "error": null
+        },
+        {
+          "phase": "lift",
+          "id": "paid.payout1",
+          "agent": "treasury",
+          "title": "The same first payout (P-0001) started again on the routed rail after the lift, then settled by the sandbox's simulation",
+          "expect": "the transfer created under its signed request_id, followed to PAID",
+          "outcome": "transfer db7377c0-adf7-4aaa-b46d-a1b025e2b821 PAID; payment EXECUTED; 8 Airwallex calls (GET /balances/current, POST /transfers/create, GET /transfers/{id}, POST /simulation/transfers/{id}/transition, GET /transfers/{id}, POST /simulation/transfers/{id}/transition, GET /transfers/{id}, GET /balances/current)",
+          "pass": true,
+          "simulated": "the settlement to PAID is the sandbox's simulation",
+          "started_at": "2026-11-26T11:28:12.298Z",
+          "ended_at": "2026-11-26T11:28:17.008Z",
+          "ms": 4710,
+          "lines": [
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ],
+          "facts": {
+            "transfer_id": "db7377c0-adf7-4aaa-b46d-a1b025e2b821",
+            "request_id": "2601a7bb-3f94-4e7c-8cfe-826c5697e339",
+            "status": "PAID",
+            "fee": "EUR 13.68",
+            "calls": [
+              "GET /balances/current",
+              "POST /transfers/create",
+              "GET /transfers/{id}",
+              "POST /simulation/transfers/{id}/transition",
+              "GET /transfers/{id}",
+              "POST /simulation/transfers/{id}/transition",
+              "GET /transfers/{id}",
+              "GET /balances/current"
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "lift",
+          "id": "readback.paid",
+          "agent": null,
+          "title": "Airwallex read back: the transfer by its id, and the request_id",
+          "expect": "PAID; a transfer under the first payout's request_id",
+          "outcome": "db7377c0-adf7-4aaa-b46d-a1b025e2b821 PAID (EUR 1.00); request_id 2601a7bb-3f94-4e7c-8cfe-826c5697e339: found",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:28:17.009Z",
+          "ended_at": "2026-11-26T11:28:17.631Z",
+          "ms": 622,
+          "lines": [
+            17,
+            18
+          ],
+          "facts": {
+            "transfer_id": "db7377c0-adf7-4aaa-b46d-a1b025e2b821",
+            "status": "PAID",
+            "amount": "EUR 1.00",
+            "fee": "EUR 13.68"
+          },
+          "error": null
+        },
+        {
+          "phase": "lift",
+          "id": "after.payout2",
+          "agent": "treasury",
+          "title": "The payout held at the rail (P-0002) started again after the lift",
+          "expect": "not sent again under its request_id (a new proposal pays the invoice): no POST",
+          "outcome": "refused: the payout b808985c-12ce-49fd-ade9-3704b4c773d3 was refused by Airwallex and closed; nothing is sent again under it, a new proposal is neede; 0 POST; Airwallex under b808985c-12ce-49fd-ade9-3704b4c773d3: no transfer",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:28:17.632Z",
+          "ended_at": "2026-11-26T11:28:18.277Z",
+          "ms": 645,
+          "lines": [
+            19,
+            20
+          ],
+          "facts": {
+            "calls": [
+              "GET /balances/current"
+            ],
+            "posts": 0,
+            "transfer_exists": false
+          },
+          "error": null
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "n": 1,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:08.286Z",
+      "answered_at": "2026-11-26T11:28:08.916Z",
+      "ms": 630,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "a9b4b733811b45c4bc6a8faa46c27a30",
+      "code": null,
+      "step": "setup.payouts (treasury)"
+    },
+    {
+      "n": 2,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:08.919Z",
+      "answered_at": "2026-11-26T11:28:09.442Z",
+      "ms": 523,
+      "method": "GET",
+      "endpoint": "/beneficiaries",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "07777d05fdf746e1accc763da97c5eae",
+      "code": null,
+      "step": "setup.payouts (treasury)"
+    },
+    {
+      "n": 3,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:09.615Z",
+      "answered_at": "2026-11-26T11:28:10.193Z",
+      "ms": 578,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "003aa3d2c7c84c5dbbba1e39580ef951",
+      "code": null,
+      "step": "setup.payouts (treasury)"
+    },
+    {
+      "n": 4,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:10.231Z",
+      "answered_at": "2026-11-26T11:28:10.612Z",
+      "ms": 381,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "12ab70ae29d04e3da6946edd9e004ea5",
+      "code": null,
+      "step": "setup.payouts (treasury)"
+    },
+    {
+      "n": 5,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:10.685Z",
+      "answered_at": "2026-11-26T11:28:11.039Z",
+      "ms": 354,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "0e1df3fc78ac49a0bef6642f0dfdf277",
+      "code": null,
+      "step": "stop.lands_at_rail (treasury)"
+    },
+    {
+      "n": 6,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:11.066Z",
+      "answered_at": "2026-11-26T11:28:11.405Z",
+      "ms": 339,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "7fb481731de3432fa28ed6336fc8b443",
+      "code": null,
+      "step": "blocked.executor (treasury)"
+    },
+    {
+      "n": 7,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:11.417Z",
+      "answered_at": "2026-11-26T11:28:11.774Z",
+      "ms": 357,
+      "method": "GET",
+      "endpoint": "/transfers",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "922ff2263ea24b7d8ac84b125b4e2f36",
+      "code": null,
+      "step": "readback.none"
+    },
+    {
+      "n": 8,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:11.775Z",
+      "answered_at": "2026-11-26T11:28:12.242Z",
+      "ms": 467,
+      "method": "GET",
+      "endpoint": "/transfers",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "9d5fe4d9ce81494c918ee4338b776284",
+      "code": null,
+      "step": "readback.none"
+    },
+    {
+      "n": 9,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:12.301Z",
+      "answered_at": "2026-11-26T11:28:12.627Z",
+      "ms": 326,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "9aabfcffc396465fbe52e3533fe6716e",
+      "code": null,
+      "step": "paid.payout1 (treasury)"
+    },
+    {
+      "n": 10,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:12.639Z",
+      "answered_at": "2026-11-26T11:28:14.214Z",
+      "ms": 1575,
+      "method": "POST",
+      "endpoint": "/transfers/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "a455aecbe61c474c87af38cde26bcc7c",
+      "code": null,
+      "step": "paid.payout1 (treasury)"
+    },
+    {
+      "n": 11,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:14.217Z",
+      "answered_at": "2026-11-26T11:28:14.522Z",
+      "ms": 305,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "52dc9cce41b64ca3833bdb781f5ee4a6",
+      "code": null,
+      "step": "paid.payout1 (treasury)"
+    },
+    {
+      "n": 12,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:14.527Z",
+      "answered_at": "2026-11-26T11:28:15.528Z",
+      "ms": 1001,
+      "method": "POST",
+      "endpoint": "/simulation/transfers/{id}/transition",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "a1232726338a48e19b01a546e8e481f1",
+      "code": null,
+      "step": "paid.payout1 (treasury)"
+    },
+    {
+      "n": 13,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:15.529Z",
+      "answered_at": "2026-11-26T11:28:15.874Z",
+      "ms": 345,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "2877cc2af1b64805b035bce81a482101",
+      "code": null,
+      "step": "paid.payout1 (treasury)"
+    },
+    {
+      "n": 14,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:15.876Z",
+      "answered_at": "2026-11-26T11:28:16.380Z",
+      "ms": 504,
+      "method": "POST",
+      "endpoint": "/simulation/transfers/{id}/transition",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "74f0c58d8dc0484b8ce0399dc0ae316a",
+      "code": null,
+      "step": "paid.payout1 (treasury)"
+    },
+    {
+      "n": 15,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:16.380Z",
+      "answered_at": "2026-11-26T11:28:16.674Z",
+      "ms": 294,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "cd52ad6fd3f248f58adaffc89a7bba24",
+      "code": null,
+      "step": "paid.payout1 (treasury)"
+    },
+    {
+      "n": 16,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:16.680Z",
+      "answered_at": "2026-11-26T11:28:17.000Z",
+      "ms": 320,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "8d3418e647204dfdb941043c010be0f2",
+      "code": null,
+      "step": "paid.payout1 (treasury)"
+    },
+    {
+      "n": 17,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:17.009Z",
+      "answered_at": "2026-11-26T11:28:17.324Z",
+      "ms": 315,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "17efcc86d7d84dce91034d8c6354df8d",
+      "code": null,
+      "step": "readback.paid"
+    },
+    {
+      "n": 18,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:17.325Z",
+      "answered_at": "2026-11-26T11:28:17.630Z",
+      "ms": 305,
+      "method": "GET",
+      "endpoint": "/transfers",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "bf2ecd3876f34e0080b64dbd08b74096",
+      "code": null,
+      "step": "readback.paid"
+    },
+    {
+      "n": 19,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:17.635Z",
+      "answered_at": "2026-11-26T11:28:17.952Z",
+      "ms": 317,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "16ebc9265a044494b3fd0fc0c66cb180",
+      "code": null,
+      "step": "after.payout2 (treasury)"
+    },
+    {
+      "n": 20,
+      "pid": 25627,
+      "at": "2026-11-26T11:28:17.962Z",
+      "answered_at": "2026-11-26T11:28:18.277Z",
+      "ms": 315,
+      "method": "GET",
+      "endpoint": "/transfers",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "5f0e46c1042f44958445f464ce1c91df",
+      "code": null,
+      "step": "after.payout2 (treasury)"
+    }
+  ],
+  "calls_by_endpoint": [
+    {
+      "endpoint": "POST /authentication/login",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /beneficiaries",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /balances/current",
+      "calls": 7
+    },
+    {
+      "endpoint": "GET /transfers",
+      "calls": 4
+    },
+    {
+      "endpoint": "POST /transfers/create",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /transfers/{id}",
+      "calls": 4
+    },
+    {
+      "endpoint": "POST /simulation/transfers/{id}/transition",
+      "calls": 2
+    }
+  ],
+  "not_shown": [
+    "Purser Cloud's own engine and its routes: the rail, the stop and the executor are Purser's code, wired by the run as Cloud wires them (cloud/src/engine/awxWire.ts), not a request to a running Cloud.",
+    "The `after.payout2` refusal reads \"was refused by Airwallex and closed\": the payout was held by Purser at the rail, not refused by Airwallex. The outcome (nothing sent again under that request_id) is right; the words are the executor's general ones for a closed row (src/executors/invoicePayment.ts submitTransfer).",
+    "A conversion held at the rail: both payouts were in euros from euros, so no conversion was asked for.",
+    "A person's Face ID on a real phone. One run: the times are single measurements."
+  ]
+}

@@ -1,0 +1,647 @@
+{
+  "run": "card-hours",
+  "date": "2026-11-26",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "command": "npm run airwallex:governance-live -- live card-hours",
+  "commit": "86d7f6b9337611fe1dbcaf2521759a9d2319614b",
+  "simulated": [
+    "The approver is a labelled virtual test passkey (\"governance-live virtual test passkey (no person's Face ID)\", src/redteam/authenticator.ts), enrolled as the only passkey of the run's own fresh ledger. Its signatures go through the same verification as a phone's (WebAuthn assertion over the exact terms hash); no person's Face ID was used.",
+    "The CFO's phone is played by the run: the hours are set with the phone's own path (a signed policy change, processPolicyRequest; setting hours is a tightening, which the phone may sign). The runner's steps after an approval (executePolicyChange, then syncCardsAfterPolicy) are called by the run once, in order, not by a running `npm run relay` and its every-few-seconds loop.",
+    "Purser's clock is injected for the end of the hours (as test/card-governance.test.ts does): Purser judged the window and the hours at 19:59:30 and 20:00:30 Amsterdam, while the thaw, the authorisation, the freeze and the read-backs reached Airwallex at 11:27 UTC. Nothing waited for real hours.",
+    "Every merchant charge is the sandbox's simulation endpoint (`POST /simulation/issuing/create`); the approve or decline is Airwallex's own."
+  ],
+  "budget": {
+    "approved": 40,
+    "max": 80,
+    "used": 17,
+    "logged_requests": 17,
+    "status_429": 0,
+    "unexpected_non_2xx": []
+  },
+  "totals": {
+    "steps": 10,
+    "pass": 10,
+    "fail": 0,
+    "not_judged": 0
+  },
+  "cards": [
+    {
+      "agent": "sourcing",
+      "card_id": "b4f2cb96-e9d8-4530-8d05-ce5aa050d38f",
+      "last4": "8788",
+      "nickname": "sourcing agent: warehouse and data software (governance-1126)"
+    }
+  ],
+  "passes": [
+    {
+      "pass_no": 1,
+      "started_at": "2026-11-26T11:27:43.243Z",
+      "ended_at": "2026-11-26T11:27:57.948Z",
+      "stopped": null,
+      "note": "A fresh ledger of its own (no card drill card adopted: a new card was issued, nickname suffix `governance-1126`). The hours are `Mon-Fri 18:00-20:00 Europe/Amsterdam`; the run ran at 12:27 in Amsterdam, outside them. For `hours.thaw_inside` Purser's clock was set to 26 Nov 19:59:30 Amsterdam (18:59:30 UTC) and for `hours.end_sync` and `hours.no_window_after` to 20:00:30 (19:00:30 UTC); every Airwallex call happened at the run's real time (the table's times). Before the runs, 14 read-only calls checked the sandbox (10 in three probes: the platform's and the connected account's balances, GET /account, which answered `acct_op0_QItiOyWKsYb5pwQihA`, and the connected account's beneficiaries; 4 in the entities run's two stopped attempts, described in docs/runs/2026-11-26-entities-live.md). None moved money or changed anything; they are not in this record's call table. The runs (11:27 to 11:32 UTC) ran on the code committed right after them as `86d7f6b93`; between the runs and that commit only the records' wording, the stand-in's call counter and two unused imports changed.",
+      "timings": {
+        "hours_end_freeze_ms": 1387
+      },
+      "steps": [
+        {
+          "phase": "setup",
+          "id": "setup.passkey",
+          "agent": null,
+          "title": "Enrol the virtual test passkey (labelled) as this ledger's only approver",
+          "expect": "enrolled and confirmed",
+          "outcome": "pending; confirmed: governance-live virtual test passkey (no person's Face ID)",
+          "pass": true,
+          "simulated": "a virtual test passkey, no person's Face ID",
+          "started_at": "2026-11-26T11:27:43.254Z",
+          "ended_at": "2026-11-26T11:27:43.269Z",
+          "ms": 15,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "setup",
+          "id": "card.issue",
+          "agent": "sourcing",
+          "title": "Issue the sourcing agent's card through Purser's Issuing adapter (setupCards; a new card, nickname suffix governance-1126)",
+          "expect": "issued, with the policy's limits and controls, then frozen by default (INACTIVE)",
+          "outcome": "issued b4f2cb96-e9d8-4530-8d05-ce5aa050d38f ••8788; status INACTIVE; policy v1",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:27:43.269Z",
+          "ended_at": "2026-11-26T11:27:46.987Z",
+          "ms": 3718,
+          "lines": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "facts": {
+            "card_id": "b4f2cb96-e9d8-4530-8d05-ce5aa050d38f",
+            "last4": "8788",
+            "status": "INACTIVE",
+            "event": "card.issued"
+          },
+          "error": null
+        },
+        {
+          "phase": "setup",
+          "id": "card.readback",
+          "agent": "sourcing",
+          "title": "Read the card back from Airwallex (GET /issuing/cards/{id})",
+          "expect": "metadata agent_id and policy_version; merchant categories, currencies, limits and end date as the CFO policy says",
+          "outcome": "INACTIVE; metadata {\"agent_id\":\"sourcing\",\"policy_version\":\"v1\"}; MCC 5734; EUR; EUR 30.00 per purchase / 100.00 a month; active_to 2027-02-24T11:27:43.270Z; all as the policy says",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:27:46.988Z",
+          "ended_at": "2026-11-26T11:27:47.325Z",
+          "ms": 337,
+          "lines": [
+            8
+          ],
+          "facts": {
+            "card_status": "INACTIVE",
+            "metadata": {
+              "agent_id": "sourcing",
+              "policy_version": "v1"
+            },
+            "allowed_merchant_categories": [
+              "5734"
+            ],
+            "allowed_currencies": [
+              "EUR"
+            ],
+            "transaction_limits": {
+              "currency": "EUR",
+              "per_transaction": "30.00",
+              "monthly": "100.00"
+            },
+            "active_to": "2027-02-24T11:27:43.270Z",
+            "allowed_transaction_count": "MULTIPLE",
+            "policy": {
+              "mccs": [
+                "5734"
+              ],
+              "currencies": [
+                "EUR"
+              ],
+              "per_transaction": "30.00",
+              "monthly": "100.00",
+              "active_to": "2027-02-24T11:27:43.270Z",
+              "policy_version": "v1"
+            },
+            "active_to_gap_s": 0,
+            "checks": {
+              "metadata_agent_id": true,
+              "metadata_policy_version": true,
+              "merchant_categories": true,
+              "currencies": true,
+              "limits": true,
+              "active_to": true
+            }
+          },
+          "error": null
+        },
+        {
+          "phase": "hours",
+          "id": "hours.set",
+          "agent": "sourcing",
+          "title": "The CFO sets the card's hours to \"Mon-Fri 18:00-20:00 Europe/Amsterdam\" (a tightening, signed with the passkey on the phone path); the runner applies it and syncs the cards",
+          "expect": "the hours Purser enforces on the card are the new hours; no Airwallex call (the hours are Purser's own control)",
+          "outcome": "C-fc5d9225 approved by the passkey and applied; the card's hours Mon-Fri 18:00-20:00 Europe/Amsterdam; policy v2; 0 Airwallex calls",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey",
+          "started_at": "2026-11-26T11:27:47.326Z",
+          "ended_at": "2026-11-26T11:27:47.394Z",
+          "ms": 68,
+          "lines": [],
+          "facts": {
+            "proposal_id": "C-fc5d9225",
+            "hours": "Mon-Fri 18:00-20:00 Europe/Amsterdam",
+            "calls": 0
+          },
+          "error": null
+        },
+        {
+          "phase": "hours",
+          "id": "hours.refused_now",
+          "agent": "sourcing",
+          "title": "Now (outside the hours) the agent buys on its card (buyPlan packwise-starter, EUR 19.99): Purser starts the purchase",
+          "expect": "refused outside_card_hours by Purser, before any Airwallex call; the refusal audited",
+          "outcome": "refused: outside_card_hours: the sourcing agent's card pays Mon-Fri 18:00-20:00 Europe/Amsterdam only (enforced by Purser); now Thu 12:27 Europe/Amsterdam; 0 Airwallex calls; a purchase window: none opened, 0 calls; now Thu 12:27 Europe/Amsterdam",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:27:47.394Z",
+          "ended_at": "2026-11-26T11:27:47.399Z",
+          "ms": 5,
+          "lines": [],
+          "facts": {
+            "now": "2026-11-26T11:27:47.394Z",
+            "local": "Thu 12:27 Europe/Amsterdam",
+            "refusal": {
+              "agent": "sourcing",
+              "airwallex_calls": 0,
+              "amount": "19.99",
+              "currency": "EUR",
+              "enforced_by": "Purser (Airwallex has no recurring time window)",
+              "hours": "Mon-Fri 18:00-20:00 Europe/Amsterdam",
+              "merchant": "Packwise",
+              "purpose": "Packwise, Starter plan, monthly",
+              "reason": "outside_card_hours: the sourcing agent's card pays Mon-Fri 18:00-20:00 Europe/Amsterdam only (enforced by Purser); now Thu 12:27 Europe/Amsterdam"
+            },
+            "calls": 0,
+            "window_calls": 0
+          },
+          "error": null
+        },
+        {
+          "phase": "hours",
+          "id": "hours.thaw_inside",
+          "agent": "sourcing",
+          "title": "Purser's clock set inside the hours (Thu 19:59 Europe/Amsterdam): Purser opens a purchase window for one approved purchase (openCardWindow, EUR 1.00 at Packwise), then the card is read back",
+          "expect": "thawed: ACTIVE at Airwallex, its metadata naming the agent, the task and the policy version",
+          "outcome": "window until 2026-11-26T19:01:30.000Z; read back ACTIVE; metadata {\"agent_id\":\"sourcing\",\"policy_version\":\"v2\",\"task_id\":\"governance run: an approved purchase inside the hours\"}",
+          "pass": true,
+          "simulated": "Purser's clock injected (inside the hours); the Airwallex calls are real and happen now",
+          "started_at": "2026-11-26T11:27:47.400Z",
+          "ended_at": "2026-11-26T11:27:48.480Z",
+          "ms": 1080,
+          "lines": [
+            9,
+            10,
+            11
+          ],
+          "facts": {
+            "clock": "2026-11-26T18:59:30.000Z",
+            "window_until": "2026-11-26T19:01:30.000Z",
+            "card_status": "ACTIVE",
+            "metadata": {
+              "agent_id": "sourcing",
+              "policy_version": "v2",
+              "task_id": "governance run: an approved purchase inside the hours"
+            }
+          },
+          "error": null
+        },
+        {
+          "phase": "hours",
+          "id": "hours.purchase_auth",
+          "agent": "sourcing",
+          "title": "The approved purchase's authorisation on the thawed card (EUR 1.00, Packwise, MCC 5734)",
+          "expect": "approved by Airwallex",
+          "outcome": "approved (PENDING)",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-26T11:27:48.481Z",
+          "ended_at": "2026-11-26T11:27:52.457Z",
+          "ms": 3976,
+          "lines": [
+            12
+          ],
+          "facts": {
+            "card_transaction_id": "3a795fc3-0f3f-487e-bdce-2cd2272e0488",
+            "status": "PENDING",
+            "failure_reason": null
+          },
+          "error": null
+        },
+        {
+          "phase": "hours",
+          "id": "hours.end_sync",
+          "agent": "sourcing",
+          "title": "Purser's clock set just after the hours end (Thu 20:00 Europe/Amsterdam), the purchase window still open: the runner's card sync (syncCardsIfChanged), then the card read back",
+          "expect": "the window closed (the hours ended), the card frozen at Airwallex: card_status INACTIVE read back",
+          "outcome": "policy wants ACTIVE inside, INACTIVE after; sync changed sourcing; read back INACTIVE; window closed: \"the card's hours ended (Mon-Fri 18:00-20:00 Europe/Amsterdam, enforced by Purser)\"; frozen: \"outside its hours (Mon-Fri 18:00-20:00 Europe/Amsterdam, enforced by Purser)\"",
+          "pass": true,
+          "simulated": "Purser's clock injected (just after the hours); the Airwallex calls are real and happen now",
+          "started_at": "2026-11-26T11:27:52.459Z",
+          "ended_at": "2026-11-26T11:27:53.849Z",
+          "ms": 1390,
+          "lines": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "facts": {
+            "clock": "2026-11-26T19:00:30.000Z",
+            "want_inside": "ACTIVE",
+            "want_after": "INACTIVE",
+            "changed": [
+              "sourcing"
+            ],
+            "card_status": "INACTIVE",
+            "window_closed_why": "the card's hours ended (Mon-Fri 18:00-20:00 Europe/Amsterdam, enforced by Purser)",
+            "frozen_why": "outside its hours (Mon-Fri 18:00-20:00 Europe/Amsterdam, enforced by Purser)",
+            "ms": 1387
+          },
+          "error": null
+        },
+        {
+          "phase": "hours",
+          "id": "hours.charge_frozen",
+          "agent": "sourcing",
+          "title": "A merchant charges the frozen card by itself (EUR 1.00, MCC 5734)",
+          "expect": "declined CARD_INACTIVE by Airwallex",
+          "outcome": "declined CARD_INACTIVE",
+          "pass": true,
+          "simulated": "the merchant's charge is the sandbox's simulation endpoint",
+          "started_at": "2026-11-26T11:27:53.850Z",
+          "ended_at": "2026-11-26T11:27:57.943Z",
+          "ms": 4093,
+          "lines": [
+            17
+          ],
+          "facts": {
+            "card_transaction_id": "e9bebcde-f2fc-4b9b-8f6c-1666ac718019",
+            "status": "FAILED",
+            "failure_reason": "CARD_INACTIVE"
+          },
+          "error": null
+        },
+        {
+          "phase": "hours",
+          "id": "hours.no_window_after",
+          "agent": "sourcing",
+          "title": "After the hours, Purser tries to open a purchase window (clock still after the hours)",
+          "expect": "no window, no Airwallex call",
+          "outcome": "no window; 0 calls; outside_card_hours: the sourcing agent's card pays Mon-Fri 18:00-20:00 Europe/Amsterdam only (enforced by Purser); now Thu 20:00 Europe/Amsterdam",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:27:57.944Z",
+          "ended_at": "2026-11-26T11:27:57.947Z",
+          "ms": 3,
+          "lines": [],
+          "facts": {},
+          "error": null
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "n": 1,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:43.271Z",
+      "answered_at": "2026-11-26T11:27:43.986Z",
+      "ms": 715,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "4f45dd97a7c04d5e85e1d82c4b25704d",
+      "code": null,
+      "step": "card.issue (sourcing)"
+    },
+    {
+      "n": 2,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:43.989Z",
+      "answered_at": "2026-11-26T11:27:44.485Z",
+      "ms": 496,
+      "method": "GET",
+      "endpoint": "/issuing/cardholders",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "65b8908ab3bc4e1f8e5f9b0599d366cb",
+      "code": null,
+      "step": "card.issue (sourcing)"
+    },
+    {
+      "n": 3,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:44.487Z",
+      "answered_at": "2026-11-26T11:27:44.892Z",
+      "ms": 405,
+      "method": "GET",
+      "endpoint": "/issuing/cards",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "d6e6452a558647f7a38a819e4ae88cf7",
+      "code": null,
+      "step": "card.issue (sourcing)"
+    },
+    {
+      "n": 4,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:45.127Z",
+      "answered_at": "2026-11-26T11:27:45.460Z",
+      "ms": 333,
+      "method": "GET",
+      "endpoint": "/issuing/cards",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "edb23521daf24fc18a7a403ab5f19461",
+      "code": null,
+      "step": "card.issue (sourcing)"
+    },
+    {
+      "n": 5,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:45.492Z",
+      "answered_at": "2026-11-26T11:27:46.241Z",
+      "ms": 749,
+      "method": "POST",
+      "endpoint": "/issuing/cards/create",
+      "status": 202,
+      "awx_request_id": null,
+      "trace_id": "bbba07ea6d9143fc8dd4f7864fc692d9",
+      "code": null,
+      "step": "card.issue (sourcing)"
+    },
+    {
+      "n": 6,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:46.247Z",
+      "answered_at": "2026-11-26T11:27:46.649Z",
+      "ms": 402,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "62ea122019134c0fb304201db4feaf20",
+      "code": null,
+      "step": "card.issue (sourcing)"
+    },
+    {
+      "n": 7,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:46.650Z",
+      "answered_at": "2026-11-26T11:27:46.972Z",
+      "ms": 322,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "29e3bb8f5c214d8b90b840df5dac05eb",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "card.issue (sourcing)"
+    },
+    {
+      "n": 8,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:46.988Z",
+      "answered_at": "2026-11-26T11:27:47.314Z",
+      "ms": 326,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "fe6bf39d2aaf4e73a3b04b01daeb6062",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "card.readback (sourcing)"
+    },
+    {
+      "n": 9,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:47.410Z",
+      "answered_at": "2026-11-26T11:27:47.839Z",
+      "ms": 429,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "e78dd5e6d9b84124a7aee120e2fac609",
+      "code": null,
+      "step": "hours.thaw_inside (sourcing)"
+    },
+    {
+      "n": 10,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:47.840Z",
+      "answered_at": "2026-11-26T11:27:48.163Z",
+      "ms": 323,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "78444304b2ca48fba927a8c34a8f7118",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "hours.thaw_inside (sourcing)"
+    },
+    {
+      "n": 11,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:48.164Z",
+      "answered_at": "2026-11-26T11:27:48.480Z",
+      "ms": 316,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "6bc277a893844a4386c9ccfe32ce46bc",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "hours.thaw_inside (sourcing)"
+    },
+    {
+      "n": 12,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:48.482Z",
+      "answered_at": "2026-11-26T11:27:52.456Z",
+      "ms": 3974,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "f1ec7842edb741c89e218c34505e9d43",
+      "code": null,
+      "sim": {
+        "card_id": "b4f2cb96-e9d8-4530-8d05-ce5aa050d38f",
+        "card_transaction_id": null,
+        "transaction_id": "3a795fc3-0f3f-487e-bdce-2cd2272e0488",
+        "transaction_amount": -1,
+        "transaction_currency": "EUR",
+        "status": "PENDING",
+        "process_result": null,
+        "failure_reason": null,
+        "created_at": null,
+        "transaction_date": "2026-11-26T11:27:48.916+00:00",
+        "transacted_at": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "GOVRUN PACKWISE__________",
+          "category_code": "5734"
+        }
+      },
+      "step": "hours.purchase_auth (sourcing)"
+    },
+    {
+      "n": 13,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:52.469Z",
+      "answered_at": "2026-11-26T11:27:52.776Z",
+      "ms": 307,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "5cecff0a1c58444bb347813d72544574",
+      "code": null,
+      "card_status": "ACTIVE",
+      "step": "hours.end_sync (sourcing)"
+    },
+    {
+      "n": 14,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:52.778Z",
+      "answered_at": "2026-11-26T11:27:53.163Z",
+      "ms": 385,
+      "method": "POST",
+      "endpoint": "/issuing/cards/{id}/update",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "fec782ebd8714d4880fa22b22e2d5e44",
+      "code": null,
+      "step": "hours.end_sync (sourcing)"
+    },
+    {
+      "n": 15,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:53.164Z",
+      "answered_at": "2026-11-26T11:27:53.450Z",
+      "ms": 286,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "8ca7fed4a97a4fcda799ded47e7ddff9",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "hours.end_sync (sourcing)"
+    },
+    {
+      "n": 16,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:53.456Z",
+      "answered_at": "2026-11-26T11:27:53.848Z",
+      "ms": 392,
+      "method": "GET",
+      "endpoint": "/issuing/cards/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "43b7a0bafddf4947b6ef64bce6ee5e54",
+      "code": null,
+      "card_status": "INACTIVE",
+      "step": "hours.end_sync (sourcing)"
+    },
+    {
+      "n": 17,
+      "pid": 25279,
+      "at": "2026-11-26T11:27:53.851Z",
+      "answered_at": "2026-11-26T11:27:57.942Z",
+      "ms": 4091,
+      "method": "POST",
+      "endpoint": "/simulation/issuing/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "5930081e7243448fb93d66682738a636",
+      "code": null,
+      "sim": {
+        "card_id": "b4f2cb96-e9d8-4530-8d05-ce5aa050d38f",
+        "card_transaction_id": null,
+        "transaction_id": "e9bebcde-f2fc-4b9b-8f6c-1666ac718019",
+        "transaction_amount": -1,
+        "transaction_currency": "EUR",
+        "status": "FAILED",
+        "process_result": null,
+        "failure_reason": "CARD_INACTIVE",
+        "created_at": null,
+        "transaction_date": "2026-11-26T11:27:54.494+00:00",
+        "transacted_at": null,
+        "transaction_type": "AUTHORIZATION",
+        "merchant": {
+          "name": "GOVRUN AFTER HOURS_______",
+          "category_code": "5734"
+        }
+      },
+      "step": "hours.charge_frozen (sourcing)"
+    }
+  ],
+  "calls_by_endpoint": [
+    {
+      "endpoint": "POST /authentication/login",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /issuing/cardholders",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /issuing/cards",
+      "calls": 2
+    },
+    {
+      "endpoint": "POST /issuing/cards/create",
+      "calls": 1
+    },
+    {
+      "endpoint": "POST /issuing/cards/{id}/update",
+      "calls": 3
+    },
+    {
+      "endpoint": "GET /issuing/cards/{id}",
+      "calls": 7
+    },
+    {
+      "endpoint": "POST /simulation/issuing/create",
+      "calls": 2
+    }
+  ],
+  "not_shown": [
+    "Airwallex still has no recurring time window: the hours are Purser's control. Airwallex declines on the card's status, limits, merchant categories and currencies; inside a window Purser opened, a second charge within those is approved (the card drill's finding of 20 Nov stands).",
+    "Real time passing: the end of the hours is Purser's injected clock, not a wait until 20:00; the runner's every-few-seconds loop did not run (the sync was called once).",
+    "The authorisation approved inside the window was not written to this run's ledger: the window was opened under the injected clock and Airwallex dates the authorisation at the real time, so the ledger's window match would not have applied. Its answer is in the step's facts and the call table.",
+    "Whether Airwallex copies a card's metadata onto its transactions: not looked at (Purser ties each transaction to agent, task and policy in its own ledger).",
+    "A person's Face ID on a real phone; Purser Cloud's screens. One run: the times are single measurements."
+  ]
+}
