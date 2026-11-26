@@ -29,6 +29,7 @@ import { RATIONALE_WORDS_JS } from "../../src/servers/rationaleWords.js";
 import { NAV_GROUPS, SHELL_CSS, SHELL_JS, SHELL_WORDS } from "./consoleShell.js";
 import { CHARTS_CSS, CHARTS_JS } from "./consoleCharts.js";
 import { COMPANY_CSS, COMPANY_JS } from "./consoleCompany.js";
+import { MONEY_CSS, MONEY_JS } from "./consoleMoney.js";
 import { WALLET_CSS, WALLET_JS } from "./agentWallet.js";
 import { CARD_ART_DEFS } from "./agentCardArt.js";
 import { TOKEN_LIFE_CSS, TOKEN_LIFE_JS } from "./tokenLife.js";
@@ -44,7 +45,7 @@ import { APP_ICON_LINKS, cloudAppResponse } from "./pwa.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
   "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy",
-  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down", "sparkles", "arrow-right", "zap", "info", "layout-dashboard", "arrow-left-right", "file-check", "settings-2", "play", "search"];
+  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down", "sparkles", "arrow-right", "zap", "info", "layout-dashboard", "arrow-left-right", "file-check", "settings-2", "play", "search", "coins"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
@@ -410,7 +411,7 @@ a.st-step:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--bord
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
 ${siteHeader(null)}
-<div class="appbar"><div class="wrap"><a class="abrand" href="#/overview" aria-label="Purser Cloud"><span class="mk">${svg("feather", 16)}</span><span class="abn">Purser <span>Cloud</span></span></a><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><span class="ng" data-sg="money">${escAttr(SHELL_WORDS.en.g_money)}</span><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><span class="ng" data-sg="agents">${escAttr(SHELL_WORDS.en.g_agents)}</span><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><span class="ng" data-sg="rails">${escAttr(SHELL_WORDS.en.g_rails)}</span><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/claude" data-tab="claude" hidden>Claude</a><a href="#/connections" data-tab="connections" data-t="cs.nav.connections">${tr("en", "cs.nav.connections")}</a><span class="ng sep" aria-hidden="true"></span><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<div class="appbar"><div class="wrap"><a class="abrand" href="#/overview" aria-label="Purser Cloud"><span class="mk">${svg("feather", 16)}</span><span class="abn">Purser <span>Cloud</span></span></a><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><span class="ng" data-sg="money">${escAttr(SHELL_WORDS.en.g_money)}</span><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/receivables" data-tab="receivables" data-t="cs.nav.ar">${tr("en", "cs.nav.ar")}</a><a href="#/cash" data-tab="cash" data-t="cs.nav.cash">${tr("en", "cs.nav.cash")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><span class="ng" data-sg="agents">${escAttr(SHELL_WORDS.en.g_agents)}</span><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><span class="ng" data-sg="rails">${escAttr(SHELL_WORDS.en.g_rails)}</span><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/claude" data-tab="claude" hidden>Claude</a><a href="#/connections" data-tab="connections" data-t="cs.nav.connections">${tr("en", "cs.nav.connections")}</a><span class="ng sep" aria-hidden="true"></span><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="awx-app">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: AIRWALLEX_LOGO_SRC })}</span><span class="spacer"></span>
 <span class="who-am-i"><span class="cosw" id="cosw"><a class="co" id="co" href="#/company"></a><button type="button" class="co-more" id="co-more" aria-haspopup="menu" aria-expanded="false" aria-controls="co-menu" aria-label="Switch company" hidden>${svg("chevron-down", 16)}</button><span class="co-menu" id="co-menu" role="menu" aria-label="Switch company" hidden></span></span><span id="who"></span><span id="ask-slot"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <button type="button" class="sbx" id="sbx" aria-pressed="false">${svg("panel-left", 16)}</button>
@@ -1821,7 +1822,7 @@ async function route(){
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
     // 14 Nov: Invoices has its tab back (the invoices only); Books holds the ledger, the VAT overview and the exports.
-    const pages={'/company':companyView,'/claude':claudeView,'/overview':overviewView,'/agents':agentsView,'/invoices':invoicesView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/airwallex':airwallexView,'/connections':connectionsView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
+    const pages={'/company':companyView,'/claude':claudeView,'/overview':overviewView,'/agents':agentsView,'/invoices':invoicesView,'/books':booksView,'/transactions':transactionsView,'/cash':cashView,'/receivables':receivablesView,'/tokenisation':tokensView,'/airwallex':airwallexView,'/connections':connectionsView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
     if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
     await pages[path](q);shell();
   // A session that ended while the page loaded (another request met the 401 first) has gone to the sign-in already:
@@ -2027,7 +2028,7 @@ const nonce = () => {
 const T0_CLOSE = t0CloseLine();
 
 /** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
-const USED = keysUsedIn(SCRIPT + SHELL_JS + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS + COMPANY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + BODY);
+const USED = keysUsedIn(SCRIPT + SHELL_JS + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS + COMPANY_JS + MONEY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + BODY);
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain, whether the cloud runs an engine). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
@@ -2036,13 +2037,13 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + RATIONALE_WORDS_JS + "\n" + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS + COMPANY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => SHELL_JS + RATIONALE_WORDS_JS + "\n" + UI_JS + CHARTS_JS + OVERVIEW_PLUS_JS + COMPANY_JS + MONEY_JS + WALLET_JS + TOKEN_LIFE_JS + AWX_UI_JS + AWX_JS + CONNECTIONS_LOGOS_JS + CONNECTIONS_VIEW_JS + OFFBOARDING_VIEW_JS + PARTNER_VIEW_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${APP_ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_PREMIUM_CSS}${SIGNIN_CSS}${OVERVIEW_PLUS_CSS}${COLOR_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_PREMIUM_CSS}${SIGNIN_CSS}${OVERVIEW_PLUS_CSS}${COLOR_CSS}${MONEY_CSS}</style></head><body class="signed-out">
 ${BODY}
 ${CARD_ART_DEFS}
 <script type="module" nonce="${n}">${script}

@@ -196,7 +196,8 @@ describe("the console of a cloud with an engine", () => {
     // 14 Nov: Invoices and Books are two tabs again, and Airwallex, live from the sandbox, joined; 21 Nov: Connections,
     // and Claude, a tab that shows only once the company has connected it: cloud/src/consoleCompany.ts).
     expect(js).toContain("'/archive':archiveView");
-    expect(html.match(/data-tab="/g)).toHaveLength(10);
+    // v1.5.1: Receivables and Cash & FX joined the Money group (cloud/src/consoleMoney.ts).
+    expect(html.match(/data-tab="/g)).toHaveLength(12);
     expect(html).toContain('<a href="#/claude" data-tab="claude" hidden>Claude</a>');
     expect(html).not.toMatch(/<nav[^>]*>[^]*#\/archive[^]*<\/nav>/);
     expect(js).toContain("a.href='#/archive'");

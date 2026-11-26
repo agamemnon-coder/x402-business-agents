@@ -19,6 +19,7 @@ import { platformOn } from "../airwallex/platform.js";
 import { storeBinding } from "../airwallex/binding.js";
 import type { AuthorityMap } from "../policy/authorityMap.js";
 import type { ComplianceSnapshot } from "../compliance/evidence.js";
+import type { MoneyLoopSnapshot } from "../treasury/cloudSnapshot.js";
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -54,9 +55,11 @@ const has = (db: DB, table: string) => !!db.prepare("SELECT 1 FROM sqlite_master
 export type AuthorityOf = (db: DB, now: Date) => AuthorityMap;
 /** The compliance evidence in short (src/compliance/evidence.ts complianceSnapshot), built by the caller for the same reason. */
 export type ComplianceOf = (db: DB, now: Date) => ComplianceSnapshot;
+/** The money loop in short (src/treasury/cloudSnapshot.ts moneyLoopSnapshot): Cash & FX and Receivables in the cloud. */
+export type MoneyLoopOf = (db: DB, now: Date) => MoneyLoopSnapshot;
 
 /** Everything the cloud does not hold yet, in batches small enough for one request each. */
-export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDocBytes?: number; authority?: AuthorityOf; compliance?: ComplianceOf } = {}): Record<string, unknown>[] {
+export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDocBytes?: number; authority?: AuthorityOf; compliance?: ComplianceOf; moneyLoop?: MoneyLoopOf } = {}): Record<string, unknown>[] {
   const now = (opts.now ?? new Date()).toISOString();
   const held = new Set(state.documents);
   const out: Record<string, unknown>[] = [];
@@ -97,12 +100,16 @@ export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDoc
   // gives none (the snapshot refuses it), and the cloud keeps the last one it had.
   let compliance: ComplianceSnapshot | null = null;
   if (opts.compliance) try { compliance = opts.compliance(db, opts.now ?? new Date()); } catch { compliance = null; }
+  // The money loop in short, the console's Cash & FX and Receivables. A ledger it cannot be read from sends none, and
+  // the cloud keeps the last one it had.
+  let moneyLoop: MoneyLoopSnapshot | null = null;
+  if (opts.moneyLoop) try { moneyLoop = opts.moneyLoop(db, opts.now ?? new Date()); } catch { moneyLoop = null; }
 
   // The chains in order, in slices the cloud accepts; everything else rides with the first slice.
   const slices = Math.max(1, Math.ceil(entries.length / 2000), Math.ceil(audit.length / 5000), Math.ceil(transactions.length / 2000));
   for (let i = 0; i < slices; i++) {
     out.push({
-      ...(i === 0 ? { vendors, invoices: inv, payments, ...(authority ? { authority_map: authority } : {}), ...(compliance ? { compliance } : {}) } : {}),
+      ...(i === 0 ? { vendors, invoices: inv, payments, ...(authority ? { authority_map: authority } : {}), ...(compliance ? { compliance } : {}), ...(moneyLoop ? { money_loop: moneyLoop } : {}) } : {}),
       transactions: transactions.slice(i * 2000, (i + 1) * 2000),
       ledger_entries: entries.slice(i * 2000, (i + 1) * 2000),
       audit_rows: audit.slice(i * 5000, (i + 1) * 5000),
@@ -111,15 +118,15 @@ export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDoc
   return out;
 }
 
-/** Pushes everything new (with the authority map and the compliance summary, when the caller gives their builders); returns what the cloud applied, batch by batch. */
-export async function pushToCloud(db: DB, t: CloudTarget, now = new Date(), authority?: AuthorityOf, compliance?: ComplianceOf): Promise<unknown[]> {
+/** Pushes everything new (with the authority map, the compliance summary and the money loop, when the caller gives their builders); returns what the cloud applied, batch by batch. */
+export async function pushToCloud(db: DB, t: CloudTarget, now = new Date(), authority?: AuthorityOf, compliance?: ComplianceOf, moneyLoop?: MoneyLoopOf): Promise<unknown[]> {
   // The ledger first brings in what Purser recorded since the last sync (the inbox invoices' accruals, payouts, card
   // charges): only posted entries travel, and the feed posts each source once, so this is safe to repeat (backend demo
   // of 9 November: a push right after ingest carried no accrual).
   if (has(db, "ledger_entries")) syncLedger(db, now);
   const state = (await ok(await call(t, "GET", "/v1/sync/state"), "the state request")) as CloudState;
   const results: unknown[] = [];
-  for (const b of batchesFor(db, state, { now, authority, compliance })) results.push(await ok(await call(t, "POST", "/v1/sync", b), "a push"));
+  for (const b of batchesFor(db, state, { now, authority, compliance, moneyLoop })) results.push(await ok(await call(t, "POST", "/v1/sync", b), "a push"));
   // The runner's health with every push: alert codes and severities only, never their words (they can name a supplier
   // or a proposal). The cloud shows them to the owners and sends what was raised or cleared to the company's webhook.
   const h = health(db, now);

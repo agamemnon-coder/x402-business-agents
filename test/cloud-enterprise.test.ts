@@ -168,7 +168,7 @@ describe("the console", () => {
   // 14 Nov (Max: "make it just Invoices"): Invoices has its own tab again and the books have theirs.
   it("has the tabs in order, Invoices and Books apart, and says what Purser Cloud is", () => {
     // 22 Nov: in their groups (cloud/src/consoleShell.ts): Overview; Money; Agents and tokens; payment rails; Settings.
-    expect([...html.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1])).toEqual(["overview", "invoices", "transactions", "books", "agents", "tokenisation", "airwallex", "claude", "connections", "settings"]);
+    expect([...html.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1])).toEqual(["overview", "invoices", "receivables", "cash", "transactions", "books", "agents", "tokenisation", "airwallex", "claude", "connections", "settings"]);
     // 21 Nov: the Claude tab (hidden until Claude is connected) sits in the Connected group beside Airwallex.
     expect([...html.matchAll(/data-sg="([a-z]+)"/g)].map((m) => m[1])).toEqual(["money", "agents", "rails"]);
     expect([...html.matchAll(/data-group="([a-z]+)"/g)].map((m) => m[1])).toEqual(["overview", "money", "agents", "rails", "settings"]);
