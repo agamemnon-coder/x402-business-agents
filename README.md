@@ -4,11 +4,11 @@
 
 # Purser · AI agents spend. You sign off.
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/airwallex)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/alta)&nbsp;[![Visa via Airi: sandbox](https://img.shields.io/badge/Visa_via_Airi-sandbox-1a1f71?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/visa)&nbsp;[![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/books#t0)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-d97706?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/airwallex)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-d97706?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/alta)&nbsp;[![Visa via Airi: sandbox](https://img.shields.io/badge/Visa_via_Airi-sandbox-d97706?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/visa)&nbsp;[![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-d97706?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/books#t0)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-d97706?style=flat-square&labelColor=1f2937)](#built-with)
 
 **AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey: one changed cent and the approval no longer matches the terms.**
 
-[![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/tests%2C%20last%20full%20run-10239%20passing-16a34a?style=flat-square&labelColor=1f2937)](docs/assets/test-summary.json)&nbsp;[![Coverage: from docs/badges/coverage.json](https://img.shields.io/badge/coverage%2C%20run%20on%207d42f9209-95.1%25%20statements%20%C2%B7%2086.0%25%20branches-16a34a?style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)&nbsp;[![Claude: 111 decisions, 20 Nov long run](https://img.shields.io/badge/Claude-111_decisions%2C_20_Nov_long_run-d97757?style=flat-square&labelColor=1f2937)](docs/runs/2026-11-20-long-run.md)&nbsp;[![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql)&nbsp;[![License: MIT](https://img.shields.io/badge/license-MIT-2563eb?style=flat-square&labelColor=1f2937)](LICENSE)&nbsp;[![REUSE 3.3: compliant](https://img.shields.io/badge/REUSE_3.3-compliant-16a34a?style=flat-square&labelColor=1f2937)](REUSE.toml)&nbsp;[![Releases: Sigstore-signed](https://img.shields.io/badge/releases-Sigstore--signed-7c3aed?style=flat-square&labelColor=1f2937)](docs/security/README.md#verify-a-release)&nbsp;[![TLA+ model: 1,102,845 states, 0 errors](https://img.shields.io/badge/TLA%2B_model-1%2C102%2C845_states%2C_0_errors-16a34a?style=flat-square&labelColor=1f2937)](docs/evidence/formal-model.md)&nbsp;[![Dafny: verified](https://img.shields.io/badge/Dafny-172%20verified%2C%200%20errors-16a34a?style=flat-square)](docs/evidence/formal-proofs.md)&nbsp;[![Held-out eval v17, offline: 14 → 0 wrong payments](https://img.shields.io/badge/held--out_eval_v17_%28offline%29-14_%E2%86%92_0_wrong_payments-16a34a?style=flat-square&labelColor=1f2937)](docs/evals/adversarial-v17.md)&nbsp;[![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-6366f1?style=flat-square&labelColor=1f2937)](#try-it-in-2-minutes)
+[![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/tests%2C%20last%20full%20run-10239%20passing-059669?style=flat-square&labelColor=1f2937)](docs/assets/test-summary.json)&nbsp;[![Coverage: from docs/badges/coverage.json](https://img.shields.io/badge/coverage%2C%20run%20on%207d42f9209-95.1%25%20statements%20%C2%B7%2086.0%25%20branches-0284c7?style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)&nbsp;[![Claude: 111 decisions, 20 Nov long run](https://img.shields.io/badge/Claude-111_decisions%2C_20_Nov_long_run-d97757?style=flat-square&labelColor=1f2937)](docs/runs/2026-11-20-long-run.md)&nbsp;[![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql)&nbsp;[![License: MIT](https://img.shields.io/badge/license-MIT-475569?style=flat-square&labelColor=1f2937)](LICENSE)&nbsp;[![REUSE 3.3: compliant](https://img.shields.io/badge/REUSE_3.3-compliant-475569?style=flat-square&labelColor=1f2937)](REUSE.toml)&nbsp;[![Releases: Sigstore-signed](https://img.shields.io/badge/releases-Sigstore--signed-7c3aed?style=flat-square&labelColor=1f2937)](docs/security/README.md#verify-a-release)&nbsp;[![TLA+ model: 1,102,845 states, 0 errors](https://img.shields.io/badge/TLA%2B_model-1%2C102%2C845_states%2C_0_errors-059669?style=flat-square&labelColor=1f2937)](docs/evidence/formal-model.md)&nbsp;[![Dafny: verified](https://img.shields.io/badge/Dafny-172%20verified%2C%200%20errors-059669?style=flat-square&labelColor=1f2937)](docs/evidence/formal-proofs.md)&nbsp;[![Held-out eval v17, offline: 14 → 0 wrong payments](https://img.shields.io/badge/held--out_eval_v17_%28offline%29-14_%E2%86%92_0_wrong_payments-059669?style=flat-square&labelColor=1f2937)](docs/evals/adversarial-v17.md)&nbsp;[![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-7c3aed?style=flat-square&labelColor=1f2937)](#try-it-in-2-minutes)
 
 <a href="https://kit11.max-31b.workers.dev/try"><picture><source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/demo-narrow-dark.svg"><source media="(max-width: 600px)" srcset="docs/assets/readme/demo-narrow-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/demo-dark.svg"><img src="docs/assets/readme/demo-light.svg" alt="Animated, one recorded walk through /try (21 Nov, test money): invoice BTX-2026-21 from Bergtex Textil GmbH, EUR 1,850.00, comes in; Claude (claude-haiku-5-5) reads “Total due EUR 1,850.00”; Purser's checks pass (not paid before, bank on file, known supplier) and flag the amount as over 2× the usual EUR 870.00; above the agent's EUR 500.00 limit the CFO signs the SHA-256 of the exact terms with a passkey; paid, the Airwallex sandbox transfer PAID (settlement simulated). Then the same approval with one cent changed (EUR 1,850.01): refused, nothing paid. Over all the /try walks of 19 to 21 Nov: All 66 attempted one-cent changes refused." width="100%"></picture></a>
 
@@ -88,17 +88,24 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 ```mermaid
 flowchart LR
-  I["Invoice or purchase<br/>(PDF, card, x402)"] --> RD["Reader<br/>Claude reads it"]
-  RD --> CK["Checker<br/>Purser's code: duplicates,<br/>bank details, payee"]
-  CK --> PO{"CFO policy<br/>(code, also exported<br/>as OPA/Rego)"}
-  PO -- "within the agent's limit<br/>e.g. EUR 120.00" --> PAY["Agent pays alone"]
-  PO -- "above it<br/>e.g. EUR 1,850.00" --> FID["CFO signs the SHA-256<br/>of the exact terms<br/>(passkey, Face ID)"]
-  FID --> HC{"Before paying:<br/>terms still match<br/>the signed hash?"}
+  I["Invoice or purchase<br/>(PDF, card, x402)"]:::cash --> RD["Reader<br/>Claude reads it"]:::agent
+  RD --> CK["Checker<br/>Purser's code: duplicates,<br/>bank details, payee"]:::purser
+  CK --> PO{"CFO policy<br/>(code, also exported<br/>as OPA/Rego)"}:::purser
+  PO -- "within the agent's limit<br/>e.g. EUR 120.00" --> PAY["Agent pays alone"]:::paid
+  PO -- "above it<br/>e.g. EUR 1,850.00" --> FID["CFO signs the SHA-256<br/>of the exact terms<br/>(passkey, Face ID)"]:::purser
+  FID --> HC{"Before paying:<br/>terms still match<br/>the signed hash?"}:::purser
   HC -- "yes" --> PAY
-  HC -- "one cent changed" --> X["Payment refused.<br/>Nothing was paid."]
-  PAY --> RAIL["Rails, each with its own limit<br/>Airwallex sandbox · Alta testnet<br/>· Visa via Airwallex Airi"]
-  RAIL --> BK["Books<br/>T:0 · Moneybird (sandboxes)"]
-  BK --> LOG["Hash-chained audit log"] --> ANC["Head anchored on Alta testnet<br/>npm run verify-all"]
+  HC -- "one cent changed" --> X["Payment refused.<br/>Nothing was paid."]:::refused
+  PAY --> RAIL["Rails, each with its own limit<br/>Airwallex sandbox · Alta testnet<br/>· Visa via Airwallex Airi"]:::testmoney
+  RAIL --> BK["Books<br/>T:0 · Moneybird (sandboxes)"]:::proof
+  BK --> LOG["Hash-chained audit log"]:::proof --> ANC["Head anchored on Alta testnet<br/>npm run verify-all"]:::proof
+  classDef purser fill:#6d28d9,stroke:#a78bfa,color:#fff
+  classDef agent fill:#4338ca,stroke:#818cf8,color:#fff
+  classDef paid fill:#047857,stroke:#34d399,color:#fff
+  classDef refused fill:#be123c,stroke:#fb7185,color:#fff
+  classDef testmoney fill:#b45309,stroke:#fbbf24,color:#fff
+  classDef cash fill:#0369a1,stroke:#38bdf8,color:#fff
+  classDef proof fill:#334155,stroke:#94a3b8,color:#fff
 ```
 
 - **A passkey signs the exact terms.** The approval is a signature over the SHA-256 of the terms; change one cent and it no longer verifies. The owner's real approval of 7 November is checked offline by `npm run verify-approval` ([record](docs/runs/2026-11-07-awx-1.md)).
@@ -123,14 +130,18 @@ sequenceDiagram
   A->>P: proposes a payment: the exact terms
   P->>P: checks the CFO's limits
   Note over P: above the limit: a proposal with the SHA-256 of the terms
+  rect rgba(124,58,237,0.16)
   P->>C: asks the CFO to approve those terms
   C->>P: signs the SHA-256 of the exact terms (WebAuthn)
+  end
   P->>P: before paying: do the stored terms still hash to the signed hash?
+  rect rgba(2,132,199,0.13)
   alt the terms as signed
     P->>X: pays, the transfer carrying the signed hash (approval_sha256)
     X-->>P: Airwallex's record of the transfer carries the hash
   else one cent changed after signing
     P--xA: refused: the terms do not match the approved hash
+  end
   end
 ```
 
