@@ -6,7 +6,7 @@
 import { createPrivateKey, createPublicKey, generateKeyPairSync } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { signAgentRequest } from "../src/policy/agentIdentity.js";
-import { ap2Style, chained, keyFrom, newAgentKey, OFFER_METHOD, offerSha256, offerTarget, signOffer, verifyOffer, type Offer } from "../src/negotiate/offers.js";
+import { ap2Style, chained, chainProblem, keyFrom, newAgentKey, OFFER_METHOD, offerSha256, offerTarget, signOffer, verifyOffer, type Offer } from "../src/negotiate/offers.js";
 import { CHANGED_IBAN, negotiate, recordedNegotiation, sceneOf, type AgentAnswer, type Negotiation, type Speak } from "../src/negotiate/negotiate.js";
 import { agreedInvoiceNo, agreementOf, agreementSha256, canonicalAgreement, checkPolicy, CFO_POLICY, policyOf, savingOf } from "../src/negotiate/rails.js";
 import { negotiateClaudeOf } from "../cloud/src/try/negotiateRoutes.js";
@@ -66,6 +66,18 @@ describe("offers: structured, hashed, signed in the agent identity scheme", () =
     expect(chained([offers[0]!, { ...offers[1]!, amount: "1813.00" }, offers[2]!, offers[3]!])).toBe(false);
     // The supplier's signature does not verify under Purser's key.
     expect(await verifyOffer(n.turns[1]!.offer, n.turns[1]!.signature, n.keys.sourcing)).toBe(false);
+  });
+  // What the server asks when the agreed terms are filed (cloud/src/try/negotiateRoutes.ts /agreed).
+  it("chainProblem: null for the negotiation's own chain; names what breaks otherwise", async () => {
+    const { n } = await run(GOOD);
+    const signedOffers = n.turns.map((t) => ({ offer: t.offer, signature: t.signature }));
+    const ask = (offers = signedOffers, keys = n.keys, head = n.transcript_sha256) => chainProblem({ offers, keys, head, invoice_no: scene.invoice_no });
+    expect(await ask()).toBeNull();
+    expect(await ask(signedOffers.slice(0, 3))).toMatch(/not the one the agreement names/);
+    expect(await ask([signedOffers[0]!, signedOffers[2]!, signedOffers[3]!])).toMatch(/do not form one chain/);
+    expect(await ask(signedOffers, { sourcing: n.keys.supplier, supplier: n.keys.sourcing })).toMatch(/offer 1's signature does not verify/);
+    expect(await ask(signedOffers, n.keys, "0".repeat(64))).toMatch(/not the one the agreement names/);
+    expect(await ask([])).toBe("no offers");
   });
 });
 
@@ -199,7 +211,7 @@ describe("an escalated deal, on the route", () => {
     expect(n.outcome).toBe("escalated");
     expect(n.agreement.policy).toBe("outside_cfo_policy");
     expect(canonicalAgreement(n.agreement)).toBe(n.canonical);
-    const f = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { agreement_sha256: n.sha256, compose: n.compose, turns: n.turns.length } });
+    const f = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { agreement_sha256: n.sha256, compose: n.compose, turns: n.turns.length, agreement: n.agreement, keys: n.keys, offers: n.turns.map((t) => ({ offer: t.offer, signature: t.signature })) } });
     expect(f.status, JSON.stringify(f.json)).toBe(200);
     expect((f.json.invoice as { status: string }).status).toBe("ready");
   });

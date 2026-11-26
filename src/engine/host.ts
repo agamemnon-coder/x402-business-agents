@@ -197,7 +197,11 @@ export interface InvoiceView {
 }
 
 /** What a negotiation agreed, as the hands-on demo's route hands it to the engine (EngineHost.negotiated). */
-export interface NegotiatedFacts { original_id: string | null; original_invoice_no: string; original_amount: string; agreement_sha256: string; turns: number }
+export interface NegotiatedFacts {
+  original_id: string | null; original_invoice_no: string; original_amount: string; agreement_sha256: string; turns: number;
+  /** The agreement's canonical JSON (its SHA-256 is agreement_sha256), every signed offer's SHA-256 in order, and the agents' key ids: kept with the proof. */
+  agreement?: string; offers?: string[]; keys?: { sourcing: string; supplier: string };
+}
 
 /** The checks examine() (src/ap/checkerCore.ts) ran on an invoice that left no finding: InvoiceView.checks_passed. */
 function checksPassed(inv: ApInvoiceRow): NonNullable<InvoiceView["checks_passed"]> {
@@ -1101,6 +1105,7 @@ export class EngineHost {
     if (!r || (n.original_id && !o)) return { ok: false as const, reason: "no such invoice" };
     if (!/^[0-9a-f]{64}$/.test(n.agreement_sha256) || r.status !== "ready" || !r.invoice_no.endsWith(`-${n.agreement_sha256.slice(0, 8)}`) || !(c(r.total) < c(n.original_amount)))
       return { ok: false as const, reason: `${r.id} is not an agreed invoice of this negotiation` };
+    if (n.agreement !== undefined && sha256Hex(n.agreement) !== n.agreement_sha256) return { ok: false as const, reason: "the agreement kept is not the one whose SHA-256 is named" };
     if (o) {
       if (o.id === r.id) return { ok: false as const, reason: "an invoice cannot replace itself" };
       const why = this.notReplaceable(o, n);
@@ -1113,6 +1118,7 @@ export class EngineHost {
       original_invoice_id: o?.id ?? null, original_invoice_no: o?.invoice_no ?? n.original_invoice_no, original_amount: n.original_amount,
       agreed_amount: r.total, discount: `${Math.floor(off / 100)}.${String(off % 100).padStart(2, "0")}`, currency: r.currency,
       agreement_sha256: n.agreement_sha256, turns: n.turns, superseded: !!o,
+      ...(n.agreement !== undefined ? { agreement: n.agreement } : {}), ...(n.offers ? { offers: n.offers } : {}), ...(n.keys ? { keys: n.keys } : {}),
     };
     db.transaction(() => {
       if (o) {

@@ -228,7 +228,7 @@ async function sign(go){
   go.disabled=true;
   try{
     if(!F.inv){
-      const f=await api('POST','/v1/try/negotiate/agreed',{agreement_sha256:N.sha256,compose:N.compose,turns:N.turns.length});
+      const f=await api('POST','/v1/try/negotiate/agreed',{agreement_sha256:N.sha256,compose:N.compose,turns:N.turns.length,agreement:N.agreement,keys:N.keys,offers:N.turns.map((t)=>({offer:t.offer,signature:t.signature}))});
       const inv=f.json&&f.json.invoice;
       if(f.status!==200||!inv||!inv.id){out.append(el('p','note',words(f.json,C.failed)));go.disabled=false;return}
       F.inv=inv;step(C.steps.file+' ('+N.compose.invoice_no+')','done');

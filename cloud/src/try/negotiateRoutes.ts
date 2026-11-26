@@ -17,7 +17,8 @@ import { readSwitches } from "./switches.js";
 import { z } from "zod";
 import { negotiate, recordedNegotiation, sceneFromInvoice, sceneOf, type BestOffer, type Negotiation, type Speak, type Turn } from "../../../src/negotiate/negotiate.js";
 import type { Scene } from "../../../src/negotiate/rails.js";
-import { agreedInvoiceNo, boundsOf, cents, money, normIban, policyOf } from "../../../src/negotiate/rails.js";
+import { agreedInvoiceNo, agreementSha256, boundsOf, canonicalAgreement, cents, money, normIban, policyOf, type Agreement } from "../../../src/negotiate/rails.js";
+import { chainProblem, offerSha256, type AgentKey, type SignedOffer } from "../../../src/negotiate/offers.js";
 import { supplierKey } from "../../../src/config/trySample.js";
 import type { EngineKit, EngineRoute } from "../engine/routes.js";
 import type { TryEngineCtx } from "./engineRoutes.js";
@@ -66,11 +67,25 @@ export function reasonWords(reason: CappedReason | "not_set_up" | "failed", deta
 
 export const NEGOTIATE_ROUTE = "POST /v1/try/negotiate";
 const Body = z.object({ invoice_id: z.string().min(1).max(80).optional() }).strict();
+const Str = (max: number) => z.string().max(max);
+const Key = z.object({ agent: Str(40), key_id: Str(40), public_key: Str(200), label: Str(200) }).strict();
+const SignedOfferBody = z.object({
+  offer: z.object({
+    schema: z.literal("purser.offer/v1"), negotiation: Str(40), n: Str(4), from: z.enum(["sourcing", "supplier"]), invoice_no: Str(64), currency: z.literal("EUR"),
+    invoice_amount: Str(32), amount: Str(32), discount: Str(32), pay_by: Str(32), payee: Str(64), accept: z.boolean(), message_sha256: Str(64), prev: Str(64).nullable(),
+  }).strict(),
+  signature: z.object({ v: z.literal(1), agent: Str(40), key_id: Str(40), method: Str(40), target: Str(120), body_sha256: Str(64), ts: Str(40), nonce: Str(40), sig: Str(120) }).strict(),
+}).strict();
 const Agreed = z.object({
   invoice_id: z.string().min(1).max(80).optional(),
   turns: z.number().int().min(1).max(4),
   agreement_sha256: z.string().regex(/^[0-9a-f]{64}$/),
   compose: z.object({ supplier_key: z.string().max(40), invoice_no: z.string().max(64), amount: z.string().max(32), issue_date: z.string().max(32), due_date: z.string().max(32), iban: z.string().max(64) }).strict(),
+  // 26 Nov review: the agreement as /v1/try/negotiate answered it, the agents' public keys and every signed offer, so
+  // the server checks the whole chain before anything is filed, and keeps the agreement and the offers' hashes with it.
+  agreement: z.record(z.string().max(40), z.union([Str(200), z.array(Str(40)).max(20)])).refine((a) => Object.keys(a).length <= 24),
+  keys: z.object({ sourcing: Key, supplier: Key }).strict(),
+  offers: z.array(SignedOfferBody).min(1).max(4),
 }).strict();
 
 /** Why the public recording is shown (GET /v1/try/negotiate/recorded?why=): the page's own words, never the caller's. */
@@ -86,8 +101,9 @@ export const RECORDED_WHY = {
  * under the company's start time, kept as long as the company's other lifetime counters: 1 while it may be filed, 0
  * once it was. The key holds everything the invoice is filed with, so another amount or date is another key.
  */
-const agreedKey = (tenant: string, invoiceId: string | null, sha256: string, turns: number, x: { invoice_no: string; amount: string; due_date: string; iban: string }) =>
-  `agreed:${tenant}:${invoiceId ?? ""}:${sha256}:${turns}:${x.invoice_no}:${x.amount}:${x.due_date}:${normIban(x.iban)}`;
+// The agents' key ids are in it too: the offers' signatures are checked with the keys this negotiation answered, no others.
+const agreedKey = (tenant: string, invoiceId: string | null, sha256: string, turns: number, x: { invoice_no: string; amount: string; due_date: string; iban: string }, keys: { sourcing: { key_id: string }; supplier: { key_id: string } }) =>
+  `agreed:${tenant}:${invoiceId ?? ""}:${sha256}:${turns}:${x.invoice_no}:${x.amount}:${x.due_date}:${normIban(x.iban)}:${keys.sourcing.key_id}:${keys.supplier.key_id}`;
 const bornOf = async (sql: Sql, tenant: string, now: Date) => {
   const row = await sql.first<{ created_at: string }>("SELECT created_at FROM try_companies WHERE tenant_id = ?", [tenant]);
   return Math.floor(Date.parse(row?.created_at ?? now.toISOString()) / 1000);
@@ -140,7 +156,7 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
       // An agreement is kept for /agreed, live or recorded alike (both are the terms the rails let stand), and so are terms
       // escalated to the CFO (outside the policy, inside the rails): the agent could not accept them; the CFO may sign them.
       const kept = async (n: Negotiation): Promise<Negotiation> => {
-        if (n.outcome !== "no_deal") await c.env.sql.run("INSERT INTO rate_hits (bucket, window_start, count) VALUES (?, ?, 1) ON CONFLICT(bucket, window_start) DO NOTHING", [agreedKey(tenant, invoiceId, n.sha256, n.turns.length, n.compose), born]);
+        if (n.outcome !== "no_deal") await c.env.sql.run("INSERT INTO rate_hits (bucket, window_start, count) VALUES (?, ?, 1) ON CONFLICT(bucket, window_start) DO NOTHING", [agreedKey(tenant, invoiceId, n.sha256, n.turns.length, n.compose, n.keys), born]);
         return n;
       };
       if (c.url.searchParams.get("stream") !== "1") return json(200, await kept(await run()));
@@ -161,12 +177,12 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
     // 15 Nov (jury run): the agreed terms filed. On the visitor's own invoice the agreed invoice REPLACES it (one payable,
     // one expense); on the page's seeded scene it is filed as the agreed one. Either way what was negotiated is recorded
     // with it, and the proof file carries it beside the signed terms.
-    { method: "POST", path: "/v1/try/negotiate/agreed", summary: "File a negotiation's agreed (or escalated) terms, { agreement_sha256, compose, turns, invoice_id? } as negotiated: the agreed invoice, ready to sign, replacing invoice_id's. Only terms this company negotiated, filed once. Answers { invoice, superseded }.", need: "admin", run: async (c) => {
+    { method: "POST", path: "/v1/try/negotiate/agreed", summary: "File a negotiation's agreed (or escalated) terms, { agreement_sha256, compose, turns, invoice_id?, agreement, keys, offers } as negotiated: the agreed invoice, ready to sign, replacing invoice_id's. Only terms this company negotiated, filed once; the signed offers must form one chain, each signed by its agent's key, ending at the offer the agreement names (409 broken_chain otherwise). The agreement and the offers' hashes are kept with the invoice and carried in its proof. Answers { invoice, superseded }.", need: "admin", run: async (c) => {
       const tenant = c.caller!.tenantId;
       if (!isTryTenant(tenant)) return err(403, "only a test company of the hands-on demo negotiates here");
       const e = c.env.engine?.(tenant);
       if (!e) return err(503, "the demo's engine is not set up");
-      const b = await kit.body(c, Agreed, 2_000);
+      const b = await kit.body(c, Agreed, 12_000);
       const today = c.now.toISOString().slice(0, 10);
       let sc: Scene = sceneOf(today);
       if (b.invoice_id) {
@@ -180,16 +196,26 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
       const fits = x.supplier_key === supplierKey(sc.supplier.name) && normIban(x.iban) === normIban(sc.supplier.iban) && x.invoice_no === agreedInvoiceNo(sc, b.agreement_sha256)
         && Number.isFinite(amt) && amt > 0 && amt < sc.amount_cents && /^\d{4}-\d{2}-\d{2}$/.test(x.due_date) && x.due_date >= today && x.due_date <= sc.due_date;
       if (!fits) throw new TryRefused(409, "not_the_agreement", "These terms are not an agreement on this invoice: the same supplier and account, the agreement's reference, less than the invoice, paid by its due date.");
+      // The agreement itself: the one hashed, on these terms; and the signed offers behind it, one unbroken chain of this
+      // negotiation, each signed by its agent's key, the last the one the agreement names.
+      const agreement = b.agreement as Agreement;
+      if (agreementSha256(agreement) !== b.agreement_sha256 || agreement.amount !== x.amount || agreement.pay_by !== x.due_date || agreement.invoice_no !== sc.invoice_no)
+        throw new TryRefused(409, "not_the_agreement", "These terms are not the agreement whose SHA-256 is named.");
+      const offers = b.offers as SignedOffer[];
+      const broken = offers.length !== b.turns ? `${offers.length} offers for ${b.turns} turns`
+        : await chainProblem({ offers, keys: b.keys as { sourcing: AgentKey; supplier: AgentKey }, head: String(agreement.transcript_sha256 ?? ""), invoice_no: sc.invoice_no });
+      if (broken) throw new TryRefused(409, "broken_chain", `The signed offers do not hold: ${broken}. Nothing was filed.`);
       // The agreement /v1/try/negotiate answered for this company and invoice, not filed yet: taken in one write, so two
       // filings at once cannot both have it. Given back when the filing below does not go through.
-      const key = agreedKey(tenant, b.invoice_id ?? null, b.agreement_sha256, b.turns, x);
+      const key = agreedKey(tenant, b.invoice_id ?? null, b.agreement_sha256, b.turns, x, b.keys);
       const born = await bornOf(c.env.sql, tenant, c.now);
       const taken = await c.env.sql.first<{ count: number }>("UPDATE rate_hits SET count = 0 WHERE bucket = ? AND window_start = ? AND count = 1 RETURNING count", [key, born]);
       if (!taken) throw new TryRefused(409, "not_the_agreement", "These terms are not an agreement this company negotiated, or they were filed already.");
       const giveBack = () => c.env.sql.run("UPDATE rate_hits SET count = 1 WHERE bucket = ? AND window_start = ?", [key, born]);
       // One engine action (src/engine/host.ts agreed): the original asked first, then the agreed invoice filed and recorded
       // as replacing it, withdrawn again when it cannot be. A bill never has two payable invoices.
-      const done = await e.agreed(x, { original_id: b.invoice_id ?? null, original_invoice_no: sc.invoice_no, original_amount: money(sc.amount_cents), agreement_sha256: b.agreement_sha256, turns: b.turns });
+      const done = await e.agreed(x, { original_id: b.invoice_id ?? null, original_invoice_no: sc.invoice_no, original_amount: money(sc.amount_cents), agreement_sha256: b.agreement_sha256, turns: b.turns,
+        agreement: canonicalAgreement(agreement), offers: offers.map((o) => offerSha256(o.offer)), keys: { sourcing: b.keys.sourcing.key_id, supplier: b.keys.supplier.key_id } });
       if ("refused" in done) { await giveBack(); return json(400, { error: done.refused.message, code: `invalid_${done.refused.field}`, message: done.refused.message, field: done.refused.field }); }
       if (!done.ok && done.code === "not_ready") { await giveBack(); return json(409, { error: done.reason, code: "not_ready", message: "The agreed invoice could not be filed as ready to pay; the original stands. Pay the invoice as issued instead.", ...(done.invoice ? { invoice: done.invoice } : {}) }); }
       if (!done.ok) { await giveBack(); return json(409, { error: done.reason, code: "not_recorded", message: `The agreed invoice could not replace the original: ${done.reason}. The original stands; nothing else is payable.` }); }
