@@ -2203,8 +2203,8 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   }
   // Site audit, 19 Nov: a file asked for with its content version (src/ui/assetVersions.ts) is cached for a year; else a day.
   const cacheFor = (name: VersionedAsset) => (url.searchParams.get("v") === ASSET_VERSIONS[name] ? IMMUTABLE_CACHE : DAY_CACHE);
-  // The console's font (Inter, src/ui/inter.woff2) is a static asset (npm run cloud:pdfjs copies it into cloud/public before a
-  // deploy), not base64 in the Worker: 26 Nov, the bundle reached Cloudflare's 3 MiB compressed limit.
+  // The console's font (Inter, src/ui/inter.woff2), not base64 in the Worker (26 Nov: the bundle reached Cloudflare's 3 MiB
+  // compressed limit): env.asset serves it from the site Worker (the SITE binding, cloud/src/worker.ts).
   if (url.pathname === "/assets/inter.woff2" && env.asset) {
     const r = await env.asset("/assets/inter.woff2");
     if (r && r.ok) return new Response(r.body, { status: 200, headers: { "content-type": "font/woff2", "cache-control": cacheFor("inter.woff2"), "x-content-type-options": "nosniff" } });
