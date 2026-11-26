@@ -131,6 +131,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
 | `GET /v1/agents` | read | The company's agents from its own records: job, Claude model as its runs recorded it, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only. |
+| `GET /v1/authority-map` | read | Who may pay what, per agent, as the runner last pushed it (`src/policy/authorityMap.ts`): what, rail, per payment, in all, from, to, when, under which grant and what needs the CFO; `{ authority_map: null }` before the first push. The console's Agents page shows it under each card. Read only. |
 | `GET /v1/partner-rails` | read | T:0 at every payment (each settled payment's T:0 entry, GL account, cost centre, agent, terms hash; the reconcile check against the rails) and each agent's payment token (id and last four, mandate, status, uses, refusals); the company's own records, else the recorded sandbox run, labelled; whether Wallet passes are configured. |
 | `GET /v1/agents/{id}/wallet-pass` | read | The agent card as an Apple Wallet pass (.pkpass): name, limits, the card's last four, status. 404 unless the owner configured passes. |
 | `POST /v1/agents/{id}/wallet-pass/link` | read | A 5-minute link to that pass, for Safari's Add to Apple Wallet. |
@@ -151,7 +152,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/dashboard` | read | The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words. |
 | `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier. |
 | `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |
-| `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys. |
+| `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows, the authority map (a snapshot under a strict schema, at most 128 KB; the newest per company is kept). Idempotent. Never passkeys. |
 | `GET /v1/sync/state` | sync | Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds. |
 | `GET /v1/mail/forwarding-confirmations` | admin | Gmail's forwarding confirmation codes that reached the company's address in the last seven days (code and Gmail address only), for setting up forwarding ([email-forwarding.md](integrations/email-forwarding.md)). |
 | `GET /v1/mail` | sync | Inbound e-mail waiting for the runner; paginated (limit, cursor). |

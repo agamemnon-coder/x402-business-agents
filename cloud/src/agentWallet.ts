@@ -24,10 +24,11 @@
 // NL, api, Expired and BRAND_LOGOS (cloud/src/connectionsView.ts).
 
 import { ALTA_AGENTS, CARD_ART_CSS, CARD_PRESETS, DEFAULT_STYLE, FEATHER_D, LOGO_MAX, PRESET_NAMES, RELIEF } from "./agentCardArt.js";
+import { AUTHORITY_JS } from "./authorityView.js";
 
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
-export const WALLET_JS = String.raw`
+export const WALLET_JS = AUTHORITY_JS + String.raw`
 // --- Agents as cards (23 Nov) -----------------------------------------------------------------------------------------
 const CARD_PRESETS=` + json(CARD_PRESETS) + String.raw`;
 const PRESET_NAMES=` + json(PRESET_NAMES) + String.raw`;
@@ -311,7 +312,7 @@ async function agentDeck(recs,ctx){
     const more=el('button','dk-line wmore',[el('span','',dw('details')),ic('chevron-right')]);more.type='button';more.setAttribute('aria-label',x.face.name+': '+dw('details'));more.setAttribute('aria-haspopup','dialog');more.setAttribute('aria-expanded','false');more.onclick=()=>openDrawer(x,ctx);
     // The negotiation has its own band below the cards, and a button in the Sourcing agent's drawer.
     const acts=[x.rec?(()=>{const b=phoneBtn(x,ctx);b.classList.add('mini');return b})():null].filter(Boolean);
-    const it=el('article','dk-item'+(x.at?' on':''),[open,cardMeta(x.face,more),acts.length?el('div','dk-acts',acts):null]);it.id='roster-'+x.r.id;return it}));fillMeters(grid)};
+    const it=el('article','dk-item'+(x.at?' on':''),[open,cardMeta(x.face,more),acts.length?el('div','dk-acts',acts):null,authorityOf(x.r.id)]);it.id='roster-'+x.r.id;return it}));fillMeters(grid)};
   draw();DECK_REDRAW=draw;
   const designBtn=btn(dw('design'),'','');designBtn.prepend(dkIc('palette'));designBtn.onclick=()=>openDesign(items);
   return {items,grid,designBtn}}

@@ -22,6 +22,7 @@ const COLUMNS = {
   erasures: ["id", "subject", "done_at", "done_by", "detail"],
   push_log: ["id", "by_key", "at"],
   runner_health: ["id", "at", "status", "alerts_json"],
+  authority_maps: ["id", "at", "policy_sha256", "body_json", "body_sha256", "received_at"],
   webhooks: ["id", "url", "secret", "created_at", "created_by", "consecutive_failures", "last_attempt_at", "last_status", "disabled_at"],
   security_events: ["id", "at", "kind", "actor", "detail_json"],
   exports: ["id", "status", "created_at", "expires_at", "created_by", "parts_json", "bytes", "downloaded_at"],

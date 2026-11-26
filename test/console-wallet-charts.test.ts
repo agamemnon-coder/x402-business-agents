@@ -19,9 +19,10 @@ describe("the agents' cards (23 Nov)", () => {
   it("show the card's last four only, never a card number, a CVV or a way to move money", () => {
     expect(WALLET_JS).toContain("'•••• '+x.last4"); // 26 Nov (the owner): "•••• 4002", the last four only
     expect(WALLET_JS).not.toMatch(/card_number|cvv|\bpan\b/i);
-    // Its only calls: the design (read, and saved by an owner), the phone link, the Wallet pass link, the recorded negotiation.
+    // Its only calls: the design (read, and saved by an owner), the phone link, the Wallet pass link, the recorded
+    // negotiation, and the authority map under each card (read, cloud/src/authorityView.ts).
     const calls = [...WALLET_JS.matchAll(/api\('([^']+)'/g)].map((m) => m[1]).sort();
-    expect(calls).toEqual(["/v1/agents/", "/v1/agents/", "/v1/card-design", "/v1/card-design", "/v1/negotiation/recorded"]);
+    expect(calls).toEqual(["/v1/agents/", "/v1/agents/", "/v1/authority-map", "/v1/card-design", "/v1/card-design", "/v1/negotiation/recorded"]);
     expect(WALLET_JS).not.toMatch(/cardAct\(|navigator\.credentials|\/v1\/cards\/actions/);
   });
   it("draw from data as text, never as markup", () => {
