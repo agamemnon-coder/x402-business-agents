@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # The autopilot
+
+**Every pending supplier invoice one step forward, until nothing can move without a person.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![The autopilot decides nothing new: the same functions and checks as a person's commands](https://img.shields.io/badge/decides-nothing_new-8b5cf6?style=flat-square&labelColor=1f2937)](#the-autopilot)&nbsp;[![Every supplier payment waits for the CFO's Face ID](https://img.shields.io/badge/every_supplier_payment-waits_for_Face_ID-f59e0b?style=flat-square&labelColor=1f2937)](#what-waits-for-a-person)&nbsp;[![Every step writes one audit row, autopilot.step](https://img.shields.io/badge/audit-one_row_per_step-10b981?style=flat-square&labelColor=1f2937)](#what-it-does-step-by-step)&nbsp;[![The task token: tested on stand-in rails, not run against the sandbox](https://img.shields.io/badge/task_token-stand--in_rails%2C_not_the_sandbox-f59e0b?style=flat-square&labelColor=1f2937)](#what-waits-for-a-person)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Step by step](#what-it-does-step-by-step) · [What waits for a person](#what-waits-for-a-person) · [Running it](#running-it) · [Ledger](ledger.md) · [Moneybird](moneybird.md)
+
+</div>
 
 `npm run autopilot` takes every pending supplier invoice one step forward by itself, until nothing can move without a
 person. It decides nothing new: each step calls the function a person's command calls today, with the same checks.
@@ -25,6 +37,23 @@ Each pass looks at the ledger and takes every item that can move one step:
    runner, and the lines of a payment batch are always the runner's: the CFO approves the batch, the runner pays it.
 7. **Follows the payments**, then posts the ledger, files the vault and, when `--erp <connector>` is given, sends the books
    to that bookkeeping package.
+
+```mermaid
+flowchart LR
+  P1["1 · Finish what a stop<br/>left half done"] --> P2["2 · Take in new files<br/>watched folders"]
+  P2 --> P3["3 · Book the accrual"] --> P4["4 · Ask for a new supplier"]
+  P4 --> P5["5 · Plan the payment<br/>file it for Face ID"] --> P6["6 · Execute what<br/>the CFO approved"]
+  P6 --> P7["7 · Follow the payments<br/>ledger, vault, ERP"]
+  P4 -. "waits" .-> H["A person checks the account<br/>with the supplier"]
+  P5 -. "waits" .-> FID["The CFO's Face ID"]
+  FID --> P6
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  class P1,P2,P3,P4,P5 purser
+  class H,FID wait
+  class P6,P7 ok
+```
 
 Every step writes one audit row, `autopilot.step`, with the item, the step, the outcome and how long it took. A pass
 with nothing to do writes no audit row (it only renews its lease now and then).
