@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Outside agents and the ERP export
+
+**How an outside AI agent works under the CFO's policy, an x402 endpoint to try with test money, and the GL export for an ERP.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![MCP on stdio: five tools](https://img.shields.io/badge/MCP-stdio_%C2%B7_5_tools-6366f1?style=flat-square&labelColor=1f2937)](#outside-agents-the-agent-api-mcp)&nbsp;[![Every card and limit raise approved with the CFO's Face ID](https://img.shields.io/badge/approval-the_CFO%27s_Face_ID-8b5cf6?style=flat-square&labelColor=1f2937)](#outside-agents-the-agent-api-mcp)&nbsp;[![x402: 0.01 test *USDZ on Metal testnet](https://img.shields.io/badge/x402-0.01_test_%2AUSDZ_%C2%B7_Metal_testnet-0d9488?style=flat-square&labelColor=1f2937)](#try-it-yourself-an-x402-endpoint-test-money-metal-testnet)&nbsp;[![Settling on testnet: off by default](https://img.shields.io/badge/testnet_settle-off_by_default-f59e0b?style=flat-square&labelColor=1f2937)](#try-it-yourself-an-x402-endpoint-test-money-metal-testnet)&nbsp;[![The books: double entry, checked by a property test](https://img.shields.io/badge/books-double_entry_%C2%B7_property--tested-10b981?style=flat-square&labelColor=1f2937)](#the-books-double-entry)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[The agent API](#outside-agents-the-agent-api-mcp) · [Try x402](#try-it-yourself-an-x402-endpoint-test-money-metal-testnet) · [GL export](#gl-coding-and-export-for-the-erp) · [The books](#the-books-double-entry) · [MCP reference](mcp.md)
+
+</div>
 
 Moved from the project README. Back to the [README](../README.md).
 
@@ -32,6 +44,28 @@ the object (`refused_by`, then `reason` and `next_tool`, or Purser's `code`) is 
 The repository includes a Skill file (the open SKILL.md format) for agents that use the agent API:
 [skills/purser-spend/SKILL.md](../skills/purser-spend/SKILL.md).
 
+```mermaid
+sequenceDiagram
+  autonumber
+  participant A as Outside agent
+  participant P as Purser (MCP, stdio)
+  participant C as CFO's phone
+  participant R as Runner
+  participant X as Airwallex (sandbox)
+  rect rgba(139, 92, 246, 0.14)
+    A->>P: request_company_card (the limits it needs)
+    P->>C: a proposal
+    C-->>P: approved with Face ID
+    P->>R: approved
+    R->>X: issue the virtual card
+  end
+  rect rgba(14, 165, 233, 0.14)
+    A->>P: pay_with_card
+    P->>X: charge the card
+    X-->>A: approved or declined against the card's limits
+  end
+```
+
 The agent cannot approve, set a limit, or reach another agent's card. Once its card is issued:
 
 - its limits are part of the CFO policy, and the phone may tighten them;
@@ -53,6 +87,23 @@ header (base64) and in the body:
 
 ```sh
 curl -i https://kit11.max-31b.workers.dev/x402/proof
+```
+
+```mermaid
+flowchart LR
+  GET["GET /x402/proof<br/>no payment"] --> Q["HTTP 402<br/>the x402 v2 requirements"]
+  Q --> PAY["Pay: a local stand-in<br/>nothing moves"]
+  PAY --> OK["The signed receipt of awx-1"]
+  PAY -- "the same nonce again" --> N["409, refused"]
+  PAY -- "a wrong amount" --> W["402, refused"]
+  classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  class Q wait
+  class GET,PAY purser
+  class OK ok
+  class N,W stop
 ```
 
 Pay with a local stand-in payment. No money moves, and the answer says so. A second use of the same nonce is
