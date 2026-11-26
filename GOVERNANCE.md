@@ -155,6 +155,23 @@ how: [CONTRIBUTING.md](CONTRIBUTING.md#sign-off-developer-certificate-of-origin)
 ([dco.yml](.github/workflows/dco.yml)) warns on a pull request with an unsigned commit; it does not fail it yet, because
 the history before 19 November has no sign-offs. It becomes blocking once the ruleset on `main` is in place.
 
+## Governing the product: AI, money and compliance
+
+This document governs the project. How the product itself is governed, who may approve a payment, change a limit or
+stop the agents, and with which signature, is in [docs/governance.md](docs/governance.md#who-can-change-what-and-with-which-signature).
+The maintainer is also the AI system owner and the incident lead, and keeps these documents, each with a version and a
+review date ([docs/compliance/README.md](docs/compliance/README.md)):
+
+| Document | What it governs | Review by |
+|---|---|---|
+| [AI policy](docs/compliance/ai-policy.md) | No model output moves money; roles, human oversight, acceptable use of Claude agents | 26 May 2027 |
+| [AI impact assessment](docs/compliance/ai-impact-assessment.md) | Risks per agent and feature, scored, mitigated, with a register of owners | 26 May 2027 |
+| [Incident response](docs/compliance/incident-response.md) | Severity classes from audit events, the runbook, who is told | 26 May 2027 |
+| [Third-party register](docs/compliance/third-parties.md) and [exit plans](docs/compliance/exit-plans.md) | Every outside service the code calls, and how to leave it | 26 May 2027 |
+
+With one maintainer, each of these has one author and no second reviewer: the same shortfall as the code's, said in
+[controls.md](docs/compliance/controls.md).
+
 ## Changing this document
 
 A change to this document is a pull request like any other, merged by the maintainer; once there are two maintainers,

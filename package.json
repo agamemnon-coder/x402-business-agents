@@ -76,6 +76,7 @@
     "compliance-evidence": "tsx src/cli/complianceEvidence.ts",
     "verify-compliance-evidence": "tsx src/cli/verifyComplianceEvidence.ts",
     "compliance:controls": "tsx src/cli/complianceControls.ts",
+    "retention": "tsx src/cli/retention.ts",
     "verify-log": "tsx src/cli/verifyLog.ts",
     "verify-approval-page": "tsx src/cli/verifyApprovalPage.ts",
     "approval-page-record": "tsx src/cli/approvalPageRecord.ts",

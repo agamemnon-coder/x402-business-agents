@@ -91,9 +91,24 @@ describe("compliance evidence", () => {
   it("is the example docs/compliance/README.md shows (test data), number for number", () => {
     const s = JSON.parse(ev.files["summary.json"]!) as EvidenceSummary;
     const readme = readFileSync("docs/compliance/README.md", "utf8");
-    const names: Record<string, string> = { "eu-ai-act": "EU AI Act", "iso-42001": "ISO/IEC 42001", soc2: "SOC 2", dora: "DORA" };
+    const names: Record<string, string> = { "eu-ai-act": "EU AI Act", "iso-42001": "ISO/IEC 42001", soc2: "SOC 2", dora: "DORA", "psd2-sca": "PSD2 SCA", gdpr: "GDPR", eidas: "eIDAS", nis2: "NIS2", "iso-27001": "ISO/IEC 27001" };
     for (const f of s.frameworks) expect(readme, f.framework).toContain(`| ${names[f.framework]} | ${f.requirements} | ${f.evidence_in_period} | ${f.no_records_in_period} | ${f.documented} | ${f.gap} |`);
     expect(s.controls.filter((c) => c.status === "no-records-in-period").map((c) => c.id)).toContain("PC-12");
+    expect(readme).toContain(`*${s.oversight.line}*`);
+  });
+
+  // EU AI Act Art. 14(4)(b), 26 Nov: the approval page's signal, counted from PC-26's cited rows (test data: one approval
+  // signed after opening Details, one without). The verifier recomputes it from the control's file.
+  it("gives the automation-bias signal: approvals signed with the rationale viewed, n/m", () => {
+    const s = JSON.parse(ev.files["summary.json"]!) as EvidenceSummary;
+    expect(s.oversight).toEqual({ control: "PC-26", approvals_reported: 2, rationale_viewed: 1, line: "approvals signed with the rationale viewed: 1/2" });
+    expect(byEvent(ev, "PC-26")).toEqual({ "approval.rationale_not_viewed": 1, "approval.rationale_viewed": 1 });
+    expect(control(ev, "PC-26").audit!.records.find((r) => r.event === "approval.rationale_viewed")!.subject).toBe(world.ids.paid);
+    // A summary that says more than the files give is caught, even signed again over it.
+    const forged = JSON.parse(ev.files["summary.json"]!) as EvidenceSummary;
+    forged.oversight = { ...forged.oversight, rationale_viewed: 2, line: "approvals signed with the rationale viewed: 2/2" };
+    const sealed = sealComplianceEvidence({ ...ev.files, "summary.json": `${JSON.stringify(forged, null, 1)}\n` }, { key });
+    expect(failed(verifyComplianceEvidence(sealed, { trusted: [pub] })).summary).toMatch(/oversight says "approvals signed with the rationale viewed: 2\/2", the controls' files give "approvals signed with the rationale viewed: 1\/2"/);
   });
 
   it("is the same, byte for byte, when made again over the same ledger and period", () => {

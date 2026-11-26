@@ -6,11 +6,12 @@ import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
 import { beforeAll, describe, expect, it } from "vitest";
 import { rawPublicKey, keyIdOf } from "../src/audit/checkpoint.js";
 import { audit } from "../src/audit/log.js";
-import { buildAuditPack, verifyAuditPack, type AuditPack, type PackResult } from "../src/audit/pack.js";
+import { buildAuditPack, deriveRules, verifyAuditPack, type AuditPack, type PackResult } from "../src/audit/pack.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executePolicyChange, proposePolicyChange } from "../src/executors/policyChange.js";
 import { TERMS_SCHEMA } from "../src/lib/terms.js";
 import { createProposal, decide, nextProposalId } from "../src/policy/approvals.js";
+import { ANOMALY_HELD } from "../src/policy/anomaly.js";
 import { approveSigned, testPasskey } from "./support/signedApproval.js";
 
 const OCT = new Date("2026-10-20T09:00:00Z");
@@ -179,6 +180,19 @@ describe("signed audit pack", () => {
     db.exec("DROP TRIGGER IF EXISTS audit_log_no_update");
     db.prepare("UPDATE audit_log SET subject = 'R-8' WHERE subject = 'R-7'").run();
     expect(() => buildAuditPack(db, NOVEMBER, { key })).toThrow(/the audit log does not verify at row \d+ \(row_hash does not match the row\)/);
+  });
+
+  // 26 Nov: the pattern was `\.held$`, so `payment.anomaly_held` (an underscore, not a dot) never reached the section.
+  it("sorts a hold named with an underscore into refusals_holds too: the anomaly hold", () => {
+    const rule = deriveRules().refusals_holds;
+    const holds = (e: string) => rule.events.includes(e) || rule.patterns.some((p) => new RegExp(p).test(e));
+    expect([ANOMALY_HELD, "sweep.held", "refund.held", "refund.already_held", "quarantine.held", "spend.held"].filter((e) => !holds(e))).toEqual([]);
+    expect(["proposal.created", "policy.version", "claude.read", "payment.rationale"].filter(holds)).toEqual([]);
+    const { db } = seededWorld();
+    audit(db, "system", ANOMALY_HELD, "P-9001", { proposal_id: "P-9001", agent: "payer", reasons: ["7.0 times the median (test data)"] }, NOV(12, 11));
+    const p = buildAuditPack(db, NOVEMBER, { key });
+    expect(p.sections.refusals_holds.map((e) => `${e.event} ${e.subject}`)).toContain(`${ANOMALY_HELD} P-9001`);
+    expect(failed(verifyAuditPack(copy(p), { trusted: [pub] }))).toEqual({});
   });
 
   it("an empty period verifies too: no rows, the whole chain as links", () => {
