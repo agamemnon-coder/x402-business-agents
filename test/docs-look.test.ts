@@ -14,9 +14,10 @@ const read = (p: string) => readFileSync(`${ROOT}${p}`, "utf8");
 const exists = (p: string) => existsSync(`${ROOT}${p}`);
 
 /** The pages redesigned in the house style, each with the centred header. */
-export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md", "docs/architecture.md", "docs/how-it-works.md", "docs/security.md", "docs/cloud.md", "docs/agents.md", "docs/airwallex.md"];
-/** Pages that carry the house-style badges but keep a header of their own (docs/README.md: test/readme-headers.test.ts). */
-const BADGED = [...STYLED, "docs/README.md"];
+export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md", "docs/architecture.md", "docs/how-it-works.md", "docs/security.md", "docs/cloud.md", "docs/agents.md", "docs/airwallex.md",
+  "docs/README.md"];
+/** Pages that carry the house-style badges (the judge-facing READMEs' header is test/readme-headers.test.ts's). */
+const BADGED = [...new Set([...STYLED, "docs/README.md"])];
 
 const withoutFences = (md: string) => md.replace(/^(```|~~~)[\s\S]*?^\1/gm, "");
 const withoutCode = (md: string) => withoutFences(md).replace(/`[^`\n]*`/g, "``");
@@ -74,8 +75,8 @@ describe("the Markdown pages in the README's house style", () => {
     const md = read(f);
     const head = md.slice(0, md.indexOf("</div>"));
     expect(md.startsWith('<div align="center">\n\n')).toBe(true);
-    const up = f.startsWith("docs/") ? "" : "docs/";
-    expect(head).toContain(`<picture><source media="(prefers-color-scheme: dark)" srcset="${up}assets/brand/purser-mark-dark.svg"><img src="${up}assets/brand/purser-mark.svg" alt="Purser"`);
+    const rel = posix.relative(posix.dirname(f), "docs/assets/brand"), up = rel ? `${rel}/` : "";
+    expect(head).toContain(`<picture><source media="(prefers-color-scheme: dark)" srcset="${up}purser-mark-dark.svg"><img src="${up}purser-mark.svg" alt="Purser"`);
     expect(head.match(/^# \S.*$/gm) ?? []).toHaveLength(1);
     expect(md.match(/^# /gm) ?? []).toHaveLength(1);
     expect(head).toMatch(/^\*\*[^*\n]+\*\*$/m);
