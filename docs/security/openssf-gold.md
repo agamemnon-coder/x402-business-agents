@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # OpenSSF Best Practices: the gold level, criterion by criterion
+
+**Each of the 23 gold criteria checked against the repository, with an answer ready to paste and what still stands in the way.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)&nbsp;[![Gold criteria: 20 Met, 3 Unmet, 0 N/A](https://img.shields.io/badge/gold_criteria-20_Met_%C2%B7_3_Unmet_%C2%B7_0_N%2FA-8b5cf6?style=flat-square&labelColor=1f2937)](#every-criterion)&nbsp;[![Gold not reachable yet: three MUSTs need a second, unaffiliated person](https://img.shields.io/badge/gold-not_reachable_yet_%C2%B7_one_maintainer-f59e0b?style=flat-square&labelColor=1f2937)](#still-unmet-and-why)&nbsp;[![SLSA Build Level 3 provenance from the next release on](https://img.shields.io/badge/SLSA_Build_Level_3-from_the_next_release_on-0ea5e9?style=flat-square&labelColor=1f2937)](#slsa-build-level-3-from-the-next-release-on)
+
+[For the owner](#voor-de-eigenaar-nederlands-wat-jij-moet-doen) · [Still Unmet](#still-unmet-and-why) · [SLSA Build L3](#slsa-build-level-3-from-the-next-release-on) · [Every criterion](#every-criterion) · [Silver](openssf-silver.md) · [Security index](README.md)
+
+</div>
 
 Purser is project [16923](https://www.bestpractices.dev/projects/16923) on bestpractices.dev, at the *silver* level
 since 19 November 2026 ([openssf-silver.md](openssf-silver.md)). This page checks each of the 23 gold criteria against
@@ -13,6 +25,16 @@ every MUST to be Met, so gold is not reachable yet. Three MUSTs stay Unmet, and 
 has one maintainer. `test_statement_coverage90` and `test_branch_coverage80` are Met since the evening of 19 November:
 the suite covers 92.0% of statements and 81.9% of branches of the product (20 November), with tests that check behaviour, not
 lines that only run ([docs/evidence/coverage.md](../evidence/coverage.md)).
+
+```mermaid
+%%{init: {"themeVariables": {"pie1": "#10b981", "pie2": "#f43f5e"}}}%%
+pie showData
+  title The 23 gold criteria, 19 November 2026
+  "Met" : 20
+  "Unmet" : 3
+```
+
+<sub>Record: [every criterion below](openssf-gold.md#every-criterion), counted by `test/docs-charts.test.ts` from their headings: 20 Met, 3 Unmet (`bus_factor`, `contributors_unassociated`, `two_person_review`), 0 N/A.</sub>
 
 ## Voor de eigenaar (Nederlands): wat jij moet doen
 

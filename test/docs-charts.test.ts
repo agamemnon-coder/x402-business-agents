@@ -140,6 +140,17 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`/badge/wrong_payments%2C_worst_case-${wrong[2]!.trim()}_%E2%86%92_${wrong[3]!.trim()}-`);
   });
 
+  it("docs/security/openssf-gold.md: the criteria chart counts the criteria headings", () => {
+    const md = read("docs/security/openssf-gold.md");
+    const crit = [...md.matchAll(/^#### `([a-z0-9_A-Z]+)` \((MUST|SHOULD|SUGGESTED)\): \*\*(Met|Unmet|N\/A)\*\*/gm)].map((m) => ({ id: m[1]!, status: m[3]! }));
+    const n = (s: string) => crit.filter((c) => c.status === s).length;
+    const unmet = crit.filter((c) => c.status === "Unmet").map((c) => `\`${c.id}\``);
+    expect(crit.length).toBe(23);
+    expect(md).toContain(`  "Met" : ${n("Met")}\n  "Unmet" : ${n("Unmet")}\n`);
+    expect(md).toContain(`${n("Met")} Met, ${n("Unmet")} Unmet (${unmet.join(", ")}), ${n("N/A")} N/A.`);
+    expect(md).toContain(`/badge/gold_criteria-${n("Met")}_Met_%C2%B7_${n("Unmet")}_Unmet_%C2%B7_${n("N/A")}_N%2FA-`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
