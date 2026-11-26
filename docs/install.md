@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Install, quick start and uninstall
+
+**Install Purser, do something with it in five minutes, set up a development environment, and remove it again.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Node.js 22.13 or newer, or 24](https://img.shields.io/badge/Node.js-22.13%2B_or_24-339933?style=flat-square&labelColor=1f2937)](#quick-start-no-keys-offline)&nbsp;[![Quick start: no keys, no network beyond npm](https://img.shields.io/badge/quick_start-no_keys_%C2%B7_offline-10b981?style=flat-square&labelColor=1f2937)](#quick-start-no-keys-offline)&nbsp;[![Three forms: the code, the MCP connector, the Claude Code plugin](https://img.shields.io/badge/forms-code_%C2%B7_MCP_connector_%C2%B7_Claude_Code_plugin-8b5cf6?style=flat-square&labelColor=1f2937)](#install-quick-start-and-uninstall)&nbsp;[![Nothing installed system-wide](https://img.shields.io/badge/system--wide_installs-none-0ea5e9?style=flat-square&labelColor=1f2937)](#where-purser-writes)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Quick start](#quick-start-no-keys-offline) · [Development](#the-development-environment) · [Running it live](#running-it-live-sandbox-and-testnet-keys) · [Where Purser writes](#where-purser-writes) · [Uninstall](#uninstall) · [MCP connector](#the-mcp-connector) · [Claude Code plugin](#the-claude-code-plugin)
+
+</div>
 
 How to install Purser, do something with it in five minutes, set up a development environment, and remove it again.
 Written on 19 November 2026. Test money only: nothing here touches real money, and the quick start needs no key and no
@@ -21,6 +33,24 @@ git clone https://github.com/agamemnon-coder/x402-business-agents.git
 cd x402-business-agents
 npm ci                       # installs exactly the lockfile's versions
 npm run judge                # serves the recorded demo, the simulated month and the hands-on /try at http://127.0.0.1:4311
+```
+
+```mermaid
+flowchart LR
+  C["git clone"] --> CI["npm ci<br/>the lockfile's versions"] --> J["npm run judge<br/>http://127.0.0.1:4311"]
+  J --> T["/try<br/>pick an invoice"]
+  T -- "within the limit" --> P["The agent pays"]
+  T -- "above the limit" --> K["You approve<br/>with your own passkey"]
+  K --> CENT["One changed cent<br/>refused"]
+  K --> PR["The proof downloads"]
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  class C,CI,J rails
+  class T,K purser
+  class P,PR ok
+  class CENT stop
 ```
 
 Open `/try`: pick an invoice, the agent pays it within its limit; above the limit you approve with your own passkey,
