@@ -1,7 +1,9 @@
-// /business, "For companies", and /one-pager, its printable sales sheet. Since 22 Nov (Max: "far too much text"; then
-// "still too much, the demo duplicates Home"), /business is only the question, one line, one small animated visual
-// (./businessVisuals.ts) and the pilot's sign-up form, which opens the visitor's own mail app with the fields filled in
-// (pilotMailto, PILOT_JS): no network request, nothing stored. /one-pager keeps the whole story on one A4 page.
+// /business, "For companies", and /one-pager, its printable sales sheet. Since 26 Nov (Max: "way too simple and amateur
+// … widgets, animations, architecture"), /business is a landing page of few words and strong visuals
+// (./businessVisuals.ts): the headline with an animated console of one invoice going through Purser, the architecture,
+// five controls each with its record, and the pilot with a short sign-up form, which opens the visitor's own mail app
+// with the fields filled in (pilotMailto, PILOT_JS): no network request, nothing stored. Every value in a visual is read
+// from a run record or the code. /one-pager keeps the whole story on one A4 page.
 // Nothing is invented:
 //   - every price on /one-pager is read from src/config/pricing.ts (pilot prices; nothing is on sale yet);
 //   - its proof tiles are Home's, read from the run records (src/redesign/home.ts proofTiles);
@@ -18,7 +20,7 @@ import { CLOUD_SETUP_URL, START_STEPS, proofTiles, type ProofTile } from "./home
 import { PRICING_LEAD } from "./pricing.js";
 import { residency } from "./privacy.js";
 import { repoHref, siteLink } from "./productPage.js";
-import { BUSINESS_LINE, BUSINESS_QUESTION } from "./businessVisuals.js";
+import { BUSINESS_LINE, BUSINESS_QUESTION, VISUALS_CSS, archHtml, bentoHtml, bentoTiles, businessFacts, consoleHtml, type BusinessFacts } from "./businessVisuals.js";
 import { TRY_URL, esc, icon, page } from "./ui.js";
 import { picon } from "./proofIcons.js";
 
@@ -194,37 +196,64 @@ export const PILOT_JS = `(function () {
 /** Three points under the form, each true of the pilot as it is offered (FOUNDING_POINTS, PILOT_AGREEMENT). */
 export const PILOT_TRUST: readonly [string, string][] = [["flask-conical", "Test money only"], ["credit-card", "No card, no billing"], ["file-check", "Written agreement"]];
 
-const PAGE_CSS = `body { background: var(--bg); }
-main.bzp { position: relative; isolation: isolate; overflow: hidden; min-height: calc(100vh - 140px); min-height: calc(100svh - 140px); display: grid; align-items: center; }
-/* The ground: one large, soft violet glow that drifts slowly, over a faint grid fading out from the middle. */
-main.bzp::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 46%; width: min(1100px, 130vw); height: min(760px, 110vw); translate: -50% -50%; pointer-events: none; border-radius: 50%;
+/** /business's own style (its visuals' with it): the site's base comes from page(). */
+export const PAGE_CSS = `body { background: var(--bg); }
+main.bzp { position: relative; isolation: isolate; overflow: hidden; }
+/* The ground: the soft violet glow behind the hero (it drifts slowly) over a faint grid fading out; a second, quieter
+   glow behind the pilot. */
+main.bzp::before { content: ""; position: absolute; z-index: -1; left: 62%; top: 380px; width: min(1200px, 140vw); height: min(820px, 120vw); translate: -50% -50%; pointer-events: none; border-radius: 50%;
   background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 34%, transparent), color-mix(in srgb, var(--accent-ink) 14%, transparent) 55%, transparent);
   filter: blur(60px); opacity: .9; }
-main.bzp::after { content: ""; position: absolute; z-index: -2; inset: 0; pointer-events: none;
+main.bzp::after { content: ""; position: absolute; z-index: -2; left: 0; right: 0; top: 0; height: 1000px; pointer-events: none;
   background-image: linear-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px);
-  background-size: 56px 56px; -webkit-mask-image: radial-gradient(60% 55% at 50% 45%, #000, transparent); mask-image: radial-gradient(60% 55% at 50% 45%, #000, transparent); }
+  background-size: 56px 56px; -webkit-mask-image: radial-gradient(60% 50% at 60% 34%, #000, transparent); mask-image: radial-gradient(60% 50% at 60% 34%, #000, transparent); }
 @media (prefers-reduced-motion: no-preference) { main.bzp::before { animation: bz-drift 18s ease-in-out infinite alternate; } }
 @keyframes bz-drift { from { translate: -56% -52%; scale: 1; } to { translate: -44% -46%; scale: 1.08; } }
-@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) main.bzp::before { opacity: .55; } }
-:root[data-theme="light"] main.bzp::before { opacity: .55; }
-.bzp .wrap { max-width: 1120px; }
-.bzx { padding: clamp(40px, 9vh, 120px) 0; }
-.bzx-g { display: grid; gap: 40px; grid-template-columns: minmax(0, 1fr); align-items: center; }
-@media (min-width: 980px) { .bzx-g { grid-template-columns: minmax(0, 1fr) minmax(380px, 420px); gap: clamp(48px, 7vw, 112px); } }
-.bzx-pill { margin: 0; }
-.bzx h1 { margin: 22px 0 0; font-size: clamp(40px, 4.7vw, 68px); font-weight: 760; letter-spacing: -.045em; line-height: .98; max-width: 10.5em; text-wrap: balance; }
-.bzx-a { margin: 22px 0 0; max-width: 26em; font-size: clamp(17px, 1.4vw, 20px); line-height: 1.5; color: var(--muted); }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) main.bzp::before { opacity: .5; } }
+:root[data-theme="light"] main.bzp::before { opacity: .5; }
+.bzp .wrap { max-width: 1160px; }
+.bzp section { position: relative; }
+/* The hero: the words on the left, the console on the right. */
+.bzx { padding: clamp(48px, 9vh, 104px) 0 clamp(64px, 10vh, 112px); }
+.bzx-g { display: grid; gap: 48px; grid-template-columns: minmax(0, 1fr); align-items: center; }
+@media (min-width: 1000px) { .bzx-g { grid-template-columns: minmax(0, 1fr) minmax(440px, 500px); gap: clamp(40px, 5vw, 80px); } }
+.bzx h1 { margin: 22px 0 0; font-size: clamp(40px, 4.25vw, 62px); font-weight: 770; letter-spacing: -.045em; line-height: 1; }
+.bzx h1 span { display: block; text-wrap: balance; }
+.bzx h1 span + span { background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .06em; }
+.bzx-a { margin: 22px 0 0; max-width: 27em; font-size: clamp(17px, 1.4vw, 20px); line-height: 1.5; color: var(--muted); }
+.bzx-c { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.bzx-c .btn { height: 54px; padding: 0 24px; font-size: 16.5px; }
+.bzx-c .btn.ghost:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-line)); }
+ul.bzt { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+ul.bzt li { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 550; color: var(--muted); white-space: nowrap; }
+ul.bzt li .i { width: 15px; height: 15px; color: var(--accent); }
+/* A section: an eyebrow, one heading, its visual. */
+.bzs { padding: clamp(72px, 11vh, 120px) 0; }
+.bzs::before { content: ""; position: absolute; top: 0; left: 50%; translate: -50% 0; width: min(1160px, 92vw); height: 1px; background: linear-gradient(90deg, transparent, var(--border) 18%, var(--border) 82%, transparent); }
+.bz-e { margin: 0 0 14px; font: 600 13px/1.4 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+.bz-e::before { content: ""; display: inline-block; width: 22px; height: 1px; margin-right: 12px; vertical-align: .3em; background: linear-gradient(90deg, transparent, currentColor); }
+.bz-h { margin: 0; font-size: clamp(30px, 3.8vw, 50px); line-height: 1.04; font-weight: 760; letter-spacing: -.038em; max-width: 17em; text-wrap: balance; }
+/* The pilot: the question, the four steps, and the form. */
+.bzpl::after { content: ""; position: absolute; z-index: -1; right: 4%; top: 52%; width: min(760px, 110vw); height: min(620px, 100vw); translate: 0 -50%; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 24%, transparent), transparent); filter: blur(50px); opacity: .8; }
+.bzpl-g { display: grid; gap: 44px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 1000px) { .bzpl-g { grid-template-columns: minmax(0, 1fr) minmax(400px, 440px); gap: clamp(48px, 6vw, 96px); align-items: center; } }
+ol.bzst { list-style: none; margin: 34px 0 0; padding: 0; display: grid; gap: 0; }
+.bzst li { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 2px 16px; padding-bottom: 22px; }
+.bzst li:not(:last-child)::before { content: ""; position: absolute; left: 21px; top: 46px; bottom: 2px; width: 2px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 55%, transparent), var(--border)); }
+.bzst .n { grid-row: 1 / 3; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); }
+.bzst b { font-size: 17px; font-weight: 700; letter-spacing: -.015em; padding-top: 2px; } .bzst span.l { font-size: 15px; color: var(--muted); line-height: 1.45; }
 /* The form: one quiet card. */
-.bzf { position: relative; padding: 28px; border-radius: 24px; min-width: 0;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 76%, transparent));
+.bzf { position: relative; padding: 28px; border-radius: 26px; min-width: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--surface) 80%, transparent));
   border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 50px 100px -50px var(--glow), 0 24px 60px -40px rgba(8, 6, 28, .6);
   -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3); }
 .bzf::before { content: ""; position: absolute; left: 16%; right: 16%; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
-.bzf h2 { margin: 0; font-size: 20px; font-weight: 720; letter-spacing: -.02em; line-height: 1.25; }
-.bzf > p { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.bzf h2 { margin: 0; font-size: 21px; font-weight: 730; letter-spacing: -.02em; line-height: 1.25; }
+.bzf > p { margin: 6px 0 0; font-size: 14.5px; line-height: 1.45; color: var(--muted); }
 form.bzf-g { margin: 22px 0 0; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
 .bzf-g label { display: grid; gap: 6px; min-width: 0; font-size: 14px; font-weight: 600; }
-.bzf-g input:not([type="radio"]), .bzf-g select { box-sizing: border-box; width: 100%; min-height: 46px; padding: 10px 13px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--text) 13%, var(--border));
+.bzf-g input:not([type="radio"]), .bzf-g select { box-sizing: border-box; width: 100%; min-height: 48px; padding: 10px 14px; border-radius: 13px; border: 1px solid color-mix(in srgb, var(--text) 13%, var(--border));
   background: color-mix(in srgb, var(--bg) 60%, var(--surface)); color: var(--text); font: 500 16px/1.4 Inter, system-ui, sans-serif; transition: border-color .15s ease, box-shadow .15s ease; }
 .bzf-g select { appearance: none; -webkit-appearance: none; padding-right: 38px; cursor: pointer;
   background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
@@ -233,61 +262,79 @@ form.bzf-g { margin: 22px 0 0; display: grid; gap: 14px; grid-template-columns: 
 .bzf-g input:not([type="radio"]):hover, .bzf-g select:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
 .bzf-g input:not([type="radio"]):focus-visible, .bzf-g select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
 .bzf-g.tried :invalid, .bzf-g :user-invalid { border-color: var(--bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 16%, transparent); }
+@media (min-width: 560px) { .bzf-g .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; } }
+.bzf-g .two { display: grid; gap: 14px; }
 /* A question as a row of chips (radios), never required. */
 .bzf-g fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 .bzf-g legend { padding: 0; margin: 0 0 8px; font-size: 14px; font-weight: 600; }
-.bzf-g legend small { font-weight: 500; color: var(--faint); }
+.bzf-g legend small { font-weight: 500; color: var(--faint); font-size: 13px; }
 .bzf-g .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .bzf-g .chips label { display: inline-flex; position: relative; font-weight: 550; }
 .bzf-g .chips input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.bzf-g .chips span { display: inline-flex; align-items: center; min-height: 34px; padding: 0 13px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--text) 13%, var(--border)); font-size: 14px; color: var(--muted); cursor: pointer; transition: border-color .15s ease, background-color .15s ease, color .15s ease; }
+.bzf-g .chips span { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--text) 13%, var(--border)); font-size: 14px; color: var(--muted); cursor: pointer; transition: border-color .15s ease, background-color .15s ease, color .15s ease; }
 .bzf-g .chips span:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); color: var(--text); }
 .bzf-g .chips input:checked + span { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
 .bzf-g .chips input:focus-visible + span { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
 /* "Tell us more": the rest of the questions, folded, all optional. */
-.bzf-g details.more { border-top: 1px solid var(--glass-line); padding-top: 12px; }
-.bzf-g details.more > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; min-height: 32px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 8px; }
+.bzf-g details.more { border-top: 1px solid var(--glass-line); padding-top: 6px; }
+.bzf-g details.more > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 8px; }
 .bzf-g details.more > summary::-webkit-details-marker { display: none; }
 .bzf-g details.more > summary::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .15s ease; }
 .bzf-g details.more[open] > summary::after { transform: rotate(225deg) translateY(-1px); }
 .bzf-g details.more > summary:hover { color: var(--text); }
-.bzf-g details.more > div { display: grid; gap: 14px; padding-top: 10px; }
+.bzf-g details.more > div { display: grid; gap: 14px; padding-top: 6px; }
 .bzf-g .act { display: grid; gap: 10px; margin-top: 2px; }
-.bzf-g .act .btn { width: 100%; justify-content: center; height: auto; min-height: 52px; padding: 13px 22px; font-size: 16.5px; white-space: normal; }
+.bzf-g .act .btn { width: 100%; justify-content: center; height: auto; min-height: 54px; padding: 13px 22px; font-size: 16.5px; white-space: normal; }
 .bzf-g .act p { margin: 0; text-align: center; font-size: 14px; line-height: 1.5; color: var(--muted); text-wrap: balance; }
 .bzf-g .act a { color: var(--accent); font-weight: 650; }
 .bzf-st { margin: 0; padding: 11px 13px; border-radius: 12px; font-size: 14px; font-weight: 550; line-height: 1.45; }
 .bzf-st.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); }
 .bzf-st.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, transparent); border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); }
 .bzf-st[hidden] { display: none; }
-/* Three tiny points under the form. */
-ul.bzt { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; }
-ul.bzt li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; }
-ul.bzt li .i { width: 14px; height: 14px; color: var(--accent); }
 /* The page's own footer: one line. */
-footer.bzfoot { padding: 20px 0 28px; }
+footer.bzfoot { padding: 24px 0 32px; border-top: 1px solid var(--border); }
 footer.bzfoot p { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 14px; line-height: 1.5; color: var(--faint); text-align: center; }
 footer.bzfoot a { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .bzf-g input, .bzf-g select, .bzf-g .chips span, .bzf-g details.more > summary::after { transition: none; } }
-@media (max-width: 520px) { .bzf { padding: 22px 16px; border-radius: 20px; } .bzx h1 { font-size: clamp(36px, 10.5vw, 46px); } main.bzp { min-height: 0; } }`;
+@media (max-width: 520px) { .bzf { padding: 22px 16px; border-radius: 22px; } .bzx-c .btn { flex: 1 1 100%; justify-content: center; } }
+${VISUALS_CSS}`;
 
 /** The one question in sight; the others fold under "Tell us more". */
 const ASKED = "start";
+/** The hero's two buttons: the pilot (this page's form) and the hands-on demo. */
+export const SEE_LIVE = "See it live";
+export const ARCH_EYEBROW = "How it works", ARCH_HEAD = "Agents propose. Code checks. You sign.";
+export const CONTROLS_EYEBROW = "Controls", CONTROLS_HEAD = "Controls you can watch work, each with its record.";
+export const PILOT_EYEBROW = "The pilot";
 
-export function businessPage(): string {
-  // 22 Nov (Max: "far too much text"): the question, one line, one visual and the form. 26 Nov (Max: "really ugly";
-  // then "far too full again", and the globe is the sign-in's): one screen, simple and high-tech: a deep page with one
-  // soft violet glow, the question and one line, a short form (name, work email, company and one optional question;
-  // the rest folded under "Tell us more"), three tiny points and one footer line. The form still only opens the
-  // visitor's own mail app; nothing is stored.
+export function businessPage(f: BusinessFacts = businessFacts()): string {
+  // 22 Nov (Max: "far too much text"): the question, one line, one visual and the form. 26 Nov, morning: one screen with
+  // the form. 26 Nov, later (Max: "way too simple and amateur … widgets, animations, architecture"): a landing page of
+  // few words and strong visuals: the headline with the console beside it, the architecture, five controls each with its
+  // record, and the pilot with a short form. The form still only opens the visitor's own mail app; nothing is stored.
   const field = (name: string, label: string, attrs: string) => `<label><span>${esc(label)}</span><input name="${name}" ${attrs} required></label>`;
   const chips = (x: (typeof PILOT_QUESTIONS)[number]) => `<fieldset><legend>${esc(x.q)} <small>${esc("optional")}</small></legend><div class="chips">${x.options.map((o) => `<label><input type="radio" name="${x.name}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join("")}</div></fieldset>`;
+  const [h1a, h1b] = BUSINESS_H1.split(/(?<=\.) /);
   const body = `<main class="bzp">
 <section class="bzx" aria-labelledby="bzh-h"><div class="wrap"><div class="bzx-g">
 <div class="bzx-l"><p class="bzx-pill"><span class="pill note">${icon("info", 14)}${esc(BUSINESS_LABEL)}</span></p>
-<h1 id="bzh-h">${esc(BUSINESS_QUESTION)}</h1>
-<p class="bzx-a">${esc(BUSINESS_LINE)}</p></div>
-<div class="bzx-r" id="pilot">
+<h1 id="bzh-h"><span>${esc(h1a!)}</span> <span>${esc(h1b!)}</span></h1>
+<p class="bzx-a">${esc(BUSINESS_LINE)}</p>
+<div class="bzx-c"><a class="btn primary" href="#pilot">${esc(PILOT_APPLY)}${picon("arrow-right", 18)}</a><a class="btn ghost" href="${TRY_URL}">${icon("play", 16)}${esc(SEE_LIVE)}</a></div>
+<ul class="bzt">${PILOT_TRUST.map(([i, l]) => `<li>${picon(i, 15)}${esc(l)}</li>`).join("")}</ul></div>
+<div class="bzx-r">${consoleHtml(f)}</div>
+</div></div></section>
+<section class="bzs bza" aria-labelledby="bza-h"><div class="wrap">
+<p class="bz-e">${esc(ARCH_EYEBROW)}</p><h2 class="bz-h" id="bza-h">${esc(ARCH_HEAD)}</h2>
+${archHtml()}
+</div></section>
+<section class="bzs bzb" aria-labelledby="bzb-h"><div class="wrap">
+<p class="bz-e">${esc(CONTROLS_EYEBROW)}</p><h2 class="bz-h" id="bzb-h">${esc(CONTROLS_HEAD)}</h2>
+${bentoHtml(bentoTiles(f))}
+</div></section>
+<section class="bzs bzpl" id="pilot" aria-labelledby="bzq-h"><div class="wrap"><div class="bzpl-g">
+<div><p class="bz-e">${esc(PILOT_EYEBROW)}</p><h2 class="bz-h" id="bzq-h">${esc(BUSINESS_QUESTION)}</h2>
+<ol class="bzst">${PILOT_STEPS.map((s) => `<li><span class="n">${picon(s.icon, 20)}</span><b>${esc(s.title)}</b><span class="l">${esc(s.line)}</span></li>`).join("")}</ol></div>
 <section class="bzf" aria-labelledby="bzf-h"><h2 id="bzf-h">${esc(FOUNDING_NAME)}</h2><p>${esc("Free for 30 days. We reply by email.")}</p>
 <form class="bzf-g" id="pilot-form" aria-labelledby="bzf-h" novalidate>
 ${field("name", "Name", 'type="text" autocomplete="name" maxlength="200" placeholder="Ada Jansen"')}
@@ -301,16 +348,14 @@ ${PILOT_QUESTIONS.filter((x) => x.name !== ASKED).map(chips).join("\n")}
 <div class="act"><button class="btn primary" type="submit">${esc(PILOT_APPLY)}${picon("arrow-right", 18)}</button><p>${esc(PILOT_FORM_NOTE)}<br>${esc("Or")} <a href="${esc(PILOT_MAIL)}">${esc("email us directly")}</a> · <a href="${ONE_PAGER_PATH}">${esc("the one-pager")}</a></p></div>
 <p class="bzf-st" id="pilot-status" role="status" hidden></p>
 </form></section>
-<ul class="bzt">${PILOT_TRUST.map(([i, l]) => `<li>${picon(i, 14)}${esc(l)}</li>`).join("")}</ul>
-</div>
 </div></div></section>
 </main>`;
   // One footer line in place of the site's (Max: no "What's real?", no row of links here): the honesty, the contact.
   const foot = `<footer class="bzfoot"><div class="wrap"><p><span>${esc(BUSINESS_HONEST)}</span><a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a></p></div></footer>`;
   return page({
     title: "For companies", tab: "business", css: PAGE_CSS, body, js: PILOT_JS, stage: false, footer: foot,
-    description: "Would you trust an AI agent with your company's money? Apply for Purser's 30-day Founding Partner Pilot: agents pay the routine, your CFO signs the rest with Face ID. Test money only.",
-    source: "Source: the form only opens the visitor's own mail app (src/redesign/business.ts pilotMailto).",
+    description: "Let AI agents pay your suppliers and keep the CFO in control: Purser checks every payment in code, and above the limit the CFO signs the exact terms with Face ID. Apply for the 30-day Founding Partner Pilot. Test money only.",
+    source: "Source: the console, the architecture and the controls read /try's proof files (docs/proof/), src/config/policy.ts, the stop drill's and the Airwallex run's records and src/integrations/approvalChat.ts (src/redesign/businessVisuals.ts); the form only opens the visitor's own mail app (src/redesign/business.ts pilotMailto).",
   });
 }
 /** The page's one honesty line (its footer): test money, no customers yet, no endorsement claimed. */
