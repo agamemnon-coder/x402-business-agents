@@ -55,6 +55,17 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`/badge/risks-${rows.length}_%C2%B7_each_with_a_control_and_a_test-`);
   });
 
+  it("docs/go-live.md: the items by status, counted from its table", () => {
+    const md = read("docs/go-live.md");
+    const rows = md.split("\n").filter((l) => l.startsWith("| ") && !l.startsWith("| Item")).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
+    for (const r of rows) expect({ item: r[0], cells: r.length }).toEqual({ item: r[0], cells: 4 });
+    const n = (s: string) => rows.filter((r) => r[1] === s).length;
+    expect(n("Done") + n("Done (not exercised)") + n("Partly") + n("Open")).toBe(rows.length);
+    expect(md).toContain(`  "Partly" : ${n("Partly")}\n  "Done" : ${n("Done")}\n  "Open" : ${n("Open")}\n  "Done, not exercised" : ${n("Done (not exercised)")}\n`);
+    expect(md).toContain(`${rows.length} items; Done ${n("Done")}, Done (not exercised) ${n("Done (not exercised)")}, Partly ${n("Partly")}, Open ${n("Open")}.`);
+    expect(md).toContain(`/badge/items-${rows.length}_%C2%B7_${n("Done") + n("Done (not exercised)")}_done%2C_${n("Partly")}_partly%2C_${n("Open")}_open-`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));

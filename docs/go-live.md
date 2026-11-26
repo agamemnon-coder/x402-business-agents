@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Purser Cloud: before real money
+
+**Every item the reviews named before real customers and real money, with where it stands and who does it.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Items before real money: 19; 6 done, 8 partly, 5 open](https://img.shields.io/badge/items-19_%C2%B7_6_done%2C_8_partly%2C_5_open-8b5cf6?style=flat-square&labelColor=1f2937)](#the-items)&nbsp;[![Nothing here is in production](https://img.shields.io/badge/in_production-nothing-f43f5e?style=flat-square&labelColor=1f2937)](cloud.md)&nbsp;[![The public test preview: test companies, test money on a simulated bank](https://img.shields.io/badge/preview-test_companies_%C2%B7_simulated_bank-0ea5e9?style=flat-square&labelColor=1f2937)](https://purser-try.max-31b.workers.dev/try)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[The items](#the-items) · [Purser Cloud](cloud.md) · [Runbook](runbook.md) · [Enterprise](enterprise.md) · [Security](security.md) · [Controls](controls.md)
+
+</div>
 
 Every item the reviews named before real customers and real money, with where it stands. **Done** means built and
 tested in this repo, with the evidence. **Partly** says what is missing. **Who** is Max (an account, a contract, a
@@ -9,6 +21,20 @@ The rows are as written on 9 November, except "Live sandbox confirmation of fees
 accounts through Purser (platform)", which carry the sandbox runs of 10 November
 ([connected accounts](runs/2026-11-10-connected-accounts-sandbox.md),
 [three test companies end to end](runs/2026-11-10-platform-e2e.md)). The hosted preview is not worked into the rows yet.
+
+## The items
+
+```mermaid
+%%{init: {"themeVariables": {"pie1": "#f59e0b", "pie2": "#10b981", "pie3": "#f43f5e", "pie4": "#14b8a6"}}}%%
+pie showData
+  title Before real money: the items by status
+  "Partly" : 8
+  "Done" : 5
+  "Open" : 5
+  "Done, not exercised" : 1
+```
+
+<sub>Record: [the table below](go-live.md#the-items), counted by `test/docs-charts.test.ts`: 19 items; Done 5, Done (not exercised) 1, Partly 8, Open 5.</sub>
 
 | Item | Status | Evidence / what is missing | Who |
 |---|---|---|---|
