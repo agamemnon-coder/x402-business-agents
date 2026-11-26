@@ -8,6 +8,7 @@ import { openDb, type DB } from "../../src/db/open.js";
 import { executePolicyChange, proposePolicyChange } from "../../src/executors/policyChange.js";
 import { TERMS_SCHEMA } from "../../src/lib/terms.js";
 import { signAgentRequest, verifyAgentIdentity } from "../../src/policy/agentIdentity.js";
+import { RATIONALE_NOT_VIEWED, RATIONALE_VIEWED } from "../../src/passkey/process.js";
 import { ANOMALY_HELD } from "../../src/policy/anomaly.js";
 import { createProposal, decide, nextProposalId } from "../../src/policy/approvals.js";
 import { expirePrincipal, revokePrincipal, rotatePrincipalKey } from "../../src/policy/principals.js";
@@ -44,6 +45,7 @@ export function complianceWorld(file = ":memory:"): ComplianceWorld {
   const sodOn = policyChange(db, [{ key: "approval.policy_sod_eur", to: "1000.00" }], "segregation of duties", NOV(2), ["max"]);
   const loosen = policyChange(db, [{ key: "ap.alone_eur", to: "2500.00" }], "month-end volume", NOV(3), ["max", "anna"]);
   const stop = policyChange(db, [{ key: "freeze", to: "on" }], "suspected leaked key", NOV(4), ["max"]);
+  audit(db, "human", RATIONALE_NOT_VIEWED, stop, { credential: "test0002", reported_by: "the approval page, not signed (written after the change here; the runner writes it just before)" }, NOV(4, 9, 30));
   const lift = policyChange(db, [{ key: "freeze", to: "off" }], "key rotated, incident closed", NOV(5), ["max", "anna"]);
 
   // Agent identities: one agent's key rotated (a new bearer key and signing key), one signed request verified and one
@@ -59,6 +61,9 @@ export function complianceWorld(file = ":memory:"): ComplianceWorld {
 
   // Payments: one approved with the passkey, one rejected; a payment held as an anomaly, a refund refused, a sweep held.
   const paid = invoice(db, "1850.00", NOV(10));
+  // The approval page's automation-bias signal (PC-26), as src/passkey/process.ts records it before the approval:
+  // Anna opened Details before signing this payment; Max did not before signing the emergency stop (test data).
+  audit(db, "human", RATIONALE_VIEWED, paid.proposal_id, { terms_sha256: paid.terms_sha256, credential: "test0001", reported_by: "the approval page, not signed" }, NOV(10));
   approveSigned(db, paid.proposal_id, NOV(10), "anna");
   const no = invoice(db, "990.00", NOV(11));
   decide(db, { proposalId: no.proposal_id, decision: "REJECTED", typedPrefix: no.terms_sha256.slice(0, 8), approver: "max", method: "cli", note: "not ours" }, NOV(11));

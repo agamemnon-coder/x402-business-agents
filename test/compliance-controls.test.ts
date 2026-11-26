@@ -20,8 +20,8 @@ const CODE = files("src").filter((f) => !f.startsWith(join("src", "compliance"))
 const byId = new Map(CONTROLS.map((c) => [c.id, c]));
 
 describe("the control map", () => {
-  it("covers the four frameworks, each requirement once, each with an id, words and a status", () => {
-    expect(FRAMEWORKS.map((f) => f.id)).toEqual(["eu-ai-act", "iso-42001", "soc2", "dora"]);
+  it("covers the nine frameworks, each requirement once, each with an id, words and a status", () => {
+    expect(FRAMEWORKS.map((f) => f.id)).toEqual(["eu-ai-act", "iso-42001", "soc2", "dora", "psd2-sca", "gdpr", "eidas", "nis2", "iso-27001"]);
     expect([...STATUSES]).toEqual(["evidence-in-ledger", "documented", "gap"]);
     const keys = REQUIREMENTS.map((r) => `${r.framework} ${r.clause} ${r.scope ?? ""}`);
     expect(new Set(keys).size).toBe(keys.length);
@@ -36,9 +36,18 @@ describe("the control map", () => {
     expect(clauses("iso-42001")).toEqual(expect.arrayContaining(["A.6.2.8", "A.9.2", "A.5.2", "A.10.3"]));
     expect(clauses("soc2")).toEqual(expect.arrayContaining(["CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4", "CC8.1"]));
     expect(clauses("dora")).toEqual(expect.arrayContaining(["Art. 9(4)(c)", "Art. 10(1)", "Art. 17(2)", "Art. 18(1)", "Art. 28(3)"]));
+    // 26 Nov: PSD2's SCA and dynamic linking, the GDPR, eIDAS, NIS2's ten measures, ISO/IEC 27001 Annex A, and the AI Act's tiers.
+    expect(clauses("eu-ai-act")).toEqual(expect.arrayContaining(["Art. 4", "Art. 5(1)", "Art. 6(2)", "Art. 50(1)"]));
+    expect(clauses("psd2-sca")).toEqual(expect.arrayContaining(["PSD2 Art. 97(1)", "RTS Art. 4(1)", "RTS Art. 5(1)(b)", "RTS Art. 5(1)(d)"]));
+    expect(clauses("gdpr")).toEqual(expect.arrayContaining(["Art. 15", "Art. 17", "Art. 30", "Art. 35", "Art. 44"]));
+    expect(clauses("eidas")).toEqual(expect.arrayContaining(["Art. 3(10)", "Art. 26", "Art. 25(2)"]));
+    expect(clauses("nis2")).toEqual(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"].map((x) => `Art. 21(2)(${x})`));
+    expect(clauses("iso-27001")).toEqual(expect.arrayContaining(["A.5.15", "A.8.15", "A.8.24"]));
     for (const r of REQUIREMENTS) {
-      if (r.framework === "eu-ai-act" || r.framework === "dora") expect(r.clause, r.clause).toMatch(/^Art\. \d+(\(\d+\))?(\([a-z]\))?$/);
+      if (["eu-ai-act", "dora", "gdpr", "eidas", "nis2"].includes(r.framework)) expect(r.clause, r.clause).toMatch(/^Art\. \d+(\(\d+\))?(\([a-z]\))?$/);
+      if (r.framework === "psd2-sca") expect(r.clause, r.clause).toMatch(/^(PSD2|RTS) Art\. \d+(\(\d+\))?(\([a-z]\))?$/);
       if (r.framework === "iso-42001") expect(r.clause).toMatch(/^A\.\d+\.\d+(\.\d+)?$/);
+      if (r.framework === "iso-27001") expect(r.clause).toMatch(/^A\.[5-8]\.\d+$/);
       if (r.framework === "soc2") expect(r.clause).toMatch(/^CC\d\.\d$/);
     }
   });
@@ -57,8 +66,12 @@ describe("the control map", () => {
       if (r.status === "documented") expect(controls.length, `${r.framework} ${r.clause}`).toBeGreaterThan(0);
       if (r.status === "gap") expect(r.gap ?? "", `${r.framework} ${r.clause} says no gap`).toMatch(/\w{4,}/);
     }
-    // Gaps are shown, not hidden: each framework has at least one.
-    for (const f of FRAMEWORKS) expect(REQUIREMENTS.some((r) => r.framework === f.id && r.status === "gap"), f.id).toBe(true);
+    // Gaps are shown, not hidden: each framework says what is still open, in a gap row or a row's missing part
+    // (26 Nov: SOC 2 and PSD2 SCA have no gap row left, and say what is open in their rows), and gaps remain.
+    for (const f of FRAMEWORKS) expect(REQUIREMENTS.some((r) => r.framework === f.id && (r.status === "gap" || (r.gap ?? "").length > 10)), f.id).toBe(true);
+    expect(REQUIREMENTS.filter((r) => r.status === "gap").length).toBeGreaterThan(0);
+    // DORA Art. 30(1) stays a gap until there is a contract with a provider.
+    expect(REQUIREMENTS.find((r) => r.framework === "dora" && r.clause === "Art. 30(1)")?.status).toBe("gap");
   });
 
   it("derives evidence only from audit events Purser's code writes and tables it creates", () => {
@@ -90,7 +103,9 @@ describe("the control map", () => {
 });
 
 describe("the wording", () => {
-  const DOCS = ["docs/compliance/README.md", "docs/compliance/controls.md"];
+  const DOCS = ["docs/compliance/README.md", "docs/compliance/controls.md", "docs/compliance/third-parties.md", "docs/compliance/ai-policy.md", "docs/compliance/ai-impact-assessment.md",
+    "docs/compliance/instructions-for-use.md", "docs/compliance/incident-response.md", "docs/compliance/exit-plans.md", "docs/compliance/retention.md", "docs/compliance/psd2-sca.md",
+    "docs/compliance/gdpr.md", "docs/compliance/ai-act-classification.md"];
 
   it("maps and gives evidence; it never claims compliance or a certificate", () => {
     expect(HONEST_LINE).toMatch(/independent auditor/);
@@ -98,7 +113,7 @@ describe("the wording", () => {
     expect(HONEST_LINE).toMatch(/sandbox/);
     const texts = [...DOCS.map((f) => [f, readFileSync(f, "utf8")] as const), ["src/compliance/controls.ts", readFileSync("src/compliance/controls.ts", "utf8")] as const];
     for (const [f, text] of texts) {
-      if (f.endsWith(".md")) expect(text, f).toContain(HONEST_LINE);
+      if (/README\.md$|controls\.md$/.test(f)) expect(text, f).toContain(HONEST_LINE);
       // The line itself is the one place the words may stand (in the source, its definition).
       const rest = text.split(HONEST_LINE).join(" ").replace(/export const HONEST_LINE = [^;]*;/, "");
       expect(rest, f).not.toMatch(/\b(compliant|compliance-ready|certified|certifies|certificate|certification|conforms?|conformant|guarantees?)\b/i);
