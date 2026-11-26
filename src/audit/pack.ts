@@ -131,11 +131,22 @@ export function deriveSection(rows: AuditRowStored[], rule: DeriveRule): PackEve
 
 export interface PackSigner { key: KeyObject }
 
+/** The period's run of the audit chain, as the audit pack and the compliance evidence (src/compliance/evidence.ts) take it. */
+export interface PeriodRows {
+  /** The period's first instant and the instant after its last day (UTC, ms). */
+  start: number; end: number;
+  rows: AuditRowStored[];
+  /** Every row before the period, and the hash the period's first row links to (the genesis hash at the start). */
+  before: AuditRowStored[]; beforeHead: string;
+  /** The whole log, verified from the genesis hash. */
+  chain: { rows: number; head: string };
+}
+
 /**
- * The audit pack of the days from..to (inclusive, UTC). Refuses a ledger whose audit log or bookkeeping chain does not
- * verify: a pack never vouches for a broken one.
+ * The audit rows of the days from..to (inclusive, UTC): one unbroken run of the chain. Refuses a period that is not one
+ * and an audit log that does not verify: nothing made from these rows ever vouches for a broken log.
  */
-export function buildAuditPack(db: DB, period: { from: string; to: string }, signer: PackSigner, now = new Date()): AuditPack {
+export function periodAuditRows(db: DB, period: { from: string; to: string }): PeriodRows {
   const start = dayStart(period.from);
   const endDay = dayStart(period.to);
   if (start === null) throw new Error(`--from ${JSON.stringify(period.from)} is not a day (YYYY-MM-DD)`);
@@ -144,9 +155,6 @@ export function buildAuditPack(db: DB, period: { from: string; to: string }, sig
   const end = endDay + 86_400_000;
   const chain = verifyAuditChain(db);
   if (!chain.ok) throw new Error(`the audit log does not verify at row ${chain.seq} (${chain.reason}); no pack is made over it (npm run verify)`);
-  const ledger = verifyLedger(db);
-  if (!ledger.ok) throw new Error(`the bookkeeping ledger does not verify at entry ${ledger.entry_id} (${ledger.reason}); no pack is made over it (npm run verify)`);
-
   const all = db.prepare("SELECT * FROM audit_log ORDER BY seq").all() as AuditRowStored[];
   // The period is one unbroken run of the chain: from the first row stamped on or after its start to the last stamped
   // before its end (rows are written in time order; one out of order inside the run is kept, in its place).
@@ -155,9 +163,46 @@ export function buildAuditPack(db: DB, period: { from: string; to: string }, sig
   const a = firstIdx < 0 ? all.length : firstIdx;
   let b = a - 1;
   for (let i = all.length - 1; i >= a; i--) if (inPeriod(all[i]!)) { b = i; break; }
-  const rows = all.slice(a, b + 1);
   const before = all.slice(0, a);
-  const beforeHead = before.length ? before[before.length - 1]!.row_hash : GENESIS;
+  return { start, end, rows: all.slice(a, b + 1), before, beforeHead: before.length ? before[before.length - 1]!.row_hash : GENESIS, chain: { rows: chain.rows, head: chain.head } };
+}
+
+/** Ed25519 over a manifest's canonical JSON (RFC 8785), base64url: how a pack's manifest is signed. */
+export function signManifest(manifest: object, signer: PackSigner): string {
+  return edSign(null, Buffer.from(jcs(manifest as unknown as Json), "utf8"), signer.key).toString("base64url");
+}
+
+/**
+ * The checks "signature" and "key" on a signed manifest (its public_key and key_id inside it), as verify-audit-pack
+ * prints them: the Ed25519 signature over the manifest's canonical JSON, and, given pinned keys, whose key signed it.
+ */
+export function manifestSignatureChecks(m: { public_key: string; key_id: string }, signature: string, trustedKeys: string[] = []): PackCheck[] {
+  const sigOk = (() => {
+    try {
+      const key = createPublicKey({ key: { kty: "OKP", crv: "Ed25519", x: m.public_key }, format: "jwk" });
+      return edVerify(null, Buffer.from(jcs(m as unknown as Json), "utf8"), key, Buffer.from(signature, "base64url"));
+    } catch { return false; }
+  })();
+  const idOk = (() => { try { return keyIdOf(m.public_key) === m.key_id; } catch { return false; } })();
+  const checks: PackCheck[] = [{
+    check: "signature", ok: sigOk && idOk,
+    detail: !idOk ? `key_id ${String(m.key_id)} is not the id of the public key in the manifest`
+      : sigOk ? `Ed25519 verifies over the manifest with key ${m.key_id}` : `Ed25519 does not verify over the manifest with key ${m.key_id}: the manifest or the signature was changed`,
+  }];
+  const trusted = trustedKeys.map(normalisePublicKey);
+  if (trusted.length) checks.push({ check: "key", ok: trusted.includes(m.public_key), detail: trusted.includes(m.public_key) ? `key ${m.key_id} is pinned` : `signed by key ${m.key_id}, which is not a pinned key (${trusted.map(keyIdOf).join(", ")})` });
+  else checks.push({ check: "key", ok: true, detail: `key ${m.key_id} is not pinned here: pass --trust <public key> to check whose key signed it` });
+  return checks;
+}
+
+/**
+ * The audit pack of the days from..to (inclusive, UTC). Refuses a ledger whose audit log or bookkeeping chain does not
+ * verify: a pack never vouches for a broken one.
+ */
+export function buildAuditPack(db: DB, period: { from: string; to: string }, signer: PackSigner, now = new Date()): AuditPack {
+  const { start, end, rows, before, beforeHead, chain } = periodAuditRows(db, period);
+  const ledger = verifyLedger(db);
+  if (!ledger.ok) throw new Error(`the bookkeeping ledger does not verify at entry ${ledger.entry_id} (${ledger.reason}); no pack is made over it (npm run verify)`);
 
   const rules = deriveRules();
   const derived = Object.fromEntries(DERIVED.map((d) => [d, deriveSection(rows, rules[d])])) as Record<Derived, PackEvent[]>;
@@ -202,7 +247,7 @@ export function buildAuditPack(db: DB, period: { from: string; to: string }, sig
     sections: Object.fromEntries(SECTIONS.map((s) => [s, digest(sections[s])])) as Record<Section, SectionDigest>,
     key_id: keyIdOf(publicKey), public_key: publicKey,
   };
-  const signature = edSign(null, Buffer.from(jcs(manifest as unknown as Json), "utf8"), signer.key).toString("base64url");
+  const signature = signManifest(manifest, signer);
   return { format: AUDIT_PACK_FORMAT, note: AUDIT_PACK_NOTE, manifest, signature, sections };
 }
 
@@ -250,18 +295,7 @@ export function verifyAuditPack(pack: unknown, opts: { trusted?: string[] } = {}
     const m = p.manifest;
 
     // 1. The signature over the manifest, and the key.
-    const sigOk = (() => {
-      try {
-        const key = createPublicKey({ key: { kty: "OKP", crv: "Ed25519", x: m.public_key }, format: "jwk" });
-        return edVerify(null, Buffer.from(jcs(m as unknown as Json), "utf8"), key, Buffer.from(p.signature, "base64url"));
-      } catch { return false; }
-    })();
-    const idOk = (() => { try { return keyIdOf(m.public_key) === m.key_id; } catch { return false; } })();
-    add("signature", sigOk && idOk, !idOk ? `key_id ${String(m.key_id)} is not the id of the public key in the manifest`
-      : sigOk ? `Ed25519 verifies over the manifest with key ${m.key_id}` : `Ed25519 does not verify over the manifest with key ${m.key_id}: the manifest or the signature was changed`);
-    const trusted = (opts.trusted ?? []).map(normalisePublicKey);
-    if (trusted.length) add("key", trusted.includes(m.public_key), trusted.includes(m.public_key) ? `key ${m.key_id} is pinned` : `signed by key ${m.key_id}, which is not a pinned key (${trusted.map(keyIdOf).join(", ")})`);
-    else add("key", true, `key ${m.key_id} is not pinned here: pass --trust <public key> to check whose key signed it`);
+    for (const c of manifestSignatureChecks(m, p.signature, opts.trusted ?? [])) add(c.check, c.ok, c.detail);
 
     // 2. The sections against the manifest: the same names, and every row's hash.
     const names = Object.keys(p.sections).sort(), want = [...SECTIONS].sort(), listed = Object.keys(m.sections).sort();

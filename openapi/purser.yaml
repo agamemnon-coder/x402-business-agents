@@ -2191,6 +2191,29 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/compliance":
+    get:
+      operationId: getV1Compliance
+      tags:
+        - Company
+      summary: "The runner's compliance evidence in short, as it last pushed it (null before the first push): per framework how many requirements have evidence in the last 30 days, no records, documentation only or gaps; per control its records; the gaps. Counts only. Read only."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/cards":
     get:
       operationId: getV1Cards

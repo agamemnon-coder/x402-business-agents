@@ -11,7 +11,10 @@
 //                 same state the Connections page shows; the demo company shows what its demo world has
 //   Settings      the person, the approval policy in short, alerts, API and MCP access, the danger zone
 // Every value from the API is put on the page as text (el() and textContent), never as HTML. The console's script
-// carries this at __UI__ (cloud/src/console.ts).
+// carries this at __UI__ (cloud/src/console.ts). The Company page ends with the runner's compliance evidence in short,
+// folded (./complianceView.ts).
+
+import { COMPLIANCE_JS } from "./complianceView.js";
 
 /** This module's words, English and Dutch. */
 export const CO_WORDS = {
@@ -91,7 +94,7 @@ export const CO_WORDS = {
 
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
-export const COMPANY_JS = String.raw`
+export const COMPANY_JS = COMPLIANCE_JS + String.raw`
 // --- The company, the session and the connected tabs (21 Nov) ---------------------------------------------------------
 const CO_W=` + json(CO_WORDS) + String.raw`;
 function cw(k,v){const W=CO_W[L.lang==='nl'?'nl':'en'];let s=W[k]??CO_W.en[k]??k;for(const [a,b] of Object.entries(v||{}))s=s.split('{'+a+'}').join(String(b));return s}
@@ -206,7 +209,7 @@ async function companyView(){
   cardLink(conn,'#/connections',cw('conn_manage'));
   const hero=el('div','co-hero',[el('span','co-big',coName(name).charAt(0).toUpperCase()),el('div','',[el('h1','',coName(name)),el('p','lede',cw('co_lede',{name:coName(name)})),
     el('div','co-chips',[m.demo?el('span','pill warn',[ic('flask'),t('cs.demo.chip')]):null,el('span','pill mono',m.tenant.slug),aw&&!m.demo?el('span','pill'+(aw.status==='active'?' ok':''),'Airwallex · '+tk('cs.awx.status.'+aw.status,aw.status)):null].filter(Boolean))])]);
-  view().replaceChildren(hero,kpis,el('div','dgrid co-g',[profile,lims]),el('div','dgrid co-g',[money,conn]),el('div','dgrid co-g',[openList,recent]));
+  view().replaceChildren(hero,kpis,el('div','dgrid co-g',[profile,lims]),el('div','dgrid co-g',[money,conn]),el('div','dgrid co-g',[openList,recent]),complianceBox());
   riseIn();
 }
 // --- Claude (MCP): its own page once connected -------------------------------------------------------------------------
