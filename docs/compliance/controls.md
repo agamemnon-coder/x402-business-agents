@@ -14,16 +14,16 @@ Each row below maps one requirement of a framework to the Purser controls that a
 
 | Framework | Requirements | Evidence in ledger | Documented | Gap |
 |---|---|---|---|---|
-| EU AI Act | 20 | 9 | 8 | 3 |
+| EU AI Act | 20 | 9 | 11 | 0 |
 | ISO/IEC 42001:2023 | 14 | 5 | 8 | 1 |
 | SOC 2 | 11 | 8 | 3 | 0 |
 | DORA | 17 | 7 | 8 | 2 |
 | PSD2 SCA | 10 | 6 | 4 | 0 |
-| GDPR | 13 | 2 | 9 | 2 |
+| GDPR | 13 | 2 | 10 | 1 |
 | eIDAS | 4 | 1 | 2 | 1 |
 | NIS2 | 10 | 3 | 5 | 2 |
 | ISO/IEC 27001:2022 | 19 | 7 | 9 | 3 |
-| **All** | 118 | 48 | 56 | 14 |
+| **All** | 118 | 48 | 60 | 10 |
 
 ## Frameworks
 
@@ -77,14 +77,16 @@ Each row below maps one requirement of a framework to the Purser controls that a
 | PC-34 | eIDAS evidence export, time-stamp and QES adapter | Behind a flag that is off by default: each approval exported as JAdES-layout evidence (ETSI TS 119 182-1) with an offline verifier, an optional RFC 3161 time-stamp, and a Cloud Signature Consortium API v2 adapter for a remote qualified signature; tested against a mock TSA and a mock CSC server. | `src/eidas/jades.ts`, `src/eidas/tsa.ts`, `src/eidas/csc.ts`, `test/eidas-evidence.test.ts`, `docs/legal/eidas-qes.md` | documented only: `docs/legal/eidas-qes.md`, `src/eidas/jades.ts`, `src/eidas/tsa.ts`, `src/eidas/csc.ts`, `test/eidas-evidence.test.ts` |
 | PC-35 | GDPR records and data subjects' rights | A record of processing activities checked against the data classification, a DPIA for the agents, transfers per provider from the third-party register, and the routes Purser Cloud has for access, export and erasure (GET /v1/me, POST /v1/export/staged, POST /v1/users/{id}/erase, POST /v1/offboarding). | `src/compliance/gdpr.ts`, `cloud/src/privacy.ts`, `cloud/src/exports.ts`, `docs/compliance/gdpr.md`, `docs/privacy/data-inventory.md`, `docs/privacy/retention.md` | documented only: `docs/compliance/gdpr.md`, `docs/privacy/data-inventory.md`, `docs/privacy/retention.md`, `src/compliance/gdpr.ts`, `cloud/src/privacy.ts`, `cloud/src/exports.ts` |
 | PC-36 | EU AI Act classification and transparency to users | Each agent and feature classified against Art. 5 and Annex III, with the reasoning; people told when they deal with AI: Ask Purser labels each answer by whether Claude wrote it, the approval page names the agent that proposed, the dashboard says the agents are AI. | `cloud/src/ask/page.ts`, `src/dashboard/page.html`, `docs/compliance/ai-act-classification.md` | documented only: `docs/compliance/ai-act-classification.md`, `cloud/src/ask/page.ts`, `src/dashboard/page.html` |
+| PC-37 | AI technical documentation, quality management and AI literacy | Technical documentation in the order of EU AI Act Annex IV, drawn from the repository (the model per role, the agents, the guardrails, the evals, human oversight, logging), with the model ids and every cited path held to the code by a test; a quality management outline that takes Art. 17(1)(a) to (m) one by one and points at the procedure in use; an AI literacy and security awareness note per role, with a record of who has read it (none yet). | `test/compliance-templates.test.ts`, `docs/compliance/ai-technical-documentation.md`, `docs/compliance/qms.md`, `docs/compliance/ai-literacy.md` | documented only: `docs/compliance/ai-technical-documentation.md`, `docs/compliance/qms.md`, `docs/compliance/ai-literacy.md`, `test/compliance-templates.test.ts` |
+| PC-38 | Contract templates and the transfers note | A checklist of the clauses DORA Art. 30(1) to (3) require, with each provider of the register; a data processing agreement template for a company using Purser Cloud, with every item of GDPR Art. 28(3) and its subprocessors; a note of where personal data goes per provider and which Chapter V mechanism it would need. The per-provider tables are generated from the register and the record of processing. Templates, not legal advice, not reviewed by counsel; none is signed. | `src/compliance/templates.ts`, `test/compliance-templates.test.ts`, `docs/compliance/templates/ict-contract-clauses.md`, `docs/compliance/templates/dpa.md`, `docs/compliance/transfers.md` | documented only: `docs/compliance/templates/ict-contract-clauses.md`, `docs/compliance/templates/dpa.md`, `docs/compliance/transfers.md`, `src/compliance/templates.ts`, `test/compliance-templates.test.ts` |
 
 ## EU AI Act, Regulation (EU) 2024/1689
 
-20 requirements: 9 with evidence in the ledger, 8 documented, 3 gaps.
+20 requirements: 9 with evidence in the ledger, 11 documented, 0 gaps.
 
 | Clause | Requirement, in plain words | Purser controls | Status | Missing |
 |---|---|---|---|---|
-| Art. 4 | Providers and deployers take measures to ensure a sufficient level of AI literacy of the people who operate and use the AI systems. | PC-28, PC-27 | **gap** | the instructions for use and the AI policy say what an approver must know, but no training or literacy measure is recorded for anyone |
+| Art. 4 | Providers and deployers take measures to ensure a sufficient level of AI literacy of the people who operate and use the AI systems. | PC-37, PC-28, PC-27 | documented | the measure is a note per role (ai-literacy.md) beside the instructions for use; it is not a training programme, and nobody's reading of it is recorded yet |
 | Art. 5(1) | No prohibited AI practice (manipulation, exploiting vulnerabilities, social scoring, and the others Art. 5 lists). | PC-36 | documented |  |
 | Art. 6(2) | Classify the system: high-risk if its use is one of those Annex III lists. | PC-36 | documented | Purser's own reading, not legal advice and not reviewed by a lawyer; a deployer's own use (say, scoring people) could change it |
 | Art. 9(2) | A risk management system run as a continuous process: identify, estimate and evaluate the known and foreseeable risks. | PC-27, PC-23, PC-19 | documented | the risk register (ai-impact-assessment.md) has owners and a review date, but its first review is due 26 May 2027: it has not yet run as a continuous process |
@@ -101,8 +103,8 @@ Each row below maps one requirement of a framework to the Purser controls that a
 | Art. 15(3) | Accuracy levels and metrics declared in the instructions for use. | PC-28, PC-19 | documented | declared only as the eval records measured them, per agent, model and case set, on test cases; no level is promised beyond those records |
 | Art. 15(4) | Resilient to errors, faults and inconsistencies, with fail-safe measures. | PC-02, PC-11, PC-15 | evidence in ledger |  |
 | Art. 50(1) | People are informed that they are interacting with an AI system, unless that is obvious. | PC-36, PC-22 | documented | held by labels on the pages (test-checked), not by a record per conversation |
-| Art. 11(1) | Technical documentation, drawn up before the system is placed on the market and kept up to date, with the contents Annex IV lists. | PC-22, PC-28, PC-23 | **gap** | the contents are spread over docs/ (architecture, threat model, evals, instructions for use); no single document follows Annex IV |
-| Art. 17(1) | A quality management system, documented in written policies, procedures and instructions. | PC-21, PC-27 | **gap** | no quality management system: one maintainer, CI and the change rules; the procedures Art. 17(1) lists (design control, data management, post-market monitoring, accountability) are not written as one |
+| Art. 11(1) | Technical documentation, drawn up before the system is placed on the market and kept up to date, with the contents Annex IV lists. | PC-37, PC-22, PC-28, PC-23 | documented | drawn up voluntarily (on Purser's reading it is not high-risk) by the maintainer alone and reviewed by no one else; the test records are dated and committed but not signed by a responsible person, as Annex IV 2(g) asks; no EU declaration and no post-market monitoring plan |
+| Art. 17(1) | A quality management system, documented in written policies, procedures and instructions. | PC-37, PC-21, PC-27 | documented | an outline for a one-maintainer project (Art. 17(2)), each procedure pointing at the one in use; no second person or deputy, the review that closes the cycle has not run yet (due 26 May 2027), and nobody has audited it |
 | Art. 15(5) | Resilient against unauthorised attempts to alter its use, outputs or performance (for example manipulated inputs). | PC-13, PC-08, PC-14, PC-19 | evidence in ledger |  |
 
 ## ISO/IEC 42001:2023, Annex A reference controls
@@ -113,7 +115,7 @@ Each row below maps one requirement of a framework to the Purser controls that a
 |---|---|---|---|---|
 | A.2.2 | A documented AI policy for the organisation. | PC-27, PC-24 | documented | the policy of the project as it runs today (one maintainer, sandbox); a deploying organisation adopts and adapts it |
 | A.3.2 | AI roles and responsibilities defined and allocated. | PC-24, PC-07 | documented |  |
-| A.4.6 | Document the human resources, and their competences, used for the AI system's life cycle. | PC-24, PC-27 | **gap** | the roles are named, but no one's competences or training are recorded |
+| A.4.6 | Document the human resources, and their competences, used for the AI system's life cycle. | PC-24, PC-27, PC-37 | **gap** | the roles and the competences each needs are written (ai-literacy.md), but no one's competences or training are recorded |
 | A.5.2 | A process to assess the impact of AI systems on individuals, groups and society. | PC-27, PC-23 | documented | assessed by the maintainer alone; no affected party (a supplier, an approver) was consulted |
 | A.6.2.4 | Verification and validation of the AI system. | PC-19 | documented |  |
 | A.6.2.6 | Operation and monitoring of the AI system. | PC-15, PC-11, PC-13 | evidence in ledger |  |
@@ -166,7 +168,7 @@ Each row below maps one requirement of a framework to the Purser controls that a
 | Art. 28(1) | Manage ICT third-party risk as part of the ICT risk management framework. | PC-15, PC-14, PC-30 | evidence in ledger | the ledger evidence is of the providers' records (reconciliation, webhooks checked against the ledger); the register and exit plans are documents |
 | Art. 28(3) | A register of information on all contractual arrangements with ICT third-party service providers. | PC-30, PC-24 | documented | Purser's own register, not the implementing technical standards' template; it records no contractual arrangement because there is none yet |
 | Art. 28(8) | Exit strategies for ICT services supporting critical or important functions. | PC-30, PC-20 | documented | written, none exercised |
-| Art. 30(1) | The rights and obligations with each ICT third-party service provider set out in writing. | PC-30, PC-24 | **gap** | no contract yet: test and developer accounts on the providers' standard terms; exit-plans.md lists what a production contract must include |
+| Art. 30(1) | The rights and obligations with each ICT third-party service provider set out in writing. | PC-38, PC-30, PC-24 | **gap** | no contract yet: test and developer accounts on the providers' standard terms; templates/ict-contract-clauses.md lists the clauses Art. 30(2) and (3) require, per provider of the register, as a template only |
 
 ## PSD2 SCA, Directive (EU) 2015/2366 Art. 97 and the RTS on strong customer authentication, Delegated Regulation (EU) 2018/389
 
@@ -187,7 +189,7 @@ Each row below maps one requirement of a framework to the Purser controls that a
 
 ## GDPR, Regulation (EU) 2016/679
 
-13 requirements: 2 with evidence in the ledger, 9 documented, 2 gaps.
+13 requirements: 2 with evidence in the ledger, 10 documented, 1 gap.
 
 | Clause | Requirement, in plain words | Purser controls | Status | Missing |
 |---|---|---|---|---|
@@ -198,12 +200,12 @@ Each row below maps one requirement of a framework to the Purser controls that a
 | Art. 20 | The right to data portability, in a structured, commonly used, machine-readable format. | PC-35 | documented | the company's export (JSON and CSV) is per company, not per person |
 | Art. 22 | No decision based solely on automated processing with legal or similarly significant effects on a person, without the safeguards Art. 22 sets. | PC-01, PC-03, PC-36 | evidence in ledger | code pays a supplier's invoice alone within the limit the CFO signed; a refusal or hold always goes to a person; no decision about a natural person's credit or rights is made |
 | Art. 25 | Data protection by design and by default. | PC-18, PC-17, PC-35 | documented |  |
-| Art. 28 | Processing on the controller's behalf only under a contract with the terms Art. 28(3) lists, and subprocessors under the same terms. | PC-30, PC-35 | **gap** | no data processing agreement with any deploying business or any subprocessor: test accounts only |
+| Art. 28 | Processing on the controller's behalf only under a contract with the terms Art. 28(3) lists, and subprocessors under the same terms. | PC-38, PC-30, PC-35 | documented | a template (templates/dpa.md) with every Art. 28(3) item, not legal advice, not reviewed by counsel and signed with nobody: no business has real data on Purser Cloud; the subprocessors are on their standard terms and no agreement with any of them is recorded |
 | Art. 30 | A record of processing activities. | PC-35, PC-18 | documented | drawn up for the controller to adopt; the controller's name and contact are blanks until a business deploys Purser |
 | Art. 32 | Security of processing appropriate to the risk, including pseudonymisation, encryption, integrity and resilience. | PC-17, PC-10, PC-01, PC-18 | evidence in ledger | the runner's SQLite file is not encrypted at rest by Purser (an encrypted volume is the owner's) |
 | Art. 33 | Notify a personal data breach to the supervisory authority within 72 hours where feasible. | PC-29 | documented | the controller's duty: incident-response.md has the procedure and template; nothing has been notified (sandbox, test data) |
 | Art. 35 | A data protection impact assessment where processing is likely to result in a high risk. | PC-35, PC-27 | documented | done voluntarily by the maintainer (AI is new technology); no data protection officer or data subject consulted |
-| Art. 44 | Transfers to a third country only under Chapter V (adequacy, appropriate safeguards). | PC-30, PC-35 | **gap** | Anthropic, Resend and Twilio are in the United States; no transfer mechanism (EU-US Data Privacy Framework, Standard Contractual Clauses) is recorded for any of them |
+| Art. 44 | Transfers to a third country only under Chapter V (adequacy, appropriate safeguards). | PC-38, PC-30, PC-35 | **gap** | Anthropic, Resend and Twilio are in the United States and several providers' locations are not recorded; transfers.md says which mechanism each would need, but none (EU-US Data Privacy Framework, Standard Contractual Clauses) is in place or recorded |
 
 ## eIDAS, Regulation (EU) No 910/2014 as amended by Regulation (EU) 2024/1183
 
@@ -228,7 +230,7 @@ Each row below maps one requirement of a framework to the Purser controls that a
 | Art. 21(2)(d) | Supply chain security, including the relationships with direct suppliers and service providers. | PC-30, PC-32 | documented |  |
 | Art. 21(2)(e) | Security in acquisition, development and maintenance, including vulnerability handling and disclosure. | PC-21, PC-32, PC-33 | documented |  |
 | Art. 21(2)(f) | Policies and procedures to assess the effectiveness of the cybersecurity measures. | PC-19, PC-33 | documented | self-assessed and tested in CI; no independent assessment or penetration test |
-| Art. 21(2)(g) | Basic cyber hygiene practices and cybersecurity training. | PC-27 | **gap** | no training programme and no record of anyone's training |
+| Art. 21(2)(g) | Basic cyber hygiene practices and cybersecurity training. | PC-27, PC-37 | **gap** | awareness material is written (ai-literacy.md, its security habits), but there is no training programme and no record of anyone's training |
 | Art. 21(2)(h) | Policies and procedures on the use of cryptography and, where appropriate, encryption. | PC-17, PC-01 | documented |  |
 | Art. 21(2)(i) | Human resources security, access control policies and asset management. | PC-07, PC-05, PC-18 | evidence in ledger |  |
 | Art. 21(2)(j) | Multi-factor or continuous authentication, secured communications, and secured emergency communication. | PC-01, PC-25, PC-08 | evidence in ledger | no separate emergency communication channel is set up |
@@ -247,7 +249,7 @@ Each row below maps one requirement of a framework to the Purser controls that a
 | A.5.24 | Information security incident management planning and preparation. | PC-29, PC-20 | documented |  |
 | A.5.28 | Collection and preservation of evidence. | PC-10 | evidence in ledger |  |
 | A.5.34 | Privacy and protection of personal data. | PC-35, PC-18 | documented |  |
-| A.6.3 | Information security awareness, education and training. | PC-27 | **gap** | no training programme and no record of anyone's training |
+| A.6.3 | Information security awareness, education and training. | PC-27, PC-37 | **gap** | awareness material is written (ai-literacy.md, its security habits), but there is no training programme and no record of anyone's training |
 | A.7.1 | Physical security perimeters. | PC-30 | **gap** | no premises of its own: the runner runs on its owner's machine and Purser Cloud in Cloudflare's data centres, whose physical security Purser has not assessed |
 | A.8.5 | Secure authentication. | PC-01, PC-08, PC-25 | evidence in ledger |  |
 | A.8.8 | Management of technical vulnerabilities. | PC-32, PC-33 | documented |  |
@@ -261,23 +263,20 @@ Each row below maps one requirement of a framework to the Purser controls that a
 
 ## Gaps in one list
 
-- EU AI Act Art. 4: the instructions for use and the AI policy say what an approver must know, but no training or literacy measure is recorded for anyone.
-- EU AI Act Art. 11(1): the contents are spread over docs/ (architecture, threat model, evals, instructions for use); no single document follows Annex IV.
-- EU AI Act Art. 17(1): no quality management system: one maintainer, CI and the change rules; the procedures Art. 17(1) lists (design control, data management, post-market monitoring, accountability) are not written as one.
-- ISO/IEC 42001:2023 A.4.6: the roles are named, but no one's competences or training are recorded.
+- ISO/IEC 42001:2023 A.4.6: the roles and the competences each needs are written (ai-literacy.md), but no one's competences or training are recorded.
 - DORA Art. 12(1): no backup policy for the runner's ledger and no recorded restore test (the hash chains would show a restore that lost or changed a row).
-- DORA Art. 30(1): no contract yet: test and developer accounts on the providers' standard terms; exit-plans.md lists what a production contract must include.
-- GDPR Art. 28: no data processing agreement with any deploying business or any subprocessor: test accounts only.
-- GDPR Art. 44: Anthropic, Resend and Twilio are in the United States; no transfer mechanism (EU-US Data Privacy Framework, Standard Contractual Clauses) is recorded for any of them.
+- DORA Art. 30(1): no contract yet: test and developer accounts on the providers' standard terms; templates/ict-contract-clauses.md lists the clauses Art. 30(2) and (3) require, per provider of the register, as a template only.
+- GDPR Art. 44: Anthropic, Resend and Twilio are in the United States and several providers' locations are not recorded; transfers.md says which mechanism each would need, but none (EU-US Data Privacy Framework, Standard Contractual Clauses) is in place or recorded.
 - eIDAS Art. 25(2): no qualified signature has been made: the CSC adapter is tested against a mock server only; there is no QTSP contract and no qualified signing credential.
 - NIS2 Art. 21(2)(c): the runbook covers recovery steps and the exit plans the providers, but there is no backup policy for the runner's ledger and no recorded restore test.
-- NIS2 Art. 21(2)(g): no training programme and no record of anyone's training.
-- ISO/IEC 27001:2022 A.6.3: no training programme and no record of anyone's training.
+- NIS2 Art. 21(2)(g): awareness material is written (ai-literacy.md, its security habits), but there is no training programme and no record of anyone's training.
+- ISO/IEC 27001:2022 A.6.3: awareness material is written (ai-literacy.md, its security habits), but there is no training programme and no record of anyone's training.
 - ISO/IEC 27001:2022 A.7.1: no premises of its own: the runner runs on its owner's machine and Purser Cloud in Cloudflare's data centres, whose physical security Purser has not assessed.
 - ISO/IEC 27001:2022 A.8.13: no backup policy for the runner's ledger and no recorded restore test.
 
 And the parts still open in rows that are mapped:
 
+- EU AI Act Art. 4: the measure is a note per role (ai-literacy.md) beside the instructions for use; it is not a training programme, and nobody's reading of it is recorded yet.
 - EU AI Act Art. 6(2): Purser's own reading, not legal advice and not reviewed by a lawyer; a deployer's own use (say, scoring people) could change it.
 - EU AI Act Art. 9(2): the risk register (ai-impact-assessment.md) has owners and a review date, but its first review is due 26 May 2027: it has not yet run as a continuous process.
 - EU AI Act Art. 12(1): the retention periods are defaults the deployer confirms; the check reports rows past their period and deletes nothing, and removing an expired ledger whole is a procedure, not built.
@@ -285,6 +284,8 @@ And the parts still open in rows that are mapped:
 - EU AI Act Art. 14(4)(b): the signal is what the phone's approval page reports, not signed; approvals in Purser Cloud's console or the CLI report nothing; it measures, it does not yet prompt the approver.
 - EU AI Act Art. 15(3): declared only as the eval records measured them, per agent, model and case set, on test cases; no level is promised beyond those records.
 - EU AI Act Art. 50(1): held by labels on the pages (test-checked), not by a record per conversation.
+- EU AI Act Art. 11(1): drawn up voluntarily (on Purser's reading it is not high-risk) by the maintainer alone and reviewed by no one else; the test records are dated and committed but not signed by a responsible person, as Annex IV 2(g) asks; no EU declaration and no post-market monitoring plan.
+- EU AI Act Art. 17(1): an outline for a one-maintainer project (Art. 17(2)), each procedure pointing at the one in use; no second person or deputy, the review that closes the cycle has not run yet (due 26 May 2027), and nobody has audited it.
 - ISO/IEC 42001:2023 A.2.2: the policy of the project as it runs today (one maintainer, sandbox); a deploying organisation adopts and adapts it.
 - ISO/IEC 42001:2023 A.5.2: assessed by the maintainer alone; no affected party (a supplier, an approver) was consulted.
 - ISO/IEC 42001:2023 A.7.5: covers the documents a model read (their hash per reading); Purser trains no model.
@@ -313,6 +314,7 @@ And the parts still open in rows that are mapped:
 - GDPR Art. 17: Purser Cloud erases a person at once and keeps the books (Art. 17(3)(b)); the runner's ledger has no erasure tool, its hash chains are kept or deleted whole.
 - GDPR Art. 20: the company's export (JSON and CSV) is per company, not per person.
 - GDPR Art. 22: code pays a supplier's invoice alone within the limit the CFO signed; a refusal or hold always goes to a person; no decision about a natural person's credit or rights is made.
+- GDPR Art. 28: a template (templates/dpa.md) with every Art. 28(3) item, not legal advice, not reviewed by counsel and signed with nobody: no business has real data on Purser Cloud; the subprocessors are on their standard terms and no agreement with any of them is recorded.
 - GDPR Art. 30: drawn up for the controller to adopt; the controller's name and contact are blanks until a business deploys Purser.
 - GDPR Art. 32: the runner's SQLite file is not encrypted at rest by Purser (an encrypted volume is the owner's).
 - GDPR Art. 33: the controller's duty: incident-response.md has the procedure and template; nothing has been notified (sandbox, test data).

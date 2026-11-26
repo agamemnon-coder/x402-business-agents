@@ -2191,6 +2191,52 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/treasury":
+    get:
+      operationId: getV1Treasury
+      tags:
+        - Company
+      summary: "Cash & FX as the runner last pushed it (null before the first push): cash per currency against the CFO's floors, the 13-week forecast (a forecast, not a promise of cash), the FX exposure with the advisor's decision and the conversions it filed for the CFO's passkey. Test money. Read only: nothing here approves or converts."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  "/v1/receivables":
+    get:
+      operationId: getV1Receivables
+      tags:
+        - Company
+      summary: "Receivables as the runner last pushed them (null before the first push): invoices by number and amount, the payments matched to them, the payments waiting for a person, aged debtors and the reminder steps (drafts a person sends). No customer or payer name. Test money. Read only."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/compliance":
     get:
       operationId: getV1Compliance
@@ -4476,7 +4522,7 @@ paths:
       operationId: postV1TryNegotiateAgreed
       tags:
         - Hands-on demo
-      summary: "File a negotiation's agreed (or escalated) terms, { agreement_sha256, compose, turns, invoice_id? } as negotiated: the agreed invoice, ready to sign, replacing invoice_id's. Only terms this company negotiated, filed once. Answers { invoice, superseded }."
+      summary: "File a negotiation's agreed (or escalated) terms, { agreement_sha256, compose, turns, invoice_id?, agreement, keys, offers } as negotiated: the agreed invoice, ready to sign, replacing invoice_id's. Only terms this company negotiated, filed once; the signed offers must form one chain, each signed by its agent's key, ending at the offer the agreement names (409 broken_chain otherwise). The agreement and the offers' hashes are kept with the invoice and carried in its proof. Answers { invoice, superseded }."
       security:
         - bearer:
             - admin

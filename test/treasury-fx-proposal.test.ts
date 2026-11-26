@@ -13,6 +13,7 @@ import { fxAdvice, type IndicativeRate } from "../src/treasury/fxCore.js";
 import { ProposalRefused } from "../src/policy/approvals.js";
 import { summarize } from "../src/dashboard/snapshot.js";
 import { approveSigned } from "./support/signedApproval.js";
+import { holdPayout } from "../src/policy/payoutLock.js";
 
 const now = new Date("2026-11-26T09:00:00Z");
 const setting = (db: DB, key: string, value: string) => db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value, now.toISOString());
@@ -120,4 +121,48 @@ describe("a suggested conversion", () => {
     expect(fx.calls).toEqual(["find"]);
     expect(db.prepare("SELECT conversion_id FROM fx_conversions").all()).toEqual([{ conversion_id: "conv-earlier" }]);
   });
+  // Review of 26 Nov: the floor is judged on what is free under the payout lock, the maximum is held, and the holds are
+  // checked again right before the create.
+  it("counts what a supplier payment executing at the same time holds: below the floor, nothing is quoted or converted", async () => {
+    const { db, f, advice } = world();
+    const p = proposeFxConversion(db, advice.suggestions[0]!, f, now);
+    approveSigned(db, p.proposal_id, now);
+    const fx = new FakeFx();
+    // EUR 10,000 available, floor 2,000: a supplier payment holds EUR 7,600, which leaves 400 free, under the 464.60 signed.
+    holdPayout(db, "P-OTHER", "other-payout", "EUR", 760_000);
+    expect(await executeFxConversion(db, fx, p.proposal_id, () => now)).toMatchObject({ outcome: "NEEDS_REAPPROVAL", detail: expect.stringMatching(/under its floor/) });
+    expect(fx.calls).toEqual(["find", "balances"]);
+    expect(db.prepare("SELECT key FROM payout_reservations WHERE status = 'HELD'").all()).toEqual([{ key: "other-payout" }]);
+  });
+
+  it("holds the signed maximum while it runs, and lets it go once the conversion is recorded", async () => {
+    const { db, f, advice } = world();
+    const p = proposeFxConversion(db, advice.suggestions[0]!, f, now);
+    approveSigned(db, p.proposal_id, now);
+    const fx = new FakeFx();
+    const t = JSON.parse(p.terms_json) as { conversion_request_id: string };
+    let heldAtCreate: unknown;
+    const create = fx.createConversionAny.bind(fx);
+    fx.createConversionAny = async (a) => { heldAtCreate = db.prepare("SELECT key, currency, cents, status FROM payout_reservations").all(); return create(a); };
+    expect(await executeFxConversion(db, fx, p.proposal_id, () => now)).toMatchObject({ outcome: "EXECUTED" });
+    expect(heldAtCreate).toEqual([{ key: t.conversion_request_id, currency: "EUR", cents: 46_460, status: "HELD" }]);
+    expect(db.prepare("SELECT status FROM payout_reservations").all()).toEqual([{ status: "RELEASED" }]);
+  });
+
+  for (const [what, key] of [["the emergency stop", "freeze"], ["a pause of the Treasury agent", "pause.treasury"]] as const) {
+    it(`${what} set between the start and the create holds the create: quoted, never converted`, async () => {
+      const { db, f, advice } = world();
+      const p = proposeFxConversion(db, advice.suggestions[0]!, f, now);
+      approveSigned(db, p.proposal_id, now);
+      const fx = new FakeFx();
+      const quote = fx.createQuoteAny.bind(fx);
+      fx.createQuoteAny = async (a) => { setting(db, key, "on"); return quote(a); };
+      await expect(executeFxConversion(db, fx, p.proposal_id, () => now)).rejects.toThrow(key === "freeze" ? /emergency stop; nothing is converted/ : /paused/);
+      expect(fx.calls).toEqual(["find", "balances", "quote"]);
+      expect(fx.made.size).toBe(0);
+      expect(db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(p.proposal_id)).toEqual({ status: "FAILED" });
+      expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'fx.held_before_create'").get()).toEqual({ n: 1 });
+      expect(db.prepare("SELECT status FROM payout_reservations").all()).toEqual([{ status: "RELEASED" }]);
+    });
+  }
 });

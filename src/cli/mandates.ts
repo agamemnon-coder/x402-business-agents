@@ -1,12 +1,13 @@
 // npm run mandates -- list
 // npm run mandates -- grant <id> --purpose "<task>" --total 5000.00 --payees "Name A|Name B" --until 2026-11-30
 //                         [--from 2026-11-01] [--month 2026-11] [--kinds invoice_payment,supplier_payment] [--currency EUR]
-//                         [--agent treasury] [--reason "<why>"]
+//                         [--agent treasury] [--reason "<why>"] [--by <person>]
 // npm run mandates -- narrow <id> [--total …] [--payees …] [--until …] [--from …] [--month …] [--kinds …]
 // npm run mandates -- revoke <id> "<reason>"
 // npm run mandates -- token <id> [hours]
 // Task mandates (src/policy/taskMandates.ts). Granting or widening one is a policy change: proposed here, it counts only
-// once the CFO approves it with the passkey (on the phone, /approve/<id>). Narrowing and revoking take effect at once.
+// once the CFO approves it with the passkey (on the phone, /approve/<id>); --by names the person proposing it, who then
+// cannot approve it (needed above the CFO's segregation-of-duties threshold). Narrowing and revoking take effect at once.
 // A token is short-lived (src/policy/taskTokens.ts); it is printed once, and only its hash is kept.
 import { openDb } from "../db/open.js";
 import { proposePolicyChange } from "../executors/policyChange.js";
@@ -18,7 +19,7 @@ const [cmd = "list", id, ...rest] = process.argv.slice(2);
 const opt = (name: string) => { const i = rest.indexOf(`--${name}`); return i >= 0 ? rest[i + 1] : undefined; };
 const db = openDb();
 const by = process.env.USER ?? "cfo";
-const usage = () => { console.error("usage: npm run mandates -- list | grant <id> --purpose … --total … --payees \"A|B\" --until YYYY-MM-DD | narrow <id> … | revoke <id> \"<reason>\" | token <id> [hours]"); process.exit(2); };
+const usage = () => { console.error("usage: npm run mandates -- list | grant <id> --purpose … --total … --payees \"A|B\" --until YYYY-MM-DD [--by <person>] | narrow <id> … | revoke <id> \"<reason>\" | token <id> [hours]"); process.exit(2); };
 
 /** The mandate the options describe, over `base` (a narrowing keeps what it does not name). */
 function fromOptions(base: Partial<TaskMandate>): TaskMandate {
@@ -37,7 +38,8 @@ function fromOptions(base: Partial<TaskMandate>): TaskMandate {
 if (cmd === "list") {
   for (const m of listTaskMandates(db)) console.log(`${m.id.padEnd(24)} ${m.in_force ? `in force (${m.granted_by})` : "NOT in force"}  spent ${m.spent}  ${m.mandate ? mandateWords(m.mandate) : "unreadable"}`);
 } else if (cmd === "grant" && id) {
-  const p = proposePolicyChange(db, { changes: [grantChange(id, fromOptions(mandateInForce(db, id)?.mandate ?? {}))], reason: opt("reason") ?? `task mandate ${id}` }, "human");
+  const proposer = opt("by");
+  const p = proposePolicyChange(db, { changes: [grantChange(id, fromOptions(mandateInForce(db, id)?.mandate ?? {}))], reason: opt("reason") ?? `task mandate ${id}`, ...(proposer !== undefined ? { proposedBy: proposer } : {}) }, "human");
   console.log(`${p.proposal_id} grants task mandate ${id}, hash ${p.terms_sha256.slice(0, 8)}; it counts only once you approve it with the passkey (/approve/${p.proposal_id})`);
 } else if (cmd === "narrow" && id) {
   const rec = mandateInForce(db, id);

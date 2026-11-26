@@ -18,7 +18,7 @@ import { dirname, join, relative, sep } from "node:path";
 import type { DB } from "../db/open.js";
 import { keyIdOf, rawPublicKey } from "../audit/checkpoint.js";
 import type { AuditRowStored } from "../audit/log.js";
-import { manifestSignatureChecks, periodAuditRows, rowSha256, signManifest, verifyAuditPack, type AuditPack, type PackCheck, type PackResult, type PackSigner } from "../audit/pack.js";
+import { manifestSignatureChecks, packResult, periodAuditRows, rowSha256, signManifest, verifyAuditPack, type AuditPack, type PackCheck, type PackResult, type PackSigner } from "../audit/pack.js";
 import { sha256Hex } from "../lib/terms.js";
 import { RATIONALE_NOT_VIEWED, RATIONALE_VIEWED } from "../passkey/process.js";
 import { CONTROLS, FRAMEWORKS, HONEST_LINE, REQUIREMENTS, type Control, type FrameworkId, type LedgerEvidence, type Status } from "./controls.js";
@@ -276,15 +276,16 @@ const parse = (text: string | undefined): unknown => { try { return text === und
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /**
- * Every check on the evidence: the manifest's shape and Ed25519 signature (and, given pinned keys, whose key signed
- * it), every file against the manifest (changed, missing or added: named), the summary against the files it sums, and,
- * given the audit pack of the same period: that the pack verifies, covers the same run of the chain, and has every
- * cited audit row (and policy version and approval) as the evidence cites it.
+ * Every check on the evidence: the manifest's shape and Ed25519 signature and whose key signed it (not checked, never
+ * ok, with no key pinned), every file against the manifest (changed, missing or added: named), the summary against the
+ * files it sums, and with the audit pack of the same period: that the pack verifies, is signed by the evidence's own key,
+ * covers the same run of the chain, and has every cited audit row (and policy version and approval) as the evidence
+ * cites it. Without the pack, "cited rows" is not checked and the result is not ok (incomplete: PARTIAL).
  */
 export function verifyComplianceEvidence(files: Record<string, string>, opts: { trusted?: string[]; auditPack?: unknown } = {}): PackResult {
   const checks: PackCheck[] = [];
-  const add = (check: string, ok: boolean, detail: string) => { checks.push({ check, ok, detail }); return ok; };
-  const done = (): PackResult => ({ ok: checks.length > 0 && checks.every((c) => c.ok), checks });
+  const add = (check: string, ok: boolean, detail: string, notChecked = false) => { checks.push(notChecked ? { check, ok, detail, not_checked: true } : { check, ok, detail }); return ok; };
+  const done = (): PackResult => packResult(checks);
   try { return run(); } catch (e) { add("error", false, (e as Error).message); return done(); }
 
   function run(): PackResult {
@@ -294,7 +295,7 @@ export function verifyComplianceEvidence(files: Record<string, string>, opts: { 
       && Array.isArray(m.files) && isObj(m.period) && isObj(m.audit) && typeof m.public_key === "string" && typeof m.key_id === "string";
     const man = m as unknown as EvidenceManifest;
     if (!add("format", shaped, shaped ? `${COMPLIANCE_EVIDENCE_FORMAT}, period ${String(man.period.from)} .. ${String(man.period.to)}` : `${MANIFEST} is missing or not a ${COMPLIANCE_EVIDENCE_FORMAT} manifest`)) return done();
-    for (const c of manifestSignatureChecks(man, (top as { signature: string }).signature, opts.trusted ?? [])) add(c.check, c.ok, c.detail);
+    for (const c of manifestSignatureChecks(man, (top as { signature: string }).signature, opts.trusted ?? [])) add(c.check, c.ok, c.detail, c.not_checked);
 
     // Every file as the manifest lists it; none missing, none added.
     const why: string[] = [];
@@ -349,13 +350,17 @@ export function verifyComplianceEvidence(files: Record<string, string>, opts: { 
 
     // With the audit pack of the same period: it verifies, it is the same run of the chain, and it has every cited row.
     if (opts.auditPack === undefined) {
-      add("cited rows", true, "no audit pack given: the cited rows were not checked against the period's hash chain (pass --audit-pack <file>)");
+      add("cited rows", false, "not checked: no audit pack given, so the cited rows were not checked against the period's hash chain (pass --audit-pack <file>)", true);
       return done();
     }
-    const pr = verifyAuditPack(opts.auditPack, { trusted: opts.trusted });
+    // The pack must be the evidence's own signer's: verified with the evidence's key as the one pinned key (whether
+    // that key is trusted is the evidence's own "key" check above).
     const pack = opts.auditPack as AuditPack;
-    const pm = pr.checks.length && isObj(pack) && isObj(pack.manifest) ? pack.manifest : null;
-    const packWhy = !pr.ok ? `the audit pack does not verify (${pr.checks.filter((c) => !c.ok).map((c) => c.check).join(", ")})`
+    const pm = isObj(pack) && isObj(pack.manifest) ? pack.manifest : null;
+    const sameSigner = pm !== null && pm.public_key === man.public_key;
+    const pr = verifyAuditPack(opts.auditPack, { trusted: [man.public_key] });
+    const packWhy = pm && typeof pm.public_key === "string" && !sameSigner ? `the audit pack is signed by key ${String(pm.key_id)}; the evidence by key ${man.key_id}: not the same signer`
+      : !pr.ok ? `the audit pack does not verify (${pr.checks.filter((c) => !c.ok).map((c) => c.check).join(", ")})`
       : !pm || !sameJson(pm.period, man.period) ? `the audit pack is of period ${String(pm?.period.from)} .. ${String(pm?.period.to)}; the evidence is of ${man.period.from} .. ${man.period.to}`
       : !sameJson({ first_seq: pm.audit.first_seq, last_seq: pm.audit.last_seq, rows: pm.audit.rows, before: pm.audit.before, head: pm.audit.head }, man.audit) ? `the audit pack's chain runs ${pm.audit.first_seq}..${pm.audit.last_seq}, head ${short(pm.audit.head)}; the evidence's ${man.audit.first_seq}..${man.audit.last_seq}, head ${short(man.audit.head)}`
       : null;

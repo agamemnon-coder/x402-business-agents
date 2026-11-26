@@ -17,6 +17,7 @@ import type { Blobs, Sql } from "./store.js";
 import { applySync, SyncBatch, SyncRefused, syncState } from "./sync.js";
 import { readAuthorityMap } from "./authorityMap.js";
 import { readCompliance } from "./compliance.js";
+import { receivablesOf, treasuryOf } from "./moneyLoop.js";
 import { QuotaExceeded, reserveStorage, type StorageQuota } from "./storageQuota.js";
 import { endSession, listSessions } from "./sessions.js";
 import { WriteConflict } from "./tenant.js";
@@ -336,16 +337,32 @@ async function tellOwners(c: Ctx, kind: string, detail: Record<string, string | 
 
 /** The card actions that let an agent's card spend, or spend on it: refused while the company's emergency stop is on. */
 const CARD_SPEND_KINDS: ReadonlySet<string> = new Set(["issue", "unfreeze", "limits", "test", "edge"]);
+const STOP_UNREAD = "the company's emergency stop could not be read, so no card action that can spend runs now; try again";
+const STOP_ON = "the CFO's emergency stop is on: no card is issued, unfrozen, raised or tested until the CFO lifts it with the passkey";
+
 /**
- * The company's emergency stop (src/policy/emergencyStop.ts, kept in its engine) asked before a card action that could
- * spend, as the runner's stop holds every card: why not, or null. A freeze, and a tidy of older cards, always go. With no
- * engine wired there is no stop to ask; an engine that does not answer refuses (fails closed).
+ * The company's emergency stop (src/policy/emergencyStop.ts) asked before a card action that could spend, as the
+ * runner's stop holds every card: why not, or null. A freeze, and a tidy of older cards, always go. With an engine in
+ * the cloud it is the engine's; with none (a company whose runner keeps the books) it is the runner's, as its audit log
+ * synced here says: the newest policy.changed row for the stop ("freeze", the runner's stopState). Either way a stop
+ * that cannot be read refuses (fails closed); a company whose synced log never pulled the stop is not stopped.
  */
 async function stopRefusesCard(c: Ctx, kind: string | undefined): Promise<string | null> {
-  if (!kind || !CARD_SPEND_KINDS.has(kind) || !c.env.engine) return null;
-  const st = await c.env.engine(c.caller!.tenantId).status().catch(() => null);
-  if (!st) return "the company's emergency stop could not be read, so no card action that can spend runs now; try again";
-  return st.emergency_stop?.on ? "the CFO's emergency stop is on: no card is issued, unfrozen, raised or tested until the CFO lifts it with the passkey" : null;
+  if (!kind || !CARD_SPEND_KINDS.has(kind)) return null;
+  if (c.env.engine) {
+    const st = await c.env.engine(c.caller!.tenantId).status().catch(() => null);
+    if (!st) return STOP_UNREAD;
+    return st.emergency_stop?.on ? STOP_ON : null;
+  }
+  let row: { payload_json: string } | null;
+  try {
+    row = await c.env.sql.first<{ payload_json: string }>("SELECT payload_json FROM audit_rows WHERE tenant_id = ? AND event = 'policy.changed' AND subject = 'freeze' ORDER BY seq DESC LIMIT 1", [c.caller!.tenantId]);
+  } catch { return STOP_UNREAD; }
+  if (!row) return null;
+  let to: unknown;
+  try { to = (JSON.parse(row.payload_json) as { to?: unknown }).to; } catch { return STOP_UNREAD; }
+  if (to === "on") return STOP_ON;
+  return to === "off" || to === "" ? null : STOP_UNREAD;
 }
 
 export const ROUTES: Route[] = [
@@ -740,6 +757,8 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams, c.now)) },
   { method: "GET", path: "/v1/agents", summary: "The company's agents from its own records: job, Claude model, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only.", need: "read", run: async (c) => json(200, await agentsOf(db(c))) },
   { method: "GET", path: "/v1/authority-map", summary: "Who may pay what, per agent, as the runner last pushed it (null before the first push). Read only.", need: "read", run: async (c) => json(200, await readAuthorityMap(db(c))) },
+  { method: "GET", path: "/v1/treasury", summary: "Cash & FX as the runner last pushed it (null before the first push): cash per currency against the CFO's floors, the 13-week forecast (a forecast, not a promise of cash), the FX exposure with the advisor's decision and the conversions it filed for the CFO's passkey. Test money. Read only: nothing here approves or converts.", need: "read", run: async (c) => json(200, await treasuryOf(db(c), isDemoTenant(c.caller!.tenantId))) },
+  { method: "GET", path: "/v1/receivables", summary: "Receivables as the runner last pushed them (null before the first push): invoices by number and amount, the payments matched to them, the payments waiting for a person, aged debtors and the reminder steps (drafts a person sends). No customer or payer name. Test money. Read only.", need: "read", run: async (c) => json(200, await receivablesOf(db(c), isDemoTenant(c.caller!.tenantId))) },
   { method: "GET", path: "/v1/compliance", summary: "The runner's compliance evidence in short, as it last pushed it (null before the first push): per framework how many requirements have evidence in the last 30 days, no records, documentation only or gaps; per control its records; the gaps. Counts only. Read only.", need: "read", run: async (c) => json(200, await readCompliance(db(c))) },
   { method: "GET", path: "/v1/cards", summary: "The agents' live Airwallex sandbox cards (test money): for each agent its card's last four digits (never the full number or the CVV), live status, limits against the CFO policy, and its newest authorizations with their ids; whether card actions are on (admin switch awx_cards) and today's caps.", need: "read", run: async (c) => json(200, await cardsView({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), now: c.now })) },
   { method: "GET", path: "/v1/cards/scope", summary: "Whether the Airwallex sandbox key may use Issuing: { issuing: ok | forbidden | no_key | no_gateway | unavailable }. One read of Airwallex a minute at most, for everyone; no card data.", need: "public", run: async (c) => json(200, await cardsScope(c.env.sql, c.env.awxCards, c.now)) },

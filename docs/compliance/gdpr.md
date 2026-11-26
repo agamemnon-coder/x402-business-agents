@@ -30,7 +30,7 @@
 | Party | Role | For |
 |---|---|---|
 | The deploying business | **Controller** | Its suppliers', customers' and staff's data in the runner and in Purser Cloud |
-| Purser Cloud's operator | **Processor** (Art. 28), on the business's instructions | The data Purser Cloud stores; no data processing agreement exists yet: a gap ([controls.md](controls.md)) |
+| Purser Cloud's operator | **Processor** (Art. 28), on the business's instructions | The data Purser Cloud stores; a data processing agreement template exists ([templates/dpa.md](templates/dpa.md)), signed with nobody ([controls.md](controls.md)) |
 | The providers of the [register](third-parties.md) | Subprocessors | What each receives, as the register says |
 
 ## Record of processing activities (Art. 30)
@@ -53,7 +53,7 @@ protection levels of data-classification.md (encryption, integrity, access, logg
 | R6 | **Security monitoring** | Detect and slow attacks, and keep the security log | Art. 6(1)(f) security of the service (Recital 49) | Users and visitors | Network address (cut to its network where kept), route, outcome, user agent | 8 tables: `security_log`, `security_events`, `sec_log`, `sec_counts`, `erasures`, `hits`, … | Cloudflare | the platform's security log a year; rate windows a day ([Cloud](../privacy/retention.md)) |
 | R7 | **Approval alerts** | Tell the approver a payment waits, with a link and nothing that approves | Art. 6(1)(b) contract (an alert the company switched on) | The people the company names as alert targets | Phone number, e-mail address, chat webhook, push subscription; the alert's message (amount, payee, link) | 3 tables: `alert_targets`, `chat_hooks`, `push_subs` | Resend, Twilio, Slack, Microsoft (Entra ID, Graph, Business Central, Teams), Cloudflare | until an owner removes them; deleted at offboarding ([Cloud](../privacy/retention.md)) |
 | R8 | **The hands-on demo** | Run the public demo with made-up companies and limit its abuse | Art. 6(1)(f) running and protecting a public demo | Visitors of the demo | A salted hash of the visitor's address for the day, a visitor token's hash, optional feedback (up to 200 characters) | 3 tables: `try_companies`, `try_salts`, `ts_worlds` | Cloudflare | the demo companies 24 hours; the day's salt a day; feedback has no automatic deletion yet ([Cloud](../privacy/retention.md#open-items)) |
-| R9 | **Accounts receivable** | Send the company's invoices, match the payments that come in, and remind customers who have not paid | Art. 6(1)(b) contracts with customers; (c) bookkeeping | Customers who are natural persons (sole traders), the customers' contacts | Customers' names and contact e-mail, invoice amounts, payments received and how they were matched, reminders sent | 4 tables: `ar_invoices`, `ar_payments`, `ar_review`, `ar_dunning` | Airwallex, Cloudflare | the books: seven years, to 31 December ([retention](retention.md), [Cloud](../privacy/retention.md)) |
+| R9 | **Accounts receivable** | Send the company's invoices, match the payments that come in, and remind customers who have not paid | Art. 6(1)(b) contracts with customers; (c) bookkeeping | Customers who are natural persons (sole traders), the customers' contacts | Customers' names and contact e-mail, invoice amounts, payments received and how they were matched, reminders sent | 5 tables: `ar_invoices`, `ar_payments`, `ar_review`, `ar_dunning`, `money_loops` | Airwallex, Cloudflare | the books: seven years, to 31 December ([retention](retention.md), [Cloud](../privacy/retention.md)) |
 
 Transfers outside the EU, per recipient (locations from the [third-party register](third-parties.md)):
 
@@ -111,7 +111,8 @@ The runner's own ledger has no erasure tool: its hash chains are kept or deleted
 Per recipient, from the locations the [third-party register](third-parties.md) records (the table is in the record
 above). Anthropic, Resend and Twilio are in the United States. **No transfer mechanism (the EU-US Data Privacy
 Framework, Standard Contractual Clauses) is recorded for any of them**: GDPR Art. 44 is a gap in
-[controls.md](controls.md) until the controller puts one in place.
+[controls.md](controls.md) until the controller puts one in place. Which mechanism each recipient would need is in
+[transfers.md](transfers.md).
 
 ## Breaches
 

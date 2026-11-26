@@ -996,7 +996,8 @@ async function engineArchive(E: EnginePass) {
   // Eight since 14 Nov (Agents and Tokenisation joined on 13 Nov; Invoices and Books are two tabs again; Airwallex, live
   // from the sandbox, joined); the archive is not one.
   // 21 Nov: Claude's tab is in the menu, hidden until the company has connected it (cloud/src/consoleCompany.ts).
-ok(await p.locator("#tabs a:not([hidden])").count() === 9 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its nine items");
+// v1.5.1: Receivables and Cash & FX joined Money: eleven.
+ok(await p.locator("#tabs a:not([hidden])").count() === 11 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its eleven items");
   const files = (await apiAs(E, "/v1/engine/vault")).files as VaultFile[];
   ok(files.length >= 2 && await p.locator(".archive ul.files li").count() === files.length, `archive: every file of GET /v1/engine/vault is in the tree (${files.length})`);
   const tree = await p.$$eval(".archive details", (ds) => ds.map((d) => { let depth = 0; for (let x = d.parentElement; x; x = x.parentElement) if (x.tagName === "DETAILS") depth++; return { name: d.querySelector("summary")?.textContent ?? "", depth, open: (d as HTMLDetailsElement).open }; }));
@@ -1065,15 +1066,16 @@ async function guestPass() {
     const nav = width < 1024 ? "#btabs a" : "#tabs a:not([hidden])";
     const boxes = await p.locator(nav).evaluateAll((as) => as.map((a) => { const b = a.getBoundingClientRect(); return { top: Math.round(b.top), left: Math.round(b.left), whole: a.scrollWidth <= a.clientWidth + 1 && b.right <= innerWidth + 1 && b.left >= -1 && b.bottom <= innerHeight + 1 }; }));
     const rows = new Set(boxes.map((b) => b.top)).size, cols = new Set(boxes.map((b) => b.left)).size;
-    ok(width < 1024 ? boxes.length === 5 && rows === 1 && boxes.every((b) => b.whole) && !(await p.isVisible("#tabs")) : boxes.length === 10 && cols === 1 && rows === 10 && boxes.every((b) => b.whole),
-      `${tag}: the pages are ${width < 1024 ? "five groups in one bottom row, every one whole" : "a sidebar of ten (Claude connected), one under the other"} (${JSON.stringify(boxes)})`);
+    // v1.5.1: Receivables and Cash & FX joined Money, so a laptop's sidebar has twelve.
+    ok(width < 1024 ? boxes.length === 5 && rows === 1 && boxes.every((b) => b.whole) && !(await p.isVisible("#tabs")) : boxes.length === 12 && cols === 1 && rows === 12 && boxes.every((b) => b.whole),
+      `${tag}: the pages are ${width < 1024 ? "five groups in one bottom row, every one whole" : "a sidebar of twelve (Claude connected), one under the other"} (${JSON.stringify(boxes)})`);
     if (width < 1024) {
       // The Ask button sits in the top bar, so it covers nothing; the bottom bar covers nothing at the page's end either.
       ok(await p.evaluate(() => !!document.querySelector(".appbar #ask-slot #pask-fab")), `${tag}: Ask Purser is in the top bar, not over the page`);
       await p.goto(p.url().replace(/#.*$/, "#/books"));
       await p.waitForSelector("#subnav a[aria-current]", { timeout: 20_000 });
       const sub = await p.locator("#subnav a").evaluateAll((as) => as.map((a) => (a as HTMLElement).innerText.trim()));
-      ok(sub.join("|") === "Invoices|Transactions|Books" && await p.getAttribute("#btabs a[data-group=money]", "aria-current") === "page", `${tag}: Money's pages side by side, Books current (${sub.join(", ")})`);
+      ok(sub.join("|") === "Invoices|Receivables|Cash & FX|Transactions|Books" && await p.getAttribute("#btabs a[data-group=money]", "aria-current") === "page", `${tag}: Money's pages side by side, Books current (${sub.join(", ")})`);
       await p.goto(p.url().replace(/#.*$/, "#/overview"));
       await p.waitForSelector(".dash", { timeout: 20_000 });
     }
@@ -1149,6 +1151,61 @@ async function guestPass() {
   serverG.close();
 }
 await guestPass();
+await moneyLoopPass();
+
+/**
+ * v1.5.1 (Max): Cash & FX and Receivables, the demo company's seeded money loop (cloud/src/guest/moneyLoop.gen.ts), at
+ * a phone and a laptop, light and dark: the key figures, the conversion that waits for the CFO's passkey said and never
+ * a button that converts, approves or pays, the receivables by number and amount, no console or CSP error, nothing
+ * wider than the screen; a screenshot of each.
+ */
+async function moneyLoopPass() {
+  const port = PORT + 300;
+  const ORIGIN = `http://localhost:${port}`;
+  const serverM = await serve(cloudEnv(ORIGIN, join(dir, "money-blobs")), port);
+  for (const [width, height] of [[390, 844], [1440, 1000]] as const) {
+    for (const scheme of ["light", "dark"] as const) {
+      const tag = `money loop ${width} ${scheme}`;
+      const c = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
+      const p = await c.newPage();
+      const errors: string[] = [];
+      p.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+      p.on("pageerror", (e) => errors.push(String(e)));
+      await p.goto(`${ORIGIN}/#/sign-in`);
+      await p.waitForSelector("#guest");
+      await p.click("#guest");
+      await p.waitForURL(/#\/overview$/, { timeout: 20_000 });
+      await p.waitForSelector(".dash", { timeout: 20_000 });
+      // Cash & FX, from the menu: the sidebar on a laptop, Money's pages on a phone.
+      if (width < 1024) { await p.click("#btabs a[data-group=money]"); await p.waitForSelector("#subnav a[href='#/cash']"); await p.click("#subnav a[href='#/cash']"); }
+      else await p.click("#tabs a[data-tab=cash]");
+      await p.waitForSelector(".ml-prop.wait", { timeout: 20_000 });
+      await settleOn(p);
+      const cash = (await p.innerText("main")).replace(/\u00a0/g, " ");
+      ok(/Cash & FX/.test(cash) && cash.includes("EUR 9,226.92") && cash.includes("GBP 860.00") && cash.includes("USD 1,240.00") && /Demo company · test money/.test(cash), `${tag}: Cash & FX shows cash per currency, labelled demo and test money`);
+      ok(cash.includes("Buy USD 2,160.00, selling at most EUR 2,009.26") && cash.includes("P-0001") && /Waits for the CFO's passkey/.test(cash) && /Above the CFO's threshold of EUR 400\.00: it converts only after the CFO approves it with the passkey/.test(cash),
+        `${tag}: the FX advisor's conversion above the threshold waits for the CFO's passkey, said in words`);
+      ok(/Below the threshold/.test(cash) && /about EUR 162\.26/.test(cash), `${tag}: a shortfall below the threshold is shown, with no conversion`);
+      ok(await p.locator("main button", { hasText: /approve|pay|convert|goedkeur|betaal/i }).count() === 0 && await p.locator("main .ml-seg button").count() === 3, `${tag}: no button that approves, pays or converts; only the chart's three currencies`);
+      ok(await p.locator(".ml-fc svg.chart.mlfc[role=img] > title").count() === 1 && await p.locator(".ml-fc svg.chart.mlfc .b.low").count() >= 1 && await p.locator(".ml-fc details.ctable").count() === 1, `${tag}: the 13-week forecast as a chart, titled, the weeks below the floor marked, its table one click away`);
+      ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: Cash & FX: nothing is wider than the screen`);
+      if (shots) await p.screenshot({ path: join(shots, `v151-cash-${width}-${scheme}.png`), fullPage: true });
+      if (width < 1024) await p.click("#subnav a[href='#/receivables']");
+      else await p.click("#tabs a[data-tab=receivables]");
+      await p.waitForSelector(".ml-ar .ml-r:not(.th)", { timeout: 20_000 });
+      await settleOn(p);
+      const ar = (await p.innerText("main")).replace(/\u00a0/g, " ");
+      ok(/Receivables/.test(ar) && ar.includes("EUR 7,702.41") && ar.includes("EUR 2,940.01") && ar.includes("NW-2026-137") && /Partly paid/.test(ar), `${tag}: Receivables shows what is open and overdue, by invoice number`);
+      ok(/Matched · EUR 1\.20 written off/.test(ar) && /Overpaid · EUR 50\.00 to review/.test(ar) && /Waits for a person/.test(ar) && /Draft, not sent/.test(ar), `${tag}: matched payments, the review queue and the reminder drafts`);
+      ok(!/Summit|Alpine|Fjord|Highland|Kustlijn|Rocky/.test(ar), `${tag}: no customer name reaches the page`);
+      ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: Receivables: nothing is wider than the screen`);
+      if (shots) await p.screenshot({ path: join(shots, `v151-receivables-${width}-${scheme}.png`), fullPage: true });
+      ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? ` (${errors.slice(0, 2).join(" | ")})` : ""}`);
+      await c.close();
+    }
+  }
+  serverM.close();
+}
 
 await browser.close();
 rmSync(dir, { recursive: true, force: true });

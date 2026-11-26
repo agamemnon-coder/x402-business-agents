@@ -1,0 +1,515 @@
+{
+  "run": "fx-convert",
+  "date": "2026-11-26",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "command": "npm run airwallex:money-loop-live -- live fx-convert",
+  "commit": "9abc1b24bfad65e36a936ab4da760cc4985bd826",
+  "simulated": [
+    "The approver is a labelled virtual test passkey (\"money-loop virtual test passkey (no person's Face ID)\", src/redteam/authenticator.ts), enrolled as the only passkey of the run's own fresh ledger. Its signatures go through the same verification as a phone's (WebAuthn assertion over the exact terms hash); no person's Face ID was used.",
+    "The CHF payable (AGZ-1126, \"Alpenglas Zuerich AG (test supplier)\") is a test invoice entered in the run's ledger: no supplier sent it, and it is not paid by this run. The balances, the rates, the quote and the conversion are the sandbox's own (test money).",
+    "The change after signing (buy_amount 100.00 to 100.01 in the stored terms) is made by the run in its own ledger, as someone with write access to the ledger would; the refused proposal is then closed."
+  ],
+  "budget": {
+    "approved": 30,
+    "max": 40,
+    "used": 11,
+    "logged_requests": 11,
+    "status_429": 0,
+    "unexpected_non_2xx": []
+  },
+  "totals": {
+    "steps": 9,
+    "pass": 9,
+    "fail": 0,
+    "not_judged": 0
+  },
+  "cards": [],
+  "passes": [
+    {
+      "pass_no": 1,
+      "started_at": "2026-11-26T19:53:39.773Z",
+      "ended_at": "2026-11-26T19:53:44.519Z",
+      "stopped": null,
+      "note": "A fresh ledger of its own. The sandbox holds no CHF, so a test payable of CHF 100.00 due in 10 days makes the forecast fall CHF 100.00 short; the CFO's threshold is EUR 50.00. Before the runs, 6 read-only calls looked at the sandbox (two probes, logins included: the balances twice, the beneficiaries and the Global Accounts); none moved money or changed anything, and they are not in this record's call table. The three runs (19:53 to 19:54 UTC) ran one after the other on the code committed as `9abc1b24b`. The code that ran includes the review fixes of 26 Nov: the FX executor judges the floor on free money under the payout lock and holds the signed maximum, and checks the stop, pause and the agent's identity again right before the create; a payment reference names an invoice only as a whole word.",
+      "timings": {},
+      "steps": [
+        {
+          "phase": "setup",
+          "id": "setup.passkey",
+          "agent": null,
+          "title": "Enrol the virtual test passkey (labelled) as this ledger's only approver",
+          "expect": "enrolled and confirmed",
+          "outcome": "pending; confirmed: money-loop virtual test passkey (no person's Face ID)",
+          "pass": true,
+          "simulated": "a virtual test passkey, no person's Face ID",
+          "started_at": "2026-11-26T19:53:39.775Z",
+          "ended_at": "2026-11-26T19:53:39.790Z",
+          "ms": 15,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "cash",
+          "id": "fx.balances",
+          "agent": "treasury",
+          "title": "Read the sandbox's real balances (GET /balances/current), the forecast's opening",
+          "expect": "EUR available; CHF held or not, as Airwallex says",
+          "outcome": "4 currencies with money available: CNY 10000000.00, EUR 9622616.14, GBP 10001085.50, USD 9981754.40; CHF available 0.00",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:53:39.791Z",
+          "ended_at": "2026-11-26T19:53:40.971Z",
+          "ms": 1180,
+          "lines": [
+            1,
+            2
+          ],
+          "facts": {
+            "available": {
+              "CNY": "10000000.00",
+              "EUR": "9622616.14",
+              "GBP": "10001085.50",
+              "USD": "9981754.40"
+            },
+            "chf_available": "0.00"
+          },
+          "error": null
+        },
+        {
+          "phase": "cash",
+          "id": "fx.policy",
+          "agent": "treasury",
+          "title": "The CFO sets the FX threshold (treasury.fx_threshold_eur) to EUR 50.00 with the passkey; a test payable of CHF 100.00 (AGZ-1126, due 2026-12-06) is entered in the run's ledger",
+          "expect": "the threshold applied; the payable open; no Airwallex call",
+          "outcome": "P-0001 approved by the passkey and applied: threshold EUR 50.00; payable AP-FX-1126 CHF 100.00 due 2026-12-06; 0 Airwallex calls",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey; the CHF payable is a test invoice entered in the ledger (no supplier sent it)",
+          "started_at": "2026-11-26T19:53:40.971Z",
+          "ended_at": "2026-11-26T19:53:41.054Z",
+          "ms": 83,
+          "lines": [],
+          "facts": {
+            "proposal_id": "P-0001",
+            "threshold_eur": "50.00",
+            "payable": {
+              "id": "AP-FX-1126",
+              "vendor": "Alpenglas Zuerich AG (test supplier)",
+              "invoice_no": "AGZ-1126",
+              "currency": "CHF",
+              "amount": "100.00",
+              "due_date": "2026-12-06"
+            }
+          },
+          "error": null
+        },
+        {
+          "phase": "cash",
+          "id": "fx.advice",
+          "agent": "treasury",
+          "title": "The 13-week forecast from the real balances and the ledger; the advisor's exposure and suggestion from Airwallex's indicative rates (GET /fx/rates/current, which moves nothing)",
+          "expect": "one suggestion: buy CHF 100.00 with EUR, at or above the threshold",
+          "outcome": "CHF lowest -100.00 in week 2, short 100.00; suggested: buy CHF 100.00 with at most EUR 111.49 (indicative 110.38 at 0.905922, about EUR 110.38 against the threshold EUR 50.00); 4 rates read",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:53:41.059Z",
+          "ended_at": "2026-11-26T19:53:42.565Z",
+          "ms": 1506,
+          "lines": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "facts": {
+            "as_of": "2026-11-26",
+            "chf_exposure": {
+              "currency": "CHF",
+              "balance_cents": 0,
+              "receivables_cents": 0,
+              "payables_cents": 10000,
+              "min_closing_cents": -10000,
+              "min_week": 2,
+              "floor_cents": 0,
+              "shortfall_cents": 10000,
+              "spare_cents": 0
+            },
+            "rates": [
+              {
+                "pair": "EUR->CHF",
+                "buy": "100.00",
+                "sell": "110.38",
+                "rate": "0.905922",
+                "at": "2026-11-26T19:53:41.000Z"
+              },
+              {
+                "pair": "CNY->CHF",
+                "buy": "100.00",
+                "sell": "806.68",
+                "rate": "8.066846",
+                "at": "2026-11-26T19:53:41.000Z"
+              },
+              {
+                "pair": "GBP->CHF",
+                "buy": "100.00",
+                "sell": "92.39",
+                "rate": "1.082396",
+                "at": "2026-11-26T19:53:42.000Z"
+              },
+              {
+                "pair": "USD->CHF",
+                "buy": "100.00",
+                "sell": "121.09",
+                "rate": "0.825816",
+                "at": "2026-11-26T19:53:42.000Z"
+              }
+            ],
+            "missing": [],
+            "suggestion": {
+              "buy_currency": "CHF",
+              "buy_cents": 10000,
+              "sell_currency": "EUR",
+              "sell_cents": 11038,
+              "sell_max_cents": 11149,
+              "rate": "0.905922",
+              "rate_at": "2026-11-26T19:53:41.000Z",
+              "rate_source": "Airwallex sandbox, GET /fx/rates/current (indicative)",
+              "eur_cents": 11038,
+              "threshold_eur_cents": 5000,
+              "week": 2,
+              "reason": "The forecast has CHF at CHF -100.00 in week 2, CHF 100.00 under its floor of CHF 0.00; buying it with EUR (about EUR 110.38, at most EUR 111.49) keeps EUR above its own floor."
+            },
+            "notes": []
+          },
+          "error": null
+        },
+        {
+          "phase": "approve",
+          "id": "fx.changed_after_signing",
+          "agent": "treasury",
+          "title": "A conversion proposal filed and signed with the passkey; its stored terms then changed (buy_amount 100.00 to 100.01) and the executor started",
+          "expect": "refused by the executor before any Airwallex call (the terms no longer hash to what was signed); closed: nothing converted",
+          "outcome": "P-0002 approved; changed, then refused: P-0002: terms do not match the approved hash 3531b2889e62336431c276f0005a0cc9ac3b11ddd4a88ba8e331765b6b36293d; 0 Airwallex calls; status APPROVED, then closed NEEDS_REAPPROVAL; 0 conversions in the ledger",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey; the change after signing is made by the run in the ledger, as an attacker with write access would",
+          "started_at": "2026-11-26T19:53:42.566Z",
+          "ended_at": "2026-11-26T19:53:42.612Z",
+          "ms": 46,
+          "lines": [],
+          "facts": {
+            "proposal_id": "P-0002",
+            "terms_sha256": "3531b2889e62336431c276f0005a0cc9ac3b11ddd4a88ba8e331765b6b36293d",
+            "changed": {
+              "field": "buy_amount",
+              "from": "100.00",
+              "to": "100.01"
+            },
+            "refusal": "P-0002: terms do not match the approved hash 3531b2889e62336431c276f0005a0cc9ac3b11ddd4a88ba8e331765b6b36293d",
+            "calls": 0,
+            "closed_as": "NEEDS_REAPPROVAL"
+          },
+          "error": null
+        },
+        {
+          "phase": "approve",
+          "id": "fx.signed",
+          "agent": "treasury",
+          "title": "The same suggestion filed again and signed with the passkey",
+          "expect": "APPROVED, with the signed maximum and request id in its terms",
+          "outcome": "P-0003 APPROVED: buy CHF 100.00 with at most EUR 111.49; request_id 0d1530c5-82cf-459e-96fb-a98d5a5f2970",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey",
+          "started_at": "2026-11-26T19:53:42.647Z",
+          "ended_at": "2026-11-26T19:53:42.675Z",
+          "ms": 28,
+          "lines": [],
+          "facts": {
+            "proposal_id": "P-0003",
+            "terms_sha256": "e4c7f4c8dc1d684aecc4a81dcbabb3c060b92c50607bb898ff6ef25ac6f3524f",
+            "buy": "CHF 100.00",
+            "sell_max": "EUR 111.49",
+            "conversion_request_id": "0d1530c5-82cf-459e-96fb-a98d5a5f2970"
+          },
+          "error": null
+        },
+        {
+          "phase": "convert",
+          "id": "fx.convert",
+          "agent": "treasury",
+          "title": "The executor runs the signed conversion (executeFxConversion): a fresh quote for exactly the signed buy amount, held to the signed maximum, then one conversion under the signed request id carrying the approval hash",
+          "expect": "EXECUTED: one quote and one conversion created at Airwallex",
+          "outcome": "EXECUTED: converted EUR 110.38 to CHF 100.00 (45168a42-b5b5-4038-b3a9-050e28abaf91); quote af3936fb-5f52-3562-aaf4-6102c84a0583; payment EXECUTED; calls GET /fx/conversions, GET /balances/current, POST /fx/quotes/create, POST /fx/conversions/create",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:53:42.677Z",
+          "ended_at": "2026-11-26T19:53:44.120Z",
+          "ms": 1443,
+          "lines": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "facts": {
+            "conversion": {
+              "conversion_id": "45168a42-b5b5-4038-b3a9-050e28abaf91",
+              "quote_id": "af3936fb-5f52-3562-aaf4-6102c84a0583",
+              "request_id": "0d1530c5-82cf-459e-96fb-a98d5a5f2970",
+              "buy_amount": "100.00",
+              "sell_amount": "110.38",
+              "status": "SETTLED",
+              "approval_sha256": "e4c7f4c8dc1d684aecc4a81dcbabb3c060b92c50607bb898ff6ef25ac6f3524f"
+            },
+            "calls": [
+              "GET /fx/conversions",
+              "GET /balances/current",
+              "POST /fx/quotes/create",
+              "POST /fx/conversions/create"
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "convert",
+          "id": "fx.readback",
+          "agent": null,
+          "title": "The conversion read back from Airwallex (GET /fx/conversions/{id})",
+          "expect": "buys CHF 100.00, sells EUR within the signed maximum, under the signed request id; the approval hash in its metadata if Airwallex shows it",
+          "outcome": "45168a42-b5b5-4038-b3a9-050e28abaf91 SETTLED: EUR 110.38 to CHF 100.00; request_id the signed one; metadata approval_sha256 the signed hash",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:53:44.121Z",
+          "ended_at": "2026-11-26T19:53:44.513Z",
+          "ms": 392,
+          "lines": [
+            11
+          ],
+          "facts": {
+            "conversion_id": "45168a42-b5b5-4038-b3a9-050e28abaf91",
+            "request_id": "0d1530c5-82cf-459e-96fb-a98d5a5f2970",
+            "status": "SETTLED",
+            "buy_currency": "CHF",
+            "buy_amount": "100.00",
+            "sell_currency": "EUR",
+            "sell_amount": "110.38",
+            "metadata": {
+              "approval_sha256": "e4c7f4c8dc1d684aecc4a81dcbabb3c060b92c50607bb898ff6ef25ac6f3524f"
+            },
+            "signed_sell_max": "111.49",
+            "approval_sha256_matches": true
+          },
+          "error": null
+        },
+        {
+          "phase": "convert",
+          "id": "fx.again",
+          "agent": "treasury",
+          "title": "The executor asked again for the same proposal",
+          "expect": "refused (already executed) before any Airwallex call; one conversion in the ledger",
+          "outcome": "refused: P-0003 is EXECUTED, not approved; 0 calls; 1 conversion in the ledger",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:53:44.514Z",
+          "ended_at": "2026-11-26T19:53:44.514Z",
+          "ms": 0,
+          "lines": [],
+          "facts": {},
+          "error": null
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "n": 1,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:39.792Z",
+      "answered_at": "2026-11-26T19:53:40.520Z",
+      "ms": 728,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "7f07cf35c92f44639590d05ec97152c0",
+      "code": null,
+      "step": "fx.balances (treasury)"
+    },
+    {
+      "n": 2,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:40.527Z",
+      "answered_at": "2026-11-26T19:53:40.969Z",
+      "ms": 442,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "ebeae15743374ed5bc8e4b43478a5041",
+      "code": null,
+      "step": "fx.balances (treasury)"
+    },
+    {
+      "n": 3,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:41.078Z",
+      "answered_at": "2026-11-26T19:53:41.453Z",
+      "ms": 375,
+      "method": "GET",
+      "endpoint": "/fx/rates/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "55695078841f4b2a8b304df286df3cee",
+      "code": null,
+      "step": "fx.advice (treasury)"
+    },
+    {
+      "n": 4,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:41.454Z",
+      "answered_at": "2026-11-26T19:53:41.854Z",
+      "ms": 400,
+      "method": "GET",
+      "endpoint": "/fx/rates/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "ff128172cb99406584c7be2b5f69d4e2",
+      "code": null,
+      "step": "fx.advice (treasury)"
+    },
+    {
+      "n": 5,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:41.855Z",
+      "answered_at": "2026-11-26T19:53:42.226Z",
+      "ms": 371,
+      "method": "GET",
+      "endpoint": "/fx/rates/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "e6c6bcec76d64f46821eb2b781fa7906",
+      "code": null,
+      "step": "fx.advice (treasury)"
+    },
+    {
+      "n": 6,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:42.227Z",
+      "answered_at": "2026-11-26T19:53:42.563Z",
+      "ms": 336,
+      "method": "GET",
+      "endpoint": "/fx/rates/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "affa4a3b7c3a42af92157f2f401c483d",
+      "code": null,
+      "step": "fx.advice (treasury)"
+    },
+    {
+      "n": 7,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:42.687Z",
+      "answered_at": "2026-11-26T19:53:43.050Z",
+      "ms": 363,
+      "method": "GET",
+      "endpoint": "/fx/conversions",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "6ae134f2135947c980a25566c7109862",
+      "code": null,
+      "step": "fx.convert (treasury)"
+    },
+    {
+      "n": 8,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:43.051Z",
+      "answered_at": "2026-11-26T19:53:43.403Z",
+      "ms": 352,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "db03c86cbde94890a7ca3a450df27025",
+      "code": null,
+      "step": "fx.convert (treasury)"
+    },
+    {
+      "n": 9,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:43.405Z",
+      "answered_at": "2026-11-26T19:53:43.711Z",
+      "ms": 306,
+      "method": "POST",
+      "endpoint": "/fx/quotes/create",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "bc58f1d41b8b4cca8c0b067f141863cd",
+      "code": null,
+      "step": "fx.convert (treasury)"
+    },
+    {
+      "n": 10,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:43.713Z",
+      "answered_at": "2026-11-26T19:53:44.118Z",
+      "ms": 405,
+      "method": "POST",
+      "endpoint": "/fx/conversions/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "cb3a76b3a6674e47a49e3ed34beafaf4",
+      "code": null,
+      "step": "fx.convert (treasury)"
+    },
+    {
+      "n": 11,
+      "pid": 24692,
+      "at": "2026-11-26T19:53:44.121Z",
+      "answered_at": "2026-11-26T19:53:44.512Z",
+      "ms": 391,
+      "method": "GET",
+      "endpoint": "/fx/conversions/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "4d0d1db9532d4330a0bbccdbeeb8564f",
+      "code": null,
+      "step": "fx.readback"
+    }
+  ],
+  "calls_by_endpoint": [
+    {
+      "endpoint": "POST /authentication/login",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /balances/current",
+      "calls": 2
+    },
+    {
+      "endpoint": "GET /fx/rates/current",
+      "calls": 4
+    },
+    {
+      "endpoint": "GET /fx/conversions",
+      "calls": 1
+    },
+    {
+      "endpoint": "POST /fx/quotes/create",
+      "calls": 1
+    },
+    {
+      "endpoint": "POST /fx/conversions/create",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /fx/conversions/{id}",
+      "calls": 1
+    }
+  ],
+  "not_shown": [
+    "The CHF payable being paid: the run converts for it and stops there.",
+    "A person's Face ID on a real phone; Purser Cloud's screens. The runner's every-few-seconds loop did not run: each step was called once, in order.",
+    "A rate that moves past the signed maximum, or a stop pulled during the quote, live: both are covered by test/treasury-fx-proposal.test.ts on stand-ins, not run against the sandbox."
+  ]
+}

@@ -277,6 +277,10 @@ CREATE TABLE IF NOT EXISTS authority_maps (tenant_id TEXT NOT NULL, id TEXT NOT 
 -- The runner's compliance evidence in short as last pushed (cloud/src/compliance.ts), one row per company: counts only.
 CREATE TABLE IF NOT EXISTS compliance_summaries (tenant_id TEXT NOT NULL, id TEXT NOT NULL, at TEXT NOT NULL, body_json TEXT NOT NULL, body_sha256 TEXT NOT NULL, received_at TEXT NOT NULL, PRIMARY KEY (tenant_id, id));
 
+-- The runner's money loop in short as last pushed (cloud/src/moneyLoop.ts), one row per company: cash, the forecast, FX
+-- and the receivables by invoice number and amount (no customer or payer name).
+CREATE TABLE IF NOT EXISTS money_loops (tenant_id TEXT NOT NULL, id TEXT NOT NULL, at TEXT NOT NULL, body_json TEXT NOT NULL, body_sha256 TEXT NOT NULL, received_at TEXT NOT NULL, PRIMARY KEY (tenant_id, id));
+
 -- The company's alert webhook, set by an owner: alert events are POSTed to it, signed with HMAC-SHA256 under its
 -- secret (kept here to sign with; never exported or shown again). Turned off after 20 failed deliveries in a row.
 CREATE TABLE IF NOT EXISTS webhooks (

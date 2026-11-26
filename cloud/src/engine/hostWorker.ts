@@ -198,8 +198,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     passkeyFinish: async (a) => host.passkeyFinish(a),
     securityKeyStart: async (a) => host.securityKeyStart({ label: a.label, ...(a.rp && rpAllowed(a.rp, own) ? { rp: { rpId: a.rp.rpId, origin: a.rp.origin } } : {}) }),
     securityKeyFinish: async (a) => host.securityKeyFinish(a),
-    proposeSecondKey: async (changes) => host.proposeSecondKey(changes),
-    emergencyStop: async (stop) => host.emergencyStop(stop),
+    proposeSecondKey: async (changes, by) => host.proposeSecondKey(changes, by),
+    emergencyStop: async (stop, by) => host.emergencyStop(stop, by),
     approve: async (a) => kept(acts.approve(a)),
     retry: async (proposalId) => kept(acts.retry(proposalId)),
     sync: async () => kept(host.sync()),
@@ -212,6 +212,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     clearHold: async (id) => host.clearHold(id),
     rejectHold: async (id) => host.rejectHold(id),
     negotiated: async (r, f) => host.negotiated(r, f),
+    agreed: async (x, f) => host.agreed(x, f),
     suppliers: async () => host.suppliers(),
     compose: async (input) => host.compose(input),
     // The terms, and beside them the note on the quote they carry (live from the Airwallex sandbox, or the recorded rate).

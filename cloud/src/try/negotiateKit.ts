@@ -18,8 +18,9 @@
 //   NEG.recorded({ box, why, say }) → the same, from GET /v1/try/negotiate/recorded (public): nothing to sign.
 //   NEG.agreed(n, actions) → "The CFO signs the exact terms": the invoice as issued beside the deal, the saving
 //       (computed from the invoice and the discount; test money), the reference, the hash, then the caller's buttons.
-//   Each offer shows its SHA-256 and its signing key; the negotiation answers the agents' public keys, so the
-//   download (and src/negotiate/offers.ts verifyOffer) checks every signature, hash and link of the chain.
+//   Each offer shows its SHA-256 and its signing key; the negotiation answers the agents' public keys, so whoever holds
+//   the downloaded negotiation can check every signature, hash and link of the chain (src/negotiate/offers.ts verifyOffer,
+//   chained). This view does not check them in the browser; the server does, when the agreed terms are filed (/agreed).
 import { RECORDED_LABEL, SOURCING_LABEL, SUPPLIER_LABEL } from "../../../src/negotiate/negotiate.js";
 
 /** Every word the view shows (tests read them). */
@@ -330,7 +331,7 @@ const NEGI=(()=>{
       const a=NEG.agreed(n,[sign]);box.append(a.card);a.heading.focus();
       sign.addEventListener('click',async()=>{
         spin(sign,I.filing);
-        const f=await api('POST','/v1/try/negotiate/agreed',{invoice_id:inv.id,agreement_sha256:n.sha256,compose:n.compose,turns:n.turns.length});
+        const f=await api('POST','/v1/try/negotiate/agreed',{invoice_id:inv.id,agreement_sha256:n.sha256,compose:n.compose,turns:n.turns.length,agreement:n.agreement,keys:n.keys,offers:n.turns.map((t)=>({offer:t.offer,signature:t.signature}))});
         const ni=f.json&&f.json.invoice;
         if(f.status===200&&ni&&ni.id&&ni.status==='ready'){PREP.delete(inv.id);show('approve',{invoice:ni});return}
         sign.disabled=false;sign.textContent=I.signAgreed;a.card.append(el('p','neg-err',(f.json&&(f.json.message||f.json.error))||I.filedHeld));

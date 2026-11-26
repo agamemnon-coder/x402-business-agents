@@ -88,6 +88,7 @@ chains: a changed byte would break the chain, so they are kept or deleted whole,
 | `push_log`, `runner_health` | Pushes from the runner and its health reports | Technical | Contract (b) | Until the purge | `purgeExpired` |
 | `authority_maps` | The runner's authority map as last pushed: per agent what it may pay and what needs the CFO (agent names, limits, payee kinds; an outside agent's display name) | Financial summary | Contract (b) | Until the purge | `purgeExpired` |
 | `compliance_summaries` | The runner's compliance evidence in short as last pushed: counts per framework and per control for the last 30 days, and the control map's gaps (no audit row, subject or payload; no personal data) | Technical | Contract (b) | Until the purge | `purgeExpired` |
+| `money_loops` | The runner's money loop in short as last pushed: cash per currency against the CFO's floors, the 13-week forecast, the FX exposure and the conversions filed for the CFO's passkey, the receivables by invoice number and amount, payment ids, payment references and the reminder steps (no customer, contact or payer name; no reminder text) | Financial summary | Contract (b) | Until the purge | `purgeExpired` |
 | `storage_use` | The company's stored bytes and files | Technical | Contract (b) | Until the purge | `purgeExpired` |
 | `engine_companies`, `autopilot_runs` | Which companies run the nightly autopilot; its digests | Financial summary | Contract (b) | 90 days; a purged company's at once | `pruneAutopilot` |
 
@@ -159,4 +160,6 @@ Not subprocessors of company data: ElevenLabs (used only by scripts that voice t
 
 The repository records no data processing agreement or international transfer mechanism (such as the EU Standard
 Contractual Clauses or the EU-US Data Privacy Framework) for any of these. The owner must put them in place, and list the
-subprocessors in each company's agreement, before Purser holds real company data.
+subprocessors in each company's agreement, before Purser holds real company data. A template agreement, with the
+subprocessors from the register, is [docs/compliance/templates/dpa.md](../compliance/templates/dpa.md); the mechanism
+each transfer would need is in [docs/compliance/transfers.md](../compliance/transfers.md).

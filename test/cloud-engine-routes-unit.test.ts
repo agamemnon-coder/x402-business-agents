@@ -301,6 +301,19 @@ describe("the second key and the CFO's rule for high-risk payments", () => {
     expect((await run({ method: "POST", path: "/v1/engine/policy/second-key", body: { changes }, engine: { proposeSecondKey: async () => ({ ok: false, reason: "not a setting" }) } as unknown as Partial<EngineApi> })).json).toEqual({ error: "not a setting" });
   });
 
+  // 26 Nov review: the proposer of a policy change filed in the Cloud was never named, so segregation of duties could not
+  // keep them from approving it. The route passes the signed-in person, as their passkey is labelled (display name).
+  it("second-key policy and emergency stop name the signed-in person as the proposer", async () => {
+    const asked: unknown[] = [];
+    const engine = {
+      proposeSecondKey: async (changes: unknown, by?: string) => { asked.push(["second-key", by]); return { ok: true, proposal: { id: "P-7" } }; },
+      emergencyStop: async (on: boolean, by?: string) => { asked.push(["stop", on, by]); return { ok: true, proposal: { id: "P-8" } }; },
+    } as unknown as Partial<EngineApi>;
+    await run({ method: "POST", path: "/v1/engine/policy/second-key", body: { changes: [{ key: "approval.second_key_eur", to: "5000" }] }, engine });
+    await run({ method: "POST", path: "/v1/engine/emergency-stop", body: { on: false }, engine });
+    expect(asked).toEqual([["second-key", "Carla CFO"], ["stop", false, "Carla CFO"]]);
+  });
+
   it("security key: start answers the challenge or 409; finish tells the owners of a new key, or 409", async () => {
     const start = await run({ method: "POST", path: "/v1/engine/security-key/start", engine: { securityKeyStart: async () => ({ ok: true, challenge: "ch", user_id: "uh", exclude: ["x"] }) } as unknown as Partial<EngineApi> });
     expect(start.json).toEqual({ challenge: "ch", user: { id: "uh", name: "Carla CFO", displayName: "Carla CFO" }, rp: { id: "cloud.test", name: "Purser" }, exclude: ["x"] });

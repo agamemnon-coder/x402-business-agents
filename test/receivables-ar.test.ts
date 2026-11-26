@@ -129,6 +129,27 @@ describe("matching a payment", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM ar_payments").get()).toEqual({ n: 1 });
     expect(db.prepare("SELECT COUNT(*) AS n FROM receipts").get()).toEqual({ n: 1 });
   });
+
+  // Review of 26 Nov: "NW-1077" contains "NW-10" and paid it. A reference names an invoice as a whole word only.
+  it("a reference naming NW-1077 never pays NW-10: it goes to review, even when the amount fits NW-10 exactly", async () => {
+    const db = openDb(":memory:");
+    await issueInvoice(db, { invoice_no: "NW-10", customer: "Alpenweg Sport AG", currency: "EUR", net_cents: 10_000, vat_code: "S0", issue_date: "2026-11-01", due_date: "2026-12-01" }, null, now);
+    expect(matchPayment(db, pay("dep-a", "EUR", 10_000, "NW-1077"), now)).toMatchObject({ outcome: "REVIEW", invoice_no: null });
+    expect(reviewQueue(db)).toEqual([expect.objectContaining({ payment_id: "dep-a", reason: "the reference names NW-1077, which is not an invoice on file" })]);
+    expect(db.prepare("SELECT status FROM ar_invoices WHERE invoice_no = 'NW-10'").get()).toEqual({ status: "OPEN" });
+    expect(balance(db, "2900", "EUR")).toBe(-10_000);
+    // Named as a whole word, in any spelling around it, it is paid.
+    for (const [id, ref] of [["dep-b", "Invoice nw–10, thanks"]] as const) expect(matchPayment(db, pay(id, "EUR", 10_000, ref), now)).toMatchObject({ outcome: "MATCHED", invoice_no: "NW-10" });
+  });
+
+  it("routes by whole words: an older receivable's number is not taken by this module's review, and NW-R-1011 names neither", async () => {
+    const { db } = await world();
+    openReceivable(db, { invoice_no: "NW-R-101", customer: "Alpenweg Sport AG", currency: "EUR", amount_cents: 124_000, due_date: "2026-12-29" }, now);
+    const dep = (id: string, ref: string, cents: number) => ({ deposit_id: id, global_account_id: "ga", currency: "EUR", amount_cents: cents, reference: ref, payer: "x", received_at: "2026-11-26T08:00:00Z" });
+    expect(routeDeposit(db, dep("d-1", "Payment NW-R-1011", 124_000), now)).toMatchObject({ by: "ar", outcome: "REVIEW" });
+    expect(db.prepare("SELECT status FROM receivables WHERE invoice_no = 'NW-R-101'").get()).toEqual({ status: "OPEN" });
+    expect(routeDeposit(db, dep("d-2", "payment nw-r-101.", 124_000), now)).toMatchObject({ by: "receivables", outcome: "MATCHED" });
+  });
 });
 
 describe("aged debtors and reminders", () => {

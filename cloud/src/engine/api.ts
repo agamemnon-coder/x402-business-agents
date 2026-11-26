@@ -54,10 +54,13 @@ export interface EngineApi {
   /** A security key (the second key of high-risk payments) for the person whose passkey has this label; `rp` as for passkeyStart. */
   securityKeyStart(a: { label: string; rp?: { rpId: string; origin: string } }): Promise<{ ok: true; challenge: string; user_id: string; exclude: string[] } | { ok: false; reason: string }>;
   securityKeyFinish(a: { label: string; credential: unknown }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }>;
-  /** The CFO's rule for high-risk payments as a policy change to approve with Face ID (its keys only). */
-  proposeSecondKey(changes: { key: string; to: string }[]): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
-  /** The CFO's emergency stop, pulled (true) or lifted (false), as a policy change that changes nothing until the CFO approves it with the passkey. */
-  emergencyStop(on: boolean): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
+  /**
+   * The CFO's rule for high-risk payments as a policy change to approve with Face ID (its keys only). `by`: the signed-in
+   * person who asks, as their passkey is labelled, signed into the terms as the proposer, who then never approves it.
+   */
+  proposeSecondKey(changes: { key: string; to: string }[], by?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
+  /** The CFO's emergency stop, pulled (true) or lifted (false), as a policy change that changes nothing until the CFO approves it with the passkey; `by` as for proposeSecondKey. */
+  emergencyStop(on: boolean, by?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
   /** A passkey's signature over a proposal's exact terms; only an approval pays, and what follows is in settled. */
   /** A key in its cooling-off is refused: code cooling_off, with cooling_until. */
   approve(a: { proposal_id: string; terms_sha256: string; credential: unknown; hold?: boolean }): Promise<{ status: string; message: string; settled: Settled | null; held?: true; code?: "cooling_off"; cooling_until?: string }>;
@@ -86,6 +89,11 @@ export interface EngineApi {
   clearHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
   /** A negotiation's agreed invoice: recorded, and replacing the original when there is one (src/engine/host.ts negotiated). */
   negotiated(replacementId: string, facts: NegotiatedFacts): Promise<{ ok: true; invoice: InvoiceView; superseded: InvoiceView | null } | { ok: false; reason: string }>;
+  /**
+   * A negotiation's agreed terms filed in one engine action: the original asked first, then the agreed invoice composed,
+   * filed and recorded as replacing it; withdrawn again when it cannot be (src/engine/host.ts agreed).
+   */
+  agreed(input: ComposeInput, facts: NegotiatedFacts): Promise<{ ok: true; invoice: InvoiceView; superseded: InvoiceView | null } | { ok: false; code: "not_recorded" | "not_ready"; reason: string; invoice?: InvoiceView } | ComposeRefusal>;
   /** The hands-on demo's Reject of a held invoice (src/engine/host.ts rejectHold). */
   rejectHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
   /** The suppliers the seed put on file (test IBANs). */
@@ -133,4 +141,4 @@ export const EVENTS_PER_SECOND = 2;
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "emergencyStop", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "clearHold", "rejectHold", "negotiated", "payoutSimulate", "exportBatch", "exportPdf", "addSupplier", "proposeBatch", "depositIn", "airwallex"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "emergencyStop", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "clearHold", "rejectHold", "negotiated", "agreed", "payoutSimulate", "exportBatch", "exportPdf", "addSupplier", "proposeBatch", "depositIn", "airwallex"] as const);

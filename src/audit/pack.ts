@@ -175,7 +175,8 @@ export function signManifest(manifest: object, signer: PackSigner): string {
 
 /**
  * The checks "signature" and "key" on a signed manifest (its public_key and key_id inside it), as verify-audit-pack
- * prints them: the Ed25519 signature over the manifest's canonical JSON, and, given pinned keys, whose key signed it.
+ * prints them: the Ed25519 signature over the manifest's canonical JSON, and whose key signed it against the pinned
+ * keys. With none pinned, "key" is not checked (UNPINNED) and is never ok.
  */
 export function manifestSignatureChecks(m: { public_key: string; key_id: string }, signature: string, trustedKeys: string[] = []): PackCheck[] {
   const sigOk = (() => {
@@ -192,7 +193,9 @@ export function manifestSignatureChecks(m: { public_key: string; key_id: string 
   }];
   const trusted = trustedKeys.map(normalisePublicKey);
   if (trusted.length) checks.push({ check: "key", ok: trusted.includes(m.public_key), detail: trusted.includes(m.public_key) ? `key ${m.key_id} is pinned` : `signed by key ${m.key_id}, which is not a pinned key (${trusted.map(keyIdOf).join(", ")})` });
-  else checks.push({ check: "key", ok: true, detail: `key ${m.key_id} is not pinned here: pass --trust <public key> to check whose key signed it` });
+  // No pinned key: whose key signed it is not checked, and the pack is not valid. Anyone can rebuild a pack and sign it
+  // again with their own key; the signature alone proves only that someone signed it.
+  else checks.push({ check: "key", ok: false, not_checked: true, detail: `UNPINNED: signed by key ${m.key_id}, which no pinned key vouches for: pass --trust <public key> (the signer's, from where you got it, not from the file)` });
   return checks;
 }
 
@@ -264,23 +267,35 @@ export function packSummary(p: AuditPack): string[] {
 
 // --- Verification: no database, no network. ----------------------------------------------------------------------
 
-export interface PackCheck { check: string; ok: boolean; detail: string }
-export interface PackResult { ok: boolean; checks: PackCheck[] }
+/** One check; not_checked when it could not be made (no pinned key, no audit pack given): never ok, but not a failure found. */
+export interface PackCheck { check: string; ok: boolean; detail: string; not_checked?: true }
+/**
+ * ok only when every check passed. incomplete when none failed but one could not be made (not_checked): the verifier
+ * says UNPINNED or PARTIAL then, never VALID.
+ */
+export interface PackResult { ok: boolean; checks: PackCheck[]; incomplete?: boolean }
+
+/** The result of a list of checks: ok, or incomplete when the only checks not passed are ones not made. */
+export function packResult(checks: PackCheck[]): PackResult {
+  const ok = checks.length > 0 && checks.every((c) => c.ok);
+  const incomplete = !ok && checks.length > 0 && checks.every((c) => c.ok || c.not_checked === true);
+  return incomplete ? { ok, checks, incomplete } : { ok, checks };
+}
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const short = (h: unknown) => (typeof h === "string" && h.length > 16 ? `${h.slice(0, 12)}…` : String(h));
 const same = (x: unknown, y: unknown) => { try { return jcs(x as Json) === jcs(y as Json); } catch { return false; } };
 
 /**
- * Every check on an audit pack: its shape, the manifest's signature (and, given pinned keys, whose key signed it), every
+ * Every check on an audit pack: its shape, the manifest's signature and whose key signed it (not checked, never ok, with no key pinned), every
  * section's rows against the manifest's hashes, the audit chain from the genesis hash through the period, each reading
  * section against the rows it was sorted out of, every proposal's terms against their hash and its approval, and every
  * policy version's rules against its hash. Each detail names the section, the row and what differs.
  */
 export function verifyAuditPack(pack: unknown, opts: { trusted?: string[] } = {}): PackResult {
   const checks: PackCheck[] = [];
-  const add = (check: string, ok: boolean, detail: string) => { checks.push({ check, ok, detail }); return ok; };
-  const done = (): PackResult => ({ ok: checks.length > 0 && checks.every((c) => c.ok), checks });
+  const add = (check: string, ok: boolean, detail: string, notChecked = false) => { checks.push(notChecked ? { check, ok, detail, not_checked: true } : { check, ok, detail }); return ok; };
+  const done = (): PackResult => packResult(checks);
   try {
     return run();
   } catch (e) {
@@ -296,7 +311,7 @@ export function verifyAuditPack(pack: unknown, opts: { trusted?: string[] } = {}
     const m = p.manifest;
 
     // 1. The signature over the manifest, and the key.
-    for (const c of manifestSignatureChecks(m, p.signature, opts.trusted ?? [])) add(c.check, c.ok, c.detail);
+    for (const c of manifestSignatureChecks(m, p.signature, opts.trusted ?? [])) add(c.check, c.ok, c.detail, c.not_checked);
 
     // 2. The sections against the manifest: the same names, and every row's hash.
     const names = Object.keys(p.sections).sort(), want = [...SECTIONS].sort(), listed = Object.keys(m.sections).sort();

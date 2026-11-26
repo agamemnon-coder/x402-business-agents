@@ -86,7 +86,7 @@ practice for a system that moves money, and they show what a deployer would have
 | Art. 50(1): tell people they are interacting with AI | Ask Purser | Every answer is labelled by who wrote it: "Answered by Claude (Haiku) from Purser's docs and the demo company's records", or, without AI, "Answered from Purser's docs without AI" and "Answered by Purser's own code" ([cloud/src/ask/page.ts](../../cloud/src/ask/page.ts)) | `test/compliance-docs.test.ts` holds the labels to the page |
 | Art. 50(1) in spirit, elsewhere | The approval page and the dashboard | Each proposal names the agent that proposed it; a review is labelled as the model's advice; the dashboard says the agents are AI and a person decides (PC-22) | [src/dashboard/page.html](../../src/dashboard/page.html), `test/approve-client-pages.test.ts` |
 | Art. 50(2) and (4): mark generated content | Providers of generative AI; deployers of deep fakes | Purser generates no images, audio or video in the product. The demo film's voice-over is synthetic (ElevenLabs, scripts outside the product) | Not mapped as a requirement |
-| Art. 4: AI literacy | Providers and deployers | The [instructions for use](instructions-for-use.md) say what an approver must know; no training is recorded: a gap | [controls.md](controls.md) |
+| Art. 4: AI literacy | Providers and deployers | The [instructions for use](instructions-for-use.md) say what an approver must know, and the [AI literacy note](ai-literacy.md) gives each role what it needs; nobody's reading or training is recorded yet | [controls.md](controls.md) |
 
 ## Provider or deployer
 

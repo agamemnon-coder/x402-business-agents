@@ -204,9 +204,3 @@ export const agreementSha256 = (a: Agreement): string => sha256Hex(canonicalAgre
  */
 export const agreedInvoiceNo = (scene: Scene, sha: string): string => `${scene.invoice_no}-${sha.slice(0, 8)}`;
 
-/** Whether signed terms are the agreement: the amount, the date and the reference all match it. */
-export function signedMatches(a: Agreement, sha: string, signed: { amount?: unknown; invoice_no?: unknown; reference?: unknown }, scene: Scene): boolean {
-  const ref = agreedInvoiceNo(scene, sha);
-  const no = typeof signed.invoice_no === "string" ? signed.invoice_no.split(" · ")[0] : "";
-  return signed.amount === a.amount && (no === ref || signed.reference === ref);
-}

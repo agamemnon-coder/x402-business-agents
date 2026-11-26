@@ -94,6 +94,18 @@ describe("npm run entities", () => {
     expect(() => entitiesCommand(db, ["remove", "uk-ltd"])).toThrow(/^usage: npm run entities/);
   });
 
+  // 26 Nov review: the allow never named its proposer, so above the CFO's segregation-of-duties threshold the person who
+  // filed it could approve it alone. Now it needs --by there, and the name is signed into the terms.
+  it("with segregation of duties on, an allow needs --by, and the proposer is signed into its terms", async () => {
+    const { db } = await world();
+    entitiesCommand(db, ["add", "uk-ltd", "--name", "Northwind Outdoor Ltd", "--country", "GB", "--account", "acct_nwltd_0001"]);
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('approval.policy_sod_eur', '1000.00', ?)").run(new Date().toISOString());
+    expect(() => entitiesCommand(db, ["allow", "uk-ltd", "treasury"])).toThrow(/segregation of duties applies .*--by <person>/);
+    const id = /^(P-\d+)/.exec(entitiesCommand(db, ["allow", "uk-ltd", "treasury", "--by", "lena"]))![1]!;
+    const p = db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(id) as { terms_json: string };
+    expect(JSON.parse(p.terms_json)).toMatchObject({ proposed_by: "lena", changes: [{ key: "pay_from.uk-ltd.treasury", to: "allowed" }] });
+  });
+
   it("the payment's detail names the paying entity and its account, and so does why it was paid this way", async () => {
     const { db, phone, ltd } = await world();
     entitiesCommand(db, ["add", "nl-bv", "--name", "Northwind Outdoor BV", "--country", "NL", "--account", "acct_nwbv_0001"]);

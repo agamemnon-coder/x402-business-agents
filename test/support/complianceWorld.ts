@@ -24,8 +24,9 @@ function invoice(db: DB, amount: string, now: Date) {
   return createProposal(db, { terms: { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: nextProposalId(db), expires_at: expires, amount, currency: "EUR", vendor: "Bergtex Textil GmbH" }, createdBy: "treasury" }, now);
 }
 
+/** A person's policy change, proposed (by lena, who signs nothing: segregation of duties needs a named proposer) and approved by `people`. */
 function policyChange(db: DB, changes: { key: string; to: string }[], reason: string, at: Date, people: string[]): string {
-  const p = proposePolicyChange(db, { changes, reason }, "human", at);
+  const p = proposePolicyChange(db, { changes, reason, proposedBy: "lena" }, "human", at);
   people.forEach((person, i) => approveSigned(db, p.proposal_id, new Date(at.getTime() + i * 60_000), person));
   executePolicyChange(db, p.proposal_id, new Date(at.getTime() + people.length * 60_000));
   return p.proposal_id;

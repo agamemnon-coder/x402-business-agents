@@ -6,7 +6,7 @@
 
 **Every table Purser creates, by protection level, with the requirements each level carries and where they apply.**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![209 tables, each once, by protection level](https://img.shields.io/badge/tables-209_%C2%B7_each_once%2C_by_level-8b5cf6?style=flat-square&labelColor=1f2937)](#inventory)&nbsp;[![Secret: 19 tables](https://img.shields.io/badge/Secret-19_tables-f43f5e?style=flat-square&labelColor=1f2937)](#secret)&nbsp;[![Restricted: 134 tables](https://img.shields.io/badge/Restricted-134_tables-f59e0b?style=flat-square&labelColor=1f2937)](#restricted)&nbsp;[![Internal: 56 tables](https://img.shields.io/badge/Internal-56_tables-0ea5e9?style=flat-square&labelColor=1f2937)](#internal)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![210 tables, each once, by protection level](https://img.shields.io/badge/tables-210_%C2%B7_each_once%2C_by_level-8b5cf6?style=flat-square&labelColor=1f2937)](#inventory)&nbsp;[![Secret: 19 tables](https://img.shields.io/badge/Secret-19_tables-f43f5e?style=flat-square&labelColor=1f2937)](#secret)&nbsp;[![Restricted: 135 tables](https://img.shields.io/badge/Restricted-135_tables-f59e0b?style=flat-square&labelColor=1f2937)](#restricted)&nbsp;[![Internal: 56 tables](https://img.shields.io/badge/Internal-56_tables-0ea5e9?style=flat-square&labelColor=1f2937)](#internal)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
 
 [Levels](#levels-and-their-requirements) · [Secret](#secret) · [Restricted](#restricted) · [Internal](#internal) · [Public](#public) · [Inventory](#inventory) · [Key management](key-management.md)
 
@@ -20,12 +20,12 @@ Every table Purser creates, by protection level, with the requirements each leve
 %%{init: {"themeVariables": {"pie1": "#f59e0b", "pie2": "#0ea5e9", "pie3": "#f43f5e"}}}%%
 pie showData
   title The tables by protection level
-  "Restricted" : 134
+  "Restricted" : 135
   "Internal" : 56
   "Secret" : 19
 ```
 
-<sub>Record: [the inventory below](data-classification.md#inventory), counted by `test/docs-charts.test.ts`: 209 tables, each named once; Restricted 134, Internal 56, Secret 19; none Public.</sub>
+<sub>Record: [the inventory below](data-classification.md#inventory), counted by `test/docs-charts.test.ts`: 210 tables, each named once; Restricted 135, Internal 56, Secret 19; none Public.</sub>
 
 ### Secret
 
@@ -103,6 +103,7 @@ Each table once. Columns: those that hold personal or financial data or a creden
 | `do_state`, `balance_snapshots`, `autopilot_runs`, `runner_health`, `alert_deliveries` | Restricted | `target_mask` | The engine's state and the runner's snapshots and settings (may hold balances and policy); engine DO, D1 (cloud), runner SQLite |
 | `authority_maps` | Restricted | `body_json` | The runner's authority map as last pushed, one row per company: per agent what it may pay, its limits, payee kinds and what needs the CFO, an outside agent's display name (cloud/src/authorityMap.ts); D1 (cloud) |
 | `compliance_summaries` | Restricted | `body_json` | The runner's compliance evidence in short as last pushed, one row per company: counts per framework and control and the control map's gaps, no audit row, subject or payload (cloud/src/compliance.ts); D1 (cloud) |
+| `money_loops` | Restricted | `body_json` | The runner's money loop in short as last pushed, one row per company: cash, the forecast, FX and the receivables by invoice number and amount, no customer, contact or payer name and no reminder text (cloud/src/moneyLoop.ts); D1 (cloud) |
 | `rate_hits`, `daily_counts`, `engine_companies`, `storage_use`, `push_log`, `push_told`, `ar_calls`, `ar_minute`, `awx_fx_calls`, `mi_calls`, `alta_tx_calls`, `awx_act_spend`, `awx_events`, `awx_routes`, `status_checks`, `locks`, `autopilot_lease`, `autopilot_items`, `autopilot_state`, `agent_claims`, `agent_cursors`, `tokenize_state`, `settings`, `kv`, `cloud_feed_sent` | Internal | `cents`, `endpoint`, `target` | Counters, quotas and limits: no personal data; D1, DO, runner SQLite |
 | `awx_fx_cache`, `mi_cache`, `alta_tx_cache`, `finality_certificates`, `finality_evidence`, `finality_pending`, `tap_agents`, `tap_nonces`, `tap_rail_nonces` | Internal | `body` | Public reference data cached: FX rates, chain reads, finality, TAP keys and nonces; relay DO, runner SQLite |
 | `policy_versions`, `config_snapshots` | Internal | none | Policy and configuration snapshots (no personal data); runner SQLite |

@@ -9,6 +9,7 @@ import { TRY_ROUTES } from "../cloud/src/try/gate.js";
 import { isTryEngineRequest } from "../worker/src/tryEngine.js";
 import { CHANGED_IBAN, type AgentAnswer } from "../src/negotiate/negotiate.js";
 import { agreementSha256 } from "../src/negotiate/rails.js";
+import { sha256Hex } from "../src/lib/terms.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -46,6 +47,12 @@ const LIVE: AgentAnswer[] = [
   { message: "The account on file stays. 2% off, EUR 1,813.00, by the 15th.", amount: "1813.00", pay_by: d(7), iban: "", accept: false },
   { message: "Agreed.", amount: "1813.00", pay_by: d(7), iban: "", accept: true },
 ];
+
+/** What /agreed takes beside the terms (26 Nov review): the agreement itself, the agents' keys and every signed offer. */
+const chainOf = (n: unknown) => {
+  const x = n as { agreement: unknown; keys: unknown; turns: { offer: unknown; signature: unknown }[] };
+  return { agreement: x.agreement, keys: x.keys, offers: x.turns.map((t) => ({ offer: t.offer, signature: t.signature })) };
+};
 
 describe("the route and its caps", () => {
   it("is a try route, passed through from the site's host", () => {
@@ -178,9 +185,9 @@ describe("the negotiation on the visitor's own invoice, in /try", () => {
     expect(n.outcome).toBe("agreed");
     expect(n.compose.invoice_no).toBe(`BTX-2026-21-${n.sha256.slice(0, 8)}`);
     // Terms that are not the agreement are refused, and nothing is filed or superseded.
-    const wrong = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: 4, compose: { ...n.compose, amount: "1850.00" } } });
+    const wrong = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...chainOf(n), invoice_id: orig.id, agreement_sha256: n.sha256, turns: 4, compose: { ...n.compose, amount: "1850.00" } } });
     expect(wrong.status).toBe(409);
-    const ok = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose } });
+    const ok = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...chainOf(n), invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose } });
     expect(ok.status, JSON.stringify(ok.json)).toBe(200);
     const agreed = ok.json.invoice as { id: string; total: string; status: string };
     const sup = ok.json.superseded as { id: string; status: string; status_words: string; payable: boolean };
@@ -192,7 +199,7 @@ describe("the negotiation on the visitor's own invoice, in /try", () => {
     expect(ot.status).toBe("SUPERSEDED");
     expect((await c.req("POST", `/v1/engine/invoices/${orig.id}/pay`, { key: s })).status).not.toBe(200);
     // Twice is refused: the original is gone.
-    expect((await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: 4, compose: n.compose } })).status).toBe(409);
+    expect((await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...chainOf(n), invoice_id: orig.id, agreement_sha256: n.sha256, turns: 4, compose: n.compose } })).status).toBe(409);
 
     // Sign and pay the agreed invoice with /try's own flow.
     const p = await c.req("POST", `/v1/engine/invoices/${agreed.id}/pay`, { key: s });
@@ -226,7 +233,11 @@ describe("the negotiation on the visitor's own invoice, in /try", () => {
     expect(net("2100")).toBe(0);
     // The proof file carries what was negotiated, beside the signed terms.
     const proof = good.json.proof as { negotiation?: Record<string, unknown>; terms: Record<string, unknown> };
-    expect(proof.negotiation).toEqual({ original_invoice_id: orig.id, original_invoice_no: "BTX-2026-21", original_amount: "1850.00", agreed_amount: "1813.00", discount: "37.00", currency: "EUR", agreement_sha256: n.sha256, turns: 4, superseded: true });
+    // With the agreement as agreed (its canonical JSON, whose SHA-256 is agreement_sha256) and the hash of every offer.
+    const nn = n as unknown as { canonical: string; turns: { offer_sha256: string }[]; keys: { sourcing: { key_id: string }; supplier: { key_id: string } } };
+    expect(proof.negotiation).toEqual({ original_invoice_id: orig.id, original_invoice_no: "BTX-2026-21", original_amount: "1850.00", agreed_amount: "1813.00", discount: "37.00", currency: "EUR", agreement_sha256: n.sha256, turns: 4, superseded: true,
+      agreement: nn.canonical, offers: nn.turns.map((t) => t.offer_sha256), keys: { sourcing: nn.keys.sourcing.key_id, supplier: nn.keys.supplier.key_id } });
+    expect(sha256Hex(String(proof.negotiation!.agreement))).toBe(n.sha256);
     expect(proof.terms.amount).toBe("1813.00");
     const { verifyProofBundle } = await import("../src/proof/bundle.js");
     expect((await verifyProofBundle(proof)).ok).toBe(true);
@@ -243,12 +254,119 @@ describe("only a negotiation that took place files", () => {
     const orig = filed.json.invoice as { id: string };
     const n = (await c.req("POST", "/v1/try/negotiate", { key: s, body: { invoice_id: orig.id } })).json as { sha256: string; turns: unknown[]; compose: Record<string, string> };
     const fake = "f".repeat(64);
-    const forged = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: fake, turns: 1, compose: { ...n.compose, invoice_no: `BTX-2026-21-${fake.slice(0, 8)}`, amount: "1000.00" } } });
+    const forged = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...chainOf(n), invoice_id: orig.id, agreement_sha256: fake, turns: 1, compose: { ...n.compose, invoice_no: `BTX-2026-21-${fake.slice(0, 8)}`, amount: "1000.00" } } });
     expect(forged.status).toBe(409);
     expect(forged.json.code).toBe("not_the_agreement");
     // The real agreement, but at another amount: refused too.
-    expect((await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: { ...n.compose, amount: "1500.00" } } })).status).toBe(409);
-    const ok = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose } });
+    expect((await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...chainOf(n), invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: { ...n.compose, amount: "1500.00" } } })).status).toBe(409);
+    const ok = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...chainOf(n), invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose } });
+    expect(ok.status, JSON.stringify(ok.json)).toBe(200);
+  });
+});
+
+// 26 Nov review: /agreed filed the agreed invoice as ready (compose) before it asked whether the original could be
+// replaced (negotiated); when it could not, it answered 409 and left the agreed invoice payable beside the original: two
+// payable invoices for one bill. Now both run as one engine action, the original asked first, and a failure withdraws it.
+describe("an agreement that cannot replace the original files nothing payable", () => {
+  it("the original's payment approved while the agreement is filed: 409, and only the original is payable", async () => {
+    script = LIVE;
+    const s = await visitor();
+    const orig = (await c.req("POST", "/v1/engine/samples/clean", { key: s, body: {} })).json.invoice as { id: string };
+    const proposal = (await c.req("POST", `/v1/engine/invoices/${orig.id}/pay`, { key: s })).json.proposal as { id: string; challenge: string; terms_sha256: string };
+    const n = (await c.req("POST", "/v1/try/negotiate", { key: s, body: { invoice_id: orig.id } })).json as { sha256: string; turns: unknown[]; compose: Record<string, string> };
+    const phone = new FakeAuthenticator();
+    const st = await c.req("POST", "/v1/engine/passkey/start", { key: s });
+    await c.req("POST", "/v1/engine/passkey/finish", { key: s, body: { code: st.json.code, credential: phone.register({ challenge: st.json.challenge as string, origin: ORIGIN, rpId: RP }) } });
+    // The CFO signs the original's payment as issued after the route has looked at the original, while the agreement is
+    // being filed: before the engine's filing action (or, in the old two steps, between the filing and the recording).
+    let signed = false;
+    const sign = async () => {
+      if (signed) return;
+      signed = true;
+      const ap = await c.req("POST", `/v1/engine/proposals/${proposal.id}/approve`, { key: s, body: { terms_sha256: proposal.terms_sha256, credential: phone.sign({ challenge: proposal.challenge, origin: ORIGIN, rpId: RP, counter: 1 }) } });
+      expect(ap.json).toMatchObject({ status: "approved" });
+    };
+    const real = c.env.engine!;
+    c.env.engine = (tenant) => {
+      const e = real(tenant);
+      return new Proxy(e, { get: (t, k) => {
+        if (k === "compose") return async (x: Parameters<typeof e.compose>[0]) => { const out = await e.compose(x); await sign(); return out; };
+        if (k === "agreed") return async (...a: unknown[]) => { await sign(); return (e as unknown as Record<string, (...b: unknown[]) => unknown>).agreed!(...a); };
+        return (t as unknown as Record<string | symbol, unknown>)[k];
+      } });
+    };
+    try {
+      const r = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...chainOf(n), invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose } });
+      expect(signed).toBe(true);
+      expect(r.status, JSON.stringify(r.json)).toBe(409);
+      expect(r.json.code).toBe("not_recorded");
+    } finally { c.env.engine = real; }
+    const invoices = (await c.req("GET", "/v1/engine/invoices", { key: s })).json.items as { id: string; invoice_no: string; status: string; payable: boolean }[];
+    // Never a second payable invoice for the bill: the agreed one is not filed, or is withdrawn.
+    expect(invoices.filter((i) => i.invoice_no === n.compose.invoice_no && (i.payable || i.status === "ready"))).toEqual([]);
+    expect(invoices.find((i) => i.id === orig.id)?.status).not.toBe("rejected");
+  });
+
+  it("filed as ready but not recordable: the agreed invoice is withdrawn in the same action, the original stands", async () => {
+    script = LIVE;
+    const s = await visitor();
+    const orig = (await c.req("POST", "/v1/engine/samples/clean", { key: s, body: {} })).json.invoice as { id: string };
+    const n = (await c.req("POST", "/v1/try/negotiate", { key: s, body: { invoice_id: orig.id } })).json as { sha256: string; turns: unknown[]; compose: Record<string, string> };
+    // The recording refuses (facts that are not this agreed invoice's), after the agreed invoice is filed as ready.
+    const real = c.env.engine!;
+    c.env.engine = (tenant) => {
+      const e = real(tenant);
+      return new Proxy(e, { get: (t, k) => k === "agreed"
+        ? async (x: Parameters<typeof e.agreed>[0], f: Parameters<typeof e.agreed>[1]) => e.agreed(x, { ...f, agreement_sha256: "0".repeat(64) })
+        : (t as unknown as Record<string | symbol, unknown>)[k] });
+    };
+    try {
+      const r = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...chainOf(n), invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose } });
+      expect(r.status, JSON.stringify(r.json)).toBe(409);
+      expect(r.json.code).toBe("not_recorded");
+    } finally { c.env.engine = real; }
+    const invoices = (await c.req("GET", "/v1/engine/invoices", { key: s })).json.items as { id: string; invoice_no: string; status: string; payable: boolean }[];
+    const agreedOnes = invoices.filter((i) => i.invoice_no === n.compose.invoice_no);
+    expect(agreedOnes).toEqual([expect.objectContaining({ status: "rejected", payable: false })]);
+    expect(invoices.find((i) => i.id === orig.id)).toMatchObject({ status: "ready", payable: true });
+  });
+});
+
+// 26 Nov review: the offers' signatures and their chain were checked only in tests (verifyOffer, chained), and the
+// agreement filed named the chain's head only. Now /agreed checks the whole chain on the server and refuses a broken one.
+describe("the signed offer chain, checked when the agreement is filed", () => {
+  it("refuses a changed offer, a forged signature, a missing offer or another key; files the real chain", async () => {
+    script = LIVE;
+    const s = await visitor();
+    const orig = (await c.req("POST", "/v1/engine/samples/clean", { key: s, body: {} })).json.invoice as { id: string };
+    const n = (await c.req("POST", "/v1/try/negotiate", { key: s, body: { invoice_id: orig.id } })).json as { sha256: string; turns: { offer: Record<string, unknown>; signature: Record<string, unknown> }[]; compose: Record<string, string>; keys: Record<string, Record<string, string>> };
+    const base = { invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose };
+    const file = (o: ReturnType<typeof chainOf>) => c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { ...base, ...o } });
+    const good = chainOf(n);
+    const refusedFor = async (o: ReturnType<typeof chainOf>) => { const r = await file(o); expect(r.status, JSON.stringify(r.json)).toBe(409); return r.json; };
+    // An offer changed (its amount): the chain no longer links to it.
+    const changed = structuredClone(good);
+    (changed.offers[1]!.offer as Record<string, unknown>).amount = "1700.00";
+    expect(await refusedFor(changed)).toMatchObject({ code: "broken_chain" });
+    // A signature that is not the agent's.
+    const forged = structuredClone(good);
+    const sig = forged.offers[2]!.signature as { sig: string };
+    sig.sig = `${sig.sig.slice(0, -4)}AAAA`;
+    expect(await refusedFor(forged)).toMatchObject({ code: "broken_chain", error: expect.stringMatching(/offer 3's signature does not verify/) });
+    // An offer left out.
+    const short = structuredClone(good);
+    short.offers.splice(1, 1);
+    expect((await refusedFor(short)).code).toMatch(/broken_chain|not_the_agreement/);
+    // Another key for the supplier (one the negotiation did not answer): not this negotiation's.
+    const other = structuredClone(good);
+    (other.keys as Record<string, Record<string, string>>).supplier!.key_id = "aik_0000000000000000";
+    expect((await refusedFor(other)).code).toMatch(/broken_chain|not_the_agreement/);
+    // An agreement that is not the one hashed.
+    const terms = structuredClone(good);
+    (terms.agreement as Record<string, unknown>).amount = "1000.00";
+    expect(await refusedFor(terms)).toMatchObject({ code: "not_the_agreement" });
+    // Nothing of that was filed; the real chain files once.
+    const ok = await file(good);
     expect(ok.status, JSON.stringify(ok.json)).toBe(200);
   });
 });
