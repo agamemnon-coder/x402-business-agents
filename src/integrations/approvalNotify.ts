@@ -71,7 +71,7 @@ const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trim
  */
 export function inert(raw: unknown, max = 80): string {
   const s = String(raw ?? "")
-    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]/g, " ")
+    .replace(/[\p{Cc}\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]/gu, " ")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1 (link removed)")
     .replace(/\b(?:https?|ftp|mailto|slack|tel):\/*[^\s<>|)\]]+/gi, "(link removed)")
     .replace(/\bwww\.[^\s<>|)\]]+/gi, "(link removed)")

@@ -39,8 +39,6 @@ function signed(db: DB, key: string, to: string, when = at(60)): void {
   db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, to, when.toISOString());
   audit(db, "system", "policy.changed", key, { proposal_id: id, key, from: "", to }, when);
 }
-const set = (db: DB, key: string, value: string) =>
-  db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value, NOW.toISOString());
 
 interface PayOpts { daysAgo?: number; inbox?: boolean; status?: string; entity?: string; findings?: string[] }
 /** A supplier payment filed `daysAgo` days ago; through the payables inbox (an ap_invoices row) unless inbox: false. */

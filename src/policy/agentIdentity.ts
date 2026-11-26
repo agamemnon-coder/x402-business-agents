@@ -167,7 +167,7 @@ export function verifyAgentIdentity(
   if (!key || key.principal_id !== req.agent) return no("identity_unknown_key", `${p.key_id} is not a key of ${req.agent}`, p.key_id);
   if (key.status !== "current") return no("identity_key_rotated", `${p.key_id} was replaced by a newer key; sign with the current one`, p.key_id);
   const { sig, ...env } = p;
-  let good = false;
+  let good: boolean;
   try { good = verify(null, Buffer.from(jcs(env as unknown as Json), "utf8"), createPublicKey({ key: Buffer.from(key.public_key, "base64url"), format: "der", type: "spki" }), Buffer.from(sig, "base64url")); } catch { good = false; }
   if (!good) return no("identity_bad_signature", `the signature does not verify against ${p.key_id}`, p.key_id);
   if (p.method !== req.method || p.target !== req.target) return no("identity_request_mismatch", `the identity was signed for ${p.method} ${p.target.slice(0, 80)}, not this request`, p.key_id);
