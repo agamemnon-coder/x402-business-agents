@@ -27,7 +27,7 @@ export interface PartnerRailsRecord {
 const RAIL: Record<string, string> = { airwallex_card: "Visa card, Airwallex Issuing (sandbox)", airwallex_transfer: "Airwallex transfer (sandbox)", metal: "Alta testnet", airwallex_airi: "Visa via Airi (sandbox)" };
 const cut = (s: string, n = 10) => (s.length > n + 6 ? `${s.slice(0, n)}…${s.slice(-4)}` : s);
 const money = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
 
 export function partnerRailsMarkdown(r: PartnerRailsRecord): string {
   const failed = r.checks.filter((c) => !c.ok);
