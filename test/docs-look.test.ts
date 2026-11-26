@@ -15,7 +15,7 @@ const exists = (p: string) => existsSync(`${ROOT}${p}`);
 
 /** The pages redesigned in the house style, each with the centred header. */
 export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md", "docs/architecture.md", "docs/how-it-works.md", "docs/security.md", "docs/cloud.md", "docs/agents.md", "docs/airwallex.md",
-  "docs/README.md", "docs/proof/README.md", "docs/evidence/README.md", "docs/security/README.md", "docs/audit/README.md", "docs/submission/README.md", "docs/business/README.md", "docs/video/README.md", "examples/metal-dispute-desk/README.md", "docs/assets/brand/README.md", "docs/agent-api.md", "docs/mcp.md", "docs/ledger.md", "docs/cfo-policy.md"];
+  "docs/README.md", "docs/proof/README.md", "docs/evidence/README.md", "docs/security/README.md", "docs/audit/README.md", "docs/submission/README.md", "docs/business/README.md", "docs/video/README.md", "examples/metal-dispute-desk/README.md", "docs/assets/brand/README.md", "docs/agent-api.md", "docs/mcp.md", "docs/ledger.md", "docs/cfo-policy.md", "docs/controls.md"];
 /** Pages that carry the house-style badges (the judge-facing READMEs' header is test/readme-headers.test.ts's). */
 const BADGED = [...new Set([...STYLED, "docs/README.md"])];
 
@@ -117,7 +117,8 @@ describe("the Markdown pages in the README's house style", () => {
 
   for (const f of BADGED) it(`${f}: each Mermaid block names a diagram type GitHub draws, with balanced brackets and quotes`, () => {
     for (const m of read(f).matchAll(/^```mermaid\n([\s\S]*?)^```$/gm)) {
-      const lines = m[1]!.split("\n").filter((l) => l.trim());
+      // A leading "%%{init: …}%%" line sets the chart's colours; the diagram's type comes after it.
+      const lines = m[1]!.split("\n").filter((l) => l.trim() && !/^\s*%%/.test(l));
       expect({ f, first: lines[0]!.trim(), known: DIAGRAMS.test(lines[0]!.trim()) }).toEqual({ f, first: lines[0]!.trim(), known: true });
       for (const l of lines) {
         const plain = l.replace(/"[^"]*"/g, '""');
@@ -133,7 +134,7 @@ describe("the Markdown pages in the README's house style", () => {
   for (const f of BADGED) it(`${f}: each Mermaid chart cites the record its figures come from`, () => {
     const md = read(f);
     for (const m of md.matchAll(/^```mermaid\n([\s\S]*?)^```$/gm)) {
-      if (!CHARTS.test(m[1]!.trim())) continue;
+      if (!CHARTS.test(m[1]!.replace(/^\s*%%.*$/gm, "").trim())) continue;
       const after = md.slice(m.index! + m[0].length).split("\n").map((l) => l.trim()).find(Boolean) ?? "";
       const cite = /^<sub>Record: .*?\]\(([^)#\s]+)[^)]*\)/.exec(after);
       expect({ f, chart: m[1]!.split("\n")[0], cite: after.slice(0, 60), cited: !!cite }).toEqual({ f, chart: m[1]!.split("\n")[0], cite: after.slice(0, 60), cited: true });

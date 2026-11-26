@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Controls (SOC 2 style)
+
+**Every control Purser has, written the way an auditor reads controls, each with four statuses and the evidence behind them.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Controls: 42 in the tables](https://img.shields.io/badge/controls-42_in_the_tables-8b5cf6?style=flat-square&labelColor=1f2937)](#cc6-logical-access)&nbsp;[![Implemented: 41 of 42](https://img.shields.io/badge/implemented-41_of_42-10b981?style=flat-square&labelColor=1f2937)](#cc6-logical-access)&nbsp;[![Tested: 39 of 42](https://img.shields.io/badge/tested-39_of_42-10b981?style=flat-square&labelColor=1f2937)](#cc6-logical-access)&nbsp;[![Deployed, as a record shows: 18 of 42](https://img.shields.io/badge/deployed%2C_recorded-18_of_42-0ea5e9?style=flat-square&labelColor=1f2937)](#cc6-logical-access)&nbsp;[![Independently verified: 0 of 42](https://img.shields.io/badge/independently_verified-0_of_42-f43f5e?style=flat-square&labelColor=1f2937)](#not-in-place-summary)&nbsp;[![Not a SOC 2 report; not an audit](https://img.shields.io/badge/SOC_2_report-no_%C2%B7_not_an_audit-f59e0b?style=flat-square&labelColor=1f2937)](#not-in-place-summary)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Logical access](#cc6-logical-access) · [Audit trail](#cc7-system-operations-audit-trail-and-monitoring) · [Change](#cc8-change-management) · [Availability](#a1-availability-backup-restore-and-recovery) · [Incidents](#incident-response) · [Secrets](#secrets-management) · [Retention](#data-retention) · [Not in place](#not-in-place-summary) · [Guards in code](#guards-in-code)
+
+</div>
 
 > **Written by Claude (an AI model) from this repository on 20 November 2026, for the maintainer. Not an audit.**
 > Every status below was decided by reading the code, tests, workflows and records named in its cell, on `main` as it
@@ -28,6 +40,17 @@ The ASVS self-assessment: [security/asvs-l2.md](security/asvs-l2.md). Roles in P
   calls independent found findings 1, 2, 5 and 7; the repository records no re-check of the fixes by that reviewer.
 
 Marks: ✅ yes, with the evidence named. 🟠 no, or only partly, with what is missing.
+
+```mermaid
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#8b5cf6"}}}}%%
+xychart-beta
+  title "Controls marked yes, of the 42 in the tables below"
+  x-axis ["Implemented", "Tested", "Deployed", "Independently verified"]
+  y-axis "Controls" 0 --> 42
+  bar [41, 39, 18, 0]
+```
+
+<sub>Record: [the control tables on this page](controls.md#cc6-logical-access), counted by `test/docs-charts.test.ts`: of 42 controls, ✅ Implemented 41, Tested 39, Deployed 18, Independently verified 0; the rest 🟠, or n/a (Tested 1, Deployed 1).</sub>
 
 ## CC6 Logical access
 
