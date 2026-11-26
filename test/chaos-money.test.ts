@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHAOS_COUNT, CHAOS_SEED, chaosMoney } from "../src/cli/chaosMoney.js";
-import { HAND_WRITTEN, randomScenarios } from "../src/chaos/money.js";
+import { HAND_WRITTEN, randomScenarios, runScenario } from "../src/chaos/money.js";
 import type { ChaosReport } from "../src/chaos/report.js";
 
 describe("chaos for money movement", () => {
@@ -53,4 +53,18 @@ describe("chaos for money movement", () => {
     expect(report.totals.silent_approvals).toBe(0);
     if (report.totals.blocked_shown) expect(md).toContain("### Approved payments refused before they began are shown (outside audit 2.1)");
   });
+});
+
+describe("the stand-in Airwallex under concurrent lives", () => {
+  // Nightly 26 Nov (seed 20261126, R2277): two concurrent lives, and one read GET /transfers?request_id= in the moment
+  // between the fake adding the transfer under its own id (tr_N) and the stand-in giving it the Airwallex id; the ledger
+  // kept tr_N and the reconciliation found no such transfer. The stand-in now gives the id before any await.
+  it("holds the scenario that once read a transfer under the fake's id", async () => {
+    const sc = randomScenarios(20261126, 2277).at(-1)!;
+    expect(sc.id).toBe("R2277");
+    expect(sc.concurrent).toBe(true);
+    const res = await runScenario(sc);
+    expect(res.invariants.filter((i) => !i.ok)).toEqual([]);
+    expect(res.ok).toBe(true);
+  }, 60_000);
 });

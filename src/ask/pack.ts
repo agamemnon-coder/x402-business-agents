@@ -33,24 +33,29 @@ const CHUNK_MIN = 80;
 
 /** GitHub's anchor for a heading: lower case, punctuation dropped, spaces as hyphens. */
 export function githubSlug(heading: string): string {
-  return heading.trim().toLowerCase().replace(/<[^>]*>/g, "").replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s/g, "-");
+  return stripUntilStable(heading.trim().toLowerCase(), /<[^>]*>/g).replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s/g, "-");
+}
+
+/** Removes every match of `re`, again and again until nothing changes, so a removal cannot join two halves into a new match. */
+function stripUntilStable(text: string, re: RegExp): string {
+  for (let prev = ""; prev !== text; ) { prev = text; text = text.replace(re, ""); }
+  return text;
 }
 
 /** Markdown as plain text a model reads well: no HTML, images, badges or fences; absolute links kept as "text (url)". */
 export function cleanMarkdown(md: string): string {
-  return md
-    .replace(/<!--[\s\S]*?-->/g, "")
+  const noSummary = stripUntilStable(md, /<!--[\s\S]*?-->/g)
     .replace(/```[\s\S]*?```/g, "")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
     .replace(/\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)/g, "")
-    .replace(/<summary>([\s\S]*?)<\/summary>/gi, "$1. ")
-    .replace(/<[^>]+>/g, "")
+    .replace(/<summary>([\s\S]*?)<\/summary>/gi, "$1. ");
+  return stripUntilStable(noSummary, /<[^>]+>/g)
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, "$1 ($2)")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/^\s*\|?\s*:?-{3,}.*$/gm, "")
     .replace(/^\s*\|\s*/gm, "").replace(/\s*\|\s*$/gm, "").replace(/\s+\|\s+/g, " | ")
     .replace(/\*\*([^*]+)\*\*/g, "$1").replace(/(^|\s)\*([^*\n]+)\*(?=\s|[.,;:]|$)/g, "$1$2").replace(/`([^`]+)`/g, "$1")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&middot;/g, "·")
+    .replace(/&nbsp;/g, " ").replace(/&middot;/g, "·").replace(/&amp;/g, "&")
     .replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
 

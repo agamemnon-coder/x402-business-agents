@@ -12,3 +12,4 @@ opentelemetry-instrumentation-requests>=0.66b2
 opentelemetry-instrumentation-threading>=0.66b2
 opentelemetry-semantic-conventions>=0.66b2
 opentelemetry-util-http>=0.66b2
+wcmatch>=11.2
