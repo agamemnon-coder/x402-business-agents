@@ -208,6 +208,18 @@ export function policyLoosens(c: { key: string; from: string; to: string }): boo
   const cents = (v: string) => (/^\d+\.\d{2}$/.test(v) ? Number(v.replace(".", "")) : null);
   const [from, to] = [cents(c.from), cents(c.to)];
   if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
+  // A card's hours, merchant categories and currencies (src/policy/cardHours.ts cardControlLoosens). Hours: the phone
+  // reads only "set where there were none" as tightening; any other change of hours it leaves to the runner (a proposal
+  // the CFO then signs), never calling tighter what the runner calls looser (a test keeps that). A new category or
+  // currency loosens; unreadable values loosen.
+  const control = /^card\.[^.]+\.(hours|mccs|currencies)$/.exec(c.key)?.[1];
+  if (control === "hours") return c.from.trim() !== "" || c.to.trim() === "";
+  if (control) {
+    const items = (s: string) => s.split(",").map((x) => x.trim()).filter((x) => x !== "");
+    const ok = control === "mccs" ? /^\d{4}$/ : /^[A-Z]{3}$/;
+    const [was, now] = [items(c.from), items(c.to)];
+    return !now.length || now.some((x, i) => !ok.test(x) || now.indexOf(x) !== i || !was.includes(x));
+  }
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
   // A second key for high-risk payments (src/policy/secondKey.ts): off, or a higher amount, loosens.
@@ -807,8 +819,9 @@ export function normalizeAmount(input: string): string {
 }
 
 /** Why an amount cannot be a policy value, checked before anything is signed; null when it can. */
-export function amountProblem(kind: "money" | "optional_money" | "choice", value: string): string | null {
-  if (kind === "choice" || (kind === "optional_money" && value === "")) return null;
+export function amountProblem(kind: "money" | "optional_money" | "choice" | "text", value: string): string | null {
+  // A text setting (a card's hours, merchant categories, currencies) is checked by the runner, which says why.
+  if (kind === "choice" || kind === "text" || (kind === "optional_money" && value === "")) return null;
   if (value === "") return "write an amount";
   return /^\d{1,9}\.\d{2}$/.test(value) ? null : `write it with two decimals, like 0.03 (not ${JSON.stringify(value)})`;
 }
@@ -1974,7 +1987,7 @@ interface PolicyRow {
   agent?: string;
   label: string;
   unit: string;
-  kind: "money" | "optional_money" | "choice";
+  kind: "money" | "optional_money" | "choice" | "text";
   choices?: string[];
   value: string;
   display: string;
@@ -2010,6 +2023,12 @@ async function policyPage(): Promise<void> {
       }
       sel.value = e.value;
       input = sel;
+    } else if (e.kind === "text") {
+      const inp = document.createElement("input");
+      inp.value = e.value;
+      inp.placeholder = "none";
+      inp.autocomplete = "off";
+      input = inp;
     } else {
       const inp = document.createElement("input");
       inp.inputMode = "decimal";
@@ -2024,7 +2043,7 @@ async function policyPage(): Promise<void> {
     label.setAttribute("for", id);
     const row = el("div", "policy-row", [label, txt("span", "policy-now", `now: ${e.display}`), input]);
     const read = () => {
-      const v = e.kind === "choice" ? input.value : normalizeAmount(input.value);
+      const v = e.kind === "choice" ? input.value : e.kind === "text" ? input.value.trim() : normalizeAmount(input.value);
       return e.kind === "optional_money" && (v === "" || v.toLowerCase() === "none") ? "" : v;
     };
     return { e, row, read };

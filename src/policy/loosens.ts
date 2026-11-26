@@ -1,6 +1,8 @@
 // Whether a CFO policy change loosens the policy. Pure (no database, no Node modules), so the runner's rules
 // (src/policy/rules.ts re-exports it) and /try/sign's policy step (src/try/policy.ts) decide it with the same code.
 
+import { cardControlLoosens } from "./cardHours.js";
+
 /**
  * Whether a change makes the policy less strict: a higher or removed agent limit, a higher approval threshold, a
  * lower reserve floor, or a payee unblocked. The phone may only tighten (review N2); loosening is proposed on the
@@ -13,6 +15,10 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   if (c.key === "approval.airi_alone_per_day") return /^\d+$/.test(c.from) && (!/^\d+$/.test(c.to) || Number(c.to) > Number(c.from));
   if (c.key.startsWith("airi.merchant.")) return c.from !== "allowed" && c.to === "allowed";
   if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
+  // A card's hours, merchant categories and currencies (src/policy/cardHours.ts): wider hours (or none), a new merchant
+  // category or a new currency loosens; narrower ones tighten. Unreadable values loosen (fail closed).
+  const control = cardControlLoosens(c.key, c.from, c.to);
+  if (control !== null) return control;
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   // Four eyes: turning it off or raising the threshold loosens; turning it on or lowering it tightens.
   if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);

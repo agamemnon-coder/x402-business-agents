@@ -9,6 +9,9 @@
 //     (the same check `npm run verify` makes), not merely an approval row that says "passkey".
 // Without a change on record, one of our own agents' cards may go up to the limit in the code (CARDS), no higher.
 // Lowering is never asked about: it stays free (the phone can only tighten, an Airwallex-side lowering stands).
+// The same check guards the card's other controls (26 November): wider hours (Purser's own control), a new merchant
+// category or a new currency (Airwallex's) reach the card only as signed (cardControlRefusal, allowedCardHours,
+// allowedCardControls); narrower ones are free.
 // Before any passkey is enrolled (local development, where every approval is by typed hash prefix, as `npm run verify`
 // reports it), the approval on record for the exact terms is what there is, and it is what is checked.
 // What this does not close (docs/security/2026-11-19-hardening.md): someone who writes the database file AND enrols a
@@ -16,7 +19,8 @@
 
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { CARDS, type Agent } from "../config/policy.js";
-import type { CardLimits } from "../airwallex/issuing.js";
+import type { CardControls, CardLimits } from "../airwallex/issuing.js";
+import { canonicalList, cardHoursWithin, cardHoursWords, listOf, listWithin } from "./cardHours.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
@@ -72,24 +76,9 @@ async function signatureRefusal(db: DB, p: ProposalRow): Promise<string | null> 
  * on record, within the limit in the code for one of our own agents). Reads the ledger and verifies signatures only.
  */
 export async function cardRaiseRefusal(db: DB, agent: string, part: LimitPart, cents: number): Promise<string | null> {
-  const key = `card.${agent}.${part}`;
-  const last = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'policy.changed' AND subject = ? ORDER BY seq DESC LIMIT 1").get(key) as { payload_json: string } | undefined;
-  if (!last) {
-    const own = (CARDS as Record<string, (typeof CARDS)[Agent] | undefined>)[agent];
-    const coded = own ? (part === "per_tx" ? own.perTxCents : own.monthlyCents) : null;
-    return coded !== null && cents <= coded ? null : `no signed change sets ${key} to ${fromCents(cents)}`;
-  }
-  const proposalId = String((JSON.parse(last.payload_json) as { proposal_id?: unknown }).proposal_id ?? "");
-  const p = db.prepare("SELECT proposal_id, kind, terms_json, terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as ProposalRow | undefined;
-  if (!p || p.kind !== "policy_change") return `the last change of ${key} names no policy change on record`;
-  let to: string | undefined;
-  try {
-    to = (JSON.parse(p.terms_json) as { changes?: { key: string; to: string }[] }).changes?.find((c) => c.key === key)?.to;
-  } catch {
-    to = undefined;
-  }
-  if (to === undefined || !/^\d+\.\d{2}$/.test(to) || toCents(to) !== cents) return `the last change of ${key} (${p.proposal_id}) sets ${to ?? "nothing"}, not ${fromCents(cents)}`;
-  return signatureRefusal(db, p);
+  const own = (CARDS as Record<string, (typeof CARDS)[Agent] | undefined>)[agent];
+  const coded = own ? (part === "per_tx" ? own.perTxCents : own.monthlyCents) : null;
+  return cardControlRefusal(db, `card.${agent}.${part}`, fromCents(cents), coded !== null && cents <= coded, (to) => /^\d+\.\d{2}$/.test(to) && toCents(to) === cents);
 }
 
 export interface RaiseRefused { key: string; part: LimitPart; wanted: string; kept: string; reason: string; proposal_id: string | null }
@@ -107,18 +96,74 @@ export async function allowedCardLimits(db: DB, agent: string, has: CardLimits |
     if (!why) continue;
     limits[field] = has[field];
     const key = `card.${agent}.${part}`;
-    const last = db.prepare("SELECT json_extract(payload_json, '$.proposal_id') AS id FROM audit_log WHERE event = 'policy.changed' AND subject = ? ORDER BY seq DESC LIMIT 1").get(key) as { id: string | null } | undefined;
-    refused.push({ key, part, wanted: fromCents(want[field]), kept: fromCents(has[field]), reason: why, proposal_id: last?.id ?? null });
+    refused.push({ key, part, wanted: fromCents(want[field]), kept: fromCents(has[field]), reason: why, proposal_id: lastProposalOf(db, key) });
   }
   return { limits, refused };
 }
 
+/**
+ * Why `key` may not be set to `value` on the card, or null when that exact value is signed: the last change of the key
+ * on record names a policy_change that sets it to exactly this value (`same`), and its passkey signature verifies.
+ * With no change on record, only a value within what the code gives the card (`withinCode`) passes. A raised limit,
+ * wider hours, a new merchant category or currency all go through here.
+ */
+export async function cardControlRefusal(db: DB, key: string, value: string, withinCode: boolean, same: (to: string) => boolean): Promise<string | null> {
+  const last = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'policy.changed' AND subject = ? ORDER BY seq DESC LIMIT 1").get(key) as { payload_json: string } | undefined;
+  if (!last) return withinCode ? null : `no signed change sets ${key} to ${value}`;
+  const proposalId = String((JSON.parse(last.payload_json) as { proposal_id?: unknown }).proposal_id ?? "");
+  const p = db.prepare("SELECT proposal_id, kind, terms_json, terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as ProposalRow | undefined;
+  if (!p || p.kind !== "policy_change") return `the last change of ${key} names no policy change on record`;
+  let to: string | undefined;
+  try {
+    to = (JSON.parse(p.terms_json) as { changes?: { key: string; to: string }[] }).changes?.find((c) => c.key === key)?.to;
+  } catch {
+    to = undefined;
+  }
+  if (typeof to !== "string" || !same(to)) return `the last change of ${key} (${p.proposal_id}) sets ${to ?? "nothing"}, not ${value}`;
+  return signatureRefusal(db, p);
+}
+
+const lastProposalOf = (db: DB, key: string): string | null =>
+  (db.prepare("SELECT json_extract(payload_json, '$.proposal_id') AS id FROM audit_log WHERE event = 'policy.changed' AND subject = ? ORDER BY seq DESC LIMIT 1").get(key) as { id: string | null } | undefined)?.id ?? null;
+
+/**
+ * The hours the card may be given now: the policy's when they are within what the card has (`has`, cards.hours; ""
+ * is any time) or when that widening is signed; else what the card has. Hours are Purser's control, not Airwallex's.
+ * The code gives a card no hours (any time), so with no change on record any hours are within it.
+ */
+export async function allowedCardHours(db: DB, agent: string, has: string, want: string): Promise<{ hours: string; refused: Refused[] }> {
+  const key = `card.${agent}.hours`;
+  const why = cardHoursWithin(want, has) ? null : await cardControlRefusal(db, key, want, true, (to) => cardHoursWords(to) === cardHoursWords(want));
+  return why ? { hours: has, refused: [{ key, wanted: cardHoursWords(want), kept: cardHoursWords(has), reason: why, proposal_id: lastProposalOf(db, key) }] } : { hours: want, refused: [] };
+}
+
+/**
+ * The merchant categories and currencies the card may be given now (Airwallex controls): per list, the policy's when
+ * every entry is already on the card at Airwallex (`has`; an empty list there allows any) or the addition is signed;
+ * else what the card has. `code` is what the code gives the card (agentCardControls), which needs no signature.
+ */
+export async function allowedCardControls(db: DB, agent: string, has: Pick<CardControls, "mccs" | "currencies"> | null | undefined, want: CardControls, code: Pick<CardControls, "mccs" | "currencies">): Promise<{ controls: CardControls; refused: Refused[] }> {
+  const controls: CardControls = { ...want };
+  const refused: Refused[] = [];
+  for (const part of ["mccs", "currencies"] as const) {
+    const had = (has?.[part] ?? []).join(","), wanted = want[part].join(","), key = `card.${agent}.${part}`;
+    const why = !had || listWithin(wanted, had) ? null : await cardControlRefusal(db, key, wanted, listWithin(wanted, code[part].join(",")), (to) => canonicalList(to) === canonicalList(wanted));
+    if (!why) continue;
+    controls[part] = listOf(had).sort();
+    refused.push({ key, wanted, kept: had, reason: why, proposal_id: lastProposalOf(db, key) });
+  }
+  return { controls, refused };
+}
+
+/** A refused loosening of a card control: kept as the card has it (recorded by recordRaiseRefusals as card.loosening_refused). */
+export interface Refused { key: string; wanted: string; kept: string; reason: string; proposal_id: string | null }
+
 /** Records each refused raise once: the same refusal again (the runner's check every few seconds) is not written twice. */
-export function recordRaiseRefusals(db: DB, agent: string, refused: readonly RaiseRefused[], now: Date): void {
+export function recordRaiseRefusals(db: DB, agent: string, refused: readonly Refused[], now: Date, event: "card.raise_refused" | "card.loosening_refused" = "card.raise_refused"): void {
   for (const r of refused) {
-    const last = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'card.raise_refused' AND subject = ? AND json_extract(payload_json, '$.key') = ? ORDER BY seq DESC LIMIT 1").get(agent, r.key) as { payload_json: string } | undefined;
-    const prev = last ? JSON.parse(last.payload_json) as Partial<RaiseRefused> : null;
+    const last = db.prepare("SELECT payload_json FROM audit_log WHERE event = ? AND subject = ? AND json_extract(payload_json, '$.key') = ? ORDER BY seq DESC LIMIT 1").get(event, agent, r.key) as { payload_json: string } | undefined;
+    const prev = last ? JSON.parse(last.payload_json) as Partial<Refused> : null;
     if (prev && prev.wanted === r.wanted && prev.kept === r.kept && prev.reason === r.reason) continue;
-    audit(db, "system", "card.raise_refused", agent, { agent, key: r.key, wanted: r.wanted, kept: r.kept, reason: r.reason, proposal_id: r.proposal_id }, now);
+    audit(db, "system", event, agent, { agent, key: r.key, wanted: r.wanted, kept: r.kept, reason: r.reason, proposal_id: r.proposal_id }, now);
   }
 }

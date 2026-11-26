@@ -23,6 +23,7 @@ import { stopped, velocityGate } from "./velocity.js";
 import { policyVersion } from "./versions.js";
 import { authorize, type Payee } from "./principals.js";
 import { replaceHoldRefusal } from "./replaceHold.js";
+import { refuseOutsideCardHours } from "./cardHoursGate.js";
 
 export type HoldRail = "metal" | "card";
 export interface SpendRequest { agent: Agent | `ext:${string}`; rail: HoldRail; cents: number; ref: string; now?: Date; payee?: Payee }
@@ -219,6 +220,8 @@ export function releaseHold(db: DB, ref: string, reason: string, now = new Date(
  */
 export async function chargeUnderHold(db: DB, agent: string, cents: number, now: Date, charge: () => Promise<CardTransaction>): Promise<CardTransaction> {
   const ref = `card:${agent}:${now.toISOString()}:${randomUUID().slice(0, 8)}`;
+  // Outside the card's hours nothing is reserved or charged (Purser's control; src/policy/cardHoursGate.ts).
+  refuseOutsideCardHours(db, agent, { amountCents: cents, merchant: "merchants" }, now);
   const refused = reserveSpend(db, { agent: agent as SpendRequest["agent"], rail: "card", cents, ref, now, payee: "merchants" });
   if (refused) throw new Error(refused.replace(/^[a-z_]+: /, ""));
   const t = await charge();

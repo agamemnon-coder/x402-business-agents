@@ -2,7 +2,7 @@
 // It declines like the sandbox did on 2026-10-29: over the per-transaction or the monthly limit gives FAILED with
 // LIMIT_EXCEEDED, and an inactive card gives CARD_INACTIVE. Live, Airwallex itself enforces these.
 
-import type { Card, CardControls, CardLimits, Cardholder, CardTransaction, IssuingRail, IssuingSim } from "../airwallex/issuing.js";
+import type { Card, CardControls, CardLimits, CardMetadata, Cardholder, CardTransaction, IssuingRail, IssuingSim } from "../airwallex/issuing.js";
 
 export class FakeIssuing implements IssuingRail, IssuingSim {
   holders: Cardholder[] = [];
@@ -24,11 +24,11 @@ export class FakeIssuing implements IssuingRail, IssuingSim {
     const c = this.cards.find((x) => x.cardholderId === cardholderId && x.nickname === nickname);
     return c && structuredClone(c);
   }
-  async createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits; controls?: CardControls }) {
+  async createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits; controls?: CardControls; metadata?: CardMetadata }) {
     this.calls.push("createCard");
     const n = ++this.n;
     const controls: CardControls = a.controls ? { mccs: [...a.controls.mccs].sort(), currencies: [...a.controls.currencies].sort(), activeTo: a.controls.activeTo, ...(a.controls.singleUse ? { singleUse: true } : {}) } : { mccs: [], currencies: [], activeTo: null };
-    const c: Card = { cardId: `card_${n}`, cardholderId: a.cardholderId, last4: String(4000 + n), status: "ACTIVE", nickname: a.nickname, limits: { ...a.limits }, controls };
+    const c: Card = { cardId: `card_${n}`, cardholderId: a.cardholderId, last4: String(4000 + n), status: "ACTIVE", nickname: a.nickname, limits: { ...a.limits }, controls, ...(a.metadata ? { metadata: { ...a.metadata } } : {}) };
     this.cards.push(c);
     return structuredClone(c);
   }
@@ -44,11 +44,14 @@ export class FakeIssuing implements IssuingRail, IssuingSim {
     c.controls = { mccs: [...controls.mccs].sort(), currencies: [...controls.currencies].sort(), activeTo: c.controls?.activeTo ?? null, ...(c.controls?.singleUse ? { singleUse: true } : {}) };
     return structuredClone(c);
   }
-  async setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE") {
+  async setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE", metadata?: CardMetadata) {
     this.calls.push("setCardStatus");
     // As the sandbox answered live on 30 October: a closed card cannot change status (400 invalid_argument).
     if (this.card(cardId).status === "CLOSED") throw new Error("Airwallex 400 invalid_argument: Invalid status update");
     this.card(cardId).status = status;
+    // The stand-in keeps the metadata last sent. Whether Airwallex merges or replaces it is not documented; Purser
+    // always sends every key (agent_id, task_id, policy_version), so either way the card names the same three.
+    if (metadata) this.card(cardId).metadata = { ...metadata };
     return structuredClone(this.card(cardId));
   }
   async listCardTransactions(cardId: string) { this.calls.push("listTx"); return this.txs.filter((t) => t.cardId === cardId).map((t) => ({ ...t })).reverse(); }

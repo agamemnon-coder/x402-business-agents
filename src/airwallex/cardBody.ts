@@ -47,3 +47,20 @@ export function limitsUpdateBody(limits: CardLimits) {
 export function controlsUpdateBody(controls: Pick<CardControls, "mccs" | "currencies">) {
   return { authorization_controls: { allowed_merchant_categories: controls.mccs, allowed_currencies: controls.currencies } };
 }
+
+/**
+ * The card's `metadata` at Airwallex (Create a card / Update a card, API reference read 26 November 2026: up to 20 keys,
+ * key names up to 20 characters, values up to 150): which agent the card is for, the task it is thawed for, and the CFO
+ * policy version behind it, so the card at Airwallex itself names agent, task and policy. Whether Airwallex copies a
+ * card's metadata onto its transactions is not documented and not relied on: each transaction is tied to agent, task
+ * and policy version in Purser's own ledger (card_transactions, src/policy/cards.ts ingestCardTransaction).
+ */
+export type CardMetadata = Record<string, string>;
+export function cardMetadata(m: { agentId: string; taskId?: string | null; policyVersion?: number | null }): CardMetadata {
+  const value = (v: string) => [...v].map((ch) => (ch.charCodeAt(0) < 32 ? " " : ch)).join("").slice(0, 150);
+  return {
+    agent_id: value(m.agentId),
+    ...(m.taskId ? { task_id: value(m.taskId) } : {}),
+    ...(typeof m.policyVersion === "number" ? { policy_version: `v${m.policyVersion}` } : {}),
+  };
+}

@@ -3,6 +3,8 @@
 // kind must be one Purser makes cards for, and a message with words aimed at the AI is refused whole.
 
 import type { Card, CardTransaction, IssuingRail, IssuingSim } from "../airwallex/issuing.js";
+import { cardMetadata } from "../airwallex/cardBody.js";
+import { policyVersion } from "../policy/versions.js";
 import type { Tools } from "../claude/tools.js";
 import { audit } from "../audit/log.js";
 import { autonomyOn } from "../config/agents.js";
@@ -215,6 +217,9 @@ async function issueTaskCard(db: DB, rail: IssuingRail, ref: string, t: TaskCard
     card = (await rail.findCard(holder.id, nickname)) ?? (await rail.createCard({
       cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: { currency: "EUR", perTxCents: cents, monthlyCents: cents },
       controls: { mccs: t.merchant_categories, currencies: ["EUR"], activeTo: t.valid_until, singleUse: true },
+      // Native Airwallex controls do the rest (single use, active_to); the metadata names the agent that pays on it
+      // (the Treasury agent), the task and the CFO policy version it was issued under.
+      metadata: cardMetadata({ agentId: "treasury", taskId, policyVersion: policyVersion(db, now).version }),
     }));
   } catch (e) {
     failTask(db, taskId);

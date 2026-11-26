@@ -6,12 +6,12 @@ import { randomUUID } from "node:crypto";
 import { Airwallex, AirwallexAmbiguous, fromEnv } from "./client.js";
 import { cents } from "./adapter.js";
 import { fromCents } from "../lib/money.js";
-import { controlsUpdateBody, createControlsBody, limitsUpdateBody, type CardControls, type CardLimits } from "./cardBody.js";
+import { controlsUpdateBody, createControlsBody, limitsUpdateBody, type CardControls, type CardLimits, type CardMetadata } from "./cardBody.js";
 import { checkCardAccount } from "./binding.js";
 import { platformOn } from "./platform.js";
 import type { DB } from "../db/open.js";
 
-export type { CardControls, CardLimits } from "./cardBody.js";
+export type { CardControls, CardLimits, CardMetadata } from "./cardBody.js";
 
 export interface Card {
   cardId: string;
@@ -23,6 +23,8 @@ export interface Card {
   limits: CardLimits | null;
   /** What the card may pay at all (Airwallex declines the rest): merchant categories, currencies, an end date. */
   controls?: CardControls | null;
+  /** The card's metadata at Airwallex (agent_id, task_id, policy_version: src/airwallex/cardBody.ts cardMetadata). */
+  metadata?: CardMetadata;
 }
 
 export interface CardTransaction {
@@ -55,13 +57,16 @@ export interface IssuingRail {
   findCardholderByEmail(email: string): Promise<Cardholder | undefined>;
   createCardholder(a: { email: string; firstName: string; lastName: string }): Promise<Cardholder>;
   findCard(cardholderId: string, nickname: string): Promise<Card | undefined>;
-  createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits; controls?: CardControls }): Promise<Card>;
+  createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits; controls?: CardControls; metadata?: CardMetadata }): Promise<Card>;
   getCard(cardId: string): Promise<Card>;
   /** Sets which merchant categories and currencies the card may pay (its end date stays). */
   setCardControls(cardId: string, controls: Pick<CardControls, "mccs" | "currencies">): Promise<Card>;
   setCardLimits(cardId: string, limits: CardLimits): Promise<Card>;
-  /** INACTIVE freezes the card (Airwallex declines with CARD_INACTIVE); ACTIVE thaws it. */
-  setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE"): Promise<Card>;
+  /**
+   * INACTIVE freezes the card (Airwallex declines with CARD_INACTIVE); ACTIVE thaws it. With `metadata`, the same card
+   * update also names the agent, the task and the policy version the card is thawed for.
+   */
+  setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE", metadata?: CardMetadata): Promise<Card>;
   /** The card's transactions, in whatever order Airwallex lists them. */
   listCardTransactions(cardId: string): Promise<CardTransaction[]>;
 }
@@ -76,7 +81,7 @@ export interface IssuingSim extends Pick<IssuingRail, "setCardStatus"> {
 
 type AwxLimits = { currency: string; limits: { amount: number; interval: string }[] };
 type AwxCard = {
-  card_id: string; cardholder_id: string; card_number?: string; card_status: string; nick_name?: string;
+  card_id: string; cardholder_id: string; card_number?: string; card_status: string; nick_name?: string; metadata?: Record<string, unknown> | null;
   authorization_controls?: { transaction_limits?: AwxLimits; allowed_merchant_categories?: string[]; allowed_currencies?: string[]; active_to?: string | null; allowed_transaction_count?: string };
 };
 /**
@@ -125,6 +130,7 @@ export function toCard(c: AwxCard): Card {
       activeTo: c.authorization_controls.active_to ? new Date(c.authorization_controls.active_to).toISOString() : null,
       ...(c.authorization_controls.allowed_transaction_count === "SINGLE" ? { singleUse: true } : {}),
     } : null,
+    ...(c.metadata && typeof c.metadata === "object" ? { metadata: Object.fromEntries(Object.entries(c.metadata).filter((e): e is [string, string] => typeof e[1] === "string")) } : {}),
   };
 }
 
@@ -205,12 +211,13 @@ export class IssuingRest implements IssuingRail, IssuingSim {
     }
   }
 
-  async createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits; controls?: CardControls }): Promise<Card> {
+  async createCard(a: { cardholderId: string; nickname: string; createdBy: string; limits: CardLimits; controls?: CardControls; metadata?: CardMetadata }): Promise<Card> {
     try {
       const c = await this.api.call<AwxCard>("POST", "/issuing/cards/create", {
         request_id: randomUUID(), cardholder_id: a.cardholderId, created_by: a.createdBy, form_factor: "VIRTUAL", is_personalized: false,
         program: { purpose: "COMMERCIAL" }, nick_name: a.nickname,
         authorization_controls: createControlsBody(a.limits, a.controls),
+        ...(a.metadata ? { metadata: a.metadata } : {}),
       });
       return toCard(c);
     } catch (e) {
@@ -247,9 +254,9 @@ export class IssuingRest implements IssuingRail, IssuingSim {
     return this.getCard(cardId);
   }
 
-  async setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE"): Promise<Card> {
+  async setCardStatus(cardId: string, status: "ACTIVE" | "INACTIVE", metadata?: CardMetadata): Promise<Card> {
     try {
-      await this.api.call("POST", `/issuing/cards/${encodeURIComponent(cardId)}/update`, { card_status: status });
+      await this.api.call("POST", `/issuing/cards/${encodeURIComponent(cardId)}/update`, { card_status: status, ...(metadata ? { metadata } : {}) });
     } catch (e) {
       if (!(e instanceof AirwallexAmbiguous)) throw e;
     }

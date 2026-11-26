@@ -58,8 +58,12 @@ export function policyKey(field: Field, agent: string): string {
     case "end_date": return `card.${agent}.active_to`;
   }
 }
-/** The keys only the test world has (Purser's card holds these at Airwallex, its invoices wait for the CFO). */
-export const testWorldKeys = (agent: string): string[] => (["mccs", "currencies", "end_date", "alone"] as const).map((f) => policyKey(f, agent));
+/**
+ * The keys only the test world has (Purser's card holds its end date at Airwallex, its invoices wait for the CFO). The
+ * merchant categories and currencies are Purser's own rules too since 26 November (card.<agent>.mccs / .currencies,
+ * src/policy/rules.ts).
+ */
+export const testWorldKeys = (agent: string): string[] => (["end_date", "alone"] as const).map((f) => policyKey(f, agent));
 
 /**
  * Decision B (with Max): the worst case step 0 shows takes its chain part from Purser's own mandates, which step 0

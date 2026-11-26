@@ -8,13 +8,14 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { stopped } from "./velocity.js";
 import { agentsOn } from "../config/agents.js";
-import { cardLimitsFrom } from "./cardRules.js";
+import { agentCardControls, cardLimitsFrom } from "./cardRules.js";
+import { cardControlOf, cardHoursProblem, cardHoursWords, currencyListProblem, mccListProblem } from "./cardHours.js";
 import { airiRailOn, airiRuleDefs } from "../airi/policy.js";
 import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
 import { FEE_BPS_CAP, platformFeeOn } from "../airwallex/platform.js";
 import { payFromRule, payFromRules } from "./entities.js";
 
-export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | "approval.second_key_eur" | "approval.second_key_new_payee" | "approval.second_key_bank_changed" | "approval.second_key_new_country" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
+export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | "approval.second_key_eur" | "approval.second_key_new_payee" | "approval.second_key_bank_changed" | "approval.second_key_new_country" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | `card.${string}.hours` | `card.${string}.mccs` | `card.${string}.currencies` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
   | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps" | "ap.alone_eur" | `pay_from.${string}`
   | "approval.policy_sod_eur";
 
@@ -23,8 +24,11 @@ export interface Rule {
   label: string;
   /** USDZ, a currency code, or "" for a choice. */
   unit: string;
-  /** money: a decimal amount; optional_money: an amount or "" (no extra limit); choice: one of `choices`. */
-  kind: "money" | "optional_money" | "choice";
+  /**
+   * money: a decimal amount; optional_money: an amount or "" (no extra limit); choice: one of `choices`; text: a value
+   * its own reader checks (a card's hours, merchant categories, currencies: src/policy/cardHours.ts).
+   */
+  kind: "money" | "optional_money" | "choice" | "text";
   min?: number;
   max?: number;
   choices?: string[];
@@ -67,8 +71,22 @@ const STATIC: Rule[] = [
     { key: `stop.${a}`, label: `${agentName(a)}: stopped (velocity limit)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off", agent: a },
     { key: `card.${a}.per_tx`, label: `${agentName(a)}'s card: most per purchase`, unit: "EUR", kind: "money", min: 100, max: 100_000, fallback: fromCents(CARDS[a].perTxCents), agent: a },
     { key: `card.${a}.monthly`, label: `${agentName(a)}'s card: most per month`, unit: "EUR", kind: "money", min: 100, max: 500_000, fallback: fromCents(CARDS[a].monthlyCents), agent: a },
+    // When the card may pay, and at which merchants and in which currencies (src/policy/cardHours.ts). The hours are
+    // Purser's own control (Airwallex has no recurring time window); the merchant categories and currencies are
+    // Airwallex's, pushed to the card. Wider is a loosening: the CFO's passkey, checked again at the card.
+    { key: `card.${a}.hours`, label: `${agentName(a)}'s card: hours it may pay (enforced by Purser)`, unit: "", kind: "text", fallback: "", agent: a },
+    { key: `card.${a}.mccs`, label: `${agentName(a)}'s card: merchant categories it may pay`, unit: "", kind: "text", fallback: agentCardControls(a, new Date(0)).mccs.join(","), agent: a },
+    { key: `card.${a}.currencies`, label: `${agentName(a)}'s card: currencies it may pay`, unit: "", kind: "text", fallback: agentCardControls(a, new Date(0)).currencies.join(","), agent: a },
   ]),
 ];
+
+/** Why `to` cannot be the value of a text setting (a card's hours, merchant categories, currencies), or null. */
+function textProblem(r: Rule, to: string): string | null {
+  const c = cardControlOf(r.key);
+  if (!c) return `${r.label}: no rule reads this setting`;
+  const problem = c.control === "hours" ? cardHoursProblem(to) : c.control === "mccs" ? mccListProblem(to) : currencyListProblem(to);
+  return problem ? `${r.label}: ${problem}` : null;
+}
 
 /**
  * Supplier payouts in any currency (src/payouts/plan.ts): the currency a shortfall is bought with, each currency's
@@ -206,6 +224,7 @@ function display(r: Rule, value: string): string {
   if (r.key === "approval.four_eyes_eur" && value === "") return "off (one person approves)";
   if (r.key === SOD_RULE.key && value === "") return "off (one person approves a policy change)";
   if (r.key === "approval.second_key_eur" && value === "") return "off (Face ID alone)";
+  if (cardControlOf(r.key)?.control === "hours") return cardHoursWords(value);
   if (r.kind === "optional_money" && value === "") return "no extra limit (the mandate's cap applies)";
   if (r.kind === "money" && value === "") return "not set yet";
   return r.unit ? `${value} ${r.unit}` : value;
@@ -229,6 +248,7 @@ export function validateChange(db: DB, c: { key: string; from: string; to: strin
     if (r.choices!.includes(c.to)) return null;
     return r.choices!.join() === "allowed,blocked" ? `${r.label} must be allowed or blocked` : `${r.label} must be one of ${r.choices!.join(", ")}`;
   }
+  if (r.kind === "text") return textProblem(r, c.to);
   if (r.kind === "optional_money" && c.to === "") return null;
   if (!MONEY.test(c.to)) return `${r.label}: bad format ${JSON.stringify(c.to)}; write an amount like 0.03`;
   const cents = toCents(c.to);
