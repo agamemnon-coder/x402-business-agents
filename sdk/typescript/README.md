@@ -8,6 +8,21 @@ operations of [`openapi/purser.yaml`](../../openapi/purser.yaml), under their `o
 **It cannot approve.** Approving a payment is the CFO's passkey over the exact terms, in Purser Cloud. The API refuses
 every key there, and this client has no method for it. Test money only until a company goes live.
 
+```mermaid
+sequenceDiagram
+  participant Y as Your code (this client)
+  participant P as Purser Cloud API
+  participant C as CFO (passkey, in Purser Cloud)
+  Y->>P: listInvoices / listPayableInvoices (read scope)
+  P-->>Y: invoices
+  Y->>P: proposePayment(id) (propose scope)
+  P-->>Y: proposal PENDING_APPROVAL, with terms_sha256
+  Note over Y,P: no method approves, and the API refuses every key there
+  C->>P: signs the SHA-256 of the exact terms
+  Y->>P: getProposal(id)
+  P-->>Y: APPROVED, then EXECUTED (or REJECTED, EXPIRED)
+```
+
 Status: built and tested locally against Purser Cloud in-process. Not published to npm. Use it from this repository
 (`sdk/typescript/src/index.ts`), or copy the one file.
 

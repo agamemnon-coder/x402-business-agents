@@ -33,6 +33,15 @@ from [runs/README.md](runs/README.md), the checks from the newest verification r
 [/proof](https://kit11.max-31b.workers.dev/proof#evidence)), and every claim with its source is in [claims.md](claims.md).
 A document that needs a figure points to one of these instead of typing it again.
 
+```mermaid
+flowchart LR
+  RUN["A run<br/>live on the sandbox or testnet,<br/>or the test suite"] --> REC["Its committed record<br/>runs/, evidence/, evals/,<br/>assets/test-summary.json"]
+  REC --> T["A test reads the figure<br/>from the record"]
+  T --> PAGES["The README, these docs<br/>and /proof"]
+  REC --> CL["claims.md<br/>every claim and its source"]
+  REC --> V["Checked offline<br/>npm run verify-approval,<br/>verify-bundle, verify-all"]
+```
+
 The rails are the Airwallex sandbox and the Alta (formerly Metal) testnet. Alta renamed itself on 14 November; records
 and file names from before keep "Metal". Back to the [README](../README.md); every pull request is in
 [CHANGELOG.md](../CHANGELOG.md).
@@ -57,6 +66,7 @@ and file names from before keep "Metal". Back to the [README](../README.md); eve
 - [finance-value.md](finance-value.md): for a CFO or finance reader: the invoice job step by step, measured cost and time per invoice, the controls mapped, the books, and what is not proven yet.
 - [enterprise.md](enterprise.md): what a finance team gets beyond the demo, each with where to check it.
 - [who-does-what.md](who-does-what.md): who does what: Purser, the rails and Claude, each with its part.
+- [governance.md](governance.md): each principle of Airwallex's "Agentic banking starts with governance", with the code line that holds it, the test that proves it and the live record; what is not done, said plainly; the trust boundaries as a diagram.
 - [cfo-policy.md](cfo-policy.md): the CFO policy.
 - [policy-opa.md](policy-opa.md): the CFO policy as OPA/Rego for teams on Open Policy Agent, held to Purser's own decisions by a test in CI.
 - [phone-approval.md](phone-approval.md): the dashboard and approval on a phone.
@@ -118,7 +128,7 @@ the longer list.
 - [security/requirements.md](security/requirements.md): what you can and cannot expect in terms of security: assumptions, secure design principles, the common weaknesses countered, hardening, input validation and cryptography.
 - [security/openssf-silver.md](security/openssf-silver.md): the OpenSSF Best Practices silver criteria, one by one, with the evidence and what is still open.
 - [zero-trust.md](zero-trust.md): the limits proven layer by layer, generated ([zero-trust/](zero-trust/)).
-- [controls.md](controls.md): every control, how it works, and its evidence; [controls-matrix.md](controls-matrix.md): each risk, its control, its test and its evidence.
+- [controls.md](controls.md): every control, how it works, and its evidence; [controls-matrix.md](controls-matrix.md): each risk, its control, its test and its evidence; [governance.md](governance.md): the same controls against Airwallex's governance principles.
 - [assurance.md](assurance.md): the assurance case: each invariant about money, the function that enforces it, its tests, the CI job and the record.
 - [fraud-and-injection.md](fraud-and-injection.md): invoice fraud and prompt injection.
 - [worst-case-ai.md](worst-case-ai.md): the worst-case AI test: Purser's AI replaced by a script that always says pay.

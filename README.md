@@ -39,7 +39,7 @@
 
 </details>
 
-**For judges:** [JUDGES.md](JUDGES.md), one page: the 2-minute path, what is real and what is sandbox, how to verify, and the honest limits.
+**For judges:** [JUDGES.md](JUDGES.md), one page: the 2-minute path, what is real and what is sandbox, how to verify, and the honest limits. **Governance:** each principle of Airwallex's "Agentic banking starts with governance", mapped to code, test and record: [docs/governance.md](docs/governance.md).
 
 **What is not finished:**
 
@@ -140,7 +140,7 @@ sequenceDiagram
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/system-map-dark.svg"><img src="docs/assets/readme/system-map-light.svg" alt="Purser's whole system in six zones, left to right: who uses it, the surfaces, the Claude agents, the rails in code, the money rails on test money, and the proof and books; dots follow one payment from a visitor through /try, the Reader, the Checker, the CFO policy and the passkey to Airwallex and the proof files, and a red dot takes a changed cent to Refused" width="100%"></picture>
 
-*The whole system at a glance: everything here is built and runs on test money; open the image for full size.*
+*The whole system at a glance, on test money.*
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/architecture-dark.svg"><img src="docs/assets/readme/architecture-light.svg" alt="Purser in four layers: the CFO and company, the Purser engine, the payment rails and the proof, with the path of one payment" width="100%"></picture>
 

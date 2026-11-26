@@ -26,7 +26,41 @@ the page, and the page to the records.
 | Three independent locks: Airwallex card controls (sandbox), the Alta mandate on chain (testnet), the CFO's passkey | The record leaves Purser | Idempotency (`src/policy/saga.ts`), HMAC-checked webhooks that only record (`src/policy/airwallexEvents.ts`) |
 | The proof file, which anyone can verify offline | | The hash-chained audit log (`src/audit/log.ts`), the offline verifier (`src/proof/bundle.ts`) |
 
-The threat model with every trust boundary: [security.md](../security.md#trust-boundaries).
+The same layers as a picture; each outlined group is one side of a trust boundary, and a step crosses one only as the table says:
+
+```mermaid
+flowchart TB
+  subgraph B1["Untrusted: the agent's input"]
+    A["Invoice text, email, a model's answer"]
+  end
+  subgraph B2["Purser's code"]
+    V["Typed data, checked by code<br/>(zod, or code's own parser if Claude fails)"]
+    R{"Purser's rules<br/>limits, payees, duplicates, cash floor"}
+    H["Hash first: stored terms re-hashed<br/>before any outside call"]
+  end
+  subgraph B3["The CFO's device"]
+    P["Passkey signs the SHA-256<br/>of the exact terms"]
+  end
+  subgraph B4["The rails' own locks"]
+    AW["Airwallex card controls<br/>(sandbox)"]
+    AL["Alta mandate on chain<br/>(testnet)"]
+  end
+  subgraph B5["Outside Purser"]
+    PF["Proof file and hash-chained log<br/>verified offline"]
+  end
+  A --> V --> R
+  R -- "within the limit" --> H
+  R -- "above it: only a person" --> P --> H
+  R -- "refused: nothing is sent" --> X["Refused"]
+  H -- "terms changed after signing" --> X
+  H --> AW & AL
+  AW & AL --> PF
+  classDef bad fill:#fdecec,stroke:#c5363c,color:#7f1d1d
+  class X bad
+```
+
+Each principle of Airwallex's governance article, mapped to the code line, the test and the record:
+[governance.md](../governance.md). The threat model with every trust boundary: [security.md](../security.md#trust-boundaries).
 
 ## What we did, with evidence
 
