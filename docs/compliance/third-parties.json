@@ -277,6 +277,30 @@
       "contract": "none",
       "substitutes": "Any voice, or none",
       "code": ["src/cli/voice10.ts"]
+    },
+    {
+      "id": "sigstore",
+      "name": "Sigstore (Rekor)",
+      "service": "A public transparency log: a release's signed evidence digest is recorded there so anyone can check it later",
+      "functions": [
+        "Records and returns the transparency log entries of Purser's releases (npm run transparency)"
+      ],
+      "criticality": "optional",
+      "hosts": [
+        "rekor.sigstore.dev"
+      ],
+      "data_shared": [
+        {
+          "level": "Public",
+          "what": "A SHA-256 digest of a release's evidence, its Ed25519 signature and the public key; no company or personal data"
+        }
+      ],
+      "location": "Sigstore's public-good instance (docs/transparency/)",
+      "contract": "none: Sigstore's public-good service on its terms of use",
+      "substitutes": "Another transparency log, or the signed digests in the repository alone",
+      "code": [
+        "src/transparency/"
+      ]
     }
   ]
 }

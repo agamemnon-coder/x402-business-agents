@@ -93,6 +93,12 @@ export const ACTIVITIES: readonly Activity[] = [
     data: "A salted hash of the visitor's address for the day, a visitor token's hash, optional feedback (up to 200 characters)",
     rows: ["try_companies"], recipients: ["cloudflare"], retention: "the demo companies 24 hours; the day's salt a day; feedback has no automatic deletion yet ([Cloud](../privacy/retention.md#open-items))",
   },
+  {
+    id: "R9", name: "Accounts receivable", purpose: "Send the company's invoices, match the payments that come in, and remind customers who have not paid",
+    basis: "Art. 6(1)(b) contracts with customers; (c) bookkeeping", subjects: "Customers who are natural persons (sole traders), the customers' contacts",
+    data: "Customers' names and contact e-mail, invoice amounts, payments received and how they were matched, reminders sent",
+    rows: ["ar_invoices"], recipients: ["airwallex", "cloudflare"], retention: BOOKS,
+  },
 ];
 
 /** Where each recipient is, from the register: a third country is anything the register does not place in the EU. */

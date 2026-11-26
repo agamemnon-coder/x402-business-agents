@@ -19,6 +19,7 @@ function files(dir: string, out: string[] = []): string[] {
 /** Hosts written in the code that it does not call, each with why. */
 const NOT_CALLED: Record<string, string> = {
   "github.com": "links to the repository and its records",
+  "docs.sigstore.dev": "a link to Sigstore's documentation, in a comment",
   "www.airwallex.com": "links to Airwallex's documentation and products",
   "airwallexdev.com": "a link to Airwallex's builder guide, in a comment",
   "testnet.metalntwx.com": "links to Alta's block explorer",

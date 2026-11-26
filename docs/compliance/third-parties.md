@@ -6,7 +6,7 @@
 
 **Every outside service Purser's code calls: what it does for Purser, what it receives, how critical it is, and how it would be replaced.**
 
-[![Providers: 19](https://img.shields.io/badge/providers-19-2563eb?style=flat-square&labelColor=1f2937)](#the-register)&nbsp;[![Critical: 3](https://img.shields.io/badge/critical-3-ca8a04?style=flat-square&labelColor=1f2937)](exit-plans.md)&nbsp;[![Contracts: none yet](https://img.shields.io/badge/contracts-none_yet-475569?style=flat-square&labelColor=1f2937)](exit-plans.md#contracts-what-a-production-contract-must-include)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-16a34a?style=flat-square&labelColor=1f2937)](../../README.md)
+[![Providers: 20](https://img.shields.io/badge/providers-20-2563eb?style=flat-square&labelColor=1f2937)](#the-register)&nbsp;[![Critical: 3](https://img.shields.io/badge/critical-3-ca8a04?style=flat-square&labelColor=1f2937)](exit-plans.md)&nbsp;[![Contracts: none yet](https://img.shields.io/badge/contracts-none_yet-475569?style=flat-square&labelColor=1f2937)](exit-plans.md#contracts-what-a-production-contract-must-include)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-16a34a?style=flat-square&labelColor=1f2937)](../../README.md)
 
 </div>
 
@@ -39,13 +39,13 @@ flowchart LR
   P --> cloudflare
   github["GitHub<br/>important"]
   P --> github
-  OPT["12 optional integrations<br/>opt-in, per company"]
+  OPT["13 optional integrations<br/>opt-in, per company"]
   P -.-> OPT
 ```
 
 ## The register
 
-19 providers: 3 critical, 3 important, 12 optional (switched on per company), 1 not in the product. Critical or important means the function it supports stops or degrades without it (DORA Art. 3(22)); each has an [exit plan](exit-plans.md).
+20 providers: 3 critical, 3 important, 13 optional (switched on per company), 1 not in the product. Critical or important means the function it supports stops or degrades without it (DORA Art. 3(22)); each has an [exit plan](exit-plans.md).
 
 | Provider | Function for Purser | Data it receives (level) | Criticality | Hosts the code calls | Location | Contract | Exit and substitution |
 |---|---|---|---|---|---|---|---|
@@ -68,6 +68,7 @@ flowchart LR
 | **Resend** | Approval alerts by e-mail (opt-in) | An approval alert's e-mail address and message (amount, payee, link) (Restricted) | optional (opt-in) | `api.resend.com` | United States (docs/privacy/data-inventory.md) | none | Another e-mail provider, or the other alert channels |
 | **Twilio** | Approval alerts by WhatsApp (opt-in) | An approval alert's phone number and message (Restricted) | optional (opt-in) | `api.twilio.com` | United States (docs/privacy/data-inventory.md) | none | The other alert channels |
 | **ElevenLabs** | None in the product: only scripts that voice the demo film | The film's script (Public) | not in the product | `api.elevenlabs.io` | not documented in this repository | none | Any voice, or none |
+| **Sigstore (Rekor)** | Records and returns the transparency log entries of Purser's releases (npm run transparency) | A SHA-256 digest of a release's evidence, its Ed25519 signature and the public key; no company or personal data (Public) | optional (opt-in) | `rekor.sigstore.dev` | Sigstore's public-good instance (docs/transparency/) | none: Sigstore's public-good service on its terms of use | Another transparency log, or the signed digests in the repository alone |
 
 ## How it is kept true
 
