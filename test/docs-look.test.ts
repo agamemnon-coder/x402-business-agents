@@ -15,7 +15,7 @@ const exists = (p: string) => existsSync(`${ROOT}${p}`);
 
 /** The pages redesigned in the house style, each with the centred header. */
 export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md", "docs/architecture.md", "docs/how-it-works.md", "docs/security.md", "docs/cloud.md", "docs/agents.md", "docs/airwallex.md",
-  "docs/README.md", "docs/proof/README.md", "docs/evidence/README.md", "docs/security/README.md", "docs/audit/README.md", "docs/submission/README.md", "docs/business/README.md", "docs/video/README.md", "examples/metal-dispute-desk/README.md"];
+  "docs/README.md", "docs/proof/README.md", "docs/evidence/README.md", "docs/security/README.md", "docs/audit/README.md", "docs/submission/README.md", "docs/business/README.md", "docs/video/README.md", "examples/metal-dispute-desk/README.md", "docs/assets/brand/README.md"];
 /** Pages that carry the house-style badges (the judge-facing READMEs' header is test/readme-headers.test.ts's). */
 const BADGED = [...new Set([...STYLED, "docs/README.md"])];
 

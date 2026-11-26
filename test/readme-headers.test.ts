@@ -17,7 +17,7 @@ export const HEADED = ["docs/README.md", "docs/runs/README.md", "docs/proof/READ
 /** The family's header since 26 Nov 2026 (Max: "lets do also more with the MD's"), the README's own: centred, the mark at
  * 64 px, the title, one bold sentence, a row of badges (each true: test/docs-look.test.ts), a row of jump links; then,
  * under it, At a glance as before. A README not listed here keeps the 17 Nov header (the mark at 36 px, left-aligned). */
-export const CENTRED = ["docs/README.md", "docs/proof/README.md", "docs/evidence/README.md", "docs/security/README.md", "docs/audit/README.md", "docs/submission/README.md", "docs/business/README.md", "docs/video/README.md", "examples/metal-dispute-desk/README.md"];
+export const CENTRED = ["docs/README.md", "docs/proof/README.md", "docs/evidence/README.md", "docs/security/README.md", "docs/audit/README.md", "docs/submission/README.md", "docs/business/README.md", "docs/video/README.md", "examples/metal-dispute-desk/README.md", "docs/assets/brand/README.md"];
 
 /** Checks a README's header, and gives the line its mark is on and the line At a glance starts on. */
 function header(f: string, lines: string[]): { mark: number; glance: number } {
