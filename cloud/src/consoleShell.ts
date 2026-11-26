@@ -2,7 +2,7 @@
 // enterprise level, without making it a mess"; on his iPhone the nine pages were a 3×4 grid of words). The pages are
 // grouped as a finance team works:
 //   Overview
-//   Money     Invoices, Transactions, Books
+//   Money     Invoices, Receivables, Cash & FX, Transactions, Books
 //   Agents    Agents (every agent Purser has, cloud/src/agentRoster.ts), Tokenisation (tokens and the agents' cards)
 //   Connected Airwallex, Claude (once connected: cloud/src/consoleCompany.ts), Connections
 //   Settings
@@ -62,7 +62,7 @@ export const SHELL_WORDS = {
 /** The pages in their groups, in the order of the menu: [group, its pages, the group's icon]. */
 export const NAV_GROUPS: readonly (readonly [string, readonly string[], string])[] = [
   ["overview", ["overview"], "layout-dashboard"],
-  ["money", ["invoices", "transactions", "books"], "wallet"],
+  ["money", ["invoices", "receivables", "cash", "transactions", "books"], "wallet"],
   ["agents", ["agents", "tokenisation"], "bot"],
   ["rails", ["airwallex", "claude", "connections"], "link-2"],
   ["settings", ["settings"], "settings-2"],
@@ -70,7 +70,7 @@ export const NAV_GROUPS: readonly (readonly [string, readonly string[], string])
 
 /** Each page's icon in the menu. */
 export const TAB_ICONS: Readonly<Record<string, string>> = {
-  overview: "layout-dashboard", invoices: "receipt", transactions: "arrow-left-right", books: "file-check", agents: "bot", tokenisation: "credit-card",
+  overview: "layout-dashboard", invoices: "receipt", receivables: "arrow-down-left", cash: "coins", transactions: "arrow-left-right", books: "file-check", agents: "bot", tokenisation: "credit-card",
   airwallex: "landmark", claude: "sparkles", connections: "link-2", settings: "settings-2",
 };
 
@@ -100,7 +100,7 @@ function navSync(){
   const sn=$('#subnav');if(sn){const pages=(g?g[1]:[]).filter((k)=>{const a=document.querySelector('#tabs a[data-tab='+k+']');return a&&!a.hidden});
     if(pages.length>1){const want=pages.join(',')+'|'+tab;if(sn.dataset.k!==want){sn.dataset.k=want;sn.setAttribute('aria-label',sw('in_group',{group:sw('b_'+g[0])}));
       sn.replaceChildren(...pages.map((k)=>{const src=document.querySelector('#tabs a[data-tab='+k+']');const a=el('a','',[ic(TAB_IC[k]),el('span','',src?src.textContent:k)]);a.href='#/'+k;if(k===tab)a.setAttribute('aria-current','page');return a}))}
-      sn.hidden=false}else{sn.hidden=true;sn.dataset.k=''}}
+      sn.hidden=false;const on=sn.querySelector('a[aria-current]');if(on&&sn.scrollWidth>sn.clientWidth)sn.scrollLeft=Math.max(0,on.offsetLeft-(sn.clientWidth-on.offsetWidth)/2)}else{sn.hidden=true;sn.dataset.k=''}}
   // The top bar: the group, the page and, on a record's own page, its id.
   const cr=$('#crumbs');if(cr){const src=/^[a-z]+$/.test(tab)?document.querySelector('#tabs a[data-tab='+tab+']'):null,sub=decodeURIComponent((location.hash.split('/')[2]||'').split('?')[0]);
     const name=src?src.textContent:(document.title.split(' · ')[1]||''),parts=g&&g[1].length>1&&sw('g_'+g[0])!==name?[el('span','',sw('g_'+g[0]))]:[];
@@ -273,6 +273,10 @@ export const SHELL_CSS = `
   #subnav a[aria-current="page"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 1px 1px rgba(16,24,40,.04); }
   #subnav a .ic { display: inline-flex; }
   @media (max-width: 430px) { #subnav a .ic { display: none; } }
+  /* v1.5.1: Money has five pages; on a narrow phone they keep their whole names and the control scrolls within itself. */
+  .signed-in #subnav { position: relative; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .signed-in #subnav::-webkit-scrollbar { display: none; }
+  #subnav a { flex: 1 0 auto; padding: 8px 10px; }
 }
 @media (min-width: 1024px) { #subnav { display: none !important; } }
 .subnav-wrap:has(#subnav[hidden]) { display: none; }

@@ -110,7 +110,7 @@ svg.chart .b.fin{fill:var(--sky)}.klegend i.fin,.chtip .sw.fin{background:var(--
 .signed-in .appbar nav.apptabs a[aria-current="page"]::before{content:"";position:absolute;left:-12px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
 .signed-in .appbar nav.apptabs a .ic{color:color-mix(in srgb,var(--nc,var(--faint)) 80%,var(--muted))}
 .signed-in .appbar nav.apptabs a[aria-current="page"] .ic{color:var(--nc,var(--accent))}
-#tabs a[data-tab=overview]{--nc:var(--accent)}#tabs a[data-tab=invoices],#tabs a[data-tab=transactions],#tabs a[data-tab=books]{--nc:var(--sky)}#tabs a[data-tab=agents],#tabs a[data-tab=tokenisation]{--nc:var(--ind)}#tabs a[data-tab=airwallex]{--nc:var(--awx)}#tabs a[data-tab=claude]{--nc:var(--claude)}#tabs a[data-tab=connections]{--nc:var(--ok)}
+#tabs a[data-tab=overview]{--nc:var(--accent)}#tabs a[data-tab=invoices],#tabs a[data-tab=receivables],#tabs a[data-tab=cash],#tabs a[data-tab=transactions],#tabs a[data-tab=books]{--nc:var(--sky)}#tabs a[data-tab=agents],#tabs a[data-tab=tokenisation]{--nc:var(--ind)}#tabs a[data-tab=airwallex]{--nc:var(--awx)}#tabs a[data-tab=claude]{--nc:var(--claude)}#tabs a[data-tab=connections]{--nc:var(--ok)}
 .signed-in .apptabs .ng:not(.sep)::before{content:"";display:inline-block;width:6px;height:6px;margin-right:8px;border-radius:2px;vertical-align:1px;background:var(--gc,var(--faint))}
 .apptabs .ng[data-sg=money]{--gc:var(--sky)}.apptabs .ng[data-sg=agents]{--gc:var(--ind)}.apptabs .ng[data-sg=rails]{--gc:var(--ok)}
 #tabs a[data-tab=airwallex]::after{content:"";margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 20%,transparent)}
