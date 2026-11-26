@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Airwallex in Purser
+
+**Every Airwallex API Purser calls, why each is a necessary financial action, and the run that proves it.**
+
+[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](#airwallex-in-purser)&nbsp;[![Airwallex endpoints: from badges/airwallex-endpoints.json](https://img.shields.io/badge/Airwallex%20endpoints%20live%20%28sandbox%29-71%2F72-16a34a?style=flat-square&labelColor=1f2937)](evidence/airwallex-api-coverage.md)&nbsp;[![Approval hash: in metadata.approval_sha256](https://img.shields.io/badge/approval_hash-metadata.approval__sha256-7c3aed?style=flat-square&labelColor=1f2937)](#the-hash-the-cfo-signed-in-airwallexs-own-record-main-run-3-november)&nbsp;[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Runs](#the-runs-of-record) · [The signed hash](#the-hash-the-cfo-signed-in-airwallexs-own-record-main-run-3-november) · [Issuing](#issuing) · [Webhooks](#webhooks) · [FX](#fx-rates-quotes-with-expiry-conversions) · [Transfers](#transfers-swift-status-to-paid) · [Connected accounts](#connected-accounts-and-application-fees) · [The scoped key](#the-scoped-key)
+
+</div>
 
 This page lists every Airwallex API that Purser calls: the method and path as the code (`src/airwallex/`) and the run logs show them, what Purser uses it for, why that is a necessary financial action, and the run that proves it. After the kit, also: [airwallex-platform.md](airwallex-platform.md), [airwallex-approvals.md](airwallex-approvals.md).
 
@@ -76,6 +88,21 @@ Match: the same hash. Anyone who can read Airwallex's record can check that this
 **FX for the shortfall only, with the quote inside the signed terms.** The payment needed EUR 260.00 (240.00 plus a fee ceiling of 20.00). Free EUR was 150.00, so only EUR 110.00 was bought, for USD 124.29. The signed terms in the record hold `conversion.quote_id` `f6a63046-6e8c-3eee-9098-e3c605832015` and `conversion.valid_to` 2026-11-03T11:45:31Z, and the proposal itself expired 30 seconds earlier. A new quote would mean a new hash and a new Face ID. Conversion `3ca88196-05da-4d88-9caa-796f03704636` was booked before the transfer was created.
 
 Simulated in this run: SENT and PAID were set through the sandbox's simulation API.
+
+```mermaid
+sequenceDiagram
+  participant T as Treasury agent
+  participant P as Purser (code)
+  participant C as CFO (Face ID)
+  participant A as Airwallex sandbox
+  T->>P: plans P-0005, invoice SLL-2026-11, EUR 240.00 by SWIFT
+  P->>A: an FX quote for the shortfall only
+  P->>C: the exact terms, the quote inside them
+  C->>P: signs their SHA-256 (11:31:18 UTC)
+  P->>A: buys EUR 110.00, then POST /transfers/create with metadata.approval_sha256
+  A-->>P: PAID (simulated), fee EUR 13.42
+  P->>A: GET /transfers/{id} on 6 November: the same hash
+```
 
 ## The Airi run (7 November)
 

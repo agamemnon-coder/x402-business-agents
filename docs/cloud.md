@@ -1,4 +1,18 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Purser Cloud
+
+**One JSON API and console for a company's invoices, suppliers, payments, ledger and audit log; a public test preview on test money.**
+
+[![Purser Cloud: public test preview](https://img.shields.io/badge/Purser_Cloud-public_test_preview-2563eb?style=flat-square&labelColor=1f2937)](https://purser-try.max-31b.workers.dev/try)&nbsp;[![Runs on: Cloudflare Workers, D1, Durable Objects](https://img.shields.io/badge/runs_on-Workers_%C2%B7_D1_%C2%B7_Durable_Objects-f38020?style=flat-square&labelColor=1f2937)](#how-it-fits)&nbsp;[![API: OpenAPI at /v1/openapi.json](https://img.shields.io/badge/API-OpenAPI_%2Fv1%2Fopenapi.json-6366f1?style=flat-square&labelColor=1f2937)](#the-api)&nbsp;[![Sign-in: passkeys, no passwords](https://img.shields.io/badge/sign--in-passkeys%2C_no_passwords-7c3aed?style=flat-square&labelColor=1f2937)](#the-console)&nbsp;[![Real money: not ready](https://img.shields.io/badge/real_money-not_ready-dc2626?style=flat-square&labelColor=1f2937)](go-live.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](#not-done-yet)
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)
+
+[How it fits](#how-it-fits) · [The API](#the-api) · [Endpoints](#endpoints) · [The console](#the-console) · [Hands-on](#the-hands-on-deployment) · [Privacy](#privacy-and-retention) · [Going live](#going-live-what-max-does) · [Not done yet](#not-done-yet) · [Agents' cards](#the-agents-live-sandbox-cards-agents-tab)
+
+</div>
 
 One place for everything a company's finance runs on: supplier invoices and their documents, suppliers, payments, the
 ledger, its reports and the audit log. The company's apps, its accountant and its ERP read it through one JSON API, so
@@ -8,13 +22,16 @@ before real money: [go-live.md](go-live.md).
 
 ## How it fits
 
-```
- suppliers' e-mail ──► Cloudflare Email Routing ──► Purser Cloud (Worker) ◄── apps, accountant, ERP connectors
-                                                      │  D1 (EU): data                        (API keys / passkeys)
-                                                      │  R2 (EU): documents, e-mails
-                                                      ▲
-                     the company's Purser runner ─────┘  push (POST /v1/sync), pull mail (GET /v1/mail)
-                     (agents, inbox, ledger; the only part that touches Airwallex and Alta (formerly Metal))
+```mermaid
+flowchart LR
+  subgraph PC["Purser Cloud (Worker)"]
+    D1[("D1 (EU)<br/>data")]
+    R2[("R2 (EU)<br/>documents, e-mails")]
+  end
+  M["Suppliers' e-mail"] --> ER["Cloudflare<br/>Email Routing"] --> PC
+  APPS["Apps, accountant,<br/>ERP connectors"] -->|"API keys / passkeys"| PC
+  RN["The company's Purser runner<br/>agents, inbox, ledger; the only part<br/>that touches Airwallex and Alta (formerly Metal)"] -->|"push (POST /v1/sync)"| PC
+  PC -->|"pull mail (GET /v1/mail)"| RN
 ```
 
 - Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank. A company's real payments stay with its runner and the
@@ -55,6 +72,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | 500 | `internal` | the sentence carries a reference to find the error in the log; nothing internal leaks |
 
 ### Endpoints
+
+<details><summary><b>Every endpoint, with the scope it needs</b></summary>
 
 | Endpoint | Needs | What it does |
 |---|---|---|
@@ -132,6 +151,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
 | `GET /v1/agents` | read | The company's agents from its own records: job, Claude model as its runs recorded it, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only. |
 | `GET /v1/authority-map` | read | Who may pay what, per agent, as the runner last pushed it (`src/policy/authorityMap.ts`): what, rail, per payment, in all, from, to, when, under which grant and what needs the CFO; `{ authority_map: null }` before the first push. The console's Agents page shows it under each card. Read only. |
+| `GET /v1/compliance` | read | The runner's compliance evidence in short, as it last pushed it (`src/compliance/evidence.ts` complianceSnapshot): for the last 30 days, per framework how many requirements have evidence in the ledger, a mapped control with no records, documentation only or a gap; per control its records; the gaps of the control map ([compliance/README.md](compliance/README.md)). Counts only; `{ compliance: null }` before the first push. The console's Company page shows it, folded, at its foot. Read only. |
 | `GET /v1/partner-rails` | read | T:0 at every payment (each settled payment's T:0 entry, GL account, cost centre, agent, terms hash; the reconcile check against the rails) and each agent's payment token (id and last four, mandate, status, uses, refusals); the company's own records, else the recorded sandbox run, labelled; whether Wallet passes are configured. |
 | `GET /v1/agents/{id}/wallet-pass` | read | The agent card as an Apple Wallet pass (.pkpass): name, limits, the card's last four, status. 404 unless the owner configured passes. |
 | `POST /v1/agents/{id}/wallet-pass/link` | read | A 5-minute link to that pass, for Safari's Add to Apple Wallet. |
@@ -152,7 +172,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/dashboard` | read | The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words. |
 | `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier. |
 | `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |
-| `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows, the authority map (a snapshot under a strict schema, at most 128 KB; the newest per company is kept). Idempotent. Never passkeys. |
+| `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows, the authority map (a snapshot under a strict schema, at most 128 KB; the newest per company is kept), the compliance evidence in short (counts only, strict schema, at most 64 KB; the newest per company is kept). Idempotent. Never passkeys. |
 | `GET /v1/sync/state` | sync | Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds. |
 | `GET /v1/mail/forwarding-confirmations` | admin | Gmail's forwarding confirmation codes that reached the company's address in the last seven days (code and Gmail address only), for setting up forwarding ([email-forwarding.md](integrations/email-forwarding.md)). |
 | `GET /v1/mail` | sync | Inbound e-mail waiting for the runner; paginated (limit, cursor). |
@@ -247,6 +267,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/try/negotiate/recorded` | anyone | The hands-on deployment: the recorded negotiation on the seeded scene, written in advance and labelled as such, checked by the rails live; for a visitor the live path turned away (a start limit, a pause). Nothing to sign. `?why=limit\|paused\|start`. |
 | `POST /v1/ask` | anyone | Ask Purser, the public chat (`/ask`, and the floating button `/ask/button.js` on the console; cloud/src/ask/). `{ question, history?, attachment? }`: one question about Purser, answered by an agent (Claude Haiku, adaptive thinking, low effort) with READ-ONLY tools only: `search_docs` over the repository's public docs (a knowledge pack built from README, llms.txt and docs/ by `npm run cloud:ask-pack`), the MCP server's reading tools over the demo company (made-up data, read only; never a real or signed-in company), its agents and limits, and the recorded runs. No tool pays, approves, proposes, changes a limit or writes. At most 5 rounds (4 with a file), 4 reads a round and 10 a question. Streamed one JSON object a line (`meta` with the passages used, `step` for each read, `source`, `delta`, `reset`, `done` with the sources cited). `attachment` is one PDF, CSV, text, PNG, JPEG, WebP or GIF file of at most 5 MB (base64), checked in code (type and bytes), its tokens counted before it is asked about (at most 40,000), sent to Claude in that request and kept nowhere. An order to pay, approve or change a limit and any instruction aimed at the assistant are answered by code. Every sentence is checked before it is sent (no secret, no link outside Purser's sites, no figure the sources do not hold, no claim to have acted; a figure from an attached PDF or picture is let through and marked as Claude's reading). Claude only under the switches `claude` and `ask` and the caps `cap_day_micros_ask`, `cap_ask_addr_micros` and `cap_all_micros`, each question reserving its worst case first and settled at its cost; otherwise the docs alone, or code reads the demo company's records for a records question, labelled, and the page says "docs-only mode". 6 a minute and `ask_per_address_hour` an hour per address (429 `limit`), `ask_per_day` for everyone. Keeps hourly counts only (`ask_tally`), never a question, an answer or a file. |
 | `POST /v1/try/scenarios/{seed}` | admin | Plays that scenario in your test company: its invoices (test invoices, fake) through the engine's inbox in order. `{ seed, id, title, company, setup, answer, decided, expect }`: the engine's answer to the last invoice, what it means (refuse, ask a person first, or pay after your signature) and the right answer. |
+
+</details>
 
 The `/v1/engine` routes are the company's engine behind the API (`cloud/src/engine/routes.ts`): the same inbox, checks,
 approval and executor a runner has, on **test money only** (a stand-in bank; no payment reaches a real bank). The
@@ -558,6 +580,10 @@ What the code does not do yet, and must be in place before a company's real data
 5. **An independent security review** of this code after these fixes, and a red-team run against a deployed staging copy.
 
 ## Not done yet
+
+> [!WARNING]
+> **Not ready for real money.** Purser Cloud is a test preview on test money; what is missing before real money is in
+> [go-live.md](go-live.md).
 
 - No production deployment: Purser Cloud runs publicly as a test preview at purser-try.max-31b.workers.dev/try: test companies, test money on a simulated bank. Its console's hosted preview exists but is private (behind an access key), and no customer uses it.
   The automated tests run through the Worker's own handler over SQLite and a folder (`test/cloud-*.test.ts`) and on

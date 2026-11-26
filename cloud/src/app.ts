@@ -16,6 +16,7 @@ import { SCHEMA } from "./schema.js";
 import type { Blobs, Sql } from "./store.js";
 import { applySync, SyncBatch, SyncRefused, syncState } from "./sync.js";
 import { readAuthorityMap } from "./authorityMap.js";
+import { readCompliance } from "./compliance.js";
 import { QuotaExceeded, reserveStorage, type StorageQuota } from "./storageQuota.js";
 import { endSession, listSessions } from "./sessions.js";
 import { WriteConflict } from "./tenant.js";
@@ -739,6 +740,7 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams, c.now)) },
   { method: "GET", path: "/v1/agents", summary: "The company's agents from its own records: job, Claude model, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only.", need: "read", run: async (c) => json(200, await agentsOf(db(c))) },
   { method: "GET", path: "/v1/authority-map", summary: "Who may pay what, per agent, as the runner last pushed it (null before the first push). Read only.", need: "read", run: async (c) => json(200, await readAuthorityMap(db(c))) },
+  { method: "GET", path: "/v1/compliance", summary: "The runner's compliance evidence in short, as it last pushed it (null before the first push): per framework how many requirements have evidence in the last 30 days, no records, documentation only or gaps; per control its records; the gaps. Counts only. Read only.", need: "read", run: async (c) => json(200, await readCompliance(db(c))) },
   { method: "GET", path: "/v1/cards", summary: "The agents' live Airwallex sandbox cards (test money): for each agent its card's last four digits (never the full number or the CVV), live status, limits against the CFO policy, and its newest authorizations with their ids; whether card actions are on (admin switch awx_cards) and today's caps.", need: "read", run: async (c) => json(200, await cardsView({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), now: c.now })) },
   { method: "GET", path: "/v1/cards/scope", summary: "Whether the Airwallex sandbox key may use Issuing: { issuing: ok | forbidden | no_key | no_gateway | unavailable }. One read of Airwallex a minute at most, for everyone; no card data.", need: "public", run: async (c) => json(200, await cardsScope(c.env.sql, c.env.awxCards, c.now)) },
   { method: "GET", path: "/v1/cards/edge/latest", summary: "The newest one-cent-over test at the Airwallex sandbox: an agent's card at its limit L, then L + 0.01, with Airwallex's own answers (approved or declined with its reason code), their ids and times. The run record docs/runs keeps; sandbox, test money, the card's last four digits only. 404 when none has run.", need: "public", run: async (c) => { const r = await latestEdgeRun(c.env.sql); return r ? json(200, r) : err(404, "no one-cent-over test has run yet"); } },

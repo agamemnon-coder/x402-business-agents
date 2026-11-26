@@ -1,4 +1,18 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Security and threat model
+
+**What Purser protects, who might attack it and how, what stops each attack, and what is out of scope.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql)&nbsp;[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/agamemnon-coder/x402-business-agents/badge)](https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents)&nbsp;[![Threat model: STRIDE](https://img.shields.io/badge/threat_model-STRIDE-7c3aed?style=flat-square&labelColor=1f2937)](#attackers-and-attacks)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[![Tamper matrix: from badges/tamper-matrix.json](https://img.shields.io/badge/tamper%20matrix-894%2F894%20refused-16a34a?style=flat-square&labelColor=1f2937)](evidence/tamper-matrix.md)&nbsp;[![Fuzzing: from badges/fuzz.json](https://img.shields.io/badge/fuzz%20runs-315%2C300%20%C2%B7%200%2F17%20properties%20failed-16a34a?style=flat-square&labelColor=1f2937)](evidence/fuzzing.md)&nbsp;[![Chaos: from badges/chaos.json](https://img.shields.io/badge/chaos%20invariants%20broken-0%20in%20317%20scenarios-16a34a?style=flat-square&labelColor=1f2937)](evidence/chaos-money.md)&nbsp;[![Dafny: from badges/dafny.json](https://img.shields.io/badge/Dafny-172%20verified%2C%200%20errors-16a34a?style=flat-square&labelColor=1f2937)](evidence/formal-proofs.md)
+
+[Assets](#what-we-protect) · [Trust boundaries](#trust-boundaries) · [Zero trust](#zero-trust-layer-by-layer) · [Attacks](#attackers-and-attacks) · [Headers and rate limits](#security-headers-and-rate-limits-checked-2-november) · [External calls](#limits-on-every-external-call) · [Least privilege](#least-privilege) · [Accepted risks](#accepted-risks-and-what-is-out-of-scope) · [Checks](#checks)
+
+</div>
 
 The system lets AI agents buy, sell, refund and pay bills on their own, within limits, and asks a person for
 everything else. This page lists what we protect, who might attack it and how, what stops each attack, and what is
@@ -12,6 +26,11 @@ their content is as of that date. The pinned versions and the bill of materials 
 [security/2026-11-19-hardening.md](security/2026-11-19-hardening.md). Re-checked on 20 November after an independent
 review (rows 7, 15 and 23, the accepted risks, and "Execution re-checks the signature" below): money no longer moves
 on an approval row alone, and the limit an agent may pay alone up to counts only when the CFO signed it.
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/payment-life-wide-dark.svg"><img src="assets/payment-life-wide-light.svg" alt="One payment's life: invoice, read by Claude, checked by Purser's code, the exact terms hashed, signed by the CFO's Face ID, checked again by the rail's own control, paid, booked. Sandbox and testnet runs, test money." width="100%"></picture>
+
+> [!NOTE]
+> **Found a vulnerability?** Report it privately, as [SECURITY.md](../SECURITY.md) says; never in a public issue.
 
 ## What we protect
 
@@ -604,6 +623,9 @@ Rate limits, where the docs say them (each asserted in the same test or the test
 - `npm run verify-audit`: the audit log against its signed checkpoints, offline (`--known <copy>` with a copy of the
   checkpoint file kept earlier, `--trust <public key>` to pin the key); exits 1 on a truncation, a rewrite, a replayed
   or forged checkpoint, an uncovered money row, or an unknown or rotated-out key.
+- `npm run transparency -- verify` (26 November): the anchor head of the committed records, logged in Sigstore's public
+  Rekor log, checked offline: the statement against the repo, the signature, Rekor's signed entry timestamp, the
+  inclusion proof and the signed checkpoint ([transparency/README.md](transparency/README.md)).
 - `test/contract/*.test.ts` (2 November): every Airwallex and Alta call against its documented request, response and
   error codes, offline; `test/security-headers.test.ts`: the headers and rate limits above.
 - System health (`/system-health` on the local dashboard, `src/dashboard/health.ts`): per run and per agent, and the

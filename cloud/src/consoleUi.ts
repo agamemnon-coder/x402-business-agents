@@ -188,6 +188,9 @@ function t0CloseCard(){
     el('p','links',[dl,pg])])}
 // One currency's balance sheet: liabilities plus equity (capital and this year's result) against assets, in cents.
 const sheetSides=(v)=>{const right=(v.liabilities_cents||0)+(v.equity_cents||0)+(v.result_cents||0);return {left:v.assets_cents||0,right,balanced:(v.assets_cents||0)===right}};
+// The two sides as two bars on one scale: assets, and liabilities, capital and result stacked, each in its kind's colour.
+function bsBars(v,sd){const mx=Math.max(sd.left,sd.right,1),b=el('div','bsb');b.setAttribute('aria-hidden','true');
+  for(const p of [[[v.assets_cents,'k1']],[[v.liabilities_cents,'k2'],[v.equity_cents,'k3'],[v.result_cents,'k4']]]){const r=el('span','');for(const [x,k] of p)if(x>0){const s=el('i',k);s.style.width=(x/mx*100).toFixed(2)+'%';r.append(s)}b.append(r)}return b}
 // Ledger entries by posting date, then number, newest first.
 const byDateNewest=(es)=>es.slice().sort((a,b)=>String(b.posting_date).localeCompare(String(a.posting_date))||b.entry_id-a.entry_id);
 async function booksView(){
@@ -211,13 +214,13 @@ async function booksView(){
   // The balance sheet from the ledger (GET /v1/reports/balance), one block per currency: what the company owns, owes
   // and is worth, and whether it balances. A block, not a table row, so nothing wraps on a phone (14 Nov).
   api('/v1/reports/balance').then((b)=>{const blocks=[];for(const [c,v] of Object.entries(b.by_currency||{})){
-      const row=(k,val)=>el('div','bsr',[el('span','',t(k)),el('b','num',cur(c)+' '+cents(val||0))]);
+      const row=(k,val,x)=>el('div','bsr '+x,[el('span','',t(k)),el('b','num',cur(c)+' '+cents(val||0))]);
       // Equity holds this year's result too (judge scan, 14 Nov: the result was missing, so the block did not add up).
       // "Balanced" is said only when the figures shown add up here as well as in the ledger's own check.
       const sides=sheetSides(v);
       blocks.push(el('div','bsc',[el('div','bsh',[el('b','',c),sides.balanced&&v.balanced?el('span','ast active',[ic('circle-check'),t('cs.books.balanced')]):el('span','ast revoked',t('cs.books.not_balanced'))]),
-        row('cs.books.assets',v.assets_cents),row('cs.books.liabilities',v.liabilities_cents),row('cs.books.capital',v.equity_cents),row('cs.books.result',v.result_cents),
-        el('div','bsr tot',[el('span','',t('cs.books.le_total')),el('b','num',cur(c)+' '+cents(sides.right))])]))}
+        row('cs.books.assets',v.assets_cents,'k1'),row('cs.books.liabilities',v.liabilities_cents,'k2'),row('cs.books.capital',v.equity_cents,'k3'),row('cs.books.result',v.result_cents,'k4'),
+        el('div','bsr tot',[el('span','',t('cs.books.le_total')),el('b','num',cur(c)+' '+cents(sides.right))]),bsBars(v,sides)]))}
     bal.replaceChildren(el('h2','',t('cs.books.balance')),el('p','sub',t('cs.books.balance_at',{day:day(b.to)})),blocks.length?el('div','bsheet',blocks):el('p','sub',t('cs.no_entries')))},
     (e)=>{if(!(e instanceof Expired))bal.replaceChildren(el('h2','',t('cs.books.balance')),note(e.message,'bad'))});
   async function drawVat(){
@@ -402,7 +405,6 @@ export const UI_CSS = `
 .t0close p { margin: 0; }
 .t0close .links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .t0close .links a { display: inline-flex; align-items: center; min-height: 44px; }
-/* The CFO's pass (14 Nov): calm cards, one accent, numbers that settle, motion only when the person allows it. */
 @media (max-width: 720px) { .card.next.hero { grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 16px; } .next.hero .nic { width: 44px; height: 44px; }
   .next.hero .nw { grid-column: 1 / -1; justify-items: start; border-right: 0; padding: 0; display: flex; gap: 10px; align-items: baseline; } .next.hero .ngo { grid-column: 1 / -1; justify-content: center; } .next.hero .nb b { font-size: 17px; } }
 .kpi.wait .kl .ic { background: var(--warn-soft); color: var(--warn); }
@@ -411,7 +413,6 @@ export const UI_CSS = `
 #view > .kpis { margin-bottom: 0; }
 .dgrid .stack { display: grid; gap: 16px; align-content: start; }
 .dcard.due .segwrap { margin-top: 4px; }
-/* The decisions as a timeline: who acted (an icon), one sentence, the day. */
 .tline { list-style: none; margin: 0; padding: 0; position: relative; }
 .tline::before { content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 2px; background: var(--border); }
 .tline li { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 8px 0; }
@@ -426,7 +427,6 @@ export const UI_CSS = `
 .tline time { font-size: 12.5px; color: var(--faint); padding-top: 7px; white-space: nowrap; }
 .btn.linkbtn { background: none; border: 0; padding: 8px 0 0 44px; color: var(--accent); font-weight: 650; min-height: 40px; box-shadow: none; }
 .btn.linkbtn[aria-expanded="true"] .ic { transform: rotate(180deg); }
-/* Agents: one card each. */
 .card.agent { padding: 22px; display: grid; gap: 18px; }
 .agent .ah { grid-template-columns: 40px minmax(0, 1fr) auto; margin: 0; align-items: center; }
 .agent .atop { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; align-items: start; }
@@ -463,7 +463,6 @@ ul.outs time { color: var(--faint); font-size: 12.5px; white-space: nowrap; }
 .obadge { display: inline-flex; align-items: center; gap: 5px; justify-self: start; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 650; white-space: nowrap; }
 .obadge svg { width: 13px; height: 13px; }
 .obadge.ok { background: var(--ok-soft); color: var(--ok); } .obadge.bad { background: var(--bad-soft); color: var(--bad); } .obadge.wait { background: var(--warn-soft); color: var(--warn); } .obadge.info { background: var(--sunken); color: var(--muted); }
-/* What the agent learns from the CFO's past decisions (14 Nov). */
 ul.outs details.prec { grid-column: 1 / -1; margin: -2px 0 0; }
 details.prec summary { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); min-height: 28px; }
 details.prec summary svg { width: 13px; height: 13px; } details.prec ul.plain { margin: 4px 0 6px 20px; gap: 4px; } ul.outs details.prec li { display: block; padding: 2px 0; border: 0; font-size: 13px; overflow-wrap: anywhere; } details.prec small { color: var(--muted); }
@@ -493,13 +492,11 @@ details.adet .agrid { margin-top: 10px; }
 .lcard .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; overflow-wrap: anywhere; }
 .lcard ul.ctx .otext { overflow-wrap: anywhere; }
 .lcard > .fine { display: flex; gap: 6px; align-items: center; margin: 0; color: var(--muted); font-size: 12.5px; } .lcard > .fine svg { width: 13px; height: 13px; flex: none; }
-/* Books: the balance sheet as one block per currency. */
 .bsheet { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 8px; }
 .bsc { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
 .bsh { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .bsh .ast { white-space: nowrap; }
 .bsr.tot { border-top: 1px solid var(--border); padding-top: 6px; margin-top: 2px; } .bsr.tot span { color: var(--text); font-weight: 600; }
 .bsr { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; } .bsr span { color: var(--muted); } .bsr b { white-space: nowrap; font-variant-numeric: tabular-nums; }
-/* An invoice: the trail, the document, the PDF. */
 .card.trailc { padding: 16px 20px; margin: 16px 0; }
 ol.trail { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
 ol.trail li { position: relative; display: grid; justify-items: center; text-align: center; gap: 4px; padding: 0 6px; font-size: 14px; }
@@ -540,7 +537,6 @@ ol.trail li::before { background: var(--border) !important; }
 ol.trail li.done + li.done::before, ol.trail li.done + li.now::before, ol.trail li.done + li.stop::before { background: var(--ok) !important; }
 .paper table.lines th:first-child { width: 60%; }
 .split2 table.jt td:first-child { white-space: nowrap; }
-/* A phone: the invoice's lines and a journal stack, so no column is squeezed to a letter per line. */
 @media (max-width: 640px) {
   .paper table.lines thead { display: none; } .paper table.lines, .paper table.lines tbody { display: block; }
   .paper table.lines tr { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
@@ -551,10 +547,8 @@ ol.trail li.done + li.done::before, ol.trail li.done + li.now::before, ol.trail 
   table.jt tr.ln { display: grid; grid-template-columns: minmax(0, 1fr) 96px 96px; gap: 8px; } table.jt tr.ln td { padding: 2px 0; border: 0; } table.jt tr.ln td:first-child { display: none; }
   table.jt tr.ln td[data-l]:not(:empty)::before { content: attr(data-l) ' '; color: var(--faint); font-size: 11.5px; font-weight: 600; }
 }
-/* An invoice: the document and its PDF on the left; on a phone the column where the CFO acts comes first, else the document. */
 .split.inv > .docs { display: grid; gap: 16px; min-width: 0; }
 @media (max-width: 980px) { .split.inv > .stack.later { order: 0; } }
-/* Tokenisation (14 Nov): facts, the token's life, where the money went, the sandbox cards as card tiles. */
 .tfacts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0 6px; }
 .tfact { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: grid; gap: 3px; align-content: start; }
 .tfact .tfl { font-size: 12px; font-weight: 650; color: var(--muted); } .tfact b { font-size: 19px; letter-spacing: -.01em; } .tfact .sub { font-size: 12.5px; line-height: 1.35; }
@@ -607,7 +601,6 @@ ul.thash .tw { display: grid; } ul.thash .tw .sub { font-size: 12px; } ul.thash 
 }
 @media (prefers-reduced-motion: no-preference) and (max-width: 760px) { .tlife .tprog { animation-name: growy; transform-origin: top; } }
 @keyframes growy { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-/* Books on a phone (QA, 14 Nov): the VAT overview stacks, each rubric a block with its base and VAT named. */
 @media (max-width: 640px) {
   table.vat thead { display: none; } table.vat, table.vat tbody { display: block; }
   table.vat tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
@@ -616,7 +609,6 @@ ul.thash .tw { display: grid; } ul.thash .tw .sub { font-size: 12px; } ul.thash 
   table.vat td.r[data-l]::before { content: attr(data-l) ' '; color: var(--faint); font-size: 12px; font-weight: 600; }
   table.vat tr.tot { grid-template-columns: minmax(0, 1fr) auto; } table.vat tr.tot td:first-child { grid-column: 1; }
 }
-/* Books printed or saved as PDF: the page's content only. */
 .printhint { margin: -6px 0 12px; color: var(--faint); font-size: 12.5px; }
 @media print {
   header.top, .appbar, .demo-ribbon, #foot, .trust, .head .tools, .printhint, .btn.linkbtn, .exports .row2 { display: none !important; }
@@ -624,9 +616,7 @@ ul.thash .tw { display: grid; } ul.thash .tw .sub { font-size: 12px; } ul.thash 
   #view::before { content: attr(data-print); display: block; font-size: 11px; color: #555; margin-bottom: 8px; }
   table.jt tr { break-inside: avoid; }
 }
-/* Transactions: a long status (a rail's decline and its reason) wraps inside its pill instead of being cut off. */
 .trow > .stx { white-space: normal; } .trow > .stx .pill { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; height: auto; padding-top: 3px; padding-bottom: 3px; }
-/* Tokenisation: three steps side by side, the hashes in a fold; the Visa runs with their outcome. */
 details.tokdet { margin: 12px 0 4px; } details.tokdet summary { cursor: pointer; font-weight: 650; color: var(--muted); font-size: 14px; min-height: 32px; display: flex; align-items: center; }
 @media (max-width: 760px) { ol.tsteps3 { grid-template-columns: minmax(0, 1fr); } ul.viclist li { grid-template-columns: 34px minmax(0, 1fr) auto; } ul.viclist .obadge { grid-column: 2; } }
 @media (prefers-reduced-motion: no-preference) {

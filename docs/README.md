@@ -11,6 +11,8 @@ Every Purser document, grouped by what you need it for; test money only througho
 | **262 checks passed**, 3 could not run here, 0 failed | [evidence/verification-2026-11-20.md](evidence/verification-2026-11-20.md) |
 | **48 of 48** red-team attacks stopped, 0 caught afterwards (full re-run of 20 Nov, a test world, not held out) | [redteam/rerun-2026-11-20.md](redteam/rerun-2026-11-20.md) |
 
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Tests: from assets/test-summary.json](https://img.shields.io/badge/tests%2C%20last%20full%20run-10239%20passing-16a34a?style=flat-square&labelColor=1f2937)](assets/test-summary.json)&nbsp;[![Coverage: from badges/coverage.json](https://img.shields.io/badge/coverage%2C%20run%20on%207d42f9209-95.1%25%20statements%20%C2%B7%2086.0%25%20branches-16a34a?style=flat-square&labelColor=1f2937)](evidence/coverage.md)&nbsp;[![Dafny: from badges/dafny.json](https://img.shields.io/badge/Dafny-172%20verified%2C%200%20errors-16a34a?style=flat-square&labelColor=1f2937)](evidence/formal-proofs.md)&nbsp;[![Tamper matrix: from badges/tamper-matrix.json](https://img.shields.io/badge/tamper%20matrix-894%2F894%20refused-16a34a?style=flat-square&labelColor=1f2937)](evidence/tamper-matrix.md)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture-wide-dark.svg"><img src="assets/architecture-wide-light.svg" alt="AI agents propose; three layers that do not trust each other can each stop a payment: Purser's checks in code, the CFO's Face ID over the exact terms above a limit, the rail's own controls; then the ledger. Sandbox and testnet runs, test money." width="100%"></picture>
 
 ## Start here
@@ -48,12 +50,41 @@ and file names from before keep "Metal". Back to the [README](../README.md); eve
 
 ## Contents
 
-- [Product](#product): what Purser does, how it is built, and how to connect to it.
-- [Security & compliance](#security--compliance): the threat model, the controls, the assurance case, compliance.
-- [Evidence & runs](#evidence--runs): every live run, the evaluations, the hackathon submission.
-- [Operations](#operations): install, run, release, recover.
-- [Contributing](#contributing): how changes are made, decided and recorded.
-- [History](#history): superseded documents, kept as they were.
+```mermaid
+flowchart LR
+  subgraph PROD["Product"]
+    direction TB
+    P1["What it is<br/>how-it-works, architecture,<br/>diagrams, governance"]
+    P2["The agents<br/>agents, claude, ask-purser,<br/>autopilot, kit11"]
+    P3["Connect<br/>integrations, mcp, agentos,<br/>connect-claude, agent-api"]
+    P4["Purser Cloud and the books<br/>cloud, payables, ledger,<br/>go-live"]
+    P5["The rails<br/>airwallex, metal-award,<br/>t0, visa-award"]
+  end
+  subgraph SEC["Security and compliance"]
+    direction TB
+    S1["Threat model<br/>security, zero-trust"]
+    S2["Controls and assurance<br/>controls, assurance"]
+    S3["Compliance and privacy<br/>compliance, privacy"]
+  end
+  subgraph EV["Evidence and runs"]
+    direction TB
+    E1["Runs<br/>runs, proof"]
+    E2["Evidence<br/>evidence, claims, evals"]
+    E3["The submission<br/>submission, requirements"]
+  end
+  OPS["Operations<br/>install, run-it,<br/>runbook, releasing"]
+  CON["Contributing<br/>CONTRIBUTING, GOVERNANCE,<br/>SECURITY, decisions"]
+  START["Start here<br/>the five files above"] --> PROD & SEC & EV & OPS & CON
+```
+
+| | Section | What is in it |
+|---|---|---|
+| 🧭 | [Product](#product) | What Purser does, how it is built, and how to connect to it. |
+| 🛡️ | [Security & compliance](#security--compliance) | The threat model, the controls, the assurance case, compliance. |
+| 📊 | [Evidence & runs](#evidence--runs) | Every live run, the evaluations, the hackathon submission. |
+| ⚙️ | [Operations](#operations) | Install, run, release, recover. |
+| 🤝 | [Contributing](#contributing) | How changes are made, decided and recorded. |
+| 🗂️ | [History](#history) | Superseded documents, kept as they were. |
 
 ## Product
 

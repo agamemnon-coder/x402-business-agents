@@ -113,7 +113,9 @@ const rows = () => (db.prepare("SELECT COUNT(*) AS n FROM card_transactions").ge
 const idOf = (body: string) => { try { const v = JSON.parse(body) as { id?: unknown }; return typeof v?.id === "string" ? v.id : "evt"; } catch { return "evt"; } };
 const handled = (body: string, ts = String(t0.getTime())) => handleAirwallexHook(db, { id: idOf(body), ts, signature: sign(ts, body), body }, SECRET, t0);
 
-describe("the runner records a webhook's card transaction (handleAirwallexHook)", () => {
+// Each property runs hundreds of signed events through the handler, each written to the ledger with its audit row: about
+// 3.5 s alone on a laptop, past vitest's 5 s default on a busy CI runner (main, 26 Nov). The cases stay; the budget grows.
+describe("the runner records a webhook's card transaction (handleAirwallexHook)", { timeout: 20_000 }, () => {
   beforeAll(async () => {
     db = openDb(":memory:");
     const awx = new FakeIssuing();

@@ -87,6 +87,7 @@ chains: a changed byte would break the chain, so they are kept or deleted whole,
 | `rate_hits` | Request counters per key, person or network | Online identifiers | Security (f) | A day | `purgeExpired`'s housekeeping |
 | `push_log`, `runner_health` | Pushes from the runner and its health reports | Technical | Contract (b) | Until the purge | `purgeExpired` |
 | `authority_maps` | The runner's authority map as last pushed: per agent what it may pay and what needs the CFO (agent names, limits, payee kinds; an outside agent's display name) | Financial summary | Contract (b) | Until the purge | `purgeExpired` |
+| `compliance_summaries` | The runner's compliance evidence in short as last pushed: counts per framework and per control for the last 30 days, and the control map's gaps (no audit row, subject or payload; no personal data) | Technical | Contract (b) | Until the purge | `purgeExpired` |
 | `storage_use` | The company's stored bytes and files | Technical | Contract (b) | Until the purge | `purgeExpired` |
 | `engine_companies`, `autopilot_runs` | Which companies run the nightly autopilot; its digests | Financial summary | Contract (b) | 90 days; a purged company's at once | `pruneAutopilot` |
 

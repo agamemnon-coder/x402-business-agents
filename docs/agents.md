@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # The Kit 11 agents: Claude decides inside the mandate, the rails enforce it
+
+**Kit 11's three agents, each with its own Claude loop and typed tools: what each decides, what code checks, and how they did in evals and dry runs.**
+
+[![Claude: Haiku, Sonnet, Opus](https://img.shields.io/badge/Claude-Haiku_%C2%B7_Sonnet_%C2%B7_Opus-d97757?style=flat-square&labelColor=1f2937)](claude.md)&nbsp;[![Agents: off by default, KIT11_AGENTS=on](https://img.shields.io/badge/agents-off_by_default_%C2%B7_KIT11__AGENTS%3Don-475569?style=flat-square&labelColor=1f2937)](#the-kit-11-agents-claude-decides-inside-the-mandate-the-rails-enforce-it)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[The trace](#the-trace-one-decision-as-a-timeline-41) · [The agent picks the rail](#the-agent-picks-the-rail-block-51) · [A card decline](#a-card-decline-starts-the-agent-block-52) · [Treasury advises](#the-treasury-agent-advises-when-to-pay-the-licence-block-53) · [Pause one agent](#pause-one-agent-with-face-id-42) · [Evals](agent-evals.md)
+
+</div>
 
 Each of Kit 11's three agents has its own Claude loop with typed tools (`src/agents/loop.ts`). Inside its mandate it
 acts on its own; every tool call goes through the same code checks as before, and Alta (formerly Metal) and Airwallex enforce the
@@ -6,15 +18,28 @@ limits. When Claude is not there, fails, refuses, cannot satisfy the checks, or 
 agent must refund or escalate every sale code finds wrong, and send a "refund all" request to the CFO), code's fixed
 decision takes over, as in every earlier run, and the log says so.
 
-**Switch.** The agents decide only with `KIT11_AGENTS=on`. Off (the default), every flow runs exactly as in the recorded
-runs and dry-12. The switch goes on for a live run once evals, red team and a full dry run are green (Max's kill rule:
-Wednesday 4 November, 23:00).
+```mermaid
+flowchart LR
+  EV["An event<br/>a price notice, a price rise,<br/>a customer's dispute"] --> AG["The agent's own Claude loop<br/>typed tools only"]
+  AG -->|"a tool call"| CK{"Code's checks<br/>the agent cannot get past them"}
+  CK -->|"refused"| AG
+  CK -->|"allowed"| RL["Alta and Airwallex<br/>enforce the limits"]
+  AG -.->|"not there, fails, refuses<br/>or leaves its job unfinished"| FX["Code's fixed decision<br/>takes over; the log says so"]
+  RL --> LOG["An audit row<br/>for every tool call"]
+```
+
+> [!NOTE]
+> **Switch.** The agents decide only with `KIT11_AGENTS=on`. Off (the default), every flow runs exactly as in the recorded
+> runs and dry-12. The switch goes on for a live run once evals, red team and a full dry run are green (Max's kill rule:
+> Wednesday 4 November, 23:00).
 
 | Agent | Model | What it decides | Its tools | What code checks (the agent cannot get past it) |
 |---|---|---|---|---|
 | Sourcing (`src/agents/sourcingAgent.ts`) | Haiku | When Stockline's price notice arrives: check the offer against its mandate, serve the next query, see whether Alta lets the purchase through, tell Treasury what it needs | `check_offer`, `try_purchase` (once), `notify_treasury` | Alta refuses a purchase over the mandate's cap on chain; no tool changes a cap, a budget or a payee |
 | Treasury (`src/agents/treasuryAgent.ts`) | Opus | The answer to the price rise: new budgets inside 20.00, the Sourcing cap, one or two sell prices, its advice | `submit_plan` | Total at most 20.00; Sourcing's cap exactly the new price; Sourcing's budget never shrinks and covers spend plus one purchase; Support unchanged; Treasury keeps room for the sweep; each price has a margin; a safe replace order. A refused plan goes back with the reasons, three tries, then code's fixed plan. Nothing changes on chain until the CFO and the controller sign with their passkeys |
 | Support (`src/agents/supportAgent.ts`) | Sonnet | A customer's dispute: check each order and each delivered stock check, refund the wrong ones itself, send the rest to the CFO with its advice | `verify_order`, `check_data`, `refund`, `escalate_to_cfo` | A refund only for a sale in the dispute that code's own data check finds wrong, within the automatic limits (0.10 each, 0.20 per dispute); no tool takes a payee, so a planted line can make the agent ask, never pay |
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/rail-refusals-wide-dark.svg"><img src="assets/rail-refusals-wide-light.svg" alt="Held by the rail itself, from the run records, test money: Airwallex held a transfer IN_APPROVAL until a person approved it at Airwallex (10 and 12 Nov), then PAID with simulated settlement; Alta refused purchase #24, over its mandate's cap, on chain (main run, 3 Nov); Visa Intelligent Commerce via Airi: a purchase waited for the cardholder's passkey in Airi, none came, so no credential and nothing charged." width="100%"></picture>
 
 **In the log and on the dashboard.** Every tool call and every run is an audit row (model, tool, input redacted, result,
 the check that stopped it, cost and time). The dashboard's feed shows each agent's decision in its own words and every

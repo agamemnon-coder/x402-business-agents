@@ -1,7 +1,9 @@
-// /business, "For companies", and /one-pager, its printable sales sheet. Since 22 Nov (Max: "far too much text"; then
-// "still too much, the demo duplicates Home"), /business is only the question, one line, one small animated visual
-// (./businessVisuals.ts) and the pilot's sign-up form, which opens the visitor's own mail app with the fields filled in
-// (pilotMailto, PILOT_JS): no network request, nothing stored. /one-pager keeps the whole story on one A4 page.
+// /business, "For companies", and /one-pager, its printable sales sheet. Since 26 Nov, evening (Max: "it needs to be
+// something that speaks for itself with a pilot registration, like: Ready for the next step?"), /business is one screen
+// that is the registration: the headline and one line, the card as the hero, three points and the three steps that
+// follow, over a calm sky (./businessVisuals.ts: atmosphere, not content). The form opens the visitor's own mail app
+// with the fields filled in (pilotMailto, PILOT_JS): no network request, nothing stored. /one-pager keeps the whole
+// story on one A4 page.
 // Nothing is invented:
 //   - every price on /one-pager is read from src/config/pricing.ts (pilot prices; nothing is on sale yet);
 //   - its proof tiles are Home's, read from the run records (src/redesign/home.ts proofTiles);
@@ -18,7 +20,7 @@ import { CLOUD_SETUP_URL, START_STEPS, proofTiles, type ProofTile } from "./home
 import { PRICING_LEAD } from "./pricing.js";
 import { residency } from "./privacy.js";
 import { repoHref, siteLink } from "./productPage.js";
-import { BUSINESS_LINE, BUSINESS_QUESTION } from "./businessVisuals.js";
+import { BUSINESS_HEAD, BUSINESS_LINE, BUSINESS_QUESTION, BUSINESS_SKY_CSS, BUSINESS_SKY_HTML, BUSINESS_TONES } from "./businessVisuals.js";
 import { TRY_URL, esc, icon, page } from "./ui.js";
 import { picon } from "./proofIcons.js";
 
@@ -194,38 +196,41 @@ export const PILOT_JS = `(function () {
 /** Three points under the form, each true of the pilot as it is offered (FOUNDING_POINTS, PILOT_AGREEMENT). */
 export const PILOT_TRUST: readonly [string, string][] = [["flask-conical", "Test money only"], ["credit-card", "No card, no billing"], ["file-check", "Written agreement"]];
 
-const PAGE_CSS = `body { background: var(--bg); }
-main.bzp { position: relative; isolation: isolate; overflow: hidden; min-height: calc(100vh - 140px); min-height: calc(100svh - 140px); display: grid; align-items: center; }
-/* The ground: one large, soft violet glow that drifts slowly, over a faint grid fading out from the middle. */
-main.bzp::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 46%; width: min(1100px, 130vw); height: min(760px, 110vw); translate: -50% -50%; pointer-events: none; border-radius: 50%;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 34%, transparent), color-mix(in srgb, var(--accent-ink) 14%, transparent) 55%, transparent);
-  filter: blur(60px); opacity: .9; }
-main.bzp::after { content: ""; position: absolute; z-index: -2; inset: 0; pointer-events: none;
-  background-image: linear-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px);
-  background-size: 56px 56px; -webkit-mask-image: radial-gradient(60% 55% at 50% 45%, #000, transparent); mask-image: radial-gradient(60% 55% at 50% 45%, #000, transparent); }
-@media (prefers-reduced-motion: no-preference) { main.bzp::before { animation: bz-drift 18s ease-in-out infinite alternate; } }
-@keyframes bz-drift { from { translate: -56% -52%; scale: 1; } to { translate: -44% -46%; scale: 1.08; } }
-@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) main.bzp::before { opacity: .55; } }
-:root[data-theme="light"] main.bzp::before { opacity: .55; }
-.bzp .wrap { max-width: 1120px; }
-.bzx { padding: clamp(40px, 9vh, 120px) 0; }
-.bzx-g { display: grid; gap: 40px; grid-template-columns: minmax(0, 1fr); align-items: center; }
-@media (min-width: 980px) { .bzx-g { grid-template-columns: minmax(0, 1fr) minmax(380px, 420px); gap: clamp(48px, 7vw, 112px); } }
-.bzx-pill { margin: 0; }
-.bzx h1 { margin: 22px 0 0; font-size: clamp(40px, 4.7vw, 68px); font-weight: 760; letter-spacing: -.045em; line-height: .98; max-width: 10.5em; text-wrap: balance; }
-.bzx-a { margin: 22px 0 0; max-width: 26em; font-size: clamp(17px, 1.4vw, 20px); line-height: 1.5; color: var(--muted); }
-/* The form: one quiet card. */
-.bzf { position: relative; padding: 28px; border-radius: 24px; min-width: 0;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 76%, transparent));
-  border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 50px 100px -50px var(--glow), 0 24px 60px -40px rgba(8, 6, 28, .6);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3); }
-.bzf::before { content: ""; position: absolute; left: 16%; right: 16%; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
-.bzf h2 { margin: 0; font-size: 20px; font-weight: 720; letter-spacing: -.02em; line-height: 1.25; }
-.bzf > p { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
-form.bzf-g { margin: 22px 0 0; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+/** /business's own style (its sky's with it): the site's base comes from page(). */
+export const PAGE_CSS = `body { background: var(--bg); }
+/* One screen: the words on the left, the registration on the right, the sky behind both. */
+main.bzp { position: relative; isolation: isolate; overflow: hidden; min-height: calc(100vh - 73px); min-height: calc(100svh - 73px); display: grid; align-items: center; }
+.bzp .wrap { max-width: 1160px; width: 100%; }
+.bzg { display: grid; gap: 40px; grid-template-columns: minmax(0, 1fr); align-items: center; padding: clamp(24px, 4vh, 64px) 0 clamp(110px, 13vh, 160px); }
+@media (min-width: 1000px) { .bzg { grid-template-columns: minmax(0, 1fr) minmax(420px, 460px); gap: clamp(48px, 7vw, 120px); } }
+p.bz-pill { margin: 0; display: inline-flex; align-items: center; gap: 9px; padding: 6px 13px 6px 11px; border-radius: 999px; border: 1px solid var(--glass-line); background: color-mix(in srgb, var(--surface) 55%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font: 600 13px/1.3 var(--mono); letter-spacing: .04em; color: var(--muted); }
+p.bz-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--amb); box-shadow: 0 0 0 4px color-mix(in srgb, var(--amb) 20%, transparent); }
+.bzp h1 { margin: 26px 0 0; font-size: clamp(46px, 6.2vw, 88px); font-weight: 780; letter-spacing: -.05em; line-height: .96; }
+.bzp h1 span { display: block; padding-bottom: .08em; background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; }
+p.bz-a { margin: 22px 0 0; max-width: 25em; font-size: clamp(17px, 1.45vw, 20px); line-height: 1.5; color: var(--muted); }
+/* What happens next: three steps on one line, numbered. */
+.bz-nx { margin: 44px 0 0; max-width: 560px; }
+.bz-nx h2 { margin: 0 0 14px; font: 600 12.5px/1.3 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+ol.bz-nx-s { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 14px; }
+.bz-nx-s li { position: relative; display: grid; gap: 10px; align-content: start; font-size: 14.5px; font-weight: 600; line-height: 1.35; color: var(--text); }
+/* Each step in its meaning-colour: you write (indigo), the company is set up (sky), the CFO's passkey (violet). */
+.bz-nx-s li { --t: var(--g0); } .bz-nx-s li:nth-child(2) { --t: var(--sky); } .bz-nx-s li:nth-child(3) { --t: var(--accent); }
+.bz-nx-s li b { position: relative; z-index: 1; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font: 700 12.5px/1 var(--mono); color: color-mix(in srgb, var(--t) 82%, var(--text)); background: color-mix(in srgb, var(--t) 16%, var(--bg)); border: 1px solid color-mix(in srgb, var(--t) 45%, transparent); }
+.bz-nx-s li:not(:last-child)::after { content: ""; position: absolute; left: 34px; right: -6px; top: 13px; height: 1px; background: linear-gradient(90deg, color-mix(in srgb, var(--t) 60%, transparent), color-mix(in srgb, var(--text) 12%, transparent)); }
+/* The registration: one glass card, lit along its top edge. */
+.bzf { position: relative; padding: 26px 28px; border-radius: 26px; min-width: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 84%, transparent), color-mix(in srgb, var(--surface) 66%, transparent));
+  border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 60px 120px -50px var(--glow), 0 30px 70px -44px rgba(8, 6, 28, .7);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3); backdrop-filter: blur(24px) saturate(1.3); }
+/* The lit top edge: approval violet at its heart, money-moving sky and paid emerald toward its ends. */
+.bzf::before { content: ""; position: absolute; left: 10%; right: 10%; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--sky) 70%, #fff) 22%, color-mix(in srgb, var(--accent) 85%, #fff) 50%, color-mix(in srgb, var(--ok) 70%, #fff) 78%, transparent); }
+.bzf h2 { margin: 0; font-size: 20px; font-weight: 730; letter-spacing: -.02em; line-height: 1.25; }
+.bzf > p { margin: 6px 0 0; font-size: 14.5px; line-height: 1.45; color: var(--muted); }
+form.bzf-g { margin: 18px 0 0; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
 .bzf-g label { display: grid; gap: 6px; min-width: 0; font-size: 14px; font-weight: 600; }
-.bzf-g input:not([type="radio"]), .bzf-g select { box-sizing: border-box; width: 100%; min-height: 46px; padding: 10px 13px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--text) 13%, var(--border));
-  background: color-mix(in srgb, var(--bg) 60%, var(--surface)); color: var(--text); font: 500 16px/1.4 Inter, system-ui, sans-serif; transition: border-color .15s ease, box-shadow .15s ease; }
+.bzf-g input:not([type="radio"]), .bzf-g select { box-sizing: border-box; width: 100%; min-height: 46px; padding: 10px 14px; border-radius: 13px; border: 1px solid color-mix(in srgb, var(--text) 13%, var(--border));
+  background: color-mix(in srgb, var(--bg) 62%, var(--surface)); color: var(--text); font: 500 16px/1.4 Inter, system-ui, sans-serif; transition: border-color .15s ease, box-shadow .15s ease; }
 .bzf-g select { appearance: none; -webkit-appearance: none; padding-right: 38px; cursor: pointer;
   background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
   background-position: calc(100% - 19px) 52%, calc(100% - 14px) 52%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
@@ -233,66 +238,87 @@ form.bzf-g { margin: 22px 0 0; display: grid; gap: 14px; grid-template-columns: 
 .bzf-g input:not([type="radio"]):hover, .bzf-g select:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
 .bzf-g input:not([type="radio"]):focus-visible, .bzf-g select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
 .bzf-g.tried :invalid, .bzf-g :user-invalid { border-color: var(--bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 16%, transparent); }
+/* Name and company side by side where there is room. */
+.bzf-g .two { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 420px) { .bzf-g .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 /* A question as a row of chips (radios), never required. */
 .bzf-g fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 .bzf-g legend { padding: 0; margin: 0 0 8px; font-size: 14px; font-weight: 600; }
-.bzf-g legend small { font-weight: 500; color: var(--faint); }
+.bzf-g legend small { font-weight: 500; color: var(--faint); font-size: 13px; }
 .bzf-g .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .bzf-g .chips label { display: inline-flex; position: relative; font-weight: 550; }
 .bzf-g .chips input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.bzf-g .chips span { display: inline-flex; align-items: center; min-height: 34px; padding: 0 13px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--text) 13%, var(--border)); font-size: 14px; color: var(--muted); cursor: pointer; transition: border-color .15s ease, background-color .15s ease, color .15s ease; }
+.bzf-g .chips span { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--text) 13%, var(--border)); font-size: 14px; color: var(--muted); cursor: pointer; transition: border-color .15s ease, background-color .15s ease, color .15s ease; }
 .bzf-g .chips span:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); color: var(--text); }
 .bzf-g .chips input:checked + span { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
+/* A chosen chip carries a dot in its meaning: now (emerald), next quarter (sky), exploring (amber). */
+.bzf-g .chips input:checked + span::before { content: ""; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--c, var(--accent)); }
+.bzf-g .chips label:nth-child(1) { --c: var(--ok); } .bzf-g .chips label:nth-child(2) { --c: var(--sky); } .bzf-g .chips label:nth-child(3) { --c: var(--amb); }
 .bzf-g .chips input:focus-visible + span { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
 /* "Tell us more": the rest of the questions, folded, all optional. */
-.bzf-g details.more { border-top: 1px solid var(--glass-line); padding-top: 12px; }
-.bzf-g details.more > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; min-height: 32px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 8px; }
+.bzf-g details.more { border-top: 1px solid var(--glass-line); padding-top: 4px; }
+.bzf-g details.more > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 8px; }
 .bzf-g details.more > summary::-webkit-details-marker { display: none; }
 .bzf-g details.more > summary::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .15s ease; }
 .bzf-g details.more[open] > summary::after { transform: rotate(225deg) translateY(-1px); }
 .bzf-g details.more > summary:hover { color: var(--text); }
-.bzf-g details.more > div { display: grid; gap: 14px; padding-top: 10px; }
-.bzf-g .act { display: grid; gap: 10px; margin-top: 2px; }
-.bzf-g .act .btn { width: 100%; justify-content: center; height: auto; min-height: 52px; padding: 13px 22px; font-size: 16.5px; white-space: normal; }
-.bzf-g .act p { margin: 0; text-align: center; font-size: 14px; line-height: 1.5; color: var(--muted); text-wrap: balance; }
+.bzf-g details.more > div { display: grid; gap: 13px; padding-top: 6px; }
+.bzf-g .act { display: grid; gap: 10px; }
+.bzf-g .act .btn { width: 100%; justify-content: center; height: auto; min-height: 54px; padding: 13px 22px; border-radius: 15px; font-size: 16.5px; white-space: normal; }
+.bzf-g .act p { margin: 0; text-align: center; font-size: 13.5px; line-height: 1.5; color: var(--muted); text-wrap: balance; }
 .bzf-g .act a { color: var(--accent); font-weight: 650; }
 .bzf-st { margin: 0; padding: 11px 13px; border-radius: 12px; font-size: 14px; font-weight: 550; line-height: 1.45; }
 .bzf-st.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); }
 .bzf-st.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, transparent); border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); }
 .bzf-st[hidden] { display: none; }
-/* Three tiny points under the form. */
-ul.bzt { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; }
-ul.bzt li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; }
-ul.bzt li .i { width: 14px; height: 14px; color: var(--accent); }
+/* Three short points under the card. */
+ul.bzt { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; }
+ul.bzt li { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 550; color: var(--muted); white-space: nowrap; }
+ul.bzt li .i { width: 15px; height: 15px; color: var(--accent); }
+/* Test money amber, no billing sky, the written agreement violet (the console's meanings). */
+ul.bzt li:nth-child(1) .i { color: var(--amb); } ul.bzt li:nth-child(2) .i { color: var(--sky); }
 /* The page's own footer: one line. */
-footer.bzfoot { padding: 20px 0 28px; }
+footer.bzfoot { position: relative; padding: 20px 0 28px; background: var(--bg); }
 footer.bzfoot p { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 14px; line-height: 1.5; color: var(--faint); text-align: center; }
 footer.bzfoot a { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .bzf-g input, .bzf-g select, .bzf-g .chips span, .bzf-g details.more > summary::after { transition: none; } }
-@media (max-width: 520px) { .bzf { padding: 22px 16px; border-radius: 20px; } .bzx h1 { font-size: clamp(36px, 10.5vw, 46px); } main.bzp { min-height: 0; } }`;
+/* Under 1000 px one column: the words, the card, then what happens next (the left column's parts become the grid's). */
+@media (max-width: 999px) { .bzg { gap: 0; } .bzl { display: contents; } p.bz-pill { justify-self: start; }
+  .bzr { order: 1; width: 100%; max-width: 520px; justify-self: center; margin-top: 34px; } .bz-nx { order: 2; width: 100%; max-width: 520px; justify-self: center; } }
+@media (max-width: 520px) { p.bz-pill { font-size: 12px; letter-spacing: 0; } .bzg { padding-bottom: 96px; } .bzf { padding: 22px 16px; border-radius: 22px; } .bzp h1 { font-size: clamp(42px, 12.5vw, 54px); } .bz-nx { margin-top: 30px; } .bz-nx-s li { font-size: 14px; } }
+${BUSINESS_TONES}
+${BUSINESS_SKY_CSS}`;
 
 /** The one question in sight; the others fold under "Tell us more". */
 const ASKED = "start";
+/** What happens after the form, in three steps (Purser Cloud starts a company this way today: docs/cloud.md). */
+export const NEXT_HEAD = "What happens next";
+export const NEXT_STEPS: readonly string[] = ["Write to us", "We set up your company", "Your CFO adds a passkey"];
 
 export function businessPage(): string {
-  // 22 Nov (Max: "far too much text"): the question, one line, one visual and the form. 26 Nov (Max: "really ugly";
-  // then "far too full again", and the globe is the sign-in's): one screen, simple and high-tech: a deep page with one
-  // soft violet glow, the question and one line, a short form (name, work email, company and one optional question;
-  // the rest folded under "Tell us more"), three tiny points and one footer line. The form still only opens the
+  // 22 Nov (Max: "far too much text"): the question, one line, one visual and the form. 26 Nov, evening (Max: "/business
+  // still looks ugly and the homepage is still the same as the /business ... Ready for the next step? and something with
+  // the AI and fintech"): one screen that is the registration: the headline and one line, the card as the hero, three
+  // points under it and the three steps that follow, over a calm sky (./businessVisuals.ts). The form only opens the
   // visitor's own mail app; nothing is stored.
   const field = (name: string, label: string, attrs: string) => `<label><span>${esc(label)}</span><input name="${name}" ${attrs} required></label>`;
   const chips = (x: (typeof PILOT_QUESTIONS)[number]) => `<fieldset><legend>${esc(x.q)} <small>${esc("optional")}</small></legend><div class="chips">${x.options.map((o) => `<label><input type="radio" name="${x.name}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join("")}</div></fieldset>`;
+  const [h1a, h1b] = [BUSINESS_HEAD.replace(/ next step\?$/, ""), "next step?"];
   const body = `<main class="bzp">
-<section class="bzx" aria-labelledby="bzh-h"><div class="wrap"><div class="bzx-g">
-<div class="bzx-l"><p class="bzx-pill"><span class="pill note">${icon("info", 14)}${esc(BUSINESS_LABEL)}</span></p>
-<h1 id="bzh-h">${esc(BUSINESS_QUESTION)}</h1>
-<p class="bzx-a">${esc(BUSINESS_LINE)}</p></div>
-<div class="bzx-r" id="pilot">
+${BUSINESS_SKY_HTML}
+<div class="wrap"><div class="bzg">
+<div class="bzl">
+<p class="bz-pill"><i aria-hidden="true"></i>${esc(BUSINESS_LABEL)}</p>
+<h1 id="bzh-h">${esc(h1a)} <span>${esc(h1b)}</span></h1>
+<p class="bz-a">${esc(BUSINESS_LINE)}</p>
+<section class="bz-nx" aria-labelledby="bznx-h"><h2 id="bznx-h">${esc(NEXT_HEAD)}</h2><ol class="bz-nx-s">${NEXT_STEPS.map((s, i) => `<li><b>${i + 1}</b>${esc(s)}</li>`).join("")}</ol></section>
+</div>
+<div class="bzr" id="pilot">
 <section class="bzf" aria-labelledby="bzf-h"><h2 id="bzf-h">${esc(FOUNDING_NAME)}</h2><p>${esc("Free for 30 days. We reply by email.")}</p>
 <form class="bzf-g" id="pilot-form" aria-labelledby="bzf-h" novalidate>
-${field("name", "Name", 'type="text" autocomplete="name" maxlength="200" placeholder="Ada Jansen"')}
+<div class="two">${field("name", "Name", 'type="text" autocomplete="name" maxlength="200" placeholder="Ada Jansen"')}
+${field("company", "Company", 'type="text" autocomplete="organization" maxlength="200" placeholder="Northwind B.V."')}</div>
 ${field("email", "Work email", 'type="email" autocomplete="email" maxlength="200" placeholder="ada@company.com"')}
-${field("company", "Company", 'type="text" autocomplete="organization" maxlength="200" placeholder="Northwind B.V."')}
 ${chips(PILOT_QUESTIONS.find((x) => x.name === ASKED)!)}
 <details class="more"><summary>${esc("Tell us more")}</summary><div>
 <label><span>${esc("Invoices per month")}</span><select name="invoices"><option value="">${esc("Choose")}</option>${PILOT_VOLUMES.map((v) => `<option>${esc(v)}</option>`).join("")}</select></label>
@@ -301,15 +327,15 @@ ${PILOT_QUESTIONS.filter((x) => x.name !== ASKED).map(chips).join("\n")}
 <div class="act"><button class="btn primary" type="submit">${esc(PILOT_APPLY)}${picon("arrow-right", 18)}</button><p>${esc(PILOT_FORM_NOTE)}<br>${esc("Or")} <a href="${esc(PILOT_MAIL)}">${esc("email us directly")}</a> · <a href="${ONE_PAGER_PATH}">${esc("the one-pager")}</a></p></div>
 <p class="bzf-st" id="pilot-status" role="status" hidden></p>
 </form></section>
-<ul class="bzt">${PILOT_TRUST.map(([i, l]) => `<li>${picon(i, 14)}${esc(l)}</li>`).join("")}</ul>
+<ul class="bzt">${PILOT_TRUST.map(([i, l]) => `<li>${picon(i, 15)}${esc(l)}</li>`).join("")}</ul>
 </div>
-</div></div></section>
+</div></div>
 </main>`;
   // One footer line in place of the site's (Max: no "What's real?", no row of links here): the honesty, the contact.
   const foot = `<footer class="bzfoot"><div class="wrap"><p><span>${esc(BUSINESS_HONEST)}</span><a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a></p></div></footer>`;
   return page({
     title: "For companies", tab: "business", css: PAGE_CSS, body, js: PILOT_JS, stage: false, footer: foot,
-    description: "Would you trust an AI agent with your company's money? Apply for Purser's 30-day Founding Partner Pilot: agents pay the routine, your CFO signs the rest with Face ID. Test money only.",
+    description: `${BUSINESS_QUESTION} Apply for Purser's 30-day Founding Partner Pilot: agents pay the routine, your CFO signs the rest with Face ID. Test money only.`,
     source: "Source: the form only opens the visitor's own mail app (src/redesign/business.ts pilotMailto).",
   });
 }

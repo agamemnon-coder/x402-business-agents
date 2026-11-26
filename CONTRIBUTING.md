@@ -1,8 +1,33 @@
+<div align="center">
+
+<a href="README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/purser-mark-dark.svg"><img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Contributing
+
+**How to make a change to Purser that gets merged: the checks to run, the rules it keeps, the tests it brings and the sign-off.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![dco](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/dco.yml/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/dco.yml)&nbsp;[![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/tests%2C%20last%20full%20run-10239%20passing-16a34a?style=flat-square&labelColor=1f2937)](docs/assets/test-summary.json)&nbsp;[![Coverage: from docs/badges/coverage.json](https://img.shields.io/badge/coverage%2C%20run%20on%207d42f9209-95.1%25%20statements%20%C2%B7%2086.0%25%20branches-16a34a?style=flat-square&labelColor=1f2937)](docs/evidence/coverage.md)&nbsp;[![REUSE 3.3: compliant](https://img.shields.io/badge/REUSE_3.3-compliant-16a34a?style=flat-square&labelColor=1f2937)](REUSE.toml)
+
+[![Good first issues](https://img.shields.io/badge/start_here-good_first_issue-7057ff?style=flat-square&labelColor=1f2937)](https://github.com/agamemnon-coder/x402-business-agents/labels/good%20first%20issue)&nbsp;[![Code of conduct: Contributor Covenant 2.1](https://img.shields.io/badge/code_of_conduct-Contributor_Covenant_2.1-5e0d73?style=flat-square&labelColor=1f2937)](CODE_OF_CONDUCT.md)&nbsp;[![Sign-off: DCO 1.1](https://img.shields.io/badge/sign--off-DCO_1.1-2563eb?style=flat-square&labelColor=1f2937)](#sign-off-developer-certificate-of-origin)&nbsp;[![License: MIT](https://img.shields.io/badge/license-MIT-2563eb?style=flat-square&labelColor=1f2937)](LICENSE)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](#the-rules-this-repository-keeps)
+
+[Before you open a PR](#before-you-open-a-pull-request) · [The rules](#the-rules-this-repository-keeps) · [Style](#coding-style) · [Tests](#tests-come-with-the-change) · [Sign-off](#sign-off-developer-certificate-of-origin) · [Review](#code-review) · [First tasks](#small-tasks-for-a-first-contribution)
+
+</div>
 
 Purser is a hackathon project (Airwallex Agentic Banking Hackathon, Starter Kit 11) that runs on test money only: the
 Airwallex sandbox and Alta (formerly Metal) testnet. Issues and pull requests are welcome.
 Everyone who takes part follows the [code of conduct](CODE_OF_CONDUCT.md) (Contributor Covenant 2.1).
+
+```mermaid
+flowchart LR
+  B["Your branch"] --> L["Run the checks locally<br/>typecheck, lint, npm test,<br/>judge --check"]
+  L --> PR["Open a pull request<br/>the template filled in,<br/>every commit signed off"]
+  PR --> CI{"CI<br/>types, lint, tests with coverage,<br/>browser checks, npm audit,<br/>Semgrep, gitleaks, REUSE"}
+  CI -- "red" --> B
+  CI -- "green" --> RV{"Code review<br/>behaviour, money and approval,<br/>inputs, secrets, claims"}
+  RV -- "changes requested" --> B
+  RV -- "approved" --> M["Merged by a maintainer"]
+```
 
 ## Before you open a pull request
 
@@ -19,16 +44,13 @@ Chromium; `BROWSER=firefox` or `BROWSER=webkit` runs them in the other engines.
 
 ## The rules this repository keeps
 
-- **Nothing claimed that did not run.** A figure on a page or in a doc is read from a run record (`docs/runs/`,
-  `docs/demo/`) or listed in [docs/claims.md](docs/claims.md); a test checks it. Simulated, sandbox, testnet and
-  stand-in parts are labelled as such; what has not run is called "next".
-- **No secrets.** No key, token, password or environment value in code, tests, docs, commits or logs. gitleaks runs on
-  every push; a false positive goes in `.gitleaksignore` with a comment saying why.
-- **No real money.** Live runs use sandboxes and testnets, within a call budget agreed before the run, and each one gets
-  a dated record under `docs/runs/`.
-- **Tests never use the network.** Partners are faked in `test/fakes/`.
-- **Every payment beyond the CFO's limits needs the CFO's passkey** over the exact terms. A change that weakens that, or
-  lets a model approve, will not be merged.
+| | Rule | What it means |
+|---|---|---|
+| 📎 | **Nothing claimed that did not run.** | A figure on a page or in a doc is read from a run record (`docs/runs/`, `docs/demo/`) or listed in [docs/claims.md](docs/claims.md); a test checks it. Simulated, sandbox, testnet and stand-in parts are labelled as such; what has not run is called "next". |
+| 🔑 | **No secrets.** | No key, token, password or environment value in code, tests, docs, commits or logs. gitleaks runs on every push; a false positive goes in `.gitleaksignore` with a comment saying why. |
+| 🧪 | **No real money.** | Live runs use sandboxes and testnets, within a call budget agreed before the run, and each one gets a dated record under `docs/runs/`. |
+| 🔌 | **Tests never use the network.** | Partners are faked in `test/fakes/`. |
+| 🔏 | **Every payment beyond the CFO's limits needs the CFO's passkey** over the exact terms. | A change that weakens that, or lets a model approve, will not be merged. |
 
 ## Coding style
 
@@ -136,4 +158,5 @@ that size open today:
 
 ## Conduct
 
-Security reports go to [SECURITY.md](SECURITY.md), not to a public issue.
+> [!CAUTION]
+> Security reports go to [SECURITY.md](SECURITY.md), not to a public issue.

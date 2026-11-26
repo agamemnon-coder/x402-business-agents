@@ -44,10 +44,14 @@ function stripUntilStable(text: string, re: RegExp): string {
 
 /** Markdown as plain text a model reads well: no HTML, images, badges or fences; absolute links kept as "text (url)". */
 export function cleanMarkdown(md: string): string {
+  // Badges (a linked image) go before lone images, or each would leave an empty "[](link)" behind; a row of links only
+  // (a page's "jump to" row, 26 Nov) and GitHub's alert markers ("> [!NOTE]") carry nothing a model needs.
   const noSummary = stripUntilStable(md, /<!--[\s\S]*?-->/g)
     .replace(/```[\s\S]*?```/g, "")
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
     .replace(/\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)/g, "")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/^(?:\[[^\]\n]+\]\([^)\s]+\)\s*·\s*)+\[[^\]\n]+\]\([^)\s]+\)\s*$/gm, "")
+    .replace(/^>\s*\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/gm, "").replace(/^>\s?/gm, "")
     .replace(/<summary>([\s\S]*?)<\/summary>/gi, "$1. ");
   return stripUntilStable(noSummary, /<[^>]+>/g)
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, "$1 ($2)")
@@ -56,7 +60,7 @@ export function cleanMarkdown(md: string): string {
     .replace(/^\s*\|\s*/gm, "").replace(/\s*\|\s*$/gm, "").replace(/\s+\|\s+/g, " | ")
     .replace(/\*\*([^*]+)\*\*/g, "$1").replace(/(^|\s)\*([^*\n]+)\*(?=\s|[.,;:]|$)/g, "$1$2").replace(/`([^`]+)`/g, "$1")
     .replace(/&nbsp;/g, " ").replace(/&middot;/g, "·").replace(/&amp;/g, "&")
-    .replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+    .replace(/[ \t]+/g, " ").replace(/^ $/gm, "").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 /** The text cut at a sentence end within the cap (never mid-word). */

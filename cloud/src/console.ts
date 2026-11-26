@@ -8,7 +8,7 @@
 import { CONSOLE_PREMIUM_CSS } from "../../src/ui/premium.js";
 import { OVERVIEW_PLUS_CSS, OVERVIEW_PLUS_JS } from "./consoleOverviewPlus.js";
 import { ASK_BUTTON_JS } from "./ask/page.js";
-import { SIGNIN_CSS, SIGNIN_JS } from "./signInLook.js";
+import { SIGNIN_CSS, SIGNIN_HERO, SIGNIN_JS } from "./signInLook.js";
 import { PREVIEW_TAGS } from "./brand.js";
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
@@ -24,6 +24,7 @@ import { LOGO_FILES } from "./try/logos.gen.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { NEGOTIATE_PATH, negotiatePageResponse } from "./try/negotiatePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
+import { COLOR_CSS } from "./consoleColor.js";
 import { RATIONALE_WORDS_JS } from "../../src/servers/rationaleWords.js";
 import { NAV_GROUPS, SHELL_CSS, SHELL_JS, SHELL_WORDS } from "./consoleShell.js";
 import { CHARTS_CSS, CHARTS_JS } from "./consoleCharts.js";
@@ -50,12 +51,8 @@ const EXTRA_CSS = `
 .idps { display: grid; gap: 8px; margin-top: 10px; }
 ul.plain { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-/* Close and offboard (cloud/src/offboardingView.ts): its last button names the company, so it wraps on a phone. */
 .offboarding .btn { height: auto; min-height: 40px; padding: 9px 16px; line-height: 1.3; white-space: normal; text-align: left; max-width: 100%; }
 .offboarding p { overflow-wrap: anywhere; }
-/* 12 Nov: the site's header (cloud/src/siteHeader.ts) on top; the console's own bar under it, one thin row: its pages,
-   the company, sign-out and test money. Its tabs look as the kit's nav.tabs did (src/ui/payablesKit.ts), under their
-   own class so neither style reaches the other's. */
 .appbar { border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); background: color-mix(in srgb, var(--bg) 84%, transparent); }
 @media (min-width: 901px) { .appbar { position: sticky; top: 64px; z-index: 30; backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); } }
 .appbar .wrap { display: flex; align-items: center; gap: 12px; }
@@ -65,7 +62,6 @@ ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .apptabs a:hover { color: var(--text); }
 .apptabs a[aria-current="page"] { color: var(--text); background: var(--sunken); }
 .who-am-i { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
-/* The tabs never give way: the person and company line shrinks with an ellipsis instead (desktop cut "Instellingen" short). */
 .appbar nav.apptabs { flex: none; }
 .who-am-i { min-width: 0; flex: 1 1 auto; justify-content: flex-end; }
 .who-am-i #who { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -75,10 +71,8 @@ ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .signed-in .who-am-i { display: inline-flex; }
 .who-am-i button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px; display: inline-flex; }
 .who-am-i button:hover { color: var(--text); background: var(--sunken); }
-/* Signed out the bar keeps the test-money chip alone (the honesty label is on every console page); the pages and the person wait. */
 .signed-out .appbar .apptabs, .signed-out .who-am-i { display: none; }
 .signed-out .appbar .wrap { height: 44px; padding-top: 0; align-content: center; }
-/* Signed out, the bar keeps the test-money label (the sign-in's look); signed in, the company switcher says it (26 Nov). */
 .appbar .test { margin-left: 12px; padding: 5px 9px; font-size: 12px; background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 30%, var(--surface)); }
 @media (max-width: 640px) { .appbar .test .tl { display: none; } }
 label.check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; font-size: 14px; line-height: 1.45; }
@@ -113,7 +107,6 @@ label.check input { margin-top: 3px; }
 .table td.r, .table th.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .scroll { overflow-x: auto; }
 .pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 650; background: var(--sunken); color: var(--muted); white-space: nowrap; }
-/* A row's buttons wrap under each other rather than squeeze the role or status beside them (screenshot pass, 9 Nov). */
 .table td.r.acts { white-space: normal; text-align: right; }
 .table td.r.acts .btn { margin: 2px 0; }
 .panel h2.sub-h { margin-top: 22px; }
@@ -140,7 +133,6 @@ img.qr { width: 180px; height: 180px; background: #fff; border-radius: 8px; padd
 .docv .bar2 .btn { margin-left: auto; }
 .expired { max-width: 460px; margin: 10vh auto; text-align: center; }
 
-/* The company this session is in and its Airwallex account (10 Nov: a platform runs several companies). */
 .co { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 460px; flex: 0 1 auto; padding: 3px 11px 3px 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); text-decoration: none; color: var(--text); font: 600 13px/1.2 Inter, system-ui, sans-serif; }
 .co:empty { display: none; }
 .co:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
@@ -155,10 +147,8 @@ img.qr { width: 180px; height: 180px; background: #fff; border-radius: 8px; padd
 .who-am-i { gap: 10px; }
 .btn[hidden] { display: none; }
 @media (max-width: 1499px) { .co .awl { display: none; } }
-/* The person's name sits in the chip's title below 1500 px, so the company's name is never cut short. */
 @media (max-width: 1499px) { .who-am-i #who { display: none; } }
 code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--sunken); color: var(--muted); padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
-/* A status chip stays on one line on a laptop: its column is wide enough for the longest words. */
 @media (min-width: 861px) { .row { grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) 104px 138px 248px minmax(0, 2fr) 18px; } .row .st { white-space: nowrap; } }
 .tile { transition: border-color .15s; }
 .card.list { border-radius: var(--r); }
@@ -166,12 +156,8 @@ code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; ba
 .pft td .pill + .sub { margin-top: 5px; }
 @media (max-width: 900px) { .co .aw .aww { display: none; } .co .aw { padding-left: 6px; } }
 @media (max-width: 640px) { .co { max-width: 50vw; padding-left: 10px; } .co .av { display: none; } .tiles.pf .tile:last-child { grid-column: auto; } }
-/* Below 420 px the chip drops the name's bracketed part ("Northwind Outdoor (demo company)" → "Northwind Outdoor"; the
-   ribbon under it says it is the demo), so the company's own name is read whole (review, 13 Nov). */
 @media (max-width: 419px) { .co .cn .cx { display: none; } .co { max-width: 62vw; } }
-/* A rail's name wraps rather than end in an ellipsis. */
 .trow > .rail { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
-/* The platform's companies as cards on a phone: name and payouts, account and fees, last sync. */
 @media (max-width: 640px) {
   .pfl .scroll { overflow: visible; }
   .pft thead { display: none; }
@@ -186,10 +172,8 @@ code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; ba
   .pft td.pay[data-l] .meter { flex-basis: 100%; max-width: none; margin-top: 2px; }
   .trow > .what { white-space: normal; overflow-wrap: anywhere; }
 }
-/* A tile's label that wraps keeps its icon on its first line. */
 .tile .l { align-items: flex-start; } .tile .l .ic { margin-top: 1px; }
 
-/* Round 2 (10 Nov): denser pages, initials, one-hue bars from the store's own numbers. */
 .appbar .wrap { height: 48px; }
 .av2 { flex: none; width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--accent-soft); color: var(--accent); font: 700 11px/1 Inter, system-ui, sans-serif; letter-spacing: .02em; }
 .row > .sup { display: flex; align-items: center; gap: 10px; }
@@ -241,7 +225,6 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   .table.vat th.sh, .table.vat td.sh { display: none; }
 }
 @media (max-width: 900px) {
-  /* Two rows on a phone or a narrow window: who is signed in and the test-money label; then the pages. */
   .appbar .wrap { height: auto; flex-wrap: wrap; row-gap: 0; padding-top: 8px; }
   .appbar nav.apptabs { order: 9; flex: 1 0 100%; margin: 4px 0 0 -9px; padding-bottom: 6px; }
   .who-am-i #who { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
@@ -249,10 +232,8 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
 @media (max-width: 640px) {
   .who-am-i #who { max-width: 52vw; }
   .who-am-i #who .wc { display: none; }
-  /* 22 Nov: on a phone the pages are the bottom tab bar's five groups (cloud/src/consoleShell.ts), not a grid of words. */
   .auth { margin-top: 3vh; padding: 20px; }
 }
-/* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */
 .drop.eng { position: relative; margin-top: 18px; padding: 12px 14px; }
 .drop.eng .ic { width: 36px; height: 36px; border-radius: 10px; }
 .work { margin-top: 14px; }
@@ -266,10 +247,8 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
 .work details { margin-top: 10px; }
 .work summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
 .work details ol { margin-top: 8px; }
-/* A phone: the drop zone is its words and its button, and a line flows as one sentence after its time and who. */
 @media (max-width: 860px) { .drop.eng > .ic { display: none; } .drop.eng { gap: 10px; } }
 @media (max-width: 640px) { .work li { display: block; line-height: 1.45; } .work li time, .work li b { margin-right: 8px; } }
-/* The payment card on an invoice's page: one sentence or the terms, one button, the fingerprint folded. */
 .note-warn { padding: 10px 13px; border-radius: 12px; font-size: 14px; font-weight: 550; margin: 12px 0 0; background: var(--warn-soft); color: var(--warn); }
 .pay p.lead { margin: 0; font-size: 14px; }
 .pay p { overflow-wrap: anywhere; }
@@ -279,7 +258,6 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
 .pay summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
 .pay details dl.read { margin-top: 10px; }
 .stack > .work { margin-top: 0; }
-/* The proof on a paid invoice: paid, booked, archived, each a result line, its details folded, hashes last. */
 .proof .pb { padding: 14px 0 0; margin-top: 14px; border-top: 1px solid var(--border); }
 .proof .pb:first-of-type { padding-top: 0; margin-top: 0; border-top: 0; }
 .proof p.pr { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin: 0; font-size: 14px; }
@@ -301,17 +279,12 @@ ul.files .fd { display: block; color: var(--muted); font-size: 12.5px; overflow-
 .proof .pages:empty { display: none; }
 .proof a.arch { margin-left: auto; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }
 .proof .pb.wait a.arch { display: inline-block; margin: 8px 0 0; }
-/* The archive's tree: one folder per line, collapsed below the year. */
 .archive details { margin: 4px 0 0 0; }
 .archive details details { margin-left: 14px; }
 .archive summary { color: var(--text); font-size: 14px; }
 .archive ul.files { margin: 6px 0 4px 14px; }
-/* A phone: on an invoice's page what was done and what to do come before the document. */
 @media (max-width: 980px) { .split.inv > .stack { order: -1; } }
 
-/* The polish (12 Nov): a lighter first run and sign-in on the site's tokens: more air, the site's card radius and
-   shadow, a step indicator, the brand colour on the one main button. (The Purser Cloud lockup gave way to the site's
-   header the same day: cloud/src/siteHeader.ts.) */
 .auth { max-width: 480px; margin: 9vh auto 48px; padding: 40px 40px 36px; border-radius: 22px; }
 .auth h1 { font-size: 28px; line-height: 1.2; margin: 0 0 10px; }
 .auth p { line-height: 1.6; margin: 0 0 22px; }
@@ -333,32 +306,22 @@ ol.stepper li.now .n { background: var(--accent); color: #fff; box-shadow: 0 0 0
 ol.stepper li.done .n { background: var(--ok-soft); color: var(--ok); }
 ol.stepper li.done .n .ic { display: inline-flex; }
 .auth p.stepsub { margin: 14px 0 6px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 14px; }
-/* The address field and its domain are one box: its focus ring goes round both, not a line inside. */
 .addr:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 .addr .field:focus { outline: none; }
 .auth .stage { animation: rise .28s ease-out both; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .auth .stage { animation: none; } }
 @media (max-width: 640px) { .auth { margin-top: 4vh; padding: 28px 22px 24px; } .auth h1 { font-size: 24px; } }
-/* Signed out (sign-in, first run, a passkey's enrolment): two zones, as /try's start. The illustration (cloud/src/scene.ts)
-   in a band on the brand's tokens, the card, and the trust line under it. A phone: the band on top, the card below. A wide
-   screen: the band left, the card right, centred. Signed in: neither. Since 13 Nov (owner: the console white and
-   enterprise, clearly not the /try demo) the band is a calm panel, what Purser Cloud is in three lines, not /try's scene. */
 .hero, .trust { display: none; }
 .signed-out .hero { display: grid; flex: 1 0 auto; min-height: 34vh; min-height: 34svh; padding: 16px 12px 44px; }
 .signed-out #foot, .signed-out .foot-awx { display: none; }
-/* "Built on Airwallex" on a phone: signed out, in the app bar's empty left (the site's own line under the header would
-   push the sign-in card below the first screen); signed in, the footer's badge. */
 .awx-app { display: none; }
 @media (max-width: 759px) { body .awx-row { display: none; } .signed-out .awx-app { display: inline-flex; } }
 .signed-out { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
 .signed-out main { position: relative; z-index: 1; margin-top: -28px; padding: 0; }
 .signed-out .auth { margin: 0 auto; border-radius: 16px; }
-.signed-out .trust { display: grid; gap: 2px; margin: auto 0 0; padding: 10px var(--gut, 16px) 12px; text-align: center; color: var(--faint); font-size: 12.5px; line-height: 1.4; } /* partner scan, 14 Nov: room for "No endorsement implied." at 390x844 */
-/* 21 Nov (Max: "it must not cover the footer's Test money only"): Ask Purser's round button keeps the bottom-right
-   corner; signed out, the screen is one screen (no room added below it), and on a phone the trust line ends above it. */
+.signed-out .trust { display: grid; gap: 2px; margin: auto 0 0; padding: 10px var(--gut, 16px) 12px; text-align: center; color: var(--faint); font-size: 12.5px; line-height: 1.4; }
 .signed-out > #pask-space { display: none; }
-/* (the trust line clears the button by its right padding: src signInLook.ts, so it stays on the first phone screen) */
 @media (min-width: 1024px) {
   .signed-out { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 1fr auto auto 1fr; }
   .signed-out header.top { grid-column: 1 / -1; grid-row: 1; }
@@ -368,13 +331,11 @@ ol.stepper li.done .n .ic { display: inline-flex; }
   .signed-out .auth { max-width: 460px; }
   .signed-out .trust { grid-column: 2; grid-row: 5; margin: 0; padding: 18px 40px 0; }
 }
-/* 21 Nov: Settings and Connections stack many cards; each stood flush on the next with no space between. */
 #view > .panel + .panel, #view > .panel + .split2, #view > .split2 + .panel, #view > .note-info + .panel, #view > .panel + .cx-setup-h { margin-top: 16px; }
 #view > .head + .panel { margin-top: 4px; }
 @keyframes cxflash { from { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); } to { box-shadow: var(--shadow); } }
 .flash { animation: cxflash 1.6s ease-out; }
 @media (prefers-reduced-motion: reduce) { .flash { animation: none; outline: 2px solid var(--accent); outline-offset: 2px; } }
-/* Connections (cloud/src/connectionsView.ts): a summary, then one card per connection in a grid, grouped. */
 .cx-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px; margin: 14px 0 6px; }
 .cx-stat { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cx-stat b { font-size: 22px; letter-spacing: -.01em; line-height: 1.15; }
@@ -382,7 +343,6 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 .cx-stat.here { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
 .cx-stat.here b { color: var(--accent); }
 .cx-stat.ok b { color: var(--ok); } .cx-stat.tmoney b { color: var(--accent); } .cx-stat.warn b { color: var(--warn); } .cx-stat.plan b { color: var(--muted); }
-/* Nine tabs (21 Nov): on a laptop the company chip keeps its name and the Airwallex dot; the status words stay in its title. */
 @media (min-width: 901px) and (max-width: 1599px) { .co .aw .aww { display: none; } .co .aw { padding-left: 6px; } }
 .cx-links { margin: 10px 0 0; }
 .cx-jump { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
@@ -397,13 +357,11 @@ li.cx-card.on { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); 
 li.cx-card.planned { border-style: dashed; background: transparent; }
 .cx-top { display: flex; gap: 11px; align-items: flex-start; }
 .cx-mark { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-weight: 750; font-size: 12.5px; letter-spacing: -.01em; background: var(--sunken); color: var(--text); border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
-/* The products' own marks (21 Nov): on a white tile in both themes (their files have no light version), never recoloured. */
 .cx-mark.cx-logos { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 7px; background: #fff; border-color: rgba(16,24,40,.10); }
 .cx-logos img { display: block; width: 24px; height: 24px; object-fit: contain; }
 .cx-logos.n2 { width: 56px; } .cx-logos.n2 img { width: 19px; height: 19px; }
 .cx-logos.n3 { width: 72px; } .cx-logos.n3 img { width: 17px; height: 17px; }
 .cx-logos.wide { width: 84px; padding: 0 9px; } .cx-logos.wide img { width: 100%; height: 24px; }
-/* Visa's drawing is a square with the wordmark across its middle: shown wider, its empty top and bottom cropped. */
 .cx-logos img.k-visa { width: 60px; height: 38px; object-fit: cover; }
 @media (max-width: 640px) { .cx-sum { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .cx-stat { padding: 8px 9px; border-radius: 10px; } .cx-stat b { font-size: 18px; } .cx-stat span { font-size: 11.5px; } }
 .cx-mark.ic-mark { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
@@ -435,7 +393,6 @@ h2.sub-h .cx-n { display: inline-block; margin-left: 8px; padding: 1px 8px; bord
 a.cx-pointer { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--text); }
 a.cx-pointer > div { flex: 1; min-width: 0; } a.cx-pointer p { margin: 2px 0 0; }
 a.cx-pointer:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
-/* Get started (a new company's overview): four steps, each a link. */
 .startc { padding: 18px 20px; margin: 16px 0; }
 .startc .dh h2 { margin: 0; font-size: 17px; } .startc .dh p { margin: 2px 0 0; }
 .st-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; margin-top: 14px; }
@@ -458,7 +415,7 @@ ${siteHeader(null)}
 <span class="who-am-i"><span class="cosw" id="cosw"><a class="co" id="co" href="#/company"></a><button type="button" class="co-more" id="co-more" aria-haspopup="menu" aria-expanded="false" aria-controls="co-menu" aria-label="Switch company" hidden>${svg("chevron-down", 16)}</button><span class="co-menu" id="co-menu" role="menu" aria-label="Switch company" hidden></span></span><span id="who"></span><span id="ask-slot"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <button type="button" class="sbx" id="sbx" aria-pressed="false">${svg("panel-left", 16)}</button>
 <span class="test" id="testchip" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
-<div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><span class="side-mk" aria-hidden="true">${svg("feather", 30)}</span><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><p class="si-st"><i aria-hidden="true"></i><span data-t="cs.side.status">${tr("en", "cs.side.status")}</span></p><ul>${([["cs.side.1", "file-check"], ["cs.side.2", "scan-face"], ["cs.side.3", "database"]] as const).map(([k, i]) => `<li><span class="si">${svg(i, 18)}</span><span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div><canvas class="si-globe" aria-hidden="true"></canvas><canvas class="si-wave" aria-hidden="true"></canvas></div>
+${SIGNIN_HERO}
 <div class="stopbar" id="stopbar" role="status" hidden><div class="wrap"><p>${svg("octagon-x", 16)}<span data-t="cs.stop.bar">${tr("en", "cs.stop.bar")}</span><a href="#/settings?at=estop" data-t="cs.stop.bar_link">${tr("en", "cs.stop.bar_link")}</a></p></div></div>
 <main><div class="ctop"><nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav><div class="demo-ribbon" id="demo" hidden><p class="dr">${svg("flask", 14)}<span class="dr-full" data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><span class="dr-short">${SHELL_WORDS.en.demo_short}</span><a href="#/sign-in" id="demo-out"><span class="lw" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</span><span class="lv">${SHELL_WORDS.en.demo_leave}</span></a></p></div><button type="button" class="kbtn" id="kbtn" aria-haspopup="dialog">${svg("search", 15)}<span class="kt">Search</span><kbd>⌘K</kbd></button></div><div class="wrap subnav-wrap"><nav class="subnav" id="subnav" hidden></nav></div><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
@@ -496,7 +453,8 @@ const btn=(label,cls,icon)=>{const b=el('button','btn'+(cls?' '+cls:''),[icon?ic
 const today=new Date().toISOString().slice(0,10);
 const view=()=>$('#view');
 const note=(text,tone)=>el('p','note-'+(tone||'info'),text);
-const chip=(status,words)=>el('span','st '+String(status||'').replace(/[^a-z_]/g,''),statusWords(status,words));
+const ST_IC={paid:'circle-check',ready:'circle-check',waiting_cfo:'scan-face',needs_vendor:'clock',needs_review:'triangle-alert',blocked:'octagon-x',rejected:'circle-minus'};
+const chip=(status,words)=>el('span','st '+String(status||'').replace(/[^a-z_]/g,''),[ST_IC[status]?ic(ST_IC[status]):null,statusWords(status,words)]);
 const dl=(pairs)=>{const d=el('dl','read');for(const [k,v,cls] of pairs){if(v===null||v===undefined||v==='')continue;d.append(el('dt','',k));const dd=el('dd',cls||'');if(v instanceof Node)dd.append(v);else dd.textContent=String(v);d.append(dd)}return d};
 
 // Base64url and the passkey: WebAuthn hands out ArrayBuffers; the API takes base64url.
@@ -729,7 +687,9 @@ function money(m,emptyWord){const e=byCur(m);if(!e.length)return emptyWord||t('n
 function others(m){const e=byCur(m).slice(1);return e.length?e.map(([c,v])=>cur(c)+' '+cents(v)).join(' · '):''}
 function tile(label,icon,value,extra,tone){const t=el('div','card tile'+(tone?' '+tone:''));const v=el('div','v num');if(value instanceof Node)v.append(value);else v.textContent=value;t.append(el('div','l',[ic(icon),label]),v);if(extra)t.append(el('div','x',extra));return t}
 const initials=(n)=>{const w=String(n||'?').replace(/\([^)]*\)/g,' ').replace(/[^\p{L}\p{N} ]/gu,' ').trim().split(/\s+/).filter(Boolean);return (((w[0]||'?')[0]||'?')+((w[1]||'')[0]||'')).toUpperCase()};
-const av=(n)=>{const a=el('span','av2',initials(n));a.setAttribute('aria-hidden','true');return a};
+// A name's own hue, one of eight (cloud/src/consoleColor.ts), the same name always the same colour.
+const hue=(n)=>{let h=0;for(const c of String(n||''))h=(h*31+c.charCodeAt(0))>>>0;return h%8};
+const av=(n)=>{const a=el('span','av2 m'+hue(n),initials(n));a.setAttribute('aria-hidden','true');return a};
 // A labelled bar in one hue (dataviz rule: one hue, light to dark, every part named with its value, never colour alone).
 function segbar(parts,label,href){const tot=parts.reduce((n,p)=>n+Math.max(0,p.v),0);const bar=el('div','seg');bar.setAttribute('role','img');bar.setAttribute('aria-label',label+': '+parts.map(p=>p.l+' '+p.t).join(', '));
   const at=[];parts.forEach((p,i)=>{if(p.v<=0||!tot)return;const s=el('span','s'+i);s.style.width=(p.v/tot*100).toFixed(2)+'%';bar.append(s);at.push([i,s])});
@@ -787,7 +747,7 @@ function cashChart(D,W){
 function spendBars(D){
   const max=Math.max(1,...D.spend.map(s=>toCents(s.amount)));const tot=D.spend.reduce((n,s)=>n+toCents(s.amount),0)||1;
   const rows=D.spend.map((s,i)=>{const f=el('span','sf');f.style.width=Math.max(1.5,toCents(s.amount)/max*100).toFixed(1)+'%';
-    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t(s.count===1?'cs.dash.n_payments_1':'cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null]),s.parts?el('span','ss sp',t('cs.dash.spend_parts',{inbox:s.parts.inbox.count,inbox_amt:amt(D,toCents(s.parts.inbox.amount)),outside:s.parts.outside.count,outside_amt:amt(D,toCents(s.parts.outside.amount)),fees:amt(D,toCents(s.parts.fees))})):null])});
+    return el('li',s.key==='invoices'?'gi':s.key==='other'?'':'g'+passHue({id:s.key}),[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t(s.count===1?'cs.dash.n_payments_1':'cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null]),s.parts?el('span','ss sp',t('cs.dash.spend_parts',{inbox:s.parts.inbox.count,inbox_amt:amt(D,toCents(s.parts.inbox.amount)),outside:s.parts.outside.count,outside_amt:amt(D,toCents(s.parts.outside.amount)),fees:amt(D,toCents(s.parts.fees))})):null])});
   const ul=el('ul','sbars',rows);
   // Every row answers the pointer across its whole height; supplier invoices open the paid invoices, an agent its record.
   if(rows.length)chartPoint({root:ul,n:rows.length,at:(x,y)=>{let k=0;rows.forEach((r,j)=>{if(y>=r.getBoundingClientRect().top-7)k=j});return k},
@@ -911,7 +871,7 @@ function why(i){const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0
   return ['triangle-alert',f?tk('cs.w.f.'+f.code,t('cs.w.review')):t('cs.w.review'),full]}
 const rowHead=()=>el('div','row th',[el('span','',t('supplier')),el('span','',t('invoice')),el('span','',t('due')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('why')),el('span','')]);
 function invoiceRow(i){
-  const a=el('a','row');a.href='#/invoices/'+encodeURIComponent(i.id);
+  const a=el('a','row s-'+String(i.status||'').replace(/[^a-z_]/g,''));a.href='#/invoices/'+encodeURIComponent(i.id);
   const sup=el('span','sup',[av(i.vendor),el('span','sn',i.vendor||t('unknown_supplier'))]);sup.title=i.vendor||'';
   const no=el('span','no',[i.invoice_no||t('no_number'),el('span','sub',[el('code','idc',i.id)])]);no.title=i.invoice_no||'';
   const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
@@ -929,11 +889,22 @@ async function invoicesView(q,embed){
   const eng=await engineStatus();const write=!!eng&&(await me()).scopes.includes('admin');
   let all=[];let cursor=null;let filter=q&&FILTERS.some(f=>f[0]===q.get('f'))?q.get('f'):'all';
   const list=el('div','card list');const bar=el('div','bar'+(embed?'':' chipsbar'),embed?[el('h2','',t('nav.invoices'))]:[]);const more=btn(t('cs.load_more'));more.hidden=true;
+  // Where the money stands (26 Nov, Max: "more colours ... more details"): waiting for Face ID (violet), to act on
+  // (amber), paid (green), stopped (rose), each its total and count, and one bar of their shares; a cell filters the list.
+  // Amounts only when every invoice is in one currency; counts otherwise.
+  const sum=el('div','isum');
+  function drawSum(){const C=(all[0]||{}).currency,same=all.every((i)=>i.currency===C);
+    const g=[['waiting_cfo','v'],['act','a'],['paid','p'],['blocked','r']].map(([k,c])=>{const xs=all.filter(k==='blocked'?(i)=>['blocked','rejected'].includes(i.status):FILTERS.find((f)=>f[0]===k)[2]);return {k,c,n:xs.length,v:xs.reduce((n,i)=>n+toCents(i.total),0)}}).filter((x)=>x.c!=='r'||x.n);
+    const tot=same?g.reduce((n,x)=>n+x.v,0):0,sb=el('div','isb');sb.setAttribute('aria-hidden','true');
+    for(const x of g)if(x.v>0&&tot){const s=el('span',x.c);s.style.width=(x.v/tot*100).toFixed(2)+'%';sb.append(s)}
+    sum.replaceChildren(...g.map((x)=>{const b=el('button','isc '+x.c,[el('span','isl',[el('i',''),x.c==='r'?t('cs.dash.inv_stopped'):FILTERS.find((f)=>f[0]===x.k)[1],el('span','isn',String(x.n))]),el('b','num',same?cur(C)+' '+cents(x.v):String(x.n))]);b.type='button';
+      b.setAttribute('aria-pressed',String(filter===x.k));b.onclick=()=>{filter=x.c==='r'&&!all.some((i)=>i.status==='blocked')?'rejected':x.k;draw()};return b}),sb)}
   function draw(){
     bar.querySelectorAll('.chip').forEach(c=>c.remove());
     for(const [k,label,fn] of FILTERS){const n=all.filter(fn).length;if(k!=='all'&&!n&&k!=='act')continue;const b=el('button','chip',[label,' ',el('b','',String(n))]);b.type='button';b.setAttribute('aria-pressed',String(filter===k));b.onclick=()=>{filter=k;draw()};bar.append(b)}
     list.replaceChildren();
-    if(!all.length){list.append(el('div','empty',[el('b','',t('no_invoices_yet')),write?t('cs.eng.empty_sub'):t('cs.invoices_empty_sub')]));return}
+    if(!all.length){sum.replaceChildren();list.append(el('div','empty',[el('b','',t('no_invoices_yet')),write?t('cs.eng.empty_sub'):t('cs.invoices_empty_sub')]));return}
+    if(!embed)drawSum();
     const shown=all.filter(FILTERS.find(f=>f[0]===filter)[2]).slice().reverse();
     list.append(rowHead());if(!shown.length)list.append(el('div','empty',[el('b','',t('nothing_here')),t('no_invoice_in_state')]));
     for(const i of shown)list.append(invoiceRow(i));
@@ -947,7 +918,7 @@ async function invoicesView(q,embed){
     reloading=(async()=>{try{do{again=false;gen++;const p=await api('/v1/invoices?limit=200');all=p.items;cursor=p.next_cursor;more.hidden=!cursor;draw()}while(again)}
       catch(e){if(!(e instanceof Expired))list.before(note(e.message,'bad'))}finally{reloading=null}})();
     return reloading}
-  const nodes=[embed?null:head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):ME&&ME.demo?t('cs.demo.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,write?awxBar({reload}):null,eng?workPanel():null,el('section','section',[bar,list,more])].filter(Boolean);
+  const nodes=[embed?null:head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):ME&&ME.demo?t('cs.demo.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,write?awxBar({reload}):null,eng?workPanel():null,el('section','section',[bar,sum,list,more])].filter(Boolean);
   if(embed)embed.replaceChildren(...nodes);else view().replaceChildren(...nodes);
   // An invoice that arrived, was paid or was filed in the archive: the list is read again.
   if(eng)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='ap.received'||e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))reload()};
@@ -1202,14 +1173,14 @@ async function transactionsView(q0){
   async function load(){
     const [s,p]=await Promise.all([api('/v1/transactions/summary?'+q.toString()),api('/v1/transactions?limit=200&'+q.toString())]);
     const tot=s.totals||[];const inn={},out={},fee={};for(const t of tot){inn[t.currency]=Math.round(Number(t.in||0)*100);out[t.currency]=Math.round(Number(t.out||0)*100);if(t.fees)fee[t.currency]=Math.round(Number(t.fees)*100)}
-    tiles.replaceChildren(tile(t('cs.tile.in'),'arrow-down-left',money(inn),others(inn)||null),tile(t('cs.tile.out'),'arrow-up-right',money(out),others(out)||null),tile(t('cs.tile.fees'),'wallet',money(fee),t(ME&&ME.demo?'cs.x.rails_demo':'cs.x.rails')),
+    tiles.replaceChildren(tile(t('cs.tile.in'),'arrow-down-left',money(inn),others(inn)||null,'k-in'),tile(t('cs.tile.out'),'arrow-up-right',money(out),others(out)||null,'k-out'),tile(t('cs.tile.fees'),'wallet',money(fee),t(ME&&ME.demo?'cs.x.rails_demo':'cs.x.rails'),'k-fee'),
       tile(t('tx.tile.unreconciled'),'shield-check',String(s.check.unreconciled),s.check.unreconciled?t('cs.x.look'):t('cs.x.all_match'),s.check.unreconciled?'alert':'calm'),
       tile(t('tx.tile.no_approval'),'octagon-x',String(s.check.without_approval.length),s.check.without_approval.length?t('cs.x.look'):t('cs.x.all_approved'),s.check.without_approval.length?'alert':'calm'));
     list.replaceChildren(el('div','trow th',[el('span','',t('date')),el('span','',t('what')),el('span','',t('rail')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('books')),el('span','')]));
     if(!p.items.length)list.append(el('div','empty',[el('b','',t('cs.no_movements')),t('cs.nothing_matches')]));
-    for(const r of p.items){const b=el('div','trow');
+    for(const r of p.items){const b=el('div','trow '+(r.flow==='in'?'f-in':'f-out')+(r.moved?'':' f-not'));
       const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',cur(r.currency)),'\u00a0'+(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
-      b.append(el('span','when',day(r.at)),el('span','what',[av(r.counterparty||'?'),el('span','wt',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))])]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
+      b.append(el('span','when',day(r.at)),el('span','what',[av(r.counterparty||'?'),el('span','wt',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))])]),el('span','rail '+(/^airwallex/.test(r.rail)?'r-awx':/^metal/.test(r.rail)?'r-metal':''),[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
         el('span','stx',[el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status))]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),tk('rec.'+r.reconciliation,r.reconciliation_words||r.reconciliation))]),el('span',''));
       list.append(b)}
     if(p.next_cursor)list.append(note(t('cs.newest_200')));
@@ -1254,7 +1225,8 @@ function journalTable(items,empty,newest){
   const tbl=el('table','table jt',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
   const es=items.slice().sort((a,b)=>String(a.posting_date).localeCompare(String(b.posting_date))||a.entry_id-b.entry_id);if(newest)es.reverse();
   for(const e of es){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(ACCT[l.account]?' '+ACCT[l.account]:'')+(l.vat_code?' · '+vatWord(l.vat_code):'')),jl(el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),t('cs.debit')),jl(el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):''),t('cs.credit'))]))}
+    // The account's number in its kind's colour (1 assets, 2 liabilities, 3 equity, 4 revenue, 5 to 9 costs).
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',[el('span','acn k'+String(l.account).charAt(0),String(l.account)),(ACCT[l.account]?' '+ACCT[l.account]:'')+(l.vat_code?' · '+vatWord(l.vat_code):'')]),jl(el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),t('cs.debit')),jl(el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):''),t('cs.credit'))]))}
   if(!es.length)tb.append(el('tr','',[el('td','',empty),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);return el('div','scroll',tbl)}
 // The accounting exports (GET /v1/export/csv/{format}/{kind}): files, labelled format exports.
@@ -1885,7 +1857,6 @@ main { padding: 32px 0 72px; }
 table thead th, .tbl thead th { background: var(--sunken); color: var(--muted); font-weight: 600; letter-spacing: .02em; }
 #foot { color: var(--faint); border-top: 1px solid var(--border); padding-top: 18px; }
 .foot-awx { margin-top: 0; padding-bottom: 28px; }
-/* Signed out: a neutral panel beside the card, the Purser mark's colours only. */
 .signed-out { background: var(--bg); }
 .signed-out .hero { background: var(--sunken); border-right: 1px solid var(--border); align-content: center; justify-items: center; }
 .side { max-width: 420px; margin: 0 auto; padding: 8px 4px; }
@@ -1898,18 +1869,14 @@ table thead th, .tbl thead th { background: var(--sunken); color: var(--muted); 
 .signed-out .auth { box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 12px 32px -16px rgba(16, 24, 40, .12); }
 .auth h1 { font-weight: 700; }
 @media (max-width: 1023px) { .signed-out .hero { flex: none; min-height: 0; padding: 20px; border-right: 0; border-bottom: 1px solid var(--border); justify-items: start; } .side { margin: 0; } .side h2 { font-size: 22px; } .side p { margin: 4px 0 0; font-size: 15px; } }
-/* A phone keeps the card and the trust line in the first screen (test/browser/console.check.ts): the panel's list waits for a wider screen. */
 @media (max-width: 640px) { .side ul, .side p { display: none; } .auth .guest { margin-top: 14px; } .auth .guest .gsub { font-size: 12.5px; }
-  /* 13 Nov: the card's lede says what Purser Cloud is (three short lines on a phone); the card is a little tighter to keep the trust line in view. */
   .auth p.what { font-size: 14.5px; line-height: 1.45; margin-bottom: 12px; } .card.auth { padding-top: 20px; padding-bottom: 18px; } .auth h1 { margin-bottom: 6px; } }
-/* Try as guest: under the passkey, after a quiet "or". */
 .auth .guest { margin-top: 18px; display: grid; gap: 8px; }
 .auth .guest .or { display: flex; align-items: center; gap: 12px; color: var(--faint); font-size: 13px; }
 .auth .guest .or::before, .auth .guest .or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 .btn.ghost { background: var(--surface); border-color: var(--border); width: 100%; }
 .btn.ghost:hover { border-color: var(--text); }
 .auth .guest .gsub { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
-/* The demo company's ribbon: on every page while a guest looks around. */
 .claude ol.steps { margin: 12px 0 4px; padding-left: 22px; color: var(--text); font-size: 14px; }
 .claude ol.steps li { margin: 6px 0; }
 .claude .once.url, .claude .once { display: flex; flex-direction: column; gap: 8px; }
@@ -1919,13 +1886,11 @@ table thead th, .tbl thead th { background: var(--sunken); color: var(--muted); 
 .claude ul.tokens li .btn { margin-left: auto; }
 .claude p.others { margin-top: 10px; } .claude p.others a { display: inline-block; padding: 12px 0; font-weight: 600; }
 .signed-out .demo-ribbon { display: none; }
-/* The CFO's emergency stop: its banner on every page while it is on, and its red button in Settings. */
 .stopbar { background: var(--bad); color: #fff; font-size: 14px; font-weight: 600; }
 .stopbar[hidden], .signed-out .stopbar { display: none; }
 .stopbar p { display: flex; align-items: center; gap: 10px; margin: 0; min-height: 44px; padding: 6px 0; line-height: 1.4; }
 .stopbar span { flex: 1; } .stopbar a { color: #fff; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
 .estop .btn.danger.solid { background: var(--bad); border-color: var(--bad); color: #fff; }
-/* The start screen's dashboard (GET /v1/dashboard). */
 .dash { display: grid; gap: 16px; margin: 4px 0 32px; }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 @media (max-width: 980px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
@@ -1936,7 +1901,6 @@ table thead th, .tbl thead th { background: var(--sunken); color: var(--muted); 
 .kpi.pos .kl .ic { background: var(--ok-soft); color: var(--ok); } .kpi.neg .kl .ic { background: var(--bad-soft); color: var(--bad); }
 .kpi .ks { font-size: 12.5px; color: var(--faint); line-height: 1.35; }
 @media (max-width: 520px) { .kpi { padding: 14px; } .kpi b { font-size: 20px; } }
-/* 21 Nov: at 360 to 400 px a two-column figure ("EUR 9,226.92") fits whole instead of ending in an ellipsis. */
 @media (max-width: 400px) { .kpis .kpi { padding: 12px; } .kpis .kpi b { font-size: 17px; letter-spacing: -.025em; } }
 .dgrid { display: grid; gap: 16px; }
 @media (min-width: 980px) { .dgrid.g1 { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); } .dgrid.g2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
@@ -1976,7 +1940,6 @@ svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint)
 .sbars .sf { display: block; height: 100%; border-radius: 999px; background: var(--accent); transform-origin: left center; }
 .sbars li:first-child .sf { background: var(--text); }
 .sbars .ss { font-size: 12.5px; color: var(--faint); } .sbars .dec { color: var(--bad); }
-/* The breakdown of a bar on its own line, never run into the count before it (jury round 2, 13 Nov). */
 .sbars .ss.sp { display: block; margin-top: 2px; }
 .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 0 28px; }
 @media (min-width: 980px) { .feed { grid-template-columns: 1fr 1fr; } }
@@ -1987,7 +1950,6 @@ svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint)
 .feed .fw time { color: var(--faint); white-space: nowrap; }
 .feed p { margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: var(--text); overflow-wrap: anywhere; }
 @media (max-width: 979px) { .feed li:nth-child(n+9) { display: none; } }
-/* Every part is in place within 800 ms of coming into view (jury, 13 Nov: still moving after 2.5 s at 390 px). */
 @media (prefers-reduced-motion: no-preference) {
   .rise { opacity: 0; transform: translateY(8px); transition: opacity .35s ease, transform .35s ease; }
   .rise.in { opacity: 1; transform: none; }
@@ -2004,7 +1966,6 @@ svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint)
   .rise.in svg.ring .seg { opacity: 1; }
   @keyframes drawline { to { stroke-dashoffset: 0; } }
 }
-/* Enterprise pass (13 Nov): what Purser Cloud is, the Agents and Tokenisation tabs, Invoices & books. */
 .auth p.what { color: var(--text); }
 .agents { display: grid; gap: 16px; margin: 0 0 16px; }
 .card.agent { padding: 20px; }
@@ -2073,7 +2034,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_PREMIUM_CSS}${SIGNIN_CSS}${OVERVIEW_PLUS_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_PREMIUM_CSS}${SIGNIN_CSS}${OVERVIEW_PLUS_CSS}${COLOR_CSS}</style></head><body class="signed-out">
 ${BODY}
 ${CARD_ART_DEFS}
 <script type="module" nonce="${n}">${script}

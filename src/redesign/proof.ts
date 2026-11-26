@@ -43,6 +43,7 @@ import { EVIDENCE_WALL_CSS, PROOF_INDEX_DOC, committedWall } from "./evidenceWal
 import { FLOW_CSS, FLOW_JS, flowHtml } from "./proofFlow.js";
 import { PROOF_QUESTIONS_CSS, PROOF_QUESTIONS_JS, placeTiles, questionHtml, questionNavHtml, type QExtras, type QuestionId } from "./proofQuestions.js";
 import { PROOF_TOP_CSS, PROOF_WAVE_JS, archHtml, proofHeroHtml } from "./proofArch.js";
+import { CHAIN_CHECK_CSS, CHAIN_CHECK_JS, CHAIN_CHECK_TITLE, chainCheckHtml, chainChecks } from "./chainCheck.js";
 import { PROOF_CHARTS_CSS, chartHtml, coverageChart, evalChart, liveRunsChart, redTeamChart, refusalsChart } from "./proofCharts.js";
 import { ASSET_VERSIONS, versioned, type VersionedAsset } from "../ui/assetVersions.js";
 
@@ -737,7 +738,9 @@ export function proofPage(run: AgentRun = agentRun()): string {
     "q-verify": {
       lead: verifyCalloutHtml(),
       after: commandsHtml(),
-      folds: [deep("Check a signature yourself, in this browser", checkItYourself(), "check-signature")],
+      // 26 Nov: the Alta testnet transactions the records name, read from the chain now and compared with the repo
+      // (src/redesign/chainCheck.ts; the read goes through this site, worker/src/altaTx.ts).
+      folds: [deep("Check a signature yourself, in this browser", checkItYourself(), "check-signature"), deep(`${CHAIN_CHECK_TITLE}: Alta testnet, read now`, chainCheckHtml(chainChecks(r, run.file)), "check-chain")],
       history: olderReports.length ? [`<ul class="pq-list">${olderReports.map((f) => `<li data-rec="docs/evidence/${esc(f)}">${esc("An earlier verify-all report, kept as written:")} <a class="pf" href="${esc(`${REPO_BLOB}docs/evidence/${f.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">${esc(f.replace(/\.json$/, ".md"))}&nbsp;↗</a></li>`).join("")}</ul>`] : [],
     },
   };
@@ -761,7 +764,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: PROOF_DESCRIPTION, tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS + PFACTS_CSS + EVIDENCE_WALL_CSS + FLOW_CSS + PROOF_QUESTIONS_CSS + PROOF_CHARTS_CSS + COMMANDS_CSS + PROOF_TOP_CSS, body, js: `${JS}\n${FLOW_JS}\n${PROOF_QUESTIONS_JS}\n${PROOF_WAVE_JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
+    title: "Purser · Proof", description: PROOF_DESCRIPTION, tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS + PFACTS_CSS + EVIDENCE_WALL_CSS + FLOW_CSS + PROOF_QUESTIONS_CSS + PROOF_CHARTS_CSS + COMMANDS_CSS + PROOF_TOP_CSS + CHAIN_CHECK_CSS, body, js: `${JS}\n${FLOW_JS}\n${PROOF_QUESTIONS_JS}\n${PROOF_WAVE_JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}\n${CHAIN_CHECK_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

@@ -1,21 +1,34 @@
+<div align="center">
+
+<a href="README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/purser-mark-dark.svg"><img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Security
+
+**How to report a vulnerability in Purser privately, how fast you hear back, and what is in scope.**
+
+[![Report privately: GitHub advisory](https://img.shields.io/badge/report_privately-GitHub_advisory-dc2626?style=flat-square&labelColor=1f2937)](https://github.com/agamemnon-coder/x402-business-agents/security/advisories/new)&nbsp;[![Acknowledged: within 3 working days](https://img.shields.io/badge/acknowledged-within_3_working_days-16a34a?style=flat-square&labelColor=1f2937)](#disclosure-timeline)&nbsp;[![Disclosure: within 90 days](https://img.shields.io/badge/disclosure-within_90_days-2563eb?style=flat-square&labelColor=1f2937)](#disclosure-timeline)&nbsp;[![Supported: main and the latest release](https://img.shields.io/badge/supported-main_%C2%B7_latest_release-7c3aed?style=flat-square&labelColor=1f2937)](#supported-versions)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](#scope)
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql)&nbsp;[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/agamemnon-coder/x402-business-agents/badge)](https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents)&nbsp;[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)&nbsp;[![Secrets: gitleaks on every push](https://img.shields.io/badge/secrets-gitleaks_on_every_push-16a34a?style=flat-square&labelColor=1f2937)](#no-secrets-in-this-repository)
+
+[Report](#reporting-a-vulnerability) · [Timeline](#disclosure-timeline) · [Handling](#how-a-report-is-handled) · [Supported versions](#supported-versions) · [Scope](#scope) · [Trust boundaries](#trust-boundaries-and-the-money-path) · [Credit](#credit) · [Threat model](docs/security.md)
+
+</div>
 
 This is a hackathon project that only uses test money (Alta (formerly Metal) testnet, the Airwallex sandbox). Please do not test
 against the hosted relay with real credentials.
+
+> [!CAUTION]
+> **Never report a vulnerability in a public issue, pull request or discussion.** Use GitHub's private form below.
 
 ## Reporting a vulnerability
 
 Please report privately, never in a public issue, pull request or discussion.
 
-- **GitHub private vulnerability reporting** (enabled on this repository; the preferred way):
-  https://github.com/agamemnon-coder/x402-business-agents/security/advisories/new
-  (on the repository: Security → Advisories → Report a vulnerability). Only you and the maintainer see the report, and
-  the fix is prepared in the advisory's private fork.
-- If you cannot use GitHub's form, contact the maintainer through their GitHub profile,
-  https://github.com/agamemnon-coder, and ask for a private channel; do not put the details in a public place.
-- The same contact, machine-readable, is in `/.well-known/security.txt` on the relay
-  (https://kit11.max-31b.workers.dev/.well-known/security.txt). Published advisories:
-  https://github.com/agamemnon-coder/x402-business-agents/security/advisories
+| Channel | How |
+|---|---|
+| **GitHub private vulnerability reporting** (enabled on this repository; the preferred way) | https://github.com/agamemnon-coder/x402-business-agents/security/advisories/new (on the repository: Security → Advisories → Report a vulnerability). Only you and the maintainer see the report, and the fix is prepared in the advisory's private fork. |
+| If you cannot use GitHub's form | Contact the maintainer through their GitHub profile, https://github.com/agamemnon-coder, and ask for a private channel; do not put the details in a public place. |
+| Machine-readable | The same contact is in `/.well-known/security.txt` on the relay (https://kit11.max-31b.workers.dev/.well-known/security.txt). Published advisories: https://github.com/agamemnon-coder/x402-business-agents/security/advisories |
 
 Please include what is affected (the route, file or commit), how to reproduce it, and what an attacker gains. Test money
 only: do not use real credentials, and do not test against partners' systems (see Scope).
@@ -34,6 +47,16 @@ after 90 days if we have stopped answering.
 
 ## How a report is handled
 
+```mermaid
+flowchart LR
+  R["You report privately<br/>GitHub private<br/>vulnerability reporting"] --> A1["1 · Acknowledge<br/>within 3 working days"]
+  A1 --> A2["2 · Assess<br/>within 10 working days:<br/>in scope? how severe?"]
+  A2 --> A3["3 · Fix in private<br/>in the advisory's private fork,<br/>a regression test that<br/>fails before the fix"]
+  A3 --> A4["4 · Release<br/>a PATCH release; the test<br/>preview redeployed if affected"]
+  A4 --> A5["5 · Disclose<br/>the advisory published,<br/>normally within 90 days"]
+  A5 --> C["Credit<br/>in the advisory and<br/>the release notes"]
+```
+
 1. **Acknowledge** within 3 working days, in the advisory (or by e-mail), with who is looking at it.
 2. **Assess**: reproduce it, decide whether it is in scope, and rate it (CVSS where it helps), together with the
    reporter. The reporter hears the outcome either way.
@@ -44,6 +67,73 @@ after 90 days if we have stopped answering.
    ([docs/releasing.md](docs/releasing.md)) whose notes name the advisory.
 5. **Disclose**: publish the GitHub security advisory (with a CVE requested through GitHub when the issue affects
    users), normally within 90 days of the report or sooner once the fix is out, at a date agreed with the reporter.
+
+## Supported versions
+
+| Version | Gets security fixes |
+|---|---|
+| `main` | ✅ Yes |
+| The latest release ([docs/releases/](docs/releases/)) | ✅ Yes ([docs/releasing.md](docs/releasing.md#supported-versions-and-upgrading)) |
+| Older releases | ❌ No: upgrade to the latest release |
+| The submission tags `v1.0-submission` and `v1.1-submission` | ❌ No: the hackathon submissions |
+
+Supported: `main`. There are no other release branches. The submission tags are lightweight tags on GitHub, each naming a commit: `v1.0-submission` names `b704672c0` (8 November) and `v1.1-submission` names `a1807f2ef` (15 November, the merge of #400). An earlier annotated `v1.1-submission` tag made on the maintainer's machine named `c431a4689` (also 15 November, #358); it is not the tag on GitHub. Release tags: see [docs/releasing.md](docs/releasing.md) (only `v1.4.0` is signed).
+
+## Scope
+
+| ✅ In scope | ❌ Out of scope |
+|---|---|
+| The relay Worker (`worker/`): the site, `/try/sign`, and the relay's Durable Object that carries proposals and approvals | The partners' own systems (the Airwallex sandbox, Alta testnet, Airi, T:0, Moneybird): report those to them |
+| Purser Cloud (`cloud/`): the console, its API, its engine, and the MCP server at `/mcp` (read and propose only: no tool can approve or pay) | Denial of service against the hosted test preview |
+| The passkey approval flow, the policy and money executors (`src/policy`, `src/executors`), and the hash-chained audit log with its on-chain anchor (`src/audit`, `src/anchor`) | Anything that needs a real person's device or account |
+| The TAP merchant layer (`src/visa`) | |
+
+The threat model is [docs/security.md](docs/security.md); the controls are [docs/controls.md](docs/controls.md).
+
+## Trust boundaries and the money path
+
+What a report is measured against: an agent's payment crosses these boundaries, and Purser's checks, the CFO's
+passkey, the executor's re-check and the rails' own limits can each stop it. A summary of
+the full diagram in [docs/security.md](docs/security.md#trust-boundaries), where each arrow says what crosses and what
+checks it.
+
+```mermaid
+flowchart LR
+  subgraph U["Untrusted"]
+    IN["Invoices, emails, x402 servers,<br/>visitors, outside agents"]
+    CL["Claude<br/>no key, fixed tools"]
+    W["Relay Worker<br/>queues proposals and approvals"]
+  end
+  subgraph T["Trusted: the runner"]
+    CK["Purser's checks in code<br/>limits, payee, duplicates,<br/>the CFO's emergency stop"]
+    EX["Executor<br/>re-checks the approved terms' hash<br/>and the passkey signature"]
+    LOG["Hash-chained audit log<br/>anchored on Alta testnet"]
+  end
+  subgraph P["The CFO's phone"]
+    PK["Passkey, Face ID<br/>signs the SHA-256<br/>of the exact terms"]
+  end
+  subgraph Q["The rails, each with its own limits"]
+    AW["Airwallex sandbox"]
+    AL["Alta testnet"]
+    VI["Visa via Airwallex's Airi<br/>sandbox"]
+  end
+  IN -- "data, never instructions" --> CK
+  CL -- "typed answers, checked by code" --> CK
+  CK -- "within the limits" --> EX
+  CK -- "above a limit: the exact terms" --> W
+  W --> PK
+  PK -- "signature over the terms' hash" --> W
+  W -- "verified on the runner" --> EX
+  EX -- "one cent changed" --> X["Refused.<br/>Nothing paid."]
+  EX -- "terms match" --> AW & AL & VI
+  EX --> LOG
+```
+
+> [!NOTE]
+> The CFO's emergency stop ran live for payments on the Airwallex sandbox on 26 November: a signed stop held a supplier
+> payout at the rail with no create sent, and lifting it took the passkey (a virtual test passkey;
+> [record](docs/runs/2026-11-26-stop-at-rail-live.md)). Freezing every card on a stop is tested against stand-ins only
+> ([docs/claims.md](docs/claims.md)).
 
 ## Credit
 
@@ -57,27 +147,21 @@ release notes, unless they ask to stay anonymous. Resolved reports, with their c
 The reviews and sweeps the project ran itself (the security reviews of 1, 8 and 13 November, the sweeps of
 15 November) are in [docs/security.md](docs/security.md) and their tests; they were not outside reports.
 
-## Scope
-
-In scope:
-
-- the relay Worker (`worker/`): the site, `/try/sign`, and the relay's Durable Object that carries proposals and approvals;
-- Purser Cloud (`cloud/`): the console, its API, its engine, and the MCP server at `/mcp` (read and propose only: no
-  tool can approve or pay);
-- the passkey approval flow, the policy and money executors (`src/policy`, `src/executors`), and the hash-chained audit
-  log with its on-chain anchor (`src/audit`, `src/anchor`);
-- the TAP merchant layer (`src/visa`).
-
-Out of scope: the partners' own systems (the Airwallex sandbox, Alta testnet, Airi, T:0, Moneybird): report those to
-them. Denial of service against the hosted test preview, and anything that needs a real person's device or account.
-
-Supported: `main`. There are no other release branches. The submission tags are lightweight tags on GitHub, each naming a commit: `v1.0-submission` names `b704672c0` (8 November) and `v1.1-submission` names `a1807f2ef` (15 November, the merge of #400). An earlier annotated `v1.1-submission` tag made on the maintainer's machine named `c431a4689` (also 15 November, #358); it is not the tag on GitHub. Release tags: see [docs/releasing.md](docs/releasing.md) (only `v1.4.0` is signed).
-
-The threat model is [docs/security.md](docs/security.md); the controls are [docs/controls.md](docs/controls.md).
-
 ## No secrets in this repository
 
 No key, token, password or environment value is committed: gitleaks scans every push and the whole history of the
 commit under check (CI job `secrets`), and its accepted false positives are listed by fingerprint, each with the reason,
 in `.gitleaksignore`. Live runs read their keys from the environment or a proxy, never from a file in the repository;
 `.env.example` lists variable names only. If you find a secret here, report it privately as above.
+
+<details><summary><b>Where to read more</b></summary>
+
+| Document | What it holds |
+|---|---|
+| [docs/security.md](docs/security.md) | The threat model: what we protect, the attackers and attacks, what stops each one, the accepted risks |
+| [docs/controls.md](docs/controls.md) | Every control, how it works, and its evidence |
+| [docs/security/README.md](docs/security/README.md) | The security artefacts: the software bill of materials, the supply-chain and static-analysis checks, how to verify a release |
+| [docs/assurance.md](docs/assurance.md) | The assurance case: each invariant about money, the function that enforces it, its tests |
+| [GOVERNANCE.md](GOVERNANCE.md) | Who holds the security response role |
+
+</details>
