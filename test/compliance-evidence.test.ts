@@ -18,7 +18,9 @@ import { complianceWorld, NOVEMBER, type ComplianceWorld } from "./support/compl
 const key = generateKeyPairSync("ed25519").privateKey;
 const pub = rawPublicKey(key);
 const other = rawPublicKey(generateKeyPairSync("ed25519").privateKey);
-const failed = (r: PackResult) => Object.fromEntries(r.checks.filter((c) => !c.ok).map((c) => [c.check, c.detail]));
+// The checks that failed; a check that could not be made (no audit pack given) is not checked, not failed: see notChecked.
+const failed = (r: PackResult) => Object.fromEntries(r.checks.filter((c) => !c.ok && !c.not_checked).map((c) => [c.check, c.detail]));
+const notChecked = (r: PackResult) => r.checks.filter((c) => c.not_checked).map((c) => c.check);
 const control = (ev: ComplianceEvidence, id: string) => JSON.parse(ev.files[`controls/${id}.json`]!) as ControlEvidence;
 const byEvent = (ev: ComplianceEvidence, id: string) => control(ev, id).audit?.by_event;
 
@@ -121,10 +123,18 @@ describe("compliance evidence", () => {
     expect(failed(r)).toEqual({});
     expect(r.ok).toBe(true);
     expect(r.checks.map((c) => c.check)).toEqual(expect.arrayContaining(["format", "signature", "key", "files", "summary", "audit pack", "cited rows"]));
-    // Without the pack it still verifies, and says the rows were not checked against the chain.
+    // Without the pack it is not valid, only partial: the cited rows were not checked against the chain.
     const alone = verifyComplianceEvidence(ev.files, { trusted: [pub] });
-    expect(alone.ok).toBe(true);
-    expect(alone.checks.find((c) => c.check === "cited rows")?.detail).toMatch(/no audit pack/);
+    expect(alone.ok).toBe(false);
+    expect(alone.incomplete).toBe(true);
+    expect(failed(alone)).toEqual({});
+    expect(notChecked(alone)).toEqual(["cited rows"]);
+    expect(alone.checks.find((c) => c.check === "cited rows")).toMatchObject({ ok: false, detail: expect.stringMatching(/^not checked: no audit pack/) });
+    // No pinned key: not valid either, whatever else passes.
+    const loose = verifyComplianceEvidence(ev.files, { auditPack: JSON.parse(JSON.stringify(pack)) });
+    expect(loose.ok).toBe(false);
+    expect(notChecked(loose)).toEqual(["key"]);
+    expect(loose.checks.find((c) => c.check === "key")?.detail).toMatch(/^UNPINNED: .*pass --trust <public key>/);
     // Another key: refused.
     expect(failed(verifyComplianceEvidence(ev.files, { trusted: [other] }))).toEqual({ key: expect.stringMatching(/not a pinned key/) });
   });
@@ -160,6 +170,10 @@ describe("compliance evidence", () => {
     // A pack of another period, or one changed, is refused as the pack.
     const october = buildAuditPack(world.db, { from: "2026-10-01", to: "2026-10-31" }, { key });
     expect(failed(verifyComplianceEvidence(ev.files, { trusted: [pub], auditPack: october }))["audit pack"]).toMatch(/period 2026-10-01 \.\. 2026-10-31.*2026-11-01 \.\. 2026-11-30/);
+    // An audit pack signed by another key, even one pinned too, is not the evidence's: the same signer or no proof.
+    const theirs = generateKeyPairSync("ed25519").privateKey;
+    const foreign = buildAuditPack(world.db, NOVEMBER, { key: theirs });
+    expect(failed(verifyComplianceEvidence(ev.files, { trusted: [pub, rawPublicKey(theirs)], auditPack: foreign }))["audit pack"]).toMatch(/signed by key .*; the evidence by key .*: not the same signer/);
     const changed = JSON.parse(JSON.stringify(pack)) as AuditPack;
     changed.sections.audit_rows[0]!.actor = "someone";
     expect(failed(verifyComplianceEvidence(ev.files, { trusted: [pub], auditPack: changed }))["audit pack"]).toMatch(/does not verify/);
@@ -206,11 +220,20 @@ describe("the commands (npm run compliance-evidence, verify-compliance-evidence)
     expect(cli("auditPack.ts", ["--from", "2026-11-01", "--to", "2026-11-30", "--out", packFile], env).code).toBe(0);
     const ok = cli("verifyComplianceEvidence.ts", [out, "--trust", pub, "--audit-pack", packFile], {});
     expect(ok.code, ok.out).toBe(0);
-    expect(ok.out).toMatch(/VALID/);
+    expect(ok.out).toMatch(/^VALID: /m);
     // Made again: the same files.
     const again = join(dir, "again");
     expect(cli("complianceEvidence.ts", ["--from", "2026-11-01", "--to", "2026-11-30", "--out", again], env).code).toBe(0);
     expect(readComplianceEvidence(again)).toEqual(readComplianceEvidence(out));
+    // No audit pack: partial, exit 3, never VALID. No pinned key: UNPINNED, exit 3.
+    const partial = cli("verifyComplianceEvidence.ts", [out, "--trust", pub], {});
+    expect(partial.code, partial.out).toBe(3);
+    expect(partial.out).toMatch(/^PARTIAL: .*--audit-pack/m);
+    expect(partial.out).not.toMatch(/^VALID/m);
+    const unpinned = cli("verifyComplianceEvidence.ts", [out, "--audit-pack", packFile], { PURSER_CHECKPOINT_TRUST: "", PURSER_CHECKPOINT_KEY_FILE: "", PURSER_CHECKPOINT_KEY: "" });
+    expect(unpinned.code, unpinned.out).toBe(3);
+    expect(unpinned.out).toMatch(/^UNPINNED: pass --trust <public key>/m);
+    expect(unpinned.out).not.toMatch(/^VALID/m);
     // One changed byte: exit 1, naming the file.
     const f = join(out, "controls", "PC-01.json");
     writeFileSync(f, readFileSync(f, "utf8").replace('"rows": ', '"rows": 1'));
