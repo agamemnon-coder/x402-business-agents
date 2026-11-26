@@ -96,6 +96,14 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`per month ${monthly.map((n) => n.toFixed(2)).join(", ").replace(/, ([^,]+)$/, " and $1")} EUR; per purchase ${perTx.map((n) => n.toFixed(2)).join(", ").replace(/, ([^,]+)$/, " and $1")} EUR`);
   });
 
+  it("docs/kit11.md: the mandates chart is the table's first row", () => {
+    const md = read("docs/kit11.md");
+    const m = /a mandate each for Sourcing \(0\.03 a purchase, ([\d.]+) in all\), Support \(([\d.]+)\) and Treasury \(([\d.]+)\)/.exec(md)!;
+    const [s, u, t] = [m[1]!, m[2]!, m[3]!];
+    expect(md).toContain(`  bar [${[s, u, t].map(Number).join(", ")}]\n`);
+    expect(md).toContain(`Sourcing ${s} in all (0.03 a purchase), Support ${u}, Treasury ${t}.`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
