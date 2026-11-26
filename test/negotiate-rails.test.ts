@@ -8,7 +8,8 @@ import { HAIKU } from "../src/try/claude.js";
 import { termsHash, type Terms } from "../src/lib/terms.js";
 import { actionBudget, claudeSpeak, costMicros, NEGOTIATE_MODEL, TurnFailed, worstMicros } from "../src/negotiate/claude.js";
 import { CHANGED_IBAN, MAX_TURNS, negotiate, recordedNegotiation, sceneFromInvoice, sceneOf, TURN_MAX_TOKENS, type AgentAnswer, type Speak } from "../src/negotiate/negotiate.js";
-import { agreedInvoiceNo, agreementOf, isAccountOnFile, agreementSha256, asksNewAccount, boundsOf, canonicalAgreement, checkTurn, foreignIbans, signedMatches } from "../src/negotiate/rails.js";
+import { agreedInvoiceNo, agreementOf, isAccountOnFile, agreementSha256, asksNewAccount, boundsOf, canonicalAgreement, checkTurn, foreignIbans } from "../src/negotiate/rails.js";
+import * as rails from "../src/negotiate/rails.js";
 
 const TODAY = "2026-11-15";
 const scene = sceneOf(TODAY);
@@ -93,12 +94,13 @@ describe("the agreement and its hash", () => {
     expect(() => agreementOf(scene, { amount: "1850.01", pay_by: ok.pay_by }, TODAY)).toThrow(/max_amount/);
     expect(() => agreementOf(scene, { amount: ok.amount, pay_by: "2027-01-30" }, TODAY)).toThrow(/pay_by_window/);
   });
-  it("names itself in the signed payment's reference; one changed cent in the signed terms no longer matches, and their hash changes", () => {
+  it("names itself in the signed payment's reference; one changed cent in the signed terms changes their hash", () => {
     const ref = agreedInvoiceNo(scene, sha);
     expect(ref).toBe(`BTX-2026-25-${sha.slice(0, 8)}`);
     expect(ref.length).toBeLessThanOrEqual(32);
-    expect(signedMatches(a, sha, { amount: "1813.00", invoice_no: `${ref} · Bergtex Textil GmbH`, reference: ref }, scene)).toBe(true);
-    expect(signedMatches(a, sha, { amount: "1813.01", invoice_no: `${ref} · Bergtex Textil GmbH`, reference: ref }, scene)).toBe(false);
+    // 26 Nov review: signedMatches said it checked the pay-by day and did not, and nothing used it: gone. The signed terms
+    // name the agreement by its reference; the route checks the agreement itself (cloud/src/try/negotiateRoutes.ts).
+    expect("signedMatches" in rails).toBe(false);
     const t = { schema: "kit11.approval-terms/v1", kind: "invoice_payment", proposal_id: "P-1", expires_at: "2026-11-15T12:00:00Z", amount: "1813.00", reference: ref } as Terms;
     expect(termsHash({ ...t, amount: "1813.01" })).not.toBe(termsHash(t));
   });

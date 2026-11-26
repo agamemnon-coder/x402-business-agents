@@ -11,8 +11,10 @@
 // (WebCrypto), so the scheme is reimplemented here and test/negotiate-offers.test.ts holds the two byte for byte (an
 // Ed25519 signature is deterministic: the same key and envelope give the same signature through either).
 // Purser's Sourcing agent signs with a key made for the negotiation. The supplier's agent is simulated: its key is
-// made by the simulation, and every place that shows it says so. Public keys go out with the negotiation; the page
-// checks every signature in the visitor's browser.
+// made by the simulation, and every place that shows it says so. Public keys go out with the negotiation, so anyone
+// holding the downloaded negotiation can check every signature (verifyOffer, chained); the server checks the whole chain
+// when the agreed terms are filed (chainProblem, cloud/src/try/negotiateRoutes.ts /agreed) and refuses a broken one. The
+// page itself does not check them in the browser.
 import { createHash } from "node:crypto";
 import { jcs, type Json, type JsonObject } from "@metalntwx/metal-pay/mandates";
 import { sha256Hex } from "../lib/terms.js";
@@ -85,6 +87,26 @@ export async function verifyOffer(offer: Offer, s: OfferSignature, key: AgentKey
 
 /** Whether offers form one chain: each names the one before it, the first none. */
 export const chained = (offers: Offer[]): boolean => offers.every((o, i) => o.prev === (i === 0 ? null : offerSha256(offers[i - 1]!)) && o.n === String(i + 1));
+
+/** One offer as the negotiation answers it: the offer and its agent's signature. */
+export interface SignedOffer { offer: Offer; signature: OfferSignature }
+
+/**
+ * Why signed offers are not one unbroken chain of this negotiation, each signed by its agent's key and the last the one
+ * the agreement names (`head`, its transcript_sha256), or null when they are.
+ */
+export async function chainProblem(x: { offers: SignedOffer[]; keys: { sourcing: AgentKey; supplier: AgentKey }; head: string; invoice_no: string }): Promise<string | null> {
+  const list = x.offers.map((s) => s.offer);
+  if (!list.length) return "no offers";
+  if (!chained(list)) return "the offers do not form one chain: an offer is missing, out of order or changed";
+  for (const [i, s] of x.offers.entries()) {
+    if (s.offer.schema !== OFFER_SCHEMA || s.offer.negotiation !== list[0]!.negotiation || s.offer.invoice_no !== x.invoice_no) return `offer ${i + 1} is not of this negotiation`;
+    const key = s.offer.from === "sourcing" ? x.keys.sourcing : s.offer.from === "supplier" ? x.keys.supplier : undefined;
+    if (!key || !(await verifyOffer(s.offer, s.signature, key))) return `offer ${i + 1}'s signature does not verify with the ${String(s.offer.from)} agent's key`;
+  }
+  if (offerSha256(list.at(-1)!) !== x.head) return "the last offer is not the one the agreement names";
+  return null;
+}
 
 /**
  * The agreed deal written in the style of the Agent Payments Protocol's intent and cart mandates, as a reading aid

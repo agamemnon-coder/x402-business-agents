@@ -197,7 +197,11 @@ export interface InvoiceView {
 }
 
 /** What a negotiation agreed, as the hands-on demo's route hands it to the engine (EngineHost.negotiated). */
-export interface NegotiatedFacts { original_id: string | null; original_invoice_no: string; original_amount: string; agreement_sha256: string; turns: number }
+export interface NegotiatedFacts {
+  original_id: string | null; original_invoice_no: string; original_amount: string; agreement_sha256: string; turns: number;
+  /** The agreement's canonical JSON (its SHA-256 is agreement_sha256), every signed offer's SHA-256 in order, and the agents' key ids: kept with the proof. */
+  agreement?: string; offers?: string[]; keys?: { sourcing: string; supplier: string };
+}
 
 /** The checks examine() (src/ap/checkerCore.ts) ran on an invoice that left no finding: InvoiceView.checks_passed. */
 function checksPassed(inv: ApInvoiceRow): NonNullable<InvoiceView["checks_passed"]> {
@@ -1079,40 +1083,104 @@ export class EngineHost {
    * the original plus the agreement's reference, for less, ready to pay; never an original that is paid, signed or gone.
    */
   negotiated(replacementId: string, n: NegotiatedFacts): Promise<{ ok: true; invoice: InvoiceView; superseded: InvoiceView | null } | { ok: false; reason: string }> {
+    return this.act(async () => this.recordNegotiated(replacementId, n));
+  }
+
+  /** Why `o` cannot be replaced by a negotiation's agreed invoice, or null when it can (open, its payment not signed). */
+  private notReplaceable(o: ApInvoiceRow, n: NegotiatedFacts): string | null {
+    const c = (x: string) => Math.round(Number(x) * 100);
+    if (!["ready", "waiting_cfo"].includes(o.status)) return `${o.id} is ${o.status.replace(/_/g, " ")}; only an open invoice can be replaced`;
+    if (c(o.total) !== c(n.original_amount)) return `${o.id} is not the invoice of this negotiation`;
+    const p = o.proposal_id ? this.deps.db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(o.proposal_id) as { status: string } | undefined : undefined;
+    if (p && p.status !== "PENDING_APPROVAL" && p.status !== "SUPERSEDED") return `${o.id}'s payment is ${p.status.toLowerCase().replace(/_/g, " ")}; it cannot be replaced`;
+    return null;
+  }
+
+  private recordNegotiated(replacementId: string, n: NegotiatedFacts): { ok: true; invoice: InvoiceView; superseded: InvoiceView | null } | { ok: false; reason: string } {
+    const { db } = this.deps;
+    const now = this.now();
+    const r = apInvoice(db, replacementId);
+    const o = n.original_id ? apInvoice(db, n.original_id) : null;
+    const c = (x: string) => Math.round(Number(x) * 100);
+    if (!r || (n.original_id && !o)) return { ok: false as const, reason: "no such invoice" };
+    if (!/^[0-9a-f]{64}$/.test(n.agreement_sha256) || r.status !== "ready" || !r.invoice_no.endsWith(`-${n.agreement_sha256.slice(0, 8)}`) || !(c(r.total) < c(n.original_amount)))
+      return { ok: false as const, reason: `${r.id} is not an agreed invoice of this negotiation` };
+    if (n.agreement !== undefined && sha256Hex(n.agreement) !== n.agreement_sha256) return { ok: false as const, reason: "the agreement kept is not the one whose SHA-256 is named" };
+    if (o) {
+      if (o.id === r.id) return { ok: false as const, reason: "an invoice cannot replace itself" };
+      const why = this.notReplaceable(o, n);
+      if (why) return { ok: false as const, reason: why };
+      if (r.vendor !== o.vendor || r.currency !== o.currency || !r.invoice_no.startsWith(`${o.invoice_no}-`))
+        return { ok: false as const, reason: `${r.id} is not the agreed replacement of ${o.id}` };
+    }
+    const off = c(n.original_amount) - c(r.total);
+    const facts = {
+      original_invoice_id: o?.id ?? null, original_invoice_no: o?.invoice_no ?? n.original_invoice_no, original_amount: n.original_amount,
+      agreed_amount: r.total, discount: `${Math.floor(off / 100)}.${String(off % 100).padStart(2, "0")}`, currency: r.currency,
+      agreement_sha256: n.agreement_sha256, turns: n.turns, superseded: !!o,
+      ...(n.agreement !== undefined ? { agreement: n.agreement } : {}), ...(n.offers ? { offers: n.offers } : {}), ...(n.keys ? { keys: n.keys } : {}),
+    };
+    db.transaction(() => {
+      if (o) {
+        if (o.proposal_id) db.prepare("UPDATE proposals SET status = 'SUPERSEDED' WHERE proposal_id = ? AND status = 'PENDING_APPROVAL'").run(o.proposal_id);
+        setStatus(db, o.id, "rejected", "human", { reason: `superseded by the negotiated terms: ${r.id} (${r.invoice_no}, ${r.currency} ${r.total}), agreement SHA-256 ${n.agreement_sha256}` }, now);
+        audit(db, "human", "ap.superseded", o.id, { by: r.id, invoice_no: r.invoice_no, total: r.total, agreement_sha256: n.agreement_sha256, ...(o.proposal_id ? { proposal_id: o.proposal_id } : {}) }, now);
+      }
+      audit(db, "human", "ap.negotiated", r.id, facts, now);
+    }).immediate();
+    if (o) syncLedger(db, now);
+    return { ok: true as const, invoice: this.view(apInvoice(db, r.id)!), superseded: o ? this.view(apInvoice(db, o.id)!) : null };
+  }
+
+  /**
+   * A negotiation's agreed terms filed in one engine action (/v1/try/negotiate/agreed): the original is asked first (open,
+   * its payment not signed), then the agreed invoice is composed and filed as ready, then recorded as replacing the
+   * original. Nothing else runs in between. When the agreed invoice is not filed as ready, or cannot be recorded, it is
+   * withdrawn (rejected, its payment superseded, its booking reversed): one bill never leaves two payable invoices.
+   */
+  agreed(input: ComposeInput, n: NegotiatedFacts): Promise<
+    { ok: true; invoice: InvoiceView; superseded: InvoiceView | null }
+    | { ok: false; code: "not_recorded" | "not_ready"; reason: string; invoice?: InvoiceView }
+    | ComposeRefusal> {
     return this.act(async () => {
       const { db } = this.deps;
-      const now = this.now();
-      const r = apInvoice(db, replacementId);
       const o = n.original_id ? apInvoice(db, n.original_id) : null;
-      const c = (x: string) => Math.round(Number(x) * 100);
-      if (!r || (n.original_id && !o)) return { ok: false as const, reason: "no such invoice" };
-      if (!/^[0-9a-f]{64}$/.test(n.agreement_sha256) || r.status !== "ready" || !r.invoice_no.endsWith(`-${n.agreement_sha256.slice(0, 8)}`) || !(c(r.total) < c(n.original_amount)))
-        return { ok: false as const, reason: `${r.id} is not an agreed invoice of this negotiation` };
-      if (o) {
-        if (o.id === r.id) return { ok: false as const, reason: "an invoice cannot replace itself" };
-        if (!["ready", "waiting_cfo"].includes(o.status)) return { ok: false as const, reason: `${o.id} is ${o.status.replace(/_/g, " ")}; only an open invoice can be replaced` };
-        if (r.vendor !== o.vendor || r.currency !== o.currency || !r.invoice_no.startsWith(`${o.invoice_no}-`) || c(o.total) !== c(n.original_amount))
-          return { ok: false as const, reason: `${r.id} is not the agreed replacement of ${o.id}` };
-        const p = o.proposal_id ? db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(o.proposal_id) as { status: string } | undefined : undefined;
-        if (p && p.status !== "PENDING_APPROVAL" && p.status !== "SUPERSEDED") return { ok: false as const, reason: `${o.id}'s payment is ${p.status.toLowerCase().replace(/_/g, " ")}; it cannot be replaced` };
+      if (n.original_id && !o) return { ok: false as const, code: "not_recorded" as const, reason: "no such invoice" };
+      const before = o ? this.notReplaceable(o, n) : null;
+      if (before) return { ok: false as const, code: "not_recorded" as const, reason: before };
+      const fields = checkCompose(input, this.suppliers(), this.now());
+      if ("refused" in fields) return fields;
+      const bytes = await invoicePdf({ fields, supplierKey: input.supplier_key, billTo: `${this.deps.company.name} · Purser demo` });
+      const up = await this.ingest({ bytes, filename: `${fields.invoiceNo.replace(/[^A-Za-z0-9-]/g, "-")}.pdf`, mime: "application/pdf" });
+      const filed = up.invoice;
+      if (!filed || filed.status !== "ready") {
+        const left = filed ? this.withdraw(filed.id, "it was not filed as ready to pay") : undefined;
+        return { ok: false as const, code: "not_ready" as const, reason: "the agreed invoice was not filed as ready to pay", ...(left ? { invoice: left } : {}) };
       }
-      const off = c(n.original_amount) - c(r.total);
-      const facts = {
-        original_invoice_id: o?.id ?? null, original_invoice_no: o?.invoice_no ?? n.original_invoice_no, original_amount: n.original_amount,
-        agreed_amount: r.total, discount: `${Math.floor(off / 100)}.${String(off % 100).padStart(2, "0")}`, currency: r.currency,
-        agreement_sha256: n.agreement_sha256, turns: n.turns, superseded: !!o,
-      };
-      db.transaction(() => {
-        if (o) {
-          if (o.proposal_id) db.prepare("UPDATE proposals SET status = 'SUPERSEDED' WHERE proposal_id = ? AND status = 'PENDING_APPROVAL'").run(o.proposal_id);
-          setStatus(db, o.id, "rejected", "human", { reason: `superseded by the negotiated terms: ${r.id} (${r.invoice_no}, ${r.currency} ${r.total}), agreement SHA-256 ${n.agreement_sha256}` }, now);
-          audit(db, "human", "ap.superseded", o.id, { by: r.id, invoice_no: r.invoice_no, total: r.total, agreement_sha256: n.agreement_sha256, ...(o.proposal_id ? { proposal_id: o.proposal_id } : {}) }, now);
-        }
-        audit(db, "human", "ap.negotiated", r.id, facts, now);
-      }).immediate();
-      if (o) syncLedger(db, now);
-      return { ok: true as const, invoice: this.view(apInvoice(db, r.id)!), superseded: o ? this.view(apInvoice(db, o.id)!) : null };
+      const done = this.recordNegotiated(filed.id, n);
+      if (!done.ok) {
+        this.withdraw(filed.id, `it could not replace the original: ${done.reason}`);
+        return { ok: false as const, code: "not_recorded" as const, reason: done.reason };
+      }
+      return done;
     });
+  }
+
+  /** An agreed invoice taken back: rejected (its open payment superseded, its booking reversed), with why. */
+  private withdraw(id: string, why: string): InvoiceView | undefined {
+    const { db } = this.deps;
+    const now = this.now();
+    const inv = apInvoice(db, id);
+    if (!inv) return undefined;
+    if (inv.status !== "rejected") {
+      db.transaction(() => {
+        if (inv.proposal_id) db.prepare("UPDATE proposals SET status = 'SUPERSEDED' WHERE proposal_id = ? AND status = 'PENDING_APPROVAL'").run(inv.proposal_id);
+        setStatus(db, id, "rejected", "human", { reason: `the negotiated terms were withdrawn: ${why}` }, now);
+        audit(db, "human", "ap.withdrawn", id, { why, ...(inv.proposal_id ? { proposal_id: inv.proposal_id } : {}) }, now);
+      }).immediate();
+      syncLedger(db, now);
+    }
+    return this.view(apInvoice(db, id)!);
   }
 
   /** The hands-on demo's Reject of a held invoice: the inbox's own rejection, with its reason kept; nothing is paid. */
