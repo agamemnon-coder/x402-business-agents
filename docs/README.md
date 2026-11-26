@@ -52,7 +52,6 @@ and file names from before keep "Metal". Back to the [README](../README.md); eve
 
 ```mermaid
 flowchart LR
-  START["Start here<br/>the five files above"] --> PROD & SEC & EV
   subgraph PROD["Product"]
     direction TB
     P1["What it is<br/>how-it-works, architecture,<br/>diagrams, governance"]
@@ -73,8 +72,9 @@ flowchart LR
     E2["Evidence<br/>evidence, claims, evals"]
     E3["The submission<br/>submission, requirements"]
   end
-  PROD --> OPS["Operations<br/>install, run-it,<br/>runbook, releasing"]
-  SEC --> CON["Contributing<br/>CONTRIBUTING, GOVERNANCE,<br/>SECURITY, decisions"]
+  OPS["Operations<br/>install, run-it,<br/>runbook, releasing"]
+  CON["Contributing<br/>CONTRIBUTING, GOVERNANCE,<br/>SECURITY, decisions"]
+  START["Start here<br/>the five files above"] --> PROD & SEC & EV & OPS & CON
 ```
 
 | | Section | What is in it |

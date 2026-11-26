@@ -24,11 +24,11 @@ before real money: [go-live.md](go-live.md).
 
 ```mermaid
 flowchart LR
-  M["Suppliers' e-mail"] --> ER["Cloudflare<br/>Email Routing"] --> PC
   subgraph PC["Purser Cloud (Worker)"]
     D1[("D1 (EU)<br/>data")]
     R2[("R2 (EU)<br/>documents, e-mails")]
   end
+  M["Suppliers' e-mail"] --> ER["Cloudflare<br/>Email Routing"] --> PC
   APPS["Apps, accountant,<br/>ERP connectors"] -->|"API keys / passkeys"| PC
   RN["The company's Purser runner<br/>agents, inbox, ledger; the only part<br/>that touches Airwallex and Alta (formerly Metal)"] -->|"push (POST /v1/sync)"| PC
   PC -->|"pull mail (GET /v1/mail)"| RN
