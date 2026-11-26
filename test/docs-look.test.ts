@@ -71,6 +71,9 @@ function recordFigures(): Map<string, string> {
   return out;
 }
 
+/** Pages GitHub also renders as a repository tab (from the root), so their links are root-relative. */
+const ROOT_LINKED = new Set(["docs/accessibility.md"]);
+
 const DIAGRAMS = /^(flowchart (LR|TB|TD|RL|BT)|sequenceDiagram|stateDiagram-v2|timeline|gantt|graph (LR|TB|TD)|xychart-beta( horizontal)?|pie( showData)?( title .+)?|quadrantChart)\s*$/;
 /** The Mermaid charts that plot figures (26 Nov 2026, the owner: "graphs", from committed records only). */
 const CHARTS = /^(xychart-beta|pie)\b/;
@@ -80,7 +83,8 @@ describe("the Markdown pages in the README's house style", () => {
     const md = read(f);
     const head = md.slice(0, md.indexOf("</div>"));
     expect(md.startsWith('<div align="center">\n\n')).toBe(true);
-    const rel = posix.relative(posix.dirname(f), "docs/assets/brand"), up = rel ? `${rel}/` : "";
+    // docs/accessibility.md is also GitHub's Accessibility tab, rendered from the repository root: its links start at "/".
+    const rel = posix.relative(posix.dirname(f), "docs/assets/brand"), up = ROOT_LINKED.has(f) ? "/docs/assets/brand/" : rel ? `${rel}/` : "";
     expect(head).toContain(`<picture><source media="(prefers-color-scheme: dark)" srcset="${up}purser-mark-dark.svg"><img src="${up}purser-mark.svg" alt="Purser"`);
     expect(head.match(/^# \S.*$/gm) ?? []).toHaveLength(1);
     expect(md.match(/^# /gm) ?? []).toHaveLength(1);
@@ -148,7 +152,7 @@ describe("the Markdown pages in the README's house style", () => {
   // GitHub shows an SVG as an image: it strips scripts, so an animation is CSS inside the file; each one small.
   for (const f of BADGED) it(`${f}: every SVG it shows exists, is under 30 KB and has no script`, () => {
     for (const t of targets(read(f)).filter((x) => /\.svg(#.*)?$/.test(x) && !/^[a-z][a-z0-9+.-]*:/i.test(x))) {
-      const p = posix.join(posix.dirname(f), decodeURIComponent(t.split("#")[0]!));
+      const u = decodeURIComponent(t.split("#")[0]!), p = u.startsWith("/") ? u.slice(1) : posix.join(posix.dirname(f), u);
       expect({ f, p, there: exists(p) }).toEqual({ f, p, there: true });
       const svg = read(p);
       expect({ p, small: statSync(`${ROOT}${p}`).size < 30 * 1024 }).toEqual({ p, small: true });

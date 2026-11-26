@@ -25,14 +25,23 @@ export const BUSINESS_QUESTION = "Would you trust an AI agent with your company'
  * point of the horizon to another. Each carries a light (a short dash) that runs along it once per loop, the loops of
  * different lengths so they never fall into step.
  */
-export const ROUTES: readonly { d: string; s: number; delay: number; tone: string }[] = [
-  { d: "M150 352 Q520 40 930 300", s: 9, delay: 0, tone: "accent" },
-  { d: "M430 322 Q840 70 1300 340", s: 11, delay: 3.5, tone: "ok" },
-  { d: "M760 296 Q1010 150 1230 324", s: 7.5, delay: 1.8, tone: "sky" },
-  { d: "M40 360 Q300 210 560 312", s: 10, delay: 5.2, tone: "g0" },
-  { d: "M980 330 Q1210 190 1440 300", s: 12, delay: 7, tone: "g1" },
-  { d: "M260 330 Q470 230 700 300", s: 13, delay: 9, tone: "g2" },
+export const ROUTES: readonly { a: number; b: number; h: number; s: number; delay: number; tone: string }[] = [
+  { a: 330, b: 545, h: 22, s: 9, delay: 0, tone: "accent" },
+  { a: 450, b: 670, h: 24, s: 11, delay: 3.5, tone: "ok" },
+  { a: 530, b: 620, h: 12, s: 7.5, delay: 1.8, tone: "sky" },
+  { a: 270, b: 390, h: 14, s: 10, delay: 5.2, tone: "g0" },
+  { a: 620, b: 735, h: 14, s: 12, delay: 7, tone: "g1" },
+  { a: 395, b: 470, h: 9, s: 13, delay: 9, tone: "g2" },
 ];
+
+/** 26 Nov (Max: "the lines don't land on the planet"): the routes are drawn in the planet's own units (a circle of
+ * radius 500 in a 1000-unit square, the same box as .hz), from one point of its rim to another, so both ends sit on the
+ * horizon at every width. a and b are x on the rim; h is how high the route arcs above the higher end. */
+export const RIM = (x: number): number => 500 - Math.sqrt(500 * 500 - (x - 500) ** 2);
+export function routePath(r: { a: number; b: number; h: number }): string {
+  const ya = RIM(r.a), yb = RIM(r.b), f = (n: number) => Math.round(n * 10) / 10;
+  return `M${f(r.a)} ${f(ya)} Q${f((r.a + r.b) / 2)} ${f(Math.min(ya, yb) - 2 * r.h)} ${f(r.b)} ${f(yb)}`;
+}
 
 /** The meaning-colours, at Purser Cloud's console values (cloud/src/consoleColor.ts), scoped to the page. */
 const TONES_DARK = "--amb: #ffb547; --sky: #38bdf8; --g0: #818cf8; --g1: #2dd4bf; --g2: #60a5fa;";
@@ -41,8 +50,8 @@ export const BUSINESS_TONES = `.bzp { --amb: #a15c00; --sky: #0369a1; --g0: #4f4
 :root[data-theme="dark"] .bzp { ${TONES_DARK} }`;
 
 export const BUSINESS_SKY_HTML = `<div class="bz-sky" aria-hidden="true"><span class="st s1"></span><span class="st s2"></span><span class="ha"></span><span class="hz"></span>
-<svg class="rt" viewBox="0 0 1440 360" preserveAspectRatio="xMidYMax slice" width="1440" height="360" focusable="false">
-${ROUTES.map((r, i) => `<path class="r" d="${r.d}"/><path class="g p${i + 1}" d="${r.d}" pathLength="100"/><path class="p p${i + 1}" d="${r.d}" pathLength="100"/>`).join("\n")}
+<svg class="rt" viewBox="0 0 1000 1000" width="1000" height="1000" focusable="false">
+${ROUTES.map((r, i) => { const d = routePath(r); return `<path class="r" d="${d}"/><circle class="e" cx="${r.a}" cy="${Math.round(RIM(r.a) * 10) / 10}" r="1.1"/><circle class="e" cx="${r.b}" cy="${Math.round(RIM(r.b) * 10) / 10}" r="1.1"/><path class="g p${i + 1}" d="${d}" pathLength="100"/><path class="p p${i + 1}" d="${d}" pathLength="100"/>`; }).join("\n")}
 </svg></div>`;
 
 const LIGHT_SKY = `.bz-sky .st { --c: color-mix(in srgb, var(--accent) 45%, transparent); opacity: .5; } .bz-sky::before { opacity: .45; }
@@ -73,7 +82,8 @@ export const BUSINESS_SKY_CSS = `
 .bz-sky .ha { position: absolute; left: 50%; bottom: 150px; width: max(1800px, 180vw); height: 520px; translate: -50% 50%; border-radius: 50%;
   background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 26%, transparent), color-mix(in srgb, var(--accent) 8%, transparent) 55%, transparent); }
 /* The routes: hairlines rising from the horizon, each with a light that runs along it. */
-.bz-sky svg.rt { position: absolute; left: 0; bottom: 150px; width: 100%; height: min(180px, 21vh); overflow: visible; -webkit-mask-image: linear-gradient(0deg, #000 30%, transparent 96%); mask-image: linear-gradient(0deg, #000 30%, transparent 96%); }
+.bz-sky svg.rt { position: absolute; left: 50%; top: calc(100% - 150px); width: max(2600px, 260vw); height: auto; aspect-ratio: 1; translate: -50% 0; overflow: visible; }
+.bz-sky .e { fill: color-mix(in srgb, var(--accent) 55%, #ffffff); opacity: .7; }
 .bz-sky .r { fill: none; stroke: color-mix(in srgb, var(--accent) 28%, transparent); stroke-width: 1; stroke-dasharray: 2 6; vector-effect: non-scaling-stroke; }
 /* Each light: a bright head (a round dot) over a soft halo, both one dash long on a path 100 long. */
 .bz-sky .p, .bz-sky .g { fill: none; stroke-linecap: round; stroke-dasharray: .01 100; stroke-dashoffset: 40; vector-effect: non-scaling-stroke; }
@@ -95,5 +105,5 @@ ${LIGHT_SKY.replace(/\.bz-sky/g, ':root[data-theme="light"] .bz-sky')}
   ${ROUTES.map((r, i) => `.bz-sky .p${i + 1} { animation: bz-run ${r.s}s cubic-bezier(.45, 0, .25, 1) ${r.delay}s infinite; }`).join("\n  ")}
 }
 /* A phone: the horizon alone (the routes would cross the words). */
-@media (max-width: 760px) { .bz-sky .hz { top: calc(100% - 80px); } .bz-sky .ha { bottom: 80px; height: 360px; } .bz-sky svg.rt { display: none; } }
+@media (max-width: 760px) { .bz-sky .hz { top: calc(100% - 80px); } .bz-sky .ha { bottom: 80px; height: 360px; } .bz-sky svg.rt { top: calc(100% - 80px); } }
 `;
