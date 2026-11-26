@@ -150,9 +150,12 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   ok(await p.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
   // 21 Nov (Max, his mockup: "just Purser Cloud and some small USP, and animating"; no paragraphs): the passkey the one
   // primary action, "New company? Set it up", the guest way below it; no paragraph in the card. The panel: the mark,
-  // "Purser Cloud", one line and (on a wider screen) three small points; the globe and the wave drawn behind them.
+  // "Purser Cloud", one line and (on a wider screen) three small points. 26 Nov, later (Max: "the big one ... its in front
+  // of the glow"): the Earth as a horizon under them, the glow rising from behind its limb; no wave.
   ok(await p.locator(".auth .btn.primary").count() === 1 && await p.isVisible("#guest") && await p.isVisible(".auth .alt a[href='#/start']") && await p.locator(".auth p.what, .auth .pk-note").count() === 0, `${tag}: one primary action (the passkey), set it up, the guest way, no paragraph`);
-  ok(await p.isVisible(".hero .side-mk") && (await p.textContent(".hero .side h2"))?.trim() === tr("en", "cs.side.title") && await p.isVisible(".hero canvas.si-globe") && await p.isVisible(".hero canvas.si-wave"), `${tag}: the panel: the mark, Purser Cloud, the globe and the wave`);
+  ok(await p.isVisible(".hero .side-mk") && (await p.textContent(".hero .side h2"))?.trim() === tr("en", "cs.side.title") && await p.isVisible(".hero canvas.si-globe") && await p.locator("canvas.si-wave").count() === 0, `${tag}: the panel: the mark, Purser Cloud, the Earth's horizon`);
+  // On a laptop, a card floats near the arc: the demo company's own invoice that waits for the CFO's Face ID, labelled demo.
+  if (width >= 1024) { const fl = (await p.textContent(".hero .si-float")) ?? ""; ok(await p.isVisible(".hero .si-float") && fl.includes("EUR 1,309.00") && fl.includes(tr("en", "cs.side.demo")), `${tag}: the demo invoice floats near the arc, labelled demo`); }
   const drawn = await p.evaluate(() => { const c = document.querySelector("canvas.si-globe") as HTMLCanvasElement | null; if (!c || !c.width) return 0; const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4 * 97) if (d[i]! > 0) n++; return n; });
   ok(drawn > 50, `${tag}: the globe is drawn (${drawn} samples)`);
   if (width >= 1024) ok(await p.locator(".hero .side li").count() === 3 && await p.isVisible(".hero .side ul"), `${tag}: the panel's three small points`);
@@ -1089,7 +1092,12 @@ async function guestPass() {
     // the agents' status, the activity feed, the connected rails and the flow.
     ok(await p.locator(".ov-k a.ovk").count() === 4 && await p.locator(".ov-cash svg.chart path.line").count() === 1 && await p.locator(".ov-inv").count() === 1 && await p.locator(".ov-feed li").count() >= 1 && await p.locator(".ov-ag a.as-row").count() >= 1 && await p.locator(".pflow-c").count() === 1,
       `${tag}: the dashboard's figures, queue, cash line, agents, feed and flow`);
-    ok(await p.locator(".ov-hero, .ovg, canvas.pw-wave, canvas.ovg-c").count() === 0 && (await p.textContent("#view h1")) === "Overview", `${tag}: the page's own header, no headline, globe or wave`);
+    ok(await p.locator(".ov-hero, .ovg, canvas.pw-wave, canvas.ovg-c").count() === 0 && (await p.textContent("#view h1")) === "Overview", `${tag}: the page's own header, no headline or wave`);
+    // 26 Nov, later (Max: "the globe small like a small connected thing"): a small card in the header, the demo company
+    // in Amsterdam on a small Earth, a curve to four connections, each with its run as the catalogue records it.
+    const net = await p.evaluate(`(() => { const c = document.querySelector("a.ovn canvas.ovn-c"); let n = 0; if (c && c.width) { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; for (let i = 3; i < d.length; i += 4 * 53) if (d[i] > 0) n++; }
+      return { rows: [...document.querySelectorAll("a.ovn li.ovn-r")].map((r) => r.textContent).join("|"), h: Math.round(document.querySelector("a.ovn")?.getBoundingClientRect().height ?? 0), n }; })()`) as { rows: string; h: number; n: number };
+    ok(net.rows === "AirwallexSandbox|ClaudeLive|Visa · AiriSandbox|AltaTestnet" && net.h > 0 && net.h < 160 && net.n > 50, `${tag}: the small connected Earth: four connections with their runs, drawn (${JSON.stringify(net)})`);
     // The connected rails: only what is connected with a recorded run, seven rows, each named to a screen reader.
     const rails = await p.evaluate(`(() => { const cs = [...document.querySelectorAll(".ov-par li.ovs-m")]; const hs = cs.map((c) => Math.round(c.querySelector(".ovs-k").getBoundingClientRect().height));
       return { n: cs.length, dots: document.querySelectorAll(".ov-par .ovs-dot").length, head: (document.querySelector(".ov-par .dh p")?.textContent ?? "").trim(),

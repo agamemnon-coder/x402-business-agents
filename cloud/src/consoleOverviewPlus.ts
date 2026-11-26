@@ -15,6 +15,7 @@
 
 import { SITE_ORIGIN } from "./siteHeader.js";
 import { connectionsCatalogue } from "./connections.js";
+import { globeScript } from "../../src/ui/globe.js";
 
 /**
  * The stack shown round the Overview's globe (21 Nov, Max): ONLY the connections with a recorded run, each a green ping.
@@ -69,7 +70,8 @@ function opSuppliers(){
   }).catch(()=>box.replaceChildren(chartEmpty(t('cs.op.sup_none'))));
   return box}
 // --- The Overview, laid out on twelve columns (Max, 21 Nov: "make purser cloud like this ... no dead zones, everything
-// in a clean order"); 26 Nov, the console redesign (Max: "enterprise grade"): the page's own header, no globe, four
+// in a clean order"); 26 Nov, the console redesign (Max: "enterprise grade"): the page's own header (later that day, a
+// small connected Earth in it for the demo company, and the purple glow back behind it), four
 // figures (cash position, waiting for the CFO, paid this month, agent spend against limits), the approvals queue beside
 // how to approve, the cash beside the agents, what happened beside the connected rails, the flow, then the two charts. Every figure is the
 // records'; nothing here approves or pays: approval is the CFO's, on the phone, over the exact terms.
@@ -97,6 +99,19 @@ function ovRails(){
     const li=el('li','ovs-m',[inner]);li.title=name;li.dataset.id=s.id;return li};
   const list=el('ul','ovs-ms',OV_STACK.map(item));list.setAttribute('aria-label',t('cs.ov2.globe'));
   return el('section','card dcard rise ov-par',[el('div','dh',[el('h2','',sw('rails_h')),el('p','',t('cs.ov2.stack_n',{n:OV_STACK.length})+' · '+t('cs.ov2.stack_k'))]),list])}
+// The small "connected" picture in the header (26 Nov, Max: "the globe small like a small connected thing"): the sign-in's
+// Earth (src/ui/globe.ts), small, the demo company in Amsterdam pulsing green, a thin curve from it to four of the
+// connections above, each row with its dot in the run's colour (live green; sandbox or testnet amber, the console's
+// colour for test money). Only for the demo company: its place is the repository's (the test world's payer address);
+// a real company's place is not in the records, so it gets no pin. The states are OV_STACK's, nothing more.
+const OV_NET=['airwallex','claude','visa-airi','alta'];
+function ovNet(){
+  const rows=OV_NET.map((id)=>OV_STACK.find((s)=>s.id===id)).filter(Boolean).map((s)=>{const run=s.run==='live'?sw('live'):t('cs.ov2.'+s.run);
+    const li=el('li','ovn-r '+s.run,[el('i','ovn-d'),el('b','',s.label),el('span','ovn-k',run)]);li.title=s.run==='live'?t('cs.ov2.stack_live',{name:s.name}):t('cs.ov2.stack_run',{name:s.name,run:s.run});return li});
+  const c=el('canvas','ovn-c');c.setAttribute('aria-hidden','true');
+  const a=el('a','card ovn',[c,el('div','ovn-b',[el('div','ovn-h',[el('b','',[el('i','ovn-p'),sw('net_h')]),el('span','',sw('net_sub'))]),el('ul','',rows)])]);
+  a.href='#/connections';a.title=sw('net_to');return a}
+function ovGlobe(){` + globeScript({ selector: "a.ovn canvas.ovn-c", avoid: ".ovn-b", maxR: 52, places: [[4.9, 52.37, "", true]], view: [-6, 34, 12], links: ".ovn-d", labels: false }) + String.raw`}
 async function overviewNext(){
   title(t('cs.nav.overview'));
   const soft=(p)=>api(p).catch((e)=>{if(e instanceof Expired)throw e;return null});
@@ -106,7 +121,7 @@ async function overviewNext(){
   const open=items.filter((i)=>!['paid','rejected','blocked'].includes(i.status));
   const sumOf=(xs)=>xs.reduce((n,i)=>n+toCents(i.total),0);
   // The header: the page's name, the company and the day its figures stand at (the demo's own end, else today).
-  const hero=head(t('cs.nav.overview'),sw('as_of',{name:m.tenant.name||'',day:dday(new Date(now).toISOString())}));
+  const hero=head(t('cs.nav.overview'),sw('as_of',{name:m.tenant.name||'',day:dday(new Date(now).toISOString())}),m.demo?[ovNet()]:null);hero.classList.add('ov-head');
   // Four figures, each from the records; a change or a meter only where the records hold what it compares with.
   const days=(D&&D.cash)||[],nets=days.map((d)=>toCents(d.net)),last=nets[nets.length-1],prev=nets.length>7?nets[nets.length-8]:null;
   const delta=prev!==null&&prev!==0?(last-prev)/Math.abs(prev)*100:null;
@@ -153,7 +168,7 @@ async function overviewNext(){
   const first=!items.length&&!m.demo&&typeof startCard==='function'?startCard(m):null;
   const dash=el('div','dash ov2',[hero,first,kpis,el('div','ov-row ov-r84',[table,approve]),el('div','ov-row ov-r75',[cash,agents]),el('div','ov-row ov-r75',[act,ovRails()]),el('div','ov-row',[flow])]);
   if(D&&days.length)dash.append(el('div','ov-row ov-r66 ov-more',[cardLink(dcard('opw',t('cs.op.weeks_title'),t('cs.op.weeks_sub',{cur:cur(C),date:dday(D.since)}),opWeeks(D,Math.round(wide?full/2-60:full-40))),'#/transactions',sw('to_tx')),cardLink(dcard('ops',t('cs.op.sup_title'),t('cs.op.sup_sub'),opSuppliers()),'#/transactions',sw('to_tx'))]));
-  view().replaceChildren(dash,awlOverview());
+  view().replaceChildren(dash,awlOverview());if(m.demo)ovGlobe();
   requestAnimationFrame(()=>{for(const n of view().querySelectorAll('.rise'))n.classList.add('in')});
 }
 `;
@@ -164,7 +179,31 @@ export const OVERVIEW_PLUS_CSS = `
 .opsrow .sl span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .opsup .sbars .sf { background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #e879f9)); }
 /* The Overview on twelve columns: one gutter, rows whose cards share a height, no hole. */
-.dash.ov2 { display: grid; gap: 20px; margin: 0 0 28px; }
+.dash.ov2 { display: grid; gap: 20px; margin: 0 0 28px; position: relative; isolation: isolate; }
+/* The purple glow behind the top of the dashboard (Max, 26 Nov: "add the purple glow back"): two soft lights under the
+   header and the figures, strongest in the dark. */
+.dash.ov2::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: -150px; height: 720px; pointer-events: none;
+  background: radial-gradient(38% 44% at 27% 40%, color-mix(in srgb, var(--accent) var(--ovg, 38%), transparent), transparent 72%),
+    radial-gradient(24% 34% at 80% 36%, color-mix(in srgb, #e879f9 var(--ovg2, 13%), transparent), transparent 72%); }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .dash.ov2 { --ovg: 11%; --ovg2: 6%; } }
+:root[data-theme="light"] .dash.ov2 { --ovg: 11%; --ovg2: 6%; }
+.ov-k a.ovk { background: color-mix(in srgb, var(--surface) 84%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+/* The header and its small "connected" picture. */
+.dash.ov2 > .ov-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px 24px; }
+.ov-head > .tools { flex: none; }
+a.ovn { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; justify-content: flex-end; width: 380px; min-height: 124px; margin: 0; padding: 12px 16px 12px 0; box-sizing: border-box; text-decoration: none; color: inherit;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), color-mix(in srgb, var(--surface) 88%, transparent)); transition: border-color .15s ease; }
+a.ovn:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line, var(--border))); }
+canvas.ovn-c { position: absolute; z-index: -1; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.ovn-b { width: 196px; display: grid; gap: 8px; }
+.ovn-h { display: grid; gap: 1px; } .ovn-h b { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; } .ovn-h span { font-size: 11.5px; color: var(--faint); }
+.ovn-p { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); }
+.ovn ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.ovn-r { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 9px; align-items: center; font-size: 12.5px; line-height: 1.5; } .ovn-r b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ovn-k { font: 600 10px/1 var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace); letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
+.ovn-d { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); } .ovn-r.live .ovn-d { background: var(--ok); }
+@media (max-width: 760px) { .ov-head > .tools, a.ovn { width: 100%; } a.ovn { min-height: 116px; } .dash.ov2::before { top: -110px; height: 560px; } }
+@media (prefers-reduced-motion: reduce) { a.ovn { transition: none; } }
 .ov-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
 .ov-row > * { min-width: 0; margin: 0 !important; height: 100%; box-sizing: border-box; } .ov-row > :only-child { grid-column: 1 / -1; }
 .ov-k > * { grid-column: span 3; } .ov-r84 > :first-child { grid-column: span 8; } .ov-r84 > :last-child { grid-column: span 4; }

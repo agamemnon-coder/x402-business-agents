@@ -35,7 +35,7 @@ export const SHELL_WORDS = {
     k_paid_sub: "{n} invoices · {prev} in {month}", k_spend: "Agent spend vs limits",
     k_spend_sub: "of {cap} monthly limits · {n} cards", k_spend_none: "No agent card in the records",
     ag_h: "Agent status", ag_sub: "Each card's spend against its monthly limit, and the agent's newest decision.",
-    rails_h: "Connected rails", live: "Live",
+    rails_h: "Connected rails", live: "Live", net_h: "Connected", net_sub: "Amsterdam · the demo company", net_to: "Open Connections",
   },
   nl: {
     g_money: "Betalingen", g_agents: "Agents", g_rails: "Integraties", b_overview: "Overzicht", b_money: "Geld",
@@ -55,7 +55,7 @@ export const SHELL_WORDS = {
     k_spend: "Uitgaven agents vs limieten", k_spend_sub: "van {cap} maandlimiet · {n} kaarten",
     k_spend_none: "Geen agentkaart in de gegevens", ag_h: "Status van de agents",
     ag_sub: "Wat elke kaart uitgaf tegen zijn maandlimiet, en de nieuwste beslissing van de agent.",
-    rails_h: "Gekoppelde rails", live: "Live",
+    rails_h: "Gekoppelde rails", live: "Live", net_h: "Gekoppeld", net_sub: "Amsterdam · het demobedrijf", net_to: "Open Koppelingen",
   },
 } as const;
 

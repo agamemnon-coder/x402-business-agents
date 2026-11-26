@@ -8,7 +8,7 @@
 import { CONSOLE_PREMIUM_CSS } from "../../src/ui/premium.js";
 import { OVERVIEW_PLUS_CSS, OVERVIEW_PLUS_JS } from "./consoleOverviewPlus.js";
 import { ASK_BUTTON_JS } from "./ask/page.js";
-import { SIGNIN_CSS, SIGNIN_JS } from "./signInLook.js";
+import { SIGNIN_CSS, SIGNIN_HERO, SIGNIN_JS } from "./signInLook.js";
 import { PREVIEW_TAGS } from "./brand.js";
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
@@ -458,7 +458,7 @@ ${siteHeader(null)}
 <span class="who-am-i"><span class="cosw" id="cosw"><a class="co" id="co" href="#/company"></a><button type="button" class="co-more" id="co-more" aria-haspopup="menu" aria-expanded="false" aria-controls="co-menu" aria-label="Switch company" hidden>${svg("chevron-down", 16)}</button><span class="co-menu" id="co-menu" role="menu" aria-label="Switch company" hidden></span></span><span id="who"></span><span id="ask-slot"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <button type="button" class="sbx" id="sbx" aria-pressed="false">${svg("panel-left", 16)}</button>
 <span class="test" id="testchip" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
-<div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><span class="side-mk" aria-hidden="true">${svg("feather", 30)}</span><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><p class="si-st"><i aria-hidden="true"></i><span data-t="cs.side.status">${tr("en", "cs.side.status")}</span></p><ul>${([["cs.side.1", "file-check"], ["cs.side.2", "scan-face"], ["cs.side.3", "database"]] as const).map(([k, i]) => `<li><span class="si">${svg(i, 18)}</span><span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div><canvas class="si-globe" aria-hidden="true"></canvas><canvas class="si-wave" aria-hidden="true"></canvas></div>
+${SIGNIN_HERO}
 <div class="stopbar" id="stopbar" role="status" hidden><div class="wrap"><p>${svg("octagon-x", 16)}<span data-t="cs.stop.bar">${tr("en", "cs.stop.bar")}</span><a href="#/settings?at=estop" data-t="cs.stop.bar_link">${tr("en", "cs.stop.bar_link")}</a></p></div></div>
 <main><div class="ctop"><nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav><div class="demo-ribbon" id="demo" hidden><p class="dr">${svg("flask", 14)}<span class="dr-full" data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><span class="dr-short">${SHELL_WORDS.en.demo_short}</span><a href="#/sign-in" id="demo-out"><span class="lw" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</span><span class="lv">${SHELL_WORDS.en.demo_leave}</span></a></p></div><button type="button" class="kbtn" id="kbtn" aria-haspopup="dialog">${svg("search", 15)}<span class="kt">Search</span><kbd>⌘K</kbd></button></div><div class="wrap subnav-wrap"><nav class="subnav" id="subnav" hidden></nav></div><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
