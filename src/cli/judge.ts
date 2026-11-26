@@ -16,7 +16,7 @@ import { createHash } from "node:crypto";
 import type { Server } from "node:http";
 import express from "express";
 import { T0_READBACK_PATH } from "../accounting/t0Readback.js";
-import { T0_READBACK_TEXT, AWX_CALLS_CSP, AWX_CALLS_PAGE, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage, BOOKS_CSP, BOOKS_PAGE, sendInspector,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, PRIVACY_CSP, PRIVACY_PAGE, BUSINESS_CSP, BUSINESS_PAGE, ONE_PAGER_CSP, ONE_PAGER_PAGE, MOVED, STATUS_OFFLINE_CSP, STATUS_PAGE_OFFLINE } from "../servers/dashboard.js";
+import { T0_READBACK_TEXT, AWX_CALLS_CSP, AWX_CALLS_PAGE, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage, BOOKS_CSP, BOOKS_PAGE, sendInspector, sendAltaTx, ALTA_TX_ROUTE,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, PRIVACY_CSP, PRIVACY_PAGE, BUSINESS_CSP, BUSINESS_PAGE, ONE_PAGER_CSP, ONE_PAGER_PAGE, MOVED, STATUS_OFFLINE_CSP, STATUS_PAGE_OFFLINE } from "../servers/dashboard.js";
 import { readFileSync } from "node:fs";
 import { loadRecord } from "../redesign/run.js";
 import { localTryAnswer } from "../try/local.js";
@@ -80,6 +80,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/alta", page(METAL_CSP, () => METAL_PAGE)); // /metal: 301 to /alta (MOVED, above)
   // /metal's read-only inspector, as a local copy answers it: the record's read of 12 November, no chain call, no secret.
   app.get(METAL_INSPECTOR_PATH, (_req, res) => { void sendInspector(res); });
+  // /proof's "Check it on chain": a local copy reads no chain and says so (worker/src/altaTx.ts); the site's Worker reads it.
+  app.get(ALTA_TX_ROUTE, (req, res) => { void sendAltaTx(req.path, res); });
   // /airwallex's live cards: the offline copy holds no sandbox key, and says so (worker/src/agentCardsLive.ts).
   app.get(AGENT_CARDS_PATH, (_req, res) => { res.json({ source: "unavailable", reason: "this offline copy reads no sandbox", checked_at: new Date().toISOString() }); });
   // Live with Airwallex (/proof's block, Home's badge): this copy holds no Airwallex key and receives no webhook, so the

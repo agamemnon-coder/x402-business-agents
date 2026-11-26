@@ -19,6 +19,7 @@ import { talkSource } from "./talkRound.js";
 import { PAGES } from "./pages.gen.js";
 import { X402Desk, X402_PATH } from "./x402.js";
 import { METAL_INSPECTOR_PATH, MetalInspector, inspectorOff } from "./metalInspector.js";
+import { AltaTxDesk, altaTxOff, isAltaTxPath } from "./altaTx.js";
 import { tryEngineResponse } from "./tryEngine.js";
 import { AWX_READ_PATH, AwxReadDesk, isAwxView, type AwxReadAnswer } from "./awxRead.js";
 import { AWX_EVENTS_PATH, type AwxEventsAnswer } from "./awxEvents.js";
@@ -74,6 +75,11 @@ export interface Env extends GatewayEnv {
   METAL_RPC_URL?: string;
   /** The inspector's switch: "off" (any case, trimmed) stops every call to the chain; any other value, or none, leaves it on. */
   METAL_INSPECTOR?: string;
+  /**
+   * /proof's "Check it on chain" (GET /api/alta/tx/<hash>, worker/src/altaTx.ts) reads with METAL_RPC_URL too, only the
+   * transactions of the committed records; "off" here, or METAL_INSPECTOR "off", stops its calls.
+   */
+  ALTA_TX_CHECK?: string;
   /** "on": /try/sign's "talk the agent round" step (worker/src/talkRound.ts); off when missing. */
   TRY_TALK?: string;
   /**
@@ -127,6 +133,7 @@ export class RelayObject extends DurableObject<Env> {
   private trySign?: TrySignDesk;
   private x402?: X402Desk;
   private metal?: MetalInspector;
+  private altaTx?: AltaTxDesk;
   private awxRead?: AwxReadDesk;
   private awxBooks?: AwxBadgeCache;
   private awxFx?: AwxFxDesk;
@@ -215,6 +222,8 @@ export class RelayObject extends DurableObject<Env> {
     if (path === X402_PATH) return (this.x402 ??= new X402Desk(this.ctx.storage.sql, { settle: this.env.X402_TESTNET_SETTLE, payTo: this.env.X402_PAY_TO })).fetch(req);
     // The mandate inspector's own instance holds only the RPC URL and the switch, inside the desk.
     if (path === METAL_INSPECTOR_PATH) return (this.metal ??= new MetalInspector(this.ctx.storage.sql, { rpcUrl: this.env.METAL_RPC_URL, off: inspectorOff(this.env.METAL_INSPECTOR) ? "switched off" : null, recorded: PAGES.metalRecorded ?? null })).fetch(req);
+    // "Check it on chain" (./altaTx.ts): its own instance holds the same RPC URL, its own cache and count of calls.
+    if (isAltaTxPath(path)) return (this.altaTx ??= new AltaTxDesk(this.ctx.storage.sql, { rpcUrl: this.env.METAL_RPC_URL, off: altaTxOff(this.env.ALTA_TX_CHECK, this.env.METAL_INSPECTOR) ? "switched off" : null, targets: PAGES.altaTxTargets ?? [] })).fetch(req);
     // Purser Cloud's live Airwallex reads (./awxRead.ts): their own instance, reached only through the AwxRead entrypoint.
     if (path === AWX_READ_PATH) return this.awxReadDesk().fetch(req);
     // The reconciliation badge on /proof and Home (./awxBooks.ts): the same instance's reads, kept 5 minutes.
@@ -337,6 +346,8 @@ export default {
     if (path === X402_PATH) return env.RELAY.get(env.RELAY.idFromName("x402")).fetch(req);
     // /metal's mandate inspector in its own instance: its cache and its daily count of calls stay apart.
     if (path === METAL_INSPECTOR_PATH) return env.RELAY.get(env.RELAY.idFromName("metal-inspector")).fetch(req);
+    // /proof's "Check it on chain" in its own instance: its cache and its daily count stay apart.
+    if (isAltaTxPath(path)) return env.RELAY.get(env.RELAY.idFromName("alta-tx")).fetch(req);
     // Try Purser runs in its own instance: its storage and its load stay apart from the approvals.
     if (path === "/api/try") return env.RELAY.get(env.RELAY.idFromName("try")).fetch(req);
     // /health and /health/live are the relay's too: it knows when the runner last synced (B7).
