@@ -14,12 +14,14 @@ import { GOV_RECORD } from "../src/e2e/governanceLiveRecord.js";
 const A = { id: "nl-test-sole", name: "Entity A (test)", country: "NL", currency: "EUR", funding_account: "acct_entityA_0001" };
 const B = { id: "nl-platform", name: "Entity B (test)", country: "NL", currency: "EUR", funding_account: "acct_entityB_0001" };
 /** A fresh ledger, and every rail call counted as the live adapter sends it (a create is a POST). */
-const base = () => { const log = standInLog(); return { db: openDb(":memory:"), mode: "stand-in" as const, now: () => new Date("2026-11-26T11:30:00Z"), lines: () => log.lines, halted: () => null, counted: log.counted }; };
+/** The card run's clock is fixed (a Thursday morning, outside the evening hours); the payment runs need the real clock,
+ *  since the executors check a proposal's expiry against it. */
+const base = (now = () => new Date()) => { const log = standInLog(); return { db: openDb(":memory:"), mode: "stand-in" as const, now, lines: () => log.lines, halted: () => null, counted: log.counted }; };
 const failed = (r: GovResults) => r.steps.filter((s) => s.pass !== true).map((s) => `${s.id}: ${s.outcome}`);
 
 describe("the governance live runs, on the stand-ins", () => {
   it("card hours: issue, read back, refuse outside the hours, thaw inside, freeze when they end", async () => {
-    const b = base();
+    const b = base(() => new Date("2026-11-26T11:30:00Z"));
     const r = await runCardHours({ ...b, rail: b.counted(new FakeIssuing()) });
     expect(failed(r)).toEqual([]);
     expect(r.steps.map((s) => s.id)).toEqual(["setup.passkey", "card.issue", "card.readback", "hours.set", "hours.refused_now", "hours.thaw_inside", "hours.purchase_auth", "hours.end_sync", "hours.charge_frozen", "hours.no_window_after"]);
