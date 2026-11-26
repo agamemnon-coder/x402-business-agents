@@ -336,16 +336,32 @@ async function tellOwners(c: Ctx, kind: string, detail: Record<string, string | 
 
 /** The card actions that let an agent's card spend, or spend on it: refused while the company's emergency stop is on. */
 const CARD_SPEND_KINDS: ReadonlySet<string> = new Set(["issue", "unfreeze", "limits", "test", "edge"]);
+const STOP_UNREAD = "the company's emergency stop could not be read, so no card action that can spend runs now; try again";
+const STOP_ON = "the CFO's emergency stop is on: no card is issued, unfrozen, raised or tested until the CFO lifts it with the passkey";
+
 /**
- * The company's emergency stop (src/policy/emergencyStop.ts, kept in its engine) asked before a card action that could
- * spend, as the runner's stop holds every card: why not, or null. A freeze, and a tidy of older cards, always go. With no
- * engine wired there is no stop to ask; an engine that does not answer refuses (fails closed).
+ * The company's emergency stop (src/policy/emergencyStop.ts) asked before a card action that could spend, as the
+ * runner's stop holds every card: why not, or null. A freeze, and a tidy of older cards, always go. With an engine in
+ * the cloud it is the engine's; with none (a company whose runner keeps the books) it is the runner's, as its audit log
+ * synced here says: the newest policy.changed row for the stop ("freeze", the runner's stopState). Either way a stop
+ * that cannot be read refuses (fails closed); a company whose synced log never pulled the stop is not stopped.
  */
 async function stopRefusesCard(c: Ctx, kind: string | undefined): Promise<string | null> {
-  if (!kind || !CARD_SPEND_KINDS.has(kind) || !c.env.engine) return null;
-  const st = await c.env.engine(c.caller!.tenantId).status().catch(() => null);
-  if (!st) return "the company's emergency stop could not be read, so no card action that can spend runs now; try again";
-  return st.emergency_stop?.on ? "the CFO's emergency stop is on: no card is issued, unfrozen, raised or tested until the CFO lifts it with the passkey" : null;
+  if (!kind || !CARD_SPEND_KINDS.has(kind)) return null;
+  if (c.env.engine) {
+    const st = await c.env.engine(c.caller!.tenantId).status().catch(() => null);
+    if (!st) return STOP_UNREAD;
+    return st.emergency_stop?.on ? STOP_ON : null;
+  }
+  let row: { payload_json: string } | null;
+  try {
+    row = await c.env.sql.first<{ payload_json: string }>("SELECT payload_json FROM audit_rows WHERE tenant_id = ? AND event = 'policy.changed' AND subject = 'freeze' ORDER BY seq DESC LIMIT 1", [c.caller!.tenantId]);
+  } catch { return STOP_UNREAD; }
+  if (!row) return null;
+  let to: unknown;
+  try { to = (JSON.parse(row.payload_json) as { to?: unknown }).to; } catch { return STOP_UNREAD; }
+  if (to === "on") return STOP_ON;
+  return to === "off" || to === "" ? null : STOP_UNREAD;
 }
 
 export const ROUTES: Route[] = [

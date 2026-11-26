@@ -126,6 +126,28 @@ describe("live cards in Purser Cloud (cloud/src/agentCards.ts)", () => {
     expect((await ask("issue")).status).toBe(409);
   });
 
+  // 26 Nov review: with no engine in the cloud (a runner's company), the card desk never asked the runner's emergency
+  // stop, so cards were issued, unfrozen, raised and tested while it was on. Now it reads the newest synced
+  // policy.changed row for the stop, refuses while it is on, and refuses when that row cannot be read.
+  it("refuses an issue, unfreeze, limits or test while the runner's synced emergency stop is on; a freeze still goes", async () => {
+    await switchOn();
+    const db = new TenantDb(c.env.sql, t.id);
+    const stop = (seq: number, to: string, payload?: string) => db.apply([db.insert("audit_rows", { seq, ts: `2026-11-02T10:0${seq}:00Z`, actor: "human", event: "policy.changed", subject: "freeze", payload_json: payload ?? JSON.stringify({ key: "freeze", label: "Emergency stop", from: to === "on" ? "" : "on", to, proposal_id: `P-${seq}` }), prev_hash: "0", row_hash: `s${seq}` })]);
+    await stop(4, "on");
+    const asked = await ask("issue");
+    expect(asked.status, JSON.stringify(asked.json)).toBe(409);
+    expect(asked.json.error).toMatch(/emergency stop is on/);
+    for (const kind of ["unfreeze", "limits", "test"]) expect((await ask(kind)).json.error ?? "", kind).toMatch(/emergency stop is on/);
+    expect((await ask("freeze")).json.error ?? "").not.toMatch(/emergency stop/);
+    expect(writes(s.calls)).toEqual([]);
+    // Lifted (the newest row): the issue is asked again.
+    await stop(5, "off");
+    expect((await ask("issue")).status).toBe(201);
+    // A row that cannot be read: refused, failing closed.
+    await stop(6, "on", "not json");
+    expect((await ask("issue")).json.error).toMatch(/emergency stop could not be read/);
+  });
+
   it("freezes and unfreezes with Face ID, and shows a decline when the agent tries over its limit", async () => {
     await switchOn();
     await act("issue");
