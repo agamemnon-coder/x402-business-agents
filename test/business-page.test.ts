@@ -8,10 +8,9 @@ import { describe, expect, it } from "vitest";
 import { CONTACT_EMAIL } from "../src/config/brand.js";
 import { PRICING, PRICING_LINE, euro } from "../src/config/pricing.js";
 import { BUSINESS_PAGE, BUSINESS_CSP, ONE_PAGER_CSP, ONE_PAGER_PAGE, PRICING_HOME, REDIRECTS } from "../src/servers/dashboard.js";
-import { FIRST_TARGET, FIRST_TARGET_NOTE, PILOT_AGREEMENT, FOUNDING_NAME, FOUNDING_TEXT, GO_LIVE_DOC, PILOT_APPLY, PILOT_FORM_NOTE, PILOT_JS, PILOT_MAIL, PILOT_QUESTIONS, PILOT_VOLUMES, POSITION, PRINT_JS, faqs, pilotMailto, type PilotForm } from "../src/redesign/business.js";
+import { BUSINESS_HONEST, FIRST_TARGET, FIRST_TARGET_NOTE, PILOT_AGREEMENT, FOUNDING_NAME, FOUNDING_TEXT, GO_LIVE_DOC, PILOT_APPLY, PILOT_FORM_NOTE, PILOT_JS, PILOT_MAIL, PILOT_QUESTIONS, PILOT_VOLUMES, POSITION, PRINT_JS, faqs, pilotMailto, type PilotForm } from "../src/redesign/business.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
 import { BUSINESS_LINE, BUSINESS_QUESTION } from "../src/redesign/businessVisuals.js";
-import { globeScript } from "../src/ui/globe.js";
 import { repoHref } from "../src/redesign/productPage.js";
 import { START_STEPS } from "../src/redesign/home.js";
 import { residency } from "../src/redesign/privacy.js";
@@ -42,11 +41,14 @@ describe("/business (22 Nov): the question, one line, one visual, the pilot's fo
     expect(t).toContain("Founding Partner Pilot · test money only");
   });
 
-  it("has the sign-up form: name, company, work email and invoices a month required, three short questions optional", () => {
+  it("has the sign-up form: name, work email and company required, everything else optional", () => {
     const form = /<form class="bzf-g" id="pilot-form"[^>]*>[\s\S]*?<\/form>/.exec(m)![0];
     expect(form).not.toMatch(/\b(action|method)=/);
     for (const [name, type] of [["name", "text"], ["company", "text"], ["email", "email"]]) expect(form).toMatch(new RegExp(`<input name="${name}" type="${type}"[^>]*\\brequired>`));
-    expect(form).toMatch(/<select name="invoices" required><option value="">Choose<\/option><option>&lt;100<\/option><option>100–500<\/option><option>500–2,000<\/option><option>2,000\+<\/option><\/select>/);
+    // 26 Nov (Max: "far too full"): invoices a month and two of the questions fold under "Tell us more", optional.
+    expect(form).toMatch(/<details class="more"><summary>Tell us more<\/summary><div>\n<label><span>Invoices per month<\/span><select name="invoices"><option value="">Choose<\/option><option>&lt;100<\/option><option>100–500<\/option><option>500–2,000<\/option><option>2,000\+<\/option><\/select>/);
+    expect(form.indexOf('name="start"')).toBeLessThan(form.indexOf("<details"));
+    expect(form.indexOf('name="pay"')).toBeGreaterThan(form.indexOf("<details"));
     expect(PILOT_VOLUMES).toEqual(["<100", "100–500", "500–2,000", "2,000+"]);
     // 26 Nov (the owner): three qualifying questions as chips (radios), none required, in place of the message.
     expect(PILOT_QUESTIONS.map((x) => [x.q, x.options])).toEqual([["How do you pay suppliers today?", ["Bank portal", "AP tool", "Spreadsheets"]], ["Who approves payments?", ["CFO", "Founder", "Accountant"]], ["When would you start?", ["Now", "Next quarter", "Exploring"]]]);
@@ -87,18 +89,19 @@ describe("/business (22 Nov): the question, one line, one visual, the pilot's fo
     expect(PILOT_JS).not.toMatch(/fetch\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|indexedDB|cookie|innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(|new Function/);
   });
 
-  it("shows one visual, the globe (src/ui/globe.ts), under the page's own script, and nothing that repeats Home", () => {
-    // 26 Nov (Max: "it is really ugly"; Home and /try tell the story): one screen, the globe its one visual, drawn by the
-    // page's one script (after the form's), no image; the mock of the approval moment, the sections and the figures gone.
-    expect(m.match(/<canvas\b/g)).toHaveLength(1);
-    expect(m).toContain('<canvas class="bz-globe" aria-hidden="true"></canvas>');
-    expect(scriptBlocks(BUSINESS_PAGE)[0]).toContain(globeScript({ selector: "canvas.bz-globe", maxR: 190, places: [[4.9, 52.37, "", true], [-122.42, 37.77, "", false]] }));
-    expect(m).not.toMatch(/<figure\b|<img\b/);
+  it("is one screen: a soft glow, the question, one line, the form and three points; nothing that repeats Home", () => {
+    // 26 Nov (Max: "it is really ugly"; then "far too full", and the globe is Purser Cloud's sign-in's): a deep page with
+    // one soft violet glow drawn in CSS, no picture and no script but the form's; a footer of one line.
+    expect(m).not.toMatch(/<canvas\b|<figure\b|<img\b/);
+    expect(scriptBlocks(BUSINESS_PAGE)[0]!.replace(/^<script>|<\/script>$/g, "").trim()).toBe(PILOT_JS);
+    expect(BUSINESS_PAGE).toContain("main.bzp::before");
+    expect(BUSINESS_PAGE).toContain(`<footer class="bzfoot"><div class="wrap"><p><span>${BUSINESS_HONEST}</span>`);
+    expect(BUSINESS_PAGE).not.toMatch(/What's real\?|class="flink"/);
     expect(BUSINESS_PAGE).not.toMatch(/\sstyle="/);
     // Gone (Max, 22 Nov: "the demo duplicates Home"; 26 Nov: "really ugly"): the figures, the approval card and its mock,
     // the diagram, the architecture, the plans, the calculator, the questions, the 30 days, what you get and what we need,
     // and the buttons to /try and /proof; the footer without its "Built on" figures.
-    expect(m).not.toMatch(/class="bz(stats|card|d|a|-price|-calc|-faq|-fold|v|p3|2)\b|<details\b|data-stat=|href="\/try"|href="proof"/);
+    expect(m).not.toMatch(/class="bz(stats|card|d|a|-price|-calc|-faq|-fold|v|p3|2)\b|<details\b(?! class="more")|data-stat=|href="\/try"|href="proof"/);
     expect(t).not.toMatch(/€/);
     expect(t.split(" ").filter((w) => /[\p{L}\p{N}]/u.test(w)).length).toBeLessThanOrEqual(130);
     expect(BUSINESS_PAGE).not.toMatch(/class="awx-strip|10 Airwallex features/);
@@ -129,8 +132,8 @@ describe("what the pages claim", () => {
       for (const re of bad) expect({ name, found: re.exec(t)?.[0] ?? null }).toEqual({ name, found: null });
       expect(t).toMatch(/No customers, pilots or revenue yet\./);
       expect(t).toMatch(/No partnership or endorsement (is )?claimed/i);
-      // The first target group is a starting point, not a proven segment (Max, 21 Nov).
-      expect(t).toMatch(/not a proven market segment/);
+      // The first target group is a starting point, not a proven segment (Max, 21 Nov); /business no longer names it.
+      if (name === "onePager") expect(t).toMatch(/not a proven market segment/);
     }
   });
 

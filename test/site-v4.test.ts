@@ -176,9 +176,9 @@ describe("the site after v4", () => {
       const product = MORE_LINKS.filter((l) => l.group === "product" && served.includes(l.label));
       expect({ name, rest: (more?.[2] ?? "").replace(/<a [^>]*>[^<]+<\/a>/g, "") }).toEqual({ name, rest: product.length ? "<hr>" : "" });
       // The footer repeats the product pages' links (not the partner pages), in the same order; Try, an older page, has
-      // no footer.
+      // no footer; /business (26 Nov, Max: "far too full") has one line of its own (test/business-page.test.ts).
       const foot = /<footer class="foot">[\s\S]*?<\/footer>/.exec(html)?.[0] ?? "";
-      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: MORE_LINKS.filter((l) => l.group === "product" && (l.tab || served.includes(l.label)) && !/^https:/.test(l.href)).map((l) => [l.href, l.label]) });
+      if (name !== "try" && name !== "business") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: MORE_LINKS.filter((l) => l.group === "product" && (l.tab || served.includes(l.label)) && !/^https:/.test(l.href)).map((l) => [l.href, l.label]) });
     }
   });
 

@@ -554,7 +554,7 @@ export const OPEN_TARGET_JS = `(function () {
 /** A page around a body: one style, one script, the run's data in a data block ("<" escaped). */
 /** Every <title> is branded "Purser · <Page>" (review, 12 Nov); a title that already starts with Purser stays. */
 export const pageTitle = (t: string) => (/^Purser\b/.test(t) ? t : `Purser · ${t}`);
-export function page(o: { title: string; description: string; /** The page's one canonical address (Home, served at / and /home). */ canonical?: string; tab: PageKey | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][]; /** The partner pages' "Built on" strip (src/redesign/partners.ts builtOnHtml). */ builtOn?: string }): string {
+export function page(o: { title: string; description: string; /** The page's one canonical address (Home, served at / and /home). */ canonical?: string; tab: PageKey | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][]; /** The partner pages' "Built on" strip (src/redesign/partners.ts builtOnHtml). */ builtOn?: string; /** A page's own footer in place of the site's (/business: one line). */ footer?: string }): string {
   // The judge tour (21 Nov, src/redesign/tour.ts): its bar's style and script on Home and on each stop of the tour that
   // is a page of the site, inside the page's one <style> and one <script>, so the page's CSP hashes cover them. The bar
   // shows only while a tour runs; a page that had no script gets one with the bar's alone (no stage).
@@ -582,7 +582,7 @@ ${PREMIUM_CSS}</style>
 <body>
 ${header(o.tab)}
 ${o.body}
-${footer(o.source, o.real, o.links, o.builtOn)}
+${o.footer ?? footer(o.source, o.real, o.links, o.builtOn)}
 ${script}
 </body>
 </html>`);

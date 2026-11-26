@@ -968,6 +968,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         await page.fill('#pilot-form [name="name"]', f.name);
         await page.fill('#pilot-form [name="company"]', f.company);
         await page.fill('#pilot-form [name="email"]', f.email);
+        await page.locator("#pilot-form details.more > summary").click();
         await page.selectOption('#pilot-form [name="invoices"]', f.invoices);
         // 26 Nov: the three questions are chips (radios); one chosen by clicking its chip.
         await page.locator('#pilot-form .chips label', { hasText: f.pay }).click();

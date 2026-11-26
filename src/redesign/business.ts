@@ -21,7 +21,6 @@ import { repoHref, siteLink } from "./productPage.js";
 import { BUSINESS_LINE, BUSINESS_QUESTION } from "./businessVisuals.js";
 import { TRY_URL, esc, icon, page } from "./ui.js";
 import { picon } from "./proofIcons.js";
-import { globeScript } from "../ui/globe.js";
 
 /** The pilot's mail: the footer's contact address, with a subject. */
 export const PILOT_MAIL = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Purser Founding Partner Pilot")}`;
@@ -195,33 +194,38 @@ export const PILOT_JS = `(function () {
 /** Three points under the form, each true of the pilot as it is offered (FOUNDING_POINTS, PILOT_AGREEMENT). */
 export const PILOT_TRUST: readonly [string, string][] = [["flask-conical", "Test money only"], ["credit-card", "No card, no billing"], ["file-check", "Written agreement"]];
 
-const PAGE_CSS = `main.bzp { padding: 0 0 24px; }
-.bzp .wrap { max-width: 1200px; }
-/* One screen: the question and the globe left, the form right; on a phone the form under them. */
-.bzx { position: relative; isolation: isolate; padding: clamp(28px, 5vh, 64px) 0 clamp(20px, 3vh, 36px); }
-.bzx::before { content: ""; position: absolute; inset: 0; z-index: -2; pointer-events: none; background:
-  radial-gradient(40% 55% at 22% 78%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
-  radial-gradient(35% 45% at 85% 20%, color-mix(in srgb, var(--accent-ink) 10%, transparent), transparent 70%); }
-.bzx-g { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); align-items: center; }
-@media (min-width: 980px) { .bzx-g { grid-template-columns: minmax(0, 1fr) minmax(400px, 452px); gap: clamp(40px, 5vw, 88px); } }
-.bzx-l { display: grid; align-content: center; min-width: 0; }
+const PAGE_CSS = `body { background: var(--bg); }
+main.bzp { position: relative; isolation: isolate; overflow: hidden; min-height: calc(100vh - 140px); min-height: calc(100svh - 140px); display: grid; align-items: center; }
+/* The ground: one large, soft violet glow that drifts slowly, over a faint grid fading out from the middle. */
+main.bzp::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 46%; width: min(1100px, 130vw); height: min(760px, 110vw); translate: -50% -50%; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 34%, transparent), color-mix(in srgb, var(--accent-ink) 14%, transparent) 55%, transparent);
+  filter: blur(60px); opacity: .9; }
+main.bzp::after { content: ""; position: absolute; z-index: -2; inset: 0; pointer-events: none;
+  background-image: linear-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px; -webkit-mask-image: radial-gradient(60% 55% at 50% 45%, #000, transparent); mask-image: radial-gradient(60% 55% at 50% 45%, #000, transparent); }
+@media (prefers-reduced-motion: no-preference) { main.bzp::before { animation: bz-drift 18s ease-in-out infinite alternate; } }
+@keyframes bz-drift { from { translate: -56% -52%; scale: 1; } to { translate: -44% -46%; scale: 1.08; } }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) main.bzp::before { opacity: .55; } }
+:root[data-theme="light"] main.bzp::before { opacity: .55; }
+.bzp .wrap { max-width: 1120px; }
+.bzx { padding: clamp(40px, 9vh, 120px) 0; }
+.bzx-g { display: grid; gap: 40px; grid-template-columns: minmax(0, 1fr); align-items: center; }
+@media (min-width: 980px) { .bzx-g { grid-template-columns: minmax(0, 1fr) minmax(380px, 420px); gap: clamp(48px, 7vw, 112px); } }
 .bzx-pill { margin: 0; }
-.bzx h1 { margin: 18px 0 0; font-size: clamp(38px, 5.2vw, 72px); font-weight: 780; letter-spacing: -.042em; line-height: 1; max-width: 11.5em; text-wrap: balance; }
-.bzx-a { margin: 18px 0 0; max-width: 30em; font-size: clamp(17px, 1.45vw, 20px); line-height: 1.5; color: var(--muted); }
-canvas.bz-globe { display: block; width: min(100%, 460px); height: clamp(250px, 40vh, 440px); margin: 14px 0 0 -24px; }
+.bzx h1 { margin: 22px 0 0; font-size: clamp(40px, 4.7vw, 68px); font-weight: 760; letter-spacing: -.045em; line-height: .98; max-width: 10.5em; text-wrap: balance; }
+.bzx-a { margin: 22px 0 0; max-width: 26em; font-size: clamp(17px, 1.4vw, 20px); line-height: 1.5; color: var(--muted); }
 /* The form: one quiet card. */
-.bzf { position: relative; padding: 26px; border-radius: 24px; min-width: 0;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, transparent), color-mix(in srgb, var(--surface) 82%, transparent));
-  border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 40px 90px -50px var(--glow), 0 24px 60px -40px rgba(8, 6, 28, .6);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); }
+.bzf { position: relative; padding: 28px; border-radius: 24px; min-width: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 76%, transparent));
+  border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 50px 100px -50px var(--glow), 0 24px 60px -40px rgba(8, 6, 28, .6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3); }
 .bzf::before { content: ""; position: absolute; left: 16%; right: 16%; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
-.bzf h2 { margin: 0; font-size: 21px; font-weight: 740; letter-spacing: -.02em; line-height: 1.2; }
+.bzf h2 { margin: 0; font-size: 20px; font-weight: 720; letter-spacing: -.02em; line-height: 1.25; }
 .bzf > p { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
-form.bzf-g { margin: 20px 0 0; display: grid; gap: 14px 12px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+form.bzf-g { margin: 22px 0 0; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
 .bzf-g label { display: grid; gap: 6px; min-width: 0; font-size: 14px; font-weight: 600; }
-.bzf-g .wide, .bzf-g fieldset, .bzf-g .act, .bzf-g .bzf-st { grid-column: 1 / -1; }
 .bzf-g input:not([type="radio"]), .bzf-g select { box-sizing: border-box; width: 100%; min-height: 46px; padding: 10px 13px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--text) 13%, var(--border));
-  background: color-mix(in srgb, var(--bg) 65%, var(--surface)); color: var(--text); font: 500 16px/1.4 Inter, system-ui, sans-serif; transition: border-color .15s ease, box-shadow .15s ease; }
+  background: color-mix(in srgb, var(--bg) 60%, var(--surface)); color: var(--text); font: 500 16px/1.4 Inter, system-ui, sans-serif; transition: border-color .15s ease, box-shadow .15s ease; }
 .bzf-g select { appearance: none; -webkit-appearance: none; padding-right: 38px; cursor: pointer;
   background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
   background-position: calc(100% - 19px) 52%, calc(100% - 14px) 52%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
@@ -229,9 +233,10 @@ form.bzf-g { margin: 20px 0 0; display: grid; gap: 14px 12px; grid-template-colu
 .bzf-g input:not([type="radio"]):hover, .bzf-g select:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
 .bzf-g input:not([type="radio"]):focus-visible, .bzf-g select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
 .bzf-g.tried :invalid, .bzf-g :user-invalid { border-color: var(--bad); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 16%, transparent); }
-/* The three questions: a row of chips each (radios), none required. */
-.bzf-g fieldset { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; gap: 7px; }
-.bzf-g legend { padding: 0; margin: 0 0 7px; font-size: 14px; font-weight: 600; }
+/* A question as a row of chips (radios), never required. */
+.bzf-g fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.bzf-g legend { padding: 0; margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.bzf-g legend small { font-weight: 500; color: var(--faint); }
 .bzf-g .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .bzf-g .chips label { display: inline-flex; position: relative; font-weight: 550; }
 .bzf-g .chips input { position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -239,7 +244,15 @@ form.bzf-g { margin: 20px 0 0; display: grid; gap: 14px 12px; grid-template-colu
 .bzf-g .chips span:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); color: var(--text); }
 .bzf-g .chips input:checked + span { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
 .bzf-g .chips input:focus-visible + span { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
-.bzf-g .act { display: grid; gap: 10px; margin-top: 4px; }
+/* "Tell us more": the rest of the questions, folded, all optional. */
+.bzf-g details.more { border-top: 1px solid var(--glass-line); padding-top: 12px; }
+.bzf-g details.more > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; min-height: 32px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 8px; }
+.bzf-g details.more > summary::-webkit-details-marker { display: none; }
+.bzf-g details.more > summary::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .15s ease; }
+.bzf-g details.more[open] > summary::after { transform: rotate(225deg) translateY(-1px); }
+.bzf-g details.more > summary:hover { color: var(--text); }
+.bzf-g details.more > div { display: grid; gap: 14px; padding-top: 10px; }
+.bzf-g .act { display: grid; gap: 10px; margin-top: 2px; }
 .bzf-g .act .btn { width: 100%; justify-content: center; height: auto; min-height: 52px; padding: 13px 22px; font-size: 16.5px; white-space: normal; }
 .bzf-g .act p { margin: 0; text-align: center; font-size: 14px; line-height: 1.5; color: var(--muted); text-wrap: balance; }
 .bzf-g .act a { color: var(--accent); font-weight: 650; }
@@ -247,56 +260,61 @@ form.bzf-g { margin: 20px 0 0; display: grid; gap: 14px 12px; grid-template-colu
 .bzf-st.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); }
 .bzf-st.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, transparent); border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); }
 .bzf-st[hidden] { display: none; }
-/* Under the form: three points in one quiet row. */
-ul.bzt { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; }
-ul.bzt li { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 550; color: var(--muted); white-space: nowrap; }
-ul.bzt li .i { width: 15px; height: 15px; }
-ul.bzt li .i { color: var(--accent); }
-@media (prefers-reduced-motion: reduce) { .bzf-g input, .bzf-g select, .bzf-g .chips span { transition: none; } }
-@media (max-width: 979px) { canvas.bz-globe { width: 100%; margin-left: 0; height: clamp(220px, 58vw, 360px); } }
-@media (max-width: 520px) { .bzf { padding: 20px 16px; border-radius: 20px; } form.bzf-g { grid-template-columns: minmax(0, 1fr); } .bzx h1 { font-size: clamp(34px, 10vw, 44px); } }`;
+/* Three tiny points under the form. */
+ul.bzt { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; }
+ul.bzt li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+ul.bzt li .i { width: 14px; height: 14px; color: var(--accent); }
+/* The page's own footer: one line. */
+footer.bzfoot { padding: 20px 0 28px; }
+footer.bzfoot p { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 14px; line-height: 1.5; color: var(--faint); text-align: center; }
+footer.bzfoot a { color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .bzf-g input, .bzf-g select, .bzf-g .chips span, .bzf-g details.more > summary::after { transition: none; } }
+@media (max-width: 520px) { .bzf { padding: 22px 16px; border-radius: 20px; } .bzx h1 { font-size: clamp(36px, 10.5vw, 46px); } main.bzp { min-height: 0; } }`;
 
-/** The globe's places: the demo company's (Amsterdam, as on Purser Cloud's sign-in) and San Francisco; no labels here. */
-const BUSINESS_GLOBE_JS = globeScript({ selector: "canvas.bz-globe", maxR: 190, places: [[4.9, 52.37, "", true], [-122.42, 37.77, "", false]] });
+/** The one question in sight; the others fold under "Tell us more". */
+const ASKED = "start";
 
 export function businessPage(): string {
-  // 22 Nov (Max: "far too much text"): the question, one line, one visual and the form. 26 Nov (Max: "it is really
-  // ugly"; Home and /try tell the story, so this page does not): one screen, black and clean: the question, one line and
-  // the globe (src/ui/globe.ts) left, a compact form right with three short qualifying questions, three points under it.
-  // The form still only opens the visitor's own mail app; nothing is stored.
-  const field = (name: string, label: string, attrs: string, wide = false) => `<label${wide ? ' class="wide"' : ""}><span>${esc(label)}</span><input name="${name}" ${attrs} required></label>`;
+  // 22 Nov (Max: "far too much text"): the question, one line, one visual and the form. 26 Nov (Max: "really ugly";
+  // then "far too full again", and the globe is the sign-in's): one screen, simple and high-tech: a deep page with one
+  // soft violet glow, the question and one line, a short form (name, work email, company and one optional question;
+  // the rest folded under "Tell us more"), three tiny points and one footer line. The form still only opens the
+  // visitor's own mail app; nothing is stored.
+  const field = (name: string, label: string, attrs: string) => `<label><span>${esc(label)}</span><input name="${name}" ${attrs} required></label>`;
+  const chips = (x: (typeof PILOT_QUESTIONS)[number]) => `<fieldset><legend>${esc(x.q)} <small>${esc("optional")}</small></legend><div class="chips">${x.options.map((o) => `<label><input type="radio" name="${x.name}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join("")}</div></fieldset>`;
   const body = `<main class="bzp">
 <section class="bzx" aria-labelledby="bzh-h"><div class="wrap"><div class="bzx-g">
 <div class="bzx-l"><p class="bzx-pill"><span class="pill note">${icon("info", 14)}${esc(BUSINESS_LABEL)}</span></p>
 <h1 id="bzh-h">${esc(BUSINESS_QUESTION)}</h1>
-<p class="bzx-a">${esc(BUSINESS_LINE)}</p>
-<canvas class="bz-globe" aria-hidden="true"></canvas></div>
+<p class="bzx-a">${esc(BUSINESS_LINE)}</p></div>
 <div class="bzx-r" id="pilot">
-<section class="bzf" aria-labelledby="bzf-h"><h2 id="bzf-h">${esc(FOUNDING_NAME)}</h2><p>${esc("Free for 30 days. Tell us a little; we reply by email.")}</p>
+<section class="bzf" aria-labelledby="bzf-h"><h2 id="bzf-h">${esc(FOUNDING_NAME)}</h2><p>${esc("Free for 30 days. We reply by email.")}</p>
 <form class="bzf-g" id="pilot-form" aria-labelledby="bzf-h" novalidate>
 ${field("name", "Name", 'type="text" autocomplete="name" maxlength="200" placeholder="Ada Jansen"')}
+${field("email", "Work email", 'type="email" autocomplete="email" maxlength="200" placeholder="ada@company.com"')}
 ${field("company", "Company", 'type="text" autocomplete="organization" maxlength="200" placeholder="Northwind B.V."')}
-${field("email", "Work email", 'type="email" autocomplete="email" maxlength="200" placeholder="ada@company.com"', true)}
-<label class="wide"><span>${esc("Invoices per month")}</span><select name="invoices" required><option value="">${esc("Choose")}</option>${PILOT_VOLUMES.map((v) => `<option>${esc(v)}</option>`).join("")}</select></label>
-${PILOT_QUESTIONS.map((x) => `<fieldset><legend>${esc(x.q)}</legend><div class="chips">${x.options.map((o) => `<label><input type="radio" name="${x.name}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join("")}</div></fieldset>`).join("\n")}
-<div class="act"><button class="btn primary" type="submit">${esc(PILOT_APPLY)}${picon("arrow-right", 18)}</button><p>${esc(PILOT_FORM_NOTE)} <br>${esc("Or")} <a href="${esc(PILOT_MAIL)}">${esc("email us directly")}</a> · <a href="${ONE_PAGER_PATH}">${esc("the one-pager")}</a></p></div>
+${chips(PILOT_QUESTIONS.find((x) => x.name === ASKED)!)}
+<details class="more"><summary>${esc("Tell us more")}</summary><div>
+<label><span>${esc("Invoices per month")}</span><select name="invoices"><option value="">${esc("Choose")}</option>${PILOT_VOLUMES.map((v) => `<option>${esc(v)}</option>`).join("")}</select></label>
+${PILOT_QUESTIONS.filter((x) => x.name !== ASKED).map(chips).join("\n")}
+</div></details>
+<div class="act"><button class="btn primary" type="submit">${esc(PILOT_APPLY)}${picon("arrow-right", 18)}</button><p>${esc(PILOT_FORM_NOTE)}<br>${esc("Or")} <a href="${esc(PILOT_MAIL)}">${esc("email us directly")}</a> · <a href="${ONE_PAGER_PATH}">${esc("the one-pager")}</a></p></div>
 <p class="bzf-st" id="pilot-status" role="status" hidden></p>
 </form></section>
-<ul class="bzt">${PILOT_TRUST.map(([i, l]) => `<li>${picon(i, 16)}${esc(l)}</li>`).join("")}</ul>
+<ul class="bzt">${PILOT_TRUST.map(([i, l]) => `<li>${picon(i, 14)}${esc(l)}</li>`).join("")}</ul>
 </div>
 </div></div></section>
 </main>`;
+  // One footer line in place of the site's (Max: no "What's real?", no row of links here): the honesty, the contact.
+  const foot = `<footer class="bzfoot"><div class="wrap"><p><span>${esc(BUSINESS_HONEST)}</span><a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a></p></div></footer>`;
   return page({
-    title: "For companies", tab: "business", css: PAGE_CSS, body, js: `${PILOT_JS}\n${BUSINESS_GLOBE_JS}`, stage: false, builtOn: "",
+    title: "For companies", tab: "business", css: PAGE_CSS, body, js: PILOT_JS, stage: false, footer: foot,
     description: "Would you trust an AI agent with your company's money? Apply for Purser's 30-day Founding Partner Pilot: agents pay the routine, your CFO signs the rest with Face ID. Test money only.",
-    source: "Source: the form only opens the visitor's own mail app (src/redesign/business.ts pilotMailto); the globe's green dot is the demo company's location as its test world gives it (Amsterdam).",
-    real: [
-      "Test money only: sandboxes and testnet. No customers, pilots or revenue yet.",
-      "The form sends nothing itself and stores nothing: it opens your own email app with the fields filled in.",
-      `${FIRST_TARGET_NOTE} Built on Airwallex; no partnership or endorsement is claimed.`,
-    ],
+    source: "Source: the form only opens the visitor's own mail app (src/redesign/business.ts pilotMailto).",
   });
 }
+/** The page's one honesty line (its footer): test money, no customers yet, no endorsement claimed. */
+export const BUSINESS_HONEST = "Test money only. No customers, pilots or revenue yet. Built on Airwallex; no partnership or endorsement claimed.";
 
 const ONE_CSS = `.op { padding: 22px 0 28px; }
 .op .wrap { max-width: 900px; display: grid; gap: 14px; }
