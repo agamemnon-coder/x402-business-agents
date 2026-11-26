@@ -37,10 +37,14 @@ export const SIGNIN_CSS = `
 .signed-out .hero { position: relative; isolation: isolate; border-right: 0; border-bottom: 0; align-content: start; justify-items: start; background: transparent; }
 .signed-out .hero::before { content: ""; position: absolute; z-index: -3; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none;
   background: radial-gradient(50% 30% at var(--si-gx, 30%) var(--si-gy, 74%), color-mix(in srgb, var(--accent) var(--si-ga, 42%), transparent), color-mix(in srgb, var(--accent) 9%, transparent) 55%, transparent 82%),
-    radial-gradient(22% 20% at calc(var(--si-gx, 30%) + 12%) calc(var(--si-gy, 74%) - 2%), color-mix(in srgb, #e879f9 16%, transparent), transparent 75%); }
+    radial-gradient(22% 20% at calc(var(--si-gx, 30%) + 12%) calc(var(--si-gy, 74%) - 2%), color-mix(in srgb, #e879f9 16%, transparent), transparent 75%),
+    radial-gradient(95% 70% at calc(var(--si-gx, 30%) + 26%) -6%, color-mix(in srgb, #4f46e5 var(--si-nb, 11%), transparent), transparent 75%),
+    radial-gradient(55% 45% at calc(var(--si-gx, 30%) - 6%) 4%, color-mix(in srgb, var(--accent) var(--si-nb2, 7%), transparent), transparent 72%); }
+/* 26 Nov, later (Max: "the glow like really far or the stars like space"): depth, back to front: the stars (the
+   canvas, dark only), a far violet and indigo haze high in the sky, the glow at the limb, the Earth. */
 .signed-out main { background: transparent; }
-@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .signed-out .hero { --si-ga: 30%; } }
-:root[data-theme="light"] .signed-out .hero { --si-ga: 30%; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .signed-out .hero { --si-ga: 30%; --si-nb: 6%; --si-nb2: 4%; } }
+:root[data-theme="light"] .signed-out .hero { --si-ga: 30%; --si-nb: 6%; --si-nb2: 4%; }
 .signed-out canvas.pw-wave { display: none; }
 .signed-out .hero canvas.si-globe { position: absolute; z-index: -2; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
 .signed-out .trust { position: relative; z-index: 1; }
@@ -169,4 +173,4 @@ const PLACES: readonly GlobePlace[] = [
 
 /** The sign-in's script: the Earth as a horizon, Amsterdam on its limb, the arc to San Francisco over it. Wide: across
  *  the page (the canvas is twice the panel); narrow: under the panel's words. */
-export const SIGNIN_JS = `${globeScript({ selector: "canvas.si-globe", avoid: ".side h2, .side > p, .side li, .si-float", places: PLACES, view: [-8, -14, 6], horizon: [[1280, 0.3, 0.74, 0.52, 1500], [1000, 0.36, 0.78, 0.55, 1500], [641, 0.68, 0.76, 0.95, 640, 0.12], [0, 0.7, 0.62, 0.95, 640, 0.07]], dim: 0.8, lift: 0.2, labels: false })}`;
+export const SIGNIN_JS = `${globeScript({ selector: "canvas.si-globe", avoid: ".side h2, .side > p, .side li, .si-float", places: PLACES, view: [-8, -14, 6], horizon: [[1280, 0.3, 0.74, 0.52, 1500], [1000, 0.36, 0.78, 0.55, 1500], [641, 0.68, 0.76, 0.95, 640, 0.12], [0, 0.7, 0.62, 0.95, 640, 0.07]], dim: 0.8, lift: 0.2, labels: false, stars: [320, ".side, .auth, .si-float, .trust, #pask-fab"] })}`;
