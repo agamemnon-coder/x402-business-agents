@@ -150,7 +150,9 @@ section.dcard:has(>.cl-list.ok),section.dcard:has(.cl-list.ok):not(:has(.cl-list
 section.dcard:has(.cl-list.no){--dc:var(--bad)}section.dcard.cl-addr{--dc:var(--accent)}
 .dgrid section.dcard,section.dcard.cl-addr{box-shadow:inset 0 2px 0 var(--dc,var(--accent));background-image:radial-gradient(120% 80% at 100% 0,color-mix(in srgb,var(--dc,var(--accent)) 9%,transparent),transparent 60%)}
 .set-you{--bc:var(--accent)}.set-pol{--bc:var(--sky)}.set-danger{--bc:var(--bad)}.card.panel.exports{--bc:var(--ok)}.card.panel.balance{--bc:var(--sky)}.card.panel.prbooks,.card.panel.t0close{--bc:var(--ind)}
-.set-you,.set-pol,.set-danger,.card.panel.exports,.card.panel.balance,.card.panel.prbooks,.card.panel.t0close{box-shadow:inset 0 2px 0 var(--bc);background-image:radial-gradient(120% 70% at 100% 0,color-mix(in srgb,var(--bc) 8%,transparent),transparent 60%)}
+#view .card.panel:is(.set-you,.set-pol,.set-danger,.exports,.balance,.prbooks,.t0close){box-shadow:inset 0 2px 0 var(--bc);background-image:radial-gradient(120% 70% at 100% 0,color-mix(in srgb,var(--bc) 9%,transparent),transparent 60%);border-color:color-mix(in srgb,var(--bc) 26%,var(--border))}
+#view .split2.set2>.card.panel:not(.set-you):not(.set-pol):not(.set-danger){--bc:var(--ok);box-shadow:inset 0 2px 0 var(--bc);background-image:radial-gradient(120% 70% at 100% 0,color-mix(in srgb,var(--bc) 8%,transparent),transparent 60%)}
+#view .set-pol li .ic,#view .set-pol p .ic{color:var(--accent)}
 table.table.jt thead th,table.table.vat thead th,table.table.ctab thead th{color:color-mix(in srgb,var(--accent) 45%,var(--muted))}
 /* Agents: the card itself glows faintly in its agent's colour. */
 .dk-item:has(.dk-meta.g0){--agc:var(--g0)}.dk-item:has(.dk-meta.g1){--agc:var(--g1)}.dk-item:has(.dk-meta.g2){--agc:var(--g2)}.dk-item:has(.dk-meta.g3){--agc:var(--g3)}.dk-item:has(.dk-meta.g4){--agc:var(--g4)}.dk-item:has(.dk-meta.g5){--agc:var(--g5)}
