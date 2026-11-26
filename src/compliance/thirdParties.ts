@@ -39,7 +39,8 @@ export interface Register { format: string; as_of: string; version: string; owne
 
 export const loadRegister = (file = REGISTER_FILE): Register => JSON.parse(readFileSync(file, "utf8")) as Register;
 
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+// A Markdown table cell: pipes escaped, newlines folded (split/join, as in controls.ts, so no regex half-escapes).
+const cell = (s: string) => s.split("|").join("\\|").split("\n").join(" ");
 const code = (s: string) => `\`${s}\``;
 const CRIT_WORDS: Record<Criticality, string> = { critical: "**critical**", important: "important", optional: "optional (opt-in)", "not-in-product": "not in the product" };
 

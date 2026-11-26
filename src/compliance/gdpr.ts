@@ -106,7 +106,8 @@ export function transfers(r: Register = loadRegister()): { id: string; name: str
   return r.providers.map((p) => ({ id: p.id, name: p.name, location: p.location, third_country: /United States/.test(p.location) }));
 }
 
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+// A Markdown table cell: pipes escaped, newlines folded (split/join, as in controls.ts, so no regex half-escapes).
+const cell = (s: string) => s.split("|").join("\\|").split("\n").join(" ");
 
 /** The record of processing activities and the transfers, as Markdown, for docs/compliance/gdpr.md. */
 export function ropaMarkdown(r: Register = loadRegister()): string {
