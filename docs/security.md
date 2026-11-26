@@ -377,6 +377,27 @@ had failed in earlier nightly runs), and the field-by-field sweep of every commi
 to a signed field that still verifies. Nothing in the verifiers (`src/proof/bundle.ts`, `src/try/receipt.ts`) needed
 changing this time; the committed evidence (`docs/evidence/fuzzing.md`) was not rerun.
 
+### Approval notifications in Slack or Teams, Face ID kept (26 November)
+
+The runner can tell a Slack or Microsoft Teams channel that a payment or a policy change waits for the CFO
+(`src/integrations/approvalNotify.ts`, hooked where the runner syncs the waiting proposals to the relay). A chat
+message is outside Purser's trust boundary, so:
+
+- **It never approves.** One deep link to the passkey approval page (`/approve/<id>` on the relay), with no query or
+  fragment (no viewer key, no token); no button that acts, no reply word. A Teams card's only action is `OpenUrl`.
+- **The webhook URL is a credential.** Read from `PURSER_NOTIFY_SLACK_WEBHOOK` / `PURSER_NOTIFY_TEAMS_WEBHOOK` only,
+  off when unset; never logged, never in the audit trail (`notify.sent` / `notify.failed` rows hold the channel, the
+  HTTP status and the attempts), never in an error. Hosts allowed: `hooks.slack.com` (https, port 443); Teams'
+  `*.webhook.office.com` or a Power Automate workflow's host (`*.logic.azure.com`, `*.environment.api.powerplatform.com`).
+  Any other URL is refused at start and that channel stays off.
+- **No injection from a payee's name.** Words from outside Purser lose links, markup and mention characters (`@` becomes
+  `＠`) and are cut to length; in Slack they sit in `plain_text` blocks, which Slack does not parse. A payee named
+  `<!channel> *x* <https://evil|click>` arrives as `channel x (link removed) click`. An account shows its last four
+  characters only; other kinds (a new supplier, changed bank details) show their title only.
+- **A failure blocks nothing.** Posted after the sync, never awaited by it; retried at most once; logged as
+  `notify.failed`, and the proposal waits for the passkey as before. Tested with a fake fetch only
+  (`test/approval-notify.test.ts`); not yet posted to a live channel.
+
 ## Security headers and rate limits (checked 2 November)
 
 Read from the code that serves each answer and asserted in `test/security-headers.test.ts`.

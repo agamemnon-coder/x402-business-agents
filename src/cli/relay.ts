@@ -28,6 +28,7 @@ import { loadRunnerSealKey } from "../passkey/sealKeyFile.js";
 import { enrolLink, relayConfig, viewerLink, type RelayConfig, mfaOn } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
 import { RelayRunner } from "../relay/runner.js";
+import { approvalNotifierFromEnv, NOTIFY_ENV } from "../integrations/approvalNotify.js";
 import { Tools } from "../claude/tools.js";
 import { draftPolicyFromText, draftSummary } from "../policy/fromText.js";
 import { recoverTaskCards, relayAsk } from "../agents/askPurser.js";
@@ -133,7 +134,11 @@ const draftPolicy = async (text: string) => {
 // Ask Purser (G): a chat message through the relay (the phone, or anyone with the viewer link) becomes, at most, a
 // task card proposal that waits for Face ID; it never issues a card itself (review 30 Oct, HIGH-1).
 const ask = (text: string, ticket: string) => relayAsk(db, new Tools(db))(text, ticket);
-const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, draftPolicy, ask, log: (line) => console.log(`${stamp()} ${line}`) });
+// Slack or Teams hears of each proposal that waits for the CFO, with a link to its passkey page and nothing that approves
+// (src/integrations/approvalNotify.ts). The webhook URLs come from the environment only and are never printed.
+const notify = approvalNotifierFromEnv(process.env, { fetch: (u, i) => fetch(u, i), link: (id) => `${cfg.url}/approve/${encodeURIComponent(id)}`, log: (line) => console.log(`${stamp()} ${line}`) }) ?? undefined;
+console.log(`notify   ${notify ? "on: Slack or Teams hears of each proposal that waits for you, with a link to its passkey page; nothing in a message approves" : `off (${NOTIFY_ENV.slack}, ${NOTIFY_ENV.teams})`}`);
+const runner = new RelayRunner({ db, cfg, fetch, execute, label, signer, onHook, draftPolicy, ask, notify, log: (line) => console.log(`${stamp()} ${line}`) });
 let stopping = false;
 // D19: with the autonomous agents on, each agent runs as its own process beside the runner (npm run agent -- <name>);
 // their lines go to this log, prefixed. They stop with the runner. They start after the recovery below, so the

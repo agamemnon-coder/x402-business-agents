@@ -110,6 +110,17 @@ now be refused, unchanged.
   above the limit is assumed to pass the agents and the cash check under a higher limit: "would have been paid alone"
   means Purser's rules would have allowed it.
 
+## Told in Slack or Teams, approved only with Face ID
+
+When a payment or a policy change waits for the CFO, the runner can post to a Slack or Teams incoming webhook what
+waits (the payee, the amount, the last four characters of the account, why) with one link: the passkey approval page
+for that proposal ([src/integrations/approvalNotify.ts](../src/integrations/approvalNotify.ts)). The chat is a
+doorbell, not a key: nothing in a message approves, so principle d holds unchanged. Set `PURSER_NOTIFY_SLACK_WEBHOOK`
+and/or `PURSER_NOTIFY_TEAMS_WEBHOOK` in the runner's environment (off when unset; other hosts refused); each proposal is
+announced once, a failure is logged as `notify.failed` and blocks nothing. A policy change's message carries the
+simulator's line above. Tested with a fake fetch ([test/approval-notify.test.ts](../test/approval-notify.test.ts));
+not yet posted to a live channel. The safeguards are in [security.md](security.md#approval-notifications-in-slack-or-teams-face-id-kept-26-november).
+
 ## What is not done
 
 Said plainly, so no row above reads as more than it is.
