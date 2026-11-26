@@ -123,6 +123,9 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // measures about 3 KB more than wrangler's upload. The check below keeps that difference, 4 KiB, and no more.
   // Then 26 Nov (governance round): wrangler's dry run put the upload at 3,078.20 KiB gzipped, over 3 MiB; the console's font
   // moved out of the bundle into the Worker's static assets (cloud/scripts/pdfjs.ts copies it), 3,030.74 KiB after.
+  // Then the same day, after the Obsidian agent cards (wrangler's dry run 3,048.95 KiB): the console's emergency-stop card
+  // and banner (3,050.83 KiB) and the full task-mandate gate in the engine (src/policy/taskMandates.ts and taskTokens.ts,
+  // 3,056.04 KiB: 5.21 KiB for the gate). This build measured 3,131,950 bytes gzipped, 17,874 under this check's limit.
   it("stays under 13.5 MB, and under 3 MB gzipped (as wrangler uploads it)", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
     expect(bytes).toBeLessThan(13.5 * 1024 * 1024);

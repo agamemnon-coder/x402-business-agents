@@ -1,9 +1,9 @@
 // Where approveWithinLimit (src/policy/approvals.ts) and the execution guard (src/policy/signedApproval.ts) ask about task
-// mandates and task tokens (src/policy/taskMandates.ts, taskTokens.ts). The runner opens every ledger with the full gate
-// installed (src/db/open.ts imports taskMandates.ts, which installs it). The cloud engine's bundle does not carry it (the
-// Worker's 3 MB gzipped budget, test/cloud-engine-bundle.test.ts) and no route there grants a mandate; there this small
-// gate stands in, failing closed: once a task mandate is on record, or a payment comes with a task token, nothing is paid
-// alone, and an approval alone that names a mandate does not run.
+// mandates and task tokens (src/policy/taskMandates.ts, taskTokens.ts). The full gate is installed when taskMandates.ts
+// loads: the runner opens every ledger with it (src/db/open.ts imports it), and since 26 Nov so does Purser Cloud's
+// engine (cloud/src/engine/hostWorker.ts imports it; about 5.5 KB gzipped in the Worker's bundle). Anywhere it is not
+// loaded, this small gate stands in, failing closed: once a task mandate is on record, or a payment comes with a task
+// token, nothing is paid alone, and an approval alone that names a mandate does not run.
 
 import type { DB } from "../db/open.js";
 
@@ -27,7 +27,7 @@ function onRecord(db: DB, seq?: number): boolean {
     || (seq === undefined && !!db.prepare("SELECT 1 FROM settings WHERE key LIKE ? ESCAPE '\\' LIMIT 1").get(like));
 }
 
-const ABSENT = "task mandates are enforced on the runner only";
+const ABSENT = "the task-mandate gate is not loaded here (src/policy/taskMandates.ts)";
 
 export const failClosed: AloneGate = {
   check: (db, _p, _t, a) => (a.taskToken !== undefined || onRecord(db) ? { ok: false, code: "mandate", reason: `mandate_gate_absent: ${ABSENT}` } : { ok: true, mandate: null, token: null }),
