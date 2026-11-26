@@ -18,7 +18,7 @@ import { aloneGate } from "./aloneGate.js";
 
 export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | "approval.second_key_eur" | "approval.second_key_new_payee" | "approval.second_key_bank_changed" | "approval.second_key_new_country" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | `card.${string}.hours` | `card.${string}.mccs` | `card.${string}.currencies` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
   | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps" | "ap.alone_eur" | `pay_from.${string}`
-  | "approval.policy_sod_eur"
+  | "approval.policy_sod_eur" | "treasury.fx_threshold_eur"
   | "approval.anomaly_multiple" | "approval.anomaly_history" | "approval.anomaly_first_eur" | `task_mandate.${string}`;
 
 export interface Rule {
@@ -168,6 +168,14 @@ export const SOD_RULE: Rule = {
 };
 
 /**
+ * The Treasury advisor's FX threshold (src/treasury/fxCore.ts): a forecast shortfall worth at least this in EUR gets a
+ * suggested conversion, filed for the CFO's passkey. Empty: none is suggested. Shown once set, like the SoD rule.
+ */
+export const FX_THRESHOLD_RULE: Rule = {
+  key: "treasury.fx_threshold_eur", label: "Treasury advisor: suggest a conversion for a forecast shortfall of at least this", unit: "EUR", kind: "optional_money", min: 1, max: MAX_FLOOR, fallback: "", agent: "treasury",
+};
+
+/**
  * A task mandate's rule (src/policy/taskMandates.ts), for any id, granted or not yet: changed through a policy change
  * like the rest, but never listed with the editable rules (the phone edits amounts and switches, not mandates).
  */
@@ -185,6 +193,7 @@ export function ruleFor(db: DB, key: string): Rule | undefined {
   // Which legal entity an agent may pay from (src/policy/entities.ts): only for an entity the company holds.
   if (key.startsWith("pay_from.")) return payFromRule(db, key) ?? undefined;
   if (key === SOD_RULE.key) return SOD_RULE;
+  if (key === FX_THRESHOLD_RULE.key) return FX_THRESHOLD_RULE;
   return payoutRule(key) ?? rules(db).find((r) => r.key === key);
 }
 
@@ -215,7 +224,8 @@ export function rules(db: DB): Rule[] {
   const alone = db.prepare("SELECT 1 FROM settings WHERE key = 'ap.alone_eur'").get() ? [ALONE_RULE] : [];
   // Which legal entity each agent may pay from: one rule per entity and agent, once the company holds entities.
   const sod = db.prepare("SELECT 1 FROM settings WHERE key = ?").get(SOD_RULE.key) ? [SOD_RULE] : [];
-  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform, ...alone, ...payFromRules(db), ...sod];
+  const fx = db.prepare("SELECT 1 FROM settings WHERE key = ?").get(FX_THRESHOLD_RULE.key) ? [FX_THRESHOLD_RULE] : [];
+  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform, ...alone, ...payFromRules(db), ...sod, ...fx];
 }
 
 /**

@@ -965,3 +965,52 @@ CREATE TABLE IF NOT EXISTS autopilot_state (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- Receivables (src/receivables/ar.ts, docs/receivables.md): invoices to customers, the payments matched to them, the
+-- review queue and the dunning drafts (never sent by Purser). contact_email is for the drafts only, never logged.
+CREATE TABLE IF NOT EXISTS ar_invoices (
+  invoice_no TEXT PRIMARY KEY,
+  customer TEXT NOT NULL,
+  contact_email TEXT,
+  currency TEXT NOT NULL CHECK (length(currency) = 3),
+  net_cents INTEGER NOT NULL CHECK (net_cents > 0),
+  vat_code TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+  paid_cents INTEGER NOT NULL DEFAULT 0,
+  issue_date TEXT NOT NULL,
+  due_date TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('OPEN', 'PARTIAL', 'PAID', 'OVERPAID')),
+  link_id TEXT,
+  link_url TEXT,
+  link_active INTEGER NOT NULL DEFAULT 0,
+  issued_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ar_payments (
+  payment_id TEXT PRIMARY KEY,
+  currency TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+  reference TEXT,
+  payer TEXT,
+  invoice_no TEXT REFERENCES ar_invoices(invoice_no),
+  applied_cents INTEGER NOT NULL,
+  written_off_cents INTEGER NOT NULL,
+  suspense_cents INTEGER NOT NULL,
+  outcome TEXT NOT NULL CHECK (outcome IN ('MATCHED', 'MATCHED_TOLERANCE', 'PARTIAL', 'OVERPAID', 'REVIEW')),
+  rule TEXT NOT NULL,
+  received_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ar_review (
+  payment_id TEXT PRIMARY KEY REFERENCES ar_payments(payment_id),
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('OPEN', 'RESOLVED')),
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ar_dunning (
+  invoice_no TEXT NOT NULL REFERENCES ar_invoices(invoice_no),
+  stage INTEGER NOT NULL CHECK (stage IN (1, 2, 3)),
+  due_on TEXT NOT NULL,
+  draft TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status = 'DRAFT'),
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (invoice_no, stage)
+);

@@ -8,7 +8,7 @@
 
 import type { DB } from "../db/open.js";
 import { audit } from "../audit/log.js";
-import { matchReceipt } from "../agents/receivables.js";
+import { routeDeposit } from "../receivables/ar.js";
 import { acceptanceOn, bookCardPayment, intentFromEvent } from "../airwallex/acceptance.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { CARD_EVENTS } from "../airwallex/webhooks.js";
@@ -137,7 +137,7 @@ export function checkEvent(db: DB, name: string, o: Record<string, unknown>, now
     if (!id || status !== "SETTLED" || !ga || !knownGlobalAccounts(db).has(ga) || !amount || !currency || !["EUR", "GBP"].includes(currency)) {
       return { object, object_id: id, status, amount_cents: amount, currency, agrees: null, outcome: `deposit ${status}${amount ? ` ${fromCents(amount)} ${currency}` : ""}: recorded; not matched (only settled EUR or GBP deposits into Northwind's Global Accounts are)` };
     }
-    const m = matchReceipt(db, { deposit_id: id, global_account_id: ga, currency, amount_cents: amount, reference: str(o.reference), payer, received_at: str(o.created_at) ?? now.toISOString() }, now, "webhook");
+    const m = routeDeposit(db, { deposit_id: id, global_account_id: ga, currency, amount_cents: amount, reference: str(o.reference), payer, received_at: str(o.created_at) ?? now.toISOString() }, now, "webhook");
     return { object, object_id: id, status, amount_cents: amount, currency, agrees: null, outcome: `deposit ${fromCents(amount)} ${currency}: ${m.outcome}, ${m.detail}` };
   }
   if (object === "payment_intent") {

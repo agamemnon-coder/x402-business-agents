@@ -32,6 +32,9 @@ function invoiceIn(db: DB, reference: string | null): Row | undefined {
     .sort((a, b) => b.invoice_no.length - a.invoice_no.length)[0];
 }
 
+/** Whether a reference names one of these invoices (the receivables module, src/receivables/ar.ts, takes the rest). */
+export const namesReceivable = (db: DB, reference: string | null): boolean => !!invoiceIn(db, reference);
+
 /** Matches one Airwallex deposit; a deposit already recorded returns its stored result and changes nothing. */
 export function matchReceipt(db: DB, d: Deposit, now = new Date(), via: "webhook" | "poll" = "poll"): { outcome: ReceiptOutcome; invoice_no: string | null; detail: string } {
   return db.transaction(() => {

@@ -166,6 +166,7 @@
     "vault": "tsx src/cli/vault.ts",
     "sbom": "npm sbom --sbom-format cyclonedx --omit dev > docs/security/sbom.cdx.json",
     "receivables": "tsx src/cli/receivables.ts",
+    "treasury": "tsx src/cli/treasury.ts",
     "card-payment": "tsx src/cli/cardPayment.ts",
     "receive-policy": "tsx src/cli/receivePolicy.ts",
     "clearing": "tsx src/cli/clearing.ts",
