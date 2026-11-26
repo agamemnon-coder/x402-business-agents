@@ -16,6 +16,8 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   // Four eyes: turning it off or raising the threshold loosens; turning it on or lowering it tightens.
   if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
+  // Segregation of duties for the policy itself (src/policy/policySod.ts): the same, off or higher loosens.
+  if (c.key === "approval.policy_sod_eur") return from !== null && (to === null || to > from);
   // A second key for high-risk payments: off, or a higher amount, loosens; on, or a lower amount, tightens.
   if (c.key === "approval.second_key_eur") return from !== null && (to === null || to > from);
   if (c.key.startsWith("approval.second_key_")) return c.from === "on" && c.to !== "on";

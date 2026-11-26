@@ -10,6 +10,7 @@ import { loosens } from "./loosens.js";
 import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { fourEyes } from "./fourEyes.js";
+import { proposerOf, sodChanges, sodThreshold } from "./policySod.js";
 import { recordFactor, secondKeyReasons } from "./secondKey.js";
 import { policyVersion } from "./versions.js";
 import { currentOrigin } from "../provenance/origin.js";
@@ -206,18 +207,28 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     } else if (args.decision === "APPROVED" && factor === "security_key") {
       throw new Error(`${p.proposal_id} is not high-risk: a security key alone never approves; approve with your passkey (Face ID)`);
     }
+    // Segregation of duties (src/policy/policySod.ts): whoever proposed a policy change never approves it, with one
+    // person or two; loosening above the CFO's threshold for it needs two people (four eyes, below).
+    const sod = args.decision === "APPROVED" && p.kind === "policy_change" ? sodChanges(db, p.terms_json) : [];
+    const sodWhy = sod.length ? { threshold_eur: sodThreshold(db), loosens: sod.map((c) => ({ key: c.key, from: c.from, to: c.to, why: c.why })) } : null;
+    const rule = sodWhy ? "segregation of duties: this loosens the CFO policy above the threshold" : "four eyes";
+    if (args.decision === "APPROVED" && p.kind === "policy_change") {
+      const person = approver.split(" (")[0]!;
+      const proposer = proposerOf(p);
+      if (person === proposer) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (segregation of duties)`);
+    }
     if (args.decision === "APPROVED" && fourEyes(db, p)) {
       // E1, four eyes: two different people, each with their own passkey, and never the one who proposed it. The
       // first signature is kept and the proposal waits; the second approves. One person's rejection stops it.
-      if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} needs the passkeys of two different people (four eyes)`);
+      if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} needs the passkeys of two different people (${rule})`);
       const person = approver.split(" (")[0]!;
-      if (person === p.created_by) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (four eyes)`);
+      if (person === p.created_by) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (${rule})`);
       const signed = db.prepare("SELECT person, approver FROM cosignatures WHERE proposal_id = ? AND terms_sha256 = ? ORDER BY created_at, rowid").all(p.proposal_id, p.terms_sha256) as { person: string; approver: string }[]; // only a first signature over these exact terms counts: one made before the stored terms changed signed other terms (zero-trust matrix, 12 November)
-      if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey`);
+      if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey (${rule})`);
       db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
         .run(p.proposal_id, passkey.credential_id, person, approver, p.terms_sha256, passkey.assertion_sha256, now.toISOString());
       if (signed.length === 0) {
-        audit(db, "human", "proposal.cosigned", p.proposal_id, { terms_sha256: p.terms_sha256, approver, person, of: "1 of 2", method: args.method, passkey }, now);
+        audit(db, "human", "proposal.cosigned", p.proposal_id, { terms_sha256: p.terms_sha256, approver, person, of: "1 of 2", method: args.method, passkey, ...(sodWhy ? { segregation_of_duties: sodWhy } : {}) }, now);
         return "PENDING_APPROVAL";
       }
       approver = [...signed.map((x) => x.approver), approver].join(" + ");
@@ -230,7 +241,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     ).run(p.proposal_id, args.decision, p.terms_sha256, approver, args.method, args.typedPrefix.trim().toLowerCase(), args.note ?? null, now.toISOString(), policy.version);
     transition(db, p.proposal_id, "PENDING_APPROVAL", args.decision);
     audit(db, "human", args.decision === "APPROVED" ? "proposal.approved" : "proposal.rejected", p.proposal_id,
-      { terms_sha256: p.terms_sha256, approver, method: args.method, note: args.note ?? null, ...(passkey ? { passkey } : {}), policy_version: policy.version }, now);
+      { terms_sha256: p.terms_sha256, approver, method: args.method, note: args.note ?? null, ...(passkey ? { passkey } : {}), policy_version: policy.version, ...(sodWhy ? { segregation_of_duties: sodWhy } : {}) }, now);
     if (p.kind === BATCH_KIND) decideBatchLines(db, p, args.decision, approver, args.method, passkey, policy.version, now);
     return args.decision;
   }).immediate();

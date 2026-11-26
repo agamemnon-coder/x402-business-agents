@@ -15,7 +15,9 @@ import { FEE_BPS_CAP, platformFeeOn } from "../airwallex/platform.js";
 import { payFromRule, payFromRules } from "./entities.js";
 
 export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | "approval.second_key_eur" | "approval.second_key_new_payee" | "approval.second_key_bank_changed" | "approval.second_key_new_country" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
-  | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps" | "ap.alone_eur" | `pay_from.${string}`;
+  // Which legal entity each agent may pay from: one rule per entity and agent, once the company holds entities.
+  const sod = db.prepare("SELECT 1 FROM settings WHERE key = ?").get(SOD_RULE.key) ? [SOD_RULE] : [];
+  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform, ...alone, ...payFromRules(db), ...sod];
 
 export interface Rule {
   key: PolicyKey;
@@ -131,12 +133,25 @@ export const ALONE_RULE: Rule = {
   key: "ap.alone_eur", label: "An agent may pay a supplier invoice alone up to this", unit: "EUR", kind: "optional_money", min: 1, max: MAX_FLOOR, fallback: "", agent: "treasury",
 };
 
+/**
+ * Segregation of duties for the policy itself (src/policy/policySod.ts): loosening the CFO policy above this needs a
+ * second person's passkey; tightening stays one person. Off when empty. Shown once set, like the limit to pay alone, so
+ * a policy that never set it keeps its recorded hash.
+ */
+export const SOD_RULE: Rule = {
+  key: "approval.policy_sod_eur", label: "Loosening the CFO policy above this needs a second person (segregation of duties)", unit: "EUR", kind: "optional_money", min: 0, max: MAX_FLOOR, fallback: "",
+};
+
 /** The rule for a key: a payout rule for any payable currency (shown or not yet), else one from the policy. */
 export function ruleFor(db: DB, key: string): Rule | undefined {
   if (key === "platform.fee_bps") return PLATFORM_FEE_RULE;
   if (key === ALONE_RULE.key) return ALONE_RULE;
+<<<<<<< HEAD
   // Which legal entity an agent may pay from (src/policy/entities.ts): only for an entity the company holds.
   if (key.startsWith("pay_from.")) return payFromRule(db, key) ?? undefined;
+=======
+  if (key === SOD_RULE.key) return SOD_RULE;
+>>>>>>> c52d02ce0 (Segregation of duties for CFO policy changes)
   return payoutRule(key) ?? rules(db).find((r) => r.key === key);
 }
 
@@ -165,8 +180,13 @@ export function rules(db: DB): Rule[] {
   const platform = platformFeeOn() || db.prepare("SELECT 1 FROM settings WHERE key = 'platform.fee_bps'").get() ? [PLATFORM_FEE_RULE] : [];
   // The limit to pay alone (ap.alone_eur): shown once it is set (a test company's default, or one the CFO signed).
   const alone = db.prepare("SELECT 1 FROM settings WHERE key = 'ap.alone_eur'").get() ? [ALONE_RULE] : [];
+<<<<<<< HEAD
   // Which legal entity each agent may pay from: one rule per entity and agent, once the company holds entities.
   return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform, ...alone, ...payFromRules(db)];
+=======
+  const sod = db.prepare("SELECT 1 FROM settings WHERE key = ?").get(SOD_RULE.key) ? [SOD_RULE] : [];
+  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform, ...alone, ...sod];
+>>>>>>> c52d02ce0 (Segregation of duties for CFO policy changes)
 }
 
 /**
@@ -192,6 +212,7 @@ export function policyValue(db: DB, key: string): string {
 
 function display(r: Rule, value: string): string {
   if (r.key === "approval.four_eyes_eur" && value === "") return "off (one person approves)";
+  if (r.key === SOD_RULE.key && value === "") return "off (one person approves a policy change)";
   if (r.key === "approval.second_key_eur" && value === "") return "off (Face ID alone)";
   if (r.kind === "optional_money" && value === "") return "no extra limit (the mandate's cap applies)";
   if (r.kind === "money" && value === "") return "not set yet";
