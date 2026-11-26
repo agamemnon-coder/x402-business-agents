@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Connections to other systems
+
+**Every connection reads, notifies or exports; none moves money, approves a payment, changes a limit or writes to Purser's books.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Connections: 13, of which 4 live](https://img.shields.io/badge/connections-13_%C2%B7_4_live-8b5cf6?style=flat-square&labelColor=1f2937)](#connections-to-other-systems)&nbsp;[![No connection moves money, approves, changes a limit or writes to the books](https://img.shields.io/badge/money_moved_by_a_connection-none-f43f5e?style=flat-square&labelColor=1f2937)](#connections-to-other-systems)&nbsp;[![Webhooks: signed with HMAC-SHA256](https://img.shields.io/badge/webhooks-HMAC--SHA256_signed-10b981?style=flat-square&labelColor=1f2937)](#webhooks)&nbsp;[![Slack and Teams: built, not tested live](https://img.shields.io/badge/Slack_%C2%B7_Teams-built%2C_not_tested_live-f59e0b?style=flat-square&labelColor=1f2937)](#slack-and-microsoft-teams)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[The connections](#connections-to-other-systems) · [Webhooks](#webhooks) · [Slack and Teams](#slack-and-microsoft-teams) · [Accounting exports](#accounting-exports-format-exports) · [OpenAPI](#the-read-apis-openapi) · [Connect anything](integrations/README.md)
+
+</div>
 
 Every connection on this page reads, notifies or exports. **None moves money, approves a payment, changes a limit or
 writes to Purser's books;** an accounting system receives drafts or entries a person there checks. Every payment needs the
@@ -12,6 +24,42 @@ the webhooks, the chat formats and the accounting exports.
 Labels: **live** means it is built and runs in Purser Cloud; **format export** means Purser writes a file or message in
 another product's documented format, and a person or the team's own tooling takes it from there (there is no live
 connection to that product); **built, not tested live** means the code exists but has not run against the real service.
+
+```mermaid
+flowchart LR
+  subgraph PC["Purser Cloud"]
+    B[("The company's books")]
+  end
+  CFO["Every payment:<br/>the CFO's Face ID in Purser Cloud"]
+  B -- "read" --> R["MCP server · Read API<br/>live"]
+  B -- "notify" --> W["Webhooks<br/>live"]
+  B -- "notify" --> S["Slack · Teams<br/>built, not tested live"]
+  B -- "export" --> F["Xero, QuickBooks, Exact CSV,<br/>ISO 20022 pacs.008<br/>format export"]
+  B -- "export" --> A["Exact, Xero, QuickBooks APIs<br/>built, not tested live"]
+  B -- "export" --> M["Moneybird<br/>built, run once in a sandbox"]
+  B -- "export" --> X["Full export, staged JSON<br/>live"]
+  PC --- CFO
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  classDef wait fill:#f59e0b,stroke:#b45309,color:#111827
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  class B,CFO purser
+  class R,W,X ok
+  class S,A wait
+  class F,M rails
+```
+
+```mermaid
+%%{init: {"themeVariables": {"pie1": "#10b981", "pie2": "#0ea5e9", "pie3": "#f59e0b", "pie4": "#6366f1"}}}%%
+pie showData
+  title The connections by label
+  "live" : 4
+  "format export" : 4
+  "built, not tested live" : 4
+  "built, run once in a sandbox" : 1
+```
+
+<sub>Record: [the table below](connections.md#connections-to-other-systems), counted by `test/docs-charts.test.ts`; `GET /v1/connections` returns the same list from `cloud/src/connections.ts`, and `test/connections.test.ts` holds each label to what is built.</sub>
 
 | Connection | Label | Direction | Where |
 |---|---|---|---|

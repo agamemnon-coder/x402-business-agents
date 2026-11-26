@@ -66,6 +66,16 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`/badge/items-${rows.length}_%C2%B7_${n("Done") + n("Done (not exercised)")}_done%2C_${n("Partly")}_partly%2C_${n("Open")}_open-`);
   });
 
+  it("docs/connections.md: the connections by label, counted from its table", () => {
+    const md = read("docs/connections.md"), lines = md.split("\n");
+    const at = lines.indexOf("| Connection | Label | Direction | Where |");
+    const rows = lines.slice(at + 2, lines.findIndex((l, i) => i > at + 1 && !l.startsWith("|"))).map((l) => l.split(" | ")[1]!);
+    const n = (s: string) => rows.filter((r) => r === s).length;
+    expect(n("live") + n("format export") + n("built, not tested live") + n("built, run once in a sandbox")).toBe(rows.length);
+    for (const s of ["live", "format export", "built, not tested live", "built, run once in a sandbox"]) expect(md).toContain(`  "${s}" : ${n(s)}\n`);
+    expect(md).toContain(`/badge/connections-${rows.length}_%C2%B7_${n("live")}_live-`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
