@@ -25,6 +25,10 @@ export const ASK_SOURCES: readonly { path: string; label: string; max: number }[
   { path: "docs/enterprise.md", label: "Enterprise", max: 4 },
   { path: "docs/see-it.md", label: "See it", max: 6 },
   { path: "docs/claims.md", label: "Claims and their proof", max: 8 },
+  // 26 Nov (Max: "did you put the new upgrades in, the agents and multi entities?"): the latest release and the
+  // governance map, so Ask Purser answers about entities, the emergency stop, negotiation, cash and FX and compliance.
+  { path: "docs/releases/v1.5.0.md", label: "What's new in v1.5.0", max: 12 },
+  { path: "docs/governance.md", label: "Governance", max: 10 },
 ];
 
 /** A passage's most characters: about 300 tokens, so six of them stay well under the chat's input budget. */

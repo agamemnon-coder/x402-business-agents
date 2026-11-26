@@ -226,10 +226,12 @@ export const globeScript = (o: GlobeOptions): string => `
     for (var A = 0; A < ARCS.length; A++) { var arc = ARCS[A], prev = null, run = still ? 0.6 : ((el / 4200) + A * 0.37) % 1;
       g.lineWidth = wide ? 1.5 : 1;
       for (i = 0; i < arc.length; i++) { v = view(arc[i], cr, sr); var ok = v[2] > 0 || Math.hypot(v[0], v[1]) > 1.0, X = cx - v[0] * R, Y = cy - v[1] * R;
-        if (ok && under(X, Y)) ok = false;
-        if (prev && ok && prev[2]) { var t = i / (arc.length - 1); g.strokeStyle = "rgba(" + (t < 0.5 ? green : vio) + "," + (0.55 + 0.4 * Math.sin(Math.PI * t)).toFixed(3) + ")"; g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(X, Y); g.stroke(); }
-        prev = [X, Y, ok];
-        if (ok && Math.abs(i / (arc.length - 1) - run) < 0.5 / (arc.length - 1)) { g.fillStyle = lite ? "rgba(109,84,232,.95)" : "rgba(255,255,255,.95)"; g.beginPath(); g.arc(X, Y, wide ? 2.2 : 1.6, 0, Math.PI * 2); g.fill(); }
+        // 26 Nov (Max: "the line stops in the middle"): behind the words the arc fades to a whisper rather than breaking off,
+        // so it reads as one line from Amsterdam over the horizon; its light runs only where the arc is clear.
+        var dim = ok && under(X, Y);
+        if (prev && ok && prev[2]) { var t = i / (arc.length - 1); g.strokeStyle = "rgba(" + (t < 0.5 ? green : vio) + "," + ((0.55 + 0.4 * Math.sin(Math.PI * t)) * (dim || prev[3] ? 0.14 : 1)).toFixed(3) + ")"; g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(X, Y); g.stroke(); }
+        prev = [X, Y, ok, dim];
+        if (ok && !dim && Math.abs(i / (arc.length - 1) - run) < 0.5 / (arc.length - 1)) { g.fillStyle = lite ? "rgba(109,84,232,.95)" : "rgba(255,255,255,.95)"; g.beginPath(); g.arc(X, Y, wide ? 2.2 : 1.6, 0, Math.PI * 2); g.fill(); }
       } }
     // The route's label at the top of the first arc, small and quiet, when it is in front and clear of the words.
     if (ARCL && ARCS.length && R >= 120) { v = view(ARCS[0][24], cr, sr); if (v[2] > 0 || Math.hypot(v[0], v[1]) > 1) { var ax = cx - v[0] * R, ay = cy - v[1] * R - 12, aw = 0, clear = true;

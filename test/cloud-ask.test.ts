@@ -114,6 +114,14 @@ describe("the knowledge pack", () => {
     expect(Object.keys(about)).toEqual(ASK_JURY.map((x) => x.q));
     for (const [q, re] of Object.entries(about)) expect(retrieve(q).some((x) => re.test(x.title + " " + x.text)), q).toBe(true);
   });
+  // 26 Nov (Max: "did you put the new upgrades in, the agents and multi entities?"): the docs skill asks what is new in
+  // v1.5.0, and the pack finds the release's own words for it.
+  it("finds the v1.5.0 release for the docs skill's question", () => {
+    const q = ASK_SKILLS.find((x) => x.tool === "search_docs")!.q;
+    const hits = retrieve(q);
+    expect(hits.some((x) => /entit/i.test(x.title + " " + x.text)), q).toBe(true);
+    expect(hits.some((x) => /negotiat/i.test(x.title + " " + x.text)), q).toBe(true);
+  });
 });
 
 describe("the question, screened in code", () => {
@@ -527,7 +535,7 @@ describe("the page and its button", () => {
       if (path === "/ask") expect(acts).toBeGreaterThanOrEqual(ASK_ACTIONS.length);
       else {
         expect(acts).toBe(0);
-        expect(html.match(/<button class="sk" type="button" data-q=/g)!.length).toBe(ASK_SKILLS.length);
+        expect(html.match(/<button class="sk t-[a-z0-9]+" type="button" data-q=/g)!.length).toBe(ASK_SKILLS.length);
       }
       for (const s of ASK_SKILLS) expect(ASK_TOOL_NAMES.has(s.tool), s.tool).toBe(true);
       expect(ASK_SKILLS.length).toBeLessThanOrEqual(6);
@@ -553,8 +561,8 @@ describe("the page and its button", () => {
       expect(html).toContain(`<h2 id="hh">${ASK_PAGE_COPY.juryHead}</h2>`);
       expect(html).toContain(ASK_PAGE_COPY.juryLine);
       expect(html).not.toContain(" own-co");
-      // The docs skill asks the first of the jury's questions (answerable from the pack, as above).
-      expect(html).toContain(`data-q="${ASK_JURY[0]!.q.replace(/'/g, "&#39;")}" data-tool="search_docs"`);
+      // The docs skill asks what is new in v1.5.0 (answerable from the pack, as above).
+      expect(html).toContain(`data-q="${ASK_SKILLS.find((x) => x.tool === "search_docs")!.q.replace(/'/g, "&#39;")}" data-tool="search_docs"`);
       expect(ASK_PAGE_COPY.juryLine).toMatch(/can't approve or pay/);
       expect(html).toContain(ASK_PAGE_COPY.privacy);
       expect(html).toContain(q ? '<body class="embed has-ctx">' : '<body class="embed">');
