@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Agent identity: know your agent
+
+**Each agent that can move money signs its money-relevant requests with its own key; the agent API names the key and refuses a replay.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![One Ed25519 signing key per agent that can move money](https://img.shields.io/badge/agent_keys-Ed25519_%C2%B7_one_per_agent-8b5cf6?style=flat-square&labelColor=1f2937)](#keys)&nbsp;[![A request sent a second time is refused: nonce and a five-minute window](https://img.shields.io/badge/replay-refused_%C2%B7_nonce%2C_five_minutes-f43f5e?style=flat-square&labelColor=1f2937)](#the-check)&nbsp;[![The agent API requires the signature by default](https://img.shields.io/badge/agent_API-required_by_default-10b981?style=flat-square&labelColor=1f2937)](#rollout)&nbsp;[![The same basic idea as Visa's Trusted Agent Protocol; not TAP, not interoperable](https://img.shields.io/badge/Visa_TAP-same_idea_%C2%B7_not_TAP-f59e0b?style=flat-square&labelColor=1f2937)](#compared-with-visas-trusted-agent-protocol)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+
+[Keys](#keys) · [The signature](#the-signature) · [The check](#the-check) · [Rollout](#rollout) · [Compared with TAP](#compared-with-visas-trusted-agent-protocol) · [Not done](#not-done) · [Permissions](agent-permissions.md)
+
+</div>
 
 Since 26 November 2026. Every agent that can move money is a principal ([agent permissions](agent-permissions.md),
 [`src/policy/principals.ts`](../../src/policy/principals.ts)). Each of them now also has its own Ed25519 signing key,
@@ -59,6 +71,22 @@ the request, and the refusal is audited as `principal.identity_refused` with its
 8. The nonce has never been seen before for this key (`identity_nonce_reused`). This check comes last, so a refused
    request never uses up a nonce. Nonces are kept in `agent_identity_nonces` for ten minutes, twice the window, so no
    proof that carries an old nonce can still pass the time check.
+
+```mermaid
+flowchart LR
+  REQ["A tool call<br/>with its signed envelope"] --> C1{"1 · well formed"} --> C2{"2 · for this agent"} --> C3{"3 · principal active"}
+  C3 --> C4{"4 · current key"} --> C5{"5 · signature verifies"} --> C6{"6 · this request,<br/>this body"}
+  C6 --> C7{"7 · within five minutes"} --> C8{"8 · nonce never seen"} --> OK["principal.identity_verified<br/>then the bearer key, the capabilities"]
+  C1 & C2 & C3 & C4 & C5 & C6 & C7 & C8 -. "fails" .-> NO["Refused<br/>principal.identity_refused"]
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  class REQ sourcing
+  class C1,C2,C3,C4,C5,C6,C7,C8 purser
+  class OK ok
+  class NO stop
+```
 
 A verified request is audited as `principal.identity_verified` with its key id. The money action records the same key
 id in its own audit row as `agent_key_id`: `card.purchase_started` (pay with the card), `agent.card_requested` (ask for
