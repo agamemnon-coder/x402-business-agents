@@ -43,6 +43,7 @@
     "links:external": "tsx scripts/linkcheck-external.ts",
     "changelog": "tsx scripts/changelog.ts --since v1.4.0 --ref v1.5.0",
     "charts": "tsx scripts/repo-charts.ts",
+    "docs:anim": "tsx scripts/docs-anim.ts",
     "finance:svg": "tsx scripts/finance-svg.ts",
     "readme:strip": "tsx scripts/readme-proof-strip.ts",
     "readme:demo": "tsx scripts/readme-demo-svg.ts",

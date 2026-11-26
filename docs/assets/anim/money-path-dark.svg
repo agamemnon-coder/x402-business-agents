@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="172" viewBox="0 0 800 172" role="img" aria-label="One payment's path: an AI agent proposes; Purser's checks in code; above the limit the CFO's passkey (Face ID) signs the exact terms; the rail's own control; then the books. Test money only.">
+<title>One payment's path: an AI agent proposes; Purser's checks in code; above the limit the CFO's passkey (Face ID) signs the exact terms; the rail's own control; then the books. Test money only.</title>
+<style>
+text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.bg{fill:#0d1117}.card{fill:#161b22;stroke:#3d444d}.ink{fill:#e6edf3}.muted{fill:#9198a1}.line{stroke:#3d444d;fill:none}.rose{fill:#fb7185}
+.t{font-size:15px;font-weight:600}.l{font-size:13px;font-weight:600}.s{font-size:11.5px}.m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+.glow{opacity:.18;animation:glow 6s linear infinite}
+@keyframes glow{0%{opacity:.18}4%{opacity:.95}18%{opacity:.18}100%{opacity:.18}}
+.pk{opacity:0;animation:pk 6s linear infinite}
+@keyframes pk{0%{opacity:1;transform:translateX(0)}80%{opacity:1;transform:translateX(632px)}90%{opacity:0;transform:translateX(632px)}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+</style>
+<rect class="bg" width="800" height="172" rx="10"/>
+<text class="ink t" x="18" y="32">One payment's path</text>
+<path class="line" d="M157 84h14" stroke-width="2"/><path d="M171 79l6 5-6 5z" fill="#3d444d"/>
+<path class="line" d="M315 84h14" stroke-width="2"/><path d="M329 79l6 5-6 5z" fill="#3d444d"/>
+<path class="line" d="M473 84h14" stroke-width="2"/><path d="M487 79l6 5-6 5z" fill="#3d444d"/>
+<path class="line" d="M631 84h14" stroke-width="2"/><path d="M645 79l6 5-6 5z" fill="#3d444d"/>
+<rect class="glow" style="animation-delay:0.00s" x="14" y="48" width="144" height="72" rx="12" fill="#6366f1"/>
+<rect class="card" x="18" y="52" width="136" height="64" rx="9" stroke-width="1.5"/>
+<rect x="18" y="52" width="6" height="64" rx="3" fill="#6366f1"/>
+<text class="ink l" x="34" y="79">AI agent</text>
+<text class="muted s" x="34" y="98">proposes a payment</text>
+<rect class="glow" style="animation-delay:1.20s" x="172" y="48" width="144" height="72" rx="12" fill="#8b5cf6"/>
+<rect class="card" x="176" y="52" width="136" height="64" rx="9" stroke-width="1.5"/>
+<rect x="176" y="52" width="6" height="64" rx="3" fill="#8b5cf6"/>
+<text class="ink l" x="192" y="79">Purser's checks</text>
+<text class="muted s" x="192" y="98">in code: limits, payee</text>
+<rect class="glow" style="animation-delay:2.40s" x="330" y="48" width="144" height="72" rx="12" fill="#8b5cf6"/>
+<rect class="card" x="334" y="52" width="136" height="64" rx="9" stroke-width="1.5"/>
+<rect x="334" y="52" width="6" height="64" rx="3" fill="#8b5cf6"/>
+<text class="ink l" x="350" y="79">CFO's passkey</text>
+<text class="muted s" x="350" y="98">Face ID, above the limit</text>
+<rect class="glow" style="animation-delay:3.60s" x="488" y="48" width="144" height="72" rx="12" fill="#0ea5e9"/>
+<rect class="card" x="492" y="52" width="136" height="64" rx="9" stroke-width="1.5"/>
+<rect x="492" y="52" width="6" height="64" rx="3" fill="#0ea5e9"/>
+<text class="ink l" x="508" y="79">The rail's control</text>
+<text class="muted s" x="508" y="98">Airwallex · Alta</text>
+<rect class="glow" style="animation-delay:4.80s" x="646" y="48" width="144" height="72" rx="12" fill="#10b981"/>
+<rect class="card" x="650" y="52" width="136" height="64" rx="9" stroke-width="1.5"/>
+<rect x="650" y="52" width="6" height="64" rx="3" fill="#10b981"/>
+<text class="ink l" x="666" y="79">The books</text>
+<text class="muted s" x="666" y="98">double entry</text>
+<circle class="pk" cx="86" cy="130" r="5" fill="#8b5cf6"/>
+<text class="muted s" x="18" y="158">Each step can stop the payment. Test money only: the Airwallex sandbox and the Alta (formerly Metal) testnet.</text>
+</svg>
