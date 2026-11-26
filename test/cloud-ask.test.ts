@@ -18,7 +18,8 @@ import { ASK_TOOLS, localRead } from "../cloud/src/ask/tools.js";
 import { checkAttachment } from "../cloud/src/ask/attach.js";
 import { MODELS } from "../src/claude/reader.js";
 import { callCostMicros, PRICES } from "../src/claude/pricing.js";
-import { askCsp, ASK_ACTIONS, ASK_BUTTON_JS, ASK_JURY, ASK_PAGE_COPY } from "../cloud/src/ask/page.js";
+import { askCsp, ASK_ACTIONS, ASK_BUTTON_JS, ASK_CONNECTIONS, ASK_JURY, ASK_PAGE_COPY, ASK_SKILLS } from "../cloud/src/ask/page.js";
+import { ASK_TOOL_NAMES } from "../cloud/src/ask/tools.js";
 import { isTryEngineRequest } from "../worker/src/tryEngine.js";
 import { ORIGIN, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -518,11 +519,20 @@ describe("the page and its button", () => {
       expect(html).not.toContain("innerHTML");
       // 21 Nov (Max's mockups): four actions in the empty state, no "Try asking" wall; the mark is Ask Purser's own.
       expect(ASK_ACTIONS.map((x) => x.label)).toEqual(["Which invoices wait for the CFO?", "Check an invoice against policy", "Show invoice evidence", "Explain a policy or approval rule"]); // 21 Nov (Max, mockup 180)
-      // The panel (embed) offers at most three suggestions (26 Nov, Max), the page its four actions.
-      const acts = html.match(/<button class="act" type="button" data-q=/g)!.length;
+      // The page offers its four actions; the panel (embed), since 26 Nov (Max: "a real agent: skills, integrations"),
+      // its skills, each one of the agent's own read-only tools, and no generic suggestions.
+      const acts = html.match(/<button class="act" type="button" data-q=/g)?.length ?? 0;
       if (path === "/ask") expect(acts).toBeGreaterThanOrEqual(ASK_ACTIONS.length);
-      else expect(acts).toBe(ASK_JURY.length);
-      expect(ASK_JURY.length).toBeLessThanOrEqual(3);
+      else {
+        expect(acts).toBe(0);
+        expect(html.match(/<button class="sk" type="button" data-q=/g)!.length).toBe(ASK_SKILLS.length);
+      }
+      for (const s of ASK_SKILLS) expect(ASK_TOOL_NAMES.has(s.tool), s.tool).toBe(true);
+      expect(ASK_SKILLS.length).toBeLessThanOrEqual(6);
+      // What it reads from, in its header, each labelled as it is.
+      expect(html).toContain('<ul class="cx" aria-label="Reads from">');
+      for (const c of ASK_CONNECTIONS) expect(html).toContain(`title="${c.name}: `);
+      for (const c of ASK_CONNECTIONS.filter((x) => x.key !== "claude")) expect(c.what).toMatch(/read only/);
       expect(html).not.toContain("Try asking");
       expect(html).toContain('id="file"');
       expect(html).toContain(ASK_PAGE_COPY.statusDocs);
@@ -537,7 +547,9 @@ describe("the page and its button", () => {
       expect(html).toContain(`<h2 id="hh">${ASK_PAGE_COPY.juryHead}</h2>`);
       expect(html).toContain(ASK_PAGE_COPY.juryLine);
       expect(html).not.toContain(" own-co");
-      for (const x of ASK_JURY) expect(html).toContain(`data-q="${x.q.replace(/'/g, "&#39;")}"`);
+      // The docs skill asks the first of the jury's questions (answerable from the pack, as above).
+      expect(html).toContain(`data-q="${ASK_JURY[0]!.q.replace(/'/g, "&#39;")}" data-tool="search_docs"`);
+      expect(ASK_PAGE_COPY.juryLine).toMatch(/can't approve or pay/);
       expect(html).toContain(ASK_PAGE_COPY.privacy);
       expect(html).toContain(q ? '<body class="embed has-ctx">' : '<body class="embed">');
       expect(html.match(/data-k="/g)?.length ?? 0).toBe(q ? 3 : 0);

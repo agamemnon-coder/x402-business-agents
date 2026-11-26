@@ -8,9 +8,10 @@ import { describe, expect, it } from "vitest";
 import { CONTACT_EMAIL } from "../src/config/brand.js";
 import { PRICING, PRICING_LINE, euro } from "../src/config/pricing.js";
 import { BUSINESS_PAGE, BUSINESS_CSP, ONE_PAGER_CSP, ONE_PAGER_PAGE, PRICING_HOME, REDIRECTS } from "../src/servers/dashboard.js";
-import { FIRST_TARGET, FIRST_TARGET_NOTE, PILOT_AGREEMENT, FOUNDING_NAME, FOUNDING_TEXT, GO_LIVE_DOC, PILOT_APPLY, PILOT_FORM_NOTE, PILOT_JS, PILOT_MAIL, PILOT_VOLUMES, POSITION, PRINT_JS, faqs, pilotMailto, type PilotForm } from "../src/redesign/business.js";
+import { FIRST_TARGET, FIRST_TARGET_NOTE, PILOT_AGREEMENT, FOUNDING_NAME, FOUNDING_TEXT, GO_LIVE_DOC, PILOT_APPLY, PILOT_FORM_NOTE, PILOT_JS, PILOT_MAIL, PILOT_QUESTIONS, PILOT_VOLUMES, POSITION, PRINT_JS, faqs, pilotMailto, type PilotForm } from "../src/redesign/business.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
-import { BUSINESS_LINE, BUSINESS_QUESTION, demoFacts } from "../src/redesign/businessVisuals.js";
+import { BUSINESS_LINE, BUSINESS_QUESTION } from "../src/redesign/businessVisuals.js";
+import { globeScript } from "../src/ui/globe.js";
 import { repoHref } from "../src/redesign/productPage.js";
 import { START_STEPS } from "../src/redesign/home.js";
 import { residency } from "../src/redesign/privacy.js";
@@ -41,14 +42,16 @@ describe("/business (22 Nov): the question, one line, one visual, the pilot's fo
     expect(t).toContain("Founding Partner Pilot · test money only");
   });
 
-  it("has the sign-up form: name, company, work email and invoices a month required, the message optional", () => {
+  it("has the sign-up form: name, company, work email and invoices a month required, three short questions optional", () => {
     const form = /<form class="bzf-g" id="pilot-form"[^>]*>[\s\S]*?<\/form>/.exec(m)![0];
     expect(form).not.toMatch(/\b(action|method)=/);
     for (const [name, type] of [["name", "text"], ["company", "text"], ["email", "email"]]) expect(form).toMatch(new RegExp(`<input name="${name}" type="${type}"[^>]*\\brequired>`));
     expect(form).toMatch(/<select name="invoices" required><option value="">Choose<\/option><option>&lt;100<\/option><option>100–500<\/option><option>500–2,000<\/option><option>2,000\+<\/option><\/select>/);
     expect(PILOT_VOLUMES).toEqual(["<100", "100–500", "500–2,000", "2,000+"]);
-    expect(form).toMatch(/<textarea name="message" rows="3" maxlength="2000"><\/textarea>/);
-    expect(form).not.toMatch(/<textarea[^>]*required/);
+    // 26 Nov (the owner): three qualifying questions as chips (radios), none required, in place of the message.
+    expect(PILOT_QUESTIONS.map((x) => [x.q, x.options])).toEqual([["How do you pay suppliers today?", ["Bank portal", "AP tool", "Spreadsheets"]], ["Who approves payments?", ["CFO", "Founder", "Accountant"]], ["When would you start?", ["Now", "Next quarter", "Exploring"]]]);
+    for (const x of PILOT_QUESTIONS) for (const o of x.options) expect(form).toContain(`<input type="radio" name="${x.name}" value="${o}">`);
+    expect(form).not.toMatch(/<textarea|type="radio"[^>]*required/);
     expect(form).toContain(`<button class="btn primary" type="submit">`);
     expect(text(form)).toContain(PILOT_APPLY);
     expect(PILOT_APPLY).toBe("Apply for the pilot");
@@ -62,43 +65,43 @@ describe("/business (22 Nov): the question, one line, one visual, the pilot's fo
   it("builds the mail from the fields, the same in the page as built and in the browser, every value encoded", () => {
     const build = browserBuild();
     const cases: PilotForm[] = [
-      { name: "Ada Jansen", company: "Northwind B.V.", email: "ada@northwind.example", invoices: "100–500", message: "We pay 300 suppliers a month.\nIn EUR and GBP." },
+      { name: "Ada Jansen", company: "Northwind B.V.", email: "ada@northwind.example", invoices: "100–500", pay: "AP tool", approver: "CFO", start: "Next quarter" },
       { name: "  X  ", company: "A&B?c=d", email: "x@y.example", invoices: "<100" },
-      { name: "Eve\r\nBcc: evil@example.com", company: "Evil\nCo", email: "e@e.example", invoices: "2,000+", message: "a".repeat(5000) },
+      { name: "Eve\r\nBcc: evil@example.com", company: "Evil\nCo", email: "e@e.example", invoices: "2,000+", pay: "x\r\nCc: evil@example.com", start: "a".repeat(5000) },
     ];
     for (const f of cases) expect(build(f)).toBe(pilotMailto(f));
     const u = new URL(pilotMailto(cases[0]!));
     expect(u.protocol).toBe("mailto:");
     expect(u.pathname).toBe(CONTACT_EMAIL);
     expect(u.searchParams.get("subject")).toBe("Purser Founding Partner Pilot: Northwind B.V.");
-    expect(u.searchParams.get("body")).toBe("Name: Ada Jansen\nCompany: Northwind B.V.\nWork email: ada@northwind.example\nInvoices per month: 100–500\nMessage: We pay 300 suppliers a month.\nIn EUR and GBP.");
+    expect(u.searchParams.get("body")).toBe("Name: Ada Jansen\nCompany: Northwind B.V.\nWork email: ada@northwind.example\nInvoices per month: 100–500\nPays suppliers through: AP tool\nApproves payments: CFO\nWould start: Next quarter");
     // Nothing a visitor types adds a header or a recipient: one subject, one body, single fields on one line.
     const bad = new URL(pilotMailto(cases[2]!));
     expect([...bad.searchParams.keys()]).toEqual(["subject", "body"]);
     expect(bad.searchParams.get("subject")).toBe("Purser Founding Partner Pilot: Evil Co");
-    expect(bad.searchParams.get("body")!.split("\n").slice(0, 2)).toEqual(["Name: Eve Bcc: evil@example.com", "Company: Evil Co"]);
+    expect(bad.searchParams.get("body")!.split("\n")).toEqual(["Name: Eve Bcc: evil@example.com", "Company: Evil Co", "Work email: e@e.example", "Invoices per month: 2,000+", "Pays suppliers through: x Cc: evil@example.com", "Approves payments: -", `Would start: ${"a".repeat(40)}`]);
     expect(new URL(pilotMailto(cases[1]!)).searchParams.get("subject")).toBe("Purser Founding Partner Pilot: A&B?c=d");
-    expect(new URL(pilotMailto(cases[1]!)).searchParams.get("body")).toContain("Message: -");
+    expect(new URL(pilotMailto(cases[1]!)).searchParams.get("body")).toContain("Pays suppliers through: -\nApproves payments: -\nWould start: -");
     // The script only opens the mail: no request, no storage, no markup parsed.
     expect(PILOT_JS).toContain("location.href = build(");
     expect(PILOT_JS).not.toMatch(/fetch\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|indexedDB|cookie|innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(|new Function/);
   });
 
-  it("shows one animated visual (CSS only, on a loop, still under reduced motion), with the recorded amount and no figures, diagram or plans", () => {
-    const d = demoFacts();
-    expect([d.amount, d.alone]).toEqual(["EUR 1,850.00", "EUR 120.00"]);
-    const fig = /<figure class="bzv"[\s\S]*?<\/figure>/.exec(m)![0];
-    for (const want of ["Invoice", d.amount, d.alone, "Agent checks", "Within limit · paid", "Over limit · Face ID", "Signed · exact terms", "Sandbox · test money"]) expect(text(fig)).toContain(want);
-    expect(m.match(/<figure\b/g)).toHaveLength(1);
-    for (const k of ["bzv-doc-a", "bzv-doc-b", "bzv-run1", "bzv-run2", "bzv-chk", "bzv-ok", "bzv-cfo", "bzv-sig"]) expect(BUSINESS_PAGE).toMatch(new RegExp(`@keyframes ${k} \\{`));
-    expect(BUSINESS_PAGE).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\n {2}\.bzv-doc\.a \{ visibility: visible; animation: bzv-doc-a 9s/);
-    expect(BUSINESS_PAGE).toContain("@media (prefers-reduced-motion: reduce) { figure.bzv * { animation: none !important; transition: none !important; } .bzv-doc.a { visibility: hidden; } }");
+  it("shows one visual, the globe (src/ui/globe.ts), under the page's own script, and nothing that repeats Home", () => {
+    // 26 Nov (Max: "it is really ugly"; Home and /try tell the story): one screen, the globe its one visual, drawn by the
+    // page's one script (after the form's), no image; the mock of the approval moment, the sections and the figures gone.
+    expect(m.match(/<canvas\b/g)).toHaveLength(1);
+    expect(m).toContain('<canvas class="bz-globe" aria-hidden="true"></canvas>');
+    expect(scriptBlocks(BUSINESS_PAGE)[0]).toContain(globeScript({ selector: "canvas.bz-globe", maxR: 190, places: [[4.9, 52.37, "", true], [-122.42, 37.77, "", false]] }));
+    expect(m).not.toMatch(/<figure\b|<img\b/);
     expect(BUSINESS_PAGE).not.toMatch(/\sstyle="/);
-    // Gone (Max, 22 Nov: "the demo duplicates Home"): the figures, the approval card, the diagram, the architecture,
-    // the plans, the calculator, the questions and the buttons to /try and /proof.
-    expect(m).not.toMatch(/class="bz(stats|card|d|a|-price|-calc|-faq|-fold)\b|<canvas|<details\b|data-stat=|href="\/try"|href="proof"/);
+    // Gone (Max, 22 Nov: "the demo duplicates Home"; 26 Nov: "really ugly"): the figures, the approval card and its mock,
+    // the diagram, the architecture, the plans, the calculator, the questions, the 30 days, what you get and what we need,
+    // and the buttons to /try and /proof; the footer without its "Built on" figures.
+    expect(m).not.toMatch(/class="bz(stats|card|d|a|-price|-calc|-faq|-fold|v|p3|2)\b|<details\b|data-stat=|href="\/try"|href="proof"/);
     expect(t).not.toMatch(/€/);
     expect(t.split(" ").filter((w) => /[\p{L}\p{N}]/u.test(w)).length).toBeLessThanOrEqual(130);
+    expect(BUSINESS_PAGE).not.toMatch(/class="awx-strip|10 Airwallex features/);
   });
 });
 

@@ -21,7 +21,7 @@ import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { ASK_COPY } from "../../cloud/src/ask/core.js";
 import type { AskModel, Block } from "../../cloud/src/ask/model.js";
-import { ASK_ACTIONS, ASK_JURY, ASK_PAGE_COPY as C } from "../../cloud/src/ask/page.js";
+import { ASK_ACTIONS, ASK_CONNECTIONS, ASK_PAGE_COPY as C, ASK_SKILLS } from "../../cloud/src/ask/page.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -257,11 +257,13 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   await dialog.waitFor({ timeout: 5_000 });
   ok((await fab.getAttribute("aria-expanded")) === "true", "the button says the dialog is open");
   const frame = page.frameLocator("#pask-panel iframe");
-  // Jury mode (21 Nov, Max): signed out, the panel offers the questions about Purser, styled as cards (no bullets).
+  // Signed out, the panel opens on the agent's skills (26 Nov, Max: "a real agent: skills, integrations, the logos of
+  // its connections"): each skill one of its read-only tools, as tiles (no bullets), and what it reads from in its header.
   await frame.getByRole("heading", { name: C.juryHead }).waitFor({ timeout: 10_000 });
-  ok(await frame.locator("#hello .acts.jury button").count() === ASK_JURY.length && ASK_JURY.length <= 3 && (await frame.locator("#hello .acts.ctx button").count()) === 0, "the panel's empty state is jury mode: the questions about Purser, at most three, no page actions without a page");
-  ok(await frame.locator("#hello .acts.jury li").first().evaluate((li) => getComputedStyle(li).listStyleType === "none" && getComputedStyle(li.querySelector("button")!).borderRadius !== "0px"), "its questions are cards, without bullets");
-  await frame.getByRole("button", { name: ASK_JURY[2]!.q }).click();
+  ok(await frame.locator("#hello .skills button.sk").count() === ASK_SKILLS.length && (await frame.locator("#hello .acts.ctx button").count()) === 0, "the panel's empty state: the agent's skills, no page actions");
+  ok(await frame.locator("#hello .skills li").first().evaluate((li) => getComputedStyle(li.parentElement!).listStyleType === "none" && getComputedStyle(li.querySelector("button")!).borderRadius !== "0px"), "its skills are tiles, without bullets");
+  ok(await frame.locator("ul.cx li[title]").count() === ASK_CONNECTIONS.length, "the header names what the agent reads from, each with its status");
+  await frame.locator('#hello button.sk[data-tool="search_docs"]').click();
   await frame.locator(".msg.bot:not([aria-busy]) .meta").waitFor({ timeout: 15_000 });
   ok((await frame.locator(".msg.bot").innerText()).includes("test money"), "a question asked inside the dialog is answered");
   await sane(page, "console with the dialog");
