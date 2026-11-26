@@ -1081,12 +1081,24 @@ export function runsReadme(all: RunRow[] = liveRuns()): string {
   const money = (r: RunRow) => r.money.split(" · ").filter((w) => !KIND_LABEL[kindOf(r)].toLowerCase().includes(w.toLowerCase()));
   // The plain name, the name the docs use where they use one, then the kind, the mark, the rate and the money words.
   const run = (r: RunRow) => `**${cell(nameOf(r))}**${DOC_NAMES.has(r.key) ? ` (in the docs: \`${r.key}\`)` : ""}<br>${[KIND_LABEL[kindOf(r)], ...(r.product ? [PRODUCT_MARK] : []), ...(r.rate ? [rateWords(r.rate)] : []), ...money(r)].map(cell).join(" · ")}`;
-  // 17 Nov (owner): the header every judge-facing README shares: the mark, the title, one sentence, then At a glance.
-  return `<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+  // 17 Nov (owner): the header every judge-facing README shares. 26 Nov (docs wave 2): the centred form, as the other
+  // READMEs in docs/ (test/readme-headers.test.ts): the mark, the title, one bold sentence, badges read from the rows
+  // below, and a jump row.
+  const shield = (label: string, msg: string, colour: string) => `https://img.shields.io/badge/${encodeURIComponent(label.replace(/-/g, "--").replace(/ /g, "_"))}-${encodeURIComponent(msg.replace(/-/g, "--").replace(/ /g, "_"))}-${colour}?style=flat-square&labelColor=1f2937`;
+  const lastDate = lastLive(live).date;
+  return `<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
 
 # Live runs
 
-Every live run, newest first, with what ran, what was checked, its ids and its files; test money only.
+**Every live run, newest first, with what ran, what was checked, its ids and its files; test money only.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Live runs: ${live.length}](${shield("live runs", String(live.length), "10b981")})](#every-live-run)&nbsp;[![Last live run: ${lastDate}](${shield("last live run", lastDate, "8b5cf6")})](#every-live-run)&nbsp;[![Partial runs: ${partial.length}; rehearsals and dry runs: ${rehearsals.length}](${shield("not counted as live", `${partial.length} partial · ${rehearsals.length} rehearsals`, "64748b")})](#partial-runs)&nbsp;[![Test money only](${shield("money", "test only", "f59e0b")})](../../README.md#built-with)
+
+[Every live run](#every-live-run) · [Partial runs](#partial-runs) · [Rehearsals and dry runs](#rehearsals-and-dry-runs) · [/runs on the site](https://kit11.max-31b.workers.dev/runs)
+
+</div>
 
 | At a glance | Record |
 |---|---|

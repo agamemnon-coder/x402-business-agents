@@ -107,8 +107,10 @@ const visitors = new Map<string, Visitor>();
 let made = 0;
 const SUPPLIER = { key: "bergtex", name: "Bergtex Textil GmbH", iban: "DE89370400440532013000", bic: "COBADEFFXXX" };
 // With the engine's own rows and measured outcomes (cloud/src/engine/samples.gen.ts), as GET /v1/engine/samples gives them (14 Nov, inbox table).
-const GEN = (k: string) => { const g = GEN_SAMPLES.find((x) => x.key === k)!; return { row: g.row, expect: g.expect }; };
-const SAMPLES = [{ key: "clean", title: "A clean invoice from a supplier on file", ...GEN("clean") }, { key: "again", title: "The same file again", ...GEN("again") }];
+// 26 Nov: each sample's title from the generated samples (the page's button name), not typed here, so a renamed sample
+// cannot leave this check waiting for a title the page no longer shows.
+const GEN = (k: string) => { const g = GEN_SAMPLES.find((x) => x.key === k)!; return { title: String(g.title ?? g.key), row: g.row, expect: g.expect }; };
+const SAMPLES = [{ key: "clean", ...GEN("clean") }, { key: "again", ...GEN("again") }];
 const clean = await pdfOf(EN);
 const long = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 /** An invoice as the compose route would write it: Bergtex's layout with the visitor's number, amount, dates and IBAN. */
@@ -490,7 +492,7 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
     ok(await page.isVisible(`#f-amt-hint:text-is("${INVOICE.amountBad}")`) && await page.locator(".note").count() === 0 && await page.getAttribute("#f-amt", "aria-invalid") === "true", `${tag}: an amount that is not one: the calm hint under the field, no red box`);
     if (shots) { await page.locator("#f-amt").scrollIntoViewIfNeeded(); await page.screenshot({ path: join(shots, "try-1-amount-hint-390-light.png") }); }
     await page.click(`text=${INVOICE.tabSample}`);
-    ok(await page.getAttribute(`.samples .btn:has-text("${SAMPLES[0]!.title}")`, "aria-pressed") === "true", `${tag}: the first sample is picked`);
+    ok(await page.getAttribute(`.samples .btn[aria-label="${SAMPLES[0]!.title}"]`, "aria-pressed") === "true", `${tag}: the first sample is picked`);
     // 14 Nov (inbox table): each row says its supplier, number, amount, due date and the risk the engine measured.
     const rowsTxt = await page.locator(".samples.inbox .btn.row").allInnerTexts();
     ok(rowsTxt.length === 2 && rowsTxt[0]!.includes("Bergtex Textil GmbH") && rowsTxt[0]!.includes("BTX-2026-21") && rowsTxt[0]!.includes("EUR 1,850.00") && rowsTxt[0]!.includes(INBOX.risk.clean!) && rowsTxt[1]!.includes(INBOX.risk.duplicate_document!),
@@ -770,14 +772,17 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
   // The signature line says what is so for this payment: the Airwallex sandbox transfer's metadata only when this payment made one.
   const awxMade = ((await keptState(page)).awx as { source?: string } | null)?.source === "airwallex-sandbox";
   const sigl = (await page.locator(".why .sigl").textContent()) ?? "";
-  ok(new RegExp(`^Signed with your passkey( \\((Face ID|Touch ID|fingerprint|Windows Hello)\\))?, not a PIN or a click\\. ${awxMade ? "The hash of the exact terms travels in the Airwallex sandbox transfer's metadata\\." : "Purser checks the hash of the exact terms before the simulated bank moves anything\\."}$`).test(sigl) && !/read back/i.test(sigl),
+  // 21 Nov (owner, plain words): the line is TAMPER.signAwx or TAMPER.signSim, "{via}" the passkey's method where known.
+  const sigCopy = (awxMade ? TAMPER.signAwx : TAMPER.signSim).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace("\\{via\\}", "( \\((Face ID|Touch ID|fingerprint|Windows Hello)\\))?");
+  ok(new RegExp(`^${sigCopy}$`).test(sigl) && !/read back/i.test(sigl),
     `${tag}: refused: the signature line says what is so for this payment (${awxMade ? "a sandbox transfer" : "the simulated bank"}: ${sigl})`);
   ok(await page.locator(".why .acts.end .btn.primary.see").textContent() === PAY.seeResult && await page.locator(".why .acts.end .btn.again").textContent() === PAY.another, `${tag}: refused: "${PAY.seeResult}" and "${PAY.another}"`);
   ok(!(await page.locator(".stamp").isVisible()) && (await page.locator(".why > details > summary").first().textContent()) === TAMPER.proof, `${tag}: refused: the stamp and the proof folded under "${TAMPER.proof}"`);
   ok((await page.textContent(".stamp")) === PAY.stamp, `${tag}: refused: the stamp`);
   const layers = await page.locator(".layer").allTextContents();
   ok(layers.length === 2 && layers[0] === "Your signature: The signature is over other terms than the ones sent." && layers[1] === PAY.executor, `${tag}: refused: one row per layer (${layers.join(" | ")})`);
-  ok(await page.locator(".why .hashes .hash").count() === 2 && await page.locator(".why .hashes").isVisible(), `${tag}: refused: the signed and the asked hash in view, not folded`);
+  // 15 Nov (Max, plain words): the two fingerprints moved into the technical proof, folded, out of the visitor's way.
+  ok(await page.locator(".why details .hashes .hash").count() === 2, `${tag}: refused: the signed and the asked hash in the technical proof`);
   const hashes = await page.locator(".hash").allTextContents();
   const raw = JSON.parse(rawText) as { signed_sha256: string; sent_sha256: string };
   ok(hashes.length === 2 && hashes[0] === `${PAY.signed}${raw.signed_sha256}` && hashes[1] === `${PAY.sent}${raw.sent_sha256}` && raw.signed_sha256 === L0.terms_sha256 && raw.sent_sha256 !== raw.signed_sha256, `${tag}: refused: the signed and the sent hash`);
@@ -875,7 +880,7 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
   });
   // On a phone the lines stack and the headings are for screen readers only: there each amount ends at the table's edge.
   if (width < 600) ok(edges.length > 0 && edges.every(([a]) => a! <= width), `${tag}: did: every amount on screen, stacked (${edges.map(([a]) => a).join(" ")})`);
-  else ok(edges.length > 0 && edges.every(([a, b]) => Math.abs(a! - b!) <= 1) && [0, 1].every((k) => new Set(edges.filter((e) => e[2] === k).map((e) => e[0])).size <= 1), `${tag}: did: every amount, VAT included, ends where its Debit or Credit heading ends (${edges.map(([a, b]) => `${a}/${b}`).join(" ")})`);
+  else ok(edges.length > 0 && edges.every(([a, b]) => Math.abs(a! - b!) <= 1) && [0, 1].every((k) => { const col = edges.filter((e) => e[2] === k).map((e) => e[0]!); return !col.length || Math.max(...col) - Math.min(...col) <= 1; }), `${tag}: did: every amount, VAT included, ends where its Debit or Credit heading ends (${edges.map(([a, b]) => `${a}/${b}`).join(" ")})`);
   ok((await page.locator(".did-step tr.vatl td.r").evaluateAll((cs) => cs.map((c) => getComputedStyle(c).fontWeight))).every((w) => w === "400"), `${tag}: did: the VAT amount in the same weight as the others`);
   ok((await page.textContent(".did-step .bal")) === DID.balanced && dr === cr, `${tag}: did: "${DID.balanced}", from the lines' own sums (${dr} = ${cr})`);
   ok((await page.textContent(".did-match .pill")) === ourPay.status && (await page.textContent(".did-match .mono")) === String(ourPay.invoice_no), `${tag}: did: matched, the payment ${ourPay.status as string} with its reference (${ourPay.invoice_no as string})`);

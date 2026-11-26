@@ -15,7 +15,7 @@ describe("Checked on every change", () => {
   // while leaving out formal, formal-dafny and reuse. It is now every job of ci.yml, in its order, read from ci.yml here.
   it("lists every job of ci.yml, in its order, and the checks outside it apart, each saying when it runs", () => {
     const top = [...ci.slice(ci.indexOf("\njobs:\n")).matchAll(/^ {2}([a-z][a-z0-9-]*):$/gm)].map((m) => m[1]);
-    expect(top.length).toBe(9);
+    expect(top.length).toBe(10);
     expect(ciJobs().map((j) => j.job)).toEqual(top);
     // ci.yml runs every job on every push to main and every pull request: no job has an if: or a paths filter.
     expect(ci).toMatch(/^on:\n(?:.*\n)*? {2}push:\n {4}branches: \[main\]\n {2}pull_request:\n/m);

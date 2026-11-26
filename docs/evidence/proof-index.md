@@ -1374,7 +1374,7 @@ date is read from the record the row names. Paths are from the repository root.
 | 1357 | q-built › pq-tested | 19 | 19 Nov | docs/evidence/evidence-wall.json docs/evidence/formal-model.md | `npm run evidence:wall` rebuilds it from the records it names (offline) |
 | 1358 | q-built › pq-tested | 6 | 6 | docs/evidence/evidence-wall.json docs/assurance.md | `npm run evidence:wall` rebuilds it from the records it names (offline) |
 | 1359 | q-built › pq-tested | 19 | 19 Nov | docs/evidence/evidence-wall.json docs/assurance.md | `npm run evidence:wall` rebuilds it from the records it names (offline) |
-| 1360 | q-built › pq-tested | 9 | 9 | docs/evidence/evidence-wall.json .github/workflows/ci.yml | `npm run evidence:wall` rebuilds it from the records it names (offline) |
+| 1360 | q-built › pq-tested | 10 | 10 | docs/evidence/evidence-wall.json .github/workflows/ci.yml | `npm run evidence:wall` rebuilds it from the records it names (offline) |
 | 1361 | q-built › pq-tested | 3 | CI jobs on every change: 3 of them scan for security: npm audit, gitleaks, Semgrep; GitHub's CodeQL code scan… | docs/evidence/evidence-wall.json .github/workflows/ci.yml | `npm run evidence:wall` rebuilds it from the records it names (offline) |
 | 1362 | q-built › pq-tested | v1.2.0 | v1.2.0 | docs/evidence/evidence-wall.json docs/evidence/release-v1.2.0.json | `npm run evidence:wall` rebuilds it from the records it names (offline) |
 | 1363 | q-built › pq-tested | 2 | release signed: SLSA provenance and SBOM attested: 2 Sigstore-signed attestations on the source archive, read… | docs/evidence/evidence-wall.json docs/evidence/release-v1.2.0.json | `npm run evidence:wall` rebuilds it from the records it names (offline) |

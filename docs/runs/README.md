@@ -1,8 +1,16 @@
-<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
 
 # Live runs
 
-Every live run, newest first, with what ran, what was checked, its ids and its files; test money only.
+**Every live run, newest first, with what ran, what was checked, its ids and its files; test money only.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Live runs: 37](https://img.shields.io/badge/live_runs-37-10b981?style=flat-square&labelColor=1f2937)](#every-live-run)&nbsp;[![Last live run: 21 Nov 2026](https://img.shields.io/badge/last_live_run-21_Nov_2026-8b5cf6?style=flat-square&labelColor=1f2937)](#every-live-run)&nbsp;[![Partial runs: 2; rehearsals and dry runs: 3](https://img.shields.io/badge/not_counted_as_live-2_partial_%C2%B7_3_rehearsals-64748b?style=flat-square&labelColor=1f2937)](#partial-runs)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+
+[Every live run](#every-live-run) · [Partial runs](#partial-runs) · [Rehearsals and dry runs](#rehearsals-and-dry-runs) · [/runs on the site](https://kit11.max-31b.workers.dev/runs)
+
+</div>
 
 | At a glance | Record |
 |---|---|
