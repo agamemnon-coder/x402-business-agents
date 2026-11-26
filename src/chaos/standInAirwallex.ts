@@ -149,13 +149,18 @@ export class StandInAirwallex {
         if (prior) return err(400, "duplicate_request_id", `request_id has been used for a transfer with the transfer ID ${prior.id} before`, { source: "request_id", details: { id: prior.id, request_id: b.request_id } });
         const want: NewTransfer = { requestId: String(b.request_id), beneficiaryId: String(b.beneficiary_id), amountCents: toCents(String(b.transfer_amount)), currency: "EUR", sourceCurrency: "EUR",
           reference: String(b.reference ?? ""), reason: String(b.reason ?? ""), approvalSha256: String((b.metadata as { approval_sha256?: string } | undefined)?.approval_sha256 ?? "") };
+        // The fake adds the transfer under its own id (tr_N) as soon as it is called, before its promise settles: the
+        // Airwallex id is given here at once, before any await, so a concurrent life's GET /transfers?request_id= can
+        // never read (and store) the fake's id (nightly chaos-money R2277 on seed 20261126 did, then failed to reconcile).
+        const made = f.createTransfer(want);
+        const t = this.transfers.find((x) => x.requestId === want.requestId);
+        if (t) t.id = randomUUID();
         try {
-          await f.createTransfer(want);
+          await made;
         } catch (e) {
           return err(400, (e as { code?: string }).code ?? "invalid_argument", (e as Error).message);
         }
-        const t = this.transfers.at(-1)!;
-        t.id = randomUUID();
+        if (!t) throw new Error("stand-in: the fake made no transfer for this request_id");
         this.noteStatus(t);
         return { status: 201, json: this.transferJson(t) };
       }
