@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Company cards, clearing and the simulated month
+
+**Each agent's own card, limited at Airwallex and frozen at rest; selling by Metal clearing; and a month replayed in 90 seconds.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Agent cards: three virtual Visa cards from Airwallex Issuing](https://img.shields.io/badge/agent_cards-3_virtual_Visa_%C2%B7_Airwallex_Issuing-0ea5e9?style=flat-square&labelColor=1f2937)](#company-cards-airwallex-issuing)&nbsp;[![Agent cards rest frozen (INACTIVE) at Airwallex](https://img.shields.io/badge/at_rest-frozen_%C2%B7_INACTIVE-8b5cf6?style=flat-square&labelColor=1f2937)](#company-cards-airwallex-issuing)&nbsp;[![A card limit raise needs the CFO's Face ID](https://img.shields.io/badge/a_raise-needs_Face_ID-8b5cf6?style=flat-square&labelColor=1f2937)](#company-cards-airwallex-issuing)&nbsp;[![Frozen by default and the hours: tested against the Issuing stand-in, not yet live](https://img.shields.io/badge/frozen_by_default%2C_hours-stand--in_only%2C_not_yet_live-f59e0b?style=flat-square&labelColor=1f2937)](#card-governance-per-agent-hours-merchants-currencies-and-a-trace-to-agent-task-and-policy-26-november)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](#selling-by-metal-clearing-prepaid-new-on-testnet)&nbsp;[![A month in 90 seconds: simulated](https://img.shields.io/badge/the_month-simulated-f59e0b?style=flat-square&labelColor=1f2937)](#a-month-in-90-seconds-simulated)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Company cards](#company-cards-airwallex-issuing) · [Card governance](#card-governance-per-agent-hours-merchants-currencies-and-a-trace-to-agent-task-and-policy-26-november) · [Metal clearing](#selling-by-metal-clearing-prepaid-new-on-testnet) · [A month in 90 seconds](#a-month-in-90-seconds-simulated) · [Cards run log](runs/2026-10-29-cards.md)
+
+</div>
 
 Moved from the project README. Back to the [README](../README.md).
 
@@ -11,6 +23,28 @@ Moved from the project README. Back to the [README](../README.md).
 | treasury | virtual Visa | 25.00 EUR | 50.00 EUR | bookkeeping software (Ledgerly) |
 
 The merchants are fictional (Microsoft's sample company names).
+
+```mermaid
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#0ea5e9, #8b5cf6"}}}}%%
+xychart-beta
+  title "Card limits per agent, EUR: per month (sky), per purchase (violet)"
+  x-axis ["sourcing", "support", "treasury"]
+  y-axis "EUR" 0 --> 160
+  bar [100, 150, 50]
+  bar [30, 60, 25]
+```
+
+<sub>Record: [the card table above](cards-and-clearing.md#company-cards-airwallex-issuing), read by `test/docs-charts.test.ts`: per month 100.00, 150.00 and 50.00 EUR; per purchase 30.00, 60.00 and 25.00 EUR, from the CFO policy's `card.<agent>.monthly` and `.per_tx`.</sub>
+
+```mermaid
+stateDiagram-v2
+  [*] --> Frozen: issued, INACTIVE at Airwallex
+  Frozen --> Window: a purchase Purser approved under the policy
+  Window --> Frozen: Airwallex answers
+  Window --> Frozen: the two minutes run out
+  Window --> Frozen: an authorisation Purser did not expect
+  Frozen --> Frozen: a charge outside a window, declined CARD_INACTIVE
+```
 
 - **Issued and synced.** `npm run cards -- setup` gives each agent a DELEGATE cardholder and a virtual Visa card.
   It sets the card's per-purchase and monthly limits to the CFO policy's `card.<agent>.per_tx` and
@@ -94,6 +128,22 @@ issues a receipt and certifies the totals on chain each epoch, so there is no tr
   - `/v1/stock` stays as it was: exact, under Summit's mandate, with its signed order.
   - Summit tries clearing first. It falls back to the mandate route whenever clearing took nothing, so a sale never
     depends on the new scheme. It never pays a tick a second way when a clearing payment may have been counted.
+```mermaid
+flowchart LR
+  S["Summit wants a stock check"] --> C{"/v1/stock/prepaid<br/>clearing"}
+  C -- "the check against the mandate<br/>and the CFO policy fails" --> N["503, not offered<br/>nobody pays"]
+  C -- "paid by clearing" --> OK["Delivered<br/>a signed running total"]
+  C -- "clearing took nothing" --> M["/v1/stock<br/>exact, under the mandate"] --> OK
+  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  class S sourcing
+  class C,M rails
+  class N stop
+  class OK ok
+```
+
 - **Offered only when we can deliver.** Seen live: a clearing payment is counted when the buyer makes it, before the
   seller can refuse. So before the prepaid route makes an offer, the sourcing agent checks the supplier's price
   against its mandate and the CFO policy, for free. If that check fails, the answer is 503 "not offered" and nobody

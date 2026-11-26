@@ -86,6 +86,16 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`${rows.length} clients; ${run} run (one of them, the Claude iOS app, against a deployed cloud), ${docs} from their own documentation.`);
   });
 
+  it("docs/cards-and-clearing.md: the card limits chart is the card table's", () => {
+    const md = read("docs/cards-and-clearing.md");
+    const rows = md.split("\n").filter((l) => /^\| (sourcing|support|treasury) \| virtual Visa \|/.test(l)).map((l) => l.slice(1, -1).split("|").map((c) => c.trim()));
+    expect(rows.map((r) => r[0])).toEqual(["sourcing", "support", "treasury"]);
+    const eur = (s: string) => Number(/^([\d.]+) EUR$/.exec(s)![1]);
+    const perTx = rows.map((r) => eur(r[2]!)), monthly = rows.map((r) => eur(r[3]!));
+    expect(md).toContain(`  bar [${monthly.join(", ")}]\n  bar [${perTx.join(", ")}]\n`);
+    expect(md).toContain(`per month ${monthly.map((n) => n.toFixed(2)).join(", ").replace(/, ([^,]+)$/, " and $1")} EUR; per purchase ${perTx.map((n) => n.toFixed(2)).join(", ").replace(/, ([^,]+)$/, " and $1")} EUR`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
