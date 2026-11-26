@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 // something and stay inside the caller's company.
 import { readFileSync } from "node:fs";
 import { Script } from "node:vm";
+import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consoleCsp, consolePage } from "../cloud/src/console.js";
 import { t0CloseLine } from "../cloud/src/t0Close.js";
@@ -56,8 +57,9 @@ describe("the console page", () => {
     expect(markup).not.toMatch(/\son[a-z]+\s*=/i);
     expect(markup).not.toMatch(/javascript:/i);
     expect(markup).not.toMatch(/\sstyle\s*=/i);
-    // A module script parses as a function body once its import-free top level is wrapped.
-    expect(() => new Script(`(async()=>{${script(html)}})`)).not.toThrow();
+    // The module script parses: TypeScript's parser reports no syntax error (nothing is compiled or run).
+    const parsed = ts.transpileModule(script(html), { reportDiagnostics: true, fileName: "console.mjs", compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext, allowJs: true } });
+    expect(parsed.diagnostics?.map((d) => ts.flattenDiagnosticMessageText(d.messageText, " ")) ?? []).toEqual([]);
   });
 
   it("writes every value from the API as text: innerHTML only ever receives the page's own icons", () => {

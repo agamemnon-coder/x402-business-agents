@@ -93,7 +93,7 @@ describe("/business (22 Nov): the question, one line, one visual, the pilot's fo
     // 26 Nov (Max: "it is really ugly"; then "far too full", and the globe is Purser Cloud's sign-in's): a deep page with
     // one soft violet glow drawn in CSS, no picture and no script but the form's; a footer of one line.
     expect(m).not.toMatch(/<canvas\b|<figure\b|<img\b/);
-    expect(scriptBlocks(BUSINESS_PAGE)[0]!.replace(/^<script>|<\/script>$/g, "").trim()).toBe(PILOT_JS);
+    expect(scriptBlocks(BUSINESS_PAGE)[0]!.replace(/^<script>|<\/script>$/gi, "").trim()).toBe(PILOT_JS);
     expect(BUSINESS_PAGE).toContain("main.bzp::before");
     expect(BUSINESS_PAGE).toContain(`<footer class="bzfoot"><div class="wrap"><p><span>${BUSINESS_HONEST}</span>`);
     expect(BUSINESS_PAGE).not.toMatch(/What's real\?|class="flink"/);

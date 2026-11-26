@@ -10,7 +10,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 
 const [cmd = "stand-in", runArg = ""] = process.argv.slice(2);
 const repo = resolve(import.meta.dirname, "../..");
@@ -33,7 +33,8 @@ const ENTITY_B = { id: "nl-platform", name: "Northwind Outdoor BV (the sandbox p
 const PAYEE_AT_A = "f8678483-2718-4393-a328-d78261b5d5a4";
 
 const runDir = () => (process.env.KIT11_DB ?? "").replace(/\.sqlite$/, "");
-const ledgerOk = (env: Record<string, string | undefined>) => new RegExp(`governance-${run}[^\\\\/]*\\.sqlite$`).test(env.KIT11_DB ?? "");
+// The run's own ledger file: its name holds governance-<run> and ends in .sqlite (plain string checks, no pattern built from argv).
+const ledgerOk = (env: Record<string, string | undefined>) => { const f = basename(env.KIT11_DB ?? ""); return f.includes(`governance-${run}`) && f.endsWith(".sqlite"); };
 const httpLog = () => join(runDir(), "http.jsonl");
 
 function refusals(env: Record<string, string | undefined>): string[] {
