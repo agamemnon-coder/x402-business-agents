@@ -76,11 +76,19 @@ function opSuppliers(){
 // how to approve, the cash beside the agents, what happened beside the connected rails, the flow, then the two charts. Every figure is the
 // records'; nothing here approves or pays: approval is the CFO's, on the phone, over the exact terms.
 const OV_SITE=` + JSON.stringify(SITE_ORIGIN) + String.raw`;
+// A figure's own series under it (26 Nov, colour: "a coloured area under each figure where a real series exists"): the
+// line and its area to the bottom in the tile's hue (consoleColor.ts), stretched across the tile behind its words.
 function ovSpark(vals,cls){
-  if(!vals||vals.length<2)return null;const W=120,H=36,mn=Math.min(...vals),mx=Math.max(...vals),r=(mx-mn)||1;
-  const pts=vals.map((v,i)=>(i/(vals.length-1)*W).toFixed(1)+','+(H-3-(v-mn)/r*(H-6)).toFixed(1));
-  return sv('svg',{viewBox:'0 0 '+W+' '+H,width:W,height:H,class:'ovspark '+(cls||''),'aria-hidden':'true'},[sv('polyline',{points:pts.join(' '),fill:'none'})])}
-function ovKpi(o){const a=el('a','card ovk rise '+o.k+(o.hot?' hot':''),[el('div','ovk-top',[el('span','ovk-i',ic(o.icon)),el('span','ovk-l',o.label),o.spark||null]),el('div','ovk-b',[el('b','num ovk-v',o.value),o.meter||null,o.sub?el('span','ovk-s'+(o.tone?' '+o.tone:''),o.sub):null])]);a.href=o.href;return a}
+  if(!vals||vals.length<2)return null;const W=240,H=48,mn=Math.min(...vals),mx=Math.max(...vals),r=(mx-mn)||1,id='ovsg-'+String(cls||'x').replace(/\W/g,'');
+  const pts=vals.map((v,i)=>(i/(vals.length-1)*W).toFixed(1)+','+(H-3-(v-mn)/r*(H-10)).toFixed(1));
+  return sv('svg',{viewBox:'0 0 '+W+' '+H,width:W,height:H,preserveAspectRatio:'none',class:'ovspark '+(cls||''),'aria-hidden':'true'},[
+    sv('defs',{},[sv('linearGradient',{id,x1:0,y1:0,x2:0,y2:1},[sv('stop',{offset:'0%','stop-opacity':.34}),sv('stop',{offset:'100%','stop-opacity':0})])]),
+    sv('path',{d:'M0,'+H+' L'+pts.join(' L')+' L'+W+','+H+' Z',fill:'url(#'+id+')',class:'sa'}),sv('polyline',{points:pts.join(' '),fill:'none','vector-effect':'non-scaling-stroke'})])}
+// The month's paid invoices, added up day by day from the first of the month to the day the figures stand at.
+function ovPaidRun(pd,mo,now){const end=+new Date(now).toISOString().slice(8,10);if(!pd.length||end<2)return null;const out=[];let n=0;
+  for(let d=1;d<=end;d++){const k=mo+'-'+String(d).padStart(2,'0');n=pd.filter((i)=>String(i.paid_at||'').slice(0,10)<=k).reduce((s,i)=>s+toCents(i.total),0);out.push(n)}return out}
+function ovKpi(o){const s=o.sub?el('span','ovk-s'+(o.tone?' '+o.tone:''),o.sub):null;
+  const a=el('a','card ovk rise '+o.k+(o.hot?' hot':'')+(o.spark?' sp':''),[el('div','ovk-top',[el('span','ovk-i',ic(o.icon)),el('span','ovk-l',o.label)]),el('div','ovk-b',[el('b','num ovk-v',o.value),o.meter||null,s]),o.spark||null]);a.href=o.href;return a}
 // Relative time against the demo world's own day (its records are dated in it), or now for a real company.
 function ovAgo(at,now){const s=Math.max(0,(now-Date.parse(at))/1000);if(s<3600)return t('cs.ov2.ago_m',{n:Math.max(1,Math.round(s/60))});if(s<86400)return t('cs.ov2.ago_h',{n:Math.round(s/3600)});return t('cs.ov2.ago_d',{n:Math.round(s/86400)})}
 // The connected rails (26 Nov, the console redesign): only what is connected with a recorded run (OV_STACK, from the
@@ -138,7 +146,7 @@ async function overviewNext(){
   const kpis=el('div','ov-row ov-k',[
     D&&D.money?ovKpi({icon:'wallet',label:sw('k_cash'),value:cur(C)+' '+cents(toCents(D.money.net)),sub:delta!==null?(delta>=0?'+':'−')+Math.abs(delta).toFixed(1)+'% '+t('cs.ov2.vs7'):D.since?t('cs.dash.net_sub',{date:dday(D.since)}):t('cs.dash.net_none'),tone:delta===null?'':delta>=0?'pos':'neg',spark:ovSpark(nets.slice(-30),'pos'),href:'#/transactions',k:'k-sky'}):null,
     ovKpi({icon:'scan-face',label:sw('k_wait'),value:String(wait.length),sub:wait.length?cur(wait[0].currency)+' '+cents(sumOf(wait)):t('cs.ov.nothing_waits'),hot:wait.length>0,href:'#/invoices?f=waiting_cfo',k:'k-vio'}),
-    ovKpi({icon:'circle-check',label:sw('k_paid'),value:cur(C0)+' '+cents(sumOf(pd)),sub:sw('k_paid_sub',{n:pd.length,prev:cur(C0)+' '+cents(sumOf(pp)),month:MONTHS[+pm.slice(5,7)-1]}),href:'#/invoices?f=paid',k:'k-ok'}),
+    ovKpi({icon:'circle-check',label:sw('k_paid'),value:cur(C0)+' '+cents(sumOf(pd)),spark:ovSpark(ovPaidRun(pd,mo,now),'paid'),sub:sw('k_paid_sub',{n:pd.length,prev:cur(C0)+' '+cents(sumOf(pp)),month:MONTHS[+pm.slice(5,7)-1]}),href:'#/invoices?f=paid',k:'k-ok'}),
     ovKpi({icon:'bot',label:sw('k_spend'),value:cc.length?cur(cc[0].currency)+' '+cents(sp):'—',sub:cc.length?sw('k_spend_sub',{cap:cur(cc[0].currency)+' '+cents(capc),n:cc.length}):sw('k_spend_none'),meter:cc.length?bar(sp,capc):null,href:'#/agents',k:'k-ind'})].filter(Boolean));
   // What waits for you, and how it is approved: on the phone, never here.
   const st=(i)=>i.status==='waiting_cfo'?['hot',t('cs.ov2.st_cfo')]:i.status==='needs_vendor'?['warn',t('cs.ov2.st_vendor')]:i.status==='needs_review'?['warn',t('cs.ov2.st_review')]:['ok',t('cs.ov2.st_ready')];

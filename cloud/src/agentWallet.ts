@@ -145,7 +145,9 @@ function cardMeta(x,tail){
   const st=el('p','dk-st',[el('i','dk-dot '+x.status),el('span','',x.statusText),x.last4?el('span','dk-hon',honestOf(x)):null,tail||null].filter(Boolean));
   if(!(x.spent!==null&&x.cap>0))return el('div','dk-meta',st);
   const bar=el('span','ac-bar'+(x.spent>=x.cap?' full':''));const f=el('span','');bar.append(f);f.dataset.w=Math.min(100,x.spent/x.cap*100).toFixed(1);
-  return el('div','dk-meta g'+passHue(x),[st,el('p','dk-mt',[el('span','',[el('b','num',C+cents(x.spent)),' '+dw('of',{cap:C+cents(x.cap)})]),bar])])}
+  // The same share as a ring in the agent's own colour (consoleColor.ts): what the card spent of its month's limit.
+  const pct=Math.min(100,x.spent/x.cap*100),ring=el('span','dk-ring'+(x.spent>=x.cap?' full':''),[el('b','num',Math.round(pct)+'%')]);ring.style.setProperty('--p',pct.toFixed(1));ring.setAttribute('aria-hidden','true');
+  return el('div','dk-meta g'+passHue(x),[st,el('div','dk-mw',[ring,el('p','dk-mt',[el('span','',[el('b','num',C+cents(x.spent)),' '+dw('of',{cap:C+cents(x.cap)})]),bar])])])}
 // Meters fill once drawn (at once with reduced motion).
 function fillMeters(root){const go=()=>{for(const f of root.querySelectorAll('.ac-bar > span[data-w]'))f.style.width=f.dataset.w+'%'};if(RM())go();else requestAnimationFrame(()=>requestAnimationFrame(go))}
 // Tilt and shine under a mouse pointer; nothing with reduced motion or a touch.

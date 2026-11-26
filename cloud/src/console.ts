@@ -653,7 +653,9 @@ function startView(){
         el('code','cmd','PURSER_CLOUD_URL='+CFG.origin+' PURSER_CLOUD_KEY='+sync.api_key+' npm run cloud -- push')]))}catch(e){out.replaceChildren(note(e.message,'bad'));make.disabled=false}};
     key='';
   }
-  box.append(el('h1','',t('cs.setup')),el('p','',t('cs.setup_lede')),steps,sub,body,status);
+  // Test money, said where the company is set up, in the console's colour for it (amber, consoleColor.ts).
+  const tm=()=>el('p','tm-chip',[ic('flask'),t('cs.side.status')]);
+  box.append(el('h1','',t('cs.setup')),el('p','',t('cs.setup_lede')),tm(),steps,sub,body,status);
   view().replaceChildren(box);stage1();
 }
 
@@ -666,7 +668,7 @@ function enrolView(q){
   const status=el('div','');status.setAttribute('role','status');
   const b=btn(t('cs.make_passkey'),'primary big','scan-face');b.disabled=true;
   const who=el('p','',t('cs.checking_invite'));
-  const card=el('div','card auth',[el('h1','',t('cs.enrol_title')),who,b,status]);
+  const card=el('div','card auth enrol',[el('span','en-mk',ic('key-round')),el('h1','',t('cs.enrol_title')),el('p','tm-chip',[ic('flask'),t('cs.side.status')]),who,b,status]);
   view().replaceChildren(card);
   if(!e||!k){who.replaceChildren(note(t('cs.link_used'),'bad'));return}
   if(!hasPasskeys()){status.append(note(t('cs.no_passkeys_short'),'bad'))}
@@ -725,7 +727,13 @@ function cashChart(D,W){
   const pts=D.cash.map(p=>({d:p.day,v:toCents(p.net),i:toCents(p.in),o:toCents(p.out)}));const H=Math.max(190,Math.min(300,Math.round(W*0.46))),l=48,r=14,tp=14,b=26;
   const min=Math.min(0,...pts.map(p=>p.v)),max=Math.max(1,...pts.map(p=>p.v));const X=(k)=>l+(pts.length<2?0:k/(pts.length-1))*(W-l-r),Y=(v)=>tp+(max-v)/(max-min||1)*(H-tp-b);
   const g=sv('svg',{viewBox:'0 0 '+W+' '+H,width:W,height:H,class:'chart',role:'img','aria-label':t('cs.dash.cash_title')+': '+amt(D,pts.length?pts[pts.length-1].v:0)});
-  g.append(sv('defs',{},[sv('linearGradient',{id:'cashfill',x1:0,y1:0,x2:0,y2:1},[sv('stop',{offset:'0%','stop-color':'var(--accent)','stop-opacity':.22}),sv('stop',{offset:'100%','stop-color':'var(--accent)','stop-opacity':0})])]));
+  // In colour (consoleColor.ts): cash above zero in sky, below zero in rose, the area fading to the zero line; the hard
+  // stop sits at zero (the line's just under it, so a line along zero stays sky), so a colour never says more than the figure.
+  const zf=(dy)=>Math.max(0,Math.min(1,(Y(0)+dy-tp)/Math.max(1,H-b-tp))).toFixed(4),z=zf(0),zl=zf(2),U={gradientUnits:'userSpaceOnUse',x1:0,x2:0,y1:tp,y2:H-b};
+  const stop=(o,c,a)=>sv('stop',{offset:o,'stop-color':'var(--'+c+')','stop-opacity':a});
+  g.append(sv('defs',{},[sv('linearGradient',Object.assign({id:'cashfill'},U),[stop(0,'sky',.36),stop(z,'sky',.03),stop(z,'bad',.03),stop(1,'bad',.3)]),
+    sv('linearGradient',Object.assign({id:'cashline'},U),[stop(0,'sky',1),stop(zl,'sky',1),stop(zl,'bad',1),stop(1,'bad',1)])]));
+  g.classList.add('chcash');
   // Gridlines at zero, half the top and the top; the lowest point only when cash went clearly below zero.
   const ticks=[0,max/2,max].concat(min<-max*0.08?[min]:[]);
   for(const v of ticks){const y=Y(v);g.append(sv('line',{x1:l,x2:W-r,y1:y,y2:y,class:v===0?'zero':'grid'}),sv('text',{x:l-8,y:y+4,class:'ax','text-anchor':'end'},[document.createTextNode(v===0?'0':kfmt(v))]))}
@@ -1180,7 +1188,7 @@ async function transactionsView(q0){
     if(!p.items.length)list.append(el('div','empty',[el('b','',t('cs.no_movements')),t('cs.nothing_matches')]));
     for(const r of p.items){const b=el('div','trow '+(r.flow==='in'?'f-in':'f-out')+(r.moved?'':' f-not'));
       const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',cur(r.currency)),'\u00a0'+(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
-      b.append(el('span','when',day(r.at)),el('span','what',[av(r.counterparty||'?'),el('span','wt',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))])]),el('span','rail '+(/^airwallex/.test(r.rail)?'r-awx':/^metal/.test(r.rail)?'r-metal':''),[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
+      b.append(el('span','when',day(r.at)),el('span','what',[av(r.counterparty||'?'),el('span','wt',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))])]),el('span','rail '+(/^airwallex/.test(r.rail)?'r-awx':/^metal/.test(r.rail)?'r-metal':''),[el('span','rc',tk('rail.'+r.rail,r.rail_label||r.rail)),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
         el('span','stx',[el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status))]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),tk('rec.'+r.reconciliation,r.reconciliation_words||r.reconciliation))]),el('span',''));
       list.append(b)}
     if(p.next_cursor)list.append(note(t('cs.newest_200')));
