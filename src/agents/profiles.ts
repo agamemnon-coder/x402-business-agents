@@ -13,6 +13,7 @@ import { cardControls } from "../policy/cards.js";
 import { currentPolicy, frozen, paused, policyValue, type PolicyEntry } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
 import { spendLimits } from "../policy/holds.js";
+import { authorityMap, type AuthorityRow } from "../policy/authorityMap.js";
 
 export interface AgentProfile {
   id: string;
@@ -31,6 +32,8 @@ export interface AgentProfile {
   velocity: { per_minute: number; usdz_per_hour: string; eur_per_hour: string };
   /** The CFO policy settings that belong to this agent, as the policy editor shows them. */
   settings: PolicyEntry[];
+  /** Its authority map (src/policy/authorityMap.ts): what it may pay, how much, from where, to whom, when, under what. */
+  authority: AuthorityRow[];
 }
 
 const modelWords = (id: string) => id.replace(/^claude-([a-z]+)-(\d+)-(\d+)$/, (_m, n: string, a: string, b: string) => `Claude ${n[0]!.toUpperCase()}${n.slice(1)} ${a}.${b}`);
@@ -59,6 +62,8 @@ export function agentProfiles(db: DB, now = new Date()): AgentProfile[] {
   const onCard = (id: string, what: string) => `Buys ${what} on its card: up to ${v(`card.${id}.per_tx`)} EUR a purchase, ${v(`card.${id}.monthly`)} EUR a month`;
   const fourEyes = v("approval.four_eyes_eur");
   const always = ["A higher card limit", "Starting again after a stop"];
+  const map = authorityMap(db, now);
+  const authority = (id: string) => map.agents.find((a) => a.agent === id)?.rows ?? [];
 
   const own = AGENTS.map((id): AgentProfile => {
     const cap = (m: AgentProfile["mandate"]) => (m ? `${m.policy_cap ?? m.cap} test USD a payment` : "its mandate's cap");
@@ -82,7 +87,7 @@ export function agentProfiles(db: DB, now = new Date()): AgentProfile[] {
     };
     return {
       id, name: AGENT_DISPLAY[id].name, job: AGENT_DISPLAY[id].job, status: status(id), models: models(id),
-      ...words[id], card: card(id), mandate, velocity: velocity(id), settings: policy.filter((e) => e.agent === id),
+      ...words[id], card: card(id), mandate, velocity: velocity(id), settings: policy.filter((e) => e.agent === id), authority: authority(id),
     };
   });
 
@@ -92,7 +97,7 @@ export function agentProfiles(db: DB, now = new Date()): AgentProfile[] {
     models: [{ model: modelWords(MODELS.review), job: "reviews each of its requests for the CFO (advice only)" }],
     alone: [`Pays on its card, through the agent API: up to ${v(`card.${x.agent_id}.per_tx`)} EUR a purchase, ${v(`card.${x.agent_id}.monthly`)} EUR a month`],
     asks: ["A task card (always a proposal)", ...always],
-    card: card(x.agent_id), mandate: null, velocity: velocity("outside"), settings: policy.filter((e) => e.agent === x.agent_id),
+    card: card(x.agent_id), mandate: null, velocity: velocity("outside"), settings: policy.filter((e) => e.agent === x.agent_id), authority: authority(x.agent_id),
   }));
   return [...own, ...outside];
 }

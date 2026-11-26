@@ -61,7 +61,11 @@ export { MAX_REFERENCE };
  * cloud engine says so, task A6; absent: KIT11_AP_AGENTS decides). `early`: what the Payer already proposed on this
  * invoice while it was filed (earlyPayer), used only when the plan at Pay is the same case.
  */
-export interface PayAgents { claude?: Anthropic | null; on?: boolean; planStands?: boolean; early?: EarlyPayer }
+export interface PayAgents {
+  claude?: Anthropic | null; on?: boolean; planStands?: boolean; early?: EarlyPayer;
+  /** The agent's task token (src/policy/taskTokens.ts): paid alone, the payment stands on that token's task mandate only. */
+  taskToken?: string;
+}
 
 /**
  * An invoice checked for payment, and how its payment is planned: the supplier's route (supplier_payment) or the EUR
@@ -109,7 +113,7 @@ export interface PaidAlone { limit: string; by: "agents" | "code"; why: string }
  * agent, the Payer agent, the cash check, or code's last check of the filed terms; `why` in words. Written to the audit
  * log as ap.alone_declined and returned with the proposal, so the page and a recorded walk can say it.
  */
-export interface AloneDeclined { by: "code" | "checker" | "payer" | "cash" | "limit"; why: string }
+export interface AloneDeclined { by: "code" | "checker" | "payer" | "cash" | "limit" | "mandate" | "token" | "anomaly"; why: string }
 export const ALONE_DECLINED = "ap.alone_declined";
 
 /**
@@ -120,7 +124,7 @@ export const ALONE_DECLINED = "ap.alone_declined";
  * the Payer's enforced proposal, filed as proposed; no text in the document that tries to steer its reader; then code
  * checks the filed terms against the limit once more (approveWithinLimit). Anything short of that leaves the payment waiting for the CFO's Face ID, as before.
  */
-function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, payer: { alone(): boolean; last?(): { next: string; source: string; enforced: { outcome: string; why: string } } | null } | null, now: Date): PaidAlone | AloneDeclined | null {
+function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, payer: { alone(): boolean; last?(): { next: string; source: string; enforced: { outcome: string; why: string } } | null } | null, now: Date, taskToken?: string): PaidAlone | AloneDeclined | null {
   const limit = aloneLimit(db);
   if (!limit) return null;
   const top = `${limit.currency} ${limit.amount}`;
@@ -149,8 +153,11 @@ function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, p
   // plan's own figures; a plan that converts another currency is the CFO's to sign, never the agent's alone.
   if (cashHoldsFiled(db, proposalId, inv, now)) return { by: "cash", why: "code's cash check holds it: paying it alone would take a balance below its floor, or it needs a conversion" };
   const why = `within the ${top} the CFO lets the agent pay alone: ${payer ? "the Checker agent decided pay and the Payer agent proposed it, and code's checks agree" : "code's checks found nothing that stops it"}`;
-  const ok = approveWithinLimit(db, { proposalId, limit, rule: why, agent: "payer" }, now);
-  return ok.ok ? { limit: top, by: payer ? "agents" : "code", why } : { by: "limit", why: `code's last check of the filed terms against the ${top} limit did not pass: ${ok.reason}` };
+  // The invoice's issue date goes with it from the inbox's own reading, for a task mandate that covers one month.
+  const ok = approveWithinLimit(db, { proposalId, limit, rule: why, agent: "payer", invoice: { issueDate: inv.issue_date }, ...(taskToken !== undefined ? { taskToken } : {}) }, now);
+  if (ok.ok) return { limit: top, by: payer ? "agents" : "code", why };
+  // A task mandate, a task token or the anomaly hold (src/policy/approvals.ts): said as such, so the page names the rule.
+  return ok.code ? { by: ok.code, why: ok.reason } : { by: "limit", why: `code's last check of the filed terms against the ${top} limit did not pass: ${ok.reason}` };
 }
 const isPaidAlone = (x: PaidAlone | AloneDeclined | null): x is PaidAlone => !!x && "limit" in x;
 
@@ -187,7 +194,7 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
     // An earlier "planned for a later day" no longer describes it once it is filed.
     const later = inv.findings.some((f) => f.code === PAY_LATER);
     // Within the CFO's limit, approved by code for the agent to pay alone (the caller runs it); else filed for the CFO.
-    const decided = payAlone(db, inv, text, out.proposal.proposal_id, payer, now);
+    const decided = payAlone(db, inv, text, out.proposal.proposal_id, payer, now, agents.taskToken);
     const alone = isPaidAlone(decided) ? decided : null;
     const declined = decided && !alone ? (decided as AloneDeclined) : null;
     if (declined) audit(db, "treasury", ALONE_DECLINED, id, { invoice_id: id, proposal_id: out.proposal.proposal_id, by: declined.by, why: declined.why.slice(0, 600) }, now);

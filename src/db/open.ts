@@ -2,6 +2,9 @@ import Database from "better-sqlite3";
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { prepareDb } from "./migrate.js";
+// Every ledger the runner opens is governed by the full task-mandate gate (src/policy/aloneGate.ts): loading this module
+// installs it. The cloud engine opens its ledgers elsewhere and carries the gate that fails closed instead.
+import "../policy/taskMandates.js";
 
 // The schema and its migrations live in ./migrate.ts, which imports nothing from Node: a Durable Object runs the same
 // steps over its own SQLite (src/db/doSql.ts).

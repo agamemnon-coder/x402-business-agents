@@ -24,6 +24,7 @@ import { passkeyById } from "../passkey/ledger.js";
 import { sealRefusal } from "../passkey/seal.js";
 import { assertionSha256, verifyStoredSignature, type PinnedKey } from "../passkey/storedSignature.js";
 import { aloneLimitRecord, sourceWords, type AloneRecord } from "./aloneLimit.js";
+import { aloneGate } from "./aloneGate.js";
 import { BATCH_KIND } from "./batchLines.js";
 import { fourEyes } from "./fourEyes.js";
 import { aloneDecision } from "./withinLimit.js";
@@ -171,6 +172,11 @@ export function policyApprovalCheck(db: DB, proposalId: string, opts: { signatur
   if (!limit) return no("approved by the policy, but no limit to pay alone was in force then (none signed by the CFO, and no labelled system default)");
   const t = JSON.parse(p.terms_json) as { amount?: unknown; currency?: unknown };
   if (aloneDecision(t.amount, t.currency, limit) !== "within") return no(`${String(t.currency)} ${String(t.amount)} is not within the ${limit.currency} ${limit.amount} in force then`);
+  // Task mandates (26 Nov): an agent under them was approved alone only on a mandate in force then (src/policy/taskMandates.ts).
+  let named: { agent?: unknown; mandate?: unknown } = {};
+  try { named = JSON.parse(rec.payload_json) as typeof named; } catch { named = {}; }
+  const outside = aloneGate().executionRefusal(db, typeof named.agent === "string" ? named.agent : "", named.mandate, rec.seq);
+  if (outside) return no(`approved by the policy, but ${outside}`);
   if (opts.signature && limit.source.kind === "signed") {
     const lp = proposalOf(db, limit.source.proposal_id);
     const la = approvalOf(db, limit.source.proposal_id);

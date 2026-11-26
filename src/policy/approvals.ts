@@ -19,6 +19,8 @@ import { hubDecisionsEnabled } from "../hub/config.js";
 import { BATCH_KIND, BATCHABLE, openBatchOf, verifyBatch } from "./batchLines.js";
 import { aloneDecision } from "./withinLimit.js";
 import { aloneLimitInForce, sourceWords } from "./aloneLimit.js";
+import { aloneGate } from "./aloneGate.js";
+import { ANOMALY_HELD, anomalyReasons } from "./anomaly.js";
 import { ALONE_KINDS, approvalSignatureRefusal, POLICY_METHOD, WITHIN_LIMIT } from "./signedApproval.js";
 import { blockedApprovals, recordBlocked } from "./blocked.js";
 
@@ -261,11 +263,12 @@ export { POLICY_METHOD, WITHIN_LIMIT };
  * the CFO, untouched, with the reason. The caller decides whether the agents and code's checks said pay
  * (src/ap/pay.ts payAlone); this is the last check, on the terms that will run. The approval is recorded as the policy's
  * (method "policy", approver "Purser's code"), the executor runs it like any approved payment, and every money step
- * records code's rule as its origin (src/executors/index.ts approvalOrigin).
+ * records code's rule as its origin (src/executors/index.ts approvalOrigin). Governance (26 Nov): a task mandate or task
+ * token (src/policy/aloneGate.ts; `invoice.issueDate` is the inbox's own reading) and the anomaly hold can refuse too.
  */
-export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { currency: string; amount: string }; rule: string; agent: string }, now = new Date()): { ok: true } | { ok: false; reason: string } {
-  return db.transaction((): { ok: true } | { ok: false; reason: string } => {
-    const no = (reason: string) => ({ ok: false as const, reason });
+export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { currency: string; amount: string }; rule: string; agent: string; invoice?: { issueDate?: string | null }; taskToken?: string }, now = new Date()): { ok: true } | WithinLimitRefusal {
+  return db.transaction((): { ok: true } | WithinLimitRefusal => {
+    const no = (reason: string, code?: WithinLimitRefusal["code"]): WithinLimitRefusal => ({ ok: false as const, reason, ...(code ? { code } : {}) });
     const p = get(db, args.proposalId);
     if (p.status !== "PENDING_APPROVAL") return no(`${p.proposal_id} is ${p.status}, not waiting for approval`);
     if (!ALONE_KINDS.has(p.kind)) return no(`${p.proposal_id} is a ${p.kind}: only an invoice's payment may be paid alone`);
@@ -291,6 +294,15 @@ export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { 
     if (fourEyes(db, p)) return no(`${p.proposal_id} needs two people's approval (four eyes)`);
     const highRisk = secondKeyReasons(db, p, now);
     if (highRisk.length) return no(`${p.proposal_id} is high-risk (${highRisk.join("; ")}): the CFO signs it with two keys`);
+    // The task token (agent and task from the token) and the agent's task mandates; each refusal is recorded there.
+    const scope = aloneGate().check(db, p, terms, { agent: args.agent, issueDate: args.invoice?.issueDate ?? null, ...(args.taskToken !== undefined ? { taskToken: args.taskToken } : {}) }, now);
+    if (!scope.ok) return no(`${p.proposal_id}: ${scope.reason}`, scope.code);
+    // The anomaly hold (src/policy/anomaly.ts): far outside what this payee normally receives, the CFO signs it.
+    const odd = anomalyReasons(db, p);
+    if (odd.length) {
+      audit(db, "system", ANOMALY_HELD, p.proposal_id, { proposal_id: p.proposal_id, agent: args.agent, reasons: odd.map((r) => r.slice(0, 300)) }, now);
+      return no(`${p.proposal_id}: ${odd.join("; ")}`, "anomaly");
+    }
     const policy = policyVersion(db, now);
     const approver = "Purser's code";
     db.prepare(
@@ -304,10 +316,14 @@ export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { 
       amount: String(amount), currency: args.limit.currency, limit: `${args.limit.currency} ${args.limit.amount}`, policy_version: policy.version,
       // Where the limit comes from, in words: signed by the CFO (and which policy change), or a labelled system default.
       limit_source: sourceWords(inForce.source),
+      // The task mandate it stands on, and the task token it came with (src/policy/taskMandates.ts, taskTokens.ts).
+      ...(scope.mandate ? { mandate: scope.mandate } : {}), ...(scope.token ? { task_token: scope.token } : {}),
     }, now);
     return { ok: true };
   }).immediate();
 }
+/** Why code did not approve a payment alone; `code` names the governance rule when one refused (task mandate, token, anomaly). */
+export type WithinLimitRefusal = { ok: false; reason: string; code?: "mandate" | "token" | "anomaly" };
 
 /**
  * The lines of a batch the CFO just decided: each line's own proposal gets the same decision, recorded against its own

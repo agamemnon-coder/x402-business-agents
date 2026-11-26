@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { currentPolicy } from "./rules.js";
+import { aloneGate } from "./aloneGate.js";
 
 export interface PolicyVersion { version: number; sha256: string }
 
@@ -15,7 +16,8 @@ export const policySha = (values: Record<string, string>) => createHash("sha256"
 
 /** The policy as it stands, by rule key. */
 export function policyValues(db: DB): Record<string, string> {
-  return Object.fromEntries(currentPolicy(db).map((r) => [r.key, r.value]));
+  // Task mandates (src/policy/taskMandates.ts) are policy too, though the editor never lists them (aloneGate: the runner's).
+  return Object.fromEntries([...currentPolicy(db).map((r) => [r.key, r.value]), ...aloneGate().values(db)]);
 }
 
 /**

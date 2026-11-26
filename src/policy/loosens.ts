@@ -27,9 +27,17 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   // A second key for high-risk payments: off, or a higher amount, loosens; on, or a lower amount, tightens.
   if (c.key === "approval.second_key_eur") return from !== null && (to === null || to > from);
   if (c.key.startsWith("approval.second_key_")) return c.from === "on" && c.to !== "on";
+  // The anomaly hold (src/policy/anomaly.ts): off, or a higher multiple, loosens; on, or a lower one, tightens. A higher
+  // amount for a first payment, or none, loosens. A different history length is a change the CFO signs either way.
+  if (c.key === "approval.anomaly_multiple") return /^\d+$/.test(c.from) && (!/^\d+$/.test(c.to) || Number(c.to) > Number(c.from));
+  if (c.key === "approval.anomaly_first_eur") return from !== null && (to === null || to > from);
+  if (c.key === "approval.anomaly_history") return c.from !== c.to;
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   // The limit an agent may pay alone up to: set where there was none, or raised, loosens; lowered or removed tightens.
   if (c.key === "ap.alone_eur") return to !== null && (from === null || to > from);
+  // A task mandate (src/policy/taskMandates.ts): any change through a policy change counts as loosening (Face ID); it is
+  // narrowed or revoked at once on the runner instead, where widens() (src/policy/taskMandateCore.ts) refuses a widening.
+  if (c.key.startsWith("task_mandate.")) return true;
   if (c.key.endsWith("_floor") || c.key.startsWith("floor.")) return from !== null && (to === null || to < from);
   // Supplier payouts: less held back for the fee loosens; any other funding currency is a change for Face ID.
   if (c.key.startsWith("fee_reserve.")) return from !== null && (to === null || to < from);

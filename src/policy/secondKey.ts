@@ -87,8 +87,8 @@ export function secondKeyOn(db: DB): boolean {
   return /^\d+\.\d{2}$/.test(setting(db, SECOND_KEY_EUR)) || [SECOND_KEY_NEW_PAYEE, SECOND_KEY_BANK_CHANGED, SECOND_KEY_NEW_COUNTRY].some((k) => setting(db, k) === "on");
 }
 
-interface PaymentTerms { kind?: string; vendor?: string; amount?: string; currency?: string; beneficiary_id?: string; iban_last4?: string; bic?: string; account?: string; clearing?: string | null }
-type Paid = PaymentTerms & { first_at: string };
+export interface PaymentTerms { kind?: string; vendor?: string; amount?: string; currency?: string; beneficiary_id?: string; iban_last4?: string; bic?: string; account?: string; clearing?: string | null }
+export type Paid = PaymentTerms & { first_at: string };
 
 /** The bank details a payment names, as one comparable string. */
 const bankOf = (t: PaymentTerms) => (t.kind === "invoice_payment" ? `${t.iban_last4 ?? ""}|${t.bic ?? ""}` : `${t.account ?? ""}|${t.clearing ?? ""}`);
@@ -102,10 +102,10 @@ function countryOf(db: DB, t: PaymentTerms): string | null {
     return typeof c === "string" && /^[A-Z]{2}$/.test(c) ? c : null;
   } catch { return null; }
 }
-const samePayee = (a: PaymentTerms, b: PaymentTerms) => (a.beneficiary_id && b.beneficiary_id ? a.beneficiary_id === b.beneficiary_id : !!a.vendor && a.vendor === b.vendor);
+export const samePayee = (a: PaymentTerms, b: PaymentTerms) => (a.beneficiary_id && b.beneficiary_id ? a.beneficiary_id === b.beneficiary_id : !!a.vendor && a.vendor === b.vendor);
 
 /** Every payment that was paid (EXECUTED), with when it was approved, oldest first. */
-function paidBefore(db: DB): Paid[] {
+export function paidBefore(db: DB): Paid[] {
   const rows = db.prepare(`SELECT p.terms_json, COALESCE(MIN(a.created_at), p.created_at) AS first_at FROM proposals p LEFT JOIN approvals a ON a.proposal_id = p.proposal_id AND a.decision = 'APPROVED'
     WHERE p.status = 'EXECUTED' AND p.kind IN ('invoice_payment', 'supplier_payment') GROUP BY p.proposal_id ORDER BY first_at`).all() as { terms_json: string; first_at: string }[];
   return rows.map((r) => ({ ...(JSON.parse(r.terms_json) as PaymentTerms), first_at: r.first_at }));
