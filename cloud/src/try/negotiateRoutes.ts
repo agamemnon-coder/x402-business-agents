@@ -17,7 +17,7 @@ import { readSwitches } from "./switches.js";
 import { z } from "zod";
 import { negotiate, recordedNegotiation, sceneFromInvoice, sceneOf, type BestOffer, type Negotiation, type Speak, type Turn } from "../../../src/negotiate/negotiate.js";
 import type { Scene } from "../../../src/negotiate/rails.js";
-import { agreedInvoiceNo, boundsOf, cents, money, normIban } from "../../../src/negotiate/rails.js";
+import { agreedInvoiceNo, boundsOf, cents, money, normIban, policyOf } from "../../../src/negotiate/rails.js";
 import { supplierKey } from "../../../src/config/trySample.js";
 import type { EngineKit, EngineRoute } from "../engine/routes.js";
 import type { TryEngineCtx } from "./engineRoutes.js";
@@ -137,9 +137,10 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
           return recordedNegotiation(today, reason, scene);
         }
       };
-      // An agreement is kept for /agreed, live or recorded alike (both are the terms the rails let stand).
+      // An agreement is kept for /agreed, live or recorded alike (both are the terms the rails let stand), and so are terms
+      // escalated to the CFO (outside the policy, inside the rails): the agent could not accept them; the CFO may sign them.
       const kept = async (n: Negotiation): Promise<Negotiation> => {
-        if (n.outcome === "agreed") await c.env.sql.run("INSERT INTO rate_hits (bucket, window_start, count) VALUES (?, ?, 1) ON CONFLICT(bucket, window_start) DO NOTHING", [agreedKey(tenant, invoiceId, n.sha256, n.turns.length, n.compose), born]);
+        if (n.outcome !== "no_deal") await c.env.sql.run("INSERT INTO rate_hits (bucket, window_start, count) VALUES (?, ?, 1) ON CONFLICT(bucket, window_start) DO NOTHING", [agreedKey(tenant, invoiceId, n.sha256, n.turns.length, n.compose), born]);
         return n;
       };
       if (c.url.searchParams.get("stream") !== "1") return json(200, await kept(await run()));
@@ -150,7 +151,7 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
       const w = writable.getWriter();
       const enc = new TextEncoder();
       const line = (o: unknown) => { void w.write(enc.encode(`${JSON.stringify(o)}\n`)).catch(() => undefined); };
-      const done = run((turn, best) => line({ type: "turn", turn, best }), (reason) => line({ type: "reset", reason }), () => line({ type: "start", live: true, bounds: boundsOf(scene, today) }))
+      const done = run((turn, best) => line({ type: "turn", turn, best }), (reason) => line({ type: "reset", reason }), () => line({ type: "start", live: true, bounds: boundsOf(scene, today), policy: policyOf(scene, today) }))
         .then(kept)
         .then((negotiation) => line({ type: "done", negotiation }), () => line({ type: "error", message: "The negotiation could not finish. Nothing was paid." }))
         .finally(() => { void w.close().catch(() => undefined); });

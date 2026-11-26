@@ -118,25 +118,80 @@ export interface Agreement extends JsonObject {
   supplier: string;
   currency: "EUR";
   invoice_amount: string;
+  /** The invoice's own terms, beside the deal: "net 30", due on invoice_due. */
+  invoice_terms: string;
+  invoice_due: string;
   discount: string;
+  discount_pct: string;
   amount: string;
   pay_by: string;
+  /** The deal in words, inside the hash: "2.00% off if paid by 2026-11-22". */
+  early_payment: string;
+  /** within_cfo_policy, or outside_cfo_policy: the agent could not accept it, and the CFO decides by signing it or not. */
+  policy: string;
   payee_iban_last4: string;
   rails: string[];
+  // transcript_sha256 (when there were turns): the last signed offer's SHA-256 (./offers.ts), which chains every offer before it, so the agreement names the whole negotiation.
 }
 
 export const AGREEMENT_SCHEMA = "purser.negotiated-terms/v1" as const;
 
 /** The agreement from terms that passed the rails (checked again here: an unchecked pair never becomes one). */
-export function agreementOf(scene: Scene, t: { amount: string; pay_by: string }, today: string): Agreement {
+export function agreementOf(scene: Scene, t: { amount: string; pay_by: string }, today: string, x: { outside?: boolean; transcript_sha256?: string } = {}): Agreement {
   const b = boundsOf(scene, today);
   const again = checkTurn({ amount: t.amount, pay_by: t.pay_by, iban: scene.supplier.iban }, "", b);
   if (!again.ok) throw new Error(`not within the rails: ${again.refusals.map((r) => r.rule).join(", ")}`);
+  const off = scene.amount_cents - cents(t.amount);
+  const pct = ((off / scene.amount_cents) * 100).toFixed(2);
   return {
     schema: AGREEMENT_SCHEMA, invoice_no: scene.invoice_no, supplier: scene.supplier.name, currency: scene.currency,
-    invoice_amount: money(scene.amount_cents), discount: money(scene.amount_cents - cents(t.amount)), amount: t.amount, pay_by: t.pay_by,
+    invoice_amount: money(scene.amount_cents), invoice_terms: `net ${daysBetween(scene.issue_date, scene.due_date)}`, invoice_due: scene.due_date,
+    discount: money(off), discount_pct: pct, amount: t.amount, pay_by: t.pay_by,
+    early_payment: off > 0 ? `${pct}% off if paid by ${t.pay_by}` : `none: the invoice as issued, due ${scene.due_date}`,
+    policy: x.outside ? "outside_cfo_policy" : "within_cfo_policy",
     payee_iban_last4: normIban(scene.supplier.iban).slice(-4), rails: Object.keys(RULES),
+    ...(x.transcript_sha256 ? { transcript_sha256: x.transcript_sha256 } : {}),
   };
+}
+
+const daysBetween = (from: string, to: string): number => Math.max(0, Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000));
+const plusDays = (d: string, n: number): string => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * The saving, computed from the invoice and the agreed discount alone (test money: never a real saving): the discount,
+ * its share of the invoice, the days paid early, and that discount's simple yearly rate on the cash paid early
+ * (discount / amount paid x 365 / days early), the figure a treasurer sets against the cost of cash.
+ */
+export function savingOf(a: Agreement): { amount: string; pct: string; days_early: number; yearly_pct: string | null; test_money: true } {
+  const off = cents(a.discount), paid = cents(a.amount), days = daysBetween(a.pay_by, a.invoice_due);
+  return { amount: a.discount, pct: a.discount_pct, days_early: days, yearly_pct: off > 0 && days > 0 ? ((off / paid) * (365 / days) * 100).toFixed(1) : null, test_money: true };
+}
+
+// The CFO's negotiation policy (26 Nov, negotiation upgraded): besides the four rails, what Purser's agent may SEEK and
+// what it may ACCEPT, also in code, never in a prompt. It asks for at most 3% off and pays no sooner than 2 days from
+// today (code holds a bigger ask or an earlier date to those); it accepts only terms of at least 1% off, paid no sooner
+// than that. A counter-offer outside them is not the agent's to accept: it goes to the CFO (outcome "escalated").
+export const CFO_POLICY = { max_discount_bp: 300, min_discount_bp: 100, min_days: 2 } as const;
+export const POLICY_RULES = {
+  max_discount_sought: "The CFO's policy: Purser's agent asks for at most 3% off.",
+  min_discount: "The CFO's policy: pay early only for at least 1% off.",
+  min_days: "The CFO's policy: pay no sooner than 2 days from today (the treasury's notice).",
+} as const;
+export type PolicyRuleId = keyof typeof POLICY_RULES;
+/** The policy as amounts and a day for one invoice: the least it pays (the most off), the most it pays early (the least off), the earliest day. */
+export interface PolicyBounds { max_discount_bp: number; min_discount_bp: number; min_days: number; min_amount_cents: number; max_amount_cents: number; earliest_pay_by: string }
+export function policyOf(scene: Scene, today: string, p: { max_discount_bp: number; min_discount_bp: number; min_days: number } = CFO_POLICY): PolicyBounds {
+  const off = (bp: number) => Math.round((scene.amount_cents * bp) / 10_000);
+  const early = plusDays(today, p.min_days);
+  return { max_discount_bp: p.max_discount_bp, min_discount_bp: p.min_discount_bp, min_days: p.min_days, min_amount_cents: scene.amount_cents - off(p.max_discount_bp), max_amount_cents: scene.amount_cents - off(p.min_discount_bp), earliest_pay_by: early < scene.due_date ? early : scene.due_date };
+}
+export interface PolicyBreach { rule: PolicyRuleId; says: string; detail: string }
+/** Whether terms the rails let stand are the agent's to accept: at least the least discount, paid no sooner than the earliest day. */
+export function checkPolicy(t: { amount: string; pay_by: string }, pb: PolicyBounds): { inside: boolean; breaches: PolicyBreach[] } {
+  const breaches: PolicyBreach[] = [];
+  if (!(cents(t.amount) <= pb.max_amount_cents)) breaches.push({ rule: "min_discount", says: POLICY_RULES.min_discount, detail: `EUR ${t.amount} is less than ${pb.min_discount_bp / 100}% off` });
+  if (!(t.pay_by >= pb.earliest_pay_by)) breaches.push({ rule: "min_days", says: POLICY_RULES.min_days, detail: `${t.pay_by} is before ${pb.earliest_pay_by}` });
+  return { inside: breaches.length === 0, breaches };
 }
 
 /** The agreement's canonical JSON (RFC 8785, as the approval terms are canonicalised) and its SHA-256. */
