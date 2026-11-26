@@ -160,7 +160,9 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   ok((await p.textContent(".trust"))!.includes(tr("en", "cs.trust_works")) && (await p.textContent(".trust"))!.includes(tr("en", "cs.trust_test")), `${tag}: the trust line`);
   ok(await p.locator("header .brand .mk svg").count() === 1, `${tag}: the brand's feather mark`);
   // 12 Nov: signed out too, the test-money chip is on the page, in the console's bar under the site's header.
-  ok(await p.isVisible(".appbar .test") && !(await p.isVisible(".appbar .apptabs")), `${tag}: signed out, the test-money chip shows (the pages do not)`);
+  // 26 Nov (Max: "remove the old header Test money pill, keep one quiet mention"): signed out, no chip; the panel's status
+  // line (from a tablet up) and the trust line say test money.
+  ok(!(await p.isVisible(".appbar .test")) && !(await p.isVisible(".appbar .apptabs")) && (width < 641 || await p.isVisible(".hero .si-st")), `${tag}: signed out, no test-money chip in the header; the panel's status line says it`);
   if (shots) { await p.waitForTimeout(5800); await p.screenshot({ path: join(shots, `console-signin-${width}-${scheme}.png`) }); }
   ok(errs.length === 0, `${tag}: no console or CSP errors${errs.length ? `: ${errs.join(" | ")}` : ""}`);
   await c.close();

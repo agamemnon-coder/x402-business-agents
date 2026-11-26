@@ -55,13 +55,13 @@ export const LAND: number[][][] = [
 ];
 
 export type GlobePlace = readonly [lon: number, lat: number, label: string, green: boolean];
-export interface GlobeOptions { selector: string; avoid?: string; maxR?: number; places: readonly GlobePlace[] }
+export interface GlobeOptions { selector: string; avoid?: string; maxR?: number; places: readonly GlobePlace[]; /** A small mono label at the top of the first arc (a route, as "AMS → SFO"). */ arcLabel?: string }
 
 export const globeScript = (o: GlobeOptions): string => `
 (function () {
   var c = document.querySelector(${JSON.stringify(o.selector)}); if (!c || !c.getContext || !window.matchMedia) return;
   var g = c.getContext("2d"); if (!g) return;
-  var LAND = ${JSON.stringify(LAND)}, PLACES = ${JSON.stringify(o.places)}, AVOID = ${JSON.stringify(o.avoid ?? "")}, MAXR = ${o.maxR ?? 320};
+  var LAND = ${JSON.stringify(LAND)}, PLACES = ${JSON.stringify(o.places)}, ARCL = ${JSON.stringify(o.arcLabel ?? "")}, AVOID = ${JSON.stringify(o.avoid ?? "")}, MAXR = ${o.maxR ?? 320};
   var boxes = LAND.map(function (p) { var b = [999, 999, -999, -999]; p.forEach(function (q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }); return b; });
   function inside(p, x, y) { var o = false; for (var i = 0, j = p.length - 1; i < p.length; j = i++) { var a = p[i], b = p[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) o = !o; } return o; }
   function land(lon, lat) { for (var k = 0; k < LAND.length; k++) { var b = boxes[k]; if (lon < b[0] || lon > b[2] || lat < b[1] || lat > b[3]) continue; if (inside(LAND[k], lon, lat)) return true; } return false; }
@@ -146,6 +146,11 @@ export const globeScript = (o: GlobeOptions): string => `
         prev = [X, Y, ok];
         if (ok && Math.abs(i / (arc.length - 1) - run) < 0.5 / (arc.length - 1)) { g.fillStyle = lite ? "rgba(109,84,232,.95)" : "rgba(255,255,255,.95)"; g.beginPath(); g.arc(X, Y, wide ? 2.2 : 1.6, 0, Math.PI * 2); g.fill(); }
       } }
+    // The route's label at the top of the first arc, small and quiet, when it is in front and clear of the words.
+    if (ARCL && ARCS.length && R >= 120) { v = view(ARCS[0][24], cr, sr); if (v[2] > 0 || Math.hypot(v[0], v[1]) > 1) { var ax = cx - v[0] * R, ay = cy - v[1] * R - 12, aw = 0, clear = true;
+      g.font = "600 11px ui-monospace, SFMono-Regular, Menlo, monospace"; aw = g.measureText(ARCL).width;
+      for (var t2 = 0; t2 < txt.length; t2++) { var T2 = txt[t2]; if (ax - aw / 2 < T2[2] && ax + aw / 2 > T2[0] && ay - 8 < T2[3] && ay + 8 > T2[1]) clear = false; }
+      if (clear) { g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = lite ? "rgba(60,48,120,.75)" : "rgba(220,214,255,.72)"; g.fillText(ARCL, ax, ay); g.textAlign = "start"; } } }
     // The places: the green one pulses (still under reduced motion), each with a label on a plate, clear of the words.
     var pulse = still ? 0.45 : (el % 2400) / 2400, placed = [];
     g.font = "600 " + (R >= 140 ? 12 : 11) + "px Inter, system-ui, sans-serif"; g.textBaseline = "middle";

@@ -25,9 +25,13 @@ export const SIGNIN_CSS = `
 .signed-out .hero canvas.si-globe { inset: 0; width: 100%; height: 100%; z-index: -2; }
 .signed-out .hero canvas.si-wave { left: 0; right: 0; bottom: 0; width: 100%; height: 22%; z-index: -3; opacity: .4;
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 55%); mask-image: linear-gradient(180deg, transparent, #000 55%); }
-/* The header's "test money" chip, signed out: a quiet outline, its flask the one warm colour (it shouted in amber). */
-.signed-out .appbar .test { background: transparent; border: 1px solid var(--border); color: var(--muted); font-weight: 600; }
-.signed-out .appbar .test svg { color: var(--warn); }
+/* Signed out, no "test money" chip in the header (Max: "remove the old pill"): the panel's status line says it, quietly,
+   and the trust line under the card; on a wide screen the empty app bar goes too. */
+.signed-out .appbar .test { display: none; }
+@media (min-width: 760px) { .signed-out .appbar { display: none; } }
+/* The panel's status line: a small dot and "Sandbox · test money", under the line. */
+.signed-out .side p.si-st { order: 0; display: inline-flex; align-items: center; gap: 8px; margin: 0 0 22px; padding: 4px 11px 4px 9px; border-radius: 999px; border: 1px solid var(--glass-line, var(--border)); font: 600 12.5px/1.3 var(--mono, ui-monospace, monospace); letter-spacing: .02em; color: var(--muted); }
+.signed-out .side p.si-st i { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 20%, transparent); }
 /* The trust line under the card: two calm lines with air, never cramped. */
 .signed-out p.trust { gap: 4px; font-size: 12.5px; line-height: 1.55; color: var(--faint); max-width: 560px; justify-self: center; margin-left: auto; margin-right: auto; text-wrap: balance; }
 .signed-out p.trust span:last-child { display: inline-flex; justify-self: center; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-weight: 600; font-size: 12px; }
@@ -70,7 +74,10 @@ export const SIGNIN_CSS = `
 .signed-out .trust { font-size: 12px; color: var(--faint); }
 /* A laptop or wider: the card's own width, a little more air. */
 @media (min-width: 1024px) { .signed-out .auth { max-width: 480px; } .signed-out .hero { align-content: start; padding-top: clamp(40px, 7vh, 72px); }
-  .signed-out .side h2 { font-size: clamp(38px, 3.3vw, 56px); } .signed-out .side > p { margin-bottom: 24px; } .signed-out .side ul { gap: 10px; } .signed-out .side li { font-size: 15.5px; } .signed-out .side .si { width: 34px; height: 34px; border-radius: 10px; } }
+  .signed-out .side h2 { font-size: clamp(38px, 3.3vw, 56px); } .signed-out .side > p:not(.si-st) { margin-bottom: 16px; }
+  .signed-out .side ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; width: 100%; padding-top: 18px; border-top: 1px solid var(--glass-line, var(--border)); }
+  .signed-out .side li { display: grid; align-items: start; align-content: start; justify-items: start; gap: 8px; font-size: 14px; font-weight: 550; line-height: 1.35; color: var(--muted); }
+  .signed-out .side .si { width: 30px; height: 30px; border-radius: 9px; } .signed-out .side .si svg { width: 16px; height: 16px; } }
 /* Ask Purser floats at the bottom right: signed out it is the round mark only (its words kept for screen readers and in
    its title), and the trust line keeps clear of it (it covered "Works with ..." at 1024 and 390). */
 .signed-out #pask-fab { padding: 0 7px; }
@@ -87,7 +94,9 @@ export const SIGNIN_CSS = `
   .signed-out .hero { padding-bottom: 50px; }
   .signed-out .hero canvas.si-wave { height: 46px; }
 }
+@media (max-width: 1023px) { .signed-out .side p.si-st { flex-basis: auto; margin: 4px 0 6px; } }
 @media (max-width: 640px) {
+  .signed-out .side p.si-st { display: none; }
   .signed-out .hero { padding: 18px 16px 20px; }
   .signed-out .side h2 { font-size: 26px; }
   .signed-out .side > p { display: block; margin: 4px 0 0; font-size: 14.5px; }
@@ -124,5 +133,5 @@ const PLACES: readonly GlobePlace[] = [
 ];
 
 /** The sign-in's script: the globe and the wave at the bottom of the left panel. */
-export const SIGNIN_JS = `${globeScript({ selector: "canvas.si-globe", avoid: ".side-mk, .side h2, .side > p, .side li", maxR: 230, places: PLACES })}
+export const SIGNIN_JS = `${globeScript({ selector: "canvas.si-globe", avoid: ".side-mk, .side h2, .side > p, .side li", maxR: 230, places: PLACES, arcLabel: "AMS → SFO" })}
 ${waveScript({ selector: "canvas.si-wave", placement: "hero", density: 0.7, intensity: 1.15 })}`;
