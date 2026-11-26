@@ -37,7 +37,7 @@ const add: AgentTool<z.ZodObject<{ a: z.ZodNumber; b: z.ZodNumber }>> = {
   run: async ({ a, b }) => ({ text: String(a + b) }),
 };
 const spec = (tools: AgentTool<z.ZodType>[], extra: Partial<Parameters<typeof runAgent>[1]> = {}) =>
-  ({ agent: "treasury" as const, task: "test", model: "claude-test", system: "You add numbers.", prompt: "What is 2 + 3?", tools, ...extra });
+  ({ agent: "checker" as const, task: "test", model: "claude-test", system: "You add numbers.", prompt: "What is 2 + 3?", tools, ...extra });
 const use = (id: string, name: string, input: unknown): Reply => ({ content: [{ type: "tool_use", id, name, input }], stop_reason: "tool_use" });
 const say = (text: string): Reply => ({ content: [{ type: "text", text }], stop_reason: "end_turn" });
 
@@ -49,7 +49,7 @@ describe("who decided a money movement a tool starts (D24)", () => {
       run: async () => { audit(db, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", tx: "0xabc" }); return { text: "swept" }; },
     };
     const { client } = fake([{ ...use("t1", "sweep", {}), _request_id: "req_42" } as Reply, say("Swept.")]);
-    await runAgent(db, spec([sweep as AgentTool<z.ZodType>]), client);
+    await runAgent(db, spec([sweep as AgentTool<z.ZodType>], { agent: "treasury" }), client);
     const row = (event: string) => JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = ?").get(event) as { payload_json: string }).payload_json) as Record<string, unknown>;
     const run = row("agent.run");
     expect(row("sweep.paid").origin).toEqual({ actor: "agent", agent: "treasury", model: "claude-test", request_id: "req_42", run_id: run.run_id });
@@ -172,7 +172,7 @@ describe("the agent loop", () => {
     const r = await runAgent(db, spec([add], { model: "claude-haiku-5-5" }), client);
     expect(r.turns).toBe(2);
     const run = JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'agent.run'").get() as { payload_json: string }).payload_json);
-    expect(run).toMatchObject({ agent: "treasury", status: "done", turns: 2, tools: ["add"] });
+    expect(run).toMatchObject({ agent: "checker", status: "done", turns: 2, tools: ["add"] });
     expect(typeof run.latency_ms).toBe("number");
   });
 

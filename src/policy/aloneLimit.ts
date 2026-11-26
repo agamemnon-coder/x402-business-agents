@@ -37,14 +37,33 @@ export function aloneLimitRecord(db: DB, beforeSeq = Number.MAX_SAFE_INTEGER): A
   if (last.event === SYSTEM_DEFAULT) {
     return valid(payload.value) && payload.label === SYSTEM_DEFAULT_LABEL ? { currency: "EUR", amount: payload.value, source: { kind: "system_default", label: SYSTEM_DEFAULT_LABEL }, seq: last.seq } : null;
   }
-  if (last.event !== "policy.changed" || !valid(payload.to) || typeof payload.proposal_id !== "string") return null;
+  if (last.event !== "policy.changed" || !valid(payload.to)) return null;
+  const signed = passkeySignedChange(db, ALONE_KEY, payload);
+  return signed ? { currency: "EUR", amount: payload.to, source: { kind: "signed", proposal_id: signed }, seq: last.seq } : null;
+}
+
+/**
+ * The policy change a policy.changed record of `key` comes from, when the CFO signed it with the passkey: a policy_change
+ * proposal that ran (EXECUTED), whose signed terms set `key` to exactly the record's value, approved by passkey. Its id,
+ * or null for anything else. Reads the ledger only (the signature itself is the execution guard's to verify).
+ */
+export function passkeySignedChange(db: DB, key: string, payload: { proposal_id?: unknown; to?: unknown }): string | null {
+  if (typeof payload.proposal_id !== "string" || typeof payload.to !== "string") return null;
   const p = db.prepare("SELECT kind, status, terms_json FROM proposals WHERE proposal_id = ?").get(payload.proposal_id) as { kind: string; status: string; terms_json: string } | undefined;
   if (!p || p.kind !== "policy_change" || p.status !== "EXECUTED") return null;
   let to: unknown;
-  try { to = (JSON.parse(p.terms_json) as { kind?: unknown; changes?: { key?: unknown; to?: unknown }[] }).changes?.find((c) => c.key === ALONE_KEY)?.to; } catch { return null; }
+  try { to = (JSON.parse(p.terms_json) as { kind?: unknown; changes?: { key?: unknown; to?: unknown }[] }).changes?.find((c) => c.key === key)?.to; } catch { return null; }
   if (to !== payload.to) return null;
   const a = db.prepare("SELECT method FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(payload.proposal_id) as { method: string } | undefined;
-  return a?.method === "passkey" ? { currency: "EUR", amount: payload.to, source: { kind: "signed", proposal_id: payload.proposal_id }, seq: last.seq } : null;
+  return a?.method === "passkey" ? payload.proposal_id : null;
+}
+
+/**
+ * Whether policy_change `proposalId` set `key` to exactly `to`, ran (EXECUTED) and was approved with a passkey: the CFO
+ * signed that value. Reads the ledger only. The rule for which legal entity an agent may pay from (src/policy/entities.ts).
+ */
+export function signedPolicyChange(db: DB, proposalId: string, key: string, to: string): boolean {
+  return passkeySignedChange(db, key, { proposal_id: proposalId, to }) === proposalId;
 }
 
 /** The limit in force now: the record's, and only while the setting still holds that value. */

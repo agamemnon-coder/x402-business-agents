@@ -89,7 +89,7 @@ describe("/mcp", () => {
   it("reads the books with a reading token, and lists no tool that proposes, approves or pays", async () => {
     const names = await toolNames(reader);
     expect(names).toEqual(["company_overview", "list_invoices", "get_invoice", "list_transactions", "books_report", "agent_decisions", "what_needs_attention",
-      "cash_position", "pending_approvals", "cfo_policy", "spend_breakdown", "vat_summary", "payment_audit_trail", "explain_payment"]);
+      "cash_position", "pending_approvals", "cfo_policy", "spend_breakdown", "vat_summary", "payment_audit_trail", "explain_payment", "route_money_out"]);
     const inv = await call(reader, "list_invoices");
     expect(inv.isError).toBeUndefined();
     expect(inv.structuredContent!.items).toBeDefined();

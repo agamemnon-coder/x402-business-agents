@@ -332,6 +332,20 @@ async function tellOwners(c: Ctx, kind: string, detail: Record<string, string | 
   await tellEveryOwner(c.env, c.caller!.tenantId, { kind, actor: c.caller!.principal, detail, hook: `security.${kind.replace(/\./g, "_")}` }, c.now);
 }
 
+/** The card actions that let an agent's card spend, or spend on it: refused while the company's emergency stop is on. */
+const CARD_SPEND_KINDS: ReadonlySet<string> = new Set(["issue", "unfreeze", "limits", "test", "edge"]);
+/**
+ * The company's emergency stop (src/policy/emergencyStop.ts, kept in its engine) asked before a card action that could
+ * spend, as the runner's stop holds every card: why not, or null. A freeze, and a tidy of older cards, always go. With no
+ * engine wired there is no stop to ask; an engine that does not answer refuses (fails closed).
+ */
+async function stopRefusesCard(c: Ctx, kind: string | undefined): Promise<string | null> {
+  if (!kind || !CARD_SPEND_KINDS.has(kind) || !c.env.engine) return null;
+  const st = await c.env.engine(c.caller!.tenantId).status().catch(() => null);
+  if (!st) return "the company's emergency stop could not be read, so no card action that can spend runs now; try again";
+  return st.emergency_stop?.on ? "the CFO's emergency stop is on: no card is issued, unfrozen, raised or tested until the CFO lifts it with the passkey" : null;
+}
+
 export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/health", summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all, and the security alarms raised in the last 24 hours per rule (security.alarms_24h; no company's data); 503 when something is down.", need: "public", run: async (c) => {
     const h = await cloudHealth(c.env.sql, c.env.blobs, c.env.version ?? "dev");
@@ -728,6 +742,8 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/cards/edge/latest", summary: "The newest one-cent-over test at the Airwallex sandbox: an agent's card at its limit L, then L + 0.01, with Airwallex's own answers (approved or declined with its reason code), their ids and times. The run record docs/runs keeps; sandbox, test money, the card's last four digits only. 404 when none has run.", need: "public", run: async (c) => { const r = await latestEdgeRun(c.env.sql); return r ? json(200, r) : err(404, "no one-cent-over test has run yet"); } },
   { method: "POST", path: "/v1/cards/actions", summary: "Ask for a card action (a signed-in owner): { kind: issue | freeze | unfreeze | limits | test, agent }. Answers the exact action as signed text, its SHA-256 and the passkey challenge (that hash). Nothing reaches Airwallex before POST /v1/cards/actions/{id}/sign.", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ kind: z.enum(CARD_ACTION_KINDS as [string, ...string[]]), agent: z.string().min(1).max(40) }).strict(), 2_000);
+    const stopped = await stopRefusesCard(c, b.kind);
+    if (stopped) return err(409, stopped);
     try { return json(201, await startCardAction({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), kind: b.kind as never, agent: b.agent, now: c.now })); }
     catch (e) { if (e instanceof CardRefused) return err(e.status, e.message); throw e; }
   } },
@@ -735,6 +751,10 @@ export const ROUTES: Route[] = [
     if (!(await cardActionExists(c.env.sql, c.caller!.tenantId, c.params[0]!))) return err(404, "no such card action");
     const b = await body(c, z.object({ credential_id: z.string().max(400),
       assertion: z.object({ authenticatorData: z.string().max(4000), clientDataJSON: z.string().max(8000), signature: z.string().max(400) }).strict() }).strict());
+    // Asked again at the signature, immediately before the action reaches Airwallex: the stop may have come since it was asked for.
+    const kind = (await c.env.sql.first<{ kind: string }>("SELECT kind FROM card_actions WHERE tenant_id = ? AND id = ?", [c.caller!.tenantId, c.params[0]!]))?.kind;
+    const stopped = await stopRefusesCard(c, kind);
+    if (stopped) return err(409, stopped);
     try { return json(200, await signCardAction({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), id: c.params[0]!, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now })); }
     catch (e) { if (e instanceof CardRefused) return err(e.status, e.message); throw e; }
   } },

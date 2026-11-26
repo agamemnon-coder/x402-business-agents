@@ -494,7 +494,8 @@ CREATE TABLE IF NOT EXISTS cards (
   -- for any) and its end date.
   allowed_mccs TEXT NOT NULL DEFAULT '',
   allowed_currencies TEXT NOT NULL DEFAULT '',
-  active_to TEXT
+  active_to TEXT,
+  hours TEXT -- Purser-enforced hours (src/policy/cardHours.ts); NULL: any time
 );
 
 -- Every authorisation on an agent's card, approved or declined by Airwallex. One row per Airwallex transaction,
@@ -513,7 +514,8 @@ CREATE TABLE IF NOT EXISTS card_transactions (
   purpose TEXT,
   source TEXT NOT NULL CHECK (source IN ('simulation', 'poll', 'webhook')),
   occurred_at TEXT NOT NULL,
-  recorded_at TEXT NOT NULL
+  recorded_at TEXT NOT NULL,
+  policy_version INTEGER -- the policy version it was allowed under
 );
 
 -- Money moved into or out of Metal clearing, and balances read from the clearing service (prepaid budget).

@@ -188,6 +188,9 @@ const EVENTS: Record<string, Pick> = {
   "proposal.needs_reapproval": NONE,
   "proposal.superseded": NONE,
   "approval.too_late": NONE,
+  // A CFO policy change applied (src/executors/policyChange.ts): which setting, from what to what. The emergency stop
+  // (key freeze, src/policy/emergencyStop.ts) pulled and lifted shows here.
+  "policy.changed": copy("key", "from", "to"),
   "hub.gate_refused": NONE,
   // The payment on the rails (src/executors, src/payouts, the treasury's seed).
   "treasury.seeded": copy("amount", "currency"),

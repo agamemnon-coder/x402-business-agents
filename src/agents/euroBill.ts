@@ -23,6 +23,7 @@ import { checkpoint } from "../policy/saga.js";
 import { referenceProblem } from "../payouts/routes.js";
 import type { PlanGate } from "../payouts/planGate.js";
 import { withOrigin, type Origin } from "../provenance/origin.js";
+import { planEntity, refusalCode } from "../policy/entities.js";
 
 export const SEED_REFERENCE = "kit11-seed-funding";
 /** The proposal number of invoice terms before createProposal assigns the real one (assignId); never stored. */
@@ -130,6 +131,7 @@ export interface InvoicePaymentTerms extends Terms {
   floors: { eur_floor: string; eur_obligations: string; usd_floor: string };
   after: { eur_free: string; usd_available: string };
   evidence: { type: string; ref: string; sha256: string }[];
+  // A company with several legal entities adds paying_entity and funding_account (EntityFields, src/policy/entities.ts).
   // Purser as a platform adds paying_account and, with its fee on, platform_fee (PlatformFields in src/payouts/plan.ts;
   // absent otherwise, hash unchanged).
   // The payables inbox adds document_total_line and document_currency (see proposeInvoicePayment's `document`).
@@ -189,6 +191,8 @@ export async function proposeInvoicePayment(
   document?: { total_line: string; currency: string; reason?: string },
   /** Shown the plan just before it is filed (src/payouts/planGate.ts); absent: the plan is filed as always. */
   gate?: PlanGate,
+  /** The legal entity that pays (src/policy/entities.ts), when the company holds several; `rail` acts for its account. */
+  payFrom?: string,
 ): Promise<InvoiceOutcome> {
   const refWrong = referenceProblem(inv.reference);
   if (refWrong) {
@@ -214,6 +218,14 @@ export async function proposeInvoicePayment(
     const reason = `${dup}; a second copy is not paid again. Options: check with ${check.name} whether this is a reminder, or reject the open proposal first if this copy replaces it`;
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
     return { kind: "escalated", reason };
+  }
+  // Which legal entity pays, and from which account (src/policy/entities.ts): named, open to this agent by the CFO's
+  // signed policy, and funded from its own account, the one this rail acts for. Checked before any call to Airwallex; a
+  // company without entities passes untouched and its terms carry neither field.
+  const entity = planEntity(db, "treasury", payFrom, (rail as { payingAccount?: string | null }).payingAccount ?? null);
+  if (!entity.ok) {
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: entity.reason, code: refusalCode(entity.reason) }, now);
+    return { kind: "escalated", reason: entity.reason };
   }
   // An earlier payout of this invoice closed with no transfer id (refused at its first create, or closed by the CFO's
   // --close-unsent): before it is planned again, Airwallex is asked by that request_id (re-review, 2 November). A
@@ -345,6 +357,8 @@ export async function proposeInvoicePayment(
     after: { eur_free: fromCents(Math.max(0, plan.freeEurCents + (quote?.buyAmountCents ?? 0) - plan.needEurCents)), usd_available: fromCents(usdAfter) },
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(invoiceText) }],
     ...(pp.paying ? { paying_account: pp.paying } : {}),
+    // The paying legal entity and its own funding account, signed with the rest (absent for a single-entity company).
+    ...(entity.fields ?? {}),
     ...(platformFee > 0 ? { platform_fee: { amount: fromCents(platformFee), currency: "EUR", bps: String(pp.feeBps), to_account: pp.feeTo!, request_id: randomUUID() } } : {}),
     // The payables inbox only: the document's own total line, verbatim (sanitised, at most 120 characters), and the
     // currency as read from that line ("" when it names none, or one code does not know), so the CFO sees what the

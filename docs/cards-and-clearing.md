@@ -38,6 +38,51 @@ The merchants are fictional (Microsoft's sample company names).
 
 Run log: [docs/runs/2026-10-29-cards.md](runs/2026-10-29-cards.md).
 
+### Card governance per agent: hours, merchants, currencies, and a trace to agent, task and policy (26 November)
+
+Dan Kim's (Airwallex) post "Agentic banking starts with governance" asks for one card per agent with
+"budget limits, permitted currencies, merchant category codes, and time windows", and every transaction connected
+back to the agent, the task and the policy. What Purser does for each, and who enforces it:
+
+| Control | CFO policy key | Enforced by |
+|---|---|---|
+| Limit per purchase and per month | `card.<agent>.per_tx`, `.monthly` | **Airwallex** (`transaction_limits`) |
+| Merchant categories | `card.<agent>.mccs` (e.g. `5734`) | **Airwallex** (`allowed_merchant_categories`) |
+| Currencies | `card.<agent>.currencies` (e.g. `EUR`) | **Airwallex** (`allowed_currencies`) |
+| End date; single use for task cards | from the code | **Airwallex** (`active_to`, `allowed_transaction_count`) |
+| Hours, e.g. `Mon-Fri 08:00-18:00 Europe/Amsterdam` | `card.<agent>.hours` (empty: any time) | **Purser**, see below |
+
+- **Hours are Purser's control, not Airwallex's.** Airwallex Issuing has no recurring time window: its authorization
+  controls (docs and API reference read 26 November 2026) have one activity period, `active_from` / `active_to`, and
+  no time of day or day of week. So Purser enforces the hours (src/policy/cardHoursGate.ts, src/policy/cards.ts):
+  - every card purchase Purser starts outside them is refused before anything reaches Airwallex
+    (`outside_card_hours`, recorded as `card.purchase_refused`): `buyPlan`, `chargeUnderHold`, `chargeInWindow` and
+    the agent tokens (`OUTSIDE_CARD_HOURS`);
+  - no purchase window opens outside them;
+  - when they end, the runner's card sync closes an open purchase window and freezes the card at Airwallex
+    (`card_status: INACTIVE`, the same card update freeze by default uses). At their start nothing is thawed: the card
+    stays frozen by default until Purser opens a window for a purchase.
+  A merchant charging the card by itself outside the hours meets that frozen card and Airwallex declines it
+  (`CARD_INACTIVE`): the decline is Airwallex's, the hours behind it are Purser's. A process that bypasses Purser
+  (someone with the Airwallex web app or the API key) is not bound by the hours.
+- **Loosening needs the CFO's passkey; tightening counts at once.** Wider hours (or none), a new merchant category or a
+  new currency loosens the policy (src/policy/loosens.ts; the phone page has the same rule). It is a `policy_change`
+  proposal the CFO signs with the passkey; the phone may only tighten. As for a raised limit, the card sync checks
+  again that the exact value is signed (src/policy/cardRaise.ts `cardControlRefusal`): a wider value written straight
+  into the settings, or applied without a signature that verifies, stays off the card and is recorded once as
+  `card.loosening_refused`. Narrower hours count from the next purchase, before any sync; a removed merchant category
+  or currency reaches the card at the next sync.
+- **Every card transaction names its agent, its task and the policy version behind it.** `card_transactions` has the
+  agent, the purpose (the caller's, else the purchase window's) and, new, `policy_version`: the CFO policy version
+  the purchase window was opened under (else the version in force when the transaction was recorded). The
+  `card.charge_approved` / `card.charge_declined` audit entries carry the same. At Airwallex the card's own `metadata`
+  names `agent_id` and `policy_version` when it is issued, and `agent_id`, `task_id` (the purchase's purpose) and
+  `policy_version` each time Purser thaws it for a purchase (one card update, with the status). Whether Airwallex
+  copies card metadata onto its transactions is not documented, so Purser does not rely on it.
+- **What has run where.** All of this is tested against the Issuing stand-in (test/card-governance.test.ts,
+  test/card-hours.test.ts), not yet against the live sandbox: the card `metadata` field and the hours freeze are not
+  yet seen live.
+
 ## Selling by Metal clearing (prepaid, new on testnet)
 
 Metal's [Offer Pay-per-Call Clearing](https://docs.metalntwx.com/agents/clearing) went live on testnet in October

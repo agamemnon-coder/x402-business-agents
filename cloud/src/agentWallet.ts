@@ -23,7 +23,7 @@
 // sw) and cloud/src/consoleUi.ts, and uses their el, ic, btn, t, tk, cur, cents, toCents, day, dday, MONTHS, OUTCOME, RM,
 // NL, api, Expired and BRAND_LOGOS (cloud/src/connectionsView.ts).
 
-import { ALTA_AGENTS, CARD_ART_CSS, CARD_PRESETS, DEFAULT_STYLE, FEATHER_D, LOGO_MAX, PRESET_NAMES } from "./agentCardArt.js";
+import { ALTA_AGENTS, CARD_ART_CSS, CARD_PRESETS, DEFAULT_STYLE, FEATHER_D, LOGO_MAX, PRESET_NAMES, RELIEF } from "./agentCardArt.js";
 
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
@@ -34,12 +34,14 @@ const PRESET_NAMES=` + json(PRESET_NAMES) + String.raw`;
 const DEFAULT_STYLE=` + json(DEFAULT_STYLE) + String.raw`;
 const ALTA_AGENTS=` + json(ALTA_AGENTS) + String.raw`;
 const LOGO_MAX=` + json(LOGO_MAX) + String.raw`;
+const RELIEF=` + json(RELIEF) + String.raw`;
+const CARD_FONT='Inter,Helvetica Neue,Arial,sans-serif';
 const DK_W={en:{
   lede:'Every agent has its own card, limits and Claude model. Tap a card for its record.',
   n_agents:'agents',n_here:'at work here',n_dec:'decisions on record',
   tick:'Newest decisions',pause:'Pause',play:'Play',
   details:'Details',phone:'Add to phone',nego:'Watch a negotiation',
-  no_card:'No card of its own',code_only:'Code only',spent:'{spent}',of:'of {cap} this month',simulated:'Simulated',
+  no_card:'No card of its own',code_only:'Code only',spent:'{spent}',of:'of {cap} this month',simulated:'Simulated',sim_card:'Simulated card · test money',sbx_card:'Sandbox card · test money',issuer_h:'Issuer',issuer:'Airwallex (sandbox)',alta_h:'On chain',alta:'An Alta (formerly Metal) mandate',
   close:'Close',job_h:'What it does',model_h:'Model',ran:'This company\'s records show it run with {m}',limit_h:'Limit',code_h:'Where it lives in code',sw:'Turned on in the runner with {sw}=on',
   phone_h:'{name} on your phone',wal_btn:'Add to Apple Wallet',wal_busy:'Making the pass…',wal_fail:'The pass could not be made: {why}',
   wal_wait:'Apple Wallet: waiting for the pass certificate',wal_nocard:'Apple Wallet: only for an agent with a card',
@@ -59,7 +61,7 @@ nl:{
   n_agents:'agents',n_here:'aan het werk hier',n_dec:'beslissingen vastgelegd',
   tick:'Nieuwste beslissingen',pause:'Pauze',play:'Afspelen',
   details:'Details',phone:'Op je telefoon',nego:'Bekijk een onderhandeling',
-  no_card:'Geen eigen kaart',code_only:'Alleen code',spent:'{spent}',of:'van {cap} deze maand',simulated:'Gesimuleerd',
+  no_card:'Geen eigen kaart',code_only:'Alleen code',spent:'{spent}',of:'van {cap} deze maand',simulated:'Gesimuleerd',sim_card:'Gesimuleerde kaart · testgeld',sbx_card:'Sandboxkaart · testgeld',issuer_h:'Uitgever',issuer:'Airwallex (sandbox)',alta_h:'On-chain',alta:'Een Alta-mandaat (voorheen Metal)',
   close:'Sluiten',job_h:'Wat hij doet',model_h:'Model',ran:'De gegevens van dit bedrijf tonen hem met {m}',limit_h:'Limiet',code_h:'Waar hij in de code staat',sw:'Aan in de runner met {sw}=on',
   phone_h:'{name} op je telefoon',wal_btn:'Toevoegen aan Apple Wallet',wal_busy:'Pas wordt gemaakt…',wal_fail:'De pas kon niet worden gemaakt: {why}',
   wal_wait:'Apple Wallet: wacht op het pascertificaat',wal_nocard:'Apple Wallet: alleen voor een agent met een kaart',
@@ -103,36 +105,46 @@ async function loadDesign(){
   DESIGN=Object.assign({v:1,color:null,initials:null,logo:null,styles:{}},d||{});DESIGN.styles=Object.assign({},DESIGN.styles||{})}
 const styleOf=(id)=>DESIGN.styles[id]||DEFAULT_STYLE[id]||'graphite';
 const companyName=()=>ME&&ME.tenant?String(ME.tenant.name||''):'';
-// On the card, the company's name without what follows in brackets (the demo's label is on every page's band).
-const cardCompany=()=>companyName().replace(/\s*\([^)]*\)\s*$/,'');
 // The company's mark until it sets its own: its name's first letter, as the console's company chip shows it.
 function initialsOf(name){const m=/[A-Za-z0-9]/.exec(name);return (m?m[0]:'P').toUpperCase()}
-function isLight(hex){const n=parseInt(hex.slice(1),16);const lin=(c)=>{const s=c/255;return s<=0.03928?s/12.92:Math.pow((s+0.055)/1.055,2.4)};return 0.2126*lin((n>>16)&255)+0.7152*lin((n>>8)&255)+0.0722*lin(n&255)>0.45}
 
 // --- One card's face -------------------------------------------------------------------------------------------------
 // x: {id,name,status,statusText,last4,currency,spent,cap,model,demo,frozen}
 function cardFace(x){
   const preset=styleOf(x.id);
-  const face=el('div','acard p-'+preset+(preset==='brand'&&DESIGN.color&&isLight(DESIGN.color)?' ink':'')+(x.last4?'':' bare')+(x.frozen?' frozen':'')+(x.status==='off'?' dim':''));
+  const face=el('div','acard p-'+preset+(x.last4?'':' bare')+(x.frozen?' frozen':'')+(x.status==='off'?' dim':''));
   if(DESIGN.color)face.style.setProperty('--brand',DESIGN.color);
-  // 21 Nov (Max): Purser's feather on every card until the company sets its own initials or logo.
-  const mark=el('span','ac-mark',DESIGN.logo?dkImg(DESIGN.logo,''):DESIGN.initials?DESIGN.initials:dkIc('feather','ac-pf'));
+  // 27 Nov (Obsidian, cloud/src/agentCardArt.ts cardSvg: the same art the phone's page draws as markup): a few <use> of
+  // the page's shared shapes (#pc-defs), the agent's relief, the medallion with Purser's quill (or the company's own
+  // initials or logo), the chip, the words; the status, the month and the honesty label under the card (cardMeta).
+  const rel=RELIEF[x.id]||'lines';
+  const mark=DESIGN.logo?pcEl('image',{class:'ac-mark',href:DESIGN.logo,x:182,y:88,width:64,height:80,preserveAspectRatio:'xMidYMid meet','clip-path':'url(#pc-mo)'})
+    :DESIGN.initials?pcEl('text',{class:'ac-mark',x:214,y:136,'text-anchor':'middle','font-family':CARD_FONT,'font-weight':600,'font-size':22,'letter-spacing':2,fill:'url(#pc-ch)'},DESIGN.initials)
+    :pcEl('use',{class:'ac-pf',href:'#pc-quill'});
+  const art=pcEl('svg',{class:'ac-art',viewBox:'0 0 428 270','aria-hidden':'true',focusable:'false'},[pcEl('use',{href:'#pc-ground'}),
+    pcEl('g',{mask:'url(#pc-fade)'},[pcEl('use',{href:'#pc-rel-'+rel,opacity:.2}),pcEl('g',{mask:'url(#pc-band)'},pcEl('use',{href:'#pc-rel-'+rel,opacity:.75}))]),
+    pcEl('use',{href:'#pc-medal'}),mark,pcEl('use',{href:'#pc-frame'}),pcEl('use',{href:'#pc-word'}),x.last4?pcEl('use',{href:'#pc-chip',x:34,y:110}):null,
+    x.last4?pcEl('text',{class:'ac-num',x:34,y:212,'font-family':CARD_FONT,'font-weight':500,'font-size':13,'letter-spacing':2.4,fill:'url(#pc-pw)'},'•••• '+x.last4)
+      :pcEl('text',{class:'ac-num none',x:34,y:212,'font-family':CARD_FONT,'font-weight':500,'font-size':11,'letter-spacing':.4,fill:'#8e929b'},dw('no_card')),
+    pcEl('text',{class:'ac-name',x:34,y:233,'font-family':CARD_FONT,'font-weight':600,'font-size':7.6,'letter-spacing':2,fill:'url(#pc-pw)'},String(x.name).toUpperCase()),
+    x.last4?pcEl('text',{class:'ac-net txt',x:394,y:234,'text-anchor':'end',transform:'skewX(-10)','transform-origin':'394 234','font-family':'Arial Black,'+CARD_FONT,'font-weight':900,'font-size':17,'letter-spacing':.6,fill:'url(#pc-vs)'},'VISA'):null,
+    pcEl('use',{href:'#pc-sheen'})]);
+  face.append(art,el('span','ac-shine'));
   const C=x.currency?cur(x.currency)+' ':'';
-  let meter=el('div','');
-  if(x.spent!==null&&x.cap>0){const bar=el('span','ac-bar'+(x.spent>=x.cap?' full':''));const f=el('span','');bar.append(f);f.dataset.w=Math.min(100,x.spent/x.cap*100).toFixed(1);
-    meter=el('div','ac-meter',[el('span','ac-ml',[el('b','num',C+cents(x.spent)),el('span','',dw('of',{cap:C+cents(x.cap)}))]),bar])}
-  const claude=dkLogo('claude'),alta=dkLogo('alta'),awx=dkLogo('airwallex');
-  face.append(...[el('span','ac-shine'),
-    el('div','ac-top',[mark,el('span','ac-who',[el('b','ac-name',x.name),el('span','ac-co',cardCompany())]),x.last4&&awx?el('span','ac-plate',dkImg(awx,'Airwallex')):null]),
-    el('div','ac-mid',[x.last4?el('span','ac-chip'):null,x.last4?dkIc('nfc','ac-nfc'):null,el('span','ac-st '+x.status,[el('i',''),x.statusText])]),
-    el('div','ac-num'+(x.last4?' num':' none'),x.last4?'•••• •••• •••• '+x.last4:dw('no_card')),
-    meter,
-    el('div','ac-foot',[x.model?el('span','ac-model',[claude?dkImg(claude,'Claude'):null,modelShort(x.model)]):el('span','ac-model code',dw('code_only')),
-      ALTA_AGENTS.includes(x.id)&&alta?el('span','ac-alta',dkImg(alta,'Alta (formerly Metal)')):null,x.demo&&x.last4?el('span','ac-tag',dw('simulated')):null,x.last4?el('span','ac-net txt','Visa'):null]),
-  ].filter(Boolean));
   face.setAttribute('role','img');
-  face.setAttribute('aria-label',[x.name,x.last4?'•••• '+x.last4:dw('no_card'),x.statusText,x.spent!==null&&x.cap>0?C+cents(x.spent)+' '+dw('of',{cap:C+cents(x.cap)}):null,x.model?modelShort(x.model):dw('code_only')].filter(Boolean).join(', '));
+  face.setAttribute('aria-label',[x.name,x.last4?'•••• '+x.last4:dw('no_card'),x.statusText,x.spent!==null&&x.cap>0?C+cents(x.spent)+' '+dw('of',{cap:C+cents(x.cap)}):null,x.last4?honestOf(x):null].filter(Boolean).join(', '));
   return face}
+// An SVG element with its attributes and children (text as text nodes, never markup).
+function pcEl(tag,attrs,kids){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const k in attrs)e.setAttribute(k,String(attrs[k]));for(const c of [].concat(kids??[])){if(c===null||c===undefined||c===false)continue;e.append(typeof c==='string'?document.createTextNode(c):c)}return e}
+// The honesty label of a card (everything simulated is labelled): the demo's simulated card, or the Airwallex sandbox's.
+const honestOf=(x)=>x.demo?dw('sim_card'):dw('sbx_card');
+// Under the card, in small muted words: its status and honesty label, then what it spent of its month's limit on a thin meter.
+function cardMeta(x,tail){
+  const C=x.currency?cur(x.currency)+' ':'';
+  const st=el('p','dk-st',[el('i','dk-dot '+x.status),el('span','',x.statusText),x.last4?el('span','dk-hon',honestOf(x)):null,tail||null].filter(Boolean));
+  if(!(x.spent!==null&&x.cap>0))return el('div','dk-meta',st);
+  const bar=el('span','ac-bar'+(x.spent>=x.cap?' full':''));const f=el('span','');bar.append(f);f.dataset.w=Math.min(100,x.spent/x.cap*100).toFixed(1);
+  return el('div','dk-meta',[st,el('p','dk-mt',[el('span','',[el('b','num',C+cents(x.spent)),' '+dw('of',{cap:C+cents(x.cap)})]),bar])])}
 // Meters fill once drawn (at once with reduced motion).
 function fillMeters(root){const go=()=>{for(const f of root.querySelectorAll('.ac-bar > span[data-w]'))f.style.width=f.dataset.w+'%'};if(RM())go();else requestAnimationFrame(()=>requestAnimationFrame(go))}
 // Tilt and shine under a mouse pointer; nothing with reduced motion or a touch.
@@ -153,7 +165,7 @@ function deckAgents(recs,CV,demo){
     const spent=c&&c.per_month&&c.spent_month!==null&&c.spent_month!==undefined?toCents(c.spent_month):null;
     return {r,rec,live,face:{id:r.id,name:rec?rec.name:r.name,status,statusText,last4:(lc&&lc.last4)||(c&&c.last4)||null,currency:c?c.currency:null,spent,cap:c&&c.per_month?toCents(c.per_month):0,
       // The model its code sets (the roster, held to the code by a test); the drawer adds what the records show ran.
-      model:r.model||(rec&&rec.models&&rec.models[0])||null,ran:rec&&rec.models||[],demo,frozen:lc?lc.status!=='ACTIVE':status!=='active'&&!!rec},at:!!(rec||live)}});
+      model:r.model||(rec&&rec.models&&rec.models[0])||null,ran:rec&&rec.models||[],demo,role:r.role||'',frozen:lc?lc.status!=='ACTIVE':status!=='active'&&!!rec},at:!!(rec||live)}});
   // Those at work in this company first, each group in the roster's order.
   return [...all.filter((x)=>x.at),...all.filter((x)=>!x.at)]}
 
@@ -212,10 +224,12 @@ function openDrawer(x,ctx){
   const acts=el('div','dk-acts',[rec?phoneBtn(x,ctx):null,r.see?(()=>{const a=el('a','btn ghost2',[ic('play'),r.see.label==='Watch a negotiation'?dw('nego'):r.see.label]);a.href=r.see.href;return a})():null]);
   const facts=el('dl','dk-facts',[el('dt','',dw('model_h')),el('dd','',[r.model||x.face.model?el('span','dk-mod',[dkLogo('claude')?dkImg(dkLogo('claude'),'Claude'):null,el('span','mono',x.face.model)]):el('span','sub',dw('code_only')),r.model_note?el('span','sub',r.model_note):null,
       x.face.ran.some((m)=>m!==x.face.model)?el('span','sub',dw('ran',{m:x.face.ran.join(', ')})):null]),
+    x.face.last4?el('dt','',dw('issuer_h')):null,x.face.last4?el('dd','',el('span','dk-mod',[dkLogo('airwallex')?dkImg(dkLogo('airwallex'),'Airwallex'):null,el('span','',dw('issuer'))])):null,
+    ALTA_AGENTS.includes(r.id)?el('dt','',dw('alta_h')):null,ALTA_AGENTS.includes(r.id)?el('dd','',el('span','dk-mod',[dkLogo('alta')?dkImg(dkLogo('alta'),'Alta (formerly Metal)'):null,el('span','',dw('alta'))])):null,
     r.limit&&!(rec&&rec.card)?el('dt','',dw('limit_h')):null,r.limit&&!(rec&&rec.card)?el('dd','',r.limit):null]);
   const blocks=rec?agentRecord(rec,ctx.demo,x.live,ctx.CV):x.live&&ctx.CV?[liveCardPanel(x.live,ctx.CV)]:[];
   const tok=rec&&ctx.P?partnerTokenBlock(ctx.P,rec.id):null;
-  const d=dialog('dk-drawer',x.face.name,[el('div','dk-top',[el('div','dk-cw',face),el('div','dk-tx',[el('p','dk-role',r.role),el('p','',r.job),acts])]),facts,...blocks,tok,codeBlock(r)]);
+  const d=dialog('dk-drawer',x.face.name,[el('div','dk-top',[el('div','dk-cw',[face,cardMeta(x.face)]),el('div','dk-tx',[el('p','dk-role',r.role),el('p','',r.job),acts])]),facts,...blocks,tok,codeBlock(r)]);
   tilt(d.querySelector('.dk-cw'),face);fillMeters(d);
   return d}
 
@@ -230,7 +244,7 @@ function openPhone(x,ctx){
       catch(e){if(e instanceof Expired)return;out.textContent=dw('wal_fail',{why:e.message})}finally{wal.disabled=false}}}
   else{wal=btn(hasCard?dw('wal_wait'):dw('wal_nocard'),'dk-wal off','wallet');wal.disabled=true;wal.setAttribute('aria-disabled','true')}
   const qr=el('div','dk-qr',el('span','sub',dw('qr_busy')));
-  const d=dialog('dk-phone',dw('phone_h',{name:x.face.name}),[el('div','dk-pc',cardFace(x.face)),wal,out,el('h3','',dw('qr_h')),qr]);
+  const d=dialog('dk-phone',dw('phone_h',{name:x.face.name}),[el('div','dk-pc',[cardFace(x.face),cardMeta(x.face)]),wal,out,el('h3','',dw('qr_h')),qr]);
   fillMeters(d);
   const styles={};styles[x.r.id]=styleOf(x.r.id);
   api('/v1/agents/'+encodeURIComponent(x.r.id)+'/phone-card/link',{method:'POST',body:{design:{styles,color:DESIGN.color,initials:DESIGN.initials}}}).then((r)=>{
@@ -293,11 +307,11 @@ async function agentDeck(recs,ctx){
   const draw=()=>{grid.replaceChildren(...items.map((x)=>{
     const face=cardFace(x.face);const open=el('button','dk-face',face);open.type='button';open.setAttribute('aria-label',x.face.name+': '+dw('details'));open.setAttribute('aria-haspopup','dialog');
     open.onclick=()=>openDrawer(x,ctx);tilt(open,face);
-    // One line under the card: its role, which opens the drawer too (a link to #/agents?a=id clicks it: openAgentFromQuery).
-    const more=el('button','dk-line wmore',[el('span','',x.r.role),ic('chevron-right')]);more.type='button';more.setAttribute('aria-haspopup','dialog');more.setAttribute('aria-expanded','false');more.onclick=()=>openDrawer(x,ctx);
+    // Details, at the end of the status line under the card, opens the drawer too (a link to #/agents?a=id clicks it: openAgentFromQuery).
+    const more=el('button','dk-line wmore',[el('span','',dw('details')),ic('chevron-right')]);more.type='button';more.setAttribute('aria-label',x.face.name+': '+dw('details'));more.setAttribute('aria-haspopup','dialog');more.setAttribute('aria-expanded','false');more.onclick=()=>openDrawer(x,ctx);
     // The negotiation has its own band below the cards, and a button in the Sourcing agent's drawer.
     const acts=[x.rec?(()=>{const b=phoneBtn(x,ctx);b.classList.add('mini');return b})():null].filter(Boolean);
-    const it=el('article','dk-item'+(x.at?' on':''),[open,more,acts.length?el('div','dk-acts',acts):null]);it.id='roster-'+x.r.id;return it}));fillMeters(grid)};
+    const it=el('article','dk-item'+(x.at?' on':''),[open,cardMeta(x.face,more),acts.length?el('div','dk-acts',acts):null]);it.id='roster-'+x.r.id;return it}));fillMeters(grid)};
   draw();DECK_REDRAW=draw;
   const designBtn=btn(dw('design'),'','');designBtn.prepend(dkIc('palette'));designBtn.onclick=()=>openDesign(items);
   return {items,grid,designBtn}}
@@ -329,7 +343,21 @@ export const WALLET_CSS = CARD_ART_CSS + `
 @keyframes dk-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 button.dk-face { appearance: none; -webkit-appearance: none; display: block; width: 100%; padding: 0; margin: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; border-radius: 16px; -webkit-tap-highlight-color: transparent; }
 button.dk-face:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-button.dk-face:hover .acard { box-shadow: 0 1px 1px rgba(2,6,23,.35), 0 26px 44px -18px rgba(2,8,30,.85), 0 0 0 1px rgba(233,196,106,.25); }
+button.dk-face:hover .acard { box-shadow: 0 1px 2px rgba(2,6,23,.3), 0 22px 36px -16px rgba(2,8,30,.65); }
+/* Under the card (26 Nov, the owner): small muted words, its status and honesty label, then its month on a thin meter. */
+.dk-meta { display: grid; gap: 6px; margin: 2px 2px 0; min-width: 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+.dk-meta p { margin: 0; min-width: 0; }
+.dk-st { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; }
+.dk-st .dk-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--faint, #94a3b8); }
+.dk-st .dk-dot.active { background: var(--ok, #16a34a); } .dk-st .dk-dot.paused, .dk-st .dk-dot.revoked { background: var(--bad, #dc2626); }
+.dk-st > span:not(.dk-hon) { color: var(--text); font-weight: 550; }
+.dk-st .dk-hon { color: var(--faint, var(--muted)); } .dk-st .dk-hon::before { content: "·"; margin-right: 8px; color: var(--faint, var(--muted)); }
+.dk-st .dk-line { margin-left: auto; min-height: 24px; padding: 0 2px; font-size: 12.5px; }
+.dk-mt { display: grid; gap: 5px; font-variant-numeric: tabular-nums; } .dk-mt b { font-weight: 600; color: var(--text); }
+.dk-meta .ac-bar { display: block; height: 2px; border-radius: 999px; background: color-mix(in srgb, var(--text) 10%, transparent); overflow: hidden; }
+.dk-meta .ac-bar > span { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #a97b25, #d9b768); transition: width 1.1s cubic-bezier(.2,.75,.2,1); }
+.dk-meta .ac-bar.full > span { background: var(--bad, #dc2626); }
+@media (prefers-reduced-motion: reduce) { .dk-meta .ac-bar > span { transition: none; } }
 .dk-line { appearance: none; border: 0; background: none; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 2px 4px; margin: 0; font-size: 13.5px; color: var(--muted); text-align: left; border-radius: 6px; min-height: 28px; }
 .dk-line > span:first-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dk-line .ic svg { width: 14px; height: 14px; } .dk-line:hover { color: var(--text); }
 .dk-acts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 2px; }

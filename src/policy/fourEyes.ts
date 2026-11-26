@@ -7,6 +7,7 @@
 import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
 import type { ProposalRow } from "./approvals.js";
+import { sodChanges } from "./policySod.js";
 import { policyValue } from "./rules.js";
 
 export const FOUR_EYES_KEY = "approval.four_eyes_eur";
@@ -49,6 +50,8 @@ function lineEurCents(kind: string, terms: PaymentTerms): number | null {
 export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">): boolean {
   // Block 1: the account's owners are two passkeys with a threshold of two; Purser asks for both as the chain will.
   if (p.kind === "owners_execute") return true;
+  // Segregation of duties (src/policy/policySod.ts): a policy change that loosens above the CFO's threshold for it.
+  if (p.kind === "policy_change" && sodChanges(db, p.terms_json).length > 0) return true;
   const v = policyValue(db, FOUR_EYES_KEY);
   // A batch needs two people when any of its lines would on its own (one Face ID never approves what needs two), and
   // when its lines together are above the threshold (red team 6: three lines under it, EUR 4,617.20 in all, one person).

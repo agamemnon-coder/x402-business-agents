@@ -1,6 +1,8 @@
 // Whether a CFO policy change loosens the policy. Pure (no database, no Node modules), so the runner's rules
 // (src/policy/rules.ts re-exports it) and /try/sign's policy step (src/try/policy.ts) decide it with the same code.
 
+import { cardControlLoosens } from "./cardHours.js";
+
 /**
  * Whether a change makes the policy less strict: a higher or removed agent limit, a higher approval threshold, a
  * lower reserve floor, or a payee unblocked. The phone may only tighten (review N2); loosening is proposed on the
@@ -13,19 +15,35 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   if (c.key === "approval.airi_alone_per_day") return /^\d+$/.test(c.from) && (!/^\d+$/.test(c.to) || Number(c.to) > Number(c.from));
   if (c.key.startsWith("airi.merchant.")) return c.from !== "allowed" && c.to === "allowed";
   if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
+  // A card's hours, merchant categories and currencies (src/policy/cardHours.ts): wider hours (or none), a new merchant
+  // category or a new currency loosens; narrower ones tighten. Unreadable values loosen (fail closed).
+  const control = cardControlLoosens(c.key, c.from, c.to);
+  if (control !== null) return control;
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   // Four eyes: turning it off or raising the threshold loosens; turning it on or lowering it tightens.
   if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
+  // Segregation of duties for the policy itself (src/policy/policySod.ts): the same, off or higher loosens.
+  if (c.key === "approval.policy_sod_eur") return from !== null && (to === null || to > from);
   // A second key for high-risk payments: off, or a higher amount, loosens; on, or a lower amount, tightens.
   if (c.key === "approval.second_key_eur") return from !== null && (to === null || to > from);
   if (c.key.startsWith("approval.second_key_")) return c.from === "on" && c.to !== "on";
+  // The anomaly hold (src/policy/anomaly.ts): off, or a higher multiple, loosens; on, or a lower one, tightens. A higher
+  // amount for a first payment, or none, loosens. A different history length is a change the CFO signs either way.
+  if (c.key === "approval.anomaly_multiple") return /^\d+$/.test(c.from) && (!/^\d+$/.test(c.to) || Number(c.to) > Number(c.from));
+  if (c.key === "approval.anomaly_first_eur") return from !== null && (to === null || to > from);
+  if (c.key === "approval.anomaly_history") return c.from !== c.to;
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   // The limit an agent may pay alone up to: set where there was none, or raised, loosens; lowered or removed tightens.
   if (c.key === "ap.alone_eur") return to !== null && (from === null || to > from);
+  // A task mandate (src/policy/taskMandates.ts): any change through a policy change counts as loosening (Face ID); it is
+  // narrowed or revoked at once on the runner instead, where widens() (src/policy/taskMandateCore.ts) refuses a widening.
+  if (c.key.startsWith("task_mandate.")) return true;
   if (c.key.endsWith("_floor") || c.key.startsWith("floor.")) return from !== null && (to === null || to < from);
   // Supplier payouts: less held back for the fee loosens; any other funding currency is a change for Face ID.
   if (c.key.startsWith("fee_reserve.")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
+  // Which legal entity an agent may pay from (src/policy/entities.ts): allowing one loosens, blocking it tightens.
+  if (c.key.startsWith("pay_from.")) return c.from !== "allowed" && c.to === "allowed";
   if (c.key === "freeze" || c.key.startsWith("stop.") || c.key.startsWith("pause.")) return c.from === "on" && c.to !== "on";
   return true;
 }

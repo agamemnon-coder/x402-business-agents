@@ -3579,6 +3579,41 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/engine/emergency-stop":
+    post:
+      operationId: postV1EngineEmergencyStop
+      tags:
+        - Engine (payments)
+      summary: "The CFO's emergency stop (a session only; the approve scope: the CFO, or an owner of a company with no CFO): { on: true } pulls it, { on: false } lifts it. Answers { proposal }, a policy change the CFO approves with the passkey (POST /v1/engine/proposals/{id}/approve); nothing changes before that, and a key cannot ask. Once approved, nothing of this company is paid: proposals are still filed, but every payment executor refuses when it begins and again immediately before each create at the bank (the rail asks too), the agent pays nothing alone and nothing is sent to the Airwallex sandbox. GET /v1/engine says { emergency_stop: { on, since, proposal_id } }; both directions are in the audit log (policy.changed) and told to every owner. 409 when it already stands as asked."
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: object
+              properties:
+                on:
+                  type: boolean
+              required:
+                - "on"
+              additionalProperties: false
+      security:
+        - bearer:
+            - approve
+      x-purser-needs: approve
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/engine/security-key/start":
     post:
       operationId: postV1EngineSecurityKeyStart
@@ -3680,7 +3715,7 @@ paths:
       operationId: postV1EngineProposalsByIdRetry
       tags:
         - Engine (payments)
-      summary: "Try again: an approved payment whose execution failed (the bank was away, say) is run once more by the executor's own resume path, which never pays twice. Answers { status: retried, message, settled } with where things stand; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused)."
+      summary: "Try again: an approved payment whose execution failed (the bank was away, say), or that the executor refused before it began (approved while the emergency stop was on, say), is run once more by the executor's own resume path, every check asked again, which never pays twice. Answers { status: retried, message, settled } with where things stand; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused)."
       parameters:
         - name: id
           in: path

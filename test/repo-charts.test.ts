@@ -64,7 +64,7 @@ describe("the changelog", () => {
 
   it("gives the release notes the same counts, total and per group", () => {
     const md = readFileSync(join(ROOT, "CHANGELOG.md"), "utf8");
-    const notes = readFileSync(join(ROOT, "docs/releases/v1.4.0.md"), "utf8"); // the latest release notes, against the changelog since the tag before
+    const notes = readFileSync(join(ROOT, "docs/releases/v1.5.0.md"), "utf8"); // the latest release notes, against the changelog since the tag before
     const total = /, (\d+) in all/.exec(md)![1]!;
     expect(notes).toContain(`${total} pull request${total === "1" ? "" : "s"} merged into main`);
     for (const [, group, body] of md.matchAll(/^## (.+)\n\n([\s\S]*?)(?=\n## |$(?![\s\S]))/gm)) {
@@ -76,9 +76,9 @@ describe("the changelog", () => {
   // Outside audit, 22 November: generated inside the release pull request, the changelog missed that pull request's own
   // merge (#476). It ends at the release tag; with the tags in this clone, its count is git's.
   it("counts every pull request merged between the two tags, the release's own included (when the tags are here)", () => {
-    const tags = (() => { try { return execFileSync("git", ["tag", "--list", "v1.3.2", "v1.4.0"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean); } catch { return []; } })();
+    const tags = (() => { try { return execFileSync("git", ["tag", "--list", "v1.4.0", "v1.5.0"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean); } catch { return []; } })();
     if (tags.length < 2) return; // a shallow clone without the tags: nothing to compare with
-    const merges = execFileSync("git", ["log", "--merges", "--first-parent", "--format=%s", "v1.3.2..v1.4.0"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter((l) => l.startsWith("Merge pull request #"));
+    const merges = execFileSync("git", ["log", "--merges", "--first-parent", "--format=%s", "v1.4.0..v1.5.0"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter((l) => l.startsWith("Merge pull request #"));
     const md = readFileSync(join(ROOT, "CHANGELOG.md"), "utf8");
     expect(Number(/, (\d+) in all/.exec(md)![1])).toBe(merges.length);
     for (const m of merges) expect(md).toContain(`[#${/#(\d+)/.exec(m)![1]}]`);

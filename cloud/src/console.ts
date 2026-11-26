@@ -14,8 +14,8 @@ import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
 import { fromB64 } from "./crypto.js";
+import { localAsset } from "./localAssets.js";
 import { LEDGER_ACCOUNTS } from "../../src/ledger/accounts.js";
-import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { AIRWALLEX_LOGO_PATH, AIRWALLEX_LOGO_SRC, builtOnBadge } from "../../src/ui/builtOn.js";
 import { AIRWALLEX_LOGO_DATA_URL } from "./awxLogo.gen.js";
 import { ASSET_VERSIONS, DAY_CACHE, IMMUTABLE_CACHE, type VersionedAsset } from "../../src/ui/assetVersions.js";
@@ -28,6 +28,7 @@ import { NAV_GROUPS, SHELL_CSS, SHELL_JS, SHELL_WORDS } from "./consoleShell.js"
 import { CHARTS_CSS, CHARTS_JS } from "./consoleCharts.js";
 import { COMPANY_CSS, COMPANY_JS } from "./consoleCompany.js";
 import { WALLET_CSS, WALLET_JS } from "./agentWallet.js";
+import { CARD_ART_DEFS } from "./agentCardArt.js";
 import { TOKEN_LIFE_CSS, TOKEN_LIFE_JS } from "./tokenLife.js";
 import { AWX_CSS, AWX_JS } from "./awxActUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
@@ -2115,6 +2116,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
 <style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${CHARTS_CSS}${COMPANY_CSS}${WALLET_CSS}${TOKEN_LIFE_CSS}${AWX_UI_CSS}${AWX_CSS}${PARTNER_VIEW_CSS}${SHELL_CSS}${CONSOLE_PREMIUM_CSS}${SIGNIN_CSS}${OVERVIEW_PLUS_CSS}</style></head><body class="signed-out">
 ${BODY}
+${CARD_ART_DEFS}
 <script type="module" nonce="${n}">${script}
 ${CONSOLE_WAVE_JS}
 ${SIGNIN_JS}
@@ -2175,7 +2177,6 @@ const PAGE_HEADERS = {
 /** Paths people type for the console, and the console route each one opens. */
 export const CONSOLE_PATHS: Record<string, string> = { "/sign-in": "#/sign-in", "/signin": "#/sign-in", "/login": "#/sign-in", "/console": "#/sign-in", "/start": "#/start", "/overview": "#/overview" };
 
-let font: Uint8Array | null = null;
 
 /** Everything outside /v1: the console page at /, its font, pdf.js from the bundle's assets, and a plain 404. Only GET and HEAD. */
 export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Promise<Response> {
@@ -2202,10 +2203,14 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   }
   // Site audit, 19 Nov: a file asked for with its content version (src/ui/assetVersions.ts) is cached for a year; else a day.
   const cacheFor = (name: VersionedAsset) => (url.searchParams.get("v") === ASSET_VERSIONS[name] ? IMMUTABLE_CACHE : DAY_CACHE);
-  if (url.pathname === "/assets/inter.woff2") {
-    font ??= fromB64(INTER_WOFF2_B64);
-    return new Response(new Uint8Array(font), { status: 200, headers: { "content-type": "font/woff2", "cache-control": cacheFor("inter.woff2"), "x-content-type-options": "nosniff" } });
+  // The console's font (Inter, src/ui/inter.woff2) is a static asset (npm run cloud:pdfjs copies it into cloud/public before a
+  // deploy), not base64 in the Worker: 26 Nov, the bundle reached Cloudflare's 3 MiB compressed limit.
+  if (url.pathname === "/assets/inter.woff2" && env.asset) {
+    const r = await env.asset("/assets/inter.woff2");
+    if (r && r.ok) return new Response(r.body, { status: 200, headers: { "content-type": "font/woff2", "cache-control": cacheFor("inter.woff2"), "x-content-type-options": "nosniff" } });
   }
+  const localFont = url.pathname === "/assets/inter.woff2" ? localAsset("/assets/inter.woff2") : null;
+  if (localFont) return new Response(new Uint8Array(localFont), { status: 200, headers: { "content-type": "font/woff2", "cache-control": cacheFor("inter.woff2"), "x-content-type-options": "nosniff" } });
   // The partners' official logos for /try's start screen (cloud/src/try/logos.gen.ts, the files unaltered): the paths and
   // bytes the site serves, so the page shows them on kit11 (the site's own /assets) and on purser-try alike.
   // The Airwallex logo of the "Built on" badge, from this origin (17 Nov: from the live site, it made every page's load wait

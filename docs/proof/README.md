@@ -42,6 +42,23 @@ Both run the same code. The checks:
 6. A refusal's asked terms hash differently, so the signature cannot cover them.
 7. Every ledger entry balances and hashes as posted.
 
+```mermaid
+flowchart LR
+  F["purser-proof.json<br/>from /try"] --> C1["1 · terms hash"]
+  C1 --> C2["2 · challenge = hash"]
+  C2 --> C3["3 · rpId, user present<br/>and verified"]
+  C3 --> C4["4 · passkey signature"]
+  C4 --> C5["5 · decision names<br/>the signed hash"]
+  C5 --> C6["6 · a refusal's asked terms<br/>hash differently"]
+  C6 --> C7["7 · ledger entries<br/>balance and hash"]
+  C7 --> OK["VALID<br/>exit 0"]
+  C1 & C2 & C3 & C4 & C5 & C6 & C7 -.->|any check fails| NO["NOT VALID<br/>exit 1"]
+  classDef good fill:#e6f6ee,stroke:#0b7d43,color:#064e2b
+  classDef bad fill:#fdecec,stroke:#c5363c,color:#7f1d1d
+  class OK good
+  class NO bad
+```
+
 ## The two samples here
 
 `try-paid.json` and `try-refused.json` come from the deployed site, on 15 November 2026:

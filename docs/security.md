@@ -334,6 +334,43 @@ What it does not cover, said plainly:
   them covers them with its next checkpoint; if it dies first, the next gate refuses until a person accepts them
   (runbook).
 
+### Purser Cloud's emergency stop, and the proof bundles fuzzed again (26 November)
+
+Row 19's emergency stop held on the runner only. A company's engine in Purser Cloud (one Durable Object per company,
+`cloud/src/engine/`) ran the same payment executors, which already ask the stop before and during every payment, but
+nothing in the Cloud could pull it: someone who saw an agent misbehave in a Cloud company could reject proposals one by
+one, not stop them all. Now:
+
+- **One stop, the runner's.** It is the same CFO policy setting (`freeze`), changed by the same policy change
+  (`src/policy/emergencyStop.ts`, `src/executors/policyChange.ts`): `POST /v1/engine/emergency-stop` with `{ on: true }`
+  or `{ on: false }`, from a signed-in session only (a key gets 403), files it, and nothing changes until the CFO
+  approves it with the passkey (`POST /v1/engine/proposals/{id}/approve`: the signature over its exact terms, and a new
+  key's cooling-off, as for a payment). Lifting it loosens the policy, so it is signed the same way. Both are
+  `policy.changed` rows in the company's audit log, shown in its events and `GET /v1/engine` (`emergency_stop: { on,
+  since, proposal_id }`), and told to every owner (`emergency_stop.requested`, `.on`, `.lift_requested`, `.lifted`).
+- **What it stops.** While it is on, no new payment is planned (the planner refuses), the agent pays nothing alone
+  (`src/ap/pay.ts`), an approval pays nothing: the executor refuses when it begins and again immediately before each
+  create (`transfer.held_before_create`), and the approval stays blocked with its reason (`execution.blocked`) until
+  the stop is lifted and someone tries it again, every check asked again. The routed rail asks once more right before a
+  conversion, a payout or a batch reaches either bank (`src/airwallex/routedRail.ts`, audited with `checked: rail`; the
+  payout row the executor wrote for it is closed, not left counting as money under way),
+  `/try`'s mirror of a paid payment at the Airwallex sandbox is not sent (`emergency_stop`), and no agent card is
+  issued, unfrozen, raised or tested (`POST /v1/cards/actions` and its signature answer 409); a freeze still goes.
+- **Proof.** `test/cloud-emergency-stop.test.ts`: through the Cloud's routes and inside a `/try` company's Durable
+  Object (`cloud/src/engine/hostWorker.ts`), a stop set between an approval and its send refuses the send with the
+  bank's transfers unchanged; an unknown key's signature does not lift it; lifted, the payment approved before it is
+  sent once. The runner's own case, a stop landing mid-execution, stays in `test/stop-mid-execution.test.ts`.
+- **What it does not do.** Money in (a deposit on the bank's simulation) and a new payee are not stopped: neither pays
+  anyone. A transfer already created at the bank before the stop is not recalled: Purser stops what it has not sent.
+  Like row 19, it works through Purser's code and the rails, so a company engine that is not reached at all (its
+  Durable Object down) sends nothing either way.
+
+The proof bundles and receipts were fuzzed again with the nightly suite (`npm run fuzz`, scale 1) on seeds 20261123,
+20261124 and 20261126: all 17 properties held on each, `bundle-context` and `receipt-mutations` included (the two that
+had failed in earlier nightly runs), and the field-by-field sweep of every committed bundle and receipt found no change
+to a signed field that still verifies. Nothing in the verifiers (`src/proof/bundle.ts`, `src/try/receipt.ts`) needed
+changing this time; the committed evidence (`docs/evidence/fuzzing.md`) was not rerun.
+
 ## Security headers and rate limits (checked 2 November)
 
 Read from the code that serves each answer and asserted in `test/security-headers.test.ts`.
@@ -382,6 +419,9 @@ Rate limits, where the docs say them (each asserted in the same test or the test
 
 - **Agents:** each agent has its own on-chain mandate, with a per-payment cap, a total budget, a single payee and an
   expiry, and holds only its own mandate key. The CFO policy can only be stricter.
+- **Each agent's tools** (25 November): every agent principal lists exactly the tools it may call and the money actions
+  it may take; anything else is refused in code before it runs and audited (`principal.tool_refused`). The table, held
+  to the code by `test/agent-permissions.test.ts`: [security/agent-permissions.md](security/agent-permissions.md).
 - **No agent has or can use an owner key** (checked 1 November, `test/no-owner-key.test.ts`), also in autonomous mode:
   the business owner's key file is named only by the owner signer, the pause on chain (both run by the executor after
   the CFO's Face ID), the one-off bootstrap and two CLIs a person runs; no agent, autonomy, Claude or /try module names

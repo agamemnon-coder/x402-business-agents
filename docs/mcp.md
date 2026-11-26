@@ -106,6 +106,7 @@ names an invoice, a payment or a report links its resource (`resource_link`).
 | `vat_summary` | A quarter's VAT as the Dutch return's rubrics. An overview, not a filing | read-only, idempotent | any |
 | `payment_audit_trail` | Every recorded step of one payment, by payment, invoice (`AP-…`) or proposal (`P-…`) id | read-only, idempotent | any |
 | `explain_payment` | One payment in plain words: who, how much, why, who allowed it and how, where it is booked | read-only, idempotent | any |
+| `route_money_out` | Before a transfer, payout or FX conversion: the checked invoice it would pay, where that stands, and the next tool. Files nothing ([agentos.md](agentos.md)) | read-only, idempotent | any |
 | `propose_invoice_payment` | Files an invoice's payment for the CFO's approval. **Nothing is paid** | not read-only, not destructive, not idempotent | a token made to propose; never the demo |
 | `payment_proposal` | Where a proposal stands: waiting, approved and paid, refused or expired, with its terms' SHA-256 | read-only, idempotent | a token made to propose |
 
@@ -162,10 +163,12 @@ The list is `ERROR_CODES` in [`cloud/src/claude/mcp.ts`](../cloud/src/claude/mcp
 
 ## The safety model
 
-1. **Read and propose only.** A reading token gets the fourteen reading tools. A token made to propose also gets
+1. **Read and propose only.** A reading token gets the fifteen reading tools. A token made to propose also gets
    `propose_invoice_payment` and `payment_proposal`. No token gets a tool that approves, pays, changes a limit, adds a
    supplier or writes to the books: such a tool does not exist. A call to one by name (`approve_payment`,
-   `pay_invoice`, `set_card_limit` …) is refused with `not_available_over_mcp`, and the refusal says why.
+   `pay_invoice`, `set_card_limit` …) is refused with `not_available_over_mcp`, and the refusal says why. A name about
+  moving money or currency (`create_transfer`, `convert_currency`, `propose_fx` …) also carries
+  `data.next_tool: "route_money_out"`.
 2. **The CFO's passkey is the only approval.** Approving a payment is a WebAuthn signature, by the CFO's passkey, over
    the payment's exact terms. No token can make one, and an AI never sees the challenge the passkey signs.
 3. **The demo company proposes nothing.** Its public token reads made-up data.
@@ -211,5 +214,6 @@ the server's `SERVER_VERSION` are held equal by a test.
 |---|---|
 | [`test/mcp-contract.test.ts`](../test/mcp-contract.test.ts) | Every tool's description, schema, examples (accepted by the schema and by the server) and annotations; the error shape and codes; a write or pay attempt refused for every token; a proposal pays nothing |
 | [`test/mcp-upgrade.test.ts`](../test/mcp-upgrade.test.ts) | Both protocol eras, headers, output schemas, resources, pagination, OAuth metadata, `/connect-ai` |
+| [`test/mcp-route-money-out.test.ts`](../test/mcp-route-money-out.test.ts) | `route_money_out`: every route, each kind of token, the demo company, nothing filed, the pointer on guessed money tool names |
 | [`test/cloud-claude.test.ts`](../test/cloud-claude.test.ts) | Connector tokens, reading, proposing, the demo company, the OAuth sign-in |
 | [`test/mcp-registry.test.ts`](../test/mcp-registry.test.ts) | `server.json` against the registry's schema, and complete |

@@ -10,6 +10,7 @@ import { loosens } from "./loosens.js";
 import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { fourEyes } from "./fourEyes.js";
+import { proposerOf, sodChanges, sodThreshold } from "./policySod.js";
 import { recordFactor, secondKeyReasons } from "./secondKey.js";
 import { policyVersion } from "./versions.js";
 import { currentOrigin } from "../provenance/origin.js";
@@ -18,6 +19,8 @@ import { hubDecisionsEnabled } from "../hub/config.js";
 import { BATCH_KIND, BATCHABLE, openBatchOf, verifyBatch } from "./batchLines.js";
 import { aloneDecision } from "./withinLimit.js";
 import { aloneLimitInForce, sourceWords } from "./aloneLimit.js";
+import { aloneGate } from "./aloneGate.js";
+import { ANOMALY_HELD, anomalyReasons } from "./anomaly.js";
 import { ALONE_KINDS, approvalSignatureRefusal, POLICY_METHOD, WITHIN_LIMIT } from "./signedApproval.js";
 import { blockedApprovals, recordBlocked } from "./blocked.js";
 
@@ -206,18 +209,28 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     } else if (args.decision === "APPROVED" && factor === "security_key") {
       throw new Error(`${p.proposal_id} is not high-risk: a security key alone never approves; approve with your passkey (Face ID)`);
     }
+    // Segregation of duties (src/policy/policySod.ts): whoever proposed a policy change never approves it, with one
+    // person or two; loosening above the CFO's threshold for it needs two people (four eyes, below).
+    const sod = args.decision === "APPROVED" && p.kind === "policy_change" ? sodChanges(db, p.terms_json) : [];
+    const sodWhy = sod.length ? { threshold_eur: sodThreshold(db), loosens: sod.map((c) => ({ key: c.key, from: c.from, to: c.to, why: c.why })) } : null;
+    const rule = sodWhy ? "segregation of duties: this loosens the CFO policy above the threshold" : "four eyes";
+    if (args.decision === "APPROVED" && p.kind === "policy_change") {
+      const person = approver.split(" (")[0]!;
+      const proposer = proposerOf(p);
+      if (person === proposer) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (segregation of duties)`);
+    }
     if (args.decision === "APPROVED" && fourEyes(db, p)) {
       // E1, four eyes: two different people, each with their own passkey, and never the one who proposed it. The
       // first signature is kept and the proposal waits; the second approves. One person's rejection stops it.
-      if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} needs the passkeys of two different people (four eyes)`);
+      if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} needs the passkeys of two different people (${rule})`);
       const person = approver.split(" (")[0]!;
-      if (person === p.created_by) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (four eyes)`);
+      if (person === p.created_by) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (${rule})`);
       const signed = db.prepare("SELECT person, approver FROM cosignatures WHERE proposal_id = ? AND terms_sha256 = ? ORDER BY created_at, rowid").all(p.proposal_id, p.terms_sha256) as { person: string; approver: string }[]; // only a first signature over these exact terms counts: one made before the stored terms changed signed other terms (zero-trust matrix, 12 November)
-      if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey`);
+      if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey${sodWhy ? ` (${rule})` : ""}`);
       db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
         .run(p.proposal_id, passkey.credential_id, person, approver, p.terms_sha256, passkey.assertion_sha256, now.toISOString());
       if (signed.length === 0) {
-        audit(db, "human", "proposal.cosigned", p.proposal_id, { terms_sha256: p.terms_sha256, approver, person, of: "1 of 2", method: args.method, passkey }, now);
+        audit(db, "human", "proposal.cosigned", p.proposal_id, { terms_sha256: p.terms_sha256, approver, person, of: "1 of 2", method: args.method, passkey, ...(sodWhy ? { segregation_of_duties: sodWhy } : {}) }, now);
         return "PENDING_APPROVAL";
       }
       approver = [...signed.map((x) => x.approver), approver].join(" + ");
@@ -230,7 +243,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     ).run(p.proposal_id, args.decision, p.terms_sha256, approver, args.method, args.typedPrefix.trim().toLowerCase(), args.note ?? null, now.toISOString(), policy.version);
     transition(db, p.proposal_id, "PENDING_APPROVAL", args.decision);
     audit(db, "human", args.decision === "APPROVED" ? "proposal.approved" : "proposal.rejected", p.proposal_id,
-      { terms_sha256: p.terms_sha256, approver, method: args.method, note: args.note ?? null, ...(passkey ? { passkey } : {}), policy_version: policy.version }, now);
+      { terms_sha256: p.terms_sha256, approver, method: args.method, note: args.note ?? null, ...(passkey ? { passkey } : {}), policy_version: policy.version, ...(sodWhy ? { segregation_of_duties: sodWhy } : {}) }, now);
     if (p.kind === BATCH_KIND) decideBatchLines(db, p, args.decision, approver, args.method, passkey, policy.version, now);
     return args.decision;
   }).immediate();
@@ -250,11 +263,12 @@ export { POLICY_METHOD, WITHIN_LIMIT };
  * the CFO, untouched, with the reason. The caller decides whether the agents and code's checks said pay
  * (src/ap/pay.ts payAlone); this is the last check, on the terms that will run. The approval is recorded as the policy's
  * (method "policy", approver "Purser's code"), the executor runs it like any approved payment, and every money step
- * records code's rule as its origin (src/executors/index.ts approvalOrigin).
+ * records code's rule as its origin (src/executors/index.ts approvalOrigin). Governance (26 Nov): a task mandate or task
+ * token (src/policy/aloneGate.ts; `invoice.issueDate` is the inbox's own reading) and the anomaly hold can refuse too.
  */
-export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { currency: string; amount: string }; rule: string; agent: string }, now = new Date()): { ok: true } | { ok: false; reason: string } {
-  return db.transaction((): { ok: true } | { ok: false; reason: string } => {
-    const no = (reason: string) => ({ ok: false as const, reason });
+export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { currency: string; amount: string }; rule: string; agent: string; invoice?: { issueDate?: string | null }; taskToken?: string }, now = new Date()): { ok: true } | WithinLimitRefusal {
+  return db.transaction((): { ok: true } | WithinLimitRefusal => {
+    const no = (reason: string, code?: WithinLimitRefusal["code"]): WithinLimitRefusal => ({ ok: false as const, reason, ...(code ? { code } : {}) });
     const p = get(db, args.proposalId);
     if (p.status !== "PENDING_APPROVAL") return no(`${p.proposal_id} is ${p.status}, not waiting for approval`);
     if (!ALONE_KINDS.has(p.kind)) return no(`${p.proposal_id} is a ${p.kind}: only an invoice's payment may be paid alone`);
@@ -280,6 +294,15 @@ export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { 
     if (fourEyes(db, p)) return no(`${p.proposal_id} needs two people's approval (four eyes)`);
     const highRisk = secondKeyReasons(db, p, now);
     if (highRisk.length) return no(`${p.proposal_id} is high-risk (${highRisk.join("; ")}): the CFO signs it with two keys`);
+    // The task token (agent and task from the token) and the agent's task mandates; each refusal is recorded there.
+    const scope = aloneGate().check(db, p, terms, { agent: args.agent, issueDate: args.invoice?.issueDate ?? null, ...(args.taskToken !== undefined ? { taskToken: args.taskToken } : {}) }, now);
+    if (!scope.ok) return no(`${p.proposal_id}: ${scope.reason}`, scope.code);
+    // The anomaly hold (src/policy/anomaly.ts): far outside what this payee normally receives, the CFO signs it.
+    const odd = anomalyReasons(db, p);
+    if (odd.length) {
+      audit(db, "system", ANOMALY_HELD, p.proposal_id, { proposal_id: p.proposal_id, agent: args.agent, reasons: odd.map((r) => r.slice(0, 300)) }, now);
+      return no(`${p.proposal_id}: ${odd.join("; ")}`, "anomaly");
+    }
     const policy = policyVersion(db, now);
     const approver = "Purser's code";
     db.prepare(
@@ -293,10 +316,14 @@ export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { 
       amount: String(amount), currency: args.limit.currency, limit: `${args.limit.currency} ${args.limit.amount}`, policy_version: policy.version,
       // Where the limit comes from, in words: signed by the CFO (and which policy change), or a labelled system default.
       limit_source: sourceWords(inForce.source),
+      // The task mandate it stands on, and the task token it came with (src/policy/taskMandates.ts, taskTokens.ts).
+      ...(scope.mandate ? { mandate: scope.mandate } : {}), ...(scope.token ? { task_token: scope.token } : {}),
     }, now);
     return { ok: true };
   }).immediate();
 }
+/** Why code did not approve a payment alone; `code` names the governance rule when one refused (task mandate, token, anomaly). */
+export type WithinLimitRefusal = { ok: false; reason: string; code?: "mandate" | "token" | "anomaly" };
 
 /**
  * The lines of a batch the CFO just decided: each line's own proposal gets the same decision, recorded against its own

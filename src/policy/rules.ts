@@ -8,21 +8,30 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { stopped } from "./velocity.js";
 import { agentsOn } from "../config/agents.js";
-import { cardLimitsFrom } from "./cardRules.js";
+import { agentCardControls, cardLimitsFrom } from "./cardRules.js";
+import { cardControlOf, cardHoursProblem, cardHoursWords, currencyListProblem, mccListProblem } from "./cardHours.js";
 import { airiRailOn, airiRuleDefs } from "../airi/policy.js";
 import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
 import { FEE_BPS_CAP, platformFeeOn } from "../airwallex/platform.js";
+import { payFromRule, payFromRules } from "./entities.js";
+import { aloneGate } from "./aloneGate.js";
 
-export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | "approval.second_key_eur" | "approval.second_key_new_payee" | "approval.second_key_bank_changed" | "approval.second_key_new_country" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
-  | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps" | "ap.alone_eur";
+export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | "approval.second_key_eur" | "approval.second_key_new_payee" | "approval.second_key_bank_changed" | "approval.second_key_new_country" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | `card.${string}.hours` | `card.${string}.mccs` | `card.${string}.currencies` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
+  | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps" | "ap.alone_eur" | `pay_from.${string}`
+  | "approval.policy_sod_eur"
+  | "approval.anomaly_multiple" | "approval.anomaly_history" | "approval.anomaly_first_eur" | `task_mandate.${string}`;
 
 export interface Rule {
   key: PolicyKey;
   label: string;
   /** USDZ, a currency code, or "" for a choice. */
   unit: string;
-  /** money: a decimal amount; optional_money: an amount or "" (no extra limit); choice: one of `choices`. */
-  kind: "money" | "optional_money" | "choice";
+  /**
+   * money: a decimal amount; optional_money: an amount or "" (no extra limit); choice: one of `choices`; text: a value
+   * its own reader checks (a card's hours, merchant categories, currencies: src/policy/cardHours.ts); mandate: a task
+   * mandate in its canonical JSON (src/policy/taskMandateCore.ts), never listed with the editable rules.
+   */
+  kind: "money" | "optional_money" | "choice" | "text" | "mandate";
   min?: number;
   max?: number;
   choices?: string[];
@@ -57,6 +66,11 @@ const STATIC: Rule[] = [
   { key: "approval.second_key_new_payee", label: "High-risk payments need Face ID and a security key: a payee first paid less than 30 days ago", unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
   { key: "approval.second_key_bank_changed", label: "High-risk payments need Face ID and a security key: bank details changed since the last payment", unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
   { key: "approval.second_key_new_country", label: "High-risk payments need Face ID and a security key: a new country", unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
+  // The anomaly hold (src/policy/anomaly.ts, 26 Nov): a supplier payment far outside what its payee normally receives
+  // goes to the CFO, even within the limit to pay alone. The multiple is on by default; the first-payment amount is off.
+  { key: "approval.anomaly_multiple", label: "To the CFO: over this many times the payee's median paid invoice", unit: "", kind: "choice", choices: ["off", "2", "3", "4", "5", "10"], fallback: "3", agent: "treasury" },
+  { key: "approval.anomaly_history", label: "To the CFO: the median of the payee's last this many paid invoices", unit: "", kind: "choice", choices: ["3", "5", "10", "20"], fallback: "5", agent: "treasury" },
+  { key: "approval.anomaly_first_eur", label: "To the CFO: a first payment to a payee above this", unit: "EUR", kind: "optional_money", min: 1, max: MAX_FLOOR, fallback: "", agent: "treasury" },
   { key: "eur_floor", label: "EUR reserve floor", unit: "EUR", kind: "money", min: 0, max: MAX_FLOOR, fallback: "", agent: "treasury" },
   { key: "usd_floor", label: "USD reserve floor", unit: "USD", kind: "money", min: 0, max: MAX_FLOOR, fallback: "", agent: "treasury" },
   // Each agent's company card at Airwallex (K2). The card itself is synced to these, so Airwallex declines the rest.
@@ -65,8 +79,22 @@ const STATIC: Rule[] = [
     { key: `stop.${a}`, label: `${agentName(a)}: stopped (velocity limit)`, unit: "", kind: "choice", choices: ["off", "on"], fallback: "off", agent: a },
     { key: `card.${a}.per_tx`, label: `${agentName(a)}'s card: most per purchase`, unit: "EUR", kind: "money", min: 100, max: 100_000, fallback: fromCents(CARDS[a].perTxCents), agent: a },
     { key: `card.${a}.monthly`, label: `${agentName(a)}'s card: most per month`, unit: "EUR", kind: "money", min: 100, max: 500_000, fallback: fromCents(CARDS[a].monthlyCents), agent: a },
+    // When the card may pay, and at which merchants and in which currencies (src/policy/cardHours.ts). The hours are
+    // Purser's own control (Airwallex has no recurring time window); the merchant categories and currencies are
+    // Airwallex's, pushed to the card. Wider is a loosening: the CFO's passkey, checked again at the card.
+    { key: `card.${a}.hours`, label: `${agentName(a)}'s card: hours it may pay (enforced by Purser)`, unit: "", kind: "text", fallback: "", agent: a },
+    { key: `card.${a}.mccs`, label: `${agentName(a)}'s card: merchant categories it may pay`, unit: "", kind: "text", fallback: agentCardControls(a, new Date(0)).mccs.join(","), agent: a },
+    { key: `card.${a}.currencies`, label: `${agentName(a)}'s card: currencies it may pay`, unit: "", kind: "text", fallback: agentCardControls(a, new Date(0)).currencies.join(","), agent: a },
   ]),
 ];
+
+/** Why `to` cannot be the value of a text setting (a card's hours, merchant categories, currencies), or null. */
+function textProblem(r: Rule, to: string): string | null {
+  const c = cardControlOf(r.key);
+  if (!c) return `${r.label}: no rule reads this setting`;
+  const problem = c.control === "hours" ? cardHoursProblem(to) : c.control === "mccs" ? mccListProblem(to) : currencyListProblem(to);
+  return problem ? `${r.label}: ${problem}` : null;
+}
 
 /**
  * Supplier payouts in any currency (src/payouts/plan.ts): the currency a shortfall is bought with, each currency's
@@ -130,10 +158,33 @@ export const ALONE_RULE: Rule = {
   key: "ap.alone_eur", label: "An agent may pay a supplier invoice alone up to this", unit: "EUR", kind: "optional_money", min: 1, max: MAX_FLOOR, fallback: "", agent: "treasury",
 };
 
+/**
+ * Segregation of duties for the policy itself (src/policy/policySod.ts): loosening the CFO policy above this needs a
+ * second person's passkey; tightening stays one person. Off when empty. Shown once set, like the limit to pay alone, so
+ * a policy that never set it keeps its recorded hash.
+ */
+export const SOD_RULE: Rule = {
+  key: "approval.policy_sod_eur", label: "Loosening the CFO policy above this needs a second person (segregation of duties)", unit: "EUR", kind: "optional_money", min: 0, max: MAX_FLOOR, fallback: "",
+};
+
+/**
+ * A task mandate's rule (src/policy/taskMandates.ts), for any id, granted or not yet: changed through a policy change
+ * like the rest, but never listed with the editable rules (the phone edits amounts and switches, not mandates).
+ */
+export function taskMandateRule(key: string): Rule | null {
+  const id = /^task_mandate\.([a-z0-9][a-z0-9-]{1,39})$/.exec(key)?.[1];
+  return id ? { key: key as PolicyKey, label: `Task mandate ${id}`, unit: "", kind: "mandate", fallback: "" } : null;
+}
+
 /** The rule for a key: a payout rule for any payable currency (shown or not yet), else one from the policy. */
 export function ruleFor(db: DB, key: string): Rule | undefined {
   if (key === "platform.fee_bps") return PLATFORM_FEE_RULE;
+  const mandate = taskMandateRule(key);
+  if (mandate) return mandate;
   if (key === ALONE_RULE.key) return ALONE_RULE;
+  // Which legal entity an agent may pay from (src/policy/entities.ts): only for an entity the company holds.
+  if (key.startsWith("pay_from.")) return payFromRule(db, key) ?? undefined;
+  if (key === SOD_RULE.key) return SOD_RULE;
   return payoutRule(key) ?? rules(db).find((r) => r.key === key);
 }
 
@@ -162,7 +213,9 @@ export function rules(db: DB): Rule[] {
   const platform = platformFeeOn() || db.prepare("SELECT 1 FROM settings WHERE key = 'platform.fee_bps'").get() ? [PLATFORM_FEE_RULE] : [];
   // The limit to pay alone (ap.alone_eur): shown once it is set (a test company's default, or one the CFO signed).
   const alone = db.prepare("SELECT 1 FROM settings WHERE key = 'ap.alone_eur'").get() ? [ALONE_RULE] : [];
-  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform, ...alone];
+  // Which legal entity each agent may pay from: one rule per entity and agent, once the company holds entities.
+  const sod = db.prepare("SELECT 1 FROM settings WHERE key = ?").get(SOD_RULE.key) ? [SOD_RULE] : [];
+  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform, ...alone, ...payFromRules(db), ...sod];
 }
 
 /**
@@ -187,8 +240,11 @@ export function policyValue(db: DB, key: string): string {
 }
 
 function display(r: Rule, value: string): string {
+  if (r.key === "approval.anomaly_first_eur" && value === "") return "off";
   if (r.key === "approval.four_eyes_eur" && value === "") return "off (one person approves)";
+  if (r.key === SOD_RULE.key && value === "") return "off (one person approves a policy change)";
   if (r.key === "approval.second_key_eur" && value === "") return "off (Face ID alone)";
+  if (cardControlOf(r.key)?.control === "hours") return cardHoursWords(value);
   if (r.kind === "optional_money" && value === "") return "no extra limit (the mandate's cap applies)";
   if (r.kind === "money" && value === "") return "not set yet";
   return r.unit ? `${value} ${r.unit}` : value;
@@ -208,10 +264,16 @@ export function validateChange(db: DB, c: { key: string; from: string; to: strin
   const now = policyValue(db, c.key);
   if (c.from !== now) return `${r.label} is now ${now || "not set"}, not ${c.from || "not set"}`;
   if (c.to === now) return `no change to ${r.label}`;
+  // A task mandate (src/policy/taskMandates.ts): granted or widened here, never removed (it is revoked, at once).
+  if (r.kind === "mandate") {
+    const why = c.to === "" ? "revoke it instead (npm run mandates)" : aloneGate().validate(c.to);
+    return why && `${r.label}: ${why}`;
+  }
   if (r.kind === "choice") {
     if (r.choices!.includes(c.to)) return null;
     return r.choices!.join() === "allowed,blocked" ? `${r.label} must be allowed or blocked` : `${r.label} must be one of ${r.choices!.join(", ")}`;
   }
+  if (r.kind === "text") return textProblem(r, c.to);
   if (r.kind === "optional_money" && c.to === "") return null;
   if (!MONEY.test(c.to)) return `${r.label}: bad format ${JSON.stringify(c.to)}; write an amount like 0.03`;
   const cents = toCents(c.to);

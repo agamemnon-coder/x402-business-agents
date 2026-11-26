@@ -19,6 +19,7 @@ import type { DB } from "../db/open.js";
 import type { CardTransaction, IssuingSim } from "../airwallex/issuing.js";
 import { cardControls, cardOf, chargeInWindow, ingestCardTransaction, policyAllowsCard } from "./cards.js";
 import { cardLimits } from "./rules.js";
+import { cardHoursRefusal } from "./cardHoursGate.js";
 import { tokenRows, tokenTables, type AgentTokenRow } from "./agentTokenStore.js";
 
 export { revokeAgentTokens, tokenRows } from "./agentTokenStore.js";
@@ -43,7 +44,7 @@ export interface TokenMandate {
 
 export type TokenRefusal =
   | "TOKEN_UNKNOWN" | "TOKEN_REVOKED" | "TOKEN_EXPIRED" | "AGENT_NOT_ALLOWED" | "CARD_NOT_MANDATES"
-  | "CURRENCY_NOT_ALLOWED" | "MCC_NOT_ALLOWED" | "OVER_PER_PURCHASE" | "OVER_MONTH";
+  | "CURRENCY_NOT_ALLOWED" | "MCC_NOT_ALLOWED" | "OVER_PER_PURCHASE" | "OVER_MONTH" | "OUTSIDE_CARD_HOURS";
 
 export interface Purchase { amountCents: number; currency: string; merchant: string; mcc: string }
 export type TokenCheck =
@@ -63,7 +64,9 @@ export function mandateFor(db: DB, agent: string, now: Date): TokenMandate {
   if (!card) throw new Error(`the ${agent} agent has no card; a token needs one`);
   if (card.status === "CLOSED") throw new Error(`the ${agent} agent's card is closed`);
   const lim = cardLimits(db, agent);
-  const mccs = cardControls(agent, now, db).mccs;
+  // The policy's merchant categories, never more than the card at Airwallex has (a new one counts once the CFO signed it).
+  const onCard = card.allowed_mccs ? card.allowed_mccs.split(",") : null;
+  const mccs = cardControls(agent, now, db).mccs.filter((m) => !onCard || onCard.includes(m));
   const cardEnd = card.active_to && Number.isFinite(Date.parse(card.active_to)) ? Date.parse(card.active_to) : Infinity;
   const end = Math.min(now.getTime() + TOKEN_DAYS * 86_400_000, cardEnd);
   return {
@@ -108,6 +111,9 @@ export function checkToken(db: DB, token: string, p: Purchase, now = new Date())
   if (row.status === "revoked") return no("TOKEN_REVOKED", `revoked at ${row.revoked_at ?? "?"}: ${row.revoked_why ?? ""}`.trim());
   if (Date.parse(row.expires_at) <= now.getTime()) return no("TOKEN_EXPIRED", `expired at ${row.expires_at}`);
   if (!policyAllowsCard(db, row.agent)) return no("AGENT_NOT_ALLOWED", `the ${row.agent} agent may not pay now (revoked, paused, stopped or under the emergency stop)`);
+  // The card's hours (the CFO policy, enforced by Purser: Airwallex has no recurring time window).
+  const hours = cardHoursRefusal(db, row.agent, now);
+  if (hours) return no("OUTSIDE_CARD_HOURS", hours.replace(/^outside_card_hours: /, ""));
   const card = cardOf(db, row.agent);
   if (!card || card.card_id !== m.card_id || card.status === "CLOSED") return no("CARD_NOT_MANDATES", "the agent's card is no longer the one the token is bound to");
   if (p.currency !== m.currency) return no("CURRENCY_NOT_ALLOWED", `${p.currency}: the mandate pays ${m.currency} only`);

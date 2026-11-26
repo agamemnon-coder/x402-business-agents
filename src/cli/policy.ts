@@ -1,5 +1,9 @@
 // npm run policy                                   the CFO policy now
-// npm run policy -- set <key> <value> [--reason …]  propose a change (value "none" removes an agent limit)
+// npm run policy -- set <key> <value> [--reason …] [--by <person>]
+//                                                   propose a change (value "none" removes an agent limit); --by names
+//                                                   the person proposing it, who then cannot approve it
+// With approval.policy_sod_eur set, a change that loosens the policy above it needs two people's passkeys
+// (segregation of duties, src/policy/policySod.ts); tightening needs one.
 // npm run policy -- from-text "<your words>"        Opus drafts rules from plain words; code checks them; one proposal
 // A change is a policy_change proposal: approve it on the phone with the passkey (npm run relay) or on the laptop
 // page; it takes effect when it runs, and every change is in the audit log.
@@ -16,10 +20,11 @@ if (args[0] === "set") {
   const [, key, raw] = args;
   const at = args.indexOf("--reason");
   if (!key || raw === undefined) {
-    console.error("usage: npm run policy -- set <key> <value> [--reason text]   (keys: npm run policy)");
+    console.error("usage: npm run policy -- set <key> <value> [--reason text] [--by <person>]   (keys: npm run policy)");
     process.exit(2);
   }
-  const p = proposePolicyChange(db, { changes: [{ key, to: raw === "none" ? "" : raw }], reason: at >= 0 ? (args[at + 1] ?? "") : "CFO policy change" }, "human");
+  const by = args.indexOf("--by");
+  const p = proposePolicyChange(db, { changes: [{ key, to: raw === "none" ? "" : raw }], reason: at >= 0 ? (args[at + 1] ?? "") : "CFO policy change", ...(by >= 0 ? { proposedBy: args[by + 1] ?? "" } : {}) }, "human");
   console.log(`${p.proposal_id} policy change, hash ${p.terms_sha256.slice(0, 8)}, expires ${p.expires_at}; approve on the phone (/approve/${p.proposal_id}) or the laptop page`);
 } else if (args[0] === "from-text") {
   const r = await draftPolicyFromText(db, new Tools(db), args.slice(1).join(" "));

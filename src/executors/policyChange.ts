@@ -22,7 +22,11 @@ export interface PolicyChangeTerms extends Terms {
   kind: "policy_change";
   changes: PolicyChange[];
   reason: string;
+  // proposed_by (a string, only when a person is named): who proposed it, never its approver (src/policy/policySod.ts).
 }
+
+/** A person's name as a passkey is enrolled under (src/passkey/ledger.ts openEnrolment). */
+const PERSON = /^[a-z][a-z0-9-]{1,30}$/;
 
 /** Every change must be valid against the current policy, and no key may appear twice. */
 export function checkChanges(db: DB, changes: PolicyChange[]): void {
@@ -38,13 +42,18 @@ export function checkChanges(db: DB, changes: PolicyChange[]): void {
   }
 }
 
-export function proposePolicyChange(db: DB, req: { changes: { key: string; to: string }[]; reason: string; ttlMs?: number }, createdBy: Actor, now = new Date()): ProposalRow {
+/**
+ * proposedBy: the person proposing it (a name as enrolled with a passkey), signed into the terms as proposed_by, so that
+ * person can never approve it (segregation of duties, src/policy/policySod.ts). Left out, the terms are as before.
+ */
+export function proposePolicyChange(db: DB, req: { changes: { key: string; to: string }[]; reason: string; ttlMs?: number; proposedBy?: string }, createdBy: Actor, now = new Date()): ProposalRow {
   const changes = req.changes.map((c) => ({ key: c.key, label: ruleFor(db, c.key)?.label ?? c.key, from: policyValue(db, c.key), to: c.to }));
   checkChanges(db, changes);
+  if (req.proposedBy !== undefined && !PERSON.test(req.proposedBy)) throw new Error(`not a person's name: ${JSON.stringify(req.proposedBy)} (lower-case letters, digits and dashes)`);
   const terms: PolicyChangeTerms = {
     schema: TERMS_SCHEMA, kind: "policy_change", proposal_id: nextProposalId(db),
     expires_at: new Date(now.getTime() + (req.ttlMs ?? PROPOSAL_TTL_MS)).toISOString().replace(/\.\d{3}Z$/, "Z"),
-    changes, reason: req.reason,
+    changes, reason: req.reason, ...(req.proposedBy !== undefined ? { proposed_by: req.proposedBy } : {}),
   };
   return createProposal(db, { terms, createdBy }, now);
 }

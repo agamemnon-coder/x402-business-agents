@@ -22,7 +22,7 @@ export interface PayoutSource {
   payoutSimulate(a: { company: string; terms_sha256: string }): Promise<SimulateIn>;
 }
 
-export const SIMULATED_REASONS = ["switched_off", "no_binding", "no_key", "day_cap", "company_cap", "over_max", "not_eur", "balance_low", "unavailable", "refused", "ambiguous", "timeout", "bad_answer", "bad_request"] as const;
+export const SIMULATED_REASONS = ["switched_off", "no_binding", "no_key", "day_cap", "company_cap", "over_max", "not_eur", "balance_low", "unavailable", "refused", "ambiguous", "timeout", "bad_answer", "bad_request", "emergency_stop"] as const;
 export type SimulatedReason = (typeof SIMULATED_REASONS)[number];
 
 /** What the pay and paid steps show, and the records keep. */
@@ -43,12 +43,15 @@ function asked(company: string, sha: string, terms: Record<string, unknown>): Pa
 /**
  * The payout for one signed payment, once: a note kept by proposal id (`keep`) is the answer for the same proposal
  * again; otherwise Airwallex is asked (or why not), the note kept and the step written to the audit log.
+ * `stopped`: the company's emergency stop (src/policy/emergencyStop.ts), asked last, immediately before Airwallex is
+ * asked: while it is on, nothing is sent to the sandbox (reason emergency_stop), whatever the simulated bank did first.
  */
 export async function sandboxPayout(o: {
   company: string; proposalId: string; termsSha256: string; terms: Record<string, unknown>;
   source: PayoutSource | null; allowed: () => Promise<boolean>; db: DB;
   keep: { get(proposalId: string): string | null; set(proposalId: string, note: string): void };
   waitMs?: number;
+  stopped?: () => boolean;
 }): Promise<PayoutNote> {
   const kept = o.keep.get(o.proposalId);
   if (kept) return JSON.parse(kept) as PayoutNote;
@@ -58,6 +61,7 @@ export async function sandboxPayout(o: {
   if (!a) note = simulated("bad_request");
   else if (!o.source) note = simulated("no_binding");
   else if (!(await o.allowed().catch(() => false))) note = simulated("switched_off");
+  else if (o.stopped?.()) note = simulated("emergency_stop");
   else {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const late = new Promise<"timeout">((r) => { timer = setTimeout(() => r("timeout"), o.waitMs ?? PAYOUT_WAIT_MS); });

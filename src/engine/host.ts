@@ -41,6 +41,8 @@ import { finishSecurityKey, startSecurityKey } from "../passkey/securityKey.js";
 import { ensureSecondKeyTables, SECOND_KEY_KEYS, secondKeyMessage, secondKeyReasons } from "../policy/secondKey.js";
 import { proposePolicyChange } from "../executors/policyChange.js";
 import { policyValue } from "../policy/rules.js";
+import { STOP_KEY, stopState, type StopState } from "../policy/emergencyStop.js";
+import { isBlocked } from "../policy/blocked.js";
 import { challengeFor, verifyApprovalSignature } from "../passkey/webauthn.js";
 import { phonePhrases, t } from "../ui/i18n.js";
 import { syncVault, type YearIndex } from "../vault/build.js";
@@ -373,6 +375,8 @@ export class EngineHost {
      */
     spent_micros: number;
     cap_micros: number | null;
+    /** The CFO's emergency stop (src/policy/emergencyStop.ts): on, nothing is paid; since when, by which approved proposal. */
+    emergency_stop: StopState;
   }> {
     const { db, rails } = this.deps;
     const pk = activePasskey(db);
@@ -392,6 +396,7 @@ export class EngineHost {
       balances: Object.fromEntries(Object.entries(balances).map(([currency, b]) => [currency, fromCents(b?.availableCents ?? 0)])),
       chains: { audit: verifyAuditChain(db).ok, ledger: verifyLedger(db).ok },
       reader: claude.on ? "claude" : "parser", agents: claude.on && this.deps.claude?.agents ? "live" : "code", spent_micros: claude.spent_micros ?? claudeCost(db, 0), cap_micros: claude.cap_micros,
+      emergency_stop: stopState(db),
     };
   }
 
@@ -674,6 +679,23 @@ export class EngineHost {
   }
 
   /**
+   * The CFO's emergency stop, pulled (on) or lifted (off): a policy change of the stop alone (src/policy/emergencyStop.ts),
+   * which changes nothing until the CFO approves it with the passkey (approve), as the runner's stop does. While it is
+   * on, proposals are still filed but nothing is sent: every payment executor asks it when it begins and again
+   * immediately before each create, and so does the rail. Both directions are audited as policy.changed.
+   */
+  emergencyStop(on: boolean): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
+    return this.act(async () => {
+      const { db } = this.deps;
+      if (stopState(db).on === on) return { ok: false as const, reason: on ? "the emergency stop is already on" : "the emergency stop is not on" };
+      try {
+        const p = proposePolicyChange(db, { changes: [{ key: STOP_KEY, to: on ? "on" : "off" }], reason: on ? "The CFO pulls the emergency stop: nothing is paid until it is lifted" : "The CFO lifts the emergency stop" }, "human", this.now());
+        return { ok: true as const, proposal: this.proposal(p.proposal_id)! };
+      } catch (e) { return { ok: false as const, reason: message(e) }; }
+    });
+  }
+
+  /**
    * Opens the registration of a security key (a second key for high-risk payments, src/passkey/securityKey.ts) for the
    * person whose passkey is labelled `label`; `relying` as for passkeyStart.
    */
@@ -862,14 +884,17 @@ export class EngineHost {
    * the executor's own path for that, the one a runner takes when it runs a FAILED proposal again: it starts again
    * from its last finished step, and a payout written before the failure is looked up at the bank by its request id
    * and adopted, never sent blind a second time (src/executors/invoicePayment.ts, src/policy/saga.ts). Only a FAILED
-   * invoice payment is run; anything else (paid, never approved, refused, not there) answers nothing_to_retry and
+   * invoice payment, or an approved one the executor refused before it began (blocked), is run; anything else (paid, never approved, refused, not there) answers nothing_to_retry and
    * nothing runs. Then, as after an approval, the payment is followed, booked, archived and fed.
    */
   retry(proposalId: string): Promise<{ status: "retried" | "nothing_to_retry"; message: string; settled: Settled | null }> {
     return this.act(async () => {
       const p = this.deps.db.prepare("SELECT status, kind FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string; kind: string } | undefined;
       if (!p) return { status: "nothing_to_retry", message: `no proposal ${proposalId}`, settled: null };
-      if (p.status !== "FAILED" || p.kind !== "invoice_payment") return { status: "nothing_to_retry", message: `${proposalId} is ${p.status}: there is nothing to try again; nothing was paid`, settled: null };
+      // 26 Nov: also an approval the executor refused before it began (src/policy/blocked.ts), such as one signed while the
+      // CFO's emergency stop was on: once the cause is gone (the stop lifted), it runs with every check asked again.
+      const blocked = p.status === "APPROVED" && isBlocked(this.deps.db, proposalId, this.now());
+      if ((p.status !== "FAILED" && !blocked) || p.kind !== "invoice_payment") return { status: "nothing_to_retry", message: `${proposalId} is ${p.status}: there is nothing to try again; nothing was paid`, settled: null };
       const settled = await this.pay(proposalId);
       const now = (this.deps.db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string }).status;
       return { status: "retried", message: `${proposalId} was run again: ${now}`, settled };

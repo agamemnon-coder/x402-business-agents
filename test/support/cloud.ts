@@ -2,7 +2,7 @@
 // no Cloudflare). The platform admin token is a test value; its hash is what the cloud is configured with.
 import type { PayoutSource } from "../../cloud/src/engine/livePayout.js";
 import { createHash } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
@@ -55,6 +55,8 @@ export function testCloud(opts: { rate?: CloudEnv["rate"]; engine?: boolean; try
   const clock = { now: new Date("2026-11-08T12:00:00Z") };
   const env: CloudEnv = {
     sql, blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "s".repeat(48),
+    // The Worker's static assets (cloud/public after npm run cloud:pdfjs): here the console's font from the repository.
+    asset: async (path: string) => (path === "/assets/inter.woff2" ? new Response(readFileSync("src/ui/inter.woff2")) : new Response("not found", { status: 404 })),
     adminTokenSha256: createHash("sha256").update(ADMIN_TOKEN).digest("hex"), rpId: RP, origin: ORIGIN, now: () => clock.now,
     rate: opts.rate ?? { perMinute: 100_000, signInPerMinute: 100_000 },
     ...(opts.tryIt ? { tryIt: opts.tryIt } : {}),

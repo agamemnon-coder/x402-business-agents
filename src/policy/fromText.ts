@@ -71,7 +71,10 @@ export async function draftPolicyFromText(db: DB, tools: Tools, text: string, no
     const rule = ruleFor(db, c.key);
     if (!rule) { refuse(`unknown policy setting ${c.key}`); continue; }
     if (c.quote.trim() === "" || !said.includes(norm(c.quote))) { refuse(`the quote is not in your words: "${c.quote}"`); continue; }
-    if (rule.kind !== "choice" && c.to !== "") {
+    // A text setting (a card's hours, merchant categories, currencies): the value must be written in the CFO's quote.
+    if (rule.kind === "text") {
+      if (c.to !== "" && !norm(c.quote).includes(norm(c.to))) { refuse(`"${c.to}" is not written in "${c.quote}"`); continue; }
+    } else if (rule.kind !== "choice" && c.to !== "") {
       let cents: number;
       try {
         cents = toCents(c.to);

@@ -26,6 +26,8 @@ import { cloudGuard } from "./awxGuard.js";
 import { wireAirwallex } from "./awxWire.js";
 import { withLiveFx, type FxQuoteNote, type LiveFxSource } from "./liveFx.js";
 import { sandboxPayout, simulatePayout, withAlonePayout, type PayoutSource } from "./livePayout.js";
+import { frozen } from "../../../src/policy/rules.js";
+import { railStop } from "../../../src/policy/emergencyStop.js";
 
 export interface NodeEngineEnv {
   sql: Sql;
@@ -76,7 +78,8 @@ async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
   const rail = fx ? fx.rail : bank;
   const store = memoryActStore();
   const guard = cloudGuard({ sql: env.sql, tenantId, gateway: !!env.awxGateway || !!env.awxStandIn, cacheMs: 0 });
-  const awx = wireAirwallex({ bank: rail, store, guard, port: env.awxGateway ?? null, ...(env.awxStandIn ? { standIn: env.awxStandIn } : {}) });
+  // The emergency stop is asked at the rail too, immediately before every create at either bank (src/policy/emergencyStop.ts).
+  const awx = wireAirwallex({ bank: rail, store, guard, port: env.awxGateway ?? null, ...(env.awxStandIn ? { standIn: env.awxStandIn } : {}), stop: railStop(db) });
   const host = new EngineHost({
     db, reader: parserOnly, rails: awx.rails, payeeVerifier: awx.verifier, afterMoney: () => { kept.text = bankToText(bank); },
     rp: { rpId: env.rpId, origin: env.origin }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
@@ -115,7 +118,7 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
         const out = await (await acts()).propose(invoiceId);
         const { host: h, db, payoutNotes } = await engines.get(tenantId)!;
         return withAlonePayout(out, (id) => h.terms(id), (proposalId, termsSha256, terms) => sandboxPayout({
-          company: tenantId, proposalId, termsSha256, terms, source: env.livePayout?.source ?? null, allowed: env.livePayout?.allowed ?? (async () => false), db,
+          company: tenantId, proposalId, termsSha256, terms, source: env.livePayout?.source ?? null, allowed: env.livePayout?.allowed ?? (async () => false), db, stopped: () => frozen(db),
           keep: { get: (pid) => payoutNotes.get(pid) ?? null, set: (pid, n) => { payoutNotes.set(pid, n); } },
         }));
       },
@@ -125,6 +128,7 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       securityKeyStart: async (a) => (await host()).securityKeyStart({ label: a.label, ...(a.rp && rpAllowed(a.rp, env) ? { rp: { rpId: a.rp.rpId, origin: a.rp.origin } } : {}) }),
       securityKeyFinish: async (a) => (await host()).securityKeyFinish(a),
       proposeSecondKey: async (changes) => (await host()).proposeSecondKey(changes),
+      emergencyStop: async (stop) => (await host()).emergencyStop(stop),
       approve: async (a) => (await acts()).approve(a),
       retry: async (proposalId) => (await acts()).retry(proposalId),
       sync: async () => (await host()).sync(),
@@ -154,7 +158,7 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
         const t = h.terms(id);
         if (!t) return out;
         const note = await sandboxPayout({
-          company: tenantId, proposalId: id, termsSha256: t.terms_sha256, terms: t.terms as unknown as Record<string, unknown>, source: env.livePayout.source, allowed: env.livePayout.allowed, db,
+          company: tenantId, proposalId: id, termsSha256: t.terms_sha256, terms: t.terms as unknown as Record<string, unknown>, source: env.livePayout.source, allowed: env.livePayout.allowed, db, stopped: () => frozen(db),
           keep: { get: (pid) => payoutNotes.get(pid) ?? null, set: (pid, n) => { payoutNotes.set(pid, n); } },
         });
         return { ...out, airwallex_payout: note };

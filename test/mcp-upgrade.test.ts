@@ -112,7 +112,7 @@ describe("tools: titles, icons, annotations, output schemas", () => {
     const r = await modern("tools/list");
     expect(r.json.result).toMatchObject({ resultType: "complete", cacheScope: "private" });
     const tools = r.json.result.tools as { name: string; title: string; icons: unknown[]; outputSchema: { type: string }; annotations: Record<string, unknown> }[];
-    expect(tools.length).toBe(14);
+    expect(tools.length).toBe(15);
     for (const t of tools) {
       expect({ name: t.name, title: !!t.title, icons: t.icons.length, out: t.outputSchema.type, ann: t.annotations }).toEqual({ name: t.name, title: true, icons: 2, out: "object", ann: { title: t.title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } });
     }

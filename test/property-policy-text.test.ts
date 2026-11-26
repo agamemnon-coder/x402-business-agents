@@ -137,7 +137,11 @@ function looser(key: string, from: string, to: string): boolean {
   if (key === "freeze" || key.startsWith("stop.")) return from === "on" && to === "off";
   if (key.startsWith("counterparty:")) return from === "blocked" && to === "allowed";
   // A threshold whose empty value means "off" (four eyes; the second key's amount): switching it off or raising it loosens.
-  if (key.startsWith("cap.") || key.startsWith("card.") || key === "approval.four_eyes_eur" || key === "approval.second_key_eur") return c(from) !== null && (c(to) === null || c(to)! > c(from)!);
+  // The same for segregation of duties and the anomaly hold's first-payment amount (26 Nov): on, or lower, tightens.
+  if (key.startsWith("cap.") || key.startsWith("card.") || key === "approval.four_eyes_eur" || key === "approval.second_key_eur" || key === "approval.policy_sod_eur" || key === "approval.anomaly_first_eur") return c(from) !== null && (c(to) === null || c(to)! > c(from)!);
+  // The anomaly hold's multiple: "off" or a higher multiple loosens; any other history length is the CFO's to sign.
+  if (key === "approval.anomaly_multiple") return /^\d+$/.test(from) && (!/^\d+$/.test(to) || Number(to) > Number(from));
+  if (key === "approval.anomaly_history") return from !== to;
   // The second key's other triggers: switching one off loosens.
   if (key.startsWith("approval.second_key_")) return from === "on" && to !== "on";
   if (key.startsWith("approval.")) return c(to)! > c(from)!;

@@ -63,6 +63,9 @@ function migrate(db: DB): void {
     db.exec("ALTER TABLE cards ADD COLUMN allowed_currencies TEXT NOT NULL DEFAULT ''");
     db.exec("ALTER TABLE cards ADD COLUMN active_to TEXT");
   }
+  // Card hours (Purser-enforced, src/policy/cardHours.ts), and the policy version each card transaction was allowed under.
+  if (!has("cards", "hours")) db.exec("ALTER TABLE cards ADD COLUMN hours TEXT");
+  if (!has("card_transactions", "policy_version")) db.exec("ALTER TABLE card_transactions ADD COLUMN policy_version INTEGER");
   // Task cards are reserved (PENDING) before Airwallex is asked: widen the status check of an older table.
   const tc = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'task_cards'").get() as { sql: string } | undefined;
   if (tc && !tc.sql.includes("'PENDING'")) {

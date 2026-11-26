@@ -5,6 +5,11 @@ import Database from "better-sqlite3";
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import type { Blobs, Sql } from "./store.js";
+import { setLocalAssets } from "./localAssets.js";
+
+// The static assets a deploy copies into cloud/public (cloud/scripts/pdfjs.ts), read from the repository on Node.
+const LOCAL_ASSETS: Record<string, URL> = { "/assets/inter.woff2": new URL("../../src/ui/inter.woff2", import.meta.url) };
+setLocalAssets((path) => { const at = LOCAL_ASSETS[path]; return at && existsSync(at) ? readFileSync(at) : null; });
 
 export function sqliteSql(path = ":memory:"): Sql & { close(): void } {
   const db = new Database(path);

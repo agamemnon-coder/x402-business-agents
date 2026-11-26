@@ -18,13 +18,15 @@ const noGateway: GatewayPort = { call: async () => ({ ok: false, status: 503, co
 /**
  * `standIn`: local checks only (test/browser/awx-act.check.ts): an in-memory stand-in in Airwallex's place, so the
  * console can be walked on this machine with no network. Never set by the Worker.
+ * `stop`: asked immediately before every create that moves money, at either bank (the company's emergency stop,
+ * src/policy/emergencyStop.ts railStop); a reason stops it, nothing sent.
  */
-export function wireAirwallex(o: { bank: FakeAirwallex; store: ActStore; guard: ActGuard; port: GatewayPort | null; now?: () => Date; standIn?: { rail: Rails3; payees: PayeeNameVerifier } }): { routed: RoutedRail; rails: Rails; verifier: () => PayeeNameVerifier } {
+export function wireAirwallex(o: { bank: FakeAirwallex; store: ActStore; guard: ActGuard; port: GatewayPort | null; now?: () => Date; standIn?: { rail: Rails3; payees: PayeeNameVerifier }; stop?: (what: "conversion" | "transfer" | "batch", ref: string) => string | null }): { routed: RoutedRail; rails: Rails; verifier: () => PayeeNameVerifier } {
   const now = o.now ?? (() => new Date());
   const api = gatewayApi(o.port ?? noGateway) as unknown as Airwallex;
   const rest = o.standIn?.rail ?? new AirwallexRest(api);
   const routed = new RoutedRail(rest, o.bank as unknown as ConstructorParameters<typeof RoutedRail>[1], o.store, o.guard, new AirwallexBatchRest(api),
-    (what, why) => o.store.note({ at: now().toISOString(), ref: "", what, bank: "simulated", label: `${what} on the simulated bank: ${why}` }));
+    (what, why) => o.store.note({ at: now().toISOString(), ref: "", what, bank: "simulated", label: `${what} on the simulated bank: ${why}` }), o.stop);
   const rails = { rail: routed, sim: routed, get batches() { return routed.batches; } } as Rails;
   const awxVerifier = o.standIn?.payees ?? (o.port ? new AirwallexPayeeNameRest(api) : null);
   const verifier = () => new ActVerifier(awxVerifier, o.guard, (why) => o.store.note({ at: now().toISOString(), ref: "", what: "bank check", bank: "simulated", label: `the payee's bank was not asked through Airwallex (${why}); the stand-in answered, labelled` }));

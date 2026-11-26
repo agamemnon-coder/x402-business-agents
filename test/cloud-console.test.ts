@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 // Purser Cloud's console (cloud/src/console.ts): one page under a strict, per-response nonce policy, its script parses
 // and only ever writes values as text, the font it serves is the repo's, and the API it talks to refuses a state change
 // from another site. The routes the console added (/v1/company, the richer /v1/me) are owner-only where they change
@@ -7,7 +8,7 @@ import { Script } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consoleCsp, consolePage } from "../cloud/src/console.js";
 import { t0CloseLine } from "../cloud/src/t0Close.js";
-import { INTER_WOFF2_B64 } from "../cloud/src/font.gen.js";
+import { INTER_WOFF2_SHA256 } from "../cloud/src/font.gen.js";
 import { EVENT_LINE_JS } from "../src/ui/engineEvents.js";
 import { MESSAGES } from "../src/ui/i18n.js";
 import { svg } from "../src/ui/payablesKit.js";
@@ -77,7 +78,7 @@ describe("the console page", () => {
     expect(f.status).toBe(200);
     expect(f.headers.get("content-type")).toBe("font/woff2");
     expect(Buffer.from(await f.arrayBuffer()).equals(readFileSync("src/ui/inter.woff2"))).toBe(true);
-    expect(INTER_WOFF2_B64).toBe(readFileSync("src/ui/inter.woff2").toString("base64"));
+    expect(INTER_WOFF2_SHA256).toBe(createHash("sha256").update(readFileSync("src/ui/inter.woff2")).digest("hex"));
     expect((await c.fetch(`${ORIGIN}/admin`)).status).toBe(404);
     expect((await c.fetch(`${ORIGIN}/.env`)).status).toBe(404);
     expect((await c.fetch(`${ORIGIN}/`, { method: "POST" })).status).toBe(405);

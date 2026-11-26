@@ -41,6 +41,40 @@ export const DEFAULT_CAPABILITIES: Record<string, Capabilities> = {
   outside: { tools: OUTSIDE_TOOLS, rails: ["card"], currencies: ["EUR"], payees: ["merchants"] },
 };
 
+/**
+ * Least privilege, visible (25 November): every tool each agent principal may call as a model, by name. Its
+ * money actions are its capabilities' `tools` above (stored per principal, revocable). An agent's tool that is on neither
+ * list is refused in code before it runs (toolRefusal, from src/agents/loop.ts for every tool call), and the refusal is
+ * audited (principal.tool_refused). docs/security/agent-permissions.md says what each one does and its kind, row by
+ * row, held to these lists by test/agent-permissions.test.ts.
+ */
+const COMMON_TOOLS = " read_decline propose_raise no_raise send_message finish";
+/** Each agent principal's tools as a model, space-separated (what each does, and its kind: the docs table). */
+export const AGENT_TOOLS: Record<"sourcing" | "support" | "treasury", string> = {
+  sourcing: "check_offer market supplier_terms try_purchase pay buy_software buy_report set_buy_policy ask_card_raise notify_treasury" + COMMON_TOOLS,
+  support: "verify_order check_data refund settle_dispute escalate_to_cfo" + COMMON_TOOLS,
+  treasury: "read_position cash_position position read_quote open_invoices invoice_lines chart_of_accounts vat_codes cost_centres coding_history vat_regime submit_advice propose_schedule code_invoice plan_invoice submit_plan design_rebalance sweep_earnings" + COMMON_TOOLS,
+};
+
+/** The audit event of a tool call refused because the agent may not call that tool. */
+export const TOOL_REFUSED = "principal.tool_refused";
+
+/**
+ * Null when the agent may call this tool; otherwise why not, and the refusal is audited. An agent principal with a tool
+ * list (AGENT_TOOLS) may call those tools and its capabilities' money actions, nothing else. Other callers (the payables
+ * agents, the controller, the books agent, the evals) hold no money and keep the tools their code hands them.
+ */
+export function toolRefusal(db: DB, id: string, tool: string, context: { via: string; task?: string }, now = new Date()): string | null {
+  const grants = AGENT_TOOLS[id as keyof typeof AGENT_TOOLS]?.split(" ");
+  if (!grants || grants.includes(tool)) return null;
+  const p = principal(db, id, now, false);
+  const caps = (p ? (JSON.parse(p.capabilities_json) as Capabilities) : DEFAULT_CAPABILITIES[id])?.tools ?? [];
+  if (caps.includes(tool)) return null;
+  const why = `tool_denied: ${who(id)} may not call ${tool}`;
+  audit(db, "system", TOOL_REFUSED, id, { tool: tool.slice(0, 80), via: context.via, task: (context.task ?? "").slice(0, 120) }, now);
+  return why;
+}
+
 interface Row { principal_id: string; kind: string; capabilities_json: string; status: string; expires_at: string | null; key_sha256: string | null; key_version: number; reason: string | null }
 
 const hasTable = (db: DB) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'principals'").get();

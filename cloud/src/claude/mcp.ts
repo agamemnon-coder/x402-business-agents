@@ -31,7 +31,7 @@ export const MODERN_VERSIONS = ["2026-07-28"] as const;
 export const LEGACY_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const;
 /** Every protocol version this server speaks, newest first. */
 export const PROTOCOL_VERSIONS = [...MODERN_VERSIONS, ...LEGACY_VERSIONS] as const;
-export const SERVER_VERSION = "1.4.0";
+export const SERVER_VERSION = "1.5.0";
 
 export interface McpCtx {
   /** The cloud's own address: the server's icons are served from it. */
@@ -110,6 +110,9 @@ const centsMap = (m: Record<string, number> | undefined) => Object.entries(m ?? 
 const demoTag = (c: McpCtx) => (c.demo && !/demo/i.test(c.company) ? " (demo data)" : "");
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 interface Inv { id: string; vendor: string; invoice_no: string; currency: string; total: string; tax?: string; subtotal?: string; due_date: string; issue_date?: string; status: string; status_words?: string; findings?: { level?: string; message: string }[]; paid_at?: string | null; gl_account?: string; proposal_id?: string | null; read_by?: string }
+/** route_money_out: the kinds of money movement an agent may be asked for (Airwallex's own words: transfers, payouts, FX). */
+export const MONEY_KINDS = ["transfer", "payout", "fx_conversion"] as const;
+const AMOUNT_RE = /^\d{1,12}(\.\d{1,2})?$/;
 const invLine = (i: Inv) => `${i.id} · ${i.vendor} · ${i.invoice_no} · ${eur(i.total, i.currency)} · due ${dayWords(i.due_date)} · ${i.status_words ?? i.status}`;
 interface Tx { id: string; at: string; direction: string; rail_label?: string; rail: string; amount: string; currency: string; counterparty: string; status_words?: string; status: string; approval?: { authority?: string } }
 const txLine = (t: Tx) => `${dayWords(t.at)} · ${t.direction === "in" ? "in" : t.direction === "out" ? "out" : t.direction} ${eur(t.amount, t.currency)} · ${t.counterparty} · ${t.rail_label ?? t.rail} · ${t.status_words ?? t.status}`;
@@ -419,7 +422,82 @@ export const READ_TOOLS: Tool[] = [
       return answer(e.sentence + (c.demo ? " Demo data, no real money." : ""), e.data, e.lines, [RES.payment(t.id, `${t.counterparty} ${eur(t.amount, t.currency)}`), ...(t.invoice?.ap_id ? [RES.invoice(t.invoice.ap_id)] : [])]);
     },
   },
+  {
+    name: "route_money_out",
+    title: "Route a transfer or FX conversion",
+    description: "Before any transfer, payout or currency conversion (also when another Airwallex tool, such as AgentOS, said it does not move money): says whether Purser can file it, against which checked invoice, and the next tool. Purser pays only against an invoice it read; the CFO's Face ID approves the exact terms. Read only.",
+    inputSchema: obj({
+      kind: { type: "string", enum: [...MONEY_KINDS], description: "What was asked: a transfer or payout to a supplier, or an fx_conversion between currencies (default transfer)", examples: ["transfer"] },
+      invoice_id: idProp("The invoice's id, if known, like AP-0004", ["AP-0004"]),
+      payee: { type: "string", minLength: 2, maxLength: 120, description: "The supplier or beneficiary's name, as the user or Airwallex shows it; matched to the supplier on Purser's invoices", examples: ["Bergtex GmbH"] },
+      amount: { type: "string", pattern: AMOUNT_RE.source, description: "The amount to pay, as a decimal like 2380.00 (matched to an invoice's total)", examples: ["2380.00"] },
+      currency: { type: "string", pattern: "^[A-Z]{3}$", description: "The currency the payee is paid in, three capital letters", examples: ["EUR"] },
+    }),
+    outputSchema: shape({ kind: S, route: S, next_tool: NS, can_propose: { type: "boolean" }, matches: arr(shape({ invoice_id: S, vendor: S, invoice_no: S, currency: S, total: S, due_date: S, status: S, route: S, next_tool: NS })), approval: S, never: S }),
+    args: z.object({ kind: z.enum(MONEY_KINDS).optional(), invoice_id: ID.optional(), payee: z.string().min(2).max(120).optional(), amount: z.string().regex(AMOUNT_RE, "an amount like 2380.00").optional(), currency: z.string().regex(/^[A-Z]{3}$/, "a currency like EUR").optional() }).strict(),
+    readOnly: true,
+    run: async (c, a) => routeMoneyOut(c, a as MoneyAsk),
+  },
 ];
+
+interface MoneyAsk { kind?: (typeof MONEY_KINDS)[number]; invoice_id?: string; payee?: string; amount?: string; currency?: string }
+/** Where one invoice stands for a payment: filed for the CFO, waiting, a new supplier, held, paid or rejected. */
+export type MoneyRoute = "propose" | "waiting_cfo" | "new_supplier" | "held" | "paid" | "rejected";
+const ROUTE_OF: Record<string, MoneyRoute> = { ready: "propose", waiting_cfo: "waiting_cfo", needs_vendor: "new_supplier", needs_review: "held", blocked: "held", paid: "paid", rejected: "rejected" };
+/** What Purser holds a payment to, in one sentence (src/ap/pay.ts, src/policy): the same for every route that pays. */
+export const MONEY_OUT_APPROVAL = "Purser plans the payment under the CFO's policy (the payee and account on file, the reserve floors, a quote for only the currency it is short of within the FX markup limit, no second payment of one invoice), then the CFO approves its exact terms (payee, account, amount, currency) with a passkey (Face ID) in Purser Cloud; only within a limit to pay alone that the CFO signed into the policy may Purser's code approve it instead. Then Purser pays it and books it: explain_payment and payment_audit_trail show the proof.";
+export const MONEY_OUT_NEVER = "No MCP tool moves money, converts currency or approves, for any token: Purser files a proposal, and the CFO signs its exact terms.";
+/** "Bergtex GmbH" and "BERGTEX gmbh." match; a name is compared by its letters and digits only. */
+const nameKey = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "");
+const centsOf = (s: string) => Math.round(Number(s) * 100);
+
+async function routeMoneyOut(c: McpCtx, a: MoneyAsk): Promise<ToolResult> {
+  const kind = a.kind ?? "transfer";
+  const canPropose = c.caller.purpose === "claude-propose" && !c.demo && c.engine !== null;
+  const whyNot = c.demo ? "the demo company is read only, so nothing can be filed in it"
+    : c.caller.purpose !== "claude-propose" ? "this token reads only: an owner can make a token that may propose in Purser Cloud (Settings, Connect your AI)"
+    : "this company's payments are filed on its own runner: ask your user to file it in Purser";
+  const fxOnly = kind === "fx_conversion";
+  // A conversion's amount is not an invoice's total: for FX only the invoice, the payee and the currency are matched.
+  const amount = fxOnly ? undefined : a.amount;
+  const filtered = a.invoice_id !== undefined || a.payee !== undefined || amount !== undefined;
+  const rows = await c.db.select<{ id: string; body_json: string; status: string }>("invoices", a.invoice_id ? { id: a.invoice_id } : filtered ? {} : { status: "ready" }, { order: ["due_date", "id"], limit: 1000 });
+  const payee = a.payee ? nameKey(a.payee) : "";
+  const matches = rows.map((r) => ({ ...(JSON.parse(r.body_json) as Inv), id: r.id, status: r.status })).filter((i) =>
+    (!payee || (payee.length >= 2 && (nameKey(i.vendor).includes(payee) || payee.includes(nameKey(i.vendor)))))
+    && (amount === undefined || centsOf(i.total) === centsOf(amount))
+    && (a.currency === undefined || i.currency === a.currency)).slice(0, 10).map((i) => {
+    const route = ROUTE_OF[i.status] ?? "held";
+    const next = route === "propose" ? (canPropose ? "propose_invoice_payment" : null)
+      : route === "waiting_cfo" ? (canPropose && i.proposal_id ? "payment_proposal" : "pending_approvals")
+      : route === "paid" ? "explain_payment" : route === "new_supplier" ? null : "get_invoice";
+    return { invoice_id: i.id, vendor: i.vendor, invoice_no: i.invoice_no, currency: i.currency, total: i.total, due_date: i.due_date, status: i.status, route, next_tool: next, ...(i.proposal_id ? { proposal_id: i.proposal_id } : {}) };
+  });
+  // A conversion on its own (no invoice or payee named) is never Purser's: the ready invoices it lists are only context.
+  const standaloneFx = fxOnly && !filtered;
+  const one = matches.length === 1 && !standaloneFx ? matches[0]! : null;
+  const route = standaloneFx ? "not_in_purser" : one ? one.route : matches.length > 1 ? "choose" : !filtered ? "nothing_to_file" : fxOnly ? "not_in_purser" : "needs_invoice";
+  const what = (m: (typeof matches)[number]) => `${m.invoice_id} (${m.vendor}, ${eur(m.total, m.currency)}, due ${dayWords(m.due_date)})`;
+  const asked = [a.payee, a.amount !== undefined ? (a.currency ? eur(a.amount, a.currency) : a.amount) : a.currency, a.invoice_id].filter(Boolean).join(", ");
+  const fx = kind === "fx_conversion" ? " Purser buys currency only for a supplier payment it files: a quote for the shortfall, inside the terms the CFO signs." : "";
+  const sentence = ({
+    propose: one && (canPropose ? `${what(one)} can be filed: call propose_invoice_payment with ${one.invoice_id}. Nothing is paid until the CFO approves the exact terms with Face ID in Purser Cloud.${fx}`
+      : `${what(one)} is ready to pay, but nothing can be filed from here: ${whyNot}. Tell your user it needs the CFO's Face ID in Purser Cloud.${fx}`),
+    waiting_cfo: one && `${what(one)} is already filed and waits for the CFO's Face ID in Purser Cloud; do not file it again.`,
+    new_supplier: one && `${what(one)} is from a new supplier: Purser checks the payee's bank details and the CFO approves the supplier with Face ID in Purser Cloud before it can be paid. Nothing can be filed yet.`,
+    held: one && `${what(one)} is held for a person (${one.status.replace(/_/g, " ")}): read why with get_invoice; nothing can be filed until a person clears it in Purser Cloud.`,
+    paid: one && `${what(one)} is paid already: do not pay it again. explain_payment shows who approved it and the proof.`,
+    rejected: one && `${what(one)} was rejected; nothing will be paid for it.`,
+    choose: `${plural(matches.length, "invoice")} fit${matches.length === 1 ? "s" : ""}${asked ? ` ${asked}` : ""}: ask your user which, then call route_money_out again with its invoice_id.`,
+    nothing_to_file: "No invoice is ready to pay. Purser pays a supplier only against an invoice it has read and checked.",
+    needs_invoice: `Purser has no invoice${asked ? ` that fits ${asked}` : ""}, so nothing can be filed: it pays a supplier only against an invoice it has read and checked. Have the invoice sent to the company's Purser inbox or uploaded in Purser Cloud, then ask again; a transfer without an invoice is made by a person in Airwallex's own app.`,
+    not_in_purser: `Purser does not file a currency conversion on its own: it buys currency only for a supplier payment it files (a quote for the shortfall, inside the terms the CFO signs). A conversion on its own is made by a person in Airwallex's own app. Nothing was filed.${standaloneFx && matches.length ? ` Listed: ${plural(matches.length, "invoice")} ready to pay${a.currency ? ` in ${a.currency}` : ""}, which Purser can file with the currency they need.` : ""}`,
+  } as Record<string, string | null>)[route]!;
+  const next = one ? one.next_tool : null;
+  return answer(`${sentence}${c.demo ? " Demo data, no real money." : ""}`, { kind, route, next_tool: next, can_propose: canPropose, matches, approval: MONEY_OUT_APPROVAL, never: MONEY_OUT_NEVER },
+    [...matches.map((m) => `- ${what(m)} · ${m.status.replace(/_/g, " ")} · ${m.next_tool ? `next: ${m.next_tool}` : "nothing to call"}`), `How Purser pays: ${MONEY_OUT_APPROVAL}`, MONEY_OUT_NEVER],
+    matches.map((m) => RES.invoice(m.invoice_id, `${m.vendor} ${m.invoice_no}`)));
+}
 
 /** Without the challenge a passkey signs: Claude needs the terms, never the means of approving them. */
 const proposalOut = (p: { id: string; kind: string; status: string; terms_sha256: string; facts: [string, string][]; warnings: string[] }) =>
@@ -475,6 +553,7 @@ function instructions(c: McpCtx): string {
   return [`You are connected to Purser for ${c.company}. You can ${can}.`,
     "Start with company_overview or pending_approvals (purser://connection says what this connection can do); explain_payment and payment_audit_trail take a payment, invoice (AP-…) or proposal (P-…) id; the books, invoices, payments and the CFO's policy are also resources (purser://).",
     "You cannot approve, pay, change a limit or write to the books: every payment needs the CFO's Face ID in Purser Cloud, and you must say so when a payment comes up.",
+    "Asked to transfer money, pay a supplier or convert currency (also after another Airwallex tool said it does not move money), call route_money_out first.",
     c.demo ? "This is the demo company: made-up data from a simulated month, no real money. Say so when you show its figures." : "Amounts are the company's own records; quote them as they are."].join(" ");
 }
 
@@ -499,7 +578,9 @@ const META = "io.modelcontextprotocol/";
 const rpcError = (id: unknown, code: number, message: string, why: ErrorCode, data: Json = {}) => ({ jsonrpc: "2.0", id: id ?? null, error: { code, message, data: { code: why, ...data } } });
 
 /** A tool name that asks for what no MCP tool here can do, for any token: approve, pay, change a limit or write. */
-const NEVER_OVER_MCP = /^(approve|authori[sz]e|confirm|reject|cancel|pay|make|execute|send|transfer|refund|sign|release|freeze|unfreeze|raise|set|change|update|edit|write|create|add|insert|delete|remove|post|book)(_|$)|(^|_)(approve|approval|pay|payout|sign|limit)(_|$)/i;
+const NEVER_OVER_MCP = /^(approve|authori[sz]e|confirm|reject|cancel|pay|make|execute|send|transfer|convert|refund|sign|release|freeze|unfreeze|raise|set|change|update|edit|write|create|add|insert|delete|remove|post|book)(_|$)|(^|_)(approve|approval|pay|payout|sign|limit)(_|$)/i;
+/** A tool name about moving money or currency (an agent used to Airwallex's tools may guess one): its refusal names route_money_out. */
+const MONEY_MOVE = /transfer|payout|payment|conver|fx|wire|remit|beneficiar/i;
 /** What the server says to such a call: the safety model, and the one thing an AI can do instead. */
 export const NEVER_SENTENCE = "Purser's MCP server never approves, pays, changes a limit or writes to the books, for any token: every payment needs the CFO's passkey (Face ID) over its exact terms in Purser Cloud. To get an invoice paid, a token made to propose can file it with propose_invoice_payment; then tell your user the CFO approves it.";
 /** MCP's own error codes (2026-07-28, schema.ts): the reserved -32020 to -32099 range. */
@@ -557,8 +638,10 @@ async function call(c: McpCtx, m: Rpc & { id: string | number; method: string },
       if (!tool) {
         const name = p.name.slice(0, 80);
         if (PROPOSE_TOOLS.some((t) => t.name === name)) return bad(-32602, `no tool ${name}: this token reads only; a token made to propose files payments (never approves them)`, "needs_propose_token", { tool: name });
-        if (NEVER_OVER_MCP.test(name)) return bad(-32602, `no tool ${name}; tools/list shows the tools this token has. ${NEVER_SENTENCE}`, "not_available_over_mcp", { tool: name });
-        return bad(-32602, `no tool ${name}; tools/list shows the tools this token has`, "unknown_tool", { tool: name });
+        const money = MONEY_MOVE.test(name);
+        const route = money ? { next_tool: "route_money_out" } : {}, routeWords = money ? " To move money or currency, route_money_out says whether and how Purser can file it." : "";
+        if (NEVER_OVER_MCP.test(name)) return bad(-32602, `no tool ${name}; tools/list shows the tools this token has. ${NEVER_SENTENCE}${routeWords}`, "not_available_over_mcp", { tool: name, ...route });
+        return bad(-32602, `no tool ${name}; tools/list shows the tools this token has${money ? `.${routeWords}` : ""}`, "unknown_tool", { tool: name, ...route });
       }
       const args = tool.args.safeParse(p.arguments ?? {});
       if (!args.success) return ok(wire(refuse("invalid_arguments", `The arguments do not fit ${tool.name}: ${args.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "arguments"}: ${i.message}`).join("; ")}. Fix them and call again.`, { next: "Fix the arguments as the tool's inputSchema says and call again." }), c.version));

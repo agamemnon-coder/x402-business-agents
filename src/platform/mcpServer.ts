@@ -14,7 +14,8 @@ import { askPurser } from "../agents/askPurser.js";
 import type { Actor } from "../audit/log.js";
 import { ClaudeReader } from "../claude/reader.js";
 import { Tools } from "../claude/tools.js";
-import { authorize, keyMatches } from "../policy/principals.js";
+import { audit } from "../audit/log.js";
+import { authorize, keyMatches, TOOL_REFUSED } from "../policy/principals.js";
 import { cardStatus, payWithCard, requestCardRaise, requestCompanyCard, type ExternalAgentId } from "./externalAgents.js";
 
 const EUR = z.string().regex(/^\d{1,6}\.\d{2}$/, "an amount in EUR with two decimals, like 25.00");
@@ -48,8 +49,12 @@ const NEXT_STEP: Record<string, string> = {
 export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | null, reader: ClaudeReader = new ClaudeReader(db), key: string | undefined = process.env.KIT11_AGENT_KEY): McpServer {
   // Each call is made as this agent's principal (backend review B5): it must hold the agent's current key (once one
   // was issued), be neither revoked nor expired, and have the tool among its capabilities.
-  const gate = (tool: string): string | null =>
-    keyMatches(db, id, key) ? authorize(db, id, { tool }) : `principal_key_invalid: this is not ${id}'s current key (it was rotated, or none was given); stop and tell your user; never ask anyone for a key`;
+  // A refusal is audited (principal.tool_refused, as an internal agent's is in src/agents/loop.ts): least privilege, visible.
+  const gate = (tool: string): string | null => {
+    const denied = keyMatches(db, id, key) ? authorize(db, id, { tool }) : `principal_key_invalid: this is not ${id}'s current key (it was rotated, or none was given); stop and tell your user; never ask anyone for a key`;
+    if (denied) audit(db, "system", TOOL_REFUSED, id, { agent: id, tool, via: "agent API (MCP)", reason: denied.slice(0, 300) });
+    return denied;
+  };
   const server = new McpServer({ name: "purser-agent-api", version: "1.0.0" }, {
     instructions: `You are connected to Northwind Outdoor's agent API as the outside agent ${id}. You can ask for a company card, pay merchants on it, ask for a higher limit, see your card, and ask Purser for a single-use card for one task (a flight, a hotel or a train). Every request is decided by Northwind's CFO with Face ID; the card's limits are enforced by Airwallex. You cannot approve anything yourself.`,
   });

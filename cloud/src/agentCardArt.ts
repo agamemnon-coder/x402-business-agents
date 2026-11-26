@@ -1,9 +1,9 @@
 // The agents' payment cards as art (23 Nov, the owner: "give it logos instead of pictograms… cards that you can connect
 // with your phone, and the designs like the one I was going to have in Apple Wallet, and give different ones to each, and
-// also customizable for companies"). One card per agent, credit-card shaped: the company's mark, the agent's name, its
-// status, the card's last four (never more), what it spent against its monthly limit, and real marks for what it runs on:
-// Claude for its model, Alta (formerly Metal) for an on-chain mandate, Airwallex as issuer; the card network, Visa, in text
-// only (review, 21 Nov: no Visa mark on Purser's card art).
+// also customizable for companies"). One card per agent, credit-card shaped. Since 27 Nov the Obsidian design (Max chose it):
+// near-black, the agent's own relief in greys under one band of light, a champagne medallion with the engraved quill, the
+// chip, the agent's name and the last four (never more) in silver and Visa in text only (review, 21 Nov: no Visa mark);
+// its status, spend, limit and honesty label sit under it, and the marks for what it runs on are in its Details.
 //
 // Shared by the console's Agents page (cloud/src/agentWallet.ts draws it with el()) and the phone's read-only card view
 // (cloud/src/agentPhoneCard.ts draws it on the server, every value escaped). The design is cosmetic only: a preset per
@@ -85,91 +85,60 @@ export const modelShort = (m: string): string => m.replace(/^claude-([a-z]+)-(\d
 export const FEATHER_D: readonly string[] = (ICONS.feather ?? []).map(([, a]) => a.d).filter((d): d is string => typeof d === "string");
 export const FEATHER_SVG = `<svg class="ac-pf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FEATHER_D.map((d) => `<path d="${d}"/>`).join("")}</svg>`;
 
-/** The card's look: the face, the presets, the marks. Used by the console and by the phone's page.
- * 21 Nov (Max: "really beautiful card designs… blue with gold and the Purser logo, sleek"): one family of metal cards,
- * deep midnight navy with a fine guilloché and brushed texture, a soft sheen, a gold foil hairline, a gold chip and gold
- * for the agent's name; each preset is the agent's accent (an edge gem and a glow), not a different card. An agent with
- * no card of its own is the same family in matte, without chip, number or network, and says so in a gold outline. */
-/** The feather as a faint gold watermark on a card with no card of its own (a CSS background: a data URL, no fetch). */
-const FEATHER_WATERMARK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e9c46a" stroke-opacity=".1" stroke-width=".6" stroke-linecap="round" stroke-linejoin="round">${FEATHER_D.map((d) => `<path d="${d}"/>`).join("")}</svg>`)}")`;
+/** The card's look: Obsidian (27 Nov, Max chose it from the concepts: "darker and sleeker"). Near-black on black. Each
+ * agent's own relief (Sourcing's leaves, Treasury's sea, Support's night sky; an engraved line field for any other),
+ * drawn in greys, faint over the whole card and brighter where one diagonal band of light crosses it. A champagne
+ * medallion at the centre holds Purser's engraved quill (or the company's own initials or logo); champagne only there, on
+ * the small flat chip and the tracked wordmark; the agent's name and the last four in silver, VISA in text only
+ * (review, 21 Nov: no Visa mark). Every shape is drawn once per page (CARD_ART_DEFS, generated with fixed seeds by
+ * cloud/src/cardArtBuild.ts) and a card is a few <use> of them and its own words. The status, the month against its
+ * limit and the honesty label stay under the card, never on it. A preset is the agent's accent: a faint tint in the
+ * medallion. An agent with no card of its own: no chip, no network, its number's place saying so. */
+export { CARD_ART_DEFS } from "./agentCardArt.gen.js";
+/** Each agent's relief; any other agent the engraved line field. */
+export const RELIEF: Readonly<Record<string, "leaves" | "sea" | "night">> = { sourcing: "leaves", treasury: "sea", support: "night" };
+export const reliefOf = (agent: string): string => RELIEF[agent] ?? "lines";
+const FONT = "Inter,Helvetica Neue,Arial,sans-serif";
+/** The card's art as markup (the phone's page; the console draws the same with DOM nodes): every value escaped by the
+ *  caller's esc. mark: the company's logo (a data URL, checked by validLogo) or initials, else Purser's quill. */
+export function cardSvg(o: { agent: string; name: string; last4: string | null; logo: string | null; initials: string | null }, esc: (s: string) => string): string {
+  const rel = reliefOf(o.agent);
+  const mark = o.logo ? `<image class="ac-mark" href="${esc(o.logo)}" x="182" y="88" width="64" height="80" preserveAspectRatio="xMidYMid meet" clip-path="url(#pc-mo)"/>`
+    : o.initials ? `<text class="ac-mark" x="214" y="136" text-anchor="middle" font-family="${FONT}" font-weight="600" font-size="22" letter-spacing="2" fill="url(#pc-ch)">${esc(o.initials)}</text>`
+      : `<use class="ac-pf" href="#pc-quill"/>`;
+  return `<svg class="ac-art" viewBox="0 0 428 270" aria-hidden="true" focusable="false"><use href="#pc-ground"/>`
+    + `<g mask="url(#pc-fade)"><use href="#pc-rel-${rel}" opacity=".2"/><g mask="url(#pc-band)"><use href="#pc-rel-${rel}" opacity=".75"/></g></g>`
+    + `<use href="#pc-medal"/>${mark}<use href="#pc-frame"/><use href="#pc-word"/>${o.last4 ? `<use href="#pc-chip" x="34" y="110"/>` : ""}`
+    + (o.last4 ? `<text class="ac-num" x="34" y="212" font-family="${FONT}" font-weight="500" font-size="13" letter-spacing="2.4" fill="url(#pc-pw)">•••• ${esc(o.last4)}</text>`
+      : `<text class="ac-num none" x="34" y="212" font-family="${FONT}" font-weight="500" font-size="11" letter-spacing=".4" fill="#8e929b">No card of its own</text>`)
+    + `<text class="ac-name" x="34" y="233" font-family="${FONT}" font-weight="600" font-size="7.6" letter-spacing="2" fill="url(#pc-pw)">${esc(o.name.toUpperCase())}</text>`
+    + (o.last4 ? `<text class="ac-net txt" x="394" y="234" text-anchor="end" transform="skewX(-10)" transform-origin="394 234" font-family="Arial Black,${FONT}" font-weight="900" font-size="17" letter-spacing=".6" fill="url(#pc-vs)">VISA</text>` : "")
+    + `<use href="#pc-sheen"/></svg>`;
+}
 export const CARD_ART_CSS = `
-.acard { --brand: #4f46e5; --acc: #e9c46a; --gold: #e9c46a; --gold-hi: #f7e7b4; --gold-lo: #a97b25; --navy: #0c1838;
-  position: relative; isolation: isolate; overflow: hidden; width: 100%; aspect-ratio: 1.586; min-height: 190px; border-radius: 16px; padding: 14px 16px 13px 18px; box-sizing: border-box;
-  display: grid; grid-template-rows: auto auto 1fr auto auto; gap: 6px; color: #eef2fb; text-align: left; font-variant-numeric: tabular-nums;
-  background-color: var(--navy);
-  background-image: radial-gradient(80% 100% at 100% 0%, color-mix(in srgb, var(--acc) 36%, transparent), transparent 64%),
-    radial-gradient(120% 80% at 0% 120%, rgba(56,96,200,.28), transparent 60%),
-    repeating-radial-gradient(circle at 118% 128%, rgba(233,196,106,.075) 0 1px, transparent 1px 6px),
-    repeating-radial-gradient(circle at -20% -35%, rgba(160,190,255,.05) 0 1px, transparent 1px 7px),
-    repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px),
-    linear-gradient(140deg, #13265a 0%, #0d1c45 38%, #0a1636 68%, #060d24 100%);
-  box-shadow: 0 1px 1px rgba(2,6,23,.35), 0 18px 34px -18px rgba(2,8,30,.8), 0 6px 14px -8px rgba(2,8,30,.45);
+.pc-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.pc-tint { fill: var(--acc, #000); fill-opacity: .16; }
+.acard { --brand: #4f46e5; --acc: #8fa3c8;
+  position: relative; isolation: isolate; overflow: hidden; display: block; width: 100%; aspect-ratio: 1.586; border-radius: 16px; background: #070708; color: #e8ecf5;
+  box-shadow: 0 1px 2px rgba(0,0,0,.35), 0 16px 32px -14px rgba(0,0,0,.72), 0 0 0 .5px rgba(255,255,255,.07);
   transform: perspective(900px) translateY(var(--lift, 0px)) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .35s cubic-bezier(.2,.75,.2,1), box-shadow .3s; }
-.acard::before { content: ""; position: absolute; z-index: 1; left: 0; top: 16%; bottom: 16%; width: 4px; border-radius: 0 4px 4px 0; background: linear-gradient(180deg, transparent, var(--acc) 18%, var(--acc) 82%, transparent); box-shadow: 0 0 14px 2px color-mix(in srgb, var(--acc) 60%, transparent); pointer-events: none; }
-.acard::after { content: ""; position: absolute; z-index: 2; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(233,196,106,.55), inset 0 1px 0 1px rgba(255,240,200,.12), inset 0 0 0 6px rgba(233,196,106,.10); }
-.acard > * { position: relative; z-index: 1; min-width: 0; }
-.acard .ac-shine { position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background: radial-gradient(60% 50% at var(--mx, 85%) var(--my, 0%), rgba(255,255,255,.16), transparent 70%), linear-gradient(115deg, transparent 38%, rgba(255,246,220,.10) 48%, rgba(255,255,255,.04) 52%, transparent 62%);
-  background-size: 100% 100%, 260% 100%; background-position: 0 0, 100% 0; transition: background-position .9s cubic-bezier(.2,.75,.2,1); }
-.acard .ac-top { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 9px; align-items: center; }
-.acard .ac-mark { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; overflow: hidden; color: #0b1636; background: linear-gradient(145deg, var(--gold-hi), var(--gold) 45%, #d6aa4c 70%, var(--gold-lo)); box-shadow: inset 0 0 0 1px rgba(255,248,220,.55), 0 1px 2px rgba(0,0,0,.45); font-size: 11.5px; font-weight: 800; letter-spacing: .02em; }
-.acard .ac-mark svg { width: 17px; height: 17px; display: block; }
-.acard .ac-mark .ic { display: grid; place-items: center; }
-.acard .ac-mark img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
-.acard .ac-who { display: grid; min-width: 0; line-height: 1.2; }
-.acard .ac-name { font-size: 15px; font-weight: 650; letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--gold-hi); text-shadow: 0 1px 0 rgba(0,0,0,.35); }
-.acard .ac-co { font-size: 11px; color: #b9c3da; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.acard .ac-plate { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; background: #fff; box-shadow: 0 0 0 1px rgba(233,196,106,.45), 0 1px 2px rgba(0,0,0,.35); }
-.acard .ac-plate img { display: block; height: 10px; width: auto; }
-.acard .ac-mid { display: flex; align-items: center; gap: 9px; }
-.acard .ac-chip { width: 36px; height: 27px; border-radius: 6px; position: relative; flex: none; overflow: hidden;
-  background: linear-gradient(rgba(110,74,10,.55), rgba(110,74,10,.55)) 0 34% / 100% 1px no-repeat, linear-gradient(rgba(110,74,10,.55), rgba(110,74,10,.55)) 0 66% / 100% 1px no-repeat,
-    linear-gradient(rgba(110,74,10,.5), rgba(110,74,10,.5)) 50% 0 / 1px 34% no-repeat, linear-gradient(rgba(110,74,10,.5), rgba(110,74,10,.5)) 50% 100% / 1px 34% no-repeat,
-    linear-gradient(135deg, #fbecb8 0%, #e3bb5c 30%, #f6dc8e 52%, #c99a36 74%, #f1d488 100%);
-  box-shadow: inset 0 0 0 1px rgba(120,80,10,.45), inset 0 1px 0 rgba(255,250,225,.7), 0 1px 2px rgba(0,0,0,.4); }
-.acard .ac-chip::before { content: ""; position: absolute; inset: 8px 11px; border: 1px solid rgba(110,74,10,.55); border-radius: 3px; background: linear-gradient(135deg, #f8e3a0, #dcb257); }
-.acard .ac-nfc { width: 17px; height: 17px; flex: none; color: var(--gold-hi); opacity: .85; }
-.acard .ac-st { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 650; color: #eef2fb; background: rgba(4,10,30,.5); box-shadow: inset 0 0 0 1px rgba(233,196,106,.3); white-space: nowrap; }
-.acard .ac-st i { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 2px rgba(74,222,128,.25); }
-.acard .ac-st.paused i, .acard .ac-st.revoked i { background: #fca5a5; box-shadow: none; } .acard .ac-st.off i { background: #cbd5e1; box-shadow: none; }
-.acard .ac-num { align-self: center; font-size: 17px; font-weight: 600; letter-spacing: .14em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e8edf8; text-shadow: 0 1px 0 rgba(0,0,0,.55), 0 -1px 0 rgba(255,255,255,.08); }
-.acard .ac-num.none { justify-self: start; align-self: center; max-width: 100%; font-size: 12.5px; letter-spacing: .03em; font-weight: 650; color: var(--gold-hi); padding: 5px 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(233,196,106,.7); background: rgba(233,196,106,.06); text-shadow: none; }
-.acard .ac-meter { display: grid; gap: 4px; }
-.acard .ac-ml { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; white-space: nowrap; overflow: hidden; }
-.acard .ac-ml b { font-weight: 700; color: #fff; } .acard .ac-ml span { color: #b9c3da; overflow: hidden; text-overflow: ellipsis; }
-.acard .ac-bar { display: block; height: 4px; border-radius: 999px; background: rgba(255,255,255,.14); overflow: hidden; }
-.acard .ac-bar > span { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--gold-lo), var(--gold) 55%, var(--gold-hi)); transition: width 1.1s cubic-bezier(.2,.75,.2,1); }
-.acard .ac-bar.full > span { background: #fecaca; }
-.acard .ac-foot { display: flex; align-items: center; gap: 6px; min-height: 22px; }
-.acard .ac-model { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px 0 5px; border-radius: 999px; color: #eef2fb; background: rgba(4,10,30,.5); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); font-size: 11px; font-weight: 650; white-space: nowrap; }
-.acard .ac-model img { width: 14px; height: 14px; display: block; }
-.acard .ac-model.code { padding-left: 8px; }
-.acard .ac-alta { display: inline-flex; align-items: center; height: 22px; padding: 0 7px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px rgba(233,196,106,.45); }
-.acard .ac-alta img { height: 11px; width: auto; display: block; }
-.acard .ac-net { margin-left: auto; height: 30px; width: auto; display: block; margin-top: -6px; margin-bottom: -6px; }
-.acard .ac-tag { margin-left: auto; font-size: 9.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--gold-hi); white-space: nowrap; padding: 2px 6px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(233,196,106,.45); }
-.acard .ac-tag + .ac-net { margin-left: 8px; }
-.acard .ac-net.txt { height: auto; margin-top: 0; margin-bottom: 0; font-size: 15px; font-weight: 800; font-style: italic; letter-spacing: .01em; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.4); }
-.acard.bare { background-image: ${FEATHER_WATERMARK}, radial-gradient(75% 95% at 100% 0%, color-mix(in srgb, var(--acc) 14%, transparent), transparent 62%),
-    radial-gradient(rgba(255,255,255,.035) 1px, transparent 1.2px), linear-gradient(150deg, #0d1a3d 0%, #091331 55%, #050b1f 100%);
-  background-size: 40% auto, auto, 4px 4px, auto; background-repeat: no-repeat, no-repeat, repeat, no-repeat; background-position: 104% 128%, 0 0, 0 0, 0 0; }
-.acard.bare::after { box-shadow: inset 0 0 0 1px rgba(233,196,106,.32), inset 0 0 0 6px rgba(233,196,106,.05); }
-.acard.bare::before { opacity: .7; }
-.acard.frozen { filter: grayscale(.8) brightness(.92); }
-.acard.dim::before { opacity: .45; } .acard.dim .ac-mark { filter: saturate(.8); }
-.acard.ink { color: #111827; } .acard.ink .ac-name { color: #111827; text-shadow: none; } .acard.ink .ac-co, .acard.ink .ac-ml span { color: #374151; } .acard.ink .ac-bar { background: rgba(0,0,0,.15); } .acard.ink .ac-bar > span { background: #111827; }
-.acard.ink .ac-st, .acard.ink .ac-model { background: rgba(255,255,255,.55); color: #111827; } .acard.ink .ac-num { color: #111827; text-shadow: none; } .acard.ink .ac-tag { color: #111827; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); } .acard.ink .ac-net.txt { color: #111827; text-shadow: none; } .acard.ink .ac-nfc { color: #111827; }
-.acard.p-aurora { --acc: #a78bfa; }
-.acard.p-lagoon { --acc: #2dd4bf; }
-.acard.p-midnight { --acc: #60a5fa; }
-.acard.p-ember { --acc: #fb923c; }
-.acard.p-graphite { --acc: #cbd5e1; }
-.acard.p-rose { --acc: #fb7185; }
-.acard.p-citrus { --acc: #a3e635; }
-.acard.p-sky { --acc: #38bdf8; }
-.acard.p-bullion { --acc: #e9c46a; }
-.acard.p-brand { --acc: var(--brand); background-image: radial-gradient(90% 80% at 100% 0%, rgba(255,255,255,.2), transparent 60%), repeating-radial-gradient(circle at 118% 128%, rgba(255,255,255,.06) 0 1px, transparent 1px 6px), linear-gradient(135deg, color-mix(in srgb, var(--brand) 45%, #000), var(--brand)); }
-@media (hover: hover) { button:hover > .acard, .acard:hover { --lift: -4px; } button:hover > .acard .ac-shine, .acard:hover .ac-shine { background-position: 0 0, 0 0; } }
+.acard .ac-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.acard .ac-shine { position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255,246,220,.06) 48%, rgba(255,255,255,.02) 52%, transparent 62%);
+  background-size: 260% 100%; background-position: 100% 0; transition: background-position .9s cubic-bezier(.2,.75,.2,1); }
+.acard.frozen { filter: grayscale(.8) brightness(.9); }
+.acard.dim .ac-art { opacity: .88; }
+.acard.p-aurora { --acc: #9a8fc7; }
+.acard.p-lagoon { --acc: #7fb5ad; }
+.acard.p-midnight { --acc: #8fa3c8; }
+.acard.p-ember { --acc: #c49a7a; }
+.acard.p-graphite { --acc: #a3a8b0; }
+.acard.p-rose { --acc: #c48f9b; }
+.acard.p-citrus { --acc: #a9b87f; }
+.acard.p-sky { --acc: #86aecb; }
+.acard.p-bullion { --acc: #c9b27a; }
+.acard.p-brand { --acc: var(--brand); }
+@media (hover: hover) { button:hover > .acard, .acard:hover { --lift: -3px; } button:hover > .acard .ac-shine, .acard:hover .ac-shine { background-position: 0 0; } }
 @media (prefers-reduced-motion: reduce) { .acard, .acard .ac-bar > span { transition: none; } .acard { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .acard .ac-shine { transition: none; } }
 @media print { .acard { box-shadow: none; } }

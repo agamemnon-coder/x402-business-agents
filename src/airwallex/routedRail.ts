@@ -44,6 +44,14 @@ export class ActCapReached extends Error {
   readonly code = "awx_cap_reached";
   constructor(readonly reason: string) { super(reason); this.name = "ActCapReached"; }
 }
+/**
+ * The CFO's emergency stop, asked at the rail immediately before a create reaches either bank (src/policy/emergencyStop.ts
+ * railStop): nothing was sent, and the executor's catch records the payment FAILED with this reason.
+ */
+export class HeldBeforeCreate extends Error {
+  readonly code = "held_before_create";
+  constructor(readonly reason: string) { super(reason); this.name = "HeldBeforeCreate"; }
+}
 export class ActOff extends Error {
   readonly code = "awx_off";
   constructor(readonly reason: string) { super(`Airwallex sandbox not used: ${reason}`); this.name = "ActOff"; }
@@ -99,6 +107,12 @@ export class RoutedRail implements AirwallexRail, PayoutRail, SandboxSim {
     private readonly awxBatches?: BatchTransferRail,
     /** A step that went to the simulated bank instead (a payee or a deposit, never money after a signature), in words. */
     private readonly onFallback: (what: string, why: string) => void = () => undefined,
+    /**
+     * Asked immediately before every create that moves money (a conversion, a payout, a batch's lines and its
+     * submission), at either bank: null lets it go, a reason stops it (thrown as HeldBeforeCreate, nothing sent). Purser
+     * Cloud hands in the emergency stop (src/policy/emergencyStop.ts railStop); without it nothing is asked here.
+     */
+    private readonly stop: (what: "conversion" | "transfer" | "batch", ref: string) => string | null = () => null,
   ) {
     // Every Airwallex call: its failure is remembered for the action's fallback decision, then thrown as it came.
     this.awx = new Proxy(awx, {
@@ -158,16 +172,22 @@ export class RoutedRail implements AirwallexRail, PayoutRail, SandboxSim {
     }
   }
 
-  /** A money call at Airwallex: spoken for first; freed only when Airwallex refused it outright. */
+  /** A money call at Airwallex: spoken for first; freed only when Airwallex refused it outright (or it was never sent). */
   private async money<T>(key: string, kind: SpendKind, currency: string, cents: number, fn: () => Promise<T>): Promise<T> {
     if (!ACT_CURRENCIES.has(currency)) { const e = new ActOff(`${currency} is not moved at the Airwallex sandbox from Cloud (EUR, USD, GBP only)`); this.ctx.failure ??= e.reason; throw e; }
     try { await this.guard.spend({ key, kind, currency, cents }); } catch (e) { this.ctx.failure ??= failureWords(e); throw e; }
     try {
       return await fn();
     } catch (e) {
-      if (refusedOutright(e)) await this.guard.release(key);
+      if (refusedOutright(e) || e instanceof HeldBeforeCreate) await this.guard.release(key);
       throw e;
     }
+  }
+
+  /** The last ask before a create is sent (the emergency stop): throws, and nothing is sent, when it says no. */
+  private halt(what: "conversion" | "transfer" | "batch", ref: string): void {
+    const why = this.stop(what, ref);
+    if (why) throw new HeldBeforeCreate(why);
   }
 
   // ---- Reads and plans: the action's bank -------------------------------------------------------------------------
@@ -205,7 +225,8 @@ export class RoutedRail implements AirwallexRail, PayoutRail, SandboxSim {
     const bank = this.bankOfId("quote", quoteId);
     this.routes.set(`req:${requestId}`, { bank, twin: null });
     const r = await this.on(bank);
-    const c = bank === "airwallex" ? await this.money(requestId, "conversion", sell, sellCents, () => fn(r)) : await fn(r);
+    const send = () => { this.halt("conversion", requestId); return fn(r); };
+    const c = bank === "airwallex" ? await this.money(requestId, "conversion", sell, sellCents, send) : await send();
     this.routes.set(`conv:${c.conversionId}`, { bank, twin: null });
     return c;
   }
@@ -266,7 +287,8 @@ export class RoutedRail implements AirwallexRail, PayoutRail, SandboxSim {
     const payee = this.payeeAt(bank, beneficiaryId);
     this.routes.set(`req:${requestId}`, { bank, twin: null });
     const r = await this.on(bank);
-    const tr = bank === "airwallex" ? await this.money(requestId, "transfer", currency, cents, () => fn(r, payee)) : await fn(r, payee);
+    const send = () => { this.halt("transfer", requestId); return fn(r, payee); };
+    const tr = bank === "airwallex" ? await this.money(requestId, "transfer", currency, cents, send) : await send();
     this.routes.set(`tr:${tr.id}`, { bank, twin: null });
     // The signed payee, as the ledger knows it, whichever bank's id paid it.
     return { ...tr, beneficiaryId: tr.beneficiaryId == null ? tr.beneficiaryId : beneficiaryId };
@@ -334,6 +356,7 @@ export class RoutedRail implements AirwallexRail, PayoutRail, SandboxSim {
           if (!ACT_CURRENCIES.has(i.currency)) throw new ActOff(`${i.currency} is not moved at the Airwallex sandbox from Cloud`);
           if (this.bankOfId("ben", i.beneficiaryId) !== "airwallex") throw new ActOff(`the payee ${i.beneficiaryId} is not at the Airwallex sandbox`);
         }
+        this.halt("batch", id);
         for (const i of items) {
           await guard.spend({ key: i.requestId, kind: "batch_item", currency: i.currency, cents: i.amountCents });
           routes.set(`req:${i.requestId}`, { bank: "airwallex", twin: null });
@@ -347,7 +370,7 @@ export class RoutedRail implements AirwallexRail, PayoutRail, SandboxSim {
       },
       quoteBatch: async (id, v) => { await open(); return b.quoteBatch(id, v); },
       listItems: async (id): Promise<AwxBatchItem[]> => { await open(); return b.listItems(id); },
-      submitBatch: async (id) => { await open(); return b.submitBatch(id); },
+      submitBatch: async (id) => { await open(); this.halt("batch", id); return b.submitBatch(id); },
       deleteBatch: async (id) => {
         await open();
         // Deleted before submit: nothing it held was paid, so its lines are free again.

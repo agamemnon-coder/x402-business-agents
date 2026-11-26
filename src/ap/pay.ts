@@ -7,7 +7,7 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { apAgentsOn } from "../config/agents.js";
-import { followPayouts } from "../payouts/follow.js";
+import { followPayouts, liveRequestId, type FollowOptions } from "../payouts/follow.js";
 import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import type { BillsRail } from "../airwallex/bills.js";
 import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
@@ -22,6 +22,7 @@ import { eurInFlightCents } from "../policy/available.js";
 import { fromCents } from "../lib/money.js";
 import { cashCheck } from "./cashCheck.js";
 import { aloneLimit } from "../world/settings.js";
+import { frozen } from "../policy/rules.js";
 import { invoiceCase } from "./checks.js";
 import { codeRequires, limitRule } from "./checkerCore.js";
 import { CHECKER_DECISION } from "./checkerAgent.js";
@@ -60,7 +61,11 @@ export { MAX_REFERENCE };
  * cloud engine says so, task A6; absent: KIT11_AP_AGENTS decides). `early`: what the Payer already proposed on this
  * invoice while it was filed (earlyPayer), used only when the plan at Pay is the same case.
  */
-export interface PayAgents { claude?: Anthropic | null; on?: boolean; planStands?: boolean; early?: EarlyPayer }
+export interface PayAgents {
+  claude?: Anthropic | null; on?: boolean; planStands?: boolean; early?: EarlyPayer;
+  /** The agent's task token (src/policy/taskTokens.ts): paid alone, the payment stands on that token's task mandate only. */
+  taskToken?: string;
+}
 
 /**
  * An invoice checked for payment, and how its payment is planned: the supplier's route (supplier_payment) or the EUR
@@ -108,7 +113,7 @@ export interface PaidAlone { limit: string; by: "agents" | "code"; why: string }
  * agent, the Payer agent, the cash check, or code's last check of the filed terms; `why` in words. Written to the audit
  * log as ap.alone_declined and returned with the proposal, so the page and a recorded walk can say it.
  */
-export interface AloneDeclined { by: "code" | "checker" | "payer" | "cash" | "limit"; why: string }
+export interface AloneDeclined { by: "code" | "checker" | "payer" | "cash" | "limit" | "mandate" | "token" | "anomaly"; why: string }
 export const ALONE_DECLINED = "ap.alone_declined";
 
 /**
@@ -119,12 +124,15 @@ export const ALONE_DECLINED = "ap.alone_declined";
  * the Payer's enforced proposal, filed as proposed; no text in the document that tries to steer its reader; then code
  * checks the filed terms against the limit once more (approveWithinLimit). Anything short of that leaves the payment waiting for the CFO's Face ID, as before.
  */
-function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, payer: { alone(): boolean; last?(): { next: string; source: string; enforced: { outcome: string; why: string } } | null } | null, now: Date): PaidAlone | AloneDeclined | null {
+function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, payer: { alone(): boolean; last?(): { next: string; source: string; enforced: { outcome: string; why: string } } | null } | null, now: Date, taskToken?: string): PaidAlone | AloneDeclined | null {
   const limit = aloneLimit(db);
   if (!limit) return null;
   const top = `${limit.currency} ${limit.amount}`;
   // Over the limit, the CFO signs as for every company: nothing was declined.
   if (limitRule(limit, inv.currency, inv.total).rule !== null) return null;
+  // The CFO's emergency stop (src/policy/emergencyStop.ts): code approves nothing to be paid alone while it is on. The
+  // proposal is filed and waits; the executor would refuse it anyway, this way nothing is approved in the first place.
+  if (frozen(db)) return { by: "code", why: "the CFO's emergency stop is on, so nothing is paid until the CFO lifts it with the passkey" };
   // Text in the document that tries to steer its reader is only a warning to code's checks (src/ap/checkerCore.ts), but an
   // invoice that carries it is never paid without a person: the CFO signs it, whatever the agents said.
   if (inv.findings.some((f) => f.code === "instructions_in_document")) return { by: "code", why: "the document carries text that tries to steer its reader, so a person signs it" };
@@ -145,8 +153,11 @@ function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, p
   // plan's own figures; a plan that converts another currency is the CFO's to sign, never the agent's alone.
   if (cashHoldsFiled(db, proposalId, inv, now)) return { by: "cash", why: "code's cash check holds it: paying it alone would take a balance below its floor, or it needs a conversion" };
   const why = `within the ${top} the CFO lets the agent pay alone: ${payer ? "the Checker agent decided pay and the Payer agent proposed it, and code's checks agree" : "code's checks found nothing that stops it"}`;
-  const ok = approveWithinLimit(db, { proposalId, limit, rule: why, agent: "payer" }, now);
-  return ok.ok ? { limit: top, by: payer ? "agents" : "code", why } : { by: "limit", why: `code's last check of the filed terms against the ${top} limit did not pass: ${ok.reason}` };
+  // The invoice's issue date goes with it from the inbox's own reading, for a task mandate that covers one month.
+  const ok = approveWithinLimit(db, { proposalId, limit, rule: why, agent: "payer", invoice: { issueDate: inv.issue_date }, ...(taskToken !== undefined ? { taskToken } : {}) }, now);
+  if (ok.ok) return { limit: top, by: payer ? "agents" : "code", why };
+  // A task mandate, a task token or the anomaly hold (src/policy/approvals.ts): said as such, so the page names the rule.
+  return ok.code ? { by: ok.code, why: ok.reason } : { by: "limit", why: `code's last check of the filed terms against the ${top} limit did not pass: ${ok.reason}` };
 }
 const isPaidAlone = (x: PaidAlone | AloneDeclined | null): x is PaidAlone => !!x && "limit" in x;
 
@@ -183,7 +194,7 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
     // An earlier "planned for a later day" no longer describes it once it is filed.
     const later = inv.findings.some((f) => f.code === PAY_LATER);
     // Within the CFO's limit, approved by code for the agent to pay alone (the caller runs it); else filed for the CFO.
-    const decided = payAlone(db, inv, text, out.proposal.proposal_id, payer, now);
+    const decided = payAlone(db, inv, text, out.proposal.proposal_id, payer, now, agents.taskToken);
     const alone = isPaidAlone(decided) ? decided : null;
     const declined = decided && !alone ? (decided as AloneDeclined) : null;
     if (declined) audit(db, "treasury", ALONE_DECLINED, id, { invoice_id: id, proposal_id: out.proposal.proposal_id, by: declined.by, why: declined.why.slice(0, 600) }, now);
@@ -270,16 +281,19 @@ function bookingProblem(db: DB, proposalId: string, paid: PaidPayout): string | 
  * `bills`: Airwallex Spend Bills (src/ap/billSync.ts). Left out, it follows AIRWALLEX_BILLS (off by default: nothing is
  * called); null turns it off for this sync.
  */
-export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: BookkeepingSink; rail?: PayoutRail; bills?: BillsRail | null } = {}): Promise<ApInvoiceRow[]> {
+export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: BookkeepingSink; rail?: PayoutRail; bills?: BillsRail | null; replaceFailed?: FollowOptions["replaceFailed"] } = {}): Promise<ApInvoiceRow[]> {
   const now = (opts.now ?? (() => new Date()))();
   // With Airwallex at hand: each sent supplier payout is read again, and a PAID one's Purser fee taken (red team 6).
-  if (opts.rail) await followPayouts(db, opts.rail, now);
+  // A payout Airwallex failed for good is replaced once only with the runner's hook (src/executors/replaceFailed.ts).
+  if (opts.rail) await followPayouts(db, opts.rail, now, opts.replaceFailed ? { replaceFailed: opts.replaceFailed } : {});
   // A proposal past its time that nothing has marked yet is expired first, so its invoice is not left waiting forever.
   expireDue(db, now);
   const changed: ApInvoiceRow[] = [];
   for (const inv of apInvoices(db, { status: "waiting_cfo" })) {
     const p = inv.proposal_id ? db.prepare("SELECT status, json_extract(terms_json, '$.transfer_request_id') AS request_id FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { status: string; request_id: string | null } | undefined : undefined;
     if (!p) continue;
+    // A failed payout replaced once on the same approved terms (src/executors/replaceFailed.ts): its replacement stands for it.
+    if (p.request_id) p.request_id = liveRequestId(db, p.request_id);
     // A proposal that failed with its payout still open at Airwallex (a lost answer, not resolved yet) or already paid
     // is not over: the invoice is never offered for payment again while that payout may be live (red team, 8 November).
     const payout = p.request_id ? db.prepare("SELECT status FROM transfers WHERE request_id = ?").get(p.request_id) as { status: string } | undefined : undefined;

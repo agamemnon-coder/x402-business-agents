@@ -21,6 +21,8 @@ import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { hashFirst } from "../policy/hashFirst.js";
 import { authorize } from "../policy/principals.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
+import { closeHeldRow, STOP_WORDS } from "../policy/emergencyStop.js";
+import { HeldBeforeCreate } from "../airwallex/routedRail.js";
 import { exclusive, holdPayout, releasePayout } from "../policy/payoutLock.js";
 import { step } from "../policy/saga.js";
 import { stopped } from "../policy/velocity.js";
@@ -28,7 +30,9 @@ import { originJson } from "../provenance/origin.js";
 import { freeCents, type PlatformFields, type SupplierPaymentTerms } from "../payouts/plan.js";
 import { platformFeeOn } from "../airwallex/platform.js";
 import { checkPayingAccount } from "../airwallex/binding.js";
+import { entityRefusal } from "../policy/entities.js";
 import { REFUSED_AT_CREATE } from "./invoicePayment.js";
+import { withRationale } from "../payouts/rationale.js";
 
 const hold = holdPayout;
 const release = releasePayout;
@@ -41,7 +45,15 @@ const payoutCents = (t: SupplierPaymentTerms) => toCents(t.amount) + toCents(t.f
 const closedError = (t: SupplierPaymentTerms) => new Error(`the payout ${t.transfer_request_id} was refused by Airwallex and closed; nothing is sent again under it, a new proposal is needed`);
 const floorError = (t: SupplierPaymentTerms) => new Error(`${t.currency} would now drop under its floor, commitments and payouts under way; a new proposal is needed`);
 
+/**
+ * The payment, then its rationale (src/payouts/rationale.ts): why this account, currency and rail, under which rule and
+ * approval, or why it was refused. Stored whatever the outcome, from the record only; it never changes the outcome.
+ */
 export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: SandboxSim | null, proposalId: string, now = () => new Date()): Promise<{ conversionId: string | null; transfer: Transfer }> {
+  return withRationale(db, proposalId, now, () => runSupplierPayment(db, rail, sim, proposalId, now));
+}
+
+async function runSupplierPayment(db: DB, rail: PayoutRail, sim: SandboxSim | null, proposalId: string, now: () => Date): Promise<{ conversionId: string | null; transfer: Transfer }> {
   // Hash first (19 November): changed terms reach nothing outside Purser, not even the balance read below.
   hashFirst(db, proposalId);
   const sha = (db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_sha256: string }).terms_sha256;
@@ -148,15 +160,18 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
 
 /** Why nothing may be paid now, or null: the CFO's holds, the treasury agent's stops, and the approved payee still on file.
  *  Checked when the execution begins and again immediately before every create at Airwallex (refuseIfHeld). */
-function holdReason(db: DB, t: SupplierPaymentTerms, at: Date): string | null {
+export function holdReason(db: DB, t: SupplierPaymentTerms, at: Date): string | null {
   if (!counterpartyAllowed(db, t.beneficiary_name)) return `${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`;
-  if (frozen(db)) return "the CFO pulled the emergency stop; nothing is paid until it is lifted";
+  if (frozen(db)) return STOP_WORDS;
   if (stopped(db, "treasury")) return "the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop";
   if (paused(db, "treasury")) return "the treasury agent is paused by the CFO; nothing is paid until the CFO resumes it with Face ID";
   // The treasury agent's identity (B5), as for Kit 11's payments: still active, and allowed to pay a bank beneficiary in
   // this currency over Airwallex (red team round 3: a revoked agent still paid suppliers).
-  const denied = authorize(db, "treasury", { rail: "airwallex", currency: t.currency, payee: "beneficiaries" }, at);
+  const denied = authorize(db, "treasury", { tool: "supplier_payment", rail: "airwallex", currency: t.currency, payee: "beneficiaries" }, at);
   if (denied) return `${denied}; nothing is paid`;
+  // The paying legal entity (src/policy/entities.ts), as for Kit 11's payments.
+  const entity = entityRefusal(db, t, "treasury");
+  if (entity) return `${entity}; nothing is paid`;
   const b = db.prepare("SELECT status, currency FROM beneficiaries WHERE beneficiary_id = ?").get(t.beneficiary_id) as { status: string; currency: string } | undefined;
   if (!b || b.status !== "ACTIVE") return `the approved account of ${t.beneficiary_name} is no longer the one on file; nothing is paid (a new proposal pays it)`;
   if (b.currency !== t.currency) return `the approved account receives ${b.currency}, not ${t.currency}; nothing is paid`;
@@ -244,6 +259,8 @@ async function submit(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: st
       method: t.method, reference: t.reference, reason: t.reason, approvalSha256: sha, ...applicationFeeOf(t as PlatformFields),
     });
   } catch (e) {
+    // Held back at the rail (Purser Cloud's last ask of the emergency stop): nothing was sent, the row is closed.
+    if (firstSend && e instanceof HeldBeforeCreate) { closeHeldRow(db, t.transfer_request_id, e.reason, new Date()); throw e; }
     if (firstSend && refusedAtCreate(e)) {
       // Refused outright at the first send: no transfer exists, so the row is closed, not left counting as under way.
       const closed = db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = ?, failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")

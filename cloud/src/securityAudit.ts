@@ -61,6 +61,7 @@ export const SECURITY_ROUTES: Record<string, SecurityKind> = {
   "POST /v1/alerts/targets": "policy.change",
   "DELETE /v1/alerts/targets/{id}": "policy.change",
   "POST /v1/engine/policy/second-key": "policy.change",
+  "POST /v1/engine/emergency-stop": "policy.change",
   "POST /v1/company": "policy.change",
   "GET /v1/export": "data.export",
   "POST /v1/export/staged": "data.export",

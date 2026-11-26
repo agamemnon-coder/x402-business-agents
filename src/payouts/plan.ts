@@ -24,6 +24,7 @@ import { referenceProblem, routeLimitReason, type Method } from "./routes.js";
 import { platformFeeCents, platformPlan } from "../airwallex/binding.js";
 import { withOrigin, type Origin } from "../provenance/origin.js";
 import type { PlanGate } from "./planGate.js";
+import { planEntity, refusalCode } from "../policy/entities.js";
 
 export interface SupplierPaymentTerms extends Terms {
   kind: "supplier_payment";
@@ -158,6 +159,8 @@ export async function proposeSupplierPayment(
   document?: { total_line: string; currency: string },
   /** Shown the plan just before it is filed (src/payouts/planGate.ts); absent: the plan is filed as always. */
   gate?: PlanGate,
+  /** The legal entity that pays (src/policy/entities.ts), when the company holds several; `rail` acts for its account. */
+  payFrom?: string,
 ): Promise<SupplierPaymentOutcome> {
   const escalate = (reason: string, extra: Record<string, string> = {}): SupplierPaymentOutcome => {
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason, ...extra }, now);
@@ -187,6 +190,9 @@ export async function proposeSupplierPayment(
     return escalate(`together with ${inv.currency} ${fromCents(today)} already paid or on its way to ${inv.vendor} today, ${daily}: a person decides whether it goes another day or another way; nothing is converted or paid`);
   }
   const reserve = feeReserveFor(db, method, inv.currency);
+  // Which legal entity pays, and from which account (src/policy/entities.ts), before any call to Airwallex.
+  const entity = planEntity(db, "treasury", payFrom, rail.payingAccount ?? null);
+  if (!entity.ok) return escalate(entity.reason, { code: refusalCode(entity.reason) });
   // Purser as a platform: the paying account is the company's own connected account in the binding Purser Cloud signed
   // (never a local setting, red team 6), and Purser's fee is CFO policy within the cap, to Purser's account in that
   // binding. Both go in the signed terms; the fee counts toward what must be free, like Airwallex's fee reserve.
@@ -274,6 +280,8 @@ export async function proposeSupplierPayment(
     floors: Object.fromEntries(touched.map((c) => [c, fromCents(floorCents(db, c))])),
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(documentText) }],
     ...(paying ? { paying_account: paying } : {}),
+    // The paying legal entity and its own funding account, signed with the rest (absent for a single-entity company).
+    ...(entity.fields ?? {}),
     ...(platformFee > 0 ? { platform_fee: { amount: fromCents(platformFee), currency: cur, bps: String(feeBps), to_account: feeTo!, request_id: randomUUID() } } : {}),
     // The payables inbox: the supplier's own total line, and that this is test money (this build only talks to the
     // Airwallex sandbox, src/airwallex/client.ts), both in the signed terms so the phone shows them first (S6).

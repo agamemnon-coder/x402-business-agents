@@ -69,6 +69,7 @@ export function lineShapeRefusal(l: { proposal_id: string; kind: string; terms: 
   if (t.currency !== "EUR" || t.method !== "SWIFT") return `${l.proposal_id} is not a EUR SWIFT payment`;
   if ((t as { platform_fee?: unknown }).platform_fee) return `${l.proposal_id} carries a Purser fee, which this path does not take; run this batch line by line`;
   if ((t as { paying_account?: unknown }).paying_account) return `${l.proposal_id} pays from a connected account; run this batch line by line`;
+  if ((t as { funding_account?: unknown }).funding_account) return `${l.proposal_id} pays from a legal entity's own account; run this batch line by line`;
   return null;
 }
 

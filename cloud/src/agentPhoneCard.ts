@@ -13,9 +13,7 @@
 // The view shows the agent's name, the card's last four (never more), its limits, what it spent and its status. It has no
 // script, no form and no way to act: it pays, freezes and changes nothing. Every value is escaped.
 
-import { AIRWALLEX_LOGO_DATA_URL } from "./awxLogo.gen.js";
-import { BRAND_LOGOS } from "./brandLogos.gen.js";
-import { ALTA_AGENTS, CARD_ART_CSS, CARD_PRESETS, cleanDesign, EMPTY_DESIGN, FEATHER_SVG, isLight, modelShort, styleOf, type CardDesign, type CardPreset } from "./agentCardArt.js";
+import { CARD_ART_CSS, CARD_ART_DEFS, CARD_PRESETS, cardSvg, cleanDesign, EMPTY_DESIGN, modelShort, styleOf, type CardDesign, type CardPreset } from "./agentCardArt.js";
 import { REPO_BLOB, ROSTER } from "./agentRoster.js";
 import { recordedNegotiation } from "../../src/negotiate/negotiate.js";
 import { agentsOf } from "./consoleData.js";
@@ -109,32 +107,34 @@ export async function phoneCardLinkOpen(sessionSecret: string, token: string, no
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const money = (cur: string, v: string | null) => (v === null ? "—" : `${cur === "EUR" ? "€" : `${esc(cur)} `}${esc(Number(v).toFixed(2))}`);
-const NFC = `<svg class="ac-nfc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8.5 7.5a6 6 0 0 1 0 9"/><path d="M12 5a9.5 9.5 0 0 1 0 14"/><path d="M15.5 2.5a13 13 0 0 1 0 19"/></svg>`;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const monthName = (m: string) => (/^\d{4}-\d{2}$/.test(m) ? `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}` : m);
 const STATUS: Record<string, string> = { active: "Active", paused: "Paused", revoked: "Revoked" };
 
-/** The card's face as markup: the same classes the console draws with (CARD_ART_CSS); every value escaped. */
+/** The card's face as markup: the same classes the console draws with (CARD_ART_CSS); every value escaped. 26 Nov (the
+ * owner: "far too busy"): on the card only the name, one mark, the last four and the network; the rest is under it. */
 export function cardFaceHtml(d: PhoneCardData, design: CardDesign): string {
   const preset = styleOf(design, d.agent);
-  const light = preset === "brand" && design.color ? isLight(design.color) : false;
+  const c = d.card;
+  // 27 Nov (Obsidian): the art is a few <use> of the page's shared shapes (CARD_ART_DEFS); Purser's quill in the medallion
+  // until the company sets its own initials or logo.
+  return `<div class="acard p-${preset}${c && c.last4 ? "" : " bare"}${d.status !== "active" ? " frozen" : ""}" role="img" aria-label="${esc(`${d.name}, ${d.company}: ${c ? `card ending ${c.last4}` : "no card"}, ${STATUS[d.status] ?? d.status}`)}">`
+    + cardSvg({ agent: d.agent, name: d.name, last4: c && c.last4 ? c.last4 : null, logo: design.logo, initials: design.initials }, esc) + `<span class="ac-shine"></span></div>`;
+}
+
+/** Under the card, in small muted words: its status and honesty label, then its month on a thin meter. */
+export function cardMetaHtml(d: PhoneCardData): string {
   const c = d.card;
   const spent = c && c.per_month && c.spent_month !== null ? Number(c.spent_month) : null;
   const cap = c && c.per_month ? Number(c.per_month) : 0;
   const pct = spent !== null && cap > 0 ? Math.min(100, (spent / cap) * 100) : 0;
-  // 21 Nov (Max): Purser's feather until the company sets its own initials or logo.
-  const mark = design.logo ? `<img src="${esc(design.logo)}" alt="">` : design.initials ? esc(design.initials) : FEATHER_SVG;
-  const claude = BRAND_LOGOS.claude!.uri, alta = BRAND_LOGOS.alta!.uri;
-  return `<div class="acard p-${preset}${light ? " ink" : ""}${c && c.last4 ? "" : " bare"}${d.status !== "active" ? " frozen" : ""}" role="img" aria-label="${esc(`${d.name}, ${d.company}: ${c ? `card ending ${c.last4}` : "no card"}, ${STATUS[d.status] ?? d.status}`)}"><span class="ac-shine"></span>
-<div class="ac-top"><span class="ac-mark">${mark}</span><span class="ac-who"><b class="ac-name">${esc(d.name)}</b><span class="ac-co">${esc(d.company.replace(/\s*\([^)]*\)\s*$/, ""))}</span></span>${c ? `<span class="ac-plate"><img src="${AIRWALLEX_LOGO_DATA_URL}" alt="Airwallex"></span>` : ""}</div>
-<div class="ac-mid">${c ? `<span class="ac-chip"></span>${NFC}` : ""}<span class="ac-st ${esc(d.status.replace(/[^a-z]/g, ""))}"><i></i>${esc(STATUS[d.status] ?? d.status)}</span></div>
-<div class="ac-num${c && c.last4 ? "" : " none"}">${c && c.last4 ? `•••• •••• •••• ${esc(c.last4)}` : "No card of its own"}</div>
-${spent !== null && c ? `<div class="ac-meter"><span class="ac-ml"><b>${money(c.currency, c.spent_month)}</b><span>of ${money(c.currency, c.per_month)} this month</span></span><span class="ac-bar${spent >= cap ? " full" : ""}"><span class="w${Math.round(pct)}"></span></span></div>` : "<div></div>"}
-<div class="ac-foot">${d.model ? `<span class="ac-model"><img src="${claude}" alt="Claude">${esc(modelShort(d.model))}</span>` : `<span class="ac-model code">Code only</span>`}${(ALTA_AGENTS as readonly string[]).includes(d.agent) ? `<span class="ac-alta"><img src="${alta}" alt="Alta (formerly Metal)"></span>` : ""}${d.demo && c ? `<span class="ac-tag">Simulated</span>` : ""}${c && c.last4 ? `<span class="ac-net txt">Visa</span>` : ""}</div></div>`;
+  const honest = c ? `<span class="hon">${d.demo ? "Simulated card · test money" : "Sandbox card · test money"}</span>` : "";
+  const month = spent !== null && c ? `<p class="mt"><span><b>${money(c.currency, c.spent_month)}</b> of ${money(c.currency, c.per_month)} this month</span><span class="ac-bar${spent >= cap ? " full" : ""}"><span class="w${Math.round(pct)}"></span></span></p>` : "";
+  return `<div class="meta"><p class="st"><i class="${esc(d.status.replace(/[^a-z]/g, ""))}"></i><span>${esc(STATUS[d.status] ?? d.status)}</span>${honest}</p>${month}</div>`;
 }
 
 /** The meter's width as a class: the page's style allows no inline style attribute. */
-const WIDTHS = Array.from({ length: 101 }, (_, i) => `.acard .ac-bar > span.w${i}{width:${i}%}`).join("");
+const WIDTHS = Array.from({ length: 101 }, (_, i) => `.ac-bar > span.w${i}{width:${i}%}`).join("");
 
 export function phoneCardPage(nonce: string, d: PhoneCardData, design: CardDesign, o: { expires_at: string; wallet: string | null; walletConfigured: boolean }): string {
   const c = d.card;
@@ -145,6 +145,7 @@ export function phoneCardPage(nonce: string, d: PhoneCardData, design: CardDesig
     c && c.per_purchase ? row("Per purchase", money(c.currency, c.per_purchase)) : "",
     c && c.per_month ? row(`Spent${c.month ? ` in ${esc(monthName(c.month))}` : ""}`, `${money(c.currency, c.spent_month)} of ${money(c.currency, c.per_month)}`) : "",
     row("Role", esc(d.role)),
+    row("Model", d.model ? esc(modelShort(d.model)) : "Code only"),
     row("Status", esc(STATUS[d.status] ?? d.status)),
   ].join("");
   const wallet = o.wallet ? `<a class="wal" href="${esc(o.wallet)}">Add to Apple Wallet</a>` : `<p class="wal off" aria-disabled="true">Apple Wallet: ${o.walletConfigured ? "this agent has no card to carry" : "waiting for the pass certificate"}</p>`;
@@ -156,12 +157,14 @@ main{max-width:440px;margin:0 auto;display:grid;gap:16px}.band{font-size:12px;fo
 h1{font-size:13px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin:0}.rows{display:grid;gap:0;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:4px 14px}
 .row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}.row:last-child{border-bottom:0}.row span{color:#9ca3af}.row b{font-weight:600;text-align:right;overflow-wrap:anywhere}
 .wal{display:block;text-align:center;padding:12px;border-radius:12px;background:#000;color:#fff;font-weight:650;text-decoration:none;border:1px solid #333;margin:0}.wal.off{background:transparent;color:#9ca3af;border-style:dashed;font-weight:550}
-.fine{font-size:12.5px;color:#9ca3af;margin:0}a{color:#93c5fd}
+.fine{font-size:12.5px;color:#9ca3af;margin:0}.meta{display:grid;gap:6px;margin:-4px 2px 0;font-size:12.5px;color:#9ca3af}.meta p{margin:0}.st{display:flex;align-items:center;flex-wrap:wrap;gap:2px 8px}.st i{width:6px;height:6px;border-radius:50%;background:#94a3b8}.st i.active{background:#4ade80}.st span:not(.hon){color:#e5e7eb;font-weight:550}.st .hon::before{content:"·";margin-right:8px}.mt{display:grid;gap:5px}.mt b{color:#e5e7eb;font-weight:600}.meta .ac-bar{display:block;height:2px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}.meta .ac-bar>span{display:block;height:100%;background:linear-gradient(90deg,#a97b25,#d9b768)}.meta .ac-bar.full>span{background:#fca5a5}a{color:#93c5fd}
 ${CARD_ART_CSS}${WIDTHS}${brand}
 </style></head><body><main>
 <p class="band">${d.demo ? "Demo company · made-up data · test money" : "Purser · test money · Airwallex sandbox"}</p>
 <h1>${esc(d.company)}</h1>
+${CARD_ART_DEFS}
 ${cardFaceHtml(d, design)}
+${cardMetaHtml(d)}
 <div class="rows">${rows}</div>
 ${wallet}
 <p class="fine">Read only: this page cannot pay, freeze or change anything. The CFO acts in Purser Cloud, with Face ID. This link works until ${esc(o.expires_at.slice(0, 16).replace("T", " "))} UTC.</p>

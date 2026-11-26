@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 // The hands-on demo on the site's own address (worker/src/tryEngine.ts): with the TRY_ENGINE service binding, the site
 // passes /try and exactly the paths its page calls to purser-try, the request unchanged; everything else stays the
 // site's (/try/sign and under it above all), and without the binding the site answers as before.
@@ -9,7 +10,7 @@ import { LOGOS } from "../src/servers/dashboard.js";
 import { describe, expect, it } from "vitest";
 import { isTryEngineRequest, tryEngineResponse, TRY_ENGINE_PATHS, type TryEngine } from "../worker/src/tryEngine.js";
 import { tryPage } from "../cloud/src/tryPage.js";
-import { INTER_WOFF2_B64 } from "../cloud/src/font.gen.js";
+import { INTER_WOFF2_SHA256 } from "../cloud/src/font.gen.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 import { isTrySignPath } from "../worker/src/trySign.js";
 import { X402_PATH } from "../worker/src/x402.js";
@@ -82,7 +83,7 @@ describe("the paths the site passes to purser-try", () => {
     const pages = { csp: {}, images: {}, font: "", try: "the site's /try", client: "", css: "" } as unknown as Pages;
     const hits = PAGE_CALLS.filter(([m, p]) => pageResponse(req(m, p), pages) !== null).map(([m, p]) => `${m} ${p}`);
     expect(hits).toEqual(["GET /try", "HEAD /try"]);
-    expect(INTER_WOFF2_B64).toBe(readFileSync(new URL("../src/ui/inter.woff2", import.meta.url)).toString("base64"));
+    expect(INTER_WOFF2_SHA256).toBe(createHash("sha256").update(readFileSync(new URL("../src/ui/inter.woff2", import.meta.url))).digest("hex"));
   });
 });
 

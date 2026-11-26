@@ -259,7 +259,7 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   const frame = page.frameLocator("#pask-panel iframe");
   // Jury mode (21 Nov, Max): signed out, the panel offers the questions about Purser, styled as cards (no bullets).
   await frame.getByRole("heading", { name: C.juryHead }).waitFor({ timeout: 10_000 });
-  ok(await frame.locator("#hello .acts.jury button").count() === ASK_JURY.length && !(await frame.locator("#hello .acts.co").isVisible()), "the panel's empty state is jury mode: the questions about Purser, not the console's actions");
+  ok(await frame.locator("#hello .acts.jury button").count() === ASK_JURY.length && ASK_JURY.length <= 3 && (await frame.locator("#hello .acts.ctx button").count()) === 0, "the panel's empty state is jury mode: the questions about Purser, at most three, no page actions without a page");
   ok(await frame.locator("#hello .acts.jury li").first().evaluate((li) => getComputedStyle(li).listStyleType === "none" && getComputedStyle(li.querySelector("button")!).borderRadius !== "0px"), "its questions are cards, without bullets");
   await frame.getByRole("button", { name: ASK_JURY[2]!.q }).click();
   await frame.locator(".msg.bot:not([aria-busy]) .meta").waitFor({ timeout: 15_000 });
@@ -316,10 +316,10 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   await page.locator("#pask-fab").click();
   const frame = page.frameLocator("#pask-panel iframe");
   await frame.locator("#ctxbar:not([hidden])").waitFor({ timeout: 10_000 });
-  ok((await frame.locator("#ctxl").innerText()) === `Invoice ${id}` && (await frame.locator("#ctxd").innerText()).includes("demo company"), "the panel says which invoice, in the demo company");
-  const labels = await frame.locator("#qa button[data-q]").allInnerTexts();
+  ok((await frame.locator("#ctxl").innerText()) === `Invoice ${id}` && (await frame.locator("#ctxd").innerText()).includes("demo data"), "the panel says which invoice, in the demo company (demo data), on one line");
+  const labels = await frame.locator("#sugctx button[data-q]").allInnerTexts();
   ok(JSON.stringify(labels) === JSON.stringify(["Check invoice status", "View transactions", "Explain a decision"]), `three quick actions (${JSON.stringify(labels)})`);
-  ok(await frame.locator("#qa .qa-go").count() === 1, "and the page where the CFO approves, to open");
+  ok(await frame.locator("#ctxbar .qa-go").count() === 1, "and the page where the CFO approves, to open");
   await shot(page, "5b-console-1440-dark-context");
   await frame.getByRole("button", { name: "Check invoice status" }).click();
   await frame.locator(".msg.bot:not([aria-busy]) .meta").waitFor({ timeout: 15_000 });
@@ -332,8 +332,8 @@ const shot = async (page: Page, name: string) => { if (shots) await page.screens
   await page.waitForFunction(() => document.body.dataset.askKind === "overview", undefined, { timeout: 15_000 });
   await page.locator("#pask-fab").click();
   await page.waitForTimeout(300);
-  ok((await frame.locator("#ctxl").innerText()) === "The overview", "the panel follows the page the person moved to");
-  await frame.locator("#qa .qa-go").click();
+  ok((await frame.locator("#ctxl").innerText()) === "Overview", "the panel follows the page the person moved to");
+  await frame.locator("#ctxbar .qa-go").click();
   await page.waitForTimeout(400);
   ok(await page.evaluate(() => location.hash) === "#/invoices?f=waiting_cfo" && !(await page.locator("#pask-panel").isVisible()), "\"Open where the CFO approves\" opens what waits for the CFO's Face ID and closes the panel");
   await ctx.close();

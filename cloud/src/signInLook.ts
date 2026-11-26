@@ -1,6 +1,6 @@
 // Purser Cloud's signed-out screens (sign-in, first run, a passkey's enrolment). 21 Nov, Max, from his mockup: "upgrade
 // purser cloud login page to exactly this, only not with all the text left: just Purser Cloud and some small USP, and
-// animating". On the left: a large globe of particles, its land as dots, turning slowly; the site's wave at the bottom
+// animating". On the left: a large globe of the Earth (its land as dots, a graticule), swaying slowly; the site's wave at the bottom
 // (src/ui/wave.ts); over them the Purser mark, "Purser Cloud", one short line and three small points with icons. On the
 // right: the card as glass, with the heading, the company address, the passkey as the one large action, "New company?
 // Set it up", then "or" and the guest way. No paragraph. Only the look and two canvases: authentication is unchanged
@@ -142,22 +142,28 @@ const LAND: number[][][] = [
 ];
 
 /**
- * Places on the globe, each a small glowing ping with a label (21 Nov, Max). Only places the repository or the owner
- * states: Purser in the Netherlands; Airwallex (its San Francisco office), Anthropic (Claude) and Visa in San Francisco.
+ * Places on the globe, each a small ping with a label (21 Nov, Max). Only places the repository or the owner states.
+ * 26 Nov (Max: "a small pulsing green dot at the company's location"): the company is the demo company, Northwind
+ * Outdoor; its location is Amsterdam, NL, as its test world's payer address gives it (src/e2e/platformRun.ts withPayer:
+ * countryCode NL, city Amsterdam; its country NL also in src/icc/policy.ts). It is the one green dot and the one that
+ * pulses. Airwallex (its San Francisco office), Anthropic (Claude) and Visa in San Francisco stay as a quiet violet dot.
  * Moneybird and Alta are left off: the repository states no location for either company. [longitude, latitude, label, green]
  */
 const PLACES: readonly (readonly [number, number, string, boolean])[] = [
-  [5.3, 52.1, "Purser", true],
+  [4.9, 52.37, "Northwind Outdoor (demo)", true], // the demo company's location: Amsterdam, NL
   [-122.42, 37.77, "Airwallex · Claude · Visa", false],
 ];
 
 /**
- * The globe: dots on a sphere (land bright, sea faint), rocking slowly round the Atlantic so both pings stay in view, a
- * glow at its rim. 21 Nov (Max): behind everything, a large dim backdrop behind the words (not beside them): the largest
- * whole circle round a point a little right of the panel's middle, its sphere drawn at about half strength; the pings
- * at full strength, their labels placed clear of the words (the mark, the heading, the line and the three points,
- * measured on every resize) or not drawn. Every frame (no 30 fps cap since 21 Nov), gradients made once per size, the
- * pixel ratio at most 1.5, paused off screen and in a hidden tab; still under reduced motion or on a device too slow.
+ * The globe (26 Nov, Max: "make it read clearly as Earth"): an orthographic Earth, north up and tilted a little toward
+ * the viewer, centred on the Atlantic so the company's dot and San Francisco both stay in view; a lit body, a graticule
+ * of thin lines every 30 degrees fading to the rim, the land from LAND as an even field of dots shaded by the light, a
+ * soft atmosphere and a lit rim. It sways gently east and west (a minute a swing); under prefers-reduced-motion, or on
+ * a device too slow, it is drawn once and stands still. Still a dim backdrop behind the words (21 Nov, Max): the
+ * largest whole circle round a point a little right of the panel's middle, the sphere at reduced strength, a scrim of
+ * the panel's ground behind the words; the pings at full strength, their labels placed clear of the words (measured on
+ * every resize) or not drawn. Gradients made once per size, the pixel ratio at most 1.5, paused off screen and in a
+ * hidden tab. One canvas, no library.
  */
 const GLOBE_JS = `
 (function () {
@@ -167,40 +173,50 @@ const GLOBE_JS = `
   var boxes = LAND.map(function (p) { var b = [999, 999, -999, -999]; p.forEach(function (q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }); return b; });
   function inside(p, x, y) { var o = false; for (var i = 0, j = p.length - 1; i < p.length; j = i++) { var a = p[i], b = p[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) o = !o; } return o; }
   function land(lon, lat) { for (var k = 0; k < LAND.length; k++) { var b = boxes[k]; if (lon < b[0] || lon > b[2] || lat < b[1] || lat > b[3]) continue; if (inside(LAND[k], lon, lat)) return true; } return false; }
-  var DIM = 0.5, still = matchMedia("(prefers-reduced-motion: reduce)").matches, dark = matchMedia("(prefers-color-scheme: dark)");
+  // The view: the centre of the disc at 50 degrees west (rot is that longitude less 90), tilted 21 degrees; a sway of
+  // 11 degrees each way over a minute.
+  var D2R = Math.PI / 180, ROT = (-50 - 90) * D2R, SWAY = 11 * D2R, PERIOD = 60000, TILT = 21 * D2R, ct = Math.cos(TILT), st = Math.sin(TILT);
+  var unit = function (lon, lat) { return [Math.cos(lon * D2R) * Math.cos(lat * D2R), Math.sin(lat * D2R), Math.sin(lon * D2R) * Math.cos(lat * D2R)]; };
+  // The graticule: meridians every 30 degrees (to 84 north and south), the parallels at 0, 30 and 60 north and south.
+  var GRID = [], gl, s3;
+  for (var lo = -180; lo < 180; lo += 30) { gl = []; for (var la = -84; la <= 84; la += 3) { s3 = unit(lo, la); gl.push(s3[0], s3[1], s3[2]); } GRID.push(gl); }
+  [-60, -30, 0, 30, 60].forEach(function (la) { gl = []; for (var lo2 = -180; lo2 <= 180; lo2 += 3) { s3 = unit(lo2, la); gl.push(s3[0], s3[1], s3[2]); } GRID.push(gl); });
+  var DIM = 0.62, still = matchMedia("(prefers-reduced-motion: reduce)").matches, dark = matchMedia("(prefers-color-scheme: dark)");
   var pts = [], W = 0, H = 0, dpr = 1, raf = 0, seen = true, t0 = 0, lastF = 0, emaF = 0, nF = 0, txt = [], ink = [180, 168, 255], acc = "#a398ff", ground = [8, 10, 18], scrim = null, sx = 0, sy = 0, sk = 1, srw = 0;
-  var cx = 0, cy = 0, R = 0, lite = false, at = null, body = null, rim = null, col = "", sampled = 0, bk = []; for (var q0 = 0; q0 < 32; q0++) bk.push([]);
+  var cx = 0, cy = 0, R = 0, lite = false, at = null, body = null, rim = null, grid = null, col = "", sampled = 0, bk = []; for (var q0 = 0; q0 < 32; q0++) bk.push([]);
   function theme() { var cs = getComputedStyle(document.documentElement), a = (cs.getPropertyValue("--accent") || "").trim(); acc = a || acc;
     var m = /^#([0-9a-f]{6})$/i.exec(acc); if (m) { var n = parseInt(m[1], 16); ink = [n >> 16 & 255, n >> 8 & 255, n & 255]; }
     var bm = /^#([0-9a-f]{6})$/i.exec((cs.getPropertyValue("--bg") || "").trim()); if (bm) { var bn = parseInt(bm[1], 16); ground = [bn >> 16 & 255, bn >> 8 & 255, bn & 255]; }
     lite = !dark.matches && document.documentElement.getAttribute("data-theme") !== "dark"; if (document.documentElement.getAttribute("data-theme") === "light") lite = true; }
+  // The land as an even field of dots (a Fibonacci sphere): the sea is left to the graticule.
   function sample(n) {
     pts = []; sampled = n; var gold = Math.PI * (3 - Math.sqrt(5));
     for (var i = 0; i < n; i++) { var y = 1 - 2 * (i + 0.5) / n, r = Math.sqrt(1 - y * y), th = i * gold, x = Math.cos(th) * r, z = Math.sin(th) * r;
-      var lat = Math.asin(y) * 180 / Math.PI, lon = Math.atan2(z, x) * 180 / Math.PI, l = land(lon, lat);
-      if (l || i % 4 === 0) pts.push([x, y, z, l ? 1 : 0, (i * 9301 + 49297) % 233280 / 233280]); }
+      if (land(Math.atan2(z, x) / D2R, Math.asin(y) / D2R)) pts.push([x, y, z, (i * 9301 + 49297) % 233280 / 233280]); }
   }
   // The words' boxes (for the labels), and the globe: the largest whole circle (with its glow) round a point a little
   // right of the middle, behind the words.
   function place() {
     var cr = c.getBoundingClientRect(), side = c.parentElement, mg = W >= 700 ? 10 : 4; txt = [];
     if (side) side.querySelectorAll(".side-mk, .side h2, .side > p, .side li").forEach(function (e) { var r = e.getBoundingClientRect(); if (r.width && r.height) txt.push([r.left - cr.left - mg, r.top - cr.top - mg, r.right - cr.left + mg, r.bottom - cr.top + mg]); });
-    var gap = W >= 700 ? 8 : 3, k = 1.16;
+    var gap = W >= 700 ? 8 : 3, k = 1.12;
     cx = W * (W >= 700 ? 0.56 : 0.74); cy = H * (W >= 700 ? 0.54 : 0.5);
     R = Math.max(0, Math.min(W >= 700 ? 440 : 260, (Math.min(cx, W - cx, cy, H - cy) - gap) / k));
   }
   function size() { var r = c.getBoundingClientRect(); dpr = Math.min(1.5, window.devicePixelRatio || 1); W = Math.max(1, r.width); H = Math.max(1, r.height);
     c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); theme(); place();
-    var n = Math.max(2500, Math.min(20000, Math.round(4 * Math.PI * R * R / 7))); if (Math.abs(n - sampled) > sampled * 0.15) sample(n);
+    var n = Math.max(3000, Math.min(26000, Math.round(4 * Math.PI * R * R / 5.5))); if (Math.abs(n - sampled) > sampled * 0.15) sample(n);
     col = "rgba(" + ink[0] + "," + ink[1] + "," + ink[2] + ",";
-    at = g.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.16); at.addColorStop(0, col + (lite ? ".22)" : ".38)")); at.addColorStop(1, col + "0)");
-    body = g.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R); body.addColorStop(0, lite ? "rgba(255,255,255,.75)" : "rgba(30,26,72,.92)"); body.addColorStop(1, lite ? "rgba(236,232,252,.92)" : "rgba(10,10,28,.96)");
+    at = g.createRadialGradient(cx, cy, R * 0.96, cx, cy, R * 1.12); at.addColorStop(0, col + (lite ? ".18)" : ".3)")); at.addColorStop(1, col + "0)");
+    body = g.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R); body.addColorStop(0, lite ? "rgba(255,255,255,.8)" : "rgba(34,30,80,.92)"); body.addColorStop(1, lite ? "rgba(234,230,252,.94)" : "rgba(9,9,26,.97)");
+    // The graticule's lines: clear at the centre, faint at the rim (one gradient, one stroke).
+    grid = g.createRadialGradient(cx, cy, 0, cx, cy, R); grid.addColorStop(0, col + (lite ? ".3)" : ".28)")); grid.addColorStop(0.75, col + (lite ? ".18)" : ".16)")); grid.addColorStop(1, col + ".04)");
     // The scrim: an ellipse of the panel's ground round the words (drawn after the sphere, before the pings).
     scrim = null; if (txt.length) { var U = [1e9, 1e9, -1e9, -1e9]; txt.forEach(function (T) { U[0] = Math.min(U[0], T[0]); U[1] = Math.min(U[1], T[1]); U[2] = Math.max(U[2], T[2]); U[3] = Math.max(U[3], T[3]); });
       var rw = (U[2] - U[0]) / 2 + (W >= 700 ? 70 : 24), rh = (U[3] - U[1]) / 2 + (W >= 700 ? 50 : 18), gc = "rgba(" + ground.join(",") + ",";
       sx = (U[0] + U[2]) / 2; sy = (U[1] + U[3]) / 2; sk = rh / rw; srw = rw; scrim = g.createRadialGradient(0, 0, 0, 0, 0, rw);
       scrim.addColorStop(0, gc + ".8)"); scrim.addColorStop(0.62, gc + ".55)"); scrim.addColorStop(1, gc + "0)"); }
-    rim = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); rim.addColorStop(0, col + (lite ? ".7)" : ".95)")); rim.addColorStop(0.55, col + ".05)"); rim.addColorStop(1, col + ".25)");
+    rim = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); rim.addColorStop(0, col + (lite ? ".55)" : ".8)")); rim.addColorStop(0.55, col + ".04)"); rim.addColorStop(1, col + ".18)");
   }
   function frame(now) {
     raf = 0;
@@ -210,36 +226,43 @@ const GLOBE_JS = `
     if (!t0) t0 = now; var el = still ? 0 : now - t0;
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     if (R < 16) return;
-    var wide = R >= 90, rot = -2.85 - 0.42 + 0.16 * Math.sin(el * 0.00009);
-    // The atmosphere, then the sphere's body (it covers the wave behind it), the dots, then a lit rim: all dim (a backdrop).
-    g.globalAlpha = DIM; g.fillStyle = at; g.beginPath(); g.arc(cx, cy, R * 1.16, 0, Math.PI * 2); g.fill();
+    var wide = R >= 90, rot = ROT + SWAY * Math.sin(el * 2 * Math.PI / PERIOD), cr = Math.cos(rot), sr = Math.sin(rot);
+    // The atmosphere, then the sphere's body (it covers the wave behind it), the graticule, the land, then a lit rim.
+    g.globalAlpha = DIM; g.fillStyle = at; g.beginPath(); g.arc(cx, cy, R * 1.12, 0, Math.PI * 2); g.fill();
     g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
-    // The dots in 2 x 16 buckets of colour and alpha: one path and one fill per bucket, no colour string per dot.
-    var cr = Math.cos(rot), sr = Math.sin(rot), tl = 0.42, ct = Math.cos(tl), st = Math.sin(tl);
+    g.strokeStyle = grid; g.lineWidth = wide ? 0.8 : 0.6; g.beginPath();
+    for (var L = 0; L < GRID.length; L++) { var line = GRID[L], pen = false;
+      for (var m = 0; m < line.length; m += 3) { var gx = line[m] * cr + line[m + 2] * sr, gz0 = -line[m] * sr + line[m + 2] * cr, gy = line[m + 1] * ct - gz0 * st, gz = line[m + 1] * st + gz0 * ct;
+        if (gz <= 0) { pen = false; continue; } if (pen) g.lineTo(cx - gx * R, cy - gy * R); else { g.moveTo(cx - gx * R, cy - gy * R); pen = true; } } }
+    g.stroke();
+    // The land: each dot's strength from the light (from the upper left), smaller and fainter toward the rim; in 2 x 16
+    // buckets of colour and alpha, one path and one fill per bucket; the land stronger than the sphere behind it.
     for (var q = 0; q < 32; q++) bk[q].length = 0;
     for (var i = 0; i < pts.length; i++) {
       var p = pts[i], x = p[0] * cr + p[2] * sr, z0 = -p[0] * sr + p[2] * cr, y = p[1] * ct - z0 * st, z = p[1] * st + z0 * ct;
-      if (z <= 0.02) continue;
-      var lim = 1 - z, a = p[3] ? (lite ? 0.35 + 0.5 * z : 0.4 + 0.6 * z) * (0.75 + 0.25 * p[4]) : (lite ? 0.1 : 0.12) * z;
-      a *= 1 + lim * lim * (p[3] ? 0.9 : 1.6);
-      var s = p[3] ? (wide ? 0.95 : 0.8) * (0.6 + 0.5 * z) : 0.6;
-      bk[(p[3] && z > 0.55 && !lite ? 16 : 0) + (a >= 1 ? 15 : (a * 16) | 0)].push(cx - x * R - s, cy - y * R - s, s * 2);
+      if (z <= 0.01) continue;
+      var lit = Math.max(0, 0.35 * x + 0.4 * y + 0.85 * z), a = ((lite ? 0.42 : 0.4) + 0.55 * lit) * (0.82 + 0.18 * p[3]) * Math.min(1, z * 3.2);
+      var s = (wide ? 0.85 : 0.7) * (0.55 + 0.45 * z);
+      bk[(!lite && lit > 0.78 ? 16 : 0) + (a >= 1 ? 15 : (a * 16) | 0)].push(cx - x * R - s, cy - y * R - s, s * 2);
     }
+    g.globalAlpha = lite ? 0.78 : 0.92;
     for (q = 0; q < 32; q++) { var B = bk[q]; if (!B.length) continue; g.fillStyle = (q >= 16 ? "rgba(236,232,255," : col) + (((q & 15) + 0.5) / 16).toFixed(3) + ")"; g.beginPath();
       for (var j = 0; j < B.length; j += 3) g.rect(B[j], B[j + 1], B[j + 2], B[j + 2]); g.fill(); }
-    g.strokeStyle = rim; g.lineWidth = wide ? 2 : 1.4; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
+    g.globalAlpha = DIM; g.strokeStyle = rim; g.lineWidth = wide ? 1.5 : 1.1; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
     if (scrim) { g.save(); g.translate(sx, sy); g.scale(1, sk); g.fillStyle = scrim; g.fillRect(-srw, -srw, srw * 2, srw * 2); g.restore(); }
-    // The pings: pinned to the turning globe, a soft pulse, a small label on a dark plate (none on a very small globe).
-    var pulse = still ? 0.5 : (el % 2400) / 2400;
+    // The pings, pinned to the turning globe: the company's green dot pulses (still under reduced motion), the other is a
+    // quiet dot; each with a small label on a plate (none on a very small globe).
+    var pulse = still ? 0.45 : (el % 2200) / 2200;
     g.font = "600 " + (R >= 140 ? 12 : 11) + "px Inter, system-ui, sans-serif"; g.textBaseline = "middle"; var placed = [];
     for (var k = 0; k < PLACES.length; k++) {
-      var P = PLACES[k], la = P[1] * Math.PI / 180, lo = P[0] * Math.PI / 180, px = Math.cos(lo) * Math.cos(la), py = Math.sin(la), pz = Math.sin(lo) * Math.cos(la);
+      var P = PLACES[k], la = P[1] * D2R, lo = P[0] * D2R, px = Math.cos(lo) * Math.cos(la), py = Math.sin(la), pz = Math.sin(lo) * Math.cos(la);
       var X = px * cr + pz * sr, Z0 = -px * sr + pz * cr, Y = py * ct - Z0 * st, Zf = py * st + Z0 * ct;
       if (Zf <= 0.08) continue;
-      var vx = cx - X * R, vy = cy - Y * R, fade = Math.min(1, (Zf - 0.08) / 0.25), rgb = P[3] ? "74,222,128" : (lite ? "109,84,232" : "196,181,253");
-      g.globalAlpha = fade * (1 - pulse); g.strokeStyle = "rgba(" + rgb + ",.9)"; g.lineWidth = 1.2; g.beginPath(); g.arc(vx, vy, 3 + pulse * Math.min(11, R * 0.2), 0, Math.PI * 2); g.stroke();
-      g.globalAlpha = fade; var glow = 8; g.fillStyle = "rgba(" + rgb + ",.25)"; g.beginPath(); g.arc(vx, vy, glow * 0.7, 0, Math.PI * 2); g.fill();
-      g.fillStyle = "rgb(" + rgb + ")"; g.beginPath(); g.arc(vx, vy, 3, 0, Math.PI * 2); g.fill();
+      var vx = cx - X * R, vy = cy - Y * R, fade = Math.min(1, (Zf - 0.08) / 0.25), rgb = P[3] ? (lite ? "22,163,74" : "74,222,128") : (lite ? "109,84,232" : "196,181,253");
+      if (P[3]) { g.globalAlpha = fade * (1 - pulse) * 0.9; g.strokeStyle = "rgb(" + rgb + ")"; g.lineWidth = 1.5; g.beginPath(); g.arc(vx, vy, 4 + pulse * Math.min(14, R * 0.2), 0, Math.PI * 2); g.stroke();
+        g.globalAlpha = fade; g.fillStyle = "rgba(" + rgb + ",.22)"; g.beginPath(); g.arc(vx, vy, 7.5, 0, Math.PI * 2); g.fill(); }
+      g.globalAlpha = fade; g.fillStyle = lite ? "#fff" : "rgba(12,10,32,.9)"; g.beginPath(); g.arc(vx, vy, P[3] ? 5 : 4, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "rgb(" + rgb + ")"; g.beginPath(); g.arc(vx, vy, P[3] ? 3.5 : 2.5, 0, Math.PI * 2); g.fill();
       if (R >= 70) {
         // Beside the dot (away from the rim), else on its other side, below or above it: never on another label, never
         // under the words (a label with no clear place is not drawn; its dot still is).
@@ -258,7 +281,7 @@ const GLOBE_JS = `
           var bx = vx, by = vy; for (var v3 = 0; v3 < txt.length; v3++) { var T3 = txt[v3]; if (vx > T3[0] && vx < T3[2] && vy > T3[1] && vy < T3[3]) { if (ay === ly && lx > vx) bx = T3[2]; else if (lx + w < vx) bx = T3[0]; else by = ly > vy ? T3[3] : T3[1]; } }
           g.strokeStyle = "rgba(" + rgb + ",.55)"; g.lineWidth = 1; g.beginPath(); g.moveTo(bx, by); g.lineTo(ax, ay); g.stroke(); }
         w -= 14;
-        g.fillStyle = lite ? "rgba(255,255,255,.85)" : "rgba(12,10,32,.72)"; g.beginPath();
+        g.fillStyle = lite ? "rgba(255,255,255,.88)" : "rgba(12,10,32,.74)"; g.beginPath();
         if (g.roundRect) g.roundRect(lx, ly - 10, w + 14, 20, 10); else g.rect(lx, ly - 10, w + 14, 20); g.fill();
         g.fillStyle = lite ? "#2a2250" : "rgba(240,236,255,.95)"; g.fillText(P[2], lx + 7, ly + 0.5);
       }

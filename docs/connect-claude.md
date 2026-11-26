@@ -10,9 +10,10 @@ Purser is a remote MCP server (Streamable HTTP) at **`<your Purser Cloud address
 that is `https://purser-try.max-31b.workers.dev/mcp`.
 
 **What ran live, and where.** On 13 November 2026, 06:57 UTC, `tools/list` there with the demo company's token answered
-the 7 read tools of the version deployed then (this version has 14; see *Which clients were verified*). The same morning the owner added Purser as a connector in the **Claude iOS app**: its 7 tools showed,
+the 7 read tools of the version deployed then (this version has 15; see *Which clients were verified*). The same morning the owner added Purser as a connector in the **Claude iOS app**: its 7 tools showed,
 and `agent_decisions` answered through that connector. On 14 November 2026, 14:44 UTC, after the cloud was redeployed,
-`tools/list` there with the demo token answered HTTP 200 with this version's 14 read tools, each marked read-only. No
+`tools/list` there with the demo token answered HTTP 200 with the 14 read tools of the version deployed then, each
+marked read-only (the fifteenth, `route_money_out`, came on 26 November and has not been called on a deployed cloud). No
 other client below has been tried live against a deployed cloud. Each is listed because its own documentation describes
 remote MCP servers this way (read 13 Nov). The whole sign-in and protocol run in this repository's checks on a cloud in
 the test process (`test/cloud-claude.test.ts`, `test/browser/connector.check.ts`, which also connects with the official
@@ -103,7 +104,7 @@ Windsurf's MCP documentation now lives in Devin's docs. In `~/.config/devin/mcp_
 
 | Client | How it was checked (13 Nov 2026) |
 |---|---|
-| MCP Inspector 2.15.0 (CLI) | **Run** against this version on a local cloud (`npm run mcp:local`): `tools/list` (14 tools, `--strict`: no schema-portability warnings), `tools/call`, `resources/list`, `resources/read`, `resources/templates/list`, `prompts/list` |
+| MCP Inspector 2.15.0 (CLI) | **Run** on 13 Nov on a local cloud (`npm run mcp:local`): `tools/list` (14 tools then, `--strict`: no schema-portability warnings), `tools/call`, `resources/list`, `resources/read`, `resources/templates/list`, `prompts/list` |
 | The official MCP TypeScript SDK client (1.32) | **Run** in `test/browser/connector.check.ts`: OAuth sign-in in a real browser, then every read tool and a prompt |
 | Claude iOS app | **Run** by the owner on 13 Nov against the deployed cloud before this version (7 tools then) |
 | claude.ai, Claude Desktop, Claude Code | From Claude's help centre and Claude Code's docs (custom connectors, `claude mcp add --transport http`, DCR and CIMD) |

@@ -10,12 +10,16 @@ import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import type { Card, CardLimits, CardTransaction, IssuingRail, IssuingSim, CardControls } from "../airwallex/issuing.js";
-import { cardLimits, frozen, paused } from "./rules.js";
+import { cardLimits, frozen, paused, policyValue, ruleFor } from "./rules.js";
 import { stopped, velocityObserve } from "./velocity.js";
 import { principalActive } from "./principals.js";
 import { autonomyOn } from "../config/agents.js";
 import { AGENT_NAMES, publish, type AgentName } from "../autonomy/bus.js";
-import { allowedCardLimits, recordRaiseRefusals } from "./cardRaise.js";
+import { allowedCardControls, allowedCardHours, allowedCardLimits, recordRaiseRefusals } from "./cardRaise.js";
+import { cardHoursRefusal, effectiveCardHours, refuseOutsideCardHours, storedCardHours } from "./cardHoursGate.js";
+import { cardHoursWords, listOf } from "./cardHours.js";
+import { policyVersion } from "./versions.js";
+import { cardMetadata } from "../airwallex/cardBody.js";
 
 export interface CardRow {
   /** An own agent (sourcing, support, treasury) or an outside one (ext:<name>, P1). */
@@ -33,6 +37,8 @@ export interface CardRow {
   allowed_mccs: string;
   allowed_currencies: string;
   active_to: string | null;
+  /** The hours Purser enforces on the card ("" or null for any time): Purser's control, not Airwallex's. */
+  hours: string | null;
 }
 
 export function cardRows(db: DB): CardRow[] {
@@ -60,9 +66,11 @@ export function storeCard(db: DB, agent: string, card: Card, now: Date): void {
 }
 
 /**
- * What a card may pay at all, besides its limits: our agents' cards only the merchant categories of their own plans,
- * an outside agent's card only OUTSIDE_AGENT_MCCS; euros only; for CARD_ACTIVE_DAYS from issue. Airwallex declines the
- * rest (MERCHANT_CATEGORY_NOT_ALLOWED, CURRENCY_NOT_ALLOWED).
+ * What a card may pay at all, besides its limits: our agents' cards the merchant categories and currencies of the CFO
+ * policy (card.<agent>.mccs / .currencies; at first the categories of their own plans, in euros), an outside agent's
+ * card only OUTSIDE_AGENT_MCCS in euros; for CARD_ACTIVE_DAYS from issue. Airwallex declines the rest
+ * (MERCHANT_CATEGORY_NOT_ALLOWED, CURRENCY_NOT_ALLOWED). What the policy adds reaches the card only once the CFO signed
+ * it (syncOne, src/policy/cardRaise.ts allowedCardControls).
  */
 export function cardControls(agent: string, now: Date, db?: DB): CardControls {
   if (agent.startsWith("task:")) {
@@ -71,7 +79,13 @@ export function cardControls(agent: string, now: Date, db?: DB): CardControls {
     if (!t) throw new Error(`no task card ${agent}`);
     return { mccs: t.mccs.split(",").sort(), currencies: ["EUR"], activeTo: t.valid_until, singleUse: true };
   }
-  return agentCardControls(agent, now);
+  const code = agentCardControls(agent, now);
+  if (!db || !ruleFor(db, `card.${agent}.mccs`)) return code;
+  const list = (key: string, fallback: string[]) => {
+    const items = listOf(policyValue(db, key));
+    return items.length ? [...new Set(items)].sort() : fallback;
+  };
+  return { ...code, mccs: list(`card.${agent}.mccs`, code.mccs), currencies: list(`card.${agent}.currencies`, code.currencies) };
 }
 
 const controlWords = (c: Pick<CardControls, "mccs" | "currencies"> | null | undefined) =>
@@ -112,9 +126,17 @@ export function recentWindow(db: DB, agent: string, now = new Date()): boolean {
   return !!db.prepare("SELECT 1 FROM audit_log WHERE subject = ? AND event = 'card.window_opened' AND ts >= ? LIMIT 1").get(agent, new Date(now.getTime() - CARD_WINDOW_MS - WINDOW_SKEW_MS).toISOString());
 }
 
-/** The status the policy wants a card in: an agent's card frozen except inside an open window; a task card as the policy allows. */
+/**
+ * Whether the card's hours (card.<agent>.hours) shut it at `now`. The hours are Purser's control, not Airwallex's
+ * (src/policy/cardHours.ts): Airwallex has no recurring time window, so Purser keeps the card frozen at Airwallex
+ * outside them. At the hours' end a card thawed for a purchase is frozen (the runner's sync, every few seconds); at
+ * their start nothing is thawed: the card stays frozen by default until Purser opens a window for a purchase.
+ */
+export const outsideCardHours = (db: DB, agent: string, now = new Date()): boolean => !agent.startsWith("task:") && cardHoursRefusal(db, agent, now) !== null;
+
+/** The status the policy wants a card in: an agent's card frozen except inside an open window within its hours; a task card as the policy allows. */
 export const wantCardStatus = (db: DB, agent: string, now = new Date()): "ACTIVE" | "INACTIVE" =>
-  !policyAllowsCard(db, agent) ? "INACTIVE" : agent.startsWith("task:") || openWindow(db, agent, now) ? "ACTIVE" : "INACTIVE";
+  !policyAllowsCard(db, agent) ? "INACTIVE" : agent.startsWith("task:") ? "ACTIVE" : openWindow(db, agent, now) && !outsideCardHours(db, agent, now) ? "ACTIVE" : "INACTIVE";
 
 /** What thaws and refreezes a card: Airwallex's status switch (the REST client and the test double both have it). */
 type StatusSwitch = Pick<IssuingRail, "setCardStatus">;
@@ -127,16 +149,20 @@ type StatusSwitch = Pick<IssuingRail, "setCardStatus">;
 export async function openCardWindow(db: DB, rail: StatusSwitch, agent: string, a: { amountCents: number; merchant: string; why: string }, now: Date): Promise<CardWindow | null> {
   const card = cardOf(db, agent);
   if (!card) throw new Error(`the ${agent} agent has no card`);
-  if (agent.startsWith("task:") || card.status === "CLOSED" || !policyAllowsCard(db, agent)) return null;
+  // Outside the card's hours no window opens either (Purser's control: Airwallex has no recurring time window).
+  if (agent.startsWith("task:") || card.status === "CLOSED" || !policyAllowsCard(db, agent) || outsideCardHours(db, agent, now)) return null;
   const w: CardWindow = { agent, amount: fromCents(a.amountCents), merchant: a.merchant, until: new Date(now.getTime() + CARD_WINDOW_MS).toISOString(), why: a.why };
-  audit(db, "awx-executor", "card.window_opened", agent, { ...w, last4: card.last4, currency: "EUR" }, now);
+  // The policy version the purchase is allowed under: the charge it answers is recorded with it (ingestCardTransaction).
+  const version = policyVersion(db, now).version;
+  audit(db, "awx-executor", "card.window_opened", agent, { ...w, last4: card.last4, currency: "EUR", policy_version: version }, now);
   // The ledger says "thawed" before the thaw is sent (card drill, 20 Nov): if this process dies after Airwallex thawed
   // the card, or the answer is lost, a stale INACTIVE here would make the runner's cheap sync skip the card for good
   // once the window ran out. ACTIVE makes it read the card at Airwallex and freeze it again.
   db.prepare("UPDATE cards SET status = 'ACTIVE', synced_at = ? WHERE agent = ?").run(now.toISOString(), agent);
   let after: Card;
   try {
-    after = await rail.setCardStatus(card.card_id, "ACTIVE");
+    // The thaw also writes the card's metadata at Airwallex: the agent, the task it is thawed for, the policy version.
+    after = await rail.setCardStatus(card.card_id, "ACTIVE", cardMetadata({ agentId: agent, taskId: a.why, policyVersion: version }));
   } catch (e) {
     // The row stays ACTIVE: the thaw may have reached Airwallex, so the next sync reads the card and freezes it.
     audit(db, "awx-executor", "card.window_closed", agent, { agent, last4: card.last4, why: `not thawed at Airwallex: ${(e as Error).message.slice(0, 120)}` }, now);
@@ -169,6 +195,8 @@ export async function closeCardWindow(db: DB, rail: StatusSwitch, agent: string,
  * decides on the card's own limits, merchant categories and currencies.
  */
 export async function chargeInWindow(db: DB, sim: IssuingSim, agent: string, a: { cardId: string; amountCents: number; currency: "EUR"; merchant: string; mcc: string }, now: Date, why = "a purchase Purser approved under the policy"): Promise<CardTransaction> {
+  // Outside the card's hours Purser starts no purchase: refused here, before anything reaches Airwallex.
+  refuseOutsideCardHours(db, agent, { amountCents: a.amountCents, merchant: a.merchant, why }, now);
   const w = await openCardWindow(db, sim, agent, { amountCents: a.amountCents, merchant: a.merchant, why }, now);
   if (!w) return sim.simulateCardCharge(a);
   try {
@@ -201,15 +229,31 @@ function expectedByWindow(db: DB, agent: string, transactionId: string, amountCe
 }
 
 /**
+ * The purchase window an authorisation of this amount on this card answers (the newest one open at `at`, as
+ * expectedByWindow matches them), with the purpose it was opened for and the policy version it was opened under.
+ */
+function windowFor(db: DB, agent: string, amountCents: number, at: Date): (CardWindow & { policy_version?: number }) | undefined {
+  const rows = db.prepare("SELECT payload_json FROM audit_log WHERE subject = ? AND event = 'card.window_opened' AND ts <= ? ORDER BY seq DESC LIMIT 20")
+    .all(agent, new Date(at.getTime() + WINDOW_SKEW_MS).toISOString()) as { payload_json: string }[];
+  return rows.map((r) => JSON.parse(r.payload_json) as CardWindow & { policy_version?: number })
+    .find((w) => w.amount === fromCents(amountCents) && Date.parse(w.until) + WINDOW_SKEW_MS >= at.getTime());
+}
+
+/**
  * A purchase window on a card the policy now blocks (the emergency stop, a velocity stop, a pause, a revoked identity)
  * is closed for good, not only overruled: the purchase it was opened for is cancelled by the stop. Before 20 Nov (stop
  * drill), lifting the emergency stop within a window's two minutes thawed every card that was mid-purchase when the
  * stop was pulled. Returns true if a window was closed.
  */
 export function closeBlockedWindow(db: DB, agent: string, now: Date): boolean {
-  if (agent.startsWith("task:") || policyAllowsCard(db, agent) || !openWindow(db, agent, now)) return false;
+  if (agent.startsWith("task:") || !openWindow(db, agent, now)) return false;
+  const allowed = policyAllowsCard(db, agent);
+  // The card's hours ended while a purchase window was open: closed too (Purser's hours; Airwallex has no time window).
+  if (allowed && !outsideCardHours(db, agent, now)) return false;
   const card = cardOf(db, agent);
-  audit(db, "awx-executor", "card.window_closed", agent, { agent, last4: card?.last4 ?? "", why: frozen(db) ? "the emergency stop cancelled the purchase" : "a stop on this agent cancelled the purchase" }, now);
+  const why = !allowed ? (frozen(db) ? "the emergency stop cancelled the purchase" : "a stop on this agent cancelled the purchase")
+    : `the card's hours ended (${cardHoursWords(effectiveCardHours(db, agent))}, enforced by Purser)`;
+  audit(db, "awx-executor", "card.window_closed", agent, { agent, last4: card?.last4 ?? "", why }, now);
   return true;
 }
 
@@ -231,12 +275,17 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
       throw new Error(`the ${agent} agent's card was not ${status === "INACTIVE" ? "frozen" : "thawed"} at Airwallex: ${(e as Error).message}`, { cause: e });
     }
     if (after.status !== status) throw new Error(`the ${agent} agent's card is ${after.status} at Airwallex, not ${status}`);
-    audit(db, "awx-executor", status === "INACTIVE" ? "card.frozen" : "card.thawed", agent, { agent, last4: after.last4, ...(status === "INACTIVE" ? { why: frozen(db) ? "emergency stop" : !policyAllowsCard(db, agent) ? "velocity limit" : "frozen by default between approved purchases" } : {}) }, now);
+    const why = frozen(db) ? "emergency stop" : !policyAllowsCard(db, agent) ? "velocity limit"
+      : outsideCardHours(db, agent, now) ? `outside its hours (${cardHoursWords(effectiveCardHours(db, agent))}, enforced by Purser)` : "frozen by default between approved purchases";
+    audit(db, "awx-executor", status === "INACTIVE" ? "card.frozen" : "card.thawed", agent, { agent, last4: after.last4, ...(status === "INACTIVE" ? { why } : {}) }, now);
     card = after;
     changed = true;
   }
   // What the card may pay at all: a card whose merchant categories or currencies differ is brought back to the policy.
-  const wantControls = cardControls(agent, now, db);
+  // A merchant category or currency the policy adds reaches the card only as the CFO signed it; removing one is free.
+  const gated = await allowedControlsOf(db, agent, card.controls, now);
+  recordRaiseRefusals(db, agent, gated.refused, now, "card.loosening_refused");
+  const wantControls = gated.controls;
   if (!sameControls(card.controls, wantControls)) {
     let after: Card;
     try {
@@ -255,6 +304,7 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
   const want = allowed.limits;
   if (same(card.limits, want)) {
     storeCard(db, agent, card, now);
+    await syncCardHours(db, agent, now);
     return changed;
   }
   let after: Card;
@@ -267,6 +317,36 @@ export async function syncOne(db: DB, rail: IssuingRail, agent: string, card: Ca
   if (!same(after.limits, want)) throw new Error(`the ${agent} agent's card has ${words(after.limits)} at Airwallex, not ${words(want)}`);
   storeCard(db, agent, after, now);
   audit(db, "awx-executor", "card.limits_synced", agent, { agent, last4: after.last4, from: words(card.limits), to: words(want), currency: want.currency }, now);
+  await syncCardHours(db, agent, now);
+  return true;
+}
+
+/**
+ * The merchant categories and currencies the card may have now: the policy's (cardControls), with anything it adds to
+ * what the card has at Airwallex kept out unless the CFO signed it (src/policy/cardRaise.ts allowedCardControls). Only
+ * our own agents' cards have these in the policy; a task card's and an outside agent's come from the code.
+ */
+async function allowedControlsOf(db: DB, agent: string, has: Pick<CardControls, "mccs" | "currencies"> | null | undefined, now: Date) {
+  const want = cardControls(agent, now, db);
+  if (agent.startsWith("task:") || !ruleFor(db, `card.${agent}.mccs`)) return { controls: want, refused: [] };
+  return allowedCardControls(db, agent, has, want, agentCardControls(agent, now));
+}
+
+/**
+ * Makes the hours Purser enforces on the card (cards.hours) match the policy: narrower at once, wider only as the CFO
+ * signed it (src/policy/cardRaise.ts allowedCardHours). Purser's own control: nothing is sent to Airwallex here (the
+ * status sync freezes the card outside the hours). Returns true if the card's hours changed.
+ */
+export async function syncCardHours(db: DB, agent: string, now: Date): Promise<boolean> {
+  if (agent.startsWith("task:") || !ruleFor(db, `card.${agent}.hours`)) return false;
+  const has = storedCardHours(db, agent);
+  const want = policyValue(db, `card.${agent}.hours`);
+  if (want === has) return false;
+  const allowed = await allowedCardHours(db, agent, has, want);
+  recordRaiseRefusals(db, agent, allowed.refused, now, "card.loosening_refused");
+  if (allowed.hours === has) return false;
+  db.prepare("UPDATE cards SET hours = ? WHERE agent = ?").run(allowed.hours, agent);
+  audit(db, "awx-executor", "card.hours_synced", agent, { agent, from: cardHoursWords(has), to: cardHoursWords(allowed.hours), enforced_by: "Purser (Airwallex has no recurring time window)" }, now);
   return true;
 }
 
@@ -296,7 +376,11 @@ export async function setupCards(db: DB, rail: IssuingRail, now = new Date(), o:
     // A new card starts at no more than the signed limits: above the limit in the code only on a verified signature.
     const issue = await allowedCardLimits(db, agent, { currency: "EUR", perTxCents: c.perTxCents, monthlyCents: c.monthlyCents }, cardLimits(db, agent));
     recordRaiseRefusals(db, agent, issue.refused, now);
-    const card = found ?? (await rail.createCard({ cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: issue.limits, controls: cardControls(agent, now) }));
+    const card = found ?? (await rail.createCard({
+      cardholderId: holder.id, nickname, createdBy: "Northwind CFO policy", limits: issue.limits, controls: cardControls(agent, now),
+      // The card names its agent and the CFO policy version it was issued under (Airwallex card metadata).
+      metadata: cardMetadata({ agentId: agent, policyVersion: policyVersion(db, now).version }),
+    }));
     // An adopted card is recorded with the limits it has; syncOne then logs any change it makes to them.
     storeCard(db, agent, card, now);
     audit(db, "awx-executor", found ? "card.adopted" : "card.issued", agent, { agent, last4: card.last4, nickname, limits: words(card.limits), currency: "EUR" }, now);
@@ -337,6 +421,8 @@ export async function syncCardsIfChanged(db: DB, rail: IssuingRail, now = new Da
   for (const row of cardRows(db)) {
     if (row.status === "CLOSED") continue;
     closeBlockedWindow(db, row.agent, now);
+    // The card's hours are Purser's own: brought to the policy here, with no call to Airwallex.
+    await syncCardHours(db, row.agent, now);
     const allowed = await allowedCardLimits(db, row.agent, { currency: "EUR", perTxCents: row.per_tx_cents, monthlyCents: row.monthly_cents }, cardLimits(db, row.agent));
     const want = allowed.limits;
     if (row.per_tx_cents === want.perTxCents && row.monthly_cents === want.monthlyCents && row.status === wantCardStatus(db, row.agent, now)) {
@@ -355,7 +441,8 @@ export async function syncCardsAfterPolicy(db: DB, proposalId: string, rail: Iss
   const keys = p ? (JSON.parse(p.terms_json) as { changes: { key: string }[] }).changes.map((c) => c.key) : [];
   if (!keys.some((k) => k.startsWith("card.") || k.startsWith("stop.") || k.startsWith("pause.") || k === "freeze")) return [];
   if (!rail) throw new Error("the policy changed, but the Airwallex sandbox keys are not set, so the card is not updated yet");
-  return syncCardsIfChanged(db, rail, now);
+  // A card's merchant categories or currencies are read back from Airwallex (the cheap check compares limits only).
+  return keys.some((k) => /^card\.[^.]+\.(mccs|currencies)$/.test(k)) ? syncCards(db, rail, now) : syncCardsIfChanged(db, rail, now);
 }
 
 /**
@@ -426,10 +513,19 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
       }
       return false;
     }
+    const at = Number.isFinite(Date.parse(t.occurredAt)) ? new Date(t.occurredAt) : now;
+    const refund = /REFUND|REVERSAL|CREDIT/i.test(t.type);
+    // Freeze by default: an approval Purser did not start (seen by the webhook or the poll) that fits no window it opened.
+    const unexpected = t.approved && source !== "simulation" && !card.agent.startsWith("task:") && !refund && !expectedByWindow(db, card.agent, t.transactionId, t.amountCents, at);
+    // Governance: every transaction leads back to the agent (the card's), the task (the purpose: the caller's, else the
+    // purchase window's) and the policy version that allowed it (the window's, else the one in force now).
+    const win = unexpected || card.agent.startsWith("task:") ? undefined : windowFor(db, card.agent, t.amountCents, at);
+    const why = purpose ?? win?.why;
+    const policyVersionNo = typeof win?.policy_version === "number" ? win.policy_version : policyVersion(db, now).version;
     db.prepare(
-      `INSERT INTO card_transactions (transaction_id, card_id, agent, merchant, mcc, amount_cents, currency, status, approved, failure_reason, purpose, source, occurred_at, recorded_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(t.transactionId, t.cardId, card.agent, t.merchant, t.mcc, t.amountCents, t.currency, t.status, t.approved ? 1 : 0, t.failureReason, purpose ?? null, source, t.occurredAt, now.toISOString());
+      `INSERT INTO card_transactions (transaction_id, card_id, agent, merchant, mcc, amount_cents, currency, status, approved, failure_reason, purpose, source, occurred_at, recorded_at, policy_version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(t.transactionId, t.cardId, card.agent, t.merchant, t.mcc, t.amountCents, t.currency, t.status, t.approved ? 1 : 0, t.failureReason, why ?? null, source, t.occurredAt, now.toISOString(), policyVersionNo);
     // Logged under the agent whose card it is; the decision itself is Airwallex's. D24: who started the charge is the
     // purchase's own origin (the agent's run, the CFO's task card), or the merchant charging the card by itself.
     const own = source === "simulation" ? currentOrigin() : null;
@@ -438,7 +534,7 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
     audit(db, card.agent as Actor, t.approved ? "card.charge_approved" : "card.charge_declined", t.transactionId, {
       origin: chargeOrigin as never,
       agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency,
-      ...(t.approved ? {} : { reason: t.failureReason ?? t.status }), ...(purpose ? { purpose } : {}), source,
+      ...(t.approved ? {} : { reason: t.failureReason ?? t.status }), ...(why ? { purpose: why } : {}), source, policy_version: policyVersionNo,
     }, now);
     // D22: a decline Airwallex made, seen by its webhook or the poll, is news for the agent whose card it is (autonomy
     // only). Not for the agent's own purchase (it has Airwallex's answer already) nor a task card (not an agent).
@@ -450,18 +546,16 @@ export function ingestCardTransaction(db: DB, t: CardTransaction, source: CardTx
     }
     // Freeze by default: an approval Purser did not start (seen by the webhook or the poll) that fits no window it opened
     // closes any open window, so the card is frozen again at the next sync (every few seconds on the runner).
-    if (t.approved && source !== "simulation" && !card.agent.startsWith("task:") && !/REFUND|REVERSAL|CREDIT/i.test(t.type)
-      && !expectedByWindow(db, card.agent, t.transactionId, t.amountCents, Number.isFinite(Date.parse(t.occurredAt)) ? new Date(t.occurredAt) : now)) {
+    if (unexpected) {
       audit(db, "system", "card.unexpected_authorization", t.transactionId, { agent: card.agent, last4: card.last4, merchant: t.merchant, amount: fromCents(t.amountCents), currency: t.currency, source, action: "window closed; the card is frozen again" }, now);
       if (openWindow(db, card.agent, now)) audit(db, "awx-executor", "card.window_closed", card.agent, { agent: card.agent, last4: card.last4, why: `an authorisation Purser did not expect (${t.transactionId})` }, now);
     }
     // Counted against the agent's velocity limits at the moment it happened; a breach stops the agent, and the next
     // card sync (every few seconds on the runner) freezes its card at Airwallex.
     // A refund or reversal from the merchant is money coming back, not spending.
-    const at = Number.isFinite(Date.parse(t.occurredAt)) ? new Date(t.occurredAt) : now;
     // A task card (Ask Purser) is not an agent: Airwallex lets it pay once, up to the approved amount, which is
     // stricter than any velocity limit, so it is not counted there.
-    if (!/REFUND|REVERSAL|CREDIT/i.test(t.type) && !card.agent.startsWith("task:")) velocityObserve(db, card.agent, t.amountCents, t.approved, at);
+    if (!refund && !card.agent.startsWith("task:")) velocityObserve(db, card.agent, t.amountCents, t.approved, at);
     return true;
   }).immediate();
 }

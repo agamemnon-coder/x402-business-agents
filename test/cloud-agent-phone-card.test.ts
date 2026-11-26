@@ -5,7 +5,7 @@
 // until the owner sets it. Offline: the cloud over SQLite.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanDesign, CARD_PRESETS, DEFAULT_STYLE, initialsOf, isLight, LOGO_MAX, modelShort, validLogo } from "../cloud/src/agentCardArt.js";
-import { cardFaceHtml, designFromQuery, PHONE_LINK_DAYS } from "../cloud/src/agentPhoneCard.js";
+import { cardFaceHtml, cardMetaHtml, designFromQuery, PHONE_LINK_DAYS } from "../cloud/src/agentPhoneCard.js";
 import { passConfigFrom } from "../cloud/src/walletPass.js";
 import { ORIGIN, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 import { throwawayPassEnv } from "./support/passCert.js";
@@ -42,13 +42,16 @@ describe("the card design", () => {
     expect(html).not.toContain("<img src=x");
     expect(html).toContain("Support &lt;img src=x onerror=alert(1)&gt;");
     expect(html).toContain("&lt;Acme &amp; Co&gt;");
-    expect(html).toContain("•••• •••• •••• 2361");
+    expect(html).toContain("•••• 2361");
+    expect(html).not.toContain("•••• •••• •••• 2361");
     expect(html).toContain('class="acard p-lagoon');
-    expect(html).toContain("Sonnet 5.5");
+    // 26 Nov (the owner: "far too busy"): the model is in the details (the page's rows), not on the card.
+    expect(html).not.toContain("Sonnet 5.5");
   });
   // 21 Nov (Max: "blue with gold and the Purser logo, sleek"): one family of navy metal cards; Purser's feather is the mark
   // until the company sets its own; an agent without a card is the same family, matte ("bare"), and says so; no chip, no
-  // number, no network on it; a simulated card stays labelled.
+  // number, no network on it; a simulated card stays labelled: since 26 Nov (the owner: "remove SIMULATED") under the card,
+  // as plain words, never as a badge on it.
   it("draws Purser's feather until the company sets a mark, and a cardless agent as a matte card that says so", () => {
     const base = { company: "Northwind Outdoor (demo company)", demo: true, agent: "checker", name: "Checker agent", role: "x", status: "off", model: "claude-haiku-5-5" };
     const bare = cardFaceHtml({ ...base, card: null }, cleanDesign(null));
@@ -57,12 +60,20 @@ describe("the card design", () => {
     expect(bare).toContain("No card of its own");
     expect(bare).not.toMatch(/ac-chip|ac-net|ac-tag|••••/);
     const own = cardFaceHtml({ ...base, card: null }, cleanDesign({ initials: "NW" }));
-    expect(own).toContain('<span class="ac-mark">NW</span>');
+    // 27 Nov (Obsidian): the company's initials take the quill's place in the medallion, in champagne.
+    expect(own).toMatch(/<text class="ac-mark"[^>]*>NW<\/text>/);
     expect(own).not.toContain("ac-pf");
     const paid = cardFaceHtml({ ...base, agent: "support", status: "active", card: { last4: "2361", currency: "EUR", per_purchase: null, per_month: "150.00", spent_month: "38.00", month: "2026-11" } }, cleanDesign(null));
     expect(paid).not.toContain(" bare");
-    expect(paid).toContain('<span class="ac-tag">Simulated</span>');
-    expect(paid).toContain('<span class="ac-net txt">Visa</span>');
+    expect(paid).not.toMatch(/ac-tag|ac-chip|ac-meter|ac-model|Simulated/);
+    expect(paid).toMatch(/<text class="ac-net txt"[^>]*>VISA<\/text>/);
+    // Obsidian: the art is the page's shared shapes (CARD_ART_DEFS), used by reference; the Support agent's relief is the night sky.
+    expect(paid).toContain('<use href="#pc-rel-night"');
+    expect(paid).toContain('<use href="#pc-chip"');
+    const used = { last4: "2361", currency: "EUR", per_purchase: null, per_month: "150.00", spent_month: "38.00", month: "2026-11" };
+    expect(cardMetaHtml({ ...base, agent: "support", status: "active", card: used })).toContain('<span class="hon">Simulated card · test money</span>');
+    expect(cardMetaHtml({ ...base, demo: false, agent: "support", status: "active", card: used })).toContain('<span class="hon">Sandbox card · test money</span>');
+    expect(cardMetaHtml({ ...base, card: null })).not.toContain('class="hon"');
   });
 });
 
@@ -103,7 +114,8 @@ describe("the routes", () => {
     expect(csp).toMatch(/^default-src 'none'; style-src 'nonce-[A-Za-z0-9+/=]+'; img-src data:;/);
     const html = await page.text();
     expect(html).not.toMatch(/<script|<form|<input|<button/i);
-    expect(html).toContain("•••• •••• •••• 2361");
+    expect(html).toContain("•••• 2361");
+    expect(html).toContain("Sandbox card · test money");
     expect(html).toContain('class="acard p-ember');
     expect(html).toContain(".acard{--brand:#ff0000}");
     expect(html).toContain("Apple Wallet: waiting for the pass certificate");
