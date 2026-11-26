@@ -186,8 +186,6 @@ export const SHELL_CSS = `
    collapses to its icons), and a top bar over the page (where you are, the demo's one quiet line, search). */
 .signed-in { --line: color-mix(in srgb, var(--border) 80%, transparent); --hover: color-mix(in srgb, var(--text) 5%, transparent); --top: 0px; }
 .ctop, .abn, .sbx, .crumbs, .kbtn, .signed-in #testchip { display: none; }
-/* Signed out, the bar keeps the test-money label alone (the sign-in's own look); signed in, the company switcher says it. */
-.signed-out .appbar .test { margin-left: auto; }
 .signed-in #view { font-size: 14px; }
 @media (min-width: 1024px) {
   .signed-in { --hdr: 0px; --top: 53px; }

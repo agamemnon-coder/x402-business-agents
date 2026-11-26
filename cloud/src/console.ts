@@ -78,6 +78,9 @@ ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /* Signed out the bar keeps the test-money chip alone (the honesty label is on every console page); the pages and the person wait. */
 .signed-out .appbar .apptabs, .signed-out .who-am-i { display: none; }
 .signed-out .appbar .wrap { height: 44px; padding-top: 0; align-content: center; }
+/* Signed out, the bar keeps the test-money label (the sign-in's look); signed in, the company switcher says it (26 Nov). */
+.appbar .test { margin-left: 12px; padding: 5px 9px; font-size: 12px; background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 30%, var(--surface)); }
+@media (max-width: 640px) { .appbar .test .tl { display: none; } }
 label.check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; font-size: 14px; line-height: 1.45; }
 label.check input { margin-top: 3px; }
 .appbar .spacer { margin-left: auto; }

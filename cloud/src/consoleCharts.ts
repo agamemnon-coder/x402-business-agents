@@ -225,7 +225,6 @@ details.ctable table.ctab td, details.ctable table.ctab th { padding: 6px 10px; 
 .chskel i { display: block; height: 300px; border-radius: 14px; background: var(--sunken); }
 .bcharts-slot .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 979px) { .chskel i + i { display: none; } }
-.bcharts .dgrid + .dgrid { margin-top: 16px; }
 @media (min-width: 980px) { .dgrid.g3 { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { details.ctable > summary::before, .chtip, svg.chart .col .b, svg.ring .seg, .seg span, .sbars li, .chleg { transition: none; } }
 `;
