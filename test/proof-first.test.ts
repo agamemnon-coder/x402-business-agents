@@ -459,15 +459,16 @@ describe("/proof's closed lines: the detail and the history of each question, th
 
   it("are closed, each in its question's section, the business and the archive after the sections", () => {
     // 21 Nov, later (Max's mockup, the sections by category): "Payments and rails" first, so its folds come first.
-    expect(starts.map((m) => decode(m[2]!))).toEqual(["Visa Intelligent Commerce via Airwallex's Airi", "Airwallex, read back", "The worst case: an AI that always says pay", "Check a signature yourself, in this browser", "Why this is a company", "Archive"]);
-    expect(starts.slice(0, 4).map((_, i) => sectionOf(i))).toEqual(["q-live", "q-live", "q-ai", "q-verify"]);
+    expect(starts.map((m) => decode(m[2]!))).toEqual(["Visa Intelligent Commerce via Airwallex's Airi", "Airwallex, read back", "The worst case: an AI that always says pay", "Check a signature yourself, in this browser", "Check it on chain: Alta testnet, read now", "Why this is a company", "Archive"]);
+    // 26 Nov: "Check it on chain" (src/redesign/chainCheck.ts), closed, beside the signature check.
+    expect(starts.slice(0, 5).map((_, i) => sectionOf(i))).toEqual(["q-live", "q-live", "q-ai", "q-verify", "q-verify"]);
     expect(main).not.toMatch(/<details class="deep"[^>]* open/);
     expect(main).not.toMatch(/<details class="sumd[^"]*"[^>]* open/);
-    expect(starts[4]!.index).toBeGreaterThan(main.indexOf("</section>", main.indexOf('id="q-verify"')));
+    expect(starts[5]!.index).toBeGreaterThan(main.indexOf("</section>", main.indexOf('id="q-verify"')));
   });
 
   it("hold what was in a card or in sight before, folded: nothing of it is in sight", () => {
-    const marks: [number, string[]][] = [[0, ['<div class="card airi" id="airi-run"', `<div class="card airi" id="${VIC2_RUN_ID}"`]], [1, ['id="airwallex-readback"']], [4, ['<ul class="company">']], [5, ['href="lab"']]];
+    const marks: [number, string[]][] = [[0, ['<div class="card airi" id="airi-run"', `<div class="card airi" id="${VIC2_RUN_ID}"`]], [1, ['id="airwallex-readback"']], [5, ['<ul class="company">']], [6, ['href="lab"']]];
     for (const [i, ms] of marks) for (const m of ms) expect({ m, inFold: part(i).includes(m) }).toEqual({ m, inFold: true });
     // The main run's stops and Face ID decisions: in the first question's history, labelled with the run's day.
     const hist = main.slice(main.indexOf('id="q-limits-history"'), main.indexOf('<section class="ewall pq" id="q-ai"'));
@@ -488,9 +489,9 @@ describe("/proof's closed lines: the detail and the history of each question, th
   });
 
   it("the archive is its own fold, last: the replay of the main run with its date from the record, then the archived pages", () => {
-    expect(starts[5]![1]).toBe("archive");
+    expect(starts[6]![1]).toBe("archive");
     // Each with its record (data-rec), but the simulated month, which has none (20 Nov).
-    const links = [...part(5).matchAll(/<li(?: data-rec="[^"]+")?><a class="pf" href="([^"]+)">([^<]+)<\/a><\/li>/g)].map((m) => [m[1]!, m[2]!]);
+    const links = [...part(6).matchAll(/<li(?: data-rec="[^"]+")?><a class="pf" href="([^"]+)">([^<]+)<\/a><\/li>/g)].map((m) => [m[1]!, m[2]!]);
     expect(links.map((l) => l[0])).toEqual(["replay", "./?recorded", "metal/report", "film", "month", "lab"]);
     expect(links[0]![1]).toBe(`Replay of the main run, ${day(agentRun().recordedAt)}`);
     expect(links[0]![1]).toBe("Replay of the main run, 3 Nov");
@@ -595,7 +596,7 @@ describe("/proof's words in sight", () => {
     // 21 Nov, later (owner: show what competitors advertise): the "Under load" block, six tiles of performance and
     // concurrency with their tags and days (their notes folded), and its name in the wall's nav: 2,817 as built.
     expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(2830);
-    expect(visibleWords(html)).toBeLessThanOrEqual(3460); // 21 Nov, later (owner: show what competitors advertise): the "Under load" block, six tiles (3,454 as built). // 21 Nov (merge): the one-cent figure's corrected wording ("All 66 attempted…; 1 walk stopped before that step") on the wall (3,356 as built). // 21 Nov, later (Max's mockup: the head's figures, the architecture, the eight stage panels in the page, one in sight at a time): 3,330 as built by this count, which reads past the first closing tag of a fold and counts the seven hidden panels too. 21 Nov (the evidence flow in place of the drawing, its steps closed): 2,281 as built. 21 Nov (the page by question, every figure dated): 2,209 as built; this count reads past the first closing tag of a fold with folds inside it. 1,830 until then. 19 Nov, night: 1,817 as built once the eval v5, status, gold, hardening and partner branches were merged together. 19 Nov, evening: 1,756 as built with the groups "Attacked and broken on purpose" and "Quality and supply chain" (red team v2, chaos, fuzzing, eval v3, site quality, WebKit, assurance, supply chain: 8 more tiles, OpenSSF moved there) and the map's row of checks. 19 Nov, later: 1,642 as built with the soak, Alta series, anchor, Alta-payments, Visa and OpenSSF tiles (36 on /proof). 19 Nov, second pass (the owner: "clearer and tighter"): 1,559 as built, from 1,895 with the first wall; not back under 1,345: this count reads past the first closing tag of a fold with folds inside it (about 880 words of the closed "Every live run" and "All the proof" folds count as visible), and the 29 tiles' figures, labels and tags are in sight. The count outside every fold (above) is back under its old limit. // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words). // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
+    expect(visibleWords(html)).toBeLessThanOrEqual(3470); // 26 Nov: the closed "Check it on chain" fold, its header only (3,467 as built). // 21 Nov, later (owner: show what competitors advertise): the "Under load" block, six tiles (3,454 as built). // 21 Nov (merge): the one-cent figure's corrected wording ("All 66 attempted…; 1 walk stopped before that step") on the wall (3,356 as built). // 21 Nov, later (Max's mockup: the head's figures, the architecture, the eight stage panels in the page, one in sight at a time): 3,330 as built by this count, which reads past the first closing tag of a fold and counts the seven hidden panels too. 21 Nov (the evidence flow in place of the drawing, its steps closed): 2,281 as built. 21 Nov (the page by question, every figure dated): 2,209 as built; this count reads past the first closing tag of a fold with folds inside it. 1,830 until then. 19 Nov, night: 1,817 as built once the eval v5, status, gold, hardening and partner branches were merged together. 19 Nov, evening: 1,756 as built with the groups "Attacked and broken on purpose" and "Quality and supply chain" (red team v2, chaos, fuzzing, eval v3, site quality, WebKit, assurance, supply chain: 8 more tiles, OpenSSF moved there) and the map's row of checks. 19 Nov, later: 1,642 as built with the soak, Alta series, anchor, Alta-payments, Visa and OpenSSF tiles (36 on /proof). 19 Nov, second pass (the owner: "clearer and tighter"): 1,559 as built, from 1,895 with the first wall; not back under 1,345: this count reads past the first closing tag of a fold with folds inside it (about 880 words of the closed "Every live run" and "All the proof" folds count as visible), and the 29 tiles' figures, labels and tags are in sight. The count outside every fold (above) is back under its old limit. // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words). // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);

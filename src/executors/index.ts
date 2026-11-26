@@ -165,6 +165,14 @@ async function executeApproved(db: DB, proposalId: string, rails?: Rails): Promi
       await executeInvoicePayment(db, awx.rail, awx.sim, proposalId);
       if (!rails) await reconcileAfterPayout(db, proposalId);
       return;
+    case "fx_conversion": {
+      // The Treasury advisor's suggested conversion (src/treasury/advisor.ts), after the CFO's passkey only.
+      if (!awx) throw new Error("Airwallex sandbox keys are not set; the conversion cannot run");
+      const { executeFxConversion } = await import("./fxConversion.js");
+      const r = await executeFxConversion(db, awx.rail, proposalId);
+      if (r.outcome !== "EXECUTED") throw new Error(r.detail);
+      return;
+    }
     case "supplier_payment": {
       // Payables: a supplier paid in the invoice's own currency on its route (src/payouts/plan.ts).
       if (!awx) throw new Error("Airwallex sandbox keys are not set; the payment cannot run");

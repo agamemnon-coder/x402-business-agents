@@ -1,7 +1,8 @@
 // /business, "For companies", and /one-pager (21 Nov; Max: "commercially strong", without inventing anything). Since
-// 22 Nov (Max: "far too much text"; then "still too much, the demo duplicates Home") /business is only the question, one
-// line, one small animated visual and the pilot's sign-up form, which opens the visitor's own mail app (no request,
-// nothing stored); /one-pager keeps the whole story, its prices the price list's. Both claim no customer, saving, quote,
+// 26 Nov, evening (Max: "it needs to be something that speaks for itself with a pilot registration, like: Ready for the
+// next step?") /business is one screen that is the registration: the headline, one line, the pilot's sign-up form as
+// the hero (it opens the visitor's own mail app: no request, nothing stored), three points and the three steps that
+// follow, over a calm sky drawn in CSS; /one-pager keeps the whole story, its prices the price list's. Both claim no customer, saving, quote,
 // competitor or endorsement, and both are served under a policy of their own hashes with one script that parses no markup.
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
@@ -10,7 +11,8 @@ import { PRICING, PRICING_LINE, euro } from "../src/config/pricing.js";
 import { BUSINESS_PAGE, BUSINESS_CSP, ONE_PAGER_CSP, ONE_PAGER_PAGE, PRICING_HOME, REDIRECTS } from "../src/servers/dashboard.js";
 import { BUSINESS_HONEST, FIRST_TARGET, FIRST_TARGET_NOTE, PILOT_AGREEMENT, FOUNDING_NAME, FOUNDING_TEXT, GO_LIVE_DOC, PILOT_APPLY, PILOT_FORM_NOTE, PILOT_JS, PILOT_MAIL, PILOT_QUESTIONS, PILOT_VOLUMES, POSITION, PRINT_JS, faqs, pilotMailto, type PilotForm } from "../src/redesign/business.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
-import { BUSINESS_LINE, BUSINESS_QUESTION } from "../src/redesign/businessVisuals.js";
+import { BUSINESS_HEAD, BUSINESS_LINE, BUSINESS_QUESTION, BUSINESS_SKY_CSS, BUSINESS_TONES, ROUTES } from "../src/redesign/businessVisuals.js";
+import { NEXT_STEPS, PAGE_CSS } from "../src/redesign/business.js";
 import { repoHref } from "../src/redesign/productPage.js";
 import { START_STEPS } from "../src/redesign/home.js";
 import { residency } from "../src/redesign/privacy.js";
@@ -30,15 +32,22 @@ function browserBuild(): (f: PilotForm) => string {
   return (sandbox.__purserPilot as { build: (f: PilotForm) => string }).build;
 }
 
-describe("/business (22 Nov): the question, one line, one visual, the pilot's form", () => {
+describe("/business (26 Nov): one screen that is the pilot's registration", () => {
   const m = main(BUSINESS_PAGE), t = text(m);
 
-  it("asks the question in the one h1, says one line, and keeps the label", () => {
+  it("asks \"Ready for the next step?\" in the one h1, says what the pilot is in one line, and keeps the label", () => {
     expect(BUSINESS_PAGE.match(/<h1\b/g)).toHaveLength(1);
-    expect(BUSINESS_PAGE).toContain(`<h1 id="bzh-h">${BUSINESS_QUESTION}</h1>`);
-    expect(BUSINESS_QUESTION).toBe("Would you trust an AI agent with your company's money?");
+    expect(BUSINESS_HEAD).toBe("Ready for the next step?");
+    expect(BUSINESS_PAGE).toContain(`<h1 id="bzh-h">Ready for the <span>next step?</span></h1>`);
+    expect(BUSINESS_LINE).toBe("A 30-day pilot on test money: AI agents pay the routine, your CFO signs the rest with Face ID.");
     expect(t).toContain(BUSINESS_LINE);
     expect(t).toContain("Founding Partner Pilot · test money only");
+    // The question of 21 Nov stays in the page's description (search and link previews), not on the page.
+    expect(BUSINESS_PAGE).toContain(`<meta name="description" content="${BUSINESS_QUESTION}`);
+    // Under the card the three points; beside it (on a phone after it) the three steps that follow the form.
+    expect(NEXT_STEPS).toEqual(["Write to us", "We set up your company", "Your CFO adds a passkey"]);
+    expect(m).toContain(`<ol class="bz-nx-s">${NEXT_STEPS.map((x, i) => `<li><b>${i + 1}</b>${x}</li>`).join("")}</ol>`);
+    for (const p of ["Test money only", "No card, no billing", "Written agreement"]) expect(t).toContain(p);
   });
 
   it("has the sign-up form: name, work email and company required, everything else optional", () => {
@@ -89,21 +98,35 @@ describe("/business (22 Nov): the question, one line, one visual, the pilot's fo
     expect(PILOT_JS).not.toMatch(/fetch\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|indexedDB|cookie|innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(|new Function/);
   });
 
-  it("is one screen: a soft glow, the question, one line, the form and three points; nothing that repeats Home", () => {
-    // 26 Nov (Max: "it is really ugly"; then "far too full", and the globe is Purser Cloud's sign-in's): a deep page with
-    // one soft violet glow drawn in CSS, no picture and no script but the form's; a footer of one line.
-    expect(m).not.toMatch(/<canvas\b|<figure\b|<img\b/);
+  it("is one screen: the sky, the headline, one line, the form, three points and three steps; nothing that repeats Home", () => {
+    // 26 Nov, evening (Max: "something with the AI and fintech" as atmosphere; the globe is Purser Cloud's sign-in's): a
+    // deep ground, a far violet glow, stars, a horizon and a few routes with a light running along them, drawn in CSS and
+    // one inline drawing hidden from screen readers; no picture, no canvas and no script but the form's; a footer of one line.
+    expect(m).not.toMatch(/<canvas\b|<figure\b|<img\b|<video\b|<iframe\b/);
     expect(scriptBlocks(BUSINESS_PAGE)[0]!.replace(/^<script>|<\/script>$/gi, "").trim()).toBe(PILOT_JS);
-    expect(BUSINESS_PAGE).toContain("main.bzp::before");
+    expect(m).toMatch(/^<main class="bzp">\n<div class="bz-sky" aria-hidden="true">/);
+    expect(m.match(/<path class="p p\d" /g)).toHaveLength(ROUTES.length);
+    // Everything that moves is switched on only for a reader who has not asked for less motion (the keyframes sit outside).
+    expect(BUSINESS_PAGE).toContain(PAGE_CSS);
+    expect(PAGE_CSS).toContain(BUSINESS_SKY_CSS);
+    // The meaning-colours of Purser Cloud's console (cloud/src/consoleColor.ts): violet approval, emerald paid, amber test
+    // money, sky money moving, the agents' own hues; each route's light takes one.
+    expect(PAGE_CSS).toContain(BUSINESS_TONES);
+    for (const v of ["--sky: #38bdf8", "--g0: #818cf8", "--g1: #2dd4bf", "--g2: #60a5fa", "--sky: #0369a1", "--g0: #4f46e5"]) expect(BUSINESS_TONES).toContain(v);
+    expect(ROUTES.map((r) => r.tone)).toEqual(["accent", "ok", "sky", "g0", "g1", "g2"]);
+    const still = PAGE_CSS.replace(/@media \(prefers-reduced-motion: no-preference\)[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, " ").replace(/@keyframes [\w-]+ \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, " ");
+    expect(still).not.toMatch(/(?<![\w-])animation(-name)?\s*:/);
+    expect(PAGE_CSS).not.toMatch(/(?<![\w-])filter:\s*blur/);
     expect(BUSINESS_PAGE).toContain(`<footer class="bzfoot"><div class="wrap"><p><span>${BUSINESS_HONEST}</span>`);
     expect(BUSINESS_PAGE).not.toMatch(/What's real\?|class="flink"/);
-    expect(BUSINESS_PAGE).not.toMatch(/\sstyle="/);
-    // Gone (Max, 22 Nov: "the demo duplicates Home"; 26 Nov: "really ugly"): the figures, the approval card and its mock,
-    // the diagram, the architecture, the plans, the calculator, the questions, the 30 days, what you get and what we need,
-    // and the buttons to /try and /proof; the footer without its "Built on" figures.
+    expect(BUSINESS_PAGE).not.toMatch(/\sstyle="|\son[a-z]+="/);
+    // Gone (Max, 22 Nov: "the demo duplicates Home"; 26 Nov: "really ugly", then "the homepage is still the same as the
+    // /business"): the figures, the approval card and its mock, the diagram, the architecture, the controls, the plans, the
+    // calculator, the questions, what you get and what we need, and the buttons to /try and /proof; no logo.
     expect(m).not.toMatch(/class="bz(stats|card|d|a|-price|-calc|-faq|-fold|v|p3|2)\b|<details\b(?! class="more")|data-stat=|href="\/try"|href="proof"/);
     expect(t).not.toMatch(/€/);
-    expect(t.split(" ").filter((w) => /[\p{L}\p{N}]/u.test(w)).length).toBeLessThanOrEqual(130);
+    // Every word in main, the folded questions and the hidden status line included (in sight: test/site-v4.test.ts, 120).
+    expect(t.split(" ").filter((w) => /[\p{L}\p{N}]/u.test(w)).length).toBeLessThanOrEqual(140);
     expect(BUSINESS_PAGE).not.toMatch(/class="awx-strip|10 Airwallex features/);
   });
 });

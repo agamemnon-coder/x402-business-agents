@@ -150,7 +150,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(README).not.toContain("Text names only");
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/gEUm8RlhZac");
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(320); // 320 since 21 Nov 2026, later (owner: an architecture that flows, in view under How it works: +6 lines, 311 as built); 310 since 21 Nov 2026 (owner: show what competitors advertise): the SDK quickstart under "Try it in 2 minutes", +26 lines (305 as built)
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(325); // 325 since 26 Nov 2026 (Max: "add [colour] to the readme": the diagrams' palette classes, 7 lines, and the sequence's two coloured blocks, 4 lines; 322 as built); 320 since 21 Nov 2026, later (owner: an architecture that flows, in view under How it works: +6 lines, 311 as built); 310 since 21 Nov 2026 (owner: show what competitors advertise): the SDK quickstart under "Try it in 2 minutes", +26 lines (305 as built)
   });
 
   it("opens Home under its heading with the idea, three figures, Try as the one primary button, Watch and Pilot, one sandbox line", () => {

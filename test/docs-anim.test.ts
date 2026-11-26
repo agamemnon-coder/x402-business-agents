@@ -8,8 +8,10 @@ import { ANIM_DIR, animations } from "../scripts/docs-anim.js";
 describe("the docs' animations", () => {
   const drawn = animations();
 
-  it("the committed files are exactly the ones the script draws (npm run docs:anim)", () => {
-    expect(readdirSync(ANIM_DIR).filter((n) => n.endsWith(".svg")).sort()).toEqual(Object.keys(drawn).sort());
+  it("the committed files are the ones the script draws (npm run docs:anim)", () => {
+    // Other animations may live beside these (another page's own, drawn by its own script); these must all be here.
+    const there = readdirSync(ANIM_DIR);
+    for (const name of Object.keys(drawn)) expect({ name, there: there.includes(name) }).toEqual({ name, there: true });
     for (const [name, svg] of Object.entries(drawn)) expect({ name, same: readFileSync(join(ANIM_DIR, name), "utf8") === svg }).toEqual({ name, same: true });
   });
 

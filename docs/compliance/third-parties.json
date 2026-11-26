@@ -1,0 +1,282 @@
+{
+  "format": "purser.ict-third-parties/v1",
+  "as_of": "2026-11-26",
+  "version": "1.0",
+  "owner": "the maintainer (@agamemnon-coder)",
+  "review_by": "2027-05-26",
+  "note": "Purser's register of ICT third-party service providers, after DORA Art. 28(3). Test money only: the Airwallex sandbox, Alta testnet and Visa via Airwallex Airi in the sandbox. No provider is under a negotiated contract: every account is a test or developer account on the provider's standard terms. Data levels are those of docs/security/data-classification.md; locations are those docs/privacy/data-inventory.md records, else 'not documented in this repository'. A test (test/compliance-third-parties.test.ts) holds every outside host the code calls to a provider here, and every host here to the code.",
+  "providers": [
+    {
+      "id": "airwallex",
+      "name": "Airwallex",
+      "service": "Business accounts, payouts and FX, virtual cards for the agents, webhooks, and Airi (agentic checkout)",
+      "functions": ["Pays suppliers (transfers, batch payouts, FX)", "Issues and freezes each agent's virtual card", "Sends webhooks Purser checks against its ledger"],
+      "criticality": "critical",
+      "hosts": ["api.sandbox.airwallex.com", "files.sandbox.airwallex.com", "checkout.sandbox.airwallex.com", "static.airwallex.com", "www.sandbox.airwallex.com"],
+      "data_shared": [
+        { "level": "Restricted", "what": "Suppliers' names and bank details (beneficiaries), amounts, payouts, conversions, the agents' cardholders (placeholder personal details in the sandbox)" },
+        { "level": "Internal", "what": "The hash of the terms the CFO signed, in a transfer's metadata (approval_sha256)" }
+      ],
+      "location": "Sandbox today (docs/privacy/data-inventory.md); the production region is not documented in this repository",
+      "contract": "none: a sandbox account on Airwallex's standard terms",
+      "substitutes": "Another licensed payment provider with an API for payouts and issued cards; the executors call it through src/airwallex/ (adapter, client)",
+      "exit_plan": "exit-plans.md#airwallex",
+      "code": ["src/airwallex/", "src/airi/", "src/policy/cardHooks.ts"]
+    },
+    {
+      "id": "visa-airi",
+      "name": "Visa, through Airwallex Airi",
+      "service": "Visa Intelligent Commerce: one agent purchase with one tokenised credential, through Airwallex's Airi",
+      "functions": ["One agent purchase at a merchant, after the cardholder's passkey in Airi"],
+      "criticality": "important",
+      "hosts": [],
+      "reached_through": "airwallex",
+      "data_shared": [
+        { "level": "Restricted", "what": "The purchase (merchant, amount, description); Purser never sees a card number" }
+      ],
+      "location": "Through Airwallex's sandbox (no Visa host is called by Purser's code)",
+      "contract": "none: through Airwallex's sandbox",
+      "substitutes": "Agent purchases on the agent's own Airwallex card (src/policy/cards.ts), or none",
+      "exit_plan": "exit-plans.md#visa-through-airwallex-airi",
+      "code": ["src/airi/", "src/visa/"]
+    },
+    {
+      "id": "alta",
+      "name": "Alta (formerly Metal)",
+      "service": "Testnet chain, *USDZ, the x402 facilitator, and the contracts that hold agent mandates, clearing and receive policy",
+      "functions": ["Agent-to-agent payments (x402) within each agent's on-chain mandate", "Anchors the audit log's head"],
+      "criticality": "critical",
+      "hosts": ["x402-testnet.metalntwx.com"],
+      "configured_hosts": "The chain's RPC endpoint is a credential, read from METAL_RPC_URL and never printed (src/metal/network.ts)",
+      "data_shared": [
+        { "level": "Restricted", "what": "Agents' addresses and amounts, written to a public testnet for good" },
+        { "level": "Internal", "what": "The audit log's head hash (anchoring)" }
+      ],
+      "location": "Public testnet: written for good (docs/privacy/data-inventory.md)",
+      "contract": "none: a public testnet",
+      "substitutes": "No chain: agent payments go by card or bank transfer only; the audit log is still hash-chained and signed without the anchor",
+      "exit_plan": "exit-plans.md#alta",
+      "code": ["src/metal/", "src/anchor/"]
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic (Claude API)",
+      "service": "Claude models: reading invoices and documents, the agents' reasoning, reviews, Ask Purser",
+      "functions": ["Reads invoices into typed data (checked by code)", "The agents propose; they never approve or hold a key", "Ask Purser answers from the docs, read-only"],
+      "criticality": "important",
+      "hosts": ["api.anthropic.com"],
+      "data_shared": [
+        { "level": "Restricted", "what": "Invoice text and documents to read, the agents' prompts, a person's question to Ask Purser" }
+      ],
+      "location": "United States (docs/privacy/data-inventory.md)",
+      "contract": "none: a developer API key on Anthropic's standard terms",
+      "substitutes": "Reading falls back to the plain parser (claude.fallback); the agents can be switched off and every payment proposed by a person; another model provider behind src/claude/",
+      "exit_plan": "exit-plans.md#anthropic",
+      "code": ["src/claude/", "cloud/src/ask/model.ts"]
+    },
+    {
+      "id": "cloudflare",
+      "name": "Cloudflare",
+      "service": "Workers, D1, R2, Durable Objects, Queues, Email Routing, Workers Logs, Turnstile: the approval relay and Purser Cloud",
+      "functions": ["Serves the phone's approval pages and relays signed approvals to the runner", "Hosts Purser Cloud and its data"],
+      "criticality": "critical",
+      "hosts": ["api.cloudflare.com", "challenges.cloudflare.com"],
+      "data_shared": [
+        { "level": "Restricted", "what": "Everything Purser Cloud stores and every request it serves (the books, documents, people, security logs)" },
+        { "level": "Secret", "what": "Sealed tokens and key hashes Purser Cloud keeps (never a secret in the clear)" }
+      ],
+      "location": "D1 placed in western Europe (--location weur); R2 bucket in the EU jurisdiction; Durable Objects and logs not pinned (docs/privacy/data-inventory.md)",
+      "contract": "none negotiated: the maintainer's account on Cloudflare's standard terms",
+      "substitutes": "Without the relay no passkey approval reaches the runner, so payments above the limits wait (they fail safe); Purser Cloud would move to another Workers-compatible host",
+      "exit_plan": "exit-plans.md#cloudflare",
+      "code": ["worker/src/", "cloud/src/", "src/relay/"]
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "service": "The source repository, pull requests, Actions CI, releases with Sigstore provenance, security alerts",
+      "functions": ["Change control (PC-21): every change through a pull request and CI"],
+      "criticality": "important",
+      "hosts": [],
+      "data_shared": [
+        { "level": "Public", "what": "The source code and its records (test money only); no company data" }
+      ],
+      "location": "not documented in this repository",
+      "contract": "none: the maintainer's account on GitHub's standard terms",
+      "substitutes": "Any git host with CI; the repository is a full copy wherever it is cloned",
+      "exit_plan": "exit-plans.md#github",
+      "code": [".github/workflows/"]
+    },
+    {
+      "id": "t0",
+      "name": "T:0",
+      "service": "Accounting: each payment booked as an entry",
+      "functions": ["Bookkeeping sink (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["api.t0.ai"],
+      "data_shared": [{ "level": "Restricted", "what": "Journal entries: invoices, suppliers and payments" }],
+      "location": "The provider's (docs/privacy/data-inventory.md)",
+      "contract": "none: a test account",
+      "substitutes": "Any other bookkeeping sink, or none: the ledger keeps the books",
+      "code": ["src/accounting/t0.ts"]
+    },
+    {
+      "id": "moneybird",
+      "name": "Moneybird",
+      "service": "Accounting package (OAuth connection)",
+      "functions": ["Bookkeeping sink (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["moneybird.com"],
+      "data_shared": [{ "level": "Restricted", "what": "Invoices, suppliers and journal entries pushed to the company's own administration" }],
+      "location": "The provider's (docs/privacy/data-inventory.md)",
+      "contract": "none: a test administration",
+      "substitutes": "Any other bookkeeping sink, or none",
+      "code": ["src/erp/moneybird.ts", "src/lib/oauth.ts"]
+    },
+    {
+      "id": "xero",
+      "name": "Xero",
+      "service": "Accounting package, and invoices read from it (OAuth)",
+      "functions": ["Bookkeeping sink and invoice source (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["api.xero.com", "identity.xero.com", "login.xero.com"],
+      "data_shared": [{ "level": "Restricted", "what": "Invoices, suppliers and journal entries" }],
+      "location": "The provider's (docs/privacy/data-inventory.md)",
+      "contract": "none: a developer app",
+      "substitutes": "Any other bookkeeping sink, or none",
+      "code": ["src/workplace/xero.ts", "cloud/src/books/xero.ts"]
+    },
+    {
+      "id": "intuit",
+      "name": "Intuit QuickBooks Online",
+      "service": "Accounting package (OAuth connection)",
+      "functions": ["Bookkeeping sink (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["appcenter.intuit.com", "oauth.platform.intuit.com", "developer.api.intuit.com"],
+      "data_shared": [{ "level": "Restricted", "what": "Invoices, suppliers and journal entries" }],
+      "location": "The provider's (docs/privacy/data-inventory.md)",
+      "contract": "none: a developer app",
+      "substitutes": "Any other bookkeeping sink, or none",
+      "code": ["src/lib/oauth.ts"]
+    },
+    {
+      "id": "exact",
+      "name": "Exact Online",
+      "service": "Accounting package (OAuth connection)",
+      "functions": ["Bookkeeping sink (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["start.exactonline.nl"],
+      "data_shared": [{ "level": "Restricted", "what": "Invoices, suppliers and journal entries" }],
+      "location": "The provider's (docs/privacy/data-inventory.md)",
+      "contract": "none: a developer app",
+      "substitutes": "Any other bookkeeping sink, or none",
+      "code": ["src/erp/exact.ts", "src/lib/oauth.ts"]
+    },
+    {
+      "id": "odoo",
+      "name": "Odoo",
+      "service": "Accounting package, on the company's own Odoo address",
+      "functions": ["Bookkeeping sink (opt-in)"],
+      "criticality": "optional",
+      "hosts": [],
+      "configured_hosts": "Each company's own Odoo address, set by the company",
+      "data_shared": [{ "level": "Restricted", "what": "Invoices, suppliers and journal entries" }],
+      "location": "The provider's (docs/privacy/data-inventory.md)",
+      "contract": "none",
+      "substitutes": "Any other bookkeeping sink, or none",
+      "code": ["src/erp/"]
+    },
+    {
+      "id": "microsoft",
+      "name": "Microsoft (Entra ID, Graph, Business Central, Teams)",
+      "service": "Sign-in, Outlook and OneDrive as invoice sources, Business Central as a bookkeeping sink, Teams incoming webhooks",
+      "functions": ["Sign-in to Purser Cloud (opt-in)", "Invoice source and bookkeeping sink (opt-in)", "Approval alerts to the company's own Teams channel (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["login.microsoftonline.com", "graph.microsoft.com", "api.businesscentral.dynamics.com"],
+      "configured_hosts": "A Teams incoming webhook is the company's own URL",
+      "data_shared": [{ "level": "Restricted", "what": "A sign-in request (Purser receives the account's subject and e-mail); invoices read from the mailbox or folder; journal entries; an approval alert's message" }],
+      "location": "The provider's (docs/privacy/data-inventory.md)",
+      "contract": "none: developer apps",
+      "substitutes": "Passkey sign-in without a linked account; other invoice sources",
+      "code": ["src/workplace/", "src/erp/businessCentral.ts", "cloud/src/oidc.ts"]
+    },
+    {
+      "id": "google",
+      "name": "Google (Sign-In, Gmail, Drive, Sheets)",
+      "service": "Sign-in, Gmail and Drive as invoice sources, Sheets",
+      "functions": ["Sign-in to Purser Cloud (opt-in)", "Invoice source (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["accounts.google.com", "oauth2.googleapis.com", "www.googleapis.com", "gmail.googleapis.com", "sheets.googleapis.com"],
+      "data_shared": [{ "level": "Restricted", "what": "A sign-in request (Purser receives the account's subject and e-mail); invoices read from the mailbox or folder" }],
+      "location": "The provider's (docs/privacy/data-inventory.md)",
+      "contract": "none: developer apps",
+      "substitutes": "Passkey sign-in without a linked account; other invoice sources",
+      "code": ["src/workplace/", "src/vault/gdrive.ts", "cloud/src/oidc.ts"]
+    },
+    {
+      "id": "apple",
+      "name": "Apple (Sign in with Apple)",
+      "service": "Sign-in",
+      "functions": ["Sign-in to Purser Cloud (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["appleid.apple.com"],
+      "data_shared": [{ "level": "Restricted", "what": "A sign-in request; Purser receives the account's subject and e-mail" }],
+      "location": "The provider's (docs/privacy/data-inventory.md)",
+      "contract": "none: a developer account",
+      "substitutes": "Passkey sign-in without a linked account",
+      "code": ["cloud/src/oidc.ts"]
+    },
+    {
+      "id": "slack",
+      "name": "Slack",
+      "service": "Incoming webhooks to the company's own channel",
+      "functions": ["Approval alerts with a link to the passkey page, never a way to approve (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["hooks.slack.com"],
+      "data_shared": [{ "level": "Restricted", "what": "An approval alert's message (amount, payee, link)" }],
+      "location": "The provider's (docs/privacy/data-inventory.md)",
+      "contract": "none",
+      "substitutes": "E-mail or WhatsApp alerts, or the phone's push notification",
+      "code": ["src/integrations/approvalNotify.ts", "cloud/src/chatHooks.ts"]
+    },
+    {
+      "id": "resend",
+      "name": "Resend",
+      "service": "E-mail delivery",
+      "functions": ["Approval alerts by e-mail (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["api.resend.com"],
+      "data_shared": [{ "level": "Restricted", "what": "An approval alert's e-mail address and message (amount, payee, link)" }],
+      "location": "United States (docs/privacy/data-inventory.md)",
+      "contract": "none",
+      "substitutes": "Another e-mail provider, or the other alert channels",
+      "code": ["cloud/src/alerts.ts"]
+    },
+    {
+      "id": "twilio",
+      "name": "Twilio",
+      "service": "WhatsApp messages",
+      "functions": ["Approval alerts by WhatsApp (opt-in)"],
+      "criticality": "optional",
+      "hosts": ["api.twilio.com"],
+      "data_shared": [{ "level": "Restricted", "what": "An approval alert's phone number and message" }],
+      "location": "United States (docs/privacy/data-inventory.md)",
+      "contract": "none",
+      "substitutes": "The other alert channels",
+      "code": ["cloud/src/alerts.ts"]
+    },
+    {
+      "id": "elevenlabs",
+      "name": "ElevenLabs",
+      "service": "Text to speech for the demo film's voice-over",
+      "functions": ["None in the product: only scripts that voice the demo film"],
+      "criticality": "not-in-product",
+      "hosts": ["api.elevenlabs.io"],
+      "data_shared": [{ "level": "Public", "what": "The film's script" }],
+      "location": "not documented in this repository",
+      "contract": "none",
+      "substitutes": "Any voice, or none",
+      "code": ["src/cli/voice10.ts"]
+    }
+  ]
+}

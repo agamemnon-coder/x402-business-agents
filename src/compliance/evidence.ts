@@ -20,6 +20,7 @@ import { keyIdOf, rawPublicKey } from "../audit/checkpoint.js";
 import type { AuditRowStored } from "../audit/log.js";
 import { manifestSignatureChecks, periodAuditRows, rowSha256, signManifest, verifyAuditPack, type AuditPack, type PackCheck, type PackResult, type PackSigner } from "../audit/pack.js";
 import { sha256Hex } from "../lib/terms.js";
+import { RATIONALE_NOT_VIEWED, RATIONALE_VIEWED } from "../passkey/process.js";
 import { CONTROLS, FRAMEWORKS, HONEST_LINE, REQUIREMENTS, type Control, type FrameworkId, type LedgerEvidence, type Status } from "./controls.js";
 
 export const COMPLIANCE_EVIDENCE_FORMAT = "purser.compliance-evidence/v1";
@@ -51,6 +52,22 @@ export interface ControlEvidence {
 export type InPeriod = "evidence-in-period" | "no-records-in-period" | "documented" | "gap";
 export interface MappedRequirement { framework: FrameworkId; clause: string; scope: string | null; requirement: string; controls: string[]; status: Status; gap: string | null; in_period: InPeriod; records: number }
 
+/**
+ * The automation-bias signal of the period (EU AI Act Art. 14(4)(b); control PC-26): of the passkey approvals the
+ * approval page reported on, how many were signed with the rationale (Details) opened first. Counted from PC-26's
+ * cited rows; what the page reported, not signed. Approvals made elsewhere (the CLI, Purser Cloud's console) report
+ * nothing and are not in either number.
+ */
+export interface OversightSignal { control: string; approvals_reported: number; rationale_viewed: number; line: string }
+export const OVERSIGHT_CONTROL = "PC-26";
+
+function oversightOf(controls: { control: string; audit: ControlEvidence["audit"] }[]): OversightSignal {
+  const by = controls.find((c) => c.control === OVERSIGHT_CONTROL)?.audit?.by_event ?? {};
+  const viewed = by[RATIONALE_VIEWED] ?? 0;
+  const reported = viewed + (by[RATIONALE_NOT_VIEWED] ?? 0);
+  return { control: OVERSIGHT_CONTROL, approvals_reported: reported, rationale_viewed: viewed, line: `approvals signed with the rationale viewed: ${viewed}/${reported}` };
+}
+
 export interface FrameworkSummary { framework: FrameworkId; name: string; requirements: number; evidence_in_period: number; no_records_in_period: number; documented: number; gap: number }
 export interface EvidenceSummary {
   format: typeof COMPLIANCE_EVIDENCE_FORMAT;
@@ -59,6 +76,7 @@ export interface EvidenceSummary {
   audit: ChainRef;
   frameworks: FrameworkSummary[];
   controls: { id: string; name: string; status: ControlEvidence["status"]; records: number }[];
+  oversight: OversightSignal;
 }
 
 export interface EvidenceManifest {
@@ -134,6 +152,7 @@ function summarise(period: { from: string; to: string }, audit: ChainRef, mapped
       return { framework: f.id, name: f.name, requirements: rows.length, evidence_in_period: n("evidence-in-period"), no_records_in_period: n("no-records-in-period"), documented: n("documented"), gap: n("gap") };
     }),
     controls: controls.map((c) => ({ id: c.control, name: c.name, status: c.status, records: c.records })),
+    oversight: oversightOf(controls),
   };
 }
 
@@ -244,6 +263,7 @@ export function evidenceSummaryLines(s: EvidenceSummary): string[] {
     `period ${s.period.from} .. ${s.period.to}: audit rows ${s.audit.first_seq}..${s.audit.last_seq} (${s.audit.rows}), head ${s.audit.head.slice(0, 16)}…`,
     ...s.frameworks.map((f) => `  ${f.framework.padEnd(10)} ${String(f.requirements).padStart(2)} requirements: ${f.evidence_in_period} evidence in period, ${f.no_records_in_period} no records in period, ${f.documented} documented, ${f.gap} gap`),
     `controls: ${ran} with records in the period, ${idle.length} with none${idle.length ? ` (${idle.join(", ")})` : ""}, ${s.controls.filter((c) => c.status === "documented").length} documented only`,
+    `oversight (${s.oversight.control}): ${s.oversight.line}`,
     HONEST_LINE,
   ];
 }
@@ -317,7 +337,9 @@ export function verifyComplianceEvidence(files: Record<string, string>, opts: { 
         const w = again[i]!;
         if (r.in_period !== w.in_period || r.records !== w.records) sbad.push(`mapping.json: ${r.framework} ${r.clause} says ${r.in_period} (${r.records} records); its controls' files give ${w.in_period} (${w.records})`);
       });
-      const want = summarise(man.period, man.audit, again, read).frameworks;
+      const wanted = summarise(man.period, man.audit, again, read);
+      if (!sameJson(summary.oversight, wanted.oversight)) sbad.push(`summary.json: oversight says ${JSON.stringify(summary.oversight?.line ?? null)}, the controls' files give ${JSON.stringify(wanted.oversight.line)}`);
+      const want = wanted.frameworks;
       for (const w of want) {
         const got = summary.frameworks.find((f) => f.framework === w.framework);
         if (!sameJson(got, w)) sbad.push(`summary.json: ${w.framework} says ${got ? `${got.evidence_in_period}/${got.no_records_in_period}/${got.documented}/${got.gap}` : "nothing"}, mapping.json gives ${w.evidence_in_period}/${w.no_records_in_period}/${w.documented}/${w.gap} (evidence in period/no records/documented/gap)`);

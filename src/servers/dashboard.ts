@@ -8,6 +8,8 @@ import { airwallexPage, booksPage, claudePage, metalPage, notFoundPage, visaPage
 import { awxCallsPage } from "../redesign/awxTrailPage.js";
 import { inspectorRecord } from "../redesign/metalMandates.js";
 import { METAL_INSPECTOR_PATH, localInspector } from "../../worker/src/metalInspector.js";
+import { ALTA_TX_PATH, localAltaTx } from "../../worker/src/altaTx.js";
+import { altaTxTargets, chainChecks } from "../redesign/chainCheck.js";
 import { AGENT_CARDS_PATH } from "../../worker/src/agentCardsLive.js";
 import { WORLD_CHANGES } from "../try/world.js";
 import { localTryAnswer } from "../try/local.js";
@@ -19,6 +21,7 @@ import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import type { DB } from "../db/open.js";
 import { buildSnapshot } from "../dashboard/snapshot.js";
+import { treasuryView } from "../treasury/view.js";
 import { systemHealth, systemHealthPage, SYSTEM_HEALTH_CSP } from "../dashboard/health.js";
 import { agentTraces } from "../dashboard/trace.js";
 import { simulateMonth, type MonthReport } from "../sim/month.js";
@@ -286,6 +289,19 @@ export async function sendInspector(res: Response): Promise<void> {
   r.headers.forEach((v, k) => { res.setHeader(k, v); });
   res.send(await r.text());
 }
+/**
+ * /proof's "Check it on chain" (src/redesign/chainCheck.ts): the Alta testnet transactions the committed records name,
+ * the only ones the site's Worker reads (worker/src/altaTx.ts). A local server reads none: it says so.
+ */
+export const ALTA_TX_TARGETS = (() => { const { record, file } = loadRecord(); return altaTxTargets(chainChecks(record, file)); })();
+const ALTA_TX_DESK = localAltaTx(ALTA_TX_TARGETS);
+export async function sendAltaTx(path: string, res: Response): Promise<void> {
+  const r = await ALTA_TX_DESK.fetch(new globalThis.Request(`http://localhost${path}`));
+  res.status(r.status);
+  r.headers.forEach((v, k) => { res.setHeader(k, v); });
+  res.send(await r.text());
+}
+export const ALTA_TX_ROUTE = `${ALTA_TX_PATH}/:hash`;
 // /metal has one script (jury panel, 12 Nov): it asks this origin's read-only inspector (GET /api/metal/mandates) for
 // the mandates' spend; so its hash and connect-src 'self', nothing else.
 export const METAL_CSP = cspFor(METAL_PAGE);
@@ -485,6 +501,7 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   });
   // /metal's inspector, as a local copy answers it: the record's read of 12 November, no chain call.
   app.get(METAL_INSPECTOR_PATH, (_req, res) => { void sendInspector(res); });
+  app.get(ALTA_TX_ROUTE, (req, res) => { void sendAltaTx(req.path, res); });
   // /airwallex's live cards: this machine holds no sandbox key, so the answer says so (worker/src/agentCardsLive.ts).
   app.get(AGENT_CARDS_PATH, (_req, res) => { res.json({ source: "unavailable", reason: "no sandbox key on this machine", checked_at: new Date().toISOString() }); });
   app.get("/visa", (_req, res) => {
@@ -586,6 +603,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
 
   app.get("/api/snapshot", (_req, res) => {
     res.json(buildSnapshot(db, opts.now?.() ?? new Date()));
+  });
+  // The money loop (src/treasury/view.ts): the 13-week forecast, FX exposure and the receivables; read-only.
+  app.get("/api/treasury", (_req, res) => {
+    res.set("cache-control", "no-store").json(treasuryView(db, opts.now?.() ?? new Date()));
   });
 
   // Monitoring (B7): the alarms and numbers, as JSON (503 while an alarm stands) and as Prometheus metrics.

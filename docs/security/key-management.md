@@ -134,6 +134,8 @@ Every secret the code reads. Crypto-period: the longest a value is used before i
 | `KIT11_AGENT_KEY` | The agent principal's key (MCP), from `npm run principals -- rotate` | runner environment | maintainer | 90 days, by rotate |
 | `KIT11_KEYS_DIR` | Directory of the runner's key files (wallets on testnet, ICC keys), mode 0600 | owner's disk | maintainer | per key, 1 year |
 | `KIT11_KEYS_ROOT` | Root of the key directories the CLI checks | owner's disk | maintainer | as `KIT11_KEYS_DIR` |
+| `PURSER_TRANSPARENCY_KEY` | The Purser transparency key (ECDSA P-256, PEM) that signs the statements `npm run transparency -- publish` logs in Sigstore's Rekor (src/transparency/transparency.ts, docs/transparency/); its public half is `docs/transparency/purser-transparency.pub`, and the CLI refuses a key that does not match it. Never printed, never in a record | owner's environment, per run | maintainer | 1 year; rotated with `npm run transparency -- keygen --out <file> --replace`, the old public key kept in git history so older entries still verify |
+| `PURSER_TRANSPARENCY_KEY_FILE` | Path of the file holding that key, instead of the variable: outside the repository, mode 0600 (the CLI refuses anything else); on the owner's machine `purser-transparency.key.pem` beside the other key files | owner's disk | maintainer | as `PURSER_TRANSPARENCY_KEY` |
 | `KIT11_SPIKE_KEYS_DIR` | Key files of a spike run | owner's disk | maintainer | deleted after the spike |
 | `OWNERS_DONOR_KEY` | Key file of the testnet wallet that funds the gas sponsor | owner's disk | maintainer | 1 year; testnet only |
 | `TOKENIZE_DONOR_KEY` | Key file of the testnet wallet that funds tokenisation | owner's disk | maintainer | 1 year; testnet only |

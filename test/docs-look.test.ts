@@ -14,7 +14,7 @@ const read = (p: string) => readFileSync(`${ROOT}${p}`, "utf8");
 const exists = (p: string) => existsSync(`${ROOT}${p}`);
 
 /** The pages redesigned in the house style, each with the centred header. */
-export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md", "docs/architecture.md", "docs/how-it-works.md", "docs/security.md", "docs/cloud.md", "docs/agents.md", "docs/airwallex.md",
+export const STYLED = ["ROADMAP.md", "SECURITY.md", "GOVERNANCE.md", "CONTRIBUTING.md", "JUDGES.md", "CODE_OF_CONDUCT.md", "CHANGELOG.md", "docs/architecture.md", "docs/how-it-works.md", "docs/security.md", "docs/cloud.md", "docs/agents.md", "docs/airwallex.md", "docs/treasury.md", "docs/receivables.md",
   "docs/README.md", "docs/proof/README.md", "docs/evidence/README.md", "docs/security/README.md", "docs/audit/README.md", "docs/submission/README.md", "docs/business/README.md", "docs/video/README.md", "examples/metal-dispute-desk/README.md", "docs/assets/brand/README.md", "docs/agent-api.md", "docs/mcp.md", "docs/ledger.md", "docs/cfo-policy.md", "docs/controls.md", "docs/controls-matrix.md", "docs/fraud-and-injection.md", "docs/hardening.md", "docs/enterprise.md", "docs/go-live.md", "docs/install.md", "docs/connections.md", "docs/connect-claude.md", "docs/ask-purser.md", "docs/autopilot.md", "docs/cards-and-clearing.md", "docs/agentos.md", "docs/kit11.md", "docs/decisions.md", "docs/in-depth.md", "docs/idea-vs-build.md", "docs/assurance.md", "docs/engine-events.md", "docs/erp.md", "docs/moneybird.md", "docs/accessibility.md", "docs/gallery.md", "docs/learning.md", "docs/finance-value.md", "docs/security/openssf-gold.md", "docs/security/SECURITY-MAPPING.md", "docs/security/agent-permissions.md", "docs/security/agent-identity.md", "docs/security/key-management.md", "docs/security/data-classification.md", "docs/security/asvs-l2.md"];
 /** Pages that carry the house-style badges (the judge-facing READMEs' header is test/readme-headers.test.ts's). */
 const BADGED = [...new Set([...STYLED, "docs/README.md"])];
@@ -28,7 +28,10 @@ function anchors(md: string): Set<string> {
   for (const line of withoutFences(md).split("\n")) {
     const h = /^#{1,6}\s+(.*?)\s*#*\s*$/.exec(line);
     if (h) {
-      const plain = h[1]!.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/<[^>]+>/g, "").replace(/[*`]/g, "");
+      let plain = h[1]!.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1"), before: string;
+      // Strip tags until none is left (a tag split by another, like "<scr<b>ipt>", leaves none behind), then any stray bracket.
+      do { before = plain; plain = plain.replace(/<[^>]*>/g, ""); } while (plain !== before);
+      plain = plain.replace(/[<>*`]/g, "");
       const base = plain.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, "").trim().replace(/\s/g, "-");
       const k = seen.get(base) ?? 0;
       seen.set(base, k + 1);

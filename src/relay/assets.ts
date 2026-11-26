@@ -12,7 +12,7 @@ import { loadRecord } from "../redesign/run.js";
 import { proofData, RECEIPT_SAMPLE_FILE } from "../redesign/agentData.js";
 import { T0_READBACK_FILE } from "../accounting/t0Readback.js";
 import ts from "typescript";
-import { AWX_CALLS_CSP, AWX_CALLS_PAGE, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, MOVED, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage, BOOKS_CSP, BOOKS_PAGE,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, PRIVACY_CSP, PRIVACY_PAGE, BUSINESS_CSP, BUSINESS_PAGE, ONE_PAGER_CSP, ONE_PAGER_PAGE, STATUS_CSP, STATUS_PAGE } from "../servers/dashboard.js";
+import { AWX_CALLS_CSP, AWX_CALLS_PAGE, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, MOVED, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage, BOOKS_CSP, BOOKS_PAGE,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, PRIVACY_CSP, PRIVACY_PAGE, BUSINESS_CSP, BUSINESS_PAGE, ONE_PAGER_CSP, ONE_PAGER_PAGE, STATUS_CSP, STATUS_PAGE, ALTA_TX_TARGETS } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 import { trySignOn } from "../try/sign.js";
 import { phonePhrases } from "../ui/i18n.js";
@@ -145,6 +145,8 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     dashboard: withAppHead(DASHBOARD_PAGE, "site"),
     exposureRate: EXPOSURE_RATE,
     metalRecorded: METAL_RECORDED,
+    // /proof's "Check it on chain": the only transactions the Worker reads (worker/src/altaTx.ts).
+    altaTxTargets: ALTA_TX_TARGETS,
     ...(LLMS ? { llms: LLMS } : {}),
     // The proof as data for a tool that fetches the site, and one receipt it can verify itself (agent-surface, 12 Nov).
     proofJson: JSON.stringify(proofData(), null, 2),

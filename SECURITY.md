@@ -6,11 +6,11 @@
 
 **How to report a vulnerability in Purser privately, how fast you hear back, and what is in scope.**
 
-[![Report privately: GitHub advisory](https://img.shields.io/badge/report_privately-GitHub_advisory-dc2626?style=flat-square&labelColor=1f2937)](https://github.com/agamemnon-coder/x402-business-agents/security/advisories/new)&nbsp;[![Acknowledged: within 3 working days](https://img.shields.io/badge/acknowledged-within_3_working_days-16a34a?style=flat-square&labelColor=1f2937)](#disclosure-timeline)&nbsp;[![Disclosure: within 90 days](https://img.shields.io/badge/disclosure-within_90_days-2563eb?style=flat-square&labelColor=1f2937)](#disclosure-timeline)&nbsp;[![Supported: main and the latest release](https://img.shields.io/badge/supported-main_%C2%B7_latest_release-7c3aed?style=flat-square&labelColor=1f2937)](#supported-versions)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](#scope)
+[![Report privately: GitHub advisory](https://img.shields.io/badge/report_privately-GitHub_advisory-be123c?style=flat-square&labelColor=1f2937)](https://github.com/agamemnon-coder/x402-business-agents/security/advisories/new)&nbsp;[![Acknowledged: within 3 working days](https://img.shields.io/badge/acknowledged-within_3_working_days-059669?style=flat-square&labelColor=1f2937)](#disclosure-timeline)&nbsp;[![Disclosure: within 90 days](https://img.shields.io/badge/disclosure-within_90_days-0284c7?style=flat-square&labelColor=1f2937)](#disclosure-timeline)&nbsp;[![Supported: main and the latest release](https://img.shields.io/badge/supported-main_%C2%B7_latest_release-7c3aed?style=flat-square&labelColor=1f2937)](#supported-versions)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-d97706?style=flat-square&labelColor=1f2937)](#scope)
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql)&nbsp;[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/agamemnon-coder/x402-business-agents/badge)](https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents)&nbsp;[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)&nbsp;[![Secrets: gitleaks on every push](https://img.shields.io/badge/secrets-gitleaks_on_every_push-16a34a?style=flat-square&labelColor=1f2937)](#no-secrets-in-this-repository)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql)&nbsp;[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/agamemnon-coder/x402-business-agents/badge)](https://scorecard.dev/viewer/?uri=github.com/agamemnon-coder/x402-business-agents)&nbsp;[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16923/badge)](https://www.bestpractices.dev/projects/16923)&nbsp;[![Secrets: gitleaks on every push](https://img.shields.io/badge/secrets-gitleaks_on_every_push-7c3aed?style=flat-square&labelColor=1f2937)](#no-secrets-in-this-repository)
 
-[Report](#reporting-a-vulnerability) · [Timeline](#disclosure-timeline) · [Handling](#how-a-report-is-handled) · [Supported versions](#supported-versions) · [Scope](#scope) · [Trust boundaries](#trust-boundaries-and-the-money-path) · [Credit](#credit) · [Threat model](docs/security.md)
+[Report](#reporting-a-vulnerability) · [Timeline](#disclosure-timeline) · [Handling](#how-a-report-is-handled) · [Supported versions](#supported-versions) · [Scope](#scope) · [Controls](#security-controls-at-a-glance) · [Trust boundaries](#trust-boundaries-and-the-money-path) · [Credit](#credit) · [Threat model](docs/security.md)
 
 </div>
 
@@ -49,12 +49,15 @@ after 90 days if we have stopped answering.
 
 ```mermaid
 flowchart LR
-  R["You report privately<br/>GitHub private<br/>vulnerability reporting"] --> A1["1 · Acknowledge<br/>within 3 working days"]
-  A1 --> A2["2 · Assess<br/>within 10 working days:<br/>in scope? how severe?"]
-  A2 --> A3["3 · Fix in private<br/>in the advisory's private fork,<br/>a regression test that<br/>fails before the fix"]
-  A3 --> A4["4 · Release<br/>a PATCH release; the test<br/>preview redeployed if affected"]
-  A4 --> A5["5 · Disclose<br/>the advisory published,<br/>normally within 90 days"]
-  A5 --> C["Credit<br/>in the advisory and<br/>the release notes"]
+  R["You report privately<br/>GitHub private<br/>vulnerability reporting"]:::purser --> A1["1 · Acknowledge<br/>within 3 working days"]:::cash
+  A1 --> A2["2 · Assess<br/>within 10 working days:<br/>in scope? how severe?"]:::cash
+  A2 --> A3["3 · Fix in private<br/>in the advisory's private fork,<br/>a regression test that<br/>fails before the fix"]:::cash
+  A3 --> A4["4 · Release<br/>a PATCH release; the test<br/>preview redeployed if affected"]:::paid
+  A4 --> A5["5 · Disclose<br/>the advisory published,<br/>normally within 90 days"]:::cash
+  A5 --> C["Credit<br/>in the advisory and<br/>the release notes"]:::purser
+  classDef purser fill:#6d28d9,stroke:#a78bfa,color:#fff
+  classDef cash fill:#0369a1,stroke:#38bdf8,color:#fff
+  classDef paid fill:#047857,stroke:#34d399,color:#fff
 ```
 
 1. **Acknowledge** within 3 working days, in the advisory (or by e-mail), with who is looking at it.
@@ -90,6 +93,24 @@ Supported: `main`. There are no other release branches. The submission tags are 
 
 The threat model is [docs/security.md](docs/security.md); the controls are [docs/controls.md](docs/controls.md).
 
+## Security controls at a glance
+
+What stands between an agent and the money, and what keeps the code honest. Each badge opens the control's own
+document or code; the colours are the console's: violet for Purser and the CFO's approval, green for what is checked
+in CI, amber for test money.
+
+| Control | What it does | Where |
+|---|---|---|
+| [![Approval: passkey-signed terms](https://img.shields.io/badge/approval-passkey--signed_terms-7c3aed?style=flat-square&labelColor=1f2937)](src/lib/terms.ts) | Above a limit, the CFO's passkey (Face ID) signs the SHA-256 of the exact terms; one cent changed and it no longer verifies. | [src/lib/terms.ts](src/lib/terms.ts), [src/policy/approvals.ts](src/policy/approvals.ts) |
+| [![Execution: re-checks the signed hash](https://img.shields.io/badge/execution-re--checks_the_signed_hash-7c3aed?style=flat-square&labelColor=1f2937)](src/policy/hashFirst.ts) | Before anything leaves for a rail, the executor checks that the stored terms still hash to what was signed. | [src/policy/hashFirst.ts](src/policy/hashFirst.ts), [src/executors/](src/executors/) |
+| [![Agent identity: Ed25519-signed requests](https://img.shields.io/badge/agent_identity-Ed25519_signed_requests-7c3aed?style=flat-square&labelColor=1f2937)](docs/security/agent-identity.md) | Each agent that can move money has its own key; a money-relevant request carries a signature over that exact request, and a replay is refused. | [docs/security/agent-identity.md](docs/security/agent-identity.md) |
+| [![Audit: hash-chained, anchored](https://img.shields.io/badge/audit-hash--chained%2C_anchored-7c3aed?style=flat-square&labelColor=1f2937)](src/audit/log.ts) | Every event goes into a hash-chained log whose head is anchored on Alta testnet. | [src/audit/log.ts](src/audit/log.ts), [src/anchor/](src/anchor/) |
+| [![Releases: SBOM and SLSA L3 provenance](https://img.shields.io/badge/releases-SBOM_%C2%B7_SLSA_L3_provenance-7c3aed?style=flat-square&labelColor=1f2937)](docs/security/README.md#verify-a-release) | A release carries a CycloneDX bill of materials and Sigstore-signed attestations; releases after `v1.2.0` also carry SLSA Build Level 3 provenance. | [docs/security/README.md](docs/security/README.md#verify-a-release), [release.yml](.github/workflows/release.yml) |
+| [![Static analysis: CodeQL](https://img.shields.io/badge/static_analysis-CodeQL-059669?style=flat-square&labelColor=1f2937)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) | GitHub's code scanning on the repository. | [Code scanning](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) |
+| [![Secrets: gitleaks](https://img.shields.io/badge/secrets-gitleaks-059669?style=flat-square&labelColor=1f2937)](#no-secrets-in-this-repository) | gitleaks on every push and on the whole history of the commit under check. | [ci.yml](.github/workflows/ci.yml), [below](#no-secrets-in-this-repository) |
+| [![OpenSSF: Scorecard and Best Practices](https://img.shields.io/badge/OpenSSF-Scorecard_%C2%B7_Best_Practices-059669?style=flat-square&labelColor=1f2937)](https://www.bestpractices.dev/projects/16923) | The OpenSSF Scorecard workflow, and the project's OpenSSF Best Practices entry. | [scorecard.yml](.github/workflows/scorecard.yml), [bestpractices.dev](https://www.bestpractices.dev/projects/16923) |
+| [![Money: test only](https://img.shields.io/badge/money-test_only-d97706?style=flat-square&labelColor=1f2937)](#scope) | The Airwallex sandbox, Alta testnet and Visa via Airwallex's Airi (sandbox): no real money moves. | [Scope](#scope) |
+
 ## Trust boundaries and the money path
 
 What a report is measured against: an agent's payment crosses these boundaries, and Purser's checks, the CFO's
@@ -97,25 +118,27 @@ passkey, the executor's re-check and the rails' own limits can each stop it. A s
 the full diagram in [docs/security.md](docs/security.md#trust-boundaries), where each arrow says what crosses and what
 checks it.
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/anim/money-path-security-dark.svg"><img src="docs/assets/anim/money-path-security.svg" alt="One payment on test money: the agent proposes, Purser's checks, the CFO's passkey and the executor's re-check each light green, the rail pays and the audit chain records it; then a payment whose terms changed by one cent after signing turns red at the executor and is refused, nothing paid" width="100%"></picture>
+
 ```mermaid
 flowchart LR
   subgraph U["Untrusted"]
-    IN["Invoices, emails, x402 servers,<br/>visitors, outside agents"]
-    CL["Claude<br/>no key, fixed tools"]
-    W["Relay Worker<br/>queues proposals and approvals"]
+    IN["Invoices, emails, x402 servers,<br/>visitors, outside agents"]:::refused
+    CL["Claude<br/>no key, fixed tools"]:::agent
+    W["Relay Worker<br/>queues proposals and approvals"]:::proof
   end
   subgraph T["Trusted: the runner"]
-    CK["Purser's checks in code<br/>limits, payee, duplicates,<br/>the CFO's emergency stop"]
-    EX["Executor<br/>re-checks the approved terms' hash<br/>and the passkey signature"]
-    LOG["Hash-chained audit log<br/>anchored on Alta testnet"]
+    CK["Purser's checks in code<br/>limits, payee, duplicates,<br/>the CFO's emergency stop"]:::purser
+    EX["Executor<br/>re-checks the approved terms' hash<br/>and the passkey signature"]:::purser
+    LOG["Hash-chained audit log<br/>anchored on Alta testnet"]:::proof
   end
   subgraph P["The CFO's phone"]
-    PK["Passkey, Face ID<br/>signs the SHA-256<br/>of the exact terms"]
+    PK["Passkey, Face ID<br/>signs the SHA-256<br/>of the exact terms"]:::purser
   end
   subgraph Q["The rails, each with its own limits"]
-    AW["Airwallex sandbox"]
-    AL["Alta testnet"]
-    VI["Visa via Airwallex's Airi<br/>sandbox"]
+    AW["Airwallex sandbox"]:::testmoney
+    AL["Alta testnet"]:::testmoney
+    VI["Visa via Airwallex's Airi<br/>sandbox"]:::testmoney
   end
   IN -- "data, never instructions" --> CK
   CL -- "typed answers, checked by code" --> CK
@@ -124,9 +147,19 @@ flowchart LR
   W --> PK
   PK -- "signature over the terms' hash" --> W
   W -- "verified on the runner" --> EX
-  EX -- "one cent changed" --> X["Refused.<br/>Nothing paid."]
+  EX -- "one cent changed" --> X["Refused.<br/>Nothing paid."]:::refused
   EX -- "terms match" --> AW & AL & VI
   EX --> LOG
+  classDef purser fill:#6d28d9,stroke:#a78bfa,color:#fff
+  classDef agent fill:#4338ca,stroke:#818cf8,color:#fff
+  classDef paid fill:#047857,stroke:#34d399,color:#fff
+  classDef refused fill:#be123c,stroke:#fb7185,color:#fff
+  classDef testmoney fill:#b45309,stroke:#fbbf24,color:#fff
+  classDef proof fill:#334155,stroke:#94a3b8,color:#fff
+  style U fill:#be123c1a,stroke:#fb7185
+  style T fill:#6d28d91a,stroke:#a78bfa
+  style P fill:#6d28d91a,stroke:#a78bfa
+  style Q fill:#b453091a,stroke:#fbbf24
 ```
 
 > [!NOTE]
