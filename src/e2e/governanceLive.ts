@@ -60,8 +60,7 @@ export type GovRun = (typeof GOV_RUNS)[number];
 export const GOV_LIVE_MAX_BUDGET = 80;
 export const GOV_PASSKEY_LABEL = "governance-live virtual test passkey (no person's Face ID)";
 export const GOV_COMMAND: Origin = { actor: "cfo-command", command: "npm run airwallex:governance-live", moves_money: false };
-const RP = "governance-live.virtual-passkey.invalid";
-const ORIGIN = `https://${RP}`;
+const GOV_RP = "governance-live.virtual-passkey.invalid";
 /** The nickname suffix of the run's own agent card: a new card, never one of the card drill's. */
 export const GOV_CARD_SUFFIX = "governance-1126";
 export const GOV_CARD_AGENT: Agent = "sourcing";
@@ -69,7 +68,8 @@ export const GOV_CARD_AGENT: Agent = "sourcing";
 export const GOV_HOURS = "Mon-Fri 18:00-20:00 Europe/Amsterdam";
 
 export interface GovResults {
-  drill: GovRun; pass_no: number; mode: "live" | "stand-in"; started_at: string; ended_at: string | null; passkey: string;
+  /** The run's name: a governance run (GovRun), or another live run that shares this runner (src/e2e/moneyLoopLive.ts). */
+  drill: string; pass_no: number; mode: "live" | "stand-in"; started_at: string; ended_at: string | null; passkey: string;
   cards: { agent: string; card_id: string; last4: string; nickname: string }[];
   timings: Record<string, number | null>;
   steps: Step[]; stopped: string | null;
@@ -87,11 +87,17 @@ export interface GovDeps {
 
 type Outcome = { outcome: string; pass: boolean | null; facts?: Record<string, unknown>; simulated?: string };
 
-/** The step recorder, the call counter and the virtual passkey every run shares. */
-function runner(run: GovRun, d: GovDeps) {
+/**
+ * The step recorder, the call counter and the virtual passkey every run shares (the governance runs, and the money
+ * loop's live runs, src/e2e/moneyLoopLive.ts, which name their own passkey label and relying party).
+ */
+export function runner(run: string, d: GovDeps, o: { label?: string; rp?: string } = {}) {
   const { db } = d;
   const log = d.log ?? (() => undefined);
-  const res: GovResults = { drill: run, pass_no: 1, mode: d.mode, started_at: d.now().toISOString(), ended_at: null, passkey: GOV_PASSKEY_LABEL, cards: [], timings: {}, steps: [], stopped: null };
+  const label = o.label ?? GOV_PASSKEY_LABEL;
+  const RP = o.rp ?? GOV_RP;
+  const ORIGIN = `https://${RP}`;
+  const res: GovResults = { drill: run, pass_no: 1, mode: d.mode, started_at: d.now().toISOString(), ended_at: null, passkey: label, cards: [], timings: {}, steps: [], stopped: null };
   const lineCount = () => d.lines().length;
   const go = () => !res.stopped;
   const step = async (phase: string, id: string, agent: string | null, title: string, expect: string, body: () => Promise<Outcome>): Promise<Step | null> => {
@@ -141,9 +147,9 @@ function runner(run: GovRun, d: GovDeps) {
   const enrol = () => step("setup", "setup.passkey", null, "Enrol the virtual test passkey (labelled) as this ledger's only approver", "enrolled and confirmed", async () => {
     const { window, code } = openEnrolment(db, { rpId: RP, origin: ORIGIN }, d.now());
     const credential = auth.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP });
-    const out = await processRegistration(db, { ticket: `gov-enrol-${run}`, kind: "registration", proposal_id: null, body: JSON.stringify({ code, credential }), received_at: d.now().toISOString() }, { label: GOV_PASSKEY_LABEL }, d.now());
+    const out = await processRegistration(db, { ticket: `gov-enrol-${run}`, kind: "registration", proposal_id: null, body: JSON.stringify({ code, credential }), received_at: d.now().toISOString() }, { label }, d.now());
     confirmPasskey(db, fingerprintOf(auth.spkiSha256), d.now());
-    return { outcome: `${out.status}; confirmed: ${GOV_PASSKEY_LABEL}`, pass: out.status === "pending", simulated: "a virtual test passkey, no person's Face ID" };
+    return { outcome: `${out.status}; confirmed: ${label}`, pass: out.status === "pending", simulated: "a virtual test passkey, no person's Face ID" };
   });
   /** A policy change as the phone sends it: created and approved in one step, signed by the passkey (tighten only). Not applied. */
   const phoneChange = async (key: string, to: string, reason: string, at = d.now()) => {

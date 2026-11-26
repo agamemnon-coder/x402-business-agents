@@ -10,6 +10,7 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { invoiceKey } from "./euroBill.js";
+import { referenceTokens } from "../lib/invoiceKey.js";
 
 export type ReceiptOutcome = "MATCHED" | "SHORT" | "OVER" | "WRONG_CURRENCY" | "UNMATCHED";
 
@@ -26,9 +27,10 @@ export function openReceivable(db: DB, r: Receivable, now = new Date()): void {
 /** The invoice a reference names: the longest invoice number found in it, compared the way duplicates are. */
 function invoiceIn(db: DB, reference: string | null): Row | undefined {
   if (!reference) return undefined;
-  const ref = invoiceKey(reference);
+  // As a whole word only (review of 26 Nov): "NW-R-1011" does not name NW-R-101.
+  const words = referenceTokens(reference);
   return (db.prepare("SELECT invoice_no, customer, currency, amount_cents, paid_cents, status FROM receivables").all() as Row[])
-    .filter((r) => ref.includes(invoiceKey(r.invoice_no)))
+    .filter((r) => words.includes(invoiceKey(r.invoice_no)))
     .sort((a, b) => b.invoice_no.length - a.invoice_no.length)[0];
 }
 

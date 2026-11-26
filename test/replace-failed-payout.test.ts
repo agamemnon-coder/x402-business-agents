@@ -180,6 +180,23 @@ describe("anything less certain: no replacement, a person decides", () => {
     expect(await replaceFailedPayout(w.db, w.awx, w.awx, proposalId)).toMatchObject({ outcome: "stopped", code: "terms_changed" });
     expect(w.awx.transfers).toHaveLength(1);
   });
+
+  // Review of 26 Nov: a hold set during the floor's round-trip to Airwallex stops the create too.
+  it("the emergency stop pulled while the floor is read on fresh balances: the create is held, nothing is sent, now or later", async () => {
+    const { proposalId, terms } = await sentThenFailed();
+    const balances = w.awx.balancesAll.bind(w.awx);
+    w.awx.balancesAll = async () => { setSetting(w.db, "human", "freeze", "on"); return balances(); };
+    expect(await replaceFailedPayout(w.db, w.awx, w.awx, proposalId)).toMatchObject({ outcome: "stopped", code: "held", reason: expect.stringMatching(/emergency stop/) });
+    expect(w.awx.transfers).toHaveLength(1);
+    const replacement = replacementRequestId(terms.transfer_request_id);
+    expect(w.db.prepare("SELECT status, transfer_id, failure_type FROM transfers WHERE request_id = ?").get(replacement)).toEqual({ status: "CANCELLED", transfer_id: null, failure_type: "held_by_purser" });
+    expect(events("transfer.held_before_create")).toEqual([expect.objectContaining({ subject: replacement, before: "transfer" })]);
+    w.awx.balancesAll = balances;
+    setSetting(w.db, "human", "freeze", "off");
+    const again = await replaceFailedPayout(w.db, w.awx, w.awx, proposalId);
+    expect(again).toMatchObject({ outcome: "stopped", code: "held", reason: expect.stringMatching(/held by Purser before its create/) });
+    expect(w.awx.transfers).toHaveLength(1);
+  });
 });
 
 describe("over the real Airwallex client and adapter, against the REST stand-in", () => {

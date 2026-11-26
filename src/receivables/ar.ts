@@ -26,7 +26,7 @@ import { RECEIVABLES } from "../ledger/accounts.js";
 import { postEntry } from "../ledger/core.js";
 import { salesInvoice, settleOpenItem } from "../ledger/documents.js";
 import { vatOn } from "../ledger/vat.js";
-import { invoiceKey } from "../lib/invoiceKey.js";
+import { invoiceKey, referenceTokens, unknownInvoiceWord } from "../lib/invoiceKey.js";
 import { matchReceipt, namesReceivable, type Deposit } from "../agents/receivables.js";
 import { fromCents } from "../lib/money.js";
 
@@ -98,12 +98,20 @@ export async function issueInvoice(db: DB, inv: NewArInvoice, links: Pick<Airwal
   return { invoice: arInvoice(db, inv.invoice_no)!, entry_id: posted.entry_id, link, link_problem: problem };
 }
 
-/** The open invoice a reference names (rule 1), or why none can be chosen. */
+/**
+ * The invoice a reference names (rule 1), or why none can be chosen. A reference names an invoice only as a whole word
+ * (review of 26 Nov: "NW-1077" named NW-10 and paid it); one that names a number shaped like ours that is not on file
+ * ("NW-1077") goes to review, never to the amount rule.
+ */
 function named(db: DB, reference: string | null): { inv: ArInvoice } | { review: string } | null {
   if (!reference) return null;
-  const ref = invoiceKey(reference);
-  const hits = arInvoices(db).filter((i) => ref.includes(invoiceKey(i.invoice_no))).sort((a, b) => b.invoice_no.length - a.invoice_no.length);
-  if (!hits.length) return null;
+  const words = referenceTokens(reference);
+  const all = arInvoices(db);
+  const hits = all.filter((i) => words.includes(invoiceKey(i.invoice_no))).sort((a, b) => b.invoice_no.length - a.invoice_no.length);
+  if (!hits.length) {
+    const unknown = unknownInvoiceWord(reference, all.map((i) => i.invoice_no));
+    return unknown ? { review: `the reference names ${unknown}, which is not an invoice on file` } : null;
+  }
   if (hits[1] && hits[1].invoice_no.length === hits[0]!.invoice_no.length) return { review: `the reference names ${hits.length} invoices` };
   return { inv: hits[0]! };
 }
@@ -168,8 +176,11 @@ export function routeDeposit(db: DB, d: Deposit, now = new Date(), via: "webhook
   const p = { payment_id: d.deposit_id, currency: d.currency, amount_cents: d.amount_cents, reference: d.reference, payer: d.payer, received_at: d.received_at };
   const ar = (): { by: "ar"; outcome: string; detail: string } => { const r = matchPayment(db, p, now); return { by: "ar", outcome: r.outcome, detail: `${r.invoice_no ?? "no invoice"}: ${r.rule}` }; };
   if (db.prepare("SELECT 1 FROM ar_payments WHERE payment_id = ?").get(d.deposit_id)) return ar();
+  // An invoice of this module named as a whole word wins; else a receivable of the older matcher named as a whole word
+  // goes there (review of 26 Nov: a looser match, or a review answer here, must not take it); else this module.
+  const n = named(db, d.reference);
   const mine = !db.prepare("SELECT 1 FROM receipts WHERE deposit_id = ?").get(d.deposit_id) && !!db.prepare("SELECT 1 FROM ar_invoices LIMIT 1").get()
-    && (named(db, d.reference) !== null || !namesReceivable(db, d.reference));
+    && ((n !== null && "inv" in n) || !namesReceivable(db, d.reference));
   if (mine) return ar();
   const m = matchReceipt(db, d, now, via);
   return { by: "receivables", outcome: m.outcome, detail: m.detail };

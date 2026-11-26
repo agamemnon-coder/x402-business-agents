@@ -22,7 +22,7 @@ export interface GovRecordMeta {
   summary: (r: DrillRecord) => string[];
 }
 
-const summaryOf = (m: Pick<GovRecordMeta, "shows" | "keySteps">) => (r: DrillRecord): string[] => {
+export const summaryOf = (m: Pick<GovRecordMeta, "shows" | "keySteps">) => (r: DrillRecord): string[] => {
   const steps = r.passes.flatMap((p) => p.steps);
   const out = lines(steps, m.keySteps);
   if (allPassed(r)) out.push(...m.shows.map((s) => `Shown: ${s}`));

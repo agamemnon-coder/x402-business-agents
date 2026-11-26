@@ -24,7 +24,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   quotes = new Map<string, Quote>();
   conversions: Conversion[] = [];
   beneficiaries: Beneficiary[] = [];
-  transfers: (Transfer & { metadata: string; reference?: string })[] = [];
+  transfers: (Transfer & { metadata: string; reference?: string; agreementSha256?: string })[] = [];
   /** The approval hash each conversion carried in its metadata, by conversion id (as Airwallex keeps it). */
   conversionMetadata = new Map<string, string>();
   calls: string[] = [];
@@ -112,7 +112,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
     if (this.bal.EUR.availableCents < t.amountCents + fee) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
     this.bal.EUR.availableCents -= t.amountCents + fee;
     this.bal.EUR.reservedCents += t.amountCents + fee;
-    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: this.approvalWorkflow ? "IN_APPROVAL" : "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, reference: t.reference, fee: { cents: fee, currency: "EUR" }, beneficiaryId: t.beneficiaryId, ...this.appFee(t) };
+    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: this.approvalWorkflow ? "IN_APPROVAL" : "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, reference: t.reference, fee: { cents: fee, currency: "EUR" }, beneficiaryId: t.beneficiaryId, ...this.appFee(t), ...(t.agreementSha256 ? { agreementSha256: t.agreementSha256 } : {}) };
     this.transfers.push(tr);
     if (this.loseNextTransferAnswer) { this.loseNextTransferAnswer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
     return { ...tr };

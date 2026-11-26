@@ -9,7 +9,7 @@ import type { DrillLine } from "./drillHttp.js";
 export interface DrillPass { pass_no: number; started_at: string; ended_at: string | null; stopped: string | null; note: string | null; phases?: string[]; code?: Record<string, unknown>; timings?: Record<string, number | null>; steps: Step[] }
 
 export interface DrillRecord {
-  run: "card-drill" | "stop-drill" | "card-hours" | "stop-rail" | "entities" | "replace-failed"; date: string; label: string; sandbox: string; test_money: true; command: string; commit: string | null;
+  run: "card-drill" | "stop-drill" | "card-hours" | "stop-rail" | "entities" | "replace-failed" | "fx-convert" | "receivables" | "negotiated-pay"; date: string; label: string; sandbox: string; test_money: true; command: string; commit: string | null;
   simulated: string[];
   budget: { approved: number | null; max: number; used: number; logged_requests: number; status_429: number; unexpected_non_2xx: { n: number; status: number; call: string; code: string | null }[] };
   totals: { steps: number; pass: number; fail: number; not_judged: number };
