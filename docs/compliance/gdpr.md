@@ -30,7 +30,7 @@
 | Party | Role | For |
 |---|---|---|
 | The deploying business | **Controller** | Its suppliers', customers' and staff's data in the runner and in Purser Cloud |
-| Purser Cloud's operator | **Processor** (Art. 28), on the business's instructions | The data Purser Cloud stores; no data processing agreement exists yet: a gap ([controls.md](controls.md)) |
+| Purser Cloud's operator | **Processor** (Art. 28), on the business's instructions | The data Purser Cloud stores; a data processing agreement template exists ([templates/dpa.md](templates/dpa.md)), signed with nobody ([controls.md](controls.md)) |
 | The providers of the [register](third-parties.md) | Subprocessors | What each receives, as the register says |
 
 ## Record of processing activities (Art. 30)
@@ -111,7 +111,8 @@ The runner's own ledger has no erasure tool: its hash chains are kept or deleted
 Per recipient, from the locations the [third-party register](third-parties.md) records (the table is in the record
 above). Anthropic, Resend and Twilio are in the United States. **No transfer mechanism (the EU-US Data Privacy
 Framework, Standard Contractual Clauses) is recorded for any of them**: GDPR Art. 44 is a gap in
-[controls.md](controls.md) until the controller puts one in place.
+[controls.md](controls.md) until the controller puts one in place. Which mechanism each recipient would need is in
+[transfers.md](transfers.md).
 
 ## Breaches
 

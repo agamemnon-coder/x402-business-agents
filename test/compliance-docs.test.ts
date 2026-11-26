@@ -9,8 +9,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { blockOf, dashboardMarkdown, frameworksBlock, HONEST_LINE, statusCounts } from "../src/compliance/controls.js";
 
-const NEW = ["ai-policy.md", "ai-impact-assessment.md", "instructions-for-use.md", "incident-response.md", "exit-plans.md", "retention.md", "psd2-sca.md", "gdpr.md", "ai-act-classification.md", "third-parties.md", "README.md"]
+// v1.5.1: the technical documentation, the quality management outline, the literacy note, the transfers note and the
+// two templates (one folder down, so their header's paths go one level further up).
+const NEW = ["ai-policy.md", "ai-impact-assessment.md", "instructions-for-use.md", "incident-response.md", "exit-plans.md", "retention.md", "psd2-sca.md", "gdpr.md", "ai-act-classification.md", "third-parties.md", "README.md",
+  "ai-technical-documentation.md", "qms.md", "ai-literacy.md", "transfers.md", "templates/dpa.md", "templates/ict-contract-clauses.md"]
   .map((f) => `docs/compliance/${f}`);
+const up = (f: string) => "../".repeat(f.split("/").length - 2);
 const read = (f: string) => readFileSync(f, "utf8");
 const DIAGRAMS = /^(flowchart (LR|TB|TD|RL|BT)|sequenceDiagram|stateDiagram-v2|pie( showData)?( title .*)?|quadrantChart)\s*$/;
 
@@ -27,7 +31,7 @@ describe("the governance and compliance documents", () => {
     const md = read(f);
     expect(md.startsWith('<div align="center">\n\n')).toBe(true);
     const head = md.slice(0, md.indexOf("</div>"));
-    expect(head).toContain('<picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser"');
+    expect(head).toContain(`<picture><source media="(prefers-color-scheme: dark)" srcset="${up(f)}assets/brand/purser-mark-dark.svg"><img src="${up(f)}assets/brand/purser-mark.svg" alt="Purser"`);
     expect(md.match(/^# /gm) ?? []).toHaveLength(1);
     expect(head).toMatch(/^\*\*[^*\n]+\*\*$/m);
     expect(head).toMatch(/\[!\[[^\]]+\]\(https:\/\/img\.shields\.io\/badge\/[^)]+\)\]\([^)]+\)/);

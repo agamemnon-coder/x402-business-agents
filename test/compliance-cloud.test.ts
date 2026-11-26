@@ -35,9 +35,9 @@ describe("the compliance snapshot", () => {
     const { db } = complianceWorld();
     const s = complianceSnapshot(db, NOW);
     expect(s.period).toEqual({ from: "2026-11-01", to: "2026-11-30" });
-    expect(s.frameworks.map((f) => [f.framework, f.evidence_in_period, f.gap])).toEqual([["eu-ai-act", 8, 3], ["iso-42001", 5, 1], ["soc2", 8, 0], ["dora", 7, 2], ["psd2-sca", 5, 0], ["gdpr", 2, 2], ["eidas", 1, 1], ["nis2", 3, 2], ["iso-27001", 6, 3]]);
+    expect(s.frameworks.map((f) => [f.framework, f.evidence_in_period, f.gap])).toEqual([["eu-ai-act", 8, 0], ["iso-42001", 5, 1], ["soc2", 8, 0], ["dora", 7, 2], ["psd2-sca", 5, 0], ["gdpr", 2, 1], ["eidas", 1, 1], ["nis2", 3, 2], ["iso-27001", 6, 3]]);
     expect(s.controls.find((x) => x.id === "PC-06")).toEqual({ id: "PC-06", name: "Emergency stop and agent stops", status: "records-in-period", records: 2 });
-    expect(s.gaps.length).toBe(14);
+    expect(s.gaps.length).toBe(10); // v1.5.1: 14 until the AI Act Arts. 4, 11(1), 17(1) and GDPR Art. 28 were documented
     expect(s.note).toBe(HONEST_LINE);
     expect(JSON.stringify(s)).not.toMatch(/"(subject|payload|row_hash|seq)"/);
     expect(ComplianceSnapshot.safeParse(JSON.parse(JSON.stringify(s))).success).toBe(true);
@@ -122,7 +122,7 @@ describe("the Compliance section on the Company page", () => {
     expect(box.hidden).toBe(false);
     const words = texts(box).join("\n");
     expect(words).toContain("Compliance evidence");
-    expect(words).toContain("EU AI Act: 8 with evidence in the period, 1 mapped with no records, 8 documented, 3 gaps (20 requirements)");
+    expect(words).toContain("EU AI Act: 8 with evidence in the period, 1 mapped with no records, 11 documented, 0 gaps (20 requirements)");
     expect(words).toContain("<img src=x onerror=alert(1)>");
     expect(words).toContain(HONEST_LINE);
     expect(words).toMatch(/PC-12 Rationale record per payment/);
