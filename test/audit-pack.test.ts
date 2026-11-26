@@ -1,9 +1,13 @@
 // The signed audit pack (src/audit/pack.ts): a pack of November from a seeded ledger (rows in October before it and in
 // December after it) verifies offline; one changed byte, a removed row, a changed manifest or another key fails, each
 // with a reason that names the section, the row and what differs.
+import { execFileSync } from "node:child_process";
 import { generateKeyPairSync, sign as edSign } from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { rawPublicKey, keyIdOf } from "../src/audit/checkpoint.js";
 import { audit } from "../src/audit/log.js";
 import { buildAuditPack, deriveRules, verifyAuditPack, type AuditPack, type PackResult } from "../src/audit/pack.js";
@@ -37,7 +41,7 @@ function seededWorld(): { db: DB; ids: Record<string, string> } {
   const sodOn = proposePolicyChange(db, { changes: [{ key: "approval.policy_sod_eur", to: "1000.00" }], reason: "segregation of duties" }, "human", NOV(2));
   approveSigned(db, sodOn.proposal_id, NOV(2), "max");
   executePolicyChange(db, sodOn.proposal_id, NOV(2));
-  const loosen = proposePolicyChange(db, { changes: [{ key: "ap.alone_eur", to: "2500.00" }], reason: "month-end volume" }, "human", NOV(3));
+  const loosen = proposePolicyChange(db, { changes: [{ key: "ap.alone_eur", to: "2500.00" }], reason: "month-end volume", proposedBy: "lena" }, "human", NOV(3));
   approveSigned(db, loosen.proposal_id, NOV(3), "max");
   approveSigned(db, loosen.proposal_id, NOV(3, 9, 5), "anna");
   executePolicyChange(db, loosen.proposal_id, NOV(3, 9, 6));
@@ -70,10 +74,21 @@ describe("signed audit pack", () => {
     expect(failed(r)).toEqual({});
     expect(r.ok).toBe(true);
     expect(r.checks.map((c) => c.check)).toEqual(expect.arrayContaining(["signature", "key", "sections", "audit chain", "approvals", "proposals", "policy versions", "hash audit_rows"]));
-    // Unpinned it still verifies, and says whose key it cannot vouch for.
+    // Unpinned it is not valid: a pack rebuilt and signed again with anyone's key would pass every other check.
     const loose = verifyAuditPack(pack);
-    expect(loose.ok).toBe(true);
-    expect(loose.checks.find((c) => c.check === "key")?.detail).toMatch(/is not pinned here/);
+    expect(loose.ok).toBe(false);
+    expect(loose.incomplete).toBe(true);
+    expect(failed(loose)).toEqual({ key: expect.stringMatching(/^UNPINNED: .*pass --trust <public key>/) });
+    expect(loose.checks.find((c) => c.check === "key")?.not_checked).toBe(true);
+  });
+
+  it("is not valid when re-signed with another key, unless that key is pinned", () => {
+    // An attacker rebuilds the pack's manifest and signs it with their own key: the signature verifies, the key does not.
+    const theirs = generateKeyPairSync("ed25519").privateKey;
+    const forged = buildAuditPack(world.db, NOVEMBER, { key: theirs }, new Date("2026-12-03T08:00:00Z"));
+    expect(verifyAuditPack(forged).ok).toBe(false);
+    expect(failed(verifyAuditPack(forged, { trusted: [pub] }))).toEqual({ key: expect.stringMatching(/not a pinned key/) });
+    expect(verifyAuditPack(forged, { trusted: [rawPublicKey(theirs)] }).ok).toBe(true);
   });
 
   it("holds the period's rows only, linked to the genesis hash, and sorts them for the auditor", () => {
@@ -201,4 +216,31 @@ describe("signed audit pack", () => {
     expect(empty.sections.chain_before).toHaveLength(empty.manifest.audit.log_rows);
     expect(failed(verifyAuditPack(copy(empty), { trusted: [pub] }))).toEqual({});
   });
+});
+
+describe("npm run verify-audit-pack: whose key", () => {
+  const dir = mkdtempSync(join(tmpdir(), "purser-pack-"));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  const NO_KEYS = { PURSER_CHECKPOINT_TRUST: "", PURSER_CHECKPOINT_KEY_FILE: "", PURSER_CHECKPOINT_KEY: "" };
+  const cli = (args: string[], env: Record<string, string> = {}) => {
+    try {
+      return { code: 0, out: execFileSync(process.execPath, ["--import", "tsx", resolve(import.meta.dirname, "../src/cli/verifyAuditPack.ts"), ...args], { encoding: "utf8", env: { ...process.env, ...NO_KEYS, ...env }, stdio: ["ignore", "pipe", "pipe"] }) };
+    } catch (e) { const x = e as { status: number; stdout: string; stderr: string }; return { code: x.status, out: `${x.stdout}${x.stderr}` }; }
+  };
+
+  it("never prints VALID with no pinned key: exit 3 and UNPINNED; pinned, VALID; another pinned key, NOT VALID", () => {
+    const file = join(dir, "pack.json");
+    writeFileSync(file, JSON.stringify(buildAuditPack(seededWorld().db, NOVEMBER, { key })));
+    const loose = cli([file]);
+    expect(loose.code, loose.out).toBe(3);
+    expect(loose.out).toMatch(/^UNPINNED: pass --trust <public key>/m);
+    expect(loose.out).not.toMatch(/^VALID/m);
+    const ok = cli([file, "--trust", pub]);
+    expect(ok.code, ok.out).toBe(0);
+    expect(ok.out).toMatch(/^VALID: /m);
+    expect(cli([file], { PURSER_CHECKPOINT_TRUST: pub }).code).toBe(0);
+    const other = cli([file, "--trust", rawPublicKey(generateKeyPairSync("ed25519").privateKey)]);
+    expect(other.code).toBe(1);
+    expect(other.out).toMatch(/^NOT VALID: /m);
+  }, 60_000);
 });

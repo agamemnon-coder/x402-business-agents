@@ -2,9 +2,10 @@
 // Checks a signed audit pack (npm run audit-pack; src/audit/pack.ts) offline: every row's hash against the manifest,
 // the manifest's Ed25519 signature, the audit chain from its genesis hash through the period, each reading section
 // against the audit rows it was sorted out of, every proposal's terms against their hash, every policy version's rules.
-// The pinned keys are --trust, else PURSER_CHECKPOINT_TRUST and the configured checkpoint key's own; with none, whose
-// key signed it is not checked (said so). No database, no network. Exit 0 when every check passes, 1 when one fails,
-// 2 when the file cannot be read.
+// The pinned keys are --trust, else PURSER_CHECKPOINT_TRUST and the configured checkpoint key's own. With none, whose
+// key signed it is not checked and the pack is not valid: anyone can rebuild a pack and sign it again with their own
+// key. No database, no network. Exit 0 when every check passes (VALID), 1 when one fails, 2 when the file cannot be
+// read, 3 when none failed but no key is pinned (UNPINNED: pass --trust <public key>; never VALID).
 
 import { readFileSync } from "node:fs";
 import { checkpointSigner, trustedKeys } from "../audit/checkpointer.js";
@@ -26,6 +27,11 @@ try {
   }
 } catch (e) { console.error((e as Error).message); process.exit(2); }
 const r = verifyAuditPack(json, { trusted });
-for (const c of r.checks) console.log(`${c.ok ? "pass" : "FAIL"}  ${c.check.padEnd(20)} ${c.detail}`);
-console.log(r.ok ? `\nVALID: ${file}` : `\nNOT VALID: ${file} (${r.checks.filter((c) => !c.ok).map((c) => c.check).join(", ")})`);
-process.exit(r.ok ? 0 : 1);
+for (const c of r.checks) console.log(`${c.ok ? "pass" : c.not_checked ? "----" : "FAIL"}  ${c.check.padEnd(20)} ${c.detail}`);
+if (r.ok) { console.log(`\nVALID: ${file}`); process.exit(0); }
+if (r.incomplete) {
+  console.log(`\nUNPINNED: pass --trust <public key>: every other check passed, but whose key signed ${file} was not checked against a key you trust; it is not VALID`);
+  process.exit(3);
+}
+console.log(`\nNOT VALID: ${file} (${r.checks.filter((c) => !c.ok).map((c) => c.check).join(", ")})`);
+process.exit(1);

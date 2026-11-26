@@ -1,10 +1,11 @@
 // npm run entities -- list
 // npm run entities -- add <id> --name "Northwind Outdoor Ltd" --country GB --account acct_… [--currency GBP]
-// npm run entities -- allow <entity> <agent> [--reason "<why>"]
+// npm run entities -- allow <entity> <agent> [--reason "<why>"] [--by <person>]
 // The company's legal entities (src/policy/entities.ts), without editing a setting by hand. Adding an entity opens it to
 // no agent. Letting an agent pay from it is the CFO policy's pay_from.<entity>.<agent> allowed: a policy change, filed
 // here, that counts only once the CFO approves it with the passkey (on the phone, /approve/<id>); until then the agent
-// pays nothing from that entity.
+// pays nothing from that entity. --by names the person proposing it, who then cannot approve it; above the CFO's
+// segregation-of-duties threshold (approval.policy_sod_eur) it is needed.
 import { pathToFileURL } from "node:url";
 import { AGENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
@@ -17,7 +18,7 @@ const HOME: Record<string, string> = {
   GB: "GBP", US: "USD", CH: "CHF", SE: "SEK", DK: "DKK", NO: "NOK", PL: "PLN", AU: "AUD", SG: "SGD", HK: "HKD", JP: "JPY", CA: "CAD",
 };
 
-export const ENTITIES_USAGE = "usage: npm run entities -- list | add <id> --name \"<legal name>\" --country NL --account acct_… [--currency EUR] | allow <entity> <agent> [--reason \"<why>\"]";
+export const ENTITIES_USAGE = "usage: npm run entities -- list | add <id> --name \"<legal name>\" --country NL --account acct_… [--currency EUR] | allow <entity> <agent> [--reason \"<why>\"] [--by <person>]";
 
 /** Runs one entities command on `db` and answers what it prints; a refusal throws with its reason. */
 export function entitiesCommand(db: DB, argv: string[], now = new Date()): string {
@@ -44,7 +45,8 @@ export function entitiesCommand(db: DB, argv: string[], now = new Date()): strin
     if (!ENTITY_ID.test(a) || !entityOf(db, a)) throw new Error(`the company holds no entity ${JSON.stringify(a)} (npm run entities -- list)`);
     if (!(AGENTS as readonly string[]).includes(b)) throw new Error(`${JSON.stringify(b)} is not an agent; the agents are ${AGENTS.join(", ")}`);
     if (mayPayFrom(db, b, a)) return `the ${b} agent may already pay from ${a}: the CFO signed ${payFromKey(a, b)} allowed`;
-    const p = proposePolicyChange(db, { changes: [{ key: payFromKey(a, b), to: "allowed" }], reason: opt("reason") ?? `let the ${b} agent pay from ${a}` }, "human", now);
+    const by = opt("by");
+    const p = proposePolicyChange(db, { changes: [{ key: payFromKey(a, b), to: "allowed" }], reason: opt("reason") ?? `let the ${b} agent pay from ${a}`, ...(by !== undefined ? { proposedBy: by } : {}) }, "human", now);
     return `${p.proposal_id} lets the ${b} agent pay from ${a} (${payFromKey(a, b)} allowed), hash ${p.terms_sha256.slice(0, 8)}; it counts only once the CFO approves it with the passkey (/approve/${p.proposal_id})`;
   }
   throw new Error(ENTITIES_USAGE);

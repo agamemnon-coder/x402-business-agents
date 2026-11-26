@@ -158,8 +158,14 @@ npm run audit-pack -- --from 2026-11-01 --to 2026-11-30 --out audit-pack-2026-11
 npm run verify-compliance-evidence -- evidence-2026-11 --trust <public key> --audit-pack audit-pack-2026-11.json
 ```
 
-The first command prints the summary per framework and the public key to pin. It refuses (exit 1) a ledger whose audit
-log does not verify from the genesis hash, and writes only into a new or empty directory.
+The first command prints the summary per framework and the public key to pin: `<public key>` is that key, the audit
+checkpoint key's, as you got it from the signer (never from the files you are checking; `PURSER_CHECKPOINT_TRUST` holds
+it too). It refuses (exit 1) a ledger whose audit log does not verify from the genesis hash, and writes only into a new
+or empty directory.
+
+The verifier says `VALID` (exit 0) only with a pinned key and the audit pack, signed by the same key. With no key pinned
+it says `UNPINNED: pass --trust <public key>`, and without `--audit-pack` it says `PARTIAL`: exit 3, never `VALID`,
+since anyone can rebuild evidence and sign it again with a key of their own. A check that fails is exit 1.
 
 ## What the directory holds
 
@@ -182,11 +188,11 @@ Ed25519 signatures are deterministic. Rows written later to the ledger, after th
 | Check | Fails when |
 |---|---|
 | `format` | `manifest.json` is missing or is not a `purser.compliance-evidence/v1` manifest. |
-| `signature`, `key` | The Ed25519 signature does not verify over the manifest; with `--trust`, the signer is not a pinned key. |
+| `signature`, `key` | The Ed25519 signature does not verify over the manifest; the signer is not a pinned key. With no key pinned, `key` is not checked (`UNPINNED`). |
 | `files` | A file's SHA-256 is not the manifest's (the file is named), a listed file is missing, or a file is not listed. |
 | `summary` | A count in a control's file, the mapping or the summary does not agree with the rows the files cite. |
-| `audit pack` | With `--audit-pack`: the pack does not verify, is of another period, or covers another run of the chain. |
-| `cited rows` | With `--audit-pack`: a cited audit row is not in the pack's period, or its hash, event, subject or time differ; a cited policy version or approval is not as the pack has it. |
+| `audit pack` | With `--audit-pack`: the pack is signed by another key than the evidence, does not verify, is of another period, or covers another run of the chain. |
+| `cited rows` | Without `--audit-pack`: not checked (`PARTIAL`). With it: a cited audit row is not in the pack's period, or its hash, event, subject or time differ; a cited policy version or approval is not as the pack has it. |
 
 What it does not prove: that a control is designed well enough for a framework (that is an auditor's judgement), that
 nothing happened outside the ledger (since 26 November a webhook whose signature the runner refuses is an audit row;

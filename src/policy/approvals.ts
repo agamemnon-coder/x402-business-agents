@@ -217,6 +217,9 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     if (args.decision === "APPROVED" && p.kind === "policy_change") {
       const person = approver.split(" (")[0]!;
       const proposer = proposerOf(p);
+      // Above the threshold the proposer must be known: a person's change with nobody named (filed before the threshold
+      // was set, or by hand) could be approved by whoever proposed it.
+      if (sodWhy && proposer === "human") throw new Error(`${p.proposal_id} has no proven proposer, so nobody can tell its proposer from its approver (segregation of duties: this loosens the CFO policy above the threshold); propose it again naming who proposes it (--by <person>, or signed in to Purser Cloud)`);
       if (person === proposer) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (segregation of duties)`);
     }
     if (args.decision === "APPROVED" && fourEyes(db, p)) {
