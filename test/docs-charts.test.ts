@@ -104,6 +104,14 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`Sourcing ${s} in all (0.03 a purchase), Support ${u}, Treasury ${t}.`);
   });
 
+  it("docs/idea-vs-build.md: the promises badge counts the promise rows and their marks", () => {
+    const md = read("docs/idea-vs-build.md");
+    const rows = md.split("\n").filter((l) => /^\| (\*\*[^*]+\*\* )?"/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
+    for (const r of rows) expect({ row: r[0]!.slice(0, 30), cells: r.length }).toEqual({ row: r[0]!.slice(0, 30), cells: 3 });
+    const built = rows.filter((r) => r[1]!.startsWith("✅")).length;
+    expect(md).toContain(`/badge/promises_in_the_idea-${rows.length}_%C2%B7_${built}_built-`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));

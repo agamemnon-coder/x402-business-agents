@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # From idea to build: every promise, with its proof
+
+**The idea as submitted on 24 October, quoted word for word, promise by promise, against what is built.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Promises in the idea: 15, each marked built](https://img.shields.io/badge/promises_in_the_idea-15_%C2%B7_15_built-10b981?style=flat-square&labelColor=1f2937)](#the-setup)&nbsp;[![Each proof from the main run of 3 November, unless the row names another](https://img.shields.io/badge/proof-the_main_run%2C_3_Nov-8b5cf6?style=flat-square&labelColor=1f2937)](runs/2026-11-03-main-run.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[The setup](#the-setup) · [The three moments](#the-three-moments) · [Better than the idea](#what-got-better-than-the-idea) · [The video](#promised-and-done-since-the-video) · [The main run](runs/2026-11-03-main-run.md)
+
+</div>
 
 The idea Max submitted on 24 October, in the hackathon's idea phase, quoted word for word from its description,
 promise by promise, against what is built. Each proof comes from the main run of Tuesday 3 November (world `main-1`,
@@ -6,6 +18,17 @@ test money on Metal testnet and the Airwallex sandbox; record [docs/demo/main-ru
 [docs/runs/2026-11-03-main-run.md](runs/2026-11-03-main-run.md)), with the record's row (`seq`) or id. Where the main
 run does not cover a promise, the row names a test or another run, with its date. \*USDZ is Metal testnet's test
 dollar, "test USD" on the pages.
+
+```mermaid
+timeline
+  title From the idea to the build, as this page dates it
+  24 Oct 2026 : The idea, submitted in the idea phase
+  1 Nov 2026 : The soak, autonomous dry runs
+  3 Nov 2026 : The main run, world main-1 : the proof for most rows
+  7 Nov 2026 : awx-1, Airwallex's own events reach the agents
+  13 Nov 2026 : Film v10, 4 min 58 s
+  26 Nov 2026 : The emergency stop, live on the Airwallex sandbox for payments
+```
 
 ## The setup
 
