@@ -533,6 +533,61 @@ function extraRuns(): RunRow[] {
     });
   }
 
+  // 26 Nov (v1.5.1): the money loop live on the sandbox (src/e2e/moneyLoopLive.ts): cash and FX, receivables, and a
+  // negotiated discount paid. Counted only when every step of the record passed; the figures and ids are read from it.
+  type Dr = { totals: { steps: number; pass: number; fail: number; not_judged: number }; budget: { used: number }; passes: { started_at: string; ended_at: string | null; stopped: string | null; steps: { id: string; facts: Record<string, unknown> }[] }[] };
+  const drill = (file: string) => {
+    const r = has(file) ? readJson<Dr>(file) : null;
+    if (!r || r.totals.fail || r.totals.not_judged || r.totals.pass !== r.totals.steps || r.passes.some((p) => p.stopped)) return null;
+    const steps = r.passes.flatMap((p) => p.steps);
+    return { r, at: r.passes.at(-1)!.ended_at ?? r.passes[0]!.started_at, first: r.passes[0]!.started_at, facts: (id: string) => steps.find((x) => x.id === id)?.facts ?? {} };
+  };
+  const moneyLoop = (key: string, file: string, row: (d: NonNullable<ReturnType<typeof drill>>) => Omit<RunRow, "key" | "iso" | "date" | "kind" | "partners" | "money" | "files" | "rate">) => {
+    const d = drill(file);
+    if (!d) return;
+    out.push({
+      key, iso: d.at, date: day(d.first), kind: "sandbox", partners: ["Airwallex"], money: "Sandbox · test money",
+      rate: { done: d.r.totals.pass, of: d.r.totals.steps, what: "checks passed" },
+      files: [{ label: "record (JSON)", href: blob(file) }, { label: "run log", href: blob(file.replace(/\.json$/, ".md")) }], ...row(d),
+    });
+  };
+  moneyLoop("fx-live-1", "docs/runs/2026-11-26-fx-conversion-live.json", (d) => {
+    const c = d.facts("fx.convert").conversion as { conversion_id: string; buy_amount: string; sell_amount: string } | null;
+    const s = d.facts("fx.advice").suggestion as { sell_max_cents: number } | null;
+    return {
+      name: "The Treasury advisor's conversion, made at Airwallex",
+      line: `One real conversion, EUR ${c?.sell_amount ?? "?"} to CHF ${c?.buy_amount ?? "?"}, from the sandbox's balances, after the passkey signed; changed terms refused before any call. Virtual test passkey.`,
+      title: "Cash and FX, live", rails: "Airwallex sandbox (balances, indicative rates, FX quotes and conversions), a virtual test passkey",
+      what: `The sandbox's available balances read; a test payable of CHF 100.00 in the ledger; the CFO's threshold (EUR 50.00) set with the passkey; the 13-week forecast and the advisor's suggestion from Airwallex's indicative rates (at most EUR ${s ? (s.sell_max_cents / 100).toFixed(2) : "?"}); one proposal changed after signing and refused before any call; a second signed and executed: one quote, one conversion, read back with the approval hash in its metadata.`,
+      checks: `Every check passed: the conversion read back for exactly CHF ${c?.buy_amount ?? "?"} within the signed maximum, under the signed request id; asked again, nothing converted twice. ${d.r.budget.used} Airwallex calls.`,
+      ids: c ? [{ label: "FX conversion", value: c.conversion_id }] : [],
+    };
+  });
+  moneyLoop("ar-live-1", "docs/runs/2026-11-26-receivables-live.json", (d) => {
+    const dep = (d.facts("ar.deposits").deposits ?? []) as { deposit_id: string; amount: string }[];
+    const link = d.facts("ar.issue_linked").link_id as string | undefined;
+    return {
+      name: "A customer's payment matched to its invoice; an unknown one to review",
+      line: `Two sandbox-simulated deposits read back: EUR ${dep[0]?.amount ?? "?"} paid its invoice by reference, EUR ${dep[1]?.amount ?? "?"} went to review. Made-up customers; a real payment link, off once paid.`,
+      title: "Receivables, live", rails: "Airwallex sandbox (payment links, Global Accounts, deposits)",
+      what: "Two customer invoices booked, one with a single-use Airwallex payment link for exactly it; two deposits made on the EUR Global Account by the sandbox's simulation endpoint, read back with GET /deposits until SETTLED and matched by Purser; the paid invoice's link deactivated and read back; a reminder drafted for the overdue invoice, never sent.",
+      checks: `Every check passed: matched once (a second sight books nothing); the unknown payment in the review queue and suspense, not revenue; the link read back inactive. ${d.r.budget.used} Airwallex calls.`,
+      ids: [...dep.slice(0, 1).map((x) => ({ label: "Deposit, matched", value: x.deposit_id })), ...(link ? [{ label: "Payment link", value: link }] : [])],
+    };
+  });
+  moneyLoop("negotiated-pay-1", "docs/runs/2026-11-26-negotiated-payout-live.json", (d) => {
+    const t = d.facts("neg.pay") as { transfer_id?: string; amount?: string };
+    const a = d.facts("neg.agree") as { agreement?: { invoice_amount: string; amount: string; discount_pct: string } };
+    return {
+      name: "A negotiated early-payment discount, paid at the agreed amount",
+      line: `A recorded negotiation agreed ${a.agreement?.discount_pct ?? "?"}% off; EUR ${t.amount ?? "?"} was signed and paid, the agreement's hash in the transfer. A simulated supplier; a virtual test passkey.`,
+      title: "Negotiated payout, live", rails: "Airwallex sandbox (SWIFT transfer), a virtual test passkey",
+      what: "Purser's Sourcing agent and the recorded supplier agent agree a discount in a chain of signed offers (the supplier's bank change refused by the rails); the chain and the agreement hash verified; an invoice of the original amount refused before any call; the agreed invoice signed with the passkey and paid by the normal executor to the sandbox beneficiary.",
+      checks: `Every check passed: Airwallex's transfer read back for exactly the agreed EUR ${t.amount ?? "?"}, under the signed request_id, with approval_sha256 and agreement_sha256 in its metadata. ${d.r.budget.used} Airwallex calls.`,
+      ids: t.transfer_id ? [{ label: "SWIFT transfer", value: t.transfer_id }] : [],
+    };
+  });
+
   // 20 Nov: the mandate refusals the 19 Nov series did not send (docs/runs/2026-11-20-alta-refusals.md).
   type Ar = { ran_at: string; finished_at: string; summary: { payments_paid: number; paid_total: string; refusals_sent: number; refused_before_sending: number; refused_on_chain: number; reasons: string[]; unexpected: number }; steps: { kind: string; outcome: string; reason?: string; tx: string | null }[] };
   const AR_FILE = "docs/runs/2026-11-20-alta-refusals.json", AR_LOG = "docs/runs/2026-11-20-alta-refusals.md";

@@ -35,7 +35,7 @@ import { executeFxConversion } from "../executors/fxConversion.js";
 import { executeInvoicePayment } from "../executors/invoicePayment.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex } from "../lib/terms.js";
-import { agreementSha256, agreedInvoiceNo, signedMatches, type Scene } from "../negotiate/rails.js";
+import { agreementSha256, agreedInvoiceNo, type Scene } from "../negotiate/rails.js";
 import { recordedNegotiation, type Negotiation } from "../negotiate/negotiate.js";
 import { chained, verifyOffer } from "../negotiate/offers.js";
 import { closeBlocked } from "../policy/approvals.js";
@@ -307,6 +307,12 @@ export function negotiatedInvoiceText(scene: Scene, invoiceNo: string, amount: s
   ].join("\n");
 }
 
+/** Whether signed payment terms name this agreement: its amount, and its invoice number (or reference) carrying the hash. */
+export function signedNamesAgreement(amount: string, sha: string, signed: { amount?: unknown; invoice_no?: unknown; reference?: unknown }, scene: Scene): boolean {
+  const ref = agreedInvoiceNo(scene, sha);
+  return signed.amount === amount && (signed.invoice_no === ref || signed.reference === ref);
+}
+
 export const negotiatedPayment = (n: Negotiation): NegotiatedPayment => ({
   agreement_sha256: n.sha256, transcript_sha256: n.transcript_sha256, original_invoice_no: n.scene.invoice_no, original_amount: n.agreement.invoice_amount,
   agreed_amount: n.agreement.amount, discount: n.agreement.discount, pay_by: n.agreement.pay_by,
@@ -368,7 +374,7 @@ export async function runNegotiatedPay(d: GovDeps & { awx: AirwallexRail; readTr
     const t = termsOf<InvoicePaymentTerms>(db, pid);
     return {
       outcome: `${pid} ${statusOf(db, pid)} (${signed.status}): EUR ${t.amount} to ${t.beneficiary_name}, reference ${t.reference}; negotiation.agreement_sha256 ${negotiationOf(t)?.agreement_sha256 === n.sha256 ? "the agreement's" : "MISSING"}; request_id ${t.transfer_request_id}`,
-      pass: statusOf(db, pid) === "APPROVED" && t.amount === n.agreement.amount && signedMatches(n.agreement, n.sha256, t, scene) && negotiationOf(t)?.agreement_sha256 === n.sha256 && !t.conversion,
+      pass: statusOf(db, pid) === "APPROVED" && t.amount === n.agreement.amount && signedNamesAgreement(n.agreement.amount, n.sha256, t, scene) && negotiationOf(t)?.agreement_sha256 === n.sha256 && !t.conversion,
       facts: { proposal_id: pid, terms_sha256: shaOf(db, pid), amount: t.amount, reference: t.reference, transfer_request_id: t.transfer_request_id, negotiation: negotiationOf(t), evidence: t.evidence },
       simulated: "signed by the virtual test passkey; the supplier's invoice is composed by the run for the agreed terms (as /try's engine does)",
     };

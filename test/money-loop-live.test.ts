@@ -1,6 +1,7 @@
 // The money loop's live runs (26 Nov, v1.5.1, `npm run airwallex:money-loop-live`, src/e2e/moneyLoopLive.ts): each run
 // on the in-memory stand-ins passes every step (0 network), and the planner refuses a negotiated payment whose invoice
-// is not the agreement. The committed records are checked in the second block once they exist.
+// is not the agreement. The committed records (docs/runs/2026-11-26-*-live.*) say what ran: the sandbox only, every step
+// passed, the simulated parts named, no full IBAN or card number, every id of the page in its JSON.
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
@@ -57,14 +58,16 @@ describe("a negotiated payment's invoice must be the agreement", () => {
 describe("the committed records of the money loop's live runs (26 Nov)", () => {
   for (const run of LOOP_RUNS) {
     const file = `docs/runs/2026-11-26-${LOOP_RECORD_NAME[run]}`;
-    it.skipIf(!existsSync(`${file}.json`))(`${file}: the sandbox only, test money, every id in its JSON, no account or card number`, () => {
+    it(`${file}: the sandbox only, test money, every step passed, the simulated parts said, every id in its JSON, no account or card number`, () => {
+      expect(existsSync(`${file}.md`) && existsSync(`${file}.json`)).toBe(true);
       const md = readFileSync(`${file}.md`, "utf8");
       const json = readFileSync(`${file}.json`, "utf8");
       const rec = JSON.parse(json) as { run: string; sandbox: string; test_money: boolean; totals: { steps: number; pass: number; fail: number; not_judged: number } };
       expect(rec).toMatchObject({ run, sandbox: "https://api.sandbox.airwallex.com/api/v1", test_money: true });
       expect(md).toContain(`# ${LOOP_RECORD[run].title}: 2026-11-26`);
-      expect(md).toContain(`**${rec.totals.pass} of ${rec.totals.steps} steps passed, ${rec.totals.fail} failed, ${rec.totals.not_judged} not judged**`);
-      expect(md).toContain("virtual test passkey");
+      expect(rec.totals.pass).toBe(rec.totals.steps);
+      expect(md).toContain(`**${rec.totals.steps} of ${rec.totals.steps} steps passed, 0 failed, 0 not judged**`);
+      expect(md).toContain(run === "receivables" ? "deposit simulation" : "virtual test passkey (no person's Face ID)");
       for (const id of md.match(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/g) ?? []) expect(json).toContain(id);
       for (const text of [md, json]) {
         expect(text).not.toMatch(/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/);

@@ -1,0 +1,435 @@
+{
+  "run": "negotiated-pay",
+  "date": "2026-11-26",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "command": "npm run airwallex:money-loop-live -- live negotiated-pay",
+  "commit": "9abc1b24bfad65e36a936ab4da760cc4985bd826",
+  "simulated": [
+    "The approver is a labelled virtual test passkey (\"money-loop virtual test passkey (no person's Face ID)\", src/redteam/authenticator.ts), enrolled as the only passkey of the run's own fresh ledger. Its signatures go through the same verification as a phone's (WebAuthn assertion over the exact terms hash); no person's Face ID was used.",
+    "The negotiation is the recorded one (src/negotiate/negotiate.ts recordedTurns: written in advance, labelled \"Recorded negotiation\", no model call): the supplier and its agent are simulated, and its agent's signing key was made by the simulation. Purser's rails and the CFO's negotiation policy judge every turn live, and every offer is signed and chained live.",
+    "The supplier's invoice for the agreed terms is composed by the run (as /try's engine composes it); no supplier sent it. The transfer's settlement is not simulated: it stays as Airwallex answered."
+  ],
+  "budget": {
+    "approved": 30,
+    "max": 40,
+    "used": 7,
+    "logged_requests": 7,
+    "status_429": 0,
+    "unexpected_non_2xx": []
+  },
+  "totals": {
+    "steps": 8,
+    "pass": 8,
+    "fail": 0,
+    "not_judged": 0
+  },
+  "cards": [],
+  "passes": [
+    {
+      "pass_no": 1,
+      "started_at": "2026-11-26T19:54:23.696Z",
+      "ended_at": "2026-11-26T19:54:27.522Z",
+      "stopped": null,
+      "note": "A fresh ledger of its own; the payee is the beneficiary on file at the sandbox (Bergtex Textil GmbH), not created by the run. Before the runs, 6 read-only calls looked at the sandbox (two probes, logins included: the balances twice, the beneficiaries and the Global Accounts); none moved money or changed anything, and they are not in this record's call table. The three runs (19:53 to 19:54 UTC) ran one after the other on the code committed as `9abc1b24b`. The code that ran includes the review fixes of 26 Nov: the FX executor judges the floor on free money under the payout lock and holds the signed maximum, and checks the stop, pause and the agent's identity again right before the create; a payment reference names an invoice only as a whole word.",
+      "timings": {},
+      "steps": [
+        {
+          "phase": "setup",
+          "id": "setup.passkey",
+          "agent": null,
+          "title": "Enrol the virtual test passkey (labelled) as this ledger's only approver",
+          "expect": "enrolled and confirmed",
+          "outcome": "pending; confirmed: money-loop virtual test passkey (no person's Face ID)",
+          "pass": true,
+          "simulated": "a virtual test passkey, no person's Face ID",
+          "started_at": "2026-11-26T19:54:23.703Z",
+          "ended_at": "2026-11-26T19:54:23.716Z",
+          "ms": 13,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "setup",
+          "id": "neg.payee",
+          "agent": "treasury",
+          "title": "The supplier's payee at Airwallex (Bergtex Textil GmbH, GET /beneficiaries), recorded in the run's ledger",
+          "expect": "found; the run creates none",
+          "outcome": "2abfa3ba-0786-44f7-b828-9d7c8e2da883 (Bergtex Textil GmbH, IBAN ending 3000)",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:54:23.717Z",
+          "ended_at": "2026-11-26T19:54:24.709Z",
+          "ms": 992,
+          "lines": [
+            1,
+            2
+          ],
+          "facts": {
+            "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883"
+          },
+          "error": null
+        },
+        {
+          "phase": "negotiate",
+          "id": "neg.agree",
+          "agent": "sourcing",
+          "title": "The Sourcing agent negotiates an early-payment discount on BTX-NEG-1126 (EUR 100.00, net 30) with the simulated supplier's agent: the recorded negotiation, every turn through Purser's rails and signed as an offer",
+          "expect": "agreed within the CFO's policy; the supplier's bank change refused by the rails; no Airwallex call",
+          "outcome": "agreed: EUR 98.00 by 2026-12-03 (2.00% off if paid by 2026-12-03, discount EUR 2.00), within_cfo_policy; 4 turns; turn 2's bank change refused (payee_unchanged); agreement 2d52c115b596…; 0 calls",
+          "pass": true,
+          "simulated": "the recorded negotiation (turns written in advance, no model call); the supplier and its agent's key are the simulation's",
+          "started_at": "2026-11-26T19:54:24.715Z",
+          "ended_at": "2026-11-26T19:54:24.726Z",
+          "ms": 11,
+          "lines": [],
+          "facts": {
+            "negotiation_id": "neg_89afcbc5ee15140d",
+            "mode": "recorded",
+            "label": "Recorded negotiation: these turns were written in advance and are shown because Claude is not available right now. Not a live model call. The rails' answers are computed live.",
+            "outcome": "agreed",
+            "agreement": {
+              "schema": "purser.negotiated-terms/v1",
+              "invoice_no": "BTX-NEG-1126",
+              "supplier": "Bergtex Textil GmbH",
+              "currency": "EUR",
+              "invoice_amount": "100.00",
+              "invoice_terms": "net 30",
+              "invoice_due": "2026-12-26",
+              "discount": "2.00",
+              "discount_pct": "2.00",
+              "amount": "98.00",
+              "pay_by": "2026-12-03",
+              "early_payment": "2.00% off if paid by 2026-12-03",
+              "policy": "within_cfo_policy",
+              "payee_iban_last4": "3000",
+              "rails": [
+                "max_amount",
+                "pay_by_window",
+                "invoice_only",
+                "payee_unchanged"
+              ],
+              "transcript_sha256": "f433723c05dccd3e9df08ed5b5d0aa1783a4b5b9b294d2582005a6c1c13d54d6"
+            },
+            "agreement_sha256": "2d52c115b59600706f124fe1bb2f8c7237a926805d2c67890be4c48d7814dc97",
+            "transcript_sha256": "f433723c05dccd3e9df08ed5b5d0aa1783a4b5b9b294d2582005a6c1c13d54d6",
+            "turns": [
+              {
+                "n": 1,
+                "who": "sourcing",
+                "amount": "97.00",
+                "pay_by": "2026-12-01",
+                "bank_change": false,
+                "rails_ok": true,
+                "accept": false,
+                "offer_sha256": "196258158c953cbb577f623d18a07ce30e752c30ad0ff2588844274c20a2b535"
+              },
+              {
+                "n": 2,
+                "who": "supplier",
+                "amount": "98.50",
+                "pay_by": "2026-12-03",
+                "bank_change": true,
+                "rails_ok": false,
+                "accept": false,
+                "offer_sha256": "3c6661e76f3e6ac85f1d07a61aa7525a8dacbcc428e2909837af88b8f717b112"
+              },
+              {
+                "n": 3,
+                "who": "sourcing",
+                "amount": "98.00",
+                "pay_by": "2026-12-03",
+                "bank_change": false,
+                "rails_ok": true,
+                "accept": false,
+                "offer_sha256": "44dc0fd5f0daf1f738b589debaa41213fe5182e45f9c57729051c42fe81f344c"
+              },
+              {
+                "n": 4,
+                "who": "supplier",
+                "amount": "98.00",
+                "pay_by": "2026-12-03",
+                "bank_change": false,
+                "rails_ok": true,
+                "accept": true,
+                "offer_sha256": "f433723c05dccd3e9df08ed5b5d0aa1783a4b5b9b294d2582005a6c1c13d54d6"
+              }
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "negotiate",
+          "id": "neg.verify",
+          "agent": null,
+          "title": "The offers and the agreement checked: each offer's signature by its agent's key, the chain of offers, the agreement's hash and the chain's head inside it",
+          "expect": "all hold",
+          "outcome": "signatures 4 of 4; chain holds; agreement hash recomputed; head inside the agreement",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:54:24.727Z",
+          "ended_at": "2026-11-26T19:54:24.729Z",
+          "ms": 2,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "plan",
+          "id": "neg.original_refused",
+          "agent": "treasury",
+          "title": "An invoice under the agreement's reference for the original amount (EUR 100.00) is planned with the agreement",
+          "expect": "refused before any Airwallex call: only the agreed amount is paid",
+          "outcome": "escalated: the invoice asks EUR 100.00, the agreement EUR 98.00; only the agreed amount is paid; 0 calls; 0 payment proposals",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:54:24.731Z",
+          "ended_at": "2026-11-26T19:54:24.741Z",
+          "ms": 10,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "plan",
+          "id": "neg.signed",
+          "agent": "treasury",
+          "title": "The supplier's invoice for the agreed terms (its number carries the agreement's first 8 hex) planned with the agreement and signed with the passkey",
+          "expect": "APPROVED: the signed amount is the agreed amount, and the signed terms carry the agreement's hash",
+          "outcome": "P-0001 APPROVED (approved): EUR 98.00 to Bergtex Textil GmbH, reference BTX-NEG-1126-2d52c115; negotiation.agreement_sha256 the agreement's; request_id 7e8ecefe-ff7e-4777-84e2-08d970b5dcd6",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey; the supplier's invoice is composed by the run for the agreed terms (as /try's engine does)",
+          "started_at": "2026-11-26T19:54:24.747Z",
+          "ended_at": "2026-11-26T19:54:25.241Z",
+          "ms": 494,
+          "lines": [
+            3
+          ],
+          "facts": {
+            "proposal_id": "P-0001",
+            "terms_sha256": "e591fa2aaee51241e71cd4c873cd99a05322ff8606f0e1d4838eb3278270e479",
+            "amount": "98.00",
+            "reference": "BTX-NEG-1126-2d52c115",
+            "transfer_request_id": "7e8ecefe-ff7e-4777-84e2-08d970b5dcd6",
+            "negotiation": {
+              "agreement_sha256": "2d52c115b59600706f124fe1bb2f8c7237a926805d2c67890be4c48d7814dc97",
+              "transcript_sha256": "f433723c05dccd3e9df08ed5b5d0aa1783a4b5b9b294d2582005a6c1c13d54d6",
+              "original_invoice_no": "BTX-NEG-1126",
+              "original_amount": "100.00",
+              "agreed_amount": "98.00",
+              "discount": "2.00",
+              "pay_by": "2026-12-03"
+            },
+            "evidence": [
+              {
+                "type": "invoice",
+                "ref": "BTX-NEG-1126-2d52c115",
+                "sha256": "c9dc489e01a10eb07c97a3ca9aabca27d2d755b9b6476e37aca1246a8704cf67"
+              },
+              {
+                "type": "negotiated_terms",
+                "ref": "BTX-NEG-1126",
+                "sha256": "2d52c115b59600706f124fe1bb2f8c7237a926805d2c67890be4c48d7814dc97"
+              }
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "pay",
+          "id": "neg.pay",
+          "agent": "treasury",
+          "title": "The payment executed (executeInvoicePayment): one transfer to the sandbox beneficiary under the signed request_id, approval_sha256 and agreement_sha256 in its metadata",
+          "expect": "a transfer created for the agreed amount",
+          "outcome": "transfer df4f52c3-5f66-45a4-ac0b-43cfbe0187fd SCHEDULED, EUR 98.00; payment EXECUTED",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:54:25.243Z",
+          "ended_at": "2026-11-26T19:54:27.213Z",
+          "ms": 1970,
+          "lines": [
+            4,
+            5,
+            6
+          ],
+          "facts": {
+            "transfer_id": "df4f52c3-5f66-45a4-ac0b-43cfbe0187fd",
+            "status": "SCHEDULED",
+            "amount": "98.00"
+          },
+          "error": null
+        },
+        {
+          "phase": "pay",
+          "id": "neg.readback",
+          "agent": null,
+          "title": "The transfer read back from Airwallex (GET /transfers/{id})",
+          "expect": "the agreed amount in EUR (not the invoice as issued); the signed request_id; approval_sha256 and agreement_sha256 in its metadata; the reference naming the agreement",
+          "outcome": "df4f52c3-5f66-45a4-ac0b-43cfbe0187fd PROCESSING: EUR 98.00 (agreed 98.00, invoice as issued 100.00); reference BTX-NEG-1126-2d52c115; metadata agreement_sha256 2d52c115b596…; all as signed and agreed",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T19:54:27.215Z",
+          "ended_at": "2026-11-26T19:54:27.521Z",
+          "ms": 306,
+          "lines": [
+            7
+          ],
+          "facts": {
+            "transfer": {
+              "id": "df4f52c3-5f66-45a4-ac0b-43cfbe0187fd",
+              "request_id": "7e8ecefe-ff7e-4777-84e2-08d970b5dcd6",
+              "status": "PROCESSING",
+              "amount": "98.00",
+              "currency": "EUR",
+              "reference": "BTX-NEG-1126-2d52c115",
+              "metadata": {
+                "approval_sha256": "e591fa2aaee51241e71cd4c873cd99a05322ff8606f0e1d4838eb3278270e479",
+                "agreement_sha256": "2d52c115b59600706f124fe1bb2f8c7237a926805d2c67890be4c48d7814dc97"
+              }
+            },
+            "checks": {
+              "amount_is_agreed": true,
+              "not_the_invoice_as_issued": true,
+              "request_id": true,
+              "approval_sha256": true,
+              "agreement_sha256": true,
+              "reference": true
+            },
+            "agreement_sha256": "2d52c115b59600706f124fe1bb2f8c7237a926805d2c67890be4c48d7814dc97",
+            "approval_sha256": "e591fa2aaee51241e71cd4c873cd99a05322ff8606f0e1d4838eb3278270e479"
+          },
+          "error": null
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "n": 1,
+      "pid": 25777,
+      "at": "2026-11-26T19:54:23.718Z",
+      "answered_at": "2026-11-26T19:54:24.241Z",
+      "ms": 523,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "dfdbb4c8c08e4249aa90cf6bfb10cc78",
+      "code": null,
+      "step": "neg.payee (treasury)"
+    },
+    {
+      "n": 2,
+      "pid": 25777,
+      "at": "2026-11-26T19:54:24.254Z",
+      "answered_at": "2026-11-26T19:54:24.706Z",
+      "ms": 452,
+      "method": "GET",
+      "endpoint": "/beneficiaries",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "afcbfcdded4a41c18b461b85bd15e22a",
+      "code": null,
+      "step": "neg.payee (treasury)"
+    },
+    {
+      "n": 3,
+      "pid": 25777,
+      "at": "2026-11-26T19:54:24.852Z",
+      "answered_at": "2026-11-26T19:54:25.191Z",
+      "ms": 339,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "19c71cca7da0437b939e97f23e36573f",
+      "code": null,
+      "step": "neg.signed (treasury)"
+    },
+    {
+      "n": 4,
+      "pid": 25777,
+      "at": "2026-11-26T19:54:25.246Z",
+      "answered_at": "2026-11-26T19:54:25.576Z",
+      "ms": 330,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "2f24d4eb26304859b0b1105ab887e361",
+      "code": null,
+      "step": "neg.pay (treasury)"
+    },
+    {
+      "n": 5,
+      "pid": 25777,
+      "at": "2026-11-26T19:54:25.597Z",
+      "answered_at": "2026-11-26T19:54:26.890Z",
+      "ms": 1293,
+      "method": "POST",
+      "endpoint": "/transfers/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "5d69cc9e7c314a0db8722fc8a431c0cb",
+      "code": null,
+      "step": "neg.pay (treasury)"
+    },
+    {
+      "n": 6,
+      "pid": 25777,
+      "at": "2026-11-26T19:54:26.893Z",
+      "answered_at": "2026-11-26T19:54:27.208Z",
+      "ms": 315,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "ded6da353a7445b9adfa244fe16ef4c4",
+      "code": null,
+      "step": "neg.pay (treasury)"
+    },
+    {
+      "n": 7,
+      "pid": 25777,
+      "at": "2026-11-26T19:54:27.215Z",
+      "answered_at": "2026-11-26T19:54:27.520Z",
+      "ms": 305,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "384da79697ce42e8bc690da28cfa3456",
+      "code": null,
+      "step": "neg.readback"
+    }
+  ],
+  "calls_by_endpoint": [
+    {
+      "endpoint": "POST /authentication/login",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /beneficiaries",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /balances/current",
+      "calls": 3
+    },
+    {
+      "endpoint": "POST /transfers/create",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /transfers/{id}",
+      "calls": 1
+    }
+  ],
+  "not_shown": [
+    "A live negotiation between two Claude models: the turns are the recorded ones (no model call).",
+    "The transfer's settlement to PAID: not simulated in this run (Airwallex answered SCHEDULED at create and PROCESSING at the read-back).",
+    "A person's Face ID on a real phone. One run."
+  ]
+}
