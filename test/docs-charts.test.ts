@@ -120,6 +120,17 @@ describe("the docs' charts plot their records", () => {
     expect(md).not.toContain(`  G --> I${rows.length + 1}[`);
   });
 
+  it("docs/learning.md: the precedent chart is the eval records'", () => {
+    const md = read("docs/learning.md");
+    type S = { summary: { without: { cases: number; right_after: number }; with: { cases: number; right_after: number } } };
+    const one = JSON.parse(read("docs/evals/precedent.json")) as S, two = JSON.parse(read("docs/evals/precedent-run2-wording.json")) as S;
+    const bars = [one.summary.without.right_after, one.summary.with.right_after, two.summary.with.right_after];
+    expect(md).toContain(`of ${one.summary.without.cases} cases"`);
+    expect(md).toContain(`  bar [${bars.join(", ")}]\n`);
+    expect(md).toContain(`\`summary.without.right_after\` ${bars[0]}, \`summary.with.right_after\` ${bars[1]} and, reworded, ${bars[2]}.`);
+    expect(md).toContain(`/badge/precedent_eval%2C_14_Nov-${bars[0]}_%E2%86%92_${bars[1]}_of_${one.summary.with.cases}_%C2%B7_no_gain-`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
