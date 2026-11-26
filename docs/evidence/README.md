@@ -1,8 +1,16 @@
-<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
 
 # Evidence
 
-What the organisers answered in the hackathon Slack, in our own words, and the verification reports this folder keeps.
+**What the organisers answered in the hackathon Slack, in our own words, and the verification reports this folder keeps.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Nightly evidence](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/nightly-evidence.yml/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/nightly-evidence.yml)&nbsp;[![Entered for the Metal Award and the Visa Award](https://img.shields.io/badge/entered_for-Metal_Award_%C2%B7_Visa_Award-8b5cf6?style=flat-square&labelColor=1f2937)](#what-we-say-since)&nbsp;[![Tamper matrix: from badges/tamper-matrix.json](https://img.shields.io/badge/tamper_matrix-894%2F894_refused-16a34a?style=flat-square&labelColor=1f2937)](tamper-matrix.md)&nbsp;[![Chaos: from badges/chaos.json](https://img.shields.io/badge/chaos_invariants_broken-0_in_317_scenarios-16a34a?style=flat-square&labelColor=1f2937)](chaos-money.md)&nbsp;[![Red team v2: 128 attacks, every attack on money stopped](https://img.shields.io/badge/red_team_v2%2C_local-128_attacks_%C2%B7_every_attack_on_money_stopped-10b981?style=flat-square&labelColor=1f2937)](redteam-api.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+
+[Red team, chaos, fuzzing](#red-team-v2-chaos-for-money-fuzzing-local) · [What the organisers answered](#what-the-organisers-answered) · [What we say since](#what-we-say-since) · [Tamper matrix](tamper-matrix.md) · [Verification, 15 Nov](verification-2026-11-15.md)
+
+</div>
 
 | At a glance | Record |
 |---|---|
@@ -37,6 +45,15 @@ The screenshots that were here were removed on 4 November 2026: they showed peop
 | 7 November 2026 | the hackathon Slack (Visa), as reported by the owner | Visa: the VIC run counts for the Visa Award. The run is the Airi run of 7 November, Visa Intelligent Commerce via Airwallex's Airi (Airwallex sandbox, test card, test money; log `docs/runs/2026-11-07-vic-1.md`). So Purser is entered for the Metal Award and the Visa Award (`docs/decisions.md` D28). Nothing changed about TAP. |
 
 ## What we say since
+
+```mermaid
+timeline
+  title What Purser said about the awards
+  30 Oct 2026 : Airwallex answers another builder's seven questions in the hackathon Slack
+  2 Nov 2026 : Entered for the Visa Award : whether TAP counts as Visa tooling still being confirmed
+  5 Nov 2026 : Visa says TAP is not Visa tooling for this hackathon : the Metal Award only (D27)
+  7 Nov 2026 : Visa says the VIC run counts : the Metal Award and the Visa Award, on the Airi run (D28)
+```
 
 Since 7 November: entered for the Metal Award and the Visa Award; the Visa Award on the Airi
 run (Visa Intelligent Commerce via Airwallex's Airi), never on TAP. "Visa TAP: built and verified against Visa's public
