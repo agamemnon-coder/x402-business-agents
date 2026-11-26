@@ -1,6 +1,20 @@
+<div align="center">
+
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Architecture, tooling and credits
 
+**Where Purser runs, how its backend answers a bank's questions today, what production would need, and the code map.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![Runs on: Cloudflare Workers and a Node runner](https://img.shields.io/badge/runs_on-Cloudflare_Workers_%C2%B7_a_Node_runner-f38020?style=flat-square&labelColor=1f2937)](#where-it-runs)&nbsp;[![Language: TypeScript, strict](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&labelColor=1f2937)](../CONTRIBUTING.md#coding-style)&nbsp;[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](airwallex.md)&nbsp;[![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](metal-award.md)&nbsp;[![Claude: Anthropic API](https://img.shields.io/badge/Claude-Anthropic_API-d97757?style=flat-square&labelColor=1f2937)](claude.md)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](../README.md#built-with)
+
+[Where it runs](#where-it-runs) · [Security](#security) · [The backend today](#agentic-banking-backend-what-it-is-now-and-the-road-to-production) · [Code map](#code-map) · [Tooling](#tooling-used) · [Credits](#built-with-claude)
+
+</div>
+
 Moved from the project README. Back to the [README](../README.md).
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture-wide-dark.svg"><img src="assets/architecture-wide-light.svg" alt="AI agents propose; three layers that do not trust each other can each stop a payment: Purser's checks in code, the CFO's Face ID over the exact terms above a limit, the rail's own controls; then the ledger. Sandbox and testnet runs, test money." width="100%"></picture>
 
 ## Where it runs
 
@@ -53,6 +67,28 @@ face: the dashboard, the CFO's phone pages and Airwallex's webhooks reach it; it
 queues what the phone submits, and it can refuse but never approve or pay. Money moves on two rails: Alta (formerly Metal) testnet
 (agent mandates, `mandate pull`, x402) and the Airwallex sandbox (FX, SWIFT payouts, Issuing cards). Every decision is a
 row in a hash-chained audit log; `npm run verify` re-checks it against the chain and Airwallex.
+
+Each money action is a state machine, and every outside call a step written before and after it (the row
+"Crash in the middle of a payment" below):
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> proposed
+  proposed --> approved
+  approved --> executing
+  executing --> settled
+  executing --> failed
+  executing --> cancelled
+  note right of executing
+    each outside call a step in money_steps,
+    STARTED with its idempotency key, then DONE
+  end note
+```
+
+> [!NOTE]
+> **"Now" is in the code on this branch.** Each row says what the hackathon build does today, with the code and the
+> test that prove it, what it does not do, and what production would need. Test money only.
 
 | Question | Now (hackathon) | Not now | Production path |
 |---|---|---|---|
