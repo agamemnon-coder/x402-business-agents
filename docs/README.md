@@ -21,6 +21,8 @@
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture-wide-dark.svg"><img src="assets/architecture-wide-light.svg" alt="AI agents propose; three layers that do not trust each other can each stop a payment: Purser's checks in code, the CFO's Face ID over the exact terms above a limit, the rail's own controls; then the ledger. Sandbox and testnet runs, test money." width="100%"></picture>
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/money-path-dark.svg"><img src="assets/anim/money-path-light.svg" alt="Animated: one payment's path. An AI agent proposes; Purser's checks in code; above the limit the CFO's passkey (Face ID) signs the exact terms; the rail's own control (Airwallex, Alta); then the books. Each step can stop the payment. Test money only." width="100%"></picture>
+
 ## Start here
 
 Read these five first, in this order:

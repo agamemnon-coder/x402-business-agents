@@ -73,6 +73,8 @@ The agent cannot approve, set a limit, or reach another agent's card. Once its c
 - the dashboard shows it under its own name;
 - the GL export books its spend to cost centre CC400.
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/anim/emergency-stop-dark.svg"><img src="assets/anim/emergency-stop-light.svg" alt="Animated: the emergency stop. One Face ID sets freeze; every agent payment is refused and every agent card is set INACTIVE at Airwallex, so a charge declines CARD_INACTIVE. Tested against stand-ins; CARD_INACTIVE checked live on a single card; the full stop has not been pulled live end to end." width="100%"></picture>
+
 On stdio the server runs on the runner's machine, under the name the person who set it up gave it. Serving agents
 on other machines (over HTTP, each with its own token) is the next step.
 

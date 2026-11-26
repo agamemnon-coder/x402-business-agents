@@ -78,18 +78,7 @@ flowchart LR
 - a fresh test company, on the simulated bank (test money; ids such as `tr_5`), signed by Chromium's virtual passkey (user verification on);
 - the clean sample invoice, EUR 1,850.00 to Bergtex Textil GmbH (a test supplier), paid; then the same signature sent with EUR 1,850.01, refused.
 
-```mermaid
-flowchart LR
-  SIG["The CFO's passkey signature<br/>over the SHA-256 of the terms<br/>EUR 1,850.00 to Bergtex Textil GmbH"]
-  SIG --> P["Sent with EUR 1,850.00<br/>the terms it signed"] --> PAID["Paid<br/>try-paid.json"]
-  SIG --> R["Sent with EUR 1,850.01<br/>one cent changed"] --> REF["Refused, nothing paid<br/>try-refused.json"]
-  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
-  classDef ok fill:#10b981,stroke:#047857,color:#111827
-  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
-  class SIG purser
-  class P,PAID ok
-  class R,REF stop
-```
+<picture><source media="(prefers-color-scheme: dark)" srcset="../assets/anim/one-cent-dark.svg"><img src="../assets/anim/one-cent-light.svg" alt="Animated: one changed cent breaks the signature. EUR 1,850.00 to Bergtex Textil GmbH hashes to f168e40f…ec5d, which the CFO's passkey signed: paid. The same signature sent with EUR 1,850.01 hashes to aa4e2b59…0aca: refused. The /try samples of 15 Nov 2026, test money." width="100%"></picture>
 
 Both pass every line on the live [/verify](https://kit11.max-31b.workers.dev/verify) and with `npm run verify-bundle`.
 `npx tsx test/browser/proof.check.ts --live --write` makes them again; without `--live` it runs the same walk on this
