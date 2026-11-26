@@ -42,6 +42,9 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       "services.3.binding": [undefined, "AWX_GATEWAY"],
       "services.3.service": [undefined, "kit11"],
       "services.3.entrypoint": [undefined, "AwxGateway"],
+      // 26 Nov: the site Worker's public font (/assets/inter.woff2), so a deploy uploads no new static asset.
+      "services.4.binding": [undefined, "SITE"],
+      "services.4.service": [undefined, "kit11"],
       "vars.ENGINE_MODE": [undefined, "test_money"],
       // Capabilities only: lane C's switches decide at run time, and a missing switch is off.
       "vars.HANDS_ON": [undefined, "on"],
