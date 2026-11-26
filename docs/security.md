@@ -623,6 +623,9 @@ Rate limits, where the docs say them (each asserted in the same test or the test
 - `npm run verify-audit`: the audit log against its signed checkpoints, offline (`--known <copy>` with a copy of the
   checkpoint file kept earlier, `--trust <public key>` to pin the key); exits 1 on a truncation, a rewrite, a replayed
   or forged checkpoint, an uncovered money row, or an unknown or rotated-out key.
+- `npm run transparency -- verify` (26 November): the anchor head of the committed records, logged in Sigstore's public
+  Rekor log, checked offline: the statement against the repo, the signature, Rekor's signed entry timestamp, the
+  inclusion proof and the signed checkpoint ([transparency/README.md](transparency/README.md)).
 - `test/contract/*.test.ts` (2 November): every Airwallex and Alta call against its documented request, response and
   error codes, offline; `test/security-headers.test.ts`: the headers and rate limits above.
 - System health (`/system-health` on the local dashboard, `src/dashboard/health.ts`): per run and per agent, and the
