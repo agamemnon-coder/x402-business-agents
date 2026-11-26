@@ -3,7 +3,8 @@
 //                                                   propose a change (value "none" removes an agent limit); --by names
 //                                                   the person proposing it, who then cannot approve it
 // With approval.policy_sod_eur set, a change that loosens the policy above it needs two people's passkeys
-// (segregation of duties, src/policy/policySod.ts); tightening needs one.
+// (segregation of duties, src/policy/policySod.ts), and --by: such a change with no proposer named is refused, since
+// nobody could tell its proposer from its approver; tightening needs one passkey.
 // npm run policy -- from-text "<your words>"        Opus drafts rules from plain words; code checks them; one proposal
 // npm run policy -- simulate <key>=<value> ... [--since YYYY-MM-DD]
 //                                                   what would have happened: replays the period's supplier payments

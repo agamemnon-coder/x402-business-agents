@@ -664,15 +664,17 @@ export class EngineHost {
   /**
    * The CFO's rule for high-risk payments (src/policy/secondKey.ts): a policy_change proposal of its keys only, which the
    * CFO then approves with Face ID like any proposal (POST /v1/engine/proposals/{id}/approve); approved, it is applied.
+   * `by`: the signed-in person who asks, as their passkey is labelled, signed in as its proposer (who never approves it;
+   * above the CFO's segregation-of-duties threshold a loosening without one is refused).
    */
-  proposeSecondKey(changes: { key: string; to: string }[]): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
+  proposeSecondKey(changes: { key: string; to: string }[], by?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
     return this.act(async () => {
       if (!changes.length || changes.some((c) => !(SECOND_KEY_KEYS as readonly string[]).includes(c.key))) return { ok: false as const, reason: `only these settings: ${SECOND_KEY_KEYS.join(", ")}` };
       // Only what changes: the page sends every trigger as it stands on screen.
       const real = changes.filter((c) => policyValue(this.deps.db, c.key) !== c.to);
       if (!real.length) return { ok: false as const, reason: "nothing changes: the rule already says this" };
       try {
-        const p = proposePolicyChange(this.deps.db, { changes: real, reason: "The CFO's rule for high-risk payments: Face ID and a security key" }, "human", this.now());
+        const p = proposePolicyChange(this.deps.db, { changes: real, reason: "The CFO's rule for high-risk payments: Face ID and a security key", ...(by !== undefined ? { signedInAs: by } : {}) }, "human", this.now());
         return { ok: true as const, proposal: this.proposal(p.proposal_id)! };
       } catch (e) { return { ok: false as const, reason: message(e) }; }
     });
@@ -682,14 +684,15 @@ export class EngineHost {
    * The CFO's emergency stop, pulled (on) or lifted (off): a policy change of the stop alone (src/policy/emergencyStop.ts),
    * which changes nothing until the CFO approves it with the passkey (approve), as the runner's stop does. While it is
    * on, proposals are still filed but nothing is sent: every payment executor asks it when it begins and again
-   * immediately before each create, and so does the rail. Both directions are audited as policy.changed.
+   * immediately before each create, and so does the rail. Both directions are audited as policy.changed. `by` as for
+   * proposeSecondKey.
    */
-  emergencyStop(on: boolean): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
+  emergencyStop(on: boolean, by?: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
     return this.act(async () => {
       const { db } = this.deps;
       if (stopState(db).on === on) return { ok: false as const, reason: on ? "the emergency stop is already on" : "the emergency stop is not on" };
       try {
-        const p = proposePolicyChange(db, { changes: [{ key: STOP_KEY, to: on ? "on" : "off" }], reason: on ? "The CFO pulls the emergency stop: nothing is paid until it is lifted" : "The CFO lifts the emergency stop" }, "human", this.now());
+        const p = proposePolicyChange(db, { changes: [{ key: STOP_KEY, to: on ? "on" : "off" }], reason: on ? "The CFO pulls the emergency stop: nothing is paid until it is lifted" : "The CFO lifts the emergency stop", ...(by !== undefined ? { signedInAs: by } : {}) }, "human", this.now());
         return { ok: true as const, proposal: this.proposal(p.proposal_id)! };
       } catch (e) { return { ok: false as const, reason: message(e) }; }
     });

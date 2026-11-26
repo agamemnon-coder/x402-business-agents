@@ -41,7 +41,7 @@ function seededWorld(): { db: DB; ids: Record<string, string> } {
   const sodOn = proposePolicyChange(db, { changes: [{ key: "approval.policy_sod_eur", to: "1000.00" }], reason: "segregation of duties" }, "human", NOV(2));
   approveSigned(db, sodOn.proposal_id, NOV(2), "max");
   executePolicyChange(db, sodOn.proposal_id, NOV(2));
-  const loosen = proposePolicyChange(db, { changes: [{ key: "ap.alone_eur", to: "2500.00" }], reason: "month-end volume" }, "human", NOV(3));
+  const loosen = proposePolicyChange(db, { changes: [{ key: "ap.alone_eur", to: "2500.00" }], reason: "month-end volume", proposedBy: "lena" }, "human", NOV(3));
   approveSigned(db, loosen.proposal_id, NOV(3), "max");
   approveSigned(db, loosen.proposal_id, NOV(3, 9, 5), "anna");
   executePolicyChange(db, loosen.proposal_id, NOV(3, 9, 6));

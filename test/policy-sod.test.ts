@@ -59,7 +59,7 @@ describe("segregation of duties for policy changes", () => {
 
   it("weighs a loosening against the threshold: a limit raised above it, a floor lowered by more, anything without a euro amount", () => {
     turnOn(db, "1000.00");
-    const why = (key: string, to: string) => sodChanges(db, propose(db, key, to).terms_json).map((c) => c.why);
+    const why = (key: string, to: string) => sodChanges(db, propose(db, key, to, "lena").terms_json).map((c) => c.why);
     expect(why("ap.alone_eur", "400.00")).toEqual([]); // set below the threshold: one person
     expect(why("ap.alone_eur", "1500.00")).toEqual(["raised to 1500.00 EUR, above 1000.00 EUR"]);
     db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('eur_floor', '5000.00', ?)").run(now.toISOString());
@@ -72,7 +72,7 @@ describe("segregation of duties for policy changes", () => {
 
   it("refuses the same person twice and approves with a second, different person's passkey; the audit log says why", () => {
     turnOn(db, "1000.00");
-    const p = propose(db, "ap.alone_eur", "2500.00");
+    const p = propose(db, "ap.alone_eur", "2500.00", "lena");
     expect(fourEyes(db, p)).toBe(true);
     expect(approveSigned(db, p.proposal_id, now, "max")).toBe("PENDING_APPROVAL");
     expect(status(db, p.proposal_id)).toBe("PENDING_APPROVAL");
@@ -104,9 +104,39 @@ describe("segregation of duties for policy changes", () => {
     expect(() => propose(db, "approval.four_eyes_eur", "100.00", "Not A Person")).toThrow(/not a person's name/);
   });
 
+  // 26 Nov review: the proposer came from an optional proposed_by, else created_by "human", so "the proposer never
+  // approves" held only when the proposer named themselves.
+  it("refuses a change above the threshold with no proven proposer: when filed, and when approved", () => {
+    const early = propose(db, "ap.alone_eur", "2500.00"); // filed while the threshold was off: no proposer named
+    turnOn(db, "1000.00");
+    expect(() => propose(db, "ap.alone_eur", "3000.00")).toThrow(/segregation of duties .* who proposes it.*--by <person>/);
+    expect(() => approveSigned(db, early.proposal_id, now, "max")).toThrow(/no proven proposer, .*\(segregation of duties/);
+    expect(status(db, early.proposal_id)).toBe("PENDING_APPROVAL");
+    expect(rows(db, "proposal.cosigned", early.proposal_id)).toEqual([]);
+    // Below the threshold, or tightening, one person, as before; an agent's proposal is its own (an agent never approves).
+    expect(approveSigned(db, propose(db, "ap.alone_eur", "400.00").proposal_id, now, "max")).toBe("APPROVED");
+    const agent = proposePolicyChange(db, { changes: [{ key: "ap.alone_eur", to: "2600.00" }], reason: "test" }, "treasury", now);
+    expect(approveSigned(db, agent.proposal_id, now, "max")).toBe("PENDING_APPROVAL");
+  });
+
+  it("the signed-in person who proposed it cannot approve it, with no --by: the identity is the session's", () => {
+    turnOn(db, "1000.00");
+    // The Cloud labels a passkey with the person's display name; the approver is "<label> (passkey …)".
+    const carla = (id: string) => approveSigned(db, id, now, "carla", "Carla CFO (passkey 0a1b2c3d)");
+    const p = proposePolicyChange(db, { changes: [{ key: "ap.alone_eur", to: "2500.00" }], reason: "test", signedInAs: "Carla CFO" }, "human", now);
+    expect(JSON.parse(p.terms_json)).toMatchObject({ proposed_by: "Carla CFO" });
+    expect(() => carla(p.proposal_id)).toThrow(/Carla CFO proposed .* cannot approve it \(segregation of duties\)/);
+    expect(approveSigned(db, p.proposal_id, now, "max")).toBe("PENDING_APPROVAL");
+    expect(() => carla(p.proposal_id)).toThrow(/Carla CFO proposed/);
+    expect(approveSigned(db, p.proposal_id, now, "anna")).toBe("APPROVED");
+    for (const bad of ["", "max (passkey 1234)", "max + anna", "treasury", "a\nb"]) {
+      expect(() => proposePolicyChange(db, { changes: [{ key: "ap.alone_eur", to: "2700.00" }], reason: "test", signedInAs: bad }, "human", now), JSON.stringify(bad)).toThrow(/not a signed-in person's name/);
+    }
+  });
+
   it("turning the threshold off or raising it needs two people under the threshold in force", () => {
     turnOn(db, "1000.00");
-    const off = propose(db, POLICY_SOD_KEY, "");
+    const off = propose(db, POLICY_SOD_KEY, "", "lena");
     expect(approveSigned(db, off.proposal_id, now, "max")).toBe("PENDING_APPROVAL");
     expect(approveSigned(db, off.proposal_id, now, "anna")).toBe("APPROVED");
     executePolicyChange(db, off.proposal_id, now);

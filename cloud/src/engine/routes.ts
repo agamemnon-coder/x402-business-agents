@@ -258,15 +258,16 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       return json(200, { credential_id: out.credential_id, how: out.how, cooling_until: out.cooling_until, ...(out.how !== "first" && ms === 0 ? { cooling_note: TRY_COOLING_NOTE } : {}) });
     }) },
     { method: "POST", path: "/v1/engine/policy/second-key", summary: "Propose the CFO's rule for high-risk payments (off by default): { changes: [{ key, to }] } of approval.second_key_eur (an amount or \"\"), approval.second_key_new_payee, approval.second_key_bank_changed, approval.second_key_new_country (on or off). Answers { proposal }, a policy change the CFO approves with Face ID (POST /v1/engine/proposals/{id}/approve); nothing changes before that.", need: "admin", run: on(async (c, e) => {
-      signedIn(c);
+      const user = signedIn(c);
       const b = await kit.body(c, z.object({ changes: z.array(z.object({ key: z.string().max(60), to: z.string().max(20) }).strict()).min(1).max(4) }).strict(), 4_000);
-      const out = await e.proposeSecondKey(b.changes);
+      // The signed-in person proposes it, as their passkey is labelled: they never approve it (segregation of duties).
+      const out = await e.proposeSecondKey(b.changes, await displayName(c, user));
       return out.ok ? json(200, { proposal: out.proposal }) : err(409, out.reason);
     }) },
     { method: "POST", path: "/v1/engine/emergency-stop", summary: "The CFO's emergency stop (a session only; the approve scope: the CFO, or an owner of a company with no CFO): { on: true } pulls it, { on: false } lifts it. Answers { proposal }, a policy change the CFO approves with the passkey (POST /v1/engine/proposals/{id}/approve); nothing changes before that, and a key cannot ask. Once approved, nothing of this company is paid: proposals are still filed, but every payment executor refuses when it begins and again immediately before each create at the bank (the rail asks too), the agent pays nothing alone and nothing is sent to the Airwallex sandbox. GET /v1/engine says { emergency_stop: { on, since, proposal_id } }; both directions are in the audit log (policy.changed) and told to every owner. 409 when it already stands as asked.", need: "approve", run: on(async (c, e) => {
       const user = signedIn(c);
       const b = await kit.body(c, EmergencyStop, 1_000);
-      const out = await e.emergencyStop(b.on);
+      const out = await e.emergencyStop(b.on, await displayName(c, user));
       if (!out.ok) return err(409, out.reason);
       await kit.tellOwners?.(c, b.on ? "emergency_stop.requested" : "emergency_stop.lift_requested", { person: user, proposal: out.proposal.id });
       return json(200, { proposal: out.proposal });

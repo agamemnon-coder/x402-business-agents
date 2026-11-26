@@ -7,6 +7,7 @@ import { PROPOSAL_TTL_MS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
+import { sodChanges } from "../policy/policySod.js";
 import { policyValue, ruleFor, validateChange } from "../policy/rules.js";
 import { autonomyOn } from "../config/agents.js";
 import { publish, type AgentName } from "../autonomy/bus.js";
@@ -27,6 +28,20 @@ export interface PolicyChangeTerms extends Terms {
 
 /** A person's name as a passkey is enrolled under (src/passkey/ledger.ts openEnrolment). */
 const PERSON = /^[a-z][a-z0-9-]{1,30}$/;
+/** Names of agents and parts of the system, never a person (as src/passkey/ledger.ts keeps them apart). */
+const NOT_PEOPLE = new Set(["system", "claude", "sourcing", "support", "treasury", "customer", "human", "owner-signer", "awx-executor", "payer", "checker", "learning", "controller"]);
+
+/**
+ * A signed-in person's name, as the Cloud labels their approval passkey (their display name): what approvals.ts
+ * compares the approver with, so it may not hold what an approver string uses to join people (" (", " + ").
+ */
+function signedInName(name: string): string {
+  const n = name.trim();
+  if (!n || n.length > 80 || n !== name || [...n].some((ch) => ch.charCodeAt(0) < 0x20 || ch.charCodeAt(0) === 0x7f) || n.includes(" (") || n.includes(" + ") || NOT_PEOPLE.has(n.toLowerCase()) || n.startsWith("ext")) {
+    throw new Error(`not a signed-in person's name: ${JSON.stringify(name)}`);
+  }
+  return n;
+}
 
 /** Every change must be valid against the current policy, and no key may appear twice. */
 export function checkChanges(db: DB, changes: PolicyChange[]): void {
@@ -43,17 +58,29 @@ export function checkChanges(db: DB, changes: PolicyChange[]): void {
 }
 
 /**
- * proposedBy: the person proposing it (a name as enrolled with a passkey), signed into the terms as proposed_by, so that
- * person can never approve it (segregation of duties, src/policy/policySod.ts). Left out, the terms are as before.
+ * Who proposes it, signed into the terms as proposed_by, so that person can never approve it (segregation of duties,
+ * src/policy/policySod.ts): proposedBy, a person's name as enrolled with a passkey (the command line's --by), or
+ * signedInAs, the authenticated session's person as the Cloud labels their passkey (the engine passes it; recorded as the
+ * proposer only where segregation of duties applies, so the CFO alone still asks for and approves a tightening). Left
+ * out, the terms are as before; but a person's change (createdBy "human") that loosens the policy above the threshold
+ * is refused without one, since nobody could then tell its proposer from its approver. An agent's proposal is its own.
  */
-export function proposePolicyChange(db: DB, req: { changes: { key: string; to: string }[]; reason: string; ttlMs?: number; proposedBy?: string }, createdBy: Actor, now = new Date()): ProposalRow {
+export function proposePolicyChange(db: DB, req: { changes: { key: string; to: string }[]; reason: string; ttlMs?: number; proposedBy?: string; signedInAs?: string }, createdBy: Actor, now = new Date()): ProposalRow {
   const changes = req.changes.map((c) => ({ key: c.key, label: ruleFor(db, c.key)?.label ?? c.key, from: policyValue(db, c.key), to: c.to }));
   checkChanges(db, changes);
   if (req.proposedBy !== undefined && !PERSON.test(req.proposedBy)) throw new Error(`not a person's name: ${JSON.stringify(req.proposedBy)} (lower-case letters, digits and dashes)`);
+  const signedIn = req.signedInAs !== undefined ? signedInName(req.signedInAs) : undefined;
+  const sod = sodChanges(db, JSON.stringify({ changes }));
+  // The signed-in person is the proposer where segregation of duties needs one; below the threshold (or with it off) a
+  // change asked for in the Cloud stays one person's to ask for and approve, as before.
+  const by = req.proposedBy ?? (sod.length ? signedIn : undefined);
+  if (by === undefined && createdBy === "human" && sod.length) {
+    throw new Error(`segregation of duties applies (${sod.map((c) => `${c.key}: ${c.why}`).join("; ")}): name who proposes it, who then cannot approve it (--by <person> on the command line; in Purser Cloud, the signed-in person)`);
+  }
   const terms: PolicyChangeTerms = {
     schema: TERMS_SCHEMA, kind: "policy_change", proposal_id: nextProposalId(db),
     expires_at: new Date(now.getTime() + (req.ttlMs ?? PROPOSAL_TTL_MS)).toISOString().replace(/\.\d{3}Z$/, "Z"),
-    changes, reason: req.reason, ...(req.proposedBy !== undefined ? { proposed_by: req.proposedBy } : {}),
+    changes, reason: req.reason, ...(by !== undefined ? { proposed_by: by } : {}),
   };
   return createProposal(db, { terms, createdBy }, now);
 }
