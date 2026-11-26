@@ -56,6 +56,7 @@ export function passkeySignedChange(db: DB, key: string, payload: { proposal_id?
   if (to !== payload.to) return null;
   const a = db.prepare("SELECT method FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(payload.proposal_id) as { method: string } | undefined;
   return a?.method === "passkey" ? payload.proposal_id : null;
+}
 
 /**
  * Whether policy_change `proposalId` set `key` to exactly `to`, ran (EXECUTED) and was approved with a passkey: the CFO
@@ -63,7 +64,6 @@ export function passkeySignedChange(db: DB, key: string, payload: { proposal_id?
  */
 export function signedPolicyChange(db: DB, proposalId: string, key: string, to: string): boolean {
   return passkeySignedChange(db, key, { proposal_id: proposalId, to }) === proposalId;
-}
 }
 
 /** The limit in force now: the record's, and only while the setting still holds that value. */
