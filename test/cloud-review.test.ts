@@ -12,7 +12,7 @@ import { DEMO_CONNECTOR_TOKEN } from "../cloud/src/auth.js";
 describe("Purser Cloud after the review of 13 Nov", () => {
   it("(1) rises every card in on the next frame, never waiting for it to be scrolled to", () => {
     const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" });
-    expect(html).toContain("requestAnimationFrame(()=>{for(const n of box.querySelectorAll('.rise'))n.classList.add('in')});");
+    expect(html).toContain("requestAnimationFrame(()=>{for(const n of view().querySelectorAll('.rise'))n.classList.add('in')});");
     expect(html).not.toContain("whenSeen(n,()=>n.classList.add('in'))");
   });
 

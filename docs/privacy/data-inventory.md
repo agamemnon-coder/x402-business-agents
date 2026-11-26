@@ -86,6 +86,7 @@ chains: a changed byte would break the chain, so they are kept or deleted whole,
 | `security_log` | The platform's security log: kind, company id, actor id, network (IP cut to its network), route, status | Personal: online identifiers | Security (f) | A year; a database trigger refuses an earlier delete | `pruneSecurityLog` (daily) |
 | `rate_hits` | Request counters per key, person or network | Online identifiers | Security (f) | A day | `purgeExpired`'s housekeeping |
 | `push_log`, `runner_health` | Pushes from the runner and its health reports | Technical | Contract (b) | Until the purge | `purgeExpired` |
+| `authority_maps` | The runner's authority map as last pushed: per agent what it may pay and what needs the CFO (agent names, limits, payee kinds; an outside agent's display name) | Financial summary | Contract (b) | Until the purge | `purgeExpired` |
 | `storage_use` | The company's stored bytes and files | Technical | Contract (b) | Until the purge | `purgeExpired` |
 | `engine_companies`, `autopilot_runs` | Which companies run the nightly autopilot; its digests | Financial summary | Contract (b) | 90 days; a purged company's at once | `pruneAutopilot` |
 

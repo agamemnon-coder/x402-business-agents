@@ -9,9 +9,15 @@ import { issuingFromEnv } from "../airwallex/issuing.js";
 import { openDb } from "../db/open.js";
 import { agentApiServer } from "../platform/mcpServer.js";
 import { agentId } from "../platform/externalAgents.js";
+import { keepIdentityKeysOnDisk } from "./identityKeys.js";
+import { agentApiIdentityMode } from "../policy/agentIdentity.js";
 
 const id = agentId(process.env.KIT11_AGENT ?? "");
 const db = openDb();
-const server = agentApiServer(db, id, issuingFromEnv(db)?.sim ?? null);
+// Know your agent: a signing key pair made here (the agent's first, when its principal is created) goes to its key file
+// (src/cli/identityKeys.ts) for the agent; each call is checked as PURSER_AGENT_IDENTITY says (src/policy/agentIdentity.ts).
+keepIdentityKeysOnDisk();
+// Every call must carry the agent's signed identity (required) unless the owner sets PURSER_AGENT_IDENTITY=optional|off.
+const server = agentApiServer(db, id, issuingFromEnv(db)?.sim ?? null, undefined, undefined, { identity: agentApiIdentityMode() });
 await server.connect(new StdioServerTransport());
 console.error(`agent API: serving ${id} on stdio`);

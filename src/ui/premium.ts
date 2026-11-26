@@ -105,54 +105,24 @@ main.ent .e-start .card {border-color:color-mix(in srgb,var(--accent) 18%,var(--
  * effects must not dominate financial screens): nothing here moves.
  */
 export const CONSOLE_PREMIUM_CSS = String.raw`
-/* The site's wave runs behind the whole console (cloud/src/consoleOverviewPlus.ts); the page lets it show between cards. */
+/* 26 Nov (Max: "enterprise grade"): inside the console one calm surface, hairline borders, no glow; the sign-in keeps its own. */
 .signed-in main { position:relative; min-height:80vh; overflow-x:clip; background: transparent; }
 .signed-in main > .wrap {position:relative;z-index:1;}
 .abrand .mk { background:var(--mk-bg); color:var(--mk-ink); border:0; box-shadow:none; }
-/* One surface for every card. */
-.card, .auth { border-radius:16px; border-color:color-mix(in srgb,var(--accent) 13%,var(--border)); background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 4%,color-mix(in srgb,var(--surface) 90%,transparent)),color-mix(in srgb,var(--surface) 92%,transparent)); box-shadow:var(--hi),0 1px 2px rgba(16,24,40,.05),0 22px 44px -34px rgba(0,0,0,.55); }
-.signed-in .card.next.hero, .signed-in .card.nyou {background:linear-gradient(130deg,color-mix(in srgb,var(--accent) 18%,var(--surface)),var(--surface) 58%);border-color:color-mix(in srgb,var(--accent) 38%,var(--border));}
-.next.hero .nic { box-shadow:0 8px 24px -8px var(--glow); }
-.signed-in .btn.primary,.auth .btn.primary {background:var(--btn-bg);border-color:var(--btn-line);color:var(--btn-ink);box-shadow:0 7px 26px var(--glow);}
-/* The KPI cards: the figure large, its icon lit. */
-.kpi { padding:18px 20px; gap:8px; }
-.kpi b { font-size:clamp(24px,2.3vw,32px); font-weight:720; letter-spacing:-.035em; line-height:1.1; }
-.kpi .kl .ic { border-radius:9px; box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 8%,transparent); }
-.kpi.pos .kl .ic { box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ok) 30%,transparent),0 6px 18px -8px color-mix(in srgb,var(--ok) 70%,transparent); }
-.kpi.wait .kl .ic { box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--warn) 30%,transparent),0 6px 18px -8px color-mix(in srgb,var(--warn) 70%,transparent); }
-@media (max-width:520px) { .kpi { padding:14px; } .kpi b { font-size:22px; } }
-.signed-in #view h1 {font-size:clamp(28px,3vw,38px);letter-spacing:-.038em;}
-.dcard .dh h2 { font-size:16.5px; letter-spacing:-.015em; }
-/* Charts: lines, bars and rings glow in their colour; the grid steps back. */
+.signed-out .card, .auth { border-radius:16px; border-color:color-mix(in srgb,var(--accent) 13%,var(--border)); background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 4%,color-mix(in srgb,var(--surface) 90%,transparent)),color-mix(in srgb,var(--surface) 92%,transparent)); box-shadow:var(--hi),0 1px 2px rgba(16,24,40,.05),0 22px 44px -34px rgba(0,0,0,.55); }
+.signed-in .card { border-radius:12px; border:1px solid var(--line); background:var(--surface); box-shadow:0 1px 2px rgba(16,24,40,.04); }
+.auth .btn.primary {background:var(--btn-bg);border-color:var(--btn-line);color:var(--btn-ink);box-shadow:0 7px 26px var(--glow);}
+.kpi { padding:16px 18px; gap:6px; }
+.kpi b { font-size:clamp(20px,1.8vw,26px); font-weight:680; letter-spacing:-.025em; line-height:1.15; }
+@media (max-width:520px) { .kpi { padding:14px; } .kpi b { font-size:20px; } }
+.dcard .dh h2 { font-size:14.5px; font-weight:650; letter-spacing:-.01em; }
+/* Charts: thin lines, the grid steps back. */
 svg.chart .grid { stroke:color-mix(in srgb,var(--border) 70%,transparent); }
-svg.chart .line { stroke-width:2.25; filter:drop-shadow(0 0 4px color-mix(in srgb,var(--accent) 55%,transparent)); }
-svg.chart .end { filter:drop-shadow(0 0 6px color-mix(in srgb,var(--accent) 80%,transparent)); }
-svg.chart .b.cfo, svg.chart .b.fout { filter:drop-shadow(0 0 6px color-mix(in srgb,var(--accent) 35%,transparent)); }
-svg.chart .b.fin { filter:drop-shadow(0 0 8px color-mix(in srgb,var(--fin,var(--ok)) 40%,transparent)); }
-svg.ring .seg { filter:drop-shadow(0 0 4px color-mix(in srgb,currentColor 35%,transparent)); }
+svg.chart .line { stroke-width:2; }
 svg.ring .seg.c0 { color:var(--c0); } svg.ring .seg.c1 { color:var(--c1); } svg.ring .seg.c2 { color:var(--c2); } svg.ring .seg.c3 { color:var(--c3); } svg.ring .seg.c4 { color:var(--c4); }
-.sbars .strk { height:8px; }
-.sbars .sf { box-shadow:0 0 12px -2px color-mix(in srgb,var(--accent) 70%,transparent); }
-/* The sidebar: the current page lit with a bar of the accent. */
-.signed-in .appbar {background:var(--surface);border-right-color:color-mix(in srgb,var(--accent) 14%,var(--border));}
-.signed-in .appbar nav.apptabs a:hover {background:color-mix(in srgb,var(--accent) 10%,var(--sunken));}
-@media (min-width:1024px) {
-  .signed-in .appbar nav.apptabs a[aria-current="page"] { position:relative; color:var(--text); background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 24%,transparent),color-mix(in srgb,var(--accent) 6%,transparent)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 24%,transparent); }
-  .signed-in .appbar nav.apptabs a[aria-current="page"]::before { content:""; position:absolute; left:-12px; top:8px; bottom:8px; width:3px; border-radius:0 3px 3px 0; background:var(--accent); box-shadow:0 0 12px var(--accent); }
-  .signed-in .apptabs .ng { font-family:var(--mono); font-weight:600; letter-spacing:.14em; }
-}
+.sbars .strk { height:6px; }
 .signed-out .auth {border-color:color-mix(in srgb,var(--accent) 28%,var(--border));box-shadow:0 35px 95px -45px var(--glow);}
-/* The demo company's line (Max, 21 Nov: "the yellow banner has to go"): its words as they are, quiet and neutral, one line;
-   "Leave the demo" a plain link. */
-.demo-ribbon { color: var(--faint); }
-.demo-ribbon .dr { background: transparent; border: 0; padding: 0; gap: 8px; font-size: 12.5px; color: var(--faint); }
-.demo-ribbon .dr .i { color: var(--faint); opacity: .8; }
-.demo-ribbon a, .demo-ribbon a:hover { background: none; padding: 0 0 0 4px; color: var(--muted); font-weight: 600; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--muted) 45%, transparent); text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
-.demo-ribbon a:hover { color: var(--text); }
-/* The demo company (Max, 21 Nov: "one quiet disclosure"): the ribbon and the company's own line say it; no loose chip, no timer. */
-body:has(#demo:not([hidden])) #testchip, body:has(#demo:not([hidden])) .appbar #who .we { display:none; }
+body:has(#demo:not([hidden])) .appbar #who .we { display:none; }
 .signed-out main {background:radial-gradient(ellipse 50% 65% at 20% 44%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 80%),var(--bg);}
-@media (prefers-color-scheme:light) { :root:not([data-theme="dark"]) svg.chart .line { filter:drop-shadow(0 2px 4px color-mix(in srgb,var(--accent) 35%,transparent)); } }
-:root[data-theme="light"] svg.chart .line { filter:drop-shadow(0 2px 4px color-mix(in srgb,var(--accent) 35%,transparent)); }
-@media print {.card, .auth, svg.chart .line, svg.chart .b, svg.ring .seg { box-shadow:none; filter:none; }}
+@media print {.card, .auth { box-shadow:none; }}
 `;

@@ -12,6 +12,8 @@ export const LIVE_KEYS = [
   "ERP_LIVE_GO", "ERP_CALL_BUDGET", "ERP_CALL_LOG",
   // Approval notifications' chat webhooks and an integration's key (src/integrations/approvalChat.ts): a test never posts to a real channel.
   "PURSER_SLACK_WEBHOOK_URL", "PURSER_TEAMS_WEBHOOK_URL", "PURSER_API_KEY",
+  // The runner's own notifications (src/integrations/approvalNotify.ts).
+  "PURSER_NOTIFY_SLACK_WEBHOOK", "PURSER_NOTIFY_TEAMS_WEBHOOK",
 ] as const;
 for (const k of LIVE_KEYS) delete process.env[k];
 

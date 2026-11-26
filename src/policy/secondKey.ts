@@ -112,20 +112,20 @@ export function paidBefore(db: DB): Paid[] {
 }
 
 /** Why one payment is high-risk, in words for the approval page; empty when it is not (or the rule is off). */
-function reasonsOfPayment(db: DB, t: PaymentTerms, now: Date, paid: Paid[]): string[] {
+function reasonsOfPayment(db: DB, t: PaymentTerms, now: Date, paid: Paid[], value: (key: string) => string = (key) => setting(db, key)): string[] {
   const out: string[] = [];
-  const eur = setting(db, SECOND_KEY_EUR);
+  const eur = value(SECOND_KEY_EUR);
   if (/^\d+\.\d{2}$/.test(eur)) {
     const v = supplierPaymentEur(JSON.stringify(t));
     // No euro value in the terms counts as over, as four eyes does.
     if (v === null || toCents(v) >= toCents(eur)) out.push(`amount at or above EUR ${eur}`);
   }
   const mine = paid.filter((x) => samePayee(x, t));
-  if (setting(db, SECOND_KEY_NEW_PAYEE) === "on") {
+  if (value(SECOND_KEY_NEW_PAYEE) === "on") {
     const first = mine[0]?.first_at;
     if (!first || now.getTime() - Date.parse(first) < NEW_PAYEE_DAYS * 86_400_000) out.push(first ? `new payee (first paid less than ${NEW_PAYEE_DAYS} days ago)` : "new payee (never paid before)");
   }
-  if (setting(db, SECOND_KEY_BANK_CHANGED) === "on") {
+  if (value(SECOND_KEY_BANK_CHANGED) === "on") {
     const last = mine[mine.length - 1];
     let changed = !!last && bankOf(last) !== bankOf(t);
     // A change of bank details applied for this supplier since its last payment (E3) counts too.
@@ -136,11 +136,20 @@ function reasonsOfPayment(db: DB, t: PaymentTerms, now: Date, paid: Paid[]): str
     }
     if (changed) out.push("bank details changed");
   }
-  if (setting(db, SECOND_KEY_NEW_COUNTRY) === "on") {
+  if (value(SECOND_KEY_NEW_COUNTRY) === "on") {
     const c = countryOf(db, t);
     if (!c || !paid.some((x) => countryOf(db, x) === c)) out.push(c ? `new country (${c})` : "new country (unknown)");
   }
   return out;
+}
+
+/**
+ * Why one payment (an invoice or supplier payment's terms) would be high-risk under a given policy lookup and a given
+ * history of paid payments; reads the ledger only (the payee's country, an applied change of bank details). The policy
+ * simulator replays past payments with it (src/policy/simulate.ts).
+ */
+export function paymentSecondKeyReasons(db: DB, t: PaymentTerms, now: Date, paid: Paid[], value: (key: string) => string): string[] {
+  return reasonsOfPayment(db, t, now, paid, value);
 }
 
 /** Why a proposal is high-risk; empty when it is not. A batch is high-risk when any of its lines is. */

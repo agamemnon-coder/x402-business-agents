@@ -8,6 +8,7 @@
 // Under prefers-reduced-motion the globe and the wave are drawn once and stand still.
 
 import { waveScript } from "../../src/ui/wave.js";
+import { globeScript, type GlobePlace } from "../../src/ui/globe.js";
 
 export const SIGNIN_CSS = `
 /* The left panel: a deep ground, the globe and the wave behind the words. */
@@ -18,13 +19,23 @@ export const SIGNIN_CSS = `
 /* The console's own page-wide wave waits for the signed-in pages: here the panel has its own. */
 .signed-out canvas.pw-wave { display: none; }
 .signed-out .hero canvas { position: absolute; pointer-events: none; }
-/* 21 Nov (Max, later: "put the globe behind everything"): the globe is a large, dim backdrop behind the words, whole in
-   the panel (never clipped), above the wave (its body hides the wave behind it). Its script lays a soft scrim of the
-   panel's ground behind the words (contrast AA on any dot behind them), then the two pings, their labels clear of the words. */
+/* 26 Nov (Max: "make the globe a deliberate hero object, not behind the copy"): the globe (src/ui/globe.ts) is the
+   largest circle beside or under the words, never behind them, whole in the panel, above a quiet wave; its labels clear
+   of the words and of each other. */
 .signed-out .hero canvas.si-globe { inset: 0; width: 100%; height: 100%; z-index: -2; }
-.signed-out .hero canvas.si-wave { left: 0; right: 0; bottom: 0; width: 100%; height: 28%; z-index: -3;
-  -webkit-mask-image: linear-gradient(180deg, transparent, #000 45%); mask-image: linear-gradient(180deg, transparent, #000 45%); }
-.signed-out .side { position: relative; display: flex; flex-direction: column; align-items: flex-start; max-width: 520px; margin: 0; padding: 0 0 0 clamp(8px, 3vw, 56px); }
+.signed-out .hero canvas.si-wave { left: 0; right: 0; bottom: 0; width: 100%; height: 22%; z-index: -3; opacity: .4;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 55%); mask-image: linear-gradient(180deg, transparent, #000 55%); }
+/* Signed out, no "test money" chip in the header (Max: "remove the old pill"): the panel's status line says it, quietly,
+   and the trust line under the card; on a wide screen the empty app bar goes too. */
+.signed-out .appbar .test { display: none; }
+@media (min-width: 760px) { .signed-out .appbar { display: none; } }
+/* The panel's status line: a small dot and "Sandbox · test money", under the line. */
+.signed-out .side p.si-st { order: 0; display: inline-flex; align-items: center; gap: 8px; margin: 0 0 22px; padding: 4px 11px 4px 9px; border-radius: 999px; border: 1px solid var(--glass-line, var(--border)); font: 600 12.5px/1.3 var(--mono, ui-monospace, monospace); letter-spacing: .02em; color: var(--muted); }
+.signed-out .side p.si-st i { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 20%, transparent); }
+/* The trust line under the card: two calm lines with air, never cramped. */
+.signed-out p.trust { gap: 4px; font-size: 12.5px; line-height: 1.55; color: var(--faint); max-width: 560px; justify-self: center; margin-left: auto; margin-right: auto; text-wrap: balance; }
+.signed-out p.trust span:last-child { display: inline-flex; justify-self: center; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-weight: 600; font-size: 12px; }
+.signed-out .side { position: relative; display: flex; flex-direction: column; align-items: flex-start; max-width: 460px; margin: 0; padding: 0 0 0 clamp(8px, 2vw, 40px); }
 
 .signed-out .side .side-mk { order: -1; display: grid; place-items: center; width: 64px; height: 64px; margin: 0 0 22px; border-radius: 18px; color: var(--text);
   border: 1px solid var(--glass-line, color-mix(in srgb, var(--accent) 30%, var(--border))); background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 34%, var(--surface)), color-mix(in srgb, var(--accent) 12%, var(--surface)));
@@ -62,7 +73,11 @@ export const SIGNIN_CSS = `
 .signed-out .auth .guest .gsub { font-size: 13px; }
 .signed-out .trust { font-size: 12px; color: var(--faint); }
 /* A laptop or wider: the card's own width, a little more air. */
-@media (min-width: 1024px) { .signed-out .auth { max-width: 520px; } .signed-out .hero { align-content: start; padding-top: 36px; } }
+@media (min-width: 1024px) { .signed-out .auth { max-width: 480px; } .signed-out .hero { align-content: start; padding-top: clamp(40px, 7vh, 72px); }
+  .signed-out .side h2 { font-size: clamp(38px, 3.3vw, 56px); } .signed-out .side > p:not(.si-st) { margin-bottom: 16px; }
+  .signed-out .side ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; width: 100%; padding-top: 18px; border-top: 1px solid var(--glass-line, var(--border)); }
+  .signed-out .side li { display: grid; align-items: start; align-content: start; justify-items: start; gap: 8px; font-size: 14px; font-weight: 550; line-height: 1.35; color: var(--muted); }
+  .signed-out .side .si { width: 30px; height: 30px; border-radius: 9px; } .signed-out .side .si svg { width: 16px; height: 16px; } }
 /* Ask Purser floats at the bottom right: signed out it is the round mark only (its words kept for screen readers and in
    its title), and the trust line keeps clear of it (it covered "Works with ..." at 1024 and 390). */
 .signed-out #pask-fab { padding: 0 7px; }
@@ -70,7 +85,7 @@ export const SIGNIN_CSS = `
 .signed-out p.trust { padding-left: 76px; padding-right: 76px; }
 @media (max-width: 1023px) {
   .signed-out .hero { padding: 22px 20px; justify-items: start; border-bottom: 1px solid var(--border); }
-  .signed-out .side { padding: 0; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+  .signed-out .side { padding: 0; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 14px; max-width: min(560px, 66%); }
   .signed-out .side .side-mk { width: 46px; height: 46px; margin: 0; border-radius: 14px; } .signed-out .side .side-mk svg { width: 22px; height: 22px; }
   .signed-out .side h2 { font-size: 30px; }
   .signed-out .side > p { flex-basis: 100%; margin: 6px 0 12px; font-size: 16px; }
@@ -79,7 +94,9 @@ export const SIGNIN_CSS = `
   .signed-out .hero { padding-bottom: 50px; }
   .signed-out .hero canvas.si-wave { height: 46px; }
 }
+@media (max-width: 1023px) { .signed-out .side p.si-st { flex-basis: auto; margin: 4px 0 6px; } }
 @media (max-width: 640px) {
+  .signed-out .side p.si-st { display: none; }
   .signed-out .hero { padding: 18px 16px 20px; }
   .signed-out .side h2 { font-size: 26px; }
   .signed-out .side > p { display: block; margin: 4px 0 0; font-size: 14.5px; }
@@ -103,45 +120,6 @@ export const SIGNIN_CSS = `
 `;
 
 /**
- * The land, roughly (longitude, latitude), for the globe's dotted continents: hand-drawn outlines, coarse on purpose
- * (a picture, not a map); a dot on the sphere is land when it falls inside one of them.
- */
-const LAND: number[][][] = [
-  // North America
-  [[-168, 66], [-162, 70], [-156, 71], [-140, 70], [-128, 70], [-115, 68], [-100, 68], [-95, 72], [-85, 70], [-80, 66], [-75, 62], [-65, 60], [-60, 55], [-56, 52], [-60, 47], [-66, 44], [-70, 42], [-74, 40], [-76, 35], [-81, 31], [-80, 25], [-82, 27], [-84, 30], [-90, 29], [-97, 27], [-97, 22], [-95, 19], [-90, 21], [-87, 21], [-88, 16], [-84, 15], [-83, 10], [-79, 9], [-80, 7], [-85, 10], [-92, 14], [-100, 17], [-105, 20], [-110, 24], [-112, 29], [-115, 31], [-117, 32], [-120, 34], [-124, 40], [-124, 47], [-127, 51], [-133, 56], [-140, 60], [-150, 60], [-158, 57], [-165, 60]],
-  // Arctic islands of Canada
-  [[-120, 72], [-100, 74], [-85, 74], [-75, 78], [-90, 81], [-110, 78], [-122, 76]],
-  // Greenland
-  [[-73, 78], [-60, 82], [-35, 83], [-20, 80], [-20, 72], [-30, 68], [-42, 60], [-50, 62], [-55, 68], [-60, 75]],
-  // South America
-  [[-80, 9], [-75, 11], [-70, 12], [-62, 10], [-55, 6], [-50, 2], [-48, -1], [-40, -3], [-35, -6], [-35, -10], [-39, -15], [-40, -22], [-48, -26], [-53, -34], [-58, -38], [-62, -40], [-65, -45], [-68, -50], [-69, -55], [-73, -53], [-75, -46], [-73, -37], [-71, -30], [-71, -18], [-76, -14], [-81, -6], [-80, -2], [-78, 2], [-77, 7]],
-  // Europe
-  [[-10, 36], [-9, 43], [-2, 44], [-1, 46], [-5, 48], [2, 51], [5, 53], [8, 54], [8, 57], [10, 58], [5, 59], [5, 62], [12, 66], [18, 70], [26, 71], [31, 70], [40, 67], [44, 68], [50, 68], [60, 69], [60, 55], [50, 47], [40, 46], [37, 45], [30, 45], [28, 41], [26, 40], [23, 38], [20, 40], [19, 42], [13, 45], [16, 41], [16, 38], [12, 38], [10, 44], [7, 44], [3, 43], [0, 39], [-2, 37], [-6, 36]],
-  // Great Britain, Ireland, Iceland
-  [[-6, 50], [1, 51], [2, 53], [-1, 55], [-2, 58], [-5, 59], [-6, 56], [-5, 54], [-3, 52]],
-  [[-10, 52], [-6, 52], [-6, 55], [-8, 55], [-10, 54]],
-  [[-24, 64], [-14, 64], [-14, 66], [-22, 67]],
-  // Africa, Madagascar
-  [[-17, 21], [-16, 28], [-10, 30], [-6, 36], [0, 36], [10, 37], [11, 33], [20, 31], [25, 32], [32, 31], [34, 28], [38, 22], [43, 12], [51, 12], [50, 8], [45, 2], [40, -3], [40, -10], [35, -17], [35, -24], [32, -28], [27, -34], [20, -35], [18, -32], [15, -26], [12, -18], [13, -10], [12, -5], [9, -1], [9, 4], [5, 5], [0, 5], [-5, 5], [-8, 4], [-13, 8], [-17, 13]],
-  [[44, -13], [50, -15], [50, -17], [47, -25], [44, -24], [43, -18]],
-  // Asia, with Arabia and India
-  [[26, 40], [28, 41], [30, 45], [37, 45], [40, 46], [50, 47], [60, 55], [60, 69], [70, 73], [80, 73], [90, 76], [100, 78], [110, 77], [120, 73], [130, 71], [140, 72], [150, 71], [160, 70], [170, 70], [180, 69], [180, 65], [175, 62], [165, 60], [160, 55], [157, 51], [155, 57], [150, 59], [142, 59], [136, 55], [140, 48], [135, 43], [130, 42], [128, 39], [126, 35], [126, 38], [122, 40], [121, 37], [119, 35], [122, 31], [120, 26], [117, 23], [110, 21], [108, 18], [106, 10], [104, 9], [101, 13], [100, 7], [104, 1], [101, 3], [98, 8], [98, 16], [94, 17], [92, 22], [88, 22], [85, 20], [80, 15], [80, 10], [77, 8], [73, 17], [72, 21], [67, 24], [62, 25], [57, 25], [56, 27], [52, 28], [48, 30], [50, 26], [52, 24], [56, 24], [59, 22], [55, 17], [52, 16], [45, 13], [43, 15], [40, 20], [36, 26], [34, 28], [35, 32], [36, 36], [30, 37]],
-  // Japan, Sumatra, Borneo, Java, New Guinea, Sri Lanka, the Philippines
-  [[130, 31], [132, 34], [135, 34], [140, 35], [141, 38], [142, 42], [145, 44], [141, 45], [140, 41], [136, 37], [133, 35], [130, 33]],
-  [[95, 5], [98, 4], [104, -2], [106, -6], [102, -4], [96, 2]],
-  [[109, 2], [111, -3], [116, -4], [118, 1], [117, 7], [113, 4]],
-  [[105, -6], [114, -7], [114, -8], [106, -7]],
-  [[131, -1], [138, -2], [146, -6], [150, -10], [142, -9], [138, -8], [132, -4]],
-  [[80, 6], [82, 7], [81, 10], [79, 9]],
-  [[120, 18], [122, 18], [124, 13], [126, 7], [122, 7], [121, 13]],
-  // Australia, New Zealand
-  [[114, -22], [114, -26], [115, -34], [118, -35], [124, -33], [129, -32], [134, -32], [138, -35], [140, -38], [146, -39], [150, -37], [153, -32], [153, -25], [150, -22], [146, -19], [143, -11], [141, -13], [141, -17], [137, -15], [136, -12], [132, -11], [129, -15], [125, -14], [122, -17], [118, -20]],
-  [[172, -34], [178, -38], [175, -41], [172, -44], [167, -46], [170, -43], [174, -39]],
-  // Antarctica's coast
-  [[-180, -72], [-120, -73], [-60, -64], [-40, -78], [0, -70], [60, -67], [120, -66], [180, -72], [180, -90], [-180, -90]],
-];
-
-/**
  * Places on the globe, each a small ping with a label (21 Nov, Max). Only places the repository or the owner states.
  * 26 Nov (Max: "a small pulsing green dot at the company's location"): the company is the demo company, Northwind
  * Outdoor; its location is Amsterdam, NL, as its test world's payer address gives it (src/e2e/platformRun.ts withPayer:
@@ -149,158 +127,11 @@ const LAND: number[][][] = [
  * pulses. Airwallex (its San Francisco office), Anthropic (Claude) and Visa in San Francisco stay as a quiet violet dot.
  * Moneybird and Alta are left off: the repository states no location for either company. [longitude, latitude, label, green]
  */
-const PLACES: readonly (readonly [number, number, string, boolean])[] = [
+const PLACES: readonly GlobePlace[] = [
   [4.9, 52.37, "Northwind Outdoor (demo)", true], // the demo company's location: Amsterdam, NL
   [-122.42, 37.77, "Airwallex · Claude · Visa", false],
 ];
 
-/**
- * The globe (26 Nov, Max: "make it read clearly as Earth"): an orthographic Earth, north up and tilted a little toward
- * the viewer, centred on the Atlantic so the company's dot and San Francisco both stay in view; a lit body, a graticule
- * of thin lines every 30 degrees fading to the rim, the land from LAND as an even field of dots shaded by the light, a
- * soft atmosphere and a lit rim. It sways gently east and west (a minute a swing); under prefers-reduced-motion, or on
- * a device too slow, it is drawn once and stands still. Still a dim backdrop behind the words (21 Nov, Max): the
- * largest whole circle round a point a little right of the panel's middle, the sphere at reduced strength, a scrim of
- * the panel's ground behind the words; the pings at full strength, their labels placed clear of the words (measured on
- * every resize) or not drawn. Gradients made once per size, the pixel ratio at most 1.5, paused off screen and in a
- * hidden tab. One canvas, no library.
- */
-const GLOBE_JS = `
-(function () {
-  var c = document.querySelector("canvas.si-globe"); if (!c || !c.getContext || !window.matchMedia) return;
-  var g = c.getContext("2d"); if (!g) return;
-  var LAND = ${JSON.stringify(LAND)}, PLACES = ${JSON.stringify(PLACES)};
-  var boxes = LAND.map(function (p) { var b = [999, 999, -999, -999]; p.forEach(function (q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }); return b; });
-  function inside(p, x, y) { var o = false; for (var i = 0, j = p.length - 1; i < p.length; j = i++) { var a = p[i], b = p[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) o = !o; } return o; }
-  function land(lon, lat) { for (var k = 0; k < LAND.length; k++) { var b = boxes[k]; if (lon < b[0] || lon > b[2] || lat < b[1] || lat > b[3]) continue; if (inside(LAND[k], lon, lat)) return true; } return false; }
-  // The view: the centre of the disc at 50 degrees west (rot is that longitude less 90), tilted 21 degrees; a sway of
-  // 11 degrees each way over a minute.
-  var D2R = Math.PI / 180, ROT = (-50 - 90) * D2R, SWAY = 11 * D2R, PERIOD = 60000, TILT = 21 * D2R, ct = Math.cos(TILT), st = Math.sin(TILT);
-  var unit = function (lon, lat) { return [Math.cos(lon * D2R) * Math.cos(lat * D2R), Math.sin(lat * D2R), Math.sin(lon * D2R) * Math.cos(lat * D2R)]; };
-  // The graticule: meridians every 30 degrees (to 84 north and south), the parallels at 0, 30 and 60 north and south.
-  var GRID = [], gl, s3;
-  for (var lo = -180; lo < 180; lo += 30) { gl = []; for (var la = -84; la <= 84; la += 3) { s3 = unit(lo, la); gl.push(s3[0], s3[1], s3[2]); } GRID.push(gl); }
-  [-60, -30, 0, 30, 60].forEach(function (la) { gl = []; for (var lo2 = -180; lo2 <= 180; lo2 += 3) { s3 = unit(lo2, la); gl.push(s3[0], s3[1], s3[2]); } GRID.push(gl); });
-  var DIM = 0.62, still = matchMedia("(prefers-reduced-motion: reduce)").matches, dark = matchMedia("(prefers-color-scheme: dark)");
-  var pts = [], W = 0, H = 0, dpr = 1, raf = 0, seen = true, t0 = 0, lastF = 0, emaF = 0, nF = 0, txt = [], ink = [180, 168, 255], acc = "#a398ff", ground = [8, 10, 18], scrim = null, sx = 0, sy = 0, sk = 1, srw = 0;
-  var cx = 0, cy = 0, R = 0, lite = false, at = null, body = null, rim = null, grid = null, col = "", sampled = 0, bk = []; for (var q0 = 0; q0 < 32; q0++) bk.push([]);
-  function theme() { var cs = getComputedStyle(document.documentElement), a = (cs.getPropertyValue("--accent") || "").trim(); acc = a || acc;
-    var m = /^#([0-9a-f]{6})$/i.exec(acc); if (m) { var n = parseInt(m[1], 16); ink = [n >> 16 & 255, n >> 8 & 255, n & 255]; }
-    var bm = /^#([0-9a-f]{6})$/i.exec((cs.getPropertyValue("--bg") || "").trim()); if (bm) { var bn = parseInt(bm[1], 16); ground = [bn >> 16 & 255, bn >> 8 & 255, bn & 255]; }
-    lite = !dark.matches && document.documentElement.getAttribute("data-theme") !== "dark"; if (document.documentElement.getAttribute("data-theme") === "light") lite = true; }
-  // The land as an even field of dots (a Fibonacci sphere): the sea is left to the graticule.
-  function sample(n) {
-    pts = []; sampled = n; var gold = Math.PI * (3 - Math.sqrt(5));
-    for (var i = 0; i < n; i++) { var y = 1 - 2 * (i + 0.5) / n, r = Math.sqrt(1 - y * y), th = i * gold, x = Math.cos(th) * r, z = Math.sin(th) * r;
-      if (land(Math.atan2(z, x) / D2R, Math.asin(y) / D2R)) pts.push([x, y, z, (i * 9301 + 49297) % 233280 / 233280]); }
-  }
-  // The words' boxes (for the labels), and the globe: the largest whole circle (with its glow) round a point a little
-  // right of the middle, behind the words.
-  function place() {
-    var cr = c.getBoundingClientRect(), side = c.parentElement, mg = W >= 700 ? 10 : 4; txt = [];
-    if (side) side.querySelectorAll(".side-mk, .side h2, .side > p, .side li").forEach(function (e) { var r = e.getBoundingClientRect(); if (r.width && r.height) txt.push([r.left - cr.left - mg, r.top - cr.top - mg, r.right - cr.left + mg, r.bottom - cr.top + mg]); });
-    var gap = W >= 700 ? 8 : 3, k = 1.12;
-    cx = W * (W >= 700 ? 0.56 : 0.74); cy = H * (W >= 700 ? 0.54 : 0.5);
-    R = Math.max(0, Math.min(W >= 700 ? 440 : 260, (Math.min(cx, W - cx, cy, H - cy) - gap) / k));
-  }
-  function size() { var r = c.getBoundingClientRect(); dpr = Math.min(1.5, window.devicePixelRatio || 1); W = Math.max(1, r.width); H = Math.max(1, r.height);
-    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); theme(); place();
-    var n = Math.max(3000, Math.min(26000, Math.round(4 * Math.PI * R * R / 5.5))); if (Math.abs(n - sampled) > sampled * 0.15) sample(n);
-    col = "rgba(" + ink[0] + "," + ink[1] + "," + ink[2] + ",";
-    at = g.createRadialGradient(cx, cy, R * 0.96, cx, cy, R * 1.12); at.addColorStop(0, col + (lite ? ".18)" : ".3)")); at.addColorStop(1, col + "0)");
-    body = g.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R); body.addColorStop(0, lite ? "rgba(255,255,255,.8)" : "rgba(34,30,80,.92)"); body.addColorStop(1, lite ? "rgba(234,230,252,.94)" : "rgba(9,9,26,.97)");
-    // The graticule's lines: clear at the centre, faint at the rim (one gradient, one stroke).
-    grid = g.createRadialGradient(cx, cy, 0, cx, cy, R); grid.addColorStop(0, col + (lite ? ".3)" : ".28)")); grid.addColorStop(0.75, col + (lite ? ".18)" : ".16)")); grid.addColorStop(1, col + ".04)");
-    // The scrim: an ellipse of the panel's ground round the words (drawn after the sphere, before the pings).
-    scrim = null; if (txt.length) { var U = [1e9, 1e9, -1e9, -1e9]; txt.forEach(function (T) { U[0] = Math.min(U[0], T[0]); U[1] = Math.min(U[1], T[1]); U[2] = Math.max(U[2], T[2]); U[3] = Math.max(U[3], T[3]); });
-      var rw = (U[2] - U[0]) / 2 + (W >= 700 ? 70 : 24), rh = (U[3] - U[1]) / 2 + (W >= 700 ? 50 : 18), gc = "rgba(" + ground.join(",") + ",";
-      sx = (U[0] + U[2]) / 2; sy = (U[1] + U[3]) / 2; sk = rh / rw; srw = rw; scrim = g.createRadialGradient(0, 0, 0, 0, 0, rw);
-      scrim.addColorStop(0, gc + ".8)"); scrim.addColorStop(0.62, gc + ".55)"); scrim.addColorStop(1, gc + "0)"); }
-    rim = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); rim.addColorStop(0, col + (lite ? ".55)" : ".8)")); rim.addColorStop(0.55, col + ".04)"); rim.addColorStop(1, col + ".18)");
-  }
-  function frame(now) {
-    raf = 0;
-    // A device too slow for it (frames slower than 14 a second on average, after the first two seconds of the page) gets
-    // the globe still; one long gap (the page loading, a tab coming back) is not a slow device.
-    if (lastF && now - lastF < 400 && now > 2000) { var dtF = now - lastF; emaF = emaF ? emaF * 0.92 + dtF * 0.08 : dtF; if (++nF > 45 && emaF > 70) still = true; } lastF = now;
-    if (!t0) t0 = now; var el = still ? 0 : now - t0;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-    if (R < 16) return;
-    var wide = R >= 90, rot = ROT + SWAY * Math.sin(el * 2 * Math.PI / PERIOD), cr = Math.cos(rot), sr = Math.sin(rot);
-    // The atmosphere, then the sphere's body (it covers the wave behind it), the graticule, the land, then a lit rim.
-    g.globalAlpha = DIM; g.fillStyle = at; g.beginPath(); g.arc(cx, cy, R * 1.12, 0, Math.PI * 2); g.fill();
-    g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = grid; g.lineWidth = wide ? 0.8 : 0.6; g.beginPath();
-    for (var L = 0; L < GRID.length; L++) { var line = GRID[L], pen = false;
-      for (var m = 0; m < line.length; m += 3) { var gx = line[m] * cr + line[m + 2] * sr, gz0 = -line[m] * sr + line[m + 2] * cr, gy = line[m + 1] * ct - gz0 * st, gz = line[m + 1] * st + gz0 * ct;
-        if (gz <= 0) { pen = false; continue; } if (pen) g.lineTo(cx - gx * R, cy - gy * R); else { g.moveTo(cx - gx * R, cy - gy * R); pen = true; } } }
-    g.stroke();
-    // The land: each dot's strength from the light (from the upper left), smaller and fainter toward the rim; in 2 x 16
-    // buckets of colour and alpha, one path and one fill per bucket; the land stronger than the sphere behind it.
-    for (var q = 0; q < 32; q++) bk[q].length = 0;
-    for (var i = 0; i < pts.length; i++) {
-      var p = pts[i], x = p[0] * cr + p[2] * sr, z0 = -p[0] * sr + p[2] * cr, y = p[1] * ct - z0 * st, z = p[1] * st + z0 * ct;
-      if (z <= 0.01) continue;
-      var lit = Math.max(0, 0.35 * x + 0.4 * y + 0.85 * z), a = ((lite ? 0.42 : 0.4) + 0.55 * lit) * (0.82 + 0.18 * p[3]) * Math.min(1, z * 3.2);
-      var s = (wide ? 0.85 : 0.7) * (0.55 + 0.45 * z);
-      bk[(!lite && lit > 0.78 ? 16 : 0) + (a >= 1 ? 15 : (a * 16) | 0)].push(cx - x * R - s, cy - y * R - s, s * 2);
-    }
-    g.globalAlpha = lite ? 0.78 : 0.92;
-    for (q = 0; q < 32; q++) { var B = bk[q]; if (!B.length) continue; g.fillStyle = (q >= 16 ? "rgba(236,232,255," : col) + (((q & 15) + 0.5) / 16).toFixed(3) + ")"; g.beginPath();
-      for (var j = 0; j < B.length; j += 3) g.rect(B[j], B[j + 1], B[j + 2], B[j + 2]); g.fill(); }
-    g.globalAlpha = DIM; g.strokeStyle = rim; g.lineWidth = wide ? 1.5 : 1.1; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
-    if (scrim) { g.save(); g.translate(sx, sy); g.scale(1, sk); g.fillStyle = scrim; g.fillRect(-srw, -srw, srw * 2, srw * 2); g.restore(); }
-    // The pings, pinned to the turning globe: the company's green dot pulses (still under reduced motion), the other is a
-    // quiet dot; each with a small label on a plate (none on a very small globe).
-    var pulse = still ? 0.45 : (el % 2200) / 2200;
-    g.font = "600 " + (R >= 140 ? 12 : 11) + "px Inter, system-ui, sans-serif"; g.textBaseline = "middle"; var placed = [];
-    for (var k = 0; k < PLACES.length; k++) {
-      var P = PLACES[k], la = P[1] * D2R, lo = P[0] * D2R, px = Math.cos(lo) * Math.cos(la), py = Math.sin(la), pz = Math.sin(lo) * Math.cos(la);
-      var X = px * cr + pz * sr, Z0 = -px * sr + pz * cr, Y = py * ct - Z0 * st, Zf = py * st + Z0 * ct;
-      if (Zf <= 0.08) continue;
-      var vx = cx - X * R, vy = cy - Y * R, fade = Math.min(1, (Zf - 0.08) / 0.25), rgb = P[3] ? (lite ? "22,163,74" : "74,222,128") : (lite ? "109,84,232" : "196,181,253");
-      if (P[3]) { g.globalAlpha = fade * (1 - pulse) * 0.9; g.strokeStyle = "rgb(" + rgb + ")"; g.lineWidth = 1.5; g.beginPath(); g.arc(vx, vy, 4 + pulse * Math.min(14, R * 0.2), 0, Math.PI * 2); g.stroke();
-        g.globalAlpha = fade; g.fillStyle = "rgba(" + rgb + ",.22)"; g.beginPath(); g.arc(vx, vy, 7.5, 0, Math.PI * 2); g.fill(); }
-      g.globalAlpha = fade; g.fillStyle = lite ? "#fff" : "rgba(12,10,32,.9)"; g.beginPath(); g.arc(vx, vy, P[3] ? 5 : 4, 0, Math.PI * 2); g.fill();
-      g.fillStyle = "rgb(" + rgb + ")"; g.beginPath(); g.arc(vx, vy, P[3] ? 3.5 : 2.5, 0, Math.PI * 2); g.fill();
-      if (R >= 70) {
-        // Beside the dot (away from the rim), else on its other side, below or above it: never on another label, never
-        // under the words (a label with no clear place is not drawn; its dot still is).
-        var w = g.measureText(P[2]).width + 14, left = vx > cx + R * 0.2, tries = [[left ? vx - 12 - w : vx + 12, vy], [left ? vx + 12 : vx - 12 - w, vy], [vx - w / 2, vy + 20], [vx - w / 2, vy - 20]], lx = 0, ly = 0, ok = false;
-        // Under the words: just right of them on the dot's line, else lower down, with a thin line back to the dot.
-        var tr = 0; for (var v1 = 0; v1 < txt.length; v1++) if (vy + 10 > txt[v1][1] && vy - 10 < txt[v1][3]) tr = Math.max(tr, txt[v1][2]);
-        if (tr) tries.push([tr + 6, vy]); for (var d = 2; d <= 10; d++) tries.push([vx - w / 2, vy + 22 * d]);
-        for (var u = 0; u < tries.length && !ok; u++) { lx = Math.max(4, Math.min(W - w - 4, tries[u][0])); ly = Math.max(14, Math.min(H - 14, tries[u][1])); var hit = false;
-          for (var v = 0; v < placed.length; v++) { var o = placed[v]; if (lx < o[0] + o[2] + 4 && lx + w + 4 > o[0] && Math.abs(ly - o[1]) < 24) hit = true; }
-          for (var v2 = 0; v2 < txt.length && !hit; v2++) { var T = txt[v2]; if (lx < T[2] && lx + w > T[0] && ly - 10 < T[3] && ly + 10 > T[1]) hit = true; }
-          ok = !hit; }
-        if (!ok) { g.globalAlpha = 1; continue; }
-        placed.push([lx, ly, w]);
-        if (Math.abs(ly - vy) > 24 || lx > vx + 20 || lx + w < vx - 20) { var ax = Math.max(lx, Math.min(lx + w, vx)), ay = ly > vy + 10 ? ly - 10 : ly < vy - 10 ? ly + 10 : ly; if (ax === vx || ay !== ly) { ay = ly > vy ? ly - 10 : ly + 10; } else { ax = lx > vx ? lx : lx + w; }
-          // The line starts clear of the words it would cross (the dot may sit under them; the line never runs over them).
-          var bx = vx, by = vy; for (var v3 = 0; v3 < txt.length; v3++) { var T3 = txt[v3]; if (vx > T3[0] && vx < T3[2] && vy > T3[1] && vy < T3[3]) { if (ay === ly && lx > vx) bx = T3[2]; else if (lx + w < vx) bx = T3[0]; else by = ly > vy ? T3[3] : T3[1]; } }
-          g.strokeStyle = "rgba(" + rgb + ",.55)"; g.lineWidth = 1; g.beginPath(); g.moveTo(bx, by); g.lineTo(ax, ay); g.stroke(); }
-        w -= 14;
-        g.fillStyle = lite ? "rgba(255,255,255,.88)" : "rgba(12,10,32,.74)"; g.beginPath();
-        if (g.roundRect) g.roundRect(lx, ly - 10, w + 14, 20, 10); else g.rect(lx, ly - 10, w + 14, 20); g.fill();
-        g.fillStyle = lite ? "#2a2250" : "rgba(240,236,255,.95)"; g.fillText(P[2], lx + 7, ly + 0.5);
-      }
-      g.globalAlpha = 1;
-    }
-    if (!still) go();
-  }
-  function go() { if (!raf && seen && !document.hidden && c.getClientRects().length) raf = requestAnimationFrame(frame); }
-  size();
-  if (still) { frame(performance.now()); if ("ResizeObserver" in window) new ResizeObserver(function () { size(); frame(performance.now()); }).observe(c); return; }
-  go();
-  // The fonts change the words' size: place the globe again once they are in.
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { size(); go(); });
-  if ("ResizeObserver" in window) new ResizeObserver(function () { size(); if (still) frame(performance.now()); else go(); }).observe(c); else addEventListener("resize", function () { size(); go(); });
-  if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { seen = es[0].isIntersecting; lastF = 0; if (seen) go(); }).observe(c);
-  document.addEventListener("visibilitychange", function () { lastF = 0; go(); });
-  dark.addEventListener && dark.addEventListener("change", function () { size(); go(); });
-})();`;
-
 /** The sign-in's script: the globe and the wave at the bottom of the left panel. */
-export const SIGNIN_JS = `${GLOBE_JS}
+export const SIGNIN_JS = `${globeScript({ selector: "canvas.si-globe", avoid: ".side-mk, .side h2, .side > p, .side li", maxR: 230, places: PLACES, arcLabel: "AMS → SFO" })}
 ${waveScript({ selector: "canvas.si-wave", placement: "hero", density: 0.7, intensity: 1.15 })}`;

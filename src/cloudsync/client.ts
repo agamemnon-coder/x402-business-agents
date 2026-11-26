@@ -1,5 +1,5 @@
 // The runner's side of Purser Cloud (cloud/): it pushes what this ledger records (suppliers, payables invoices with
-// their documents, payments, the transactions register, ledger entries, the audit log) and pulls the e-mail the cloud received for this company,
+// their documents, payments, the transactions register, ledger entries, the audit log, the authority map) and pulls the e-mail the cloud received for this company,
 // filing it through the inbox. Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money
 // and a simulated bank. Passkeys are never pushed: people
 // enrol their passkey in the cloud itself, with an enrolment an owner starts (docs/cloud.md).
@@ -16,6 +16,7 @@ import { transactionRegister } from "../money/register.js";
 import { health } from "../ops/health.js";
 import { platformOn } from "../airwallex/platform.js";
 import { storeBinding } from "../airwallex/binding.js";
+import type { AuthorityMap } from "../policy/authorityMap.js";
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -44,8 +45,14 @@ async function ok(res: Response, what: string): Promise<unknown> {
 
 const has = (db: DB, table: string) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
 
+/**
+ * Who may pay what (src/policy/authorityMap.ts), built by the caller: the runner's push and the demo seed pass it, so
+ * the cloud's engine, which feeds its own tables through batchesFor, does not carry the map's code in the Worker.
+ */
+export type AuthorityOf = (db: DB, now: Date) => AuthorityMap;
+
 /** Everything the cloud does not hold yet, in batches small enough for one request each. */
-export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDocBytes?: number } = {}): Record<string, unknown>[] {
+export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDocBytes?: number; authority?: AuthorityOf } = {}): Record<string, unknown>[] {
   const now = (opts.now ?? new Date()).toISOString();
   const held = new Set(state.documents);
   const out: Record<string, unknown>[] = [];
@@ -78,11 +85,16 @@ export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDoc
   const transactions = transactionRegister(db).rows.map((r) => ({ id: r.id, at: r.at, rail: r.rail, direction: r.direction, currency: r.currency, moved: r.moved, reconciliation: r.reconciliation, body: r as unknown as Record<string, unknown> }));
   const audit = (db.prepare("SELECT seq, ts, actor, event, subject, payload_json, prev_hash, row_hash FROM audit_log WHERE seq > ? ORDER BY seq").all(state.audit.seq) as Record<string, unknown>[]);
 
+  // The authority map, as a snapshot the cloud shows on its Agents page. A ledger it cannot be read from (no policy
+  // tables) sends none, and the cloud keeps the last one it had.
+  let authority: AuthorityMap | null = null;
+  if (opts.authority && has(db, "external_agents") && has(db, "settings")) try { authority = opts.authority(db, opts.now ?? new Date()); } catch { authority = null; }
+
   // The chains in order, in slices the cloud accepts; everything else rides with the first slice.
   const slices = Math.max(1, Math.ceil(entries.length / 2000), Math.ceil(audit.length / 5000), Math.ceil(transactions.length / 2000));
   for (let i = 0; i < slices; i++) {
     out.push({
-      ...(i === 0 ? { vendors, invoices: inv, payments } : {}),
+      ...(i === 0 ? { vendors, invoices: inv, payments, ...(authority ? { authority_map: authority } : {}) } : {}),
       transactions: transactions.slice(i * 2000, (i + 1) * 2000),
       ledger_entries: entries.slice(i * 2000, (i + 1) * 2000),
       audit_rows: audit.slice(i * 5000, (i + 1) * 5000),
@@ -91,15 +103,15 @@ export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDoc
   return out;
 }
 
-/** Pushes everything new; returns what the cloud applied, batch by batch. */
-export async function pushToCloud(db: DB, t: CloudTarget, now = new Date()): Promise<unknown[]> {
+/** Pushes everything new (with the authority map, when the caller gives its builder); returns what the cloud applied, batch by batch. */
+export async function pushToCloud(db: DB, t: CloudTarget, now = new Date(), authority?: AuthorityOf): Promise<unknown[]> {
   // The ledger first brings in what Purser recorded since the last sync (the inbox invoices' accruals, payouts, card
   // charges): only posted entries travel, and the feed posts each source once, so this is safe to repeat (backend demo
   // of 9 November: a push right after ingest carried no accrual).
   if (has(db, "ledger_entries")) syncLedger(db, now);
   const state = (await ok(await call(t, "GET", "/v1/sync/state"), "the state request")) as CloudState;
   const results: unknown[] = [];
-  for (const b of batchesFor(db, state, { now })) results.push(await ok(await call(t, "POST", "/v1/sync", b), "a push"));
+  for (const b of batchesFor(db, state, { now, authority })) results.push(await ok(await call(t, "POST", "/v1/sync", b), "a push"));
   // The runner's health with every push: alert codes and severities only, never their words (they can name a supplier
   // or a proposal). The cloud shows them to the owners and sends what was raised or cleared to the company's webhook.
   const h = health(db, now);

@@ -377,6 +377,27 @@ had failed in earlier nightly runs), and the field-by-field sweep of every commi
 to a signed field that still verifies. Nothing in the verifiers (`src/proof/bundle.ts`, `src/try/receipt.ts`) needed
 changing this time; the committed evidence (`docs/evidence/fuzzing.md`) was not rerun.
 
+### Approval notifications in Slack or Teams, Face ID kept (26 November)
+
+The runner can tell a Slack or Microsoft Teams channel that a payment or a policy change waits for the CFO
+(`src/integrations/approvalNotify.ts`, hooked where the runner syncs the waiting proposals to the relay). A chat
+message is outside Purser's trust boundary, so:
+
+- **It never approves.** One deep link to the passkey approval page (`/approve/<id>` on the relay), with no query or
+  fragment (no viewer key, no token); no button that acts, no reply word. A Teams card's only action is `OpenUrl`.
+- **The webhook URL is a credential.** Read from `PURSER_NOTIFY_SLACK_WEBHOOK` / `PURSER_NOTIFY_TEAMS_WEBHOOK` only,
+  off when unset; never logged, never in the audit trail (`notify.sent` / `notify.failed` rows hold the channel, the
+  HTTP status and the attempts), never in an error. Hosts allowed: `hooks.slack.com` (https, port 443); Teams'
+  `*.webhook.office.com` or a Power Automate workflow's host (`*.logic.azure.com`, `*.environment.api.powerplatform.com`).
+  Any other URL is refused at start and that channel stays off.
+- **No injection from a payee's name.** Words from outside Purser lose links, markup and mention characters (`@` becomes
+  `＠`) and are cut to length; in Slack they sit in `plain_text` blocks, which Slack does not parse. A payee named
+  `<!channel> *x* <https://evil|click>` arrives as `channel x (link removed) click`. An account shows its last four
+  characters only; other kinds (a new supplier, changed bank details) show their title only.
+- **A failure blocks nothing.** Posted after the sync, never awaited by it; retried at most once; logged as
+  `notify.failed`, and the proposal waits for the passkey as before. Tested with a fake fetch only
+  (`test/approval-notify.test.ts`); not yet posted to a live channel.
+
 ## Security headers and rate limits (checked 2 November)
 
 Read from the code that serves each answer and asserted in `test/security-headers.test.ts`.
@@ -428,6 +449,11 @@ Rate limits, where the docs say them (each asserted in the same test or the test
 - **Each agent's tools** (25 November): every agent principal lists exactly the tools it may call and the money actions
   it may take; anything else is refused in code before it runs and audited (`principal.tool_refused`). The table, held
   to the code by `test/agent-permissions.test.ts`: [security/agent-permissions.md](security/agent-permissions.md).
+- **Know your agent** (26 November): each agent principal has its own Ed25519 signing key (the ledger keeps the public
+  half). A request to the agent API carries a signature over its tool, its body, its time and a nonce, so it can be
+  attributed to one agent key, and a replay is refused (`principal.identity_refused`, with a reason code). The money
+  action records the key id. Required on the runner's agent API (`npm run mcp`) by default; `PURSER_AGENT_IDENTITY` can relax it:
+  [security/agent-identity.md](security/agent-identity.md).
 - **No agent has or can use an owner key** (checked 1 November, `test/no-owner-key.test.ts`), also in autonomous mode:
   the business owner's key file is named only by the owner signer, the pause on chain (both run by the executor after
   the CFO's Face ID), the one-off bootstrap and two CLIs a person runs; no agent, autonomy, Claude or /try module names

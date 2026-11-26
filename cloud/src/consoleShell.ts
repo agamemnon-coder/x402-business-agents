@@ -19,48 +19,43 @@ import { REPO_BLOB, ROSTER } from "./agentRoster.js";
 /** The frame's words, English and Dutch. */
 export const SHELL_WORDS = {
   en: {
-    g_money: "Payments", g_agents: "Agents", g_rails: "Integrations",
-    b_overview: "Overview", b_money: "Money", b_agents: "Agents", b_rails: "Connected", b_settings: "Settings",
-    sections: "Sections", in_group: "Pages in {group}",
-    demo_short: "Demo company · made-up data · test money", demo_leave: "Leave",
-    // The Overview
-    needs_h: "Needs you", needs_sub: "Approvals wait for the CFO's Face ID on the phone; nothing here pays.",
-    due: "due {day}", per_month: "{amt} a month", needs_more: "{n} more", needs_all: "All approvals",
-    flow_h: "How invoices flow to payment", flow_sub: "Where each of the {n} invoices is now, from the inbox to the books.",
-    fl_received: "Received", fl_review: "Checked, needs a person", fl_faceid: "Waits for Face ID", fl_paid: "Paid", fl_booked: "{n} booked",
-    fl_stopped: "Stopped before paying", fl_stopped_sub: "{blocked} blocked · {rejected} rejected · {dups} duplicates", fl_none: "No invoices yet: the flow fills as they arrive.",
-    act_h: "Agent activity", act_sub: "What each agent spent against its limit, and the newest decisions with who made them.",
-    act_spent: "{spent} of {cap} this month", act_more: "{n} agents in Purser", open: "Open",
-    to_tx: "Transactions", to_inv: "Invoices", to_books: "Books", to_agents: "Agents", to_awx: "Airwallex",
-    // The Agents page
-    team_h: "Every agent in Purser", team_sub: "Each agent the product has, the model its code sets and the limit it is held to. Figures come only from this company's records.",
-    st_code: "Not run here", st_switch: "Off by default", k_model: "Model", k_limit: "Limit", k_decisions: "Newest decisions", k_code: "Where it lives in code", k_switch: "Turned on in the runner with {sw}=on",
-    code_only: "Code only", no_dec: "No decision in this company's records.", no_dec_switch: "Runs in the company's runner when {sw}=on; this company's records hold no run.",
-    open_record: "Open its record", how: "How it works", see: "Watch a negotiation",
-    passes_h: "Cards and limits", passes_sub: "The agents with a card: what each spent against the CFO's limit. Tap a card to turn it over.",
-    stat_product: "agents in Purser", stat_here: "at work in this company", stat_dec: "decisions on record", stat_models: "Claude models: {names}",
-    t_sourcing: "Sourcing", t_payables: "Payables", t_treasury: "Treasury", t_customers: "Customers", t_books: "Books",
+    g_money: "Payments", g_agents: "Agents", g_rails: "Integrations", b_overview: "Overview", b_money: "Money",
+    b_agents: "Agents", b_rails: "Connected", b_settings: "Settings", sections: "Sections", in_group: "Pages in {group}",
+    demo_short: "Demo company · made-up data · test money", demo_leave: "Leave", due: "due {day}",
+    per_month: "{amt} a month", flow_h: "How invoices flow to payment",
+    flow_sub: "Where each of the {n} invoices is now, from the inbox to the books.", fl_received: "Received",
+    fl_review: "Checked, needs a person", fl_faceid: "Waits for Face ID", fl_paid: "Paid", fl_booked: "{n} booked",
+    fl_stopped: "Stopped before paying", fl_stopped_sub: "{blocked} blocked · {rejected} rejected · {dups} duplicates",
+    fl_none: "No invoices yet: the flow fills as they arrive.", act_spent: "{spent} of {cap} this month",
+    act_more: "{n} agents in Purser", open: "Open", to_tx: "Transactions", to_inv: "Invoices", to_agents: "Agents",
+    st_code: "Not run here", st_switch: "Off by default", code_only: "Code only", how: "How it works",
+    see: "Watch a negotiation", k_search: "Search", k_ph: "Jump to a page", k_none: "No page matches",
+    sb_min: "Collapse the sidebar", sb_max: "Expand the sidebar", as_of: "{name} · figures as of {day}",
+    k_cash: "Cash position", k_wait: "Waiting for the CFO", k_paid: "Paid this month",
+    k_paid_sub: "{n} invoices · {prev} in {month}", k_spend: "Agent spend vs limits",
+    k_spend_sub: "of {cap} monthly limits · {n} cards", k_spend_none: "No agent card in the records",
+    ag_h: "Agent status", ag_sub: "Each card's spend against its monthly limit, and the agent's newest decision.",
+    rails_h: "Connected rails", live: "Live",
   },
   nl: {
-    g_money: "Betalingen", g_agents: "Agents", g_rails: "Integraties",
-    b_overview: "Overzicht", b_money: "Geld", b_agents: "Agents", b_rails: "Gekoppeld", b_settings: "Instellingen",
-    sections: "Onderdelen", in_group: "Pagina's in {group}",
-    demo_short: "Demobedrijf · verzonnen gegevens · testgeld", demo_leave: "Verlaten",
-    needs_h: "Wacht op jou", needs_sub: "Goedkeuringen wachten op de Face ID van de CFO op de telefoon; hier wordt niets betaald.",
-    due: "vervalt {day}", per_month: "{amt} per maand", needs_more: "nog {n}", needs_all: "Alle goedkeuringen",
-    flow_h: "Van factuur naar betaling", flow_sub: "Waar elk van de {n} facturen nu staat, van de inbox tot de boeken.",
-    fl_received: "Ontvangen", fl_review: "Gecontroleerd, wacht op iemand", fl_faceid: "Wacht op Face ID", fl_paid: "Betaald", fl_booked: "{n} geboekt",
-    fl_stopped: "Gestopt voor betaling", fl_stopped_sub: "{blocked} geblokkeerd · {rejected} afgewezen · {dups} dubbel", fl_none: "Nog geen facturen: de stroom vult zich zodra ze binnenkomen.",
-    act_h: "Wat de agents doen", act_sub: "Wat elke agent uitgaf tegen zijn limiet, en de nieuwste beslissingen met wie ze nam.",
-    act_spent: "{spent} van {cap} deze maand", act_more: "{n} agents in Purser", open: "Openen",
-    to_tx: "Transacties", to_inv: "Facturen", to_books: "Boeken", to_agents: "Agents", to_awx: "Airwallex",
-    team_h: "Elke agent in Purser", team_sub: "Elke agent die het product heeft, het model dat de code instelt en de limiet waaraan hij gehouden wordt. Bedragen komen alleen uit de gegevens van dit bedrijf.",
-    st_code: "Hier niet gedraaid", st_switch: "Standaard uit", k_model: "Model", k_limit: "Limiet", k_decisions: "Nieuwste beslissingen", k_code: "Waar hij in de code staat", k_switch: "Aan in de runner met {sw}=on",
-    code_only: "Alleen code", no_dec: "Geen beslissing in de gegevens van dit bedrijf.", no_dec_switch: "Draait in de runner van het bedrijf met {sw}=on; de gegevens van dit bedrijf bevatten geen run.",
-    open_record: "Open zijn dossier", how: "Hoe hij werkt", see: "Bekijk een onderhandeling",
-    passes_h: "Kaarten en limieten", passes_sub: "De agents met een kaart: wat elk uitgaf tegen de limiet van de CFO. Tik op een kaart om hem om te draaien.",
-    stat_product: "agents in Purser", stat_here: "aan het werk in dit bedrijf", stat_dec: "beslissingen vastgelegd", stat_models: "Claude-modellen: {names}",
-    t_sourcing: "Inkoop", t_payables: "Crediteuren", t_treasury: "Treasury", t_customers: "Klanten", t_books: "Boeken",
+    g_money: "Betalingen", g_agents: "Agents", g_rails: "Integraties", b_overview: "Overzicht", b_money: "Geld",
+    b_agents: "Agents", b_rails: "Gekoppeld", b_settings: "Instellingen", sections: "Onderdelen",
+    in_group: "Pagina's in {group}", demo_short: "Demobedrijf · verzonnen gegevens · testgeld", demo_leave: "Verlaten",
+    due: "vervalt {day}", per_month: "{amt} per maand", flow_h: "Van factuur naar betaling",
+    flow_sub: "Waar elk van de {n} facturen nu staat, van de inbox tot de boeken.", fl_received: "Ontvangen",
+    fl_review: "Gecontroleerd, wacht op iemand", fl_faceid: "Wacht op Face ID", fl_paid: "Betaald",
+    fl_booked: "{n} geboekt", fl_stopped: "Gestopt voor betaling",
+    fl_stopped_sub: "{blocked} geblokkeerd · {rejected} afgewezen · {dups} dubbel",
+    fl_none: "Nog geen facturen: de stroom vult zich zodra ze binnenkomen.", act_spent: "{spent} van {cap} deze maand",
+    act_more: "{n} agents in Purser", open: "Openen", to_tx: "Transacties", to_inv: "Facturen", to_agents: "Agents",
+    st_code: "Hier niet gedraaid", st_switch: "Standaard uit", code_only: "Alleen code", how: "Hoe hij werkt",
+    see: "Bekijk een onderhandeling", k_search: "Zoeken", k_ph: "Ga naar een pagina", k_none: "Geen pagina gevonden",
+    sb_min: "Zijbalk inklappen", sb_max: "Zijbalk uitklappen", as_of: "{name} · cijfers per {day}", k_cash: "Kaspositie",
+    k_wait: "Wacht op de CFO", k_paid: "Betaald deze maand", k_paid_sub: "{n} facturen · {prev} in {month}",
+    k_spend: "Uitgaven agents vs limieten", k_spend_sub: "van {cap} maandlimiet · {n} kaarten",
+    k_spend_none: "Geen agentkaart in de gegevens", ag_h: "Status van de agents",
+    ag_sub: "Wat elke kaart uitgaf tegen zijn maandlimiet, en de nieuwste beslissing van de agent.",
+    rails_h: "Gekoppelde rails", live: "Live",
   },
 } as const;
 
@@ -106,8 +101,32 @@ function navSync(){
     if(pages.length>1){const want=pages.join(',')+'|'+tab;if(sn.dataset.k!==want){sn.dataset.k=want;sn.setAttribute('aria-label',sw('in_group',{group:sw('b_'+g[0])}));
       sn.replaceChildren(...pages.map((k)=>{const src=document.querySelector('#tabs a[data-tab='+k+']');const a=el('a','',[ic(TAB_IC[k]),el('span','',src?src.textContent:k)]);a.href='#/'+k;if(k===tab)a.setAttribute('aria-current','page');return a}))}
       sn.hidden=false}else{sn.hidden=true;sn.dataset.k=''}}
+  // The top bar: the group, the page and, on a record's own page, its id.
+  const cr=$('#crumbs');if(cr){const src=/^[a-z]+$/.test(tab)?document.querySelector('#tabs a[data-tab='+tab+']'):null,sub=decodeURIComponent((location.hash.split('/')[2]||'').split('?')[0]);
+    const name=src?src.textContent:(document.title.split(' · ')[1]||''),parts=g&&g[1].length>1&&sw('g_'+g[0])!==name?[el('span','',sw('g_'+g[0]))]:[];
+    if(sub&&src){const a=el('a','',name);a.href='#/'+tab;parts.push(a,el('b','',sub))}else parts.push(el('b','',name));
+    cr.replaceChildren(...parts.flatMap((p,i)=>i?[el('span','cs','/'),p]:[p]))}
   placeAsk();
 }
+// Search (⌘K or Ctrl+K): jump to any page the menu has, by its name or its group's; arrows and Enter, Escape closes.
+function palette(){
+  let d=$('#kdlg');
+  if(!d){const inp=el('input','field');inp.autocomplete='off';inp.placeholder=sw('k_ph');inp.setAttribute('aria-label',sw('k_search'));const ul=el('ul','kr');
+    d=el('dialog','kdlg',[el('div','kq',[ic('search'),inp]),ul]);d.id='kdlg';d.setAttribute('aria-label',sw('k_search'));document.body.append(d);
+    d._draw=()=>{const q=inp.value.trim().toLowerCase();const its=[...document.querySelectorAll('#tabs a[data-tab]:not([hidden])')].map((a)=>[a,groupOf(a.dataset.tab)]).filter(([a,g])=>!q||(a.textContent+' '+(g&&g[1].length>1?sw('g_'+g[0]):'')).toLowerCase().includes(q));
+      ul.replaceChildren(...(its.length?its.map(([a,g],i)=>{const x=el('a',i?'':'on',[ic(TAB_IC[a.dataset.tab]||'circle-dot'),el('span','',a.textContent),g&&g[1].length>1?el('small','',sw('g_'+g[0])):null]);x.href=a.getAttribute('href');x.onclick=()=>d.close();return el('li','',x)}):[el('li','kn',sw('k_none'))]))};
+    inp.oninput=d._draw;
+    inp.onkeydown=(e)=>{const as=[...ul.querySelectorAll('a')];let i=as.findIndex((a)=>a.classList.contains('on'));
+      if((e.key==='ArrowDown'||e.key==='ArrowUp')&&as.length){e.preventDefault();if(as[i])as[i].classList.remove('on');i=(i+(e.key==='ArrowDown'?1:-1)+as.length)%as.length;as[i].classList.add('on');as[i].scrollIntoView({block:'nearest'})}
+      else if(e.key==='Enter'&&as[i]){e.preventDefault();d.close();location.hash=as[i].getAttribute('href')}};
+    d.onclick=(e)=>{if(e.target===d)d.close()}}
+  const inp=d.querySelector('input');inp.value='';d._draw();d.showModal();inp.focus()}
+addEventListener('keydown',(e)=>{if((e.metaKey||e.ctrlKey)&&!e.altKey&&e.key.toLowerCase()==='k'&&document.body.classList.contains('signed-in')){e.preventDefault();const d=$('#kdlg');if(d&&d.open)d.close();else palette()}});
+{const k=$('#kbtn');if(k){k.querySelector('.kt').textContent=sw('k_search');k.onclick=()=>palette();if(!/Mac|iP/.test(navigator.platform||''))k.querySelector('kbd').textContent='Ctrl K'}}
+// The sidebar collapses to its icons (each named in its title); the choice is kept in this browser.
+function sbSet(min){document.documentElement.classList.toggle('sbmin',min);const b=$('#sbx');if(b){b.setAttribute('aria-pressed',String(min));b.setAttribute('aria-label',sw(min?'sb_max':'sb_min'));b.title=sw(min?'sb_max':'sb_min')}try{localStorage.setItem('purser.cloud.sb',min?'1':'')}catch(e){}}
+{const b=$('#sbx');if(b)b.onclick=()=>sbSet(!document.documentElement.classList.contains('sbmin'));let v=false;try{v=localStorage.getItem('purser.cloud.sb')==='1'}catch(e){}sbSet(v);
+  for(const a of document.querySelectorAll('#tabs a[data-tab]'))a.title=a.textContent}
 // Ask Purser: floating on a laptop; in the top bar on a phone, where it covers nothing.
 const PHONE=matchMedia('(max-width: 1023px)');
 function placeAsk(){const f=$('#pask-fab'),slot=$('#ask-slot');if(!f||!slot)return;
@@ -121,14 +140,6 @@ const riseIn=(root)=>requestAnimationFrame(()=>{for(const n of (root||view()).qu
 // A card's link to the page its figures come from, in its header.
 function cardLink(card,href,label){const a=el('a','dlink',[label,ic('chevron-right')]);a.href=href;const h=card.querySelector('.dh');if(h){h.classList.add('withlink');h.append(a)}return card}
 
-// --- The Overview: what needs you, the payments flow, the agents at work ------------------------------------------------
-// What needs you: the approvals that wait for the CFO's Face ID, each a link to its invoice, and the way to review them.
-function needsYou(wait){
-  if(!wait.length)return null;
-  const rows=wait.slice(0,4).map((i)=>{const a=el('a','ny-row',[el('span','ny-b',[el('b','',i.vendor||''),el('span','sub num',[i.invoice_no||i.id,i.due_date?' · '+sw('due',{day:dday(i.due_date)}):''])]),el('b','num ny-amt',ma(i.currency,i.total)),ic('chevron-right')]);a.href='#/invoices/'+encodeURIComponent(i.id);return a});
-  const go=el('a','btn primary ny-go',[t('cs.ov.review'),ic('chevron-right')]);go.href='#/invoices?f=waiting_cfo';
-  const all=wait.length>4?(()=>{const x=el('a','ny-all',[sw('needs_more',{n:wait.length-4}),ic('chevron-right')]);x.href='#/invoices?f=waiting_cfo';return x})():null;
-  return el('section','card nyou rise',[el('div','ny-h',[el('span','ny-ic',ic('scan-face')),el('div','ny-t',[el('span','ny-eb',[sw('needs_h'),el('span','ny-n num',String(wait.length))]),el('h2','',t(wait.length===1?'cs.next.faceid_1':'cs.next.faceid_n',{n:wait.length})),el('p','',sw('needs_sub'))]),go]),el('div','ny-list',rows),all])}
 function payFlow(items,booked,dups,cur0){
   const n=items.length;if(!n)return el('section','card dcard rise pflow-c',[el('div','dh',[el('h2','',sw('flow_h'))]),chartEmpty(sw('fl_none'))]);
   const sum=(xs)=>{const per={};for(const i of xs)per[i.currency]=(per[i.currency]||0)+toCents(i.total);const e=Object.entries(per).sort((a,b)=>(a[0]===cur0?-1:b[0]===cur0?1:b[1]-a[1]));return e.length?e.map(([c,v])=>cur(c)+' '+cents(v)).join(' · '):'—'};
@@ -157,37 +168,6 @@ function agentStrip(agents){
 const ROSTER=` + json(ROSTER) + String.raw`;
 const REPO_BLOB=` + json(REPO_BLOB) + String.raw`;
 const TEAM_IC={sourcing:'link-2',payables:'receipt',treasury:'landmark',customers:'users',books:'file-check'};
-function rosterCard(r,rec){
-  const on=!!rec;const st=on?el('span','rs-st '+String(rec.status).replace(/[^a-z]/g,''),[el('i',''),tk('cs.agents.status.'+rec.status,rec.status)]):el('span','rs-st off',[el('i',''),r.switch?sw('st_switch'):sw('st_code')]);
-  const c=on&&rec.card;const C=c?cur(c.currency)+' ':'';
-  const lim=c&&(c.per_purchase||c.per_month)?[c.per_purchase?t('cs.wl.per',{amt:C+cents(toCents(c.per_purchase))}):null,c.per_month?sw('per_month',{amt:C+cents(toCents(c.per_month))}):null].filter(Boolean).join(' · '):r.limit;
-  const spent=c&&c.per_month&&c.spent_month!==null&&c.spent_month!==undefined?toCents(c.spent_month):null,cap=c&&c.per_month?toCents(c.per_month):0;
-  let meter=null;if(spent!==null){meter=el('span','as-bar'+(spent>=cap?' full':''));const f=el('span','');f.style.width=(cap>0?Math.min(100,spent/cap*100):0).toFixed(1)+'%';meter.append(f)}
-  const decs=on?(rec.decisions||[]).slice(0,2):[];
-  const dec=decs.length?el('ul','rs-dec',decs.map((d)=>{const o=OUTCOME[d.outcome]||OUTCOME.note;return el('li','',[el('span','obadge '+o[1],[ic(o[0]),t('cs.agents.out.'+(OUTCOME[d.outcome]?d.outcome:'note'))]),el('span','rs-dt',d.text.replace(/\s*\(code's fallback, no model\)$/,'')),el('time','num',dday(d.at))])})):
-    el('p','rs-none',r.switch&&!on?sw('no_dec_switch',{sw:r.switch}):sw('no_dec'));
-  const how=el('details','rs-how',[el('summary','',[sw('how'),ic('chevron-down')]),el('div','rs-hb',[el('p','',r.model_note),r.switch?el('p','sub',sw('k_switch',{sw:r.switch})):null,
-    el('h4','',sw('k_code')),el('ul','rs-code',r.code.map((p)=>el('li','',[(()=>{const a=el('a','mono',p);a.href=REPO_BLOB+p;a.target='_blank';a.rel='noopener';return a})()])))])]);
-  const acts=[];
-  if(on){const a=el('a','btn sm',[sw('open_record'),ic('arrow-right')]);a.href='#/agents?a='+encodeURIComponent(r.id);acts.push(a)}
-  if(r.see){const a=el('a','btn sm ghost2',[ic('play'),r.see.label==='Watch a negotiation'?sw('see'):r.see.label]);a.href=r.see.href;acts.push(a)}
-  const card=el('article','card rs rise t-'+r.team+(on?' on':''),[
-    el('div','rs-h',[el('span','rs-av',ic(on?'bot':TEAM_IC[r.team]||'bot')),el('div','rs-who',[el('b','',r.name),el('span','rs-role',r.role)]),st]),
-    el('p','rs-job',r.job),
-    el('dl','rs-facts',[el('dt','',sw('k_model')),el('dd','',r.model?el('span','mono',r.model):el('span','sub',sw('code_only'))),el('dt','',sw('k_limit')),el('dd','',[el('span','',lim),meter])]),
-    el('div','rs-dw',[el('h4','',sw('k_decisions')),dec]),
-    el('div','rs-f',[acts.length?el('div','rs-acts',acts):null,how])]);
-  card.id='roster-'+r.id;return card}
-function rosterSection(recs,feedTotal){
-  const byId=new Map((recs||[]).map((a)=>[a.id,a]));
-  const here=ROSTER.filter((r)=>byId.has(r.id)).length;
-  // An agent the records name that the roster does not know is shown too, as its records have it.
-  const extra=(recs||[]).filter((a)=>!ROSTER.some((r)=>r.id===a.id)).map((a)=>({id:a.id,name:a.name,team:'payables',role:a.role||'',job:a.job||'',model:(a.models||[])[0]||null,model_note:'',limit:'',switch:null,code:[]}));
-  const all=[...ROSTER,...extra];
-  const stat=(n,label)=>el('div','rs-stat',[el('b','num',String(n)),el('span','',label)]);
-  return el('section','roster',[el('div','sec-h',[el('h2','',sw('team_h')),el('p','sub',sw('team_sub'))]),
-    el('div','rs-stats rise',[stat(all.length,sw('stat_product')),stat(here+extra.length,sw('stat_here')),feedTotal!==null?stat(feedTotal,sw('stat_dec')):null,(()=>{const ms=[...new Set(all.map((r)=>r.model).filter(Boolean))].sort();return stat(ms.length,sw('stat_models',{names:ms.map((x)=>x.replace(/^claude-([a-z]+)-.*$/,(_,n)=>n.charAt(0).toUpperCase()+n.slice(1))).join(', ')}))})()]),
-    el('div','rs-grid',all.map((r)=>rosterCard(r,byId.get(r.id))))])}
 // A link to an agent's record (#/agents?a=id) opens its details and scrolls to it, once drawn.
 function openAgentFromQuery(q){const id=q&&q.get&&q.get('a');if(!id)return;
   const sec=[...view().querySelectorAll('.wagent')].find((s)=>{const p=s.querySelector('.wdetail');return p&&p.id==='agent-'+id.replace(/[^a-z0-9]+/gi,'-')+'-details'})||$('#roster-'+CSS.escape(id));
@@ -201,44 +181,76 @@ export const SHELL_CSS = `
 .abrand, .btabs, #ask-slot { display: none; }
 #subnav[hidden] { display: none; }
 .apptabs .ng { display: none; }
-/* A laptop: the pages in a sidebar under the site's header, grouped; the company on top, the person and test money below. */
+/* 26 Nov (Max: "enterprise grade"): the console is a product, not one of the site's pages. Its own frame: a sidebar
+   from the top (the mark, the company switcher, the grouped pages with their counts, the person at the foot; it
+   collapses to its icons), and a top bar over the page (where you are, the demo's one quiet line, search). */
+.signed-in { --line: color-mix(in srgb, var(--border) 80%, transparent); --hover: color-mix(in srgb, var(--text) 5%, transparent); --top: 0px; }
+.ctop, .abn, .sbx, .crumbs, .kbtn, .signed-in #testchip { display: none; }
+.signed-in #view { font-size: 14px; }
 @media (min-width: 1024px) {
-  .signed-in .appbar { position: fixed; z-index: 25; top: var(--hdr); left: 0; bottom: 0; width: var(--side); border-right: 1px solid var(--border); border-bottom: 0; background: var(--surface); overflow-y: auto; backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .signed-in .appbar .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto 1fr auto; align-items: center; column-gap: 0; min-height: 100%; height: auto; max-width: none; margin: 0; padding: 14px 12px 12px; }
+  .signed-in { --hdr: 0px; --top: 53px; }
+  .sbmin .signed-in { --side: 64px; }
+  .signed-in header.top { display: none; }
+  .signed-in .appbar { position: fixed; z-index: 25; top: 0; left: 0; bottom: 0; width: var(--side); border: 0; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 45%, var(--bg)); overflow-y: auto; overflow-x: hidden; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .signed-in .appbar .wrap { display: grid; gap: 0; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto 1fr auto; align-items: center; min-height: 100%; height: auto; max-width: none; margin: 0; padding: 12px 10px; }
+  .signed-in .abrand { order: 0; display: inline-flex; align-items: center; gap: 9px; height: 32px; padding: 0 6px; text-decoration: none; color: var(--text); font-size: 14px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+  .abrand .mk { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; flex: none; }
+  .abrand .mk .i { width: 14px; height: 14px; }
+  .signed-in .abn { display: inline; } .abn span { color: var(--faint); font-weight: 600; }
+  .signed-in .sbx { order: 0; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 6px; background: none; color: var(--faint); cursor: pointer; }
+  .sbx:hover { color: var(--text); background: var(--hover); }
   .signed-in .appbar .who-am-i { display: contents; }
-  /* 21 Nov: the company block is the switcher: its name opens the Company page, the chevron the other companies. */
-  .signed-in .appbar .cosw { order: 1; grid-column: 1 / -1; display: flex; align-items: stretch; gap: 0; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); }
-  .signed-in .appbar .cosw:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
-  .signed-in .appbar .co-more { width: 32px; height: auto; border-radius: 0 9px 9px 0; border-left: 1px solid var(--border); }
+  .signed-in .appbar .cosw { order: 1; grid-column: 1 / -1; display: flex; align-items: stretch; margin-top: 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+  .signed-in .appbar .cosw:hover { border-color: color-mix(in srgb, var(--text) 18%, var(--line)); }
+  .signed-in .appbar .co-more { width: 28px; height: auto; border-radius: 0 7px 7px 0; border-left: 1px solid var(--line); }
   .signed-in .appbar .co-menu { left: 0; width: calc(var(--side) - 24px); }
-  .signed-in .appbar #co { flex: 1 1 auto; display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; row-gap: 1px; align-items: center; margin: 0; padding: 9px 10px; border-radius: 9px 0 0 9px; border: 0; background: transparent; max-width: none; text-decoration: none; }
-  .signed-in .appbar #co .av { grid-row: 1 / span 2; width: 28px; height: 28px; }
+  .signed-in .appbar #co { flex: 1 1 auto; display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 9px; align-items: center; margin: 0; padding: 7px 8px; border-radius: 7px 0 0 7px; border: 0; background: transparent; max-width: none; font-size: 13px; }
+  .signed-in .appbar #co .av { grid-row: 1 / span 2; width: 26px; height: 26px; border-radius: 6px; font-size: 12px; }
   .signed-in .appbar #co .cn { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .signed-in .appbar #co .cn .cx { display: none; }
-  .signed-in .appbar #co .aw { grid-column: 2; justify-self: start; margin: 0; padding: 0; border: 0; background: none; font-size: 12px; }
-  .signed-in .appbar #co .aw .aww { display: inline; }
-  .signed-in .appbar #co:hover { background: var(--sunken); }
+  .signed-in .appbar #co .aw { grid-column: 2; justify-self: start; margin: 0; padding: 0; border: 0; background: none; font-size: 11.5px; font-weight: 550; min-width: 0; overflow: hidden; }
+  .signed-in .appbar #co .aw .aww { display: inline; overflow: hidden; text-overflow: ellipsis; }
+  .signed-in .appbar #co:hover { background: var(--hover); }
   .signed-in .appbar nav.apptabs { order: 2; grid-column: 1 / -1; display: flex; flex-direction: column; gap: 1px; margin: 14px 0 0; padding: 0; overflow: visible; -webkit-mask-image: none; mask-image: none; }
-  .signed-in .appbar nav.apptabs a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); box-shadow: none; transition: background .15s, color .15s; }
-  .signed-in .appbar nav.apptabs a .ic { display: inline-flex; color: var(--faint); transition: color .15s; }
-  .signed-in .appbar nav.apptabs a:hover { background: var(--sunken); color: var(--text); }
-  .signed-in .appbar nav.apptabs a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); box-shadow: none; border-radius: 8px; }
+  .signed-in .appbar nav.apptabs a { position: relative; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px; font-size: 13.5px; font-weight: 550; color: var(--muted); background: none; box-shadow: none; white-space: nowrap; transition: background .12s, color .12s; }
+  .signed-in .appbar nav.apptabs a .ic { display: inline-flex; color: var(--faint); }
+  .signed-in .appbar nav.apptabs a:hover { background: var(--hover); color: var(--text); }
+  .signed-in .appbar nav.apptabs a[aria-current="page"] { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--text); box-shadow: none; }
   .signed-in .appbar nav.apptabs a[aria-current="page"] .ic { color: var(--accent); }
-  .signed-in .apptabs .ng { display: block; margin: 16px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
-  .signed-in .apptabs .ng.sep { height: 1px; margin: 12px 10px; background: var(--border); }
+  .signed-in .apptabs .ng { display: block; margin: 16px 8px 4px; font: 600 11px/1.2 Inter, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; overflow: hidden; }
+  .signed-in .apptabs .ng.sep { height: 1px; margin: 10px 8px; background: var(--line); }
   .signed-in .appbar .spacer { order: 3; grid-column: 1 / -1; align-self: stretch; min-height: 24px; }
-  /* 21 Nov (the owner: the test-money pill and "Guest (demo) · ends in 8 min" looked buggy): one session block at the
-     foot, the person, a quiet countdown and sign out; test money sits once in the header strip (placeTest). */
   .signed-in .appbar .awx-app { display: none; }
-  .signed-in .appbar #who { order: 6; grid-column: 1; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 12px 4px 2px 6px; border-top: 1px solid var(--border); font-size: 13px; max-width: none; white-space: normal; }
+  .signed-in .appbar #who { order: 6; grid-column: 1; display: flex; align-items: center; gap: 9px; min-width: 0; padding: 10px 2px 0 4px; border-top: 1px solid var(--line); font-size: 13px; max-width: none; white-space: normal; }
+  .signed-in .appbar #who .sav { width: 26px; height: 26px; }
   .signed-in .appbar #who:empty { display: none; }
-  .signed-in .appbar #out { order: 7; grid-column: 2; align-self: stretch; display: inline-grid; place-items: center; width: 36px; margin-top: 0; padding: 12px 0 2px; border-top: 1px solid var(--border); border-radius: 0; background: none; }
+  .signed-in .appbar #out { order: 7; grid-column: 2; align-self: stretch; display: inline-grid; place-items: center; width: 32px; padding: 10px 0 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
   .signed-in .appbar #out:hover { color: var(--bad); background: none; }
-  .signed-in main, .signed-in .demo-ribbon, .signed-in #foot, .signed-in .foot-awx { margin-left: var(--side); }
+  .signed-in main, .signed-in .stopbar, .signed-in #foot, .signed-in .foot-awx { margin-left: var(--side); }
   .signed-in #foot, .signed-in .foot-awx { max-width: none; }
-  .signed-in main > .wrap { max-width: 1240px; }
+  .signed-in main { padding-top: 0; }
+  .signed-in main > .wrap { max-width: 1320px; } .signed-in #view { padding-top: 24px; } .subnav-wrap { display: none; }
+  /* The top bar: where you are on the left; the demo's line and search on the right. */
+  .signed-in .ctop { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 16px; height: var(--top); padding: 0 var(--gut); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px); }
+  .crumbs { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .crumbs a { color: var(--muted); text-decoration: none; } .crumbs a:hover { color: var(--text); }
+  .crumbs .cs { color: var(--faint); opacity: .7; }
+  .crumbs b { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  .signed-in .kbtn { display: inline-flex; align-items: center; gap: 8px; flex: none; height: 30px; padding: 0 6px 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--faint); font: 500 13px/1 Inter, system-ui, sans-serif; cursor: pointer; }
+  .kbtn .kt { min-width: 96px; text-align: left; }
+  .kbtn:hover { color: var(--muted); border-color: color-mix(in srgb, var(--text) 18%, var(--line)); }
+  .kbtn kbd { font: 600 11px/1 Inter, system-ui, sans-serif; padding: 3px 5px; border-radius: 4px; background: var(--sunken); color: var(--muted); }
+  /* Collapsed: the icons alone, each named in its title. */
+  .sbmin .appbar .wrap { padding-inline: 8px; grid-template-columns: minmax(0, 1fr); }
+  .sbmin .abn, .sbmin .apptabs .ng:not(.sep), .sbmin .appbar #co .cn, .sbmin .appbar #co .aw, .sbmin .appbar .co-more, .sbmin .appbar #who .wtx, .sbmin #tabs a[data-n]::after { display: none; }
+  .sbmin .abrand { justify-content: center; padding: 0; } .sbmin .sbx { order: 8; justify-self: center; margin-top: 8px; }
+  .sbmin .appbar nav.apptabs a { justify-content: center; padding: 0; font-size: 0; gap: 0; }
+  .sbmin .appbar #co { grid-template-columns: 26px; justify-content: center; padding: 7px 0; border-radius: 7px; }
+  .sbmin .appbar #who, .sbmin .appbar #out { grid-column: 1; justify-content: center; padding-left: 0; padding-right: 0; }
+  .sbmin .appbar #out { border-top: 0; width: auto; }
+  .sbmin #tabs a[data-on]::after { position: absolute; top: 6px; right: 10px; margin: 0; width: 6px; height: 6px; }
 }
-/* A phone or a narrow window: a compact top bar (the mark, the company, Ask, sign out, test money), the five groups at the bottom. */
+/* A phone or a narrow window: a compact top bar (the mark, the company, Ask, sign out), the five groups at the bottom. */
 @media (max-width: 1023px) {
   .signed-in header.top { display: none; }
   .signed-in .appbar { position: sticky; top: 0; z-index: 30; background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); }
@@ -250,7 +262,6 @@ export const SHELL_CSS = `
   .signed-in .who-am-i #who { display: none; }
   .signed-in .who-am-i #co { min-width: 0; margin-right: auto; }
   .signed-in #ask-slot { display: inline-flex; flex: none; }
-  .signed-in .appbar .test { margin-left: 2px; padding: 8px; }
   .appbar #pask-fab { position: static; min-height: 36px; height: 36px; width: 36px; padding: 0; justify-content: center; border-radius: 10px; border: 0; box-shadow: none; background: transparent; color: var(--accent); transform: none; }
   .appbar #pask-fab svg { width: 32px; height: 32px; }
   .appbar #pask-fab:hover { transform: none; box-shadow: none; }
@@ -272,26 +283,76 @@ export const SHELL_CSS = `
 }
 @media (min-width: 1024px) { #subnav { display: none !important; } }
 .subnav-wrap:has(#subnav[hidden]) { display: none; }
-/* The demo company: one quiet line under the bar, still saying what it is. */
-.demo-ribbon { background: transparent; border: 0; color: var(--warn); font-size: 12.5px; }
-.demo-ribbon .wrap { display: block; min-height: 0; padding-top: 14px; padding-bottom: 0; }
-.demo-ribbon .dr { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; margin: 0; padding: 5px 6px 5px 11px; border-radius: 999px; background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 22%, transparent); line-height: 1.35; }
-.demo-ribbon .dr .i { width: 14px; height: 14px; flex: none; }
-.demo-ribbon span { flex: initial; }
-.demo-ribbon .dr-short { display: none; }
-.demo-ribbon a { min-height: 0; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--warn) 12%, transparent); text-decoration: none; font-weight: 650; }
-.demo-ribbon a:hover { background: color-mix(in srgb, var(--warn) 20%, transparent); }
-.demo-ribbon a .lv { display: none; }
-@media (max-width: 760px) { .demo-ribbon .dr-full { display: none; } .demo-ribbon .dr-short { display: inline; } .demo-ribbon a .lw { display: none; } .demo-ribbon a .lv { display: inline; } .demo-ribbon .wrap { padding-top: 12px; } .demo-ribbon .dr { font-size: 12px; gap: 6px; padding-left: 10px; } .demo-ribbon .dr > .i { display: none; } .signed-in main { padding-top: 12px; } }
-/* Page headers: one shape on every page, the group above the title. */
-#view > .head { align-items: flex-end; gap: 12px 20px; margin-bottom: 22px; }
-#view > .head .eyebrow { display: block; margin: 0 0 4px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--accent); }
-#view > .head h1 { margin: 0; }
-#view > .head .lede { margin: 6px 0 0; max-width: 72ch; color: var(--muted); }
-@media (max-width: 640px) { #view h1 { font-size: 24px; } #view > .head { margin-bottom: 16px; } }
-/* Cards, tables and empty states: one language. */
-.card { border-radius: 14px; }
-.card.list, .card.panel { overflow: hidden; }
+/* Search: a dialog of the pages, the current one lit. */
+dialog.kdlg { width: min(560px, calc(100vw - 32px)); margin: 12vh auto auto; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); box-shadow: 0 24px 64px -16px rgba(0,0,0,.45); }
+dialog.kdlg::backdrop { background: rgba(8,10,18,.45); }
+.kq { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); color: var(--faint); }
+.kq .field, .kq .field:focus-visible { border: 0; background: none; padding: 14px 0; font-size: 15px; outline: none; box-shadow: none; }
+ul.kr { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow-y: auto; }
+ul.kr a { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: 7px; color: var(--text); text-decoration: none; font-size: 13.5px; }
+ul.kr a .ic { color: var(--faint); display: inline-flex; } ul.kr small { margin-left: auto; color: var(--faint); font-size: 12px; }
+ul.kr a.on, ul.kr a:hover { background: var(--hover); } ul.kr a.on .ic { color: var(--accent); }
+.kn { padding: 12px 10px; color: var(--muted); font-size: 13.5px; }
+/* The demo company: one quiet line in the top bar (a phone: under its bar), still saying what it is, and the way out. */
+.demo-ribbon { flex: none; color: var(--faint); font-size: 12px; }
+.demo-ribbon .dr { display: inline-flex; align-items: center; gap: 6px; margin: 0; line-height: 1.35; }
+.demo-ribbon .dr .i { width: 13px; height: 13px; flex: none; }
+.demo-ribbon .dr-full, .demo-ribbon a .lw { display: none; }
+.demo-ribbon a { margin-left: 4px; color: var(--muted); font-weight: 600; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--muted) 40%, transparent); text-underline-offset: 3px; }
+.demo-ribbon a:hover { color: var(--text); }
+@media (max-width: 1023px) { .signed-in .ctop:has(#demo:not([hidden])) { display: block; padding: 10px 16px 0; } .signed-in main { padding-top: 12px; } }
+/* Page headers: one shape on every page; the top bar says the group. */
+#view > .head { align-items: flex-end; gap: 12px 20px; margin-bottom: 20px; }
+#view > .head .eyebrow { display: block; margin: 0 0 4px; font: 600 11.5px/1.2 Inter, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+@media (min-width: 1024px) { #view > .head .eyebrow { display: none; } }
+.signed-in #view h1 { margin: 0; font-size: 24px; font-weight: 680; letter-spacing: -.022em; line-height: 1.2; }
+#view > .head .lede { margin: 4px 0 0; max-width: 80ch; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+@media (max-width: 640px) { .signed-in #view h1 { font-size: 22px; } #view > .head { margin-bottom: 16px; } }
+/* Cards, tables and empty states: one language (26 Nov): 12 px radii, hairline borders, a 4/8 rhythm, tabular figures,
+   headers that stay in view while a long list scrolls, a quiet hover, one focus ring. */
+.card.list, .card.panel { overflow: clip; }
+.signed-in :focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; }
+.signed-in .btn { height: 34px; padding: 0 14px; border-radius: 8px; font-size: 13.5px; font-weight: 600; box-shadow: none; }
+.signed-in .btn.primary { background: color-mix(in srgb, var(--accent-ink) 88%, #000); border-color: transparent; color: #fff; }
+.signed-in .btn.primary:hover { filter: brightness(1.08); }
+.signed-in .field, .signed-in select.field { padding: 7px 10px; border-radius: 8px; font-size: 13.5px; border-color: var(--line); }
+.signed-in .form-row { align-items: end; } .signed-in .form-row label { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.signed-in .form-row .field { height: 34px; padding-top: 0; padding-bottom: 0; }
+.signed-in .trow .what b, .signed-in .row .sup b { font-weight: 600; }
+.signed-in .bar { gap: 6px; margin-bottom: 12px; }
+.signed-in .chip { height: 28px; padding: 0 10px; border-radius: 7px; border-color: var(--line); font-size: 13px; font-weight: 550; }
+.signed-in .chip b { color: var(--faint); font-weight: 600; }
+.signed-in .chip[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--text); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.signed-in .chip[aria-pressed="true"] b { color: var(--accent); }
+.signed-in .row, .signed-in .trow { gap: 12px; padding: 9px 16px; min-height: 52px; border-top-color: var(--line); font-size: 13.5px; transition: background .12s; }
+.signed-in .row.th, .signed-in .trow.th { position: sticky; top: var(--top); z-index: 3; min-height: 0; padding-top: 8px; padding-bottom: 8px; font-size: 11.5px; font-weight: 600; letter-spacing: .05em; color: var(--faint); background: color-mix(in srgb, var(--sunken) 70%, var(--surface)); border-bottom: 1px solid var(--line); }
+.signed-in a.row:hover, .signed-in button.trow:hover { background: var(--hover); }
+.signed-in .row .sup, .signed-in .trow .what { font-weight: 600; }
+.signed-in .row .amt, .signed-in .trow .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+.signed-in .row .sub, .signed-in .trow .sub { font-size: 12px; }
+.signed-in .av2 { width: 26px; height: 26px; border-radius: 7px; font-size: 10.5px; }
+.signed-in .st { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.35; }
+.signed-in .table { font-size: 13.5px; }
+.signed-in .table th { padding: 8px 14px; font-size: 11.5px; font-weight: 600; color: var(--faint); background: color-mix(in srgb, var(--sunken) 70%, var(--surface)); border-bottom: 1px solid var(--line); }
+.signed-in .table td { padding: 9px 14px; border-top-color: var(--line); }
+.signed-in .table tbody tr:hover td { background: var(--hover); }
+.signed-in .table td.r, .signed-in .table th.r, .signed-in .num { font-variant-numeric: tabular-nums; }
+.signed-in .pill { padding: 2px 8px; font-size: 12px; font-weight: 600; }
+.signed-in .tiles { gap: 12px; }
+.signed-in .tile { padding: 14px 16px; }
+.signed-in .tile .l { font-size: 12px; font-weight: 600; letter-spacing: .03em; color: var(--muted); }
+.signed-in .tile .v { font-size: clamp(18px, 1.6vw, 22px); font-weight: 680; }
+.signed-in .tile .x { font-size: 12px; line-height: 1.45; color: var(--faint); }
+.signed-in .dcard { padding: 18px 20px; }
+.signed-in .dcard .dh { margin-bottom: 14px; } .signed-in .dcard .dh p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+.signed-in .panel h2 { font-size: 15px; font-weight: 650; }
+.signed-in dl.read { gap: 0; font-size: 13.5px; }
+.signed-in dl.read dt, .signed-in dl.read dd { padding: 8px 0; border-top: 1px solid var(--line); }
+.signed-in dl.read dt:first-of-type, .signed-in dl.read dt:first-of-type + dd { border-top: 0; }
+.signed-in dl.read dt { color: var(--muted); font-size: 12.5px; }
+.signed-in #foot { font-size: 12px; border-top-color: var(--line); } .signed-in .foot-awx { padding-bottom: 20px; }
+.signed-in .dhead .money .big { font-size: 28px; font-weight: 680; letter-spacing: -.025em; } .signed-in .drawer .big { font-size: 26px; font-weight: 680; }
+.signed-in .note-ok, .signed-in .note-bad, .signed-in .note-info { border-radius: 8px; font-size: 13px; font-weight: 500; }
 .empty { padding: 32px 20px; text-align: center; color: var(--muted); display: grid; gap: 4px; justify-items: center; }
 .empty b { color: var(--text); font-size: 15px; }
 .dcard .dh.withlink { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: start; }
@@ -302,23 +363,7 @@ export const SHELL_CSS = `
 a.card.kpi { text-decoration: none; color: inherit; transition: border-color .15s, box-shadow .15s, transform .15s; }
 a.card.kpi:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 8px 20px -12px rgba(16,24,40,.25); }
 /* Needs you: the approvals that wait, each a link to its invoice. */
-.nyou { margin-bottom: 16px; padding: 18px 20px 8px; border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); background: linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 55%, var(--surface)), var(--surface) 70%); }
-.ny-h { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 14px; align-items: center; margin-bottom: 14px; }
-.ny-ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: 0 6px 16px -8px var(--accent); }
-.ny-ic svg { width: 22px; height: 22px; }
-.ny-eb { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--accent); }
-.ny-t h2 { margin: 2px 0 0; font-size: 18px; letter-spacing: -.01em; }
-.ny-t p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
-.ny-n { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; letter-spacing: 0; }
-.btn.ny-go { text-decoration: none; gap: 4px; }
-.ny-list { display: grid; border-top: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border)); }
-a.ny-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; gap: 12px; align-items: center; padding: 11px 4px; text-decoration: none; color: inherit; border-radius: 8px; }
-a.ny-row + a.ny-row { border-top: 1px solid var(--border); }
-a.ny-row:hover { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
-.ny-b { display: grid; min-width: 0; } .ny-b b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ny-b .sub { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ny-amt { font-size: 15px; }
 @media (max-width: 640px) { .ny-h { grid-template-columns: 44px minmax(0, 1fr); } .ny-ic { width: 44px; height: 44px; } .btn.ny-go { grid-column: 1 / -1; justify-content: center; height: 46px; } .ny-t h2 { font-size: 17px; } }
-a.ny-all { display: inline-flex; align-items: center; gap: 2px; margin-top: 10px; font-size: 13px; font-weight: 650; color: var(--accent); text-decoration: none; }
 /* The payments flow: four stages joined by a line that carries a dot from the inbox to paid; the stopped ones apart. */
 ol.pflow { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; position: relative; counter-reset: none; }
 ol.pflow > li { position: relative; min-width: 0; }
@@ -353,7 +398,7 @@ a.pf-off b { color: var(--text); } a.pf-off .ic { color: var(--bad); display: in
 a.as-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(80px, 160px) 16px; gap: 4px 12px; align-items: center; padding: 11px 2px; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; }
 a.as-row > .as-av { grid-row: 1 / span 2; align-self: start; } a.as-row > .as-d { grid-column: 2 / 4; grid-row: 2; } a.as-row > .ic { grid-column: 4; grid-row: 1 / span 2; }
 a.as-row:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
-.as-av, .rs-av { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, #312e81, #4f46e5); }
+.as-av { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, #312e81, #4f46e5); }
 .as-av.h1 { background: linear-gradient(140deg, #064e3b, #0e9488); } .as-av.h2 { background: linear-gradient(140deg, #0b1b45, #2563eb); } .as-av.h3 { background: linear-gradient(140deg, #7c2d12, #d97706); } .as-av.h4 { background: linear-gradient(140deg, #701a3d, #db2777); } .as-av.h5 { background: linear-gradient(140deg, #111827, #4b5563); }
 .as-b { display: grid; min-width: 0; } .as-b b { font-size: 14px; } .as-b .sub { font-size: 12.5px; }
 .as-bar { display: block; height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
@@ -365,34 +410,12 @@ a.as-more { display: inline-flex; align-items: center; gap: 2px; padding-top: 10
 @media (prefers-reduced-motion: no-preference) { .rise .as-bar > span { transform: scaleX(0); transition: transform .6s cubic-bezier(.2, .7, .2, 1) .15s; } .rise.in .as-bar > span { transform: scaleX(1); } }
 @media (max-width: 760px) { a.as-row { grid-template-columns: 34px minmax(0, 1fr) 16px; } a.as-row > .as-bar { grid-column: 2; grid-row: 3; } a.as-row > .as-d { grid-column: 2; grid-row: 2; } a.as-row > .ic { grid-column: 3; grid-row: 1 / span 3; } a.as-row > .as-av { grid-row: 1 / span 3; } }
 /* The Agents page: the roster. */
-.roster { margin: 0 0 30px; }
 @media (max-width: 640px) { .roster .sec-h p { display: none; } }
-.sec-h { margin: 4px 0 14px; } .sec-h h2 { margin: 0; font-size: 19px; letter-spacing: -.01em; } .sec-h p { margin: 4px 0 0; max-width: 80ch; }
-.rs-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 0 0 16px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--border); }
-.rs-stat { display: grid; gap: 2px; padding: 14px 16px; background: var(--surface); } .rs-stat b { font-size: 22px; font-weight: 700; letter-spacing: -.02em; } .rs-stat span { font-size: 12.5px; color: var(--muted); }
 @media (max-width: 760px) { .rs-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.rs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; }
-article.rs { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; min-width: 0; scroll-margin-top: 90px; }
-article.rs:not(.on) { background: color-mix(in srgb, var(--sunken) 35%, var(--surface)); }
 .rs-h { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
-.rs-who { display: grid; min-width: 0; } .rs-who b { font-size: 15px; letter-spacing: -.01em; } .rs-role { font-size: 12.5px; color: var(--muted); }
-.t-payables .rs-av { background: linear-gradient(140deg, #7c2d12, #d97706); } .t-treasury .rs-av { background: linear-gradient(140deg, #0b1b45, #2563eb); } .t-customers .rs-av { background: linear-gradient(140deg, #064e3b, #0e9488); } .t-books .rs-av { background: linear-gradient(140deg, #111827, #4b5563); }
-article.rs:not(.on) .rs-av { filter: saturate(.55); }
-.rs-st { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 650; white-space: nowrap; background: var(--ok-soft); color: var(--ok); }
-.rs-st i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.rs-st.off { background: var(--sunken); color: var(--muted); } .rs-st.paused, .rs-st.revoked { background: var(--bad-soft); color: var(--bad); }
 @media (prefers-reduced-motion: no-preference) { article.rs.on .rs-st i { animation: rspulse 2.4s ease-in-out infinite; } @keyframes rspulse { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 20%, transparent); } } }
-.rs-job { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text); }
 @media (max-width: 640px) { .rs-job { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; } }
-dl.rs-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 13px; }
-dl.rs-facts dt { color: var(--muted); font-weight: 600; } dl.rs-facts dd { margin: 0; display: grid; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
-.rs-dw h4, .rs-hb h4 { margin: 0 0 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
-ul.rs-dec { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-ul.rs-dec li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 13px; }
-.rs-dt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; padding-top: 2px; } ul.rs-dec time { padding-top: 3px; white-space: nowrap; } ul.rs-dec time { color: var(--faint); font-size: 12px; }
-.rs-none { margin: 0; font-size: 13px; color: var(--faint); }
-.rs-f { margin-top: auto; display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
-.rs-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.rs-hb h4 { margin: 0 0 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 .btn.sm { height: 34px; padding: 0 12px; font-size: 13px; gap: 6px; text-decoration: none; }
 .btn.sm.ghost2 { background: transparent; }
 details.rs-how summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 650; color: var(--accent); }
@@ -400,7 +423,6 @@ details.rs-how summary::-webkit-details-marker { display: none; }
 details.rs-how summary .ic { transition: transform .2s; } details.rs-how[open] summary .ic { transform: rotate(180deg); }
 .rs-hb { display: grid; gap: 8px; margin-top: 8px; font-size: 13px; } .rs-hb p { margin: 0; }
 ul.rs-code { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; } ul.rs-code a { font-size: 12.5px; color: var(--accent); overflow-wrap: anywhere; }
-.agents-passes-h { margin-top: 8px; }
 /* The passes stand at their own height: a card with its payment token below does not stretch the one beside it. */
 .agents.wallet { align-items: start; }
 .wagent:not(.open) button.wpass { flex: none; }

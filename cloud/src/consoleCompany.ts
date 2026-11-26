@@ -5,7 +5,7 @@
 //                 signed in to (each opens the sign-in with its address filled in: a session is one company's), the
 //                 demo company, and "Set up a new company" (the existing first run, #/start)
 //   the session   who is signed in, a countdown that formats itself and updates, and sign out, in one block
-//   test money    one quiet badge in the header strip (the sidebar no longer repeats it)
+//   test money    the switcher's workspace line (26 Nov: no pill in the header)
 //   Company page  #/company: the company at a glance from the API's own answers (nothing is typed in here)
 //   connected     a tab in the menu for each connection this company really has (Claude through MCP), read from the
 //                 same state the Connections page shows; the demo company shows what its demo world has
@@ -121,7 +121,7 @@ function companyBlock(){
   const co=$('#co'),more=$('#co-more'),menu=$('#co-menu');if(!co||!S)return;
   const c=ME&&ME.tenant?ME.tenant.name:'';co.href='#/company';co.replaceChildren();
   if(c){const aw=ME.airwallex;co.append(el('span','av',coName(c).charAt(0).toUpperCase()),el('span','cn',[coName(c),c!==coName(c)?el('span','cx',' '+c.slice(coName(c).length).trim()):null]),
-    ME.demo?el('span','aw demo',[el('i',''),el('span','aww',t('cs.demo.chip'))]):aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
+    ME.demo?el('span','aw demo',[el('i',''),el('span','aww',t('cs.demo.chip'))]):ENG_ON?Object.assign(el('span','aw demo',[el('i',''),el('span','aww',t('cs.eng.chip'))]),{title:t('cs.eng.chip_title')}):aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
     co.title=cw('open_page')+': '+c}
   if(more){more.hidden=!c;more.setAttribute('aria-label',cw('switch'));more.title=cw('switch')}
   if(menu&&!menu.hidden)drawCoMenu()}
@@ -142,12 +142,6 @@ function closeCoMenu(back){const m=$('#co-menu'),b=$('#co-more');if(!m||m.hidden
     if(e.key==='Escape'){e.preventDefault();closeCoMenu(true)}else if(e.key==='ArrowDown'){e.preventDefault();(its[i+1]||its[0]).focus()}else if(e.key==='ArrowUp'){e.preventDefault();(its[i-1]||its[its.length-1]).focus()}else if(e.key==='Tab')closeCoMenu()});
   document.addEventListener('pointerdown',(e)=>{if(!m.hidden&&!m.contains(e.target)&&!b.contains(e.target))closeCoMenu()});
   window.addEventListener('hashchange',()=>closeCoMenu())}}
-// Test money: one quiet badge in the header strip on a laptop (beside "Built on Airwallex"); on a phone the top bar keeps it.
-const WIDE=matchMedia('(min-width: 1024px)');
-function placeTest(){const c=$('#testchip');if(!c)return;const hdr=$('header.top .wrap .brand');const wide=WIDE.matches&&document.body.classList.contains('signed-in')&&hdr;
-  if(wide){const after=$('header.top .awx-h')||hdr;if(c.previousElementSibling!==after)after.after(c);c.classList.add('inhdr')}
-  else if(c.classList.contains('inhdr')){c.classList.remove('inhdr');$('.appbar .wrap').append(c)}}
-WIDE.addEventListener('change',placeTest);
 // --- Connected tabs: a connection this company has gets its own page in the menu -------------------------------------
 // Claude (MCP): the demo company's read-only demo token is live; a company of its own has it once an owner made a
 // connector token (GET /v1/claude/connectors, owners only). Nothing is shown for what the console cannot know.
@@ -280,7 +274,7 @@ export const COMPANY_CSS = `
 .co-it .co-tx { min-width: 0; display: grid; } .co-it .co-tx b { font-size: 13.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .co-it .co-tx span { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; line-height: 1.3; }
 .co-fine { margin: 2px 8px 4px; font-size: 11.5px; color: var(--faint); line-height: 1.35; }
-@media (max-width: 1023px) { .signed-in .who-am-i .cosw { margin-right: auto; } .signed-in .who-am-i .cosw .co { margin-right: 0; } .co-menu { position: fixed; top: 58px; left: 12px; } body.demo.signed-in .appbar #testchip { display: none; } }
+@media (max-width: 1023px) { .signed-in .who-am-i .cosw { margin-right: auto; } .signed-in .who-am-i .cosw .co { margin-right: 0; } .co-menu { position: fixed; top: 58px; left: 12px; } }
 /* The session block: initials, the person, the countdown. */
 #who .sav, .set-who .sav { flex: none; width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--sunken); color: var(--text); font: 700 11.5px/1 Inter, system-ui, sans-serif; letter-spacing: .02em; }
 #who .wtx { min-width: 0; display: grid; gap: 1px; }
@@ -288,8 +282,6 @@ export const COMPANY_CSS = `
 #who .ws { color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #who .ws .we { display: inline; } #who .ws .we.soon { color: var(--warn); font-weight: 600; }
 /* Test money in the header strip: one quiet badge. */
-.test.inhdr { margin-left: 8px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--warn); background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 25%, transparent); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.test.inhdr .i { width: 13px; height: 13px; }
 /* The menu's connected tabs: hidden until the company has the connection. */
 nav.apptabs a[hidden] { display: none !important; }
 /* A card's heading with no line under it keeps its distance from what follows. */

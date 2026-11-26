@@ -2168,6 +2168,29 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+  "/v1/authority-map":
+    get:
+      operationId: getV1AuthorityMap
+      tags:
+        - Company
+      summary: "Who may pay what, per agent, as the runner last pushed it (null before the first push). Read only."
+      security:
+        - bearer:
+            - read
+      x-purser-needs: read
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   "/v1/cards":
     get:
       operationId: getV1Cards

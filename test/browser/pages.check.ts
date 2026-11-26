@@ -964,11 +964,15 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/business") {
         // 22 Nov: the pilot's form. Empty, the browser holds it back; filled, it builds the page's own mail (pilotMailto).
         if (await page.evaluate(`document.getElementById("pilot-form").checkValidity()`)) fail(`/business ${tag}: the empty pilot form passes validation`);
-        const f = { name: "Ada Jansen", company: "Northwind B.V.", email: "ada@northwind.example", invoices: PILOT_VOLUMES[1]!, message: "" };
+        const f = { name: "Ada Jansen", company: "Northwind B.V.", email: "ada@northwind.example", invoices: PILOT_VOLUMES[1]!, pay: "AP tool", approver: "", start: "" };
         await page.fill('#pilot-form [name="name"]', f.name);
         await page.fill('#pilot-form [name="company"]', f.company);
         await page.fill('#pilot-form [name="email"]', f.email);
+        await page.locator("#pilot-form details.more > summary").click();
         await page.selectOption('#pilot-form [name="invoices"]', f.invoices);
+        // 26 Nov: the three questions are chips (radios); one chosen by clicking its chip.
+        await page.locator('#pilot-form .chips label', { hasText: f.pay }).click();
+        if (!(await page.locator('#pilot-form [name="pay"][value="AP tool"]').isChecked())) fail(`/business ${tag}: a question's chip does not choose its answer`);
         // The form's values go in as an argument, never as code built from a string (CodeQL, 22 Nov).
         type PilotWin = { document: { getElementById(id: string): { checkValidity(): boolean } }; __purserPilot?: { build(x: typeof f): string } };
         const got = await page.evaluate((form) => {

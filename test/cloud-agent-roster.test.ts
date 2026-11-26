@@ -40,7 +40,8 @@ describe("every agent in Purser", () => {
   it("is in the console's script, with its words in English and Dutch", () => {
     const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
     expect(html).toContain("const ROSTER=[");
-    expect(html).toContain("function rosterSection(recs,feedTotal)");
-    expect(html).toContain('"team_h":"Elke agent in Purser"');
+    // 26 Nov: the Overview's Agent status card reads it (the count under the agents); the Agents page is the cards.
+    expect(html).toContain("function agentStrip(agents)");
+    expect(html).toContain('"act_more":"{n} agents in Purser"');
   });
 });

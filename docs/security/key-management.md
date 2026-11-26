@@ -136,4 +136,5 @@ Every secret the code reads. Crypto-period: the longest a value is used before i
 |---|---|---|---|---|
 | `PLATFORM_BINDING_KEY` | The platform's Ed25519 key signing each company's Airwallex binding (`cloud/src/awxPlatform.ts` `bindingKey`), once the platform is configured | Worker secret | maintainer | 1 year, published with its public half |
 | `API_KEYS` | Companies' API keys and connector tokens: only their SHA-256 in `api_keys` | the holder; the cloud keeps the hash | company owner | 90 days by default, a year at most |
+| `AGENT_IDENTITY_KEYS` | Each agent principal's Ed25519 signing key for its requests (`src/policy/agentIdentity.ts`, docs/security/agent-identity.md): the private key in a key file under `KIT11_KEYS_DIR` (mode 0600) or held by the process the agent runs in; the public key in `principal_identity_keys` | the agent; the runner keeps the public key | maintainer | 90 days, by `npm run principals -- rotate` (with the agent's bearer key) |
 | `PASSKEYS` | People's passkeys: the private key on their device, the public key in `credentials` | the person's authenticator | the person | until removed or lost |

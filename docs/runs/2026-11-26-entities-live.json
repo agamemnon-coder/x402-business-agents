@@ -1,0 +1,603 @@
+{
+  "run": "entities",
+  "date": "2026-11-26",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "command": "npm run airwallex:governance-live -- live entities",
+  "commit": "86d7f6b9337611fe1dbcaf2521759a9d2319614b",
+  "simulated": [
+    "The approver is a labelled virtual test passkey (\"governance-live virtual test passkey (no person's Face ID)\", src/redteam/authenticator.ts), enrolled as the only passkey of the run's own fresh ledger. Its signatures go through the same verification as a phone's (WebAuthn assertion over the exact terms hash); no person's Face ID was used.",
+    "Opening entity A to the treasury agent (`pay_from.nl-test-sole.treasury` allowed) is a proposal on the runner approved with the passkey. The runner's steps after an approval (executePolicyChange, then syncCardsAfterPolicy) are called by the run once, in order, not by a running `npm run relay` and its every-few-seconds loop.",
+    "The invoices are test documents written by the run; the entities' names are labels for the two sandbox accounts.",
+    "The settlement of the paid payout (SENT, then PAID) is the sandbox's simulation endpoint, called with x-on-behalf-of A."
+  ],
+  "budget": {
+    "approved": 60,
+    "max": 80,
+    "used": 18,
+    "logged_requests": 18,
+    "status_429": 0,
+    "unexpected_non_2xx": []
+  },
+  "totals": {
+    "steps": 12,
+    "pass": 12,
+    "fail": 0,
+    "not_judged": 0
+  },
+  "cards": [],
+  "passes": [
+    {
+      "pass_no": 1,
+      "started_at": "2026-11-26T11:29:21.575Z",
+      "ended_at": "2026-11-26T11:29:30.865Z",
+      "stopped": null,
+      "note": "Both funding accounts were usable: A's EUR balance was 54.06 before the run (read in a probe), B's the platform's. The payee is the test beneficiary already on file at A (`f8678483-2718-4393-a328-d78261b5d5a4`, \"Zeeland Verpakkingen BV (test)\", made on 10 Nov); the run created no beneficiary. Airwallex's record of it holds no SWIFT code, so the run put ABN AMRO's BIC (ABNANL2A, its bank's) on Purser's allowlist row and in the test invoice. **Two earlier attempts stopped at `pay.plan_a`** (11:28:24 and 11:29:01 UTC, 2 read-only calls each: login and GET /beneficiaries at A): the run's own invoice text had an empty BIC line, so Purser's invoice check read the next line as the BIC and refused the payment as possible fraud (nothing planned, nothing sent); the second attempt ran before the fix was saved. The fix was to the run's invoice text, not to Purser's code. Before the runs, 14 read-only calls checked the sandbox (10 in three probes: the platform's and the connected account's balances, GET /account, which answered `acct_op0_QItiOyWKsYb5pwQihA`, and the connected account's beneficiaries; 4 in the entities run's two stopped attempts, described in docs/runs/2026-11-26-entities-live.md). None moved money or changed anything; they are not in this record's call table. The runs (11:27 to 11:32 UTC) ran on the code committed right after them as `86d7f6b93`; between the runs and that commit only the records' wording, the stand-in's call counter and two unused imports changed.",
+      "timings": {},
+      "steps": [
+        {
+          "phase": "setup",
+          "id": "setup.passkey",
+          "agent": null,
+          "title": "Enrol the virtual test passkey (labelled) as this ledger's only approver",
+          "expect": "enrolled and confirmed",
+          "outcome": "pending; confirmed: governance-live virtual test passkey (no person's Face ID)",
+          "pass": true,
+          "simulated": "a virtual test passkey, no person's Face ID",
+          "started_at": "2026-11-26T11:29:21.578Z",
+          "ended_at": "2026-11-26T11:29:21.593Z",
+          "ms": 15,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "setup",
+          "id": "setup.entities",
+          "agent": null,
+          "title": "Register two legal entities, each with its own Airwallex account: A Purser Sandbox Test (fake sole trader, connected account) (acct_SC-QD89fOneAeqaRFgOymw), B Northwind Outdoor BV (the sandbox platform account) (acct_op0_QItiOyWKsYb5pwQihA)",
+          "expect": "both held; neither open to any agent",
+          "outcome": "held: nl-test-sole, nl-platform; treasury may pay from A false, from B false",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:29:21.594Z",
+          "ended_at": "2026-11-26T11:29:21.596Z",
+          "ms": 2,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "setup",
+          "id": "setup.allow_a",
+          "agent": "treasury",
+          "title": "The CFO opens entity A to the treasury agent (pay_from.nl-test-sole.treasury allowed: a loosening, a proposal on the runner signed with the passkey)",
+          "expect": "the treasury agent may pay from A, not from B",
+          "outcome": "P-0001 approved by the passkey and applied; A true, B false",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey",
+          "started_at": "2026-11-26T11:29:21.597Z",
+          "ended_at": "2026-11-26T11:29:21.649Z",
+          "ms": 52,
+          "lines": [],
+          "facts": {
+            "proposal_id": "P-0001"
+          },
+          "error": null
+        },
+        {
+          "phase": "setup",
+          "id": "setup.payee_a",
+          "agent": null,
+          "title": "A test payee already on file at entity A's account, read from Airwallex (GET /beneficiaries with x-on-behalf-of A) and put on Purser's allowlist",
+          "expect": "found; nothing created at Airwallex",
+          "outcome": "f8678483-2718-4393-a328-d78261b5d5a4 Zeeland Verpakkingen BV (test), IBAN ••4300",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:29:21.650Z",
+          "ended_at": "2026-11-26T11:29:22.789Z",
+          "ms": 1139,
+          "lines": [
+            1,
+            2
+          ],
+          "facts": {
+            "beneficiary_id": "f8678483-2718-4393-a328-d78261b5d5a4",
+            "name": "Zeeland Verpakkingen BV (test)",
+            "iban_last4": "4300"
+          },
+          "error": null
+        },
+        {
+          "phase": "pay",
+          "id": "pay.plan_a",
+          "agent": "treasury",
+          "title": "A payment from entity A (EUR 1.00 to the test payee, invoice ENT-A-1126-1), planned on the rail acting for A's own account, signed with the passkey",
+          "expect": "proposed with paying_entity A and funding_account A's account in the signed terms; APPROVED",
+          "outcome": "P-0002 APPROVED (approved); paying_entity {\"id\":\"nl-test-sole\",\"name\":\"Purser Sandbox Test (fake sole trader, connected account)\",\"country\":\"NL\"}; funding_account {\"id\":\"acct_SC-QD89fOneAeqaRFgOymw\",\"currency\":\"EUR\"}; request_id 3709fc5d-205f-477d-99e4-160bcbb35f68",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey",
+          "started_at": "2026-11-26T11:29:22.790Z",
+          "ended_at": "2026-11-26T11:29:23.258Z",
+          "ms": 468,
+          "lines": [
+            3
+          ],
+          "facts": {
+            "proposal_id": "P-0002",
+            "paying_entity": {
+              "id": "nl-test-sole",
+              "name": "Purser Sandbox Test (fake sole trader, connected account)",
+              "country": "NL"
+            },
+            "funding_account": {
+              "id": "acct_SC-QD89fOneAeqaRFgOymw",
+              "currency": "EUR"
+            },
+            "transfer_request_id": "3709fc5d-205f-477d-99e4-160bcbb35f68",
+            "terms_sha256": "7268755505d6f55420c98503b64f769c8e2db3f24c9c3c072fb2f369927789be"
+          },
+          "error": null
+        },
+        {
+          "phase": "pay",
+          "id": "pay.exec_a",
+          "agent": "treasury",
+          "title": "Entity A's payment executed on the rail acting for A's own account (x-on-behalf-of), then settled by the sandbox's simulation",
+          "expect": "the transfer created at A's account, followed to PAID",
+          "outcome": "transfer 05c09c48-f6c5-4752-bcba-3fdf51a861e4 PAID; payment EXECUTED; 8 calls (GET /balances/current, POST /transfers/create, GET /transfers/{id}, POST /simulation/transfers/{id}/transition, GET /transfers/{id}, POST /simulation/transfers/{id}/transition, GET /transfers/{id}, GET /balances/current)",
+          "pass": true,
+          "simulated": "the settlement to PAID is the sandbox's simulation",
+          "started_at": "2026-11-26T11:29:23.259Z",
+          "ended_at": "2026-11-26T11:29:28.356Z",
+          "ms": 5097,
+          "lines": [
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "facts": {
+            "transfer_id": "05c09c48-f6c5-4752-bcba-3fdf51a861e4",
+            "request_id": "3709fc5d-205f-477d-99e4-160bcbb35f68",
+            "status": "PAID",
+            "fee": "EUR 13.68",
+            "calls": [
+              "GET /balances/current",
+              "POST /transfers/create",
+              "GET /transfers/{id}",
+              "POST /simulation/transfers/{id}/transition",
+              "GET /transfers/{id}",
+              "POST /simulation/transfers/{id}/transition",
+              "GET /transfers/{id}",
+              "GET /balances/current"
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "pay",
+          "id": "readback.a",
+          "agent": null,
+          "title": "Airwallex read back: the transfer at A's account by its id; its request_id at B's account",
+          "expect": "PAID at A; no transfer under that request_id at B",
+          "outcome": "05c09c48-f6c5-4752-bcba-3fdf51a861e4 PAID at A (EUR 1.00); at B: no transfer",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:29:28.357Z",
+          "ended_at": "2026-11-26T11:29:29.471Z",
+          "ms": 1114,
+          "lines": [
+            12,
+            13,
+            14
+          ],
+          "facts": {
+            "transfer_id": "05c09c48-f6c5-4752-bcba-3fdf51a861e4",
+            "status": "PAID",
+            "at_b": false
+          },
+          "error": null
+        },
+        {
+          "phase": "refuse",
+          "id": "refuse.plan_rail_b",
+          "agent": "treasury",
+          "title": "A payment from entity A planned on a rail acting for entity B's account (x-on-behalf-of B)",
+          "expect": "refused funding_account_mismatch before any Airwallex call; no proposal",
+          "outcome": "refused: funding_account_mismatch: Purser Sandbox Test (fake sole trader, connected account) (nl-test-sole) pays only from its own account acct_SC-QD89fOneAeqaRFgOymw, but the rail acts for acct_op0_QItiOyWKsYb5pwQihA (Northwind ; 0 Airwallex calls",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:29:29.472Z",
+          "ended_at": "2026-11-26T11:29:29.478Z",
+          "ms": 6,
+          "lines": [],
+          "facts": {
+            "calls": 0,
+            "reason": "funding_account_mismatch: Purser Sandbox Test (fake sole trader, connected account) (nl-test-sole) pays only from its own account acct_SC-QD89fOneAeqaRFgOymw, but the rail acts for acct_op0_QItiOyWKsYb5pwQihA (Northwind Outdoor BV (the sandbox platform account)'s)"
+          },
+          "error": null
+        },
+        {
+          "phase": "refuse",
+          "id": "refuse.plan_entity_b",
+          "agent": "treasury",
+          "title": "A payment set to fund from entity B (its own account), which the CFO has not opened to the treasury agent",
+          "expect": "refused entity_not_permitted before any Airwallex call",
+          "outcome": "refused: entity_not_permitted: the CFO policy does not let the Treasury agent pay from Northwind Outdoor BV (the sandbox platform account) (nl-platform); the CFO allows it with Face ID (policy pay_from.nl-platform.treasury); 0 Airwallex calls",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:29:29.479Z",
+          "ended_at": "2026-11-26T11:29:29.482Z",
+          "ms": 3,
+          "lines": [],
+          "facts": {
+            "calls": 0,
+            "reason": "entity_not_permitted: the CFO policy does not let the Treasury agent pay from Northwind Outdoor BV (the sandbox platform account) (nl-platform); the CFO allows it with Face ID (policy pay_from.nl-platform.treasury)"
+          },
+          "error": null
+        },
+        {
+          "phase": "refuse",
+          "id": "refuse.terms_b",
+          "agent": null,
+          "title": "Terms naming entity A but funding it from entity B's account (Purser's entity check, run at planning and again at execution)",
+          "expect": "refused funding_account_mismatch",
+          "outcome": "refused: funding_account_mismatch: Purser Sandbox Test (fake sole trader, connected account) (nl-test-sole) pays only from its own account acct_SC-QD89fOneAeqaRFgOymw, but the terms fund it from acct_op0_QItiOyWKsYb5pwQihA (North",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:29:29.483Z",
+          "ended_at": "2026-11-26T11:29:29.483Z",
+          "ms": 0,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "refuse",
+          "id": "refuse.exec_rail_b",
+          "agent": "treasury",
+          "title": "A second payment from entity A (EUR 1.01, ENT-A-1126-3), planned on A's rail and signed, then executed on the client's default account (entity B's own account)",
+          "expect": "refused before any create (no POST): the terms were signed for A's account",
+          "outcome": "P-0003 signed; on B's account: refused: the terms were signed for payment from acct_SC-QD89fOneAeqaRFgOymw, but this runner pays from the company's own Airwallex account; nothing is paid; 1 Airwallex calls (0 POST: GET /balances/current); payment APPROVED",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey",
+          "started_at": "2026-11-26T11:29:29.484Z",
+          "ended_at": "2026-11-26T11:29:30.230Z",
+          "ms": 746,
+          "lines": [
+            15,
+            16
+          ],
+          "facts": {
+            "proposal_id": "P-0003",
+            "request_id": "33b94dbc-d854-4c0b-a0bb-869721b6b925",
+            "calls": [
+              "GET /balances/current"
+            ],
+            "posts": 0,
+            "payment": "APPROVED"
+          },
+          "error": null
+        },
+        {
+          "phase": "refuse",
+          "id": "readback.none",
+          "agent": null,
+          "title": "Airwallex read back by the refused payment's request_id, at A's account and at B's",
+          "expect": "no transfer at either",
+          "outcome": "33b94dbc-d854-4c0b-a0bb-869721b6b925: at A no transfer, at B no transfer",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:29:30.230Z",
+          "ended_at": "2026-11-26T11:29:30.864Z",
+          "ms": 634,
+          "lines": [
+            17,
+            18
+          ],
+          "facts": {
+            "at_a": false,
+            "at_b": false
+          },
+          "error": null
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "n": 1,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:21.651Z",
+      "answered_at": "2026-11-26T11:29:22.368Z",
+      "ms": 717,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "70663417468e4c13b6d6a0384e690241",
+      "code": null,
+      "step": "setup.payee_a"
+    },
+    {
+      "n": 2,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:22.371Z",
+      "answered_at": "2026-11-26T11:29:22.788Z",
+      "ms": 417,
+      "method": "GET",
+      "endpoint": "/beneficiaries",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "55bbef1987464471bd185e2136592dff",
+      "code": null,
+      "step": "setup.payee_a"
+    },
+    {
+      "n": 3,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:22.848Z",
+      "answered_at": "2026-11-26T11:29:23.219Z",
+      "ms": 371,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "38e649503550464b94848229902a9580",
+      "code": null,
+      "step": "pay.plan_a (treasury)"
+    },
+    {
+      "n": 4,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:23.262Z",
+      "answered_at": "2026-11-26T11:29:23.642Z",
+      "ms": 380,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "b29ba56fcefd4f71867d2917500bded7",
+      "code": null,
+      "step": "pay.exec_a (treasury)"
+    },
+    {
+      "n": 5,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:23.654Z",
+      "answered_at": "2026-11-26T11:29:25.135Z",
+      "ms": 1481,
+      "method": "POST",
+      "endpoint": "/transfers/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "102a533028414e59b1be30744e4bbda0",
+      "code": null,
+      "step": "pay.exec_a (treasury)"
+    },
+    {
+      "n": 6,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:25.139Z",
+      "answered_at": "2026-11-26T11:29:25.536Z",
+      "ms": 397,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "0681aa559aca4238b1bb99cfebfaebc5",
+      "code": null,
+      "step": "pay.exec_a (treasury)"
+    },
+    {
+      "n": 7,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:25.540Z",
+      "answered_at": "2026-11-26T11:29:26.383Z",
+      "ms": 843,
+      "method": "POST",
+      "endpoint": "/simulation/transfers/{id}/transition",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "c84a53ca9ab348d48a217a9c04283ab0",
+      "code": null,
+      "step": "pay.exec_a (treasury)"
+    },
+    {
+      "n": 8,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:26.384Z",
+      "answered_at": "2026-11-26T11:29:26.725Z",
+      "ms": 341,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "0131275fff2b4784b5766f8425e0e4f7",
+      "code": null,
+      "step": "pay.exec_a (treasury)"
+    },
+    {
+      "n": 9,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:26.727Z",
+      "answered_at": "2026-11-26T11:29:27.284Z",
+      "ms": 557,
+      "method": "POST",
+      "endpoint": "/simulation/transfers/{id}/transition",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "7a349e78ecba450fb88e5f8764fa772e",
+      "code": null,
+      "step": "pay.exec_a (treasury)"
+    },
+    {
+      "n": 10,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:27.285Z",
+      "answered_at": "2026-11-26T11:29:27.634Z",
+      "ms": 349,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "8d93bfbfc348497eaf4aad5404dccb6d",
+      "code": null,
+      "step": "pay.exec_a (treasury)"
+    },
+    {
+      "n": 11,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:27.639Z",
+      "answered_at": "2026-11-26T11:29:28.352Z",
+      "ms": 713,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "bb4367e08eef4c9e8a4ac3bfdbf3bd05",
+      "code": null,
+      "step": "pay.exec_a (treasury)"
+    },
+    {
+      "n": 12,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:28.358Z",
+      "answered_at": "2026-11-26T11:29:28.726Z",
+      "ms": 368,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "eacfda8ff8f0490eba68efc5d48dd2c5",
+      "code": null,
+      "step": "readback.a"
+    },
+    {
+      "n": 13,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:28.728Z",
+      "answered_at": "2026-11-26T11:29:29.172Z",
+      "ms": 444,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "55ee6feb2999494aad4fa18d92af9e64",
+      "code": null,
+      "step": "readback.a"
+    },
+    {
+      "n": 14,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:29.172Z",
+      "answered_at": "2026-11-26T11:29:29.470Z",
+      "ms": 298,
+      "method": "GET",
+      "endpoint": "/transfers",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "33155c580a2c4f68b118dd526258e8a2",
+      "code": null,
+      "step": "readback.a"
+    },
+    {
+      "n": 15,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:29.487Z",
+      "answered_at": "2026-11-26T11:29:29.861Z",
+      "ms": 374,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "8e2a80c7af774a22b1e4b7ee4671d99d",
+      "code": null,
+      "step": "refuse.exec_rail_b (treasury)"
+    },
+    {
+      "n": 16,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:29.901Z",
+      "answered_at": "2026-11-26T11:29:30.222Z",
+      "ms": 321,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "852b3b9ddd794c8cbb3e5671ec2b283e",
+      "code": null,
+      "step": "refuse.exec_rail_b (treasury)"
+    },
+    {
+      "n": 17,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:30.232Z",
+      "answered_at": "2026-11-26T11:29:30.562Z",
+      "ms": 330,
+      "method": "GET",
+      "endpoint": "/transfers",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "e48e392ad4dd4acb8c0681728a9dfc41",
+      "code": null,
+      "step": "readback.none"
+    },
+    {
+      "n": 18,
+      "pid": 26776,
+      "at": "2026-11-26T11:29:30.562Z",
+      "answered_at": "2026-11-26T11:29:30.864Z",
+      "ms": 302,
+      "method": "GET",
+      "endpoint": "/transfers",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "5165664cbe994c878c59b47f99bee942",
+      "code": null,
+      "step": "readback.none"
+    }
+  ],
+  "calls_by_endpoint": [
+    {
+      "endpoint": "POST /authentication/login",
+      "calls": 2
+    },
+    {
+      "endpoint": "GET /beneficiaries",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /balances/current",
+      "calls": 5
+    },
+    {
+      "endpoint": "POST /transfers/create",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /transfers/{id}",
+      "calls": 4
+    },
+    {
+      "endpoint": "POST /simulation/transfers/{id}/transition",
+      "calls": 2
+    },
+    {
+      "endpoint": "GET /transfers",
+      "calls": 3
+    }
+  ],
+  "not_shown": [
+    "A payment from entity B's own account: B was left closed to the agent on purpose; only refusals ran against B.",
+    "Several real legal entities: A is a connected account of the platform B, so the two are not independent companies; Purser's check is the same either way (the account the terms name and the account the rail acts for).",
+    "The executor refusal on B's account is Purser's `checkPayingAccount` (the terms were signed for A's account, the rail acts for the client's own account). Purser does not know that the default account is B's; the refusal does not depend on it.",
+    "A screen in Purser Cloud to choose the entity: none yet. A person's Face ID on a real phone. One run."
+  ]
+}

@@ -181,8 +181,20 @@ export const TOKEN_LIFE_CSS = `
 .tl-sub { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
 .tl-body { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 24px; align-items: center; }
 .tl-cardw { display: grid; gap: 8px; min-width: 0; }
-/* 21 Nov: the card family's labels are outlined pills; two side by side here (sandbox, the test card's last four) stay inside the card. */
-.tl-card .ac-foot { gap: 5px; } .tl-card .ac-tag { letter-spacing: .03em; padding: 2px 4px; } .tl-card .ac-tag + .ac-tag { margin-left: 0; }
+/* 26 Nov: the token card has its own layout (the agents' cards, cloud/src/agentCardArt.ts, no longer carry these parts). */
+.acard.tl-card { display: grid; grid-template-rows: auto 1fr auto auto auto; gap: 8px; padding: 16px 18px; font-size: 12px; background: linear-gradient(140deg, #1a1838, #09090f 62%, #14122b); }
+.tl-card .ac-top { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.tl-card .ac-mark { flex: none; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: rgba(255,255,255,.1); }
+.tl-card .ac-who { flex: 1; display: grid; gap: 2px; min-width: 0; } .tl-card .ac-name { font-size: 13.5px; } .tl-card .ac-co { opacity: .7; }
+.tl-card .ac-plate { flex: none; padding: 4px 6px; border-radius: 6px; background: #fff; } .tl-card .ac-plate img { display: block; height: 11px; width: auto; }
+.tl-card .ac-mid { display: flex; align-items: center; justify-content: space-between; }
+.tl-card .ac-chip { width: 34px; height: 25px; border-radius: 6px; background: linear-gradient(135deg, #e9dcae, #b4975c); }
+.tl-card .ac-st { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; } .tl-card .ac-st i { width: 7px; height: 7px; border-radius: 50%; background: #3ccf82; }
+.tl-card .ac-num { font: 600 14px/1 ui-monospace, Menlo, monospace; letter-spacing: .14em; opacity: .9; }
+.tl-card .ac-meter { opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-card .ac-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.tl-card .ac-tag, .tl-card .ac-model { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); font-size: 10.5px; font-weight: 600; }
+.tl-card .ac-model img { width: 12px; height: 12px; }
 .tl-fine { margin: 0; font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; align-items: flex-start; } .tl-fine .ic svg { width: 14px; height: 14px; }
 .tl-track { list-style: none; margin: 0; padding: 0; position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .tl-rail { position: absolute; left: 22px; right: 22px; top: 21px; height: 3px; border-radius: 3px; background: var(--border); overflow: visible; }

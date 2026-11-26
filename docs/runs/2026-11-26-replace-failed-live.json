@@ -1,0 +1,610 @@
+{
+  "run": "replace-failed",
+  "date": "2026-11-26",
+  "label": "Airwallex sandbox · test money",
+  "sandbox": "https://api.sandbox.airwallex.com/api/v1",
+  "test_money": true,
+  "command": "npm run airwallex:governance-live -- live replace-failed",
+  "commit": "86d7f6b9337611fe1dbcaf2521759a9d2319614b",
+  "simulated": [
+    "The approver is a labelled virtual test passkey (\"governance-live virtual test passkey (no person's Face ID)\", src/redteam/authenticator.ts), enrolled as the only passkey of the run's own fresh ledger. Its signatures go through the same verification as a phone's (WebAuthn assertion over the exact terms hash); no person's Face ID was used.",
+    "The failure is the sandbox's simulation endpoint: SENT, then FAILED (never PAID); Airwallex chose the failure type. The replacement's settlement (SENT, PAID) is the same endpoint, called by the run.",
+    "The runner's follow-up loop is not running: the run calls its hook (`replaceFailedHook`, the one src/payouts/follow.ts uses) once with the flag unset and once with it on."
+  ],
+  "budget": {
+    "approved": 40,
+    "max": 80,
+    "used": 21,
+    "logged_requests": 21,
+    "status_429": 0,
+    "unexpected_non_2xx": []
+  },
+  "totals": {
+    "steps": 10,
+    "pass": 10,
+    "fail": 0,
+    "not_judged": 0
+  },
+  "cards": [],
+  "passes": [
+    {
+      "pass_no": 1,
+      "started_at": "2026-11-26T11:31:33.061Z",
+      "ended_at": "2026-11-26T11:31:44.866Z",
+      "stopped": null,
+      "note": "A fresh ledger of its own, on the platform account's own balance. The payee is Bergtex Textil GmbH, already on file at Airwallex. Before the runs, 14 read-only calls checked the sandbox (10 in three probes: the platform's and the connected account's balances, GET /account, which answered `acct_op0_QItiOyWKsYb5pwQihA`, and the connected account's beneficiaries; 4 in the entities run's two stopped attempts, described in docs/runs/2026-11-26-entities-live.md). None moved money or changed anything; they are not in this record's call table. The runs (11:27 to 11:32 UTC) ran on the code committed right after them as `86d7f6b93`; between the runs and that commit only the records' wording, the stand-in's call counter and two unused imports changed.",
+      "timings": {},
+      "steps": [
+        {
+          "phase": "setup",
+          "id": "setup.passkey",
+          "agent": null,
+          "title": "Enrol the virtual test passkey (labelled) as this ledger's only approver",
+          "expect": "enrolled and confirmed",
+          "outcome": "pending; confirmed: governance-live virtual test passkey (no person's Face ID)",
+          "pass": true,
+          "simulated": "a virtual test passkey, no person's Face ID",
+          "started_at": "2026-11-26T11:31:33.064Z",
+          "ended_at": "2026-11-26T11:31:33.079Z",
+          "ms": 15,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "setup",
+          "id": "setup.payout",
+          "agent": "treasury",
+          "title": "A supplier payout planned against the sandbox (EUR 1.02 to Bergtex Textil GmbH, invoice BTX-GOV-1126-R) and signed with the passkey",
+          "expect": "APPROVED",
+          "outcome": "P-0001 APPROVED (approved); request_id 6b12284e-7974-4630-9c44-47d435efbc6b",
+          "pass": true,
+          "simulated": "signed by the virtual test passkey",
+          "started_at": "2026-11-26T11:31:33.079Z",
+          "ended_at": "2026-11-26T11:31:34.778Z",
+          "ms": 1699,
+          "lines": [
+            1,
+            2,
+            3
+          ],
+          "facts": {
+            "proposal_id": "P-0001",
+            "transfer_request_id": "6b12284e-7974-4630-9c44-47d435efbc6b",
+            "beneficiary_id": "2abfa3ba-0786-44f7-b828-9d7c8e2da883",
+            "terms_sha256": "3d4b1b03079efcc0463a2a08c5fe4cfe2114750cdea2861b9db7e897efbb2678"
+          },
+          "error": null
+        },
+        {
+          "phase": "pay",
+          "id": "pay.create",
+          "agent": "treasury",
+          "title": "The payment executed (executeInvoicePayment, no settlement simulated)",
+          "expect": "a transfer created under the signed request_id",
+          "outcome": "transfer ec987ba1-bb45-43c7-944b-e7d1d554d1ef SCHEDULED; payment EXECUTED",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:31:34.779Z",
+          "ended_at": "2026-11-26T11:31:36.885Z",
+          "ms": 2106,
+          "lines": [
+            4,
+            5,
+            6
+          ],
+          "facts": {
+            "transfer_id": "ec987ba1-bb45-43c7-944b-e7d1d554d1ef",
+            "status": "SCHEDULED"
+          },
+          "error": null
+        },
+        {
+          "phase": "fail",
+          "id": "fail.simulated",
+          "agent": null,
+          "title": "The first transfer moved SENT, then FAILED, by the sandbox's simulation endpoint (never PAID)",
+          "expect": "Airwallex accepts both transitions",
+          "outcome": "SENT answered SENT; FAILED answered FAILED (INCORRECT_ROUTING)",
+          "pass": true,
+          "simulated": "the failure is the sandbox's simulation endpoint",
+          "started_at": "2026-11-26T11:31:36.886Z",
+          "ended_at": "2026-11-26T11:31:39.178Z",
+          "ms": 2292,
+          "lines": [
+            7,
+            8
+          ],
+          "facts": {
+            "sent": "SENT",
+            "failed": "FAILED",
+            "failure_type": "INCORRECT_ROUTING"
+          },
+          "error": null
+        },
+        {
+          "phase": "fail",
+          "id": "fail.readback",
+          "agent": null,
+          "title": "The first transfer read back at Airwallex (GET /transfers/{id}), again after 20 s while it is FAILED and not yet closed (at most 3 reads)",
+          "expect": "CANCELLED with a failure type (final-failed)",
+          "outcome": "reads: CANCELLED INCORRECT_ROUTING",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:31:39.179Z",
+          "ended_at": "2026-11-26T11:31:39.504Z",
+          "ms": 325,
+          "lines": [
+            9
+          ],
+          "facts": {
+            "reads": [
+              "CANCELLED INCORRECT_ROUTING"
+            ],
+            "status": "CANCELLED",
+            "failure_type": "INCORRECT_ROUTING"
+          },
+          "error": null
+        },
+        {
+          "phase": "replace",
+          "id": "replace.off",
+          "agent": "treasury",
+          "title": "The runner's replacement hook with KIT11_REPLACE_FAILED_PAYOUT unset (the default)",
+          "expect": "no hook: nothing is replaced by code",
+          "outcome": "no hook (off)",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:31:39.512Z",
+          "ended_at": "2026-11-26T11:31:39.512Z",
+          "ms": 0,
+          "lines": [],
+          "facts": {},
+          "error": null
+        },
+        {
+          "phase": "replace",
+          "id": "replace.once",
+          "agent": "treasury",
+          "title": "The runner's replacement hook with KIT11_REPLACE_FAILED_PAYOUT=on, for the failed payment",
+          "expect": "replaced once: one new transfer under the request_id derived from the first, same amount, payee and approval hash",
+          "outcome": "replaced: SCHEDULED; replacement 05928c50-120e-4280-8125-ded979442af8 SCHEDULED under a88b95df-ff14-5295-9971-8e72e460dda2 (derived from the first: true); 1 create; calls GET /transfers/{id}, GET /balances/current, POST /transfers/create",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:31:39.516Z",
+          "ended_at": "2026-11-26T11:31:41.143Z",
+          "ms": 1627,
+          "lines": [
+            10,
+            11,
+            12
+          ],
+          "facts": {
+            "outcome": "replaced: SCHEDULED",
+            "replacement_request_id": "a88b95df-ff14-5295-9971-8e72e460dda2",
+            "replacement_transfer_id": "05928c50-120e-4280-8125-ded979442af8",
+            "status": "SCHEDULED",
+            "calls": [
+              "GET /transfers/{id}",
+              "GET /balances/current",
+              "POST /transfers/create"
+            ]
+          },
+          "error": null
+        },
+        {
+          "phase": "replace",
+          "id": "replace.settle",
+          "agent": null,
+          "title": "The replacement settled by the sandbox's simulation (SENT, PAID) and read back",
+          "expect": "PAID",
+          "outcome": "05928c50-120e-4280-8125-ded979442af8 PAID (EUR 1.02)",
+          "pass": true,
+          "simulated": "the settlement to PAID is the sandbox's simulation",
+          "started_at": "2026-11-26T11:31:41.148Z",
+          "ended_at": "2026-11-26T11:31:43.256Z",
+          "ms": 2108,
+          "lines": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "facts": {
+            "transfer_id": "05928c50-120e-4280-8125-ded979442af8",
+            "status": "PAID"
+          },
+          "error": null
+        },
+        {
+          "phase": "replace",
+          "id": "replace.again",
+          "agent": "treasury",
+          "title": "Asked again: the hook, then replaceFailedPayout directly",
+          "expect": "no second send: the hook answers asked before; the direct call finds the replacement (already_replaced); no POST",
+          "outcome": "hook: asked before (0 calls); direct: already_replaced (1 calls, 0 POST)",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:31:43.257Z",
+          "ended_at": "2026-11-26T11:31:43.576Z",
+          "ms": 319,
+          "lines": [
+            17
+          ],
+          "facts": {
+            "hook": "asked before",
+            "direct": {
+              "outcome": "already_replaced",
+              "original": "6b12284e-7974-4630-9c44-47d435efbc6b",
+              "request_id": "a88b95df-ff14-5295-9971-8e72e460dda2",
+              "status": "PAID"
+            }
+          },
+          "error": null
+        },
+        {
+          "phase": "replace",
+          "id": "readback.both",
+          "agent": null,
+          "title": "Airwallex read back by both request_ids (GET /transfers?request_id=…) and both transfers by id",
+          "expect": "one transfer under each request_id; the first CANCELLED, the replacement PAID",
+          "outcome": "6b12284e-7974-4630-9c44-47d435efbc6b: found; a88b95df-ff14-5295-9971-8e72e460dda2: found; first CANCELLED INCORRECT_ROUTING; replacement PAID",
+          "pass": true,
+          "simulated": null,
+          "started_at": "2026-11-26T11:31:43.577Z",
+          "ended_at": "2026-11-26T11:31:44.863Z",
+          "ms": 1286,
+          "lines": [
+            18,
+            19,
+            20,
+            21
+          ],
+          "facts": {
+            "first": {
+              "id": "ec987ba1-bb45-43c7-944b-e7d1d554d1ef",
+              "status": "CANCELLED",
+              "failure_type": "INCORRECT_ROUTING"
+            },
+            "replacement": {
+              "id": "05928c50-120e-4280-8125-ded979442af8",
+              "status": "PAID"
+            }
+          },
+          "error": null
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "n": 1,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:33.080Z",
+      "answered_at": "2026-11-26T11:31:33.808Z",
+      "ms": 728,
+      "method": "POST",
+      "endpoint": "/authentication/login",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "dbc090c9d3314f50b9d4e7266e8a527e",
+      "code": null,
+      "step": "setup.payout (treasury)"
+    },
+    {
+      "n": 2,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:33.811Z",
+      "answered_at": "2026-11-26T11:31:34.352Z",
+      "ms": 541,
+      "method": "GET",
+      "endpoint": "/beneficiaries",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "b3d4731076804d2283dd1cd3a491e2f4",
+      "code": null,
+      "step": "setup.payout (treasury)"
+    },
+    {
+      "n": 3,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:34.426Z",
+      "answered_at": "2026-11-26T11:31:34.746Z",
+      "ms": 320,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "6bc003f6169a4c45898249a620558f56",
+      "code": null,
+      "step": "setup.payout (treasury)"
+    },
+    {
+      "n": 4,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:34.782Z",
+      "answered_at": "2026-11-26T11:31:35.114Z",
+      "ms": 332,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "e1f3e7ae47204bfbadceb6208ff49013",
+      "code": null,
+      "step": "pay.create (treasury)"
+    },
+    {
+      "n": 5,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:35.138Z",
+      "answered_at": "2026-11-26T11:31:36.540Z",
+      "ms": 1402,
+      "method": "POST",
+      "endpoint": "/transfers/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "50e41fcb99164e6b86f9832b44cfab51",
+      "code": null,
+      "step": "pay.create (treasury)"
+    },
+    {
+      "n": 6,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:36.544Z",
+      "answered_at": "2026-11-26T11:31:36.880Z",
+      "ms": 336,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "bcac381fbd9147619658afd09f150bb0",
+      "code": null,
+      "step": "pay.create (treasury)"
+    },
+    {
+      "n": 7,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:36.886Z",
+      "answered_at": "2026-11-26T11:31:38.510Z",
+      "ms": 1624,
+      "method": "POST",
+      "endpoint": "/simulation/transfers/{id}/transition",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "2d1634404cac44e485fe391ee7f5826b",
+      "code": null,
+      "step": "fail.simulated"
+    },
+    {
+      "n": 8,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:38.511Z",
+      "answered_at": "2026-11-26T11:31:39.177Z",
+      "ms": 666,
+      "method": "POST",
+      "endpoint": "/simulation/transfers/{id}/transition",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "c706d9d07eda40be89192eb05e378c2b",
+      "code": null,
+      "step": "fail.simulated"
+    },
+    {
+      "n": 9,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:39.182Z",
+      "answered_at": "2026-11-26T11:31:39.503Z",
+      "ms": 321,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "28f1324594f440e7b6aa478e3461fcf6",
+      "code": null,
+      "step": "fail.readback"
+    },
+    {
+      "n": 10,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:39.519Z",
+      "answered_at": "2026-11-26T11:31:39.827Z",
+      "ms": 308,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "79d21200a1244d20a3e0b11425268d1a",
+      "code": null,
+      "step": "replace.once (treasury)"
+    },
+    {
+      "n": 11,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:39.833Z",
+      "answered_at": "2026-11-26T11:31:40.148Z",
+      "ms": 315,
+      "method": "GET",
+      "endpoint": "/balances/current",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "3cb7b05ccf0546bbb04423655e624ff0",
+      "code": null,
+      "step": "replace.once (treasury)"
+    },
+    {
+      "n": 12,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:40.150Z",
+      "answered_at": "2026-11-26T11:31:41.132Z",
+      "ms": 982,
+      "method": "POST",
+      "endpoint": "/transfers/create",
+      "status": 201,
+      "awx_request_id": null,
+      "trace_id": "ad94dcbdd7364a97a1349c808143f814",
+      "code": null,
+      "step": "replace.once (treasury)"
+    },
+    {
+      "n": 13,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:41.148Z",
+      "answered_at": "2026-11-26T11:31:41.453Z",
+      "ms": 305,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "c44bcaac6fa44549bde8abafe87133d8",
+      "code": null,
+      "step": "replace.settle"
+    },
+    {
+      "n": 14,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:41.454Z",
+      "answered_at": "2026-11-26T11:31:42.392Z",
+      "ms": 938,
+      "method": "POST",
+      "endpoint": "/simulation/transfers/{id}/transition",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "2db4a35df11f4027ae4d34c49ebd0a54",
+      "code": null,
+      "step": "replace.settle"
+    },
+    {
+      "n": 15,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:42.393Z",
+      "answered_at": "2026-11-26T11:31:42.870Z",
+      "ms": 477,
+      "method": "POST",
+      "endpoint": "/simulation/transfers/{id}/transition",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "214ce35381ed4027a719c48048a80a39",
+      "code": null,
+      "step": "replace.settle"
+    },
+    {
+      "n": 16,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:42.871Z",
+      "answered_at": "2026-11-26T11:31:43.255Z",
+      "ms": 384,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "cd3ee7f972ad4a3a8bf073246756d2ee",
+      "code": null,
+      "step": "replace.settle"
+    },
+    {
+      "n": 17,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:43.261Z",
+      "answered_at": "2026-11-26T11:31:43.572Z",
+      "ms": 311,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "f86dd6f326dc4842b26498b134e5fc73",
+      "code": null,
+      "step": "replace.again (treasury)"
+    },
+    {
+      "n": 18,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:43.578Z",
+      "answered_at": "2026-11-26T11:31:43.877Z",
+      "ms": 299,
+      "method": "GET",
+      "endpoint": "/transfers",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "8535f366a0c24d55be15c84185a08bd4",
+      "code": null,
+      "step": "readback.both"
+    },
+    {
+      "n": 19,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:43.878Z",
+      "answered_at": "2026-11-26T11:31:44.172Z",
+      "ms": 294,
+      "method": "GET",
+      "endpoint": "/transfers",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "5682f7a242de485092af1dff6b70f6b3",
+      "code": null,
+      "step": "readback.both"
+    },
+    {
+      "n": 20,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:44.172Z",
+      "answered_at": "2026-11-26T11:31:44.548Z",
+      "ms": 376,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "4934d6b0bd8248ee82434afe816c1cf0",
+      "code": null,
+      "step": "readback.both"
+    },
+    {
+      "n": 21,
+      "pid": 29031,
+      "at": "2026-11-26T11:31:44.549Z",
+      "answered_at": "2026-11-26T11:31:44.862Z",
+      "ms": 313,
+      "method": "GET",
+      "endpoint": "/transfers/{id}",
+      "status": 200,
+      "awx_request_id": null,
+      "trace_id": "a2a53ad72db84b82974062d9a547811d",
+      "code": null,
+      "step": "readback.both"
+    }
+  ],
+  "calls_by_endpoint": [
+    {
+      "endpoint": "POST /authentication/login",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /beneficiaries",
+      "calls": 1
+    },
+    {
+      "endpoint": "GET /balances/current",
+      "calls": 4
+    },
+    {
+      "endpoint": "POST /transfers/create",
+      "calls": 2
+    },
+    {
+      "endpoint": "POST /simulation/transfers/{id}/transition",
+      "calls": 4
+    },
+    {
+      "endpoint": "GET /transfers/{id}",
+      "calls": 7
+    },
+    {
+      "endpoint": "GET /transfers",
+      "calls": 2
+    }
+  ],
+  "not_shown": [
+    "A replacement that fails too (Purser then stops for a person): not run live.",
+    "A payout paid and then returned (no replacement by code): the 17 Nov late-failure run shows such a return; this run's payout never reached PAID.",
+    "A real bank's rejection: the failure is the sandbox's simulation. One run."
+  ]
+}

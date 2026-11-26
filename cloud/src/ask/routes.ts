@@ -4,7 +4,7 @@
 //                                        demo company's records, no model), refused (code answered); live: whether
 //                                        Claude answers on this deployment now; sources are the passages sent, each
 //                                        { n, title, url, kind }
-//   {type: "step", id, tool, label, detail, state, ok}   a read the agent makes: "run" when it starts, "done" when read
+//   {type: "step", id, tool, args, label, detail, state, ok}   a read the agent makes: "run" when it starts, "done" when read
 //   {type: "source", source}             a source a read added (a passage search_docs found, a record a tool read)
 //   {type: "card", card}                 the invoices a read returned, as rows the page draws (./cards.ts)
 //   {type: "delta", text}                checked sentences, as they come
@@ -23,6 +23,11 @@ import { ASK_MAX_ROUNDS, ASK_MAX_ROUNDS_FILE, ASK_MAX_TOKENS, type ApiMessage, t
 import { cardOf, demoDetail } from "./cards.js";
 import { ASK_CONTEXT_KINDS, CONTEXT_ID, contextLine, parseContext } from "./context.js";
 import { ASK_TOOLS, localRead, resultForPeople, runAskTool, TOOLS_PER_QUESTION, TOOLS_PER_ROUND } from "./tools.js";
+
+/** A tool's input as the terminal view shows it ("id=AP-0005 status=waiting_cfo"): plain keys and short scalar values only, as text. */
+const argWords = (input: unknown): string => !input || typeof input !== "object" ? "" : Object.entries(input as Record<string, unknown>)
+  .filter(([k, v]) => /^[a-z_]{1,24}$/.test(k) && ["string", "number", "boolean"].includes(typeof v))
+  .slice(0, 4).map(([k, v]) => `${k}=${String(v).replace(/\p{Cc}/gu, " ").slice(0, 40)}`).join(" ");
 
 export const ASK_ROUTE = "POST /v1/ask";
 /** The body at most: a question, the last turns, and a 5 MB file as base64. */
@@ -137,7 +142,7 @@ export function askRoutes<C extends AskCtx>(kit: { json(status: number, body: un
             const card = await cardOf(records.tool, r.data, demoDetail(toolCtx, runAskTool)).catch(() => null);
             return streamed(c, async (line) => {
               line({ type: "meta", mode: "records", sources: src, live: false });
-              line({ type: "step", id: "s1", tool: r.step.tool, label: r.step.label, detail: r.step.detail, state: "done", ok: true });
+              line({ type: "step", id: "s1", tool: r.step.tool, args: argWords(records.args), label: r.step.label, detail: r.step.detail, state: "done", ok: true });
               if (card) line({ type: "card", card });
               line({ type: "delta", text });
               line({ type: "done", mode: "records", cited: [1], note: null, reason: OFF_WORDS[why], steps: 1 });
@@ -207,7 +212,7 @@ export function askRoutes<C extends AskCtx>(kit: { json(status: number, body: un
                 line({ type: "source", source: src });
               }
               if (!r.isError) gate.learn(r.text);
-              line({ type: "step", id, tool: u.name, label: r.step.label, detail: r.step.detail, state: "done", ok: r.step.ok });
+              line({ type: "step", id, tool: u.name, args: argWords(u.input), label: r.step.label, detail: r.step.detail, state: "done", ok: r.step.ok });
               // The rows it read, as a card the page draws (./cards.ts): the demo company's records, as returned.
               if (!r.isError && r.data) { const card = await cardOf(u.name, r.data, demoDetail(toolCtx, runAskTool)).catch(() => null); if (card) line({ type: "card", card }); }
               results.push({ type: "tool_result", tool_use_id: u.id, content: r.text, ...(r.isError ? { is_error: true } : {}) });

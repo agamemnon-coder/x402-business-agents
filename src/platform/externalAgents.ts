@@ -63,8 +63,12 @@ function cents(label: string, v: string, range: { min: number; max: number }): n
   return c;
 }
 
+/** The agent's verified signing key (src/policy/agentIdentity.ts), when its request carried one: recorded on the action. */
+interface Signed { agentKeyId?: string }
+const keyOf = (o: Signed): Record<string, string> => (o.agentKeyId ? { agent_key_id: o.agentKeyId } : {});
+
 /** The agent asks for a company card. Nothing is issued: it is a proposal for the CFO. */
-export function requestCompanyCard(db: DB, id: ExternalAgentId, a: { displayName: string; purpose: string; perTx: string; monthly: string }, now = new Date()): ProposalRow {
+export function requestCompanyCard(db: DB, id: ExternalAgentId, a: { displayName: string; purpose: string; perTx: string; monthly: string }, now = new Date(), o: Signed = {}): ProposalRow {
   const name = a.displayName.trim();
   const purpose = a.purpose.trim();
   if (name === "" || name.length > 60) throw new Error("give the agent a name of at most 60 characters");
@@ -88,7 +92,7 @@ export function requestCompanyCard(db: DB, id: ExternalAgentId, a: { displayName
     db.prepare(`INSERT INTO external_agents (agent_id, display_name, purpose, per_tx_cents, monthly_cents, status, proposal_id, created_at) VALUES (?, ?, ?, ?, ?, 'REQUESTED', ?, ?)
       ON CONFLICT(agent_id) DO UPDATE SET display_name = excluded.display_name, purpose = excluded.purpose, per_tx_cents = excluded.per_tx_cents,
         monthly_cents = excluded.monthly_cents, proposal_id = excluded.proposal_id`).run(id, name, purpose, perTx, monthly, p.proposal_id, now.toISOString());
-    audit(db, id as Actor, "agent.card_requested", id, { agent_id: id, name, purpose, per_tx: fromCents(perTx), monthly: fromCents(monthly), currency: "EUR", proposal_id: p.proposal_id }, now);
+    audit(db, id as Actor, "agent.card_requested", id, { agent_id: id, name, purpose, per_tx: fromCents(perTx), monthly: fromCents(monthly), currency: "EUR", proposal_id: p.proposal_id, ...keyOf(o) }, now);
     return p;
   }).immediate();
 }
@@ -156,7 +160,7 @@ export function cardStatus(db: DB, id: ExternalAgentId, now = new Date()): CardS
  * The agent pays a merchant on its card. In the sandbox the merchant's charge is Airwallex's simulation endpoint (an
  * honest stand-in for a checkout); whether it is approved or declined is Airwallex's own decision on the card.
  */
-export async function payWithCard(db: DB, sim: IssuingSim, id: ExternalAgentId, a: { merchant: string; amount: string; description: string }, now = new Date()): Promise<CardTransaction> {
+export async function payWithCard(db: DB, sim: IssuingSim, id: ExternalAgentId, a: { merchant: string; amount: string; description: string }, now = new Date(), o: Signed = {}): Promise<CardTransaction> {
   const card = cardOf(db, id);
   if (!card || row(db, id)?.status !== "ACTIVE") throw new Error(`${id} has no company card yet; ask for one and wait for the CFO's approval`);
   if (stopped(db, id)) throw new Error(`${id} was stopped automatically (velocity limit); it pays nothing until the CFO lifts the stop with Face ID`);
@@ -170,14 +174,14 @@ export async function payWithCard(db: DB, sim: IssuingSim, id: ExternalAgentId, 
   }
   if (amountCents <= 0) throw new Error("the amount must be more than 0.00");
   const purpose = `${merchant}, ${a.description.trim().slice(0, 120)}`;
-  audit(db, id as Actor, "card.purchase_started", id, { origin: { actor: "external", party: "outside_agent", name: id }, agent: id, last4: card.last4, merchant, amount: fromCents(amountCents), currency: "EUR", description: a.description.trim().slice(0, 120) }, now);
+  audit(db, id as Actor, "card.purchase_started", id, { origin: { actor: "external", party: "outside_agent", name: id }, agent: id, last4: card.last4, merchant, amount: fromCents(amountCents), currency: "EUR", description: a.description.trim().slice(0, 120), ...keyOf(o) }, now);
   const t = await chargeUnderHold(db, id, amountCents, now, () => chargeInWindow(db, sim, id, { cardId: card.card_id, amountCents, currency: "EUR", merchant, mcc: MCC }, now, purpose));
   ingestCardTransaction(db, t, "simulation", now, purpose);
   return t;
 }
 
 /** The agent asks for a higher limit on its card: a policy change for the CFO. Nothing changes until approved. */
-export function requestCardRaise(db: DB, id: ExternalAgentId, to: { perTx?: string; monthly?: string }, reason: string, now = new Date()): ProposalRow {
+export function requestCardRaise(db: DB, id: ExternalAgentId, to: { perTx?: string; monthly?: string }, reason: string, now = new Date(), o: Signed = {}): ProposalRow {
   if (row(db, id)?.status !== "ACTIVE") throw new Error(`${id} has no company card yet`);
   if (reason.trim() === "" || reason.length > 300) throw new Error("say why, in at most 300 characters");
   const changes = [
@@ -185,5 +189,7 @@ export function requestCardRaise(db: DB, id: ExternalAgentId, to: { perTx?: stri
     ...(to.monthly ? [{ key: `card.${id}.monthly`, to: to.monthly }] : []),
   ];
   if (changes.length === 0) throw new Error("say which limit to raise: per purchase, per month, or both");
-  return proposePolicyChange(db, { changes, reason: `${id}: ${reason.trim()}`, ttlMs: CARD_RAISE_TTL_MS }, id as Actor, now);
+  const p = proposePolicyChange(db, { changes, reason: `${id}: ${reason.trim()}`, ttlMs: CARD_RAISE_TTL_MS }, id as Actor, now);
+  if (o.agentKeyId) audit(db, id as Actor, "agent.limit_raise_requested", id, { agent: id, proposal_id: p.proposal_id, ...keyOf(o) }, now);
+  return p;
 }

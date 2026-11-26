@@ -11,6 +11,7 @@ import { fromB64, sha256Hex } from "./crypto.js";
 import type { Blobs } from "./store.js";
 import { WriteConflict, type Stmt, type Table, type TenantDb } from "./tenant.js";
 import { randomToken } from "./crypto.js";
+import { AuthorityMapSnapshot, storeAuthorityMap } from "./authorityMap.js";
 
 export class SyncRefused extends Error {
   /** tamper: a chained record that changed after it was pushed, or a chain that does not continue (a tamper alarm). */
@@ -83,6 +84,8 @@ export const SyncBatch = z.object({
     approval_sha256: SHA.optional(), rail_ref: z.string().min(1).max(200).optional(),
   }).strict()).max(5000).default([]),
   audit_rows: z.array(z.object({ seq: z.number().int().positive(), ts: STAMP, actor: z.string(), event: z.string(), subject: z.string().nullable(), payload_json: JSON_TEXT, prev_hash: SHA, row_hash: SHA }).strict()).max(20000).default([]),
+  // The runner's authority map, a snapshot (./authorityMap.ts): who may pay what. Only in a push that carries one.
+  authority_map: AuthorityMapSnapshot.optional(),
 }).strict();
 export type SyncBatch = z.infer<typeof SyncBatch>;
 
@@ -244,6 +247,7 @@ export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, no
     }
   }
   res.ledger_entries = { added: ledger.fresh.length, changed: 0, unchanged: ledger.unchanged };
+  if (batch.authority_map) res.authority_map = await storeAuthorityMap(db, batch.authority_map, iso, out);
 
   // Every check passed: the bytes first (a row never points at bytes that are not there), then the rows in one
   // transaction; if that fails, the bytes stored for this push are removed again.

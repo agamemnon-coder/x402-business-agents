@@ -39,6 +39,12 @@ export interface RunnerDeps {
   draftPolicy?: (text: string) => Promise<{ proposalId: string | null; message: string }>;
   /** Ask Purser: answers a chat message from the phone, proposing a task card when it fits the policy. */
   ask?: (text: string, ticket: string) => Promise<{ proposalId: string | null; reply: string }>;
+  /**
+   * Tells Slack or Teams about each proposal that waits for the CFO, once, with a link to its passkey page
+   * (src/integrations/approvalNotify.ts). Called after a sync, so the relay already holds what the link opens; never
+   * awaited by the sync, so a slow or failing webhook holds up nothing.
+   */
+  notify?: { announce(db: DB, proposalIds: string[], now: Date): Promise<void> };
 }
 
 export class RelayRunner {
@@ -82,6 +88,12 @@ export class RelayRunner {
     }
     // A relay that lost its copy (or never had it) gets the whole state on the next sync.
     this.lastPushed = body.need_state ? null : hash;
+    if (this.deps.notify) {
+      // The waiting proposals the phone now shows: announced once each, beside the syncs (src/integrations/approvalNotify.ts).
+      const run = this.deps.notify.announce(db, state.approvals.proposals.map((p) => p.proposal_id), this.now()).catch(() => undefined);
+      this.running.add(run);
+      void run.finally(() => this.running.delete(run));
+    }
     for (const item of body.inbox) await this.handle(item);
     if (this.deps.onHook) {
       for (const h of body.hooks ?? []) {

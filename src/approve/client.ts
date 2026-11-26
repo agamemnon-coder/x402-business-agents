@@ -24,6 +24,16 @@ export interface PhoneProposal {
   four_eyes?: { approved_by: string[] };
   /** With the agents on: the Treasury agent's recommendation for this price option, advisory (signed by the runner). */
   agent_advice?: { agent: string; model: string | null; recommends: boolean; text: string; verdict?: string };
+  /**
+   * A policy change only: the runner's replay of the last 30 days' payments under it (src/policy/simulate.ts), one line
+   * (signed by the runner with the rest; never part of the terms the passkey signs).
+   */
+  simulation?: string;
+}
+
+/** What the runner's replay says a waiting policy change would have done (PhoneProposal.simulation); null for anything else. */
+function simulationBox(o: PhoneProposal): HTMLElement | null {
+  return typeof o.simulation === "string" && o.simulation ? el("div", "review", [txt("p", "eyebrow", "Purser's replay of past payments, not part of what you sign"), txt("p", "", o.simulation)]) : null;
 }
 
 interface Approvals {
@@ -1411,6 +1421,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     ]),
     nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
     o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option")}`), txt("p", "", o.agent_advice.text)]) : null,
+    simulationBox(o),
     o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : reviewLabel(o.review)), txt("p", "", o.review.text)]) : null,
     el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]),
   ]);
@@ -1617,6 +1628,7 @@ async function approvePage(attempt = 0): Promise<void> {
       ]),
       nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
       o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option")}`), txt("p", "", o.agent_advice.text)]) : null,
+      simulationBox(o),
       o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : reviewLabel(o.review)), txt("p", "", o.review.text)]) : null,
       f ? el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]) : null,
       // Block 1: an owners_execute is signed by its on-chain digest, not by the terms hash; the fine print says which.

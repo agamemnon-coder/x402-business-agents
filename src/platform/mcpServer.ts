@@ -16,6 +16,7 @@ import { ClaudeReader } from "../claude/reader.js";
 import { Tools } from "../claude/tools.js";
 import { audit } from "../audit/log.js";
 import { authorize, keyMatches, TOOL_REFUSED } from "../policy/principals.js";
+import { IDENTITY_META, verifyAgentIdentity, type IdentityMode } from "../policy/agentIdentity.js";
 import { cardStatus, payWithCard, requestCardRaise, requestCompanyCard, type ExternalAgentId } from "./externalAgents.js";
 
 const EUR = z.string().regex(/^\d{1,6}\.\d{2}$/, "an amount in EUR with two decimals, like 25.00");
@@ -46,14 +47,21 @@ const NEXT_STEP: Record<string, string> = {
   CARD_INACTIVE: "The card is frozen: stop and tell your user.",
 };
 
-export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | null, reader: ClaudeReader = new ClaudeReader(db), key: string | undefined = process.env.KIT11_AGENT_KEY): McpServer {
+/** What a tool call brings besides its arguments: the request's _meta, which may carry the agent's signed identity. */
+type Extra = { _meta?: Record<string, unknown> };
+
+export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | null, reader: ClaudeReader = new ClaudeReader(db), key: string | undefined = process.env.KIT11_AGENT_KEY, opts: { identity?: IdentityMode } = {}): McpServer {
   // Each call is made as this agent's principal (backend review B5): it must hold the agent's current key (once one
   // was issued), be neither revoked nor expired, and have the tool among its capabilities.
   // A refusal is audited (principal.tool_refused, as an internal agent's is in src/agents/loop.ts): least privilege, visible.
-  const gate = (tool: string): string | null => {
+  // Know your agent (26 Nov): first the request's signed identity (src/policy/agentIdentity.ts), by PURSER_AGENT_IDENTITY
+  // unless given; a verified one names the agent's key, which the money action records.
+  const gate = (tool: string, args: unknown, extra?: Extra): { denied: string | null; keyId?: string } => {
+    const v = verifyAgentIdentity(db, { agent: id, method: "tools/call", target: tool, body: args ?? {}, proof: extra?._meta?.[IDENTITY_META] }, { mode: opts.identity, via: "agent API (MCP)" });
+    if (!v.ok) return { denied: `${v.code}: ${v.why}; stop and tell your user` };
     const denied = keyMatches(db, id, key) ? authorize(db, id, { tool }) : `principal_key_invalid: this is not ${id}'s current key (it was rotated, or none was given); stop and tell your user; never ask anyone for a key`;
     if (denied) audit(db, "system", TOOL_REFUSED, id, { agent: id, tool, via: "agent API (MCP)", reason: denied.slice(0, 300) });
-    return denied;
+    return { denied, ...(v.key_id ? { keyId: v.key_id } : {}) };
   };
   const server = new McpServer({ name: "purser-agent-api", version: "1.0.0" }, {
     instructions: `You are connected to Northwind Outdoor's agent API as the outside agent ${id}. You can ask for a company card, pay merchants on it, ask for a higher limit, see your card, and ask Purser for a single-use card for one task (a flight, a hotel or a train). Every request is decided by Northwind's CFO with Face ID; the card's limits are enforced by Airwallex. You cannot approve anything yourself.`,
@@ -69,11 +77,11 @@ export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | nu
       monthly_eur: EUR.describe("Most you need per month, in EUR"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  }, async (a) => {
-    const denied = gate("request_company_card");
+  }, async (a, extra) => {
+    const { denied, keyId } = gate("request_company_card", a, extra);
     if (denied) return refused(denied);
     try {
-      const p = requestCompanyCard(db, id, { displayName: a.display_name, purpose: a.purpose, perTx: a.per_purchase_eur, monthly: a.monthly_eur });
+      const p = requestCompanyCard(db, id, { displayName: a.display_name, purpose: a.purpose, perTx: a.per_purchase_eur, monthly: a.monthly_eur }, new Date(), { agentKeyId: keyId });
       return ok(`Asked. ${p.proposal_id} waits for the CFO's Face ID until ${p.expires_at}. No card exists until then; call company_card to see when it is issued.`);
     } catch (e) {
       return fail(e);
@@ -85,8 +93,8 @@ export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | nu
     description: "Your card request's state, and once issued: the card's last four digits, limits, this month's spend, whether it is frozen, and recent charges.",
     inputSchema: {},
     annotations: { readOnlyHint: true, openWorldHint: false },
-  }, async () => {
-    const denied = gate("company_card");
+  }, async (a, extra) => {
+    const { denied } = gate("company_card", a, extra);
     if (denied) return refused(denied);
     try {
       return ok(JSON.stringify(cardStatus(db, id), null, 2));
@@ -104,12 +112,12 @@ export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | nu
       description: z.string().min(1).max(120).describe("What it is for"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-  }, async (a) => {
-    const denied = gate("pay_with_card");
+  }, async (a, extra) => {
+    const { denied, keyId } = gate("pay_with_card", a, extra);
     if (denied) return refused(denied);
     try {
       if (!sim) throw new Error("the Airwallex sandbox keys are not set on this server, so no card can be charged");
-      const t = await payWithCard(db, sim, id, { merchant: a.merchant, amount: a.amount_eur, description: a.description });
+      const t = await payWithCard(db, sim, id, { merchant: a.merchant, amount: a.amount_eur, description: a.description }, new Date(), { agentKeyId: keyId });
       if (t.approved) {
         return ok(`Airwallex approved ${a.amount_eur} EUR at ${a.merchant} (transaction ${t.transactionId}).`,
           { approved: true, amount_eur: a.amount_eur, merchant: a.merchant, transaction_id: t.transactionId });
@@ -132,11 +140,11 @@ export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | nu
       reason: z.string().min(1).max(300).describe("Why you need it"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  }, async (a) => {
-    const denied = gate("request_limit_raise");
+  }, async (a, extra) => {
+    const { denied, keyId } = gate("request_limit_raise", a, extra);
     if (denied) return refused(denied);
     try {
-      const p = requestCardRaise(db, id, { perTx: a.per_purchase_eur, monthly: a.monthly_eur }, a.reason);
+      const p = requestCardRaise(db, id, { perTx: a.per_purchase_eur, monthly: a.monthly_eur }, a.reason, new Date(), { agentKeyId: keyId });
       return ok(`Asked. ${p.proposal_id} waits for the CFO's Face ID until ${p.expires_at}.`);
     } catch (e) {
       return fail(e);
@@ -148,8 +156,8 @@ export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | nu
     description: "Ask, in plain words, for a single-use card for one flight, hotel or train, with the most it may cost (for example: 'a train ticket to Antwerp on 12 November, at most €40'). It becomes a proposal the CFO approves with Face ID; you never get a card at once.",
     inputSchema: { message: z.string().min(1).max(500).describe("What you need, the most it may cost in EUR, and the day") },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  }, async (a) => {
-    const denied = gate("ask_for_task_card");
+  }, async (a, extra) => {
+    const { denied } = gate("ask_for_task_card", a, extra);
     if (denied) return refused(denied);
     try {
       const r = await askPurser(db, new Tools(db, reader), a.message, new Date(), { asker: id as Actor });

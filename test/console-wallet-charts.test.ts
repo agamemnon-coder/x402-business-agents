@@ -19,9 +19,10 @@ describe("the agents' cards (23 Nov)", () => {
   it("show the card's last four only, never a card number, a CVV or a way to move money", () => {
     expect(WALLET_JS).toContain("'•••• '+x.last4"); // 26 Nov (the owner): "•••• 4002", the last four only
     expect(WALLET_JS).not.toMatch(/card_number|cvv|\bpan\b/i);
-    // Its only calls: the design (read, and saved by an owner), the phone link, the Wallet pass link, the recorded negotiation.
+    // Its only calls: the design (read, and saved by an owner), the phone link, the Wallet pass link, the recorded
+    // negotiation, and the authority map under each card (read, cloud/src/authorityView.ts).
     const calls = [...WALLET_JS.matchAll(/api\('([^']+)'/g)].map((m) => m[1]).sort();
-    expect(calls).toEqual(["/v1/agents/", "/v1/agents/", "/v1/card-design", "/v1/card-design", "/v1/negotiation/recorded"]);
+    expect(calls).toEqual(["/v1/agents/", "/v1/agents/", "/v1/authority-map", "/v1/card-design", "/v1/card-design", "/v1/negotiation/recorded"]);
     expect(WALLET_JS).not.toMatch(/cardAct\(|navigator\.credentials|\/v1\/cards\/actions/);
   });
   it("draw from data as text, never as markup", () => {
@@ -95,7 +96,8 @@ describe("the charts", () => {
     expect(CHARTS_JS).toContain("tip.setAttribute('aria-hidden','true')");
     // Every chart binds it: the cash line (a crosshair), both column charts, both rings, the spend bars, the due bar.
     const all = html.slice(html.indexOf("<script"));
-    for (const f of ["function cashChart(", "function weekChart(", "function invoiceRing(", "function spendBars(", "function segbar(", "function flowChart(", "function donut("]) {
+    // 26 Nov: the older Overview's approvals-by-week chart and invoices ring went with it (the console redesign).
+    for (const f of ["function cashChart(", "function spendBars(", "function segbar(", "function flowChart(", "function donut("]) {
       const at = all.indexOf(f);
       const body = all.slice(at, all.indexOf("\nfunction", at + 1));
       expect({ f, binds: body.includes("chartPoint({root:") }).toEqual({ f, binds: true });
@@ -109,7 +111,8 @@ describe("the charts", () => {
     // A datum opens its list: a week or a day in Transactions (which reads its filters from the address), a state in Invoices.
     expect(CHARTS_JS).toContain("const txWeek=(w)=>'#/transactions?from='+w+'&to='+plusDays(w,6);");
     expect(all).toContain("async function transactionsView(q0){");
-    expect(all).toContain("href:(i)=>'#/invoices?f='+F[parts[i][0]]");
+    // (26 Nov: a state in Invoices from the Overview's flow, its stages each a link; the invoices ring went.)
+    expect(all).toContain("stage('pd','circle-check',sw('fl_paid'),paid,'#/invoices?f=paid'");
     expect(CHARTS_CSS).toContain(".chi:focus-visible");
   });
 });

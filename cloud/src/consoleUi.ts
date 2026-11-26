@@ -25,59 +25,8 @@ function timeline(D,shown){
   more.onclick=()=>{const open=more.getAttribute('aria-expanded')!=='true';rows.forEach((r,k)=>{if(k>=shown)r.hidden=!open});more.setAttribute('aria-expanded',String(open));more.replaceChildren(ic('chevron-down'),open?t('cs.ov.show_less'):t('cs.ov.show_newest',{n:rows.length}))};
   return el('div','',[ol,more])}
 async function overviewView(){
-  // 21 Nov (Max): the Overview on twelve columns with the partners' globe (cloud/src/consoleOverviewPlus.ts).
-  if(typeof overviewNext==='function')return overviewNext();
-  title(t('cs.nav.overview'));
-  const soft=(p)=>api(p).catch((e)=>{if(e instanceof Expired)throw e;return null});
-  const [m,x,all,D,AG,BK]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200'),soft('/v1/dashboard'),soft('/v1/agents'),soft('/v1/books/bookings')]);shell();
-  const items=all.items||[];
-  const blocked=Object.entries(x.blocked_by_reason||{}).sort((a,b)=>b[1]-a[1]);const nb=blocked.reduce((n,[,c])=>n+c,0);
-  // The next thing to do, from the same invoices: the CFO's Face ID first, then what needs a person.
-  const wait=items.filter(i=>i.status==='waiting_cfo'),faceid=wait.length,todo=items.filter(i=>['ready','needs_review','needs_vendor'].includes(i.status)).length;
-  const nx=el('a','card next hero'+(faceid||todo?' act':''));nx.href=faceid?'#/invoices?f=waiting_cfo':'#/invoices?f=act';
-  const first=wait[0];
-  nx.append(el('span','nic',ic(faceid?'scan-face':todo?'triangle-alert':'circle-check')),el('div','nb',[el('span','nl',t('cs.next.label')),el('b','',faceid?t(faceid===1?'cs.next.faceid_1':'cs.next.faceid_n',{n:faceid}):todo?t(todo===1?'cs.next.todo_1':'cs.next.todo_n',{n:todo}):t('cs.next.done')),
-    el('span','ns',faceid?t('cs.next.faceid_go'):todo?t('cs.next.todo_go'):t('cs.next.done_sub'))]),
-    ...[first?el('div','nw',faceid>1?[el('span','nv',t('cs.ov.n_suppliers',{n:new Set(wait.map((i)=>i.vendor)).size})),el('b','num',byCur(waitAmt).map(([c,v])=>cur(c)+' '+cents(v)).join(' · '))]:[el('span','nv',first.vendor||''),el('b','num',ma(first.currency,first.total))]):null,faceid||todo?el('span','ngo',[faceid?t('cs.ov.review'):t('cs.ov.go_open'),ic('chevron-right')]):null].filter(Boolean));
-  // Four figures: cash, what is open to pay, what waits for the CFO's Face ID, what is blocked.
-  const open=byCur(x.open_net_cents),over=byCur(x.overdue_cents),waitAmt={};for(const i of wait)waitAmt[i.currency]=(waitAmt[i.currency]||0)+toCents(i.total);
-  // 22 Nov: each figure is a link to the page it comes from.
-  const fig=(label,icon,value,sub,tone,href)=>{const v=el('b','num');if(value instanceof Node)v.append(value);else v.textContent=value;const a=el('a','card kpi rise'+(tone?' '+tone:''),[el('span','kl',[ic(icon),label]),v,sub?el('span','ks',sub):null]);a.href=href;return a};
-  const cash=D&&D.money?fig(t('cs.ov.cash'),'wallet',amt(D,toCents(D.money.net)),D.since?t('cs.dash.net_sub',{date:dday(D.since)}):t('cs.dash.net_none'),toCents(D.money.net)>=0?'pos':'neg','#/transactions'):null;
-  const k=el('div','kpis',[cash,
-    fig(t('cs.ov.payables'),'receipt',open.length?cur(open[0][0])+' '+cents(open[0][1]):t('cs.nothing_open'),over.length?t('cs.ov.overdue',{amount:over.map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):t('cs.ov.none_overdue'),over.length?'neg':'','#/invoices?f=open'),
-    fig(t('cs.ov.faceid'),'scan-face',String(x.waiting.for_cfo),byCur(waitAmt).length?byCur(waitAmt).map(([c,v])=>cur(c)+' '+cents(v)).join(' · '):t('cs.ov.nothing_waits'),x.waiting.for_cfo?'wait':'','#/invoices?f=waiting_cfo'),
-    fig(t('cs.t.blocked'),'octagon-x',String(nb),blocked.length?tk('cs.w.f.'+blocked[0][0],t('cs.w.blocked')):t('cs.x.none_blocked'),nb?'neg':'','#/invoices?f=blocked')].filter(Boolean));
-  // When the open invoices fall due, in their main currency (other currencies are said, not mixed in).
-  const opn=items.filter(i=>!['paid','rejected'].includes(i.status));const per={};for(const i of opn)per[i.currency]=(per[i.currency]||0)+toCents(i.total);
-  const main=Object.entries(per).sort((a,b)=>b[1]-a[1])[0];const days=(d)=>Math.round((Date.parse(d)-Date.parse(today))/86400000);
-  const b=[0,0,0,0];for(const i of opn){if(!main||i.currency!==main[0])continue;const n=i.due_date?days(i.due_date):99999;b[n<=0?0:n<=7?1:n<=30?2:3]+=toCents(i.total)}
-  const lab=['cs.due.late','cs.due.d7','cs.due.d30','cs.due.later'];
-  const due=el('section','card dcard rise due',[el('div','dh',[el('h2','',t('cs.due.title'))]),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title'),()=>'#/invoices?f=open'):el('p','lede',t('cs.due.none')),
-    Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);cardLink(due,'#/invoices?f=open',sw('to_inv'));
-  const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
-  // 22 Nov (the owner: "calm, and everything connected"): what needs you, the figures, how invoices flow to payment, the
-  // cash, the agents at work; each part links to its page. The live Airwallex read sits under the company's own figures.
-  const dups=D&&D.invoices&&D.invoices.duplicates_stopped||0;
-  const dash=el('div','dash',[k,payFlow(items,(BK&&BK.bookings)||{},dups,D&&D.currency)].filter(Boolean));const nodes=[head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),faceid?needsYou(wait):nx,!items.length&&!m.demo?startCard(m):null,dash].filter(Boolean);
-  if(D&&D.cash&&D.cash.length){
-    const wide=innerWidth>=980,full=view().clientWidth||960;const cashW=Math.round(wide?full*0.64-40:full-40),weekW=Math.round(wide?full*0.5-44:full-40);
-    const sub=D.agents.by_fallback?t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback}):t('cs.dash.decisions_sub');
-    dash.append(el('div','dgrid g1',[cardLink(dcard('cash',t('cs.dash.cash_title'),t('cs.dash.cash_sub',{cur:cur(D.currency),date:dday(D.since)}),cashWithTable(D,cashW)),'#/transactions',sw('to_tx')),
-        cardLink(dcard('inv',t('cs.dash.inv_title'),t('cs.dash.inv_sub',{cur:cur(D.currency)}),invoiceRing(D)),'#/invoices',sw('to_inv'))]),
-      // The agents at work: each one's spend against its limit and newest decision, then the decisions as a timeline.
-      el('div','dgrid g1',[cardLink(dcard('feedc',sw('act_h'),sub,el('div','',[agentStrip(AG&&AG.agents),timeline(D,6)])),'#/agents',sw('to_agents')),el('div','stack',[due,cardLink(dcard('weeks',t('cs.dash.appr_title'),t('cs.dash.appr_sub'),el('div','',[el('div','cv',[weekChart(D,Math.round(wide?full*0.36-40:weekW))]),el('ul','klegend',[el('li','',[el('i','cfo'),t('cs.dash.appr_cfo')]),el('li','',[el('i','alone'),t('cs.dash.appr_alone')])])])),'#/invoices?f=paid',sw('to_inv'))])]),
-      // 21 Nov: spend by who started it beside spend by rail, each with its table.
-      el('div','dgrid g1',[cardLink(dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),agentSpend(D)),'#/agents',sw('to_agents')),cardLink(dcard('rails',t('cs.ch.rails_title'),t('cs.ch.rails_sub',{cur:cur(D.currency)}),railsChart(D)),'#/transactions',sw('to_tx'))]),
-      // 21 Nov (Max: "too simple"): cash by week and the counterparties paid (cloud/src/consoleOverviewPlus.ts).
-      overviewPlus(D));
-  }else dash.append(due);
-  nodes.push(awlOverview());
-  if(inbox)nodes.push(inbox);
-  nodes.push(whatCloud(m));
-  view().replaceChildren(...nodes);
-  // Every card rises in on the next frame; with reduced motion the CSS shows all at once.
-  requestAnimationFrame(()=>{for(const n of view().querySelectorAll('.rise'))n.classList.add('in')});
+  // 21 Nov (Max): the Overview on twelve columns (cloud/src/consoleOverviewPlus.ts); 26 Nov: its one layout.
+  return overviewNext();
 }
 
 // A company with nothing in it yet (21 Nov, the walk as a new company: an empty overview said only "Nothing waits for
@@ -454,24 +403,11 @@ export const UI_CSS = `
 .t0close .links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .t0close .links a { display: inline-flex; align-items: center; min-height: 44px; }
 /* The CFO's pass (14 Nov): calm cards, one accent, numbers that settle, motion only when the person allows it. */
-.card.next.hero { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 18px 20px; margin: 4px 0 16px; text-decoration: none; color: var(--text); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, var(--surface)), var(--surface)); }
-.card.next.hero:not(.act) { border-color: var(--border); background: var(--surface); }
-.next.hero .nic { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
-.next.hero .nic svg { width: 26px; height: 26px; }
-.next.hero .nb { display: grid; gap: 2px; min-width: 0; }
-.next.hero .nl { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
-.next.hero .nb b { font-size: 20px; letter-spacing: -.01em; }
-.next.hero .ns { color: var(--muted); font-size: 14px; }
-.next.hero .nw { display: grid; justify-items: end; gap: 2px; padding-right: 8px; border-right: 1px solid var(--border); }
-.next.hero .nw .nv { color: var(--muted); font-size: 13px; }
-.next.hero .nw b { font-size: 20px; font-variant-numeric: tabular-nums; }
-.next.hero .ngo { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 10px; background: var(--text); color: var(--bg); font-weight: 650; font-size: 14px; white-space: nowrap; }
-.next.hero:hover .ngo { background: var(--accent); }
 @media (max-width: 720px) { .card.next.hero { grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 16px; } .next.hero .nic { width: 44px; height: 44px; }
   .next.hero .nw { grid-column: 1 / -1; justify-items: start; border-right: 0; padding: 0; display: flex; gap: 10px; align-items: baseline; } .next.hero .ngo { grid-column: 1 / -1; justify-content: center; } .next.hero .nb b { font-size: 17px; } }
 .kpi.wait .kl .ic { background: var(--warn-soft); color: var(--warn); }
 .kpi.neg b { color: var(--bad); } .kpi.wait b { color: var(--warn); }
-.dash-gap, #view > .dgrid, #view > .dcard { margin-top: 16px; }
+#view > .dgrid, #view > .dcard { margin-top: 16px; }
 #view > .kpis { margin-bottom: 0; }
 .dgrid .stack { display: grid; gap: 16px; align-content: start; }
 .dcard.due .segwrap { margin-top: 4px; }
@@ -490,7 +426,6 @@ export const UI_CSS = `
 .tline time { font-size: 12.5px; color: var(--faint); padding-top: 7px; white-space: nowrap; }
 .btn.linkbtn { background: none; border: 0; padding: 8px 0 0 44px; color: var(--accent); font-weight: 650; min-height: 40px; box-shadow: none; }
 .btn.linkbtn[aria-expanded="true"] .ic { transform: rotate(180deg); }
-.what-cloud { margin-top: 24px; }
 /* Agents: one card each. */
 .card.agent { padding: 22px; display: grid; gap: 18px; }
 .agent .ah { grid-template-columns: 40px minmax(0, 1fr) auto; margin: 0; align-items: center; }
@@ -692,22 +627,10 @@ ul.thash .tw { display: grid; } ul.thash .tw .sub { font-size: 12px; } ul.thash 
 /* Transactions: a long status (a rail's decline and its reason) wraps inside its pill instead of being cut off. */
 .trow > .stx { white-space: normal; } .trow > .stx .pill { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; height: auto; padding-top: 3px; padding-bottom: 3px; }
 /* Tokenisation: three steps side by side, the hashes in a fold; the Visa runs with their outcome. */
-ol.tsteps3 { list-style: none; margin: 14px 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-ol.tsteps3 > li { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; }
-ol.tsteps3 .tdot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--sunken); font-weight: 700; font-size: 13px; }
-ol.tsteps3 li.done .tdot { background: var(--ok); color: var(--bg); } ol.tsteps3 .tdot svg { width: 14px; height: 14px; }
-ol.tsteps3 p.sub { margin: 2px 0 8px; font-size: 13px; }
-ul.txw { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; } ul.txw li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; } ul.txw svg { width: 14px; height: 14px; color: var(--ok); margin-top: 2px; }
 details.tokdet { margin: 12px 0 4px; } details.tokdet summary { cursor: pointer; font-weight: 650; color: var(--muted); font-size: 14px; min-height: 32px; display: flex; align-items: center; }
-ul.viclist { list-style: none; padding: 0; margin: 12px 0; display: grid; }
-ul.viclist li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); font-size: 14px; }
-ul.viclist li:first-child { border-top: 0; }
-ul.viclist .vstep { width: 28px; height: 28px; border-radius: 8px; background: var(--sunken); display: grid; place-items: center; font-weight: 700; font-size: 12.5px; }
-ul.viclist .vr { display: block; font-size: 12.5px; overflow-wrap: anywhere; } ul.viclist b { white-space: nowrap; }
 @media (max-width: 760px) { ol.tsteps3 { grid-template-columns: minmax(0, 1fr); } ul.viclist li { grid-template-columns: 34px minmax(0, 1fr) auto; } ul.viclist .obadge { grid-column: 2; } }
 @media (prefers-reduced-motion: no-preference) {
-  .card.agent.rise, .card.next.hero { animation: rise-in .4s ease both; }
-  .card.next.hero { animation-delay: .02s; }
+  .card.agent.rise{ animation: rise-in .4s ease both; }
   .kpi.rise.in b { animation: settle .5s cubic-bezier(.2, .7, .2, 1) both; }
   .lbar span { animation: grow .7s cubic-bezier(.2, .7, .2, 1) .1s both; transform-origin: left; }
   .tline li { animation: rise-in .35s ease both; }

@@ -13,16 +13,22 @@ import type { DB } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { supplierPaymentEur } from "./fourEyes.js";
 import { policyValue } from "./rules.js";
-import { paidBefore, samePayee, type PaymentTerms } from "./secondKey.js";
+import { paidBefore, samePayee, type Paid, type PaymentTerms } from "./secondKey.js";
 import { plainCents } from "./withinLimit.js";
 
 export const ANOMALY_HELD = "payment.anomaly_held";
 
 /** The thresholds in force (the rules' fallbacks are the defaults): a multiple (null: off), how many paid invoices, a first-payment amount in cents (null: off). */
-export function anomalyThresholds(db: DB): { multiple: number | null; history: number; firstEurCents: number | null } {
-  const m = Number(policyValue(db, "approval.anomaly_multiple"));
-  const h = Number(policyValue(db, "approval.anomaly_history"));
-  return { multiple: m >= 2 ? m : null, history: h >= 1 ? h : 5, firstEurCents: plainCents(policyValue(db, "approval.anomaly_first_eur")) || null };
+export function anomalyThresholds(db: DB): AnomalyThresholds {
+  return anomalyThresholdsFrom((key) => policyValue(db, key));
+}
+export interface AnomalyThresholds { multiple: number | null; history: number; firstEurCents: number | null }
+
+/** The thresholds from any policy lookup: the one in force, or one proposed (the policy simulator, src/policy/simulate.ts). */
+export function anomalyThresholdsFrom(value: (key: string) => string): AnomalyThresholds {
+  const m = Number(value("approval.anomaly_multiple"));
+  const h = Number(value("approval.anomaly_history"));
+  return { multiple: m >= 2 ? m : null, history: h >= 1 ? h : 5, firstEurCents: plainCents(value("approval.anomaly_first_eur")) || null };
 }
 
 /**
@@ -30,12 +36,19 @@ export function anomalyThresholds(db: DB): { multiple: number | null; history: n
  * history is its executed payments (by beneficiary, else by vendor); the payment itself is not executed yet.
  */
 export function anomalyReasons(db: DB, p: { kind: string; terms_json: string }): string[] {
-  const th = anomalyThresholds(db);
+  return anomalyReasonsFrom(anomalyThresholds(db), p, paidBefore(db));
+}
+
+/**
+ * The same rule over given thresholds and a given history of paid payments (oldest first): pure. The simulator replays a
+ * past payment with the history as it stood then (src/policy/simulate.ts).
+ */
+export function anomalyReasonsFrom(th: AnomalyThresholds, p: { kind: string; terms_json: string }, paid: Paid[]): string[] {
   const t = JSON.parse(p.terms_json) as PaymentTerms & { beneficiary_name?: string };
   const amount = plainCents(String(t.amount));
   // Not a plain amount: no history can explain it.
   if (amount === null) return ["amount unreadable"];
-  const mine = paidBefore(db).filter((x) => samePayee(x, t));
+  const mine = paid.filter((x) => samePayee(x, t));
   const who = t.beneficiary_name || t.vendor;
   const out: string[] = [];
   if (!mine.length && th.firstEurCents) {

@@ -15,6 +15,8 @@ import { SITE_ORIGIN } from "../siteHeader.js";
 import { SITE_HEADER_CSS, TRY_HEADER_LINKS } from "../siteHeader.js";
 import { ATTACH_MAX_BYTES, ATTACH_TYPES } from "./attach.js";
 import { ASK_COPY, QUESTION_MAX } from "./core.js";
+import { BRAND_LOGOS } from "../brandLogos.gen.js";
+import { AIRWALLEX_LOGO_SRC } from "../../../src/ui/builtOn.js";
 import { ASK_CONTEXT_KINDS, ASK_NAV, CONTEXT_ID, CONTEXT_JS, OPEN_APPROVAL, OPEN_APPROVAL_LABEL, approvalHash, contextLabel, parseContext, quickActions, type AskContext } from "./context.js";
 
 export const ASK_PATH = "/ask";
@@ -113,8 +115,23 @@ export const ASK_PAGE_COPY = {
   // guest in the demo company; a person signed in to their own company keeps the four console actions (ASK_ACTIONS).
   // 21 Nov (Max: "the agent still looks like 2022 design: Claude-modern, enterprise, clean"): a soft greeting and one
   // muted line, the honesty kept (read-only, test money, cited).
-  juryHead: "How can I help?",
-  juryLine: "Ask about Purser or the demo company. Every answer cites its source.",
+  // 26 Nov (Max: "a real agent with integrations, skills and the logos of its connections; not a 2022 chatbot, not
+  // crazy"): the panel opens on what the agent can do (its skills, each one of its real read-only tools) and what it
+  // reads from (its connections, each labelled as it is: sandbox, testnet, demo books); it says plainly it cannot pay.
+  juryHead: "What I can do",
+  juryLine: "I read Purser's docs and the demo company's books and cite each source. I can't approve or pay.",
+  reads: "Reads from",
+  forPage: "For this page",
+  steps2: "Agent steps",
+  approveIn: "Approve in Purser Cloud",
+  openIn: "Open in Purser Cloud",
+  // 26 Nov (Max: "and also have a terminal"): the agent's own tool calls in this chat, as it made them, read only.
+  term: "Terminal",
+  termLabel: "Terminal: the agent's tool calls in this chat",
+  termHead: "purser · read-only · this chat",
+  termEmpty: "No tool calls yet. Each read the agent makes in this chat shows here, as it ran.",
+  copy: "Copy",
+  copied: "Copied",
 } as const;
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
@@ -168,6 +185,7 @@ const ICON: Record<string, string[]> = {
   // Purser's feather alone (the mark's strokes without its tile), monochrome in currentColor (21 Nov, Max: "Claude-modern").
   feather: ["M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z", "M16 8 2 22", "M17.5 15H9"],
   arrow: ["M5 12h14", "m12 5 7 7-7 7"],
+  term: ["m4 17 6-6-6-6", "M12 19h8"],
 };
 /** The empty state's four actions (21 Nov, Max's mockups): each asks one question the agent answers from its reads. */
 export const ASK_ACTIONS: { icon: string; label: string; q: string }[] = [
@@ -186,6 +204,36 @@ export const ASK_JURY: { q: string }[] = [
   { q: "What is live and what is simulated?" },
   { q: "How does the CFO's Face ID approval work?" },
 ];
+/**
+ * The agent's skills (26 Nov, Max: "skills"): each one of its read-only tools (./tools.ts ASK_TOOLS), named, with one
+ * line on what it does and the question that starts it. The last asks the docs (search_docs), as jury mode did.
+ */
+export const ASK_SKILLS: { icon: string; name: string; line: string; tool: string; q: string }[] = [
+  { icon: "clock", name: "Waiting for the CFO", line: "What needs Face ID, and why", tool: "pending_approvals", q: "Which invoices wait for the CFO's Face ID?" },
+  { icon: "file", name: "Invoices and checks", line: "Each invoice and what was checked", tool: "list_invoices", q: "Show the open invoices and the checks on each." },
+  { icon: "trail", name: "Explain a payment", line: "Who allowed it, under which rule", tool: "explain_payment", q: "Explain the most recent payment: who allowed it, and under which rule?" },
+  { icon: "wallet", name: "Cash position", line: "Cash now and the weeks ahead", tool: "cash_position", q: "What is the cash position, and how does it look over the next weeks?" },
+  { icon: "books", name: "Books and VAT", line: "The journal and the VAT summary", tool: "books_report", q: "Summarise the books and the VAT summary." },
+  { icon: "docs", name: "How Purser works", line: "From the docs, each claim cited", tool: "search_docs", q: ASK_JURY[0]!.q },
+];
+/**
+ * What the agent reads from, as a strip in the panel's header: each connection with its mark (the logos the console's
+ * Connections page already ships, ../brandLogos.gen.ts, drawn as a mask in the text's colour) and what it is, honestly:
+ * Claude answers (live or off); the Airwallex sandbox, Visa through Airwallex's Airi sandbox and Alta's testnet are the
+ * recorded runs it reads (run_records); T:0 is the demo company's books. Read only, every one.
+ */
+export const ASK_CONNECTIONS: { key: string; name: string; what: string }[] = [
+  { key: "claude", name: "Claude", what: "answers the questions" },
+  { key: "airwallex", name: "Airwallex", what: "sandbox runs, read only" },
+  { key: "visa", name: "Visa via Airi", what: "sandbox runs, read only" },
+  { key: "alta", name: "Alta", what: "testnet runs, read only" },
+  { key: "t0", name: "T:0", what: "the demo company's books, read only" },
+];
+const MASKS: Record<string, string> = { claude: BRAND_LOGOS.claude!.uri, visa: BRAND_LOGOS.visa!.uri, alta: BRAND_LOGOS.alta!.uri, airwallex: AIRWALLEX_LOGO_SRC };
+/** Each mark as a mask (the page's policy allows images from data: and this origin). */
+const MASK_CSS = Object.entries(MASKS).map(([k, u]) => `.cx .m-${k}{-webkit-mask-image:url("${u}");mask-image:url("${u}")}`).join("");
+/** The tool each step names, as the step's icon. */
+const TOOL_ICON: Record<string, string> = { search_docs: "docs", company_overview: "layers", list_invoices: "file", get_invoice: "file", list_transactions: "swap", books_report: "books", vat_summary: "books", agent_decisions: "bot", what_needs_attention: "spark", cash_position: "wallet", pending_approvals: "clock", cfo_policy: "shield", spend_breakdown: "books", payment_audit_trail: "trail", explain_payment: "trail", agents: "bot", run_records: "chain" };
 /** What the agent can read (./tools.ts), as the rail shows it: an icon and a few words each. */
 const READS: [string, string][] = [["docs", "Purser's docs"], ["file", "Invoices"], ["swap", "Payments"], ["books", "Books & VAT"], ["wallet", "Cash"], ["clock", "Waiting for the CFO"], ["shield", "CFO's policy"], ["bot", "Agents & limits"], ["trail", "Audit trails"], ["chain", "Run records"]];
 const icon = (name: string, size = 18) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICON[name]!.map((d) => `<path d="${d}"/>`).join("")}</svg>`;
@@ -195,7 +243,8 @@ ${TOKENS.replace("url(assets/", "url(/assets/")} :root{--warn:#b45309;--bubble:v
 `;
 
 /** An answer's cards (an invoice list, its step tracker, its follow-ups): on the page and, since 26 Nov, in the panel. */
-const CARDS_CSS = `.icard{margin:10px 0 4px;border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden}.icard .ih{margin:0;padding:8px 14px;border-bottom:1px solid var(--border);font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}.icard ul{list-style:none;margin:0;padding:0}.icard li{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:12px 14px}.icard li + li{border-top:1px solid var(--border)}.icard .fi{width:36px;height:36px;border-radius:10px;display:inline-grid;place-items:center;background:var(--sunken);color:var(--muted)}.icard .who{margin:0;display:grid;gap:1px;min-width:0}.icard .who b{font-size:14.5px;font-weight:650;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.icard .who span{font-size:12.5px;color:var(--muted);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.icard .amt{font-size:15px;font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap}.icard .rv{min-height:36px;padding:0 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));background:var(--accent-soft);color:var(--accent);font:650 13px/1 Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap}.icard .rv:hover{background:var(--accent);color:var(--btn-ink,#fff)}.icard .st{grid-column:2 / -1;margin:-4px 0 0;font-size:12px;color:var(--muted)}@media (max-width:520px){.icard li{grid-template-columns:auto minmax(0,1fr) auto}.icard .amt{grid-column:2;grid-row:2}.icard .rv{grid-row:1 / span 2;grid-column:3}.icard .st{grid-column:2 / -1}}.track{list-style:none;margin:10px 0 4px;padding:14px 10px 12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--border);border-radius:14px;background:var(--surface)}.track li{position:relative;display:grid;justify-items:center;gap:3px;text-align:center;font-size:13px;font-weight:650;color:var(--text);min-width:0}.track li::before{content:"";position:absolute;top:14px;right:50%;width:100%;height:2px;background:var(--border);z-index:0}.track li:first-child::before{display:none}.track li.done::before,.track li.now::before{background:color-mix(in srgb,var(--ok) 55%,var(--border))}.track .dot2{position:relative;z-index:1;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:2px solid var(--border);color:var(--faint);font-size:12px;font-weight:750}.track li.done .dot2{background:var(--ok);border-color:var(--ok);color:#fff}.track li.now .dot2{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}.track li.now{color:var(--accent)}.track li.warn .dot2,.track li.blocked .dot2{border-color:var(--warn);color:var(--warn)}.track small{font-size:11.5px;font-weight:500;color:var(--muted);line-height:1.3}.fups{list-style:none;margin:10px 0 2px;padding:0;display:flex;flex-wrap:wrap;gap:8px}.fups p{width:100%;margin:0;font-size:13.5px;color:var(--muted)}`;
+const CARDS_CSS = `.icard{margin:10px 0 4px;border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden}.icard .ih{margin:0;padding:8px 14px;border-bottom:1px solid var(--border);font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}.icard ul{list-style:none;margin:0;padding:0}.icard li{display:grid;grid-template-columns:36px minmax(0,1fr) auto;grid-template-areas:"fi who amt" "fi st rv";align-items:center;gap:6px 12px;padding:12px 14px}.icard li + li{border-top:1px solid var(--border)}.icard .fi{grid-area:fi;align-self:start;width:36px;height:36px;border-radius:10px;display:inline-grid;place-items:center;background:var(--sunken);color:var(--muted)}.icard .who{grid-area:who;margin:0;display:grid;gap:1px;min-width:0}.icard .who b{font-size:14.5px;font-weight:650;line-height:1.3;color:var(--text);overflow-wrap:anywhere}.icard .who span{font-size:12.5px;line-height:1.35;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}.icard .amt{grid-area:amt;align-self:start;font-size:15px;font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}.icard .rv{grid-area:rv;justify-self:end;min-height:34px;padding:0 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));background:var(--accent-soft);color:var(--accent);font:650 13px/1 Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap}.icard .rv:hover{background:var(--accent);color:var(--btn-ink,#fff)}.icard .st{grid-area:st;margin:0;min-width:0;font-size:12px;line-height:1.35;color:var(--warn)}
+.track{list-style:none;margin:8px 0 4px;padding:10px 8px 9px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--border);border-radius:14px;background:var(--surface)}.track li{position:relative;display:grid;justify-items:center;gap:1px;text-align:center;font-size:12.5px;line-height:1.3;font-weight:650;color:var(--text);min-width:0}.track li::before{content:"";position:absolute;top:12px;right:50%;width:100%;height:2px;background:var(--border);z-index:0}.track li:first-child::before{display:none}.track li.done::before,.track li.now::before{background:color-mix(in srgb,var(--ok) 55%,var(--border))}.track .dot2{position:relative;z-index:1;width:26px;height:26px;margin-bottom:3px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:2px solid var(--border);color:var(--faint);font-size:12px;font-weight:750}.track li.done .dot2{background:var(--ok);border-color:var(--ok);color:#fff}.track li.now .dot2{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}.track li.now{color:var(--accent)}.track li.warn .dot2,.track li.blocked .dot2{border-color:var(--warn);color:var(--warn)}.track small{font-size:11px;font-weight:500;color:var(--muted);line-height:1.25}.fups{list-style:none;margin:10px 0 2px;padding:0;display:flex;flex-wrap:wrap;gap:8px}.fups p{width:100%;margin:0;font-size:13.5px;color:var(--muted)}`;
 
 /**
  * The page as an agent app (21 Nov, Max's mockups: "make Purser agent like this"): on a wide screen a sidebar (New
@@ -216,7 +265,7 @@ ${WAVE_CANVAS_CSS} @media (prefers-color-scheme:light){canvas.pw-wave{opacity:.4
  * shows the questions about Purser (.jury), a page of Purser Cloud its three quick actions (.ctx).
  */
 const EMBED_CSS = `
-body.embed .scroll{display:flex;flex-direction:column;padding:0 20px 12px}body.embed .hello{margin:auto 0;padding:24px 0 20px;align-items:center;text-align:center;gap:0}body.embed .hello .hmk{display:grid;place-items:center;width:40px;height:40px;margin:0 0 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--accent);box-shadow:0 1px 2px rgba(15,12,30,.05)}body.embed .hello h2{margin:0;font-size:22px;line-height:1.3;letter-spacing:-.02em;font-weight:600;color:var(--text)}body.embed .hello p{margin:6px 0 0;max-width:36ch;font-size:13.5px;line-height:1.5;color:var(--muted)}body.embed.has-ctx .acts.jury,body.embed:not(.has-ctx) .acts.ctx{display:none}body.embed .acts{list-style:none;margin:24px 0 0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;width:100%}body.embed .acts li{margin:0;min-width:0}body.embed .acts button{width:100%;min-height:44px;display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);font:450 14px/1.4 Inter,system-ui,-apple-system,sans-serif;letter-spacing:-.005em;text-align:left;cursor:pointer;overflow-wrap:anywhere;transition:background-color .15s ease,border-color .15s ease}body.embed .acts button span{flex:1;min-width:0}body.embed .acts button::after{content:"→";flex:none;color:var(--faint);transition:color .15s ease,transform .15s ease}body.embed .acts button:hover{background:var(--hover);border-color:var(--border)}body.embed .acts button:hover::after{color:var(--accent);transform:translateX(2px)}body.embed .acts button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}body.embed .acts button:disabled{opacity:.5;cursor:default}@media (prefers-reduced-motion:reduce){body.embed .acts button,body.embed .acts button::after{transition:none}body.embed .acts button:hover::after{transform:none}}body.embed .fups button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);font:500 13.5px/1.2 Inter,system-ui,-apple-system,sans-serif;cursor:pointer}body.embed .fups button svg{color:var(--accent)}body.embed .fups button:hover{background:var(--hover);border-color:var(--border)}body.embed .fups button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}body.embed .composer{padding:0 16px 12px}body.embed .box{gap:6px;padding:12px 10px 10px 16px;border-radius:20px}body.embed textarea{min-height:44px}body.embed .foot{margin:8px 4px 0;text-align:center;font-size:11px;line-height:1.45;color:var(--faint)}@media (max-width:400px){body.embed .scroll{padding:0 16px 8px}body.embed .ctxbar{padding:2px 16px 6px}body.embed .composer{padding:0 12px 10px}body.embed .hello{padding-top:16px}}
+body.embed .scroll{display:flex;flex-direction:column;padding:0 20px 12px}body.embed .hello{margin:auto 0 0;padding:20px 0 8px;align-items:stretch;text-align:left;gap:0}body.embed .hello h2{margin:0;font-size:17px;line-height:1.3;letter-spacing:-.015em;font-weight:650;color:var(--text)}body.embed .hello p{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--muted)}body.embed .acts{list-style:none;margin:24px 0 0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;width:100%}body.embed .acts li{margin:0;min-width:0}body.embed .acts button{width:100%;min-height:44px;display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);font:450 14px/1.4 Inter,system-ui,-apple-system,sans-serif;letter-spacing:-.005em;text-align:left;cursor:pointer;overflow-wrap:anywhere;transition:background-color .15s ease,border-color .15s ease}body.embed .acts button span{flex:1;min-width:0}body.embed .acts button::after{content:"→";flex:none;color:var(--faint);transition:color .15s ease,transform .15s ease}body.embed .acts button:hover{background:var(--hover);border-color:var(--border)}body.embed .acts button:hover::after{color:var(--accent);transform:translateX(2px)}body.embed .acts button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}body.embed .acts button:disabled{opacity:.5;cursor:default}@media (prefers-reduced-motion:reduce){body.embed .acts button,body.embed .acts button::after{transition:none}body.embed .acts button:hover::after{transform:none}}body.embed .fups button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);font:500 13.5px/1.2 Inter,system-ui,-apple-system,sans-serif;cursor:pointer}body.embed .fups button svg{color:var(--accent)}body.embed .fups button:hover{background:var(--hover);border-color:var(--border)}body.embed .fups button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}body.embed .composer{padding:0 16px 12px}body.embed .box{gap:6px;padding:12px 10px 10px 16px;border-radius:20px}body.embed textarea{min-height:44px}body.embed .foot{margin:8px 4px 0;text-align:center;font-size:11px;line-height:1.45;color:var(--faint)}@media (max-width:400px){body.embed .scroll{padding:0 16px 8px}body.embed .ctxbar{padding:2px 16px 6px}body.embed .composer{padding:0 12px 10px}body.embed .hello{padding-top:16px}}
 `;
 
 /**
@@ -229,6 +278,23 @@ body.embed .scroll{display:flex;flex-direction:column;padding:0 20px 12px}body.e
  */
 const MODERN_CSS = `
 :root{--line:color-mix(in srgb,var(--border) 75%,transparent);--hover:color-mix(in srgb,var(--text) 5%,transparent);--ring:color-mix(in srgb,var(--accent) 55%,transparent);--bubble:color-mix(in srgb,var(--text) 6%,var(--surface));--on-bubble:var(--text)}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--line:color-mix(in srgb,var(--border) 80%,transparent);--hover:color-mix(in srgb,var(--text) 7%,transparent);--bubble:color-mix(in srgb,var(--text) 9%,var(--surface));--on-bubble:var(--text)}}:root[data-theme="dark"]{--line:color-mix(in srgb,var(--border) 80%,transparent);--hover:color-mix(in srgb,var(--text) 7%,transparent);--bubble:color-mix(in srgb,var(--text) 9%,var(--surface));--on-bubble:var(--text)}.bar{min-height:52px;padding:8px 8px 8px 16px;gap:8px;border-bottom:1px solid var(--line)}.bar .logo{flex:none;display:inline-grid;place-items:center;width:24px;height:24px;color:var(--text);border-radius:0}.bar .grow{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;row-gap:0}.bar h1,h1{font-size:15px;line-height:1.3;letter-spacing:-.01em;font-weight:600}.status{display:inline-flex;align-items:center;gap:6px;width:auto;margin:0;padding:0;border:0;border-radius:0;background:none;font-size:12px;font-weight:450;line-height:1.3;color:var(--muted)}.dot,.dot:not(.docs){width:6px;height:6px;background:var(--ok);box-shadow:none;animation:none}.dot.docs{background:var(--warn);box-shadow:none}.ib{width:32px;height:32px;border-radius:8px;color:var(--muted);transition:background-color .15s ease,color .15s ease}.ib:hover{background:var(--hover);color:var(--text)}.ib svg{width:16px;height:16px}.ib:focus-visible,.send:focus-visible,.chip:focus-visible,a:focus-visible{outline:2px solid var(--ring);outline-offset:2px}.scroll{padding:8px 16px 16px}.chat{gap:24px;padding-top:16px}.msg.you{max-width:85%}.msg.you .txt{background:var(--bubble);color:var(--on-bubble);border-radius:18px 18px 6px 18px;padding:8px 14px;font-size:14.5px;line-height:1.5}.msg.bot{grid-template-columns:24px minmax(0,1fr);column-gap:12px}.msg.bot>.av{display:grid;place-items:center;width:24px;height:24px;margin-top:1px;border:1px solid var(--line);border-radius:50%;color:var(--text);padding:0}.msg.bot>.who{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:-1px}.body{font-size:14.5px;line-height:1.6;color:var(--text)}.body p{margin:0 0 12px}.body ul,.body ol{margin:0 0 12px;padding-left:20px}.body li{margin:4px 0}.body strong{font-weight:600}.body a{color:var(--text);text-decoration:underline;text-decoration-color:var(--ring);text-underline-offset:2px}.cite{min-width:16px;height:16px;border-radius:5px;font-weight:600;font-size:10px;color:var(--muted);background:var(--hover);border:1px solid var(--line);transition:background-color .15s ease,color .15s ease}.body a.cite{text-decoration:none;color:var(--muted)}.body a.cite:hover{background:var(--accent);border-color:var(--accent);color:#fff}.thinking{font-size:13.5px}.steps,.msg.bot>.steps{border:0;border-left:1px solid var(--line);border-radius:0;background:none;padding:0 0 0 12px;margin:2px 0 12px;font-size:12.5px;gap:4px}.step .sl{font-weight:500}.meta{margin-top:12px;gap:8px}.mh{font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--faint)}.meta ol{gap:6px}.src{min-height:26px;padding:2px 10px 2px 3px;gap:6px;border:1px solid var(--line);border-radius:8px;background:transparent;font-size:12px;color:var(--muted);transition:background-color .15s ease,color .15s ease,border-color .15s ease}.src b{min-width:18px;height:18px;padding:0 4px;border-radius:5px;background:var(--hover);color:var(--muted);font-size:10.5px;font-weight:600}a.src:hover{border-color:color-mix(in srgb,var(--text) 25%,var(--line));background:var(--hover);color:var(--text)}.how,.note{font-size:12px;color:var(--faint)}.composer{padding:8px 16px 12px;border-top:0;background:transparent}.box{gap:4px;padding:10px 8px 8px 14px;border:1px solid var(--border);border-radius:18px;background:var(--surface);box-shadow:0 1px 2px rgba(15,12,30,.04),0 4px 16px -8px rgba(15,12,30,.10);transition:border-color .15s ease,box-shadow .15s ease}.box:focus-within{border-color:color-mix(in srgb,var(--accent) 45%,var(--border));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent),0 4px 16px -8px rgba(15,12,30,.10)}textarea{padding:2px 0 4px;font:400 15px/1.5 Inter,system-ui,-apple-system,sans-serif}@media (pointer:coarse){textarea{font-size:16px}}.row{gap:4px}.clip{margin-left:-6px}.send{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;transition:background-color .15s ease,color .15s ease,transform .15s ease}.send svg{width:16px;height:16px}.send:not(:disabled):hover{background:color-mix(in srgb,var(--accent) 86%,#000)}.send:disabled{opacity:1;background:var(--hover);color:var(--faint)}.att{border-color:var(--line);border-radius:10px}.foot{margin:8px 4px 0;font-size:11px;line-height:1.45;color:var(--faint)}.hello.app .lg{display:inline-grid;place-items:center;width:48px;height:48px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--surface);box-shadow:none;color:var(--text)}.hello.app .lg svg{width:24px;height:24px}.hello.app h2{font-weight:600}@media (prefers-reduced-motion:reduce){.ib,.send,.box,.src,.cite{transition:none}}.ctxbar{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:0 12px;padding:2px 20px 6px;background:transparent}.ctx-now{margin:0;min-width:0;font-size:12px;line-height:1.5;color:var(--faint);overflow-wrap:anywhere}.ctx-now b{font-weight:550;color:var(--muted)}.qa-go{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:0 2px;margin-right:-2px;border:0;border-radius:6px;background:none;color:var(--accent);font:500 12px/1.5 Inter,system-ui,-apple-system,sans-serif;cursor:pointer}.qa-go::after{content:"→";transition:transform .15s ease}.qa-go:hover{text-decoration:underline;text-underline-offset:2px}.qa-go:hover::after{transform:translateX(2px)}.qa-go:focus-visible{outline:2px solid var(--ring);outline-offset:2px}@media (prefers-reduced-motion:reduce){.qa-go::after{transition:none}}
+`;
+
+/**
+ * The agent's look (26 Nov, Max: "a real agent with integrations, skills and the logos of its connections; calm, not
+ * crazy"), on the panel and the page: the header's strip of what it reads from (each mark a mask in the text's colour,
+ * a status dot, what it is in its title), the skills as small tiles, each step as a row with its tool's icon in a fold,
+ * citations as small raised numbers that name their source, and an action in Purser Cloud as a button, never a URL.
+ */
+const AGENT_CSS = `
+.bar{flex-wrap:wrap;row-gap:0}.cx{flex-basis:100%;display:flex;align-items:center;gap:4px 14px;flex-wrap:wrap;list-style:none;margin:0;padding:1px 0 7px;min-width:0}.cx .ck{font-size:11.5px;font-weight:500;color:var(--faint)}.cx li{display:inline-flex;align-items:center;gap:5px;height:20px;font-size:12px;font-weight:550;color:var(--muted);white-space:nowrap}.cx .m{display:block;flex:none;width:12px;height:12px;background:currentColor;-webkit-mask:center/contain no-repeat;mask:center/contain no-repeat}.cx .m-airwallex{width:60px;height:10px}.cx .m-visa{width:30px;height:12px;-webkit-mask-size:30px 30px;mask-size:30px 30px}.cx .m-alta{width:26px;height:14px}@media (max-width:400px){.cx .ck{display:none}.cx{gap:4px 12px}}.cx .t0{font:700 11px/1 var(--mono,ui-monospace,monospace);letter-spacing:.02em}.cx .d{flex:none;width:5px;height:5px;border-radius:50%;background:color-mix(in srgb,var(--accent) 70%,var(--muted))}.cx .d.on{background:var(--ok)}.cx .d.off{background:var(--warn)}
+__MASKS__
+.hello .hhd{display:flex;align-items:center;gap:10px}.skills{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}.skills li{min-width:0}.sk{width:100%;height:100%;display:grid;grid-template-columns:30px minmax(0,1fr);grid-template-rows:auto auto;column-gap:10px;row-gap:1px;align-items:start;align-content:start;padding:11px 12px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--text);text-align:left;cursor:pointer;font:inherit;transition:border-color .15s ease,background-color .15s ease}.sk .ki{grid-row:1 / span 2;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}.sk .ki svg{width:16px;height:16px}.sk b{font-size:13.5px;font-weight:600;line-height:1.3;letter-spacing:-.005em}.sk small{font-size:12px;line-height:1.35;color:var(--muted)}.sk:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));background:var(--hover)}.sk:focus-visible{outline:2px solid var(--ring);outline-offset:2px}.sk:disabled{opacity:.5;cursor:default}.forpage{width:100%;margin:14px 0 0}.forpage h3{margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}body:not(.has-ctx) .forpage{display:none}.hello .acts.ctx{display:flex !important;flex-wrap:wrap;gap:6px;margin:0}.hello .acts.ctx li{flex:none}.hello .acts.ctx button{width:auto;min-height:32px;padding:4px 12px;border-radius:999px;font-size:13px}.hello .acts.ctx button::after{content:none}.hello .lim{display:flex;align-items:center;gap:6px;margin:12px 0 0;font-size:12px;color:var(--faint)}.hello .lim svg{flex:none;width:13px;height:13px}
+@media (max-width:340px){.skills{grid-template-columns:minmax(0,1fr)}}@media (prefers-reduced-motion:reduce){.sk{transition:none}}
+.trace{margin:0 0 12px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--text) 2.5%,transparent)}.trace>summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:12px}.trace>summary::-webkit-details-marker{display:none}.trace>summary::after{content:"";margin-left:auto;width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .15s ease}.trace:not([open])>summary::after{transform:rotate(-45deg)}.trace>summary:focus-visible{outline:2px solid var(--ring);outline-offset:2px}.trace .tc{font-weight:500;color:var(--faint)}.trace .steps,.msg.bot .trace .steps{border:0;margin:0;padding:0 10px 8px;gap:6px}.step{align-items:center;gap:8px}.step .ti{flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);color:var(--muted)}.step .ti svg{width:13px;height:13px}.step .si{margin-top:0}.step .tx{flex:1}
+.body .cite,.body a.cite{position:relative;top:-1px;display:inline-flex;align-items:center;gap:4px;max-width:14em;height:19px;padding:0 7px 0 2px;margin:0 2px 0 3px;border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--muted);font:550 11.5px/1 Inter,system-ui,sans-serif;vertical-align:baseline;text-decoration:none;white-space:nowrap}.body .cite b{display:inline-grid;place-items:center;min-width:15px;height:15px;padding:0 3px;border-radius:999px;background:var(--accent);color:#fff;font-size:9.5px;font-weight:700}.body .cite span{overflow:hidden;text-overflow:ellipsis}.body .cite.data b{background:var(--muted)}.body .cite.data{background:var(--hover)}.body a.cite:hover{border-color:var(--accent);color:var(--text)}
+.body a.alink{display:flex;width:fit-content;max-width:100%;align-items:center;gap:6px;margin:8px 0 2px;padding:7px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));background:var(--accent-soft);color:var(--accent);font-size:13.5px;font-weight:600;line-height:1.3;text-decoration:none}.body a.alink:hover{background:var(--accent);border-color:var(--accent);color:#fff}.body a.alink svg{flex:none;width:14px;height:14px}.body .uhost{font-family:var(--mono,ui-monospace,monospace);font-size:.92em;color:var(--muted)}
+.ib[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}body.term-on .chat,body.term-on #hello{display:none !important}.term{margin:12px 0 4px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0b0a14;color:#e6e3f5}.term .th{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px 6px 12px;border-bottom:1px solid rgba(255,255,255,.08);font:500 11.5px/1.4 var(--mono,ui-monospace,monospace);color:#9c96b8}.term .th span{display:inline-flex;align-items:center;gap:6px;min-width:0}.term .th i{width:8px;height:8px;border-radius:50%;background:#3a3550}.term .th i:first-child{margin-right:0}.term .th span i:nth-child(3){margin-right:6px}.term #tcopy{min-height:28px;padding:0 10px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:transparent;color:#d9d4f0;font:600 12px/1 Inter,system-ui,sans-serif;cursor:pointer}.term #tcopy:hover{background:rgba(255,255,255,.08)}.term .l{padding-left:2ch;text-indent:-2ch;min-height:1.65em}.term .l.i1{padding-left:4ch}.term pre{margin:0;padding:12px 14px 14px;max-height:none;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:500 12.5px/1.65 var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);tab-size:2}.term pre:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}.term .tp{color:#a78bfa}.term .tk{color:#f2efff;font-weight:600}.term .ta{color:#fbbf24}.term .ts{color:#86efac}.term .tk2{color:#c4b5fd}.term .tok{color:#4ade80}.term .terr{color:#f87171}.term .tc{color:#8b85a6}.term .tcur{display:inline-block;width:.6em;height:1.1em;vertical-align:-2px;background:#c4b5fd}@media (prefers-reduced-motion:no-preference){.term .tcur{animation:tblink 1.1s steps(1) infinite}}@keyframes tblink{50%{opacity:0}}
 `;
 
 // The page's script: plain JavaScript, raw (no TS escapes), with the copy and the settings put in where it says so.
@@ -245,9 +311,37 @@ let pending = null;
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const okHost = (u) => { try { const x = new URL(u); return x.protocol === 'https:' && CFG.hosts.some((h) => (x.host + x.pathname).startsWith(h)); } catch (e) { return false; } };
 function save() { try { sessionStorage.setItem(KEY, JSON.stringify(history.slice(-12))); } catch (e) {} }
-function setLive(live) { statusDot.className = 'dot' + (live ? '' : ' docs'); statusText.textContent = live ? C.statusLive : C.statusDocs; }
+function setLive(live) { statusDot.className = 'dot' + (live ? '' : ' docs'); statusText.textContent = live ? C.statusLive : C.statusDocs; const d = $('cxd'); if (d) d.className = 'd ' + (live ? 'on' : 'off'); }
 const kb = (n) => n < 1024 ? n + ' B' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
 
+// ---- The terminal (26 Nov, Max: "also have a terminal"): this chat's tool calls as the agent made them, each with its
+// input, what it read and the rows it returned, as text in a monospace pane; read only, nothing typed there runs. ----
+const TKEY = 'purser.ask.term';
+let TERM = (() => { try { const a = JSON.parse(sessionStorage.getItem(TKEY) || '[]'); return Array.isArray(a) ? a.slice(-12) : []; } catch (e) { return []; } })();
+function termSave() { try { sessionStorage.setItem(TKEY, JSON.stringify(TERM.slice(-12))); } catch (e) {} }
+function termDraw() {
+  const out = $('tout'); if (!out) return; out.textContent = '';
+  // Each line a row (a long one wraps under its own text, not under the prompt); the plain text kept for Copy.
+  let row = null; const plain = [];
+  const line = (lv) => { row = el('div', 'l' + (lv ? ' i' + lv : '')); out.append(row); plain.push(lv ? '  '.repeat(lv) : ''); };
+  const put = (cls, t) => { row.append(el('span', cls, t)); plain[plain.length - 1] += t; };
+  if (!TERM.length) { line(0); put('tc', C.termEmpty); }
+  for (const e of TERM) {
+    line(0); put('tp', 'purser ~ '); put('tk', 'ask '); put('ts', JSON.stringify(e.q));
+    for (const s2 of e.steps || []) {
+      line(0); put('tp', '$ '); put('tk', 'purser.' + s2.tool); if (s2.args) put('ta', ' ' + s2.args);
+      line(1); put(s2.ok ? 'tok' : 'terr', s2.ok ? '✓ ' : '✗ '); put(null, (s2.label || '') + (s2.detail ? ' · ' + s2.detail : ''));
+      for (const r of s2.rows || []) { line(1); put('tc', '↳ '); put(null, '{ '); r.forEach(([k, v], i) => { put('tk2', k); put(null, ': '); put('ts', JSON.stringify(v)); if (i < r.length - 1) put(null, ', '); }); put(null, ' }'); }
+    }
+    for (const src of e.sources || []) { line(1); put('tc', '↳ source '); put(null, src); }
+    if (e.end) { line(0); put(e.end.ok ? 'tok' : 'terr', e.end.ok ? '✓ ' : '✗ '); put('tc', e.end.words); }
+  }
+  line(0); row.append(el('span', 'tcur'));
+  out.dataset.plain = plain.join('\n').trimEnd();
+}
+// One question's entry, filled as its events come in.
+function termStart(q) { const e = { q: q.slice(0, 200), steps: [], sources: [] }; TERM.push(e); TERM = TERM.slice(-12); return e; }
+function termRows(card) { return (card && Array.isArray(card.items) ? card.items : []).slice(0, 8).map((r) => [['id', r.id], ['vendor', r.vendor], ['total', (r.currency ? r.currency + ' ' : '') + r.total], ['due', r.due_date], ['status', r.status]].filter(([, v]) => v)); }
 // The citations as the reader sees them (outside audit, 22 Nov: one source read as "6"): numbered 1, 2, 3 in the order
 // the answer first uses them, not by the passage's place in the list the model read. Each still links to its own passage.
 function citeOrder(text, sources) {
@@ -263,18 +357,46 @@ function cite(n, sources, order) {
   if (!s) return document.createTextNode('[' + n + ']');
   const shown = String((order && order.get(n)) || n);
   const docLink = s.kind !== 'data' && okHost(s.url);
-  const a = el(docLink ? 'a' : 'span', 'cite' + (s.kind === 'data' ? ' data' : ''), shown);
+  // 26 Nov (Max: "make the citations readable"): its number and a short name of its source ("Demo company", "Security").
+  const a = el(docLink ? 'a' : 'span', 'cite' + (s.kind === 'data' ? ' data' : ''));
+  const nm = String(s.title || '').split(/ · |: | — /)[0].slice(0, 26);
+  a.append(el('b', null, shown), el('span', null, nm));
   if (docLink) { a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; a.setAttribute('aria-label', 'Source ' + shown + ': ' + s.title + ' (opens in a new tab)'); }
   else { a.setAttribute('role', 'note'); a.setAttribute('aria-label', 'Source ' + shown + ': ' + s.title); }
   a.title = s.title;
   return a;
+}
+// A link in an answer, never shown as a raw URL (26 Nov, Max: "approve in http://localhost:9432/#/invoices"): a page of
+// Purser Cloud is a button that opens it (in the panel, through the console: it opens the page, never acts); a page of
+// Purser's site, its docs or its film is a link named for what it is; any other address is its host name, as text.
+const NAV = new RegExp(CFG.nav);
+let APPROVE = false;
+function cloudHash(u) { try { const x = new URL(u.replace(/[.,;:]+$/, '')); const own = x.origin === location.origin || CFG.hosts.some((h) => h.startsWith('purser-try') && x.host === h.split('/')[0]); return own && NAV.test(x.hash) ? x.hash : null; } catch (e) { return null; } }
+function link(box, u) {
+  const hash = cloudHash(u);
+  if (hash) {
+    const a = el('a', 'alink'); a.href = '/' + hash; a.append(ico('face'), (APPROVE ? C.approveIn : C.openIn) + ' →');
+    APPROVE = false;
+    if (CFG.embed) a.addEventListener('click', (e) => { e.preventDefault(); try { parent.postMessage({ type: 'purser-ask:navigate', hash }, location.origin); } catch (x) {} });
+    box.append(a); return true;
+  }
+  let x = null; try { x = new URL(u); } catch (e) {}
+  if (x && okHost(u)) {
+    const gh = /^\/agamemnon-coder\/x402-business-agents\/(?:blob|tree)\/[^/]+\/(.+)$/.exec(x.pathname);
+    const name = gh ? gh[1] + ' (GitHub)' : x.host === 'youtu.be' ? 'the film' : x.host.startsWith('kit11') ? 'Purser site' + (x.pathname.length > 1 ? ': ' + x.pathname.slice(1) : '') : C.openIn;
+    const a = el('a', null, name); a.href = u; a.target = '_blank'; a.rel = 'noopener'; box.append(a); return false;
+  }
+  box.append(el('span', 'uhost', x ? x.host : u.replace(/^https?:\/\//, '').split('/')[0])); return false;
 }
 // One line of an answer as text: citations [n] as chips, **bold**, ` + "`code`" + String.raw`, and links to Purser's own sites as links.
 function inline(parent, text, sources, order) {
   const re = /\[(\d{1,2})\]|\*\*([^*\n]{1,120})\*\*|` + "`([^`\\n]{1,80})`" + String.raw`|https?:\/\/[^\s)<>\]]+/g;
   let at = 0, m;
   while ((m = re.exec(text))) {
-    if (m.index > at) parent.append(text.slice(at, m.index));
+    // "approve in <a page of Purser Cloud>": the words go, the link says them (an action, never a URL).
+    let pre = text.slice(at, m.index);
+    if (!m[1] && !m[2] && !m[3] && cloudHash(m[0]) && /\b(approve|review|sign)( it)? (it )?in\s*$/i.test(pre)) { pre = pre.replace(/[;,]?\s*\b(approve|review|sign)( it)? (it )?in\s*$/i, '.'); APPROVE = true; }
+    if (pre) parent.append(pre);
     if (m[1]) {
       // A citation keeps the punctuation after it on its line ("code [1]." never breaks before the full stop).
       const punct = /^[.,;:!?)]+/.exec(text.slice(m.index + m[0].length));
@@ -286,8 +408,8 @@ function inline(parent, text, sources, order) {
     else if (m[2]) parent.append(el('strong', null, m[2]));
     else if (m[3]) parent.append(el('code', null, m[3]));
     else {
-      const u = m[0].replace(/[.,;:]+$/, ''); const tail = m[0].slice(u.length);
-      if (okHost(u)) { const a = el('a', null, u); a.href = u; a.target = '_blank'; a.rel = 'noopener'; parent.append(a); } else parent.append(u);
+      const u = m[0].replace(/[.,;:]+$/, ''); let tail = m[0].slice(u.length);
+      link(parent, u) && (tail = tail.replace(/^\.$/, ''));
       if (tail) parent.append(tail);
     }
     at = m.index + m[0].length;
@@ -445,6 +567,7 @@ function meta(m, sources, cited, mode, note, reason) {
   const box = el('div', 'meta');
   const shown = cited.length ? cited.map((n) => sources[n - 1]).filter(Boolean) : sources.filter((s) => s.kind !== 'data').slice(0, 3);
   if (shown.length) {
+    // The label only over chips it heads (26 Nov: an empty "Sources" no more).
     box.append(el('span', 'mh', cited.length ? C.sources : C.related));
     const ol = el('ol');
     for (const [i, s] of shown.entries()) {
@@ -480,7 +603,9 @@ function railSources(list) {
 }
 function step(list, ev) {
   let li = list.querySelector('[data-id="' + ev.id + '"]');
-  if (!li) { li = el('li', 'step'); li.dataset.id = ev.id; li.append(el('span', 'si'), el('span', 'tx')); list.append(li); }
+  if (!li) { const ti = el('span', 'ti'); ti.append(ico((CFG.ticons || {})[ev.tool] || 'spark')); li = el('li', 'step'); li.dataset.id = ev.id; li.append(ti, el('span', 'tx'), el('span', 'si')); list.append(li); }
+  // The fold of the agent's steps shows once there is one, with how many.
+  const tr = list.closest('.trace'); if (tr) { tr.hidden = false; const tc = tr.querySelector('.tc'); if (tc) tc.textContent = String(list.children.length); }
   li.className = 'step ' + (ev.state === 'run' ? 'run' : ev.ok ? 'done' : 'err');
   const tx = li.querySelector('.tx'); tx.textContent = '';
   tx.append(el('span', 'sl', ev.label || C.thinking));
@@ -525,10 +650,12 @@ async function ask(question) {
   const steps = el('ol', 'steps'); steps.setAttribute('aria-label', 'What the agent read');
   const body = el('div', 'body');
   const wait = el('span', 'thinking'); const dots = el('span', 'typing'); dots.setAttribute('aria-hidden', 'true'); dots.append(el('i'), el('i'), el('i')); wait.append(dots, el('span', null, C.thinking)); body.append(wait);
-  m.append(steps, body);
+  // 26 Nov (Max: "a real agent"): the steps in a fold, open, each with its tool's icon; the person can close it.
+  const trace = el('details', 'trace'); trace.open = true; trace.hidden = true; const tsum = el('summary'); tsum.append(el('span', null, C.steps2), el('span', 'tc')); trace.append(tsum, steps);
+  m.append(trace, body);
   chat.append(m); scroll();
   say.textContent = C.sending;
-  let text = '', sources = [], done = null, settled = false; const cards = [], cardBox = el('div', 'cards');
+  let text = '', sources = [], done = null, settled = false; const cards = [], cardBox = el('div', 'cards'); const te = termStart(question);
   try {
     const payload = { question, history: history.slice(-6).map((t) => ({ role: t.role, text: t.text })) };
     if (CTX) payload.context = CTX;
@@ -550,22 +677,26 @@ async function ask(question) {
         const ev = JSON.parse(line);
         if (ev.type === 'meta') { sources = ev.sources || []; if (typeof ev.live === 'boolean') setLive(ev.live); }
         else if (ev.type === 'source' && ev.source) sources.push(ev.source);
-        else if (ev.type === 'step') { step(steps, ev); if (!text) { body.textContent = ''; body.append(wait); } scroll(); }
+        else if (ev.type === 'step') { step(steps, ev); if (ev.state !== 'run') { te.steps.push({ tool: String(ev.tool || ''), args: String(ev.args || ''), label: ev.label || '', detail: ev.detail || '', ok: !!ev.ok }); termDraw(); } if (!text) { body.textContent = ''; body.append(wait); } scroll(); }
         else if (ev.type === 'delta') { text += ev.text; draw(body, text, sources); scroll(); }
         else if (ev.type === 'reset') { text = ev.text; if (text) draw(body, text, sources); else { body.textContent = ''; body.append(wait); } }
-        else if (ev.type === 'card' && ev.card) { cards.push(ev.card); if (!cardBox.isConnected) body.after(cardBox); cardBox.append(renderCard(ev.card)); scroll(); }
+        else if (ev.type === 'card' && ev.card) { const ls = te.steps[te.steps.length - 1]; if (ls) { ls.rows = termRows(ev.card); termDraw(); } cards.push(ev.card); if (!cardBox.isConnected) body.after(cardBox); cardBox.append(renderCard(ev.card)); scroll(); }
         else if (ev.type === 'done') done = ev;
       }
     }
     if (!done) throw new Error(C.error);
     draw(body, text, sources);
     meta(m, sources, done.cited || [], done.mode, done.note, done.reason);
+    te.sources = (done.cited || []).map((n, i) => sources[n - 1] ? '[' + (i + 1) + '] ' + sources[n - 1].title : '').filter(Boolean);
+    te.end = { ok: true, words: (done.mode === 'live' ? 'answered · Claude' : done.mode === 'refused' ? 'answered by Purser\'s code' : done.mode === 'records' ? 'read by Purser\'s code' : 'answered from the docs') + ' · ' + te.sources.length + ' source' + (te.sources.length === 1 ? '' : 's') + ' · read-only' };
+    termSave(); termDraw();
     history.push({ role: 'user', text: question, file: file ? file.name : null }, { role: 'assistant', text: renumbered(text, sources).slice(0, 1200), ...(cards.length ? { cards } : {}) });
     save(); keepConvo();
     say.textContent = C.purser + ': ' + text.replace(/\[(\d{1,2})\]/g, '').replace(/\*\*/g, '');
     // A long answer: its question at the top of the view, so it reads from its start.
     if (m.offsetHeight > scroller.clientHeight * 0.8 && m.previousElementSibling) { m.previousElementSibling.scrollIntoView({ block: 'start' }); settled = true; }
   } catch (e) {
+    te.end = { ok: false, words: (e && e.message) || C.error }; termSave(); termDraw();
     draw(body, (e && e.message) || C.error, []);
     m.classList.add('err');
     say.textContent = (e && e.message) || C.error;
@@ -612,8 +743,13 @@ function drawCtx() {
 }
 drawCtx();
 addEventListener('message', (e) => { if (e.origin !== location.origin || e.source !== parent || !e.data || e.data.type !== 'purser-ask:context') return; CTX = parseCtx(e.data.ctx); drawCtx(); });
+const tterm = $('tterm'), termBox = $('term');
+function termOn(on) { document.body.classList.toggle('term-on', on); if (termBox) termBox.hidden = !on; if (tterm) tterm.setAttribute('aria-pressed', on ? 'true' : 'false'); if (on) { termDraw(); scroll(); } }
+if (tterm) tterm.addEventListener('click', () => { const on = !document.body.classList.contains('term-on'); termOn(on); try { sessionStorage.setItem('purser.ask.termon', on ? '1' : '0'); } catch (e) {} });
+try { if (sessionStorage.getItem('purser.ask.termon') === '1') termOn(true); } catch (e) {}
+if ($('tcopy')) $('tcopy').addEventListener('click', () => { const b = $('tcopy'); try { navigator.clipboard.writeText($('tout').dataset.plain || '').then(() => { b.textContent = C.copied; setTimeout(() => { b.textContent = C.copy; }, 1400); }, () => {}); } catch (e) {} });
 const reset = $('reset');
-if (reset) reset.addEventListener('click', () => { history = []; save(); CONVO = ''; try { sessionStorage.removeItem('purser.ask.convo'); } catch (e) {} chat.textContent = ''; hello.hidden = false; if (!CFG.embed) document.body.classList.add('empty'); say.textContent = ''; clearFile(); fileError(''); closeDetail(); drawConvos(); q.focus(); });
+if (reset) reset.addEventListener('click', () => { history = []; save(); TERM = []; termSave(); termDraw(); CONVO = ''; try { sessionStorage.removeItem('purser.ask.convo'); } catch (e) {} chat.textContent = ''; hello.hidden = false; if (!CFG.embed) document.body.classList.add('empty'); say.textContent = ''; clearFile(); fileError(''); closeDetail(); drawConvos(); q.focus(); });
 drawConvos();
 // The panel of what the agent can read: closed unless asked; the choice kept in this browser (it may refuse: then not kept).
 const ptog = $('ptog');
@@ -653,18 +789,29 @@ function ctxBar(c: AskContext | null, embed: boolean): string {
   return `<div class="ctxbar" id="ctxbar"${c ? "" : " hidden"}><p class="ctx-now"><span class="ctx-k">${esc(C.viewing)}</span> <b id="ctxl">${c ? esc(contextLabel(c)) : ""}</b> <span class="ctx-d" id="ctxd">${c ? esc(`· ${c.demo ? C.demoCompany : C.ownCompany}`) : ""}</span></p>${go}</div>`;
 }
 
+/** The header's strip: what the agent reads from, each with its mark, a dot and what it is (its title and, for a screen reader, its words). */
+function conns(live: boolean): string {
+  const C = ASK_PAGE_COPY;
+  return `<ul class="cx" aria-label="${esc(C.reads)}"><li class="ck" aria-hidden="true">${esc(C.reads)}</li>${ASK_CONNECTIONS.map((x) => {
+    const what = x.key === "claude" ? (live ? "live, answers here" : "off here: docs only") : x.what;
+    const mark = x.key === "t0" ? `<span class="t0" aria-hidden="true">T:0</span>` : `<i class="m m-${x.key}" aria-hidden="true"></i>${x.key === "claude" ? `<span aria-hidden="true">${esc(x.name)}</span>` : ""}`;
+    return `<li title="${esc(`${x.name}: ${what}`)}">${mark}<span class="sr">${esc(`${x.name}: ${what}`)}</span><b class="d${x.key === "claude" ? (live ? " on" : " off") : ""}"${x.key === "claude" ? ' id="cxd"' : ""} aria-hidden="true"></b></li>`;
+  }).join("")}</ul>`;
+}
+
 /** The page: the chat, standalone (the site's header) or embedded (?embed=1, a bar with a close button). `live`: Claude answers here now. */
 export function askPage(n: string, o: { embed: boolean; live?: boolean; context?: AskContext | null; waiting?: number | null }): string {
   const C = ASK_PAGE_COPY;
   const live = o.live ?? false;
   const ctx = o.context ?? null;
   const app = !o.embed;
-  const script = SCRIPT.replace("__CONTEXT__", () => CONTEXT_JS).replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ embed: o.embed, ctx, site: SITE_ORIGIN, max: QUESTION_MAX, maxBytes: ATTACH_MAX_BYTES, types: ATTACH_TYPES, hosts: ["github.com/agamemnon-coder/x402-business-agents", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "youtu.be/"] }));
+  const script = SCRIPT.replace("__CONTEXT__", () => CONTEXT_JS).replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ embed: o.embed, ctx, site: SITE_ORIGIN, nav: ASK_NAV.source, ticons: TOOL_ICON, max: QUESTION_MAX, maxBytes: ATTACH_MAX_BYTES, types: ATTACH_TYPES, hosts: ["github.com/agamemnon-coder/x402-business-agents", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "youtu.be/"] }));
   // The status: "Claude connected · live" only when Claude answers here now; else docs-only mode, said as plainly.
   const bar = `<header class="bar">${app ? `<button class="ib menu-b" id="menu-b" type="button" aria-label="${esc(C.menu)}" aria-controls="side" aria-expanded="false">${icon("menu")}</button>` : ""}<span class="logo" aria-hidden="true">${icon("feather", 18)}</span><div class="grow"><h1>${esc(C.title)}</h1><p class="status"><span class="dot${live ? "" : " docs"}" id="sdot" aria-hidden="true"></span><span id="stext">${esc(live ? C.statusLive : C.statusDocs)}</span></p></div>`
+    + `<button class="ib" id="tterm" type="button" aria-pressed="false" aria-controls="term" aria-label="${esc(C.termLabel)}" title="${esc(C.term)}">${icon("term", 18)}</button>`
     + (app ? `<button class="ib pt" id="ptog" type="button" aria-controls="detail" aria-expanded="false" aria-label="${esc(C.canRead)}" title="${esc(C.canRead)}">${icon("layers", 18)}</button>` : `<button class="ib" id="reset" type="button" aria-label="${esc(C.newChat)}" title="${esc(C.newChat)}">${icon("plus")}</button>`)
     + (o.embed ? `<a class="ib" href="${ASK_PATH}" target="_blank" rel="noopener" aria-label="${esc(C.full)}" title="${esc(C.full)}">${icon("out", 17)}</a><button class="ib" id="close" type="button" aria-label="${esc(C.close)}" title="${esc(C.close)}">${icon("x")}</button>` : "")
-    + `</header>`;
+    + `${conns(live)}</header>`;
   // The empty state (21 Nov, Max's mockups): the mark, one question, one line, the read-only chip and four actions.
   const actButtons = ASK_ACTIONS.map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}">${icon(x.icon, 16)}<span>${esc(x.label)}</span></button></li>`).join("");
   // In the floating panel (embed), 26 Nov (Max: "Claude-like; at most 3 suggestions, only on the empty state"): a small
@@ -672,11 +819,14 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
   // that page (./context.ts); else jury mode (21 Nov, Max): three questions about Purser. The script redraws them as the
   // person moves; signed in to their own company the greeting is the console's.
   const own = o.embed && !!ctx && !ctx.demo;
-  const juryButtons = ASK_JURY.map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}"><span>${esc(x.q)}</span></button></li>`).join("");
   const ctxButtons = ctx ? quickActions(ctx).map((x) => `<li><button class="act" type="button" data-q="${esc(x.q)}" data-k="${x.key}"><span>${esc(x.label)}</span></button></li>`).join("") : "";
+  // 26 Nov (Max: "a real agent: skills, integrations"): the panel opens on its skills, each one of its read-only tools,
+  // the page's three quick actions over them when it is opened from a page of Purser Cloud, and one line on its limits.
+  const skillButtons = ASK_SKILLS.map((x) => `<li><button class="sk" type="button" data-q="${esc(x.q)}" data-tool="${x.tool}"><span class="ki">${icon(x.icon, 16)}</span><b>${esc(x.name)}</b><small>${esc(x.line)}</small></button></li>`).join("");
   const helloBlock = o.embed
-    ? `<section class="hello" id="hello" aria-labelledby="hh"><span class="hmk" aria-hidden="true">${icon("feather", 20)}</span><h2 id="hh">${esc(own ? C.helpHead : C.juryHead)}</h2><p id="hl">${esc(own ? C.helpLine : C.juryLine)}</p>`
-      + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="acts jury">${juryButtons}</ul><ul class="acts ctx" id="sugctx" aria-label="${esc(C.quick)}">${ctxButtons}</ul></section>`
+    ? `<section class="hello" id="hello" aria-labelledby="hh"><h2 id="hh">${esc(own ? C.helpHead : C.juryHead)}</h2><p id="hl">${esc(own ? C.helpLine : C.juryLine)}</p>`
+      + `<div class="forpage"><h3>${esc(C.forPage)}</h3><ul class="acts ctx" id="sugctx" aria-label="${esc(C.quick)}">${ctxButtons}</ul></div>`
+      + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="skills" aria-label="${esc(C.juryHead)}">${skillButtons}</ul></section>`
     : `<section class="hello app" id="hello" aria-labelledby="hh"><span class="lg">${icon("feather", 26)}</span><h2 id="hh">${esc(C.helpHead)}</h2><p>${esc(C.helpLine)}</p><p class="scope">${esc(C.scope)}</p>`
       + `<h3 class="sr">${esc(C.suggestionsHead)}</h3><ul class="acts">${actButtons}</ul></section>`;
   // The sidebar (a wide screen; a menu on a narrow one): New chat, the pages, the conversations kept in this browser only,
@@ -698,18 +848,18 @@ export function askPage(n: string, o: { embed: boolean; live?: boolean; context?
     + `<div class="row">${app ? `<button class="ib" id="plus" type="button" aria-label="${esc(C.actionsLabel)}" aria-controls="actmenu" aria-expanded="false">${icon("plus", 18)}</button>` : ""}<button class="ib clip" id="clip" type="button" aria-label="${esc(`${C.attach} (${C.attachHint})`)}" title="${esc(`${C.attach}: ${C.attachHint}`)}">${icon("clip", 18)}</button><input class="sr" type="file" id="file" accept=".pdf,.csv,.txt,${ATTACH_TYPES.join(",")}" tabindex="-1" aria-hidden="true">`
     + `<span class="grow"><span class="count" id="count" aria-live="polite"></span></span>${app ? `<kbd class="kbd" title="⌘K / Ctrl+K">${esc(C.kbd)}</kbd>` : ""}<button class="send" id="send" type="submit" aria-label="${esc(C.send)}" title="${esc(C.send)}">${icon("up", 18)}</button></div></div>`
     + `<p class="ferr" id="ferr" role="alert" hidden></p><p class="foot" id="foot">${esc(C.privacy)}</p></form>`;
-  const icons = (["file", "check", "face", "ext", "x", "eye", "layers"] as const).map((k) => `<template id="ic-${k}">${icon(k, k === "check" ? 14 : 16)}</template>`).join("");
+  const icons = (["file", "check", "face", "ext", "x", "eye", "layers", "docs", "swap", "books", "wallet", "clock", "shield", "bot", "trail", "chain", "spark", "arrow"] as const).map((k) => `<template id="ic-${k}">${icon(k, k === "check" ? 14 : 16)}</template>`).join("");
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">${ICON_LINKS}
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="${esc(C.lede)}">
 <title>${esc(C.title)} · Purser</title>
-<style nonce="${n}">${CSS}${ASK_MARK_CSS}${o.embed ? CARDS_CSS + EMBED_CSS : SITE_HEADER_CSS + APP_CSS}${MODERN_CSS}</style></head><body class="${o.embed ? "embed" : "page empty"}${ctx ? " has-ctx" : ""}${own ? " own-co" : ""}">
+<style nonce="${n}">${CSS}${ASK_MARK_CSS}${o.embed ? CARDS_CSS + EMBED_CSS : SITE_HEADER_CSS + APP_CSS}${MODERN_CSS}${AGENT_CSS.replace("__MASKS__", () => MASK_CSS)}</style></head><body class="${o.embed ? "embed" : "page empty"}${ctx ? " has-ctx" : ""}${own ? " own-co" : ""}">
 ${o.embed ? "" : `${WAVE_CANVAS_HTML}<a class="skip" href="#q">Skip to the question box</a>${header("cloud", TRY_HEADER_LINKS)}`}
 <main id="main" class="app">
 <div class="shell">${app ? side : ""}
 <section class="convo">${bar}
-<div class="scroll" id="scroll">${helloBlock}<div class="chat" id="chat" role="log" aria-label="Conversation"></div></div>
+<div class="scroll" id="scroll">${helloBlock}<div class="chat" id="chat" role="log" aria-label="Conversation"></div><section class="term" id="term" aria-label="${esc(C.termLabel)}" hidden><div class="th"><span><i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i>${esc(C.termHead)}</span><button type="button" id="tcopy">${esc(C.copy)}</button></div><pre id="tout" tabindex="0"></pre></section></div>
 ${ctxBar(ctx, o.embed)}
 ${composer}</section>${app ? detailPanel : ""}</div>
 </main>

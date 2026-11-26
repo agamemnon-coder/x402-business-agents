@@ -5,6 +5,9 @@ import { prepareDb } from "./migrate.js";
 // Every ledger the runner opens is governed by the full task-mandate gate (src/policy/aloneGate.ts): loading this module
 // installs it. The cloud engine opens its ledgers elsewhere and carries the gate that fails closed instead.
 import "../policy/taskMandates.js";
+// Know your agent: on the runner, each principal gets its signing key pair when it is made (src/policy/agentIdentity.ts
+// installs itself). The cloud engine does not load it, so the Worker carries none of the signing code.
+import "../policy/agentIdentity.js";
 
 // The schema and its migrations live in ./migrate.ts, which imports nothing from Node: a Durable Object runs the same
 // steps over its own SQLite (src/db/doSql.ts).

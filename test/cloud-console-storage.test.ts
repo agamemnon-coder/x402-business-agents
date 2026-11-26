@@ -34,9 +34,10 @@ describe("the console's browser storage", () => {
     expect(js).not.toMatch(/localStorage\.(setItem|getItem)\(AWL_OV_KEY/);
     expect(js).toMatch(/sessionStorage\.setItem\(AWL_OV_KEY,/);
     expect(js).toMatch(/sessionStorage\.getItem\(AWL_OV_KEY\)/);
-    // The only things in localStorage: the language and the company's short name (no figure, no token).
+    // The only things in localStorage: the language, the company's short name and (26 Nov) whether the sidebar is
+    // collapsed (no figure, no token).
     const keys = [...js.matchAll(/localStorage\.setItem\('([^']+)'/g)].map((m) => m[1]);
-    expect(new Set(keys)).toEqual(new Set(["purser.cloud.language", "purser.cloud.slug"]));
+    expect(new Set(keys)).toEqual(new Set(["purser.cloud.language", "purser.cloud.slug", "purser.cloud.sb"]));
   });
 
   it("removes the session and the overview at sign-out, and an older page's localStorage copy on load", () => {

@@ -40,10 +40,15 @@ describe("the company and the session", () => {
     expect(r).toContain("[{slug:m.tenant.slug,name:String(m.tenant.name||'').slice(0,120)}]");
     expect(r).not.toMatch(/S\.token|api_key|session/i);
   });
-  it("put test money once, in the header strip on a laptop and the top bar on a phone", () => {
+  // 26 Nov (Max: "remove the engine test money pill"): no pill in the header; the company switcher's workspace line
+  // says it: the demo's "Demo workspace", or with an engine "Engine: test money" with its meaning in the title.
+  it("say test money in the company switcher's workspace line, never as a pill in the header", () => {
+    // Signed out, the sign-in's bar keeps its one "Test money" label; signed in it is hidden (the switcher says it).
     expect(html.match(/class="test"/g)).toHaveLength(1);
-    expect(fn("placeTest")).toContain("$('header.top .awx-h')");
-    expect(COMPANY_CSS).toContain("body.demo.signed-in .appbar #testchip { display: none; }");
+    expect(html).toContain(".signed-in #testchip { display: none; }");
+    expect(html).not.toContain("placeTest");
+    expect(fn("companyBlock")).toContain("ENG_ON?Object.assign(el('span','aw demo',[el('i',''),el('span','aww',t('cs.eng.chip'))]),{title:t('cs.eng.chip_title')})");
+    expect(html).toContain("function engineChip(on){ENG_ON=!!on;if(S)companyBlock();footLine()}");
   });
 });
 
