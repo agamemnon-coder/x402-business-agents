@@ -1,4 +1,16 @@
+<div align="center">
+
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="64" height="64"></picture></a>
+
 # Agent permissions: least privilege, visible
+
+**Each agent that can move money lists exactly what it may call; anything else is refused in code and written to the audit log.**
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain)&nbsp;[![A tool not on the agent's list is refused in code before it runs](https://img.shields.io/badge/each_tool-on_the_agent%27s_list%2C_or_refused-8b5cf6?style=flat-square&labelColor=1f2937)](#agent-permissions-least-privilege-visible)&nbsp;[![Each refusal written to the audit log as principal.tool_refused](https://img.shields.io/badge/refusals-principal.tool__refused_in_the_audit_log-f43f5e?style=flat-square&labelColor=1f2937)](#agent-permissions-least-privilege-visible)&nbsp;[![The tables held to the code by test/agent-permissions.test.ts](https://img.shields.io/badge/tables-held_to_the_code_by_a_test-10b981?style=flat-square&labelColor=1f2937)](../../test/agent-permissions.test.ts)&nbsp;[![Test money only](https://img.shields.io/badge/money-test_only-f59e0b?style=flat-square&labelColor=1f2937)](../../README.md#built-with)
+
+[Sourcing](#sourcing) · [Support](#support) · [Treasury](#treasury) · [Outside agents](#outside) · [Agent identity](agent-identity.md) · [Security index](README.md)
+
+</div>
 
 Since 25 November 2026. Each agent that can move money is a principal (backend review B5,
 [`src/policy/principals.ts`](../../src/policy/principals.ts)) and lists exactly what it may call:
@@ -17,6 +29,29 @@ Anything else is refused in code before it runs, and the refusal is written to t
 | An approved supplier or invoice payment, when it is executed | the Treasury agent may take that action (`supplier_payment`, `invoice_payment`), on Airwallex, in that currency, to a bank beneficiary | `holdReason` in `src/executors/supplierPayment.ts` and `src/executors/invoicePayment.ts` |
 | Every other payment path (x402 on Alta, cards, Airi) | the agent's rail, currency and payee | `authorize` in `src/policy/holds.ts`, `src/airi/purchase.ts`, `src/icc/purchase.ts` |
 
+```mermaid
+flowchart LR
+  SO["Sourcing"] & SU["Support"] & TR["Treasury"] & OU["An outside agent<br/>over MCP"] --> G{"On its list,<br/>or among its money actions?"}
+  G -- "no" --> R["Refused in code<br/>principal.tool_refused"]
+  G -- "yes" --> P{"The payment itself:<br/>mandate, card limits,<br/>the CFO's policy, Face ID"}
+  P -- "within them" --> OK["Runs"]
+  P -- "outside them" --> R
+  classDef sourcing fill:#6366f1,stroke:#4338ca,color:#ffffff
+  classDef support fill:#14b8a6,stroke:#0f766e,color:#111827
+  classDef treasury fill:#3b82f6,stroke:#1d4ed8,color:#111827
+  classDef purser fill:#8b5cf6,stroke:#6d28d9,color:#ffffff
+  classDef stop fill:#f43f5e,stroke:#be123c,color:#111827
+  classDef ok fill:#10b981,stroke:#047857,color:#111827
+  classDef rails fill:#0ea5e9,stroke:#0369a1,color:#111827
+  class SO sourcing
+  class SU support
+  class TR treasury
+  class OU rails
+  class G,P purser
+  class R stop
+  class OK ok
+```
+
 A tool can be on an agent's list and still be refused for the payment itself: the mandate on chain, the card's limits
 at Airwallex, the CFO's policy and the CFO's Face ID on the exact terms decide each payment. The list only says which
 doors the agent may knock on. Agents that hold no money (the payables Checker and Payer, the Controller, the Books
@@ -28,6 +63,18 @@ code does not grant, on one it grants that a table leaves out, and on a money ac
 round. What each one does and its kind are written here, for people. Kinds: **read** (the record or a partner), **talk** (a message, the end of a turn), **propose** (files something a
 person or code still decides), **pay** (moves money within the agent's own mandate or limits), **action** (a money
 action among its capabilities).
+
+```mermaid
+%%{init: {"themeVariables": {"xyChart": {"plotColorPalette": "#6366f1, #f59e0b"}}}}%%
+xychart-beta
+  title "Tools and actions per agent (indigo), of which pay or action (amber)"
+  x-axis ["sourcing", "support", "treasury", "outside"]
+  y-axis "Rows" 0 --> 28
+  bar [17, 12, 27, 5]
+  bar [6, 4, 5, 5]
+```
+
+<sub>Record: [the tables below](agent-permissions.md#sourcing), counted by `test/docs-charts.test.ts` from their Kind column: sourcing 17 (6 pay or action), support 12 (4), treasury 27 (5), outside 5 (5).</sub>
 
 ## sourcing
 

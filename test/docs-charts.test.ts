@@ -167,6 +167,20 @@ describe("the docs' charts plot their records", () => {
     expect(md).toContain(`/badge/controls_mapped-${(md.match(/^\| C\d+ \|/gm) ?? []).length}-`);
   });
 
+  it("docs/security/agent-permissions.md: the tools-per-agent chart counts the tables' Kind column", () => {
+    const md = read("docs/security/agent-permissions.md");
+    const per = new Map<string, string[]>();
+    let agent = "";
+    for (const l of md.split("\n")) {
+      if (l.startsWith("## ")) agent = l.slice(3).trim();
+      if (agent && l.startsWith("| `")) per.set(agent, [...(per.get(agent) ?? []), l.split(" | ")[1]!.trim()]);
+    }
+    const agents = [...per.keys()], total = agents.map((a) => per.get(a)!.length), money = agents.map((a) => per.get(a)!.filter((k) => k === "pay" || k === "action").length);
+    expect(md).toContain(`  x-axis [${agents.map((a) => `"${a}"`).join(", ")}]\n`);
+    expect(md).toContain(`  bar [${total.join(", ")}]\n  bar [${money.join(", ")}]\n`);
+    expect(md).toContain(`${agents[0]} ${total[0]} (${money[0]} pay or action), ${agents.slice(1).map((a, i) => `${a} ${total[i + 1]} (${money[i + 1]})`).join(", ")}.`);
+  });
+
   it("docs/hardening.md: the findings by severity, counted from its two findings tables", () => {
     const md = read("docs/hardening.md");
     const rows = md.split("\n").filter((l) => /^\| (HF|R)\d+ \|/.test(l)).map((l) => l.trim().slice(1, -1).split(" | ").map((c) => c.trim()));
