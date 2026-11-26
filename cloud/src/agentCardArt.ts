@@ -88,24 +88,35 @@ export const FEATHER_SVG = `<svg class="ac-pf" viewBox="0 0 24 24" fill="none" s
 /** The card's look: the face, the presets, the marks. Used by the console and by the phone's page.
  * 21 Nov (Max: "really beautiful card designs… blue with gold and the Purser logo, sleek"): one family of metal cards,
  * deep midnight navy with a fine guilloché and brushed texture, a soft sheen, a gold foil hairline, a gold chip and gold
- * for the agent's name; each preset is the agent's accent (an edge gem and a glow), not a different card. An agent with
- * no card of its own is the same family in matte, without chip, number or network, and says so in a gold outline. */
+ * for the agent's name; each preset is the agent's accent (a tint and a glow), not a different card. An agent with
+ * no card of its own is the same family in matte, without chip, number or network, and says so in a gold outline.
+ * 26 Nov (the owner: "premium, like the Apple Wallet pass: deep blue with gold accents, a distinctive shape and a subtle
+ * pattern"): the pass's shape, two notches on its edges joined by a gold perforation above the month's meter (a CSS
+ * mask, so its shadow is drawn by its holder: .ac-host or the console's button); a real guilloché (a gold rosette of
+ * turned ellipses and a band of fine waves, one inline SVG of about 3 KB, no fetch); each agent's tint in the glow and
+ * the navy; the agent's role on the card under its name. */
+/** The guilloché: a rosette of 18 turned ellipses in gold at the lower right, and nine fine waves across the top. */
+const GUILLOCHE = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 252" preserveAspectRatio="none"><g fill="none" stroke-width=".6"><g stroke="#e9c46a" stroke-opacity=".16" transform="translate(342 238)">${Array.from({ length: 18 }, (_, k) => `<ellipse rx="176" ry="62" transform="rotate(${k * 10})"/>`).join("")}</g><g stroke="#b4c6ff" stroke-opacity=".1">${Array.from({ length: 9 }, (_, k) => `<path d="M-20 ${22 + k * 6}q30-11 60 0t60 0t60 0t60 0t60 0t60 0t60 0t60 0"/>`).join("")}</g></g></svg>`)}")`;
 /** The feather as a faint gold watermark on a card with no card of its own (a CSS background: a data URL, no fetch). */
 const FEATHER_WATERMARK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e9c46a" stroke-opacity=".1" stroke-width=".6" stroke-linecap="round" stroke-linejoin="round">${FEATHER_D.map((d) => `<path d="${d}"/>`).join("")}</svg>`)}")`;
 export const CARD_ART_CSS = `
-.acard { --brand: #4f46e5; --acc: #e9c46a; --gold: #e9c46a; --gold-hi: #f7e7b4; --gold-lo: #a97b25; --navy: #0c1838;
+.acard { --brand: #4f46e5; --acc: #e9c46a; --gold: #e9c46a; --gold-hi: #f7e7b4; --gold-lo: #a97b25; --navy: #0c1838; --notch: calc(100% - 80px);
   position: relative; isolation: isolate; overflow: hidden; width: 100%; aspect-ratio: 1.586; min-height: 190px; border-radius: 16px; padding: 14px 16px 13px 18px; box-sizing: border-box;
   display: grid; grid-template-rows: auto auto 1fr auto auto; gap: 6px; color: #eef2fb; text-align: left; font-variant-numeric: tabular-nums;
   background-color: var(--navy);
   background-image: radial-gradient(80% 100% at 100% 0%, color-mix(in srgb, var(--acc) 36%, transparent), transparent 64%),
     radial-gradient(120% 80% at 0% 120%, rgba(56,96,200,.28), transparent 60%),
-    repeating-radial-gradient(circle at 118% 128%, rgba(233,196,106,.075) 0 1px, transparent 1px 6px),
-    repeating-radial-gradient(circle at -20% -35%, rgba(160,190,255,.05) 0 1px, transparent 1px 7px),
+    ${GUILLOCHE},
     repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px),
-    linear-gradient(140deg, #13265a 0%, #0d1c45 38%, #0a1636 68%, #060d24 100%);
-  box-shadow: 0 1px 1px rgba(2,6,23,.35), 0 18px 34px -18px rgba(2,8,30,.8), 0 6px 14px -8px rgba(2,8,30,.45);
-  transform: perspective(900px) translateY(var(--lift, 0px)) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .35s cubic-bezier(.2,.75,.2,1), box-shadow .3s; }
-.acard::before { content: ""; position: absolute; z-index: 1; left: 0; top: 16%; bottom: 16%; width: 4px; border-radius: 0 4px 4px 0; background: linear-gradient(180deg, transparent, var(--acc) 18%, var(--acc) 82%, transparent); box-shadow: 0 0 14px 2px color-mix(in srgb, var(--acc) 60%, transparent); pointer-events: none; }
+    linear-gradient(140deg, color-mix(in srgb, var(--acc) 12%, #13265a) 0%, #0d1c45 38%, #0a1636 68%, #060d24 100%);
+  background-size: auto, auto, 100% 100%, auto, auto;
+  -webkit-mask: radial-gradient(circle 9px at 0 var(--notch), #0000 96%, #000) 0 0 / 51% 100% no-repeat, radial-gradient(circle 9px at 100% var(--notch), #0000 96%, #000) 100% 0 / 51% 100% no-repeat;
+  mask: radial-gradient(circle 9px at 0 var(--notch), #0000 96%, #000) 0 0 / 51% 100% no-repeat, radial-gradient(circle 9px at 100% var(--notch), #0000 96%, #000) 100% 0 / 51% 100% no-repeat;
+  transform: perspective(900px) translateY(var(--lift, 0px)) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .35s cubic-bezier(.2,.75,.2,1); }
+/* The card's shadow, drawn by what holds it (the mask would cut a box-shadow): the console's button, the phone's .ac-host. */
+.ac-host, button.dk-face { filter: drop-shadow(0 14px 16px rgba(2,8,30,.34)) drop-shadow(0 2px 3px rgba(2,6,23,.28)); transition: filter .3s; }
+/* The perforation between the notches, in gold. */
+.acard::before { content: ""; position: absolute; z-index: 1; left: 14px; right: 14px; top: var(--notch); height: 0; border-top: 1px dashed rgba(233,196,106,.42); pointer-events: none; }
 .acard::after { content: ""; position: absolute; z-index: 2; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(233,196,106,.55), inset 0 1px 0 1px rgba(255,240,200,.12), inset 0 0 0 6px rgba(233,196,106,.10); }
 .acard > * { position: relative; z-index: 1; min-width: 0; }
 .acard .ac-shine { position: absolute; inset: 0; z-index: 0; pointer-events: none;
@@ -118,7 +129,7 @@ export const CARD_ART_CSS = `
 .acard .ac-mark img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
 .acard .ac-who { display: grid; min-width: 0; line-height: 1.2; }
 .acard .ac-name { font-size: 15px; font-weight: 650; letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--gold-hi); text-shadow: 0 1px 0 rgba(0,0,0,.35); }
-.acard .ac-co { font-size: 11px; color: #b9c3da; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acard .ac-co { font-size: 11px; color: #c4cde3; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .acard .ac-plate { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; background: #fff; box-shadow: 0 0 0 1px rgba(233,196,106,.45), 0 1px 2px rgba(0,0,0,.35); }
 .acard .ac-plate img { display: block; height: 10px; width: auto; }
 .acard .ac-mid { display: flex; align-items: center; gap: 9px; }
@@ -171,6 +182,6 @@ export const CARD_ART_CSS = `
 .acard.p-brand { --acc: var(--brand); background-image: radial-gradient(90% 80% at 100% 0%, rgba(255,255,255,.2), transparent 60%), repeating-radial-gradient(circle at 118% 128%, rgba(255,255,255,.06) 0 1px, transparent 1px 6px), linear-gradient(135deg, color-mix(in srgb, var(--brand) 45%, #000), var(--brand)); }
 @media (hover: hover) { button:hover > .acard, .acard:hover { --lift: -4px; } button:hover > .acard .ac-shine, .acard:hover .ac-shine { background-position: 0 0, 0 0; } }
 @media (prefers-reduced-motion: reduce) { .acard, .acard .ac-bar > span { transition: none; } .acard { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .acard .ac-shine { transition: none; } }
-@media print { .acard { box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .acard .ac-shine, .ac-host, button.dk-face { transition: none; } }
+@media print { .ac-host, button.dk-face { filter: none; } }
 `;

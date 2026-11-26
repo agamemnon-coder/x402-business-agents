@@ -110,7 +110,7 @@ function initialsOf(name){const m=/[A-Za-z0-9]/.exec(name);return (m?m[0]:'P').t
 function isLight(hex){const n=parseInt(hex.slice(1),16);const lin=(c)=>{const s=c/255;return s<=0.03928?s/12.92:Math.pow((s+0.055)/1.055,2.4)};return 0.2126*lin((n>>16)&255)+0.7152*lin((n>>8)&255)+0.0722*lin(n&255)>0.45}
 
 // --- One card's face -------------------------------------------------------------------------------------------------
-// x: {id,name,status,statusText,last4,currency,spent,cap,model,demo,frozen}
+// x: {id,name,role,status,statusText,last4,currency,spent,cap,model,demo,frozen}
 function cardFace(x){
   const preset=styleOf(x.id);
   const face=el('div','acard p-'+preset+(preset==='brand'&&DESIGN.color&&isLight(DESIGN.color)?' ink':'')+(x.last4?'':' bare')+(x.frozen?' frozen':'')+(x.status==='off'?' dim':''));
@@ -123,7 +123,7 @@ function cardFace(x){
     meter=el('div','ac-meter',[el('span','ac-ml',[el('b','num',C+cents(x.spent)),el('span','',dw('of',{cap:C+cents(x.cap)}))]),bar])}
   const claude=dkLogo('claude'),alta=dkLogo('alta'),awx=dkLogo('airwallex');
   face.append(...[el('span','ac-shine'),
-    el('div','ac-top',[mark,el('span','ac-who',[el('b','ac-name',x.name),el('span','ac-co',cardCompany())]),x.last4&&awx?el('span','ac-plate',dkImg(awx,'Airwallex')):null]),
+    el('div','ac-top',[mark,el('span','ac-who',[el('b','ac-name',x.name),el('span','ac-co',x.role||cardCompany())]),x.last4&&awx?el('span','ac-plate',dkImg(awx,'Airwallex')):null]),
     el('div','ac-mid',[x.last4?el('span','ac-chip'):null,x.last4?dkIc('nfc','ac-nfc'):null,el('span','ac-st '+x.status,[el('i',''),x.statusText])]),
     el('div','ac-num'+(x.last4?' num':' none'),x.last4?'•••• •••• •••• '+x.last4:dw('no_card')),
     meter,
@@ -153,7 +153,7 @@ function deckAgents(recs,CV,demo){
     const spent=c&&c.per_month&&c.spent_month!==null&&c.spent_month!==undefined?toCents(c.spent_month):null;
     return {r,rec,live,face:{id:r.id,name:rec?rec.name:r.name,status,statusText,last4:(lc&&lc.last4)||(c&&c.last4)||null,currency:c?c.currency:null,spent,cap:c&&c.per_month?toCents(c.per_month):0,
       // The model its code sets (the roster, held to the code by a test); the drawer adds what the records show ran.
-      model:r.model||(rec&&rec.models&&rec.models[0])||null,ran:rec&&rec.models||[],demo,frozen:lc?lc.status!=='ACTIVE':status!=='active'&&!!rec},at:!!(rec||live)}});
+      model:r.model||(rec&&rec.models&&rec.models[0])||null,ran:rec&&rec.models||[],demo,role:r.role||'',frozen:lc?lc.status!=='ACTIVE':status!=='active'&&!!rec},at:!!(rec||live)}});
   // Those at work in this company first, each group in the roster's order.
   return [...all.filter((x)=>x.at),...all.filter((x)=>!x.at)]}
 
@@ -293,8 +293,8 @@ async function agentDeck(recs,ctx){
   const draw=()=>{grid.replaceChildren(...items.map((x)=>{
     const face=cardFace(x.face);const open=el('button','dk-face',face);open.type='button';open.setAttribute('aria-label',x.face.name+': '+dw('details'));open.setAttribute('aria-haspopup','dialog');
     open.onclick=()=>openDrawer(x,ctx);tilt(open,face);
-    // One line under the card: its role, which opens the drawer too (a link to #/agents?a=id clicks it: openAgentFromQuery).
-    const more=el('button','dk-line wmore',[el('span','',x.r.role),ic('chevron-right')]);more.type='button';more.setAttribute('aria-haspopup','dialog');more.setAttribute('aria-expanded','false');more.onclick=()=>openDrawer(x,ctx);
+    // One line under the card (its role is on the card since 26 Nov): Details, which opens the drawer too (a link to #/agents?a=id clicks it: openAgentFromQuery).
+    const more=el('button','dk-line wmore',[el('span','',dw('details')),ic('chevron-right')]);more.type='button';more.setAttribute('aria-label',x.face.name+': '+dw('details'));more.setAttribute('aria-haspopup','dialog');more.setAttribute('aria-expanded','false');more.onclick=()=>openDrawer(x,ctx);
     // The negotiation has its own band below the cards, and a button in the Sourcing agent's drawer.
     const acts=[x.rec?(()=>{const b=phoneBtn(x,ctx);b.classList.add('mini');return b})():null].filter(Boolean);
     const it=el('article','dk-item'+(x.at?' on':''),[open,more,acts.length?el('div','dk-acts',acts):null]);it.id='roster-'+x.r.id;return it}));fillMeters(grid)};
@@ -329,7 +329,7 @@ export const WALLET_CSS = CARD_ART_CSS + `
 @keyframes dk-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 button.dk-face { appearance: none; -webkit-appearance: none; display: block; width: 100%; padding: 0; margin: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; border-radius: 16px; -webkit-tap-highlight-color: transparent; }
 button.dk-face:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-button.dk-face:hover .acard { box-shadow: 0 1px 1px rgba(2,6,23,.35), 0 26px 44px -18px rgba(2,8,30,.85), 0 0 0 1px rgba(233,196,106,.25); }
+button.dk-face:hover { filter: drop-shadow(0 22px 22px rgba(2,8,30,.42)) drop-shadow(0 2px 3px rgba(2,6,23,.3)); }
 .dk-line { appearance: none; border: 0; background: none; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 2px 4px; margin: 0; font-size: 13.5px; color: var(--muted); text-align: left; border-radius: 6px; min-height: 28px; }
 .dk-line > span:first-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .dk-line .ic svg { width: 14px; height: 14px; } .dk-line:hover { color: var(--text); }
 .dk-acts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 2px; }

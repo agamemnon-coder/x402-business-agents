@@ -126,7 +126,7 @@ export function cardFaceHtml(d: PhoneCardData, design: CardDesign): string {
   const mark = design.logo ? `<img src="${esc(design.logo)}" alt="">` : design.initials ? esc(design.initials) : FEATHER_SVG;
   const claude = BRAND_LOGOS.claude!.uri, alta = BRAND_LOGOS.alta!.uri;
   return `<div class="acard p-${preset}${light ? " ink" : ""}${c && c.last4 ? "" : " bare"}${d.status !== "active" ? " frozen" : ""}" role="img" aria-label="${esc(`${d.name}, ${d.company}: ${c ? `card ending ${c.last4}` : "no card"}, ${STATUS[d.status] ?? d.status}`)}"><span class="ac-shine"></span>
-<div class="ac-top"><span class="ac-mark">${mark}</span><span class="ac-who"><b class="ac-name">${esc(d.name)}</b><span class="ac-co">${esc(d.company.replace(/\s*\([^)]*\)\s*$/, ""))}</span></span>${c ? `<span class="ac-plate"><img src="${AIRWALLEX_LOGO_DATA_URL}" alt="Airwallex"></span>` : ""}</div>
+<div class="ac-top"><span class="ac-mark">${mark}</span><span class="ac-who"><b class="ac-name">${esc(d.name)}</b><span class="ac-co">${esc(d.role || d.company.replace(/\s*\([^)]*\)\s*$/, ""))}</span></span>${c ? `<span class="ac-plate"><img src="${AIRWALLEX_LOGO_DATA_URL}" alt="Airwallex"></span>` : ""}</div>
 <div class="ac-mid">${c ? `<span class="ac-chip"></span>${NFC}` : ""}<span class="ac-st ${esc(d.status.replace(/[^a-z]/g, ""))}"><i></i>${esc(STATUS[d.status] ?? d.status)}</span></div>
 <div class="ac-num${c && c.last4 ? "" : " none"}">${c && c.last4 ? `•••• •••• •••• ${esc(c.last4)}` : "No card of its own"}</div>
 ${spent !== null && c ? `<div class="ac-meter"><span class="ac-ml"><b>${money(c.currency, c.spent_month)}</b><span>of ${money(c.currency, c.per_month)} this month</span></span><span class="ac-bar${spent >= cap ? " full" : ""}"><span class="w${Math.round(pct)}"></span></span></div>` : "<div></div>"}
@@ -161,7 +161,7 @@ ${CARD_ART_CSS}${WIDTHS}${brand}
 </style></head><body><main>
 <p class="band">${d.demo ? "Demo company · made-up data · test money" : "Purser · test money · Airwallex sandbox"}</p>
 <h1>${esc(d.company)}</h1>
-${cardFaceHtml(d, design)}
+<div class="ac-host">${cardFaceHtml(d, design)}</div>
 <div class="rows">${rows}</div>
 ${wallet}
 <p class="fine">Read only: this page cannot pay, freeze or change anything. The CFO acts in Purser Cloud, with Face ID. This link works until ${esc(o.expires_at.slice(0, 16).replace("T", " "))} UTC.</p>
