@@ -14,6 +14,7 @@ import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
 import { fromB64 } from "./crypto.js";
+import { localAsset } from "./localAssets.js";
 import { LEDGER_ACCOUNTS } from "../../src/ledger/accounts.js";
 import { AIRWALLEX_LOGO_PATH, AIRWALLEX_LOGO_SRC, builtOnBadge } from "../../src/ui/builtOn.js";
 import { AIRWALLEX_LOGO_DATA_URL } from "./awxLogo.gen.js";
@@ -2206,6 +2207,8 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
     const r = await env.asset("/assets/inter.woff2");
     if (r && r.ok) return new Response(r.body, { status: 200, headers: { "content-type": "font/woff2", "cache-control": cacheFor("inter.woff2"), "x-content-type-options": "nosniff" } });
   }
+  const localFont = url.pathname === "/assets/inter.woff2" ? localAsset("/assets/inter.woff2") : null;
+  if (localFont) return new Response(new Uint8Array(localFont), { status: 200, headers: { "content-type": "font/woff2", "cache-control": cacheFor("inter.woff2"), "x-content-type-options": "nosniff" } });
   // The partners' official logos for /try's start screen (cloud/src/try/logos.gen.ts, the files unaltered): the paths and
   // bytes the site serves, so the page shows them on kit11 (the site's own /assets) and on purser-try alike.
   // The Airwallex logo of the "Built on" badge, from this origin (17 Nov: from the live site, it made every page's load wait
