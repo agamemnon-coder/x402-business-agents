@@ -145,7 +145,7 @@ ok(!wrong.code && /not a live Claude connector token/.test(wrong.page), "an ordi
   const called = await sdkClient.callTool({ name: "what_needs_attention", arguments: {} }) as { content: { type: string; text: string }[] };
   const prompts = await sdkClient.listPrompts();
   const got = await sdkClient.getPrompt({ name: "explain_invoice", arguments: { invoice_id: "AP-0005" } });
-  ok(tools.tools.length === 14 && /^As of 12 Nov 2026/.test(called.content[0]?.text ?? "") && prompts.prompts.length === 5 && got.messages.length === 1, "the MCP SDK's own client: connects, lists fourteen tools and five prompts, calls a tool, fills a prompt");
+  ok(tools.tools.length === 15 && /^As of 12 Nov 2026/.test(called.content[0]?.text ?? "") && prompts.prompts.length === 5 && got.messages.length === 1, "the MCP SDK's own client: connects, lists fifteen tools and five prompts, calls a tool, fills a prompt");
   await sdkClient.close();
 }
 

@@ -121,6 +121,8 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // 13.5 MB. The compressed size is what Cloudflare limits: wrangler's own dry run (npx wrangler deploy --dry-run in
   // cloud/) put this upload at 3,069.19 KiB gzipped, under 3 MiB, while this esbuild build, with gzip at its default level,
   // measures about 3 KB more than wrangler's upload. The check below keeps that difference, 4 KiB, and no more.
+  // Then 26 Nov (governance round): wrangler's dry run put the upload at 3,078.20 KiB gzipped, over 3 MiB; the console's font
+  // moved out of the bundle into the Worker's static assets (cloud/scripts/pdfjs.ts copies it), 3,030.74 KiB after.
   it("stays under 13.5 MB, and under 3 MB gzipped (as wrangler uploads it)", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
     expect(bytes).toBeLessThan(13.5 * 1024 * 1024);

@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { appHeadTags, appManifestText, offlineCsp, offlinePage } from "../../src/pwa/manifest.js";
 import { SW_CSP, swSource } from "../../src/pwa/sw.js";
 import { APP_ICON_PNGS } from "../../src/pwa/icons.gen.js";
-import { INTER_WOFF2_B64 } from "./font.gen.js";
+import { INTER_WOFF2_SHA256 } from "./font.gen.js";
 import { ICON_LINKS } from "./brand.js";
 import { fromB64 } from "./crypto.js";
 
@@ -15,7 +15,7 @@ export const APP_ICON_LINKS = ICON_LINKS.replace(/<link rel="apple-touch-icon"[^
 
 const OFFLINE = offlinePage("cloud");
 /** The worker's version: the hash of what it stores (the offline page, the font, the icons) and of its own code. */
-const VERSION = createHash("sha256").update(swSource("cloud", "00000000")).update(OFFLINE).update(INTER_WOFF2_B64)
+const VERSION = createHash("sha256").update(swSource("cloud", "00000000")).update(OFFLINE).update(INTER_WOFF2_SHA256)
   .update(APP_ICON_PNGS["app-icon-192.png"] ?? "").update(APP_ICON_PNGS["app-icon-512.png"] ?? "").digest("hex").slice(0, 16);
 const SW = swSource("cloud", VERSION);
 const MANIFEST = appManifestText("cloud");
