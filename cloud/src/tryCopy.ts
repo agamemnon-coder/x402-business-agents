@@ -574,6 +574,7 @@ export const PAYOUT_CARD = {
     day_cap: "Today's limit of sandbox transfers is used", company_cap: "This test company already made its two sandbox transfers", over_max: "The amount is above the demo's limit",
     not_eur: "Only EUR is sent to the sandbox", balance_low: "The sandbox balance does not cover it", unavailable: "Airwallex did not answer", refused: "Airwallex refused the transfer",
     ambiguous: "Airwallex's answer was unclear; it is asked again, never paid twice", timeout: "Airwallex took too long", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The transfer could not be asked for",
+    emergency_stop: "The CFO's emergency stop is on; nothing was sent to the sandbox",
   } as Record<string, string>,
 };
 
@@ -1173,6 +1174,7 @@ export const LIVE = {
     "proposal.needs_reapproval": "Something changed after the approval. It must be approved again.",
     "proposal.superseded": "A newer payment request took the place of this one.",
     "approval.too_late": "An approval came after the terms ran out. Nothing was approved.",
+    "policy.changed": "A setting of the CFO policy was changed, signed with the passkey.",
     "hub.gate_refused": "A last check before paying said no. Nothing was paid.",
     "treasury.seeded": "The test company's account was filled with {money}.",
     "treasury.seeded_plain": "The test company's account was filled.",

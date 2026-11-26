@@ -59,7 +59,7 @@ beforeAll(async () => {
 afterAll(() => c.close());
 
 describe("the route table", () => {
-  it("holds the engine's twenty routes, each with what it needs", () => {
+  it("holds the engine's twenty-one routes, each with what it needs", () => {
     expect(ENGINE_ROUTES.map((r) => `${r.method} ${r.path} ${r.need}`)).toEqual([
       "GET /v1/engine read",
       "POST /v1/engine/documents admin",
@@ -69,6 +69,8 @@ describe("the route table", () => {
       "POST /v1/engine/passkey/start approve",
       "POST /v1/engine/passkey/finish approve",
       "POST /v1/engine/policy/second-key admin",
+      // 26 Nov: the CFO's emergency stop (src/policy/emergencyStop.ts), pulled and lifted with the passkey.
+      "POST /v1/engine/emergency-stop approve",
       "POST /v1/engine/security-key/start approve",
       "POST /v1/engine/security-key/finish approve",
       "POST /v1/engine/proposals/{id}/approve approve",
@@ -326,7 +328,7 @@ describe("the cloud's own gates", () => {
   const reads = ENGINE_ROUTES.filter((r) => r.method === "GET" && r.path !== "/v1/engine/vault/file");
 
   it("lets a viewer and a read-only key read, and do nothing else", async () => {
-    expect(posts).toHaveLength(13);
+    expect(posts).toHaveLength(14);
     for (const key of [viewer, reader]) {
       for (const r of posts) {
         const res = await c.req("POST", at(r.path), { key, body: {} });
@@ -340,9 +342,13 @@ describe("the cloud's own gates", () => {
   });
 
   it("asks for a sign-in, and turns away a caller who is not signed in", async () => {
-    for (const r of ENGINE_ROUTES) expect((await c.req(r.method, at(r.path), r.method === "POST" ? { body: {} } : {})).status, r.path).toBe(401);
-    // Twenty routes are twenty failed sign-ins from one address, the minute's limit (14 Nov: the Airwallex routes made
-    // them twenty): the next tests start in the next minute, as a person trying again would.
+    // Twenty failed sign-ins from one address are the minute's limit (14 Nov: the Airwallex routes made them twenty; 26 Nov:
+    // the emergency stop made the routes twenty-one): past twenty, and after the last, the next minute, as a person
+    // trying again would.
+    for (const [i, r] of ENGINE_ROUTES.entries()) {
+      if (i > 0 && i % 20 === 0) c.clock.now = new Date(c.clock.now.getTime() + 61_000);
+      expect((await c.req(r.method, at(r.path), r.method === "POST" ? { body: {} } : {})).status, r.path).toBe(401);
+    }
     c.clock.now = new Date(c.clock.now.getTime() + 61_000);
   });
 
@@ -537,7 +543,7 @@ describe("a cloud with no engine wired", () => {
     const off = testCloud();
     try {
       const t = await off.tenant("plain");
-      expect(ENGINE_ROUTES).toHaveLength(20);
+      expect(ENGINE_ROUTES).toHaveLength(21);
       for (const key of [t.session, t.key]) {
         for (const r of ENGINE_ROUTES) {
           const res = await off.req(r.method, at(r.path), { key, ...(r.method === "POST" ? { body: {} } : {}) });

@@ -22,6 +22,7 @@ import { eurInFlightCents } from "../policy/available.js";
 import { fromCents } from "../lib/money.js";
 import { cashCheck } from "./cashCheck.js";
 import { aloneLimit } from "../world/settings.js";
+import { frozen } from "../policy/rules.js";
 import { invoiceCase } from "./checks.js";
 import { codeRequires, limitRule } from "./checkerCore.js";
 import { CHECKER_DECISION } from "./checkerAgent.js";
@@ -125,6 +126,9 @@ function payAlone(db: DB, inv: ApInvoiceRow, text: string, proposalId: string, p
   const top = `${limit.currency} ${limit.amount}`;
   // Over the limit, the CFO signs as for every company: nothing was declined.
   if (limitRule(limit, inv.currency, inv.total).rule !== null) return null;
+  // The CFO's emergency stop (src/policy/emergencyStop.ts): code approves nothing to be paid alone while it is on. The
+  // proposal is filed and waits; the executor would refuse it anyway, this way nothing is approved in the first place.
+  if (frozen(db)) return { by: "code", why: "the CFO's emergency stop is on, so nothing is paid until the CFO lifts it with the passkey" };
   // Text in the document that tries to steer its reader is only a warning to code's checks (src/ap/checkerCore.ts), but an
   // invoice that carries it is never paid without a person: the CFO signs it, whatever the agents said.
   if (inv.findings.some((f) => f.code === "instructions_in_document")) return { by: "code", why: "the document carries text that tries to steer its reader, so a person signs it" };

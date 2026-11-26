@@ -21,6 +21,8 @@ import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { hashFirst } from "../policy/hashFirst.js";
 import { authorize } from "../policy/principals.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
+import { closeHeldRow, STOP_WORDS } from "../policy/emergencyStop.js";
+import { HeldBeforeCreate } from "../airwallex/routedRail.js";
 import { exclusive, holdPayout, releasePayout } from "../policy/payoutLock.js";
 import { step } from "../policy/saga.js";
 import { stopped } from "../policy/velocity.js";
@@ -151,7 +153,7 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
  *  Checked when the execution begins and again immediately before every create at Airwallex (refuseIfHeld). */
 function holdReason(db: DB, t: SupplierPaymentTerms, at: Date): string | null {
   if (!counterpartyAllowed(db, t.beneficiary_name)) return `${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`;
-  if (frozen(db)) return "the CFO pulled the emergency stop; nothing is paid until it is lifted";
+  if (frozen(db)) return STOP_WORDS;
   if (stopped(db, "treasury")) return "the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop";
   if (paused(db, "treasury")) return "the treasury agent is paused by the CFO; nothing is paid until the CFO resumes it with Face ID";
   // The treasury agent's identity (B5), as for Kit 11's payments: still active, and allowed to pay a bank beneficiary in
@@ -248,6 +250,8 @@ async function submit(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: st
       method: t.method, reference: t.reference, reason: t.reason, approvalSha256: sha, ...applicationFeeOf(t as PlatformFields),
     });
   } catch (e) {
+    // Held back at the rail (Purser Cloud's last ask of the emergency stop): nothing was sent, the row is closed.
+    if (firstSend && e instanceof HeldBeforeCreate) { closeHeldRow(db, t.transfer_request_id, e.reason, new Date()); throw e; }
     if (firstSend && refusedAtCreate(e)) {
       // Refused outright at the first send: no transfer exists, so the row is closed, not left counting as under way.
       const closed = db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = ?, failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")

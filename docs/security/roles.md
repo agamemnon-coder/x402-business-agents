@@ -34,6 +34,7 @@ this table and holds every cell to the code (cloud/src/auth.ts `scopesOf`, the r
 | See a payment's exact terms (signing view) | `GET /v1/engine/proposals/{id}` | yes | yes | yes | yes | yes | read |
 | See the exact terms as signed (/try signing view) | `GET /v1/engine/proposals/{id}/terms` | yes | yes | yes | yes | yes | read |
 | Approve a payment with one's own passkey | `POST /v1/engine/proposals/{id}/approve` | no | yes | yes | no | no | never |
+| Pull or lift the emergency stop (then approved with one's own passkey) | `POST /v1/engine/emergency-stop` | no | yes | yes | no | no | never |
 | Pay with one's signature (/try) | `POST /v1/engine/proposals/{id}/pay` | no | yes | yes | no | no | never |
 | Reject a held invoice (/try) | `POST /v1/engine/invoices/{id}/reject` | no | yes | yes | no | no | never |
 | Start one's own approval passkey | `POST /v1/engine/passkey/start` | no | yes | yes | no | no | never |

@@ -45,6 +45,8 @@ import { wireAirwallex } from "./awxWire.js";
 import { withLiveFx, type LiveFxSource } from "./liveFx.js";
 import { sandboxPayout, simulatePayout, withAlonePayout, type PayoutSource } from "./livePayout.js";
 import { on, readSwitches } from "../try/switches.js";
+import { frozen } from "../../../src/policy/rules.js";
+import { railStop } from "../../../src/policy/emergencyStop.js";
 
 /** What the host needs of the object: its storage. */
 export interface HostCtx { storage: DoStorage & { deleteAll(): Promise<void> } }
@@ -140,6 +142,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
   const payoutKit = {
     company: tenantId, source: env.AWX_FX ?? null, db,
     allowed: async () => on(await readSwitches(sql), "awx_payout"),
+    // The company's emergency stop, asked last before the sandbox is asked (src/policy/emergencyStop.ts).
+    stopped: () => frozen(db),
     keep: {
       get: (pid: string) => (storage.sql.exec("SELECT note FROM awx_payout_notes WHERE proposal_id = ?", pid).toArray()[0]?.note as string | undefined) ?? null,
       set: (pid: string, note: string) => { storage.sql.exec("INSERT INTO awx_payout_notes (proposal_id, note) VALUES (?, ?) ON CONFLICT(proposal_id) DO UPDATE SET note = excluded.note", pid, note); },
@@ -152,7 +156,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
   // The simulated side is /try's quoting bank when it has one (./liveFx.ts), else the stand-in itself.
   const actStore = doActStore(storage);
   const guard = cloudGuard({ sql: d1Sql(env.DB), tenantId, gateway: !!env.AWX_GATEWAY });
-  const awx = wireAirwallex({ bank: rail, store: actStore, guard, port: env.AWX_GATEWAY ?? null });
+  // The emergency stop is asked at the rail too, immediately before every create at either bank (src/policy/emergencyStop.ts).
+  const awx = wireAirwallex({ bank: rail, store: actStore, guard, port: env.AWX_GATEWAY ?? null, stop: railStop(db) });
   const host = new EngineHost({
     db, reader: parserOnly, rails: awx.rails, afterMoney: keepBank, payeeVerifier: awx.verifier,
     rp: { rpId: env.RP_ID, origin: env.ORIGIN }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
@@ -190,6 +195,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     securityKeyStart: async (a) => host.securityKeyStart({ label: a.label, ...(a.rp && rpAllowed(a.rp, own) ? { rp: { rpId: a.rp.rpId, origin: a.rp.origin } } : {}) }),
     securityKeyFinish: async (a) => host.securityKeyFinish(a),
     proposeSecondKey: async (changes) => host.proposeSecondKey(changes),
+    emergencyStop: async (stop) => host.emergencyStop(stop),
     approve: async (a) => kept(acts.approve(a)),
     retry: async (proposalId) => kept(acts.retry(proposalId)),
     sync: async () => kept(host.sync()),

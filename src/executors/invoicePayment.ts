@@ -13,6 +13,8 @@ import { describeTransferStatus, inAirwallexApproval } from "../airwallex/approv
 import { SWIFT_FEE_MAX_EUR_CENTS } from "../config/policy.js";
 import { originJson } from "../provenance/origin.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
+import { closeHeldRow, STOP_WORDS } from "../policy/emergencyStop.js";
+import { HeldBeforeCreate } from "../airwallex/routedRail.js";
 import { stopped } from "../policy/velocity.js";
 import { AIRWALLEX_FEE_CODES, AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import type { AirwallexRail, NewTransfer, SandboxSim, Transfer } from "../airwallex/port.js";
@@ -190,7 +192,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
  *  immediately before every create at Airwallex (refuseIfHeld), the conversion and the payout, and after each fee retry's wait. */
 export function holdReason(db: DB, t: InvoicePaymentTerms, at: Date): string | null {
   if (!counterpartyAllowed(db, t.beneficiary_name)) return `${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`;
-  if (frozen(db)) return "the CFO pulled the emergency stop; nothing is paid until it is lifted";
+  if (frozen(db)) return STOP_WORDS;
   if (stopped(db, "treasury")) return "the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop";
   if (paused(db, "treasury")) return "the treasury agent is paused by the CFO; nothing is paid until the CFO resumes it with Face ID";
   // The treasury agent's identity (B5): still active, and allowed to pay a bank beneficiary in euros over Airwallex.
@@ -302,6 +304,8 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   try {
     ({ transfer: tr, adopted } = await createWithFeeRetry(db, rail, t, sha, create, now, feeRetry, () => attempts++));
   } catch (err) {
+    // Held back at the rail (Purser Cloud's last ask of the emergency stop): nothing was sent, the row is closed.
+    if (firstSend && err instanceof HeldBeforeCreate) { closeHeldRow(db, t.transfer_request_id, err.reason, new Date()); throw err; }
     const refused = firstSend && err instanceof AirwallexError && err.status === 400 && REFUSED_AT_CREATE.has(err.code ?? "");
     // After the fee retry's resends (attempts > 1), Airwallex's refusal alone does not show that nothing exists.
     const afterResends = refused && attempts > 1 ? await lookUpAfterResends(db, rail, t, create, attempts, err) : null;

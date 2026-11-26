@@ -93,11 +93,14 @@ const Supplier = z.object({
 const Batch = z.object({ invoice_ids: z.array(z.string().min(1).max(64)).min(1).max(20) }).strict();
 /** Money in on the bank's simulation: at most 500.00 at a time (the daily caps apply on top at Airwallex). */
 const DepositIn = z.object({ amount: z.string().regex(/^\d{1,3}\.\d{2}$/, "an amount such as 25.00, at most 500.00") }).strict();
+/** The emergency stop: on (pull it) or off (lift it); either is a policy change the CFO approves with the passkey. */
+const EmergencyStop = z.object({ on: z.boolean() }).strict();
 
 /** The request bodies of the engine's routes, as the OpenAPI document shows them (cloud/src/app.ts openApi). */
 export const ENGINE_BODIES: Record<string, z.ZodType> = {
   "POST /v1/engine/documents": Upload, "POST /v1/engine/passkey/finish": PasskeyFinish, "POST /v1/engine/proposals/{id}/approve": Approve,
   "POST /v1/engine/invoices/{id}/supplier": Supplier, "POST /v1/engine/batch": Batch, "POST /v1/engine/deposit": DepositIn,
+  "POST /v1/engine/emergency-stop": EmergencyStop,
 };
 
 /** Standard base64 into bytes, refused before it is decoded when it is not base64 or holds more than the limit. */
@@ -260,6 +263,14 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       const out = await e.proposeSecondKey(b.changes);
       return out.ok ? json(200, { proposal: out.proposal }) : err(409, out.reason);
     }) },
+    { method: "POST", path: "/v1/engine/emergency-stop", summary: "The CFO's emergency stop (a session only; the approve scope: the CFO, or an owner of a company with no CFO): { on: true } pulls it, { on: false } lifts it. Answers { proposal }, a policy change the CFO approves with the passkey (POST /v1/engine/proposals/{id}/approve); nothing changes before that, and a key cannot ask. Once approved, nothing of this company is paid: proposals are still filed, but every payment executor refuses when it begins and again immediately before each create at the bank (the rail asks too), the agent pays nothing alone and nothing is sent to the Airwallex sandbox. GET /v1/engine says { emergency_stop: { on, since, proposal_id } }; both directions are in the audit log (policy.changed) and told to every owner. 409 when it already stands as asked.", need: "approve", run: on(async (c, e) => {
+      const user = signedIn(c);
+      const b = await kit.body(c, EmergencyStop, 1_000);
+      const out = await e.emergencyStop(b.on);
+      if (!out.ok) return err(409, out.reason);
+      await kit.tellOwners?.(c, b.on ? "emergency_stop.requested" : "emergency_stop.lift_requested", { person: user, proposal: out.proposal.id });
+      return json(200, { proposal: out.proposal });
+    }) },
     { method: "POST", path: "/v1/engine/security-key/start", summary: "Start registering a security key for the signed-in person (a session only): the second key of high-risk payments (USB or NFC, such as a YubiKey), beside their approval passkey, which must exist. Answers the challenge, the user handle, the relying party and the credentials to exclude; the page asks with authenticatorAttachment cross-platform.", need: "approve", run: on(async (c, e) => {
       const user = signedIn(c);
       const name = await displayName(c, user);
@@ -275,8 +286,11 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
     }) },
     { method: "POST", path: "/v1/engine/proposals/{id}/approve", summary: "Approve a proposal with the approval passkey (a session only; the approve scope: the CFO, or an owner of a company with no CFO): { terms_sha256, credential } with the passkey's signature over the proposal's challenge. Answers { status, message, settled }: only status approved pays (on the stand-in bank), and settled says paid, booked, archived and fed; a signature over other terms is refused and nothing runs. A key still in its cooling-off (new or recovered) is refused: 403 cooling_off with cooling_until, nothing paid, told to the owners.", need: "approve", run: on(async (c, e) => {
       signedIn(c);
-      if (!(await e.proposal(c.params[0]!))) return err(404, "no proposal");
+      const p = await e.proposal(c.params[0]!);
+      if (!p) return err(404, "no proposal");
       const b = await kit.body(c, Approve, 64_000);
+      // A policy change may pull or lift the emergency stop: what it stood at before, to tell every owner when it moves.
+      const stopBefore = p.kind === "policy_change" ? (await e.status()).emergency_stop?.on ?? null : null;
       // A visitor's test company (hands-on demo): the approval is stored and the payment held for the one pay route.
       const out = await e.approve({ proposal_id: c.params[0]!, terms_sha256: b.terms_sha256, credential: b.credential, ...(c.caller!.tenantId.startsWith("t_try_") ? { hold: true } : {}) });
       // A key in its cooling-off (review finding 2): refused with its reason, in the security log (a 403) and told to the owners.
@@ -285,9 +299,13 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
         return json(403, { error: out.message, code: "cooling_off", status: "refused", message: out.message, cooling_until: out.cooling_until ?? null });
       }
       if (kit.approved && c.caller!.tenantId.startsWith("t_try_")) await kit.approved(c, out).catch(() => undefined);
+      if (stopBefore !== null) {
+        const now = (await e.status()).emergency_stop ?? null;
+        if (now && now.on !== stopBefore) await kit.tellOwners?.(c, now.on ? "emergency_stop.on" : "emergency_stop.lifted", { person: c.caller!.user, proposal: c.params[0]!, since: now.since });
+      }
       return json(200, out);
     }) },
-    { method: "POST", path: "/v1/engine/proposals/{id}/retry", summary: "Try again: an approved payment whose execution failed (the bank was away, say) is run once more by the executor's own resume path, which never pays twice. Answers { status: retried, message, settled } with where things stand; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused).", need: "admin", run: on(async (c, e) => {
+    { method: "POST", path: "/v1/engine/proposals/{id}/retry", summary: "Try again: an approved payment whose execution failed (the bank was away, say), or that the executor refused before it began (approved while the emergency stop was on, say), is run once more by the executor's own resume path, every check asked again, which never pays twice. Answers { status: retried, message, settled } with where things stand; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused).", need: "admin", run: on(async (c, e) => {
       if (!(await e.proposal(c.params[0]!))) return err(404, "no proposal");
       const out = await e.retry(c.params[0]!);
       return out.status === "retried" ? json(200, out) : err(409, out.message);
