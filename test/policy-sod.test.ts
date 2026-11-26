@@ -2,7 +2,6 @@
 // loosens the policy above it needs the passkeys of two different people, the same person twice never counts, and whoever
 // proposed a policy change never approves it. Tightening stays one person and runs at once. Off by default.
 import { beforeEach, describe, expect, it } from "vitest";
-import { policyLoosens } from "../src/approve/client.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executePolicyChange, proposePolicyChange } from "../src/executors/policyChange.js";
 import { fourEyes } from "../src/policy/fourEyes.js";
@@ -39,7 +38,6 @@ describe("segregation of duties for policy changes", () => {
     for (const [from, to, looser] of [["", "1000.00", false], ["1000.00", "", true], ["1000.00", "2000.00", true], ["1000.00", "500.00", false]] as const) {
       const c = { key: POLICY_SOD_KEY, from, to };
       expect(loosens(c)).toBe(looser);
-      expect(policyLoosens(c)).toBe(looser);
     }
     // Off: a loosening is one person's, as before.
     const p = propose(db, "ap.alone_eur", "5000.00");

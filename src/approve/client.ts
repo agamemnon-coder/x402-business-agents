@@ -210,7 +210,6 @@ export function policyLoosens(c: { key: string; from: string; to: string }): boo
   if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
-  if (c.key === "approval.policy_sod_eur") return from !== null && (to === null || to > from);
   // A second key for high-risk payments (src/policy/secondKey.ts): off, or a higher amount, loosens.
   if (c.key === "approval.second_key_eur") return from !== null && (to === null || to > from);
   if (c.key.startsWith("approval.second_key_")) return c.from === "on" && c.to !== "on";

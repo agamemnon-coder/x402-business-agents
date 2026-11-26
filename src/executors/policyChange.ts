@@ -22,8 +22,7 @@ export interface PolicyChangeTerms extends Terms {
   kind: "policy_change";
   changes: PolicyChange[];
   reason: string;
-  /** The person who proposed it, when one is named: never its approver (src/policy/policySod.ts). */
-  proposed_by?: string;
+  // proposed_by (a string, only when a person is named): who proposed it, never its approver (src/policy/policySod.ts).
 }
 
 /** A person's name as a passkey is enrolled under (src/passkey/ledger.ts openEnrolment). */

@@ -224,7 +224,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
       const person = approver.split(" (")[0]!;
       if (person === p.created_by) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (${rule})`);
       const signed = db.prepare("SELECT person, approver FROM cosignatures WHERE proposal_id = ? AND terms_sha256 = ? ORDER BY created_at, rowid").all(p.proposal_id, p.terms_sha256) as { person: string; approver: string }[]; // only a first signature over these exact terms counts: one made before the stored terms changed signed other terms (zero-trust matrix, 12 November)
-      if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey (${rule})`);
+      if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey${sodWhy ? ` (${rule})` : ""}`);
       db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
         .run(p.proposal_id, passkey.credential_id, person, approver, p.terms_sha256, passkey.assertion_sha256, now.toISOString());
       if (signed.length === 0) {
